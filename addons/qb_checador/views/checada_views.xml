@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_checada_list" model="ir.ui.view">
+        <field name="name">qb.checada.list</field>
+        <field name="model">qb.checada</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state in ('huerfana', 'error')" decoration-warning="state == 'sin_empleado'"
+                  decoration-muted="state == 'ignorada'" create="false">
+                <field name="timestamp"/>
+                <field name="employee_id"/>
+                <field name="pin"/>
+                <field name="equipo_id"/>
+                <field name="verify" optional="hide"/>
+                <field name="status" optional="hide"/>
+                <field name="source" optional="hide"/>
+                <field name="state"/>
+                <field name="attendance_id" optional="show"/>
+                <field name="nota"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_checada_form" model="ir.ui.view">
+        <field name="name">qb.checada.form</field>
+        <field name="model">qb.checada</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_reintentar" type="object" string="Volver a emparejar"
+                            invisible="state in ('nueva', 'emparejada')"
+                            help="Vuelve a buscar el empleado y deja la checada lista para el siguiente emparejamiento."/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="equipo_id"/>
+                            <field name="pin"/>
+                            <field name="employee_id"/>
+                            <field name="timestamp"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="verify"/>
+                            <field name="workcode"/>
+                            <field name="source"/>
+                            <field name="attendance_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="nota"/>
+                        <field name="raw"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_checada_search" model="ir.ui.view">
+        <field name="name">qb.checada.search</field>
+        <field name="model">qb.checada</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="pin"/>
+                <field name="equipo_id"/>
+                <filter name="pendientes" string="Por resolver" domain="[('state', 'in', ('huerfana', 'sin_empleado', 'error'))]"/>
+                <filter name="nuevas" string="Nuevas" domain="[('state', '=', 'nueva')]"/>
+                <filter name="emparejadas" string="Emparejadas" domain="[('state', '=', 'emparejada')]"/>
+                <separator/>
+                <filter name="hoy" string="Hoy" domain="[('timestamp', '>=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                <group>
+                    <filter name="group_empleado" string="Empleado" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_estado" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_equipo" string="Equipo" context="{'group_by': 'equipo_id'}"/>
+                    <filter name="group_dia" string="Día" context="{'group_by': 'timestamp:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_checada" model="ir.actions.act_window">
+        <field name="name">Checadas</field>
+        <field name="res_model">qb.checada</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_qb_checada_search"/>
+        <field name="context">{'search_default_pendientes': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no llega ninguna checada</p>
+            <p>Cada registro del reloj se guarda aquí tal como llegó y un cron lo empareja en asistencias. Lo que no se pudo emparejar queda marcado para resolverlo a mano.</p>
+        </field>
+    </record>
+
+</odoo>

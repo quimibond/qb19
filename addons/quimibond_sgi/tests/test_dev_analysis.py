@@ -88,6 +88,12 @@ class TestDevAnalysis(TransactionCase):
             self.dev.action_sgi_dev_request_lab_tests()  # ya están en una solicitud en curso
         with self.assertRaises(UserError):
             request.with_user(other_user).action_authorize()
+        # 57.143.0: el jefe directo del puesto también autoriza (suplencia); otro no.
+        boss_user = new_test_user(self.env, login='lab_boss', groups='base.group_user')
+        boss = self.env['hr.employee'].create({'name': 'Jefe del laboratorio prueba', 'user_id': boss_user.id})
+        lab_user.employee_ids.write({'parent_id': boss.id})
+        self.assertIn(boss_user, Request._authorizer_users())
+        self.assertNotIn(other_user, Request._authorizer_users())
         request.with_user(lab_user).action_authorize()
         self.assertEqual((request.state, request.authorized_by_id), ('autorizada', lab_user))
         masa.write({'sample_value': 54})
@@ -137,3 +143,18 @@ class TestDevAnalysis(TransactionCase):
         self.assertEqual((self.dev.sgi_dev_review_state, self.dev.sgi_dev_reviewed_by_id), ('aprobado', self.env.user))
         self.dev.write({'stage_id': self.env.ref('quimibond_sgi.sgi_dev_stage_cotizacion').id})
         self.assertEqual(self.dev.sgi_dev_stage_key, 'cotizacion')
+        # 57.140.0: con catálogo para la línea, un producto nuevo no se aprueba sin cargar el checklist;
+        # uno de línea sí (el checklist no le aplica).
+        otro = self.env['project.project'].create({'name': 'y', 'sgi_is_ft': True, 'sgi_dev_product_name': 'Entretela',
+                                                   'sgi_dev_line_key': 'entretelas', 'sgi_dev_analysis_result': 'nuevo'})
+        with self.assertRaises(UserError, msg="Sin checklist cargado no se aprueba"):
+            otro.action_sgi_dev_review_approve()
+        otro.action_sgi_dev_load_feasibility()
+        self.assertEqual(len(otro.sgi_dev_feasibility_ids), 1)
+        otro.sgi_dev_feasibility_ids.write({'answer': 'si'})
+        otro.action_sgi_dev_review_approve()
+        self.assertEqual(otro.sgi_dev_review_state, 'aprobado')
+        linea = self.env['project.project'].create({'name': 'z', 'sgi_is_ft': True, 'sgi_dev_product_name': 'Línea',
+                                                    'sgi_dev_line_key': 'entretelas', 'sgi_dev_analysis_result': 'linea'})
+        linea.action_sgi_dev_review_approve()
+        self.assertEqual(linea.sgi_dev_review_state, 'aprobado', "Producto de línea: sin checklist")

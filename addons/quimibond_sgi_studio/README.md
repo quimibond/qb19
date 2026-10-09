@@ -19,6 +19,14 @@ núcleo en 57.9.0 (auditoría A-010, decisión D-10 de Jose).
   2026-09-29: 11 roles con regla y 11 reglas activas con rol.
 - **Pruebas:** `tests/test_approval_studio.py` y
   `tests/test_approval_rule_archive.py` (se mudaron del núcleo).
+- **19.0.1.0.6 (2026-10-09): nadie aprueba lo que él mismo pidió.** La
+  entrada de aprobación de Studio (`studio.approval.entry`) de una regla con
+  rol del SGI no se crea si quien aprueba es quien pidió el registro
+  (`sgi.activity.role._sgi_requester_conflict`, campos explícitos como
+  «Solicitó» o «Elaboró», nunca `create_uid`); el mensaje dice a quién le
+  toca: el titular o el **suplente** nombrado en el rol (57.143.0 del núcleo),
+  que la regla incluye entre sus aprobadores. Prueba:
+  `tests/test_approval_studio.py::TestApprovalStudioRequester`.
 - **19.0.1.0.3 (2026-10-01): ninguna regla guarda un campo que su documento
   no tiene.** `studio.approval.rule` limpia `domain` al crear y escribir con
   `sgi_sanitize_domain` del núcleo, y la regla del rol se arma con

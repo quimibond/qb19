@@ -13,6 +13,164 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.143.0 — 2026-10-09
+
+Dirección General 2026-10-09: **suplencias**. No se cambia ningún jefe en el
+organigrama: solo se lee `hr.employee.parent_id`.
+
+### Agregado
+- **Ejecución por suplencia.** Si un paso lo ejecuta el jefe directo de quien
+  tiene el rol «Ejecuta», la medición lo cuenta como cumplido: clase nueva
+  `suplencia` («Jefe directo (suplencia)») en `sgi.activity.exec.stat`,
+  contador `measure_count_substitute` («Por el jefe directo (4 sem.)») en la
+  actividad, la adherencia suma correcto + suplencia y «Quién la ejecuta» lo
+  marca «✓ suplencia». Antes caía en «otro puesto» y disparaba el aviso de
+  atribución débil (C1.07, C1.08, C1.12). Filtros «Jefe directo (suplencia)»
+  en Quién hace qué y «Ejecuta el jefe directo (suplencia)» en actividades.
+- **Suplente nombrado en «Aprueba»** (`sgi.activity.role.substitute_job_id`,
+  un puesto, vacío por omisión; solo en «Aprueba» y distinto del titular).
+  Las personas que aprueban son las del titular más las del suplente, en la
+  Matriz de responsabilidades, en Aprobaciones del SGI (columna «Suplente»),
+  en las categorías de Aprobaciones y en las reglas de Studio (el satélite
+  las sincroniza con el cron). Carga por API: `substitute_job` en el rol;
+  la exportación lo incluye.
+- **Nadie aprueba lo que él mismo pidió.** En una solicitud de Aprobaciones
+  con rol del SGI (asunto o categoría propia), quien la pide sale de los
+  aprobadores: si es el titular aprueba el suplente y al revés; si no queda
+  nadie, «Confirmar» dice a quién le toca o que falta nombrar suplente
+  (`_sgi_requester_conflict`). Para los botones de Studio lo aplica
+  `quimibond_sgi_studio` 1.0.6. Quien pide se lee de los campos explícitos
+  del registro (`SGI_REQUESTER_FIELDS`, ahora también `requested_by_id`,
+  `solicitada_por_id` y `sgi_dev_prepared_by_id`), nunca de `create_uid`.
+- `hr.job._sgi_holders()`, `_sgi_bosses()`, `_sgi_users(with_bosses)`.
+
+### Cambiado
+- **La aprobación ya no sube por jerarquía.** Desde 57.13.0, si quien
+  aprobaba también ejecutaba o pedía, el rol subía al jefe directo; ahora
+  (`_sgi_not_self_approver`) queda el titular o el suplente que no pide ni
+  ejecuta, y si no hay, nadie aprueba y el rol marca «Sin personas en el
+  puesto» con el aviso. El **escalamiento** del atraso («Escala») sí sigue
+  subiendo al jefe (`_sgi_not_self`). En producción esto toca E2.01 (Jefa MAST
+  aprobaba sus propios cambios de documento → subía a Dirección de
+  Operaciones) y S6.07 (Sistemas → Dirección General): quedan sin aprobador
+  hasta que Dirección nombre el suplente.
+- **Botones del desarrollo restringidos por puesto en código** aceptan también
+  al jefe directo del puesto: «Autorizar pruebas de laboratorio»
+  (Coordinador de Laboratorio y MP), «Validar» la ficha de tejido (Jefe de
+  Manufactura) y la firma de la ficha técnica interna (los seis puestos del
+  parámetro; el chatter dice «por suplencia»). Los botones que aprueba un rol
+  «Aprueba» (regla de Studio) siguen la regla del suplente, no la del jefe.
+- El aviso de la carga por API para «Aprueba = Solicitante» ya no promete
+  subir al jefe.
+
+### Pruebas
+- `test_catalog_fase1.test_50b` (suplencia en la medición),
+  `test_relative_roles.test_05/06/07b/09` (suplente, sin subir, escalamiento
+  sí sube, solicitud que pide el propio aprobador),
+  `test_dev_analysis.test_02` (el jefe directo autoriza).
+
+Sin migración.
+
+## 19.0.57.142.0 — 2026-10-09
+
+Dirección General 2026-10-09: la galga en el código. El DAT P-D02-01 da a cada
+galga un rango de dos dígitos (galga 18 = 21 a 30) y «Generar artículos»
+siempre ponía el primero; en el 499 salió WJ053Q21JCO160 cuando la familia del
+base usa 22, y Administración de Ventas lo corrigió a mano.
+
+- **Agregado** `sgi_dev_code_galga_digits` «Dígitos de galga (7-8)» con el
+  rango visible junto a la galga: se propone el primero del rango y se puede
+  elegir otro dentro de él; fuera del rango no se guarda (restricción) ni se
+  genera. Solo se muestra sin artículo base.
+- **Cambiado** con artículo base, la galga se compara por número y no por
+  dígitos: si el base lleva 22 y el proyecto galga 18, no cambia y los
+  artículos nuevos conservan el 22 del base; si la galga sí cambia, van los
+  dígitos elegidos.
+- **Cambiado** el nombre del proyecto se vuelve a armar cuando alguien corrige
+  el código del artículo acabado (`product.product.write`).
+- **Migración** `19.0.57.142.0`: rearma el nombre de los desarrollos (el 499
+  pasa a «Análisis WJ053Q22JCO160»); los dígitos de galga los calcula Odoo al
+  crear la columna. No toca artículos ni listas.
+
+## 19.0.57.141.0 — 2026-10-09
+
+Dirección General 2026-10-09: «Generar artículos» parte del artículo base.
+Armaba crudo, teñido y acabado con las claves del producto terminado, y peso y
+ancho cambian en el proceso (el acabado WJ053Q22JNT160 consume el teñido
+WJ044Q22INT235, que consume el crudo WJ044Q22HNT235). En el proyecto 499 generó
+un crudo que no existe y Administración de Ventas armó a mano el teñido y las
+listas.
+
+- **Cambiado** con `sgi_dev_base_product_id` (`models/sgi_dev_product_base.py`):
+  se recorre la cadena del base por sus listas de materiales (acabado → teñido
+  → crudo); en cada nivel se decide si cambia con las claves del proyecto
+  (color: teñido y acabado; ancho acabado: acabado; ancho crudo: crudo y
+  teñido; composición, dibujo, peso, hilo y galga: todos; acabado especial:
+  acabado). Nivel que no cambia: se liga el artículo del base. Nivel que
+  cambia: artículo nuevo con el código del nivel del base sustituyendo solo lo
+  que cambió (WJ044Q22INT235 → WJ044Q22ICO235), unidad y categoría del base,
+  lista de materiales copiada con cantidades, operaciones y subproductos, y el
+  insumo del nivel inferior reemplazado por el nuevo. Si cambia el peso, el de
+  crudo y teñido se estima en proporción al base y el chatter lo dice.
+- **Agregado** `mrp.bom.line.sgi_dev_pending` «Por capturar» (columna en la
+  lista de materiales): los componentes que dependen de la clave que cambió
+  (fórmula de color en el teñido; hilo en el crudo si cambió composición,
+  dibujo, peso, hilo, galga o ancho crudo; la cantidad del insumo si cambió
+  peso o ancho). El proyecto los cuenta (`sgi_dev_bom_pending_count`, aviso y
+  «Ver listas» en «Cotización») y `qb_costeo_sgi` 1.4.0 no deja mandar la
+  cotización a aprobar mientras haya.
+- **Cambiado** con resultado «Producto de línea» el botón no aparece y la
+  acción se detiene: se cotiza el artículo de línea.
+- Sin base, el generador por claves sigue igual. Si el base no sigue la regla
+  de codificación, se avisa y se usa el generador por claves. Todo queda en el
+  chatter: qué se ligó, qué se creó, de qué lista y qué falta capturar.
+- Los artículos y listas del proyecto 499 no se tocan (están ligados; el
+  botón no vuelve a correr sobre ellos).
+- Sin migración. Pruebas `test_dev_product.py` test_05 a test_07.
+
+## 19.0.57.140.0 — 2026-10-09
+
+Dirección General 2026-10-09: «no quiero que se vea el botón de aprobar hasta
+que esté completo el checklist; si no hay muestra física no me muestres campos
+cuando no aplica».
+
+- **Cambiado** «Aprobar análisis y factibilidad» aparece solo con resultado
+  del análisis y, si es producto nuevo, con el checklist de factibilidad
+  cargado y sin renglones pendientes. En el modelo: con catálogo para la
+  línea, un producto nuevo no se aprueba sin su checklist (un producto de
+  línea o no factible no lo lleva; con catálogo vacío no cambia nada).
+- **Cambiado** el checklist se oculta cuando el resultado es producto de
+  línea o no factible; junto al botón «Cargar checklist» se avisa «Sin
+  checklist no se puede aprobar».
+- **Cambiado** muestra física: cuando la propiedad del cliente es
+  «Especificación» o «Ninguna» se ocultan las fechas de recibida y entregada,
+  la ubicación en carpeta y la etiqueta; en «Análisis de proyecto» se ocultan
+  el análisis de la muestra, el botón de pruebas al laboratorio y el contador
+  de pendientes, con una nota en su lugar.
+- Sin campos nuevos, sin migración. Prueba en `test_dev_analysis.py` test_03.
+
+## 19.0.57.139.0 — 2026-10-09
+
+Dirección General 2026-10-09: Administración de Ventas necesita depurar los
+renglones que propone el tipo y el cliente no pide, y en producción nadie podía
+borrarlos (acceso `sgi.dev.characteristic.user` sin `perm_unlink`).
+
+- **Seguridad** `sgi.dev.characteristic.user` (Usuario interno) con
+  `perm_unlink`: el bote de basura aparece en «Análisis de mercado industrial»
+  (las demás pestañas siguen con `delete="0"`).
+- **Agregado** candado al borrar: un renglón con lecturas de la corrida (número
+  o texto), dictamen, aprobación del cliente, lecturas de pilotaje o un reporte
+  de conformidad no se borra; el error dice qué tiene y sugiere desmarcar «Va a
+  la especificación del cliente» y «Va al certificado». Si el desarrollo ya
+  lleva bitácora de revisiones, el borrado queda anotado como «renglón borrado».
+- **Cambiado** «Proponer características del tipo»: con la tabla vacía propone
+  todas sin preguntar; con renglones pide confirmación y **no vuelve a proponer
+  los que se borraron a propósito** (el proyecto los recuerda en
+  `sgi_dev_removed_line_keys`, técnico); el chatter dice cuántas agregó y
+  cuáles omitió. Vaciar la tabla olvida esa memoria.
+- Sin migración: el acceso se actualiza con el CSV. Prueba en
+  `test_dev_characteristics.py` (test_02b).
+
 ## 19.0.57.138.0 — 2026-10-09
 
 Corrección urgente: el build de producción (`quimibond`, PR 605) cayó al cargar

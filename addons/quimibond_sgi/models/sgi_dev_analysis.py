@@ -200,11 +200,12 @@ class SgiDevLabRequest(models.Model):
 
     @api.model
     def _authorizer_users(self):
-        """Usuarios del puesto autorizador; el Jefe MAST siempre puede."""
+        """Usuarios del puesto autorizador y de su jefe directo (57.143.0,
+        suplencia); el Jefe MAST siempre puede."""
         job = self._authorizer_job()
         if not job:
             return self.env['res.users']
-        return self.env['hr.employee'].sudo().search([('job_id', '=', job.id)]).mapped('user_id')
+        return job._sgi_users(with_bosses=True)
 
     def action_request(self):
         for req in self:
@@ -223,8 +224,8 @@ class SgiDevLabRequest(models.Model):
         for req in self:
             if not (self.env.user in req._authorizer_users()
                     or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
-                raise UserError("Solo el puesto configurado (Coordinador de Laboratorio y MP) o el Jefe MAST "
-                                "autoriza las pruebas.")
+                raise UserError("Solo el puesto configurado (Coordinador de Laboratorio y MP), su jefe directo "
+                                "o el Jefe MAST autoriza las pruebas.")
             req.write({'state': 'autorizada', 'authorized_by_id': self.env.uid, 'date_authorized': fields.Datetime.now()})
             req.activity_ids.filtered(lambda a: a.summary == "Autorizar pruebas de laboratorio").action_feedback()
         return True
@@ -485,6 +486,12 @@ class ProjectProjectDevAnalysis(models.Model):
             if project.sgi_dev_feasibility_pending:
                 raise UserError("Hay %d renglón(es) del checklist de factibilidad sin contestar."
                                 % project.sgi_dev_feasibility_pending)
+            # 57.140.0 (Dirección General): un producto nuevo no se aprueba sin su checklist cuando
+            # el catálogo de la línea ya tiene recursos (un producto de línea o no factible no lo lleva).
+            if (project.sgi_dev_analysis_result == 'nuevo' and not project.sgi_dev_feasibility_ids
+                    and self.env['sgi.dev.feasibility.item'].search_count(
+                        [('line', '=', project.sgi_dev_line_key or 'tejido_circular')])):
+                raise UserError("Cargue y conteste el checklist de factibilidad antes de aprobar.")
             project.write({'sgi_dev_review_state': 'aprobado', 'sgi_dev_reviewed_by_id': self.env.uid,
                            'sgi_dev_review_date': fields.Datetime.now(), 'sgi_dev_review_note': False})
             project.message_post(body="Ventas aprobó el análisis y la factibilidad.")

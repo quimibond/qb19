@@ -972,7 +972,13 @@ class SgiProcessActivity(models.Model):
              "adherencia.")
     measure_count_other_job = fields.Integer(
         string="Por otro puesto (4 sem.)", readonly=True,
-        help="Ejecuciones de empleados de un puesto al que no le toca.")
+        help="Ejecuciones de empleados de un puesto al que no le toca (el jefe directo "
+             "del puesto no cuenta aquí: es suplencia).")
+    measure_count_substitute = fields.Integer(
+        string="Por el jefe directo (4 sem.)", readonly=True,
+        help="57.143.0: ejecuciones del jefe directo de quien tiene el rol «Ejecuta» "
+             "(suplencia). Cuentan como cumplidas en la adherencia; se distinguen del "
+             "puesto asignado y de «otro puesto».")
     measure_warning = fields.Text(
         string="Avisos de medición", readonly=True)
 
@@ -995,7 +1001,7 @@ class SgiProcessActivity(models.Model):
         'measure_method', 'measure_proxy_activity_id', 'sample_cadence',
         'measure_justification', 'measure_deliverable_id', 'measure_count_generic',
         'measure_count_no_employee', 'measure_count_system',
-        'measure_count_other_job', 'measure_warning'}
+        'measure_count_other_job', 'measure_count_substitute', 'measure_warning'}
 
     @api.depends('measure_model_id')
     def _compute_measure_model_name(self):
@@ -1046,7 +1052,7 @@ class SgiProcessActivity(models.Model):
         'measure_adherence_pct': 0.0,
         'measure_top_users': False, 'measure_count_generic': 0,
         'measure_count_no_employee': 0, 'measure_count_system': 0,
-        'measure_count_other_job': 0, 'measure_warning': False,
+        'measure_count_other_job': 0, 'measure_count_substitute': 0, 'measure_warning': False,
     }
 
     def _sgi_measure(self):
@@ -1239,11 +1245,12 @@ class SgiProcessActivity(models.Model):
         por campo de usuario y semana (sin recorrer registros) y, por usuario,
         su empleado, puesto y familia al momento de medir. Cada ejecución cae
         en una clase: correcto (su puesto está entre los que ejecutan,
-        familias incluidas), otro_puesto, generico (cuenta compartida),
-        sin_empleado o sistema (OdooBot). El detalle va a
+        familias incluidas), suplencia (57.143.0: es el jefe directo de alguien
+        del puesto que ejecuta; cumple por suplencia), otro_puesto, generico
+        (cuenta compartida), sin_empleado o sistema (OdooBot). El detalle va a
         sgi.activity.exec.stat (una fila por semana, usuario y clase) y de ahí
-        salen la adherencia (correcto entre todo lo que no es sistema), los
-        contadores y los avisos. Con un ejecutor relativo sin puesto no hay
+        salen la adherencia (correcto más suplencia entre todo lo que no es
+        sistema), los contadores y los avisos. Con un ejecutor relativo sin puesto no hay
         clase ni adherencia: solo el conteo."""
         self.ensure_one()
         start = self._sgi_exec_window_start()
@@ -1259,6 +1266,8 @@ class SgiProcessActivity(models.Model):
         # de la empresa cuenta como correcto; cuentas genéricas, sin empleado
         # y sistema siguen sin contar.
         anyone = expected is None and self._sgi_executor_is_relative()
+        # 57.143.0: los jefes directos de quienes tienen el puesto cumplen por suplencia.
+        boss_ids = set(expected._sgi_bosses().ids) if expected else set()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
         root = self.env.ref('base.user_root', raise_if_not_found=False)
@@ -1281,6 +1290,8 @@ class SgiProcessActivity(models.Model):
                 klass = 'sin_empleado'
             elif anyone or (expected is not None and job and job in expected):
                 klass = 'correcto'
+            elif expected is not None and emp.id in boss_ids:
+                klass = 'suplencia'
             else:
                 klass = 'otro_puesto'
             week = week.date() if isinstance(week, datetime) else week
@@ -1303,7 +1314,7 @@ class SgiProcessActivity(models.Model):
             }
         rows = list(merged.values())
         counts = dict.fromkeys(
-            ('correcto', 'otro_puesto', 'generico', 'sin_empleado', 'sistema'), 0)
+            ('correcto', 'suplencia', 'otro_puesto', 'generico', 'sin_empleado', 'sistema'), 0)
         per_user = {}
         for row in rows:
             counts[row['_class']] += row['count']
@@ -1315,7 +1326,7 @@ class SgiProcessActivity(models.Model):
             return {}
         total = sum(counts.values())
         attributable = total - counts['sistema']
-        adherence = round(counts['correcto'] * 100.0 / attributable, 1) \
+        adherence = round((counts['correcto'] + counts['suplencia']) * 100.0 / attributable, 1) \
             if (expected is not None or anyone) and attributable else 0.0
         warnings = []
         if expected is not None and attributable and adherence < 80:
@@ -1332,9 +1343,10 @@ class SgiProcessActivity(models.Model):
                             "sistema): revisar nivel de automatización." % (
                                 counts['sistema'], total))
         Users = self.env['res.users'].sudo()
+        marks = {'correcto': " ✓", 'suplencia': " ✓ suplencia"}
         top = ', '.join("%s%s (%d)" % (
             Users.browse(user_id).name if user_id else "Sin usuario",
-            " ✓" if klass == 'correcto' else "", count)
+            marks.get(klass, ""), count)
             for user_id, (count, klass) in sorted(
                 per_user.items(), key=lambda kv: -kv[1][0])[:3])
         return {
@@ -1344,6 +1356,7 @@ class SgiProcessActivity(models.Model):
             'measure_count_no_employee': counts['sin_empleado'],
             'measure_count_system': counts['sistema'],
             'measure_count_other_job': counts['otro_puesto'] if expected is not None else 0,
+            'measure_count_substitute': counts['suplencia'],
             'measure_warning': '\n'.join(warnings) or False,
         }
 

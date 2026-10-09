@@ -51,27 +51,62 @@ class ApprovalRequestSubject(models.Model):
         for request in self:
             request.sgi_has_subjects = bool(request.category_id.sudo().sgi_subject_ids)
 
+    def _sgi_approval_role(self):
+        """El rol «Aprueba» que manda en esta solicitud: el del asunto o, sin
+        asunto, el de la categoría propia del rol (57.143.0)."""
+        self.ensure_one()
+        return self.sgi_subject_id.role_id or self.category_id.sudo().sgi_role_id
+
     def _sgi_apply_subject_approvers(self):
-        """Los aprobadores salen del asunto: las personas del puesto del rol."""
-        for request in self.filtered(lambda r: r.sgi_subject_id.role_id and r.request_status == 'new'):
-            users = request.sgi_subject_id.role_id.sudo()._sgi_approver_users()
-            if users:
+        """Los aprobadores salen del rol: las personas del puesto y de su
+        suplente, sin quien pide la solicitud (57.143.0: «nadie aprueba lo que
+        él mismo pidió»; si el titular la pide, queda el suplente y al revés).
+        Si no queda nadie, la lista se vacía y «Confirmar» dice por qué."""
+        for request in self.filtered(lambda r: r.request_status == 'new'):
+            role = request._sgi_approval_role()
+            if not role:
+                continue
+            users = role.sudo()._sgi_approver_users(record=request)
+            if request.sgi_subject_id:
                 request.approver_ids = [Command.clear()] + [
                     Command.create({'user_id': user.id, 'required': False}) for user in users]
+                continue
+            # Categoría propia de un rol, sin asunto: solo se quita a quien pide y se
+            # suma el suplente; los aprobadores que otros flujos agregan se respetan.
+            owner = request.request_owner_id
+            request.approver_ids = request.approver_ids.filtered(lambda a: a.user_id != owner)
+            missing = users - request.approver_ids.user_id
+            if missing:
+                request.approver_ids = [
+                    Command.create({'user_id': user.id, 'required': False}) for user in missing]
 
-    @api.onchange('sgi_subject_id')
+    def _sgi_check_requester_not_approver(self):
+        """UserError si la solicitud se quedó sin aprobadores porque quien la
+        pide es el único que aprueba (o el rol no tiene personas)."""
+        for request in self:
+            role = request._sgi_approval_role()
+            if not role or request.approver_ids:
+                continue
+            conflict = role.sudo()._sgi_requester_conflict(request, request.request_owner_id)
+            if conflict:
+                raise UserError(conflict)
+            raise UserError("La solicitud «%s» no tiene quién la apruebe: el rol «Aprueba» de %s no resuelve "
+                            "a nadie (sin personas en el puesto ni suplente, o el jefe del que pide no está "
+                            "en Empleados)." % (request.name, role.activity_id.sudo().display_name))
+
+    @api.onchange('sgi_subject_id', 'request_owner_id')
     def _onchange_sgi_subject_id(self):
         self._sgi_apply_subject_approvers()
 
     @api.model_create_multi
     def create(self, vals_list):
         requests = super().create(vals_list)
-        requests.filtered('sgi_subject_id')._sgi_apply_subject_approvers()
+        requests.filtered(lambda r: r._sgi_approval_role())._sgi_apply_subject_approvers()
         return requests
 
     def write(self, vals):
         res = super().write(vals)
-        if 'sgi_subject_id' in vals:
+        if {'sgi_subject_id', 'request_owner_id', 'category_id'} & set(vals):
             self._sgi_apply_subject_approvers()
         return res
 
@@ -79,4 +114,5 @@ class ApprovalRequestSubject(models.Model):
         missing = self.filtered(lambda r: r.sgi_has_subjects and not r.sgi_subject_id)
         if missing:
             raise UserError("Elija el asunto de la solicitud: dice qué se pide y quién lo aprueba.")
+        self._sgi_check_requester_not_approver()
         return super().action_confirm()

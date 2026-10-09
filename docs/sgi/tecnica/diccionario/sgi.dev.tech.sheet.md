@@ -26,5 +26,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`.
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_approve` | Aprobación de C1.15 (Administrador de Ventas por la regla nativa de Studio): la ficha queda vigente con su PDF. Las firmas que falten se imprimen en blanco; quién firmó y quién aprobó queda en el reg… |
-| `action_sign` | Firma los renglones de los puestos del usuario que aún no están firmados. |
+| `action_sign` | Firma los renglones de los puestos del usuario (o de los que suple como jefe directo) que aún no están firmados. |
 | `create` | — |

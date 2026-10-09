@@ -39,6 +39,28 @@ class TestBridge(CotizadorCase):
         self.assertEqual(self.project.qb_cotizacion_count, 1)
         self.assertEqual(self.project.action_qb_cotizaciones()['domain'], [('project_id', '=', self.project.id)])
 
+    def test_01b_articulo_base_es_el_hermano(self):
+        # 1.4.0: el artículo base pasa como producto hermano; sin artículo generado, fuente «hermano».
+        self.project.write({'sgi_dev_base_product_id': self.hermana.id})
+        cot = self.env['qb.cotizador.cotizacion'].with_user(self.vendedor).create({'project_id': self.project.id})
+        self.assertEqual(cot.hermano_product_id, self.hermana)
+        self.assertEqual(cot.costo_fuente, 'hermano')
+        cot.action_calcular()
+        self.assertEqual(cot.costo_id.product_id, self.hermana)
+        # Renglones «Por capturar» en una lista del desarrollo: no se manda a aprobar.
+        self.tela.product_tmpl_id.write({'sgi_dev_project_id': self.project.id})
+        bom = self.env['mrp.bom'].create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1,
+                                          'bom_line_ids': [(0, 0, {'product_id': self.hermana.id, 'product_qty': 1,
+                                                                   'sgi_dev_pending': True})]})
+        self.assertEqual(self.project.sgi_dev_bom_pending_count, 1)
+        cot.write({'precio_objetivo': 20.0, 'volumen': 1000})
+        with self.assertRaises(UserError, msg="Con renglones por capturar no se aprueba"):
+            cot.action_enviar_aprobacion()
+        bom.bom_line_ids.write({'sgi_dev_pending': False})
+        self.project.invalidate_recordset(['sgi_dev_bom_pending_count'])
+        cot.action_enviar_aprobacion()
+        self.assertEqual(cot.state, 'por_aprobar')
+
     def test_02_revision_recalcula_y_detiene(self):
         cot = self._presentada(project_id=self.project.id, product_id=self.tela.id)
         self.assertEqual(cot.project_revision, 0)
@@ -96,6 +118,65 @@ class TestBridge(CotizadorCase):
         otra.approval_request_id.sudo().action_cancel()
         self.assertEqual(otra.state, 'borrador', "Cancelar la solicitud regresa la cotización")
         self.assertEqual(otra.regreso_motivo_id, self.env.ref('qb_cotizador.motivo_regreso_otro'))
+
+    def test_04b_vendedor_sin_grupos_de_aprobaciones(self):
+        """1.5.0: el vendedor (solo Ventas / Usuario, sin grupos de Aprobaciones) manda a aprobar,
+        retira, vuelve a mandar y registra la aprobación del cliente sin error de acceso."""
+        Cot = self.env['qb.cotizador.cotizacion']
+        category, _subject = Cot._qb_sgi_approval_subject()
+        self.assertFalse(self.vendedor.has_group('approvals.group_approval_user'))
+        cot = self._cot(project_id=self.project.id).with_user(self.vendedor)
+        cot.action_calcular()
+        cot.action_enviar_aprobacion()
+        self.assertEqual(cot.state, 'por_aprobar')
+        if category:
+            req = cot.approval_request_id.sudo()
+            self.assertTrue(req, "La solicitud se crea aunque el vendedor no tenga grupos de Aprobaciones")
+            self.assertEqual(req.request_owner_id, self.vendedor, "Y en Aprobaciones se ve quién la pidió")
+            self.assertEqual(req.request_status, 'pending')
+            # Retirar cancela la solicitud; volver a enviar crea otra.
+            cot.action_volver_a_borrador()
+            self.assertEqual(cot.state, 'borrador')
+            self.assertEqual(req.request_status, 'cancel')
+            cot.action_enviar_aprobacion()
+            self.assertNotEqual(cot.approval_request_id, req)
+            self.assertEqual(cot.sudo().approval_request_id.request_status, 'pending')
+            cot.action_volver_a_borrador()
+        else:
+            cot.action_volver_a_borrador()
+            cot.action_enviar_aprobacion()
+            cot.action_volver_a_borrador()
+        # Aprobación del cliente la registra el vendedor (la tarifa va con sudo en qb_cotizador).
+        cot.write({'cliente_aprobo': True, 'cliente_medio': 'correo', 'cliente_fecha': fields.Date.today()})
+        self.assertTrue(cot.cliente_aprobo)
+
+    def test_04c_quien_aprueba_no_manda_su_propia_cotizacion(self):
+        """1.5.1 / SGI 57.143.0: si quien manda a aprobar es el puesto que aprueba
+        C1.05 y el rol no tiene suplente, la solicitud no se confirma y el mensaje
+        lo dice; con suplente nombrado, la aprueba el suplente."""
+        Cot = self.env['qb.cotizador.cotizacion']
+        role = Cot._qb_sgi_approval_role()
+        if not role:
+            self.skipTest("C1.05 sin aprobación como solicitud en esta base.")
+        approver = role.sudo()._sgi_approver_users()[:1]
+        if not approver:
+            self.skipTest("El rol de C1.05 no tiene personas.")
+        cot = self._cot(user=approver, project_id=self.project.id).with_user(approver)
+        cot.action_calcular()
+        role.sudo().substitute_job_id = False
+        with self.assertRaises(UserError) as cm:
+            cot.action_enviar_aprobacion()
+        self.assertIn('suplente', str(cm.exception))
+        job_sup = self.env['hr.job'].create({'name': 'SUPLENTE C1.05 PRUEBA'})
+        suplente = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Suplente C1.05 prueba', 'login': 'qbcot_sup_c105',
+            'group_ids': [(6, 0, [self.env.ref('approvals.group_approval_user').id])]})
+        self.env['hr.employee'].create({'name': 'Suplente C1.05 prueba', 'user_id': suplente.id, 'job_id': job_sup.id})
+        role.sudo().substitute_job_id = job_sup
+        cot.action_enviar_aprobacion()
+        req = cot.sudo().approval_request_id
+        self.assertEqual(req.request_status, 'pending')
+        self.assertEqual(req.approver_ids.user_id, suplente, "La aprueba el suplente, no quien la pidió.")
 
     def test_05_precio_en_tarifa_al_ganar_con_el_articulo_del_desarrollo(self):
         """1.3.0 (Jose 5.6): la cotización nace sin artículo; la aprobación de la muestra llega del

@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-El formulario de variante hereda la vista de la plantilla (mismo caso documentado en el smart button de PPAP): el botón de la spec también debe resolver en product.product.
+57.142.0: si alguien corrige el código del artículo acabado (el 499 pasó de Q21 a Q22 a mano), el nombre del proyecto se vuelve a armar con el código final.
 
-Archivos: `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
 
 ## Campos (3)
 
@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sg
 | `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:268` |
 | `sgi_sign_count` | Integer |  |  |  |  | related `product_tmpl_id.sgi_sign_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_sign_record.py:110` |
 
-## Métodos públicos (4)
+## Métodos públicos (5)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -24,3 +24,4 @@ Archivos: `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sg
 | `action_sgi_sign` | — |
 | `action_sgi_view_sign_requests` | — |
 | `action_view_sgi_ppap` | — |
+| `write` | — |

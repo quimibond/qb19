@@ -111,6 +111,8 @@
                                            required="target_type == 'relative'"/>
                                     <field name="condition" placeholder="Siempre"
                                            readonly="role not in ('aprueba', 'informa', 'escala') and not condition"/>
+                                    <field name="substitute_job_id" options="{'no_create': True}"
+                                           invisible="role != 'aprueba'" optional="show"/>
                                     <field name="approval_state" widget="badge" optional="show"
                                            string="Aprobación en Odoo"
                                            decoration-success="approval_state == 'activa'"
@@ -274,6 +276,7 @@
                                 <group>
                                     <field name="measure_top_users"/>
                                     <field name="measure_count_other_job"/>
+                                    <field name="measure_count_substitute"/>
                                 </group>
                                 <group>
                                     <field name="measure_count_generic"/>
@@ -284,6 +287,7 @@
                             <field name="recent_exec_stat_ids">
                                 <list default_order="period_start desc, count desc"
                                       decoration-success="exec_class == 'correcto'"
+                                      decoration-info="exec_class == 'suplencia'"
                                       decoration-danger="exec_class in ('generico', 'sin_empleado')"
                                       decoration-warning="exec_class == 'otro_puesto'"
                                       decoration-muted="exec_class == 'sistema'">
@@ -383,6 +387,7 @@
                 <field name="measure_adherence_pct" optional="show"/>
                 <field name="measure_top_users" optional="hide"/>
                 <field name="measure_count_other_job" optional="hide"/>
+                <field name="measure_count_substitute" optional="hide"/>
                 <field name="measure_count_generic" optional="hide"/>
                 <field name="measure_model_id" column_invisible="1"/>
                 <field name="measure_state" optional="show" widget="badge"
@@ -495,6 +500,8 @@
                         domain="[('measure_state', '=', 'rojo')]"/>
                 <filter name="otro_puesto" string="Ejecuta otro puesto"
                         domain="[('measure_count_other_job', '&gt;', 0)]"/>
+                <filter name="suplencia" string="Ejecuta el jefe directo (suplencia)"
+                        domain="[('measure_count_substitute', '&gt;', 0)]"/>
                 <filter name="cuenta_generica" string="Cuenta genérica"
                         domain="[('measure_count_generic', '&gt;', 0)]"/>
                 <filter name="parece_automatica" string="Parece automática"
