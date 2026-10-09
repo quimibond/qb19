@@ -25,6 +25,8 @@
                     <button name="action_print_cliente" type="object" string="PDF para el cliente" icon="fa-print"
                             invisible="state in ('borrador', 'por_aprobar', 'reemplazada')"/>
                     <button name="action_print_interna" type="object" string="Hoja interna de costo" icon="fa-file-text-o"/>
+                    <button name="action_tc_hoy" type="object" string="TC de hoy" icon="fa-refresh"
+                            invisible="not es_divisa or state not in ('borrador', 'por_aprobar', 'presentada')"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,por_aprobar,presentada,ganada"/>
                 </header>
                 <sheet>
@@ -47,6 +49,12 @@
                     </div>
                     <div class="alert alert-danger" role="alert" invisible="semaforo != 'rojo'">
                         Precio debajo del costo variable: solo «Autoriza precio bajo piso» la puede aprobar.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not moneda_alerta">
+                        <field name="moneda_alerta" readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="not sin_costo or costo_fuente == 'legado'">
+                        Sin costo calculado: el semáforo y los márgenes salen después de «Calcular costo». Hasta entonces no se puede pedir aprobación.
                     </div>
                     <div class="oe_title">
                         <h1><field name="folio" readonly="1" placeholder="Nueva"/></h1>
@@ -80,8 +88,11 @@
                         <group string="Precio">
                             <field name="currency_id" readonly="state not in ('borrador',)"/>
                             <field name="precio_objetivo" readonly="state not in ('borrador',)"/>
-                            <field name="fx_rate" readonly="1" invisible="not es_divisa"/>
+                            <field name="fx_rate" readonly="state not in ('borrador', 'por_aprobar')" invisible="not es_divisa"/>
+                            <field name="fx_fuente" readonly="1" invisible="not es_divisa"/>
+                            <field name="fx_fecha" readonly="1" invisible="not es_divisa"/>
                             <field name="precio_mxn" readonly="1" invisible="not es_divisa"/>
+                            <field name="sin_costo" invisible="1"/>
                             <field name="semaforo" readonly="1"/>
                             <field name="margen_contribucion_pct" readonly="1"/>
                             <field name="margen_bruto_pct" readonly="1"/>
