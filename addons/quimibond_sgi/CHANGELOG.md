@@ -13,6 +13,23 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.138.0 — 2026-10-09
+
+Corrección urgente: el build de producción (`quimibond`, PR 605) cayó al cargar
+`sgi_dev_project_views.xml` con «El campo "lot_producing_id" no existe en el
+modelo "mrp.production"». En Odoo 19 la orden de producción lleva
+`lot_producing_ids` (varios lotes); el campo en singular era de Odoo 17/18.
+
+- **Corregido** pestaña «Muestra»: la columna de lote de las órdenes de
+  muestra es `lot_producing_ids` (etiquetas).
+- **Corregido** pilotaje (57.133.0): al terminar una orden del artículo en
+  pilotaje tomaba `mo.lot_producing_id`; ahora el primer lote de
+  `lot_producing_ids` y nombra todos en el chatter. Prueba ajustada.
+- Lección: el CI no instala el SGI y las vistas `form`/`list` solo se validan
+  en el build de Odoo.sh; una columna de un modelo de Odoo en una lista
+  incrustada se comprueba contra los campos reales (MCP `get_fields`) antes
+  de empujar. Sin migración.
+
 ## 19.0.57.137.0 — 2026-10-08
 
 Revisión de Administración de Ventas, 2026-10-08 (su descripción del proceso, puntos 3, 4, 9 e ISO 9001 8.3
