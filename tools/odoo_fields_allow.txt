@@ -1,0 +1,6 @@
+# Campos que tools/check_odoo_fields.py no puede ver en el código: los que un
+# módulo Enterprise agrega a un modelo Community (quality sobre mrp.production,
+# planning sobre hr.employee…) o los que Odoo crea en tiempo de ejecución.
+# Un renglón por campo, `modelo.campo`, y cada uno verificado contra
+# producción con `get_fields` por MCP antes de agregarlo (anota la fecha).
+# Los campos de Studio (`x_…`) no hace falta listarlos: se omiten solos.
