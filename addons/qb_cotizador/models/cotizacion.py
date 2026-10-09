@@ -409,8 +409,17 @@ class QbCotizadorCotizacion(models.Model):
         # archivo de borradores no están definidos: se quedan vacíos y sin
         # valor no hay seguimiento automático ni se archivan borradores.
 
+    def _pidio_la_aprobacion(self, user):
+        """1.5.0 (Dirección General 2026-10-09): nadie aprueba lo que él mismo
+        pidió. Quien mandó la cotización a aprobar no la aprueba, tenga el
+        puesto titular, el suplente o el grupo bajo piso."""
+        self.ensure_one()
+        return bool(self.solicitada_por_id) and user == self.solicitada_por_id
+
     def _puede_aprobar(self, user):
         self.ensure_one()
+        if self._pidio_la_aprobacion(user):
+            return False
         if user.has_group('qb_cotizador.group_autoriza_bajo_piso'):
             return True
         if self.semaforo == 'rojo':
@@ -418,6 +427,14 @@ class QbCotizadorCotizacion(models.Model):
         titulares = self._users_of_job(self._job_from_param(PARAM_APROBADOR))
         suplentes = self._users_of_job(self._job_from_param(PARAM_SUPLENTE))
         return user in (titulares | suplentes)
+
+    def _aprobadores_salvo(self, user):
+        """Titular y suplente que no son ``user`` (a quién le toca cuando quien
+        pide es aprobador)."""
+        self.ensure_one()
+        users = self._users_of_job(self._job_from_param(PARAM_APROBADOR)) \
+            | self._users_of_job(self._job_from_param(PARAM_SUPLENTE))
+        return users - user
 
     def _usuarios_ventas(self):
         users = self._users_of_job(self._job_from_param(PARAM_VENTAS))
@@ -683,8 +700,12 @@ class QbCotizadorCotizacion(models.Model):
             if rec.semaforo == 'rojo':
                 aviso += ' Precio debajo del costo variable: solo la autoriza «Autoriza precio bajo piso».'
             rec.message_post(body='Enviada a aprobación.%s' % aviso)
-            job = rec._job_from_param(PARAM_APROBADOR)
-            users = rec._users_of_job(job) | rec._users_of_job(rec._job_from_param(PARAM_SUPLENTE))
+            # 1.5.0: el aviso de aprobar no le llega a quien la pidió (no la aprueba).
+            users = rec._aprobadores_salvo(self.env.user)
+            if not users and rec._pidio_la_aprobacion(self.env.user) and rec.semaforo != 'rojo':
+                rec.message_post(body='Usted pidió la aprobación y es quien aprueba: nadie más puede '
+                                      'aprobarla hasta que Dirección nombre el suplente en Ajustes → '
+                                      'Ventas → Cotizador, o que la mande otra persona.')
             for user in users:
                 rec.activity_schedule(
                     'mail.mail_activity_data_todo', user_id=user.id,
@@ -707,6 +728,11 @@ class QbCotizadorCotizacion(models.Model):
             if rec.state != 'por_aprobar':
                 raise UserError('Solo una cotización «Por aprobar» se aprueba.')
             if not rec._puede_aprobar(self.env.user):
+                if rec._pidio_la_aprobacion(self.env.user):
+                    otros = rec._aprobadores_salvo(self.env.user)
+                    raise UserError('Usted mandó esta cotización a aprobar: quien pide no la aprueba. %s' % (
+                        ('Le toca a %s.' % ', '.join(otros.mapped('name'))) if otros else
+                        'No hay suplente nombrado (Ajustes → Ventas → Cotizador): nadie más puede aprobarla.'))
                 if rec.semaforo == 'rojo':
                     raise UserError('El precio está debajo del costo variable: solo el grupo '
                                     '«Autoriza precio bajo piso» la puede aprobar.')

@@ -115,11 +115,13 @@ class SgiMachineSheetDev(models.Model):
 
     @api.model
     def _sgi_dev_user_has_job(self, user, param_key):
+        """El usuario tiene el puesto del parámetro o es jefe directo de quien lo
+        tiene (57.143.0, suplencia)."""
         raw = self.env['ir.config_parameter'].sudo().get_param(param_key, '') or ''
         if not raw.strip().isdigit():
             return False
-        return bool(self.env['hr.employee'].sudo().search_count(
-            [('job_id', '=', int(raw)), ('user_id', '=', user.id)]))
+        job = self.env['hr.job'].sudo().browse(int(raw)).exists()
+        return bool(job) and user in job._sgi_users(with_bosses=True)
 
     def action_propose(self):
         for sheet in self:
@@ -136,7 +138,7 @@ class SgiMachineSheetDev(models.Model):
             if not (self.env.user.has_group('quimibond_sgi.group_sgi_manager')
                     or self._sgi_dev_user_has_job(self.env.user, PARAM_VALIDATOR_JOB_TEJIDO)):
                 raise UserError("La ficha de tejido la valida el Jefe de Manufactura (Ajustes → SGI → Desarrollo de "
-                                "producto) o un administrador del SGI.")
+                                "producto), su jefe directo o un administrador del SGI.")
             sheet.write({'approved_by_id': self.env.uid, 'validated_date': fields.Datetime.now()})
             sheet.message_post(body="Parámetros reales validados por %s." % self.env.user.name)
         return True

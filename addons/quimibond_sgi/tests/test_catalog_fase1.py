@@ -432,6 +432,35 @@ class TestCatalogFase1(TransactionCase):
         self.assertEqual(classes[inside.id], 'correcto')
         self.assertEqual(classes[outside.id], 'otro_puesto')
 
+    def test_50b_jefe_directo_cumple_por_suplencia(self):
+        """57.143.0 (Dirección General): si la ejecuta el jefe directo de quien
+        tiene el rol «Ejecuta», cuenta como cumplida por suplencia, distinta de
+        «otro puesto»; alguien que no es su jefe sigue siendo «otro puesto»."""
+        process = self._process('QM1S')
+        job_exec = self._jobs('EJECUTOR SUPLENCIA QA')
+        job_boss = self._jobs('JEFE SUPLENCIA QA')
+        holder = self._user_with_job('sup.titular.qa', job_exec)
+        boss = self._user_with_job('sup.jefe.qa', job_boss)
+        outsider = self._user_with_job('sup.ajeno.qa', self.job_plan)
+        holder.employee_ids.write({'parent_id': boss.employee_ids[:1].id})
+        self.env['res.partner'].create([
+            {'name': 'S1', 'ref': 'QA-SUP', 'user_id': holder.id},
+            {'name': 'S2', 'ref': 'QA-SUP', 'user_id': boss.id},
+            {'name': 'S3', 'ref': 'QA-SUP', 'user_id': outsider.id}])
+        act = self._measured(process, 'QM.01', 'QA-SUP', [
+            (0, 0, {'role': 'ejecuta', 'target_type': 'job', 'job_id': job_exec.id})])
+        act._sgi_measure()
+        self.assertEqual(act.measure_count_30d, 3)
+        self.assertEqual(act.measure_count_substitute, 1)
+        self.assertEqual(act.measure_count_other_job, 1, "El jefe directo no es «otro puesto».")
+        self.assertAlmostEqual(act.measure_adherence_pct, 66.7, places=1,
+                               msg="La suplencia cuenta como cumplida.")
+        classes = self._classes(act)
+        self.assertEqual(classes[holder.id], 'correcto')
+        self.assertEqual(classes[boss.id], 'suplencia')
+        self.assertEqual(classes[outsider.id], 'otro_puesto')
+        self.assertIn('suplencia', act.measure_top_users)
+
     def test_51_generic_and_system(self):
         process = self._process('QM2')
         worker = self._user_with_job('gen.worker.qa', self.job_inv)

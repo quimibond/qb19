@@ -1044,11 +1044,12 @@ class _SgiLoader:
             raise ValidationError("Rol relativo «%s» inválido (%s)." % (
                 relative, ', '.join(dict(SGI_RELATIVE_ROLES))))
         if role.get('role') == 'aprueba' and relative == 'solicitante':
-            # 57.13.0 (J-010): quien pide no se aprueba a sí mismo; en cada
-            # registro sube a su jefe (sgi_relative_roles). Se carga, pero avisa.
+            # 57.13.0 (J-010) / 57.143.0: quien pide no se aprueba a sí mismo y
+            # la aprobación no sube al jefe: sin suplente nadie aprueba. Se
+            # carga, pero avisa.
             self.report.warn('role', key, "«Aprueba = Solicitante»: quien pide no se aprueba "
-                                          "a sí mismo; se resuelve a su jefe. Use «Jefe del "
-                                          "área que pide» o «Dueño del proceso».")
+                                          "a sí mismo; sin suplente nadie aprueba. Use «Jefe "
+                                          "del área que pide» o «Dueño del proceso».")
         return {'target_type': 'relative', 'relative_role': relative}, ('relative', relative)
 
     def _roles_commands(self, activity, item, key):
@@ -1059,9 +1060,18 @@ class _SgiLoader:
                 raise ValidationError("Rol «%s» inválido (ejecuta, aprueba, participa, "
                                       "informa, escala)." % role.get('role'))
             target, target_key = self._role_target(role, key)
+            # 57.143.0: suplente nombrado del rol «Aprueba» (puesto por nombre o id).
+            substitute = False
+            if role.get('substitute_job') not in (None, '', False):
+                if role.get('role') != 'aprueba':
+                    raise ValidationError("Rol %s: «substitute_job» solo va en «aprueba»." % role.get('role'))
+                job, error = self._resolve_job(role['substitute_job'])
+                if error:
+                    raise ValidationError("Rol %s (suplente): %s" % (role.get('role'), error))
+                substitute = job.id
             wanted.append((target_key, dict(
                 target, role=role['role'], condition=role.get('condition') or False,
-                after_days=role.get('after_days') or 0,
+                after_days=role.get('after_days') or 0, substitute_job_id=substitute,
                 sequence=role.get('sequence') or seq * 10)))
         current = {(r.role,) + r._sgi_target_key(): r for r in activity.role_ids} \
             if activity else {}
@@ -1071,6 +1081,7 @@ class _SgiLoader:
             if existing:
                 changed = _diff(existing, {'condition': vals['condition'],
                                            'after_days': vals['after_days'],
+                                           'substitute_job_id': vals['substitute_job_id'],
                                            'sequence': vals['sequence']})
                 if changed:
                     commands.append(Command.update(existing.id, changed))

@@ -163,10 +163,19 @@ class SgiDevTechSheet(models.Model):
                 sheet.product_id.default_code or sheet.project_id.sgi_ft_folio or sheet.project_id.name or '',
                 sheet.revision)
 
+    @api.model
+    def _sgi_dev_my_sign_jobs(self):
+        """Puestos que el usuario firma: los suyos y, por suplencia (57.143.0),
+        los de las personas de las que es jefe directo."""
+        employees = self.env.user.employee_ids.sudo()
+        reports = self.env['hr.employee'].sudo().search([('parent_id', 'in', employees.ids)]) \
+            if employees else self.env['hr.employee'].sudo()
+        return employees.job_id | reports.job_id
+
     @api.depends('sign_ids.user_id', 'sign_ids.job_id')
     @api.depends_context('uid')
     def _compute_signed(self):
-        my_jobs = self.env.user.employee_ids.mapped('job_id')
+        my_jobs = self._sgi_dev_my_sign_jobs()
         for sheet in self:
             signed = sheet.sign_ids.filtered('user_id')
             sheet.signed_count = len(signed)
@@ -211,14 +220,18 @@ class SgiDevTechSheet(models.Model):
         return 'quimibond_sgi.action_report_dev_tech_sheet'
 
     def action_sign(self):
-        """Firma los renglones de los puestos del usuario que aún no están firmados."""
-        my_jobs = self.env.user.employee_ids.mapped('job_id')
+        """Firma los renglones de los puestos del usuario (o de los que suple como
+        jefe directo) que aún no están firmados."""
+        own_jobs = self.env.user.employee_ids.mapped('job_id')
+        my_jobs = self._sgi_dev_my_sign_jobs()
         for sheet in self:
             mine = sheet.sign_ids.filtered(lambda s: not s.user_id and s.job_id in my_jobs)
             if not mine:
-                raise UserError("Su puesto no firma esta ficha o ya la firmó.")
+                raise UserError("Su puesto no firma esta ficha (ni es jefe directo de quien la firma) o ya la firmó.")
             mine.write({'user_id': self.env.uid, 'date': fields.Datetime.now()})
-            sheet.message_post(body="Firmó %s (%s)." % (self.env.user.name, ", ".join(mine.mapped('job_id.name'))))
+            labels = ["%s%s" % (sign.job_id.name, "" if sign.job_id in own_jobs else " · por suplencia")
+                      for sign in mine]
+            sheet.message_post(body="Firmó %s (%s)." % (self.env.user.name, ", ".join(labels)))
         return True
 
     def action_approve(self):

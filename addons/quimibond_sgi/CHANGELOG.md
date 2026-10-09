@@ -13,6 +13,64 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.143.0 — 2026-10-09
+
+Dirección General 2026-10-09: **suplencias**. No se cambia ningún jefe en el
+organigrama: solo se lee `hr.employee.parent_id`.
+
+### Agregado
+- **Ejecución por suplencia.** Si un paso lo ejecuta el jefe directo de quien
+  tiene el rol «Ejecuta», la medición lo cuenta como cumplido: clase nueva
+  `suplencia` («Jefe directo (suplencia)») en `sgi.activity.exec.stat`,
+  contador `measure_count_substitute` («Por el jefe directo (4 sem.)») en la
+  actividad, la adherencia suma correcto + suplencia y «Quién la ejecuta» lo
+  marca «✓ suplencia». Antes caía en «otro puesto» y disparaba el aviso de
+  atribución débil (C1.07, C1.08, C1.12). Filtros «Jefe directo (suplencia)»
+  en Quién hace qué y «Ejecuta el jefe directo (suplencia)» en actividades.
+- **Suplente nombrado en «Aprueba»** (`sgi.activity.role.substitute_job_id`,
+  un puesto, vacío por omisión; solo en «Aprueba» y distinto del titular).
+  Las personas que aprueban son las del titular más las del suplente, en la
+  Matriz de responsabilidades, en Aprobaciones del SGI (columna «Suplente»),
+  en las categorías de Aprobaciones y en las reglas de Studio (el satélite
+  las sincroniza con el cron). Carga por API: `substitute_job` en el rol;
+  la exportación lo incluye.
+- **Nadie aprueba lo que él mismo pidió.** En una solicitud de Aprobaciones
+  con rol del SGI (asunto o categoría propia), quien la pide sale de los
+  aprobadores: si es el titular aprueba el suplente y al revés; si no queda
+  nadie, «Confirmar» dice a quién le toca o que falta nombrar suplente
+  (`_sgi_requester_conflict`). Para los botones de Studio lo aplica
+  `quimibond_sgi_studio` 1.0.6. Quien pide se lee de los campos explícitos
+  del registro (`SGI_REQUESTER_FIELDS`, ahora también `requested_by_id`,
+  `solicitada_por_id` y `sgi_dev_prepared_by_id`), nunca de `create_uid`.
+- `hr.job._sgi_holders()`, `_sgi_bosses()`, `_sgi_users(with_bosses)`.
+
+### Cambiado
+- **La aprobación ya no sube por jerarquía.** Desde 57.13.0, si quien
+  aprobaba también ejecutaba o pedía, el rol subía al jefe directo; ahora
+  (`_sgi_not_self_approver`) queda el titular o el suplente que no pide ni
+  ejecuta, y si no hay, nadie aprueba y el rol marca «Sin personas en el
+  puesto» con el aviso. El **escalamiento** del atraso («Escala») sí sigue
+  subiendo al jefe (`_sgi_not_self`). En producción esto toca E2.01 (Jefa MAST
+  aprobaba sus propios cambios de documento → subía a Dirección de
+  Operaciones) y S6.07 (Sistemas → Dirección General): quedan sin aprobador
+  hasta que Dirección nombre el suplente.
+- **Botones del desarrollo restringidos por puesto en código** aceptan también
+  al jefe directo del puesto: «Autorizar pruebas de laboratorio»
+  (Coordinador de Laboratorio y MP), «Validar» la ficha de tejido (Jefe de
+  Manufactura) y la firma de la ficha técnica interna (los seis puestos del
+  parámetro; el chatter dice «por suplencia»). Los botones que aprueba un rol
+  «Aprueba» (regla de Studio) siguen la regla del suplente, no la del jefe.
+- El aviso de la carga por API para «Aprueba = Solicitante» ya no promete
+  subir al jefe.
+
+### Pruebas
+- `test_catalog_fase1.test_50b` (suplencia en la medición),
+  `test_relative_roles.test_05/06/07b/09` (suplente, sin subir, escalamiento
+  sí sube, solicitud que pide el propio aprobador),
+  `test_dev_analysis.test_02` (el jefe directo autoriza).
+
+Sin migración.
+
 ## 19.0.57.142.0 — 2026-10-09
 
 Dirección General 2026-10-09: la galga en el código. El DAT P-D02-01 da a cada

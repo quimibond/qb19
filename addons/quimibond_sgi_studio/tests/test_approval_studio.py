@@ -136,3 +136,62 @@ class TestApprovalStudio(TransactionCase):
         self.assertEqual(bad.domain, "[('amount_total', '>', 10.0)]")
         self.assertEqual(good.domain, "[('company_id', '=', 1)]")
         self.assertFalse((bad | good)._sgi_sanitize_domains(), "Idempotente.")
+
+
+@tagged('post_install', '-at_install')
+class TestApprovalStudioRequester(TransactionCase):
+    """1.0.6: nadie aprueba lo que él mismo pidió, también en el botón de
+    Studio (la entrada de aprobación no se crea; el suplente sí puede)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.job_design = cls.env['hr.job'].create({'name': 'DISEÑO APROB REQ'})
+        cls.job_sub = cls.env['hr.job'].create({'name': 'SUPLENTE APROB REQ'})
+        cls.u_design = new_test_user(cls.env, login='req_design', groups='base.group_user')
+        cls.u_sub = new_test_user(cls.env, login='req_sub', groups='base.group_user')
+        cls.env['hr.employee'].create([
+            {'name': 'Diseño Req', 'job_id': cls.job_design.id, 'user_id': cls.u_design.id},
+            {'name': 'Suplente Req', 'job_id': cls.job_sub.id, 'user_id': cls.u_sub.id}])
+        process = cls.env['sgi.process'].create({'code': 'ZREQ', 'name': 'Proceso requester'})
+        job_exec = cls.env['hr.job'].create({'name': 'EJECUTOR APROB REQ'})
+        cls.activity = cls.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'Firmar la solicitud de modificación', 'number': '9.3',
+            'measure_model_id': cls.env['ir.model']._get('sgi.dev.change.request').id,
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job_exec.id}),
+                         (0, 0, {'role': 'aprueba', 'job_id': cls.job_design.id,
+                                 'approval_method': 'action_approve'})]})
+        cls.role = cls.activity.role_ids.filtered(lambda r: r.role == 'aprueba')
+        cls.role.action_sgi_sync_approval()
+        cls.rule = cls.role.approval_rule_id
+        project = cls.env['project.project'].create({'name': 'Desarrollo requester', 'sgi_is_ft': True})
+        cls.request = cls.env['sgi.dev.change.request'].create({
+            'project_id': project.id, 'description': 'Cambio pedido por Diseño',
+            'requested_by_id': cls.u_design.id})
+
+    def _entry(self, user):
+        return self.env['studio.approval.entry'].sudo().create({
+            'rule_id': self.rule.id, 'res_id': self.request.id, 'user_id': user.id, 'approved': True})
+
+    def test_01_quien_pidio_no_aprueba_y_el_suplente_si(self):
+        self.assertEqual(self.request.requested_by_id, self.u_design)
+        self.assertEqual(self.rule.approver_ids, self.u_design)
+        with self.assertRaises(UserError) as cm:
+            self._entry(self.u_design)
+        self.assertIn("suplente", str(cm.exception))
+        # Con suplente nombrado la regla lo incluye y él sí aprueba.
+        self.role.substitute_job_id = self.job_sub
+        self.env['sgi.activity.role'].cron_sgi_sync_approvals()
+        self.assertEqual(self.rule.approver_ids, self.u_design | self.u_sub)
+        with self.assertRaises(UserError) as cm:
+            self._entry(self.u_design)
+        self.assertIn('Suplente Req', str(cm.exception))
+        entry = self._entry(self.u_sub)
+        self.assertTrue(entry.approved)
+        # Lo que pide otro, Diseño sí lo aprueba.
+        other = self.env['sgi.dev.change.request'].create({
+            'project_id': self.request.project_id.id, 'description': 'Cambio pedido por el suplente',
+            'requested_by_id': self.u_sub.id})
+        entry = self.env['studio.approval.entry'].sudo().create({
+            'rule_id': self.rule.id, 'res_id': other.id, 'user_id': self.u_design.id, 'approved': True})
+        self.assertTrue(entry.approved)

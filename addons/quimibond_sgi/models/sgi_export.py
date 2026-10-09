@@ -382,6 +382,8 @@ class _SgiExporter:
             out['condition'] = role.condition
         if role.after_days:
             out['after_days'] = role.after_days
+        if role.substitute_job_id:
+            out['substitute_job'] = _clean(role.substitute_job_id.name)
         out['sequence'] = role.sequence
         return out
 

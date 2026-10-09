@@ -11,6 +11,8 @@ from odoo import models, fields, api
 
 SGI_EXEC_CLASSES = [
     ('correcto', "Correcto"),
+    # 57.143.0: el jefe directo de quien tiene el rol «Ejecuta» cumple por suplencia.
+    ('suplencia', "Jefe directo (suplencia)"),
     ('otro_puesto', "Otro puesto"),
     ('generico', "Cuenta genérica"),
     ('sin_empleado', "Sin empleado"),
@@ -50,8 +52,10 @@ class SgiActivityExecStat(models.Model):
         help="Familia de puestos por la que la persona tiene la actividad.")
     exec_class = fields.Selection(
         SGI_EXEC_CLASSES, string="Clase", readonly=True,
-        help="Vacía cuando el ejecutor de la actividad es un rol relativo "
-             "(solicitante, quien detecta…): no hay contra quién comparar.")
+        help="Correcto = el puesto asignado; Jefe directo (suplencia) = el jefe directo de "
+             "quien tiene el puesto, cuenta como cumplida. Vacía cuando el ejecutor de la "
+             "actividad es un rol relativo (solicitante, quien detecta…): no hay contra "
+             "quién comparar.")
     count = fields.Integer(string="Ejecuciones", aggregator='sum', readonly=True,
                            help="Número de registros de la actividad hechos por el usuario en la semana.")
     company_id = fields.Many2one(

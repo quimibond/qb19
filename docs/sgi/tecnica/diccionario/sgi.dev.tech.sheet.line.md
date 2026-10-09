@@ -12,6 +12,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `name_en` | Char | Characteristic |  |  |  | related `caracteristica_id.name_en`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:241` |
-| `sheet_id` | Many2one | Ficha |  | sí | `sgi.dev.tech.sheet` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:240` |
+| `name_en` | Char | Characteristic |  |  |  | related `caracteristica_id.name_en`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:254` |
+| `sheet_id` | Many2one | Ficha |  | sí | `sgi.dev.tech.sheet` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:253` |
 
