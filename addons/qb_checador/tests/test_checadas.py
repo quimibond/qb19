@@ -22,8 +22,15 @@ class TestChecadas(TransactionCase):
         cls.calendario = cls.env['resource.calendar'].create({
             'name': 'Planta 12 horas (flexible)', 'flexible_hours': True, 'tz': 'America/Mexico_City',
         })
-        cls.por_referencia = cls.env['hr.employee'].create({
-            'name': 'Por referencia', 'registration_number': 'S-12', 'resource_calendar_id': cls.calendario.id})
+        # La Referencia de empleado la agrega hr_payroll (Enterprise). En el CI (Community) no existe:
+        # ahí «Por referencia» se liga por usuario capturado y las pruebas de referencia se saltan.
+        cls.tiene_referencia = 'registration_number' in cls.env['hr.employee']._fields
+        vals = {'name': 'Por referencia', 'resource_calendar_id': cls.calendario.id}
+        if cls.tiene_referencia:
+            vals['registration_number'] = 'S-12'
+        else:
+            vals['qb_checador_pin'] = '12'
+        cls.por_referencia = cls.env['hr.employee'].create(vals)
         cls.por_pin = cls.env['hr.employee'].create({
             'name': 'Por pin', 'registration_number': 'S-99', 'qb_checador_pin': '77',
             'resource_calendar_id': cls.calendario.id})
@@ -43,7 +50,8 @@ class TestChecadas(TransactionCase):
                          '555\t2026-10-05 07:02:00\t0\t1\t0')
         self.assertEqual(n, 3)
         c12 = self.Checada.search([('pin', '=', '12')])
-        self.assertEqual(c12.employee_id, self.por_referencia, 'S-12 se liga por la referencia con el prefijo')
+        self.assertEqual(c12.employee_id, self.por_referencia,
+                         'S-12 se liga por la referencia con el prefijo (o por el usuario capturado)')
         # 06:58:10 en Toluca (UTC-6 en octubre) = 12:58:10 UTC
         self.assertEqual(c12.timestamp, datetime(2026, 10, 5, 12, 58, 10))
         self.assertEqual(c12.state, 'nueva')
@@ -60,10 +68,14 @@ class TestChecadas(TransactionCase):
         self.assertEqual(self.Checada.search_count([('pin', '=', '12')]), 1)
 
     def test_pin_con_ceros_a_la_izquierda(self):
+        if not self.tiene_referencia:
+            self.skipTest('sin hr_payroll no hay Referencia de empleado')
         self._attlog('0012\t2026-10-05 06:58:10\t0\t1\t0')
         self.assertEqual(self.Checada.search([('pin', '=', '0012')]).employee_id, self.por_referencia)
 
     def test_referencia_ambigua_no_se_liga(self):
+        if not self.tiene_referencia:
+            self.skipTest('sin hr_payroll no hay Referencia de empleado')
         self.env['hr.employee'].create({'name': 'Quincenal 12', 'registration_number': 'Q-12'})
         self.equipo.prefijos = 'S,Q'
         self._attlog('12\t2026-10-05 06:58:10\t0\t1\t0')

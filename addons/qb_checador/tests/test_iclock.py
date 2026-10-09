@@ -13,7 +13,7 @@ class TestIclock(HttpCase):
         self.equipo = self.env['qb.checador.equipo'].create({
             'name': 'Entrada planta', 'serial': 'UDP0000001', 'tz': 'America/Mexico_City', 'prefijos': 'S',
         })
-        self.empleado = self.env['hr.employee'].create({'name': 'Reloj', 'registration_number': 'S-31'})
+        self.empleado = self.env['hr.employee'].create({'name': 'Reloj', 'qb_checador_pin': '31'})
 
     def test_handshake(self):
         r = self.url_open('/iclock/cdata?SN=UDP0000001&options=all&pushver=2.4.1&language=83')

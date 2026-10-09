@@ -105,6 +105,10 @@ class Checada(models.Model):
             return por_pin
         if len(por_pin) > 1:
             return Emp
+        # La Referencia de empleado (registration_number) la agrega hr_payroll (Enterprise); en una
+        # base sin nómina no existe y solo queda la liga por usuario capturado.
+        if 'registration_number' not in Emp._fields:
+            return Emp
         prefijos = [p.strip() for p in (equipo.prefijos or '').split(',') if p.strip()]
         referencias = ["%s-%s" % (p, pin) for p in prefijos] + [pin]
         pin_sin_ceros = pin.lstrip('0')

@@ -66,6 +66,9 @@ El reloj manda un número de usuario (PIN). Se liga al empleado así:
 3. Dos candidatos = nadie: la checada queda **sin empleado**. Mejor eso que
    en la persona equivocada.
 
+La Referencia de empleado la agrega `hr_payroll` (Enterprise); en una base sin
+nómina (el CI, por ejemplo) solo aplica la liga por usuario capturado.
+
 ## Emparejar (cron cada 5 minutos)
 
 Por persona, en orden de tiempo:
