@@ -67,6 +67,11 @@ jobs:
             python3 tools/check_odoo_views.py
           fi
 
+      - name: Campos de las vistas contra los modelos del repo
+        # Sin el código de Odoo solo se revisan los modelos propios completos;
+        # la revisión contra Odoo 19 va en el job odoo-tests, que sí lo tiene.
+        run: python3 tools/check_odoo_fields.py
+
       - name: Checks estáticos de addons
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -131,6 +136,19 @@ jobs:
           python3 -m pip install --quiet --break-system-packages httpx \
             || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-httpx)
           python3 -c "import httpx; print('httpx', httpx.__version__)"
+
+      - name: Campos de las vistas contra el código de Odoo 19
+        # Lo que tumbó el build de producción el 2026-10-09: una columna
+        # `lot_producing_id` (Odoo 17/18) en una lista de mrp.production, que
+        # en Odoo 19 se llama `lot_producing_ids`. El SGI no se instala aquí,
+        # pero sus vistas sí se pueden cotejar contra los modelos de la imagen.
+        # Enterprise no está: esos modelos se omiten y lo que un módulo
+        # Enterprise agrega a uno Community va en tools/odoo_fields_allow.txt.
+        run: |
+          set -e
+          python3 -m pip install --quiet --break-system-packages lxml 2>/dev/null || true
+          ODOO_PATH=$(python3 -c "import odoo; print(list(odoo.__path__)[0])")
+          python3 tools/check_odoo_fields.py --odoo-path "$ODOO_PATH" --verbose
 
       - name: Instalar el módulo y correr su suite
         # La imagen de Odoo NO trae bash, así que GitHub cae a `sh` (dash) y
