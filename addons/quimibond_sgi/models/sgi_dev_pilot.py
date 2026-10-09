@@ -157,14 +157,18 @@ class SgiDevPilot(models.Model):
         counted = pilot.lot_ids.filtered(lambda l: l.verdict != 'no_conforme')
         if len(counted) >= pilot.lots_required:
             return pilot
+        # 57.138.0: en Odoo 19 la orden lleva `lot_producing_ids` (varios lotes); el pilotaje toma el
+        # primero y nombra todos. `lot_producing_id` ya no existe (tumbó el build de producción).
+        lots = mo.lot_producing_ids
+        lot_names = ", ".join(lots.mapped('name')) or '—'
         self.env['sgi.dev.pilot.lot'].create({
-            'pilot_id': pilot.id, 'production_id': mo.id, 'lot_id': mo.lot_producing_id.id,
+            'pilot_id': pilot.id, 'production_id': mo.id, 'lot_id': lots[:1].id,
             'sequence': (len(pilot.lot_ids) + 1) * 10, 'date': mo.date_finished or fields.Datetime.now(),
             'qty_produced': mo.qty_produced or mo.product_qty})
         pilot.message_post(body="Lote %s de la orden %s entra al pilotaje (%d de %d)." % (
-            mo.lot_producing_id.name or '—', mo.name, len(counted) + 1, pilot.lots_required))
+            lot_names, mo.name, len(counted) + 1, pilot.lots_required))
         project.message_post(body="Pilotaje: lote %s (%s) es el %d de %d." % (
-            mo.lot_producing_id.name or '—', mo.name, len(counted) + 1, pilot.lots_required))
+            lot_names, mo.name, len(counted) + 1, pilot.lots_required))
         return pilot
 
     # ------------------------------------------------------------------------

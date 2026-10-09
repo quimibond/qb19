@@ -37,7 +37,7 @@ class TestDevPilot(TransactionCase):
     def _mo(self, lot_name):
         lot = self.env['stock.lot'].create({'name': lot_name, 'product_id': self.tela.id, 'company_id': self.env.company.id})
         return self.env['mrp.production'].create({'product_id': self.tela.id, 'product_qty': 100.0,
-                                                  'product_uom_id': self.tela.uom_id.id, 'lot_producing_id': lot.id})
+                                                  'product_uom_id': self.tela.uom_id.id, 'lot_producing_ids': [(6, 0, [lot.id])]})
 
     def test_01_capability(self):
         stats = capability([148.0, 150.0, 152.0, 149.0, 151.0], 142.5, 157.5)
