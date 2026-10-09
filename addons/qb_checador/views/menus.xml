@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_qb_checador_root" name="Checadores" parent="hr_attendance.menu_hr_attendance_root"
+              sequence="50" groups="hr_attendance.group_hr_attendance_officer"/>
+    <menuitem id="menu_qb_checada" name="Checadas" parent="menu_qb_checador_root" sequence="10"
+              action="action_qb_checada"/>
+    <menuitem id="menu_qb_checador_equipo" name="Relojes" parent="menu_qb_checador_root" sequence="20"
+              action="action_qb_checador_equipo" groups="hr_attendance.group_hr_attendance_manager"/>
+
+</odoo>

@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_checador_equipo_officer,qb.checador.equipo officer,model_qb_checador_equipo,hr_attendance.group_hr_attendance_officer,1,0,0,0
+access_qb_checador_equipo_manager,qb.checador.equipo manager,model_qb_checador_equipo,hr_attendance.group_hr_attendance_manager,1,1,1,1
+access_qb_checada_officer,qb.checada officer,model_qb_checada,hr_attendance.group_hr_attendance_officer,1,1,0,0
+access_qb_checada_user,qb.checada user,model_qb_checada,hr_attendance.group_hr_attendance_user,1,1,1,0
+access_qb_checada_manager,qb.checada manager,model_qb_checada,hr_attendance.group_hr_attendance_manager,1,1,1,1

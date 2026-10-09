@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_checador_equipo_list" model="ir.ui.view">
+        <field name="name">qb.checador.equipo.list</field>
+        <field name="model">qb.checador.equipo</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="serial"/>
+                <field name="modelo"/>
+                <field name="ubicacion"/>
+                <field name="autorizado"/>
+                <field name="ultima_conexion"/>
+                <field name="ultima_checada"/>
+                <field name="checada_count"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_checador_equipo_form" model="ir.ui.view">
+        <field name="name">qb.checador.equipo.form</field>
+        <field name="model">qb.checador.equipo</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_reenviar_todo" type="object" string="Pedir todo el historial"
+                            help="Pone la marca en 0: en la siguiente conexión el equipo vuelve a mandar todo lo que guarda. Las checadas repetidas se ignoran."
+                            confirm="¿Pedir al equipo que vuelva a mandar todo su historial? Las repetidas se ignoran."/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Sin autorizar" bg_color="text-bg-danger" invisible="autorizado"/>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-secondary" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Entrada planta"/></h1>
+                    </div>
+                    <group>
+                        <group string="Equipo">
+                            <field name="serial"/>
+                            <field name="modelo"/>
+                            <field name="ubicacion"/>
+                            <field name="ip"/>
+                            <field name="firmware"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Cómo se interpreta">
+                            <field name="tz"/>
+                            <field name="prefijos"/>
+                            <field name="autorizado"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Actividad">
+                            <field name="ultima_conexion"/>
+                            <field name="ultima_checada"/>
+                            <field name="attlog_stamp"/>
+                            <field name="checada_count"/>
+                        </group>
+                    </group>
+                    <group string="Notas">
+                        <field name="notas" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_checador_equipo" model="ir.actions.act_window">
+        <field name="name">Relojes checadores</field>
+        <field name="res_model">qb.checador.equipo</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre aquí cada reloj checador</p>
+            <p>Se identifica por su número de serie. Un equipo que se conecte sin estar registrado aparece aquí sin autorizar: revíselo, póngale nombre y márquelo autorizado y activo.</p>
+        </field>
+    </record>
+
+</odoo>
