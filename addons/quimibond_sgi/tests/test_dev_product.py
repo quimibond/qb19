@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """57.119.0 (C1, bloque 3): artículo en desarrollo y generador de código."""
 from odoo import fields
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -42,6 +42,15 @@ class TestDevProduct(TransactionCase):
         self.assertEqual(self.dev.sgi_dev_code_acabado_code, 'WJ053Q21JNT160')
         self.assertEqual(self.dev.sgi_dev_code_crudo, 'WJ053Q21HNT185')
         self.assertFalse(self.dev.sgi_dev_code_tenido, "Color natural: sin teñido.")
+        # 57.142.0: los dígitos de galga se eligen dentro del rango de la galga (18 = 21 a 30).
+        self.assertEqual((self.dev.sgi_dev_code_galga_digits, self.dev.sgi_dev_code_galga_range), (21, '21 a 30'))
+        self.dev.write({'sgi_dev_code_galga_digits': 22})
+        self.assertEqual(self.dev.sgi_dev_code_acabado_code, 'WJ053Q22JNT160')
+        with self.assertRaises(ValidationError, msg="Fuera del rango no se guarda"):
+            self.dev.write({'sgi_dev_code_galga_digits': 35})
+        self.dev.write({'sgi_dev_code_galga': 22})
+        self.assertEqual(self.dev.sgi_dev_code_galga_digits, 31, "Al cambiar la galga se propone el primero de su rango")
+        self.dev.write({'sgi_dev_code_galga': 18})
         self.dev.write({'sgi_dev_code_color_id': self._clave('color', 'NG').id,
                         'sgi_dev_code_acabado_id': self._clave('acabado', 'AF').id})
         self.assertTrue(self.dev.sgi_dev_code_tenido)
@@ -95,9 +104,10 @@ class TestDevProduct(TransactionCase):
         agua = P.create({'name': 'Agua', 'default_code': 'AGUA', 'type': 'consu', 'uom_id': kg.id})
         formula = P.create({'name': 'Fórmula natural', 'default_code': 'NATURAL005', 'type': 'consu', 'uom_id': kg.id})
         engomado = P.create({'name': 'Engomado', 'default_code': 'ENGOMADO002', 'type': 'consu', 'uom_id': kg.id})
-        crudo = P.create({'name': 'Crudo base', 'default_code': 'WJ044Q21HNT185', 'type': 'consu', 'uom_id': kg.id})
-        tenido = P.create({'name': 'Teñido base', 'default_code': 'WJ044Q21INT185', 'type': 'consu', 'uom_id': kg.id})
-        acabado = P.create({'name': 'Acabado base', 'default_code': 'WJ053Q21JNT160', 'type': 'consu', 'uom_id': m.id})
+        # La familia real lleva 22 en la galga 18 (rango 21 a 30): el proyecto propone 21 y debe respetar 22.
+        crudo = P.create({'name': 'Crudo base', 'default_code': 'WJ044Q22HNT185', 'type': 'consu', 'uom_id': kg.id})
+        tenido = P.create({'name': 'Teñido base', 'default_code': 'WJ044Q22INT185', 'type': 'consu', 'uom_id': kg.id})
+        acabado = P.create({'name': 'Acabado base', 'default_code': 'WJ053Q22JNT160', 'type': 'consu', 'uom_id': m.id})
         Bom = self.env['mrp.bom']
         wc = self.env['mrp.workcenter'].create({'name': 'Circular prueba'})
         Bom.create({'product_tmpl_id': crudo.product_tmpl_id.id, 'product_qty': 1,
@@ -125,13 +135,14 @@ class TestDevProduct(TransactionCase):
             'sgi_dev_code_peso': 53, 'sgi_dev_code_galga': 18, 'sgi_dev_code_ancho': 160, 'sgi_dev_code_ancho_crudo': 185})
         chain = dev._sgi_dev_base_chain()
         self.assertEqual([lv['role'] for lv in chain], ['crudo', 'tenido', 'acabado'])
-        self.assertEqual(dev._sgi_dev_changed_keys(chain)[0], {'color'})
+        self.assertEqual(dev._sgi_dev_changed_keys(chain)[0], {'color'}, "La galga 18 es la misma aunque el base lleve 22")
         dev.action_sgi_dev_generate_products()
         self.assertEqual(dev.sgi_dev_product_crudo_id, crudo, "El crudo no cambia con el color: se liga el del base")
         self.assertFalse(crudo.sgi_dev_project_id, "Y el del base no se toca")
         new_t, new_a = dev.sgi_dev_product_tenido_id, dev.sgi_dev_product_id
-        self.assertEqual((new_t.default_code, new_a.default_code), ('WJ044Q21ING185', 'WJ053Q21JNG160'),
-                         "Código del nivel del base con solo el color sustituido")
+        self.assertEqual((new_t.default_code, new_a.default_code), ('WJ044Q22ING185', 'WJ053Q22JNG160'),
+                         "Código del nivel del base con solo el color sustituido; la galga conserva el 22 del base")
+        self.assertTrue(dev.name.endswith('WJ053Q22JNG160'), "El nombre toma el código del acabado")
         self.assertEqual((new_t.uom_id, new_a.uom_id), (tenido.uom_id, acabado.uom_id))
         self.assertEqual(new_t.sgi_dev_project_id, dev)
         bom_t = self.env['mrp.bom']._bom_find(new_t)[new_t]
@@ -149,11 +160,14 @@ class TestDevProduct(TransactionCase):
         self.assertEqual(dev.sgi_dev_bom_pending_count, 2)
         self.assertEqual(dev.action_sgi_dev_bom_pending()['domain'], [('id', 'in', bom_t.ids)])
         last = dev.message_ids[:1].body
-        self.assertIn('WJ044Q21ING185', last)
+        self.assertIn('WJ044Q22ING185', last)
         self.assertIn('por capturar', last)
         # Volver a generar no duplica ni toca lo ligado.
         dev.action_sgi_dev_generate_products()
-        self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'WJ044Q21ING185')]), 1)
+        self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'WJ044Q22ING185')]), 1)
+        # Si alguien corrige el código del acabado a mano, el nombre del proyecto lo sigue.
+        new_a.write({'default_code': 'WJ053Q23JNG160'})
+        self.assertTrue(dev.name.endswith('WJ053Q23JNG160'))
         # Capturados los pendientes, el contador baja.
         bom_t.bom_line_ids.write({'sgi_dev_pending': False})
         dev.invalidate_recordset(['sgi_dev_bom_pending_count'])
@@ -168,9 +182,9 @@ class TestDevProduct(TransactionCase):
             'sgi_dev_code_color_id': self._clave('color', 'NT').id,
             'sgi_dev_code_peso': 60, 'sgi_dev_code_ancho': 160, 'sgi_dev_code_ancho_crudo': 200})
         dev.action_sgi_dev_generate_products()
-        self.assertEqual(dev.sgi_dev_product_crudo_id.default_code, 'WJ050Q21HNT200', "44 × 60 / 53 ≈ 50, ancho crudo 200")
-        self.assertEqual(dev.sgi_dev_product_tenido_id.default_code, 'WJ050Q21INT200')
-        self.assertEqual(dev.sgi_dev_product_id.default_code, 'WJ060Q21JNT160')
+        self.assertEqual(dev.sgi_dev_product_crudo_id.default_code, 'WJ050Q22HNT200', "44 × 60 / 53 ≈ 50, ancho crudo 200")
+        self.assertEqual(dev.sgi_dev_product_tenido_id.default_code, 'WJ050Q22INT200')
+        self.assertEqual(dev.sgi_dev_product_id.default_code, 'WJ060Q22JNT160')
         bom_c = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_crudo_id)[dev.sgi_dev_product_crudo_id]
         self.assertTrue(bom_c.operation_ids, "Las operaciones del crudo se copian")
         self.assertTrue(all(bom_c.bom_line_ids.mapped('sgi_dev_pending')), "El hilo depende del peso: por capturar")

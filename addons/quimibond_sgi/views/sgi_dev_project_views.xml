@@ -320,6 +320,12 @@
                                         <field name="sgi_dev_code_peso"/>
                                         <field name="sgi_dev_code_hilo_id" options="{'no_create': True}"/>
                                         <field name="sgi_dev_code_galga"/>
+                                        <!-- 57.142.0: los dígitos de la galga se eligen dentro de su rango (DAT P-D02-01); con base se toman del base. -->
+                                        <label for="sgi_dev_code_galga_digits" invisible="not sgi_dev_code_galga or sgi_dev_base_product_id"/>
+                                        <div class="o_row" invisible="not sgi_dev_code_galga or sgi_dev_base_product_id">
+                                            <field name="sgi_dev_code_galga_digits" class="oe_inline"/>
+                                            <span class="text-muted">rango <field name="sgi_dev_code_galga_range" class="oe_inline"/></span>
+                                        </div>
                                         <field name="sgi_dev_code_color_id" options="{'no_create': True}"/>
                                         <field name="sgi_dev_code_ancho"/>
                                         <field name="sgi_dev_code_ancho_crudo"/>

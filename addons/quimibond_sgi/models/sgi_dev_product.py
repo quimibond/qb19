@@ -22,7 +22,7 @@
   confirman órdenes de fabricación con esos artículos.
 """
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 DEV_PRODUCT_STATES = [
     ('desarrollo', "En desarrollo"),
@@ -71,6 +71,20 @@ class ProductTemplateDev(models.Model):
                 tmpl.env['mrp.bom'].sudo().search([('product_tmpl_id', '=', tmpl.id)]).write({'active': False})
             tmpl.write(vals)
         return True
+
+
+class ProductProductDevCode(models.Model):
+    """57.142.0: si alguien corrige el código del artículo acabado (el 499 pasó de Q21 a Q22 a mano),
+    el nombre del proyecto se vuelve a armar con el código final."""
+    _inherit = 'product.product'
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'default_code' in vals and not self.env.context.get('sgi_dev_migration'):
+            projects = self.env['project.project'].search([('sgi_dev_product_id', 'in', self.ids)])
+            if projects:
+                projects._sgi_dev_sync_name()
+        return res
 
 
 class SaleOrderDev(models.Model):
@@ -147,6 +161,15 @@ class ProjectProjectDevCode(models.Model):
     sgi_dev_code_galga = fields.Integer(string="Galga (7-8)",
                                         help="Galga de la máquina (14, 16, 18…); el código lleva su rango. Se toma de "
                                              "la tabla.")
+    # 57.142.0: el DAT P-D02-01 da a cada galga un rango de dos dígitos (galga 18 = 21 a 30); antes
+    # siempre se ponía el primero. Sin artículo base se elige el número dentro del rango; con base se
+    # toman los dígitos del código del base.
+    sgi_dev_code_galga_digits = fields.Integer(string="Dígitos de galga (7-8)", compute='_compute_sgi_dev_code_galga_digits',
+                                               store=True, readonly=False, copy=False,
+                                               help="Posiciones 7 y 8 del código: un número dentro del rango de la galga "
+                                                    "(galga 18 = 21 a 30). Se propone el primero del rango; con artículo "
+                                                    "base se usan los dígitos del base.")
+    sgi_dev_code_galga_range = fields.Char(string="Rango de la galga", compute='_compute_sgi_dev_code_galga_range')
     sgi_dev_code_color_id = fields.Many2one('ficha.tecnica.clave.codigo', string="Color (10-11)",
                                             domain=[('kind', '=', 'color')], ondelete='restrict',
                                             help="Posiciones 10 y 11: color del producto terminado.")
@@ -182,6 +205,43 @@ class ProjectProjectDevCode(models.Model):
             else:
                 project.sgi_dev_code_tenido = project.sgi_dev_code_tenido
 
+    def _sgi_dev_gauge_clave(self):
+        self.ensure_one()
+        if not self.sgi_dev_code_galga:
+            return self.env['ficha.tecnica.clave.codigo']
+        return self.env['ficha.tecnica.clave.codigo'].search([('kind', '=', 'galga'), ('gauge', '=', self.sgi_dev_code_galga)], limit=1)
+
+    @api.depends('sgi_dev_code_galga')
+    def _compute_sgi_dev_code_galga_digits(self):
+        for project in self:
+            clave = project._sgi_dev_gauge_clave()
+            project.sgi_dev_code_galga_digits = clave.range_from if clave else 0
+
+    @api.depends('sgi_dev_code_galga')
+    def _compute_sgi_dev_code_galga_range(self):
+        for project in self:
+            clave = project._sgi_dev_gauge_clave()
+            project.sgi_dev_code_galga_range = ("%02d a %02d" % (clave.range_from, clave.range_to)) if clave else ''
+
+    @api.constrains('sgi_dev_code_galga', 'sgi_dev_code_galga_digits')
+    def _check_sgi_dev_code_galga_digits(self):
+        for project in self:
+            clave = project._sgi_dev_gauge_clave()
+            d = project.sgi_dev_code_galga_digits
+            if clave and d and not clave.range_from <= d <= clave.range_to:
+                raise ValidationError("Los dígitos de galga %02d están fuera del rango de la galga %s (%02d a %02d)."
+                                      % (d, clave.gauge, clave.range_from, clave.range_to))
+
+    def _sgi_dev_gauge_digits(self):
+        """'22' para la galga del proyecto: los dígitos elegidos dentro del rango, o el primero del
+        rango; '' si no hay galga en el catálogo o los dígitos están fuera del rango."""
+        self.ensure_one()
+        clave = self._sgi_dev_gauge_clave()
+        if not clave:
+            return ''
+        d = self.sgi_dev_code_galga_digits or clave.range_from
+        return ("%02d" % d) if clave.range_from <= d <= clave.range_to else ''
+
     def _sgi_dev_code_parts(self):
         """Partes del código o el nombre de lo que falta."""
         self.ensure_one()
@@ -194,9 +254,10 @@ class ProjectProjectDevCode(models.Model):
             missing.append("peso (1 a 999 g/m²)")
         if not self.sgi_dev_code_hilo_id:
             missing.append("tipo de hilo")
-        gauge = self.env['ficha.tecnica.clave.codigo'].gauge_code(self.sgi_dev_code_galga) if self.sgi_dev_code_galga else ''
+        gauge = self._sgi_dev_gauge_digits()
         if not gauge:
-            missing.append("galga (con rango en el catálogo)")
+            missing.append("galga (con rango en el catálogo) y sus dígitos dentro del rango%s"
+                           % ((" %s" % self.sgi_dev_code_galga_range) if self.sgi_dev_code_galga_range else ''))
         if not self.sgi_dev_code_color_id:
             missing.append("color")
         if not 0 < self.sgi_dev_code_ancho < 1000:
@@ -230,8 +291,8 @@ class ProjectProjectDevCode(models.Model):
         return base + OPERATION_CODES[role] + color + parts['ancho_crudo']
 
     @api.depends('sgi_dev_code_composicion_id', 'sgi_dev_code_dibujo_id', 'sgi_dev_code_peso', 'sgi_dev_code_hilo_id',
-                 'sgi_dev_code_galga', 'sgi_dev_code_color_id', 'sgi_dev_code_ancho', 'sgi_dev_code_ancho_crudo',
-                 'sgi_dev_code_acabado_id', 'sgi_dev_code_tenido')
+                 'sgi_dev_code_galga', 'sgi_dev_code_galga_digits', 'sgi_dev_code_color_id', 'sgi_dev_code_ancho',
+                 'sgi_dev_code_ancho_crudo', 'sgi_dev_code_acabado_id', 'sgi_dev_code_tenido')
     def _compute_sgi_dev_codes(self):
         for project in self:
             parts, _missing = project._sgi_dev_code_parts()

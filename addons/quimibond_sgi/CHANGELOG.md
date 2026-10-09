@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.142.0 — 2026-10-09
+
+Dirección General 2026-10-09: la galga en el código. El DAT P-D02-01 da a cada
+galga un rango de dos dígitos (galga 18 = 21 a 30) y «Generar artículos»
+siempre ponía el primero; en el 499 salió WJ053Q21JCO160 cuando la familia del
+base usa 22, y Administración de Ventas lo corrigió a mano.
+
+- **Agregado** `sgi_dev_code_galga_digits` «Dígitos de galga (7-8)» con el
+  rango visible junto a la galga: se propone el primero del rango y se puede
+  elegir otro dentro de él; fuera del rango no se guarda (restricción) ni se
+  genera. Solo se muestra sin artículo base.
+- **Cambiado** con artículo base, la galga se compara por número y no por
+  dígitos: si el base lleva 22 y el proyecto galga 18, no cambia y los
+  artículos nuevos conservan el 22 del base; si la galga sí cambia, van los
+  dígitos elegidos.
+- **Cambiado** el nombre del proyecto se vuelve a armar cuando alguien corrige
+  el código del artículo acabado (`product.product.write`).
+- **Migración** `19.0.57.142.0`: rearma el nombre de los desarrollos (el 499
+  pasa a «Análisis WJ053Q22JCO160»); los dígitos de galga los calcula Odoo al
+  crear la columna. No toca artículos ni listas.
+
 ## 19.0.57.141.0 — 2026-10-09
 
 Dirección General 2026-10-09: «Generar artículos» parte del artículo base.
