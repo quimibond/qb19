@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps que extienden (55). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps que extienden (56). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -19,7 +19,7 @@ Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps qu
 | [`sgi.activity.execution.mark`](diccionario/sgi.activity.execution.mark.md) | Marcar avance de una actividad | Asistente de «En proceso», «Hecha» y «No aplica este periodo». | TransientModel | 11 | `addons/quimibond_sgi/models/sgi_activity_execution.py` |
 | [`sgi.activity.input`](diccionario/sgi.activity.input.md) | Entregable que recibe una actividad SGI | Un «recibe» de la actividad: qué entregable y en cuántos días hábiles debe llegar a ella. El plazo es de quien recibe (la misma salida puede urgirle a uno y no a otro) y de él sale el eslabón atorado. | Model | 11 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
 | [`sgi.activity.link`](diccionario/sgi.activity.link.md) | Encadenamiento entre actividades | Liga entre dos actividades de procedimiento: qué ENTREGABLE pasa de un paso al siguiente. Puede cruzar procesos (el pedido de Ventas alimenta el programa de Planeación): es el hilo conductor de la op… | Model | 13 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
-| [`sgi.activity.role`](diccionario/sgi.activity.role.md) | Rol de un puesto en una actividad SGI | Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba, participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los aprobadores nativos. | Model | 49 | `addons/quimibond_sgi/models/sgi_catalog.py` |
+| [`sgi.activity.role`](diccionario/sgi.activity.role.md) | Rol de un puesto en una actividad SGI | Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba, participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los aprobadores nativos. | Model | 50 | `addons/quimibond_sgi/models/sgi_catalog.py` |
 | [`sgi.activity.spec.gap`](diccionario/sgi.activity.spec.gap.md) | Faltante de especificación de una actividad SGI | Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se recalcula; alimenta Diagnóstico → Faltantes de especificación. | Model | 6 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.activity.week.stat`](diccionario/sgi.activity.week.stat.md) | Cumplimiento semanal de una actividad SGI | Aplicables, hechas, completas, a tiempo y vencidas abiertas, por actividad y semana. Va aparte de ``sgi.activity.exec.stat`` (que tiene un renglón por usuario): repetir estos totales en cada renglón … | Model | 13 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.acuse.attach.wizard`](diccionario/sgi.acuse.attach.wizard.md) | Adjuntar acuse firmado a la entrega | Asistente para adjuntar a una entrega (``stock.picking``) el acuse firmado por el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_links.py` |
@@ -160,7 +160,7 @@ Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps qu
 | [`sgi.ppap.element`](diccionario/sgi.ppap.element.md) | Elemento de un PPAP | Elemento de un PPAP con su documento, AMEF o plan de control y su estado. | Model | 10 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.ppap.element.template`](diccionario/sgi.ppap.element.template.md) | Elemento PPAP (catálogo AIAG) | Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía. | Model | 4 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.process`](diccionario/sgi.process.md) | Proceso SGI | Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores, riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo. | Model | 78 | `addons/quimibond_sgi/models/sgi_process.py` |
-| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 95 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
+| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 96 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.flow`](diccionario/sgi.process.flow.md) | Flujo entre procesos SGI | Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué modelo. | Model | 8 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.responsibility`](diccionario/sgi.process.responsibility.md) | Responsabilidad de área en el procedimiento | Responsabilidad de un rol/puesto dentro del procedimiento (sección 3). | Model | 6 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.stage`](diccionario/sgi.process.stage.md) | Etapa de un proceso SGI | Etapa de un proceso; agrupa sus actividades. | Model | 7 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
@@ -234,6 +234,7 @@ Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps qu
 | [`slide.channel`](diccionario/slide.channel.md) | 4 | `addons/quimibond_sgi/models/sgi_competence_grant.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py` |
 | [`stock.lot`](diccionario/stock.lot.md) | 0 | `addons/quimibond_sgi/models/sgi_control_plan.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`stock.picking`](diccionario/stock.picking.md) | 20 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_release.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
+| [`studio.approval.entry`](diccionario/studio.approval.entry.md) | 0 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py` |
 | [`studio.approval.rule`](diccionario/studio.approval.rule.md) | 1 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/quimibond_sgi_studio/models/studio_approval_rule_archive.py` |
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |

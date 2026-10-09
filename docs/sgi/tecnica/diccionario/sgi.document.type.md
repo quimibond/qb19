@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:638` |
-| `code` | Char | Código | Identificador estable (procedimiento, instructivo, formato…). El campo heredado «Tipo de documento» se calcula desde él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:632` |
-| `code_required` | Boolean | Exige clave | Apáguelo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:648` |
-| `company_id` | Many2one | Empresa | Vacío = tipo compartido por todas las empresas. |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:656` |
-| `legacy_code_regex` | Char | Claves heredadas aceptadas (regex) | Expresión regular de la nomenclatura anterior que se sigue aceptando mientras se migra (ej. ^P-[AGCDEIMPSV]\d{2}$). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:652` |
-| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:636` |
-| `prefix_pattern` | Char | Patrón de clave | Cómo se arma la clave. Marcadores: {process} = clave del proceso (C6, S2…), {seq} o {seq:02d} = consecutivo. Ej. PR-{process}, IT-{process}-{seq:02d}, CO-{seq:02d}. Vacío = clave libre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:639` |
-| `requires_process` | Boolean | Exige proceso | Un documento controlado de este tipo debe estar ligado a un proceso (salvo que conserve una clave heredada). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:644` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:637` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:680` |
+| `code` | Char | Código | Identificador estable (procedimiento, instructivo, formato…). El campo heredado «Tipo de documento» se calcula desde él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:674` |
+| `code_required` | Boolean | Exige clave | Apáguelo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:690` |
+| `company_id` | Many2one | Empresa | Vacío = tipo compartido por todas las empresas. |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:698` |
+| `legacy_code_regex` | Char | Claves heredadas aceptadas (regex) | Expresión regular de la nomenclatura anterior que se sigue aceptando mientras se migra (ej. ^P-[AGCDEIMPSV]\d{2}$). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:694` |
+| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:678` |
+| `prefix_pattern` | Char | Patrón de clave | Cómo se arma la clave. Marcadores: {process} = clave del proceso (C6, S2…), {seq} o {seq:02d} = consecutivo. Ej. PR-{process}, IT-{process}-{seq:02d}, CO-{seq:02d}. Vacío = clave libre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:681` |
+| `requires_process` | Boolean | Exige proceso | Un documento controlado de este tipo debe estar ligado a un proceso (salvo que conserve una clave heredada). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:686` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:679` |
 
 ## Métodos públicos (1)
 

@@ -10,7 +10,7 @@ Orden: `process_id, sequence, step, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimibond_sgi/models/sgi_activity_execution.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_wizard.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_hierarchy.py`, `addons/quimibond_sgi/models/sgi_indicator_wizard.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_measure_history.py`, `addons/quimibond_sgi/models/sgi_measure_manual_reason.py`, `addons/quimibond_sgi/models/sgi_measure_review.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`, `addons/quimibond_sgi/models/sgi_sst_links.py`, `addons/quimibond_sgi/models/sgi_structure.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
 
-## Campos (95)
+## Campos (96)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -56,7 +56,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `measure_count_30d` | Integer | Ejecuciones (30 días) | Ejecuciones registradas en los últimos 30 días. Lo escribe la medición diaria. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:893` |
 | `measure_count_generic` | Integer | Por cuenta genérica (4 sem.) | Ejecuciones con una cuenta compartida (quimibond_sgi.generic_user_ids): no se pueden atribuir a nadie. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:962` |
 | `measure_count_no_employee` | Integer | Sin empleado (4 sem.) | Ejecuciones de usuarios sin empleado activo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:966` |
-| `measure_count_other_job` | Integer | Por otro puesto (4 sem.) | Ejecuciones de empleados de un puesto al que no le toca. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:973` |
+| `measure_count_other_job` | Integer | Por otro puesto (4 sem.) | Ejecuciones de empleados de un puesto al que no le toca (el jefe directo del puesto no cuenta aquí: es suplencia). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:973` |
+| `measure_count_substitute` | Integer | Por el jefe directo (4 sem.) | 57.143.0: ejecuciones del jefe directo de quien tiene el rol «Ejecuta» (suplencia). Cuentan como cumplidas en la adherencia; se distinguen del puesto asignado y de «otro puesto». |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:977` |
 | `measure_count_system` | Integer | Del sistema (4 sem.) | Ejecuciones de OdooBot o procesos automáticos: no cuentan en la adherencia. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:969` |
 | `measure_date_field` | Char | Campo de fecha | Campo del modelo que fecha la ejecución (create_date, date_done, date_approve…). Si no existe, se usa create_date. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:874` |
 | `measure_date_field_id` | Many2one | Fecha que cuenta | La fecha del registro que dice cuándo se hizo la actividad (Fecha efectiva, Fecha de factura…). |  | `ir.model.fields` | compute `_compute_measure_field_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_wizard.py:276` |
@@ -75,7 +76,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `measure_user_field` | Char | Campo de usuario | Campo del modelo de evidencia que dice QUÉ USUARIO ejecutó la actividad (create_uid, user_id…). Con él se mide si la hizo el puesto que debía. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:941` |
 | `measure_user_field_id` | Many2one | Quién la hizo | El usuario del registro que hizo la actividad (Responsable, Validado por…). Evite «Última actualización por»: es el último que editó, no quien la hizo. |  | `ir.model.fields` | compute `_compute_measure_field_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_wizard.py:282` |
 | `measure_user_history` | Boolean | Quién lo hizo: quien lo pasó a su estado (historial) | HISTORY_HELP |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_history.py:62` |
-| `measure_warning` | Text | Avisos de medición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:976` |
+| `measure_warning` | Text | Avisos de medición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:982` |
 | `name` | Char | Resumen | Resumen corto de la actividad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:514` |
 | `next_activity_ids` | Many2many | Siguientes pasos | Actividades que reciben lo que esta entrega. |  | `sgi.process.activity` | compute `_compute_chain`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:588` |
 | `norm_clause_ids` | Many2many | Cumple con | Puntos de la norma (ISO 9001, 14001, 45001…) que esta actividad cumple. Alimenta la Matriz de cumplimiento y el checklist de auditoría. |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:24` |

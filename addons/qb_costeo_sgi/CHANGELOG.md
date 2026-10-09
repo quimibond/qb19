@@ -1,5 +1,15 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.5.1 — 2026-10-09
+
+Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.** Sin
+código nuevo aquí: la solicitud de C1.05 en Aprobaciones toma sus aprobadores
+del rol del SGI (quimibond_sgi 57.143.0), que quita a quien la pide. Si el
+propio puesto que aprueba manda su cotización y el rol no tiene suplente,
+«Enviar a aprobación» se detiene con el mensaje del SGI (nombrar el suplente
+en la Matriz de responsabilidades o que la mande otra persona); con suplente,
+la aprueba el suplente. Prueba `test_bridge.test_04c` (Odoo.sh).
+
 ## 19.0.1.5.0 — 2026-10-09
 
 Dirección General 2026-10-09: Administración de Ventas (Usuario interno, sin

@@ -2,6 +2,7 @@
 """57.13.0 (entrega 8, primer bloque): los roles relativos se resuelven a
 personas y quien aprueba o recibe el escalamiento nunca es quien ejecuta o
 pide (J-010). Datos propios, nada de producción."""
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 
@@ -104,27 +105,47 @@ class TestRelativeRoles(TransactionCase):
         self.assertFalse(employees)
         self.assertIn("área", note)
 
-    def test_05_aprobador_igual_a_ejecutor_sube_al_jefe(self):
-        """El caso S6.07: el dueño del proceso es quien ejecuta. No se asigna
-        en silencio: sube a su jefe directo."""
+    def test_05_aprobador_igual_a_ejecutor_no_sube_va_al_suplente(self):
+        """El caso S6.07: el dueño del proceso es quien ejecuta. 57.143.0
+        (Dirección General): la aprobación NO sube al jefe; sin suplente nadie
+        aprueba (aviso) y con suplente nombrado aprueba el suplente."""
         self.p_activity.owner_id = self.executor
         employees, note = self.approver._sgi_target_employees()
-        self.assertEqual(employees, self.boss)
-        self.assertIn("jefe", note)
-        self.approver.invalidate_recordset(['approval_user_ids'])
-        self.assertEqual(self.approver.approval_user_ids, self.u_boss)
-        # Sin jefe: vacío y aviso, nunca el mismo.
-        self.executor.parent_id = False
-        employees, note = self.approver._sgi_target_employees()
-        self.assertFalse(employees)
+        self.assertFalse(employees, "Ya no sube al jefe directo.")
         self.assertIn("nadie aprueba", note)
+        self.assertIn("suplente", note)
+        self.approver.invalidate_recordset(['approval_user_ids'])
+        self.assertFalse(self.approver.approval_user_ids)
+        # Con suplente nombrado (puesto), aprueba el suplente.
+        job_sub = self.env['hr.job'].create({'name': 'SUPLENTE RELATIVOS QR'})
+        u_sub = new_test_user(self.env, login='qr_sub', groups='base.group_user')
+        sub = self.env['hr.employee'].create({'name': 'Suplente QR', 'user_id': u_sub.id, 'job_id': job_sub.id})
+        self.approver.substitute_job_id = job_sub
+        employees, note = self.approver._sgi_target_employees()
+        self.assertEqual(employees, sub)
+        self.assertIn("se quitó", note)
+        self.approver.invalidate_recordset(['approval_user_ids'])
+        self.assertEqual(self.approver.approval_user_ids, u_sub)
+        # Sin conflicto, aprueban titular y suplente.
+        self.p_activity.owner_id = self.owner
+        employees, note = self.approver._sgi_target_employees()
+        self.assertEqual(employees, self.owner | sub)
+        self.assertFalse(note)
+        # El suplente solo va en «Aprueba» y nunca es el mismo puesto.
+        with self.assertRaises(ValidationError):
+            self.escalation.substitute_job_id = job_sub
+        with self.assertRaises(ValidationError):
+            self.env['sgi.activity.role'].create({
+                'activity_id': self.activity.id, 'role': 'aprueba', 'job_id': job_sub.id,
+                'substitute_job_id': job_sub.id, 'condition': 'si aplica'})
 
     def test_06_aprueba_solicitante_nunca_es_quien_pide(self):
         request = self.env['approval.request'].new({
             'name': 'Mi propia solicitud', 'request_owner_id': self.u_asker.id})
         role = self._relative('solicitante')
-        employees, _note = role._sgi_target_employees(request)
-        self.assertEqual(employees, self.owner, "Quien pide no se aprueba: su jefe.")
+        employees, note = role._sgi_target_employees(request)
+        self.assertFalse(employees, "Quien pide no se aprueba y no sube al jefe.")
+        self.assertIn("nadie aprueba", note)
 
     def test_07_escalamiento_al_dueno_en_mis_pendientes(self):
         """Los escalamientos a «Dueño del proceso» sí le llegan a alguien: al
@@ -136,6 +157,55 @@ class TestRelativeRoles(TransactionCase):
         found = Role._sgi_relative_escalations(self.executor | self.boss)
         self.assertNotIn(self.escalation, found.get(self.executor.id, Role))
         self.assertIn(self.escalation, found.get(self.boss.id, Role))
+
+    def test_07b_escalamiento_si_sube_al_jefe(self):
+        """La regla «no subas por jerarquía» es de la aprobación; el
+        escalamiento del atraso sigue subiendo al jefe directo."""
+        self.p_activity.owner_id = self.executor
+        employees, note = self.escalation._sgi_target_employees()
+        self.assertEqual(employees, self.boss)
+        self.assertIn("jefe", note)
+
+    def test_09_nadie_aprueba_lo_que_el_mismo_pidio(self):
+        """57.143.0: en una solicitud de Aprobaciones, quien la pide no queda
+        como aprobador aunque tenga el puesto; si es el único, confirmar avisa
+        a quién le toca; con suplente, el suplente aprueba."""
+        job_apr = self.env['hr.job'].create({'name': 'APROBADOR PROPIO QR'})
+        u_apr = new_test_user(self.env, login='qr_apr', groups='base.group_user,approvals.group_approval_user')
+        self.env['hr.employee'].create({'name': 'Aprobador QR', 'user_id': u_apr.id, 'job_id': job_apr.id})
+        self.approver.write({'target_type': 'job', 'relative_role': False, 'job_id': job_apr.id,
+                             'approval_kind': 'solicitud'})
+        self.approver.action_sgi_sync_approval()
+        category = self.approver.approval_category_id
+        self.assertEqual(category.approver_ids.user_id, u_apr)
+        Request = self.env['approval.request']
+        # Otro la pide: la aprueba el puesto.
+        req = Request.create({'name': 'Pide otro', 'category_id': category.id,
+                              'request_owner_id': self.u_asker.id})
+        self.assertEqual(req.approver_ids.user_id, u_apr)
+        # La pide el propio aprobador: no se aprueba a sí mismo y confirmar lo dice.
+        own = Request.create({'name': 'Pido yo', 'category_id': category.id,
+                              'request_owner_id': u_apr.id})
+        self.assertFalse(own.approver_ids)
+        with self.assertRaises(UserError) as cm:
+            own.action_confirm()
+        self.assertIn("suplente", str(cm.exception))
+        self.assertTrue(self.approver._sgi_requester_conflict(own, u_apr))
+        self.assertFalse(self.approver._sgi_requester_conflict(req, u_apr))
+        # Con suplente nombrado, la aprueba el suplente.
+        job_sub = self.env['hr.job'].create({'name': 'SUPLENTE APROBADOR QR'})
+        u_sub = new_test_user(self.env, login='qr_sub2', groups='base.group_user,approvals.group_approval_user')
+        self.env['hr.employee'].create({'name': 'Suplente QR2', 'user_id': u_sub.id, 'job_id': job_sub.id})
+        self.approver.substitute_job_id = job_sub
+        own.write({'request_owner_id': u_apr.id})
+        self.assertEqual(own.approver_ids.user_id, u_sub)
+        self.assertIn('Suplente QR2', self.approver._sgi_requester_conflict(own, u_apr))
+        own.action_confirm()
+        self.assertEqual(own.request_status, 'pending')
+        # Y si la pide el suplente, aprueba el titular.
+        other = Request.create({'name': 'Pide el suplente', 'category_id': category.id,
+                                'request_owner_id': u_sub.id})
+        self.assertEqual(other.approver_ids.user_id, u_apr)
 
     def test_08_jefe_del_solicitante_en_aprobaciones_es_nativo(self):
         role = self._relative('jefe_del_solicitante')

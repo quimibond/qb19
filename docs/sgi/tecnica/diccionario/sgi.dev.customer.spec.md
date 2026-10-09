@@ -12,12 +12,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `care_ids` | Many2many | Instrucciones de cuidado | De la lista «Instrucción de cuidado» (nombre en español e inglés). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:269` |
-| `emitted_at` | Datetime | Emitida el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:273` |
-| `emitted_by_id` | Many2one | Emitió (Ventas) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:272` |
-| `line_ids` | One2many | Características |  |  | `sgi.dev.customer.spec.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:266` |
-| `main_use` | Text | Uso principal / Main use | El de la solicitud del proyecto; se captura una sola vez. |  |  | related `project_id.sgi_dev_use`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:267` |
-| `name` | Char | Especificaciones |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:265` |
+| `care_ids` | Many2many | Instrucciones de cuidado | De la lista «Instrucción de cuidado» (nombre en español e inglés). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:282` |
+| `emitted_at` | Datetime | Emitida el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:286` |
+| `emitted_by_id` | Many2one | Emitió (Ventas) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:285` |
+| `line_ids` | One2many | Características |  |  | `sgi.dev.customer.spec.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:279` |
+| `main_use` | Text | Uso principal / Main use | El de la solicitud del proyecto; se captura una sola vez. |  |  | related `project_id.sgi_dev_use`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:280` |
+| `name` | Char | Especificaciones |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:278` |
 
 ## Métodos públicos (1)
 

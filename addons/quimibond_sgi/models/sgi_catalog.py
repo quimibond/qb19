@@ -171,6 +171,15 @@ class SgiActivityRole(models.Model):
         help="Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba "
              "del monto que se fije». Vacío = siempre. Si según el caso la "
              "ejecuta otro puesto, son dos actividades.")
+    # 57.143.0 (Dirección General 2026-10-09, suplencias): la aprobación no
+    # sube sola por el organigrama; si el titular es quien pide o ejecuta,
+    # aprueba el suplente nombrado. Vacío por omisión: nadie lo inventa.
+    substitute_job_id = fields.Many2one(
+        'hr.job', string="Suplente (puesto)", ondelete='restrict', index=True,
+        help="Solo para «Aprueba»: puesto que también aprueba, nombrado por Dirección. "
+             "Vacío = sin suplente. Si el titular es quien pide o ejecuta, aprueba el "
+             "suplente; sin suplente nadie aprueba y el SGI avisa. La aprobación nunca "
+             "sube sola al jefe.")
     sequence = fields.Integer(string="Secuencia", default=10)
     process_id = fields.Many2one(
         related='activity_id.process_id', string="Proceso", store=True,
@@ -217,6 +226,17 @@ class SgiActivityRole(models.Model):
                     "«%s» tiene condición («%s»). La condición solo va en quien "
                     "aprueba o se entera; si según el caso lo hace otro puesto, "
                     "parte la actividad en dos." % (role.display_name, role.condition))
+
+    @api.constrains('role', 'substitute_job_id', 'job_id')
+    def _check_substitute(self):
+        """57.143.0: el suplente solo va en «Aprueba» y no es el mismo puesto."""
+        for role in self.filtered('substitute_job_id'):
+            if role.role != 'aprueba':
+                raise ValidationError(
+                    "«%s»: el suplente solo va en el rol «Aprueba»." % role.display_name)
+            if role.target_type == 'job' and role.substitute_job_id == role.job_id:
+                raise ValidationError(
+                    "«%s»: el suplente debe ser otro puesto distinto del titular." % role.display_name)
 
     @api.constrains('role', 'after_days')
     def _check_after_days(self):
@@ -363,6 +383,28 @@ class HrJob(models.Model):
         return bool(self.sgi_vacancy_approved) and (
             not self.sgi_vacancy_until
             or self.sgi_vacancy_until >= fields.Date.context_today(self))
+
+    # ------------------------------------------------------------------
+    # 57.143.0 (suplencias): las personas de un puesto y sus jefes directos.
+    # ------------------------------------------------------------------
+    def _sgi_holders(self):
+        """Empleados activos con alguno de estos puestos."""
+        Employee = self.env['hr.employee'].sudo()
+        return Employee.search([('job_id', 'in', self.ids)]) if self else Employee
+
+    def _sgi_bosses(self):
+        """Jefes directos (``hr.employee.parent_id``) de las personas de estos
+        puestos. Quien suple a un puesto en la ejecución es el jefe directo de
+        quien lo ocupa; no se toca el organigrama, solo se lee."""
+        return self._sgi_holders().parent_id.filtered('active')
+
+    def _sgi_users(self, with_bosses=False):
+        """Usuarios internos activos de las personas del puesto y, si se pide,
+        de sus jefes directos (botones restringidos por puesto)."""
+        employees = self._sgi_holders()
+        if with_bosses:
+            employees |= employees.parent_id
+        return employees.user_id.filtered(lambda u: u.active and not u.share)
 
     def _sgi_staffing_state(self):
         """Estado de un conjunto de puestos (un puesto o una familia): 'ok' si

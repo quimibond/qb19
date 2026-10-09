@@ -150,6 +150,34 @@ class TestBridge(CotizadorCase):
         cot.write({'cliente_aprobo': True, 'cliente_medio': 'correo', 'cliente_fecha': fields.Date.today()})
         self.assertTrue(cot.cliente_aprobo)
 
+    def test_04c_quien_aprueba_no_manda_su_propia_cotizacion(self):
+        """1.5.1 / SGI 57.143.0: si quien manda a aprobar es el puesto que aprueba
+        C1.05 y el rol no tiene suplente, la solicitud no se confirma y el mensaje
+        lo dice; con suplente nombrado, la aprueba el suplente."""
+        Cot = self.env['qb.cotizador.cotizacion']
+        role = Cot._qb_sgi_approval_role()
+        if not role:
+            self.skipTest("C1.05 sin aprobación como solicitud en esta base.")
+        approver = role.sudo()._sgi_approver_users()[:1]
+        if not approver:
+            self.skipTest("El rol de C1.05 no tiene personas.")
+        cot = self._cot(user=approver, project_id=self.project.id).with_user(approver)
+        cot.action_calcular()
+        role.sudo().substitute_job_id = False
+        with self.assertRaises(UserError) as cm:
+            cot.action_enviar_aprobacion()
+        self.assertIn('suplente', str(cm.exception))
+        job_sup = self.env['hr.job'].create({'name': 'SUPLENTE C1.05 PRUEBA'})
+        suplente = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Suplente C1.05 prueba', 'login': 'qbcot_sup_c105',
+            'group_ids': [(6, 0, [self.env.ref('approvals.group_approval_user').id])]})
+        self.env['hr.employee'].create({'name': 'Suplente C1.05 prueba', 'user_id': suplente.id, 'job_id': job_sup.id})
+        role.sudo().substitute_job_id = job_sup
+        cot.action_enviar_aprobacion()
+        req = cot.sudo().approval_request_id
+        self.assertEqual(req.request_status, 'pending')
+        self.assertEqual(req.approver_ids.user_id, suplente, "La aprueba el suplente, no quien la pidió.")
+
     def test_05_precio_en_tarifa_al_ganar_con_el_articulo_del_desarrollo(self):
         """1.3.0 (Jose 5.6): la cotización nace sin artículo; la aprobación de la muestra llega del
         envío del SGI; al generar el artículo, la ganada pone su precio en la tarifa sola."""

@@ -5,7 +5,8 @@ from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
-from ..models.settings import PARAM_ARCHIVAR_DIAS, PARAM_ESCALERA_PCT, PARAM_MARGEN_MINIMO, PARAM_SEGUIMIENTO_DIAS
+from ..models.settings import (PARAM_ARCHIVAR_DIAS, PARAM_ESCALERA_PCT, PARAM_MARGEN_MINIMO,
+                               PARAM_SEGUIMIENTO_DIAS, PARAM_SUPLENTE)
 from .common import CotizadorCase
 
 
@@ -197,3 +198,38 @@ class TestFlujo(CotizadorCase):
         self.assertAlmostEqual(cot.precio_objetivo, 15.0)
         self.assertEqual(len(cot.tramo_ids), 1)
         self.assertEqual(cot.user_id, self.vendedor)
+
+    def test_12_quien_pide_no_aprueba(self):
+        """1.5.0 (Dirección General): quien manda a aprobar no aprueba, aunque
+        tenga el puesto; con suplente nombrado, el suplente sí."""
+        cot = self._cot(user=self.finanzas)
+        cot.action_calcular()
+        cot.with_user(self.finanzas).action_enviar_aprobacion()
+        self.assertEqual(cot.solicitada_por_id, self.finanzas)
+        self.assertFalse(cot.activity_ids.filtered(lambda a: a.user_id == self.finanzas),
+                         "El aviso de aprobar no le llega a quien la pidió.")
+        self.assertFalse(cot.with_user(self.finanzas).puede_aprobar)
+        with self.assertRaises(UserError) as cm:
+            cot.with_user(self.finanzas).action_aprobar()
+        self.assertIn('quien pide no la aprueba', str(cm.exception))
+        self.assertIn('suplente', str(cm.exception))
+        # Suplente nombrado: él aprueba; el titular que pidió sigue sin poder.
+        job_sup = self.env['hr.job'].create({'name': 'SUPLENTE COTIZADOR PRUEBA'})
+        suplente = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Suplente prueba', 'login': 'qbcot_suplente',
+            'group_ids': [(6, 0, [self.env.ref('sales_team.group_sale_salesman').id])]})
+        self.env['hr.employee'].create({'name': 'Suplente prueba', 'user_id': suplente.id, 'job_id': job_sup.id})
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_SUPLENTE, str(job_sup.id))
+        with self.assertRaises(UserError) as cm:
+            cot.with_user(self.finanzas).action_aprobar()
+        self.assertIn('Suplente prueba', str(cm.exception))
+        self.assertTrue(cot.with_user(suplente).puede_aprobar)
+        cot.with_user(suplente).action_aprobar()
+        self.assertEqual((cot.state, cot.approved_by_id), ('presentada', suplente))
+        # Y al revés: lo que pide el suplente lo aprueba el titular, no el suplente.
+        cot2 = self._cot(user=suplente)
+        cot2.action_calcular()
+        cot2.with_user(suplente).action_enviar_aprobacion()
+        self.assertFalse(cot2.with_user(suplente).puede_aprobar)
+        self.assertTrue(cot2.with_user(self.finanzas).puede_aprobar)
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_SUPLENTE, '')

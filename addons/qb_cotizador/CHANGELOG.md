@@ -3,6 +3,19 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.5.0 — 2026-10-09
+
+Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.**
+
+- Quien manda la cotización a aprobar (`solicitada_por_id`) no la aprueba,
+  aunque tenga el puesto que aprueba, el suplente o el grupo «Autoriza precio
+  bajo piso» (`_pidio_la_aprobacion`). «Aprobar» lo dice y nombra a quién le
+  toca: el titular o el suplente que no la pidió. Si no hay nadie más, el
+  mensaje pide nombrar el suplente en Ajustes → Ventas → Cotizador (sigue
+  vacío hasta que Dirección lo defina) o que la mande otra persona.
+- La actividad «Aprobar cotización» ya no le llega a quien la pidió.
+- Prueba `test_flujo.test_12`. Sin migración.
+
 ## 19.0.1.4.0 — 2026-10-09
 
 Dirección General 2026-10-09: dos cosas menos en el PDF para el cliente

@@ -36,13 +36,22 @@ actividad, solo «Dueño del proceso» se resuelve):
 Lo que no se puede resolver regresa vacío con el motivo, que queda en el log
 (``_logger.info``) y en el reporte ``sgi_relative_roles_report``.
 
-**Aprobador ≠ quien ejecuta o pide** (``_sgi_not_self``): en «Aprueba» y
-«Escala», las personas resueltas que también ejecutan la actividad (o piden el
-registro) se quitan. Si con eso no queda nadie, el aprobador o el
-escalamiento sube al jefe directo de cada persona quitada
-(``hr.employee.parent_id``, el mismo camino que el escalamiento de las
-actividades), saltando a quien también ejecute o pida; si no hay jefe, queda
-vacío con el motivo («avisa»): nunca se asigna en silencio a la misma persona.
+**Aprobador ≠ quien ejecuta o pide**: en «Aprueba» y «Escala», las personas
+resueltas que también ejecutan la actividad (o piden el registro) se quitan.
+
+- **Escala** (``_sgi_not_self``): si no queda nadie, el escalamiento sube al
+  jefe directo de cada persona quitada (``hr.employee.parent_id``), saltando a
+  quien también ejecute o pida; sin jefe, vacío con el motivo.
+- **Aprueba** (``_sgi_not_self_approver``, 57.143.0, Dirección General
+  2026-10-09): la aprobación **no sube por jerarquía**. Las personas del rol
+  son las del titular más las del **suplente nombrado**
+  (``substitute_job_id``, un puesto, vacío por omisión). Si quien pide o
+  ejecuta es titular o suplente, aprueba el otro; si no queda nadie, nadie
+  aprueba y queda el aviso (el rol marca «Sin personas en el puesto»).
+- **Nadie aprueba lo que él mismo pidió** (``_sgi_requester_conflict``): al
+  aprobar un registro concreto, quien lo pidió (campos de
+  ``SGI_REQUESTER_FIELDS``) no puede aprobarlo aunque tenga el puesto; el
+  mensaje dice a quién le toca.
 """
 import logging
 
@@ -54,8 +63,13 @@ _logger = logging.getLogger(__name__)
 
 # Campos del registro, en orden de preferencia.
 SGI_RECORD_PROCESS_FIELDS = ('sgi_process_id', 'process_id')
+# 57.143.0: también «Solicitó» de la solicitud de laboratorio y de la de
+# modificación (requested_by_id), quien mandó a aprobar la cotización
+# (solicitada_por_id) y quien elaboró la solicitud de desarrollo
+# (sgi_dev_prepared_by_id); antes esos registros caían en create_uid.
 SGI_REQUESTER_FIELDS = ('request_owner_id', 'sgi_requester_id', 'requester_id',
-                        'requested_by', 'request_user_id')
+                        'requested_by_id', 'requested_by', 'request_user_id',
+                        'solicitada_por_id', 'sgi_dev_prepared_by_id')
 SGI_DETECTOR_FIELDS = ('sgi_detected_by_id', 'detected_by_id', 'reporter_id',
                        'sgi_requester_id')
 # Registros ligados cuyo proceso vale para el registro (un salto): la
@@ -183,7 +197,19 @@ class SgiActivityRoleRelative(models.Model):
     def _sgi_resolve_employees(self, record=None):
         """(empleados, motivo): a quién toca este rol para ``record``. Motivo
         vacío = resuelto. Sin la regla aprobador ≠ ejecutor (ver
-        ``_sgi_target_employees``)."""
+        ``_sgi_target_employees``). 57.143.0: en «Aprueba», las personas del
+        suplente nombrado se suman a las del titular."""
+        self.ensure_one()
+        employees, reason = self._sgi_resolve_titular(record)
+        if self.role == 'aprueba' and self.substitute_job_id:
+            substitutes = self.substitute_job_id._sgi_holders()
+            if substitutes:
+                employees = employees | substitutes
+                reason = ''
+        return employees, reason
+
+    def _sgi_resolve_titular(self, record=None):
+        """(empleados, motivo) del destino del rol, sin suplente."""
         self.ensure_one()
         Employee = self.env['hr.employee'].sudo()
         if self.target_type == 'job':
@@ -246,11 +272,55 @@ class SgiActivityRoleRelative(models.Model):
             people |= self._sgi_requester(record.sudo())[0]
         return people
 
+    def _sgi_not_self_approver(self, employees, excluded):
+        """57.143.0: regla aprobador ≠ quien ejecuta o pide para «Aprueba», sin
+        subir por jerarquía: (empleados, aviso). Quita a los excluidos; lo que
+        queda son el titular o el suplente que no piden ni ejecutan. Si no
+        queda nadie, nadie aprueba y el aviso dice por qué."""
+        self.ensure_one()
+        clash = employees & excluded
+        if not clash:
+            return employees, ''
+        rest = employees - excluded
+        names = ', '.join(clash.mapped('name'))
+        if rest:
+            return rest, "se quitó a %s porque también ejecuta o pide" % names
+        if self.substitute_job_id:
+            return rest, ("%s también ejecuta o pide y el suplente (%s) también, o no tiene "
+                          "personas: nadie aprueba" % (names, self.substitute_job_id.name))
+        return rest, ("%s también ejecuta o pide y el rol no tiene suplente: nadie aprueba "
+                      "(Dirección nombra el puesto suplente en el rol «Aprueba»)" % names)
+
+    def _sgi_requester_conflict(self, record, user):
+        """57.143.0 (regla «nadie aprueba lo que él mismo pidió»): mensaje si
+        ``user`` pidió ``record`` (campos de ``SGI_REQUESTER_FIELDS``; no se
+        usa ``create_uid``) y por eso no lo aprueba, o False si puede. El
+        mensaje dice a quién le toca: el titular o el suplente que no lo pidió."""
+        self.ensure_one()
+        if not record or not user or user.id == SUPERUSER_ID:
+            return False
+        requesters, _field = self._sgi_record_people(record.sudo(), SGI_REQUESTER_FIELDS)
+        if not requesters or user not in requesters.user_id:
+            return False
+        others, _note = self._sgi_target_employees(record, log=False)
+        others = others.filtered(lambda e: e.user_id and e.user_id != user)
+        activity = self.activity_id.sudo()
+        label = " ".join(("%s %s" % (activity.number or activity.legacy_number or '', activity.name or '')).split())
+        what = record.display_name or record._description
+        if others:
+            return ("Usted pidió «%s»: quien pide no lo aprueba. Le toca a %s (%s)." % (
+                what, ', '.join(others.mapped('name')), label))
+        return ("Usted pidió «%s» y es quien lo aprueba; nadie más puede aprobarlo porque el rol "
+                "«Aprueba» de %s no tiene suplente con personas. Dirección nombra el puesto suplente "
+                "en la Matriz de responsabilidades." % (what, label))
+
     @api.model
     def _sgi_not_self(self, employees, excluded):
-        """Regla aprobador ≠ quien ejecuta o pide: (empleados, aviso). Quita
-        a los excluidos; si no queda nadie, sube al jefe directo de cada
-        quitado, saltando excluidos. Sin jefe: vacío y aviso."""
+        """Regla aprobador ≠ quien ejecuta o pide para «Escala»: (empleados,
+        aviso). Quita a los excluidos; si no queda nadie, el escalamiento sube
+        al jefe directo de cada quitado, saltando excluidos. Sin jefe: vacío y
+        aviso. (Hasta 57.142.0 también aplicaba a «Aprueba»; desde 57.143.0 la
+        aprobación no sube: ``_sgi_not_self_approver``.)"""
         clash = employees & excluded
         if not clash:
             return employees, ''
@@ -273,13 +343,16 @@ class SgiActivityRoleRelative(models.Model):
 
     def _sgi_target_employees(self, record=None, log=True):
         """(empleados, aviso) de este rol para ``record`` con la regla
-        aprobador ≠ ejecutor en «Aprueba» y «Escala». Lo que no se resuelve o
+        aprobador ≠ ejecutor en «Aprueba» (sin subir) y «Escala» (sube al
+        jefe). Lo que no se resuelve o
         se mueve queda en el log (``log=False`` en los cálculos repetidos de
         Mis pendientes; el reporte y la sincronización sí registran)."""
         self.ensure_one()
         employees, reason = self._sgi_resolve_employees(record)
         note = reason
-        if employees and self.role in ('aprueba', 'escala'):
+        if employees and self.role == 'aprueba':
+            employees, note = self._sgi_not_self_approver(employees, self._sgi_executor_employees(record))
+        elif employees and self.role == 'escala':
             employees, note = self._sgi_not_self(employees, self._sgi_executor_employees(record))
         if note and log:
             _logger.info("SGI rol %s (%s %s): %s", self.id,

@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimi
 |---|---|---|---|---|---|---|---|---|
 | `critical` | Boolean | Crítica (estudio de habilidad) | Entra al estudio de habilidad del pilotaje con las lecturas por lote. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:87` |
 | `customer_approved` | Boolean | Aprobado por el cliente | El cliente aceptó este valor en la aprobación final. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:130` |
-| `lab_request_ids` | Many2many | Solicitudes de laboratorio |  |  | `sgi.dev.lab.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:246` |
+| `lab_request_ids` | Many2many | Solicitudes de laboratorio |  |  | `sgi.dev.lab.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:247` |
 | `lab_requested` | Boolean | Medir en la muestra | Diseño de Producto pide al laboratorio medir este renglón en la muestra del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:102` |
 | `project_id` | Many2one |  | Proyecto de desarrollo al que pertenece el renglón. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:99` |
 | `run_1` | Float | Lectura 1 | Primera lectura de la corrida de muestra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:113` |
