@@ -7,6 +7,8 @@ F-P-D01-26 (Carda) y F-P-D01-27 (Tramado): un solo formulario en el proyecto
 las características pedidas (una fila por característica, con unidad, valor
 y norma). El PDF imprime la clave del formato que corresponde al tipo.
 """
+import json
+
 from odoo import api, fields, models
 
 from .sgi_dev_characteristic import DEV_TYPES
@@ -95,17 +97,49 @@ class ProjectProjectDevRequest(models.Model):
         self.ensure_one()
         return self._sgi_dev_format_map().sgi_live_label()
 
+    # 57.139.0: renglones del tipo que el usuario borró a propósito (claves
+    # «caracteristica|dirección|posición», JSON). Técnico: no se captura ni se muestra.
+    sgi_dev_removed_line_keys = fields.Char(string="Renglones del tipo borrados a propósito", copy=False, readonly=True)
+
+    def _sgi_dev_removed_keys(self):
+        self.ensure_one()
+        try:
+            return set(json.loads(self.sgi_dev_removed_line_keys or '[]'))
+        except ValueError:
+            return set()
+
+    def _sgi_dev_remember_removed_lines(self, keys):
+        for project in self:
+            project.sudo().write({'sgi_dev_removed_line_keys': json.dumps(sorted(project._sgi_dev_removed_keys() | set(keys)))})
+
     def action_sgi_dev_load_lines(self):
         """Propone las características del tipo desde el catálogo
-        (``sgi.dev.characteristic.template``); solo agrega las que faltan."""
+        (``sgi.dev.characteristic.template``); solo agrega las que faltan. 57.139.0: con la
+        tabla vacía propone todas (y olvida lo borrado antes); con renglones, no vuelve a
+        proponer los que el usuario borró a propósito y deja cuenta en el chatter."""
         Template = self.env['sgi.dev.characteristic.template']
         for project in self:
+            if not project.sgi_dev_line_ids and project.sgi_dev_removed_line_keys:
+                project.sudo().write({'sgi_dev_removed_line_keys': False})
+            removed = project._sgi_dev_removed_keys()
             existing = {(l.caracteristica_id.id, l.direction, l.position) for l in project.sgi_dev_line_ids if l.caracteristica_id}
             templates = Template.search([('dev_type', '=', project.sgi_dev_type or 'general')])
-            vals = [(0, 0, t._line_vals(sequence=i * 10)) for i, t in enumerate(templates)
-                    if (t.caracteristica_id.id, t.direction, t.position) not in existing]
+            vals, skipped = [], []
+            for i, t in enumerate(templates):
+                key = (t.caracteristica_id.id, t.direction, t.position)
+                if key in existing:
+                    continue
+                if "%d|%s|%s" % key in removed:
+                    skipped.append(t.caracteristica_id.name)
+                    continue
+                vals.append((0, 0, t._line_vals(sequence=i * 10)))
             if vals:
                 project.write({'sgi_dev_line_ids': vals})
+            if vals or skipped:
+                project.message_post(body="Características del tipo %s: %d agregada(s)%s." % (
+                    dict(DEV_TYPES).get(project.sgi_dev_type or 'general'), len(vals),
+                    ("; no se volvieron a proponer %d borrada(s) a propósito: %s" % (len(skipped), ", ".join(skipped)))
+                    if skipped else ''))
         return True
 
     @api.depends('sgi_dev_line_ids.run_result', 'sgi_dev_line_ids.sample_result', 'sgi_dev_line_ids.lab_requested',

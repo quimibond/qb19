@@ -140,7 +140,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.deliverable` | `group_sgi_user` | l | quimibond_sgi |
 | `sgi.dev.change.request` | `base.group_user` | lec | quimibond_sgi |
 | `sgi.dev.change.request` | `group_sgi_manager` | lecb | quimibond_sgi |
-| `sgi.dev.characteristic` | `base.group_user` | lec | quimibond_sgi |
+| `sgi.dev.characteristic` | `base.group_user` | lecb | quimibond_sgi |
 | `sgi.dev.characteristic.template` | `base.group_user` | l | quimibond_sgi |
 | `sgi.dev.characteristic.template` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.dev.coa` | `base.group_user` | lecb | quimibond_sgi |

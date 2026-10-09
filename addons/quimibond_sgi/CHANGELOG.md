@@ -13,6 +13,28 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.139.0 — 2026-10-09
+
+Dirección General 2026-10-09: Administración de Ventas necesita depurar los
+renglones que propone el tipo y el cliente no pide, y en producción nadie podía
+borrarlos (acceso `sgi.dev.characteristic.user` sin `perm_unlink`).
+
+- **Seguridad** `sgi.dev.characteristic.user` (Usuario interno) con
+  `perm_unlink`: el bote de basura aparece en «Análisis de mercado industrial»
+  (las demás pestañas siguen con `delete="0"`).
+- **Agregado** candado al borrar: un renglón con lecturas de la corrida (número
+  o texto), dictamen, aprobación del cliente, lecturas de pilotaje o un reporte
+  de conformidad no se borra; el error dice qué tiene y sugiere desmarcar «Va a
+  la especificación del cliente» y «Va al certificado». Si el desarrollo ya
+  lleva bitácora de revisiones, el borrado queda anotado como «renglón borrado».
+- **Cambiado** «Proponer características del tipo»: con la tabla vacía propone
+  todas sin preguntar; con renglones pide confirmación y **no vuelve a proponer
+  los que se borraron a propósito** (el proyecto los recuerda en
+  `sgi_dev_removed_line_keys`, técnico); el chatter dice cuántas agregó y
+  cuáles omitió. Vaciar la tabla olvida esa memoria.
+- Sin migración: el acceso se actualiza con el CSV. Prueba en
+  `test_dev_characteristics.py` (test_02b).
+
 ## 19.0.57.138.0 — 2026-10-09
 
 Corrección urgente: el build de producción (`quimibond`, PR 605) cayó al cargar
