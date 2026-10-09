@@ -149,9 +149,9 @@ class ProjectProjectDevBase(models.Model):
     def _sgi_dev_project_keys(self):
         """Claves capturadas en el proyecto, en la forma del código; None las que no se capturaron."""
         self.ensure_one()
-        Clave = self.env['ficha.tecnica.clave.codigo']
-        gauge = Clave.gauge_code(self.sgi_dev_code_galga) if self.sgi_dev_code_galga else None
+        gauge = self._sgi_dev_gauge_digits() or None
         return {
+            'galga_n': self.sgi_dev_code_galga or None,
             'composicion': (self.sgi_dev_code_composicion_id.code or '').upper() or None,
             'dibujo': (self.sgi_dev_code_dibujo_id.code or '').upper() or None,
             'peso': ("%03d" % self.sgi_dev_code_peso) if 0 < self.sgi_dev_code_peso < 1000 else None,
@@ -172,9 +172,15 @@ class ProjectProjectDevBase(models.Model):
         low = by_role.get('crudo') or by_role.get('tenido')
         keys = self._sgi_dev_project_keys()
         changed = set()
-        for key in ('composicion', 'dibujo', 'peso', 'hilo', 'galga', 'color', 'ancho', 'acabado'):
+        for key in ('composicion', 'dibujo', 'peso', 'hilo', 'color', 'ancho', 'acabado'):
             if keys[key] is not None and keys[key] != top[key]:
                 changed.add(key)
+        # 57.142.0: la galga se compara por número, no por dígitos: el base puede llevar 22 y el
+        # proyecto proponer 21 para la misma galga 18; en ese caso se conservan los dígitos del base.
+        if keys['galga_n'] and keys['galga']:
+            Clave = self.env['ficha.tecnica.clave.codigo']
+            if Clave.gauge_from_code(top['galga']) != keys['galga_n']:
+                changed.add('galga')
         if keys['ancho_crudo'] is not None and low and keys['ancho_crudo'] != low['ancho']:
             changed.add('ancho_crudo')
         return changed, keys
