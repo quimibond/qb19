@@ -200,11 +200,12 @@ class SgiDevLabRequest(models.Model):
 
     @api.model
     def _authorizer_users(self):
-        """Usuarios del puesto autorizador; el Jefe MAST siempre puede."""
+        """Usuarios del puesto autorizador y de su jefe directo (57.143.0,
+        suplencia); el Jefe MAST siempre puede."""
         job = self._authorizer_job()
         if not job:
             return self.env['res.users']
-        return self.env['hr.employee'].sudo().search([('job_id', '=', job.id)]).mapped('user_id')
+        return job._sgi_users(with_bosses=True)
 
     def action_request(self):
         for req in self:
@@ -223,8 +224,8 @@ class SgiDevLabRequest(models.Model):
         for req in self:
             if not (self.env.user in req._authorizer_users()
                     or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
-                raise UserError("Solo el puesto configurado (Coordinador de Laboratorio y MP) o el Jefe MAST "
-                                "autoriza las pruebas.")
+                raise UserError("Solo el puesto configurado (Coordinador de Laboratorio y MP), su jefe directo "
+                                "o el Jefe MAST autoriza las pruebas.")
             req.write({'state': 'autorizada', 'authorized_by_id': self.env.uid, 'date_authorized': fields.Datetime.now()})
             req.activity_ids.filtered(lambda a: a.summary == "Autorizar pruebas de laboratorio").action_feedback()
         return True

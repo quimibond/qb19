@@ -29,6 +29,8 @@
                 <field name="job_id" readonly="1" string="Puesto que aprueba"/>
                 <field name="family_id" readonly="1" optional="hide"/>
                 <field name="relative_role" readonly="1" optional="hide"/>
+                <!-- 57.143.0: suplente nombrado (vacío por omisión); la aprobación no sube al jefe. -->
+                <field name="substitute_job_id" options="{'no_create': True}" string="Suplente" optional="show"/>
                 <field name="condition" readonly="1" string="Condición (texto)" optional="show"/>
                 <field name="approval_kind"/>
                 <field name="approval_model_id" options="{'no_create': True}"
@@ -73,6 +75,7 @@
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_substitute" string="Suplente" context="{'group_by': 'substitute_job_id'}"/>
                     <filter name="group_model" string="Documento" context="{'group_by': 'approval_model_id'}"/>
                     <filter name="group_kind" string="Cómo se aprueba" context="{'group_by': 'approval_kind'}"/>
                 </group>

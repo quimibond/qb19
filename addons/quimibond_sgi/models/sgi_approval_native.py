@@ -194,7 +194,8 @@ class SgiActivityRoleApproval(models.Model):
     approval_domain = fields.Char(string="Condición en Odoo", compute='_compute_approval_domain', store=True)
     approval_user_ids = fields.Many2many(
         'res.users', string="Personas que aprueban", compute='_compute_approval_users',
-        help="Personas que hoy aprueban: las del puesto o la familia.")
+        help="Personas que hoy aprueban: las del puesto o la familia y las del suplente nombrado, "
+             "sin quien también ejecuta la actividad. Al aprobar un registro, quien lo pidió tampoco.")
     approval_state = fields.Selection(
         APPROVAL_STATES, string="Aprobación en Odoo", compute='_compute_approval_state',
         help="Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra "
@@ -280,14 +281,16 @@ class SgiActivityRoleApproval(models.Model):
                 raise ValidationError("El campo de la condición debe ser del documento que se aprueba.")
             role._sgi_condition_domain()
 
-    def _sgi_approver_users(self):
+    def _sgi_approver_users(self, record=None):
         """Usuarios activos de las personas que aprueban: las del puesto, las
-        de la familia o el dueño del proceso (57.13.0: con la regla aprobador
-        ≠ ejecutor, ver ``sgi_relative_roles``). Los relativos que dependen
-        del registro (solicitante, jefe del que pide…) no tienen personas
-        fijas: vacío."""
+        de la familia o el dueño del proceso, más las del suplente nombrado
+        (57.13.0 / 57.143.0: con la regla aprobador ≠ quien ejecuta o pide,
+        sin subir por jerarquía; ver ``sgi_relative_roles``). Con ``record``
+        (una solicitud de Aprobaciones) también se quita a quien la pidió. Los
+        relativos que dependen del registro (solicitante, jefe del que pide…)
+        no tienen personas fijas: vacío."""
         self.ensure_one()
-        employees, _note = self._sgi_target_employees()
+        employees, _note = self._sgi_target_employees(record, log=record is None)
         return employees.user_id.filtered(lambda u: u.active and not u.share)
 
     def _sgi_category_manager_approval(self):
@@ -313,7 +316,7 @@ class SgiActivityRoleApproval(models.Model):
     # creaba la categoría y, en la misma transacción, el rol seguía «Por
     # sincronizar». Las personas del puesto no se pueden declarar aquí (el
     # formulario las vuelve a leer en cada petición).
-    @api.depends('role', 'target_type', 'relative_role', 'job_id', 'family_id',
+    @api.depends('role', 'target_type', 'relative_role', 'job_id', 'family_id', 'substitute_job_id',
                  'approval_kind', 'approval_sign_template_id', 'approval_model_id',
                  'approval_method', 'approval_category_id.sgi_role_id',
                  'approval_category_id.approver_ids.user_id',
@@ -468,7 +471,8 @@ class SgiActivityRoleApproval(models.Model):
         res = super().write(vals)
         if {'approval_domain', 'approval_model_id', 'condition_field_id'} & set(vals):
             self._sgi_sanitize_approval_domains()
-        if {'role', 'job_id', 'family_id', 'relative_role', 'target_type', 'approval_kind'} & set(vals):
+        if {'role', 'job_id', 'family_id', 'relative_role', 'target_type', 'approval_kind',
+                'substitute_job_id'} & set(vals):
             self.filtered(lambda r: r._sgi_has_native_approval())._sgi_sync_approval_rule()
         return res
 

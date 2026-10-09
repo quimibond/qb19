@@ -193,8 +193,14 @@ actualizar el MIID.
 - **«Una persona de mi equipo no ve su procedimiento.»** Revise que tenga
   puesto en su ficha de empleado y que el puesto tenga actividades. Si el
   puesto no está publicado, pídalo al Jefe MAST y SGI.
-- **«Me toca aprobar algo que yo mismo hice.»** No debería: cuando quien
-  aprueba también ejecuta o pidió, la aprobación sube a su jefe. Si le llega,
-  avise al Jefe MAST y SGI.
+- **«Me toca aprobar algo que yo mismo hice o pedí.»** No debería: nadie
+  aprueba lo que él mismo pidió. Cuando quien aprueba también ejecuta o pidió,
+  aprueba el **suplente** nombrado en el rol «Aprueba» (un puesto que define
+  Dirección); la aprobación no sube sola al jefe. Si no hay suplente, nadie
+  aprueba y el SGI avisa: pídale al Jefe MAST y SGI que Dirección lo nombre.
+- **«Mi jefe hizo un paso que me toca a mí.»** Cuenta como cumplido por
+  suplencia: la medición lo distingue del puesto asignado y de «otro puesto».
+  Los botones del desarrollo restringidos a un puesto los puede usar también
+  el jefe directo de ese puesto.
 - **«¿Quién me ve como atrasado?»** Su jefe y, si el atraso escala, quien
   tenga el rol «Escala» en esa actividad.

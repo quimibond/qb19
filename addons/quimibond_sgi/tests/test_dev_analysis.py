@@ -88,6 +88,12 @@ class TestDevAnalysis(TransactionCase):
             self.dev.action_sgi_dev_request_lab_tests()  # ya están en una solicitud en curso
         with self.assertRaises(UserError):
             request.with_user(other_user).action_authorize()
+        # 57.143.0: el jefe directo del puesto también autoriza (suplencia); otro no.
+        boss_user = new_test_user(self.env, login='lab_boss', groups='base.group_user')
+        boss = self.env['hr.employee'].create({'name': 'Jefe del laboratorio prueba', 'user_id': boss_user.id})
+        lab_user.employee_ids.write({'parent_id': boss.id})
+        self.assertIn(boss_user, Request._authorizer_users())
+        self.assertNotIn(other_user, Request._authorizer_users())
         request.with_user(lab_user).action_authorize()
         self.assertEqual((request.state, request.authorized_by_id), ('autorizada', lab_user))
         masa.write({'sample_value': 54})

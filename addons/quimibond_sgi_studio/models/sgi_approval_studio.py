@@ -209,3 +209,31 @@ class SgiActivityRoleStudio(models.Model):
         return {'type': 'ir.actions.act_window', 'name': "Aprobaciones — %s" % self.activity_id.display_name,
                 'res_model': 'studio.approval.entry', 'view_mode': 'list,form',
                 'domain': [('rule_id', '=', self.approval_rule_id.id)], 'context': {'create': False}}
+
+
+class StudioApprovalEntrySgi(models.Model):
+    """1.0.6 (Dirección General 2026-10-09): nadie aprueba lo que él mismo
+    pidió. Studio registra cada aprobación como una entrada; si la regla es
+    de un rol «Aprueba» del SGI y quien aprueba es quien pidió el registro
+    (campos explícitos de ``SGI_REQUESTER_FIELDS``: «Solicitó», «Elaboró»,
+    quien mandó a aprobar…), la entrada no se crea y el mensaje dice a quién
+    le toca (el titular o el suplente que no lo pidió)."""
+    _inherit = 'studio.approval.entry'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        Rule = self.env['studio.approval.rule'].sudo()
+        Users = self.env['res.users'].sudo()
+        for vals in vals_list:
+            if not vals.get('approved') or not vals.get('rule_id') or not vals.get('res_id'):
+                continue
+            rule = Rule.browse(vals['rule_id'])
+            role = rule.sgi_role_id
+            if not role or not rule.model_name or rule.model_name not in self.env:
+                continue
+            record = self.env[rule.model_name].sudo().browse(vals['res_id']).exists()
+            user = Users.browse(vals.get('user_id') or self.env.uid)
+            conflict = record and role._sgi_requester_conflict(record, user)
+            if conflict:
+                raise UserError(conflict)
+        return super().create(vals_list)

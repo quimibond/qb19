@@ -84,7 +84,12 @@ decide encenderlo, antes hay que contestar el límite de intentos del PIN
 - **Quién:** exactamente un rol «Ejecuta» (ninguno si la actividad es
   automática), por puesto, familia de puestos o rol relativo (el
   solicitante, quien detecta, el dueño del proceso…). Si quien aprueba
-  también ejecuta, la aprobación sube a su jefe.
+  también ejecuta o pidió el registro, aprueba el **suplente** del rol
+  «Aprueba» (columna «Suplente», un puesto, vacío hasta que Dirección lo
+  nombre); la aprobación nunca sube sola al jefe y sin suplente nadie aprueba
+  (el rol marca «Sin personas en el puesto»). El escalamiento del atraso sí
+  sube al jefe directo. En la medición, el jefe directo de quien tiene el rol
+  «Ejecuta» cuenta como cumplido por suplencia («Jefe directo (suplencia)»).
 - **Vencimientos:** mensual en un día hábil, semanal en un día de la semana,
   anual por mes y día, o por evento. Los días inhábiles son los del
   calendario del SGI (parámetro `quimibond_sgi.business_calendar_id`): la

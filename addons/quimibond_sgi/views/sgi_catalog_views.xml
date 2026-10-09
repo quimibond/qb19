@@ -284,6 +284,7 @@
             <list string="Ejecuciones" create="0" edit="0" delete="0" sample="1"
                   default_order="period_start desc, count desc"
                   decoration-success="exec_class == 'correcto'"
+                  decoration-info="exec_class == 'suplencia'"
                   decoration-warning="exec_class == 'otro_puesto'"
                   decoration-danger="exec_class in ('generico', 'sin_empleado')"
                   decoration-muted="exec_class == 'sistema'">
@@ -328,6 +329,8 @@
                 <field name="process_id"/>
                 <field name="team_filter_id" string="Equipo de ventas"
                        help="El equipo elegido más las actividades que aplican a todos."/>
+                <filter name="suplencia" string="Jefe directo (suplencia)"
+                        domain="[('exec_class', '=', 'suplencia')]"/>
                 <filter name="otro_puesto" string="Otro puesto"
                         domain="[('exec_class', '=', 'otro_puesto')]"/>
                 <filter name="generico" string="Cuenta genérica"
@@ -365,7 +368,7 @@
         <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Quién ejecuta cada actividad</p>
-            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambie las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
+            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>jefe directo (suplencia)</b> (el jefe directo de quien tiene el puesto; cuenta como cumplida), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambie las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
         </field>
     </record>
 
