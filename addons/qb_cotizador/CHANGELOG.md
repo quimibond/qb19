@@ -3,6 +3,37 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.3.0 — 2026-10-09
+
+Revisión de Administración de Ventas (2026-10-08) sobre la cotización
+COT-2026-0001 en USD: el TC salía 1.0 y no se podía editar, el semáforo decía
+verde sin costo («cubre todo») y «Calcular costo» no corría porque el único
+período de costeo está en borrador.
+
+- **Cambiado** el tipo de cambio ya no espera al cálculo del costo: una
+  cotización en divisa **nace con el TC de Odoo** (`res.currency.rate` del
+  día), el TC se vuelve a tomar al cambiar la moneda y con el botón **«TC de
+  hoy»**, y se puede **capturar a mano** mientras la cotización está en
+  borrador o por aprobar. `fx_fuente` (Odoo / capturado a mano) y
+  `fx_fecha` dicen de dónde salió; el cálculo del costo respeta el TC
+  capturado a mano. En MXN el TC vuelve a 1.
+- **Agregado** aviso de moneda: divisa con TC ≤ 1 (el precio se estaría
+  leyendo como MXN) o MXN con TC distinto de 1. Con TC ≤ 1 en divisa no se
+  manda a aprobar.
+- **Corregido** sin costo calculado (piso 0) el semáforo salía verde y el
+  margen 100 %. Ahora `sin_costo` deja el semáforo vacío y los márgenes en
+  0, la ficha lo dice y no se puede pedir aprobación hasta calcular.
+- **Cambiado** período para cotizar: el último cerrado y, si no hay ninguno
+  cerrado, el último con costos calculados aunque siga en borrador; el costo
+  queda **provisional** (calidad baja, «período AAAA-MM-01 sin cerrar») en la
+  ficha, la hoja interna y el chatter. Sin ningún período con costos sigue
+  deteniéndose. (Decisión de Dirección General pendiente: cerrar 2026-09 o
+  dejar la cotización provisional.)
+- Hoja interna de costo: el TC dice su fuente y fecha. Las importadas del
+  cotizador anterior conservan su TC como «capturado a mano».
+- Sin migración: las columnas nuevas nacen con su valor por defecto; las
+  cotizaciones vivas en divisa con TC 1.0 se corrigen con «TC de hoy».
+
 ## 19.0.1.2.0 — 2026-10-08
 
 Jose 2026-10-08, 5.6: precio en tarifa automático al ganar.

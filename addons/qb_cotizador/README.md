@@ -8,10 +8,15 @@ sus cotizaciones y convive con él hasta que se retire.
 ## Cómo se cotiza
 
 1. Cliente, producto existente **o** especificación nueva (gramaje, ancho,
-   galga), volumen mensual, moneda y precio al cliente.
+   galga), volumen mensual, moneda y precio al cliente. En divisa el **tipo de
+   cambio** sale de Odoo al elegir la moneda («TC de hoy» lo refresca) y se
+   puede capturar a mano en borrador; la ficha dice de dónde salió y avisa si
+   una cotización en divisa trae TC 1.
 2. **Calcular costo**: toma la fila de `qb.costo.unitario` del producto (o del
-   hermano) en el último período cerrado y la guarda como foto, con calidad y
-   fuente. Un desarrollo sin receta se captura a mano (fuente «manual»).
+   hermano) en el último período cerrado (si no hay ninguno cerrado, el último
+   con costos, marcado provisional) y la guarda como foto, con calidad y
+   fuente. Un desarrollo sin receta se captura a mano (fuente «manual»). Sin
+   costo calculado no hay semáforo ni márgenes.
 3. Pisos, márgenes y semáforo salen del precio sobre esa foto (editar el
    precio los actualiza; recalcular el costo es explícito y deja rastro).
 4. **Enviar a aprobación** → el puesto configurado (Director de Finanzas y

@@ -176,7 +176,7 @@
                             <tr><td><strong>Producto</strong></td><td><span t-out="o.product_id.display_name or o.spec_descripcion"/></td>
                                 <td><strong>Especificación</strong></td><td><span t-out="'%g g/m² × %g m · galga %s' % (o.spec_gramaje, o.spec_ancho, o.spec_galga or '—')"/></td></tr>
                             <tr><td><strong>Volumen</strong></td><td><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/></td>
-                                <td><strong>Moneda / TC</strong></td><td><span t-out="'%s · %.4f' % (o.currency_id.name, o.fx_rate)"/></td></tr>
+                                <td><strong>Moneda / TC</strong></td><td><span t-out="'%s · %.4f' % (o.currency_id.name, o.fx_rate)"/><t t-if="o.es_divisa"> (<span t-out="dict(o._fields['fx_fuente'].selection).get(o.fx_fuente) or ''"/><t t-if="o.fx_fecha"> del <span t-field="o.fx_fecha"/></t>)</t></td></tr>
                             <tr><td><strong>Fuente del costo</strong></td><td><span t-out="dict(o._fields['costo_fuente'].selection).get(o.costo_fuente)"/></td>
                                 <td><strong>Período / calidad</strong></td><td><span t-out="'%s · %s' % (o.periodo_id.period or '—', dict(o._fields['calidad'].selection).get(o.calidad))"/></td></tr>
                         </table>
