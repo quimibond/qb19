@@ -31,9 +31,10 @@ class TestChecadas(TransactionCase):
         else:
             vals['qb_checador_pin'] = '12'
         cls.por_referencia = cls.env['hr.employee'].create(vals)
-        cls.por_pin = cls.env['hr.employee'].create({
-            'name': 'Por pin', 'registration_number': 'S-99', 'qb_checador_pin': '77',
-            'resource_calendar_id': cls.calendario.id})
+        vals = {'name': 'Por pin', 'qb_checador_pin': '77', 'resource_calendar_id': cls.calendario.id}
+        if cls.tiene_referencia:
+            vals['registration_number'] = 'S-99'     # el usuario capturado gana sobre la referencia
+        cls.por_pin = cls.env['hr.employee'].create(vals)
         cls.Checada = cls.env['qb.checada']
         cls.Att = cls.env['hr.attendance']
 
