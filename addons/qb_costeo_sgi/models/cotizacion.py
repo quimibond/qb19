@@ -77,6 +77,12 @@ class QbCotizadorCotizacionSgi(models.Model):
             vals['product_id'] = project.sgi_dev_product_id.id
         elif project.sgi_dev_product_name:
             vals['spec_descripcion'] = project.sgi_dev_product_name
+        # 1.4.0 (Dirección General 2026-10-09): el artículo base del desarrollo es el producto hermano
+        # de la cotización; sin artículo generado, el costo se toma de él.
+        if project.sgi_dev_base_product_id:
+            vals['hermano_product_id'] = project.sgi_dev_base_product_id.id
+            if not project.sgi_dev_product_id:
+                vals['costo_fuente'] = 'hermano'
         from odoo.addons.quimibond_ficha_tecnica_tela.models.ficha_tecnica_caracteristica import (
             CODE_MASS, CODE_WIDTH)
         mass = self._sgi_pick_line(project, CODE_MASS)
@@ -120,6 +126,15 @@ class QbCotizadorCotizacionSgi(models.Model):
         res = super().action_calcular()
         for rec in self.filtered('project_id'):
             rec.project_revision = rec.project_id.sgi_dev_revision
+        return res
+
+    def _validar_para_aprobacion(self):
+        res = super()._validar_para_aprobacion()
+        # 1.4.0: con renglones «Por capturar» en las listas del desarrollo, el costo no está completo.
+        if self.project_id and self.project_id.sgi_dev_bom_pending_count:
+            raise UserError("El desarrollo %s tiene %d renglón(es) de lista de materiales por capturar (componentes "
+                            "que dependen de la clave que cambió respecto al artículo base). Captúrelos antes de "
+                            "pedir aprobación." % (self.project_id.display_name, self.project_id.sgi_dev_bom_pending_count))
         return res
 
     # ------------------------------------------------------------------
@@ -184,7 +199,11 @@ class QbCotizadorCotizacionSgi(models.Model):
                                       "configurado desde la cotización.")
                 continue
             label = rec.folio or rec.name
-            request = self.env['approval.request'].create({
+            # 1.5.0 (Dirección General 2026-10-09): la solicitud y sus aprobadores se crean con sudo.
+            # El vendedor (Usuario interno, sin grupos de Aprobaciones) no puede crear
+            # `approval.approver`, que nace solo al poner la categoría; `request_owner_id` sigue
+            # siendo quien la manda, para que en Aprobaciones se vea quién la pidió.
+            request = self.env['approval.request'].sudo().create({
                 'name': "Cotización %s · %s" % (label, rec.partner_id.name or 'sin cliente'),
                 'category_id': category.id, 'sgi_subject_id': subject.id, 'request_owner_id': self.env.uid,
                 'reference': label, 'company_id': rec.company_id.id, 'qb_cotizacion_id': rec.id,
@@ -195,11 +214,21 @@ class QbCotizadorCotizacionSgi(models.Model):
                               rec.margen_neto_pct, rec.semaforo or 'sin precio', rec.costo_muestra,
                               (" Proyecto %s." % rec.project_id.display_name) if rec.project_id else ''),
             })
-            request.action_confirm()
+            request.sudo().action_confirm()
             rec.write({'approval_request_id': request.id})
             rec.activity_unlink(['mail.mail_activity_data_todo'])
             rec.message_post(body="Solicitud %s enviada a Aprobaciones (%s): la cotización se presenta cuando se "
                                   "apruebe ahí." % (request.name, category.name))
+        return res
+
+    def action_volver_a_borrador(self):
+        """1.5.0: retirar la cotización cancela su solicitud viva en Aprobaciones (con sudo: el
+        vendedor no tiene grupos de Aprobaciones); volver a enviar crea una solicitud nueva."""
+        res = super().action_volver_a_borrador()
+        for rec in self.filtered(lambda r: r.approval_request_id and r.approval_request_id.request_status in ('new', 'pending')):
+            request = rec.approval_request_id.sudo().with_context(qb_from_approval=True)
+            request.action_cancel()
+            rec.message_post(body="Solicitud %s cancelada en Aprobaciones: la cotización se retiró." % request.name)
         return res
 
     def _puede_aprobar(self, user):

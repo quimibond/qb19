@@ -74,6 +74,7 @@ from . import sgi_dev_characteristic
 from . import sgi_dev_request
 from . import sgi_dev_project
 from . import sgi_dev_product
+from . import sgi_dev_product_base  # 57.141.0: «Generar artículos» desde el artículo base (hereda mrp.bom.line)
 from . import sgi_dev_analysis
 from . import sgi_dev_measure
 from . import sgi_dev_board

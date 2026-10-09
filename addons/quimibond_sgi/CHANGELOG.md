@@ -13,6 +13,106 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.142.0 — 2026-10-09
+
+Dirección General 2026-10-09: la galga en el código. El DAT P-D02-01 da a cada
+galga un rango de dos dígitos (galga 18 = 21 a 30) y «Generar artículos»
+siempre ponía el primero; en el 499 salió WJ053Q21JCO160 cuando la familia del
+base usa 22, y Administración de Ventas lo corrigió a mano.
+
+- **Agregado** `sgi_dev_code_galga_digits` «Dígitos de galga (7-8)» con el
+  rango visible junto a la galga: se propone el primero del rango y se puede
+  elegir otro dentro de él; fuera del rango no se guarda (restricción) ni se
+  genera. Solo se muestra sin artículo base.
+- **Cambiado** con artículo base, la galga se compara por número y no por
+  dígitos: si el base lleva 22 y el proyecto galga 18, no cambia y los
+  artículos nuevos conservan el 22 del base; si la galga sí cambia, van los
+  dígitos elegidos.
+- **Cambiado** el nombre del proyecto se vuelve a armar cuando alguien corrige
+  el código del artículo acabado (`product.product.write`).
+- **Migración** `19.0.57.142.0`: rearma el nombre de los desarrollos (el 499
+  pasa a «Análisis WJ053Q22JCO160»); los dígitos de galga los calcula Odoo al
+  crear la columna. No toca artículos ni listas.
+
+## 19.0.57.141.0 — 2026-10-09
+
+Dirección General 2026-10-09: «Generar artículos» parte del artículo base.
+Armaba crudo, teñido y acabado con las claves del producto terminado, y peso y
+ancho cambian en el proceso (el acabado WJ053Q22JNT160 consume el teñido
+WJ044Q22INT235, que consume el crudo WJ044Q22HNT235). En el proyecto 499 generó
+un crudo que no existe y Administración de Ventas armó a mano el teñido y las
+listas.
+
+- **Cambiado** con `sgi_dev_base_product_id` (`models/sgi_dev_product_base.py`):
+  se recorre la cadena del base por sus listas de materiales (acabado → teñido
+  → crudo); en cada nivel se decide si cambia con las claves del proyecto
+  (color: teñido y acabado; ancho acabado: acabado; ancho crudo: crudo y
+  teñido; composición, dibujo, peso, hilo y galga: todos; acabado especial:
+  acabado). Nivel que no cambia: se liga el artículo del base. Nivel que
+  cambia: artículo nuevo con el código del nivel del base sustituyendo solo lo
+  que cambió (WJ044Q22INT235 → WJ044Q22ICO235), unidad y categoría del base,
+  lista de materiales copiada con cantidades, operaciones y subproductos, y el
+  insumo del nivel inferior reemplazado por el nuevo. Si cambia el peso, el de
+  crudo y teñido se estima en proporción al base y el chatter lo dice.
+- **Agregado** `mrp.bom.line.sgi_dev_pending` «Por capturar» (columna en la
+  lista de materiales): los componentes que dependen de la clave que cambió
+  (fórmula de color en el teñido; hilo en el crudo si cambió composición,
+  dibujo, peso, hilo, galga o ancho crudo; la cantidad del insumo si cambió
+  peso o ancho). El proyecto los cuenta (`sgi_dev_bom_pending_count`, aviso y
+  «Ver listas» en «Cotización») y `qb_costeo_sgi` 1.4.0 no deja mandar la
+  cotización a aprobar mientras haya.
+- **Cambiado** con resultado «Producto de línea» el botón no aparece y la
+  acción se detiene: se cotiza el artículo de línea.
+- Sin base, el generador por claves sigue igual. Si el base no sigue la regla
+  de codificación, se avisa y se usa el generador por claves. Todo queda en el
+  chatter: qué se ligó, qué se creó, de qué lista y qué falta capturar.
+- Los artículos y listas del proyecto 499 no se tocan (están ligados; el
+  botón no vuelve a correr sobre ellos).
+- Sin migración. Pruebas `test_dev_product.py` test_05 a test_07.
+
+## 19.0.57.140.0 — 2026-10-09
+
+Dirección General 2026-10-09: «no quiero que se vea el botón de aprobar hasta
+que esté completo el checklist; si no hay muestra física no me muestres campos
+cuando no aplica».
+
+- **Cambiado** «Aprobar análisis y factibilidad» aparece solo con resultado
+  del análisis y, si es producto nuevo, con el checklist de factibilidad
+  cargado y sin renglones pendientes. En el modelo: con catálogo para la
+  línea, un producto nuevo no se aprueba sin su checklist (un producto de
+  línea o no factible no lo lleva; con catálogo vacío no cambia nada).
+- **Cambiado** el checklist se oculta cuando el resultado es producto de
+  línea o no factible; junto al botón «Cargar checklist» se avisa «Sin
+  checklist no se puede aprobar».
+- **Cambiado** muestra física: cuando la propiedad del cliente es
+  «Especificación» o «Ninguna» se ocultan las fechas de recibida y entregada,
+  la ubicación en carpeta y la etiqueta; en «Análisis de proyecto» se ocultan
+  el análisis de la muestra, el botón de pruebas al laboratorio y el contador
+  de pendientes, con una nota en su lugar.
+- Sin campos nuevos, sin migración. Prueba en `test_dev_analysis.py` test_03.
+
+## 19.0.57.139.0 — 2026-10-09
+
+Dirección General 2026-10-09: Administración de Ventas necesita depurar los
+renglones que propone el tipo y el cliente no pide, y en producción nadie podía
+borrarlos (acceso `sgi.dev.characteristic.user` sin `perm_unlink`).
+
+- **Seguridad** `sgi.dev.characteristic.user` (Usuario interno) con
+  `perm_unlink`: el bote de basura aparece en «Análisis de mercado industrial»
+  (las demás pestañas siguen con `delete="0"`).
+- **Agregado** candado al borrar: un renglón con lecturas de la corrida (número
+  o texto), dictamen, aprobación del cliente, lecturas de pilotaje o un reporte
+  de conformidad no se borra; el error dice qué tiene y sugiere desmarcar «Va a
+  la especificación del cliente» y «Va al certificado». Si el desarrollo ya
+  lleva bitácora de revisiones, el borrado queda anotado como «renglón borrado».
+- **Cambiado** «Proponer características del tipo»: con la tabla vacía propone
+  todas sin preguntar; con renglones pide confirmación y **no vuelve a proponer
+  los que se borraron a propósito** (el proyecto los recuerda en
+  `sgi_dev_removed_line_keys`, técnico); el chatter dice cuántas agregó y
+  cuáles omitió. Vaciar la tabla olvida esa memoria.
+- Sin migración: el acceso se actualiza con el CSV. Prueba en
+  `test_dev_characteristics.py` (test_02b).
+
 ## 19.0.57.138.0 — 2026-10-09
 
 Corrección urgente: el build de producción (`quimibond`, PR 605) cayó al cargar

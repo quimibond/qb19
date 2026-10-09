@@ -409,4 +409,20 @@ aprobación (hoy un párrafo genérico), si la aprobación para iniciar debe
 ser obligatoria antes de «Registrar aprobación del cliente» (hoy no lo es),
 y la imagen por centro de trabajo.
 
+### 18.3 Catálogo del checklist de factibilidad cargado (2026-10-09, por MCP, orden de Dirección General)
+
+El formato F-P-D01-29 (documento 3974) es una plantilla vacía y la lista no
+existía en ningún lado; Dirección General pidió cargarla para saber si hay la
+infraestructura para desarrollar el proyecto (máquina, materia prima, etc.).
+Veinte recursos en `sgi.dev.feasibility.item` (ids 1 a 20), diez por línea,
+mismo orden en las dos: 10 máquina o línea adecuada · 20 materia prima de la
+lista de materiales en existencia o con proveedor (**la contesta Odoo**) · 30
+capacidad para el volumen mensual (**automática cuando llegue el cotizador**)
+· 40 tintorería / recubrimiento de adhesivo · 50 acabado / teñido y acabado ·
+60 herramental especial · 70 laboratorio para las características críticas ·
+80 personal capacitado · 90 empaque y presentación · 100 normas y pruebas
+externas. Diseño de Procesos lo corrige en SGI → Administración →
+Configuración → Recursos del checklist de factibilidad (archivar, renombrar,
+agregar); los proyectos ya cargados conservan sus renglones.
+
 

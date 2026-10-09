@@ -3,6 +3,19 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.4.0 — 2026-10-09
+
+Dirección General 2026-10-09: dos cosas menos en el PDF para el cliente
+(`report_cotizacion_cliente`).
+
+- **Retirado** la línea de especificación debajo del producto («53 g/m² ×
+  1.6 m · galga 18»). Gramaje, ancho y galga se quedan en la cotización y en
+  la hoja interna; solo no se imprimen al cliente.
+- **Retirado** la tabla de firmas al final (vendedor «Ventas / Sales» y
+  «Aprobó / Approved by»).
+- Nada más cambia en el reporte. Sin migración (la plantilla se recarga con
+  el update).
+
 ## 19.0.1.3.0 — 2026-10-09
 
 Revisión de Administración de Ventas (2026-10-08) sobre la cotización

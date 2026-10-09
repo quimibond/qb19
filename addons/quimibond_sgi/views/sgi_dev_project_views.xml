@@ -29,8 +29,10 @@
                 <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud de desarrollo" class="btn-primary" icon="fa-check"
                         invisible="not sgi_is_ft or sgi_dev_approved_by_id or not sgi_dev_customer_approved_at or not sgi_ft_folio or sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
                         confirm="Firma «Aprobó» la solicitud de desarrollo (Dirección de Operaciones) con su usuario y la fecha de hoy. Al aprobar se avisa a las partes interesadas con el PDF y se revisan existencias de la materia prima. ¿Continuar?"/>
+                <!-- 57.140.0 (Dirección General): el botón aparece hasta que hay resultado del análisis y, si es producto
+                     nuevo, el checklist de factibilidad está cargado y sin renglones pendientes. -->
                 <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
-                        invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion')"/>
+                        invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion') or not sgi_dev_analysis_result or (sgi_dev_analysis_result == 'nuevo' and (not sgi_dev_feasibility_ids or sgi_dev_feasibility_pending))"/>
                 <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-primary" icon="fa-handshake-o"
                         invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente')"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
@@ -180,10 +182,11 @@
                                 </group>
                                 <group string="Muestra física del cliente">
                                     <field name="sgi_dev_customer_property"/>
-                                    <field name="sgi_dev_sample_received"/>
-                                    <field name="sgi_dev_sample_handed"/>
-                                    <field name="sgi_dev_sample_folder"/>
-                                    <div colspan="2">
+                                    <!-- 57.140.0: sin muestra física no se muestran sus campos. -->
+                                    <field name="sgi_dev_sample_received" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <field name="sgi_dev_sample_handed" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <field name="sgi_dev_sample_folder" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <div colspan="2" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')">
                                         <button name="action_sgi_dev_print_sample_label" type="object" string="Etiqueta de la muestra" class="btn-secondary" icon="fa-tag"
                                                 invisible="not sgi_dev_sample_received"/>
                                     </div>
@@ -193,7 +196,13 @@
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Características que pide el cliente</span>
                                 <div>
                                     <span class="text-muted me-2" invisible="not sgi_dev_line_count"><field name="sgi_dev_line_count" readonly="1" class="oe_inline fw-bold"/> características</span>
-                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"/>
+                                    <!-- 57.139.0: con la tabla vacía propone sin preguntar; con renglones pregunta, porque
+                                         agrega lo que falte (lo borrado a propósito no se vuelve a proponer). -->
+                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"
+                                            invisible="sgi_dev_line_count"/>
+                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"
+                                            invisible="not sgi_dev_line_count"
+                                            confirm="La tabla ya tiene renglones: se agregan los del tipo que falten (los que usted borró a propósito no se vuelven a proponer). ¿Continuar?"/>
                                 </div>
                             </div>
                             <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
@@ -232,7 +241,8 @@
                                     <field name="sgi_dev_line_key" widget="radio" options="{'horizontal': true}"/>
                                     <div colspan="2" class="d-flex flex-wrap gap-1">
                                         <button name="action_sgi_dev_find_similar" type="object" string="Buscar parecidos" class="btn-secondary" icon="fa-search"/>
-                                        <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"/>
+                                        <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"
+                                                invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
                                     </div>
                                 </group>
                                 <group string="Revisión de Ventas (una sola)">
@@ -249,39 +259,45 @@
                                     </div>
                                 </group>
                             </group>
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Análisis de la muestra del cliente (Diseño de Producto; pruebas al laboratorio con F-P-C05-02)</span>
-                                <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                            <!-- 57.140.0: el análisis de la muestra solo existe si el cliente entregó muestra física. -->
+                            <div invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="o_horizontal_separator text-uppercase fw-bolder small">Análisis de la muestra del cliente (Diseño de Producto; pruebas al laboratorio con F-P-C05-02)</span>
+                                    <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                                </div>
+                                <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                    <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                          decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                        <field name="kind" column_invisible="1"/>
+                                        <field name="caracteristica_code" column_invisible="1"/>
+                                        <field name="run_result" column_invisible="1"/>
+                                        <field name="name" readonly="1"/>
+                                        <field name="direction" readonly="1"/>
+                                        <field name="position" optional="hide" readonly="1"/>
+                                        <field name="unit"/>
+                                        <field name="spec_label" string="Pide el cliente"/>
+                                        <field name="lab_requested"/>
+                                        <field name="sample_value" readonly="kind != 'num'"/>
+                                        <field name="sample_text" readonly="kind == 'num'"/>
+                                        <field name="sample_result" widget="badge" decoration-success="sample_result == 'cumple'" decoration-warning="sample_result == 'desviacion'" decoration-danger="sample_result == 'no_conforme'"/>
+                                        <field name="method" optional="show"/>
+                                        <field name="note" optional="hide"/>
+                                    </list>
+                                </field>
                             </div>
-                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
-                                <list editable="bottom" open_form_view="1" create="0" delete="0"
-                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
-                                    <field name="kind" column_invisible="1"/>
-                                    <field name="caracteristica_code" column_invisible="1"/>
-                                    <field name="run_result" column_invisible="1"/>
-                                    <field name="name" readonly="1"/>
-                                    <field name="direction" readonly="1"/>
-                                    <field name="position" optional="hide" readonly="1"/>
-                                    <field name="unit"/>
-                                    <field name="spec_label" string="Pide el cliente"/>
-                                    <field name="lab_requested"/>
-                                    <field name="sample_value" readonly="kind != 'num'"/>
-                                    <field name="sample_text" readonly="kind == 'num'"/>
-                                    <field name="sample_result" widget="badge" decoration-success="sample_result == 'cumple'" decoration-warning="sample_result == 'desviacion'" decoration-danger="sample_result == 'no_conforme'"/>
-                                    <field name="method" optional="show"/>
-                                    <field name="note" optional="hide"/>
-                                </list>
-                            </field>
+                            <p class="text-muted" invisible="sgi_dev_customer_property not in ('especificacion', 'ninguna')">Sin muestra física del cliente: no hay análisis de muestra ni pruebas de laboratorio sobre ella.</p>
                             <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo».</p>
-                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
+                            <!-- 57.140.0: el checklist no aplica a un producto de línea ni a uno no factible. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3" invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Checklist de factibilidad</span>
                                 <div>
                                     <field name="sgi_dev_feasibility_pending" invisible="1"/>
                                     <span class="text-warning me-2" invisible="not sgi_dev_feasibility_pending"><field name="sgi_dev_feasibility_pending" readonly="1" class="oe_inline fw-bold"/> sin contestar</span>
+                                    <span class="text-muted me-2" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result != 'nuevo'">Sin checklist no se puede aprobar.</span>
                                     <button name="action_sgi_dev_load_feasibility" type="object" string="Cargar checklist de factibilidad" class="btn-secondary" icon="fa-list-ul"/>
                                 </div>
                             </div>
-                            <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids">
+                            <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">
                                     <list editable="bottom" create="0" decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="item_id" readonly="1"/>
@@ -292,7 +308,7 @@
                                         <field name="answered_by_id" optional="show"/>
                                     </list>
                                 </field>
-                            <p class="text-muted" invisible="sgi_dev_feasibility_ids">Sin checklist cargado.</p>
+                            <p class="text-muted" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">Sin checklist cargado.</p>
                         </page>
                         <!-- 3. Cotización (Diseño de Producto, Administración de Ventas, Dirección General): el código y los artículos se crean antes de cotizar;
                              las cotizaciones las agrega qb_costeo_sgi en el div «sgi_dev_quotes». -->
@@ -304,6 +320,12 @@
                                         <field name="sgi_dev_code_peso"/>
                                         <field name="sgi_dev_code_hilo_id" options="{'no_create': True}"/>
                                         <field name="sgi_dev_code_galga"/>
+                                        <!-- 57.142.0: los dígitos de la galga se eligen dentro de su rango (DAT P-D02-01); con base se toman del base. -->
+                                        <label for="sgi_dev_code_galga_digits" invisible="not sgi_dev_code_galga or sgi_dev_base_product_id"/>
+                                        <div class="o_row" invisible="not sgi_dev_code_galga or sgi_dev_base_product_id">
+                                            <field name="sgi_dev_code_galga_digits" class="oe_inline"/>
+                                            <span class="text-muted">rango <field name="sgi_dev_code_galga_range" class="oe_inline"/></span>
+                                        </div>
                                         <field name="sgi_dev_code_color_id" options="{'no_create': True}"/>
                                         <field name="sgi_dev_code_ancho"/>
                                         <field name="sgi_dev_code_ancho_crudo"/>
@@ -313,10 +335,18 @@
                                     <group>
                                         <div class="mb-2 d-flex flex-wrap gap-1" colspan="2">
                                             <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
+                                            <!-- 57.141.0: con artículo base se parte de su cadena (acabado → teñido → crudo); sin base, por claves.
+                                                 Un producto de línea no genera artículos. -->
                                             <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
-                                                    invisible="sgi_dev_product_id"
-                                                    confirm="Se crean los artículos crudo, teñido (si lleva) y acabado con el código propuesto, en estado «En desarrollo». ¿Continuar?"/>
+                                                    invisible="sgi_dev_product_id or sgi_dev_analysis_result == 'linea'"
+                                                    confirm="Con artículo base: se recorre su cadena (acabado, teñido, crudo), se ligan los niveles que no cambian y se crean los que cambian copiando su lista de materiales; los componentes que dependen de la clave que cambió quedan «Por capturar». Sin base: se crean crudo, teñido (si lleva) y acabado con el código propuesto. ¿Continuar?"/>
                                         </div>
+                                        <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
+                                        <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
+                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos.
+                                            <button name="action_sgi_dev_bom_pending" type="object" string="Ver listas" class="btn-link p-0 ms-1"/>
+                                        </div>
+                                        <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
                                         <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
                                         <field name="sgi_dev_code_acabado_code"/>

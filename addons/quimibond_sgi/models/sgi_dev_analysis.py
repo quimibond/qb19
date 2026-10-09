@@ -485,6 +485,12 @@ class ProjectProjectDevAnalysis(models.Model):
             if project.sgi_dev_feasibility_pending:
                 raise UserError("Hay %d renglón(es) del checklist de factibilidad sin contestar."
                                 % project.sgi_dev_feasibility_pending)
+            # 57.140.0 (Dirección General): un producto nuevo no se aprueba sin su checklist cuando
+            # el catálogo de la línea ya tiene recursos (un producto de línea o no factible no lo lleva).
+            if (project.sgi_dev_analysis_result == 'nuevo' and not project.sgi_dev_feasibility_ids
+                    and self.env['sgi.dev.feasibility.item'].search_count(
+                        [('line', '=', project.sgi_dev_line_key or 'tejido_circular')])):
+                raise UserError("Cargue y conteste el checklist de factibilidad antes de aprobar.")
             project.write({'sgi_dev_review_state': 'aprobado', 'sgi_dev_reviewed_by_id': self.env.uid,
                            'sgi_dev_review_date': fields.Datetime.now(), 'sgi_dev_review_note': False})
             project.message_post(body="Ventas aprobó el análisis y la factibilidad.")
