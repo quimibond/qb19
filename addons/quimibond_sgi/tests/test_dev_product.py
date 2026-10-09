@@ -87,6 +87,107 @@ class TestDevProduct(TransactionCase):
         self.dev.write({'stage_id': self._stage('liberado').id})
         self.assertEqual(acabado.sgi_dev_state, 'liberado')
 
+    def _base_chain(self):
+        """Cadena real del base: acabado 53 g a 160 cm ← teñido 44 g a 185 cm ← crudo 44 g a 185 cm."""
+        P = self.env['product.product']
+        kg, m = self.env.ref('uom.product_uom_kgm'), self.env.ref('uom.product_uom_meter')
+        hilo = P.create({'name': 'Hilo poliéster', 'default_code': 'HPES100', 'type': 'consu', 'uom_id': kg.id})
+        agua = P.create({'name': 'Agua', 'default_code': 'AGUA', 'type': 'consu', 'uom_id': kg.id})
+        formula = P.create({'name': 'Fórmula natural', 'default_code': 'NATURAL005', 'type': 'consu', 'uom_id': kg.id})
+        engomado = P.create({'name': 'Engomado', 'default_code': 'ENGOMADO002', 'type': 'consu', 'uom_id': kg.id})
+        crudo = P.create({'name': 'Crudo base', 'default_code': 'WJ044Q21HNT185', 'type': 'consu', 'uom_id': kg.id})
+        tenido = P.create({'name': 'Teñido base', 'default_code': 'WJ044Q21INT185', 'type': 'consu', 'uom_id': kg.id})
+        acabado = P.create({'name': 'Acabado base', 'default_code': 'WJ053Q21JNT160', 'type': 'consu', 'uom_id': m.id})
+        Bom = self.env['mrp.bom']
+        wc = self.env['mrp.workcenter'].create({'name': 'Circular prueba'})
+        Bom.create({'product_tmpl_id': crudo.product_tmpl_id.id, 'product_qty': 1,
+                    'bom_line_ids': [(0, 0, {'product_id': hilo.id, 'product_qty': 1.0})],
+                    'operation_ids': [(0, 0, {'name': 'Tejer', 'workcenter_id': wc.id, 'time_cycle_manual': 60})]})
+        Bom.create({'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1,
+                    'bom_line_ids': [(0, 0, {'product_id': crudo.id, 'product_qty': 1.0}),
+                                     (0, 0, {'product_id': agua.id, 'product_qty': 33.0}),
+                                     (0, 0, {'product_id': formula.id, 'product_qty': 0.032})]})
+        Bom.create({'product_tmpl_id': acabado.product_tmpl_id.id, 'product_qty': 1,
+                    'bom_line_ids': [(0, 0, {'product_id': tenido.id, 'product_qty': 0.1}),
+                                     (0, 0, {'product_id': engomado.id, 'product_qty': 0.0047})]})
+        return crudo, tenido, acabado, engomado, formula
+
+    def test_05_generate_from_base_product(self):
+        # 57.141.0: cambia solo el color → el crudo se liga, teñido y acabado se crean desde el base.
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        dev = self.Project.create({
+            'name': 'base', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_product_name': 'Jersey cobre',
+            'sgi_dev_analysis_result': 'nuevo', 'sgi_dev_base_product_id': acabado.id,
+            'sgi_dev_code_composicion_id': self._clave('composicion', 'W').id,
+            'sgi_dev_code_dibujo_id': self._clave('dibujo', 'J').id,
+            'sgi_dev_code_hilo_id': self._clave('hilo', 'Q').id,
+            'sgi_dev_code_color_id': self._clave('color', 'NG').id,
+            'sgi_dev_code_peso': 53, 'sgi_dev_code_galga': 18, 'sgi_dev_code_ancho': 160, 'sgi_dev_code_ancho_crudo': 185})
+        chain = dev._sgi_dev_base_chain()
+        self.assertEqual([lv['role'] for lv in chain], ['crudo', 'tenido', 'acabado'])
+        self.assertEqual(dev._sgi_dev_changed_keys(chain)[0], {'color'})
+        dev.action_sgi_dev_generate_products()
+        self.assertEqual(dev.sgi_dev_product_crudo_id, crudo, "El crudo no cambia con el color: se liga el del base")
+        self.assertFalse(crudo.sgi_dev_project_id, "Y el del base no se toca")
+        new_t, new_a = dev.sgi_dev_product_tenido_id, dev.sgi_dev_product_id
+        self.assertEqual((new_t.default_code, new_a.default_code), ('WJ044Q21ING185', 'WJ053Q21JNG160'),
+                         "Código del nivel del base con solo el color sustituido")
+        self.assertEqual((new_t.uom_id, new_a.uom_id), (tenido.uom_id, acabado.uom_id))
+        self.assertEqual(new_t.sgi_dev_project_id, dev)
+        bom_t = self.env['mrp.bom']._bom_find(new_t)[new_t]
+        self.assertEqual(len(bom_t.bom_line_ids), 3, "Lista del teñido copiada completa")
+        line_crudo = bom_t.bom_line_ids.filtered(lambda l: l.product_id == crudo)
+        self.assertTrue(line_crudo and not line_crudo.sgi_dev_pending, "El insumo crudo sigue igual y no está pendiente")
+        self.assertTrue(all(bom_t.bom_line_ids.filtered(lambda l: l.product_id != crudo).mapped('sgi_dev_pending')),
+                        "Agua y fórmula dependen del color: por capturar")
+        bom_a = self.env['mrp.bom']._bom_find(new_a)[new_a]
+        self.assertEqual(len(bom_a.bom_line_ids), 2)
+        line_in = bom_a.bom_line_ids.filtered(lambda l: l.product_id == new_t)
+        self.assertEqual(line_in.product_qty, 0.1, "El insumo se reemplazó por el teñido nuevo con la misma cantidad")
+        self.assertFalse(line_in.sgi_dev_pending)
+        self.assertFalse(bom_a.bom_line_ids.filtered(lambda l: l.product_id == engomado).sgi_dev_pending)
+        self.assertEqual(dev.sgi_dev_bom_pending_count, 2)
+        self.assertEqual(dev.action_sgi_dev_bom_pending()['domain'], [('id', 'in', bom_t.ids)])
+        last = dev.message_ids[:1].body
+        self.assertIn('WJ044Q21ING185', last)
+        self.assertIn('por capturar', last)
+        # Volver a generar no duplica ni toca lo ligado.
+        dev.action_sgi_dev_generate_products()
+        self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'WJ044Q21ING185')]), 1)
+        # Capturados los pendientes, el contador baja.
+        bom_t.bom_line_ids.write({'sgi_dev_pending': False})
+        dev.invalidate_recordset(['sgi_dev_bom_pending_count'])
+        self.assertEqual(dev.sgi_dev_bom_pending_count, 0)
+
+    def test_06_generate_from_base_peso_y_ancho_crudo(self):
+        # Cambian peso y ancho crudo: los tres niveles cambian; el peso de crudo y teñido se estima en proporción.
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        dev = self.Project.create({
+            'name': 'base2', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_product_name': 'Jersey 60',
+            'sgi_dev_analysis_result': 'nuevo', 'sgi_dev_base_product_id': acabado.id,
+            'sgi_dev_code_color_id': self._clave('color', 'NT').id,
+            'sgi_dev_code_peso': 60, 'sgi_dev_code_ancho': 160, 'sgi_dev_code_ancho_crudo': 200})
+        dev.action_sgi_dev_generate_products()
+        self.assertEqual(dev.sgi_dev_product_crudo_id.default_code, 'WJ050Q21HNT200', "44 × 60 / 53 ≈ 50, ancho crudo 200")
+        self.assertEqual(dev.sgi_dev_product_tenido_id.default_code, 'WJ050Q21INT200')
+        self.assertEqual(dev.sgi_dev_product_id.default_code, 'WJ060Q21JNT160')
+        bom_c = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_crudo_id)[dev.sgi_dev_product_crudo_id]
+        self.assertTrue(bom_c.operation_ids, "Las operaciones del crudo se copian")
+        self.assertTrue(all(bom_c.bom_line_ids.mapped('sgi_dev_pending')), "El hilo depende del peso: por capturar")
+        bom_a = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_id)[dev.sgi_dev_product_id]
+        self.assertTrue(bom_a.bom_line_ids.filtered(lambda l: l.product_id == dev.sgi_dev_product_tenido_id).sgi_dev_pending,
+                        "La cantidad del insumo depende del peso: por capturar")
+        self.assertIn('estimado', dev.message_ids[:1].body)
+
+    def test_07_linea_no_genera(self):
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        dev = self.Project.create({'name': 'linea', 'sgi_is_ft': True, 'partner_id': self.partner.id,
+                                   'sgi_dev_product_name': 'Línea', 'sgi_dev_analysis_result': 'linea',
+                                   'sgi_dev_base_product_id': acabado.id})
+        with self.assertRaises(UserError, msg="Producto de línea: se cotiza el de línea"):
+            dev.action_sgi_dev_generate_products()
+        self.assertFalse(dev.sgi_dev_product_id)
+
     def test_03_existing_code_is_linked_and_closing_archives(self):
         existing = self.env['product.product'].create({'name': 'Ya existía', 'default_code': 'WJ053Q21HNT185'})
         self.dev.write({'sgi_dev_code_peso': 53, 'sgi_dev_code_galga': 18, 'sgi_dev_code_ancho': 160})

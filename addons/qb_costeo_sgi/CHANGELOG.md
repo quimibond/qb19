@@ -1,5 +1,18 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.4.0 — 2026-10-09
+
+Dirección General 2026-10-09, junto con SGI 57.141.0 («Generar artículos»
+desde el artículo base).
+
+- **Agregado** el artículo base del desarrollo pasa como **producto hermano**
+  a la cotización que se crea desde el proyecto (`hermano_product_id`); si el
+  proyecto aún no tiene artículo generado, la fuente del costo es «hermano».
+- **Agregado** la cotización no se manda a aprobar mientras el desarrollo
+  tenga renglones de lista de materiales **«Por capturar»**
+  (`project.sgi_dev_bom_pending_count`): el error dice cuántos.
+- Sin migración.
+
 ## 19.0.1.3.0 — 2026-10-08
 
 Jose 2026-10-08, 5.6: precio en tarifa automático al ganar la cotización y
