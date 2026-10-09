@@ -29,8 +29,10 @@
                 <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud de desarrollo" class="btn-primary" icon="fa-check"
                         invisible="not sgi_is_ft or sgi_dev_approved_by_id or not sgi_dev_customer_approved_at or not sgi_ft_folio or sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
                         confirm="Firma «Aprobó» la solicitud de desarrollo (Dirección de Operaciones) con su usuario y la fecha de hoy. Al aprobar se avisa a las partes interesadas con el PDF y se revisan existencias de la materia prima. ¿Continuar?"/>
+                <!-- 57.140.0 (Dirección General): el botón aparece hasta que hay resultado del análisis y, si es producto
+                     nuevo, el checklist de factibilidad está cargado y sin renglones pendientes. -->
                 <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
-                        invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion')"/>
+                        invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion') or not sgi_dev_analysis_result or (sgi_dev_analysis_result == 'nuevo' and (not sgi_dev_feasibility_ids or sgi_dev_feasibility_pending))"/>
                 <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-primary" icon="fa-handshake-o"
                         invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente')"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
@@ -180,10 +182,11 @@
                                 </group>
                                 <group string="Muestra física del cliente">
                                     <field name="sgi_dev_customer_property"/>
-                                    <field name="sgi_dev_sample_received"/>
-                                    <field name="sgi_dev_sample_handed"/>
-                                    <field name="sgi_dev_sample_folder"/>
-                                    <div colspan="2">
+                                    <!-- 57.140.0: sin muestra física no se muestran sus campos. -->
+                                    <field name="sgi_dev_sample_received" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <field name="sgi_dev_sample_handed" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <field name="sgi_dev_sample_folder" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
+                                    <div colspan="2" invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')">
                                         <button name="action_sgi_dev_print_sample_label" type="object" string="Etiqueta de la muestra" class="btn-secondary" icon="fa-tag"
                                                 invisible="not sgi_dev_sample_received"/>
                                     </div>
@@ -238,7 +241,8 @@
                                     <field name="sgi_dev_line_key" widget="radio" options="{'horizontal': true}"/>
                                     <div colspan="2" class="d-flex flex-wrap gap-1">
                                         <button name="action_sgi_dev_find_similar" type="object" string="Buscar parecidos" class="btn-secondary" icon="fa-search"/>
-                                        <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"/>
+                                        <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"
+                                                invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')"/>
                                     </div>
                                 </group>
                                 <group string="Revisión de Ventas (una sola)">
@@ -255,39 +259,45 @@
                                     </div>
                                 </group>
                             </group>
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Análisis de la muestra del cliente (Diseño de Producto; pruebas al laboratorio con F-P-C05-02)</span>
-                                <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                            <!-- 57.140.0: el análisis de la muestra solo existe si el cliente entregó muestra física. -->
+                            <div invisible="sgi_dev_customer_property in ('especificacion', 'ninguna')">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="o_horizontal_separator text-uppercase fw-bolder small">Análisis de la muestra del cliente (Diseño de Producto; pruebas al laboratorio con F-P-C05-02)</span>
+                                    <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                                </div>
+                                <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                    <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                          decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                        <field name="kind" column_invisible="1"/>
+                                        <field name="caracteristica_code" column_invisible="1"/>
+                                        <field name="run_result" column_invisible="1"/>
+                                        <field name="name" readonly="1"/>
+                                        <field name="direction" readonly="1"/>
+                                        <field name="position" optional="hide" readonly="1"/>
+                                        <field name="unit"/>
+                                        <field name="spec_label" string="Pide el cliente"/>
+                                        <field name="lab_requested"/>
+                                        <field name="sample_value" readonly="kind != 'num'"/>
+                                        <field name="sample_text" readonly="kind == 'num'"/>
+                                        <field name="sample_result" widget="badge" decoration-success="sample_result == 'cumple'" decoration-warning="sample_result == 'desviacion'" decoration-danger="sample_result == 'no_conforme'"/>
+                                        <field name="method" optional="show"/>
+                                        <field name="note" optional="hide"/>
+                                    </list>
+                                </field>
                             </div>
-                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
-                                <list editable="bottom" open_form_view="1" create="0" delete="0"
-                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
-                                    <field name="kind" column_invisible="1"/>
-                                    <field name="caracteristica_code" column_invisible="1"/>
-                                    <field name="run_result" column_invisible="1"/>
-                                    <field name="name" readonly="1"/>
-                                    <field name="direction" readonly="1"/>
-                                    <field name="position" optional="hide" readonly="1"/>
-                                    <field name="unit"/>
-                                    <field name="spec_label" string="Pide el cliente"/>
-                                    <field name="lab_requested"/>
-                                    <field name="sample_value" readonly="kind != 'num'"/>
-                                    <field name="sample_text" readonly="kind == 'num'"/>
-                                    <field name="sample_result" widget="badge" decoration-success="sample_result == 'cumple'" decoration-warning="sample_result == 'desviacion'" decoration-danger="sample_result == 'no_conforme'"/>
-                                    <field name="method" optional="show"/>
-                                    <field name="note" optional="hide"/>
-                                </list>
-                            </field>
+                            <p class="text-muted" invisible="sgi_dev_customer_property not in ('especificacion', 'ninguna')">Sin muestra física del cliente: no hay análisis de muestra ni pruebas de laboratorio sobre ella.</p>
                             <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo».</p>
-                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
+                            <!-- 57.140.0: el checklist no aplica a un producto de línea ni a uno no factible. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3" invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Checklist de factibilidad</span>
                                 <div>
                                     <field name="sgi_dev_feasibility_pending" invisible="1"/>
                                     <span class="text-warning me-2" invisible="not sgi_dev_feasibility_pending"><field name="sgi_dev_feasibility_pending" readonly="1" class="oe_inline fw-bold"/> sin contestar</span>
+                                    <span class="text-muted me-2" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result != 'nuevo'">Sin checklist no se puede aprobar.</span>
                                     <button name="action_sgi_dev_load_feasibility" type="object" string="Cargar checklist de factibilidad" class="btn-secondary" icon="fa-list-ul"/>
                                 </div>
                             </div>
-                            <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids">
+                            <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">
                                     <list editable="bottom" create="0" decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="item_id" readonly="1"/>
@@ -298,7 +308,7 @@
                                         <field name="answered_by_id" optional="show"/>
                                     </list>
                                 </field>
-                            <p class="text-muted" invisible="sgi_dev_feasibility_ids">Sin checklist cargado.</p>
+                            <p class="text-muted" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">Sin checklist cargado.</p>
                         </page>
                         <!-- 3. Cotización (Diseño de Producto, Administración de Ventas, Dirección General): el código y los artículos se crean antes de cotizar;
                              las cotizaciones las agrega qb_costeo_sgi en el div «sgi_dev_quotes». -->
