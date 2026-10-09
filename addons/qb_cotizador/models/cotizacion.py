@@ -49,6 +49,7 @@ STATES = [
 ]
 VIVAS = ('borrador', 'por_aprobar', 'presentada', 'vencida')
 APROBADAS = ('presentada', 'ganada', 'perdida', 'vencida')
+FX_FUENTES = [('odoo', 'Tipo de cambio de Odoo'), ('manual', 'Capturado a mano')]
 COSTO_FUENTES = [
     ('periodo', 'Costo del producto en el período cerrado'),
     ('hermano', 'Costo de un producto hermano'),
@@ -103,8 +104,17 @@ class QbCotizadorCotizacion(models.Model):
     currency_id = fields.Many2one('res.currency', string='Moneda', required=True,
                                   default=lambda self: self.env.company.currency_id)
     fx_rate = fields.Float(string='TC (MXN por 1 divisa)', digits=(16, 4), default=1.0,
-                           help='Tipo de cambio de Odoo el día del cálculo; queda guardado.')
+                           help='Pesos por 1 unidad de la divisa. Se toma solo del tipo de cambio de Odoo al '
+                                'elegir la moneda, con «TC de hoy» y al calcular el costo; se puede capturar a '
+                                'mano mientras la cotización está en borrador o por aprobar (queda como '
+                                '«capturado a mano» y el cálculo del costo ya no lo pisa).')
+    fx_fuente = fields.Selection(FX_FUENTES, string='De dónde sale el TC', default='odoo', copy=False)
+    fx_fecha = fields.Date(string='Fecha del TC', copy=False,
+                           help='Fecha del tipo de cambio de Odoo que se usó, o del día en que se capturó a mano.')
     es_divisa = fields.Boolean(compute='_compute_es_divisa')
+    moneda_alerta = fields.Char(compute='_compute_moneda_alerta')
+    sin_costo = fields.Boolean(compute='_compute_margenes', store=True,
+                               help='Sin piso calculado no hay semáforo ni márgenes.')
 
     # ------------------------------------------------------------------
     # Foto del costo (siempre en moneda de la compañía, por unidad vendible)
@@ -272,6 +282,17 @@ class QbCotizadorCotizacion(models.Model):
             op = rec.op_pct or 0.0
             rec.piso_lleno = rec.costo_vendible / (1 - op) if op < 1 else rec.costo_vendible
 
+    @api.depends('currency_id', 'company_id', 'fx_rate', 'costo_fuente')
+    def _compute_moneda_alerta(self):
+        for rec in self:
+            alerta = ''
+            if rec.es_divisa and (rec.fx_rate or 0.0) <= 1.0:
+                alerta = ('La cotización es en %s pero el tipo de cambio es %.4f: el precio se está leyendo '
+                          'como si fuera MXN. Captura el TC o toma el de hoy.' % (rec.currency_id.name, rec.fx_rate or 0.0))
+            elif not rec.es_divisa and rec.fx_rate and rec.fx_rate != 1.0 and rec.costo_fuente != 'legado':
+                alerta = 'La cotización es en %s: el tipo de cambio debe ser 1.' % rec.currency_id.name
+            rec.moneda_alerta = alerta
+
     @api.depends('precio_objetivo', 'fx_rate', 'piso_ocioso', 'piso_lleno', 'costo_vendible',
                  'op_pct')
     def _compute_margenes(self):
@@ -279,7 +300,10 @@ class QbCotizadorCotizacion(models.Model):
             fx = rec.fx_rate or 1.0
             precio = (rec.precio_objetivo or 0.0) * fx
             rec.precio_mxn = precio
-            if not precio:
+            # 1.3.0: sin piso calculado no hay nada contra qué medir el precio. Antes el semáforo
+            # salía verde con piso 0 («cubre todo») y el margen 100 %.
+            rec.sin_costo = not rec.piso_lleno
+            if not precio or rec.sin_costo:
                 rec.margen_contribucion_pct = rec.margen_bruto_pct = 0.0
                 rec.margen_neto_pct = rec.precio_vs_piso_pct = 0.0
                 rec.semaforo = False
@@ -407,7 +431,13 @@ class QbCotizadorCotizacion(models.Model):
         for vals in vals_list:
             if not vals.get('folio'):
                 vals['folio'] = self.env['ir.sequence'].next_by_code('qb.cotizador.cotizacion')
-        return super().create(vals_list)
+        recs = super().create(vals_list)
+        # 1.3.0: una cotización en divisa nace con el TC de Odoo (antes se quedaba en 1.0 hasta
+        # calcular el costo y el precio se leía como MXN). Las importadas y las capturadas a mano no.
+        for rec in recs.filtered(lambda r: r.es_divisa and r.costo_fuente != 'legado'
+                                 and r.fx_fuente != 'manual' and (r.fx_rate or 0.0) <= 1.0):
+            rec._fx_desde_odoo()
+        return recs
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -418,6 +448,22 @@ class QbCotizadorCotizacion(models.Model):
     def _onchange_partner_id(self):
         if self.partner_id and self.partner_id.property_product_pricelist.currency_id:
             self.currency_id = self.partner_id.property_product_pricelist.currency_id
+            self._onchange_currency_id()
+
+    @api.onchange('currency_id')
+    def _onchange_currency_id(self):
+        """1.3.0: al elegir la moneda el TC se llena con el de Odoo (1.0 en la moneda de la compañía)."""
+        rate, fecha = self._fx_odoo()
+        self.fx_rate, self.fx_fecha, self.fx_fuente = rate, fecha, 'odoo'
+
+    @api.onchange('fx_rate')
+    def _onchange_fx_rate(self):
+        """1.3.0: un TC distinto al de Odoo queda como capturado a mano (y el cálculo no lo pisa)."""
+        rate, fecha = self._fx_odoo()
+        if abs((self.fx_rate or 0.0) - rate) < 1e-6:
+            self.fx_fuente, self.fx_fecha = 'odoo', fecha
+        else:
+            self.fx_fuente, self.fx_fecha = 'manual', fields.Date.context_today(self)
 
     # ==================================================================
     # Cálculo del costo
@@ -428,35 +474,85 @@ class QbCotizadorCotizacion(models.Model):
             return self.hermano_product_id
         return self.product_id
 
-    def _fx_hoy(self):
+    def _fx_odoo(self):
+        """(TC, fecha) de Odoo para la moneda de la cotización: pesos por 1 unidad de la divisa con
+        el último `res.currency.rate` hasta hoy; (1.0, hoy) en la moneda de la compañía."""
         self.ensure_one()
-        company = self.company_id
+        company = self.company_id or self.env.company
+        hoy = fields.Date.context_today(self)
         if not self.currency_id or self.currency_id == company.currency_id:
-            return 1.0
-        return self.currency_id._convert(1.0, company.currency_id, company,
-                                         fields.Date.context_today(self), round=False)
+            return 1.0, hoy
+        rate = self.currency_id._convert(1.0, company.currency_id, company, hoy, round=False)
+        fila = self.env['res.currency.rate'].sudo().search(
+            [('currency_id', '=', self.currency_id.id), ('name', '<=', hoy),
+             ('company_id', 'in', [company.id, False])], order='name desc, company_id desc', limit=1)
+        return rate, (fila.name if fila else hoy)
+
+    def _fx_hoy(self):
+        return self._fx_odoo()[0]
+
+    def _fx_desde_odoo(self):
+        """Escribe el TC de Odoo (salvo que esté capturado a mano). Devuelve los valores escritos."""
+        vals = {}
+        for rec in self:
+            if rec.fx_fuente == 'manual' and rec.es_divisa:
+                continue
+            rate, fecha = rec._fx_odoo()
+            vals = {'fx_rate': rate, 'fx_fecha': fecha, 'fx_fuente': 'odoo'}
+            rec.write(vals)
+        return vals
+
+    def action_tc_hoy(self):
+        """Botón «TC de hoy»: vuelve al tipo de cambio de Odoo aunque estuviera capturado a mano."""
+        for rec in self:
+            if rec.state not in ('borrador', 'por_aprobar', 'presentada'):
+                raise UserError('El tipo de cambio solo se cambia en una cotización viva.')
+            rate, fecha = rec._fx_odoo()
+            rec.write({'fx_rate': rate, 'fx_fecha': fecha, 'fx_fuente': 'odoo'})
+            rec._calcular_tramos()
+            rec.message_post(body='Tipo de cambio de Odoo del %s: %.4f MXN por %s.' % (
+                fecha, rate, rec.currency_id.name))
+        return True
+
+    def _periodo_para_cotizar(self):
+        """El período con el que se cotiza: el último cerrado. 1.3.0: si no hay ninguno cerrado,
+        el último que ya tenga costos calculados aunque siga en borrador; en ese caso el costo
+        queda marcado provisional (calidad baja) y la hoja interna lo dice. Devuelve (período,
+        provisional)."""
+        self.ensure_one()
+        Periodo = self.env['qb.periodo'].sudo()
+        periodo = Periodo.para_cotizar(self.company_id)
+        if periodo:
+            return periodo, False
+        periodo = Periodo.search([('company_id', '=', self.company_id.id), ('costo_ids', '!=', False)],
+                                 order='period desc', limit=1)
+        return periodo, bool(periodo)
 
     def action_calcular(self):
         """Toma el costo del producto (o del hermano) en el último período
         cerrado y lo guarda como foto; con fuente manual solo refresca TC,
         escalera y supuestos sobre lo capturado."""
         # El vendedor no tiene permisos sobre el costeo: la lectura va con sudo.
-        Periodo = self.env['qb.periodo'].sudo()
         Costo = self.env['qb.costo.unitario'].sudo()
         for rec in self:
             if rec.state not in ('borrador', 'por_aprobar', 'presentada'):
                 raise UserError('Solo se recalcula una cotización viva (borrador, por aprobar o '
                                 'presentada). Para una vencida usa «Renovar».')
-            vals = {'fx_rate': rec._fx_hoy(), 'calculado_el': fields.Datetime.now()}
+            vals = {'calculado_el': fields.Datetime.now()}
+            if rec.es_divisa and rec.fx_fuente == 'manual':
+                pass  # 1.3.0: el TC capturado a mano se respeta
+            else:
+                rate, fecha = rec._fx_odoo()
+                vals.update({'fx_rate': rate, 'fx_fecha': fecha, 'fx_fuente': 'odoo'})
             if rec.costo_fuente in ('periodo', 'hermano'):
                 producto = rec._producto_del_costo()
                 if not producto:
                     raise UserError('Elige el producto existente (o el hermano) del que se toma '
                                     'el costo, o cambia la fuente a «Capturado a mano».')
-                periodo = Periodo.para_cotizar(rec.company_id)
+                periodo, provisional = rec._periodo_para_cotizar()
                 if not periodo:
-                    raise UserError('No hay un período de costeo cerrado en %s: cierra uno en '
-                                    'Manufactura → Costos → Períodos.' % rec.company_id.name)
+                    raise UserError('No hay un período de costeo con costos calculados en %s: calcula y '
+                                    'cierra uno en Manufactura → Costos → Períodos.' % rec.company_id.name)
                 costo = Costo.search([('periodo_id', '=', periodo.id),
                                       ('product_id', '=', producto.id)], limit=1)
                 if not costo:
@@ -473,8 +569,11 @@ class QbCotizadorCotizacion(models.Model):
                     'calidad': costo.calidad, 'calidad_detalle': costo.calidad_detalle,
                     'precio_mercado': costo.precio_prom,
                 })
+                if provisional:
+                    vals.update({'calidad': 'baja', 'calidad_detalle': 'período %s sin cerrar: costo provisional%s' % (
+                        periodo.period, (' (%s)' % costo.calidad_detalle) if costo.calidad_detalle else '')})
             elif rec.costo_fuente == 'manual':
-                periodo = Periodo.para_cotizar(rec.company_id)
+                periodo, _provisional = rec._periodo_para_cotizar()
                 vals.update({
                     'periodo_id': periodo.id if periodo else False,
                     'costo_variable': rec.mp_unit + rec.energia_unit,
@@ -489,9 +588,12 @@ class QbCotizadorCotizacion(models.Model):
             rec._calcular_tramos()
             rec.supuestos = rec._texto_supuestos()
             rec.message_post(body='Costo recalculado (%s): piso lleno $%.4f, piso ocioso $%.4f, '
-                                  'calidad %s, TC %.4f.' % (
+                                  'calidad %s%s, TC %.4f (%s%s).' % (
                                       dict(COSTO_FUENTES).get(rec.costo_fuente), rec.piso_lleno,
-                                      rec.piso_ocioso, rec.calidad, rec.fx_rate))
+                                      rec.piso_ocioso, rec.calidad,
+                                      (' · ' + rec.calidad_detalle) if rec.calidad_detalle else '',
+                                      rec.fx_rate, dict(FX_FUENTES).get(rec.fx_fuente, ''),
+                                      (' del %s' % rec.fx_fecha) if rec.fx_fecha else ''))
         return True
 
     def _texto_supuestos(self):
@@ -506,7 +608,9 @@ class QbCotizadorCotizacion(models.Model):
         partes.append('Rendimiento vendible %.1f %%; operación %.2f %% de la venta.'
                       % (100 * (self.rendimiento or 1.0), 100 * (self.op_pct or 0.0)))
         if self.es_divisa:
-            partes.append('TC %.4f MXN por %s.' % (self.fx_rate, self.currency_id.name))
+            partes.append('TC %.4f MXN por %s (%s%s).' % (
+                self.fx_rate, self.currency_id.name, dict(FX_FUENTES).get(self.fx_fuente, ''),
+                (' del %s' % self.fx_fecha) if self.fx_fecha else ''))
         if self.calidad_detalle:
             partes.append('Calidad: %s.' % self.calidad_detalle)
         return ' '.join(partes)
@@ -557,6 +661,11 @@ class QbCotizadorCotizacion(models.Model):
             faltan.append('el precio al cliente')
         if not self.calculado_el:
             faltan.append('el cálculo del costo (botón «Calcular costo»)')
+        elif self.sin_costo:
+            faltan.append('un piso de costo mayor a cero (el semáforo no se puede leer)')
+        if self.es_divisa and (self.fx_rate or 0.0) <= 1.0:
+            faltan.append('el tipo de cambio (la cotización es en %s y el TC es %.4f)' % (
+                self.currency_id.name, self.fx_rate or 0.0))
         if faltan:
             raise UserError('Antes de pedir aprobación falta: %s.' % ', '.join(faltan))
 
@@ -899,7 +1008,7 @@ class QbCotizadorCotizacion(models.Model):
             'spec_gramaje': d.get('spec_gramaje'), 'spec_ancho': d.get('spec_ancho'),
             'spec_galga': d.get('spec_galga'), 'volumen': d.get('volumen'),
             'volumen_uom': 'kg' if (d.get('uom_name') or '').lower().startswith('k') else 'm',
-            'currency_id': currency_id, 'fx_rate': fx, 'costo_fuente': 'legado',
+            'currency_id': currency_id, 'fx_rate': fx, 'fx_fuente': 'manual', 'costo_fuente': 'legado',
             # En v2 «fabricación» = horas × tarifa (fija + variable), con la
             # energía adentro; la conversión absorbida del viejo entra ahí.
             'mp_unit': d.get('mp_unit') or 0.0, 'energia_unit': energia + (d.get('conv_var_unit') or 0.0),
