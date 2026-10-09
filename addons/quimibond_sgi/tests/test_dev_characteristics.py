@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """57.117.0 (C1, bloque 1): tabla numérica de características del desarrollo
 y sus catálogos."""
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -47,6 +47,40 @@ class TestDevCharacteristics(TransactionCase):
         other.action_sgi_dev_load_lines()
         frote = other.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'solidez_frote')
         self.assertEqual(set(frote.mapped('position')), {'izquierda', 'centro', 'derecha'})
+
+    def test_02b_borrar_renglones_y_volver_a_proponer(self):
+        # 57.139.0: Administración de Ventas depura los renglones del tipo que el cliente no pide.
+        self.project.action_sgi_dev_load_lines()
+        n = len(self.project.sgi_dev_line_ids)
+        masa, engomado = self._line('masa'), self._line('engomado_orillas')
+        usuario = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Ventas tabla', 'login': 'sgi_dev_tabla_ventas',
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('project.group_project_user').id])]})
+        engomado.with_user(usuario).unlink()
+        self.assertEqual(len(self.project.sgi_dev_line_ids), n - 1, "Un usuario interno borra un renglón sin evidencia")
+        self.project.action_sgi_dev_load_lines()
+        self.assertEqual(len(self.project.sgi_dev_line_ids), n - 1, "Volver a proponer no regresa lo borrado a propósito")
+        self.assertFalse(self._line('engomado_orillas'))
+        # Un renglón con evidencia no se borra: lecturas de corrida, dictamen o aprobación del cliente.
+        masa.write({'run_1': 150.0})
+        with self.assertRaises(UserError, msg="Con lecturas de corrida no se borra"):
+            masa.unlink()
+        masa.write({'run_1': 0.0, 'verdict': 'cumple'})
+        with self.assertRaises(UserError, msg="Con dictamen no se borra"):
+            masa.unlink()
+        masa.write({'verdict': False, 'customer_approved': True})
+        with self.assertRaises(UserError, msg="Aprobado por el cliente no se borra"):
+            masa.unlink()
+        masa.write({'customer_approved': False, 'run_text': 'ok'})
+        with self.assertRaises(UserError, msg="Corrida cualitativa tampoco"):
+            masa.unlink()
+        masa.write({'run_text': False})
+        masa.unlink()
+        # Con la tabla vacía se propone todo otra vez, incluido lo borrado antes.
+        self.project.sgi_dev_line_ids.unlink()
+        self.project.action_sgi_dev_load_lines()
+        self.assertEqual(len(self.project.sgi_dev_line_ids), n)
+        self.assertTrue(self._line('engomado_orillas'))
 
     # ---- límites y resultados ----
     def test_03_limits_absolute_and_percent(self):

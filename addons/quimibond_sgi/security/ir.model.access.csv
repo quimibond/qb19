@@ -225,7 +225,7 @@ access_sgi_lock_date_log_auditor,sgi.lock.date.log.auditor,model_sgi_lock_date_l
 access_sgi_inventory_value_user,sgi.inventory.value.user,model_sgi_inventory_value,group_sgi_user,1,0,0,0
 access_sgi_inventory_value_manager,sgi.inventory.value.manager,model_sgi_inventory_value,group_sgi_manager,1,1,1,1
 access_sgi_inventory_value_auditor,sgi.inventory.value.auditor,model_sgi_inventory_value,group_sgi_auditor,1,0,0,0
-access_sgi_dev_characteristic_user,sgi.dev.characteristic.user,model_sgi_dev_characteristic,base.group_user,1,1,1,0
+access_sgi_dev_characteristic_user,sgi.dev.characteristic.user,model_sgi_dev_characteristic,base.group_user,1,1,1,1
 access_sgi_dev_option_user,sgi.dev.option.user,model_sgi_dev_option,base.group_user,1,0,0,0
 access_sgi_dev_option_manager,sgi.dev.option.manager,model_sgi_dev_option,group_sgi_manager,1,1,1,1
 access_sgi_dev_revision_user,sgi.dev.revision.user,model_sgi_dev_revision,base.group_user,1,1,1,0

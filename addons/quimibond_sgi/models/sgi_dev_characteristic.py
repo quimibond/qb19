@@ -23,7 +23,9 @@ queda solo lo propio del desarrollo:
 - ``sgi.dev.characteristic``: el renglón del proyecto, con las columnas de
   muestra del cliente, corrida, dictamen y aprobación.
 """
+
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 from odoo.addons.quimibond_ficha_tecnica_tela.models.ficha_tecnica_caracteristica import (
     CODE_MASS, CODE_WIDTH, DIRECTIONS, POSITIONS, RESULTS,
@@ -127,6 +129,50 @@ class SgiDevCharacteristic(models.Model):
     # --- Cliente (paso 19) ------------------------------------------------------
     customer_approved = fields.Boolean(string="Aprobado por el cliente",
                                        help="El cliente aceptó este valor en la aprobación final.")
+
+    def _sgi_dev_template_key(self):
+        self.ensure_one()
+        return "%d|%s|%s" % (self.caracteristica_id.id, self.direction or 'na', self.position or 'na')
+
+    def _sgi_dev_why_locked(self):
+        """Por qué el renglón ya no se puede borrar (texto) o '' si se puede. 57.139.0: un
+        renglón con lecturas de la corrida, dictamen, aprobación del cliente, lecturas de
+        pilotaje o certificado ya es evidencia del desarrollo."""
+        self.ensure_one()
+        motivos = []
+        if self.run_count or (self.run_text or '').strip():
+            motivos.append("lecturas de la corrida")
+        if self.verdict:
+            motivos.append("dictamen")
+        if self.customer_approved:
+            motivos.append("aprobación del cliente")
+        if self.env['sgi.dev.pilot.reading'].search_count([('characteristic_id', '=', self.id)]):
+            motivos.append("lecturas de pilotaje")
+        if self.env['sgi.dev.coa.line'].search_count([('characteristic_id', '=', self.id)]):
+            motivos.append("un reporte de conformidad")
+        return ", ".join(motivos)
+
+    def unlink(self):
+        """57.139.0 (Administración de Ventas): los renglones que propone el tipo y el cliente
+        no pide se borran desde la tabla. No se borra uno que ya sea evidencia; el proyecto
+        recuerda los borrados a propósito para no volver a proponerlos, y si el desarrollo ya
+        lleva bitácora de revisiones, el borrado queda anotado."""
+        for line in self:
+            motivo = line._sgi_dev_why_locked()
+            if motivo:
+                raise UserError(
+                    "El renglón «%s» ya tiene %s y no se puede borrar. Si el cliente no lo pide, "
+                    "desmarque «Va a la especificación del cliente» y «Va al certificado»."
+                    % (line.display_name or line.name, motivo))
+        by_project = {}
+        for line in self:
+            if line.caracteristica_id and line.project_id:
+                by_project.setdefault(line.project_id, []).append(line._sgi_dev_template_key())
+            if line.project_id and line.project_id._sgi_dev_logs_revisions():
+                line.project_id._sgi_dev_log_revision(line, line.spec_label or '', "renglón borrado")
+        for project, keys in by_project.items():
+            project._sgi_dev_remember_removed_lines(keys)
+        return super().unlink()
 
     @api.depends('run_1', 'run_2', 'run_3')
     def _compute_run_avg(self):
