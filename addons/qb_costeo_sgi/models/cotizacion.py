@@ -199,7 +199,11 @@ class QbCotizadorCotizacionSgi(models.Model):
                                       "configurado desde la cotización.")
                 continue
             label = rec.folio or rec.name
-            request = self.env['approval.request'].create({
+            # 1.5.0 (Dirección General 2026-10-09): la solicitud y sus aprobadores se crean con sudo.
+            # El vendedor (Usuario interno, sin grupos de Aprobaciones) no puede crear
+            # `approval.approver`, que nace solo al poner la categoría; `request_owner_id` sigue
+            # siendo quien la manda, para que en Aprobaciones se vea quién la pidió.
+            request = self.env['approval.request'].sudo().create({
                 'name': "Cotización %s · %s" % (label, rec.partner_id.name or 'sin cliente'),
                 'category_id': category.id, 'sgi_subject_id': subject.id, 'request_owner_id': self.env.uid,
                 'reference': label, 'company_id': rec.company_id.id, 'qb_cotizacion_id': rec.id,
@@ -210,11 +214,21 @@ class QbCotizadorCotizacionSgi(models.Model):
                               rec.margen_neto_pct, rec.semaforo or 'sin precio', rec.costo_muestra,
                               (" Proyecto %s." % rec.project_id.display_name) if rec.project_id else ''),
             })
-            request.action_confirm()
+            request.sudo().action_confirm()
             rec.write({'approval_request_id': request.id})
             rec.activity_unlink(['mail.mail_activity_data_todo'])
             rec.message_post(body="Solicitud %s enviada a Aprobaciones (%s): la cotización se presenta cuando se "
                                   "apruebe ahí." % (request.name, category.name))
+        return res
+
+    def action_volver_a_borrador(self):
+        """1.5.0: retirar la cotización cancela su solicitud viva en Aprobaciones (con sudo: el
+        vendedor no tiene grupos de Aprobaciones); volver a enviar crea una solicitud nueva."""
+        res = super().action_volver_a_borrador()
+        for rec in self.filtered(lambda r: r.approval_request_id and r.approval_request_id.request_status in ('new', 'pending')):
+            request = rec.approval_request_id.sudo().with_context(qb_from_approval=True)
+            request.action_cancel()
+            rec.message_post(body="Solicitud %s cancelada en Aprobaciones: la cotización se retiró." % request.name)
         return res
 
     def _puede_aprobar(self, user):
