@@ -79,12 +79,8 @@
                                             <span t-out="o.product_id.name"/>
                                         </t>
                                         <t t-if="o.spec_descripcion"><span t-out="o.spec_descripcion"/></t>
-                                        <t t-if="o.spec_gramaje or o.spec_ancho or o.spec_galga">
-                                            <br/><span style="color:#555;">
-                                            <t t-if="o.spec_gramaje"><span t-out="'%g' % o.spec_gramaje"/> g/m²</t>
-                                            <t t-if="o.spec_ancho"> × <span t-out="'%g' % o.spec_ancho"/> m</t>
-                                            <t t-if="o.spec_galga"> · galga <span t-out="o.spec_galga"/></t></span>
-                                        </t>
+                                        <!-- 1.4.0 (Dirección General 2026-10-09): gramaje, ancho y galga se quedan en la
+                                             cotización, pero no se imprimen al cliente. -->
                                     </td>
                                     <td class="text-end"><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/></td>
                                     <td class="text-end"><b><span t-out="'{:,.4f}'.format(o.precio_objetivo)"/> <span t-out="o.currency_id.name"/></b>
@@ -144,18 +140,7 @@
                         </table>
                         <p t-if="o.muestra_leyenda" style="font-size:11px; color:#555;"><span t-out="o.muestra_leyenda"/></p>
                         <p style="font-size:12px;">Quedamos atentos a sus comentarios. <span style="color:#888;">/ We remain attentive to your comments.</span></p>
-                        <table class="table table-borderless" style="font-size:11px; margin-top:28px; width:60%;">
-                            <tbody>
-                                <tr>
-                                    <td style="border-top:1px solid #000; text-align:center;">
-                                        <span t-out="o.user_id.name"/><br/>Ventas / Sales
-                                    </td>
-                                    <td style="border-top:1px solid #000; text-align:center;">
-                                        <span t-out="o.approved_by_id.name"/><br/>Aprobó / Approved by
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <!-- 1.4.0 (Dirección General 2026-10-09): sin tabla de firmas (vendedor / aprobó) al final. -->
                     </div>
                 </t>
             </t>
