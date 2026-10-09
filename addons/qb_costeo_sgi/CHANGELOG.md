@@ -1,5 +1,24 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.5.0 — 2026-10-09
+
+Dirección General 2026-10-09: Administración de Ventas (Usuario interno, sin
+grupos de Aprobaciones) no podía usar «Enviar a aprobación»: la solicitud se
+creaba con su usuario y al ponerle aprobadores nacían `approval.approver`, que
+Usuario interno no puede crear (acceso 1922). A Dirección General le
+funcionaba por sus grupos de Aprobaciones.
+
+- **Corregido** la solicitud de Aprobaciones y sus aprobadores se crean y
+  confirman con `sudo()`; `request_owner_id` sigue siendo quien la manda, así
+  que en Aprobaciones se ve quién la pidió. No se da a Ventas ningún grupo de
+  Aprobaciones («Encargado» le permitiría aprobar sus propias cotizaciones).
+- **Agregado** «Retirar» cancela con `sudo()` la solicitud viva en
+  Aprobaciones y lo anota; «Enviar a aprobación» otra vez crea una solicitud
+  nueva. Registrar la aprobación del cliente ya corría con `sudo()` en la
+  tarifa (`qb_cotizador`), sin cambio.
+- Prueba `test_bridge.py` test_04b con un usuario sin grupos de Aprobaciones:
+  enviar, retirar, volver a enviar y aprobación del cliente.
+
 ## 19.0.1.4.0 — 2026-10-09
 
 Dirección General 2026-10-09, junto con SGI 57.141.0 («Generar artículos»

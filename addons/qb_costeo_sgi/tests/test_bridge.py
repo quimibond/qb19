@@ -119,6 +119,37 @@ class TestBridge(CotizadorCase):
         self.assertEqual(otra.state, 'borrador', "Cancelar la solicitud regresa la cotización")
         self.assertEqual(otra.regreso_motivo_id, self.env.ref('qb_cotizador.motivo_regreso_otro'))
 
+    def test_04b_vendedor_sin_grupos_de_aprobaciones(self):
+        """1.5.0: el vendedor (solo Ventas / Usuario, sin grupos de Aprobaciones) manda a aprobar,
+        retira, vuelve a mandar y registra la aprobación del cliente sin error de acceso."""
+        Cot = self.env['qb.cotizador.cotizacion']
+        category, _subject = Cot._qb_sgi_approval_subject()
+        self.assertFalse(self.vendedor.has_group('approvals.group_approval_user'))
+        cot = self._cot(project_id=self.project.id).with_user(self.vendedor)
+        cot.action_calcular()
+        cot.action_enviar_aprobacion()
+        self.assertEqual(cot.state, 'por_aprobar')
+        if category:
+            req = cot.approval_request_id.sudo()
+            self.assertTrue(req, "La solicitud se crea aunque el vendedor no tenga grupos de Aprobaciones")
+            self.assertEqual(req.request_owner_id, self.vendedor, "Y en Aprobaciones se ve quién la pidió")
+            self.assertEqual(req.request_status, 'pending')
+            # Retirar cancela la solicitud; volver a enviar crea otra.
+            cot.action_volver_a_borrador()
+            self.assertEqual(cot.state, 'borrador')
+            self.assertEqual(req.request_status, 'cancel')
+            cot.action_enviar_aprobacion()
+            self.assertNotEqual(cot.approval_request_id, req)
+            self.assertEqual(cot.sudo().approval_request_id.request_status, 'pending')
+            cot.action_volver_a_borrador()
+        else:
+            cot.action_volver_a_borrador()
+            cot.action_enviar_aprobacion()
+            cot.action_volver_a_borrador()
+        # Aprobación del cliente la registra el vendedor (la tarifa va con sudo en qb_cotizador).
+        cot.write({'cliente_aprobo': True, 'cliente_medio': 'correo', 'cliente_fecha': fields.Date.today()})
+        self.assertTrue(cot.cliente_aprobo)
+
     def test_05_precio_en_tarifa_al_ganar_con_el_articulo_del_desarrollo(self):
         """1.3.0 (Jose 5.6): la cotización nace sin artículo; la aprobación de la muestra llega del
         envío del SGI; al generar el artículo, la ganada pone su precio en la tarifa sola."""
