@@ -92,8 +92,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_packaging` | Text | Datos en la etiqueta y empaque |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:55` |
 | `sgi_dev_pending_hours` | Float | Horas de desarrollo en el paso |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:249` |
 | `sgi_dev_pending_step` | Char | Paso pendiente |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:248` |
-| `sgi_dev_pilot_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_pilot_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:336` |
-| `sgi_dev_pilot_ids` | One2many | Pilotajes |  |  | `sgi.dev.pilot` |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:335` |
+| `sgi_dev_pilot_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_pilot_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:340` |
+| `sgi_dev_pilot_ids` | One2many | Pilotajes |  |  | `sgi.dev.pilot` |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:339` |
 | `sgi_dev_prepared_by_id` | Many2one | Elaboró (Diseño y Desarrollo) | Persona de Diseño y Desarrollo que elaboró la solicitud. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:76` |
 | `sgi_dev_product_crudo_id` | Many2one | Artículo crudo | Artículo crudo (H) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:172` |
 | `sgi_dev_product_id` | Many2one | Artículo en desarrollo | Artículo generado para el desarrollo (lo crea el generador de código). Su referencia interna forma parte del nombre del proyecto. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:248` |
