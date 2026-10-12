@@ -90,6 +90,12 @@ decide encenderlo, antes hay que contestar el límite de intentos del PIN
   (el rol marca «Sin personas en el puesto»). El escalamiento del atraso sí
   sube al jefe directo. En la medición, el jefe directo de quien tiene el rol
   «Ejecuta» cuenta como cumplido por suplencia («Jefe directo (suplencia)»).
+- **Aprobación en pausa:** en Aprobaciones del SGI, «Pausar» archiva la
+  aprobación nativa de un rol (regla de Studio o categoría de Aprobaciones)
+  y el SGI no la vuelve a activar aunque corra el cron o se actualice el
+  módulo; «Reanudar» la regresa. Archivar a mano la regla en Studio hace lo
+  mismo. Una pausa no aparece como faltante. Desde el 2026-10-12 las de
+  Contabilidad e Inventario están en pausa por decisión de Dirección.
 - **Vencimientos:** mensual en un día hábil, semanal en un día de la semana,
   anual por mes y día, o por evento. Los días inhábiles son los del
   calendario del SGI (parámetro `quimibond_sgi.business_calendar_id`): la

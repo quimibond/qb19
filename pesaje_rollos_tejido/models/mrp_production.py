@@ -64,19 +64,40 @@ class MrpProduction(models.Model):
                 # El propio core escribe esta demanda con el mismo contexto.
                 finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': 0})
 
+            # 1.4.3: al confirmar la OF, el core crea una línea del terminado sin
+            # lote con toda la cantidad planeada (el origen es Producción y no hay
+            # nada que reservar). Con pesaje por rollo esa línea sobra. Hasta 1.4.2
+            # la borraba _do_unreserve() como efecto secundario del write de
+            # demanda 0; al pasar do_not_unreserve sobrevivía, button_mark_done la
+            # sumaba como un rollo más y el cierre le pegaba el lote que capturara
+            # el operador: H13735 cerró con «21035 H33» de 442 kg que nadie pesó
+            # (y H13718, H13729, H13764, H13788, H13967; 2026-10-12). Se borra
+            # explícitamente: un rollo siempre lleva lote.
+            self._pesaje_unlink_lines_without_lot(finished_move)
+
             current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
 
+            # picked=True: el core nunca borra líneas procesadas (_do_unreserve,
+            # _split_productions) y con una línea picked el movimiento queda
+            # picked, así que ya no depende de do_not_unreserve para conservar
+            # los rollos. Igual que el subproducto más abajo.
             self.env['stock.move.line'].create({
                 'move_id': finished_move.id,
                 'product_id': self.product_id.id,
                 'lot_id': new_lot.id,
                 'lot_name': lot_name,
                 'quantity': weight,
+                'picked': True,
                 'location_id': finished_move.location_id.id,
                 'location_dest_id': finished_move.location_dest_id.id,
                 'workorder_id': current_wo.id if current_wo else False,
                 'production_id': self.id,
             })
+
+            # El lote de la OF (Odoo 19 lo exige para cerrar): el primer rollo.
+            # Sin esto el cierre generaba o pedía un lote ajeno al pesaje.
+            if not self.lot_producing_ids:
+                self.lot_producing_ids = [(4, new_lot.id)]
 
             self.qty_producing += weight
             if current_wo:
@@ -89,6 +110,17 @@ class MrpProduction(models.Model):
         self._print_zpl_pesaje_original(lot_name, weight, lot_name, pesador=pesador)
         
         return {'type': 'ir.actions.client', 'tag': 'reload'}
+
+    def _pesaje_unlink_lines_without_lot(self, finished_move):
+        """Borra las líneas del terminado sin lote (la que crea el core al
+        confirmar). Devuelve cuántas borró. Las líneas de rollo siempre llevan
+        lote, así que nunca toca un pesaje."""
+        lines = finished_move.move_line_ids.filtered(
+            lambda ml: not ml.lot_id and not ml.lot_name and ml.state not in ('done', 'cancel'))
+        count = len(lines)
+        if lines:
+            lines.unlink()
+        return count
 
     def action_register_subproduct_manual(self, weight, lot_name=False, pesador=False):
         """ 
@@ -344,9 +376,17 @@ class MrpProduction(models.Model):
                 )[:1]
 
                 if finished_move:
+                    # 1.4.3: solo cuentan las líneas con lote (los rollos). La línea
+                    # sin lote que crea el core al confirmar se borra aquí también,
+                    # por las OF que ya la traían cuando se desplegó esta versión.
+                    production._pesaje_unlink_lines_without_lot(finished_move)
+                    roll_lines = finished_move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.lot_name)
+                    if not production.lot_producing_ids and roll_lines:
+                        production.lot_producing_ids = [(4, roll_lines[0].lot_id.id)]
+
                     # Sumamos el peso real de todos tus rollos
                     uom_main = production.product_id.uom_id
-                    total_rollos = uom_main.round(sum(finished_move.move_line_ids.mapped('quantity')))
+                    total_rollos = uom_main.round(sum(roll_lines.mapped('quantity')))
 
                     # Buscamos si hay subproductos pesados
                     # (Asumiendo que el subproducto se registra en su propio movimiento)
