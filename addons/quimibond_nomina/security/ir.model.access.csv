@@ -1,3 +1,10 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_qb_nomina_rule_sentinel_user,qb.nomina.rule.sentinel user,model_qb_nomina_rule_sentinel,hr_payroll.group_hr_payroll_user,1,0,0,0
 access_qb_nomina_rule_sentinel_manager,qb.nomina.rule.sentinel manager,model_qb_nomina_rule_sentinel,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_nomina_imss_movimiento_user,qb.nomina.imss.movimiento user,model_qb_nomina_imss_movimiento,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_imss_movimiento_manager,qb.nomina.imss.movimiento manager,model_qb_nomina_imss_movimiento,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_nomina_imss_lote_user,qb.nomina.imss.lote user,model_qb_nomina_imss_lote,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_imss_lote_manager,qb.nomina.imss.lote manager,model_qb_nomina_imss_lote,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_nomina_imss_detectar_user,qb.nomina.imss.detectar user,model_qb_nomina_imss_detectar,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_imss_sdi_bimestre_user,qb.nomina.imss.sdi.bimestre user,model_qb_nomina_imss_sdi_bimestre,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_imss_sdi_bimestre_linea_user,qb.nomina.imss.sdi.bimestre.linea user,model_qb_nomina_imss_sdi_bimestre_linea,hr_payroll.group_hr_payroll_user,1,1,1,1

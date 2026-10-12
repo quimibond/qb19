@@ -22,7 +22,13 @@ del reloj y no de la hoja de incidencias.
 
 El reloj se identifica por su **número de serie**. Solo contestan los equipos
 registrados en *Asistencias → Checadores → Relojes* y marcados autorizados y
-activos. Un equipo desconocido que se conecte queda registrado **inactivo y
+activos. Odoo no puede «probar» la conexión hacia el reloj (es el reloj el
+que llama); lo que sí muestra la lista y la ficha es un **semáforo** a partir
+de la última vez que el reloj se presentó: *Conectado* (hace menos de
+2 minutos; un reloj conectado se presenta cada pocos segundos), *Sin
+conexión* (se presentó antes y lleva más de 2 minutos callado) o *Nunca
+conectado* (red, firewall o servidor en la nube sin configurar), con el
+«hace X min» al lado. Un equipo desconocido que se conecte queda registrado **inactivo y
 sin autorizar** con su serie, para que TI lo revise; recibe 403 y sus
 checadas no se guardan (parámetro `qb_checador.auto_registrar`; `0` lo apaga).
 
