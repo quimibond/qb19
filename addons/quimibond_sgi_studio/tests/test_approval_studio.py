@@ -195,3 +195,54 @@ class TestApprovalStudioRequester(TransactionCase):
         entry = self.env['studio.approval.entry'].sudo().create({
             'rule_id': self.rule.id, 'res_id': other.id, 'user_id': self.u_design.id, 'approved': True})
         self.assertTrue(entry.approved)
+
+
+@tagged('post_install', '-at_install')
+class TestApprovalStudioPause(TransactionCase):
+    """1.0.7: lo que se archiva a mano en Studio se queda archivado (el rol entra
+    en pausa) y lo que el SGI archiva por pausa no cuenta como decisión a mano."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.job_boss = cls.env['hr.job'].create({'name': 'CONTADOR PAUSA MP'})
+        cls.boss_user = new_test_user(cls.env, login='pause_boss', groups='base.group_user')
+        cls.env['hr.employee'].create({'name': 'Contador Pausa', 'job_id': cls.job_boss.id, 'user_id': cls.boss_user.id})
+        process = cls.env['sgi.process'].create({'code': 'ZPAU', 'name': 'Proceso pausa'})
+        job_exec = cls.env['hr.job'].create({'name': 'AUXILIAR PAUSA MP'})
+        cls.activity = cls.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'Registrar el asiento', 'number': '9.4',
+            'measure_model_id': cls.env['ir.model']._get('account.move').id,
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job_exec.id}),
+                         (0, 0, {'role': 'aprueba', 'job_id': cls.job_boss.id, 'approval_method': 'action_post'})]})
+        cls.role = cls.activity.role_ids.filtered(lambda r: r.role == 'aprueba')
+        cls.role.action_sgi_sync_approval()
+        cls.rule = cls.role.approval_rule_id
+
+    def test_01_archivar_a_mano_pausa_y_el_cron_no_reactiva(self):
+        self.assertTrue(self.rule.active)
+        self.assertEqual(self.role.approval_state, 'activa')
+        # Sistemas archiva la regla en Studio.
+        self.rule.write({'active': False})
+        self.assertTrue(self.role.approval_paused)
+        self.assertIn("archivada a mano", self.role.approval_paused_note)
+        self.assertEqual(self.role.approval_state, 'pausada')
+        self.env['sgi.activity.role'].cron_sgi_sync_approvals()
+        self.role.action_sgi_sync_approval()
+        self.assertFalse(self.rule.active, "Ni el cron ni Sincronizar la reactivan.")
+        self.assertFalse(self.activity._sgi_approval_problems(), "Una pausa no es un faltante.")
+        # Reactivarla a mano quita la pausa.
+        self.rule.write({'active': True})
+        self.assertFalse(self.role.approval_paused)
+        self.assertEqual(self.role.approval_state, 'activa')
+
+    def test_02_pausar_desde_el_sgi_archiva_la_regla_y_reanudar_la_regresa(self):
+        self.role.sudo().action_sgi_pause_approval(reason="Contabilidad en pausa")
+        self.assertFalse(self.rule.active)
+        self.assertTrue(self.role.approval_paused, "El archivado del SGI no se confunde con uno a mano.")
+        self.assertEqual(self.role.approval_state, 'pausada')
+        self.env['sgi.activity.role'].cron_sgi_sync_approvals()
+        self.assertFalse(self.rule.active)
+        self.role.sudo().action_sgi_resume_approval()
+        self.assertTrue(self.rule.active)
+        self.assertEqual(self.role.approval_state, 'activa')

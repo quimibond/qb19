@@ -13,6 +13,7 @@
             <list string="Aprobaciones del SGI" editable="bottom" create="0" delete="0"
                   default_order="process_id, activity_id"
                   decoration-muted="approval_state == 'sin_configurar'"
+                  decoration-info="approval_state == 'pausada'"
                   decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')">
                 <header>
                     <button name="action_sgi_sync_approval" type="object" string="Sincronizar"
@@ -47,11 +48,21 @@
                 <field name="approval_user_ids" widget="many2many_tags" optional="show"/>
                 <field name="approval_state" widget="badge"
                        decoration-success="approval_state == 'activa'"
+                       decoration-info="approval_state == 'pausada'"
                        decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')"/>
+                <field name="approval_paused" column_invisible="1"/>
+                <field name="approval_paused_note" optional="hide" readonly="1"/>
                 <field name="approval_entry_count" optional="show"/>
                 <field name="approval_last_date" optional="hide"/>
                 <button name="action_sgi_sync_approval" type="object" string="Sincronizar" icon="fa-refresh"
                         invisible="approval_state not in ('por_sincronizar', 'activa')" groups="quimibond_sgi.group_sgi_manager"/>
+                <!-- 57.144.0: pausa que el cron y las actualizaciones respetan. -->
+                <button name="action_sgi_pause_approval" type="object" string="Pausar" icon="fa-pause"
+                        invisible="approval_paused or approval_state in ('sin_configurar', 'relativo')"
+                        groups="quimibond_sgi.group_sgi_manager"
+                        confirm="La aprobación se archiva en Odoo (regla de Studio o categoría de Aprobaciones) y el SGI no la vuelve a activar hasta que pulse «Reanudar». El procedimiento sigue diciendo que se aprueba. ¿Continuar?"/>
+                <button name="action_sgi_resume_approval" type="object" string="Reanudar" icon="fa-play"
+                        invisible="not approval_paused" groups="quimibond_sgi.group_sgi_manager"/>
                 <!-- 57.109.0: el asistente de tres preguntas. -->
                 <field name="approval_suggestion" optional="show"/>
                 <button name="action_sgi_approval_wizard" type="object" string="Configurar" icon="fa-magic"
@@ -72,6 +83,9 @@
                 <filter name="kind_button" string="Botón de Odoo" domain="[('approval_kind', '=', 'boton')]"/>
                 <filter name="kind_request" string="Solicitud" domain="[('approval_kind', '=', 'solicitud')]"/>
                 <filter name="kind_sign" string="Firma" domain="[('approval_kind', '=', 'firma')]"/>
+                <separator/>
+                <filter name="paused" string="En pausa" domain="[('approval_paused', '=', True)]"/>
+                <filter name="active_native" string="Activas en Odoo" domain="[('approval_state', '=', 'activa')]"/>
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>

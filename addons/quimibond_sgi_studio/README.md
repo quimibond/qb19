@@ -19,6 +19,15 @@ núcleo en 57.9.0 (auditoría A-010, decisión D-10 de Jose).
   2026-09-29: 11 roles con regla y 11 reglas activas con rol.
 - **Pruebas:** `tests/test_approval_studio.py` y
   `tests/test_approval_rule_archive.py` (se mudaron del núcleo).
+- **19.0.1.0.7 (2026-10-12): lo que Sistemas archiva en Studio se queda
+  archivado.** Archivar a mano una regla con rol del SGI pone el rol en
+  pausa (`sgi.activity.role.approval_paused`, núcleo 57.144.0) y el cron y
+  las migraciones ya no la reactivan; volver a activarla a mano quita la
+  pausa. Lo que hace el propio SGI va con el contexto `sgi_approval_sync` y
+  no cuenta. La migración `19.0.1.0.7` pone en pausa los roles cuya regla ya
+  estaba archivada por una persona y archiva las reglas de los roles que el
+  núcleo dejó en pausa (Contabilidad e Inventario). Prueba:
+  `tests/test_approval_studio.py::TestApprovalStudioPause`.
 - **19.0.1.0.6 (2026-10-09): nadie aprueba lo que él mismo pidió.** La
   entrada de aprobación de Studio (`studio.approval.entry`) de una regla con
   rol del SGI no se crea si quien aprueba es quien pidió el registro

@@ -57,6 +57,9 @@ APPROVAL_STATES = [
     # 57.13.0: solicitante, quien detecta o área responsable, o el jefe del
     # que pide en un botón o firma: no hay aprobador fijo que sincronizar.
     ('relativo', "Depende de cada registro"),
+    # 57.144.0 (Dirección General 2026-10-12): la aprobación nativa está en
+    # pausa a propósito: ni el cron ni las actualizaciones la vuelven a activar.
+    ('pausada', "En pausa"),
 ]
 # 56.6.0: no toda aprobación es un botón. Las decisiones sin documento van a
 # una solicitud de Aprobaciones y lo que hoy se firma en papel, a Sign.
@@ -200,6 +203,20 @@ class SgiActivityRoleApproval(models.Model):
         APPROVAL_STATES, string="Aprobación en Odoo", compute='_compute_approval_state',
         help="Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra "
              "regla en el mismo botón).")
+    # 57.144.0: pausa de la aprobación nativa. Mientras está en pausa, el SGI
+    # archiva la regla de Studio o la categoría propia y NO las vuelve a
+    # activar (ni el cron nocturno ni las migraciones). Se pone a mano desde
+    # Aprobaciones del SGI, o sola cuando alguien archiva la regla en Studio
+    # (quimibond_sgi_studio). El rol sigue en el procedimiento.
+    approval_paused = fields.Boolean(
+        string="Aprobación en pausa", default=False, copy=False,
+        help="Marcada: el SGI archiva la aprobación nativa de este rol (regla de Studio o categoría "
+             "de Aprobaciones) y no la vuelve a activar aunque corra el cron o se actualice el "
+             "módulo. El procedimiento sigue diciendo que se aprueba; solo Odoo deja de pedirlo. "
+             "Se quita con «Reanudar».")
+    approval_paused_note = fields.Char(
+        string="Motivo de la pausa", copy=False,
+        help="Quién la puso en pausa, cuándo y por qué.")
     approval_entry_count = fields.Integer(string="Aprobaciones dadas", compute='_compute_approval_entries')
     approval_last_date = fields.Datetime(string="Última aprobación", compute='_compute_approval_entries',
                                          help="Fecha de la última aprobación dada con esta regla.")
@@ -320,11 +337,13 @@ class SgiActivityRoleApproval(models.Model):
                  'approval_kind', 'approval_sign_template_id', 'approval_model_id',
                  'approval_method', 'approval_category_id.sgi_role_id',
                  'approval_category_id.approver_ids.user_id',
-                 'approval_category_id.manager_approval')
+                 'approval_category_id.manager_approval', 'approval_paused')
     def _compute_approval_state(self):
         for role in self:
             if role.role != 'aprueba':
                 role.approval_state = False
+            elif role.approval_paused:
+                role.approval_state = 'pausada'
             elif role._sgi_record_dependent():
                 role.approval_state = 'relativo'
             elif role.approval_kind == 'firma':
@@ -417,7 +436,7 @@ class SgiActivityRoleApproval(models.Model):
         for role in self:
             users = role._sgi_approver_users()
             category = role.approval_category_id.sudo()
-            if not role.activity_id.active or role.role != 'aprueba':
+            if not role.activity_id.active or role.role != 'aprueba' or role.approval_paused:
                 if category.sgi_role_id == role:
                     category.active = False
                 continue
@@ -447,14 +466,47 @@ class SgiActivityRoleApproval(models.Model):
                 category.active = True
 
     def _sgi_sync_approval_rule(self):
-        """Pone al día la aprobación del rol según su tipo."""
+        """Pone al día la aprobación del rol según su tipo. 57.144.0: un rol en
+        pausa solo se archiva (botón y categoría propia), nunca se reactiva."""
         for role in self:
+            if role.approval_paused:
+                role._sgi_release_button()
+                if role.approval_category_id.sudo().sgi_role_id == role:
+                    role.approval_category_id.sudo().active = False
+                continue
             if role.approval_kind != 'boton':
                 role._sgi_release_button()
                 if role.approval_kind == 'solicitud':
                     role._sgi_sync_category()
                 continue
             role._sgi_sync_button()
+        return True
+
+    def _sgi_pause_note(self, reason):
+        return "%s el %s: %s" % (self.env.user.name, fields.Date.context_today(self).isoformat(), reason)
+
+    def action_sgi_pause_approval(self, reason=None):
+        """57.144.0: pone en pausa la aprobación nativa de estos roles (archiva
+        la regla de Studio o la categoría propia) y la deja así hasta
+        «Reanudar». Solo Jefe MAST o sistema."""
+        from .sgi_approval_wizard import _sgi_manager_only   # carga después
+        _sgi_manager_only(self.env)
+        roles = self.filtered(lambda r: r.role == 'aprueba' and not r.approval_paused)
+        for role in roles:
+            role.write({'approval_paused': True,
+                        'approval_paused_note': role._sgi_pause_note(reason or "pausada a mano")})
+        roles._sgi_sync_approval_rule()
+        roles.activity_id._sgi_refresh_spec_gaps()
+        return True
+
+    def action_sgi_resume_approval(self):
+        """57.144.0: quita la pausa y vuelve a sincronizar la aprobación."""
+        from .sgi_approval_wizard import _sgi_manager_only
+        _sgi_manager_only(self.env)
+        roles = self.filtered('approval_paused')
+        roles.write({'approval_paused': False, 'approval_paused_note': False})
+        roles._sgi_sync_approval_rule()
+        roles.activity_id._sgi_refresh_spec_gaps()
         return True
 
     def action_sgi_sync_approval(self):
@@ -473,7 +525,7 @@ class SgiActivityRoleApproval(models.Model):
             self._sgi_sanitize_approval_domains()
         if {'role', 'job_id', 'family_id', 'relative_role', 'target_type', 'approval_kind',
                 'substitute_job_id'} & set(vals):
-            self.filtered(lambda r: r._sgi_has_native_approval())._sgi_sync_approval_rule()
+            self.filtered(lambda r: r._sgi_has_native_approval() and not r.approval_paused)._sgi_sync_approval_rule()
         return res
 
     def unlink(self):

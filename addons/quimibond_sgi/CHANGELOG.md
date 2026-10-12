@@ -13,6 +13,36 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.144.0 — 2026-10-12
+
+Dirección General 2026-10-12: **las aprobaciones de Contabilidad e Inventario
+quedan en pausa**. Sistemas las desactivaba a mano en Studio y cada
+actualización del módulo (migraciones 1.0.4 / 1.0.5 del satélite) y el cron
+nocturno las volvían a activar porque leían «por sincronizar».
+
+### Agregado
+- `sgi.activity.role.approval_paused` («Aprobación en pausa») y
+  `approval_paused_note`. Un rol en pausa archiva su aprobación nativa (regla
+  de Studio o categoría propia de Aprobaciones) y **ni el cron ni las
+  actualizaciones ni «Sincronizar» la vuelven a activar**; el rol sigue en el
+  procedimiento. Estado nuevo «En pausa» en «Aprobación en Odoo»; botones
+  «Pausar» y «Reanudar» en Aprobaciones del SGI (Jefe MAST); filtros «En
+  pausa» y «Activas en Odoo».
+- Una pausa no cuenta como «Aprobación sin activar» (faltante ni aviso al
+  Jefe MAST).
+- En `quimibond_sgi_studio` 1.0.7, archivar a mano una regla del SGI en
+  Studio pone el rol en pausa y reactivarla la quita.
+
+### Migración
+- `19.0.57.144.0`: pone en pausa los roles «Aprueba» cuyo documento es de
+  Contabilidad (`account.*`) o de Inventario (`stock.*`) y archiva sus
+  categorías propias; las reglas de Studio las archiva el satélite 1.0.7 al
+  cargar. En producción: C2.24, C5.14, C6.17, C6.18, C6.22, S2.12, S2.13,
+  S3.04, S3.05, S3.09 y S3.12. No se cambia ningún rol del procedimiento.
+
+### Pruebas
+- `test_approval_native.test_08` (pausa, cron, reanudar).
+
 ## 19.0.57.143.0 — 2026-10-09
 
 Dirección General 2026-10-09: **suplencias**. No se cambia ningún jefe en el
