@@ -13,6 +13,14 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.144.1 — 2026-10-12
+
+### Corregido
+- El build de `main` cayó al cargar `sgi_approval_native_views.xml`: el filtro
+  «Activas en Odoo» buscaba por `approval_state`, campo calculado sin `store`
+  (no se puede buscar). Se quita el filtro; «En pausa» (campo guardado) se
+  queda.
+
 ## 19.0.57.144.0 — 2026-10-12
 
 Dirección General 2026-10-12: **las aprobaciones de Contabilidad e Inventario
