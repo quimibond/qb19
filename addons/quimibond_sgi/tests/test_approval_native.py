@@ -106,3 +106,25 @@ class TestApprovalNative(TransactionCase):
         # Cambiar el documento a uno sin el campo limpia lo guardado.
         self.role.approval_model_id = env['ir.model']._get('sgi.audit.program')
         self.assertFalse(self.role.approval_domain)
+
+    def test_08_pausa_que_el_cron_respeta(self):
+        """57.144.0 (Dirección General): una aprobación en pausa se archiva y ni el
+        cron ni «Sincronizar» la vuelven a activar; «Reanudar» la regresa."""
+        self.role.approval_kind = 'solicitud'
+        self.role.action_sgi_sync_approval()
+        category = self.role.approval_category_id
+        self.assertTrue(category.active)
+        self.assertEqual(self.role.approval_state, 'activa')
+        self.role.sudo().action_sgi_pause_approval(reason="prueba de pausa")
+        self.assertTrue(self.role.approval_paused)
+        self.assertIn("prueba de pausa", self.role.approval_paused_note)
+        self.assertEqual(self.role.approval_state, 'pausada')
+        self.assertFalse(category.active, "La categoría propia se archiva.")
+        self.env['sgi.activity.role'].cron_sgi_sync_approvals()
+        self.role.action_sgi_sync_approval()
+        self.assertFalse(category.active, "Ni el cron ni Sincronizar la reactivan.")
+        self.assertFalse(self.activity._sgi_approval_problems(), "Una pausa no es un faltante.")
+        self.role.sudo().action_sgi_resume_approval()
+        self.assertFalse(self.role.approval_paused)
+        self.assertTrue(category.active)
+        self.assertEqual(self.role.approval_state, 'activa')

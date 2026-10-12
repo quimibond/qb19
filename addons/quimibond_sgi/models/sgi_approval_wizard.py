@@ -36,6 +36,8 @@ WHAT_CHOICES = [
 _KIND_TO_WHAT = {'boton': 'documento', 'solicitud': 'decision', 'firma': 'papel'}
 _WHAT_TO_KIND = {v: k for k, v in _KIND_TO_WHAT.items()}
 # Estados de una aprobación que no funciona en Odoo.
+# 57.144.0: «pausada» no está aquí a propósito: Dirección la apagó y el SGI no
+# la cuenta como faltante ni la vuelve a activar.
 APPROVAL_NOT_ACTIVE = ('sin_configurar', 'sin_aprobadores', 'por_sincronizar', 'conflicto')
 
 
