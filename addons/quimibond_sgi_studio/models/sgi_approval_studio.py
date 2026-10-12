@@ -45,6 +45,7 @@ class StudioApprovalRuleSgi(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        self._sgi_pause_from_manual_archive(vals)
         if not vals.get('domain'):
             return super().write(vals)
         if vals.get('model_id'):
@@ -57,6 +58,28 @@ class StudioApprovalRuleSgi(models.Model):
         if rest:
             super(StudioApprovalRuleSgi, rest).write(vals)
         return True
+
+    def _sgi_pause_from_manual_archive(self, vals):
+        """1.0.7 (Dirección General 2026-10-12): si una persona archiva en Studio
+        una regla que mantiene el SGI, el rol queda en pausa (el cron y las
+        actualizaciones ya no la reactivan); si la vuelve a activar a mano, la
+        pausa se quita. Lo que hace el propio SGI (contexto
+        ``sgi_approval_sync``) no cuenta."""
+        if self.env.context.get('sgi_approval_sync') or 'active' not in vals:
+            return
+        roles = self.sudo().sgi_role_id
+        if not roles:
+            return
+        if not vals['active']:
+            to_pause = roles.filtered(lambda r: not r.approval_paused)
+            for role in to_pause:
+                role.write({'approval_paused': True,
+                            'approval_paused_note': role._sgi_pause_note("regla archivada a mano en Studio")})
+            to_pause.activity_id._sgi_refresh_spec_gaps()
+        else:
+            to_resume = roles.filtered('approval_paused')
+            to_resume.write({'approval_paused': False, 'approval_paused_note': False})
+            to_resume.activity_id._sgi_refresh_spec_gaps()
 
     def _sgi_sanitize_domains(self):
         """Quita de la condición guardada las hojas de campos que el documento
@@ -128,7 +151,7 @@ class SgiActivityRoleStudio(models.Model):
         return ['|', ('approval_rule_id', '!=', False)] + super()._sgi_native_approval_domain()
 
     def _sgi_release_button(self):
-        self.approval_rule_id.sudo().filtered('active').write({'active': False})
+        self.approval_rule_id.sudo().filtered('active').with_context(sgi_approval_sync=True).write({'active': False})
         return super()._sgi_release_button()
 
     # ------------------------------------------------------------------
@@ -157,10 +180,12 @@ class SgiActivityRoleStudio(models.Model):
             and set(rule.approver_ids.ids) == set(self._sgi_approver_users().ids)
 
     def _sgi_sync_button(self):
-        """Crea o pone al día la regla nativa del botón."""
-        Rule = self.env['studio.approval.rule'].sudo()
+        """Crea o pone al día la regla nativa del botón. 1.0.7: con el contexto
+        ``sgi_approval_sync`` para que el archivado o la reactivación que hace
+        el SGI no se confundan con una decisión a mano."""
+        Rule = self.env['studio.approval.rule'].sudo().with_context(sgi_approval_sync=True)
         for role in self:
-            rule = role.approval_rule_id.sudo()
+            rule = role.approval_rule_id.sudo().with_context(sgi_approval_sync=True)
             wanted = (role.role == 'aprueba' and role.activity_id.active and role.approval_model_id
                       and role.approval_method and role._sgi_approver_users())
             if not wanted:

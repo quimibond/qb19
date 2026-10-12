@@ -10,7 +10,7 @@ Orden: `activity_id, sequence, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_wizard.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quimibond_sgi/models/sgi_relative_roles.py`, `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py`, `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`.
 
-## Campos (50)
+## Campos (52)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -19,25 +19,27 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `activity_menu_id` | Many2one | Menú de Odoo | Menú de Odoo donde se hace la actividad. |  |  | related `activity_id.odoo_menu_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:85` |
 | `activity_when` | Char | Cuándo |  |  |  | compute `_compute_activity_when`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:88` |
 | `after_days` | Integer | Escala a los (días hábiles) | Solo para «Escala»: días hábiles después del plazo de la actividad en que se avisa a este destino. Puede haber varios niveles. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:165` |
-| `approval_category_id` | Many2one | Categoría de Aprobaciones | Vacía: «Sincronizar» crea una categoría propia con las personas del puesto. |  | `approval.category` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:170` |
-| `approval_conflict_rule_ids` | Many2many | Otras reglas en el botón | Reglas de aprobación activas en el mismo botón que no mantiene este rol: el documento pediría dos aprobaciones. Adóptala o quítala antes de sincronizar. |  | `studio.approval.rule` | compute `_compute_approval_conflicts`, sin guardar |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:77` |
-| `approval_domain` | Char | Condición en Odoo |  |  |  | compute `_compute_approval_domain`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:194` |
-| `approval_entry_count` | Integer | Aprobaciones dadas |  |  |  | compute `_compute_approval_entries`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:203` |
-| `approval_kind` | Selection | Cómo se aprueba | Botón de Odoo: la regla nativa bloquea el botón del documento. Solicitud: una categoría de Aprobaciones para decisiones sin documento. Firma: una plantilla de Sign. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:166` |
-| `approval_last_date` | Datetime | Última aprobación | Fecha de la última aprobación dada con esta regla. |  |  | compute `_compute_approval_entries`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:204` |
-| `approval_method` | Char | Botón que se aprueba | Método del botón (button_confirm, action_post, button_validate…). |  |  | compute `_compute_approval_method`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:182` |
-| `approval_model_id` | Many2one | Documento que se aprueba | Modelo de Odoo cuyo botón queda bloqueado hasta que el puesto aprueba. Se sugiere el modelo que materializa la actividad. |  | `ir.model` | compute `_compute_approval_model_id`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:177` |
-| `approval_rule_id` | Many2one | Regla nativa | Regla de aprobación de Odoo que el SGI creó para este rol. |  | `studio.approval.rule` |  |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:81` |
-| `approval_sign_template_id` | Many2one | Plantilla de Sign | Plantilla de Sign que se firma para aprobar, cuando la aprobación es por firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:173` |
-| `approval_state` | Selection | Aprobación en Odoo | Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra regla en el mismo botón). |  |  | compute `_compute_approval_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:199` |
-| `approval_suggestion` | Char | Sugerencia | Cómo se sugiere aprobar: con el botón del documento que materializa la actividad, si tiene uno conocido; si no, con una solicitud en Aprobaciones. |  |  | compute `_compute_approval_suggestion`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:51` |
-| `approval_user_ids` | Many2many | Personas que aprueban | Personas que hoy aprueban: las del puesto o la familia y las del suplente nombrado, sin quien también ejecuta la actividad. Al aprobar un registro, quien lo pidió tampoco. |  | `res.users` | compute `_compute_approval_users`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:195` |
+| `approval_category_id` | Many2one | Categoría de Aprobaciones | Vacía: «Sincronizar» crea una categoría propia con las personas del puesto. |  | `approval.category` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:173` |
+| `approval_conflict_rule_ids` | Many2many | Otras reglas en el botón | Reglas de aprobación activas en el mismo botón que no mantiene este rol: el documento pediría dos aprobaciones. Adóptala o quítala antes de sincronizar. |  | `studio.approval.rule` | compute `_compute_approval_conflicts`, sin guardar |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:100` |
+| `approval_domain` | Char | Condición en Odoo |  |  |  | compute `_compute_approval_domain`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:197` |
+| `approval_entry_count` | Integer | Aprobaciones dadas |  |  |  | compute `_compute_approval_entries`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:220` |
+| `approval_kind` | Selection | Cómo se aprueba | Botón de Odoo: la regla nativa bloquea el botón del documento. Solicitud: una categoría de Aprobaciones para decisiones sin documento. Firma: una plantilla de Sign. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:169` |
+| `approval_last_date` | Datetime | Última aprobación | Fecha de la última aprobación dada con esta regla. |  |  | compute `_compute_approval_entries`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:221` |
+| `approval_method` | Char | Botón que se aprueba | Método del botón (button_confirm, action_post, button_validate…). |  |  | compute `_compute_approval_method`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:185` |
+| `approval_model_id` | Many2one | Documento que se aprueba | Modelo de Odoo cuyo botón queda bloqueado hasta que el puesto aprueba. Se sugiere el modelo que materializa la actividad. |  | `ir.model` | compute `_compute_approval_model_id`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:180` |
+| `approval_paused` | Boolean | Aprobación en pausa | Marcada: el SGI archiva la aprobación nativa de este rol (regla de Studio o categoría de Aprobaciones) y no la vuelve a activar aunque corra el cron o se actualice el módulo. El procedimiento sigue diciendo que se aprueba; solo Odoo deja de pedirlo. Se quita con «Reanudar». |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:211` |
+| `approval_paused_note` | Char | Motivo de la pausa | Quién la puso en pausa, cuándo y por qué. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:217` |
+| `approval_rule_id` | Many2one | Regla nativa | Regla de aprobación de Odoo que el SGI creó para este rol. |  | `studio.approval.rule` |  |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:104` |
+| `approval_sign_template_id` | Many2one | Plantilla de Sign | Plantilla de Sign que se firma para aprobar, cuando la aprobación es por firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:176` |
+| `approval_state` | Selection | Aprobación en Odoo | Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra regla en el mismo botón). |  |  | compute `_compute_approval_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:202` |
+| `approval_suggestion` | Char | Sugerencia | Cómo se sugiere aprobar: con el botón del documento que materializa la actividad, si tiene uno conocido; si no, con una solicitud en Aprobaciones. |  |  | compute `_compute_approval_suggestion`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:53` |
+| `approval_user_ids` | Many2many | Personas que aprueban | Personas que hoy aprueban: las del puesto o la familia y las del suplente nombrado, sin quien también ejecuta la actividad. Al aprobar un registro, quien lo pidió tampoco. |  | `res.users` | compute `_compute_approval_users`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:198` |
 | `cadence` | Selection | Cadencia | Cada cuánto se espera la actividad. |  |  | related `activity_id.measure_cadence`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:80` |
 | `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:188` |
 | `condition` | Char | Condición | Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba del monto que se fije». Vacío = siempre. Si según el caso la ejecuta otro puesto, son dos actividades. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:169` |
-| `condition_field_id` | Many2one | Campo de la condición | Solo cuando la aprobación aplica bajo una condición (ej. total de la orden). |  | `ir.model.fields` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:185` |
-| `condition_operator` | Selection | Operador | Cómo se compara el campo con el valor para que la aprobación aplique. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:190` |
-| `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
+| `condition_field_id` | Many2one | Campo de la condición | Solo cuando la aprobación aplica bajo una condición (ej. total de la orden). |  | `ir.model.fields` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:188` |
+| `condition_operator` | Selection | Operador | Cómo se compara el campo con el valor para que la aprobación aplique. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
+| `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:196` |
 | `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:153` |
 | `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:150` |
 | `mp_article_id` | Many2one | Instructivo en Conocimiento | El instructivo de la actividad para leerlo en Conocimiento, cuando ya está publicado. |  | `knowledge.article` | compute `_compute_mp_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py:31` |
@@ -65,7 +67,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `substitute_job_id` | Many2one | Suplente (puesto) | Solo para «Aprueba»: puesto que también aprueba, nombrado por Dirección. Vacío = sin suplente. Si el titular es quien pide o ejecuta, aprueba el suplente; sin suplente nadie aprueba y el SGI avisa. La aprobación nunca sube sola al jefe. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:177` |
 | `target_type` | Selection | Asignado a | A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien detecta, el dueño del proceso…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:146` |
 
-## Métodos públicos (15)
+## Métodos públicos (17)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -78,6 +80,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `action_sgi_adopt_rule` | Adopta la regla manual que ya existe en el botón: la liga al rol y la deja con las personas del puesto y la condición del rol. |
 | `action_sgi_approval_wizard` | «Configurar»: el asistente de tres preguntas. |
 | `action_sgi_open_approval_entries` | — |
+| `action_sgi_pause_approval` | 57.144.0: pone en pausa la aprobación nativa de estos roles (archiva la regla de Studio o la categoría propia) y la deja así hasta «Reanudar». Solo Jefe MAST o sistema. |
+| `action_sgi_resume_approval` | 57.144.0: quita la pausa y vuelve a sincronizar la aprobación. |
 | `action_sgi_sync_approval` | — |
 | `create` | — |
 | `cron_sgi_sync_approvals` | Cada noche: aprobadores al día (cambian las personas de los puestos) y reglas archivadas si la actividad o el rol ya no existen. |

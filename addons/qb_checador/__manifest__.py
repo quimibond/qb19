@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Checadores ZKTeco',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.1',
     'license': 'LGPL-3',
     'category': 'Human Resources/Attendances',
     'summary': 'Recibe las checadas de los relojes ZKTeco de la planta (protocolo ADMS/PUSH o por API) '
@@ -21,8 +21,10 @@ Lo que no se puede emparejar (entrada sin salida, usuario sin empleado,
 registro fuera de orden) queda marcado para que el supervisor lo resuelva;
 nunca se inventan horas.
 
-Para un equipo cuyo firmware no pueda empujar, un puente en una PC de la
-planta manda las mismas checadas con ``qb.checada.ingresar_api``.
+El MB10-VL tiene HTTPS y empuja directo a Odoo. El UA860 no lo tiene:
+empuja en HTTP plano a un puente (``puente/``) en una PC de la planta o un
+servidor chico, que reenvía tal cual a Odoo por HTTPS. Para otro tipo de
+equipo queda ``qb.checada.ingresar_api``.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',

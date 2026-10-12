@@ -37,11 +37,24 @@ Protocolo (lo que el equipo manda, lo que Odoo contesta):
 | `GET /iclock/getrequest?SN=…&INFO=…` | `OK` (no se mandan comandos al equipo); de `INFO` se toma firmware e IP |
 | `POST /iclock/devicecmd`, `/iclock/ping`, `/iclock/registry`, `/iclock/push` | `OK` |
 
-**Camino 2 — puente en una PC de la planta.** Si el firmware no puede
-empujar por HTTPS, un programa en una PC lee las checadas nuevas de los
-equipos por red (protocolo ZK, puerto 4370) y las manda a Odoo por JSON-RPC
-con un usuario técnico (grupo *Asistencias / Encargado: gestionar todas las
-asistencias*):
+**Qué reloj va por cuál camino (2026-10-12).** El **MB10-VL** trae el
+interruptor HTTPS en «Cloud Server Setting» (manual de usuario ZKTeco
+MB10-VL v1.2, abril 2022) y va por el camino 1, directo a Odoo. El **UA860**
+no lo trae (foto de la pantalla, firmware de la generación 2015) y Odoo solo
+acepta conexiones cifradas: para él, o se cambia por un equipo con HTTPS, o
+va por el camino 2.
+
+**Camino 2 — puente para el reloj sin HTTPS.** `puente/puente_adms.py` corre en una PC de la
+planta (o en un servidor chico en internet): el reloj le empuja en HTTP plano
+(puerto 8081) y el puente reenvía la misma petición a Odoo por HTTPS y
+devuelve la respuesta de Odoo al reloj. Para Odoo es idéntico al camino 1
+(mismo controlador, misma serie, mismo `OK: n`); si Odoo no contesta, el
+puente responde 502 y el reloj guarda y reintenta. Instalación, configuración
+del reloj y diagnóstico: `puente/README.md`. Solo Python 3, sin librerías.
+
+**Camino 3 — API.** Para un equipo que no sepa ADMS, un programa puede mandar
+las checadas por JSON-RPC con un usuario técnico (grupo *Asistencias /
+Encargado: gestionar todas las asistencias*):
 
 ```python
 models.execute_kw(db, uid, pwd, 'qb.checada', 'ingresar_api', ['UDP3255000661', [
