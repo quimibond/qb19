@@ -37,11 +37,16 @@ Protocolo (lo que el equipo manda, lo que Odoo contesta):
 | `GET /iclock/getrequest?SN=…&INFO=…` | `OK` (no se mandan comandos al equipo); de `INFO` se toma firmware e IP |
 | `POST /iclock/devicecmd`, `/iclock/ping`, `/iclock/registry`, `/iclock/push` | `OK` |
 
-**Camino 2 — puente en una PC de la planta (el que se usa: 2026-10-12).**
-La pantalla ADMS de los dos relojes **no tiene opción HTTPS**, y Odoo solo
-acepta conexiones cifradas. `puente/puente_adms.py` corre en una PC de la
-planta siempre encendida: los relojes le empujan en HTTP plano por la red
-local (puerto 8081) y el puente reenvía la misma petición a Odoo por HTTPS y
+**Qué reloj va por cuál camino (2026-10-12).** El **MB10-VL** trae el
+interruptor HTTPS en «Cloud Server Setting» (manual de usuario ZKTeco
+MB10-VL v1.2, abril 2022) y va por el camino 1, directo a Odoo. El **UA860**
+no lo trae (foto de la pantalla, firmware de la generación 2015) y Odoo solo
+acepta conexiones cifradas: para él, o se cambia por un equipo con HTTPS, o
+va por el camino 2.
+
+**Camino 2 — puente para el reloj sin HTTPS.** `puente/puente_adms.py` corre en una PC de la
+planta (o en un servidor chico en internet): el reloj le empuja en HTTP plano
+(puerto 8081) y el puente reenvía la misma petición a Odoo por HTTPS y
 devuelve la respuesta de Odoo al reloj. Para Odoo es idéntico al camino 1
 (mismo controlador, misma serie, mismo `OK: n`); si Odoo no contesta, el
 puente responde 502 y el reloj guarda y reintenta. Instalación, configuración
