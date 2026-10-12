@@ -84,8 +84,9 @@
                 <filter name="kind_request" string="Solicitud" domain="[('approval_kind', '=', 'solicitud')]"/>
                 <filter name="kind_sign" string="Firma" domain="[('approval_kind', '=', 'firma')]"/>
                 <separator/>
+                <!-- 57.144.1: solo el filtro por el campo guardado; «approval_state» es
+                     calculado sin store y tumbó el build de main (2026-10-12 18:00 UTC). -->
                 <filter name="paused" string="En pausa" domain="[('approval_paused', '=', True)]"/>
-                <filter name="active_native" string="Activas en Odoo" domain="[('approval_state', '=', 'activa')]"/>
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
