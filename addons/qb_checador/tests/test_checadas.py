@@ -168,6 +168,21 @@ class TestChecadas(TransactionCase):
         self.assertEqual(c.timestamp, datetime(2026, 10, 5, 12, 58, 10))
         self.assertTrue(self.equipo.ultima_checada)
 
+    def test_estado_conexion(self):
+        """Semáforo del reloj: nunca → conectado (se acaba de presentar) → sin conexión (callado > 2 min)."""
+        from datetime import timedelta
+        nuevo = self.env['qb.checador.equipo'].create({'name': 'Nuevo', 'serial': 'TEST0002'})
+        self.assertEqual(nuevo.estado_conexion, 'nunca')
+        self.assertEqual(nuevo.conexion_hace, 'nunca')
+        nuevo._tocar(firmware='PUSH 3.0.6')
+        self.assertEqual(nuevo.estado_conexion, 'conectado')
+        self.assertEqual(nuevo.conexion_hace, 'hace menos de 1 minuto')
+        nuevo.ultima_conexion = datetime.utcnow() - timedelta(minutes=7)
+        self.assertEqual(nuevo.estado_conexion, 'sin_conexion')
+        self.assertEqual(nuevo.conexion_hace, 'hace 7 min')
+        nuevo.ultima_conexion = datetime.utcnow() - timedelta(days=3, hours=1)
+        self.assertEqual(nuevo.conexion_hace, 'hace 3 días')
+
     def test_api_rechaza_equipo_desconocido(self):
         from odoo.exceptions import ValidationError
         with self.assertRaises(ValidationError):

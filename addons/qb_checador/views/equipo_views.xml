@@ -11,7 +11,12 @@
                 <field name="modelo"/>
                 <field name="ubicacion"/>
                 <field name="autorizado"/>
-                <field name="ultima_conexion"/>
+                <field name="estado_conexion" widget="badge"
+                       decoration-success="estado_conexion == 'conectado'"
+                       decoration-danger="estado_conexion == 'sin_conexion'"
+                       decoration-muted="estado_conexion == 'nunca'"/>
+                <field name="conexion_hace"/>
+                <field name="ultima_conexion" optional="hide"/>
                 <field name="ultima_checada"/>
                 <field name="checada_count"/>
                 <field name="active" column_invisible="1"/>
@@ -35,6 +40,16 @@
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Entrada planta"/></h1>
                     </div>
+                    <div class="alert alert-info mb-3" role="status" invisible="estado_conexion != 'nunca'">
+                        Este reloj nunca se ha presentado a Odoo. Odoo no puede buscarlo: el reloj es el que se conecta.
+                        Revise que el reloj tenga salida a internet (puerta de enlace, DNS, firewall por el puerto 443) y que
+                        en Menú → Comunicación → Servidor en la nube apunte a quimibond-qb19.odoo.com, puerto 443, HTTPS.
+                        En cuanto se presente, este aviso desaparece y abajo se ve «Conectado».
+                    </div>
+                    <div class="alert alert-danger mb-3" role="alert" invisible="estado_conexion != 'sin_conexion'">
+                        El reloj se conectó antes pero lleva un rato sin presentarse: apagado, sin red o con la configuración
+                        del servidor cambiada. Las checadas no se pierden: el reloj las guarda y las manda al volver.
+                    </div>
                     <group>
                         <group string="Equipo">
                             <field name="serial"/>
@@ -51,6 +66,11 @@
                             <field name="active"/>
                         </group>
                         <group string="Actividad">
+                            <field name="estado_conexion" widget="badge"
+                                   decoration-success="estado_conexion == 'conectado'"
+                                   decoration-danger="estado_conexion == 'sin_conexion'"
+                                   decoration-muted="estado_conexion == 'nunca'"/>
+                            <field name="conexion_hace"/>
                             <field name="ultima_conexion"/>
                             <field name="ultima_checada"/>
                             <field name="attlog_stamp"/>

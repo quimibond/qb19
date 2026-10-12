@@ -12,6 +12,10 @@ import pytz
 from odoo import api, fields, models
 from odoo.addons.base.models.res_partner import _tz_get
 
+# Un reloj conectado se presenta cada pocos segundos (Delay=10 en las opciones que Odoo le manda);
+# si lleva más de esto sin presentarse, está desconectado.
+MINUTOS_CONECTADO = 2
+
 
 class ChecadorEquipo(models.Model):
     _name = 'qb.checador.equipo'
@@ -44,6 +48,16 @@ class ChecadorEquipo(models.Model):
                                     "solo envíe registros nuevos. Ponerlo en 0 hace que vuelva a mandar todo su "
                                     "historial (las repetidas se ignoran).")
     checada_count = fields.Integer(string="Checadas", compute='_compute_checada_count')
+    estado_conexion = fields.Selection([
+        ('nunca', "Nunca conectado"),
+        ('conectado', "Conectado"),
+        ('sin_conexion', "Sin conexión"),
+    ], string="Estado", compute='_compute_estado_conexion',
+        help="El reloj se presenta a Odoo cada pocos segundos mientras está conectado. «Conectado»: se presentó "
+             "hace menos de %d minutos. «Sin conexión»: se presentó antes, pero lleva más tiempo callado (red, "
+             "apagado o configuración cambiada). «Nunca conectado»: no ha llegado ni una vez (red, firewall o "
+             "servidor en la nube sin configurar)." % MINUTOS_CONECTADO)
+    conexion_hace = fields.Char(string="Última conexión hace", compute='_compute_estado_conexion')
     notas = fields.Text(string="Notas")
     company_id = fields.Many2one('res.company', string="Empresa", default=lambda self: self.env.company,
                                  required=True)
@@ -55,6 +69,26 @@ class ChecadorEquipo(models.Model):
         conteo = {eq.id: c for eq, c in datos}
         for eq in self:
             eq.checada_count = conteo.get(eq.id, 0)
+
+    @api.depends('ultima_conexion')
+    def _compute_estado_conexion(self):
+        """Semáforo a partir de la última vez que el reloj se presentó (no se guarda: se calcula al leer)."""
+        ahora = fields.Datetime.now()
+        for eq in self:
+            if not eq.ultima_conexion:
+                eq.estado_conexion = 'nunca'
+                eq.conexion_hace = "nunca"
+                continue
+            segundos = max(0, int((ahora - eq.ultima_conexion).total_seconds()))
+            eq.estado_conexion = 'conectado' if segundos < MINUTOS_CONECTADO * 60 else 'sin_conexion'
+            if segundos < 60:
+                eq.conexion_hace = "hace menos de 1 minuto"
+            elif segundos < 3600:
+                eq.conexion_hace = "hace %d min" % (segundos // 60)
+            elif segundos < 86400:
+                eq.conexion_hace = "hace %d h %d min" % (segundos // 3600, (segundos % 3600) // 60)
+            else:
+                eq.conexion_hace = "hace %d días" % (segundos // 86400)
 
     # ------------------------------------------------------------------
     @api.model
