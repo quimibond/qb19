@@ -37,11 +37,19 @@ Protocolo (lo que el equipo manda, lo que Odoo contesta):
 | `GET /iclock/getrequest?SN=…&INFO=…` | `OK` (no se mandan comandos al equipo); de `INFO` se toma firmware e IP |
 | `POST /iclock/devicecmd`, `/iclock/ping`, `/iclock/registry`, `/iclock/push` | `OK` |
 
-**Camino 2 — puente en una PC de la planta.** Si el firmware no puede
-empujar por HTTPS, un programa en una PC lee las checadas nuevas de los
-equipos por red (protocolo ZK, puerto 4370) y las manda a Odoo por JSON-RPC
-con un usuario técnico (grupo *Asistencias / Encargado: gestionar todas las
-asistencias*):
+**Camino 2 — puente en una PC de la planta (el que se usa: 2026-10-12).**
+La pantalla ADMS de los dos relojes **no tiene opción HTTPS**, y Odoo solo
+acepta conexiones cifradas. `puente/puente_adms.py` corre en una PC de la
+planta siempre encendida: los relojes le empujan en HTTP plano por la red
+local (puerto 8081) y el puente reenvía la misma petición a Odoo por HTTPS y
+devuelve la respuesta de Odoo al reloj. Para Odoo es idéntico al camino 1
+(mismo controlador, misma serie, mismo `OK: n`); si Odoo no contesta, el
+puente responde 502 y el reloj guarda y reintenta. Instalación, configuración
+del reloj y diagnóstico: `puente/README.md`. Solo Python 3, sin librerías.
+
+**Camino 3 — API.** Para un equipo que no sepa ADMS, un programa puede mandar
+las checadas por JSON-RPC con un usuario técnico (grupo *Asistencias /
+Encargado: gestionar todas las asistencias*):
 
 ```python
 models.execute_kw(db, uid, pwd, 'qb.checada', 'ingresar_api', ['UDP3255000661', [
