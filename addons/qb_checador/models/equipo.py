@@ -79,7 +79,8 @@ class ChecadorEquipo(models.Model):
                 eq.estado_conexion = 'nunca'
                 eq.conexion_hace = "nunca"
                 continue
-            segundos = max(0, int((ahora - eq.ultima_conexion).total_seconds()))
+            # Sin microsegundos: la base no los guarda y fields.Datetime.now() tampoco los trae.
+            segundos = max(0, int((ahora - eq.ultima_conexion.replace(microsecond=0)).total_seconds()))
             eq.estado_conexion = 'conectado' if segundos < MINUTOS_CONECTADO * 60 else 'sin_conexion'
             if segundos < 60:
                 eq.conexion_hace = "hace menos de 1 minuto"
