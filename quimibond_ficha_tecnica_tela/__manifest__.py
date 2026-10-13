@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.5.0',
+    'version': '19.0.2.6.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -45,6 +45,9 @@ Incluye:
   sus parámetros y cada configuración un valor por parámetro.
 - 2.5.0: avisos de máquina en producción: galga distinta al programar
   tejido y cargas por jet (con aviso de carga) en las órdenes de tintorería.
+- 2.6.0: listo para el producto único de acabado en kg: el aviso de carga
+  también en la orden de trabajo que cae en un jet, y el rendimiento se
+  busca también por la ficha de acabado → su ficha de tejido.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',

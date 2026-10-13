@@ -88,3 +88,41 @@ class TestAvisosMaquina(TransactionCase):
         self.assertIn('son 5 cargas', production.ft_aviso_maquina, "2000 kg entre 450 kg del grupo C")
         production.product_qty = 400
         self.assertFalse(production.ft_aviso_maquina, "400 kg caben en una carga")
+
+    # 2.6.0: producto único de acabado en kg con el jet como orden de trabajo de su ruta.
+    def _acabado(self, code, qty):
+        acabado = self.env['product.product'].create({'name': 'Acabado prueba %s' % code, 'default_code': code,
+                                                      'is_storable': True, 'uom_id': self.kg.id})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': acabado.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': self.component.id, 'product_qty': 1})],
+            'operation_ids': [(0, 0, {'name': 'Teñir', 'workcenter_id': self.jet.id, 'time_cycle_manual': 1})]})
+        production = self.env['mrp.production'].create({'product_id': acabado.id, 'product_qty': qty,
+                                                        'product_uom_id': self.kg.id})
+        production.action_confirm()
+        return acabado, production
+
+    def test_05_aviso_de_carga_en_la_orden_de_trabajo_del_jet(self):
+        _acabado, production = self._acabado('WJ042Q22JNT160', 2000)
+        workorder = production.workorder_ids
+        self.assertEqual(workorder.workcenter_id, self.jet)
+        self.assertIn('son 2 cargas', workorder.ft_aviso_maquina, "2000 kg y 1000 kg de capacidad general")
+        self.assertIn(workorder, self.env['mrp.workorder'].search([('ft_aviso_maquina', '!=', False)]))
+        self.assertTrue(production.ft_es_tintoreria, "Una orden con orden de trabajo en jet trae las cargas")
+        self.assertEqual(production.ft_jet_wo_id, self.jet)
+        self.assertIn('son 2 cargas', production.ft_aviso_maquina)
+        _chico, cabe = self._acabado('WJ042Q22JNT162', 800)
+        self.assertFalse(cabe.workorder_ids.ft_aviso_maquina, "800 kg caben en una carga")
+
+    def test_06_rendimiento_por_la_ficha_de_acabado(self):
+        tejido = self.env['ficha.tecnica.tejido'].create({
+            'articulo': 'WJ035Q22HNT200', 'peso_acondicionado': 42, 'ancho_acondicionado': 160,
+            'ancho_acondicionado_tol_unit': 'cm'})
+        acabado, production = self._acabado('WJ042Q22JNT161', 2000)
+        self.env['ficha.tecnica.acabado'].create({'articulo': 'WJ042Q22JNT161', 'tejido_id': tejido.id,
+                                                  'product_acabado_id': acabado.id})
+        rendimiento, origen = acabado._ft_rendimiento()
+        self.assertAlmostEqual(rendimiento, 14.88, places=2)
+        self.assertIn('base de la ficha de acabado', origen)
+        self.assertIn('grupo C', production.workorder_ids.ft_aviso_maquina)
+        self.assertIn('son 5 cargas', production.workorder_ids.ft_aviso_maquina)

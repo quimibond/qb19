@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- 2.5.0 (Dirección General 2026-10-13): avisos de máquina. Galga distinta en la orden de trabajo
-         de tejido; cargas por jet y aviso de carga en la orden de tintorería. Extienden vistas de mrp y
-         stock (otros módulos). -->
+         de tejido; cargas por jet y aviso de carga en la orden de tintorería. 2.6.0: el aviso de carga
+         también en la orden de trabajo que cae en un jet (producto único de acabado en kg). Extienden
+         vistas de mrp y stock (otros módulos). -->
 
     <record id="view_mrp_workorder_form_ft_aviso" model="ir.ui.view">
         <field name="name">mrp.workorder.form.ft.aviso</field>
@@ -38,7 +39,7 @@
         <field name="inherit_id" ref="mrp.view_mrp_production_workorder_form_view_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='cancel']" position="after">
-                <filter string="Galga distinta a la máquina" name="ft_aviso_maquina"
+                <filter string="Con aviso de máquina" name="ft_aviso_maquina"
                         domain="[('ft_aviso_maquina', '!=', False)]"/>
             </xpath>
         </field>
@@ -60,7 +61,8 @@
                 <page string="Cargas por jet" name="ft_cargas_jet" invisible="not ft_es_tintoreria">
                     <group>
                         <group>
-                            <field name="ft_jet_id" options="{'no_create': True}"/>
+                            <field name="ft_jet_wo_id" invisible="not ft_jet_wo_id"/>
+                            <field name="ft_jet_id" options="{'no_create': True}" invisible="ft_jet_wo_id"/>
                             <field name="ft_rendimiento" invisible="not ft_rendimiento"/>
                         </group>
                     </group>
