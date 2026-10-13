@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Diagrama de flujo de proceso (F-P-D01-32): se imprime desde la ruta, no se dibuja. -->
+    <!-- Diagrama de flujo de procesos (F-P-D01-32): se imprime desde la ruta, no se dibuja. -->
     <record id="action_report_dev_flow" model="ir.actions.report">
-        <field name="name">Diagrama de flujo de proceso</field>
+        <field name="name">Diagrama de flujo de procesos</field>
         <field name="model">project.project</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_dev_flow_document</field>
         <field name="report_file">quimibond_sgi.report_dev_flow_document</field>
-        <field name="print_report_name">'Diagrama de flujo - %s' % (object.sgi_ft_folio or object.name or '')</field>
+        <field name="print_report_name">'Diagrama de flujo de procesos - %s' % (object.sgi_ft_folio or object.name or '')</field>
     </record>
 
     <template id="report_dev_flow_document">
@@ -17,7 +17,7 @@
                     <t t-set="sgi_rec" t-value="doc"/>
                     <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_flow'"/>
                     <div class="page">
-                        <h2 class="text-center">Diagrama de flujo de proceso</h2>
+                        <h2 class="text-center">Diagrama de flujo de procesos</h2>
                         <table class="table table-sm table-bordered" style="font-size:11px;">
                             <tr><td style="width:25%"><strong>Proyecto</strong></td><td><span t-out="doc.display_name"/></td>
                                 <td style="width:20%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.display_name or '—'"/></td></tr>

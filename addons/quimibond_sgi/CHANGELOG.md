@@ -13,6 +13,138 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.153.0 — 2026-10-13
+
+Dirección General 2026-10-13: **nadie podía contestar el checklist de
+factibilidad** (pestaña «Análisis de proyecto»). La respuesta tenía
+`widget="badge"`, que es solo lectura en una lista editable.
+
+### Corregido
+- La respuesta del checklist usa `selection_badge`: Sí / No / No aplica con
+  un clic. Los colores pasan al renglón (verde Sí, rojo No, gris No aplica).
+- Lo guarda un Usuario SGI que no es administrador: el checklist se guarda a
+  través del proyecto, que desde 57.151.0 el Usuario SGI puede escribir si es
+  un desarrollo de la compañía 1.
+
+### Pruebas
+- `test_dev_folio_access.test_10`: la vista que ve un Usuario SGI trae la
+  respuesta editable con `selection_badge`, y ese usuario contesta y guarda
+  un renglón desde el proyecto (queda quién contestó).
+
+## 19.0.57.152.0 — 2026-10-13
+
+Dirección General 2026-10-13: la **aprobación para iniciar el proyecto**
+(`report_dev_start_approval`) conserva todos los campos del formato anterior
+F-P-D01-09 (tejido) y F-P-D01-19 (entretelas), cotejados contra las
+plantillas de Documentos (3963, 3969) y el ejemplo lleno FT-043/2024 (5171).
+
+### Agregado
+- **Encabezado del formato**: mapeos `format_ref_dev_start_tejido`
+  (F-P-D01-09) y `format_ref_dev_start_entretelas` (F-P-D01-19) por
+  `sgi_dev_line_key`; Documentos los resuelve por clave anterior (hoy F-C1-06
+  y F-C1-12). El documento imprime título, clave, revisión, área y emisión
+  del formato vigente; el pie lleva la clave.
+- **Datos generales**: cliente, dirección, teléfono y correo (del contacto y,
+  campo por campo, del cliente si al contacto le falta), solicitante,
+  mercado, nombre del proyecto (código del artículo), ficha técnica, fecha de
+  solicitud (o de creación) y descripción.
+- **Datos del proyecto**: aplicación, fechas de solicitud y requerida, no. de
+  especificación, ficha técnica, tamaño de la muestra (m / kg), consumo
+  mensual con su unidad (`sgi_dev_consumption_monthly`; antes se usaba
+  `sgi_dev_volume` y salía vacío), forma de empaque, material de línea o
+  nuevo desarrollo, nombre del producto, precio, unidad, cotización y
+  vigencia, laminado y programa.
+- **Características**: Característica | Dirección | Unidades | Norma a
+  aplicar | Valor nominal | Tolerancias, con nominal y tolerancia separados
+  (± igual, −/+ distinta, Máximo, Mínimo).
+- **Información requerida** (nuevo): lista `documento_cliente` en
+  `sgi.dev.option` con semilla (Ficha técnica y/o COA, Hoja de seguridad, ISO
+  9001:2015, ISO 14001:2015, PPAP, IMDS, CT-PAT, PSCR; Caducidad de
+  materiales solo entretelas, campo `line_key`) y modelo
+  `sgi.dev.required.doc` (documento + momento: para el diseño y desarrollo,
+  cuando sea factible, no aplica). Se captura en «Análisis de mercado
+  industrial» (C1.01) con el botón «Cargar el catálogo de la línea» (en «No
+  aplica», sin duplicar). Se imprime con una X en su columna.
+- **Requisitos legales y regulatorios** con la leyenda «Cualquier
+  información de aspectos legales o regulatorios que requiera ser entregada
+  junto con el producto debe ser solicitada por el cliente.»
+- **Capacidad a utilizar** (nuevo): materia prima y una fila por recurso de la
+  ruta del artículo, con cantidad y % de la muestra y del consumo mensual
+  sobre la capacidad mensual en kg (m y yd se pasan a kg con el rendimiento de
+  la tabla, o 1000 / (masa × ancho)). Gancho `_sgi_dev_capacity_resources`:
+  el núcleo agrupa por centro de trabajo sin capacidad; `qb_costeo_sgi` 1.6.0
+  agrupa por `qb.centro` y pone su capacidad. Sin capacidad se imprime «Sin
+  capacidad capturada», nunca un número inventado; la materia prima no tiene
+  capacidad en Odoo.
+- **Aviso al generar**: «Generar aprobación para iniciar» avisa (y lo deja en
+  el chatter) qué recursos de la ruta no tienen capacidad o que el artículo no
+  tiene ruta.
+- **Versión en inglés** con los mismos bloques si el país del cliente no es
+  México; las listas salen con su nombre en inglés si lo tienen.
+
+### Cambiado
+- **Aprobaciones**: vuelven los dos recuadros del formato anterior,
+  «Aprobación del inicio del proyecto (cliente)» con medio, fecha, quién,
+  referencia y evidencia cuando se registra, y «Aprobación del inicio del
+  proyecto PNT Quimibond» con quién generó y quién envió, con fecha.
+- Quién generó el documento y cuándo se escriben antes de imprimir, para que
+  salgan en el propio PDF.
+
+### Pruebas
+- `test_dev_start_approval_format` (nueva): formato por línea, datos
+  generales y del proyecto, nominal y tolerancias, información requerida por
+  línea sin duplicar, capacidad sin inventar, inglés y el HTML con todos los
+  bloques. `qb_costeo_sgi` `test_bridge.test_07`.
+
+## 19.0.57.151.0 — 2026-10-13
+
+Dirección General 2026-10-13: tres ajustes al desarrollo de producto.
+
+### Cambiado
+- **«Diagrama de flujo de procesos»**: así se llaman ahora los dos botones
+  `action_sgi_dev_print_flow` (pestañas Cotización y Pilotaje), la ayuda de
+  la pestaña de análisis y el reporte (`report_dev_flow`: nombre, título y
+  nombre del PDF).
+
+### Corregido
+- **El folio FT ya no se repite.** La secuencia `sgi.dev.ft` creó el rango
+  2026 en 1 cuando los folios del año se habían capturado a mano, y asignó
+  FT-001-2026 al proyecto 499, que ya era del 380 (Jose lo corrigió a
+  FT-040-2026). `action_sgi_dev_assign_folio` adelanta el rango del año al
+  folio más alto que existe + 1 si va atrás (`_sgi_dev_ft_sync_range`,
+  archivados incluidos; nunca lo regresa) y, si aun así la secuencia da uno
+  ocupado, pide el siguiente.
+- **Un folio FT por compañía** (`_check_sgi_ft_folio_unique`, archivados
+  incluidos, sin distinguir mayúsculas ni espacios): capturar a mano uno que
+  ya existe se detiene con el nombre del proyecto que lo tiene.
+- Un desarrollo nuevo nace con la compañía activa si no trae compañía (Odoo
+  la deja vacía cuando el cliente no tiene).
+
+### Seguridad
+- **El Usuario SGI escribe y crea proyectos de desarrollo** (sin borrar):
+  acceso `access_project_project_sgi_user`. Jessica (Desarrollo) no podía
+  mover de etapa ni guardar el proyecto: solo Proyecto / Administrador
+  escribía proyectos.
+- **Regla global** `rule_sgi_dev_project_write` (escribir y crear): fuera de
+  Proyecto / Administrador solo se escriben desarrollos de producto
+  (`sgi_is_ft`) de la compañía 1. Es global y no del grupo porque Odoo suma
+  con OR las reglas de grupo y la nativa «Project: employees: following
+  required for follower-only projects» (Usuario interno) ya deja pasar
+  cualquier proyecto no privado: una regla del grupo SGI no limitaría nada.
+  El candado de la aprobación del cliente para entrar a «Muestra» no cambia.
+
+### Migración
+- `19.0.57.151.0/post-migrate.py`: cada rango de la secuencia `sgi.dev.ft`
+  pasa al folio más alto de su año + 1 si va atrás (en producción el rango
+  2026 queda en 41). No toca proyectos ni folios.
+
+### Pruebas
+- `test_dev_folio_access` (nueva): secuencia atrasada, folio archivado,
+  folio ocupado sin ajuste previo, el ajuste no regresa, unicidad por
+  compañía, compañía del desarrollo nuevo, Usuario SGI mueve etapa, guarda y
+  crea desarrollos, no borra, no escribe otros proyectos y sigue detenido por
+  la aprobación del cliente.
+
 ## 19.0.57.150.0 — 2026-10-13
 
 Dirección General 2026-10-13: fases 2 y 3 de la auditoría UX del SGI
