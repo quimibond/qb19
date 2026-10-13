@@ -13,6 +13,24 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.153.0 — 2026-10-13
+
+Dirección General 2026-10-13: **nadie podía contestar el checklist de
+factibilidad** (pestaña «Análisis de proyecto»). La respuesta tenía
+`widget="badge"`, que es solo lectura en una lista editable.
+
+### Corregido
+- La respuesta del checklist usa `selection_badge`: Sí / No / No aplica con
+  un clic. Los colores pasan al renglón (verde Sí, rojo No, gris No aplica).
+- Lo guarda un Usuario SGI que no es administrador: el checklist se guarda a
+  través del proyecto, que desde 57.151.0 el Usuario SGI puede escribir si es
+  un desarrollo de la compañía 1.
+
+### Pruebas
+- `test_dev_folio_access.test_10`: la vista que ve un Usuario SGI trae la
+  respuesta editable con `selection_badge`, y ese usuario contesta y guarda
+  un renglón desde el proyecto (queda quién contestó).
+
 ## 19.0.57.152.0 — 2026-10-13
 
 Dirección General 2026-10-13: la **aprobación para iniciar el proyecto**

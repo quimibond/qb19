@@ -313,12 +313,14 @@
                                 </div>
                             </div>
                             <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">
-                                    <list editable="bottom" create="0" decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
+                                    <!-- 57.153.0: «badge» es solo lectura en una lista editable y nadie podía contestar;
+                                         selection_badge contesta con un clic y los colores van en el renglón. -->
+                                    <list editable="bottom" create="0" decoration-success="answer == 'si'"
+                                          decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="item_id" readonly="1"/>
                                         <field name="auto" optional="show"/>
-                                        <field name="answer" widget="badge"
-                                               decoration-success="answer == 'si'" decoration-danger="answer == 'no'"/>
+                                        <field name="answer" widget="selection_badge"/>
                                         <field name="observation"/>
                                         <field name="answered_by_id" optional="show"/>
                                     </list>

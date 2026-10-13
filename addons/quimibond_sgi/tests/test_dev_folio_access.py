@@ -6,6 +6,8 @@ FT-001-2026 al proyecto 499, que ya era del 380; y Jessica (Desarrollo, sin grup
 escritura) no podía mover de etapa ni guardar el proyecto."""
 from unittest.mock import patch
 
+from lxml import etree
+
 from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -132,3 +134,25 @@ class TestDevFolioAccess(TransactionCase):
                                 groups='base.group_user,project.group_project_manager')
         plain.with_user(manager).write({'name': 'Cambiado por el administrador'})
         self.assertEqual(plain.name, 'Cambiado por el administrador', "Proyecto / Administrador sigue igual.")
+
+    # ------------------------------------------------------------------
+    # 57.153.0: checklist de factibilidad
+    # ------------------------------------------------------------------
+    def test_10_sgi_user_answers_the_feasibility_checklist(self):
+        """El checklist se contesta con un clic (selection_badge, no «badge», que es solo lectura) y un
+        Usuario SGI que no es administrador lo guarda desde el proyecto."""
+        user = self._sgi_user()
+        view = self.env.ref('quimibond_sgi.sgi_project_view_form_dev_lifecycle')
+        arch = etree.fromstring(self.Project.with_user(user).get_views([(False, 'form')])['views']['form']['arch'])
+        answer = arch.xpath("//field[@name='sgi_dev_feasibility_ids']/list/field[@name='answer']")
+        self.assertTrue(answer, "La lista del checklist sale en la ficha (%s)." % view.key)
+        self.assertEqual(answer[0].get('widget'), 'selection_badge')
+        self.assertFalse(answer[0].get('readonly'), "La respuesta se puede editar.")
+        self.env['sgi.dev.feasibility.item'].create({'line': 'tejido_circular', 'name': 'Máquina de prueba ZF'})
+        dev = self._dev(sgi_dev_line_key='tejido_circular')
+        dev.action_sgi_dev_load_feasibility()
+        row = dev.sgi_dev_feasibility_ids.filtered(lambda r: r.item_id.name == 'Máquina de prueba ZF')
+        self.assertEqual(row.answer, 'pendiente')
+        dev.with_user(user).write({'sgi_dev_feasibility_ids': [(1, row.id, {'answer': 'si', 'observation': 'Hay'})]})
+        self.assertEqual(row.answer, 'si')
+        self.assertEqual(row.answered_by_id, user, "Queda quién contestó.")
