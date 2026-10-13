@@ -4,6 +4,7 @@ en Mi equipo."""
 from datetime import timedelta
 
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
@@ -78,3 +79,162 @@ class TestMyPending(TransactionCase):
         self.assertIn(self.emp.id, rows.employee_id.ids)
         single = row.action_sgi_open_pending()
         self.assertTrue(self.env['sgi.my.pending'].with_user(self.boss_user).search(single['domain']))
+
+    # ---- 57.145.0: renglones guardados y «Hecho» por tipo ---------------------
+    def _mine_rows(self, user=None):
+        Pending = self.env['sgi.my.pending'].with_user(user or self.user)
+        return Pending.search(Pending.action_open_mine()['domain'])
+
+    def test_03_renglones_guardados_con_ids_estables(self):
+        """El modelo ya no es transitorio: abrir la lista dos veces actualiza
+        los mismos renglones en lugar de borrarlos y crearlos (los ids no
+        cambian) y lo resuelto se quita."""
+        self.assertFalse(self.env['sgi.my.pending']._transient)
+        first = self._mine(self._mine_rows())
+        ids = {(r.res_model, r.res_id): r.id for r in first}
+        self.assertEqual(len(ids), 3)
+        self.late.sudo().write({'name': 'Acción atrasada MP (renombrada)'})
+        second = self._mine(self._mine_rows())
+        self.assertEqual({(r.res_model, r.res_id): r.id for r in second}, ids,
+                         "Los ids se conservan: la lista abierta en otra pestaña sigue válida.")
+        row = second.filtered(lambda r: r.res_id == self.late.id and r.res_model == 'sgi.action.line')
+        self.assertIn('renombrada', row.name)
+        self.assertTrue(row.detail and 'Compromiso' in row.detail, "La ficha trae qué hay que hacer.")
+        self.assertTrue(row.source_name)
+        self.late.sudo().action_mark_done()
+        third = self._mine(self._mine_rows())
+        self.assertFalse(third.filtered(lambda r: r.res_id == self.late.id and r.res_model == 'sgi.action.line'),
+                         "Lo resuelto se quita.")
+        self.assertFalse(row.exists())
+
+    def test_04_hecho_termina_la_accion_y_cierra_estandar(self):
+        rows = self._mine(self._mine_rows())
+        row = rows.filtered(lambda r: r.res_id == self.late.id and r.res_model == 'sgi.action.line')
+        self.assertTrue(row.can_done)
+        # Un jefe que ve la lista de su gente no tiene «Hecho» en lo ajeno.
+        theirs = self.env['hr.employee.public'].with_user(self.boss_user).browse(self.emp.id)
+        boss_rows = self.env['sgi.my.pending'].with_user(self.boss_user).search(
+            theirs.action_sgi_open_pending()['domain'])
+        boss_row = boss_rows.filtered(lambda r: r.res_id == self.late.id and r.res_model == 'sgi.action.line')
+        self.assertEqual(boss_row.id, row.id, "Mismo renglón para la persona y su jefe.")
+        self.assertFalse(boss_row.can_done)
+        result = row.with_user(self.user).action_done()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
+        self.assertTrue(self.late.date_done)
+        self.assertFalse(row.exists(), "El renglón hecho sale de la lista en el servidor.")
+
+    def test_05_lo_que_se_resuelve_en_su_registro_no_tiene_hecho(self):
+        rows = self._mine(self._mine_rows())
+        doc_row = rows.filtered(lambda r: r.res_model == 'documents.document')
+        self.assertFalse(doc_row.can_done)
+        with self.assertRaises(UserError):
+            doc_row.with_user(self.user).action_done()
+        self.assertEqual(doc_row.with_user(self.user).action_open()['res_model'], 'documents.document')
+
+    def _activity_with_roles(self, name, **vals):
+        """Una actividad atrasada (semáforo en rojo) que ejecuta el puesto de
+        la persona y escala al del jefe tras 0 días hábiles (como
+        test_bandeja)."""
+        if not hasattr(self, '_mp_process'):
+            boss_job = self.env['hr.job'].create({'name': 'JEFE PENDIENTES MP'})
+            self.boss.sudo().write({'job_id': boss_job.id})
+            self._mp_boss_job = boss_job
+            self._mp_process = self.env['sgi.process'].create(
+                {'code': 'ZMP', 'name': 'Proceso pendientes MP'})
+        activity = self.env['sgi.process.activity'].create(dict({
+            'process_id': self._mp_process.id, 'name': name,
+            'role_ids': [(0, 0, {'job_id': self.job.id, 'role': 'ejecuta'}),
+                         (0, 0, {'job_id': self._mp_boss_job.id, 'role': 'escala', 'after_days': 0})],
+        }, **vals))
+        activity.sudo().write({'measure_state': 'rojo'})
+        activity.invalidate_recordset()
+        (self.emp | self.boss).invalidate_recordset()
+        return activity
+
+    def test_06_escalamiento_tipo_propio_sin_hecho(self):
+        # Mensual que vence el día hábil 1 y se mide por su registro en Odoo.
+        activity = self._activity_with_roles('Cerrar el mes MP', measure_method='odoo',
+                                             measure_cadence='mensual', due_business_day=1)
+        boss_rows = self._mine_rows(self.boss_user).filtered(
+            lambda r: r.res_model == 'sgi.process.activity' and r.res_id == activity.id)
+        self.assertEqual(boss_rows.mapped('kind'), ['escalamiento'])
+        self.assertFalse(boss_rows.can_done, "Quien escala no la marca hecha.")
+        self.assertIn('Atrasada desde', boss_rows.detail)
+        with self.assertRaises(UserError):
+            boss_rows.with_user(self.boss_user).action_done()
+        mine = self._mine_rows().filtered(
+            lambda r: r.res_model == 'sgi.process.activity' and r.res_id == activity.id)
+        self.assertEqual(mine.mapped('kind'), ['actividad'])
+        self.assertTrue(mine.can_done, "Lleva registro de cumplimiento: «Hecho» lo crea.")
+        # Por evento no lleva registro: sin «Hecho»; se cumple con «Ir».
+        event = self._activity_with_roles('Atender la queja MP', measure_method='manual',
+                                          measure_cadence='evento')
+        row = self._mine_rows().filtered(
+            lambda r: r.res_model == 'sgi.process.activity' and r.res_id == event.id)
+        self.assertEqual(row.mapped('kind'), ['actividad'])
+        self.assertFalse(row.can_done)
+        with self.assertRaises(UserError):
+            row.with_user(self.user).action_done()
+
+    def test_07_hecho_crea_el_registro_del_periodo_al_vuelo(self):
+        """Actividad de registro manual atrasada por semáforo y todavía sin
+        renglón del periodo (el cron nocturno no ha corrido): «Hecho» crea el
+        registro del periodo en curso, convierte el renglón (mismo id) y abre
+        el asistente; al guardar con evidencia el renglón se va."""
+        activity = self._activity_with_roles('Conciliar el auxiliar MP',
+                                             measure_method='manual', measure_cadence='mensual')
+        row = self._mine_rows().filtered(
+            lambda r: r.res_model == 'sgi.process.activity' and r.res_id == activity.id)
+        if not activity._sgi_exec_period(fields.Date.context_today(self.env.user)):
+            self.skipTest("Día inhábil: sin periodo en curso.")
+        self.assertEqual(len(row), 1)
+        self.assertTrue(row.can_done)
+        self.assertFalse(row.can_mark_exec, "Todavía no tiene registro del periodo.")
+        row_id = row.id
+        action = row.with_user(self.user).action_done()
+        self.assertEqual(action['res_model'], 'sgi.activity.execution.mark')
+        self.assertEqual(action['context']['default_mode'], 'done')
+        self.assertEqual(action['context']['sgi_pending_row_id'], row_id)
+        execution = self.env['sgi.activity.execution'].sudo().search(
+            [('activity_id', '=', activity.id), ('employee_id', '=', self.emp.id)])
+        self.assertEqual(len(execution), 1)
+        row = self.env['sgi.my.pending'].with_user(self.user).browse(row_id)
+        self.assertEqual((row.res_model, row.res_id), ('sgi.activity.execution', execution.id))
+        self.assertTrue(row.can_mark_exec)
+        Mark = self.env['sgi.activity.execution.mark'].with_user(self.user)
+        result = Mark.with_context(action['context']).create(
+            {'evidence_note': 'Póliza 77'}).action_confirm()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
+        self.assertEqual(execution.state, 'hecha')
+        self.assertFalse(row.exists())
+        self.assertFalse(self._mine_rows().filtered(
+            lambda r: r.res_id in (activity.id, execution.id)
+            and r.res_model in ('sgi.process.activity', 'sgi.activity.execution')),
+            "Hecha, ya no vuelve a salir.")
+
+    def test_08_posponer_aviso_propio(self):
+        # Sobre un proceso (modelo sgi.*): un registro que no tiene renglón
+        # propio del usuario, para que el aviso no quede cubierto.
+        process = self.env['sgi.process'].create({'code': 'ZMP8', 'name': 'Proceso aviso MP'})
+        notice = process.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=fields.Date.context_today(self.env.user),
+            summary='Revisar aviso MP', user_id=self.user.id)
+        notice.sudo().sgi_cron_key = 'aviso_prueba_mp:%d' % process.id
+        row = self._mine_rows().filtered(lambda r: r.kind == 'aviso' and r.res_id == notice.id)
+        self.assertEqual(len(row), 1)
+        self.assertTrue(row.can_done and row.can_snooze)
+        self.assertIn('Revisar aviso MP', row.name)
+        result = row.with_user(self.user).action_snooze_notice()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertGreater(notice.date_deadline, fields.Date.context_today(self.env.user))
+        self.assertEqual(row.date_due, notice.date_deadline)
+        self.assertNotEqual(row.state, 'atrasada')
+        # El jefe no pospone ni marca hecho el aviso de otro.
+        with self.assertRaises(UserError):
+            row.with_user(self.boss_user).action_snooze_notice()
+        result = row.with_user(self.user).action_done()
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
+        self.assertFalse(notice.exists() and notice.active)
+        self.assertFalse(row.exists())

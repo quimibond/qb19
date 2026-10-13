@@ -13,6 +13,83 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.145.0 — 2026-10-13
+
+Dirección General 2026-10-13: **«Mis pendientes» no servía: «le doy Hecho y
+la sigo viendo ahí»**. Auditoría y rediseño de la bandeja con las prácticas
+de Odoo 19. Las fuentes (qué es pendiente y de quién) no cambian.
+
+### Qué estaba mal (auditoría)
+- `sgi.my.pending` era un modelo **transitorio**: el autovacuum diario de
+  Odoo borra los renglones con más de una hora. Un botón sobre un renglón
+  borrado fallaba («el registro no existe») y la lista seguía mostrándolo
+  hasta volver a abrir el menú.
+- Las actividades atrasadas por semáforo y los **escalamientos no tenían
+  «Hecho»** (solo «Ir»), y se mezclaban en el mismo tipo «Actividad
+  atrasada». En producción eran la mayoría de los renglones de Dirección.
+- Los botones devolvían `soft_reload` (un cliente de Odoo, no el cierre
+  estándar) y el asistente de «Hecha» exigía la evidencia con un error del
+  servidor en vez de pedirla en el campo.
+- En producción nadie había marcado «Hecha» desde Mis pendientes: 171
+  registros de cumplimiento pendientes, 1 hecho a mano, 22 cerrados solos.
+
+### Cambiado
+- **Renglones guardados.** `sgi.my.pending` pasa de `TransientModel` a
+  `Model`: una fila por persona y registro pendiente (clave: persona, tipo,
+  modelo e id). Abrir la lista, «Pendientes del equipo» y el respaldo
+  nocturno la actualizan **en su lugar** (`_sgi_store`: escribe lo que
+  cambió, crea lo nuevo, quita lo resuelto): los ids no cambian y una lista
+  abierta en otra pestaña o en el celular sigue válida.
+- **Un solo «Hecho» que sabe qué hacer** (`action_done`, visible solo donde
+  aplica, `can_done`): la actividad con registro de cumplimiento abre su
+  asistente (evidencia si es de registro manual); la actividad atrasada por
+  semáforo que lleva registro **crea el renglón del periodo en curso al
+  vuelo** y abre el mismo asistente; el aviso se marca hecho en Odoo; la
+  acción de NC se termina (fecha de hoy y 100 %). Acuse y medición conservan
+  sus verbos («Leído y entendido», «Validar»). Lo que se resuelve en su
+  propio registro (NC, requisito legal, documento, aprobación, firma,
+  revisión) no tiene «Hecho»: tiene «Ir» y la ficha lo dice.
+- **Recarga estándar de Odoo 19.** Ningún botón devuelve `soft_reload`: el
+  renglón se actualiza o se quita en el servidor y la acción devuelve una
+  notificación («Hecha: …») con `next: act_window_close`, que cierra el
+  asistente y recarga la lista por el `onClose` de la vista.
+- «Vence» usa `remaining_days` («Hace 3 días», «Hoy», «En 5 días») en la
+  lista, el kanban y la ficha. «Ir» cambia de verbo: «Leer» (acuse),
+  «Firmar» (firma), «Capturar» (medición).
+- El asistente de avance pide la evidencia en el campo (`required` cuando
+  es de registro manual y no hay archivo), además de la validación del
+  servidor.
+
+### Agregado
+- Tipo **Escalamiento** (`kind = escalamiento`), separado de «Actividad
+  atrasada»: quien lo recibe no la ejecuta; solo «Ir». Filtro
+  «Escalamientos»; «Actividades» ya no los incluye.
+- **Ficha del pendiente** (`sgi_my_pending_view_form`, al abrir el renglón):
+  qué hay que hacer (`detail`: criterio de terminado, pasos, instructivo,
+  dónde se hace, nota del aviso, plazos de la NC, periodo y valor de la
+  medición…), sobre qué registro (`source_name`), cuándo vence, el avance y
+  todos los botones: Hecho, En proceso, **No aplica este periodo**,
+  Validar, Leído y entendido, **Posponer una semana** (aviso propio: 5 días
+  hábiles) e Ir.
+- `sgi.activity.execution._sgi_user_can_mark(employee)` (la persona, sus
+  jefes o el Jefe MAST), que usan el registro y Mis pendientes.
+- `sgi.my.pending._sgi_feedback`, `_sgi_store`, `_sgi_store_employees`,
+  `_sgi_sync_execution`, `_sgi_exec_from_activity`, `action_done`,
+  `action_exec_not_applicable`, `action_snooze_notice`,
+  `action_done_action_line`.
+
+### Migración
+- `19.0.57.145.0`: vacía `sgi_my_pending` (renglones transitorios de listas
+  abiertas, sin clave estable); la primera apertura y el respaldo nocturno
+  la llenan con la forma nueva. No toca datos de negocio.
+
+### Pruebas
+- `test_my_pending.test_03` a `test_08` (renglones guardados con ids
+  estables, «Hecho» por tipo, escalamiento sin «Hecho», registro del
+  periodo al vuelo, posponer aviso, notificación con cierre estándar).
+- `test_bandeja`: los escalamientos se buscan por su tipo; los botones
+  devuelven `display_notification`, no `soft_reload`.
+
 ## 19.0.57.144.1 — 2026-10-12
 
 ### Corregido

@@ -300,7 +300,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (443; 83 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (444; 83 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -660,6 +660,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.msa.study` | `quimibond_sgi.sgi_msa_study_view_form` | form |  | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
 | `sgi.msa.study` | `quimibond_sgi.sgi_msa_study_view_list` | list |  | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
 | `sgi.msa.study` | `quimibond_sgi.sgi_msa_study_view_search` | search |  | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
+| `sgi.my.pending` | `quimibond_sgi.sgi_my_pending_view_form` | form |  | `addons/quimibond_sgi/views/sgi_my_pending_views.xml` |
 | `sgi.my.pending` | `quimibond_sgi.sgi_my_pending_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_my_pending_views.xml` |
 | `sgi.my.pending` | `quimibond_sgi.sgi_my_pending_view_list` | list |  | `addons/quimibond_sgi/views/sgi_my_pending_views.xml` |
 | `sgi.my.pending` | `quimibond_sgi.sgi_my_pending_view_search` | search |  | `addons/quimibond_sgi/views/sgi_my_pending_views.xml` |
