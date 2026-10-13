@@ -8,9 +8,10 @@
             <list string="Fichas Técnicas de Tejido">
                 <field name="articulo"/>
                 <field name="revision"/>
+                <field name="maquina_tejido"/>
+                <field name="fecha_elaboracion" optional="show"/>
                 <field name="product_proceso_id"/>
                 <field name="ficha_acabado_count" string="Fichas de acabado"/>
-                <field name="maquina_tejido"/>
                 <field name="ancho_rollo"/>
                 <field name="peso_promedio_rollo"/>
                 <field name="active" column_invisible="1"/>
@@ -293,17 +294,19 @@
         <field name="arch" type="xml">
             <search string="Buscar Ficha Técnica de Tejido">
                 <field name="articulo"/>
+                <field name="maquina_tejido"/>
                 <field name="product_proceso_id"/>
                 <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
                 <group>
                     <filter string="Artículo" name="group_articulo" context="{'group_by':'articulo'}"/>
+                    <filter string="Máquina" name="group_maquina" context="{'group_by':'maquina_tejido'}"/>
                 </group>
             </search>
         </field>
     </record>
 
     <record id="action_ficha_tecnica_tejido" model="ir.actions.act_window">
-        <field name="name">Fichas Técnicas de Tejido</field>
+        <field name="name">Fichas de tejido</field>
         <field name="res_model">ficha.tecnica.tejido</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_ficha_tecnica_tejido_search"/>
@@ -317,14 +320,5 @@
             </p>
         </field>
     </record>
-
-    <menuitem id="menu_ficha_tecnica_tela_root"
-              name="Fichas Técnicas de Tela"
-              sequence="60"/>
-    <menuitem id="menu_ficha_tecnica_tejido_list"
-              name="Fichas Técnicas de Tejido"
-              parent="menu_ficha_tecnica_tela_root"
-              action="action_ficha_tecnica_tejido"
-              sequence="10"/>
 
 </odoo>

@@ -22,12 +22,15 @@ Módulo Odoo 19 con **2 modelos separados**:
 
 ## Uso
 
-- **Menú → Fichas Técnicas de Tela**:
-  - **Fichas Técnicas de Tejido** — alta/edición manual.
-  - **Fichas Técnicas de Acabado** — alta/edición manual (requiere elegir
-    primero la ficha de tejido base y el producto de tela acabada).
-  - **Importar Tejido desde Excel** — importación masiva tabular.
-  - **Importar Acabado desde Excel** — importación masiva tabular.
+- **App «Fichas técnicas»** (2.7.0):
+  - **Tela → Tejido** y **Tela → Acabado** — alta/edición manual (la de
+    acabado pide primero la ficha de tejido base y el producto de tela
+    acabada).
+  - **Máquinas → Máquinas** — los centros de trabajo con tipo de máquina y
+    sus parámetros vigentes; **Máquinas → Configuraciones por fecha**.
+  - **Importar → Tejido / Acabado desde Excel** — importación masiva tabular.
+  - **Configuración** (gerentes de Fabricación) — tipos de máquina,
+    características y claves de codificación.
 - Desde la ficha del producto (`product.template`), 2 botones inteligentes
   separados: "Ficha de Tejido" y "Ficha de Acabado".
 - Desde una ficha de tejido, un botón muestra todas las fichas de acabado
@@ -134,7 +137,7 @@ Las claves de codificación (`ficha.tecnica.clave.codigo`) transcriben el DAT
 P-D02-01 rev. 05: composición, dibujo, tipo de hilo, galga por rango
 (`gauge_code(18)` → `'21'`, `gauge_from_code('22')` → `18`), operación, color
 y acabado. Catálogo y claves se siembran con `noupdate` y se editan en
-**Fichas Técnicas de Tela → Configuración** (gerentes de Fabricación).
+**Fichas técnicas → Configuración** (gerentes de Fabricación).
 Pruebas: `tests/test_caracteristicas.py` (corren en el CI).
 
 ## Máquina y tolerancias numéricas (2.2.0, 2026-10-13)
@@ -269,3 +272,25 @@ funciona con las órdenes TL/OP-TIN:
   del aviso de galga o de carga para un producto en esa máquina, sin orden de
   trabajo). La orden de trabajo usa el mismo método, así que el aviso del
   checklist, la corrida de muestra y la producción dicen lo mismo.
+
+## Una ficha por máquina y menús (2.7.0, 2026-10-13)
+
+- **Una ficha de tejido por artículo, revisión y máquina.** Los formatos de
+  la planta llevan una hoja por máquina: F-IT-P-P01-08-05 (2017-2018, «Ficha
+  técnica de control de proceso») y F-IT-P-P01-08-04 (julio 2025, «Ficha
+  técnica de proceso tejido circular»). El mismo artículo en la circular 15 y
+  en la 26 lleva otros ajustes (poleas, punto de cilindro, tensión, RPM). La
+  restricción pasa de `unique(articulo, revision)` a
+  `unique(articulo, revision, maquina_tejido)` con el mismo nombre, así que
+  el update la reemplaza. El nombre de la ficha muestra la máquina
+  («WJ044Q22HNT235 · CIRCULAR 31»).
+- El importador de tejido empata por artículo, revisión y máquina; la
+  máquina del Excel se liga por nombre o código (un `31.0` de celda numérica
+  cuenta como `31`; si el código se repite en otro tipo de máquina, gana la
+  circular). El de acabado toma la ficha de tejido más reciente del artículo.
+- **Menús**: todos en `views/ficha_tecnica_menus.xml`, al final del
+  manifest. App «Fichas técnicas» con ícono: Tela, Máquinas (lista de
+  centros de trabajo con tipo, agrupada por tipo), Importar y Configuración.
+  Antes los importadores iban al primer nivel y las configuraciones de
+  máquina estaban dentro de Configuración (solo gerentes).
+- Sin migración.
