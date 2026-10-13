@@ -149,7 +149,14 @@ class MrpWorkorderAviso(models.Model):
         open_circular = self.search([('state', 'not in', ('done', 'cancel')),
                                      ('workcenter_id.ft_tipo_id.code', '=', TIPO_CIRCULAR)])
         with_aviso = open_circular.filtered(lambda w: w._ft_aviso_galga())
-        want = (operator == '!=' and not value) or (operator == '=' and bool(value))
+        # Odoo 19 normaliza «!= False» a «not in [False]» antes de llamar aquí: se aceptan las dos formas.
+        values = value if isinstance(value, (list, tuple, set, frozenset)) else [value]
+        if operator in ('!=', 'not in'):
+            want = not any(values)
+        elif operator in ('=', 'in'):
+            want = any(values)
+        else:
+            return NotImplemented
         return [('id', 'in' if want else 'not in', with_aviso.ids)]
 
     @api.onchange('workcenter_id')
