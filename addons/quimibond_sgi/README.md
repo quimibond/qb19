@@ -109,62 +109,77 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
   riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
 
-## Manual del SGI (MIID) generado desde Odoo (57.105.0; generado desde 57.146.0)
+## Manual del SGI (MIID) y P-G01 generados desde Odoo (57.105.0; generados desde 57.146.0 y 57.148.0)
 
-**SGI → Sistema → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
-Desde 57.146.0 (Dirección: «el MIID está como en el Dropbox») el manual
-**no describe en prosa lo que el sistema ya muestra**: 29 secciones
-(`sgi.miid.section`, sembradas `noupdate`; el texto fijo está en
-`docs/sgi/transicion/miid-rev03-borrador.md`, generado desde la siembra; lo
-edita el Jefe MAST) y **14 bloques vivos** (`MIID_BLOCKS`): identificación,
-normas y cláusulas cargadas, procesos con mapa e interacción, política,
-objetivos e indicadores, dueños y roles por proceso (puestos que ejecutan,
-aprueban y escalan), tipos de documento y su clave, plazos documentales (los
-siete parámetros que aplica el sistema, `MIID_DOC_ROWS`), controles
-operacionales, plazos de NC, correspondencia por cláusula **con las
-actividades que la cumplen**, procedimientos anteriores, anexos con su
-«Situación» como nota por renglón (`sgi.miid.row.note`) y control de
-cambios. Capítulos: Identificación · 1 Objeto, alcance y control del Manual
-· 2 Referencias normativas · 3 Dónde vive el sistema · 4 El sistema · 5
-Cómo cumple el SGI cada requisito · 6 Información documentada (**sustituye
-al P-G01**; `docs/sgi/transicion/p-g01-en-el-sgi.md`) · 7 Transición desde
-el Dropbox · 8 Control de cambios. La marca `[[datos]]` en un párrafo decide
-dónde va el bloque; «Texto solo si no hay datos» deja el texto como respaldo.
-Un bloque que ninguna sección lleva sale al final («Datos del sistema sin
-sección»). Las 27 secciones narrativas del borrador Rev. 03 quedaron
-archivadas (su texto sigue en la sección archivada).
+**SGI → Sistema → Manual del SGI** (carpeta, 57.148.0): **Manual (MIID)**,
+**Control de información documentada (P-G01)**, **Textos** (las secciones
+de los dos documentos, agrupadas por documento), **Revisiones** (las del
+MIID y del P-G01, vigentes y obsoletas) y **Solicitudes de cambio** (las
+que llevan huella; Auditor, Jefe MAST y Dirección). Todo Usuario SGI y
+Auditor leen el manual y el P-G01; editar textos y solicitar el cambio es
+del Jefe MAST.
 
+**Un motor, dos documentos.** `sgi.miid` y `sgi.miid.section` llevan `kind`
+(`miid` | `pg01`; `MIID_KINDS` en `models/sgi_miid.py`: clave, título,
+primera revisión desde Odoo, bloques que imprime y llaves de la foto que
+entran a su huella). Uno por empresa y documento; `_sgi_get(company, kind)`.
+Desde 57.146.0 (Dirección: «el MIID está como en el Dropbox») ningún
+documento generado describe en prosa lo que el sistema ya muestra: texto
+fijo mínimo (`docs/sgi/transicion/miid-rev03-borrador.md`, generado desde
+la siembra con `tools/sgi_miid_seed_md.py`; lo edita el Jefe MAST) y
+bloques vivos (`MIID_BLOCKS`, 15). La marca `[[datos]]` en un párrafo decide
+dónde va el bloque; «Texto solo si no hay datos» deja el texto como
+respaldo. Un bloque del documento que ninguna sección lleva sale al final
+(«Datos del sistema sin sección»).
+
+- **MIID** (24 secciones, 13 bloques): identificación, normas y cláusulas
+  cargadas, procesos con mapa e interacción, política, objetivos e
+  indicadores, dueños y roles por proceso, tipos de documento y su clave,
+  controles operacionales, plazos de NC, correspondencia por cláusula con
+  las actividades que la cumplen, procedimientos anteriores, anexos con su
+  «Situación» por renglón (`sgi.miid.row.note`) y control de cambios.
+  Capítulos: Identificación · 1 Objeto, alcance y control del Manual · 2
+  Referencias normativas · 3 Dónde vive el sistema · 4 El sistema · 5 Cómo
+  cumple el SGI cada requisito · 6 Información documentada (cita al P-G01 y
+  deja los tipos de documento) · 7 Transición desde el Dropbox · 8 Control
+  de cambios. Huella: textos y notas, procesos, flujos, política, objetivos,
+  tipos de documento, controles, plazos de NC, normas, roles, actividades
+  por cláusula, procedimientos anteriores y anexos.
+- **P-G01 «Elaboración y control de información documentada»** (14
+  secciones en el orden de la Rev. 11, 6 bloques): identificación, tipos de
+  documento, plazos documentales (los siete parámetros que aplica el
+  sistema, `MIID_DOC_ROWS`), **rutinas** (las actividades de E2 ligadas a
+  cualquiera de sus revisiones por «Procedimiento relacionado», con quién
+  ejecuta y aprueba, cadencia y criterio de terminado), normas y control de
+  cambios. Huella: textos y notas, tipos de documento, plazos documentales,
+  rutinas y normas. Candado propio: su proceso (E2) vigente. La primera
+  revisión desde Odoo es la 12; al aprobarse, la del Dropbox queda «Migrado
+  a Odoo» hacia el documento generado. Correspondencia con la Rev. 11:
+  `docs/sgi/transicion/p-g01-en-el-sgi.md`.
 - **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
-  «Borrador — no vigente». La revisión vigente es el documento controlado de
-  clave MIID.
-- **Huella** (`sgi.miid._sgi_hash`): textos de las secciones sin formato y
-  notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
-  flujos, política vigente, objetivos con sus indicadores, tipos de
-  documento y su patrón, controles operacionales y anexos vigentes,
-  procedimientos anteriores y su proceso, los seis plazos de NC, las normas
-  con sus numerales y, desde 57.146.0, los plazos documentales, los roles
-  por proceso y qué actividades cumplen cada cláusula. No cubre la revisión
-  y emisión del propio MIID, el control de cambios ni «Por confirmar».
+  «Borrador — no vigente». La revisión vigente es el documento controlado
+  de la clave del documento (MIID o P-G01).
 - **Siembra en una base existente:** `_sgi_seed_update` pone el texto nuevo
   solo en las secciones que nadie editó; `_sgi_seed_layout_update`
-  reacomoda orden, numeral, título, nivel y bloque; `_sgi_seed_archive`
-  archiva las que el manual ya no lleva. Las tres con nota en el chatter;
-  las migraciones 57.110.0, 57.113.0 y 57.146.0 las usan.
+  reacomoda orden, numeral, título, nivel, bloque y documento;
+  `_sgi_seed_archive` archiva las que el documento ya no lleva. Las tres con
+  nota en el chatter; las migraciones 57.110.0, 57.113.0, 57.146.0 y 57.148.0
+  las usan.
 - **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
-  confirmar» o con procesos activos que no estén «Vigente». Por Sign la
-  aprobación espera (no se interrumpe la sincronización) y avisa al Jefe
-  MAST.
-- **Actualizar:** aviso diario «El MIID vigente ya no coincide con el
-  sistema» (paso «MIID al día» de «SGI: Vencimientos documentales», uno por
-  empresa, 3 días hábiles) → pantalla → **Solicitar cambio del MIID**
-  (solicitud de cambio documental de siempre con el PDF generado, la huella y
-  las diferencias) → Enviar (regenera el PDF si los datos cambiaron) →
-  firmas (Elaboró, Revisó el dueño de E2, Aprobó Dirección,
-  `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la huella (DOC-1:
-  la anterior obsoleta con su archivo, acuses). Lo que se firma es lo que se
-  publica. Nada se aprueba solo.
-- **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
-  primera revisión desde Odoo es la 03.
+  confirmar» de ese documento o (MIID) con procesos activos que no estén
+  «Vigente» / (P-G01) con su proceso sin publicar. Por Sign la aprobación
+  espera (no se interrumpe la sincronización) y avisa al Jefe MAST.
+- **Actualizar:** aviso diario «El MIID (o el P-G01) vigente ya no coincide
+  con el sistema» (paso «MIID al día» de «SGI: Vencimientos documentales»,
+  uno por empresa y documento, 3 días hábiles) → pantalla → **Solicitar
+  cambio de revisión** (solicitud de cambio documental de siempre con el PDF
+  generado, la huella y las diferencias) → Enviar (regenera el PDF si los
+  datos cambiaron) → firmas (Elaboró, Revisó el dueño de E2, Aprobó
+  Dirección, `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la
+  huella (DOC-1: la anterior obsoleta con su archivo, acuses). Lo que se
+  firma es lo que se publica. Nada se aprueba solo.
+- **Sin línea base:** el documento cargado del Dropbox (sin huella) no
+  avisa; la primera revisión desde Odoo es la 03 (MIID) o la 12 (P-G01).
 - **Una empresa:** la comparación diaria y el aviso son solo de la empresa
   del SGI (`quimibond_sgi.sgi_company_id`, D-03).
 

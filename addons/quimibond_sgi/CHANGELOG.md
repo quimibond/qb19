@@ -13,6 +13,77 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.148.0 — 2026-10-13
+
+Dirección General 2026-10-13, al ver el P-G01 dentro del capítulo 6 del
+MIID (57.146.0): **«prefiero otra cosa; necesito un submenú para el MIID y
+todo eso»**. El P-G01 vuelve a ser un documento controlado propio, pero
+**generado desde Odoo con el mismo motor que el Manual**, y el MIID, el
+P-G01, sus textos, sus revisiones y sus solicitudes cuelgan de una carpeta
+«Manual del SGI» en Sistema.
+
+### Agregado
+- **Un motor, dos documentos.** `sgi.miid` y `sgi.miid.section` llevan
+  `kind` (`miid` | `pg01`; `MIID_KINDS` en `models/sgi_miid.py`: clave,
+  título, primera revisión desde Odoo, bloques que imprime y llaves de la
+  foto que entran a su huella). Uno por empresa y documento
+  (`UNIQUE(company_id, kind)`); `_sgi_get(company, kind)`,
+  `_sgi_kind_for_code(code)`. La huella y las diferencias de cada
+  documento solo cubren lo que ese documento imprime: el dueño de un
+  proceso no desactualiza al P-G01, un plazo documental no desactualiza al
+  Manual.
+- **P-G01 «Elaboración y control de información documentada» generado**
+  (`kind = pg01`, clave P-G01, primera revisión desde Odoo la 12, continúa
+  al Dropbox): 14 secciones sembradas en el orden de la revisión 11
+  (identificación, propósito, alcance, responsabilidades, desarrollo 4.1 a
+  4.6, rutinas, marco normativo, control de cambios) y los bloques
+  identificación, tipos de documento, plazos documentales, **rutinas**
+  (bloque nuevo `actividades`: las actividades de E2 ligadas a cualquiera
+  de sus revisiones por «Procedimiento relacionado», con quién ejecuta y
+  aprueba, cadencia y criterio de terminado), normas y control de cambios.
+  Candado propio: su proceso (E2) debe estar vigente. Al aprobarse la
+  primera revisión desde Odoo, la del Dropbox queda «Migrado a Odoo» hacia
+  el documento generado.
+- **Carpeta SGI → Sistema → Manual del SGI**: Manual (MIID) ·
+  Control de información documentada (P-G01) · Textos (una lista, agrupada
+  por documento) · Revisiones (las del MIID y del P-G01, vigentes y
+  obsoletas) · Solicitudes de cambio (las que llevan huella; Auditor, Jefe
+  MAST y Dirección). `menu_sgi_miid` conserva su xmlid; rutas
+  `sgi_menu_path('miid')` y `sgi_menu_path('pg01')`; árbol en
+  `tools/sgi_menu_tree.txt`.
+- Pantalla y PDF comunes: el título lo pone el documento («Solicitar cambio
+  de revisión», «Textos del documento»); la portada, el pie y el nombre del
+  PDF llevan la clave del documento.
+- `tools/sgi_miid_seed_md.py`: genera `docs/sgi/transicion/miid-rev03-borrador.md`
+  desde la siembra (los dos documentos).
+
+### Cambiado
+- **MIID capítulo 6** queda en «6 Información documentada» (cita al P-G01)
+  y «6.1 Tipos de documento y claves»; las cinco secciones que detallaban
+  el P-G01 (6.2 a 6.6 de 57.146.0) se archivan por migración. El bloque
+  `plazos_documentales` ya no es del Manual. 24 secciones del MIID.
+- El aviso diario y el Diagnóstico cubren los dos documentos
+  («El P-G01 vigente ya no coincide con el sistema», clave
+  `pg01_desactualizado:<empresa>`; el del MIID no cambia de clave).
+
+### Migración (`migrations/19.0.57.148.0/`)
+- `pre-migrate.py`: quita la restricción única vieja de `sgi_miid`.
+- `post-migrate.py`: archiva las cinco secciones del MIID que viven en el
+  P-G01, pone el texto nuevo de «6 Información documentada» y «1.4 Revisión
+  y control de este Manual» solo si nadie los editó, crea el P-G01 generado
+  de la empresa del SGI y corre su primera comparación. Las 14 secciones
+  del P-G01 las crea la siembra. Idempotente.
+
+### Pruebas (`tests/test_miid.py`)
+- test_01 cuenta lo que declara la siembra (24 + 14, cada una existe,
+  activa y noupdate) en vez de `ir.model.data` (la copia de producción
+  conserva los xmlids archivados). test_06 y test_25 ya no esperan los
+  plazos documentales en el Manual. Nueva `TestPg01Generado`: uno por
+  empresa y documento y menú (test_30), huella solo con lo que imprime
+  (test_31), rutinas, candado del proceso y revisión 12 (test_32), un bloque
+  por documento y textos por documento (test_33), solicitud de cambio del
+  P-G01 (test_34). `test_menus_capitulos` y test_16 con la carpeta nueva.
+
 ## 19.0.57.147.0 — 2026-10-13
 
 Dirección General 2026-10-13: «¿y vamos a hacer un menú para cada proceso?».

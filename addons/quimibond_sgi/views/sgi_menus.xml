@@ -158,9 +158,23 @@
 
     <!-- 57.105.0: el MIID desde Odoo. Lo leen todos los que ven la carpeta;
          editar textos y solicitar el cambio es del Jefe MAST. 57.113.0: de
-         Dirección a Sistema (es el manual del sistema, capítulo 4). -->
-    <menuitem id="menu_sgi_miid" name="Manual del SGI (MIID)" parent="menu_sgi_processes"
-              action="sgi_miid_action_open" sequence="70"/>
+         Dirección a Sistema (es el manual del sistema, capítulo 4).
+         57.148.0 (Dirección 2026-10-13): carpeta «Manual del SGI» con el
+         manual, el P-G01 generado con el mismo motor, los textos de los dos,
+         sus revisiones y sus solicitudes de cambio. menu_sgi_miid conserva su
+         xmlid (las rutas que se le dicen al usuario y la prueba del árbol). -->
+    <menuitem id="menu_sgi_manual" name="Manual del SGI" parent="menu_sgi_processes" sequence="70"/>
+    <menuitem id="menu_sgi_miid" name="Manual (MIID)" parent="menu_sgi_manual"
+              action="sgi_miid_action_open" sequence="10"/>
+    <menuitem id="menu_sgi_pg01" name="Control de información documentada (P-G01)" parent="menu_sgi_manual"
+              action="sgi_pg01_action_open" sequence="20"/>
+    <menuitem id="menu_sgi_miid_sections" name="Textos" parent="menu_sgi_manual"
+              action="sgi_miid_section_action" sequence="30"/>
+    <menuitem id="menu_sgi_miid_revisions" name="Revisiones" parent="menu_sgi_manual"
+              action="sgi_miid_revisions_action" sequence="40"/>
+    <menuitem id="menu_sgi_miid_requests" name="Solicitudes de cambio" parent="menu_sgi_manual"
+              action="sgi_miid_requests_action" sequence="50"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
 
     <!-- Entrega 6 (E-001, decisión 7): sección permanente «Del Dropbox a
          Odoo». Solo el Jefe MAST edita (vistas y guarda L-010 en

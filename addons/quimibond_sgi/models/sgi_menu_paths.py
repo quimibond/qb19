@@ -32,7 +32,10 @@ SGI_MENU_PATHS = {
     'politica': ('quimibond_sgi.menu_sgi_policy',
                  ('SGI', 'Planeación', 'Política integral')),
     'miid': ('quimibond_sgi.menu_sgi_miid',
-             ('SGI', 'Sistema', 'Manual del SGI (MIID)')),
+             ('SGI', 'Sistema', 'Manual del SGI', 'Manual (MIID)')),
+    # 57.148.0: el P-G01 generado, en la misma carpeta.
+    'pg01': ('quimibond_sgi.menu_sgi_pg01',
+             ('SGI', 'Sistema', 'Manual del SGI', 'Control de información documentada (P-G01)')),
     'riesgos': ('quimibond_sgi.menu_sgi_risks',
                 ('SGI', 'Planeación', 'Riesgos y oportunidades')),
     'requisitos_legales': ('quimibond_sgi.menu_sgi_legal',

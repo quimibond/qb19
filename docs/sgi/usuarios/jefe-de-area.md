@@ -190,7 +190,7 @@ en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 
 ## 5.1 El Manual del SGI (MIID)
 
-**SGI → Sistema → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+**SGI → Sistema → Manual del SGI → Manual (MIID)**: «PDF de la revisión vigente» es
 el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
 es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
 estado o los flujos de su proceso, el Jefe MAST recibe el aviso para

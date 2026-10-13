@@ -45,7 +45,12 @@ SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -
 SGI/Sistema/Documentos/Documentos externos | menu_sgi_external_docs | -
 SGI/Sistema/Documentos/Solicitudes de cambio | menu_sgi_doc_changes | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Documentos/Acuses de lectura | menu_sgi_config_acks | -
-SGI/Sistema/Manual del SGI (MIID) | menu_sgi_miid | -
+SGI/Sistema/Manual del SGI | menu_sgi_manual | -
+SGI/Sistema/Manual del SGI/Manual (MIID) | menu_sgi_miid | -
+SGI/Sistema/Manual del SGI/Control de información documentada (P-G01) | menu_sgi_pg01 | -
+SGI/Sistema/Manual del SGI/Textos | menu_sgi_miid_sections | -
+SGI/Sistema/Manual del SGI/Revisiones | menu_sgi_miid_revisions | -
+SGI/Sistema/Manual del SGI/Solicitudes de cambio | menu_sgi_miid_requests | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Del Dropbox a Odoo | menu_sgi_dropbox | -
 SGI/Sistema/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
 SGI/Sistema/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner

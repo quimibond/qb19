@@ -62,7 +62,12 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Documentos externos** — `documents.document`
       - **Solicitudes de cambio** — `approval.request`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
       - **Acuses de lectura** — `sgi.document.ack`
-    - **Manual del SGI (MIID)** — `sgi.miid`
+    - **Manual del SGI**
+      - **Manual (MIID)** — `sgi.miid`
+      - **Control de información documentada (P-G01)** — `sgi.miid`
+      - **Textos** — `sgi.miid.section`
+      - **Revisiones** — `documents.document`
+      - **Solicitudes de cambio** — `approval.request`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Del Dropbox a Odoo**
       - **Buscador por clave anterior** — `sgi.dropbox.key`
       - **Procedimientos anteriores** — `documents.document`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
@@ -149,7 +154,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (137)
+## Acciones (140)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -249,7 +254,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_measure_split_action` | act_window | Mediciones por equipo o mercado | `sgi.indicator.measure.split` | list,pivot,graph | sí | `addons/quimibond_sgi/views/sgi_business_line_views.xml` |
 | `quimibond_sgi.sgi_migration_action` | act_window | Formatos y documentos anteriores | `documents.document` | kanban,list,form | sí | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `quimibond_sgi.sgi_miid_action_open` | server | Manual del SGI (MIID) | `sgi.miid` |  |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
-| `quimibond_sgi.sgi_miid_section_action` | act_window | Textos del MIID | `sgi.miid.section` | list,form | sí | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
+| `quimibond_sgi.sgi_miid_requests_action` | act_window | Solicitudes de cambio del manual y del P-G01 | `approval.request` | list,form | sí | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
+| `quimibond_sgi.sgi_miid_revisions_action` | act_window | Revisiones del manual y del P-G01 | `documents.document` | list,form | sí | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
+| `quimibond_sgi.sgi_miid_section_action` | act_window | Textos | `sgi.miid.section` | list,form | sí | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
 | `quimibond_sgi.sgi_msa_study_action` | act_window | Estudios MSA | `sgi.msa.study` | list,form | sí | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
 | `quimibond_sgi.sgi_my_pending_action_mine` | server | Mis pendientes | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
 | `quimibond_sgi.sgi_my_procedure_action_mine` | server | Mi procedimiento | `sgi.my.procedure` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
@@ -260,6 +267,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_norm_action` | act_window | Normas | `sgi.norm` | list,form | sí | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
 | `quimibond_sgi.sgi_norm_clause_action` | act_window | Cláusulas | `sgi.norm.clause` | list,form | sí | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
 | `quimibond_sgi.sgi_objective_action` | act_window | Objetivos integrales | `sgi.objective` | list,sgi_diagram,form,activity | sí | `addons/quimibond_sgi/views/sgi_objective_views.xml` |
+| `quimibond_sgi.sgi_pg01_action_open` | server | Control de información documentada (P-G01) | `sgi.miid` |  |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
 | `quimibond_sgi.sgi_policy_action` | act_window | Política integral | `sgi.policy` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_policy_views.xml` |
 | `quimibond_sgi.sgi_ppap_action` | act_window | PPAP | `sgi.ppap` | list,form | sí | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
 | `quimibond_sgi.sgi_ppap_element_template_action` | act_window | Elementos PPAP | `sgi.ppap.element.template` | list | sí | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
