@@ -20,7 +20,7 @@
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (391 renglones del CSV)
+## Permisos por modelo (392 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -35,6 +35,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `mrp.production` | `group_sgi_auditor` | l | quimibond_sgi |
 | `mrp.workorder` | `group_sgi_auditor` | l | quimibond_sgi |
 | `project.project` | `group_sgi_auditor` | l | quimibond_sgi |
+| `project.project` | `group_sgi_user` | lec | quimibond_sgi |
 | `project.task` | `group_sgi_auditor` | l | quimibond_sgi |
 | `purchase.order` | `group_sgi_auditor` | l | quimibond_sgi |
 | `purchase.order.line` | `group_sgi_auditor` | l | quimibond_sgi |
@@ -418,7 +419,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `survey.survey` | `group_sgi_manager` | le | quimibond_sgi |
 | `survey.user_input` | `group_sgi_auditor` | l | quimibond_sgi |
 
-## Reglas de registro (70)
+## Reglas de registro (71)
 
 | Regla | Nombre | Modelo | Dominio | Grupos | Archivo |
 |---|---|---|---|---|---|
@@ -444,6 +445,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_deliverable_company` | SGI: Entregables por empresa | `sgi.deliverable` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dev_characteristic_auditor_no_write` | SGI: el Auditor no escribe características de desarrollo | `sgi.dev.characteristic` | `[(0, '=', 1)]` | [(4, ref('group_sgi_auditor'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dev_characteristic_user_write` | SGI: el Usuario SGI escribe características de desarrollo (sin cambio) | `sgi.dev.characteristic` | `[(1, '=', 1)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_dev_project_write` | SGI: fuera de Proyecto / Administrador solo se escriben desarrollos de producto (compañía 1) | `project.project` | `[(1, '=', 1)] if user.has_group('project.group_project_manager') else [('sgi_is_ft', '=', True), ('company_id', '=', 1)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_document_type_company` | SGI: Tipos de documento por empresa | `sgi.document.type` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dropbox_key_readable_document` | SGI: clave anterior solo de documentos que el usuario puede leer | `sgi.dropbox.key` | `['\|', ('document_id', '=', False), ('document_id', 'any', [])]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dropbox_progress_company` | SGI: avance de la transición por empresa | `sgi.dropbox.progress` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |

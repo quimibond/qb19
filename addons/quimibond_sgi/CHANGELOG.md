@@ -13,6 +13,55 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.151.0 — 2026-10-13
+
+Dirección General 2026-10-13: tres ajustes al desarrollo de producto.
+
+### Cambiado
+- **«Diagrama de flujo de procesos»**: así se llaman ahora los dos botones
+  `action_sgi_dev_print_flow` (pestañas Cotización y Pilotaje), la ayuda de
+  la pestaña de análisis y el reporte (`report_dev_flow`: nombre, título y
+  nombre del PDF).
+
+### Corregido
+- **El folio FT ya no se repite.** La secuencia `sgi.dev.ft` creó el rango
+  2026 en 1 cuando los folios del año se habían capturado a mano, y asignó
+  FT-001-2026 al proyecto 499, que ya era del 380 (Jose lo corrigió a
+  FT-040-2026). `action_sgi_dev_assign_folio` adelanta el rango del año al
+  folio más alto que existe + 1 si va atrás (`_sgi_dev_ft_sync_range`,
+  archivados incluidos; nunca lo regresa) y, si aun así la secuencia da uno
+  ocupado, pide el siguiente.
+- **Un folio FT por compañía** (`_check_sgi_ft_folio_unique`, archivados
+  incluidos, sin distinguir mayúsculas ni espacios): capturar a mano uno que
+  ya existe se detiene con el nombre del proyecto que lo tiene.
+- Un desarrollo nuevo nace con la compañía activa si no trae compañía (Odoo
+  la deja vacía cuando el cliente no tiene).
+
+### Seguridad
+- **El Usuario SGI escribe y crea proyectos de desarrollo** (sin borrar):
+  acceso `access_project_project_sgi_user`. Jessica (Desarrollo) no podía
+  mover de etapa ni guardar el proyecto: solo Proyecto / Administrador
+  escribía proyectos.
+- **Regla global** `rule_sgi_dev_project_write` (escribir y crear): fuera de
+  Proyecto / Administrador solo se escriben desarrollos de producto
+  (`sgi_is_ft`) de la compañía 1. Es global y no del grupo porque Odoo suma
+  con OR las reglas de grupo y la nativa «Project: employees: following
+  required for follower-only projects» (Usuario interno) ya deja pasar
+  cualquier proyecto no privado: una regla del grupo SGI no limitaría nada.
+  El candado de la aprobación del cliente para entrar a «Muestra» no cambia.
+
+### Migración
+- `19.0.57.151.0/post-migrate.py`: cada rango de la secuencia `sgi.dev.ft`
+  pasa al folio más alto de su año + 1 si va atrás (en producción el rango
+  2026 queda en 41). No toca proyectos ni folios.
+
+### Pruebas
+- `test_dev_folio_access` (nueva): secuencia atrasada, folio archivado,
+  folio ocupado sin ajuste previo, el ajuste no regresa, unicidad por
+  compañía, compañía del desarrollo nuevo, Usuario SGI mueve etapa, guarda y
+  crea desarrollos, no borra, no escribe otros proyectos y sigue detenido por
+  la aprobación del cliente.
+
 ## 19.0.57.150.0 — 2026-10-13
 
 Dirección General 2026-10-13: fases 2 y 3 de la auditoría UX del SGI

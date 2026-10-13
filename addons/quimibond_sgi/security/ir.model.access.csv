@@ -190,6 +190,7 @@ access_helpdesk_team_sgi_auditor,helpdesk.team sgi auditor,helpdesk.model_helpde
 access_approval_request_sgi_auditor,approval.request sgi auditor,approvals.model_approval_request,group_sgi_auditor,1,0,0,0
 access_project_task_sgi_auditor,project.task sgi auditor,project.model_project_task,group_sgi_auditor,1,0,0,0
 access_project_project_sgi_auditor,project.project sgi auditor,project.model_project_project,group_sgi_auditor,1,0,0,0
+access_project_project_sgi_user,project.project sgi user,project.model_project_project,group_sgi_user,1,1,1,0
 access_maintenance_request_sgi_auditor,maintenance.request sgi auditor,maintenance.model_maintenance_request,group_sgi_auditor,1,0,0,0
 access_maintenance_equipment_sgi_auditor,maintenance.equipment sgi auditor,maintenance.model_maintenance_equipment,group_sgi_auditor,1,0,0,0
 access_purchase_order_sgi_auditor,purchase.order sgi auditor,purchase.model_purchase_order,group_sgi_auditor,1,0,0,0

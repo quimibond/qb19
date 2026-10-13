@@ -43,10 +43,12 @@ import logging
 import re
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
+# 57.151.0: tope de folios ocupados seguidos antes de rendirse (la secuencia se adelanta antes).
+FT_FOLIO_MAX_ATTEMPTS = 200
 FT_FOLIO_RE = re.compile(r'^\s*FT[-\s]?(\d{1,4})\s*[-/]\s*(\d{4})\s*(.*)$', re.IGNORECASE)
 REV_RE = re.compile(r'\bREV\.?\s*(\d+)\s*$', re.IGNORECASE)
 # Nombres de las etapas de avance, en orden. Las claves son los xmlids de
@@ -504,13 +506,89 @@ class ProjectProjectDev(models.Model):
                 project._sgi_dev_write_name_all_langs(name)
 
     def action_sgi_dev_assign_folio(self):
-        """Asigna el folio FT de la secuencia anual (FT-001-2027) si no lo tiene."""
+        """Asigna el folio FT de la secuencia anual (FT-001-2027) si no lo tiene.
+
+        57.151.0: el folio nunca se repite. Antes de pedir el número se adelanta el rango del año
+        si va atrás de los folios que ya existen (``_sgi_dev_ft_sync_range``) y, si aun así la
+        secuencia da uno ocupado, se pide el siguiente. Así nació FT-001-2026 dos veces (380 y 499):
+        el rango 2026 se creó en 1 cuando los folios del año se habían capturado a mano."""
         for project in self.filtered(lambda p: p.sgi_is_ft and not p.sgi_ft_folio):
-            folio = self.env['ir.sequence'].with_company(project.company_id or self.env.company).next_by_code('sgi.dev.ft')
-            if not folio:
-                raise UserError("No existe la secuencia de folios FT (sgi.dev.ft). Actualice el módulo SGI.")
+            company = project.company_id or self.env.company
+            project._sgi_dev_ft_sync_range(company)
+            Sequence = self.env['ir.sequence'].with_company(company)
+            folio = False
+            for _attempt in range(FT_FOLIO_MAX_ATTEMPTS):
+                folio = Sequence.next_by_code('sgi.dev.ft')
+                if not folio:
+                    raise UserError("No existe la secuencia de folios FT (sgi.dev.ft). Actualice el módulo SGI.")
+                if not self._sgi_dev_ft_folio_taken(folio, company):
+                    break
+                _logger.warning("Folio FT %s ya existe en %s; se pide el siguiente.", folio, company.name)
+            else:
+                raise UserError("La secuencia de folios FT dio %d folios seguidos que ya existen (el último, %s). "
+                                "Revise el siguiente número del año en Ajustes → Técnico → Secuencias "
+                                "(sgi.dev.ft)." % (FT_FOLIO_MAX_ATTEMPTS, folio))
             project.write({'sgi_ft_folio': folio})
         return True
+
+    @api.model
+    def _sgi_dev_ft_folio_taken(self, folio, company, exclude=None):
+        """Proyectos (archivados incluidos, sin reglas de acceso) de la compañía que ya tienen ese
+        folio, sin distinguir mayúsculas ni espacios en los extremos."""
+        domain = [('sgi_ft_folio', '=ilike', (folio or '').strip()), ('company_id', '=', company.id)]
+        if exclude:
+            domain.append(('id', 'not in', exclude.ids))
+        return self.sudo().with_context(active_test=False).search(domain)
+
+    @api.model
+    def _sgi_dev_ft_max_number(self, year, company):
+        """Número más alto de los folios FT-<n>-<año> de la compañía (archivados incluidos); 0 si no
+        hay. Cuenta cualquier proyecto con el folio, sea o no desarrollo: el folio es único."""
+        projects = self.sudo().with_context(active_test=False).search_read(
+            [('sgi_ft_folio', '=ilike', 'FT-%%-%d' % year), ('company_id', '=', company.id)], ['sgi_ft_folio'])
+        pattern = re.compile(r'^FT-(\d+)-%d$' % year)
+        numbers = [int(m.group(1)) for m in (pattern.match((p['sgi_ft_folio'] or '').strip().upper())
+                                             for p in projects) if m]
+        return max(numbers, default=0)
+
+    @api.model
+    def _sgi_dev_ft_sync_range(self, company, date=None):
+        """Adelanta el rango del año de la secuencia ``sgi.dev.ft`` al máximo folio existente + 1 si
+        va atrás. Nunca la regresa. Devuelve el siguiente número del rango (o False sin secuencia).
+
+        Busca la secuencia como ``next_by_code`` (la de la compañía o la compartida) y el rango de
+        la fecha que usará (``ir_sequence_date`` del contexto u hoy); si el rango no existe lo crea
+        con la misma rutina que la secuencia."""
+        Sequence = self.env['ir.sequence'].sudo()
+        sequence = Sequence.search([('code', '=', 'sgi.dev.ft'), ('company_id', 'in', [company.id, False])],
+                                   order='company_id', limit=1)
+        if not sequence or not sequence.use_date_range:
+            return False
+        dt = date or self.env.context.get('ir_sequence_date') or fields.Date.today()
+        dt = fields.Date.to_date(dt)
+        date_range = sequence.date_range_ids.filtered(lambda r: r.date_from <= dt <= r.date_to)[:1]
+        if not date_range:
+            date_range = sequence._create_date_range_seq(dt)
+        top = self._sgi_dev_ft_max_number(date_range.date_from.year, company)
+        if date_range.number_next_actual <= top:
+            _logger.warning("Secuencia sgi.dev.ft %s: el rango %s iba en %s y ya existe FT-%03d-%s; pasa a %s.",
+                            company.name, date_range.date_from.year, date_range.number_next_actual,
+                            top, date_range.date_from.year, top + 1)
+            date_range.number_next_actual = top + 1
+        return date_range.number_next_actual
+
+    @api.constrains('sgi_ft_folio', 'company_id')
+    def _check_sgi_ft_folio_unique(self):
+        """57.151.0: un folio FT por compañía, contando los proyectos archivados."""
+        for project in self.filtered('sgi_ft_folio'):
+            company = project.company_id or self.env.company
+            other = self._sgi_dev_ft_folio_taken(project.sgi_ft_folio, company, exclude=project)[:1]
+            if other:
+                raise ValidationError(
+                    "El folio FT %s ya es del proyecto «%s» (id %d%s). Un folio FT no se repite: capture otro o "
+                    "deje el campo vacío y use «Asignar folio FT»." % (
+                        project.sgi_ft_folio.strip(), other.display_name, other.id,
+                        ", archivado" if not other.active else ""))
 
     def _sgi_dev_alias_name(self):
         self.ensure_one()
@@ -625,6 +703,11 @@ class ProjectProjectDev(models.Model):
     # ------------------------------------------------------------------------
     @api.model_create_multi
     def create(self, vals_list):
+        # 57.151.0: un desarrollo nace con la compañía activa. Odoo deja el proyecto sin compañía si
+        # el cliente no tiene; el folio FT y la regla de escritura del Usuario SGI son por compañía.
+        vals_list = [dict(vals, company_id=self.env.company.id)
+                     if vals.get('sgi_is_ft', self.env.context.get('default_sgi_is_ft')) and not vals.get('company_id')
+                     else vals for vals in vals_list]
         projects = super().create(vals_list)
         dev = projects.filtered('sgi_is_ft')
         if dev and not self.env.context.get('sgi_dev_migration'):
