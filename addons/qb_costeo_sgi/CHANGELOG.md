@@ -1,5 +1,16 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.6.0 — 2026-10-13
+
+Dirección General 2026-10-13 (quimibond_sgi 57.152.0): **capacidad a utilizar**
+en la aprobación para iniciar el proyecto. `_sgi_dev_capacity_resources`
+agrupa la ruta del artículo por centro de costo (`qb.centro` dueño del centro
+de trabajo de cada operación) y pone su capacidad mensual en kg: la medida
+(`capacidad_medida_kg_mes`) o la capturada en horas por el throughput medido.
+Ambos campos los agrega `qb_tejido_ritmo`; sin ellos o en cero no hay
+capacidad y el documento dice «Sin capacidad capturada». Hoy solo Tejido
+Circular tiene dato (90,342 kg/mes). Prueba `test_bridge.test_07` (Odoo.sh).
+
 ## 19.0.1.5.1 — 2026-10-09
 
 Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.** Sin

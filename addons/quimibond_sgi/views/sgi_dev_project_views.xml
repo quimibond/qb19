@@ -229,6 +229,21 @@
                                     <field name="note" optional="show"/>
                                 </list>
                             </field>
+                            <!-- 57.152.0: información requerida al cliente (formatos anteriores F-P-D01-09 / 19); se
+                                 imprime en la aprobación para iniciar. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Información requerida al cliente</span>
+                                <button name="action_sgi_dev_load_required_docs" type="object" string="Cargar el catálogo de la línea" class="btn-secondary" icon="fa-list"
+                                        help="Agrega en «No aplica» los documentos del catálogo de la línea que todavía no están en la lista."/>
+                            </div>
+                            <field name="sgi_dev_required_doc_ids" context="{'default_project_id': id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="option_id" options="{'no_create': True}"/>
+                                    <field name="moment"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
                         </page>
                         <!-- 2. Análisis de proyecto (Diseño de Producto: análisis de la muestra del cliente y pruebas de laboratorio;
                              Diseño de Procesos: diagrama de proceso, que vive en la ruta del artículo; Administración de Ventas firma la revisión). -->
@@ -794,6 +809,7 @@
                 <field name="kind"/>
                 <field name="name"/>
                 <field name="name_en" optional="show"/>
+                <field name="line_key" optional="show" invisible="kind != 'documento_cliente'"/>
             </list>
         </field>
     </record>
@@ -819,7 +835,7 @@
         <field name="context">{'search_default_group_kind': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Listas de la pestaña Comercial y del resultado del análisis</p>
-            <p>Aplicación, mercado, tipo de laminado, requisitos legales y reglamentarios y motivos de no factibilidad. Se capturan aquí para que en el proyecto sean una elección y no texto libre.</p>
+            <p>Aplicación, mercado, tipo de laminado, requisitos legales y reglamentarios, motivos de no factibilidad e información requerida al cliente. Se capturan aquí para que en el proyecto sean una elección y no texto libre.</p>
         </field>
     </record>
 </odoo>

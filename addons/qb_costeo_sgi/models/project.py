@@ -193,6 +193,44 @@ class ProjectProjectCotizador(models.Model):
         })
         return vals
 
+    # ------------------------------------------------------------------
+    # 1.6.0 (SGI 57.152.0): capacidad a utilizar en la aprobación para iniciar.
+    # ------------------------------------------------------------------
+    def _sgi_dev_capacity_resources(self):
+        """Recursos de la ruta agrupados por centro de costo (``qb.centro`` dueño del centro de trabajo de
+        cada operación), con su capacidad mensual en kg. Una operación cuyo centro de trabajo no está en
+        ningún centro de costo queda con su centro de trabajo y sin capacidad."""
+        self.ensure_one()
+        Centro = self.env['qb.centro'].sudo()
+        company = self.company_id or self.env.company
+        groups, order = {}, []
+        for _product, op in self._sgi_dev_route_operations():
+            workcenter = op.workcenter_id
+            centro = Centro.search([('workcenter_ids', 'in', workcenter.ids), ('company_id', '=', company.id)],
+                                   limit=1) if workcenter else Centro
+            key = ('centro', centro.id) if centro else ('workcenter', workcenter.id)
+            if key not in groups:
+                groups[key] = {'name': centro.name if centro else (workcenter.display_name or op.name),
+                               'capacity_kg': self._qb_capacidad_kg_mes(centro) if centro else False,
+                               'operations': []}
+                order.append(key)
+            if op.name and op.name not in groups[key]['operations']:
+                groups[key]['operations'].append(op.name)
+        return [groups[key] for key in order]
+
+    @api.model
+    def _qb_capacidad_kg_mes(self, centro):
+        """Capacidad mensual en kg del centro: la medida (``capacidad_medida_kg_mes``) o la capturada en
+        horas por el throughput medido (kg/h). Ambos campos los agrega ``qb_tejido_ritmo``; sin ellos, o
+        en cero, no hay capacidad (False): no se inventa."""
+        measured = centro['capacidad_medida_kg_mes'] if 'capacidad_medida_kg_mes' in centro._fields else 0.0
+        if measured > 0:
+            return measured
+        throughput = centro['throughput_medido'] if 'throughput_medido' in centro._fields else 0.0
+        if centro.capacidad_h_mes > 0 and throughput > 0:
+            return centro.capacidad_h_mes * throughput
+        return False
+
     def _sgi_dev_dossier_extra(self):
         rows = super()._sgi_dev_dossier_extra()
         cots = self.qb_cotizacion_ids
