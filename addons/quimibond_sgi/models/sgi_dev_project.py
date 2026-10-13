@@ -79,6 +79,7 @@ OPTION_KINDS = [
     ('paqueteria', "Paquetería"),  # 57.129.0 (Jose 3.3): medio de envío de la muestra
     ('motivo_rechazo_cliente', "Motivo de rechazo del cliente"),  # 57.129.0 (Jose 3.3)
     ('cuidado', "Instrucción de cuidado"),  # 57.132.0 (Jose 5.3): especificaciones del producto
+    ('documento_cliente', "Información requerida al cliente"),  # 57.152.0: aprobación para iniciar
 ]
 # Etapas viejas que no son clientes: no se adivina cliente desde ellas.
 NON_CUSTOMER_STAGES = {'hecha', 'cancelada', 'odoo', 'nuevo', 'por hacer', 'analisis de proyectos',

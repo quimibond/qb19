@@ -220,3 +220,32 @@ class TestBridge(CotizadorCase):
         bodies = ' '.join(dev.message_ids.mapped('body'))
         self.assertIn('Liberado sin precio en la tarifa', bodies)
         self.assertIn('ninguna cotización se ha marcado ganada', bodies)
+
+    def test_07_capacidad_por_centro_de_costo(self):
+        """1.6.0 (SGI 57.152.0): la ruta del artículo se agrupa por centro de costo con su capacidad
+        mensual en kg; el que no tiene capacidad (o la operación sin centro de costo) queda sin ella."""
+        Wc = self.env['mrp.workcenter']
+        wc_tejido = Wc.create({'name': 'Circular prueba capacidad'})
+        wc_rama = Wc.create({'name': 'Rama prueba capacidad'})
+        centro = self.env['qb.centro'].create({'code': 'TEJCAPZ', 'name': 'Tejido prueba capacidad',
+                                               'workcenter_ids': [(6, 0, wc_tejido.ids)]})
+        product = self.env['product.product'].create({'name': 'tela capacidad prueba', 'type': 'consu'})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': product.product_tmpl_id.id, 'product_qty': 1,
+            'operation_ids': [(0, 0, {'name': 'Tejer', 'workcenter_id': wc_tejido.id}),
+                              (0, 0, {'name': 'Ramear', 'workcenter_id': wc_rama.id})]})
+        self.project.write({'sgi_dev_product_id': product.id, 'sgi_dev_sample_kg': 10,
+                            'sgi_dev_consumption_monthly': 1000, 'sgi_dev_consumption_uom': 'kg'})
+        resources = self.project._sgi_dev_capacity_resources()
+        self.assertEqual([r['name'] for r in resources], ['Tejido prueba capacidad', wc_rama.display_name])
+        self.assertEqual(resources[0]['operations'], ['Tejer'])
+        self.assertFalse(resources[1]['capacity_kg'], "Sin centro de costo no hay capacidad.")
+        if 'capacidad_medida_kg_mes' not in centro._fields:
+            self.assertFalse(resources[0]['capacity_kg'], "Sin la capacidad medida (qb_tejido_ritmo) no se inventa.")
+            return
+        centro.sudo().write({'capacidad_medida_kg_mes': 90000})
+        cap = self.project._sgi_dev_start_approval_capacity()
+        tejido = next(r for r in cap['rows'] if r['name'].startswith('Tejido prueba capacidad'))
+        self.assertEqual(tejido['monthly_pct'], '1.111 %')
+        self.assertEqual(cap['missing'], [wc_rama.display_name])
+        self.assertIn(wc_rama.display_name, self.project._sgi_dev_start_approval_capacity_warning())

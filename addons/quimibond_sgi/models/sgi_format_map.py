@@ -77,6 +77,7 @@ SGI_FORMAT_REPORTS = (
     # eficiencias eligen la referencia por registro; aquí va la general.
     ('quimibond_sgi.action_report_8d', 'format_ref_8d'),
     ('quimibond_sgi.action_report_dev_request', 'format_ref_dev_general'),
+    ('quimibond_sgi.action_report_dev_start_approval', 'format_ref_dev_start_tejido'),  # 57.152.0: por línea
     ('quimibond_sgi.action_report_epp_delivery', 'format_ref_epp_responsiva'),
     ('quimibond_sgi.action_report_staff_efficiency', 'format_ref_staff_efficiency'),
     ('quimibond_sgi.action_report_indicator_sheet', 'format_ref_indicator_sheet'),

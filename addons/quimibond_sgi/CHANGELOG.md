@@ -13,6 +13,71 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.152.0 — 2026-10-13
+
+Dirección General 2026-10-13: la **aprobación para iniciar el proyecto**
+(`report_dev_start_approval`) conserva todos los campos del formato anterior
+F-P-D01-09 (tejido) y F-P-D01-19 (entretelas), cotejados contra las
+plantillas de Documentos (3963, 3969) y el ejemplo lleno FT-043/2024 (5171).
+
+### Agregado
+- **Encabezado del formato**: mapeos `format_ref_dev_start_tejido`
+  (F-P-D01-09) y `format_ref_dev_start_entretelas` (F-P-D01-19) por
+  `sgi_dev_line_key`; Documentos los resuelve por clave anterior (hoy F-C1-06
+  y F-C1-12). El documento imprime título, clave, revisión, área y emisión
+  del formato vigente; el pie lleva la clave.
+- **Datos generales**: cliente, dirección, teléfono y correo (del contacto y,
+  campo por campo, del cliente si al contacto le falta), solicitante,
+  mercado, nombre del proyecto (código del artículo), ficha técnica, fecha de
+  solicitud (o de creación) y descripción.
+- **Datos del proyecto**: aplicación, fechas de solicitud y requerida, no. de
+  especificación, ficha técnica, tamaño de la muestra (m / kg), consumo
+  mensual con su unidad (`sgi_dev_consumption_monthly`; antes se usaba
+  `sgi_dev_volume` y salía vacío), forma de empaque, material de línea o
+  nuevo desarrollo, nombre del producto, precio, unidad, cotización y
+  vigencia, laminado y programa.
+- **Características**: Característica | Dirección | Unidades | Norma a
+  aplicar | Valor nominal | Tolerancias, con nominal y tolerancia separados
+  (± igual, −/+ distinta, Máximo, Mínimo).
+- **Información requerida** (nuevo): lista `documento_cliente` en
+  `sgi.dev.option` con semilla (Ficha técnica y/o COA, Hoja de seguridad, ISO
+  9001:2015, ISO 14001:2015, PPAP, IMDS, CT-PAT, PSCR; Caducidad de
+  materiales solo entretelas, campo `line_key`) y modelo
+  `sgi.dev.required.doc` (documento + momento: para el diseño y desarrollo,
+  cuando sea factible, no aplica). Se captura en «Análisis de mercado
+  industrial» (C1.01) con el botón «Cargar el catálogo de la línea» (en «No
+  aplica», sin duplicar). Se imprime con una X en su columna.
+- **Requisitos legales y regulatorios** con la leyenda «Cualquier
+  información de aspectos legales o regulatorios que requiera ser entregada
+  junto con el producto debe ser solicitada por el cliente.»
+- **Capacidad a utilizar** (nuevo): materia prima y una fila por recurso de la
+  ruta del artículo, con cantidad y % de la muestra y del consumo mensual
+  sobre la capacidad mensual en kg (m y yd se pasan a kg con el rendimiento de
+  la tabla, o 1000 / (masa × ancho)). Gancho `_sgi_dev_capacity_resources`:
+  el núcleo agrupa por centro de trabajo sin capacidad; `qb_costeo_sgi` 1.6.0
+  agrupa por `qb.centro` y pone su capacidad. Sin capacidad se imprime «Sin
+  capacidad capturada», nunca un número inventado; la materia prima no tiene
+  capacidad en Odoo.
+- **Aviso al generar**: «Generar aprobación para iniciar» avisa (y lo deja en
+  el chatter) qué recursos de la ruta no tienen capacidad o que el artículo no
+  tiene ruta.
+- **Versión en inglés** con los mismos bloques si el país del cliente no es
+  México; las listas salen con su nombre en inglés si lo tienen.
+
+### Cambiado
+- **Aprobaciones**: vuelven los dos recuadros del formato anterior,
+  «Aprobación del inicio del proyecto (cliente)» con medio, fecha, quién,
+  referencia y evidencia cuando se registra, y «Aprobación del inicio del
+  proyecto PNT Quimibond» con quién generó y quién envió, con fecha.
+- Quién generó el documento y cuándo se escriben antes de imprimir, para que
+  salgan en el propio PDF.
+
+### Pruebas
+- `test_dev_start_approval_format` (nueva): formato por línea, datos
+  generales y del proyecto, nominal y tolerancias, información requerida por
+  línea sin duplicar, capacidad sin inventar, inglés y el HTML con todos los
+  bloques. `qb_costeo_sgi` `test_bridge.test_07`.
+
 ## 19.0.57.151.0 — 2026-10-13
 
 Dirección General 2026-10-13: tres ajustes al desarrollo de producto.

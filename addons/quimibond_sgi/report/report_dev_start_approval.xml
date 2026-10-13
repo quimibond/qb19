@@ -2,7 +2,10 @@
 <odoo>
     <!-- 57.137.0 (C1, Jessica punto 4; brief §6.8): aprobación para iniciar el proyecto. Se genera desde
          el proyecto con el folio FT ya asignado; la cotización la agrega qb_costeo_sgi por el gancho
-         _sgi_dev_start_approval_quote_vals (folio, precio, moneda, unidad, vigencia, condiciones). -->
+         _sgi_dev_start_approval_quote_vals (folio, precio, moneda, unidad, vigencia, condiciones).
+         57.152.0 (Dirección General 2026-10-13): conserva todos los campos del formato anterior
+         F-P-D01-09 (tejido) y F-P-D01-19 (entretelas). Los textos y valores los arma el modelo
+         (_sgi_dev_start_approval_*); sale en inglés si el cliente es extranjero. -->
     <record id="action_report_dev_start_approval" model="ir.actions.report">
         <field name="name">Aprobación para iniciar el proyecto</field>
         <field name="model">project.project</field>
@@ -15,52 +18,200 @@
     <template id="report_dev_start_approval_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
+                <t t-set="fmt" t-value="doc._sgi_dev_start_approval_format()"/>
                 <t t-call="quimibond_sgi.sgi_report_layout">
                     <t t-set="sgi_rec" t-value="doc"/>
-                    <t t-set="sgi_fmt_ref" t-value="False"/>
-                    <t t-set="quote" t-value="doc._sgi_dev_start_approval_quote_vals()"/>
-                    <t t-set="lines" t-value="doc._sgi_dev_start_approval_lines()"/>
-                    <div class="page">
-                        <h2 class="text-center">Aprobación para iniciar el proyecto</h2>
-                        <h4 class="text-center text-muted"><span t-out="doc.sgi_ft_folio or ''"/></h4>
-                        <table class="table table-sm table-bordered" style="font-size:11px;">
-                            <tr><td style="width:22%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
-                                <td style="width:18%"><strong>Fecha</strong></td><td><span t-if="doc.sgi_dev_start_approval_date" t-field="doc.sgi_dev_start_approval_date" t-options="{'widget': 'date'}"/><span t-else="" t-field="doc.create_date" t-options="{'widget': 'date'}"/></td></tr>
-                            <tr><td><strong>Contacto</strong></td><td><span t-out="doc.sgi_dev_contact_id.display_name or doc.sgi_dev_requester or '—'"/></td>
-                                <td><strong>Folio FT</strong></td><td><strong t-out="doc.sgi_ft_folio or '—'"/></td></tr>
-                            <tr><td><strong>Producto</strong></td><td><span t-out="doc.sgi_dev_product_id.display_name or doc.sgi_dev_product_name or doc.name"/></td>
-                                <td><strong>Revisión</strong></td><td><span t-out="doc.sgi_dev_revision"/></td></tr>
-                            <tr><td><strong>Uso del producto</strong></td><td colspan="3"><span t-out="doc.sgi_dev_use or '—'"/></td></tr>
-                            <tr t-if="doc.sgi_dev_volume"><td><strong>Volumen estimado</strong></td><td colspan="3"><span t-out="'%.0f' % doc.sgi_dev_volume"/> <span t-out="dict(doc._fields['sgi_dev_volume_uom'].selection).get(doc.sgi_dev_volume_uom) or ''"/></td></tr>
+                    <t t-set="sgi_fmt_ref" t-value="fmt['ref']"/>
+                    <t t-set="L" t-value="doc._sgi_dev_start_approval_labels()"/>
+                    <t t-set="d" t-value="doc._sgi_dev_start_approval_data()"/>
+                    <t t-set="rows" t-value="doc._sgi_dev_start_approval_line_rows()"/>
+                    <t t-set="required" t-value="doc._sgi_dev_start_approval_required_rows()"/>
+                    <t t-set="legal" t-value="doc._sgi_dev_start_approval_legal()"/>
+                    <t t-set="cap" t-value="doc._sgi_dev_start_approval_capacity()"/>
+                    <t t-set="appr" t-value="doc._sgi_dev_start_approval_approvals()"/>
+                    <div class="page" style="font-size:10px;">
+                        <!-- Encabezado del formato: título, clave, revisión y área del formato vigente. -->
+                        <table class="table table-sm table-bordered mb-2">
+                            <tr>
+                                <td class="align-middle text-center" style="width:68%;">
+                                    <h4 class="mb-0 text-uppercase" t-out="L['title_entretelas'] if doc.sgi_dev_line_key == 'entretelas' else L['title']"/>
+                                </td>
+                                <td style="font-size:9px;">
+                                    <div><strong t-out="L['code']"/>: <span t-out="fmt['code'] or '—'"/></div>
+                                    <div><strong t-out="L['revision']"/>: <span t-out="fmt['revision'] or '—'"/></div>
+                                    <div><strong t-out="L['area']"/>: <span t-out="fmt['area'] or '—'"/></div>
+                                    <div t-if="fmt['issue_date']"><strong t-out="L['issued']"/>: <span t-out="fmt['issue_date']"/></div>
+                                </td>
+                            </tr>
                         </table>
-                        <h5>Características del producto a desarrollar</h5>
-                        <table class="table table-sm table-bordered" style="font-size:10px;">
-                            <thead><tr><th>Característica</th><th>Dirección</th><th>Unidad</th><th>Especificación</th></tr></thead>
+
+                        <!-- Datos generales -->
+                        <h6 class="mb-1" t-out="L['general']"/>
+                        <table class="table table-sm table-bordered mb-2">
+                            <tr>
+                                <td style="width:13%;"><strong t-out="L['customer']"/></td><td style="width:22%;" t-out="d['customer'] or '—'"/>
+                                <td style="width:14%;"><strong t-out="L['requester']"/></td><td style="width:18%;" t-out="d['requester'] or '—'"/>
+                                <td style="width:13%;"><strong t-out="L['market']"/></td><td t-out="d['market'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['address']"/></td><td colspan="3" t-out="d['address'] or '—'"/>
+                                <td><strong t-out="L['project_name']"/></td><td t-out="d['project_name'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['phone']"/></td><td t-out="d['phone'] or '—'"/>
+                                <td><strong t-out="L['email']"/></td><td t-out="d['email'] or '—'"/>
+                                <td><strong t-out="L['tech_sheet']"/></td><td><strong t-out="d['tech_sheet'] or '—'"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['request_date']"/></td><td t-out="d['request_date'] or '—'"/>
+                                <td><strong t-out="L['description']"/></td><td colspan="3" style="white-space:pre-wrap;" t-out="d['description'] or '—'"/>
+                            </tr>
+                        </table>
+
+                        <!-- Características del proyecto -->
+                        <h6 class="mb-1" t-out="L['characteristics']"/>
+                        <table class="table table-sm table-bordered mb-1" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th t-out="L['characteristic']"/>
+                                    <th t-out="L['direction']"/>
+                                    <th t-out="L['units']"/>
+                                    <th t-out="L['norm']"/>
+                                    <th t-out="L['nominal']"/>
+                                    <th t-out="L['tolerances']"/>
+                                </tr>
+                            </thead>
                             <tbody>
-                                <tr t-foreach="lines" t-as="l">
-                                    <td><span t-out="l.caracteristica_id.name"/></td>
-                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction) if l.direction != 'na' else ''"/><t t-if="l.position != 'na'"> <span t-out="dict(l._fields['position'].selection).get(l.position)"/></t></td>
-                                    <td><span t-out="l.unit or ''"/></td>
-                                    <td><span t-out="l.spec_label or ''"/></td>
+                                <tr t-foreach="rows" t-as="r">
+                                    <td t-out="r['name']"/>
+                                    <td t-out="r['direction']"/>
+                                    <td t-out="r['unit']"/>
+                                    <td t-out="r['method']"/>
+                                    <td t-out="r['nominal']"/>
+                                    <td t-out="r['tolerance']"/>
                                 </tr>
                             </tbody>
                         </table>
-                        <p t-if="not lines" class="text-muted" style="font-size:10px;">Sin características marcadas «En especificación del cliente».</p>
-                        <t t-if="quote">
-                            <h5>Cotización</h5>
-                            <table class="table table-sm table-bordered" style="font-size:11px;">
-                                <tr><td style="width:22%"><strong>Cotización</strong></td><td><span t-out="quote.get('folio') or '—'"/></td>
-                                    <td style="width:18%"><strong>Vigencia</strong></td><td><span t-out="quote.get('vigencia') or '—'"/></td></tr>
-                                <tr><td><strong>Precio</strong></td><td><span t-out="quote.get('precio') or '—'"/> <span t-out="quote.get('moneda') or ''"/><t t-if="quote.get('unidad')"> / <span t-out="quote.get('unidad')"/></t></td>
-                                    <td><strong>Condiciones</strong></td><td><span t-out="quote.get('condiciones') or '—'"/></td></tr>
-                            </table>
-                        </t>
-                        <p style="font-size:11px;" class="mt-3">Con su aprobación iniciamos el desarrollo con las características y condiciones de este documento. Cualquier cambio posterior queda registrado como modificación del proyecto con su revisión.</p>
-                        <table class="table table-sm mt-5" style="font-size:10px;">
+                        <p t-if="not rows" class="text-muted mb-2" t-out="L['no_lines']"/>
+
+                        <!-- Datos del proyecto (columna derecha del formato anterior) -->
+                        <h6 class="mb-1 mt-2" t-out="L['project_data']"/>
+                        <table class="table table-sm table-bordered mb-2">
                             <tr>
-                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Elaboró · Diseño de Producto<br/><span t-out="doc.sgi_dev_start_approval_by_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Envió · Administración de Ventas<br/><span t-out="doc.sgi_dev_start_approval_sent_by_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Aprobó · Cliente<br/>Nombre, firma y fecha</td>
+                                <td style="width:22%;"><strong t-out="L['application']"/></td><td style="width:28%;" t-out="d['application'] or '—'"/>
+                                <td style="width:22%;"><strong t-out="L['request_date']"/></td><td t-out="d['request_date'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['required_date']"/></td><td t-out="d['required_date'] or '—'"/>
+                                <td><strong t-out="L['spec_number']"/></td><td t-out="d['spec_number'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['tech_sheet']"/></td><td t-out="d['tech_sheet'] or '—'"/>
+                                <td><strong t-out="L['sample_size']"/></td><td t-out="d['sample_size'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['monthly']"/></td><td t-out="d['monthly'] or '—'"/>
+                                <td><strong t-out="L['packaging']"/></td><td style="white-space:pre-wrap;" t-out="d['packaging'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['line_material']"/></td><td t-out="d['line_material'] or '—'"/>
+                                <td><strong t-out="L['new_dev']"/></td><td t-out="d['new_dev'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['product_name']"/></td><td t-out="d['product_name'] or '—'"/>
+                                <td><strong t-out="L['price']"/></td><td t-out="d['price'] or '—'"/>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['uom']"/></td><td t-out="d['uom'] or '—'"/>
+                                <td><strong t-out="L['quote']"/></td><td><span t-out="d['quote'] or '—'"/><t t-if="d['validity']"> · <span t-out="L['validity']"/> <span t-out="d['validity']"/></t></td>
+                            </tr>
+                            <tr>
+                                <td><strong t-out="L['lamination']"/></td><td t-out="d['lamination'] or '—'"/>
+                                <td><strong t-out="L['program']"/></td><td t-out="d['program'] or '—'"/>
+                            </tr>
+                        </table>
+
+                        <!-- Información requerida -->
+                        <h6 class="mb-1" t-out="L['required_info']"/>
+                        <table t-if="required" class="table table-sm table-bordered mb-2" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th t-out="L['document']"/>
+                                    <th class="text-center" style="width:20%;" t-out="L['moment_diseno']"/>
+                                    <th class="text-center" style="width:20%;" t-out="L['moment_factible']"/>
+                                    <th class="text-center" style="width:12%;" t-out="L['moment_na']"/>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="required" t-as="q">
+                                    <td><span t-out="q['name']"/><t t-if="q['note']"> <span class="text-muted" t-out="'(%s)' % q['note']"/></t></td>
+                                    <td class="text-center"><t t-if="q['moment'] == 'diseno'">X</t></td>
+                                    <td class="text-center"><t t-if="q['moment'] == 'factible'">X</t></td>
+                                    <td class="text-center"><t t-if="q['moment'] == 'na'">X</t></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-else="" class="text-muted mb-2" t-out="L['no_required']"/>
+
+                        <!-- Requisitos legales y regulatorios -->
+                        <h6 class="mb-1" t-out="L['legal']"/>
+                        <ul t-if="legal" class="mb-1">
+                            <li t-foreach="legal" t-as="lg" t-out="lg"/>
+                        </ul>
+                        <p t-else="" class="text-muted mb-1" t-out="L['no_legal']"/>
+                        <p class="fst-italic mb-2"><span>* </span><span t-out="L['legal_note']"/></p>
+
+                        <!-- Capacidad a utilizar -->
+                        <h6 class="mb-1" t-out="L['capacity']"/>
+                        <table class="table table-sm table-bordered mb-1" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th t-out="L['resource']"/>
+                                    <th t-out="L['sample_qty']"/>
+                                    <th t-out="L['sample_pct']"/>
+                                    <th t-out="L['monthly_qty']"/>
+                                    <th t-out="L['monthly_pct']"/>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="cap['rows']" t-as="c">
+                                    <td t-out="c['name']"/>
+                                    <td t-out="c['sample_qty'] or '—'"/>
+                                    <td t-out="c['sample_pct'] or '—'"/>
+                                    <td t-out="c['monthly_qty'] or '—'"/>
+                                    <td t-out="c['monthly_pct'] or '—'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-muted mb-2" style="font-size:8px;">
+                            <span t-out="L['capacity_note']"/>
+                            <t t-if="cap['no_route']"> <span t-out="L['no_route']"/></t>
+                        </p>
+
+                        <p class="mt-2" t-out="L['closing']"/>
+
+                        <!-- Aprobaciones: los dos recuadros del formato anterior -->
+                        <table class="table table-sm mt-2" style="font-size:9px; page-break-inside:avoid;">
+                            <tr>
+                                <td style="width:50%; border:1px solid #000; vertical-align:top; height:110px;">
+                                    <div class="fw-bold text-center text-uppercase mb-1" t-out="L['approval_customer']"/>
+                                    <t t-if="appr['customer_registered']">
+                                        <div><strong t-out="L['medium']"/>: <span t-out="appr['customer_medium'] or '—'"/></div>
+                                        <div><strong t-out="L['date']"/>: <span t-out="appr['customer_date'] or '—'"/></div>
+                                        <div t-if="appr['customer_contact']"><strong t-out="L['approved_by']"/>: <span t-out="appr['customer_contact']"/></div>
+                                        <div t-if="appr['customer_ref']"><strong t-out="L['reference']"/>: <span t-out="appr['customer_ref']"/></div>
+                                        <div t-if="appr['customer_evidence']"><strong t-out="L['evidence']"/>: <span t-out="appr['customer_evidence']"/></div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="text-muted" t-out="L['pending_customer']"/>
+                                        <div class="text-center" style="margin-top:40px; border-top:1px solid #000;" t-out="L['sign']"/>
+                                    </t>
+                                </td>
+                                <td style="width:50%; border:1px solid #000; vertical-align:top; height:110px;">
+                                    <div class="fw-bold text-center text-uppercase mb-1" t-out="L['approval_pnt']"/>
+                                    <div><strong t-out="L['generated_by']"/>: <span t-out="appr['generated_by'] or '—'"/><t t-if="appr['generated_at']"> · <span t-out="appr['generated_at']"/></t></div>
+                                    <div><strong t-out="L['sent_by']"/>: <span t-out="appr['sent_by'] or '—'"/><t t-if="appr['sent_at']"> · <span t-out="appr['sent_at']"/></t></div>
+                                </td>
                             </tr>
                         </table>
                     </div>
