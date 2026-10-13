@@ -12,8 +12,9 @@ class TestMaquinaConfig(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.wc = cls.env['mrp.workcenter'].create({'name': 'CIRCULAR 88 configuración prueba',
-                                                   'ft_marca': 'Mayer', 'ft_modelo': 'Relanit'})
+        cls.wc = cls.env['mrp.workcenter'].create({
+            'name': 'CIRCULAR 88 configuración prueba', 'ft_marca': 'Mayer', 'ft_modelo': 'Relanit',
+            'ft_tipo_id': cls.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tejido_circular').id})
         Config = cls.env['ficha.tecnica.maquina.config']
         cls.c28 = Config.create({'workcenter_id': cls.wc.id, 'date_from': date(2025, 1, 1), 'galga': 28,
                                  'diametro': 30, 'no_agujas': 2640, 'no_alimentadores': 90, 'velocidad_max': 30,

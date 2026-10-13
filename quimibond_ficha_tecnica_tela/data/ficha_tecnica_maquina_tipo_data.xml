@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.4.0 (Dirección General 2026-10-13): tipos de máquina de la ficha de la
+     máquina. Solo tejido circular trae parámetros (los que ya usaba 2.3.0:
+     diámetro, galga, agujas, alimentadores y velocidad máxima; sus claves
+     alimentan la ficha de tejido). Los parámetros de los demás tipos los da de
+     alta la planta en Configuración → Tipos de máquina: aquí no se inventan.
+     noupdate: el update no revierte lo que se ajuste desde el menú. -->
+<odoo noupdate="1">
+
+    <record id="ft_maquina_tipo_tejido_circular" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">10</field>
+        <field name="code">tejido_circular</field>
+        <field name="name">Tejido circular</field>
+    </record>
+    <record id="ft_maquina_tipo_tintoreria" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">20</field>
+        <field name="code">tintoreria</field>
+        <field name="name">Tintorería</field>
+    </record>
+    <record id="ft_maquina_tipo_acabado" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">30</field>
+        <field name="code">acabado</field>
+        <field name="name">Acabado</field>
+    </record>
+    <record id="ft_maquina_tipo_inspeccion" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">40</field>
+        <field name="code">inspeccion</field>
+        <field name="name">Inspección</field>
+    </record>
+    <record id="ft_maquina_tipo_abridora" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">50</field>
+        <field name="code">abridora</field>
+        <field name="name">Abridora</field>
+    </record>
+    <record id="ft_maquina_tipo_devanadora" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">60</field>
+        <field name="code">devanadora</field>
+        <field name="name">Devanadora</field>
+    </record>
+
+    <!-- Tejido circular -->
+    <record id="ft_maquina_param_circular_diametro" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">10</field>
+        <field name="code">diametro</field>
+        <field name="name">Diámetro</field>
+        <field name="unit">in</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="ft_maquina_param_circular_galga" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">20</field>
+        <field name="code">galga</field>
+        <field name="name">Galga</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="ft_maquina_param_circular_agujas" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">30</field>
+        <field name="code">no_agujas</field>
+        <field name="name">No. de agujas</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="ft_maquina_param_circular_alimentadores" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">40</field>
+        <field name="code">no_alimentadores</field>
+        <field name="name">No. de alimentadores</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="ft_maquina_param_circular_velocidad_max" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">50</field>
+        <field name="code">velocidad_max</field>
+        <field name="name">Velocidad máxima</field>
+        <field name="unit">rpm</field>
+        <field name="kind">num</field>
+    </record>
+</odoo>

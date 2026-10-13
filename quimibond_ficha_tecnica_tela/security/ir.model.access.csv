@@ -15,3 +15,9 @@ access_ficha_tecnica_spec_user,ficha.tecnica.spec.user,model_ficha_tecnica_spec,
 access_ficha_tecnica_spec_manager,ficha.tecnica.spec.manager,model_ficha_tecnica_spec,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_maquina_config_user,ficha.tecnica.maquina.config.user,model_ficha_tecnica_maquina_config,base.group_user,1,1,1,0
 access_ficha_tecnica_maquina_config_manager,ficha.tecnica.maquina.config.manager,model_ficha_tecnica_maquina_config,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_maquina_tipo_user,ficha.tecnica.maquina.tipo.user,model_ficha_tecnica_maquina_tipo,base.group_user,1,0,0,0
+access_ficha_tecnica_maquina_tipo_manager,ficha.tecnica.maquina.tipo.manager,model_ficha_tecnica_maquina_tipo,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_maquina_parametro_user,ficha.tecnica.maquina.parametro.user,model_ficha_tecnica_maquina_parametro,base.group_user,1,0,0,0
+access_ficha_tecnica_maquina_parametro_manager,ficha.tecnica.maquina.parametro.manager,model_ficha_tecnica_maquina_parametro,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_maquina_valor_user,ficha.tecnica.maquina.valor.user,model_ficha_tecnica_maquina_valor,base.group_user,1,1,1,1
+access_ficha_tecnica_maquina_valor_manager,ficha.tecnica.maquina.valor.manager,model_ficha_tecnica_maquina_valor,mrp.group_mrp_manager,1,1,1,1
