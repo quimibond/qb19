@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.7.0 (Dirección General 2026-10-13): todos los menús del módulo en un solo archivo, al final del
+         manifest (las acciones ya existen). App «Fichas técnicas» con ícono: Tela (tejido y acabado),
+         Máquinas (las máquinas con ficha y sus configuraciones por fecha), Importar y Configuración. -->
+
+    <!-- ===== Máquinas: los centros de trabajo con tipo de máquina ===== -->
+    <record id="view_mrp_workcenter_ft_maquinas_list" model="ir.ui.view">
+        <field name="name">mrp.workcenter.list.ft.maquinas</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Máquinas">
+                <field name="name"/>
+                <field name="code" optional="show"/>
+                <field name="ft_tipo_id"/>
+                <field name="ft_marca" optional="show"/>
+                <field name="ft_modelo" optional="hide"/>
+                <field name="ft_resumen"/>
+                <field name="ft_ficha_tejido_count" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_workcenter_ft_maquinas_search" model="ir.ui.view">
+        <field name="name">mrp.workcenter.search.ft.maquinas</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Máquinas">
+                <field name="name"/>
+                <field name="ft_tipo_id"/>
+                <field name="ft_marca"/>
+                <filter string="Archivadas" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Tipo de máquina" name="group_ft_tipo" context="{'group_by': 'ft_tipo_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ft_maquinas" model="ir.actions.act_window">
+        <field name="name">Máquinas</field>
+        <field name="res_model">mrp.workcenter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('ft_tipo_id', '!=', False)]</field>
+        <field name="context">{'search_default_group_ft_tipo': 1}</field>
+        <field name="search_view_id" ref="view_mrp_workcenter_ft_maquinas_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_mrp_workcenter_ft_maquinas_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('mrp.mrp_workcenter_view')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin máquinas con ficha</p>
+            <p>Las máquinas son los centros de trabajo de Fabricación. Ponga el tipo de máquina en la pestaña
+                «Ficha de la máquina» del centro de trabajo y aparecerá aquí con sus parámetros vigentes.</p>
+        </field>
+    </record>
+
+    <!-- ===== Árbol ===== -->
+    <menuitem id="menu_ficha_tecnica_tela_root" name="Fichas técnicas" sequence="60"
+              web_icon="quimibond_ficha_tecnica_tela,static/description/icon.png"/>
+
+    <menuitem id="menu_ft_tela" name="Tela" parent="menu_ficha_tecnica_tela_root" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_tejido_list" name="Tejido" parent="menu_ft_tela"
+              action="action_ficha_tecnica_tejido" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_acabado_list" name="Acabado" parent="menu_ft_tela"
+              action="action_ficha_tecnica_acabado" sequence="20"/>
+
+    <menuitem id="menu_ft_maquinas" name="Máquinas" parent="menu_ficha_tecnica_tela_root" sequence="20"/>
+    <menuitem id="menu_ft_maquinas_list" name="Máquinas" parent="menu_ft_maquinas"
+              action="action_ft_maquinas" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_maquina_config" name="Configuraciones por fecha" parent="menu_ft_maquinas"
+              action="action_ficha_tecnica_maquina_config" sequence="20"/>
+
+    <menuitem id="menu_ft_importar" name="Importar" parent="menu_ficha_tecnica_tela_root" sequence="30"/>
+    <menuitem id="menu_ficha_tecnica_tejido_import" name="Tejido desde Excel" parent="menu_ft_importar"
+              action="action_ficha_tecnica_tejido_import_wizard" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_acabado_import" name="Acabado desde Excel" parent="menu_ft_importar"
+              action="action_ficha_tecnica_acabado_import_wizard" sequence="20"/>
+
+    <menuitem id="menu_ficha_tecnica_config" name="Configuración" parent="menu_ficha_tecnica_tela_root"
+              sequence="90" groups="mrp.group_mrp_manager"/>
+    <menuitem id="menu_ficha_tecnica_maquina_tipo" name="Tipos de máquina" parent="menu_ficha_tecnica_config"
+              action="action_ficha_tecnica_maquina_tipo" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_caracteristica" name="Características" parent="menu_ficha_tecnica_config"
+              action="action_ficha_tecnica_caracteristica" sequence="20"/>
+    <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"
+              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_clave_codigo" sequence="30"/>
+</odoo>

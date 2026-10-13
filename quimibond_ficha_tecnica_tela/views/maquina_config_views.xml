@@ -165,11 +165,6 @@
         </field>
     </record>
 
-    <menuitem id="menu_ficha_tecnica_maquina_config" name="Configuraciones de máquina"
-              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_maquina_config" sequence="30"/>
-    <menuitem id="menu_ficha_tecnica_maquina_tipo" name="Tipos de máquina"
-              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_maquina_tipo" sequence="31"/>
-
     <!-- ===== Centro de trabajo: pestaña «Ficha de la máquina» ===== -->
     <record id="view_mrp_workcenter_form_ficha_maquina" model="ir.ui.view">
         <field name="name">mrp.workcenter.form.ficha.maquina</field>

@@ -144,11 +144,4 @@
         </field>
     </record>
 
-    <!-- ===== Menú ===== -->
-    <menuitem id="menu_ficha_tecnica_config" name="Configuración"
-              parent="menu_ficha_tecnica_tela_root" sequence="90" groups="mrp.group_mrp_manager"/>
-    <menuitem id="menu_ficha_tecnica_caracteristica" name="Características"
-              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_caracteristica" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"
-              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_clave_codigo" sequence="20"/>
 </odoo>

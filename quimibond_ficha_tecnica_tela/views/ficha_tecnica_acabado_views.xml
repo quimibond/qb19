@@ -165,7 +165,7 @@
     </record>
 
     <record id="action_ficha_tecnica_acabado" model="ir.actions.act_window">
-        <field name="name">Fichas Técnicas de Acabado</field>
+        <field name="name">Fichas de acabado</field>
         <field name="res_model">ficha.tecnica.acabado</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_ficha_tecnica_acabado_search"/>
@@ -181,11 +181,5 @@
             </p>
         </field>
     </record>
-
-    <menuitem id="menu_ficha_tecnica_acabado_list"
-              name="Fichas Técnicas de Acabado"
-              parent="menu_ficha_tecnica_tela_root"
-              action="action_ficha_tecnica_acabado"
-              sequence="20"/>
 
 </odoo>
