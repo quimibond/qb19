@@ -13,6 +13,25 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.157.0 — 2026-10-13
+
+El despliegue a producción de 57.148.0–57.156.0 falló en la migración
+57.149.0 (`MissingError: sgi.my.pending(7193,)`); Odoo deshizo todo y la
+base quedó en 57.147.0.
+
+### Corregido
+- `sgi.my.pending._sgi_sync_executions`: agrupa los renglones por periodo
+  antes de tocar ninguno. Al cerrar el primer periodo se borraban sus
+  renglones y el filtro del siguiente volvía a leer el conjunto completo,
+  renglones borrados incluidos. Pasaba con dos o más periodos cerrados a la
+  vez que ya tuvieran renglón en Mis pendientes: el saneamiento de la
+  57.149.0 (12 periodos anuales en producción), el botón «No aplica:
+  anteriores al arranque» y «No aplica» a varios.
+
+### Migración
+- Sin script nuevo. Las migraciones 57.148.0 y 57.149.0 vuelven a correr
+  completas con el código corregido (la base sigue en 57.147.0).
+
 ## 19.0.57.156.0 — 2026-10-13
 
 Dirección General 2026-10-13: las NC tienen **tipo**: de auditoría, de

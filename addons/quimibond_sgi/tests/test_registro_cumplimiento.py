@@ -307,3 +307,21 @@ class TestRegistroCumplimiento(TransactionCase):
         wizard.action_confirm()
         self.assertEqual(set((recent | other).mapped('state')), {'no_aplica'})
         self.assertEqual(set((recent | other).mapped('na_reason')), {'Cierre de planta'})
+
+    def test_11_cerrar_varios_periodos_con_renglones_guardados(self):
+        """57.157.0: cerrar de un golpe varios periodos que ya tienen renglones
+        en Mis pendientes no lee renglones borrados (tumbó la migración
+        57.149.0 en producción)."""
+        first = self._late_exec(days=60)
+        second = self._late_exec(days=120)
+        first_rows = self._pending_rows(self.user, first)
+        second_rows = self._pending_rows(self.user, second)
+        self.assertTrue(first_rows and second_rows, "Los dos periodos tienen renglón guardado antes de cerrarse.")
+        rows = first_rows | second_rows
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.exec_start_date', (self.today - timedelta(days=10)).isoformat())
+        closed = self.Exec._sgi_close_prestart()
+        self.assertIn(first, closed)
+        self.assertIn(second, closed)
+        self.assertEqual(set((first | second).mapped('state')), {'no_aplica'})
+        self.assertFalse(rows.exists(), "Los renglones de los dos periodos salen en la misma corrida.")
