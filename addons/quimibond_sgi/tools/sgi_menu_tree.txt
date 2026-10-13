@@ -39,16 +39,6 @@ SGI/Sistema/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group
 SGI/Sistema/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Fichas de proceso por máquina | menu_sgi_machine_sheets | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Sistema/Pruebas de laboratorio de desarrollos | menu_sgi_dev_lab_requests | -
-SGI/Sistema/Desarrollos de producto | menu_sgi_dev_projects | -
-SGI/Sistema/Marcar desarrollos existentes | menu_sgi_dev_mark | project.group_project_manager
-SGI/Sistema/Envíos de muestra de desarrollos | menu_sgi_dev_shipments | -
-SGI/Sistema/Reportes de conformidad de desarrollos | menu_sgi_dev_coas | -
-SGI/Sistema/Fichas técnicas internas de desarrollos | menu_sgi_dev_tech_sheets | -
-SGI/Sistema/Especificaciones del producto (cliente) | menu_sgi_dev_customer_specs | -
-SGI/Sistema/Pilotajes de desarrollos | menu_sgi_dev_pilots | -
-SGI/Sistema/Avisos por tiempo de desarrollos | menu_sgi_dev_escalations | -
-SGI/Sistema/Solicitudes de modificación de desarrollos | menu_sgi_dev_change_requests | -
 SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Documentos/Documentos | menu_sgi_documents | -
 SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -
