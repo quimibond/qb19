@@ -150,6 +150,7 @@ from . import test_ia_nc
 from . import test_reportes_diagramas
 from . import test_indicadores_sin_dato
 from . import test_registro_cumplimiento
+from . import test_ligas_navegacion
 from . import test_miid
 from . import test_medicion_por_revisar
 from . import test_revision_medicion
@@ -181,3 +182,4 @@ from . import test_dev_tech_sheet
 from . import test_dev_pilot
 from . import test_dev_escalation
 from . import test_dev_change
+from . import test_dev_folio_access

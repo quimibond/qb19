@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.147.0',
+    'version': '19.0.57.151.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -96,6 +96,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
         'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
+        'data/sgi_daily_pending_mail.xml',  # 57.150.0: correo diario de Mis pendientes (cron apagado)
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación

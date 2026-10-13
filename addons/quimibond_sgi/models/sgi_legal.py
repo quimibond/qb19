@@ -319,4 +319,7 @@ class SgiLegalEvaluate(models.TransientModel):
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)
         if self.result in ('parcial', 'no_cumple'):
             req._sgi_create_alert()
-        return {'type': 'ir.actions.act_window_close'}
+        # 57.150.0: Mis pendientes de todos se pone al día en el momento.
+        Pending = self.env['sgi.my.pending']
+        Pending._sgi_refresh_for('sgi.legal.requirement', req.ids)
+        return Pending._sgi_feedback("Evaluación registrada: %s" % (req.sudo().display_name or ''))

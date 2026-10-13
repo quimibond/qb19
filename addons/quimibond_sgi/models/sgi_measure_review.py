@@ -115,6 +115,8 @@ class SgiMeasureReview(models.Model):
                 dict(REVIEW_STATES)[state], (": %s" % note) if note else ''))
         # El faltante «Revisión del dueño: no corresponde» cambia en el momento.
         self.sudo().activity_id._sgi_refresh_spec_gaps()
+        # 57.150.0: y el renglón de Mis pendientes.
+        self.env['sgi.my.pending']._sgi_refresh_for('sgi.measure.review', self.ids)
         return True
 
     def action_confirm(self):

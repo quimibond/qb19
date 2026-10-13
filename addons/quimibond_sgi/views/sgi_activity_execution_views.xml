@@ -91,6 +91,15 @@
                 <header>
                     <button name="%(quimibond_sgi.sgi_activity_week_stat_action)d" type="action"
                             string="Por semana" icon="fa-calendar" display="always"/>
+                    <!-- 57.149.0: «No aplica» a varios renglones con un motivo
+                         común (el permiso se revisa renglón por renglón) y el
+                         saneamiento de lo anterior al arranque (Jefe MAST). -->
+                    <button name="action_mark_not_applicable" type="object"
+                            string="No aplica este periodo" icon="fa-ban"/>
+                    <button name="action_close_prestart" type="object" display="always"
+                            string="No aplica: anteriores al arranque" icon="fa-eraser"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Pone «No aplica este periodo» en todos los renglones «Pendiente» sin nota de avance que vencieron antes de la fecha de arranque del registro de cumplimiento (Ajustes del SGI). ¿Continúa?"/>
                 </header>
                 <field name="process_id"/>
                 <field name="activity_id"/>
@@ -200,6 +209,10 @@
                 <field name="mode" invisible="1"/>
                 <field name="needs_evidence" invisible="1"/>
                 <field name="execution_id" invisible="1"/>
+                <field name="execution_count" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="execution_count &lt; 2">
+                    <b>Varios renglones:</b> el mismo motivo queda en cada uno.
+                </div>
                 <div class="alert alert-warning" role="status" invisible="mode != 'progress'">
                     «En proceso» se ve en Mis pendientes y en Mi equipo, pero <b>no quita el atraso</b>.
                 </div>
@@ -211,8 +224,10 @@
                     diga dónde (nota o archivo).
                 </div>
                 <group>
-                    <field name="name"/>
-                    <field name="date_due"/>
+                    <field name="name" invisible="execution_count &gt; 1"/>
+                    <field name="date_due" invisible="execution_count &gt; 1"/>
+                    <field name="execution_ids" widget="many2many_tags" readonly="1"
+                           invisible="execution_count &lt; 2"/>
                     <field name="done_criteria" invisible="mode != 'done' or not done_criteria"/>
                     <field name="progress_note" required="mode == 'progress'"
                            invisible="mode != 'progress'" placeholder="Qué lleva y qué le falta"/>

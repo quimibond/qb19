@@ -5,6 +5,8 @@ pide (J-010). Datos propios, nada de producción."""
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
+from .common_exec import sgi_exec_start_open
+
 
 @tagged('post_install', '-at_install')
 class TestRelativeRoles(TransactionCase):
@@ -12,6 +14,7 @@ class TestRelativeRoles(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_exec_start_open(cls.env)
         Employee = cls.env['hr.employee']
         cls.job_exec = cls.env['hr.job'].create({'name': 'EJECUTOR RELATIVOS QR'})
         cls.job_other = cls.env['hr.job'].create({'name': 'OTRO PUESTO RELATIVOS QR'})

@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nav_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py`.
 
-## Campos (85)
+## Campos (89)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -21,6 +21,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | `sgi_ai_whys` | Text | Borrador de 5 porqués (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:249` |
 | `sgi_approved_by` | Many2one | Aprobó | Persona que aprueba el cierre de la no conformidad. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:188` |
 | `sgi_approved_date` | Date | Fecha de aprobación | Fecha en que se aprobó el cierre de la no conformidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:190` |
+| `sgi_audit_id` | Many2one | Auditoría | Auditoría del hallazgo que generó esta NC. |  | `sgi.audit` | compute `_compute_sgi_audit_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:42` |
 | `sgi_cancel_reason` | Text | Motivo de cancelación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:243` |
 | `sgi_cancel_requested_by` | Many2one | Cancelación solicitada por | Quién pidió cancelar la no conformidad. La cancelación la confirma el Jefe MAST y SGI. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:244` |
 | `sgi_claimed_meters` | Float | Metros reclamados | Metros que el cliente reclama en esta NC (C5-01). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_quality.py:24` |
@@ -51,11 +52,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | `sgi_effectiveness_due` | Date | Verificar eficacia el | Se fija al terminar la última acción correctiva (90 días por omisión) y agenda la verificación al dueño del proceso (o al Jefe MAST si no hay). |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:237` |
 | `sgi_effectiveness_note` | Text | Verificación de eficacia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:147` |
 | `sgi_external_ref` | Char | N° NCR externo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:195` |
+| `sgi_finding_count` | Integer | # Hallazgos |  |  |  | compute `_compute_sgi_audit_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:41` |
+| `sgi_finding_ids` | One2many | Hallazgos de auditoría | Hallazgo de auditoría del que nació esta NC. |  | `sgi.audit.finding` |  | quimibond_sgi.group_sgi_user | `addons/quimibond_sgi/models/sgi_nav_links.py:37` |
 | `sgi_fmea_id` | Many2one | AMEF ligado | AMEF relacionado. Al cerrar una NC mayor, el aviso para actualizarlo se agenda sobre este AMEF. |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:253` |
 | `sgi_folio` | Char | Folio SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:91` |
 | `sgi_followup_action` | Selection | Acción a seguir | Consecuencia para los responsables. «Acción administrativa» pide al Coordinador de RH levantar el acta. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:178` |
 | `sgi_followup_comments` | Text | Comentarios de seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:174` |
 | `sgi_incident_id` | Many2one | Incidente SST de origen | Incidente o accidente de seguridad del que nació esta NC. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:11` |
+| `sgi_indicator_id` | Many2one | Indicador | Indicador cuya medición en rojo levantó esta NC. |  |  | related `sgi_indicator_measure_id.indicator_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:45` |
 | `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1446` |
 | `sgi_ineffective_count` | Integer | Verificaciones no eficaces | Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:162` |
 | `sgi_is_recurrent` | Boolean | Reincidente | Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro quimibond_sgi.nc_recurrence_months, 12 de fábrica). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:268` |
@@ -96,7 +100,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | `sgi_why_4` | Char | ¿Por qué? 4 |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:143` |
 | `sgi_why_5` | Char | ¿Por qué? 5 |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:144` |
 
-## Métodos públicos (12)
+## Métodos públicos (15)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -106,6 +110,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | `action_sgi_cancel` | — |
 | `action_sgi_escalate_to_nc` | Escala una alerta operativa de piso a una No Conformidad sistémica del SGI: la mueve al equipo NC Internas, le asigna folio y origen 'proceso', conservando producto/orden/picking. Las alertas rutinar… |
 | `action_sgi_force_close` | — |
+| `action_sgi_open_audit` | — |
+| `action_sgi_open_findings` | — |
+| `action_sgi_open_indicator` | — |
 | `action_sgi_send_to_supplier` | Envía la NC al proveedor por el portal (correo con el enlace). |
 | `copy_data` | 57.93.0 (FUNC-C13): una NC duplicada nace abierta: la copia toma la primera etapa de su equipo (la de ``create``), no la del original. Copiar una NC cerrada o cancelada no crea otra cerrada o cancela… |
 | `create` | — |

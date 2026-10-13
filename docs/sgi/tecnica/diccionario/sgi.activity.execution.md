@@ -14,39 +14,40 @@ Archivos: `addons/quimibond_sgi/models/sgi_activity_execution.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `activity_id` | Many2one | Actividad |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:54` |
-| `can_mark` | Boolean | Puede marcarla | La persona, su jefe o el Jefe MAST. |  |  | compute `_compute_can_mark`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:111` |
-| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:59` |
-| `date_done` | Datetime | Hecha el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:85` |
-| `date_due` | Date | Vence | Vencimiento de la actividad en este periodo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:70` |
-| `date_estimated` | Date | Fecha estimada | Cuándo espera terminarla (opcional). |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:82` |
-| `done_auto` | Boolean | Por el registro de Odoo | La marcó hecha el sistema al encontrar el registro de evidencia en el periodo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:87` |
-| `done_by_id` | Many2one | Marcada por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:86` |
-| `done_criteria` | Text | Criterio de terminado |  |  |  | related `activity_id.done_criteria`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:102` |
-| `employee_id` | Many2one | Responsable | Persona que ejecuta la actividad (su puesto tiene el rol «Ejecuta»). | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:61` |
-| `evidence_attachment_ids` | Many2many | Archivos de evidencia |  |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:96` |
-| `evidence_note` | Text | Evidencia | Qué demuestra que se hizo: folio, documento, registro, foto… |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:93` |
-| `has_related_screen` | Boolean | Tiene pantalla relacionada |  |  |  | compute `_compute_needs_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:109` |
-| `how_steps` | Text | Cómo (pasos) |  |  |  | related `activity_id.how_steps`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:103` |
-| `instruction_id` | Many2one | Instructivo |  |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:104` |
-| `measure_method` | Selection |  |  |  |  | related `activity_id.measure_method`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:101` |
-| `na_reason` | Text | Por qué no aplica |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:99` |
-| `name` | Char | Qué |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:73` |
-| `needs_evidence` | Boolean | Con evidencia obligatoria | Registro manual: «Hecha» pide una nota o un archivo. |  |  | compute `_compute_needs_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:106` |
-| `on_fail` | Text | Si no se puede cumplir |  |  |  | related `activity_id.on_fail`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:105` |
-| `on_time` | Boolean | A tiempo | Hecha a más tardar en su vencimiento (hora de México). |  |  | compute `_compute_on_time`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:90` |
-| `period_end` | Date | Fin del periodo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:69` |
-| `period_label` | Char | Periodo |  |  |  | compute `_compute_period_label`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:72` |
-| `period_start` | Date | Inicio del periodo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:67` |
-| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:57` |
-| `progress_note` | Text | Nota de avance | Qué lleva y qué le falta. «En proceso» no quita el atraso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:79` |
-| `state` | Selection | Estado | Pendiente, en proceso (con nota de avance), hecha (con evidencia si es de registro manual) o no aplica este periodo (con motivo). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:74` |
-| `user_id` | Many2one | Usuario |  |  |  | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:65` |
+| `activity_id` | Many2one | Actividad |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:79` |
+| `can_mark` | Boolean | Puede marcarla | La persona, cualquiera de sus jefes, quien tiene el rol «Escala» de la actividad, el Jefe MAST, el Administrador SGI o Dirección de Operaciones. |  |  | compute `_compute_can_mark`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:136` |
+| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:84` |
+| `date_done` | Datetime | Hecha el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:110` |
+| `date_due` | Date | Vence | Vencimiento de la actividad en este periodo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:95` |
+| `date_estimated` | Date | Fecha estimada | Cuándo espera terminarla (opcional). |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:107` |
+| `done_auto` | Boolean | Por el registro de Odoo | La marcó hecha el sistema al encontrar el registro de evidencia en el periodo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:112` |
+| `done_by_id` | Many2one | Marcada por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:111` |
+| `done_criteria` | Text | Criterio de terminado |  |  |  | related `activity_id.done_criteria`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:127` |
+| `employee_id` | Many2one | Responsable | Persona que ejecuta la actividad (su puesto tiene el rol «Ejecuta»). | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:86` |
+| `evidence_attachment_ids` | Many2many | Archivos de evidencia |  |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:121` |
+| `evidence_note` | Text | Evidencia | Qué demuestra que se hizo: folio, documento, registro, foto… |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:118` |
+| `has_related_screen` | Boolean | Tiene pantalla relacionada |  |  |  | compute `_compute_needs_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:134` |
+| `how_steps` | Text | Cómo (pasos) |  |  |  | related `activity_id.how_steps`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:128` |
+| `instruction_id` | Many2one | Instructivo |  |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:129` |
+| `measure_method` | Selection |  |  |  |  | related `activity_id.measure_method`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:126` |
+| `na_reason` | Text | Por qué no aplica |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:124` |
+| `name` | Char | Qué |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:98` |
+| `needs_evidence` | Boolean | Con evidencia obligatoria | Registro manual: «Hecha» pide una nota o un archivo. |  |  | compute `_compute_needs_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:131` |
+| `on_fail` | Text | Si no se puede cumplir |  |  |  | related `activity_id.on_fail`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:130` |
+| `on_time` | Boolean | A tiempo | Hecha a más tardar en su vencimiento (hora de México). |  |  | compute `_compute_on_time`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:115` |
+| `period_end` | Date | Fin del periodo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:94` |
+| `period_label` | Char | Periodo |  |  |  | compute `_compute_period_label`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:97` |
+| `period_start` | Date | Inicio del periodo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:92` |
+| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:82` |
+| `progress_note` | Text | Nota de avance | Qué lleva y qué le falta. «En proceso» no quita el atraso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:104` |
+| `state` | Selection | Estado | Pendiente, en proceso (con nota de avance), hecha (con evidencia si es de registro manual) o no aplica este periodo (con motivo). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:99` |
+| `user_id` | Many2one | Usuario |  |  |  | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:90` |
 
-## Métodos públicos (6)
+## Métodos públicos (7)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_close_prestart` | Botón de la lista «No aplica: anteriores al arranque». |
 | `action_mark_done` | — |
 | `action_mark_not_applicable` | — |
 | `action_mark_progress` | — |

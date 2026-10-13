@@ -13,6 +13,287 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.151.0 — 2026-10-13
+
+Dirección General 2026-10-13: tres ajustes al desarrollo de producto.
+
+### Cambiado
+- **«Diagrama de flujo de procesos»**: así se llaman ahora los dos botones
+  `action_sgi_dev_print_flow` (pestañas Cotización y Pilotaje), la ayuda de
+  la pestaña de análisis y el reporte (`report_dev_flow`: nombre, título y
+  nombre del PDF).
+
+### Corregido
+- **El folio FT ya no se repite.** La secuencia `sgi.dev.ft` creó el rango
+  2026 en 1 cuando los folios del año se habían capturado a mano, y asignó
+  FT-001-2026 al proyecto 499, que ya era del 380 (Jose lo corrigió a
+  FT-040-2026). `action_sgi_dev_assign_folio` adelanta el rango del año al
+  folio más alto que existe + 1 si va atrás (`_sgi_dev_ft_sync_range`,
+  archivados incluidos; nunca lo regresa) y, si aun así la secuencia da uno
+  ocupado, pide el siguiente.
+- **Un folio FT por compañía** (`_check_sgi_ft_folio_unique`, archivados
+  incluidos, sin distinguir mayúsculas ni espacios): capturar a mano uno que
+  ya existe se detiene con el nombre del proyecto que lo tiene.
+- Un desarrollo nuevo nace con la compañía activa si no trae compañía (Odoo
+  la deja vacía cuando el cliente no tiene).
+
+### Seguridad
+- **El Usuario SGI escribe y crea proyectos de desarrollo** (sin borrar):
+  acceso `access_project_project_sgi_user`. Jessica (Desarrollo) no podía
+  mover de etapa ni guardar el proyecto: solo Proyecto / Administrador
+  escribía proyectos.
+- **Regla global** `rule_sgi_dev_project_write` (escribir y crear): fuera de
+  Proyecto / Administrador solo se escriben desarrollos de producto
+  (`sgi_is_ft`) de la compañía 1. Es global y no del grupo porque Odoo suma
+  con OR las reglas de grupo y la nativa «Project: employees: following
+  required for follower-only projects» (Usuario interno) ya deja pasar
+  cualquier proyecto no privado: una regla del grupo SGI no limitaría nada.
+  El candado de la aprobación del cliente para entrar a «Muestra» no cambia.
+
+### Migración
+- `19.0.57.151.0/post-migrate.py`: cada rango de la secuencia `sgi.dev.ft`
+  pasa al folio más alto de su año + 1 si va atrás (en producción el rango
+  2026 queda en 41). No toca proyectos ni folios.
+
+### Pruebas
+- `test_dev_folio_access` (nueva): secuencia atrasada, folio archivado,
+  folio ocupado sin ajuste previo, el ajuste no regresa, unicidad por
+  compañía, compañía del desarrollo nuevo, Usuario SGI mueve etapa, guarda y
+  crea desarrollos, no borra, no escribe otros proyectos y sigue detenido por
+  la aprobación del cliente.
+
+## 19.0.57.150.0 — 2026-10-13
+
+Dirección General 2026-10-13: fases 2 y 3 de la auditoría UX del SGI
+(`auditoria-ux-sgi-2026-10-13.md`). Ningún tipo de Mis pendientes termina en
+«se resuelve en su registro» sin ofrecer el botón que lo resuelve, y la NC,
+el hallazgo, la auditoría, el proceso, el documento y el indicador se
+alcanzan unos desde otros.
+
+### Agregado
+- **Botón real por tipo en Mis pendientes** (lista, kanban y ficha; el
+  «Hecho» genérico se oculta en esos tipos y `action_done` despacha igual):
+  - NC → **Registrar paso**: asistente `sgi.nc.step` con el paso que toca
+    (contención o plan de acción como `sgi.action.line` con responsable y
+    compromiso; causa raíz en `sgi_root_cause`). Lo registran los
+    responsables, el dueño del proceso, el Jefe MAST y Dirección.
+  - Requisito legal → **Evaluar** (`sgi.legal.evaluate`).
+  - Documento por revisar → **Revisar**: asistente `sgi.doc.review`
+    («Sigue vigente sin cambios»: próxima revisión a dos años y nota en el
+    historial; «Necesita cambio»: la solicitud de cambio documental ya
+    ligada al documento). Responsable del documento o Jefe MAST.
+  - Solicitud de Aprobaciones → **Aprobar** / **Rechazar**; aprobación de
+    Studio → **Aprobar** / **Rechazar** (`set_approval`, si Studio lo
+    permite; si no, solo «Ir»).
+  - Revisión de medición → **Sí, es lo que hago** / **No corresponde**.
+  - Firma y medición: su botón de siempre.
+  Cada acción pone al día en el momento los renglones de todos los que
+  apuntan al registro (`sgi.my.pending._sgi_refresh_for`).
+- **Leído y entendido (seleccionados)** en el encabezado de la lista de Mis
+  pendientes y de Documentos vigentes.
+- **Correo diario de Mis pendientes** (`cron_daily_pending_mail`, plantilla
+  `mail_template_sgi_daily_pending`): lo atrasado y por vencer de cada
+  persona. El cron `sgi_cron_daily_pending_mail` sale **apagado**; cada quien
+  lo apaga en Preferencias (`res.users.sgi_daily_pending_mail`).
+- **No repetir avisos en la campana** (Ajustes, `quimibond_sgi.notices_skip_covered`,
+  apagado por omisión): con él, `sgi.cron._sgi_schedule` no crea el aviso de
+  un cron (y cierra el abierto) si Mis pendientes de esa persona ya muestra
+  el registro con su renglón propio (NC, documento por revisar, requisito
+  legal, acción). Apagado por omisión porque cambia los avisos de todos y
+  `test_nc_deadlines` fija el aviso «contención vence» al responsable; se
+  enciende junto con el correo diario.
+- **Ligas de navegación** (`models/sgi_nav_links.py`): en la NC,
+  `sgi_finding_ids` (inverso de `sgi.audit.finding.alert_id`),
+  `sgi_audit_id`, `sgi_indicator_id` y los botones **Hallazgo**,
+  **Auditoría** e **Indicador**; en el proceso, **Auditorías**,
+  **Hallazgos** y **Periodos atrasados** (abiertos, vencidos, desde el
+  arranque del registro); en el documento controlado, **Riesgos que
+  controla** (`sgi.risk.operational_control_id`); en el indicador, **NC
+  generadas** (por `quality.alert.sgi_indicator_measure_id`). Conteos con
+  sudo; los botones de la NC, solo para Usuario SGI.
+
+### Cambiado
+- Menús que repetían el nombre de su carpeta: «Documentos controlados»,
+  «Todos los indicadores», «Todas las auditorías» (y sus acciones, para las
+  migas). `SGI_MENU_PATHS['indicadores']` y la liga de la E2.37 al día. Los
+  dos «Checklists de hoy» se quedan: uno en Inicio y otro en Mantenimiento
+  para quien no es Usuario SGI (57.98.0).
+- El **Dueño de proceso** ve las carpetas Documentos e Indicadores (ya tenía
+  lectura de sus modelos; hace la revisión mensual de la medición).
+  «Acuses de lectura» conserva sus grupos (Auditor, Jefe MAST, Dirección).
+- «Resolver menú de Odoo (SGI)» y «Asignar clave nueva (SGI)» en el menú
+  Acción de Documentos: solo Jefe MAST (salían a todo el que abre
+  Documentos).
+
+### Revisado sin cambio
+- Acciones sin menú de la auditoría: `sgi_supplier_eval_recompute_action`,
+  `sgi_document_resolve_menu_action`, `sgi_document_assign_new_code_action`
+  y `sgi_knowledge_import_documents_action` son del menú Acción (no
+  huérfanas); `sgi_miid_section_action` la usa el menú del MIID desde
+  57.148.0; `sgi_dev_mark_wizard_action` y `sgi_dev_lab_request_action` se
+  quedan para entrar por URL (sus menús se retiraron a propósito en
+  57.120.0–57.135.0; las solicitudes de laboratorio se abren desde el
+  proyecto).
+
+### Pruebas
+- `test_bandeja` 30–35 (paso de NC, evaluación legal, revisión de
+  documento, aprobar solicitud, acuses seleccionados, campana), nuevo
+  `test_ligas_navegacion` (inverso NC↔hallazgo, conteos y botones de
+  proceso, documento e indicador; correo diario). `test_my_pending.test_05`
+  cambia: el documento por revisar ya tiene botón.
+
+## 19.0.57.149.0 — 2026-10-13
+
+Dirección General 2026-10-13 (auditoría UX del SGI, fase 1): el
+escalamiento de la S3.22 llevaba al catálogo y no al periodo de Irma Luna
+(anual 2026, venció el 31/03, creado el 05/10/2026 al instalar el registro
+de cumplimiento); «Hecho» lanzaba un error. Hay 12 periodos anuales iguales.
+
+### Qué estaba mal
+- El renglón «Escalamiento» apuntaba a la actividad (`sgi.process.activity`):
+  «Ir» abría el catálogo o la pantalla de Odoo, `can_done` era falso y
+  «Hecho» lanzaba `UserError`.
+- `_sgi_user_can_mark` solo dejaba marcar a la persona, sus jefes y el Jefe
+  MAST: no a Dirección de Operaciones ni a quien tiene el rol «Escala».
+- No había fecha de arranque: se crearon, escalaron y pusieron en rojo
+  periodos que vencieron antes de instalar el registro.
+- Marcar un periodo no quitaba el escalamiento ni los renglones de los
+  demás hasta el cron nocturno; «No aplica» era de uno en uno.
+- El agente MCP no podía operar el SGI: solo estaban habilitados los
+  modelos del desarrollo de producto.
+
+### Cambiado
+- **Escalamiento accionable.** Si la actividad lleva registro de
+  cumplimiento, el escalamiento es un renglón por periodo abierto atrasado
+  de cada persona (`res_model = sgi.activity.execution`, con su nombre en el
+  texto): «Ir» abre el periodo, «Hecho» y «No aplica» abren el asistente
+  `sgi.activity.execution.mark` con `sgi_pending_row_id`, y `can_done` /
+  `can_mark_exec` salen de `_sgi_user_can_mark`. Sin registro, como antes.
+- **Quién marca:** `_sgi_user_can_mark(employee, activity=None)` suma al
+  Administrador SGI (`group_sgi_admin`), a Dirección de Operaciones
+  (`group_sgi_director`) y, con la actividad, a quien recibe su rol
+  «Escala» (puesto, familia o «Dueño del proceso»). Mensaje y ayuda al día.
+- **Fecha de arranque** `quimibond_sgi.exec_start_date` (por omisión
+  2026-10-05; Ajustes del SGI, bloque «Registro de cumplimiento»): un periodo
+  con `date_due` anterior no se crea (`_sgi_generate`, `_sgi_exec_from_activity`),
+  no escala (`_sgi_activity_late_due`, escalamiento por periodo), no sale en
+  Mis pendientes de quien lo ejecuta ni pone la actividad en rojo
+  (`_sgi_measure_from_executions`).
+- **Cierre inmediato:** al marcar «Hecha», «No aplica» o «En proceso»,
+  `_sgi_after_change` vuelve a medir las actividades tocadas y
+  `sgi.my.pending._sgi_sync_executions` quita o reescribe los renglones del
+  periodo y de su escalamiento de todos los usuarios, y quita los que
+  todavía apuntaban a la actividad.
+
+### Agregado
+- **«No aplica este periodo» a varios** desde la lista de Registro de
+  cumplimiento, con un motivo común (`_sgi_mark_wizard` acepta varios solo en
+  ese modo; el asistente lleva `execution_ids`).
+- **Saneamiento** `_sgi_close_prestart` (botón «No aplica: anteriores al
+  arranque», solo Jefe MAST): «No aplica» con el motivo «Periodo vencido
+  antes de la implementación del SGI» y nota en el historial en los periodos
+  «Pendiente» sin nota de avance que vencieron antes del arranque.
+  Idempotente.
+- **MCP** (`MCP_MODELS`): lectura de `sgi.activity.execution`,
+  `sgi.my.pending` (también sus métodos), `sgi.my.procedure` y
+  `sgi.diagnostic`; alta, edición y llamada de métodos de
+  `sgi.activity.execution.mark`, `sgi.nc.cancel`, `sgi.nc.force.close`,
+  `sgi.approval.wizard`, `sgi.legal.evaluate`, `sgi.measure.review.reject`,
+  `sgi.checklist.finish` y `sgi.sign.request.wizard`.
+  `_sgi_dev_enable_mcp_models` ya no se salta un modelo que existe: le abre
+  lo que falte, sin quitar nada.
+
+### Migración (`migrations/19.0.57.149.0/post-migrate.py`)
+Deja el parámetro de arranque (2026-10-05) si no existe, habilita los
+modelos en el MCP y corre el saneamiento una vez (los 12 periodos anuales del
+05/10/2026). Idempotente.
+
+### Pruebas
+- `test_registro_cumplimiento`: test_07 (el escalamiento apunta al periodo,
+  «Ir» y «Hecho» lo abren, «No aplica» lo cierra y los renglones de todos se
+  van en la misma transacción), test_08 (tercero sin rol → `AccessError`;
+  Dirección, Administrador SGI y «Escala» sí), test_09 (arranque en mensual,
+  trimestral y anual: no se crea, no escala, no pone rojo), test_10
+  (saneamiento idempotente y «No aplica» masivo).
+- `test_bandeja.test_10a`: escalamiento con registro, accionable.
+- `test_my_pending.test_06` sigue esperando el `UserError` del escalamiento
+  **sin** registro de cumplimiento (comportamiento que se conserva).
+- `tests/common_exec.py`: las clases que construyen atrasos relativos a hoy
+  (bandeja, Mis pendientes, registro, roles relativos, auditoría de roles,
+  Mi procedimiento) abren la fecha de arranque al pasado; si no, una mensual
+  que venció el día hábil 1 de octubre de 2026 quedaría antes del arranque.
+
+## 19.0.57.148.0 — 2026-10-13
+
+Dirección General 2026-10-13, al ver el P-G01 dentro del capítulo 6 del
+MIID (57.146.0): **«prefiero otra cosa; necesito un submenú para el MIID y
+todo eso»**. El P-G01 vuelve a ser un documento controlado propio, pero
+**generado desde Odoo con el mismo motor que el Manual**, y el MIID, el
+P-G01, sus textos, sus revisiones y sus solicitudes cuelgan de una carpeta
+«Manual del SGI» en Sistema.
+
+### Agregado
+- **Un motor, dos documentos.** `sgi.miid` y `sgi.miid.section` llevan
+  `kind` (`miid` | `pg01`; `MIID_KINDS` en `models/sgi_miid.py`: clave,
+  título, primera revisión desde Odoo, bloques que imprime y llaves de la
+  foto que entran a su huella). Uno por empresa y documento
+  (`UNIQUE(company_id, kind)`); `_sgi_get(company, kind)`,
+  `_sgi_kind_for_code(code)`. La huella y las diferencias de cada
+  documento solo cubren lo que ese documento imprime: el dueño de un
+  proceso no desactualiza al P-G01, un plazo documental no desactualiza al
+  Manual.
+- **P-G01 «Elaboración y control de información documentada» generado**
+  (`kind = pg01`, clave P-G01, primera revisión desde Odoo la 12, continúa
+  al Dropbox): 14 secciones sembradas en el orden de la revisión 11
+  (identificación, propósito, alcance, responsabilidades, desarrollo 4.1 a
+  4.6, rutinas, marco normativo, control de cambios) y los bloques
+  identificación, tipos de documento, plazos documentales, **rutinas**
+  (bloque nuevo `actividades`: las actividades de E2 ligadas a cualquiera
+  de sus revisiones por «Procedimiento relacionado», con quién ejecuta y
+  aprueba, cadencia y criterio de terminado), normas y control de cambios.
+  Candado propio: su proceso (E2) debe estar vigente. Al aprobarse la
+  primera revisión desde Odoo, la del Dropbox queda «Migrado a Odoo» hacia
+  el documento generado.
+- **Carpeta SGI → Sistema → Manual del SGI**: Manual (MIID) ·
+  Control de información documentada (P-G01) · Textos (una lista, agrupada
+  por documento) · Revisiones (las del MIID y del P-G01, vigentes y
+  obsoletas) · Solicitudes de cambio (las que llevan huella; Auditor, Jefe
+  MAST y Dirección). `menu_sgi_miid` conserva su xmlid; rutas
+  `sgi_menu_path('miid')` y `sgi_menu_path('pg01')`; árbol en
+  `tools/sgi_menu_tree.txt`.
+- Pantalla y PDF comunes: el título lo pone el documento («Solicitar cambio
+  de revisión», «Textos del documento»); la portada, el pie y el nombre del
+  PDF llevan la clave del documento.
+- `tools/sgi_miid_seed_md.py`: genera `docs/sgi/transicion/miid-rev03-borrador.md`
+  desde la siembra (los dos documentos).
+
+### Cambiado
+- **MIID capítulo 6** queda en «6 Información documentada» (cita al P-G01)
+  y «6.1 Tipos de documento y claves»; las cinco secciones que detallaban
+  el P-G01 (6.2 a 6.6 de 57.146.0) se archivan por migración. El bloque
+  `plazos_documentales` ya no es del Manual. 24 secciones del MIID.
+- El aviso diario y el Diagnóstico cubren los dos documentos
+  («El P-G01 vigente ya no coincide con el sistema», clave
+  `pg01_desactualizado:<empresa>`; el del MIID no cambia de clave).
+
+### Migración (`migrations/19.0.57.148.0/`)
+- `pre-migrate.py`: quita la restricción única vieja de `sgi_miid`.
+- `post-migrate.py`: archiva las cinco secciones del MIID que viven en el
+  P-G01, pone el texto nuevo de «6 Información documentada» y «1.4 Revisión
+  y control de este Manual» solo si nadie los editó, crea el P-G01 generado
+  de la empresa del SGI y corre su primera comparación. Las 14 secciones
+  del P-G01 las crea la siembra. Idempotente.
+
+### Pruebas (`tests/test_miid.py`)
+- test_01 cuenta lo que declara la siembra (24 + 14, cada una existe,
+  activa y noupdate) en vez de `ir.model.data` (la copia de producción
+  conserva los xmlids archivados). test_06 y test_25 ya no esperan los
+  plazos documentales en el Manual. Nueva `TestPg01Generado`: uno por
+  empresa y documento y menú (test_30), huella solo con lo que imprime
+  (test_31), rutinas, candado del proceso y revisión 12 (test_32), un bloque
+  por documento y textos por documento (test_33), solicitud de cambio del
+  P-G01 (test_34). `test_menus_capitulos` y test_16 con la carpeta nueva.
+
 ## 19.0.57.147.0 — 2026-10-13
 
 Dirección General 2026-10-13: «¿y vamos a hacer un menú para cada proceso?».

@@ -286,7 +286,7 @@
                                 </field>
                             </div>
                             <p class="text-muted" invisible="sgi_dev_customer_property not in ('especificacion', 'ninguna')">Sin muestra física del cliente: no hay análisis de muestra ni pruebas de laboratorio sobre ella.</p>
-                            <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo».</p>
+                            <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo de procesos».</p>
                             <!-- 57.140.0: el checklist no aplica a un producto de línea ni a uno no factible. -->
                             <div class="d-flex justify-content-between align-items-center mb-1 mt-3" invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Checklist de factibilidad</span>
@@ -361,7 +361,7 @@
                             <div class="d-flex flex-wrap gap-1 mb-2">
                                 <button name="action_sgi_dev_open_route" type="object" string="Editar ruta" class="btn-secondary" icon="fa-random"
                                         invisible="not sgi_dev_product_id"/>
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo de procesos" class="btn-secondary" icon="fa-sitemap"
                                         invisible="not sgi_dev_route_count"/>
                                 <span class="text-muted align-self-center" invisible="not sgi_dev_product_id">Operaciones: <field name="sgi_dev_route_count" class="oe_inline"/></span>
                             </div>
@@ -654,7 +654,7 @@
                                         invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
                                 <button name="action_sgi_dev_new_coa" type="object" string="Nuevo reporte de conformidad" class="btn-secondary" icon="fa-certificate"
                                         invisible="sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo de procesos" class="btn-secondary" icon="fa-sitemap"/>
                             </div>
                             <p class="text-muted" invisible="sgi_dev_stage_key in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')">Los documentos del producto se emiten a partir de la etapa «Muestra» (el reporte de conformidad) y «Respuesta del cliente» (ficha interna y especificaciones).</p>
                             <separator string="Pilotajes y estudio de habilidad"/>

@@ -6,6 +6,7 @@ del puesto y acuses que se renuevan con cada revisión."""
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
+from .common_exec import sgi_exec_start_open
 from .common_calendar import sgi_test_calendar
 from .common_documents import sgi_hide_real_documents
 
@@ -16,6 +17,7 @@ class TestMyProcedure(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_exec_start_open(cls.env)
         sgi_hide_real_documents(cls.env)
         sgi_test_calendar(cls.env)
         # 57.66.0: publicar sin firma en Sign (la firma se prueba en
