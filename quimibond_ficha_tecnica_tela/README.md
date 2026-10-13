@@ -263,3 +263,9 @@ funciona con las órdenes TL/OP-TIN:
 - Pendiente para cuando exista el producto único: la corrida de muestra del
   SGI (57.154.0) arma crudo → teñido → acabado y tendrá que pasar a crudo →
   acabado con la ruta completa.
+- Para el SGI (C1, 57.158.0) el centro de trabajo expone dos métodos:
+  `_ft_circulares_con_galga(galga, day)` (circulares cuya configuración
+  vigente corre esa galga) y `_ft_aviso_para(producto, kg, day)` (el texto
+  del aviso de galga o de carga para un producto en esa máquina, sin orden de
+  trabajo). La orden de trabajo usa el mismo método, así que el aviso del
+  checklist, la corrida de muestra y la producción dicen lo mismo.
