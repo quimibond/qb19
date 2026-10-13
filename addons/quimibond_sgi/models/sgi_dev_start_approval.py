@@ -67,6 +67,7 @@ START_APPROVAL_LABELS = {
         'capacity': "Capacidad a utilizar", 'resource': "Recurso", 'sample_qty': "Cantidad de la muestra",
         'sample_pct': "% de capacidad para la muestra", 'monthly_qty': "Consumo mensual",
         'monthly_pct': "% de capacidad para el consumo mensual", 'raw_material': "Materia prima",
+        'machines_row': "Circulares galga %s (producción real, promedio %s días): %s",
         'no_capacity': "Sin capacidad capturada", 'no_kg': "Sin conversión a kg (falta el rendimiento)",
         'no_route': "El artículo no tiene ruta capturada: solo se lista la materia prima.",
         'capacity_note': "Porcentaje sobre la capacidad mensual de cada recurso en kg.",
@@ -107,6 +108,7 @@ START_APPROVAL_LABELS = {
         'capacity': "Capacity to be used", 'resource': "Resource", 'sample_qty': "Sample quantity",
         'sample_pct': "% of capacity for the sample", 'monthly_qty': "Monthly consumption",
         'monthly_pct': "% of capacity for monthly consumption", 'raw_material': "Raw material",
+        'machines_row': "Gauge %s circular machines (actual output, %s-day average): %s",
         'no_capacity': "No capacity on record", 'no_kg': "No conversion to kg (yield missing)",
         'no_route': "The item has no routing yet: only raw material is listed.",
         'capacity_note': "Percentage of each resource's monthly capacity in kg.",
@@ -407,8 +409,12 @@ class ProjectProjectDevStartApproval(models.Model):
             return "%s %%" % _num(kg / capacity * 100.0, 3)
 
         resources = self._sgi_dev_capacity_resources()
+        # 57.158.0: las circulares que hoy corren la galga del artículo (ficha de la máquina) con su producción
+        # real en kg; no sustituye la capacidad de la ruta, la acompaña.
+        machines = self._sgi_dev_capacity_machines(L)
         rows = []
-        for resource in [{'name': L['raw_material'], 'capacity_kg': False, 'operations': [], 'raw': True}] + resources:
+        for resource in ([{'name': L['raw_material'], 'capacity_kg': False, 'operations': [], 'raw': True}]
+                         + resources + machines):
             name = resource['name']
             if resource.get('operations'):
                 name = "%s: %s" % (name, ', '.join(resource['operations']))
@@ -424,6 +430,20 @@ class ProjectProjectDevStartApproval(models.Model):
             'missing': [r['name'] for r in resources if not r['capacity_kg']],
             'no_route': not resources,
         }
+
+    def _sgi_dev_capacity_machines(self, labels):
+        """57.158.0: una fila con las circulares que corren la galga del artículo y su producción real en kg
+        al mes (promedio de los últimos días); vacía si no hay galga, circulares o producción."""
+        self.ensure_one()
+        from .sgi_dev_analysis import FEAS_PRODUCCION_DIAS, _fmt_num  # import local (orden de models/__init__)
+        galga, circulares = self._sgi_dev_circulares()
+        real = self._sgi_dev_produccion_real(circulares) if circulares else {}
+        total = sum(real.values())
+        if not total:
+            return []
+        names = ', '.join(wc.name for wc in circulares)
+        return [{'name': labels['machines_row'] % (_fmt_num(galga), FEAS_PRODUCCION_DIAS, names),
+                 'capacity_kg': total, 'operations': []}]
 
     def _sgi_dev_start_approval_approvals(self):
         """Los dos recuadros: aprobación del cliente (medio y evidencia, cuando se registra) y de PNT

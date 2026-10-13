@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_start_approval.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `moment` | Selection | Cuándo | Si el cliente lo pide para el diseño y desarrollo, si se entrega cuando el proyecto sea factible o si no aplica. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:164` |
-| `note` | Char | Observación | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:167` |
-| `option_id` | Many2one | Documento | Documento del catálogo «Información requerida al cliente». | sí | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:161` |
-| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:159` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:160` |
+| `moment` | Selection | Cuándo | Si el cliente lo pide para el diseño y desarrollo, si se entrega cuando el proyecto sea factible o si no aplica. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:166` |
+| `note` | Char | Observación | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:169` |
+| `option_id` | Many2one | Documento | Documento del catálogo «Información requerida al cliente». | sí | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:163` |
+| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:161` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:162` |
 

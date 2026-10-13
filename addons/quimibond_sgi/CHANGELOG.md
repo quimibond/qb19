@@ -13,6 +13,41 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.158.0 — 2026-10-13
+
+C1 con la ficha de la máquina (`quimibond_ficha_tecnica_tela` 2.6.0).
+
+### Agregado
+
+- **Checklist de factibilidad**: «Lo contesta Odoo» suma tres opciones.
+  `maquina_circular` contesta *Sí* con las circulares que hoy corren la galga
+  del artículo (con diámetro y alimentadores), *No* si ninguna. `tintoreria_jets`
+  sugiere los jets que aceptan la tela por su rendimiento (masa × ancho, grupos
+  A/B/C de la ficha). `acabado_ramas` sugiere el ancho útil de las ramas
+  (parámetro `ancho_util`). Jets y ramas quedan *Pendiente*: proceso, receta y
+  acabados los confirma el área.
+- **Capacidad de máquina** (`capacidad`): deja de esperar al cotizador. Pone la
+  producción real en kg al mes de las circulares de esa galga (órdenes de
+  trabajo terminadas en kg, promedio de 90 días) junto al consumo mensual
+  pedido. Sigue *Pendiente*: lo disponible lo confirma Planeación.
+- **Aprobación de inicio**: la tabla de capacidad suma una fila con esas
+  circulares y su producción real, cuando hay producción.
+- **Fichas de proceso**: la ficha de tejido nace con la galga del artículo, y
+  con la máquina si una sola circular la corre.
+- **Corrida de muestra**: el asistente muestra «Revise la máquina» con los
+  avisos de la ruta (circular con otra galga, cantidad que no cabe en una
+  carga del jet) antes de crear las órdenes. No impide pedir la corrida.
+
+### Cambiado
+
+- Recargar el checklist ya no toca los renglones que contestó una persona;
+  los que contestó Odoo se actualizan con el dato de hoy, también si quedan
+  *Pendiente*.
+
+Las órdenes de producción del artículo liberado reciben los avisos de máquina
+sin código adicional: los pone `quimibond_ficha_tecnica_tela` en cada orden de
+trabajo. Sin migración.
+
 ## 19.0.57.157.0 — 2026-10-13
 
 El despliegue a producción de 57.148.0–57.156.0 falló en la migración
