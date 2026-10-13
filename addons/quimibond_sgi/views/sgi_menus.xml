@@ -130,30 +130,13 @@
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
               parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
-    <!-- 57.120.0 (C1, bloque 4): pruebas de laboratorio de los desarrollos. -->
-    <menuitem id="menu_sgi_dev_lab_requests" name="Pruebas de laboratorio de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_lab_request_action" sequence="51"/>
-    <!-- 57.122.0 (C1, uso diario): lista de desarrollos y asistente para marcar los viejos. -->
-    <menuitem id="menu_sgi_dev_projects" name="Desarrollos de producto"
-              parent="menu_sgi_processes" action="sgi_dev_project_board_action" sequence="52"/>
-    <menuitem id="menu_sgi_dev_shipments" name="Envíos de muestra de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_shipment_action" sequence="54"/>
-    <menuitem id="menu_sgi_dev_coas" name="Reportes de conformidad de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_coa_action" sequence="55"/>
-    <menuitem id="menu_sgi_dev_tech_sheets" name="Fichas técnicas internas de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_tech_sheet_action" sequence="56"/>
-    <menuitem id="menu_sgi_dev_customer_specs" name="Especificaciones del producto (cliente)"
-              parent="menu_sgi_processes" action="sgi_dev_customer_spec_action" sequence="57"/>
-    <menuitem id="menu_sgi_dev_pilots" name="Pilotajes de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_pilot_action" sequence="58"/>
-    <!-- 57.135.0 (C1, Jose 5.5): avisos y escalamientos por tiempo. -->
-    <menuitem id="menu_sgi_dev_escalations" name="Avisos por tiempo de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_escalation_action" sequence="59"/>
-    <menuitem id="menu_sgi_dev_change_requests" name="Solicitudes de modificación de desarrollos"
-              parent="menu_sgi_processes" action="sgi_dev_change_request_action" sequence="60"/>
-    <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
-              parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
-              groups="project.group_project_manager"/>
+    <!-- 57.147.0 (Dirección General 2026-10-13): los registros del desarrollo
+         de producto (C1) NO llevan menú en el SGI: cada proceso vive en su app
+         nativa y se abren desde los botones del proyecto. La lista de
+         desarrollos cuelga de la app Proyectos (abajo, «Menús en otras
+         apps»). Se retiraron menu_sgi_dev_lab_requests, _projects, _shipments,
+         _coas, _tech_sheets, _customer_specs, _pilots, _escalations,
+         _change_requests y _mark (57.120.0 a 57.135.0). -->
 
     <!-- 2.1 Documentos (7.5). 57.113.0: viene de Administración SGI y recibe
          los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie
@@ -477,6 +460,11 @@
          OPERACIÓN EN SU APP: lo que se opera a diario vive donde trabaja
          cada quien. Los xmlids NO cambian: solo se reparenta.
          ================================================================ -->
+
+    <!-- Proyectos (57.147.0): los desarrollos de producto (C1) viven en su app;
+         todo lo demás del desarrollo se abre desde los botones del proyecto. -->
+    <menuitem id="menu_sgi_dev_projects" name="Desarrollos de producto"
+              parent="project.menu_main_pm" action="sgi_dev_project_board_action" sequence="3"/>
 
     <!-- Compras: la evaluación ISO 8.4 la opera el comprador. -->
     <menuitem id="menu_sgi_suppliers" name="Evaluación de proveedores"
