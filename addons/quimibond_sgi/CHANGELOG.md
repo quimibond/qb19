@@ -13,6 +13,26 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.147.0 — 2026-10-13
+
+Dirección General 2026-10-13: «¿y vamos a hacer un menú para cada proceso?».
+No. Cada proceso vive en su app nativa; el menú del SGI es para el sistema.
+
+### Retirado
+- Los diez menús del desarrollo de producto que colgaban de **Sistema**
+  (57.120.0 a 57.135.0): Pruebas de laboratorio, Desarrollos de producto,
+  Marcar desarrollos existentes, Envíos de muestra, Reportes de conformidad,
+  Fichas técnicas internas, Especificaciones del producto, Pilotajes, Avisos
+  por tiempo y Solicitudes de modificación. Sistema vuelve a sus diez
+  entradas. Los registros se siguen abriendo desde los botones del proyecto;
+  las acciones se conservan.
+
+### Cambiado
+- **«Desarrollos de producto»** cuelga ahora de la app **Proyectos** (junto
+  a Proyectos y Tareas), que es donde se trabaja el desarrollo.
+
+Sin migración: los menús retirados desaparecen al actualizar.
+
 ## 19.0.57.146.0 — 2026-10-13
 
 Dirección General 2026-10-13, después de ver el borrador Rev. 03 y el
