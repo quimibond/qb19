@@ -1,4 +1,4 @@
-# qb_checador — Checadores ZKTeco → asistencias de Odoo
+# qb_checador — Checadores ZKTeco y Hikvision → asistencias de Odoo
 
 Los relojes checadores de la planta de Toluca (ZKTeco **MB10-VL**, serie
 UDP3255000661, y **UA860**, serie A3B7194960761) entregan sus checadas a Odoo
@@ -57,6 +57,81 @@ devuelve la respuesta de Odoo al reloj. Para Odoo es idéntico al camino 1
 (mismo controlador, misma serie, mismo `OK: n`); si Odoo no contesta, el
 puente responde 502 y el reloj guarda y reintenta. Instalación, configuración
 del reloj y diagnóstico: `puente/README.md`. Solo Python 3, sin librerías.
+
+**Camino 4 — Hikvision (ISAPI, «Escucha HTTP»).** Los terminales de
+asistencia de Hikvision (DS-K1T…, p. ej. el **DS-K1T804AEF** de la oficina de
+Ciruelos, CDMX, desde 2026-10-13) no hablan ADMS. En su ficha de Odoo la
+*Marca* es «Hikvision (ISAPI)» y al guardarla se genera un **token**; la ficha
+muestra el servidor, la ruta y la URL completa
+(`https://<odoo>/qb_checador/hikvision/<token>`). En el reloj se da de alta un
+servidor de escucha HTTP (`/ISAPI/Event/notification/httpHosts`) con esos
+datos, y el reloj manda cada evento en el momento en que ocurre (JSON, XML o
+multipart con foto; la foto se descarta).
+
+- Solo cuentan los eventos de control de acceso (`AccessControllerEvent`,
+  `majorEventType` 5) que traen número de empleado: verificaciones en las
+  que el reloj reconoció a la persona. Huella no reconocida, puerta, botón de
+  salida y alarmas se contestan con OK y no se guardan. Un código que no deba
+  contar se excluye con `qb_checador.hikvision_eventos_excluidos`
+  (`subEventType` separados por coma). En la checada quedan el código del
+  evento (*Código de trabajo*), el modo de verificación y el estado de
+  asistencia que marcó el reloj.
+- La hora es la de la pantalla del reloj convertida con la zona del equipo
+  en Odoo (se ignora la zona que traiga el reloj: de fábrica suele ser GMT+08:00).
+- El número de empleado del reloj se liga igual que el PIN de los ZKTeco
+  (usuario capturado o *Referencia* con prefijo; Ciruelos es la nómina de
+  México, prefijo `C`).
+- **Hikvision no reintenta**: si Odoo no contesta, el evento queda solo en
+  la memoria del reloj (100,000 eventos) y se recupera exportándolo. El
+  semáforo de un Hikvision tolera 24 horas sin noticias (solo habla cuando
+  alguien checa o con la prueba de su escucha HTTP).
+- Un token desconocido recibe 403; «Generar URL nueva» cambia el token y la
+  URL anterior deja de funcionar.
+
+Configurar la escucha HTTP en el reloj (TI, desde una PC en la misma red):
+
+1. En el reloj: red con DHCP (o IP fija con puerta de enlace y DNS
+   correctos), zona horaria GMT-06:00 y la hora en pantalla correcta.
+2. En el navegador, `http://<IP del reloj>` con la cuenta de administrador
+   del equipo. En *Configuración → Red → Servicio de red* (o *Avanzada*),
+   **Escucha HTTP / HTTP Listening**: dirección `quimibond-qb19.odoo.com`
+   (dominio, no IP), puerto `443`, protocolo **HTTPS**, URL = la *Ruta* de
+   la ficha en Odoo. Guardar y usar **Prueba**: en Odoo la ficha pasa a
+   «Conectado».
+3. Si el reloj no tiene página web, la misma configuración por ISAPI con el
+   `curl` de Windows (sustituir IP, usuario y contraseña del reloj, y el token):
+
+   ```
+   curl --digest -u USUARIO:CONTRASEÑA http://IP/ISAPI/Event/notification/httpHosts/capabilities
+   curl --digest -u USUARIO:CONTRASEÑA -X PUT -H "Content-Type: application/xml" --data-binary @escucha.xml http://IP/ISAPI/Event/notification/httpHosts
+   curl --digest -u USUARIO:CONTRASEÑA -X POST http://IP/ISAPI/Event/notification/httpHosts/1/test
+   ```
+
+   con `escucha.xml`:
+
+   ```xml
+   <HttpHostNotificationList version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
+     <HttpHostNotification>
+       <id>1</id>
+       <url>/qb_checador/hikvision/TOKEN</url>
+       <protocolType>HTTPS</protocolType>
+       <parameterFormatType>JSON</parameterFormatType>
+       <addressingFormatType>hostname</addressingFormatType>
+       <hostName>quimibond-qb19.odoo.com</hostName>
+       <portNo>443</portNo>
+       <httpAuthenticationMethod>none</httpAuthenticationMethod>
+     </HttpHostNotification>
+   </HttpHostNotificationList>
+   ```
+
+   La primera llamada dice si el reloj acepta `HTTPS` en `protocolType` y
+   `hostname` en `addressingFormatType`.
+4. **Si no acepta HTTPS**: el reloj apunta en HTTP plano al puente (camino 2)
+   en una PC de esa oficina: dirección = IP de la PC, puerto `8081`,
+   protocolo HTTP, misma ruta. El puente reenvía `/qb_checador/hikvision/…`
+   igual que `/iclock/…`.
+
+Las credenciales del reloj no se guardan en Odoo ni en el repositorio.
 
 **Camino 3 — API.** Para un equipo que no sepa ADMS, un programa puede mandar
 las checadas por JSON-RPC con un usuario técnico (grupo *Asistencias /
@@ -129,5 +204,7 @@ La lista de lo que TI revisa en cada reloj antes de conectarlo está en
 ## Pruebas
 
 `tests/test_checadas.py` (ingreso, ligas, emparejamiento, API) y
-`tests/test_iclock.py` (el protocolo contra el controlador). Corren en el CI
-con `--test-tags /qb_checador`.
+`tests/test_iclock.py` (el protocolo contra el controlador) y
+`tests/test_hikvision.py` (lectura de JSON/XML/multipart, qué cuenta como
+checada, token y semáforo del Hikvision). Corren en el CI con
+`--test-tags /qb_checador`.

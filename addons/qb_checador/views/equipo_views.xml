@@ -8,6 +8,7 @@
             <list>
                 <field name="name"/>
                 <field name="serial"/>
+                <field name="marca" optional="show"/>
                 <field name="modelo"/>
                 <field name="ubicacion"/>
                 <field name="autorizado"/>
@@ -31,8 +32,13 @@
             <form>
                 <header>
                     <button name="action_reenviar_todo" type="object" string="Pedir todo el historial"
+                            invisible="marca != 'zkteco'"
                             help="Pone la marca en 0: en la siguiente conexión el equipo vuelve a mandar todo lo que guarda. Las checadas repetidas se ignoran."
                             confirm="¿Pedir al equipo que vuelva a mandar todo su historial? Las repetidas se ignoran."/>
+                    <button name="action_nuevo_token" type="object" string="Generar URL nueva"
+                            invisible="marca != 'hikvision'"
+                            help="Cambia el token de la URL de escucha. La URL anterior deja de funcionar: hay que capturar la nueva en el reloj."
+                            confirm="La URL actual deja de funcionar y el reloj no podrá mandar checadas hasta que se capture la nueva. ¿Continuar?"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Sin autorizar" bg_color="text-bg-danger" invisible="autorizado"/>
@@ -40,7 +46,13 @@
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Entrada planta"/></h1>
                     </div>
-                    <div class="alert alert-info mb-3" role="status" invisible="estado_conexion != 'nunca'">
+                    <div class="alert alert-info mb-3" role="status" invisible="estado_conexion != 'nunca' or marca != 'hikvision'">
+                        Este reloj Hikvision nunca ha mandado nada a Odoo. Odoo no puede buscarlo: el reloj es el que se conecta,
+                        y solo cuando alguien checa o cuando se usa la prueba de su escucha HTTP. Capture en el reloj, en
+                        «Escucha HTTP» (HTTP Listening / httpHosts), el servidor, el puerto 443 con HTTPS y la ruta que aparecen abajo.
+                        Si el reloj no ofrece HTTPS, apúntelo al puente de la oficina (README del módulo, carpeta puente).
+                    </div>
+                    <div class="alert alert-info mb-3" role="status" invisible="estado_conexion != 'nunca' or marca != 'zkteco'">
                         Este reloj nunca se ha presentado a Odoo. Odoo no puede buscarlo: el reloj es el que se conecta.
                         Revise que el reloj tenga salida a internet (puerta de enlace, DNS, firewall por el puerto 443) y que
                         en Menú → Comunicación → Servidor en la nube apunte a quimibond-qb19.odoo.com, puerto 443, HTTPS.
@@ -52,6 +64,7 @@
                     </div>
                     <group>
                         <group string="Equipo">
+                            <field name="marca"/>
                             <field name="serial"/>
                             <field name="modelo"/>
                             <field name="ubicacion"/>
@@ -73,9 +86,14 @@
                             <field name="conexion_hace"/>
                             <field name="ultima_conexion"/>
                             <field name="ultima_checada"/>
-                            <field name="attlog_stamp"/>
+                            <field name="attlog_stamp" invisible="marca != 'zkteco'"/>
                             <field name="checada_count"/>
                         </group>
+                    </group>
+                    <group string="Escucha HTTP del reloj (Hikvision)" invisible="marca != 'hikvision'">
+                        <field name="host_push" readonly="1"/>
+                        <field name="ruta_push" readonly="1"/>
+                        <field name="url_push" readonly="1" widget="CopyClipboardChar"/>
                     </group>
                     <group string="Notas">
                         <field name="notas" nolabel="1"/>

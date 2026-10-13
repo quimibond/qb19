@@ -52,7 +52,8 @@ class Checada(models.Model):
                                                         "planta no se selecciona entrada/salida al checar.")
     verify = fields.Char(string="Verificación", help="1 huella, 15 rostro, 0 contraseña, 2 tarjeta…")
     workcode = fields.Char(string="Código de trabajo")
-    source = fields.Selection([('adms', "Empujada por el equipo"), ('api', "Puente (API)"), ('manual', "Manual")],
+    source = fields.Selection([('adms', "Empujada por el equipo"), ('isapi', "Empujada por Hikvision (ISAPI)"),
+                               ('api', "Puente (API)"), ('manual', "Manual")],
                               string="Origen", required=True, default='adms')
     employee_id = fields.Many2one('hr.employee', string="Empleado", index=True)
     state = fields.Selection(ESTADOS, string="Estado", required=True, default='nueva', index=True)
@@ -188,6 +189,29 @@ class Checada(models.Model):
         creadas, repetidas = self._registrar(equipo, registros, 'adms')
         _logger.info("qb_checador %s: ATTLOG %d líneas, %d nuevas, %d repetidas", equipo.serial, lineas, creadas, repetidas)
         return lineas
+
+    @api.model
+    def procesar_hikvision(self, equipo, eventos):
+        """Eventos del push ISAPI de un reloj Hikvision (dicts ya leídos del JSON/XML).
+        Guarda las verificaciones con empleado; devuelve cuántas checadas nuevas quedaron."""
+        from ..controllers.hikvision import PARAM_EXCLUIDOS, checada_del_evento
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_EXCLUIDOS) or ''
+        excluidos = {v.strip() for v in valor.split(',') if v.strip()}
+        registros = []
+        for evento in eventos or []:
+            r = checada_del_evento(evento, excluidos)
+            if not r:
+                continue
+            try:
+                r['timestamp'] = equipo._a_utc(r.pop('hora_local'))
+            except ValueError:
+                _logger.warning("qb_checador %s: hora ilegible en evento Hikvision: %r", equipo.serial, r)
+                continue
+            registros.append(r)
+        creadas, repetidas = self._registrar(equipo, registros, 'isapi')
+        _logger.info("qb_checador %s: Hikvision %d eventos, %d checadas nuevas, %d repetidas",
+                     equipo.serial, len(eventos or []), creadas, repetidas)
+        return creadas
 
     @api.model
     def ingresar_api(self, serial, registros):
