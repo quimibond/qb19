@@ -171,17 +171,6 @@
         </field>
     </record>
 
-    <record id="sgi_workcenter_view_form_machine_sheet" model="ir.ui.view">
-        <field name="name">mrp.workcenter.form.inherit.sgi.machine.sheet</field>
-        <field name="model">mrp.workcenter</field>
-        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="%(sgi_machine_sheet_action)d" type="action" class="oe_stat_button" icon="fa-file-text-o"
-                        context="{'search_default_workcenter_id': id, 'default_workcenter_id': id}">
-                    <span class="o_stat_text">Fichas de proceso</span>
-                </button>
-            </xpath>
-        </field>
-    </record>
+    <!-- 57.155.0: sin botón «Fichas de proceso» en el centro de trabajo; la ficha de proceso es la de
+         quimibond_ficha_tecnica_tela (la máquina es su campo «Máquina»). -->
 </odoo>

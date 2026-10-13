@@ -136,3 +136,23 @@ P-D02-01 rev. 05: composición, dibujo, tipo de hilo, galga por rango
 y acabado. Catálogo y claves se siembran con `noupdate` y se editan en
 **Fichas Técnicas de Tela → Configuración** (gerentes de Fabricación).
 Pruebas: `tests/test_caracteristicas.py` (corren en el CI).
+
+## Máquina y tolerancias numéricas (2.2.0, 2026-10-13)
+
+Decisión de Jose: una sola ficha por proceso, la de este módulo. El SGI
+(`quimibond_sgi` 57.155.0) le agrega la capa de control del desarrollo
+(proyecto, orden, quién propuso, validó y midió, y el valor real de cada
+parámetro) y deja de usar su ficha de proceso por máquina.
+
+- **Máquina** (`maquina_tejido`) es el centro de trabajo de Odoo
+  (`mrp.workcenter`). Lo que se capturó como texto antes de 2.2.0 queda en
+  `maquina_tejido_texto` (solo lectura, dato histórico). Al importar del
+  Excel, la columna `Máquina` se liga al centro de trabajo con ese nombre o
+  código; si no hay uno solo, se guarda el texto y la importación lo avisa.
+- **Tolerancias**: las que eran texto ahora son número. La de peso (tela
+  acondicionada y acabada) tiene dos: arriba (`*_tol`) y abajo
+  (`*_tol_minus`); con la de abajo en 0 la tolerancia es ± la de arriba. En
+  el Excel se sigue aceptando «+12 / -6».
+- La migración `19.0.2.2.0/pre-migrate.py` conserva los textos que no se
+  puedan leer como número en una columna `<campo>_texto_2_1` y los reporta
+  en el log.

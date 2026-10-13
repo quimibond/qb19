@@ -5,7 +5,7 @@ import io
 from odoo import fields, models
 from odoo.exceptions import UserError
 
-from ._tabular_import_utils import build_header_index, clean_num, row_is_empty
+from ._tabular_import_utils import build_header_index, clean_num, parse_tolerance, row_is_empty
 
 try:
     import openpyxl
@@ -62,6 +62,12 @@ FLOAT_FIELDS = {
     'encogimiento_largo', 'encogimiento_ancho',
     'elongacion_largo_acabado', 'elongacion_ancho_acabado',
 }
+# 2.2.0: tolerancias que eran texto y ahora son número; la de peso admite «+12 / -6» (arriba / abajo).
+TOL_FIELDS = {
+    'ancho_acabado_tol', 'encogimiento_largo_tol', 'encogimiento_ancho_tol', 'espesor_acabado_tol',
+    'elongacion_largo_acabado_tol', 'elongacion_ancho_acabado_tol',
+}
+ASYM_TOL_FIELDS = {'peso_acabado_tol': 'peso_acabado_tol_minus'}
 # Campos de texto (tolerancia y unidad) se pasan tal cual, sin conversión numérica.
 
 
@@ -150,7 +156,13 @@ class FichaTecnicaAcabadoImportWizard(models.TransientModel):
                 for field_name, cell_value in raw.items():
                     if field_name in ('articulo', 'revision', 'tejido_ref', 'product_acabado_ref'):
                         continue
-                    if field_name in FLOAT_FIELDS:
+                    if field_name in ASYM_TOL_FIELDS:
+                        up, down = parse_tolerance(cell_value)
+                        values[field_name] = up
+                        values[ASYM_TOL_FIELDS[field_name]] = down
+                    elif field_name in TOL_FIELDS:
+                        values[field_name] = parse_tolerance(cell_value)[0]
+                    elif field_name in FLOAT_FIELDS:
                         values[field_name] = clean_num(cell_value)
                     else:
                         values[field_name] = cell_value

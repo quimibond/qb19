@@ -13,6 +13,11 @@
   2026-10-08). El punto de enganche es la orden de muestra
   (`mrp.production.sgi_dev_project_id`, sus órdenes de trabajo y el botón
   «Validar corrida»).
+- **57.155.0** (Dirección General 2026-10-13): una sola ficha por proceso, la
+  de `quimibond_ficha_tecnica_tela`, también para tejido. El desarrollo deja de
+  usar `sgi.machine.sheet` (queda oculto, sin menú) y la capa de control vive
+  en `sgi_dev_fabric_sheet.py`. Aquí se conservan la ruta, el diagrama de flujo
+  y el puesto que valida (`dev_validator_job_tejido_id`).
 """
 from odoo import api, fields, models
 from odoo.exceptions import UserError
