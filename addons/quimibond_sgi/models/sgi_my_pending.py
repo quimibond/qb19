@@ -1,47 +1,53 @@
 # -*- coding: utf-8 -*-
-"""56.3.0: «Mis pendientes» en una sola lista con semáforo.
+"""Mis pendientes: la bandeja de cada persona del SGI.
 
-Acciones, NC a contestar, mediciones por capturar o validar, requisitos
-legales por evaluar y documentos por revisar, de una o varias personas, en
-renglones de ``sgi.my.pending`` con Tipo, Qué, Proceso, Vence y Estado
-(atrasada: vence antes de hoy; por vencer: en 7 días o menos; al día). Lo usan
-la pantalla «Mi procedimiento» (un solo botón) y Mi equipo (semáforo por
-persona y lista de pendientes del equipo).
+57.145.0 (rediseño, auditoría 2026-10-13: «le doy Hecho y la sigo viendo»):
 
-56.36.0 (entrega 8a, auditoría 2026-09, D-04: «Mis pendientes con todo
-adentro»):
+- **Renglones persistentes.** ``sgi.my.pending`` deja de ser transitorio. El
+  autovacuum diario de Odoo borraba los renglones con más de una hora y un
+  botón sobre un renglón borrado fallaba sin dejar rastro. Ahora cada persona
+  tiene una fila por pendiente (clave: persona, tipo, modelo e id del
+  registro); abrir la lista o el respaldo nocturno la actualizan en su lugar
+  (``_sgi_store``: se escribe lo que cambió, se crea lo nuevo y se quita lo
+  resuelto), así que los ids son estables y «Hechas» ya no reaparecen.
+- **Un solo «Hecho» que sabe qué hacer** (``action_done``): la actividad con
+  registro de cumplimiento abre su asistente (evidencia si es de registro
+  manual); la actividad atrasada por semáforo que lleva registro lo crea al
+  vuelo para el periodo en curso y abre el mismo asistente; el aviso se marca
+  hecho en Odoo; la acción de NC se termina; el acuse se firma y la medición
+  se valida. Lo que se resuelve en su propio registro (NC, requisito legal,
+  documento, aprobación, firma, revisión) no tiene «Hecho»: tiene «Ir» y la
+  ficha lo explica.
+- **Escalamiento es un tipo propio** (antes se mezclaba con «Actividad
+  atrasada»): quien lo recibe no la ejecuta; solo «Ir».
+- **Ficha del pendiente** (vista formulario): qué hay que hacer (criterio de
+  terminado, pasos, instructivo, nota del aviso, plazos de la NC…), sobre qué
+  registro, cuándo vence y los botones grandes. En la lista, «Vence» usa
+  ``remaining_days`` («Hace 3 días», «Hoy», «En 5 días»).
+- **Recarga estándar de Odoo 19.** Ningún botón devuelve ``soft_reload``: el
+  renglón se actualiza o se quita en el servidor y la acción devuelve una
+  notificación con ``next: act_window_close``, que cierra el asistente y
+  recarga la lista por el ``onClose`` de la vista.
+- Más formas de actuar: «En proceso», «No aplica este periodo» y «Posponer
+  una semana» (avisos propios).
 
-- G-001 / I-006: la medición ``pendiente`` es «Capturar» solo si alguien
-  tiene que capturarla (indicador manual, o automático que no pudo calcular);
-  la ``capturado`` es «Validar» y le toca al dueño del indicador en 3 días
-  hábiles desde la captura (decisión 3 de la tanda 2). El vencimiento de la
-  captura es el día hábil en que se mide (el N-ésimo del mes siguiente, o el
-  primero después de la semana) más el plazo de captura en días hábiles: ya
-  no nace atrasada.
-- I-001: dos fuentes por persona (con o sin usuario): las actividades de su
-  procedimiento que van atrasadas (ejecuta; desde 56.38.1 ya no aprueba) y los acuses de
-  «leído y entendido» pendientes. Además, las firmas de Firma electrónica
-  por hacer (por usuario).
-- I-012: quien tiene «Escala» en una actividad la recibe cuando el atraso
-  pasa de sus días hábiles.
-- I-007: semanas como «semana del dd/mm/aaaa» y documentos con su título
-  limpio (sin la clave del Dropbox).
-- I-021: el semáforo de Mi equipo sale de la persona, no del usuario: la
-  gente de planta sin usuario ya tiene semáforo (sus actividades y acuses).
-- Un solo semáforo: el estado de las actividades es el de Mi procedimiento
-  (``hr.job._sgi_mp_status_map``) y el de los renglones, ``pending_state``.
+Historia anterior (se conserva la lógica de las fuentes):
 
-56.38.1 (decisiones de Jose sobre la entrega 8a):
-
-- Capturar medición: 5 días hábiles (antes 3); validar sigue en 3 y el
-  acuse en 5. El aviso «Capturar indicador» del cron usa la misma fecha.
-- El aprobador solo ve lo que ya le toca (aprobación nativa, solicitud o
-  firma, que nacen cuando el ejecutor actuó); el atraso del ejecutor va al
-  rol «Escala».
+56.3.0: una sola lista con semáforo (atrasada: vence antes de hoy; por
+vencer: en 7 días o menos; al día). 56.36.0 (entrega 8a, D-04): «Mis
+pendientes con todo adentro»: capturar y validar mediciones con plazos en
+días hábiles, actividades atrasadas y acuses por persona (con o sin usuario),
+firmas, escalamientos pasados sus días hábiles. 56.38.1 (decisiones de Jose):
+capturar 5 días hábiles, validar 3, acuse 5; el aprobador solo ve lo que ya
+le toca. 57.92.0 (U-02/U-03/U-05): avisos de los crons, «Ir» a donde se hace,
+«Leído y entendido» desde el renglón, validar en lote. 57.95.0 (K-08):
+resumen guardado por persona para los filtros de Mi equipo. 57.103.0:
+registro de cumplimiento por periodo con «En proceso» y «Hecha».
 """
-from datetime import timedelta
+from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -60,6 +66,7 @@ PENDING_KINDS = [
     ('aprobacion', "Aprobación"),
     ('solicitud', "Solicitud por aprobar"),
     ('actividad', "Actividad atrasada"),
+    ('escalamiento', "Escalamiento"),
     ('acuse', "Acuse de lectura"),
     ('firma', "Firma"),
     ('aviso', "Aviso"),
@@ -67,7 +74,7 @@ PENDING_KINDS = [
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
-EMPLOYEE_KINDS = ('actividad', 'acuse')
+EMPLOYEE_KINDS = ('actividad', 'escalamiento', 'acuse')
 PENDING_STATES = [
     ('atrasada', "Atrasada"),
     ('por_vencer', "Por vencer"),
@@ -76,6 +83,8 @@ PENDING_STATES = [
 STATE_RANK = {'atrasada': 0, 'por_vencer': 1, 'al_dia': 2}
 SOON_DAYS = 7
 HORIZON_DAYS = 60
+# Días hábiles que «Posponer una semana» mueve un aviso propio.
+SNOOZE_BUSINESS_DAYS = 5
 # 57.92.0 (U-03): actividades nativas (avisos de los crons) de estas apps que
 # se muestran en Mis pendientes, además de las de los modelos ``sgi.*``.
 NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
@@ -92,6 +101,11 @@ VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
 ACK_DAYS_PARAM = 'quimibond_sgi.ack_business_days'                    # (5)
 # Indicadores automáticos cuya medición sí tiene que capturar alguien.
 _CALC_NEEDS_PERSON = ('error', 'sin_formula', 'manual')
+# Campos del renglón que forman su clave (una fila por persona y registro).
+_ROW_KEY = ('employee_id', 'user_id', 'kind', 'res_model', 'res_id')
+# Campos que se escriben al actualizar un renglón que ya existe.
+_ROW_FIELDS = ('name', 'process_id', 'date_due', 'state', 'state_rank', 'detail',
+               'source_name', 'exec_state', 'exec_note', 'exec_manual', 'exec_date_estimated')
 
 
 def pending_state(due, today):
@@ -110,6 +124,32 @@ def _int_param(env, key, default):
         return int(raw) if raw not in (None, False, '') else default
     except (TypeError, ValueError):
         return default
+
+
+def _fmt(value):
+    """Fecha como dd/mm/aaaa; lo demás como texto."""
+    if isinstance(value, date):
+        return value.strftime('%d/%m/%Y')
+    return str(value)
+
+
+def sgi_detail_html(items):
+    """[(etiqueta, valor)] → HTML corto y escapado para la ficha del
+    pendiente; los vacíos se omiten. Un valor ``Markup`` (nota de un aviso)
+    entra tal cual; el texto con saltos de línea los conserva."""
+    lines = []
+    for label, value in items:
+        if value in (False, None, ''):
+            continue
+        if isinstance(value, Markup):
+            body = value
+        else:
+            body = escape(_fmt(value)).replace('\n', Markup('<br/>'))
+        if label:
+            lines.append(Markup('<p><b>%s:</b> %s</p>') % (label, body))
+        else:
+            lines.append(Markup('<p>%s</p>') % body)
+    return Markup('').join(lines) if lines else False
 
 
 class SgiIndicatorMeasureDue(models.Model):
@@ -190,20 +230,24 @@ class SgiIndicatorMeasureDue(models.Model):
         return bool('calc_status' in indicator._fields and indicator.calc_status in _CALC_NEEDS_PERSON)
 
 
-class SgiMyPending(models.TransientModel):
-    """Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas,
-    validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia."""
+class SgiMyPending(models.Model):
+    """Mis pendientes: bandeja de cada persona con actividades atrasadas,
+    escalamientos, firmas, acuses, capturas, validaciones, aprobaciones y
+    avisos. Una fila por persona y registro pendiente; se actualiza al abrir
+    la lista y cada noche (``_sgi_store``). No guarda historia: lo resuelto
+    se quita."""
     _name = 'sgi.my.pending'
     _description = "Mis pendientes (SGI)"
     _order = 'state_rank, date_due, id'
+    _rec_name = 'name'
     _SGI_REQUEST_DAYS = 3  # días para contestar una solicitud de Aprobaciones
 
-    user_id = fields.Many2one('res.users', string="Usuario", readonly=True)
-    employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True,
+    user_id = fields.Many2one('res.users', string="Usuario", readonly=True, index=True)
+    employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True, index=True,
                                   help="Persona a la que le toca el pendiente.")
     kind = fields.Selection(PENDING_KINDS, string="Tipo", required=True, readonly=True,
                             help="Qué hay que hacer: acción, NC, medición, validación, acuse, firma, "
-                                 "aprobación…")
+                                 "aprobación, actividad, escalamiento, aviso…")
     name = fields.Char(string="Qué", readonly=True)
     process_id = fields.Many2one('sgi.process', string="Proceso", readonly=True, ondelete='restrict',
                                  help="Proceso del pendiente.")
@@ -213,6 +257,12 @@ class SgiMyPending(models.TransientModel):
     state_rank = fields.Integer(readonly=True, help="Orden para mostrar primero lo atrasado.")
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
+    # 57.145.0: la ficha del pendiente.
+    detail = fields.Html(string="Qué hay que hacer", readonly=True, sanitize=True,
+                         help="Criterio de terminado, pasos, instructivo, nota del aviso, plazos "
+                              "de la NC… lo que hace falta saber para resolverlo sin salir de aquí.")
+    source_name = fields.Char(string="Registro", readonly=True,
+                              help="El registro de Odoo sobre el que está el pendiente; «Ir» lo abre.")
     # 57.92.0 (U-05): «Hecho» y «Leído y entendido» solo salen en los
     # renglones de quien abre la lista (no en los de Mi equipo).
     is_mine = fields.Boolean(compute='_compute_is_mine',
@@ -225,23 +275,50 @@ class SgiMyPending(models.TransientModel):
         help="Actividades del periodo: pendiente o en proceso (con nota de avance). «En proceso» "
              "no quita el atraso.")
     exec_note = fields.Char(string="Nota de avance", readonly=True)
+    exec_date_estimated = fields.Date(string="Fecha estimada", readonly=True,
+                                      help="Cuándo espera terminarla quien la marcó «En proceso».")
     exec_manual = fields.Boolean(readonly=True,
                                  help="Actividad de registro manual: «Ir» abre su registro.")
-    can_mark_exec = fields.Boolean(compute='_compute_can_mark_exec',
-                                   help="Quien abre la lista puede marcar el avance.")
+    can_mark_exec = fields.Boolean(compute='_compute_can_act',
+                                   help="Quien abre la lista puede marcar el avance del registro de "
+                                        "cumplimiento (la persona, su jefe o el Jefe MAST).")
+    can_done = fields.Boolean(compute='_compute_can_act',
+                              help="«Hecho» aplica a este renglón para quien abre la lista: la "
+                                   "actividad con registro de cumplimiento (o que lo lleva), el "
+                                   "aviso propio y la acción propia.")
+    can_snooze = fields.Boolean(compute='_compute_can_act',
+                                help="Aviso propio: se puede posponer una semana.")
 
     @api.depends_context('uid')
     def _compute_is_mine(self):
         for row in self:
             row.is_mine = row.user_id == self.env.user
 
+    @api.depends('kind', 'res_model', 'res_id', 'employee_id', 'user_id')
     @api.depends_context('uid')
-    def _compute_can_mark_exec(self):
+    def _compute_can_act(self):
         Exec = self.env['sgi.activity.execution'].sudo()
+        Activity = self.env['sgi.process.activity'].sudo()
+        Employee = self.env['hr.employee'].sudo()
         for row in self:
-            execution = Exec.browse(row.res_id).exists() \
-                if row.res_model == 'sgi.activity.execution' and row.res_id else Exec
-            row.can_mark_exec = bool(execution) and execution.with_env(self.env)._sgi_can_mark()
+            mine = row.user_id == self.env.user
+            can_exec = can_done = False
+            if row.res_model == 'sgi.activity.execution' and row.res_id:
+                execution = Exec.browse(row.res_id).exists()
+                can_exec = bool(execution) and Exec._sgi_user_can_mark(execution.employee_id)
+                can_done = can_exec
+            elif row.kind == 'actividad' and row.res_model == 'sgi.process.activity' and row.res_id:
+                # Atrasada por semáforo: «Hecho» crea su registro del periodo
+                # si la actividad lo lleva (cadencia y método que se mide).
+                activity = Activity.browse(row.res_id).exists()
+                employee = Employee.browse(row.employee_id.id) if row.employee_id else Employee
+                can_done = bool(activity and employee and activity._sgi_exec_applies()
+                                and Exec._sgi_user_can_mark(employee))
+            elif row.kind in ('aviso', 'accion'):
+                can_done = mine
+            row.can_mark_exec = can_exec
+            row.can_done = can_done
+            row.can_snooze = row.kind == 'aviso' and mine
 
     # ------------------------------------------------------------------
     # Fuentes: una búsqueda por tipo para todos los usuarios a la vez.
@@ -449,6 +526,109 @@ class SgiMyPending(models.TransientModel):
                 'date_due': rec.sgi_next_review_date, 'process_id': rec.sgi_process_id.id}
 
     @api.model
+    def _sgi_activity_detail(self, activity, first=()):
+        """Qué hay que hacer en una actividad del procedimiento: criterio de
+        terminado, pasos, instructivo, dónde se hace y qué hacer si no se
+        puede cumplir."""
+        items = list(first)
+        items.append(("Criterio de terminado", activity.done_criteria))
+        items.append(("Cómo", activity.how_steps))
+        instruction = activity.instruction_id
+        if instruction:
+            title = instruction.sgi_title if 'sgi_title' in instruction._fields else False
+            items.append(("Instructivo", title or instruction.name))
+        if activity.odoo_menu_id:
+            items.append(("Dónde se hace", activity.odoo_menu_id.complete_name))
+        items.append(("Si no se puede cumplir", activity.on_fail))
+        return sgi_detail_html(items)
+
+    @api.model
+    def _sgi_row_detail(self, kind, rec):
+        """57.145.0: ``detail`` (HTML) y ``source_name`` del renglón, para la
+        ficha del pendiente. Solo lectura de campos que ya se leen en
+        ``_sgi_row``; nunca truena por un campo de otra app que no esté."""
+        source = rec.display_name or ''
+        detail = False
+        if kind == 'accion':
+            alert = rec.alert_id
+            origin = rec.origin_display if 'origin_display' in rec._fields else ''
+            detail = sgi_detail_html([
+                ("Compromiso", rec.date_commit),
+                ("Origen", origin or (alert.display_name if alert else '')),
+                ("Avance", ("%s %%" % rec.progress) if rec.progress else ''),
+            ])
+        elif kind == 'nc':
+            selection = rec._fields['sgi_containment_state'].selection \
+                if 'sgi_containment_state' in rec._fields else None
+            labels = dict(selection) if isinstance(selection, (list, tuple)) else {}
+
+            def step(label, due, state):
+                if not due:
+                    return (label, '')
+                return (label, "%s (%s)" % (_fmt(due), labels.get(state, state or '')))
+            detail = sgi_detail_html([
+                step("Contención", rec.sgi_due_containment, rec.sgi_containment_state),
+                step("Causa raíz", rec.sgi_due_root_cause, rec.sgi_root_cause_state),
+                step("Plan de acción", rec.sgi_due_plan, rec.sgi_plan_state),
+                ("Eficacia", rec.sgi_effectiveness_due),
+                (None, "Se contesta en la ficha de la NC: pulse «Ir»."),
+            ])
+        elif kind in ('medicion', 'validacion'):
+            indicator = rec.indicator_id
+            value = rec.value if 'value' in rec._fields else False
+            detail = sgi_detail_html([
+                ("Indicador", "%s %s" % (indicator.code or '', indicator.name or '')),
+                ("Periodo", rec._sgi_period_label()),
+                ("Valor capturado", value if kind == 'validacion' and value not in (False, None) else ''),
+                ("Capturada el", rec.captured_date if kind == 'validacion' else False),
+                (None, "Capture el valor en la medición: pulse «Capturar»." if kind == 'medicion'
+                 else "Revise el valor y su evidencia y pulse «Validar»."),
+            ])
+        elif kind == 'legal':
+            detail = sgi_detail_html([
+                ("Próxima evaluación", rec.next_eval_date),
+                ("Vigencia", rec.expiry_date),
+                (None, "Se evalúa en el requisito legal: pulse «Ir»."),
+            ])
+        elif kind == 'documento':
+            detail = sgi_detail_html([
+                ("Clave", rec.sgi_code if 'sgi_code' in rec._fields else ''),
+                ("Próxima revisión", rec.sgi_next_review_date),
+                (None, "Se revisa en el documento: pulse «Ir»."),
+            ])
+        elif kind == 'solicitud':
+            req = rec.request_id
+            source = req.display_name or ''
+            detail = sgi_detail_html([
+                ("Categoría", req.category_id.name),
+                ("Solicita", req.request_owner_id.name if 'request_owner_id' in req._fields else ''),
+                ("Enviada", fields.Date.to_date(req.date_confirmed) if req.date_confirmed else False),
+                ("Motivo", req.reason if 'reason' in req._fields else ''),
+                (None, "Se aprueba o rechaza en Aprobaciones: pulse «Ir»."),
+            ])
+        elif kind == 'aprobacion':
+            rule = rec.rule_id
+            detail = sgi_detail_html([
+                ("Regla", rule.message or rule.name),
+                (None, "Se aprueba en el documento que la espera: pulse «Ir»."),
+            ])
+        elif kind == 'firma':
+            request = rec.sign_request_id
+            source = request.reference or request.display_name or ''
+            detail = sgi_detail_html([(None, "Se firma en Firma electrónica: pulse «Firmar».")])
+        elif kind == 'revision':
+            detail = sgi_detail_html([(None, "Conteste la revisión mensual: pulse «Ir».")])
+        elif kind == 'aviso':
+            source = rec.res_name or rec.res_model or ''
+            detail = sgi_detail_html([
+                (None, rec.note if rec.note else ''),
+                ("Sobre", source),
+                (None, "Atiéndalo en su registro («Ir») y luego márquelo «Hecho»; si todavía no "
+                       "toca, «Posponer una semana»."),
+            ])
+        return {'detail': detail, 'source_name': source[:200] if source else False}
+
+    @api.model
     def _sgi_row_users(self, kind, rec):
         if kind == 'accion':
             return rec.responsible_id
@@ -507,7 +687,7 @@ class SgiMyPending(models.TransientModel):
         regla de aprobación nativa del botón (tipo ``aprobacion``), la
         solicitud de Aprobaciones (``solicitud``) o la firma (``firma``). El
         atraso del ejecutor le llega a quien tiene «Escala», pasados sus días
-        hábiles."""
+        hábiles (57.145.0: tipo ``escalamiento``)."""
         employees = employees.sudo()
         result = {emp.id: [] for emp in employees}
         if not employees:
@@ -555,11 +735,17 @@ class SgiMyPending(models.TransientModel):
                     continue
                 seen.add(activity.id)
                 detail_txt = status[activity][2]
+                how = ("Esta actividad lleva registro de cumplimiento: «Hecho» abre el del "
+                       "periodo en curso." if activity._sgi_exec_applies()
+                       else "Se cumple haciendo su registro en Odoo o por evento: pulse «Ir».")
                 rows.append({
                     'kind': 'actividad', 'name': "Hacer %s%s" % (
                         label(activity), (" — %s" % detail_txt) if detail_txt else ''),
                     'date_due': late_due[activity.id], 'process_id': activity.process_id.id,
                     'res_model': 'sgi.process.activity', 'res_id': activity.id,
+                    'source_name': label(activity)[:200],
+                    'detail': self._sgi_activity_detail(
+                        activity, [("Por qué está aquí", detail_txt), (None, how)]),
                     # Van atrasadas por definición, aunque no se sepa desde cuándo.
                     'state': 'atrasada'})
             for role in received & all_roles:
@@ -574,11 +760,23 @@ class SgiMyPending(models.TransientModel):
                 if escalated > today:
                     continue
                 seen.add(activity.id)
+                executors = ", ".join(activity.role_ids.filtered(
+                    lambda r: r.role == 'ejecuta').mapped('job_id.name')) \
+                    if 'job_id' in activity.role_ids._fields else ''
                 rows.append({
-                    'kind': 'actividad', 'name': "Escalamiento: %s (atrasada desde el %s)" % (
+                    'kind': 'escalamiento', 'name': "Escalamiento: %s (atrasada desde el %s)" % (
                         label(activity), due.strftime('%d/%m/%Y')),
                     'date_due': escalated, 'process_id': activity.process_id.id,
                     'res_model': 'sgi.process.activity', 'res_id': activity.id,
+                    'source_name': label(activity)[:200],
+                    'detail': self._sgi_activity_detail(activity, [
+                        ("Atrasada desde", due),
+                        ("La ejecuta", executors),
+                        ("Le llega a usted", "pasados %d días hábiles de atraso (rol «Escala»)"
+                         % (role.after_days or 0)),
+                        (None, "Quien la ejecuta la marca hecha; usted puede ir a la actividad "
+                               "y darle seguimiento."),
+                    ]),
                     'state': 'atrasada'})
             for execution in executions.get(emp.id, []):
                 seen.add(execution.activity_id.id)
@@ -596,12 +794,20 @@ class SgiMyPending(models.TransientModel):
             if start not in ack_dues:
                 ack_dues[start] = sgi_add_business_days(env, start, ack_days)
             due = ack_dues[start]
+            doc_name = title or doc.name or ''
             result[ack.employee_id.id].append({
                 'kind': 'acuse', 'name': "Leer y firmar %s%s" % (
-                    title or doc.name or '', (" (rev. %s)" % revision) if revision else ''),
+                    doc_name, (" (rev. %s)" % revision) if revision else ''),
                 'date_due': due,
                 'process_id': doc.sgi_process_id.id if 'sgi_process_id' in doc._fields else False,
-                'res_model': 'sgi.document.ack', 'res_id': ack.id})
+                'res_model': 'sgi.document.ack', 'res_id': ack.id,
+                'source_name': doc_name[:200],
+                'detail': sgi_detail_html([
+                    ("Documento", doc_name), ("Revisión", revision),
+                    ("Clave", doc.sgi_code if 'sgi_code' in doc._fields else ''),
+                    (None, "«Leer» abre el archivo; «Leído y entendido» deja su acuse con la "
+                           "fecha de hoy."),
+                ])})
         return result
 
     @api.model
@@ -626,6 +832,8 @@ class SgiMyPending(models.TransientModel):
     @api.model
     def _sgi_execution_row(self, execution):
         """Renglón de Mis pendientes de un periodo abierto de una actividad."""
+        execution = execution.sudo()
+        activity = execution.activity_id
         name = "Hacer %s" % execution.name
         note = False
         if execution.state == 'en_proceso':
@@ -634,12 +842,23 @@ class SgiMyPending(models.TransientModel):
                 (": %s" % note) if note else '',
                 (" (estimada %s)" % execution.date_estimated.strftime('%d/%m/%Y'))
                 if execution.date_estimated else '')
+        manual = activity._sgi_exec_is_manual()
+        how = ("Al terminarla pulse «Hecho» y deje la evidencia (nota o archivo)." if manual
+               else "Se marca hecha sola cuando aparece su registro en Odoo dentro del periodo; "
+                    "si se hizo por otro lado, «Hecho» pide decir dónde.")
         return {
             'kind': 'actividad', 'name': name, 'date_due': execution.date_due,
             'process_id': execution.process_id.id,
             'res_model': 'sgi.activity.execution', 'res_id': execution.id,
+            'source_name': (execution.name or '')[:200],
+            'detail': self._sgi_activity_detail(activity, [
+                ("Periodo", execution.period_label),
+                ("Avance", note),
+                (None, how),
+            ]),
             'exec_state': execution.state, 'exec_note': note or False,
-            'exec_manual': execution.activity_id._sgi_exec_is_manual(),
+            'exec_date_estimated': execution.date_estimated if execution.state == 'en_proceso' else False,
+            'exec_manual': manual,
         }
 
     @api.model
@@ -672,6 +891,7 @@ class SgiMyPending(models.TransientModel):
             for rec in records:
                 row = dict(self._sgi_row(kind, rec), kind=kind,
                            res_model=rec._name, res_id=rec.id)
+                row.update(self._sgi_row_detail(kind, rec))
                 if kind == 'aprobacion':
                     # «Abrir» lleva al documento que espera la aprobación.
                     row.update(res_model=rec.rule_id.model_name, res_id=rec.res_id)
@@ -729,24 +949,82 @@ class SgiMyPending(models.TransientModel):
         return {eid: self._sgi_count(rows)
                 for eid, rows in self._sgi_pending_values_employees(employees).items()}
 
+    # ------------------------------------------------------------------
+    # Renglones guardados (57.145.0): una fila por persona y registro.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _sgi_key_of_vals(vals):
+        return tuple((vals.get(f) or False) for f in _ROW_KEY)
+
+    def _sgi_key(self):
+        self.ensure_one()
+        return (self.employee_id.id or False, self.user_id.id or False, self.kind,
+                self.res_model or False, self.res_id or False)
+
+    def _sgi_differs(self, vals):
+        """True si algún valor cambia respecto al renglón guardado."""
+        self.ensure_one()
+        for name in _ROW_FIELDS:
+            if name not in vals:
+                continue
+            current = self[name]
+            if isinstance(current, models.BaseModel):
+                current = current.id or False
+            if (current or False) != (vals[name] or False):
+                return True
+        return False
+
     @api.model
-    def _sgi_build(self, employees):
-        """Renglones de los empleados dados (hr.employee, sudo) para abrirlos
-        en la lista; los anteriores del mismo usuario y personas se reemplazan.
-        Desde 56.36.0 también los de quien no tiene usuario (I-021)."""
-        employees = employees.sudo()
-        self.search([('create_uid', '=', self.env.uid),
-                     ('employee_id', 'in', employees.ids)]).unlink()
-        values = self._sgi_pending_values_employees(employees)
-        # 57.95.0 (K-08): lo que se acaba de calcular refresca el resumen
-        # guardado que leen los filtros de Mi equipo (solo lo que cambió).
-        self.env['hr.employee']._sgi_save_pending_summary(
-            {emp.id: self._sgi_count(values.get(emp.id, [])) for emp in employees})
+    def _sgi_store(self, domain, vals_list):
+        """Deja en la tabla exactamente los renglones ``vals_list`` dentro de
+        ``domain``: actualiza en su lugar los que ya existen (misma clave:
+        persona, tipo, modelo e id), crea los nuevos y quita los que ya no
+        están pendientes. Los ids de lo que sigue pendiente no cambian: la
+        lista abierta en otra pestaña o en el celular sigue válida. Escribe
+        como sistema; devuelve los renglones vigentes en el entorno del
+        usuario, en el orden de la lista."""
+        Row = self.sudo()
+        existing = Row.search(domain)
+        by_key = {}
+        for row in existing:
+            by_key.setdefault(row._sgi_key(), []).append(row)
+        keep = Row.browse()
+        to_create = []
+        for vals in vals_list:
+            rows = by_key.pop(self._sgi_key_of_vals(vals), None)
+            if rows:
+                row = rows[0]
+                if row._sgi_differs(vals):
+                    row.write({name: vals.get(name, False) for name in _ROW_FIELDS})
+                keep |= row
+            else:
+                to_create.append({name: vals.get(name, False) for name in _ROW_KEY + _ROW_FIELDS})
+        # Lo resuelto y los repetidos (dos listas abiertas a la vez) se van.
+        (existing - keep).unlink()
+        created = Row.create(to_create) if to_create else Row
+        rows = keep | created
+        return self.search([('id', 'in', rows.ids)]) if rows else self.browse()
+
+    @api.model
+    def _sgi_store_employees(self, employees, values):
+        """Guarda los renglones de las personas dadas ({empleado.id: [valores]})."""
         vals_list = []
-        for emp in employees:
+        for emp in employees.sudo():
             for row in values.get(emp.id, []):
                 vals_list.append(dict(row, employee_id=emp.id, user_id=emp.user_id.id or False))
-        return self.create(vals_list)
+        return self._sgi_store([('employee_id', 'in', employees.ids)], vals_list)
+
+    @api.model
+    def _sgi_build(self, employees):
+        """Renglones de los empleados dados (hr.employee, sudo), al día, para
+        abrirlos en la lista. Desde 56.36.0 también los de quien no tiene
+        usuario (I-021). Refresca el resumen guardado que leen los filtros de
+        Mi equipo (57.95.0, K-08)."""
+        employees = employees.sudo()
+        values = self._sgi_pending_values_employees(employees)
+        self.env['hr.employee']._sgi_save_pending_summary(
+            {emp.id: self._sgi_count(values.get(emp.id, [])) for emp in employees})
+        return self._sgi_store_employees(employees, values)
 
     @api.model
     def _sgi_action(self, rows, name, group_by_person=False):
@@ -760,14 +1038,17 @@ class SgiMyPending(models.TransientModel):
         # «Pendientes del equipo» (agrupado por persona) muestra todo.
         if not group_by_person:
             context['search_default_actionable'] = 1
+        ref = self.env.ref
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
-            # 57.94.0 (I-05): kanban en el celular y la tableta.
-            'view_mode': 'list,kanban', 'mobile_view_mode': 'kanban',
+            # 57.94.0 (I-05): kanban en el celular y la tableta. 57.145.0: la
+            # ficha del pendiente al abrir el renglón.
+            'view_mode': 'list,kanban,form', 'mobile_view_mode': 'kanban',
             'domain': [('id', 'in', rows.ids)],
-            'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list'),
-                      (self.env.ref('quimibond_sgi.sgi_my_pending_view_kanban').id, 'kanban')],
-            'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
+            'views': [(ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list'),
+                      (ref('quimibond_sgi.sgi_my_pending_view_kanban').id, 'kanban'),
+                      (ref('quimibond_sgi.sgi_my_pending_view_form').id, 'form')],
+            'search_view_id': [ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
             'context': context,
             # I-001: sin pendientes de verdad; las actividades sin medición
             # automática no pueden salir aquí, y se dice.
@@ -786,10 +1067,10 @@ class SgiMyPending(models.TransientModel):
             rows = self._sgi_build(employee)
         else:
             user = self.env.user
-            self.search([('create_uid', '=', self.env.uid), ('employee_id', '=', False),
-                         ('user_id', '=', user.id)]).unlink()
-            rows = self.create([dict(row, user_id=user.id)
-                                for row in self._sgi_pending_values(user).get(user.id, [])])
+            rows = self._sgi_store(
+                [('employee_id', '=', False), ('user_id', '=', user.id)],
+                [dict(row, user_id=user.id, employee_id=False)
+                 for row in self._sgi_pending_values(user).get(user.id, [])])
         return self._sgi_action(rows, "Mis pendientes")
 
     @api.model
@@ -833,6 +1114,9 @@ class SgiMyPending(models.TransientModel):
             'context': context,
         }
 
+    # ------------------------------------------------------------------
+    # Ir: abrir el registro de origen o la pantalla donde se hace.
+    # ------------------------------------------------------------------
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""
         self.ensure_one()
@@ -901,7 +1185,8 @@ class SgiMyPending(models.TransientModel):
         # 57.92.0 (U-05): «Ir» lleva a la pantalla de Odoo donde se hace la
         # actividad (su menú o acción) o a su evidencia, como «Ir a hacerlo»
         # de Mi procedimiento (``mp_can_go``); no a la ficha del catálogo.
-        if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
+        # 57.145.0: el escalamiento también.
+        if self.kind in ('actividad', 'escalamiento') and self.res_model == 'sgi.process.activity':
             activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
             if activity and (activity.odoo_menu_id or activity.odoo_action_id
                              or activity.odoo_ref or activity.measure_model_id):
@@ -928,6 +1213,97 @@ class SgiMyPending(models.TransientModel):
             'view_mode': 'form', 'target': 'current',
         }
 
+    # ------------------------------------------------------------------
+    # Hecho y las demás formas de actuar (57.145.0).
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_feedback(self, message, warning=False):
+        """Lo que devuelve cada botón: una notificación y, en ``next``, el
+        cierre estándar (``act_window_close``). En la lista, el cierre dispara
+        el ``onClose`` de la vista y la recarga; en un asistente cierra el
+        diálogo y recarga la lista de atrás. Sin ``soft_reload``."""
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'type': 'warning' if warning else 'success', 'message': message,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
+
+    def action_done(self):
+        """«Hecho»: resuelve el pendiente según su tipo. Lo que se resuelve
+        en su propio registro (NC, requisito legal, documento, aprobación,
+        firma, revisión, escalamiento) lo dice y no hace nada."""
+        self.ensure_one()
+        if self.res_model == 'sgi.activity.execution':
+            return self.action_exec_done()
+        if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
+            self._sgi_exec_from_activity()
+            return self.action_exec_done()
+        if self.kind == 'aviso':
+            return self.action_done_notice()
+        if self.kind == 'accion':
+            return self.action_done_action_line()
+        if self.kind == 'acuse':
+            return self.action_sign_ack()
+        if self.kind == 'validacion':
+            return self.action_validate_measure()
+        if self.kind == 'escalamiento':
+            raise UserError("El escalamiento lo resuelve quien ejecuta la actividad al marcarla "
+                            "hecha; usted puede abrirla con «Ir» y darle seguimiento.")
+        raise UserError("Este pendiente se resuelve en su propio registro: pulse «Ir».")
+
+    def _sgi_exec_from_activity(self):
+        """Actividad atrasada por semáforo que lleva registro de cumplimiento
+        y todavía no tiene renglón del periodo (el cron nocturno lo crea; aquí
+        se adelanta): crea o encuentra el registro del periodo en curso de la
+        persona y convierte este renglón en el suyo, sin perder el id."""
+        self.ensure_one()
+        Exec = self.env['sgi.activity.execution'].sudo()
+        activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
+        if not activity:
+            raise UserError("La actividad ya no existe.")
+        if not activity._sgi_exec_applies():
+            raise UserError("«%s» se cumple haciendo su registro en Odoo o por evento; aquí no se "
+                            "marca. Pulse «Ir» para hacerla." % (activity.name or ''))
+        employee = self.env['hr.employee'].sudo().browse(self.employee_id.id).exists() \
+            if self.employee_id else False
+        if not employee:
+            raise UserError("Este renglón no tiene persona: no se puede abrir su registro.")
+        if not Exec._sgi_user_can_mark(employee):
+            raise AccessError("Solo la persona responsable, su jefe o el Jefe MAST pueden marcar "
+                              "el avance de «%s»." % (activity.name or ''))
+        today = fields.Date.context_today(self)
+        period = activity._sgi_exec_period(today)
+        if not period:
+            raise UserError("Hoy no hay periodo abierto para «%s» (día inhábil o actividad sin "
+                            "cadencia)." % (activity.name or ''))
+        start, end, due = period
+        execution = Exec.search([('activity_id', '=', activity.id), ('employee_id', '=', employee.id),
+                                 ('period_start', '=', start)], limit=1)
+        if not execution:
+            execution = Exec.with_context(mail_create_nolog=True, tracking_disable=True).create({
+                'activity_id': activity.id, 'employee_id': employee.id,
+                'period_start': start, 'period_end': end, 'date_due': due})
+        self._sgi_sync_execution(execution)
+        return execution
+
+    def _sgi_sync_execution(self, execution):
+        """Pone al día este renglón con su registro de cumplimiento: cerrado
+        (hecha o no aplica) se quita; abierto, se reescribe (avance, nota,
+        vencimiento, estado). Escribe como sistema; lo llaman los botones y
+        el asistente de avance."""
+        from .sgi_activity_execution import EXEC_OPEN
+        execution = execution.sudo()
+        rows = self.sudo()
+        if not execution.exists() or execution.state not in EXEC_OPEN:
+            rows.unlink()
+            return False
+        today = fields.Date.context_today(self)
+        vals = self._sgi_finish(self._sgi_execution_row(execution), today)
+        rows.write({name: vals.get(name, False) for name in ('res_model', 'res_id') + _ROW_FIELDS})
+        return True
+
     def _sgi_execution(self):
         self.ensure_one()
         if self.res_model != 'sgi.activity.execution':
@@ -937,19 +1313,24 @@ class SgiMyPending(models.TransientModel):
             raise UserError("El registro de esa actividad ya no existe.")
         return execution
 
+    def _sgi_exec_wizard(self, mode):
+        action = self._sgi_execution()._sgi_mark_wizard(mode)
+        action['context'] = dict(action['context'], sgi_pending_row_id=self.id)
+        return action
+
     def action_exec_progress(self):
         """57.103.0: «En proceso» desde el renglón (nota de avance y fecha
         estimada)."""
-        action = self._sgi_execution().action_mark_progress()
-        action['context'] = dict(action['context'], sgi_pending_row_id=self.id)
-        return action
+        return self._sgi_exec_wizard('progress')
 
     def action_exec_done(self):
         """57.103.0: «Hecho» desde el renglón (evidencia si es de registro
         manual o si el sistema no vio el registro)."""
-        action = self._sgi_execution().action_mark_done()
-        action['context'] = dict(action['context'], sgi_pending_row_id=self.id)
-        return action
+        return self._sgi_exec_wizard('done')
+
+    def action_exec_not_applicable(self):
+        """57.145.0: «No aplica este periodo» desde el renglón (con motivo)."""
+        return self._sgi_exec_wizard('na')
 
     def action_sign_ack(self):
         """57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de
@@ -962,8 +1343,9 @@ class SgiMyPending(models.TransientModel):
         if not ack:
             raise UserError("El acuse ya no existe.")
         ack.action_mark_read()
-        self.unlink()
-        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        name = self.name
+        self.sudo().unlink()
+        return self._sgi_feedback("Acuse registrado: %s" % name)
 
     def action_done_notice(self):
         """57.92.0 (U-03): «Hecho» marca hecho el aviso (la actividad nativa),
@@ -978,8 +1360,43 @@ class SgiMyPending(models.TransientModel):
             raise UserError("Solo la persona a quien está asignado el aviso puede marcarlo hecho.")
         # Sudo con el mismo uid: la nota queda a nombre de quien lo marcó.
         act.sudo().action_feedback(feedback="Hecho desde Mis pendientes.")
-        self.unlink()
-        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        name = self.name
+        self.sudo().unlink()
+        return self._sgi_feedback("Aviso hecho: %s" % name)
+
+    def action_snooze_notice(self):
+        """57.145.0: «Posponer una semana» un aviso propio: su fecha límite
+        pasa a 5 días hábiles desde hoy y el renglón sale de lo urgente."""
+        self.ensure_one()
+        act = self.env['mail.activity'].browse(self.res_id).exists() \
+            if self.kind == 'aviso' and self.res_model == 'mail.activity' else False
+        if not act:
+            raise UserError("El aviso ya no existe.")
+        if act.sudo().user_id != self.env.user:
+            raise UserError("Solo la persona a quien está asignado el aviso puede posponerlo.")
+        today = fields.Date.context_today(self)
+        new_due = sgi_add_business_days(self.env, today, SNOOZE_BUSINESS_DAYS)
+        act.sudo().with_context(mail_activity_quick_update=True).write({'date_deadline': new_due})
+        self.sudo().write({'date_due': new_due, 'state': pending_state(new_due, today),
+                           'state_rank': STATE_RANK[pending_state(new_due, today)]})
+        return self._sgi_feedback("Aviso pospuesto al %s: %s" % (new_due.strftime('%d/%m/%Y'), self.name))
+
+    def action_done_action_line(self):
+        """57.145.0: «Hecho» termina la acción (de NC, riesgo, incidente…)
+        del responsable: fecha de hoy y avance al 100 %, como el botón de la
+        acción. Solo el responsable o el Jefe MAST."""
+        self.ensure_one()
+        line = self.env['sgi.action.line'].browse(self.res_id).exists() \
+            if self.kind == 'accion' and self.res_model == 'sgi.action.line' else False
+        if not line:
+            raise UserError("La acción ya no existe.")
+        if line.sudo().responsible_id != self.env.user \
+                and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el responsable de la acción o el Jefe MAST pueden terminarla.")
+        line.action_mark_done()
+        name = self.name
+        self.sudo().unlink()
+        return self._sgi_feedback("Acción terminada: %s" % name)
 
     def action_validate_measure(self):
         """«Validar» desde el renglón (I-006). Valida quien abre la lista, con
@@ -992,8 +1409,9 @@ class SgiMyPending(models.TransientModel):
         if not measure:
             raise UserError("La medición ya no existe.")
         measure.action_validate()
-        self.unlink()
-        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        name = self.name
+        self.sudo().unlink()
+        return self._sgi_feedback("Medición validada: %s" % name)
 
     def action_validate_selected(self):
         """57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
@@ -1018,8 +1436,7 @@ class SgiMyPending(models.TransientModel):
         allowed -= empty
         allowed.action_validate()
         left = skipped | empty
-        rows.filtered(lambda r: r.res_id not in left.ids).unlink()
-        reload = {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        rows.filtered(lambda r: r.res_id not in left.ids).sudo().unlink()
         if left:
             parts = []
             if skipped:
@@ -1028,15 +1445,9 @@ class SgiMyPending(models.TransientModel):
                 parts.append("%d manuales no tienen valor capturado y se dejaron (%s): "
                              "capture el valor o, si es 0, escriba en la nota por qué"
                              % (len(empty), ", ".join(empty.mapped('display_name'))))
-            return {
-                'type': 'ir.actions.client', 'tag': 'display_notification',
-                'params': {
-                    'type': 'warning',
-                    'message': "Se validaron %d mediciones; %s." % (len(allowed), "; ".join(parts)),
-                    'next': reload,
-                },
-            }
-        return reload
+            return self._sgi_feedback(
+                "Se validaron %d mediciones; %s." % (len(allowed), "; ".join(parts)), warning=True)
+        return self._sgi_feedback("Se validaron %d mediciones." % len(allowed))
 
 
 class HrEmployeePendingSaved(models.Model):
@@ -1046,7 +1457,8 @@ class HrEmployeePendingSaved(models.Model):
     en cada búsqueda. Lo refrescan el respaldo nocturno (sgi.cron,
     cron_nightly_backup) y cada lista de pendientes que se abre
     (sgi.my.pending._sgi_build). Las columnas de Mi equipo siguen en vivo.
-    Técnicos: no salen en ninguna vista."""
+    Técnicos: no salen en ninguna vista. 57.145.0: el respaldo nocturno
+    también deja guardados los renglones de todos."""
     _inherit = 'hr.employee'
 
     sgi_pending_saved_total = fields.Integer(
@@ -1099,19 +1511,26 @@ class HrEmployeePendingSaved(models.Model):
 
     @api.model
     def _sgi_refresh_pending_summary(self, employees=None):
-        """Recalcula y guarda el resumen. Sin empleados: todo el alcance de Mi
-        equipo, y quien salió de él con un resumen viejo queda en cero."""
+        """Recalcula y guarda el resumen y los renglones. Sin empleados: todo
+        el alcance de Mi equipo, y quien salió de él con un resumen viejo
+        queda en cero y sin renglones."""
+        Pending = self.env['sgi.my.pending']
         if employees:
             scope = employees.sudo()
         else:
             scope = self.sudo().search(self._sgi_pending_scope_domain())
-        summary = self.env['sgi.my.pending']._sgi_summary_employees(scope)
-        summary = {emp.id: summary.get(emp.id, (0, 0, False)) for emp in scope}
+        values = Pending._sgi_pending_values_employees(scope)
+        Pending._sgi_store_employees(scope, values)
+        summary = {emp.id: Pending._sgi_count(values.get(emp.id, [])) for emp in scope}
         if not employees:
             gone = self.sudo().search([('id', 'not in', scope.ids), '|',
                                        ('sgi_pending_saved_total', '>', 0),
                                        ('sgi_pending_saved_state', '!=', False)])
             summary.update({emp.id: (0, 0, False) for emp in gone})
+            stale = Pending.sudo().search([('employee_id', '!=', False),
+                                           ('employee_id', 'not in', scope.ids)])
+            if stale:
+                stale.unlink()
         return self._sgi_save_pending_summary(summary)
 
 

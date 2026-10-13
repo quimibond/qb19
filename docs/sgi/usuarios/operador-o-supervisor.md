@@ -44,15 +44,32 @@ rechazado, verde = cerrado, vigente o validado.
 2. Arriba aparecen primero los **atrasados**, luego lo que **vence esta
    semana**. Cada renglón dice qué es (acción, NC, medición, acuse, firma,
    aprobación, actividad atrasada…), de qué proceso y cuándo vence.
-3. Pulse **Ir** para ir al registro y resolverlo. Al resolverlo, el
-   renglón desaparece solo. En un acuse de lectura, **Leer** abre el
-   documento y **Leído y entendido** lo firma desde el renglón.
-4. Los avisos automáticos del SGI (en no conformidades, documentos,
-   mantenimiento, mesa de ayuda o proyectos) y las actividades sobre
-   registros del SGI, vencidos o que vencen esta semana, también salen en la
-   misma lista, como **Aviso**, salvo los que ya tienen su propio renglón.
-   Cuando lo atienda, pulse **Hecho** en el renglón: el aviso se cierra en
-   Odoo y sale de la lista. El filtro **Avisos** los muestra solos.
+3. Toque el renglón para abrir su **ficha**: qué hay que hacer (criterio de
+   terminado, pasos, instructivo, nota del aviso, plazos de la NC…), sobre
+   qué registro, cuándo vence y los botones para actuar.
+4. **Hecho** aparece solo donde aplica, y sabe qué hacer según el tipo
+   (desde 57.145.0):
+   - **Actividad atrasada** de su procedimiento: abre el asistente de
+     «Hecha» (si es de registro manual pide una nota o un archivo de
+     evidencia). Si la actividad todavía no tiene su registro del periodo,
+     Hecho lo crea en ese momento. También tiene **En proceso** (nota de
+     avance, no quita el atraso) y, en la ficha, **No aplica este periodo**.
+   - **Aviso** automático del SGI (en no conformidades, documentos,
+     mantenimiento, mesa de ayuda o proyectos): Hecho lo cierra en Odoo. En
+     la ficha, **Posponer una semana** mueve su fecha límite 5 días hábiles.
+   - **Acción** de una NC, riesgo o incidente: Hecho la termina (fecha de hoy
+     y 100 %).
+   - **Acuse de lectura**: **Leer** abre el documento y **Leído y entendido**
+     lo firma desde el renglón. **Validar medición**: **Validar**.
+   - Lo que se resuelve en su propio registro (contestar una NC, evaluar un
+     requisito legal, revisar un documento, aprobar, firmar, revisar la
+     medición) no tiene Hecho: pulse **Ir** (o **Firmar**, **Capturar**) y
+     resuélvalo ahí; el renglón se quita solo.
+   Al marcar algo, Odoo muestra «Hecha: …» y el renglón desaparece de la
+   lista en ese momento. Un **Escalamiento** (actividad de otra persona que
+   pasó sus días de atraso) solo tiene Ir: la marca hecha quien la ejecuta.
+5. **Vence** se lee como «Hace 3 días», «Hoy» o «En 5 días». Los filtros
+   **Avisos**, **Actividades** y **Escalamientos** los muestran solos.
 
 ### 2.2 Hacer una actividad de su procedimiento
 

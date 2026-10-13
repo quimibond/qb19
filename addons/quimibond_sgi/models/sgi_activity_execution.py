@@ -176,14 +176,18 @@ class SgiActivityExecution(models.Model):
     # ------------------------------------------------------------------
     # Quién marca
     # ------------------------------------------------------------------
-    def _sgi_can_mark(self):
-        """La persona del renglón, cualquiera de sus jefes (cadena de «Jefe»
-        en Empleados) o el Jefe MAST."""
-        self.ensure_one()
+    @api.model
+    def _sgi_user_can_mark(self, employee):
+        """Quien abre la pantalla puede marcar el avance de ``employee``: la
+        propia persona, cualquiera de sus jefes (cadena de «Jefe» en
+        Empleados) o el Jefe MAST. 57.145.0: también lo usa Mis pendientes
+        para la actividad atrasada que todavía no tiene renglón del periodo."""
         env = self.env
         if env.su or env.user.has_group('quimibond_sgi.group_sgi_manager'):
             return True
-        emp = self.sudo().employee_id
+        emp = employee.sudo() if employee else employee
+        if not emp:
+            return False
         if emp.user_id and emp.user_id == env.user:
             return True
         boss, seen = emp.parent_id, set()
@@ -193,6 +197,12 @@ class SgiActivityExecution(models.Model):
             seen.add(boss.id)
             boss = boss.parent_id
         return False
+
+    def _sgi_can_mark(self):
+        """La persona del renglón, cualquiera de sus jefes (cadena de «Jefe»
+        en Empleados) o el Jefe MAST."""
+        self.ensure_one()
+        return self._sgi_user_can_mark(self.sudo().employee_id)
 
     def _sgi_check_can_mark(self):
         for rec in self:
@@ -446,16 +456,21 @@ class SgiActivityExecutionMark(models.TransientModel):
             execution._sgi_mark_done(self.evidence_note, self.attachment_ids)
         else:
             execution._sgi_mark_not_applicable(self.na_reason)
-        # Desde Mis pendientes: el renglón (transitorio) se actualiza o se va,
-        # como «Leído y entendido» y «Validar».
+        # Desde Mis pendientes: el renglón se pone al día o se quita
+        # (57.145.0: renglones guardados; la lista se recarga con el cierre
+        # estándar que trae la notificación, sin soft_reload).
+        Pending = self.env['sgi.my.pending']
         row_id = self.env.context.get('sgi_pending_row_id')
-        row = self.env['sgi.my.pending'].sudo().browse(row_id).exists() if row_id else False
+        row = Pending.sudo().browse(row_id).exists() if row_id else False
         if row:
-            if self.mode == 'progress':
-                row.write(row._sgi_execution_row(execution.sudo()))
-            else:
-                row.unlink()
-        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+            row._sgi_sync_execution(execution)
+        name = execution.sudo().name or ''
+        message = {
+            'progress': "Avance guardado: %s" % name,
+            'done': "Hecha: %s" % name,
+            'na': "No aplica este periodo: %s" % name,
+        }[self.mode]
+        return Pending._sgi_feedback(message)
 
 
 class SgiActivityExecutionSpec(models.Model):
