@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.4.0',
+    'version': '19.0.2.5.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -43,6 +43,8 @@ Incluye:
 - 2.4.0: la ficha de la máquina es para cualquier tipo de máquina (tejido,
   tintorería, acabado, inspección, abridora, devanadora…): cada tipo tiene
   sus parámetros y cada configuración un valor por parámetro.
+- 2.5.0: avisos de máquina en producción: galga distinta al programar
+  tejido y cargas por jet (con aviso de carga) en las órdenes de tintorería.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
@@ -55,6 +57,7 @@ Incluye:
         'views/ficha_tecnica_acabado_views.xml',
         'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
         'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
+        'views/mrp_aviso_maquina_views.xml',  # 2.5.0
         'views/product_template_views.xml',
         'wizard/ficha_tecnica_tejido_import_wizard_views.xml',
         'wizard/ficha_tecnica_acabado_import_wizard_views.xml',
