@@ -116,6 +116,15 @@ class SgiCron(models.AbstractModel):
         Odoo pone hoy."""
         if not user_id or not record:
             return False
+        if key and self._sgi_skip_covered(record, user_id):
+            # 57.150.0 (auditoría UX, fase 2): la bandeja ya lo muestra con su
+            # propio renglón; no se duplica en la campana de actividades.
+            open_ = self.env['mail.activity'].sudo().search([
+                ('res_model', '=', record._name), ('res_id', '=', record.id), ('sgi_cron_key', '=', key),
+                ('user_id', '=', user_id), ('sgi_episode_closed', '=', False)])
+            if open_:
+                self._sgi_close_activities(open_, "lo muestra Mis pendientes")
+            return False
         if not key:
             if self._sgi_activity_exists(record, summary, user_id):
                 return False
@@ -157,6 +166,16 @@ class SgiCron(models.AbstractModel):
             summary=summary, note=note or '', user_id=user_id)
         activity.sudo().write({'sgi_cron_key': key, 'sgi_cron_run': run or False})
         return activity
+
+    @api.model
+    def _sgi_skip_covered(self, record, user_id):
+        """57.150.0: con el parámetro ``quimibond_sgi.notices_skip_covered``
+        (Ajustes del SGI: «No repetir en la campana…», apagado por omisión),
+        el aviso de cron no se crea si Mis pendientes de esa persona ya
+        muestra el registro con su propio renglón."""
+        if not self.env['ir.config_parameter'].sudo().get_param('quimibond_sgi.notices_skip_covered'):
+            return False
+        return self.env['sgi.my.pending']._sgi_pending_covers(record, user_id)
 
     @api.model
     def _sgi_refresh_activity(self, activity, summary, note, user_id, date_deadline=None):

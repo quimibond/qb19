@@ -13,3 +13,5 @@ access_ficha_tecnica_clave_codigo_user,ficha.tecnica.clave.codigo.user,model_fic
 access_ficha_tecnica_clave_codigo_manager,ficha.tecnica.clave.codigo.manager,model_ficha_tecnica_clave_codigo,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_spec_user,ficha.tecnica.spec.user,model_ficha_tecnica_spec,base.group_user,1,1,1,0
 access_ficha_tecnica_spec_manager,ficha.tecnica.spec.manager,model_ficha_tecnica_spec,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_maquina_config_user,ficha.tecnica.maquina.config.user,model_ficha_tecnica_maquina_config,base.group_user,1,1,1,0
+access_ficha_tecnica_maquina_config_manager,ficha.tecnica.maquina.config.manager,model_ficha_tecnica_maquina_config,mrp.group_mrp_manager,1,1,1,1

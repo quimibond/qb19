@@ -190,6 +190,7 @@ access_helpdesk_team_sgi_auditor,helpdesk.team sgi auditor,helpdesk.model_helpde
 access_approval_request_sgi_auditor,approval.request sgi auditor,approvals.model_approval_request,group_sgi_auditor,1,0,0,0
 access_project_task_sgi_auditor,project.task sgi auditor,project.model_project_task,group_sgi_auditor,1,0,0,0
 access_project_project_sgi_auditor,project.project sgi auditor,project.model_project_project,group_sgi_auditor,1,0,0,0
+access_project_project_sgi_user,project.project sgi user,project.model_project_project,group_sgi_user,1,1,1,0
 access_maintenance_request_sgi_auditor,maintenance.request sgi auditor,maintenance.model_maintenance_request,group_sgi_auditor,1,0,0,0
 access_maintenance_equipment_sgi_auditor,maintenance.equipment sgi auditor,maintenance.model_maintenance_equipment,group_sgi_auditor,1,0,0,0
 access_purchase_order_sgi_auditor,purchase.order sgi auditor,purchase.model_purchase_order,group_sgi_auditor,1,0,0,0
@@ -228,6 +229,7 @@ access_sgi_inventory_value_auditor,sgi.inventory.value.auditor,model_sgi_invento
 access_sgi_dev_characteristic_user,sgi.dev.characteristic.user,model_sgi_dev_characteristic,base.group_user,1,1,1,1
 access_sgi_dev_option_user,sgi.dev.option.user,model_sgi_dev_option,base.group_user,1,0,0,0
 access_sgi_dev_option_manager,sgi.dev.option.manager,model_sgi_dev_option,group_sgi_manager,1,1,1,1
+access_sgi_dev_required_doc_user,sgi.dev.required.doc.user,model_sgi_dev_required_doc,base.group_user,1,1,1,1
 access_sgi_dev_revision_user,sgi.dev.revision.user,model_sgi_dev_revision,base.group_user,1,1,1,0
 access_sgi_dev_revision_manager,sgi.dev.revision.manager,model_sgi_dev_revision,group_sgi_manager,1,1,1,1
 access_sgi_dev_stage_log_user,sgi.dev.stage.log.user,model_sgi_dev_stage_log,base.group_user,1,0,0,0
@@ -365,6 +367,10 @@ access_sgi_approval_subject_approvals,sgi.approval.subject.approvals,model_sgi_a
 access_sgi_dev_mark_wizard_manager,sgi.dev.mark.wizard.manager,model_sgi_dev_mark_wizard,project.group_project_manager,1,1,1,1
 access_sgi_dev_mp_line_user,sgi.dev.mp.line.user,model_sgi_dev_mp_line,base.group_user,1,1,1,1
 access_sgi_dev_sample_wizard_user,sgi.dev.sample.wizard.user,model_sgi_dev_sample_wizard,base.group_user,1,1,1,1
+access_sgi_dev_sample_wizard_line_user,sgi.dev.sample.wizard.line.user,model_sgi_dev_sample_wizard_line,base.group_user,1,1,1,1
+access_sgi_dev_process_reading_user,sgi.dev.process.reading.user,model_sgi_dev_process_reading,base.group_user,1,1,1,1
+access_sgi_dev_process_sheets_wizard_user,sgi.dev.process.sheets.wizard.user,model_sgi_dev_process_sheets_wizard,base.group_user,1,1,1,1
+access_sgi_dev_process_sheets_wizard_line_user,sgi.dev.process.sheets.wizard.line.user,model_sgi_dev_process_sheets_wizard_line,base.group_user,1,1,1,1
 access_sgi_dev_shipment_user,sgi.dev.shipment.user,model_sgi_dev_shipment,base.group_user,1,1,1,0
 access_sgi_dev_shipment_manager,sgi.dev.shipment.manager,model_sgi_dev_shipment,group_sgi_manager,1,1,1,1
 access_sgi_dev_shipment_roll_user,sgi.dev.shipment.roll.user,model_sgi_dev_shipment_roll,base.group_user,1,1,1,1
@@ -384,3 +390,5 @@ access_sgi_dev_escalation_user,sgi.dev.escalation.user,model_sgi_dev_escalation,
 access_sgi_dev_escalation_manager,sgi.dev.escalation.manager,model_sgi_dev_escalation,group_sgi_manager,1,1,1,1
 access_sgi_dev_change_request_user,sgi.dev.change.request.user,model_sgi_dev_change_request,base.group_user,1,1,1,0
 access_sgi_dev_change_request_manager,sgi.dev.change.request.manager,model_sgi_dev_change_request,group_sgi_manager,1,1,1,1
+access_sgi_nc_step_user,sgi.nc.step.user,model_sgi_nc_step,group_sgi_user,1,1,1,1
+access_sgi_doc_review_user,sgi.doc.review.user,model_sgi_doc_review,group_sgi_user,1,1,1,1

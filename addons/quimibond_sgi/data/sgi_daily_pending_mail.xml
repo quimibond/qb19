@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.150.0 (auditoría UX, fase 2): correo diario por persona con lo
+         atrasado y por vencer de «Mis pendientes». Renglones por contexto
+         desde sgi.cron.cron_daily_pending_mail (patrón de D-14). -->
+    <record id="mail_template_sgi_daily_pending" model="mail.template">
+        <field name="name">SGI: Mis pendientes (diario)</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="subject">SGI: {{ ctx.get('sgi_total') }} pendiente(s) para hoy ({{ ctx.get('sgi_late') }} atrasado(s))</field>
+        <field name="email_to">{{ object.email_formatted }}</field>
+        <field name="lang">{{ object.lang }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Hola <t t-out="object.name"/>:</p>
+    <p>Esto es lo que pide hoy su «Mis pendientes» del SGI
+       (<t t-out="ctx.get('sgi_total')"/> en total, <t t-out="ctx.get('sgi_late')"/> atrasado(s)).
+       Cada renglón se resuelve con su botón en la bandeja.</p>
+    <table style="border-collapse:collapse;">
+        <tr>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Estado</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Vence</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Tipo</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Qué</th>
+            <th style="text-align:left;padding:4px 0;">Proceso</th>
+        </tr>
+        <tr t-foreach="ctx.get('sgi_rows') or []" t-as="row">
+            <td style="padding:4px 12px 4px 0;">
+                <b t-if="row['late']" style="color:#c0392b;"><t t-out="row['state']"/></b>
+                <t t-else="" t-out="row['state']"/>
+            </td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['date_due']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['kind']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['name']"/></td>
+            <td style="padding:4px 0;"><t t-out="row['process']"/></td>
+        </tr>
+    </table>
+    <p t-if="ctx.get('sgi_more')">… y <t t-out="ctx.get('sgi_more')"/> más.</p>
+    <p><a t-att-href="ctx.get('sgi_link')">Abrir Mis pendientes en Odoo</a></p>
+    <p style="color:#888;">Si no quiere este correo, apáguelo en su perfil →
+       Preferencias → «Correo diario de mis pendientes (SGI)».</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- Sale APAGADO: Jose lo enciende a mano. 12:00 UTC = 06:00 de México. -->
+    <record id="sgi_cron_daily_pending_mail" model="ir.cron">
+        <field name="name">SGI: Mis pendientes (correo diario por persona)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_daily_pending_mail()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.today() + relativedelta(days=1, hour=12, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

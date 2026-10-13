@@ -5,7 +5,7 @@ import io
 from odoo import fields, models
 from odoo.exceptions import UserError
 
-from ._tabular_import_utils import build_header_index, clean_num, row_is_empty
+from ._tabular_import_utils import build_header_index, clean_num, parse_tolerance, row_is_empty
 
 try:
     import openpyxl
@@ -110,7 +110,7 @@ HEADER_MAP = {
 }
 
 FLOAT_FIELDS = {
-    'galga', 'velocidad',
+    'galga', 'velocidad', 'diametro',
     'longitud_malla_polea1', 'longitud_malla_polea2', 'longitud_malla_tol',
     'consumo_cm_vta_polea1', 'consumo_cm_vta_polea2', 'consumo_cm_vta_tol',
     'polea_alimentacion_polea1', 'polea_alimentacion_polea2', 'polea_alimentacion_tol',
@@ -122,6 +122,13 @@ FLOAT_FIELDS = {
     'hilo1_pct', 'hilo2_pct',
 }
 INT_FIELDS = {'no_agujas', 'no_alimentadores', 'vueltas_por_rollo', 'columnas', 'mallas'}
+# 2.2.0: tolerancias que eran texto y ahora son número; la de peso admite «+12 / -6» (arriba / abajo).
+TOL_FIELDS = {
+    'tension_tol', 'punto_cilindro_tol', 'punto_plato_tol', 'altura_plato_tol', 'estiraje_tol',
+    'ancho_acondicionado_tol', 'espesor_acondicionado_tol', 'columnas_tol', 'mallas_tol',
+    'elongacion_carga_largo_tol', 'elongacion_carga_ancho_tol',
+}
+ASYM_TOL_FIELDS = {'peso_acondicionado_tol': 'peso_acondicionado_tol_minus'}
 
 
 class FichaTecnicaTejidoImportWizard(models.TransientModel):
@@ -132,6 +139,19 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
     file_name = fields.Char(string='Nombre de archivo')
     update_if_exists = fields.Boolean(
         string='Actualizar si ya existe (mismo artículo + revisión)', default=True)
+
+    def _machine_values(self, cell_value):
+        """2.2.0: la máquina del Excel se liga al centro de trabajo con ese nombre o código; si no hay
+        uno solo que coincida, se guarda el texto (dato histórico) y la máquina queda vacía."""
+        text = str(cell_value).strip() if cell_value not in (None, '') else ''
+        if not text:
+            return {'maquina_tejido': False}
+        Workcenter = self.env['mrp.workcenter']
+        found = Workcenter.search([('name', '=ilike', text)], limit=2) or \
+            Workcenter.search([('code', '=ilike', text)], limit=2)
+        if len(found) == 1:
+            return {'maquina_tejido': found.id}
+        return {'maquina_tejido': False, 'maquina_tejido_texto': text}
 
     def action_import(self):
         self.ensure_one()
@@ -183,12 +203,23 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
                     if field_name in ('articulo', 'revision', 'product_proceso_ref') \
                             or field_name.startswith('hilo'):
                         continue
-                    if field_name in FLOAT_FIELDS:
+                    if field_name == 'maquina_tejido':
+                        values.update(self._machine_values(cell_value))
+                    elif field_name in ASYM_TOL_FIELDS:
+                        up, down = parse_tolerance(cell_value)
+                        values[field_name] = up
+                        values[ASYM_TOL_FIELDS[field_name]] = down
+                    elif field_name in TOL_FIELDS:
+                        values[field_name] = parse_tolerance(cell_value)[0]
+                    elif field_name in FLOAT_FIELDS:
                         values[field_name] = clean_num(cell_value)
                     elif field_name in INT_FIELDS:
                         values[field_name] = int(clean_num(cell_value))
                     else:
                         values[field_name] = cell_value
+                if values.get('maquina_tejido_texto') and not values.get('maquina_tejido'):
+                    errors.append('Fila %s (%s): la máquina "%s" no coincide con ningún centro de trabajo; '
+                                  'quedó como texto.' % (row_num, articulo, values['maquina_tejido_texto']))
 
                 product_ref = raw.get('product_proceso_ref')
                 if product_ref:

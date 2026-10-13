@@ -35,19 +35,19 @@ except ImportError:  # pragma: no cover - versiones sin la función
 
 _logger = logging.getLogger(__name__)
 
-MIID_CODE = 'MIID'
-MIID_NOTICE_KIND = 'miid_desactualizado'
+MIID_CODE = 'MIID'  # clave del manual (las claves por documento están en MIID_KINDS)
 MIID_HELD_KIND = 'miid_retenido'
 # Q5: la primera revisión generada desde Odoo continúa la numeración del
-# Dropbox (Rev. 02 vigente, borrador Rev. 03). Solo aplica mientras la
-# vigente no tenga huella (cargada del Dropbox).
-MIID_FIRST_ODOO_REVISION = 3
+# Dropbox (MIID: Rev. 02 vigente, borrador Rev. 03; P-G01: Rev. 11 → 12).
+# Solo aplica mientras la vigente no tenga huella (cargada del Dropbox):
+# MIID_KINDS[kind]['first_revision'].
 MIID_LANG = 'es_MX'
 MIID_DATA_MARK = "[[datos]]"
 MIID_SEED_FILE = 'quimibond_sgi/data/sgi_miid_sections.xml'
 MIID_EDITED_MSG = "Texto de la sección editado."
 # 57.146.0: campos de estructura que la migración reacomoda desde la siembra.
-MIID_SEED_LAYOUT_FIELDS = ('sequence', 'clause', 'name', 'heading_level', 'live_block')
+# 57.148.0: también el documento al que pertenece la sección (kind).
+MIID_SEED_LAYOUT_FIELDS = ('sequence', 'clause', 'name', 'heading_level', 'live_block', 'kind')
 # Por qué cambió la siembra (mensaje del chatter de _sgi_seed_update):
 # 57.110.0 usa este; 57.113.0 pasa el suyo.
 MIID_SEED_REASON = "lo que traía la revisión 02 del MIID"
@@ -74,8 +74,51 @@ MIID_BLOCKS = [
     ('correspondencia', "Correspondencia por cláusula"),
     ('procedimientos_anteriores', "Procedimientos anteriores por proceso"),
     ('anexos', "Anexos vigentes"),
-    ('historial', "Control de cambios del MIID"),
+    ('actividades', "Rutinas: actividades del proceso ligadas al documento"),
+    ('historial', "Control de cambios"),
 ]
+# 57.148.0 (Dirección 2026-10-13, «prefiero otra cosa»: el P-G01 no va dentro
+# del MIID): el mismo motor genera dos documentos controlados, cada uno con
+# sus secciones de texto fijo (sgi.miid.section.kind), sus bloques vivos y su
+# huella (solo las llaves de la foto que ese documento imprime). La clave es
+# la del documento controlado en Documentos; la primera revisión desde Odoo
+# continúa la numeración del Dropbox.
+MIID_KINDS = {
+    'miid': {
+        'code': 'MIID', 'short': "MIID",
+        'label': "Manual del SGI (MIID)",
+        'title': "Manual Integral de Información Documentada (MIID)",
+        'first_revision': 3, 'menu': 'miid', 'notice_kind': 'miid_desactualizado',
+        'blocks': ('identificacion', 'normas', 'procesos', 'politica', 'objetivos', 'roles',
+                   'tipos_documento', 'controles', 'plazos_nc', 'correspondencia',
+                   'procedimientos_anteriores', 'anexos', 'historial'),
+        'hash_keys': ('sections', 'row_notes', 'processes', 'flows', 'policy', 'objectives',
+                      'doc_types', 'controls', 'nc', 'norms', 'roles', 'clause_activities',
+                      'previous', 'annexes'),
+        'all_processes': True,
+    },
+    'pg01': {
+        'code': 'P-G01', 'short': "P-G01",
+        'label': "Control de información documentada (P-G01)",
+        'title': "Elaboración y control de información documentada (P-G01)",
+        'first_revision': 12, 'menu': 'pg01', 'notice_kind': 'pg01_desactualizado',
+        'blocks': ('identificacion', 'tipos_documento', 'plazos_documentales', 'actividades',
+                   'normas', 'historial'),
+        'hash_keys': ('sections', 'row_notes', 'doc_types', 'doc_params', 'activities', 'norms'),
+        'all_processes': False,
+    },
+}
+MIID_KIND_SELECTION = [(code, values['label']) for code, values in MIID_KINDS.items()]
+
+
+def _miid_kind_for_code(code):
+    """Documento generado al que pertenece la clave (None si no es generado)."""
+    for kind, values in MIID_KINDS.items():
+        if values['code'] == code:
+            return kind
+    return None
+
+
 # 57.146.0: plazos documentales (parámetros del sistema; el P-G01 vive aquí).
 # (llave, etiqueta, parámetro, valor por omisión, cómo se cuenta).
 MIID_DOC_ROWS = (
@@ -141,6 +184,11 @@ class SgiMiidSection(models.Model):
     company_id = fields.Many2one(
         'res.company', string="Empresa", required=True, index=True,
         default=lambda self: self.env['sgi.config']._sgi_company())
+    kind = fields.Selection(
+        MIID_KIND_SELECTION, string="Documento", required=True, default='miid', index=True,
+        tracking=True,
+        help="Documento generado al que pertenece la sección: el Manual del SGI (MIID) o el "
+             "procedimiento de control de información documentada (P-G01).")
     sequence = fields.Integer(string="Orden", default=10, tracking=True)
     clause = fields.Char(string="Numeral", tracking=True,
                          help="Numeral del manual (p. ej. 4.4). Vacío en la identificación del documento.")
@@ -169,16 +217,17 @@ class SgiMiidSection(models.Model):
                                    help="Columna fija de un bloque de datos (12.1: la situación de cada anexo).")
     active = fields.Boolean(default=True, tracking=True)
 
-    @api.constrains('live_block', 'company_id', 'active')
+    @api.constrains('live_block', 'company_id', 'active', 'kind')
     def _check_live_block(self):
         for section in self.filtered(lambda s: s.live_block and s.active):
             other = self.search_count([('id', '!=', section.id), ('active', '=', True),
                                        ('company_id', '=', section.company_id.id),
+                                       ('kind', '=', section.kind),
                                        ('live_block', '=', section.live_block)], limit=1)
             if other:
                 raise ValidationError(
-                    "El bloque «%s» ya lo lleva otra sección del MIID. Quíteselo a esa sección "
-                    "primero." % dict(MIID_BLOCKS)[section.live_block])
+                    "El bloque «%s» ya lo lleva otra sección de este documento. Quíteselo a esa "
+                    "sección primero." % dict(MIID_BLOCKS)[section.live_block])
 
     @api.constrains('to_confirm', 'to_confirm_note')
     def _check_to_confirm_note(self):
@@ -247,6 +296,8 @@ class SgiMiidSection(models.Model):
                 new = seed.get(name, 0 if name == 'sequence' else '') or False
                 if name == 'sequence':
                     new = seed.get('sequence') or 10
+                elif name == 'kind':
+                    new = seed.get('kind') or 'miid'
                 current = section[name] or False
                 if (current or False) != (new or False):
                     vals[name] = new
@@ -382,19 +433,21 @@ class SgiMiid(models.Model):
 
     name = fields.Char(string="Nombre", compute='_compute_name')
     company_id = fields.Many2one('res.company', string="Empresa", required=True, index=True, readonly=True)
-    document_id = fields.Many2one('documents.document', string="Revisión vigente del MIID",
+    kind = fields.Selection(MIID_KIND_SELECTION, string="Documento", required=True, default='miid',
+                            index=True, readonly=True)
+    document_id = fields.Many2one('documents.document', string="Revisión vigente",
                                   compute='_compute_document', compute_sudo=True)
     revision_label = fields.Char(string="Rev. vigente", compute='_compute_document', compute_sudo=True)
     issue_date = fields.Date(string="Emisión de la revisión vigente", compute='_compute_document',
                              compute_sudo=True)
-    revision_ids = fields.Many2many('documents.document', string="Revisiones del MIID",
+    revision_ids = fields.Many2many('documents.document', string="Revisiones",
                                     compute='_compute_document', compute_sudo=True)
     pending_request_id = fields.Many2one('approval.request', string="Solicitud de cambio en curso",
                                          compute='_compute_document', compute_sudo=True)
     state = fields.Selection([
         ('al_dia', "Al día"), ('desactualizado', "Desactualizado"),
-        ('sin_base', "Sin línea base"), ('sin_documento', "Sin MIID vigente"),
-    ], string="Situación del MIID", compute='_compute_state', compute_sudo=True,
+        ('sin_base', "Sin línea base"), ('sin_documento', "Sin revisión vigente"),
+    ], string="Situación", compute='_compute_state', compute_sudo=True,
         help="Al día: la revisión vigente coincide con los datos del sistema. Sin línea base: la "
              "revisión vigente no se generó desde Odoo y no hay contra qué comparar.")
     diff_html = fields.Html(string="Diferencias con la revisión vigente", compute='_compute_state',
@@ -412,34 +465,47 @@ class SgiMiid(models.Model):
     history_html = fields.Html(string="Historial de revisiones", compute='_compute_history_html',
                                compute_sudo=True, sanitize=False)
 
-    _company_uniq = models.Constraint('UNIQUE(company_id)', "Ya existe el MIID de esta empresa.")
+    # 57.148.0: uno por empresa y documento (la migración quita el único viejo).
+    _company_uniq = models.Constraint('UNIQUE(company_id, kind)',
+                                      "Ya existe este documento generado para la empresa.")
 
     # ------------------------------------------------------------------
     # Búsquedas
     # ------------------------------------------------------------------
     @api.model
-    def _sgi_get(self, company=None):
-        """El MIID de la empresa; lo crea si no existe. Si otra transacción lo
-        crea al mismo tiempo (índice único), no truena ni deja ERROR en el
-        log: devuelve lo que vea (puede venir vacío hasta la siguiente vez)."""
+    def _sgi_get(self, company=None, kind='miid'):
+        """El documento generado (MIID o P-G01) de la empresa; lo crea si no
+        existe. Si otra transacción lo crea al mismo tiempo (índice único), no
+        truena ni deja ERROR en el log: devuelve lo que vea (puede venir vacío
+        hasta la siguiente vez)."""
         company = company or self.env['sgi.config']._sgi_company()
+        kind = kind if kind in MIID_KINDS else 'miid'
         Miid = self.sudo()
-        miid = Miid.search([('company_id', '=', company.id)], limit=1)
+        miid = Miid.search([('company_id', '=', company.id), ('kind', '=', kind)], limit=1)
         if miid:
             return miid
         try:
             with self.env.cr.savepoint(), mute_logger('odoo.sql_db'):
-                return Miid.create({'company_id': company.id})
+                return Miid.create({'company_id': company.id, 'kind': kind})
         except psycopg2.IntegrityError:
-            _logger.info("SGI: el MIID de %s lo creó otra transacción.", company.name)
-            return Miid.search([('company_id', '=', company.id)], limit=1)
+            _logger.info("SGI: el %s de %s lo creó otra transacción.", kind, company.name)
+            return Miid.search([('company_id', '=', company.id), ('kind', '=', kind)], limit=1)
+
+    @api.model
+    def _sgi_kind_for_code(self, code):
+        return _miid_kind_for_code(code)
+
+    def _sgi_kind(self):
+        """Los datos fijos del documento generado (MIID_KINDS)."""
+        self.ensure_one()
+        return MIID_KINDS[self.kind or 'miid']
 
     def _sgi_documents(self):
-        """Todas las revisiones del MIID de la empresa (por la clave, no por el
-        tipo: en la copia de producción de las pruebas el real queda REAL~…)."""
+        """Todas las revisiones del documento en la empresa (por la clave, no por
+        el tipo: en la copia de producción de las pruebas el real queda REAL~…)."""
         self.ensure_one()
         return self.env['documents.document'].sudo().with_context(active_test=False).search([
-            ('sgi_code', '=', MIID_CODE), ('sgi_is_controlled', '=', True),
+            ('sgi_code', '=', self._sgi_kind()['code']), ('sgi_is_controlled', '=', True),
             ('company_id', '=', self.company_id.id)], order='sgi_revision desc, id desc')
 
     def _sgi_current_document(self):
@@ -453,18 +519,19 @@ class SgiMiid(models.Model):
             ('sgi_document_id', '=', doc.id), ('sgi_miid_hash', '!=', False),
             ('request_status', 'in', ('new', 'pending'))], order='id desc', limit=1)
 
-    @staticmethod
-    def _sgi_next_revision(doc):
-        """Q5: vigente + 1; sin línea base, al menos la Rev. 03."""
-        revision = (doc.sgi_revision or 0) + 1 if doc else MIID_FIRST_ODOO_REVISION
+    def _sgi_next_revision(self, doc):
+        """Q5: vigente + 1; sin línea base, al menos la primera revisión desde
+        Odoo del documento (MIID 03, P-G01 12: continúan al Dropbox)."""
+        first = self._sgi_kind()['first_revision']
+        revision = (doc.sgi_revision or 0) + 1 if doc else first
         if not (doc and doc.sgi_content_hash):
-            revision = max(revision, MIID_FIRST_ODOO_REVISION)
+            revision = max(revision, first)
         return revision
 
-    @api.depends('company_id')
+    @api.depends('company_id', 'kind')
     def _compute_name(self):
         for miid in self:
-            miid.name = "Manual del SGI (MIID) — %s" % (miid.company_id.name or '')
+            miid.name = "%s — %s" % (miid._sgi_kind()['label'], miid.company_id.name or '')
 
     @api.depends('company_id')
     def _compute_document(self):
@@ -491,7 +558,8 @@ class SgiMiid(models.Model):
         for miid in self:
             blockers = miid._sgi_blockers()
             miid.to_confirm_count = miid.env['sgi.miid.section'].sudo().search_count(
-                [('company_id', '=', miid.company_id.id), ('to_confirm', '=', True)])
+                [('company_id', '=', miid.company_id.id), ('kind', '=', miid.kind),
+                 ('to_confirm', '=', True)])
             miid.blocker_html = Markup("<ul class='mb-0'>%s</ul>") % Markup('').join(
                 Markup("<li>%s</li>") % b for b in blockers) if blockers else False
 
@@ -531,9 +599,9 @@ class SgiMiid(models.Model):
         Doc = env['documents.document']
         excluded = Doc._sgi_dropbox_excluded_domain()
         Param = env['ir.config_parameter']
-        raw = {}
+        raw = {'kind': self.kind}
 
-        sections = env['sgi.miid.section'].search([('company_id', '=', company.id)])
+        sections = env['sgi.miid.section'].search([('company_id', '=', company.id), ('kind', '=', self.kind)])
         raw['sections'] = {str(s.id): [s.clause or '', s.name or '', s.heading_level or '',
                                        _miid_plain(s.body), s.live_block or '', bool(s.body_fallback),
                                        s.sequence or 0]
@@ -602,6 +670,19 @@ class SgiMiid(models.Model):
         for by_clause in raw['clause_activities'].values():
             for code in by_clause:
                 by_clause[code] = sorted(set(by_clause[code]))
+        # 57.148.0: las rutinas del documento son las actividades ligadas a
+        # cualquiera de sus revisiones («Procedimiento relacionado»).
+        raw['activities'] = {}
+        own_docs = self._sgi_documents()
+        for activity in env['sgi.process.activity'].search(
+                [('related_procedure_id', 'in', own_docs.ids)], order='process_id, step, id'):
+            number = activity.number or activity.legacy_number or activity.name or ''
+            by_role = {kind: sorted({r.job_id.name for r in activity.role_ids
+                                     if r.role == kind and r.job_id})
+                       for kind, _label in MIID_ROLE_KINDS}
+            raw['activities'][number] = [
+                activity.name or '', by_role['ejecuta'], by_role['aprueba'],
+                activity.measure_cadence or '', activity.done_criteria or '', activity.process_id.code or '']
 
         # Solo los del Dropbox (clave P-X99): los procedimientos de proceso
         # nuevos (PR-…) no son «anteriores».
@@ -624,7 +705,7 @@ class SgiMiid(models.Model):
 
         current = self._sgi_current_document()
         raw['identificacion'] = {
-            'code': MIID_CODE,
+            'code': self._sgi_kind()['code'],
             'revision': current.sgi_revision if current else None,
             'issue_date': current.sgi_issue_date if current else None,
             'baseline': bool(current.sgi_content_hash) if current else False,
@@ -638,8 +719,16 @@ class SgiMiid(models.Model):
         return json.loads(json.dumps(raw, sort_keys=True, ensure_ascii=False, default=str))
 
     @api.model
+    def _sgi_hash_keys(self, snapshot):
+        """Llaves de la foto que entran a la huella del documento al que
+        pertenece (57.148.0): solo lo que ese documento imprime."""
+        kind = (snapshot or {}).get('kind') or 'miid'
+        return MIID_KINDS.get(kind, MIID_KINDS['miid'])['hash_keys']
+
+    @api.model
     def _sgi_hash(self, snapshot):
-        content = {k: v for k, v in (snapshot or {}).items() if k not in MIID_UNHASHED}
+        keys = self._sgi_hash_keys(snapshot)
+        content = {k: v for k, v in (snapshot or {}).items() if k in keys and k not in MIID_UNHASHED}
         raw = json.dumps(content, sort_keys=True, ensure_ascii=False, default=str)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
@@ -657,8 +746,12 @@ class SgiMiid(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _sgi_diff(self, old, new):
-        """Textos de lo que cambió entre dos fotos (máximo MIID_DIFF_LIMIT)."""
-        old, new, out = old or {}, new or {}, []
+        """Textos de lo que cambió entre dos fotos (máximo MIID_DIFF_LIMIT). Solo
+        las llaves que el documento imprime (57.148.0)."""
+        keys = self._sgi_hash_keys(new or old)
+        old = {k: v for k, v in (old or {}).items() if k in keys}
+        new = {k: v for k, v in (new or {}).items() if k in keys}
+        out = []
         Process = self.env['sgi.process'].with_context(lang=MIID_LANG)
         state_labels = dict(Process._fields['state']._description_selection(Process.env))
         type_labels = dict(Process._fields['process_type']._description_selection(Process.env))
@@ -759,6 +852,15 @@ class SgiMiid(models.Model):
         keyed('roles', lambda k, v: "Roles nuevos: proceso %s" % k,
               lambda k, v: "Roles retirados: proceso %s" % k, roles_changed)
 
+        def activity_changed(number, a, b):
+            if a[0] != b[0]:
+                return ["Cambió el nombre de la actividad %s" % number]
+            if a[1:3] != b[1:3]:
+                return ["Cambiaron los puestos que ejecutan o aprueban %s" % number]
+            return ["Cambió la actividad %s (cadencia o criterio de terminado)" % number]
+        keyed('activities', lambda k, v: "Actividad nueva ligada al documento: %s %s" % (k, v[0]),
+              lambda k, v: "Actividad que ya no está ligada al documento: %s" % k, activity_changed)
+
         old_ca, new_ca = old.get('clause_activities') or {}, new.get('clause_activities') or {}
         for norm_code in sorted(set(old_ca) | set(new_ca)):
             before, after = old_ca.get(norm_code) or {}, new_ca.get(norm_code) or {}
@@ -806,9 +908,17 @@ class SgiMiid(models.Model):
         env = self._sgi_env()
         out = []
         for section in env['sgi.miid.section'].search([('company_id', '=', self.company_id.id),
-                                                       ('to_confirm', '=', True)]):
+                                                       ('kind', '=', self.kind), ('to_confirm', '=', True)]):
             out.append("La sección %s está por confirmar: %s" % (
                 section._sgi_heading(), section.to_confirm_note or ''))
+        if not self._sgi_kind()['all_processes']:
+            # 57.148.0: un procedimiento se aprueba con su proceso publicado.
+            doc = self._sgi_current_document()
+            process = doc.sgi_process_id if doc else env['sgi.process']
+            if process and process.state not in MIID_READY_PROCESS_STATES:
+                out.append("El proceso %s no está vigente: el %s solo se aprueba con su proceso publicado." % (
+                    process.code or process.name, self._sgi_kind()['short']))
+            return out
         processes = env['sgi.process'].search([('company_id', '=', self.company_id.id)])
         if not processes:
             out.append("No hay procesos activos en la empresa.")
@@ -889,10 +999,11 @@ class SgiMiid(models.Model):
         processes = Process.search([('company_id', '=', company.id)])
         blocks = {}
 
+        kind = self._sgi_kind()
         ident = snap['identificacion']
         next_revision = revision or (request.sgi_new_revision if request else None) \
             or self._sgi_next_revision(current)
-        rows = [("Clave", MIID_CODE)]
+        rows = [("Clave", kind['code'])]
         if current:
             rows.append(("Revisión vigente en Odoo", "%02d, emisión %s" % (
                 ident['revision'] or 0, current.sgi_issue_date.strftime('%d/%m/%Y')
@@ -908,8 +1019,13 @@ class SgiMiid(models.Model):
                 rows.append(("Solicitud de cambio", request.name or ''))
             rows.append(("Emisión", "La fecha de aprobación de la solicitud"))
         rows.append(("Estado", "Borrador — no vigente" if draft else "Para aprobación"))
-        rows.append(("Procesos", "Al %s, %d de %d procesos vigentes" % (
-            today.strftime('%d/%m/%Y'), ident['processes_ready'], ident['processes_total'])))
+        if kind['all_processes']:
+            rows.append(("Procesos", "Al %s, %d de %d procesos vigentes" % (
+                today.strftime('%d/%m/%Y'), ident['processes_ready'], ident['processes_total'])))
+        elif current and current.sgi_process_id:
+            rows.append(("Proceso", "%s %s (%s)" % (
+                current.sgi_process_id.code or '', current.sgi_process_id.name or '',
+                (state_labels.get(current.sgi_process_id.state) or '').lower())))
         blocks['identificacion'] = {'rows': rows}
 
         blocks['procesos'] = {'rows': [
@@ -969,6 +1085,11 @@ class SgiMiid(models.Model):
             role_rows.append([names.get(code, code), values[0] or "—", values[1] or "—", values[2]]
                              + [", ".join(v) or "—" for v in values[3:]])
         blocks['roles'] = {'rows': role_rows, 'kinds': [label for _k, label in MIID_ROLE_KINDS]}
+        cadence_labels = dict(env['sgi.process.activity']._fields['measure_cadence']._description_selection(env))
+        blocks['actividades'] = {'rows': [
+            [number, v[0], ", ".join(v[1]) or "—", ", ".join(v[2]) or "—",
+             cadence_labels.get(v[3], v[3]) or "—", v[4] or "—"]
+            for number, v in sorted(snap['activities'].items())]}
 
         by_process = {}
         for code, values in sorted(snap['previous'].items()):
@@ -982,6 +1103,7 @@ class SgiMiid(models.Model):
         blocks['procedimientos_anteriores'] = {'rows': prev_rows, 'kept': kept}
 
         notes_section = env['sgi.miid.section'].search([('company_id', '=', company.id),
+                                                        ('kind', '=', self.kind),
                                                         ('live_block', '=', 'anexos')], limit=1)
         notes = {n.key: n.text for n in notes_section.row_note_ids}
         annex_rows = [[code, v[1], notes.get(code) or "—"] for code, v in sorted(
@@ -1016,11 +1138,12 @@ class SgiMiid(models.Model):
             'correspondencia': bool(blocks['correspondencia']['norms']),
             'procedimientos_anteriores': bool(prev_rows or kept),
             'anexos': bool(annex_rows or orphan_notes),
+            'actividades': bool(blocks['actividades']['rows']),
             'historial': bool(history),
         }
 
         sections, used = [], set()
-        for section in env['sgi.miid.section'].search([('company_id', '=', company.id)]):
+        for section in env['sgi.miid.section'].search([('company_id', '=', company.id), ('kind', '=', self.kind)]):
             before, after = section._sgi_body_parts()
             used.add(section.live_block)
             sections.append({
@@ -1028,17 +1151,19 @@ class SgiMiid(models.Model):
                 'block': section.live_block or False, 'fallback': bool(section.body_fallback),
                 'before': before, 'after': after, 'to_confirm': section.to_confirm,
                 'note': section.to_confirm_note or ''})
-        orphans = [(code, label) for code, label in MIID_BLOCKS if code not in used]
+        orphans = [(code, label) for code, label in MIID_BLOCKS if code in kind['blocks'] and code not in used]
         return {'sections': sections, 'blocks': blocks, 'has_data': has_data, 'orphans': orphans,
                 'blockers': blockers, 'draft': draft, 'company': company.name or '',
                 'revision': next_revision, 'request': request or False,
-                'signers': request._sgi_sign_rows() if request else []}
+                'signers': request._sgi_sign_rows() if request else [],
+                'kind': self.kind, 'code': kind['code'], 'short': kind['short'], 'title': kind['title']}
 
     def _sgi_footer_info(self, mode, revision=None, draft=True):
         """Pie de cada hoja (M-2: sin «Formato controlado del SGI:»)."""
+        code = self._sgi_kind()['code']
         if mode == 'live':
-            return {'label': "MIID · Borrador — no vigente", 'issue_date': False, 'plain': True}
-        label = "MIID · Rev. %02d" % (revision or 0)
+            return {'label': "%s · Borrador — no vigente" % code, 'issue_date': False, 'plain': True}
+        label = "%s · Rev. %02d" % (code, revision or 0)
         if draft:
             label += " · Borrador — no vigente"
         return {'label': label, 'issue_date': False, 'plain': True}
@@ -1057,11 +1182,14 @@ class SgiMiid(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def action_open(self):
-        miid = self._sgi_get()
+        """La pantalla del documento generado; ``sgi_miid_kind`` en el contexto
+        elige cuál (por omisión el MIID)."""
+        kind = self.env.context.get('sgi_miid_kind') or 'miid'
+        miid = self._sgi_get(kind=kind)
         if not miid:
-            raise UserError("Se está creando el MIID de la empresa; intente de nuevo en un momento.")
+            raise UserError("Se está creando el documento generado de la empresa; intente de nuevo en un momento.")
         miid.invalidate_recordset()
-        return {'type': 'ir.actions.act_window', 'name': "Manual del SGI (MIID)",
+        return {'type': 'ir.actions.act_window', 'name': miid._sgi_kind()['label'],
                 'res_model': 'sgi.miid', 'res_id': miid.id, 'view_mode': 'form',
                 'views': [(self.env.ref('quimibond_sgi.sgi_miid_view_form').id, 'form')],
                 'target': 'current'}
@@ -1073,23 +1201,23 @@ class SgiMiid(models.Model):
     def action_open_vigente_pdf(self):
         self.ensure_one()
         if not self.document_id:
-            raise UserError("No hay revisión vigente del MIID.")
+            raise UserError("No hay revisión vigente del %s." % self._sgi_kind()['short'])
         return self.document_id.action_sgi_view_file()
 
     def action_open_sections(self):
         self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'name': "Textos del MIID",
+        return {'type': 'ir.actions.act_window', 'name': "Textos del %s" % self._sgi_kind()['short'],
                 'res_model': 'sgi.miid.section', 'view_mode': 'list,form',
                 'views': [(self.env.ref('quimibond_sgi.sgi_miid_section_view_list').id, 'list'),
                           (self.env.ref('quimibond_sgi.sgi_miid_section_view_form').id, 'form')],
                 'search_view_id': [self.env.ref('quimibond_sgi.sgi_miid_section_view_search').id],
-                'domain': [('company_id', '=', self.company_id.id)],
-                'context': {'default_company_id': self.company_id.id}}
+                'domain': [('company_id', '=', self.company_id.id), ('kind', '=', self.kind)],
+                'context': {'default_company_id': self.company_id.id, 'default_kind': self.kind}}
 
     def action_open_request(self):
         self.ensure_one()
         if not self.pending_request_id:
-            raise UserError("No hay solicitud de cambio del MIID en curso.")
+            raise UserError("No hay solicitud de cambio del %s en curso." % self._sgi_kind()['short'])
         return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
                 'res_id': self.pending_request_id.id, 'view_mode': 'form', 'target': 'current'}
 
@@ -1100,11 +1228,13 @@ class SgiMiid(models.Model):
         """Arma (o abre) la solicitud de cambio documental del MIID con el PDF
         generado, la huella y las diferencias. Nunca la envía ni la aprueba."""
         self.ensure_one()
+        kind = self._sgi_kind()
         if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
-            raise UserError("Solo el Jefe MAST solicita el cambio del MIID.")
+            raise UserError("Solo el Jefe MAST solicita el cambio del %s." % kind['short'])
         doc = self._sgi_current_document()
         if not doc:
-            raise UserError("No hay MIID vigente (clave MIID) en Documentos: cárguelo o publíquelo primero.")
+            raise UserError("No hay %s vigente (clave %s) en Documentos: cárguelo o publíquelo primero." % (
+                kind['short'], kind['code']))
         request = self._sgi_open_request(doc)
         if not request:
             snapshot = self._sgi_snapshot()
@@ -1113,13 +1243,13 @@ class SgiMiid(models.Model):
             diffs = self._sgi_diff(self._sgi_approved_snapshot(), snapshot) if baseline else []
             category = self.env.ref('quimibond_sgi.sgi_approval_category_doc_change')
             request = self.env['approval.request'].create({
-                'name': "Cambio al MIID (Rev. %02d)" % revision,
-                'category_id': category.id, 'request_owner_id': self.env.user.id, 'reference': MIID_CODE,
+                'name': "Cambio al %s (Rev. %02d)" % (kind['short'], revision),
+                'category_id': category.id, 'request_owner_id': self.env.user.id, 'reference': kind['code'],
                 'sgi_change_kind': 'modificacion', 'sgi_what_changes': 'contenido',
                 'sgi_document_id': doc.id, 'sgi_new_revision': revision,
                 'sgi_affected_process_ids': [(6, 0, doc.sgi_process_id.ids)],
-                'sgi_reason': ("El MIID vigente ya no coincide con el sistema." if baseline
-                               else "Primera revisión del MIID generada desde Odoo."),
+                'sgi_reason': ("El %s vigente ya no coincide con el sistema." % kind['short'] if baseline
+                               else "Primera revisión del %s generada desde Odoo." % kind['short']),
                 'sgi_changes': "\n".join(diffs) or (
                     "Revisión generada desde Odoo con los datos del sistema al %s."
                     % sgi_today(self.env).strftime('%d/%m/%Y')),
@@ -1127,8 +1257,9 @@ class SgiMiid(models.Model):
                 'sgi_miid_snapshot': json.dumps(snapshot, ensure_ascii=False, sort_keys=True),
                 'sgi_miid_generated': fields.Datetime.now(),
             })
-            request._sgi_miid_attach("MIID Rev. %02d (para aprobación).pdf" % revision)
-            request.message_post(body="Solicitud del MIID creada desde %s." % sgi_menu_path('miid'))
+            request._sgi_miid_attach("%s Rev. %02d (para aprobación).pdf" % (kind['short'], revision))
+            request.message_post(body="Solicitud del %s creada desde %s." % (
+                kind['short'], sgi_menu_path(kind['menu'])))
         return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
                 'res_id': request.id, 'view_mode': 'form', 'target': 'current'}
 
@@ -1138,15 +1269,16 @@ class SgiMiid(models.Model):
     def _sgi_notice_note(self, since, diffs):
         self.ensure_one()
         doc = self._sgi_current_document()
-        head = escape("Desde el %s el MIID vigente (Rev. %s%s) no coincide con el sistema:" % (
-            since.strftime('%d/%m/%Y'), doc.sgi_revision_label or '00',
+        kind = self._sgi_kind()
+        head = escape("Desde el %s el %s vigente (Rev. %s%s) no coincide con el sistema:" % (
+            since.strftime('%d/%m/%Y'), kind['short'], doc.sgi_revision_label or '00',
             ", emisión %s" % doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date else ''))
         items = Markup('').join(Markup("<li>%s</li>") % d for d in diffs)
         tail = []
         pending = self._sgi_open_request(doc)
         if pending:
             tail.append("Ya está en curso la solicitud %s." % (pending.name or ''))
-        tail.append("Abra %s y use «Solicitar cambio del MIID»." % sgi_menu_path('miid'))
+        tail.append("Abra %s y use «Solicitar cambio de revisión»." % sgi_menu_path(kind['menu']))
         return Markup("<p>%s</p><ul>%s</ul><p>%s</p>") % (head, items, " ".join(tail))
 
     def _sgi_check(self):
@@ -1158,15 +1290,16 @@ class SgiMiid(models.Model):
         for miid in self.sudo():
             miid.invalidate_recordset()
             status = miid._sgi_status()
-            key = '%s:%d' % (MIID_NOTICE_KIND, miid.company_id.id)
+            kind = miid._sgi_kind()
+            key = '%s:%d' % (kind['notice_kind'], miid.company_id.id)
             open_notices = self.env['mail.activity'].sudo().with_context(active_test=False).search([
                 ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False)])
             vals = {'last_check': now}
             if status['state'] != 'desactualizado':
                 vals['outdated_since'] = False
                 miid.write(vals)
-                reason = ("el MIID ya coincide con el sistema" if status['state'] == 'al_dia'
-                          else "el MIID vigente no tiene contra qué comparar")
+                reason = ("el %s ya coincide con el sistema" % kind['short'] if status['state'] == 'al_dia'
+                          else "el %s vigente no tiene contra qué comparar" % kind['short'])
                 Cron._sgi_close_activities(open_notices, reason)
                 continue
             vals['outdated_since'] = miid.outdated_since or now
@@ -1176,7 +1309,7 @@ class SgiMiid(models.Model):
                 continue
             since = sgi_local_date(self.env, miid.outdated_since)
             deadline = sgi_add_business_days(self.env, since, MIID_NOTICE_BUSINESS_DAYS)
-            Cron._sgi_schedule(miid, "El MIID vigente ya no coincide con el sistema",
+            Cron._sgi_schedule(miid, "El %s vigente ya no coincide con el sistema" % kind['short'],
                                miid._sgi_notice_note(since, status['diffs']), manager_id,
                                date_deadline=deadline, key=key)
         return True
@@ -1186,39 +1319,45 @@ class SgiMiid(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _sgi_diagnostic_lines(self):
-        miid = self._sgi_get()
-        if not miid:
-            return []
+        lines = []
+        for kind in MIID_KINDS:
+            miid = self._sgi_get(kind=kind)
+            if miid:
+                lines += miid._sgi_diagnostic_lines_one()
+        return lines
+
+    def _sgi_diagnostic_lines_one(self):
+        self.ensure_one()
+        miid = self
         miid.invalidate_recordset()
+        kind = miid._sgi_kind()
+        short = kind['short']
         Diag = self.env['sgi.diagnostic']
-        fix = sgi_menu_path('miid')
+        fix = sgi_menu_path(kind['menu'])
         status = miid._sgi_status()
         doc = miid._sgi_current_document()
         lines = []
         if status['state'] == 'al_dia':
-            lines.append(Diag._sgi_line('ok', "MIID al día (Rev. %s, emisión %s)." % (
-                doc.sgi_revision_label, doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date
+            lines.append(Diag._sgi_line('ok', "%s al día (Rev. %s, emisión %s)." % (
+                short, doc.sgi_revision_label, doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date
                 else "sin fecha")))
         elif status['state'] == 'desactualizado':
             since = sgi_local_date(self.env, miid.outdated_since) if miid.outdated_since \
                 else sgi_today(self.env)
-            lines.append(Diag._sgi_line('warn', "MIID desactualizado desde %s: %d diferencia(s) con el sistema." % (
-                since.strftime('%d/%m/%Y'), len(status['diffs'])), fix))
+            lines.append(Diag._sgi_line('warn', "%s desactualizado desde %s: %d diferencia(s) con el sistema." % (
+                short, since.strftime('%d/%m/%Y'), len(status['diffs'])), fix))
         elif status['state'] == 'sin_base':
-            lines.append(Diag._sgi_line('warn', "El MIID vigente (Rev. %s) no se generó desde Odoo: no se "
-                                                "puede comparar con el sistema." % doc.sgi_revision_label, fix))
+            lines.append(Diag._sgi_line('warn', "El %s vigente (Rev. %s) no se generó desde Odoo: no se "
+                                                "puede comparar con el sistema." % (short, doc.sgi_revision_label),
+                                        fix))
         else:
-            lines.append(Diag._sgi_line('bad', "No hay MIID vigente (clave MIID).", fix))
+            lines.append(Diag._sgi_line('bad', "No hay %s vigente (clave %s)." % (short, kind['code']), fix))
         if doc:
-            env = miid._sgi_env()
-            sections = env['sgi.miid.section'].search_count([('company_id', '=', miid.company_id.id),
-                                                            ('to_confirm', '=', True)])
-            processes = env['sgi.process'].search([('company_id', '=', miid.company_id.id)])
-            not_ready = len(processes.filtered(lambda p: p.state not in MIID_READY_PROCESS_STATES))
-            if sections or not_ready or not processes:
+            blockers = miid._sgi_blockers()
+            if blockers:
                 lines.append(Diag._sgi_line(
-                    'warn', "La siguiente revisión del MIID no se puede aprobar: %d sección(es) por confirmar "
-                            "y %d proceso(s) sin publicar." % (sections, not_ready), fix))
+                    'warn', "La siguiente revisión del %s no se puede aprobar: %s" % (
+                        short, "; ".join(blockers)), fix))
         return lines
 
 
@@ -1261,8 +1400,11 @@ class ApprovalRequestMiid(models.Model):
                                              "completas.")
 
     def _sgi_miid(self):
+        """El documento generado de la solicitud (por la clave del documento)."""
         self.ensure_one()
-        return self.env['sgi.miid']._sgi_get(self.sudo().sgi_document_id.company_id or None)
+        doc = self.sudo().sgi_document_id
+        kind = self.env['sgi.miid']._sgi_kind_for_code(doc.sgi_code) or 'miid'
+        return self.env['sgi.miid']._sgi_get(doc.company_id or None, kind=kind)
 
     def _sgi_miid_attach(self, name):
         """Genera el PDF del MIID para esta solicitud, lo adjunta y lo deja
@@ -1280,9 +1422,9 @@ class ApprovalRequestMiid(models.Model):
             blockers = req._sgi_miid()._sgi_blockers()
             if blockers:
                 raise UserError(
-                    "No se puede %s el cambio del MIID todavía:\n%s\nQuite «Por confirmar» cuando el texto "
+                    "No se puede %s el cambio del %s todavía:\n%s\nQuite «Por confirmar» cuando el texto "
                     "esté confirmado y publique los procesos; después vuelva a intentarlo." % (
-                        verb, "\n".join("• " + b for b in blockers)))
+                        verb, req._sgi_miid()._sgi_kind()['short'], "\n".join("• " + b for b in blockers)))
 
     def _sgi_miid_needs_refresh(self, digest):
         """Otra vez el PDF si cambiaron los datos o si se generó con secciones
@@ -1307,8 +1449,9 @@ class ApprovalRequestMiid(models.Model):
         # I-4: el anterior es el que se iba a mandar a firmar.
         old = self.sgi_change_attachment_id or self._sgi_change_attachment()
         stamp = sgi_today(self.env).strftime('%d-%m-%Y')
+        short = miid._sgi_kind()['short']
         if old:
-            base = old.name[:-4] if (old.name or '').lower().endswith('.pdf') else (old.name or 'MIID')
+            base = old.name[:-4] if (old.name or '').lower().endswith('.pdf') else (old.name or short)
             old.sudo().write({'name': "%s (sustituido el %s).pdf" % (base, stamp)})
         try:
             previous = json.loads(self.sgi_miid_snapshot or '{}')
@@ -1321,9 +1464,9 @@ class ApprovalRequestMiid(models.Model):
         if diffs:
             vals['sgi_changes'] = "%s\nActualizado al enviar:\n%s" % (self.sgi_changes or '', "\n".join(diffs))
         self.sudo().write(vals)
-        self._sgi_miid_attach("MIID Rev. %02d (para aprobación).pdf" % (self.sgi_new_revision or 0))
-        self.message_post(body="Se generó otra vez el PDF del MIID antes de enviar (datos del sistema "
-                               "actualizados); el anterior queda como «%s»." % (old.name if old else '—'))
+        self._sgi_miid_attach("%s Rev. %02d (para aprobación).pdf" % (short, self.sgi_new_revision or 0))
+        self.message_post(body="Se generó otra vez el PDF del %s antes de enviar (datos del sistema "
+                               "actualizados); el anterior queda como «%s»." % (short, old.name if old else '—'))
 
     def action_confirm(self):
         self._sgi_miid_raise_blockers("enviar")
@@ -1429,24 +1572,31 @@ class ApprovalRequestMiid(models.Model):
         if not (self.sgi_miid_hash and self.sgi_change_kind == 'modificacion'):
             return super()._sgi_apply_doc_change()
         miid = self._sgi_miid()
+        short = miid._sgi_kind()['short']
         blockers = miid._sgi_blockers()
         if blockers:  # última red: action_approve ya los revisó
             if not self.env.context.get('sgi_sign_sync'):
-                raise UserError("No se puede aprobar el cambio del MIID todavía:\n%s" % "\n".join(
-                    "• " + b for b in blockers))
-            self.message_post(body="El MIID no se publicó: hay candados (secciones por confirmar o "
-                                   "procesos sin publicar).")
+                raise UserError("No se puede aprobar el cambio del %s todavía:\n%s" % (short, "\n".join(
+                    "• " + b for b in blockers)))
+            self.message_post(body="El %s no se publicó: hay candados (secciones por confirmar o "
+                                   "procesos sin publicar)." % short)
             return False
         if miid._sgi_hash(miid._sgi_snapshot()) != self.sgi_miid_hash:
-            self.message_post(body="Los datos del sistema cambiaron después del envío: se publica el MIID "
-                                   "que se firmó; la comparación diaria lo marcará desactualizado.")
+            self.message_post(body="Los datos del sistema cambiaron después del envío: se publica el %s "
+                                   "que se firmó; la comparación diaria lo marcará desactualizado." % short)
         sent = self._sgi_change_attachment()
         if sent:
-            sent.sudo().write({'name': "MIID Rev. %02d.pdf" % (self.sgi_new_revision or 0)})
+            sent.sudo().write({'name': "%s Rev. %02d.pdf" % (short, self.sgi_new_revision or 0)})
+        previous = self.sgi_document_id
         res = super()._sgi_apply_doc_change()
         target = self.sgi_new_document_id or self.sgi_document_id
         target.sudo().write({'sgi_content_hash': self.sgi_miid_hash})
-        self._sgi_miid_close_held("el MIID se aprobó")
+        if miid.kind != 'miid' and previous and previous != target and previous.sgi_legacy_family:
+            # 57.148.0: la revisión del Dropbox queda «Migrado a Odoo» hacia
+            # el documento generado; la nueva no es «anterior».
+            previous.sudo().write({'sgi_migration_state': 'migrado',
+                                   'sgi_migration_target': sgi_menu_path(miid._sgi_kind()['menu'])})
+        self._sgi_miid_close_held("el %s se aprobó" % short)
         miid._sgi_check()
         return res
 
@@ -1462,7 +1612,11 @@ class SgiCronMiid(models.AbstractModel):
 
     @api.model
     def _sgi_miid_check(self):
-        """57.105.0: compara el MIID de la empresa del SGI con el sistema."""
+        """57.105.0: compara el MIID de la empresa del SGI con el sistema;
+        57.148.0: también el P-G01."""
         # Solo la empresa del SGI (D-03).
-        self.env['sgi.miid']._sgi_get()._sgi_check()
+        for kind in MIID_KINDS:
+            miid = self.env['sgi.miid']._sgi_get(kind=kind)
+            if miid:
+                miid._sgi_check()
         return True

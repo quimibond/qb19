@@ -124,6 +124,16 @@
         <field name="sgi_code">F-P-D01-08</field>
         <field name="note">Especificaciones del producto (cliente)</field>
     </record>
+    <!-- 57.152.0: aprobación para iniciar el proyecto, un formato por línea. Las claves son las
+         anteriores; Documentos las resuelve por «clave anterior» (hoy F-C1-06 y F-C1-12). -->
+    <record id="format_ref_dev_start_tejido" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-09</field>
+        <field name="note">Aprobación para iniciar un proyecto (tejido)</field>
+    </record>
+    <record id="format_ref_dev_start_entretelas" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-19</field>
+        <field name="note">Aprobación para iniciar un proyecto (entretelas)</field>
+    </record>
 
     <record id="format_ref_procedure_print" model="sgi.format.map">
         <field name="sgi_code">F-P-G01-02</field>

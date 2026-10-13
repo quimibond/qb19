@@ -60,7 +60,7 @@ DEFAULT_FILTERS = {
     'sgi_supplier_eval_action': ['group_class'],
 }
 CATALOG_MENUS = ('menu_sgi_deliverable_list', 'menu_sgi_process_flows', 'menu_sgi_analysis_who',
-                 'menu_sgi_jobs_roles', 'menu_sgi_machine_sheets')
+                 'menu_sgi_jobs_roles')
 
 
 def _own_views(env, view_type=None):

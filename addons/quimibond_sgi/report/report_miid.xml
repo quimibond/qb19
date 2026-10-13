@@ -13,7 +13,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_miid_document</field>
         <field name="report_file">quimibond_sgi.report_miid_document</field>
-        <field name="print_report_name">'MIID - borrador (vista del sistema)'</field>
+        <field name="print_report_name">'%s - borrador (vista del sistema)' % (object.kind == 'pg01' and 'P-G01' or 'MIID')</field>
         <field name="paperformat_id" ref="paperformat_sgi_carta"/>
     </record>
 
@@ -188,6 +188,20 @@
         </t>
     </template>
 
+    <template id="report_miid_block_actividades">
+        <t t-set="rows" t-value="miid['blocks']['actividades']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" style="font-size:8px;">
+            <thead><tr><th>N.º</th><th>Actividad</th><th>Ejecuta</th><th>Aprueba</th><th>Cuándo</th><th>Terminada cuando</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row">
+                    <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/><td t-out="row[4]"/><td t-out="row[5]"/>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">Ninguna actividad está ligada a este documento («Procedimiento relacionado»
+            en la actividad).</p>
+    </template>
+
     <template id="report_miid_block_historial">
         <table class="table table-sm table-bordered" style="font-size:9px;">
             <thead><tr><th>Revisión</th><th>Fecha</th><th>Cambio</th></tr></thead>
@@ -200,7 +214,7 @@
     </template>
 
     <template id="report_miid_block">
-        <!-- 14 ramas, sin t-call dinámico. -->
+        <!-- 15 ramas, sin t-call dinámico. -->
         <t t-if="block == 'identificacion'" t-call="quimibond_sgi.report_miid_block_identificacion"/>
         <t t-elif="block == 'normas'" t-call="quimibond_sgi.report_miid_block_normas"/>
         <t t-elif="block == 'roles'" t-call="quimibond_sgi.report_miid_block_roles"/>
@@ -214,6 +228,7 @@
         <t t-elif="block == 'correspondencia'" t-call="quimibond_sgi.report_miid_block_correspondencia"/>
         <t t-elif="block == 'procedimientos_anteriores'" t-call="quimibond_sgi.report_miid_block_procedimientos_anteriores"/>
         <t t-elif="block == 'anexos'" t-call="quimibond_sgi.report_miid_block_anexos"/>
+        <t t-elif="block == 'actividades'" t-call="quimibond_sgi.report_miid_block_actividades"/>
         <t t-elif="block == 'historial'" t-call="quimibond_sgi.report_miid_block_historial"/>
     </template>
 
@@ -272,12 +287,12 @@
 
     <template id="report_miid_cover">
         <div style="text-align:center; margin-top:60px;">
-            <h1 style="font-size:22px;">Manual Integral de Información Documentada (MIID)</h1>
+            <h1 style="font-size:22px;" t-out="miid['title']"/>
             <p style="font-size:13px;" t-out="miid['company']"/>
             <p style="font-size:13px;">Revisión <t t-out="'%02d' % miid['revision']"/>
                 <t t-if="miid['draft']"> · Borrador — no vigente</t></p>
             <p t-if="miid_mode == 'live'" class="text-muted">Vista del sistema al <t t-out="miid_printed"/>: copia no
-                controlada. La revisión vigente es el documento MIID publicado en Documentos.</p>
+                controlada. La revisión vigente es el documento <t t-out="miid['code']"/> publicado en Documentos.</p>
             <p t-if="miid['request']" class="text-muted">Solicitud de cambio documental <t t-out="miid['request'].name"/>;
                 la emisión es la fecha en que se aprueba.</p>
         </div>

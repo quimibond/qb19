@@ -8,11 +8,12 @@ from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from ..models.sgi_calendar import sgi_add_business_days
 from .common_documents import sgi_hide_real_documents
+from .common_exec import sgi_exec_start_open
 
 
 def _blank_pdf():
@@ -32,6 +33,7 @@ class TestBandeja(TransactionCase):
         super().setUpClass()
         env = cls.env
         sgi_hide_real_documents(env)
+        sgi_exec_start_open(env)
         cls.today = fields.Date.context_today(env.user)
         cls.Pending = env['sgi.my.pending']
         cls.job = env['hr.job'].create({'name': 'PUESTO BANDEJA 8A'})
@@ -242,6 +244,26 @@ class TestBandeja(TransactionCase):
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         self.assertEqual(wiz.received_late_count, 1)
         self.assertEqual(wiz.action_show_received()['name'], "Escalamientos atrasados")
+
+    def test_10a_escalamiento_con_registro_apunta_al_periodo(self):
+        """57.149.0: con registro de cumplimiento, el escalamiento es del
+        periodo atrasado (de quién y cuándo) y es accionable."""
+        due = self.today - timedelta(days=10)
+        execution = self.env['sgi.activity.execution'].sudo().create({
+            'activity_id': self.activity.id, 'employee_id': self.emp.id,
+            'period_start': due - timedelta(days=20), 'period_end': due, 'date_due': due})
+        rows = self._rows(self.boss_user, 'escalamiento')
+        self.assertEqual([(r['res_model'], r['res_id']) for r in rows],
+                         [('sgi.activity.execution', execution.id)])
+        self.assertIn('ZS Persona 8A', rows[0]['name'])
+        Pending = self.Pending.with_user(self.boss_user)
+        row = Pending.search(Pending.action_open_mine()['domain']).filtered(
+            lambda r: r.kind == 'escalamiento' and r.res_id == execution.id)
+        self.assertTrue(row.can_done)
+        self.assertEqual(row.action_done()['res_model'], 'sgi.activity.execution.mark')
+        self.assertEqual(row.action_open()['res_id'], execution.id)
+        # Al aprobador no le llega (56.38.1).
+        self.assertFalse(self._rows(self.approver_user, 'escalamiento'))
 
     # ---- aprobador y escalador ante el atraso del ejecutor (56.38.1) ----------
     def test_10b_aprobador_no_ve_el_atraso_del_ejecutor(self):
@@ -551,3 +573,139 @@ class TestBandeja(TransactionCase):
         with self.assertRaises(UserError):
             foreign.with_user(self.user).action_done_notice()
         self.assertTrue(other.exists() and other.active)
+
+    # ---- 57.150.0 (auditoría UX, fase 2): cada tipo, su acción real ----------
+    def _stored(self, kind, res_id, user=None):
+        user = user or self.user
+        employee = self.boss if user == self.boss_user else self.emp
+        rows = self.Pending.with_user(user)._sgi_build(employee)
+        return rows.filtered(lambda r: r.kind == kind and r.res_id == res_id)
+
+    def test_30_nc_registra_el_paso_que_toca(self):
+        Alert = self.env['quality.alert']
+        if 'sgi_responsible_ids' not in Alert._fields:
+            self.skipTest("Sin responsables de NC en este modelo.")
+        alert = Alert.create({'name': 'ZS NC paso 8A', 'sgi_process_id': self.process.id,
+                              'sgi_responsible_ids': [(6, 0, self.user.ids)]})
+        row = self._stored('nc', alert.id)
+        self.assertEqual(len(row), 1)
+        self.assertTrue(row.with_user(self.user).can_done, "El responsable registra el paso.")
+        action = row.with_user(self.user).action_done()
+        self.assertEqual(action['res_model'], 'sgi.nc.step')
+        self.assertEqual(action['context']['default_step'], 'contencion')
+        Step = self.env['sgi.nc.step'].with_user(self.user).with_context(action['context'])
+        result = Step.create({'name': 'Segregar el lote 8A'}).action_confirm()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertIn('Causa raíz', result['params']['message'])
+        self.assertTrue(alert.sgi_containment_done)
+        self.assertEqual(self.env['sgi.nc.step']._sgi_next_step(alert), 'causa')
+        Step.create({'step': 'causa', 'root_cause': 'Sin instructivo 8A'}).action_confirm()
+        self.assertEqual(alert.sgi_root_cause, 'Sin instructivo 8A')
+        Step.create({'step': 'plan', 'name': 'Escribir el instructivo 8A'}).action_confirm()
+        self.assertFalse(self.env['sgi.nc.step']._sgi_next_step(alert), "Los tres plazos cumplidos.")
+        # Quien no es responsable ni dueño no registra pasos.
+        with self.assertRaises(AccessError):
+            self.env['sgi.nc.step'].with_user(self.boss_user).create({
+                'alert_id': alert.id, 'step': 'causa', 'root_cause': 'x'}).action_confirm()
+
+    def test_31_requisito_legal_abre_la_evaluacion(self):
+        req = self.env['sgi.legal.requirement'].create({
+            'name': 'Requisito acción 8A', 'system': 'ambiental', 'responsible_id': self.user.id,
+            'next_eval_date': self.today + timedelta(days=3)})
+        row = self._stored('legal', req.id)
+        self.assertTrue(row.with_user(self.user).can_done)
+        action = row.with_user(self.user).action_done()
+        self.assertEqual(action['res_model'], 'sgi.legal.evaluate')
+        wizard = self.env['sgi.legal.evaluate'].with_user(self.user).with_context(action['context']).create({
+            'evidence': 'Licencia vigente 8A'})
+        result = wizard.action_confirm()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertGreater(req.next_eval_date, self.today + timedelta(days=30))
+        self.assertFalse(self.Pending.sudo().search([
+            ('res_model', '=', 'sgi.legal.requirement'), ('res_id', '=', req.id)]),
+            "El renglón sale en el momento.")
+
+    def test_32_documento_sigue_vigente_o_pide_cambio(self):
+        doc = self.env['documents.document'].create({
+            'name': 'Procedimiento revisión 8A', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A69', 'sgi_state': 'vigente',
+            'sgi_owner_id': self.user.id, 'sgi_next_review_date': self.today + timedelta(days=10),
+            'sgi_process_id': self.process.id})
+        row = self._stored('documento', doc.id)
+        self.assertTrue(row.with_user(self.user).can_done)
+        action = row.with_user(self.user).action_done()
+        self.assertEqual(action['res_model'], 'sgi.doc.review')
+        Review = self.env['sgi.doc.review'].with_user(self.user).with_context(action['context'])
+        # «Necesita cambio» abre la solicitud de cambio documental ya ligada.
+        change = Review.create({'decision': 'cambio', 'note': 'Cambió el equipo 8A'}).action_confirm()
+        self.assertEqual(change['res_model'], 'approval.request')
+        self.assertEqual(change['context']['default_sgi_document_id'], doc.id)
+        with self.assertRaises(UserError):
+            Review.create({'decision': 'vigente'}).action_confirm()
+        Review.create({'decision': 'vigente', 'note': 'Revisado con el supervisor 8A'}).action_confirm()
+        self.assertEqual(doc.sgi_next_review_date, self.today + relativedelta(years=2))
+        self.assertFalse(self._row('documento', doc.id))
+        with self.assertRaises(AccessError):
+            self.env['sgi.doc.review'].with_user(self.boss_user).create({
+                'document_id': doc.id, 'note': 'x'}).action_confirm()
+
+    def test_33_solicitud_aprobar_desde_el_renglon(self):
+        category = self.env['approval.category'].create({
+            'name': 'ZS Categoría acción 8A', 'approval_minimum': 1,
+            'approver_ids': [(0, 0, {'user_id': self.user.id, 'required': True})]})
+        request = self.env['approval.request'].create({
+            'name': 'ZS solicitud acción 8A', 'category_id': category.id,
+            'request_owner_id': self.env.user.id})
+        request.action_confirm()
+        row = self._stored('solicitud', request.id)
+        self.assertEqual(len(row), 1)
+        self.assertTrue(row.with_user(self.user).can_done)
+        # Otra persona no aprueba con el renglón ajeno.
+        with self.assertRaises((UserError, AccessError)):
+            row.with_user(self.boss_user).action_request_approve()
+        result = row.with_user(self.user).action_done()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(request.request_status, 'approved')
+        self.assertFalse(self._row('solicitud', request.id))
+
+    def test_34_acuses_seleccionados(self):
+        docs = self.env['documents.document'].create([{
+            'name': 'Instructivo masivo 8A-%d' % i, 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formato', 'sgi_code': 'F-P-A96-0%d' % i, 'sgi_state': 'vigente'}
+            for i in (1, 2)])
+        acks = self.env['sgi.document.ack'].create([
+            {'document_id': doc.id, 'employee_id': self.emp.id} for doc in docs])
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp).filtered(
+            lambda r: r.kind == 'acuse' and r.res_id in acks.ids)
+        self.assertEqual(len(rows), 2)
+        result = rows.with_user(self.user).action_sign_ack_selected()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertNotIn('pendiente', acks.mapped('state'))
+        self.assertFalse(rows.exists())
+        # Los de otra persona no se firman.
+        ack = self.env['sgi.document.ack'].create({'document_id': docs[0].id, 'employee_id': self.boss.id})
+        theirs = self.Pending.with_user(self.boss_user)._sgi_build(self.boss).filtered(
+            lambda r: r.kind == 'acuse' and r.res_id == ack.id)
+        self.assertEqual(len(theirs), 1)
+        with self.assertRaises((UserError, AccessError)):
+            theirs.with_user(self.user).action_sign_ack_selected()
+        self.assertEqual(ack.state, 'pendiente')
+
+    def test_35_campana_no_repite_lo_de_la_bandeja(self):
+        """Con «No repetir en la campana…» encendido, el aviso de un cron sobre
+        lo que ya es renglón propio no se crea; apagado (por omisión), sí."""
+        req = self.env['sgi.legal.requirement'].create({
+            'name': 'Requisito campana 8A', 'system': 'ambiental', 'responsible_id': self.user.id,
+            'next_eval_date': self.today + timedelta(days=3)})
+        Cron = self.env['sgi.cron']
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.set_param('quimibond_sgi.notices_skip_covered', False)
+        first = Cron._sgi_schedule(req, 'Evaluar campana 8A', '', self.user.id, key='campana_8a:%d' % req.id)
+        self.assertTrue(first, "Por omisión llega por los dos lados.")
+        Param.set_param('quimibond_sgi.notices_skip_covered', 'True')
+        self.assertFalse(Cron._sgi_schedule(req, 'Evaluar campana 8A', '', self.user.id,
+                                            key='campana_8a:%d' % req.id))
+        self.assertFalse(first.exists() and first.active, "El aviso abierto se cierra.")
+        # A quien no tiene el renglón (el jefe) sí le llega.
+        self.assertTrue(Cron._sgi_schedule(req, 'Evaluar campana jefe 8A', '', self.boss_user.id,
+                                           key='campana_jefe_8a:%d' % req.id))

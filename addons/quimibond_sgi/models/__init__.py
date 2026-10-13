@@ -97,10 +97,12 @@ from . import sgi_machine_sheet
 # 57.126.0 (C1, bloque G): ruta y ficha de tejido. Hereda sgi.machine.sheet: va después de él
 # (57.128.1: el build de main cayó con «Model 'sgi.machine.sheet' does not exist in registry»).
 from . import sgi_dev_process_sheet
+from . import sgi_dev_fabric_sheet  # 57.155.0: control del desarrollo sobre las fichas de tela
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
 from . import sgi_mp_change
 from . import sgi_my_pending
+from . import sgi_pending_actions
 from . import sgi_approval_native
 from . import sgi_relative_roles
 from . import sgi_business_line
@@ -120,6 +122,7 @@ from . import sgi_legacy_routine
 from . import sgi_dropbox_views
 from . import sgi_legacy_routine_import
 from . import sgi_weekly_overdue
+from . import sgi_daily_pending
 from . import sgi_indicator_ind2
 from . import sgi_business_calendar
 from . import sgi_env_aspect
@@ -174,3 +177,6 @@ from . import sgi_measure_manual_reason
 # 57.116.0: asuntos de las categorías de Aprobaciones compartidas (hereda
 # approval.request y approval.category, y usa el rol «Aprueba»).
 from . import sgi_approval_subject
+# 57.150.0: ligas de navegación NC ↔ hallazgo ↔ auditoría, proceso, documento e
+# indicador (extiende modelos de varios archivos; va al final).
+from . import sgi_nav_links

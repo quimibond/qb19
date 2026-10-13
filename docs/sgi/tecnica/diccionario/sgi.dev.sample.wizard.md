@@ -4,28 +4,25 @@
 
 **Pedir la corrida de muestra del desarrollo** (TransientModel).
 
+57.154.0: la corrida de muestra es la cadena del desarrollo (crudo → teñido → acabado), una orden por artículo. Los renglones se arman al abrir y se pueden ajustar antes de confirmar.
+
 Archivos: `addons/quimibond_sgi/models/sgi_dev_sample.py`.
 
-## Campos (12)
+## Campos (7)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `bom_id` | Many2one | Lista de materiales |  |  | `mrp.bom` | compute `_compute_bom_id`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:157` |
-| `date_planned` | Datetime | Fecha deseada de máquina |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:162` |
-| `location_dest_id` | Many2one | A dónde entra el sobrante |  | sí | `stock.location` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:166` |
-| `note` | Text | Nota para Planeación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:168` |
-| `picking_type_id` | Many2one | Tipo de operación |  | sí | `stock.picking.type` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:164` |
-| `product_id` | Many2one | Artículo a fabricar | Crudo, teñido o acabado del proyecto. Por omisión el crudo: la corrida arranca en Tejido Desarrollo. | sí | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:152` |
-| `product_ids` | Many2many |  |  |  | `product.product` | compute `_compute_product_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:151` |
-| `product_qty` | Float | Cantidad a fabricar |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:161` |
-| `product_uom_id` | Many2one |  |  |  |  | related `product_id.uom_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:156` |
-| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:150` |
-| `suggested_qty` | Float | Cantidad sugerida |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:159` |
-| `suggestion_note` | Text | Por qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:160` |
+| `date_planned` | Datetime | Fecha deseada de máquina |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:175` |
+| `line_ids` | One2many | Órdenes de la corrida |  |  | `sgi.dev.sample.wizard.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:172` |
+| `note` | Text | Nota para Planeación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:177` |
+| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:171` |
+| `suggested_qty` | Float | Cantidad sugerida del último artículo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:173` |
+| `suggestion_note` | Text | Por qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:174` |
+| `warning` | Text | Antes de confirmar | Lo que impide crear las órdenes: lista de materiales que no es del artículo, sin lista propia, sin ruta, sin cantidad o sin tipo de operación. |  |  | compute `_compute_warning`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:178` |
 
 ## Métodos públicos (2)
 
 | Método | Qué hace (docstring) |
 |---|---|
-| `action_confirm` | — |
+| `action_confirm` | Crea una orden por renglón, en el orden de la cadena. Si algún renglón tiene un problema no se crea ninguna. |
 | `default_get` | — |

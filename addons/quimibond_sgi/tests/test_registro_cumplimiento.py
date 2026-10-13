@@ -4,13 +4,14 @@
 Hecha / No aplica desde Mis pendientes, evidencia en las de registro manual,
 cierre solo por el registro de Odoo, medición de las manuales desde el
 registro y el faltante «Pantalla que no va con su medición»."""
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from .common_calendar import sgi_test_calendar
 from .common_documents import sgi_hide_real_documents
+from .common_exec import sgi_exec_start_open
 from ..models.sgi_calendar import sgi_today
 
 
@@ -22,6 +23,7 @@ class TestRegistroCumplimiento(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         sgi_test_calendar(cls.env)
+        sgi_exec_start_open(cls.env)
         cls.job = cls.env['hr.job'].create({'name': 'PUESTO REGISTRO CUMPLIMIENTO'})
         cls.boss_user = new_test_user(cls.env, login='rc_boss',
                                       groups='base.group_user,quimibond_sgi.group_sgi_user')
@@ -159,3 +161,149 @@ class TestRegistroCumplimiento(TransactionCase):
             'name': 'Contactos ZRC', 'res_model': 'res.partner'})
         self.auto.odoo_action_id = partners
         self.assertNotIn('menu_model_mismatch', self.auto.spec_gap_ids.mapped('code'))
+
+    # ---- 57.149.0: escalamiento accionable, permisos, arranque, saneamiento ----
+    def _late_exec(self, activity=None, employee=None, days=20):
+        """Un periodo abierto que venció hace ``days`` días."""
+        due = self.today - timedelta(days=days)
+        return self.Exec.sudo().create({
+            'activity_id': (activity or self.manual).id, 'employee_id': (employee or self.emp).id,
+            'period_start': due - timedelta(days=25), 'period_end': due, 'date_due': due})
+
+    def _escalator(self):
+        """Usuario cuyo puesto tiene el rol «Escala» de la manual (sin ser jefe
+        de nadie ni Jefe MAST)."""
+        job = self.env['hr.job'].create({'name': 'ESCALA REGISTRO CUMPLIMIENTO'})
+        self.env['sgi.activity.role'].create({'activity_id': self.manual.id, 'role': 'escala',
+                                              'job_id': job.id, 'after_days': 0})
+        user = new_test_user(self.env, login='rc_escala',
+                             groups='base.group_user,quimibond_sgi.group_sgi_user')
+        self.env['hr.employee'].create({'name': 'Escala Registro', 'job_id': job.id, 'user_id': user.id})
+        self.env.flush_all()
+        return user
+
+    def _pending_rows(self, user, execution, kind=None):
+        Pending = self.env['sgi.my.pending'].with_user(user)
+        return Pending.search(Pending.action_open_mine()['domain']).filtered(
+            lambda r: r.res_model == 'sgi.activity.execution' and r.res_id == execution.id
+            and (kind is None or r.kind == kind))
+
+    def test_07_escalamiento_apunta_al_periodo_y_se_cierra_al_momento(self):
+        esc_user = self._escalator()
+        execution = self._late_exec()
+        rows = self._pending_rows(esc_user, execution, 'escalamiento')
+        self.assertEqual(len(rows), 1, "Un renglón de escalamiento por periodo atrasado.")
+        self.assertIn('Emp Registro', rows.name, "Dice de quién es el periodo.")
+        self.assertTrue(rows.can_done and rows.can_mark_exec, "Quien escala puede marcarlo.")
+        opened = rows.action_open()
+        self.assertEqual((opened['res_model'], opened['res_id']), ('sgi.activity.execution', execution.id),
+                         "«Ir» abre el periodo, no el catálogo.")
+        done = rows.action_done()
+        self.assertEqual(done['res_model'], 'sgi.activity.execution.mark')
+        self.assertEqual((done['context']['default_mode'], done['context']['sgi_pending_row_id']),
+                         ('done', rows.id))
+        own = self._pending_rows(self.user, execution)
+        boss = self._pending_rows(self.boss_user, execution)
+        self.assertTrue(own, "Quien la ejecuta también la tiene.")
+        na = rows.action_exec_not_applicable()
+        Mark = self.env['sgi.activity.execution.mark'].with_user(esc_user)
+        Mark.with_context(na['context']).create({'na_reason': 'La presentó el despacho externo'}).action_confirm()
+        self.assertEqual(execution.state, 'no_aplica')
+        self.assertFalse(rows.exists(), "El escalamiento sale en la misma transacción.")
+        self.assertFalse((own | boss).exists(), "Y los renglones de los demás, sin esperar al cron.")
+
+    def test_08_quien_puede_marcar_desde_57_149(self):
+        execution = self._late_exec()
+        director = new_test_user(self.env, login='rc_dir',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_director')
+        admin = new_test_user(self.env, login='rc_admin',
+                              groups='base.group_user,quimibond_sgi.group_sgi_admin')
+        with self.assertRaises(AccessError):
+            execution.with_user(self.other_user)._sgi_mark_not_applicable('No es mía')
+        with self.assertRaises(AccessError):
+            execution.with_user(self.other_user).action_mark_not_applicable()
+        self.assertFalse(execution.with_user(self.other_user).can_mark, "Un tercero sin rol no marca.")
+        self.assertTrue(execution.with_user(director).can_mark, "Dirección de Operaciones sí.")
+        self.assertTrue(execution.with_user(admin).can_mark, "El Administrador SGI sí.")
+        esc_user = self._escalator()
+        self.assertTrue(execution.with_user(esc_user).can_mark, "Quien tiene el rol «Escala» sí.")
+        self.assertFalse(self.Exec.with_user(esc_user)._sgi_user_can_mark(self.emp),
+                         "Sin la actividad, el rol «Escala» no cuenta.")
+        execution.with_user(director)._sgi_mark_not_applicable('Lo revisó Dirección')
+        self.assertEqual(execution.state, 'no_aplica')
+
+    def test_09_fecha_de_arranque_por_cadencia(self):
+        Param = self.env['ir.config_parameter'].sudo()
+        Activity = self.env['sgi.process.activity']
+        Pending = self.env['sgi.my.pending']
+        for cadence in ('mensual', 'trimestral', 'anual'):
+            with self.subTest(cadence):
+                activity = Activity.create({
+                    'process_id': self.process.id, 'name': 'Arranque %s ZRC' % cadence,
+                    'measure_method': 'manual', 'measure_cadence': cadence,
+                    'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
+                self.env.flush_all()
+                start, _end, due = activity._sgi_exec_period(self.today)
+                prev_start, prev_end, prev_due = activity._sgi_exec_period(start - timedelta(days=1))
+                previous = self.Exec.sudo().create({
+                    'activity_id': activity.id, 'employee_id': self.emp.id, 'period_start': prev_start,
+                    'period_end': prev_end, 'date_due': prev_due})
+                # Arranque antes de todo: el periodo anterior sin hacer pone rojo.
+                Param.set_param('quimibond_sgi.exec_start_date', '2000-01-01')
+                activity._sgi_measure()
+                self.assertEqual(activity.measure_state, 'rojo')
+                late = Pending._sgi_activity_late_due(activity, self.today)
+                # Arranque después del periodo anterior: ya no cuenta.
+                Param.set_param('quimibond_sgi.exec_start_date', (prev_due + timedelta(days=1)).isoformat())
+                activity._sgi_measure()
+                self.assertNotEqual(activity.measure_state, 'rojo', "Antes del arranque no pone rojo.")
+                if late and late < prev_due + timedelta(days=1):
+                    self.assertFalse(Pending._sgi_activity_late_due(activity, self.today),
+                                     "Antes del arranque no escala.")
+                self.assertFalse(self._pending_rows(self.user, previous), "Ni sale en Mis pendientes.")
+                # Arranque después del vencimiento del periodo en curso: no se crea.
+                Param.set_param('quimibond_sgi.exec_start_date', (due + timedelta(days=1)).isoformat())
+                created, _removed = self.Exec._sgi_generate(self.today)
+                self.assertFalse(created.filtered(lambda r, a=activity: r.activity_id == a))
+                row = Pending.sudo().create({
+                    'kind': 'actividad', 'name': 'Arranque ZRC', 'employee_id': self.emp.id,
+                    'user_id': self.user.id, 'res_model': 'sgi.process.activity', 'res_id': activity.id})
+                with self.assertRaisesRegex(UserError, "antes del arranque"):
+                    row._sgi_exec_from_activity()
+                # Arranque en el vencimiento: sí se crea.
+                Param.set_param('quimibond_sgi.exec_start_date', due.isoformat())
+                created, _removed = self.Exec._sgi_generate(self.today)
+                self.assertEqual(len(created.filtered(lambda r, a=activity: r.activity_id == a)), 1)
+                Param.set_param('quimibond_sgi.exec_start_date', '2000-01-01')
+
+    def test_10_saneamiento_y_no_aplica_masivo(self):
+        old = self._late_exec(days=60)
+        noted = self._late_exec(activity=self.auto, days=60)
+        noted.sudo().write({'progress_note': 'Ya empecé'})
+        recent = self._late_exec(days=5)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.exec_start_date', (self.today - timedelta(days=10)).isoformat())
+        with self.assertRaises(AccessError):
+            self.Exec.with_user(self.user)._sgi_close_prestart()
+        manager = new_test_user(self.env, login='rc_mast',
+                                groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        closed = self.Exec.with_user(manager)._sgi_close_prestart()
+        self.assertIn(old, closed)
+        self.assertNotIn(noted, closed, "Lo que tiene nota de avance no se toca.")
+        self.assertNotIn(recent, closed, "Lo posterior al arranque no se toca.")
+        self.assertEqual((old.state, old.na_reason), ('no_aplica', "Periodo vencido antes de la implementación del SGI"))
+        self.assertTrue(old.message_ids.filtered(lambda m: 'antes de la implementación' in (m.body or '')))
+        self.assertFalse(self.Exec.with_user(manager)._sgi_close_prestart(), "Volver a correrlo no hace nada.")
+        # No aplica a varios con un motivo común; «Hecha» es de uno en uno.
+        other = self._late_exec(days=3)
+        both = (recent | other).with_user(self.boss_user)
+        with self.assertRaises(UserError):
+            both._sgi_mark_wizard('done')
+        action = both.action_mark_not_applicable()
+        self.assertEqual(action['context']['default_execution_ids'], [(6, 0, (recent | other).ids)])
+        wizard = self.env['sgi.activity.execution.mark'].with_user(self.boss_user).with_context(
+            action['context']).create({'na_reason': 'Cierre de planta'})
+        self.assertEqual(wizard.execution_count, 2)
+        wizard.action_confirm()
+        self.assertEqual(set((recent | other).mapped('state')), {'no_aplica'})
+        self.assertEqual(set((recent | other).mapped('na_reason')), {'Cierre de planta'})

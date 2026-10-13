@@ -58,8 +58,8 @@
                                     <tr>
                                         <td>Peso</td>
                                         <td><field name="peso_acabado" nolabel="1"/></td>
-                                        <td><field name="peso_acabado_tol" nolabel="1"
-                                                   placeholder="ej. +12 / -6"/></td>
+                                        <td>+ <field name="peso_acabado_tol" nolabel="1" class="oe_inline"/>
+                                            / − <field name="peso_acabado_tol_minus" nolabel="1" class="oe_inline"/></td>
                                         <td><field name="peso_acabado_tol_unit" nolabel="1"/></td>
                                     </tr>
                                     <tr>

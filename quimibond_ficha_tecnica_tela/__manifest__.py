@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.1.1',
+    'version': '19.0.2.3.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -48,6 +48,7 @@ Incluye:
         'views/ficha_tecnica_tejido_views.xml',
         'views/ficha_tecnica_acabado_views.xml',
         'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
+        'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
         'views/product_template_views.xml',
         'wizard/ficha_tecnica_tejido_import_wizard_views.xml',
         'wizard/ficha_tecnica_acabado_import_wizard_views.xml',

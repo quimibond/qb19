@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.147.0',
+    'version': '19.0.57.156.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -96,10 +96,12 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
         'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
+        'data/sgi_daily_pending_mail.xml',  # 57.150.0: correo diario de Mis pendientes (cron apagado)
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
         'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
+        'data/sgi_dev_required_doc_data.xml',  # 57.152.0: catálogo «Información requerida al cliente»
         'data/sgi_dev_start_data.xml',  # 57.124.0 (C1): cron del reloj de materia prima
         'data/sgi_dev_shipment_data.xml',  # 57.129.0 (C1): correo del envío de muestra y cron de seguimiento
         'data/sgi_dev_escalation_data.xml',  # 57.135.0 (C1): cron de avisos por tiempo del paso pendiente
@@ -185,6 +187,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_analysis_views.xml',  # 57.120.0: parecidos, laboratorio y factibilidad
         'views/sgi_dev_board_views.xml',  # 57.122.0: tarjeta, lista de desarrollos y asistente para marcar
         'views/sgi_dev_sample_views.xml',  # 57.125.0: orden de muestra desde el proyecto
+        'views/sgi_dev_fabric_sheet_views.xml',  # 57.155.0: control del desarrollo sobre las fichas de tela
         'views/sgi_dev_shipment_views.xml',  # 57.129.0: envío de muestra y respuesta del cliente
         'views/sgi_dev_coa_views.xml',  # 57.130.0: reporte de conformidad desde la tabla
         'views/sgi_dev_tech_sheet_views.xml',  # 57.132.0: ficha técnica interna y especificaciones del producto

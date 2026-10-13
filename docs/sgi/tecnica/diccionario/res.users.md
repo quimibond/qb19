@@ -4,12 +4,13 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_daily_pending.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
-## Campos (2)
+## Campos (3)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
+| `sgi_daily_pending_mail` | Boolean | Correo diario de mis pendientes (SGI) | Cada mañana, un correo con lo atrasado y lo que vence pronto en «Mis pendientes» del SGI. Solo llega si hay algo. Apáguelo si no lo quiere. |  |  |  |  | `addons/quimibond_sgi/models/sgi_daily_pending.py:30` |
 | `sgi_deactivated_date` | Date | Desactivado el | Fecha en que se desactivó el usuario (S6-02, contra la baja del empleado). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_hr.py:65` |
 | `sgi_weekly_overdue_mail` | Boolean | Correo semanal de mis pendientes atrasados (SGI) | Cada semana, un correo con lo atrasado de «Mis pendientes» del SGI. Solo llega si hay algo atrasado. Apáguelo si no lo quiere. |  |  |  |  | `addons/quimibond_sgi/models/sgi_weekly_overdue.py:29` |
 

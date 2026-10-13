@@ -35,6 +35,11 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 1. **SGI → Mejora → No conformidades**: agrupe por etapa (Abierta,
    Seguimiento, Cerrada, Cancelada) y filtre las vencidas.
+   Cada NC tiene **Tipo** (desde 57.156.0): **Auditoría** (auditoría
+   interna, externa o scorecard de cliente), **Indicador** (indicador
+   incumplido) o **Proceso** (todo lo demás, también las reclamaciones). Sale
+   solo del **Origen** que se captura; use los filtros «De auditoría», «De
+   proceso» y «De indicador» o agrupe por «Tipo de NC».
 2. Una NC no se cierra sin causa raíz, acciones terminadas (las correctivas,
    con evidencia: una nota o un archivo) y verificación de eficacia con
    resultado **Eficaz**, registrada en la fecha programada o después (y en una
@@ -189,65 +194,124 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 - **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
   AMEF.
 
-### 2.5.3 El Manual del SGI (MIID) generado desde Odoo (desde 57.105.0; generado desde 57.146.0)
+### 2.5.2b Registro de cumplimiento: arranque, saneamiento y No aplica masivo (desde 57.149.0)
 
-**SGI → Sistema → Manual del SGI (MIID)** arma el manual con muy poco texto
-fijo (29 secciones, «Textos del manual») y con los datos vivos del SGI: las
-normas y cláusulas cargadas, los procesos con su mapa e interacción, la
-política, los objetivos, los dueños y los puestos que ejecutan, aprueban y
-escalan en cada proceso, los tipos de documento, los plazos documentales
-que aplica el sistema, los controles operacionales, los plazos de NC, la
-correspondencia por cláusula con las actividades que la cumplen, los
-procedimientos anteriores, los anexos y el control de cambios. El manual
-ya no describe en prosa lo que el sistema muestra: las secciones
-narrativas del borrador de octubre quedaron archivadas (su texto sigue ahí,
-por si lo necesita). El **capítulo 6, Información documentada, sustituye al
-P-G01**: ahí están las reglas de quién elabora, aprueba, publica, difunde y
-resguarda cada tipo de documento; las rutinas son actividades de E2
-(E2.01, E2.02, E2.03, E2.36, E2.42 y E2.43).
+- **Fecha de arranque** (SGI → Administración → Configuración → Ajustes,
+  bloque «Registro de cumplimiento»; por omisión 2026-10-05): un periodo que
+  venció antes de esa fecha no se crea, no escala en Mis pendientes ni pone la
+  actividad en rojo.
+- **No aplica: anteriores al arranque** (botón de la lista de Registro de
+  cumplimiento, solo usted): pone «No aplica este periodo» en los periodos
+  «Pendiente» sin nota de avance que vencieron antes del arranque, con el
+  motivo «Periodo vencido antes de la implementación del SGI» y una nota en
+  su historial. La actualización a 57.149.0 lo corre una vez (los 12 anuales
+  creados el 05/10/2026); volver a correrlo no hace nada.
+- **No aplica este periodo a varios**: seleccione renglones en la lista y
+  pulse el botón; el mismo motivo queda en cada uno. «Hecha» y «En proceso»
+  siguen siendo de uno en uno (la evidencia es de cada periodo).
+- **Escalamientos accionables**: quien escala ve un renglón por periodo
+  atrasado de cada persona, con Hecho y No aplica. Al marcar un periodo, la
+  medición de la actividad y Mis pendientes de todos se ponen al día en ese
+  momento.
+
+### 2.5.2c Bandeja accionable, correo diario y ligas (desde 57.150.0)
+
+- **Cada renglón con su botón**: NC → **Registrar paso** (contención, causa
+  raíz o plan), requisito legal → **Evaluar**, documento por revisar →
+  **Revisar** (sigue vigente o necesita cambio), solicitudes y aprobaciones
+  → **Aprobar** / **Rechazar**, revisión de medición → **Sí, es lo que
+  hago** / **No corresponde**. **Hecho** ya no sale donde no hace nada.
+- **Correo diario de Mis pendientes** (lo atrasado y lo que vence pronto,
+  a cada persona): sale **apagado**. Para encenderlo: Ajustes → Técnico →
+  Acciones planificadas → «SGI: Mis pendientes (correo diario por persona)»
+  → Activo (12:00 UTC, 06:00 de México). Cada quien lo apaga en su perfil →
+  Preferencias.
+- **No repetir avisos en la campana** (Ajustes del SGI, bloque «Registro de
+  cumplimiento», apagado por omisión): encendido, el aviso de un cron sobre
+  una NC, un documento por revisar, un requisito legal o una acción no se
+  crea como actividad si la persona ya lo ve como renglón propio en Mis
+  pendientes. Conviene encenderlo junto con el correo diario.
+- **Ligas nuevas**: en la NC, **Hallazgo**, **Auditoría** e **Indicador**
+  (de dónde nació); en el proceso, **Auditorías**, **Hallazgos** y
+  **Periodos atrasados**; en el documento controlado, **Riesgos que
+  controla**; en el indicador, **NC generadas**.
+- **Menús**: «Documentos controlados», «Todos los indicadores» y «Todas las
+  auditorías» (antes repetían el nombre de su carpeta). El **Dueño de
+  proceso** ya ve las carpetas Documentos e Indicadores (lectura; «Acuses de
+  lectura» y «Solicitudes de cambio» siguen como antes). «Resolver menú de
+  Odoo» y «Asignar clave nueva» (menú Acción de Documentos) solo le salen a
+  usted.
+
+### 2.5.3 El Manual del SGI (MIID) y el P-G01 generados desde Odoo (desde 57.105.0; generados desde 57.146.0 y 57.148.0)
+
+**SGI → Sistema → Manual del SGI** es una carpeta con cinco entradas:
+**Manual (MIID)**, **Control de información documentada (P-G01)**,
+**Textos** (las secciones de los dos, agrupadas por documento),
+**Revisiones** (todas las revisiones publicadas de los dos) y
+**Solicitudes de cambio** (las generadas desde el manual o el P-G01).
+
+Los dos documentos se arman igual: muy poco texto fijo y los datos vivos del
+SGI. Ninguno describe en prosa lo que el sistema muestra.
+
+- **El Manual (24 secciones)** trae las normas y cláusulas cargadas, los
+  procesos con su mapa e interacción, la política, los objetivos, los
+  dueños y los puestos que ejecutan, aprueban y escalan en cada proceso,
+  los tipos de documento, los controles operacionales, los plazos de NC, la
+  correspondencia por cláusula con las actividades que la cumplen, los
+  procedimientos anteriores, los anexos y el control de cambios. Su
+  capítulo 6 solo cita al P-G01 y deja los tipos de documento.
+- **El P-G01 (14 secciones, en el orden de la revisión 11)** trae las
+  reglas de quién elabora, aprueba, publica, difunde y resguarda cada tipo
+  de documento, los plazos que aplica el sistema, y como «rutinas» las
+  actividades de E2 ligadas a él (E2.01, E2.02, E2.03, E2.36, E2.42 y
+  E2.43: quién, cuándo y criterio de terminado). Su primera revisión desde
+  Odoo es la 12; al aprobarse, la del Dropbox queda «Migrado a Odoo».
+
+Lo que sigue aplica a los dos:
 
 - **Lo que ve en pantalla y en «Vista en PDF (borrador)»** es la vista del
   sistema, marcada «Borrador — no vigente». La revisión vigente es el
-  documento MIID de Documentos («PDF de la revisión vigente»).
-- **Textos del manual:** usted edita el texto de cada sección. Escriba
-  `[[datos]]` en un párrafo propio para decidir dónde van los datos del
-  sistema (si no, van al final). «Texto solo si no hay datos» deja el texto
-  como respaldo. La «Situación» de cada anexo es una nota por renglón (7.2).
-  Las secciones se archivan; no se borran. Cuando una actualización trae
-  texto nuevo para una sección que usted editó, no la pisa: le deja una nota
-  en el historial de la sección para que compare.
+  documento de Documentos («PDF de la revisión vigente»).
+- **Textos:** usted edita el texto de cada sección; cada sección dice de
+  qué documento es. Escriba `[[datos]]` en un párrafo propio para decidir
+  dónde van los datos del sistema (si no, van al final). «Texto solo si no
+  hay datos» deja el texto como respaldo. La «Situación» de cada anexo del
+  Manual es una nota por renglón (7.2). Las secciones se archivan; no se
+  borran. Cuando una actualización trae texto nuevo para una sección que
+  usted editó, no la pisa: le deja una nota en el historial de la sección.
 - **«Por confirmar»:** mientras una sección esté marcada (con la nota de qué
-  falta), ninguna revisión del MIID se envía ni se aprueba. La carga trae
-  cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de las no
-  aplicabilidades), 7.1 (P-A13, P-A22 y P-A30 sin registrar) y 7.2
+  falta), ninguna revisión de su documento se envía ni se aprueba. La carga
+  del Manual trae cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de
+  las no aplicabilidades), 7.1 (P-A13, P-A22 y P-A30 sin registrar) y 7.2
   (situación de cada anexo). Lo quitan usted, Dirección o el Administrador
   SGI; queda en el historial de la sección.
-- **Procesos:** el MIID solo se aprueba cuando **todos** los procesos activos
-  están «Vigente» (piloto no cuenta). La pantalla y el Diagnóstico dicen qué
-  falta.
-- **Solicitar el cambio:** con todo confirmado y los procesos publicados,
-  **Solicitar cambio del MIID** arma la solicitud de cambio documental de
-  siempre con el PDF generado, la revisión propuesta (la primera desde Odoo es
-  la 03) y las diferencias. Revísela y **Envíela** usted: si los datos
-  cambiaron desde que se armó, al enviar se genera otra vez el PDF (el
-  anterior queda renombrado «(sustituido el …)»). Firman: Elaboró usted,
-  Revisó el dueño de E2 y Aprobó Dirección. Lo que se firma es lo que se
-  publica: al aprobarse queda la revisión nueva (la anterior obsoleta, con su
-  archivo) y empiezan los acuses.
-- **Si los datos cambian a mitad de la firma:** se publica lo firmado y al día
-  siguiente le llega el aviso de que el MIID ya no coincide; solicite otro
-  cambio. Si las firmas se completan pero hay una sección por confirmar o un
-  proceso sin publicar, la aprobación espera y le llega un aviso; al quitar
-  el candado, la sincronización diaria con Sign la aprueba.
-- **Aviso diario:** cuando el MIID vigente ya no coincide con el sistema le
-  llega un solo aviso, «El MIID vigente ya no coincide con el sistema», con
-  las diferencias (también cuando cambia un plazo documental, un rol de un
-  proceso o qué actividad cumple una cláusula); vence a los 3 días hábiles y
-  se cierra solo cuando vuelve a coincidir. El MIID cargado del Dropbox no
-  tiene contra qué comparar: no avisa hasta la primera revisión aprobada
+- **Procesos:** el Manual solo se aprueba cuando **todos** los procesos
+  activos están «Vigente» (piloto no cuenta); el P-G01, cuando E2 lo está.
+  La pantalla y el Diagnóstico dicen qué falta.
+- **Solicitar el cambio:** con todo confirmado, **Solicitar cambio de
+  revisión** arma la solicitud de cambio documental de siempre con el PDF
+  generado, la revisión propuesta y las diferencias. Revísela y **Envíela**
+  usted: si los datos cambiaron desde que se armó, al enviar se genera otra
+  vez el PDF (el anterior queda renombrado «(sustituido el …)»). Firman:
+  Elaboró usted, Revisó el dueño de E2 y Aprobó Dirección. Lo que se firma
+  es lo que se publica: al aprobarse queda la revisión nueva (la anterior
+  obsoleta, con su archivo) y empiezan los acuses.
+- **Si los datos cambian a mitad de la firma:** se publica lo firmado y al
+  día siguiente le llega el aviso de que el documento ya no coincide;
+  solicite otro cambio. Si las firmas se completan pero hay una sección por
+  confirmar o el proceso sin publicar, la aprobación espera y le llega un
+  aviso; al quitar el candado, la sincronización diaria con Sign la aprueba.
+- **Aviso diario:** cuando el Manual o el P-G01 vigente ya no coincide con
+  el sistema le llega un solo aviso por documento («El MIID vigente ya no
+  coincide con el sistema», «El P-G01 vigente ya no coincide con el
+  sistema») con las diferencias; vence a los 3 días hábiles y se cierra solo
+  cuando vuelve a coincidir. Cada documento solo vigila lo que imprime: un
+  cambio de dueño de proceso toca al Manual, no al P-G01; un plazo
+  documental toca al P-G01, no al Manual. Los cargados del Dropbox no
+  tienen contra qué comparar: no avisan hasta la primera revisión aprobada
   desde Odoo.
-- **Antes de la primera aprobación:** capture los puestos del MIID vigente
-  (los acuses salen de ahí) y, si lo decide, corrija su revisión de 00 a 02
+- **Antes de la primera aprobación:** capture los puestos del documento
+  vigente (los acuses salen de ahí) y, si lo decide, corrija su revisión
   (el control de cambios imprime lo que hay en Odoo).
 
 ### 2.6 Seguridad y ambiente (desde 57.96.0)

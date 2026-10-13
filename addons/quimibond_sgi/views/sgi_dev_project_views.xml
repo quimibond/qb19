@@ -229,6 +229,21 @@
                                     <field name="note" optional="show"/>
                                 </list>
                             </field>
+                            <!-- 57.152.0: información requerida al cliente (formatos anteriores F-P-D01-09 / 19); se
+                                 imprime en la aprobación para iniciar. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Información requerida al cliente</span>
+                                <button name="action_sgi_dev_load_required_docs" type="object" string="Cargar el catálogo de la línea" class="btn-secondary" icon="fa-list"
+                                        help="Agrega en «No aplica» los documentos del catálogo de la línea que todavía no están en la lista."/>
+                            </div>
+                            <field name="sgi_dev_required_doc_ids" context="{'default_project_id': id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="option_id" options="{'no_create': True}"/>
+                                    <field name="moment"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
                         </page>
                         <!-- 2. Análisis de proyecto (Diseño de Producto: análisis de la muestra del cliente y pruebas de laboratorio;
                              Diseño de Procesos: diagrama de proceso, que vive en la ruta del artículo; Administración de Ventas firma la revisión). -->
@@ -286,7 +301,7 @@
                                 </field>
                             </div>
                             <p class="text-muted" invisible="sgi_dev_customer_property not in ('especificacion', 'ninguna')">Sin muestra física del cliente: no hay análisis de muestra ni pruebas de laboratorio sobre ella.</p>
-                            <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo».</p>
+                            <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo de procesos».</p>
                             <!-- 57.140.0: el checklist no aplica a un producto de línea ni a uno no factible. -->
                             <div class="d-flex justify-content-between align-items-center mb-1 mt-3" invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Checklist de factibilidad</span>
@@ -298,12 +313,14 @@
                                 </div>
                             </div>
                             <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">
-                                    <list editable="bottom" create="0" decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
+                                    <!-- 57.153.0: «badge» es solo lectura en una lista editable y nadie podía contestar;
+                                         selection_badge contesta con un clic y los colores van en el renglón. -->
+                                    <list editable="bottom" create="0" decoration-success="answer == 'si'"
+                                          decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="item_id" readonly="1"/>
                                         <field name="auto" optional="show"/>
-                                        <field name="answer" widget="badge"
-                                               decoration-success="answer == 'si'" decoration-danger="answer == 'no'"/>
+                                        <field name="answer" widget="selection_badge"/>
                                         <field name="observation"/>
                                         <field name="answered_by_id" optional="show"/>
                                     </list>
@@ -361,7 +378,7 @@
                             <div class="d-flex flex-wrap gap-1 mb-2">
                                 <button name="action_sgi_dev_open_route" type="object" string="Editar ruta" class="btn-secondary" icon="fa-random"
                                         invisible="not sgi_dev_product_id"/>
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo de procesos" class="btn-secondary" icon="fa-sitemap"
                                         invisible="not sgi_dev_route_count"/>
                                 <span class="text-muted align-self-center" invisible="not sgi_dev_product_id">Operaciones: <field name="sgi_dev_route_count" class="oe_inline"/></span>
                             </div>
@@ -496,7 +513,13 @@
                         </page>
                         <!-- 6. Muestra (Diseño de Procesos, Laboratorio, Diseño de Producto, Almacén): la corrida se pide y el envío se registra desde el encabezado. -->
                         <page string="Muestra" name="sgi_dev_sample">
-                            <separator string="Órdenes de muestra"/>
+                            <!-- 57.155.0: una sola ficha por proceso, la de quimibond_ficha_tecnica_tela (tejido, acabado;
+                                 tintorería cuando exista). «Validar corrida» se valida contra ella. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Órdenes de muestra</span>
+                                <button name="action_sgi_dev_process_sheets" type="object" string="Fichas de proceso" class="btn-secondary" icon="fa-file-text-o"
+                                        help="Fichas de proceso de los artículos del proyecto (crudo, teñido, acabado): abre la que existe o crea la que falta con el artículo ya puesto."/>
+                            </div>
                             <!-- Solo quien tiene acceso a Fabricación carga la lista; los demás ven el botón inteligente. -->
                             <field name="sgi_dev_mo_ids" readonly="1" groups="mrp.group_mrp_user">
                                 <list create="0" delete="0">
@@ -654,7 +677,7 @@
                                         invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
                                 <button name="action_sgi_dev_new_coa" type="object" string="Nuevo reporte de conformidad" class="btn-secondary" icon="fa-certificate"
                                         invisible="sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo de procesos" class="btn-secondary" icon="fa-sitemap"/>
                             </div>
                             <p class="text-muted" invisible="sgi_dev_stage_key in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')">Los documentos del producto se emiten a partir de la etapa «Muestra» (el reporte de conformidad) y «Respuesta del cliente» (ficha interna y especificaciones).</p>
                             <separator string="Pilotajes y estudio de habilidad"/>
@@ -794,6 +817,7 @@
                 <field name="kind"/>
                 <field name="name"/>
                 <field name="name_en" optional="show"/>
+                <field name="line_key" optional="show" invisible="kind != 'documento_cliente'"/>
             </list>
         </field>
     </record>
@@ -819,7 +843,7 @@
         <field name="context">{'search_default_group_kind': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Listas de la pestaña Comercial y del resultado del análisis</p>
-            <p>Aplicación, mercado, tipo de laminado, requisitos legales y reglamentarios y motivos de no factibilidad. Se capturan aquí para que en el proyecto sean una elección y no texto libre.</p>
+            <p>Aplicación, mercado, tipo de laminado, requisitos legales y reglamentarios, motivos de no factibilidad e información requerida al cliente. Se capturan aquí para que en el proyecto sean una elección y no texto libre.</p>
         </field>
     </record>
 </odoo>
