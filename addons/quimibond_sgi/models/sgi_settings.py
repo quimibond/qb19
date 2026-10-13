@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -155,6 +156,14 @@ class ResConfigSettings(models.TransientModel):
         string="Aviso de piloto por vencer (días)",
         config_parameter='quimibond_sgi.doc_pilot_notice_days',
         help="Días antes del fin de una prueba piloto documental en que llega el aviso.")
+    # 57.149.0: arranque del registro de cumplimiento (sgi_activity_execution).
+    sgi_exec_start_date = fields.Char(
+        string="Arranque del registro de cumplimiento (AAAA-MM-DD)",
+        config_parameter='quimibond_sgi.exec_start_date', default='2026-10-05',
+        help="Un periodo de una actividad que venció antes de esta fecha no se crea, no escala en "
+             "Mis pendientes ni pone la actividad en rojo. Por omisión el 05/10/2026, cuando se instaló el "
+             "registro de cumplimiento. Los periodos «Pendiente» que ya existían y vencieron antes se cierran "
+             "con «No aplica: anteriores al arranque» en Registro de cumplimiento.")
     sgi_doc_ack_pending_days = fields.Integer(
         string="Días hábiles para reclamar un acuse pendiente",
         config_parameter='quimibond_sgi.doc_ack_pending_days',
@@ -307,6 +316,15 @@ class ResConfigSettings(models.TransientModel):
         return res
 
     def set_values(self):
+        # 57.149.0: la fecha de arranque se valida antes de guardar.
+        for rec in self:
+            raw = (rec.sgi_exec_start_date or '').strip()
+            if raw:
+                try:
+                    fields.Date.to_date(raw)
+                except ValueError:
+                    raise UserError("«Arranque del registro de cumplimiento» debe ser una fecha "
+                                    "AAAA-MM-DD (por ejemplo 2026-10-05).") from None
         super().set_values()
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param('quimibond_sgi.rh_user_id', self.sgi_rh_user_id.id or 0)

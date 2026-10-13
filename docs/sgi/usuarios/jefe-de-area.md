@@ -53,9 +53,18 @@ muestra los de los procesos de los que usted es dueño.
 
 Cuando una actividad de su gente se atrasa, le escala a usted.
 
-1. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
+1. En **Mis pendientes**, cada **Escalamiento** es un periodo atrasado de
+   una persona (el renglón dice de quién y desde cuándo). **Ir** abre ese
+   periodo; ahí, o desde el renglón, puede marcarlo **Hecho** con evidencia o
+   **No aplica este periodo** con motivo. Al guardar desaparece de Mis
+   pendientes para usted, para la persona y para su jefe (desde 57.149.0).
+2. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
    actividades que le escalan; **Ver atrasados** abre las que ya vencieron.
-2. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
+3. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
+4. Marcan el avance de un periodo: la persona, cualquiera de sus jefes, quien
+   tiene el rol «Escala» de la actividad, el Jefe MAST, el Administrador SGI
+   y Dirección de Operaciones. Un periodo que venció antes del arranque del
+   registro de cumplimiento (05/10/2026) no escala.
 
 Como dueño de proceso también recibe los plazos vencidos de las NC de su
 proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.

@@ -189,6 +189,26 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 - **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
   AMEF.
 
+### 2.5.2b Registro de cumplimiento: arranque, saneamiento y No aplica masivo (desde 57.149.0)
+
+- **Fecha de arranque** (SGI → Administración → Configuración → Ajustes,
+  bloque «Registro de cumplimiento»; por omisión 2026-10-05): un periodo que
+  venció antes de esa fecha no se crea, no escala en Mis pendientes ni pone la
+  actividad en rojo.
+- **No aplica: anteriores al arranque** (botón de la lista de Registro de
+  cumplimiento, solo usted): pone «No aplica este periodo» en los periodos
+  «Pendiente» sin nota de avance que vencieron antes del arranque, con el
+  motivo «Periodo vencido antes de la implementación del SGI» y una nota en
+  su historial. La actualización a 57.149.0 lo corre una vez (los 12 anuales
+  creados el 05/10/2026); volver a correrlo no hace nada.
+- **No aplica este periodo a varios**: seleccione renglones en la lista y
+  pulse el botón; el mismo motivo queda en cada uno. «Hecha» y «En proceso»
+  siguen siendo de uno en uno (la evidencia es de cada periodo).
+- **Escalamientos accionables**: quien escala ve un renglón por periodo
+  atrasado de cada persona, con Hecho y No aplica. Al marcar un periodo, la
+  medición de la actividad y Mis pendientes de todos se ponen al día en ese
+  momento.
+
 ### 2.5.3 El Manual del SGI (MIID) y el P-G01 generados desde Odoo (desde 57.105.0; generados desde 57.146.0 y 57.148.0)
 
 **SGI → Sistema → Manual del SGI** es una carpeta con cinco entradas:

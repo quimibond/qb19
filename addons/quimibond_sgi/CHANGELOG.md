@@ -13,6 +13,87 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.149.0 — 2026-10-13
+
+Dirección General 2026-10-13 (auditoría UX del SGI, fase 1): el
+escalamiento de la S3.22 llevaba al catálogo y no al periodo de Irma Luna
+(anual 2026, venció el 31/03, creado el 05/10/2026 al instalar el registro
+de cumplimiento); «Hecho» lanzaba un error. Hay 12 periodos anuales iguales.
+
+### Qué estaba mal
+- El renglón «Escalamiento» apuntaba a la actividad (`sgi.process.activity`):
+  «Ir» abría el catálogo o la pantalla de Odoo, `can_done` era falso y
+  «Hecho» lanzaba `UserError`.
+- `_sgi_user_can_mark` solo dejaba marcar a la persona, sus jefes y el Jefe
+  MAST: no a Dirección de Operaciones ni a quien tiene el rol «Escala».
+- No había fecha de arranque: se crearon, escalaron y pusieron en rojo
+  periodos que vencieron antes de instalar el registro.
+- Marcar un periodo no quitaba el escalamiento ni los renglones de los
+  demás hasta el cron nocturno; «No aplica» era de uno en uno.
+- El agente MCP no podía operar el SGI: solo estaban habilitados los
+  modelos del desarrollo de producto.
+
+### Cambiado
+- **Escalamiento accionable.** Si la actividad lleva registro de
+  cumplimiento, el escalamiento es un renglón por periodo abierto atrasado
+  de cada persona (`res_model = sgi.activity.execution`, con su nombre en el
+  texto): «Ir» abre el periodo, «Hecho» y «No aplica» abren el asistente
+  `sgi.activity.execution.mark` con `sgi_pending_row_id`, y `can_done` /
+  `can_mark_exec` salen de `_sgi_user_can_mark`. Sin registro, como antes.
+- **Quién marca:** `_sgi_user_can_mark(employee, activity=None)` suma al
+  Administrador SGI (`group_sgi_admin`), a Dirección de Operaciones
+  (`group_sgi_director`) y, con la actividad, a quien recibe su rol
+  «Escala» (puesto, familia o «Dueño del proceso»). Mensaje y ayuda al día.
+- **Fecha de arranque** `quimibond_sgi.exec_start_date` (por omisión
+  2026-10-05; Ajustes del SGI, bloque «Registro de cumplimiento»): un periodo
+  con `date_due` anterior no se crea (`_sgi_generate`, `_sgi_exec_from_activity`),
+  no escala (`_sgi_activity_late_due`, escalamiento por periodo), no sale en
+  Mis pendientes de quien lo ejecuta ni pone la actividad en rojo
+  (`_sgi_measure_from_executions`).
+- **Cierre inmediato:** al marcar «Hecha», «No aplica» o «En proceso»,
+  `_sgi_after_change` vuelve a medir las actividades tocadas y
+  `sgi.my.pending._sgi_sync_executions` quita o reescribe los renglones del
+  periodo y de su escalamiento de todos los usuarios, y quita los que
+  todavía apuntaban a la actividad.
+
+### Agregado
+- **«No aplica este periodo» a varios** desde la lista de Registro de
+  cumplimiento, con un motivo común (`_sgi_mark_wizard` acepta varios solo en
+  ese modo; el asistente lleva `execution_ids`).
+- **Saneamiento** `_sgi_close_prestart` (botón «No aplica: anteriores al
+  arranque», solo Jefe MAST): «No aplica» con el motivo «Periodo vencido
+  antes de la implementación del SGI» y nota en el historial en los periodos
+  «Pendiente» sin nota de avance que vencieron antes del arranque.
+  Idempotente.
+- **MCP** (`MCP_MODELS`): lectura de `sgi.activity.execution`,
+  `sgi.my.pending` (también sus métodos), `sgi.my.procedure` y
+  `sgi.diagnostic`; alta, edición y llamada de métodos de
+  `sgi.activity.execution.mark`, `sgi.nc.cancel`, `sgi.nc.force.close`,
+  `sgi.approval.wizard`, `sgi.legal.evaluate`, `sgi.measure.review.reject`,
+  `sgi.checklist.finish` y `sgi.sign.request.wizard`.
+  `_sgi_dev_enable_mcp_models` ya no se salta un modelo que existe: le abre
+  lo que falte, sin quitar nada.
+
+### Migración (`migrations/19.0.57.149.0/post-migrate.py`)
+Deja el parámetro de arranque (2026-10-05) si no existe, habilita los
+modelos en el MCP y corre el saneamiento una vez (los 12 periodos anuales del
+05/10/2026). Idempotente.
+
+### Pruebas
+- `test_registro_cumplimiento`: test_07 (el escalamiento apunta al periodo,
+  «Ir» y «Hecho» lo abren, «No aplica» lo cierra y los renglones de todos se
+  van en la misma transacción), test_08 (tercero sin rol → `AccessError`;
+  Dirección, Administrador SGI y «Escala» sí), test_09 (arranque en mensual,
+  trimestral y anual: no se crea, no escala, no pone rojo), test_10
+  (saneamiento idempotente y «No aplica» masivo).
+- `test_bandeja.test_10a`: escalamiento con registro, accionable.
+- `test_my_pending.test_06` sigue esperando el `UserError` del escalamiento
+  **sin** registro de cumplimiento (comportamiento que se conserva).
+- `tests/common_exec.py`: las clases que construyen atrasos relativos a hoy
+  (bandeja, Mis pendientes, registro, roles relativos, auditoría de roles,
+  Mi procedimiento) abren la fecha de arranque al pasado; si no, una mensual
+  que venció el día hábil 1 de octubre de 2026 quedaría antes del arranque.
+
 ## 19.0.57.148.0 — 2026-10-13
 
 Dirección General 2026-10-13, al ver el P-G01 dentro del capítulo 6 del

@@ -66,8 +66,11 @@ rechazado, verde = cerrado, vigente o validado.
      medición) no tiene Hecho: pulse **Ir** (o **Firmar**, **Capturar**) y
      resuélvalo ahí; el renglón se quita solo.
    Al marcar algo, Odoo muestra «Hecha: …» y el renglón desaparece de la
-   lista en ese momento. Un **Escalamiento** (actividad de otra persona que
-   pasó sus días de atraso) solo tiene Ir: la marca hecha quien la ejecuta.
+   lista en ese momento. Un **Escalamiento** (periodo de otra persona que
+   pasó sus días de atraso) dice de quién es: **Ir** abre ese periodo y, si lo
+   resolvió con la persona, puede marcarlo **Hecho** (con evidencia) o **No
+   aplica este periodo** (con motivo); desaparece en ese momento para todos.
+   Si la actividad todavía no lleva registro de cumplimiento, solo tiene Ir.
 5. **Vence** se lee como «Hace 3 días», «Hoy» o «En 5 días». Los filtros
    **Avisos**, **Actividades** y **Escalamientos** los muestran solos.
 

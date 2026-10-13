@@ -8,6 +8,7 @@ from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
+from .common_exec import sgi_exec_start_open
 
 
 @tagged('post_install', '-at_install')
@@ -17,6 +18,7 @@ class TestMyPending(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
+        sgi_exec_start_open(cls.env)
         today = fields.Date.context_today(cls.env.user)
         cls.job = cls.env['hr.job'].create({'name': 'PUESTO PENDIENTES MP'})
         cls.boss_user = new_test_user(cls.env, login='mpp_boss',
@@ -159,7 +161,9 @@ class TestMyPending(TransactionCase):
         boss_rows = self._mine_rows(self.boss_user).filtered(
             lambda r: r.res_model == 'sgi.process.activity' and r.res_id == activity.id)
         self.assertEqual(boss_rows.mapped('kind'), ['escalamiento'])
-        self.assertFalse(boss_rows.can_done, "Quien escala no la marca hecha.")
+        self.assertFalse(boss_rows.can_done,
+                         "Sin registro del periodo, quien escala no la marca hecha (57.149.0: con registro, "
+                         "sí; test_registro_cumplimiento.test_07).")
         self.assertIn('Atrasada desde', boss_rows.detail)
         with self.assertRaises(UserError):
             boss_rows.with_user(self.boss_user).action_done()

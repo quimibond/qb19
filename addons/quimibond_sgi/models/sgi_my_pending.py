@@ -103,6 +103,9 @@ ACK_DAYS_PARAM = 'quimibond_sgi.ack_business_days'                    # (5)
 _CALC_NEEDS_PERSON = ('error', 'sin_formula', 'manual')
 # Campos del renglón que forman su clave (una fila por persona y registro).
 _ROW_KEY = ('employee_id', 'user_id', 'kind', 'res_model', 'res_id')
+# Estados abiertos del registro de cumplimiento (EXEC_OPEN de
+# sgi_activity_execution; aquí sin importar el módulo al cargar).
+EXEC_OPEN_STATES = ('pendiente', 'en_proceso')
 # Campos que se escriben al actualizar un renglón que ya existe.
 _ROW_FIELDS = ('name', 'process_id', 'date_due', 'state', 'state_rank', 'detail',
                'source_name', 'exec_state', 'exec_note', 'exec_manual', 'exec_date_estimated')
@@ -304,8 +307,11 @@ class SgiMyPending(models.Model):
             mine = row.user_id == self.env.user
             can_exec = can_done = False
             if row.res_model == 'sgi.activity.execution' and row.res_id:
+                # 57.149.0: también el escalamiento que apunta a la ejecución
+                # atrasada; quien escala la actividad puede marcarla.
                 execution = Exec.browse(row.res_id).exists()
-                can_exec = bool(execution) and Exec._sgi_user_can_mark(execution.employee_id)
+                can_exec = bool(execution) and execution.state in EXEC_OPEN_STATES \
+                    and Exec._sgi_user_can_mark(execution.employee_id, execution.activity_id)
                 can_done = can_exec
             elif row.kind == 'actividad' and row.res_model == 'sgi.process.activity' and row.res_id:
                 # Atrasada por semáforo: «Hecho» crea su registro del periodo
@@ -313,7 +319,7 @@ class SgiMyPending(models.Model):
                 activity = Activity.browse(row.res_id).exists()
                 employee = Employee.browse(row.employee_id.id) if row.employee_id else Employee
                 can_done = bool(activity and employee and activity._sgi_exec_applies()
-                                and Exec._sgi_user_can_mark(employee))
+                                and Exec._sgi_user_can_mark(employee, activity))
             elif row.kind in ('aviso', 'accion'):
                 can_done = mine
             row.can_mark_exec = can_exec
@@ -657,18 +663,23 @@ class SgiMyPending(models.Model):
         Con vencimiento periódico, el vencimiento que se pasó (el del periodo
         en curso si ya pasó; si no, el del periodo anterior); sin él, la
         última ejecución más la ventana de su cadencia."""
+        from .sgi_activity_execution import sgi_exec_start_date
+        exec_start = sgi_exec_start_date(self.env)
         due = activity._sgi_periodic_due(today)
         if due is not None:
             if due < today:
-                return due
-            start = activity._sgi_period_start(today)
-            previous = activity._sgi_periodic_due(start - timedelta(days=1)) if start else None
-            return previous or False
-        days = activity._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-        last = activity.measure_last_date
-        if days and last:
-            return fields.Datetime.to_datetime(last).date() + timedelta(days=days)
-        return False
+                late = due
+            else:
+                start = activity._sgi_period_start(today)
+                late = activity._sgi_periodic_due(start - timedelta(days=1)) if start else None
+        else:
+            days = activity._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+            last = activity.measure_last_date
+            late = fields.Datetime.to_datetime(last).date() + timedelta(days=days) if days and last else None
+        # 57.149.0: lo que venció antes del arranque no se escala.
+        if not late or late < exec_start:
+            return False
+        return late
 
     @api.model
     def _sgi_employee_rows(self, employees):
@@ -718,6 +729,12 @@ class SgiMyPending(models.Model):
         # 57.103.0: lo que tiene registro de cumplimiento sale de ahí (un
         # renglón por periodo abierto, con su avance), no del semáforo.
         executions, with_exec = self._sgi_execution_rows(employees, today)
+        # 57.149.0: el escalamiento de una actividad con registro de
+        # cumplimiento apunta a cada periodo abierto atrasado de quien la
+        # ejecuta (accionable: «Ir», «Hecho», «No aplica»); sin registro,
+        # como antes, a la actividad.
+        late_open, tracked = self._sgi_escalation_executions(
+            all_roles.filtered(lambda r: r.role == 'escala').activity_id, today)
 
         def label(activity):
             number = activity.number or activity.legacy_number or ''
@@ -748,8 +765,21 @@ class SgiMyPending(models.Model):
                         activity, [("Por qué está aquí", detail_txt), (None, how)]),
                     # Van atrasadas por definición, aunque no se sepa desde cuándo.
                     'state': 'atrasada'})
+            seen_exec = set()
             for role in received & all_roles:
                 activity = role.activity_id
+                if activity.id in tracked:
+                    for execution in late_open.get(activity.id, []):
+                        if execution.id in seen_exec or execution.employee_id == emp:
+                            continue
+                        key = (execution.date_due, role.after_days or 0)
+                        if key not in escalation_dates:
+                            escalation_dates[key] = sgi_add_business_days(env, key[0], key[1])
+                        if escalation_dates[key] > today:
+                            continue
+                        seen_exec.add(execution.id)
+                        rows.append(self._sgi_escalation_row(execution, role, escalation_dates[key]))
+                    continue
                 due = late_due.get(activity.id) if activity in late else False
                 if not due or activity.id in seen:
                     continue
@@ -811,20 +841,73 @@ class SgiMyPending(models.Model):
         return result
 
     @api.model
+    def _sgi_escalation_executions(self, activities, today):
+        """57.149.0: ({actividad.id: [periodos abiertos atrasados]}, {ids de
+        actividades con registro de cumplimiento}). Atrasado: ya empezó, ya
+        venció y no venció antes del arranque."""
+        from .sgi_activity_execution import EXEC_OPEN, sgi_exec_start_date
+        Exec = self.env['sgi.activity.execution'].sudo()
+        if not activities:
+            return {}, set()
+        tracked = {act.id for [act] in Exec._read_group(
+            [('activity_id', 'in', activities.ids)], ['activity_id'])}
+        late = {}
+        for execution in Exec.search([
+                ('activity_id', 'in', list(tracked)), ('state', 'in', EXEC_OPEN),
+                ('period_start', '<=', today), ('date_due', '<', today),
+                ('date_due', '>=', sgi_exec_start_date(self.env))], order='date_due, id'):
+            late.setdefault(execution.activity_id.id, []).append(execution)
+        return late, tracked
+
+    @api.model
+    def _sgi_escalation_row(self, execution, role, escalated):
+        """Renglón de escalamiento de un periodo atrasado de otra persona."""
+        execution = execution.sudo()
+        activity = execution.activity_id
+        number = activity.number or activity.legacy_number or ''
+        label = ("%s %s" % (number, activity.name or '')).strip()
+        who = execution.employee_id.name or ''
+        note = (execution.progress_note or '').strip() if execution.state == 'en_proceso' else ''
+        return {
+            'kind': 'escalamiento',
+            'name': "Escalamiento: %s — %s (%s, atrasada desde el %s)" % (
+                label, who, execution.period_label or '', execution.date_due.strftime('%d/%m/%Y')),
+            'date_due': escalated, 'process_id': activity.process_id.id,
+            'res_model': 'sgi.activity.execution', 'res_id': execution.id,
+            'source_name': (execution.name or '')[:200],
+            'detail': self._sgi_activity_detail(activity, [
+                ("La ejecuta", who),
+                ("Periodo", execution.period_label),
+                ("Atrasada desde", execution.date_due),
+                ("Avance", note),
+                ("Le llega a usted", "pasados %d días hábiles de atraso (rol «Escala»)" % (role.after_days or 0)),
+                (None, "«Ir» abre el registro del periodo. Puede marcarlo «Hecho» (con evidencia) o «No "
+                       "aplica este periodo» (con motivo) si lo resolvió con la persona."),
+            ]),
+            'state': 'atrasada',
+            'exec_state': execution.state, 'exec_note': note or False,
+            'exec_date_estimated': execution.date_estimated if execution.state == 'en_proceso' else False,
+            'exec_manual': activity._sgi_exec_is_manual(),
+        }
+
+    @api.model
     def _sgi_execution_rows(self, employees, today):
         """57.103.0: ({empleado.id: [renglones abiertos del registro de
         cumplimiento ya empezados]}, {(empleado.id, actividad.id) con algún
         renglón}). Con registro, la actividad ya no sale por el semáforo."""
-        from .sgi_activity_execution import EXEC_OPEN
+        from .sgi_activity_execution import EXEC_OPEN, sgi_exec_start_date
         Exec = self.env['sgi.activity.execution'].sudo()
         if not employees:
             return {}, set()
         with_exec = {(emp.id, act.id) for emp, act in Exec._read_group(
             [('employee_id', 'in', employees.ids)], ['employee_id', 'activity_id'])}
         result = {}
+        # 57.149.0: un periodo que venció antes del arranque no es pendiente
+        # (lo cierra el saneamiento «No aplica: anteriores al arranque»).
         for execution in Exec.search([
                 ('employee_id', 'in', employees.ids), ('state', 'in', EXEC_OPEN),
-                ('period_start', '<=', today), ('activity_id.active', '=', True)],
+                ('period_start', '<=', today), ('activity_id.active', '=', True),
+                ('date_due', '>=', sgi_exec_start_date(self.env))],
                 order='date_due, id'):
             result.setdefault(execution.employee_id.id, []).append(execution)
         return result, with_exec
@@ -1161,6 +1244,17 @@ class SgiMyPending(models.Model):
                 # La firma se hace en la página de Firma electrónica.
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}
+        # 57.149.0: el escalamiento de un periodo abre su registro (Hecha,
+        # No aplica), nunca el catálogo.
+        if self.kind == 'escalamiento' and self.res_model == 'sgi.activity.execution':
+            execution = self.env['sgi.activity.execution'].sudo().browse(self.res_id).exists()
+            if not execution:
+                raise UserError("El registro de esa actividad ya no existe.")
+            return {'type': 'ir.actions.act_window', 'res_model': 'sgi.activity.execution',
+                    'res_id': execution.id, 'view_mode': 'form',
+                    'views': [(self.env.ref('quimibond_sgi.sgi_activity_execution_view_form').id,
+                               'form')],
+                    'target': 'current'}
         # 57.103.0: el periodo de una actividad. Las de registro manual abren
         # su registro (criterio de terminado, instructivo, dónde adjuntar);
         # las que se miden solas, la pantalla donde se hacen, como antes.
@@ -1233,7 +1327,9 @@ class SgiMyPending(models.Model):
     def action_done(self):
         """«Hecho»: resuelve el pendiente según su tipo. Lo que se resuelve
         en su propio registro (NC, requisito legal, documento, aprobación,
-        firma, revisión, escalamiento) lo dice y no hace nada."""
+        firma, revisión) lo dice y no hace nada. 57.149.0: el escalamiento de
+        un periodo abre el asistente de «Hecha» de ese periodo; sin registro
+        de cumplimiento, se sigue en la actividad."""
         self.ensure_one()
         if self.res_model == 'sgi.activity.execution':
             return self.action_exec_done()
@@ -1270,15 +1366,22 @@ class SgiMyPending(models.Model):
             if self.employee_id else False
         if not employee:
             raise UserError("Este renglón no tiene persona: no se puede abrir su registro.")
-        if not Exec._sgi_user_can_mark(employee):
-            raise AccessError("Solo la persona responsable, su jefe o el Jefe MAST pueden marcar "
-                              "el avance de «%s»." % (activity.name or ''))
+        if not Exec._sgi_user_can_mark(employee, activity):
+            raise AccessError(Exec._SGI_MARK_DENIED % (activity.name or ''))
         today = fields.Date.context_today(self)
         period = activity._sgi_exec_period(today)
         if not period:
             raise UserError("Hoy no hay periodo abierto para «%s» (día inhábil o actividad sin "
                             "cadencia)." % (activity.name or ''))
         start, end, due = period
+        from .sgi_activity_execution import sgi_exec_start_date
+        exec_start = sgi_exec_start_date(self.env)
+        if due < exec_start:
+            # 57.149.0: el periodo venció antes del arranque; no se registra.
+            raise UserError("El periodo de «%s» venció el %s, antes del arranque del registro de "
+                            "cumplimiento (%s): no se registra." % (
+                                activity.name or '', due.strftime('%d/%m/%Y'),
+                                exec_start.strftime('%d/%m/%Y')))
         execution = Exec.search([('activity_id', '=', activity.id), ('employee_id', '=', employee.id),
                                  ('period_start', '=', start)], limit=1)
         if not execution:
@@ -1300,9 +1403,43 @@ class SgiMyPending(models.Model):
             rows.unlink()
             return False
         today = fields.Date.context_today(self)
-        vals = self._sgi_finish(self._sgi_execution_row(execution), today)
-        rows.write({name: vals.get(name, False) for name in ('res_model', 'res_id') + _ROW_FIELDS})
+        plain = rows.filtered(lambda r: r.kind != 'escalamiento')
+        if plain:
+            vals = self._sgi_finish(self._sgi_execution_row(execution), today)
+            plain.write({name: vals.get(name, False) for name in ('res_model', 'res_id') + _ROW_FIELDS})
+        # 57.149.0: el escalamiento abierto sigue (el avance no quita el
+        # atraso); se pone al día lo que muestra del avance.
+        escalations = rows - plain
+        if escalations:
+            note = (execution.progress_note or '').strip() if execution.state == 'en_proceso' else ''
+            escalations.write({
+                'exec_state': execution.state, 'exec_note': note or False,
+                'exec_date_estimated': execution.date_estimated if execution.state == 'en_proceso' else False})
         return True
+
+    @api.model
+    def _sgi_sync_executions(self, executions):
+        """57.149.0 (cierre inmediato): después de marcar periodos, pone al
+        día los renglones guardados de TODOS los usuarios (la persona, sus
+        jefes, quien recibe el escalamiento), sin esperar al respaldo
+        nocturno: los del periodo y sus escalamientos se quitan si quedó
+        cerrado y se reescriben si sigue abierto; los que todavía apuntan a la
+        actividad (semáforo o escalamiento de antes del registro) se quitan,
+        porque la actividad ya lleva registro de cumplimiento."""
+        executions = executions.sudo().exists()
+        if not executions:
+            return
+        Row = self.sudo()
+        rows = Row.search([('res_model', '=', 'sgi.activity.execution'), ('res_id', 'in', executions.ids)])
+        for execution in executions:
+            mine = rows.filtered(lambda r, e=execution: r.res_id == e.id)
+            if mine:
+                mine._sgi_sync_execution(execution)
+        pairs = {(e.employee_id.id, e.activity_id.id) for e in executions}
+        stale = Row.search([('res_model', '=', 'sgi.process.activity'),
+                            ('res_id', 'in', executions.activity_id.ids),
+                            ('kind', 'in', ('actividad', 'escalamiento'))])
+        stale.filtered(lambda r: r.kind == 'escalamiento' or (r.employee_id.id, r.res_id) in pairs).unlink()
 
     def _sgi_execution(self):
         self.ensure_one()

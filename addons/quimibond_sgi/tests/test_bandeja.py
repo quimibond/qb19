@@ -13,6 +13,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 from ..models.sgi_calendar import sgi_add_business_days
 from .common_documents import sgi_hide_real_documents
+from .common_exec import sgi_exec_start_open
 
 
 def _blank_pdf():
@@ -32,6 +33,7 @@ class TestBandeja(TransactionCase):
         super().setUpClass()
         env = cls.env
         sgi_hide_real_documents(env)
+        sgi_exec_start_open(env)
         cls.today = fields.Date.context_today(env.user)
         cls.Pending = env['sgi.my.pending']
         cls.job = env['hr.job'].create({'name': 'PUESTO BANDEJA 8A'})
@@ -242,6 +244,26 @@ class TestBandeja(TransactionCase):
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         self.assertEqual(wiz.received_late_count, 1)
         self.assertEqual(wiz.action_show_received()['name'], "Escalamientos atrasados")
+
+    def test_10a_escalamiento_con_registro_apunta_al_periodo(self):
+        """57.149.0: con registro de cumplimiento, el escalamiento es del
+        periodo atrasado (de quién y cuándo) y es accionable."""
+        due = self.today - timedelta(days=10)
+        execution = self.env['sgi.activity.execution'].sudo().create({
+            'activity_id': self.activity.id, 'employee_id': self.emp.id,
+            'period_start': due - timedelta(days=20), 'period_end': due, 'date_due': due})
+        rows = self._rows(self.boss_user, 'escalamiento')
+        self.assertEqual([(r['res_model'], r['res_id']) for r in rows],
+                         [('sgi.activity.execution', execution.id)])
+        self.assertIn('ZS Persona 8A', rows[0]['name'])
+        Pending = self.Pending.with_user(self.boss_user)
+        row = Pending.search(Pending.action_open_mine()['domain']).filtered(
+            lambda r: r.kind == 'escalamiento' and r.res_id == execution.id)
+        self.assertTrue(row.can_done)
+        self.assertEqual(row.action_done()['res_model'], 'sgi.activity.execution.mark')
+        self.assertEqual(row.action_open()['res_id'], execution.id)
+        # Al aprobador no le llega (56.38.1).
+        self.assertFalse(self._rows(self.approver_user, 'escalamiento'))
 
     # ---- aprobador y escalador ante el atraso del ejecutor (56.38.1) ----------
     def test_10b_aprobador_no_ve_el_atraso_del_ejecutor(self):

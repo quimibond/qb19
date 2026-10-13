@@ -118,7 +118,23 @@ MCP_MODELS = {
     'sgi.dev.pilot.study': False,  # 57.133.0: lo calcula el pilotaje
     'sgi.dev.escalation': False,  # 57.135.0: lo escribe el cron de avisos por tiempo
     'sgi.dev.change.request': True,  # 57.137.0: solicitud de modificación del proyecto
+    # 57.149.0 (auditoría UX 2026-10-13, fase 1): que el agente MCP pueda
+    # operar el SGI. Lectura: el registro de cumplimiento, Mis pendientes, Mi
+    # procedimiento y el Diagnóstico. Alta y edición: los asistentes que
+    # resuelven un pendiente (se crean y se confirman).
+    'sgi.activity.execution': False, 'sgi.my.pending': False, 'sgi.my.procedure': False,
+    'sgi.diagnostic': False,
+    'sgi.activity.execution.mark': True, 'sgi.nc.cancel': True, 'sgi.nc.force.close': True,
+    'sgi.approval.wizard': True, 'sgi.legal.evaluate': True, 'sgi.measure.review.reject': True,
+    'sgi.checklist.finish': True, 'sgi.sign.request.wizard': True,
 }
+# 57.149.0: modelos cuyos métodos de negocio puede llamar el MCP
+# (allow_method_calls de mcp_server): los asistentes (action_confirm…) y Mis
+# pendientes (action_open_mine arma la lista al día; action_done y sus
+# hermanos). Todo corre con los permisos de quien llama.
+MCP_METHOD_MODELS = ('sgi.activity.execution.mark', 'sgi.nc.cancel', 'sgi.nc.force.close',
+                     'sgi.approval.wizard', 'sgi.legal.evaluate', 'sgi.measure.review.reject',
+                     'sgi.checklist.finish', 'sgi.sign.request.wizard', 'sgi.my.pending')
 
 
 class SgiDevOption(models.Model):
@@ -856,11 +872,24 @@ class ProjectProjectDev(models.Model):
             if model_name not in self.env:
                 continue
             model = IrModel.search([('model', '=', model_name)], limit=1)
-            if not model or Enabled.search_count([('model_id', '=', model.id)]):
+            if not model:
                 continue
-            Enabled.create({'model_id': model.id, 'active': True, 'allow_read': True,
-                            'allow_create': writable, 'allow_write': writable, 'allow_unlink': False,
-                            'notes': "quimibond_sgi 57.120.2: modelo del desarrollo de producto (C1)."})
+            wanted = ['active', 'allow_read'] + (['allow_create', 'allow_write'] if writable else [])
+            if model_name in MCP_METHOD_MODELS and 'allow_method_calls' in Enabled._fields:
+                wanted.append('allow_method_calls')
+            existing = Enabled.search([('model_id', '=', model.id)], limit=1)
+            if existing:
+                # 57.149.0: si ya estaba, solo se abre lo que falte (nunca se
+                # quita un permiso que alguien dio a mano).
+                vals = {k: True for k in wanted if not existing[k]}
+                if vals:
+                    existing.write(vals)
+                    done |= model
+                continue
+            vals = {'model_id': model.id, 'allow_create': False, 'allow_write': False, 'allow_unlink': False,
+                    'notes': "quimibond_sgi: habilitado por el módulo (MCP_MODELS)."}
+            vals.update({k: True for k in wanted})
+            Enabled.create(vals)
             done |= model
         return done
 
