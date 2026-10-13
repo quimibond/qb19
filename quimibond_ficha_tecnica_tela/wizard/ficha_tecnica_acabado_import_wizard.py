@@ -130,7 +130,7 @@ class FichaTecnicaAcabadoImportWizard(models.TransientModel):
 
             try:
                 tejido_ref = str(raw.get('tejido_ref') or '').strip()
-                tejido = FichaTejido.search([('articulo', '=', tejido_ref)], limit=1)
+                tejido = FichaTejido.search([('articulo', '=', tejido_ref)], order='fecha_elaboracion desc, id desc', limit=1)
                 if not tejido:
                     errors.append(
                         'Fila %s (%s): no se encontró ficha de tejido con '

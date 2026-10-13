@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.6.0',
+    'version': '19.0.2.7.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -48,6 +48,9 @@ Incluye:
 - 2.6.0: listo para el producto único de acabado en kg: el aviso de carga
   también en la orden de trabajo que cae en un jet, y el rendimiento se
   busca también por la ficha de acabado → su ficha de tejido.
+- 2.7.0: una ficha de tejido por artículo, revisión y máquina (como los
+  formatos de la planta); menús reordenados en la app «Fichas técnicas»
+  (Tela, Máquinas, Importar, Configuración) con ícono.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
@@ -64,6 +67,7 @@ Incluye:
         'views/product_template_views.xml',
         'wizard/ficha_tecnica_tejido_import_wizard_views.xml',
         'wizard/ficha_tecnica_acabado_import_wizard_views.xml',
+        'views/ficha_tecnica_menus.xml',  # 2.7.0: todos los menús, al final (las acciones ya existen)
     ],
     'installable': True,
     'application': True,

@@ -138,7 +138,7 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
     file_data = fields.Binary(string='Archivo Excel (.xlsx)', required=True)
     file_name = fields.Char(string='Nombre de archivo')
     update_if_exists = fields.Boolean(
-        string='Actualizar si ya existe (mismo artículo + revisión)', default=True)
+        string='Actualizar si ya existe (mismo artículo, revisión y máquina)', default=True)
 
     def _machine_values(self, cell_value):
         """2.2.0: la máquina del Excel se liga al centro de trabajo con ese nombre o código; si no hay
@@ -146,9 +146,13 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
         text = str(cell_value).strip() if cell_value not in (None, '') else ''
         if not text:
             return {'maquina_tejido': False}
+        if text.endswith('.0') and text[:-2].isdigit():  # 31.0 de una celda numérica
+            text = text[:-2]
         Workcenter = self.env['mrp.workcenter']
         found = Workcenter.search([('name', '=ilike', text)], limit=2) or \
-            Workcenter.search([('code', '=ilike', text)], limit=2)
+            Workcenter.search([('code', '=ilike', text)])
+        if len(found) > 1:  # 2.7.0: el mismo código en otro tipo de máquina (p. ej. un jet): la circular
+            found = found.filtered(lambda wc: wc.ft_tipo_id.code == 'tejido_circular')
         if len(found) == 1:
             return {'maquina_tejido': found.id}
         return {'maquina_tejido': False, 'maquina_tejido_texto': text}
@@ -261,9 +265,11 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
                                 'vincular proveedor.' % (row_num, articulo, proveedor_ref, n))
                     hilo_lines.append((0, 0, hilo_vals))
 
+                # 2.7.0: una ficha por artículo, revisión y máquina.
                 existing = Ficha.search([
                     ('articulo', '=', values['articulo']),
                     ('revision', '=', values['revision']),
+                    ('maquina_tejido', '=', values.get('maquina_tejido') or False),
                 ], limit=1)
 
                 if existing:

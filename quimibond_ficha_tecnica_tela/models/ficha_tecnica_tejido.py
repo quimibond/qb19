@@ -10,7 +10,7 @@ class FichaTecnicaTejido(models.Model):
     _name = 'ficha.tecnica.tejido'
     _description = 'Ficha Técnica de Tejido'
     _rec_name = 'articulo'
-    _order = 'articulo'
+    _order = 'articulo, maquina_tejido'
 
     # ------------------------------------------------------------------
     # Encabezado
@@ -171,10 +171,23 @@ class FichaTecnicaTejido(models.Model):
 
     notas = fields.Text(string='Notas')
 
+    # 2.7.0: una ficha por artículo, revisión y máquina, como los formatos de la planta (F-IT-P-P01-08-05 de
+    # 2017 y F-IT-P-P01-08-04 de 2025 llevan una hoja por máquina: los ajustes cambian de una a otra).
+    # Mismo nombre que la de 2.6.0 para que el update la reemplace.
     _articulo_revision_uniq = models.Constraint(
-        'unique(articulo, revision)',
-        'Ya existe una ficha técnica de tejido con ese artículo y esa revisión.',
+        'unique(articulo, revision, maquina_tejido)',
+        'Ya existe una ficha técnica de tejido con ese artículo, esa revisión y esa máquina.',
     )
+
+    @api.depends('articulo', 'revision', 'maquina_tejido')
+    def _compute_display_name(self):
+        for rec in self:
+            name = rec.articulo or ''
+            if rec.revision and rec.revision != '0':
+                name = '%s rev. %s' % (name, rec.revision)
+            if rec.maquina_tejido:
+                name = '%s · %s' % (name, rec.maquina_tejido.name)
+            rec.display_name = name
 
     # ------------------------------------------------------------------
     # 2.3.0: datos de máquina desde la configuración de la máquina
