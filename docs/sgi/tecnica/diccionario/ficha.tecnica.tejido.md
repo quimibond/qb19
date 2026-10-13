@@ -10,5 +10,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_reading_ids` | One2many | Valores de la corrida |  |  | `sgi.dev.process.reading` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:183` |
+| `sgi_reading_ids` | One2many | Valores de la corrida |  |  | `sgi.dev.process.reading` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:185` |
 

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.3.0 (Dirección General 2026-10-13): ficha de la máquina. Marca y modelo en el centro de
+         trabajo; diámetro, galga, agujas, alimentadores y velocidad máxima en configuraciones con
+         fecha (una por cambio de cilindro). -->
+    <record id="view_ficha_tecnica_maquina_config_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.maquina.config.list</field>
+        <field name="model">ficha.tecnica.maquina.config</field>
+        <field name="arch" type="xml">
+            <list string="Configuraciones de máquina" decoration-bf="is_current">
+                <field name="workcenter_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="galga"/>
+                <field name="diametro"/>
+                <field name="no_agujas"/>
+                <field name="no_alimentadores"/>
+                <field name="velocidad_max"/>
+                <field name="motivo" optional="show"/>
+                <field name="ficha_tejido_count" optional="show"/>
+                <field name="is_current" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_maquina_config_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.maquina.config.form</field>
+        <field name="model">ficha.tecnica.maquina.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración de máquina">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="workcenter_id" options="{'no_create': True}"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="is_current"/>
+                            <field name="motivo"/>
+                        </group>
+                        <group>
+                            <field name="galga"/>
+                            <field name="diametro"/>
+                            <field name="no_agujas"/>
+                            <field name="no_alimentadores"/>
+                            <field name="velocidad_max"/>
+                        </group>
+                    </group>
+                    <field name="notas" placeholder="Notas de la configuración"/>
+                    <separator string="Fichas de tejido elaboradas con esta configuración"/>
+                    <field name="ficha_tejido_ids" readonly="1">
+                        <list>
+                            <field name="articulo"/>
+                            <field name="revision"/>
+                            <field name="fecha_elaboracion"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_maquina_config_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.maquina.config.search</field>
+        <field name="model">ficha.tecnica.maquina.config</field>
+        <field name="arch" type="xml">
+            <search string="Configuraciones de máquina">
+                <field name="workcenter_id"/>
+                <field name="galga"/>
+                <group>
+                    <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_maquina_config" model="ir.actions.act_window">
+        <field name="name">Configuraciones de máquina</field>
+        <field name="res_model">ficha.tecnica.maquina.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin configuraciones de máquina</p>
+            <p>Una por máquina y por cambio de cilindro: diámetro, galga, agujas, alimentadores y velocidad
+                máxima con la fecha desde la que rigen. La ficha de tejido toma la vigente a su fecha.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_ficha_tecnica_maquina_config" name="Configuraciones de máquina"
+              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_maquina_config" sequence="30"/>
+
+    <record id="view_mrp_workcenter_form_ficha_maquina" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.ficha.maquina</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ft_fichas_tejido" type="object" class="oe_stat_button" icon="fa-list-alt"
+                        invisible="not ft_ficha_tejido_count">
+                    <field name="ft_ficha_tejido_count" widget="statinfo" string="Fichas de tejido"/>
+                </button>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Ficha de la máquina" name="ft_ficha_maquina">
+                    <group>
+                        <group>
+                            <field name="ft_marca"/>
+                            <field name="ft_modelo"/>
+                        </group>
+                        <group string="Configuración vigente">
+                            <field name="ft_config_id"/>
+                            <field name="ft_galga"/>
+                            <field name="ft_diametro"/>
+                            <field name="ft_no_agujas"/>
+                            <field name="ft_no_alimentadores"/>
+                            <field name="ft_velocidad_max"/>
+                        </group>
+                    </group>
+                    <field name="ft_config_ids" context="{'default_workcenter_id': id}">
+                        <list editable="bottom">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="galga"/>
+                            <field name="diametro"/>
+                            <field name="no_agujas"/>
+                            <field name="no_alimentadores"/>
+                            <field name="velocidad_max"/>
+                            <field name="motivo"/>
+                            <field name="ficha_tejido_count" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
