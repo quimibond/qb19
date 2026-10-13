@@ -15,6 +15,20 @@ from .sgi_menu_paths import sgi_menu_path
 _logger = logging.getLogger(__name__)
 
 
+# 57.156.0: tipo de NC por origen; lo que no está aquí es «proceso».
+SGI_NC_TYPES = [
+    ('auditoria', "Auditoría"),
+    ('proceso', "Proceso"),
+    ('indicador', "Indicador"),
+]
+SGI_ORIGIN_NC_TYPE = {
+    'auditoria_interna': 'auditoria',
+    'auditoria_externa': 'auditoria',
+    'scorecard': 'auditoria',
+    'indicador': 'indicador',
+}
+
+
 class MailActivity(models.Model):
     _inherit = 'mail.activity'
 
@@ -107,6 +121,13 @@ class QualityAlert(models.Model):
         ('riesgo', "Riesgo u oportunidad"),
     ], string="Origen", default='proceso', tracking=True,
         help="De dónde viene la NC: proceso, auditoría, reclamación, indicador, incidente u otra fuente.")
+    # 57.156.0 (Dirección General 2026-10-13): tres tipos de NC encima del
+    # origen detallado. Se llena solo; el origen sigue siendo lo que se captura.
+    sgi_nc_type = fields.Selection(
+        SGI_NC_TYPES, string="Tipo de NC", compute='_compute_sgi_nc_type', store=True, index=True,
+        help="Auditoría (interna, externa o scorecard de cliente), Indicador (incumplido) o Proceso (todo lo "
+             "demás: proceso, reclamación, incidente, emergencia, recorrido de la Comisión, riesgo). Sale "
+             "del origen.")
     sgi_source_id = fields.Many2one(
         'sgi.alert.source', string="Fuente automática", readonly=True, copy=False,
         index=True, ondelete='set null',
@@ -412,6 +433,12 @@ class QualityAlert(models.Model):
             alert.sgi_plan_state = state(plan, alert.sgi_due_plan)
             alert.sgi_deadline_overdue = 'vencida' in (
                 alert.sgi_containment_state, alert.sgi_root_cause_state, alert.sgi_plan_state)
+
+    @api.depends('sgi_origin_type')
+    def _compute_sgi_nc_type(self):
+        for alert in self:
+            alert.sgi_nc_type = SGI_ORIGIN_NC_TYPE.get(alert.sgi_origin_type, 'proceso') \
+                if alert.sgi_origin_type else False
 
     @api.model
     def _search_sgi_deadline_overdue(self, operator, value):

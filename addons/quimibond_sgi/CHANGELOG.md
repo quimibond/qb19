@@ -13,6 +13,32 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.156.0 — 2026-10-13
+
+Dirección General 2026-10-13: las NC tienen **tipo**: de auditoría, de
+proceso o de indicador (decisión de Jose: un tipo de tres encima del origen
+detallado, que se queda; la reclamación de cliente es de proceso).
+
+### Agregado
+- `quality.alert.sgi_nc_type` («Tipo de NC», calculado y guardado desde
+  `sgi_origin_type`): auditoría interna, auditoría externa y scorecard de
+  cliente → **Auditoría**; indicador incumplido → **Indicador**; proceso,
+  reclamación, incidente SST, emergencia, recorrido CSH y riesgo →
+  **Proceso**. Quien levanta la NC sigue eligiendo el origen; el tipo sale
+  solo y cambia si cambia el origen.
+- En la ficha (Datos de la NC), la lista y el kanban de No conformidades;
+  filtros «De auditoría», «De proceso» y «De indicador» y agrupar por «Tipo
+  de NC»; el reporte de la NC imprime «Tipo: … (origen)».
+
+### Datos de producción
+- Al actualizar se calcula para las NC existentes (31 con folio el
+  2026-10-13): 8 de auditoría externa → Auditoría; 16 de proceso y 7
+  reclamaciones → Proceso.
+
+### Pruebas
+- `test_nc_tipos`: tipo por cada origen, cambio de origen y búsqueda, NC
+  nacida de un hallazgo de auditoría, filtros y agrupación.
+
 ## 19.0.57.155.0 — 2026-10-13
 
 Dirección General 2026-10-13: **una sola ficha por proceso, la de
