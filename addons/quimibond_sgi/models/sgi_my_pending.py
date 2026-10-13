@@ -1655,8 +1655,15 @@ class SgiMyPending(models.Model):
             return
         Row = self.sudo()
         rows = Row.search([('res_model', '=', 'sgi.activity.execution'), ('res_id', 'in', executions.ids)])
+        # 57.157.0: se agrupa antes de tocar nada. Al cerrar un periodo se
+        # borran sus renglones, y volver a leer ``rows`` para el siguiente
+        # periodo leía renglones ya borrados (MissingError: tumbó la
+        # migración 57.149.0 en producción con 12 periodos a cerrar).
+        by_exec = {}
+        for row in rows:
+            by_exec.setdefault(row.res_id, []).append(row.id)
         for execution in executions:
-            mine = rows.filtered(lambda r, e=execution: r.res_id == e.id)
+            mine = Row.browse(by_exec.get(execution.id, [])).exists()
             if mine:
                 mine._sgi_sync_execution(execution)
         pairs = {(e.employee_id.id, e.activity_id.id) for e in executions}
