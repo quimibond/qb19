@@ -325,8 +325,11 @@ class MrpWorkcenterFicha(models.Model):
     ft_no_agujas = fields.Integer(string='Agujas vigentes', compute='_compute_ft_current')
     ft_no_alimentadores = fields.Integer(string='Alimentadores vigentes', compute='_compute_ft_current')
     ft_velocidad_max = fields.Float(string='Velocidad máxima vigente (rpm)', compute='_compute_ft_current')
-    ft_valor_ids = fields.One2many(related='ft_config_id.valor_ids', string='Parámetros vigentes')
-    ft_resumen = fields.Char(related='ft_config_id.resumen', string='Parámetros vigentes (resumen)')
+    # 2.5.0: calculados con la vigente (no «related» sobre ft_config_id, que no se puede buscar y dejaba
+    # aviso en el build).
+    ft_valor_ids = fields.Many2many('ficha.tecnica.maquina.valor', string='Parámetros vigentes',
+                                    compute='_compute_ft_current')
+    ft_resumen = fields.Char(string='Parámetros vigentes (resumen)', compute='_compute_ft_current')
     ft_ficha_tejido_count = fields.Integer(string='Fichas de tejido', compute='_compute_ft_ficha_tejido_count')
 
     def _ft_config_at(self, day=None):
@@ -338,11 +341,14 @@ class MrpWorkcenterFicha(models.Model):
         return configs.sorted(lambda c: (c.date_from, c.id), reverse=True)[:1]
 
     @api.depends('ft_config_ids.date_from', 'ft_config_ids.galga', 'ft_config_ids.diametro',
-                 'ft_config_ids.no_agujas', 'ft_config_ids.no_alimentadores', 'ft_config_ids.velocidad_max')
+                 'ft_config_ids.no_agujas', 'ft_config_ids.no_alimentadores', 'ft_config_ids.velocidad_max',
+                 'ft_config_ids.valor_ids', 'ft_config_ids.resumen')
     def _compute_ft_current(self):
         for wc in self:
             config = wc._ft_config_at()
             wc.ft_config_id = config
+            wc.ft_valor_ids = config.valor_ids
+            wc.ft_resumen = config.resumen
             wc.ft_galga = config.galga
             wc.ft_diametro = config.diametro
             wc.ft_no_agujas = config.no_agujas

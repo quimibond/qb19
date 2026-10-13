@@ -150,7 +150,8 @@ class MrpWorkorderAviso(models.Model):
                                      ('workcenter_id.ft_tipo_id.code', '=', TIPO_CIRCULAR)])
         with_aviso = open_circular.filtered(lambda w: w._ft_aviso_galga())
         # Odoo 19 normaliza «!= False» a «not in [False]» antes de llamar aquí: se aceptan las dos formas.
-        values = value if isinstance(value, (list, tuple, set, frozenset)) else [value]
+        # El valor llega como colección (OrderedSet en Odoo 19) o suelto.
+        values = list(value) if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)) else [value]
         if operator in ('!=', 'not in'):
             want = not any(values)
         elif operator in ('=', 'in'):
