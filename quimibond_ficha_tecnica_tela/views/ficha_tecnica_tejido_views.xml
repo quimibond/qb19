@@ -56,7 +56,8 @@
                         <page string="Máquina e Hilos">
                             <group>
                                 <group string="Datos de máquina">
-                                    <field name="maquina_tejido"/>
+                                    <field name="maquina_tejido" options="{'no_create': True}"/>
+                                    <field name="maquina_tejido_texto" readonly="1" invisible="not maquina_tejido_texto"/>
                                     <field name="marca_maquina"/>
                                     <field name="galga"/>
                                     <field name="diametro"/>
@@ -197,8 +198,8 @@
                                     <tr>
                                         <td>Peso</td>
                                         <td><field name="peso_acondicionado" nolabel="1"/></td>
-                                        <td><field name="peso_acondicionado_tol" nolabel="1"
-                                                   placeholder="ej. +12 / -6"/></td>
+                                        <td>+ <field name="peso_acondicionado_tol" nolabel="1" class="oe_inline"/>
+                                            / − <field name="peso_acondicionado_tol_minus" nolabel="1" class="oe_inline"/></td>
                                         <td><field name="peso_acondicionado_tol_unit" nolabel="1"/></td>
                                     </tr>
                                     <tr>

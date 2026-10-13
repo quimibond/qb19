@@ -55,7 +55,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Flujos entre procesos** — `sgi.process.flow`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Matriz de responsabilidades** — `sgi.activity.exec.stat`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Puestos y procesos** — `hr.job`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
-    - **Fichas de proceso por máquina** — `sgi.machine.sheet`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Documentos** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
       - **Documentos controlados** — `documents.document`
       - **Lista maestra** — `documents.document`
@@ -299,7 +298,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (446; 83 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (448; 84 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -333,6 +332,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `documents.document` | `quimibond_sgi.sgi_migration_view_list` | list |  | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `documents.document` | `quimibond_sgi.sgi_migration_view_search` | search |  | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `documents.document` | `quimibond_sgi_knowledge.sgi_document_view_form_knowledge` | herencia | `quimibond_sgi.sgi_document_view_form` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `ficha.tecnica.acabado` | `quimibond_sgi.ficha_tecnica_acabado_view_form_sgi_dev` | herencia | `quimibond_ficha_tecnica_tela.view_ficha_tecnica_acabado_form` | `addons/quimibond_sgi/views/sgi_dev_fabric_sheet_views.xml` |
+| `ficha.tecnica.tejido` | `quimibond_sgi.ficha_tecnica_tejido_view_form_sgi_dev` | herencia | `quimibond_ficha_tecnica_tela.view_ficha_tecnica_tejido_form` | `addons/quimibond_sgi/views/sgi_dev_fabric_sheet_views.xml` |
 | `helpdesk.team` | `quimibond_sgi.sgi_helpdesk_team_view_form` | herencia | `helpdesk.helpdesk_team_view_form` | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `helpdesk.ticket` | `quimibond_sgi.sgi_helpdesk_ticket_view_form` | herencia | `helpdesk.helpdesk_ticket_view_form` | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `hr.employee` | `quimibond_sgi.sgi_employee_view_form_competence` | herencia | `hr.view_employee_form` | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
@@ -378,7 +379,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `mrp.revision.log` | `quimibond_sgi_revisado.mrp_revision_log_view_graph` | graph |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 | `mrp.revision.log` | `quimibond_sgi_revisado.mrp_revision_log_view_pivot` | pivot |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 | `mrp.revision.log` | `quimibond_sgi_revisado.mrp_revision_log_view_search` | search |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
-| `mrp.workcenter` | `quimibond_sgi.sgi_workcenter_view_form_machine_sheet` | herencia | `mrp.mrp_workcenter_view` | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_ppap_product_template_form` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_form_dev` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_search_dev` | herencia | `product.product_template_search_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
@@ -530,6 +530,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.dev.pilot` | `quimibond_sgi.sgi_dev_pilot_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_pilot_views.xml` |
 | `sgi.dev.pilot` | `quimibond_sgi.sgi_dev_pilot_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_pilot_views.xml` |
 | `sgi.dev.pilot` | `quimibond_sgi.sgi_dev_pilot_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_pilot_views.xml` |
+| `sgi.dev.process.sheets.wizard` | `quimibond_sgi.sgi_dev_process_sheets_wizard_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_fabric_sheet_views.xml` |
 | `sgi.dev.sample.wizard` | `quimibond_sgi.sgi_dev_sample_wizard_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_sample_views.xml` |
 | `sgi.dev.shipment` | `quimibond_sgi.sgi_dev_shipment_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_shipment_views.xml` |
 | `sgi.dev.shipment` | `quimibond_sgi.sgi_dev_shipment_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_shipment_views.xml` |

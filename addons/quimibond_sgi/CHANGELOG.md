@@ -13,6 +13,57 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.155.0 — 2026-10-13
+
+Dirección General 2026-10-13: **una sola ficha por proceso, la de
+`quimibond_ficha_tecnica_tela`** (decisión de Jose). `sgi.machine.sheet`
+repetía lo que ya tiene `ficha.tecnica.tejido`: máquina, hilos, parámetros
+con tolerancia y tela acondicionada. Va con `quimibond_ficha_tecnica_tela`
+2.2.0 (máquina como centro de trabajo, tolerancias numéricas).
+
+### Agregado
+- **Capa de control del desarrollo sobre las fichas de tela**
+  (`models/sgi_dev_fabric_sheet.py`, mixin `sgi.dev.process.sheet.mixin`
+  heredado por `ficha.tecnica.tejido` y `ficha.tecnica.acabado`): proyecto,
+  orden de la corrida, propuso (Diseño y Desarrollo de Procesos), midió
+  (Laboratorio) y validó (Jefe de Manufactura del parámetro
+  `dev_validator_job_tejido_id`, su jefe directo o un administrador del SGI),
+  con fechas. Pestaña «Control del desarrollo» en las dos fichas (herencia de
+  vistas de otro módulo).
+- **Valor real por parámetro** (`sgi.dev.process.reading`): un renglón por
+  parámetro de la ficha con el real de la corrida, número de ajuste y motivo
+  (`motivo_ajuste`). Nominal, tolerancia (± o +/−) y unidad se leen en vivo de
+  la ficha. Resultado: dentro, fuera, sin tolerancia o sin capturar. No se
+  valida con valores sin capturar ni con algo fuera de tolerancia sin motivo.
+- **«Fichas de proceso»** en la pestaña Muestra del proyecto: crudo, teñido y
+  acabado con su ficha; abre la que existe o crea la que falta con el
+  artículo, el proyecto y (en acabado) la ficha de tejido del crudo ya
+  puestos. Teñido dice que la ficha de tintorería todavía no existe.
+
+### Cambiado
+- **C1.10 «Validar corrida»** se valida contra la ficha validada del artículo
+  de la orden (tejido para el crudo, acabado para el acabado); sin ficha o sin
+  validar no se valida. Teñido pasa sin ficha y lo deja escrito en la orden
+  hasta que exista la de tintorería. La orden queda ligada a la ficha.
+
+### Retirado
+- Menú SGI → Sistema → «Fichas de proceso por máquina» y el botón «Fichas de
+  proceso» del centro de trabajo. `sgi.machine.sheet` se queda, oculto (solo
+  tiene la ficha de prueba FPM-0001).
+
+### Documentación
+- `docs/superpowers/specs/2026-10-13-ficha-tecnica-tintoreria.md`: los campos
+  de F-P-D01-33 (hoy F-C1-19), la propuesta de modelo para Jose Sacramento y
+  cómo se engancha el SGI.
+- Manual del jefe de área sin el menú retirado; `quimibond_sgi_knowledge`
+  1.2.8.
+
+### Pruebas
+- `test_dev_fabric_sheet` (nueva): parámetros en vivo y tolerancias,
+  proponer / medir / validar con sus candados, el asistente de fichas del
+  proyecto y la validación de corrida contra la ficha. `test_interfaz` y
+  `test_menus_capitulos` sin el menú retirado.
+
 ## 19.0.57.154.0 — 2026-10-13
 
 Dirección General 2026-10-13: la **corrida de muestra** se pide como la

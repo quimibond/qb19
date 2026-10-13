@@ -97,6 +97,7 @@ from . import sgi_machine_sheet
 # 57.126.0 (C1, bloque G): ruta y ficha de tejido. Hereda sgi.machine.sheet: va después de él
 # (57.128.1: el build de main cayó con «Model 'sgi.machine.sheet' does not exist in registry»).
 from . import sgi_dev_process_sheet
+from . import sgi_dev_fabric_sheet  # 57.155.0: control del desarrollo sobre las fichas de tela
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
 from . import sgi_mp_change

@@ -127,9 +127,9 @@
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
               parent="menu_sgi_processes" action="sgi_hr_job_action_roles" sequence="40"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
-    <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
-              parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <!-- 57.155.0 (Dirección General 2026-10-13): sin menú «Fichas de proceso por máquina». Una sola ficha
+         por proceso, la de quimibond_ficha_tecnica_tela; sgi.machine.sheet queda oculto (una ficha de
+         prueba, FPM-0001). -->
     <!-- 57.147.0 (Dirección General 2026-10-13): los registros del desarrollo
          de producto (C1) NO llevan menú en el SGI: cada proceso vive en su app
          nativa y se abren desde los botones del proyecto. La lista de

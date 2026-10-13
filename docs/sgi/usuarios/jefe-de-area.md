@@ -15,7 +15,7 @@ Lo mismo que cualquier Usuario SGI, más:
 |---|---|
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
-| **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
+| **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría). Las fichas de proceso del desarrollo se abren desde el proyecto (pestaña Muestra → «Fichas de proceso», 57.155.0) |
 | **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
 | **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
 | **SGI → Sistema → Documentos** y **SGI → Desempeño → Indicadores** | Desde 57.150.0, como dueño de proceso: documentos controlados, lista maestra y documentos externos; todos los indicadores, mediciones y revisiones de medición |
