@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (172) y modelos de otras apps que extienden (56). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (173) y modelos de otras apps que extienden (56). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -76,7 +76,8 @@ Modelos que definen el núcleo y sus satélites (172) y modelos de otras apps qu
 | [`sgi.dev.pilot.study`](diccionario/sgi.dev.pilot.study.md) | Estudio de habilidad por característica | — | Model | 13 | `addons/quimibond_sgi/models/sgi_dev_pilot.py` |
 | [`sgi.dev.required.doc`](diccionario/sgi.dev.required.doc.md) | Información requerida al cliente en el desarrollo | 57.152.0: información que el cliente pide o debe entregar (formato anterior F-P-D01-09 / 19, bloque «Información requerida»): un renglón por documento del catálogo con su momento. | Model | 5 | `addons/quimibond_sgi/models/sgi_dev_start_approval.py` |
 | [`sgi.dev.revision`](diccionario/sgi.dev.revision.md) | Revisión del desarrollo de producto | Renglón de la bitácora de revisiones de un desarrollo: qué cambió, cuándo y quién lo pidió. | Model | 11 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
-| [`sgi.dev.sample.wizard`](diccionario/sgi.dev.sample.wizard.md) | Pedir la corrida de muestra del desarrollo | — | TransientModel | 12 | `addons/quimibond_sgi/models/sgi_dev_sample.py` |
+| [`sgi.dev.sample.wizard`](diccionario/sgi.dev.sample.wizard.md) | Pedir la corrida de muestra del desarrollo | 57.154.0: la corrida de muestra es la cadena del desarrollo (crudo → teñido → acabado), una orden por artículo. Los renglones se arman al abrir y se pueden ajustar antes de confirmar. | TransientModel | 7 | `addons/quimibond_sgi/models/sgi_dev_sample.py` |
+| [`sgi.dev.sample.wizard.line`](diccionario/sgi.dev.sample.wizard.line.md) | Orden de la corrida de muestra | 57.154.0: una orden de la corrida de muestra (crudo, teñido o acabado). | TransientModel | 12 | `addons/quimibond_sgi/models/sgi_dev_sample.py` |
 | [`sgi.dev.shipment`](diccionario/sgi.dev.shipment.md) | Envío de muestra de desarrollo al cliente | — | Model | 37 | `addons/quimibond_sgi/models/sgi_dev_shipment.py` |
 | [`sgi.dev.shipment.roll`](diccionario/sgi.dev.shipment.roll.md) | Rollo avisado al cliente en un envío de muestra | — | Model | 7 | `addons/quimibond_sgi/models/sgi_dev_shipment.py` |
 | [`sgi.dev.similar`](diccionario/sgi.dev.similar.md) | Artículos parecidos al desarrollo | Asistente: artículos de línea y desarrollos anteriores parecidos a lo que pide el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
@@ -242,4 +243,4 @@ Modelos que definen el núcleo y sus satélites (172) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 26 de 172.
+Modelos propios sin docstring de clase: 25 de 173.

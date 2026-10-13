@@ -13,6 +13,49 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.154.0 — 2026-10-13
+
+Dirección General 2026-10-13: la **corrida de muestra** se pide como la
+cadena completa del desarrollo, solo con listas del propio artículo y con
+ruta.
+
+### Cambiado
+- **«Pedir corrida de muestra» arma la cadena** crudo → teñido → acabado (los
+  artículos que existan en `sgi_dev_product_crudo_id` / `_tenido_id` /
+  `sgi_dev_product_id`), una orden por artículo, ligadas al proyecto
+  (`sgi_dev_project_id`) con origen = folio FT. Cada una con su tipo de
+  operación: crudo «Tejido Desarrollo» (parámetro de siempre), teñido
+  «Tintorería» y acabado «Acabado», o los parámetros nuevos
+  `quimibond_sgi.dev_sample_picking_type_tenido_id` / `_acabado_id` (vacíos:
+  se usa el tipo de planta con ese nombre). El último artículo entra a la
+  ubicación de desarrollos; los demás, al destino de su tipo de operación.
+- **Cantidades de atrás hacia adelante**: el último artículo lleva la
+  cantidad sugerida (la regla de siempre: lo que pide el cliente, metros PQ,
+  mínimo de baño) y cada anterior sale de la lista de materiales del
+  siguiente (p. ej. 25 kg de crudo por 100 m de acabado). Si esa lista no lo
+  consume, la misma cantidad pasada de unidad con el rendimiento; cada
+  renglón dice cómo se calculó.
+- El asistente muestra todas las órdenes (etapa, artículo, lista,
+  operaciones de la ruta, cantidad, tipo de operación y destino) antes de
+  confirmar, con una tarea y una actividad a Planeación por orden.
+
+### Corregido
+- **Lista de materiales solo del propio artículo** (dominio por plantilla y
+  variante, y revisión al confirmar). OP-DES-01560 de WJ150Q66HNT180 salió
+  con la lista 4632 de WJ150Q66HNT170. Sin lista propia, el aviso lo dice.
+- **Sin ruta no se confirma**: si la lista no tiene operaciones, la orden no
+  genera órdenes de trabajo y Planeación no la ve en máquina. Cualquier
+  problema en un renglón detiene toda la cadena (no se crea ninguna orden) y
+  el asistente lo avisa en rojo antes de confirmar.
+- `_sgi_dev_yield_m_per_kg` estaba definido dos veces (57.152.0 en la
+  aprobación para iniciar lo pisaba); queda el de la corrida de muestra.
+
+### Pruebas
+- `test_dev_sample`: cadena crudo + acabado con cantidades de atrás hacia
+  adelante, cadena de tres con teñido, lista de otro artículo y artículo sin
+  lista (no se crea nada), lista sin ruta (no se pide ni el crudo), sin
+  aprobación de Dirección de Operaciones.
+
 ## 19.0.57.153.0 — 2026-10-13
 
 Dirección General 2026-10-13: **nadie podía contestar el checklist de
