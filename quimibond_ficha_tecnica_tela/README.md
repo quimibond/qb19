@@ -239,3 +239,27 @@ bloqueos: la decisión sigue siendo de la planta.
 - Qué órdenes son de tintorería lo dice el tipo de operación («Calcular
   cargas por jet»). La migración `19.0.2.5.0/post-migrate.py` lo prende en
   los tipos de fabricación cuyo nombre dice «Tintorería».
+
+## Listo para el producto único de acabado en kg (2.6.0, 2026-10-13)
+
+Decisión de Jose: los productos de tintorería se van a dejar de usar; habrá
+**un producto de acabado en kg** con todas las operaciones en su ruta, desde
+que se recibe de tejido hasta que sale de inspección. Sin cambiar lo que hoy
+funciona con las órdenes TL/OP-TIN:
+
+- **Aviso de carga en la orden de trabajo del jet**: si una orden de trabajo
+  cae en un jet (tipo de máquina «Tintorería») y la orden de fabricación trae
+  más kg de los que caben en una carga (según el grupo de rendimiento o la
+  capacidad general), la orden de trabajo lo avisa como el de galga: banner,
+  renglón amarillo, ventana al cambiar la máquina y el filtro «Con aviso de
+  máquina» (antes «Galga distinta a la máquina»).
+- **Pestaña «Cargas por jet»** también en una orden con orden de trabajo en un
+  jet; el jet resaltado es el de la orden de trabajo y el campo «Jet» manual
+  se oculta.
+- **Rendimiento por la ficha de acabado**: si el producto no tiene ficha de
+  tejido propia (caso del producto de acabado), se toma la de tejido en que
+  se basa su ficha de acabado. El rendimiento de tintorería sigue siendo el
+  de tejido (regla de los dos rendimientos).
+- Pendiente para cuando exista el producto único: la corrida de muestra del
+  SGI (57.154.0) arma crudo → teñido → acabado y tendrá que pasar a crudo →
+  acabado con la ruta completa.
