@@ -12,6 +12,10 @@ exactamente igual que si hablara directo con Odoo:
 
     reloj ──HTTP (LAN, puerto 8081)──► puente ──HTTPS──► quimibond-qb19.odoo.com/iclock/...
 
+También reenvía el push de eventos de los relojes Hikvision
+(``/qb_checador/hikvision/<token>``) para el que no sepa HTTPS en su «Escucha
+HTTP»; para Odoo es lo mismo que si el reloj hablara directo.
+
 - Si Odoo no contesta (sin internet, Odoo en mantenimiento), el puente
   responde 502 y el reloj guarda sus registros y reintenta solo: no se
   pierde nada.
@@ -87,8 +91,15 @@ def preparar_log():
     log.addHandler(consola)
 
 
+RUTAS = ('/iclock/', '/qb_checador/hikvision/')
+
+
 def serie_de(path):
-    """El reloj manda su serie como SN=... en la URL."""
+    """El ZKTeco manda su serie como SN=... en la URL; el Hikvision, su token en la ruta
+    (en el estado se muestran solo los últimos 6 caracteres)."""
+    if path.startswith('/qb_checador/hikvision/'):
+        token = path.split('?', 1)[0].rstrip('/').rsplit('/', 1)[-1]
+        return 'hikvision …%s' % token[-6:]
     if '?' not in path:
         return ''
     for par in path.split('?', 1)[1].split('&'):
@@ -143,10 +154,11 @@ class Manejador(http.server.BaseHTTPRequestHandler):
             r['n'] += 1
 
     def _pasar(self):
-        if not self.path.startswith('/iclock/'):
+        if not self.path.startswith(RUTAS):
             if self.path in ('/', '/estado'):
                 return self._responder(200, pagina_estado())
-            return self._responder(404, 'Solo /iclock/... (relojes ZKTeco) y / (estado)\n')
+            return self._responder(404, 'Solo /iclock/... (ZKTeco), /qb_checador/hikvision/... (Hikvision) '
+                                        'y / (estado)\n')
         serie = serie_de(self.path)
         largo = int(self.headers.get('Content-Length') or 0)
         cuerpo = self.rfile.read(largo) if largo else b''
