@@ -35,6 +35,11 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 1. **SGI → Mejora → No conformidades**: agrupe por etapa (Abierta,
    Seguimiento, Cerrada, Cancelada) y filtre las vencidas.
+   Cada NC tiene **Tipo** (desde 57.156.0): **Auditoría** (auditoría
+   interna, externa o scorecard de cliente), **Indicador** (indicador
+   incumplido) o **Proceso** (todo lo demás, también las reclamaciones). Sale
+   solo del **Origen** que se captura; use los filtros «De auditoría», «De
+   proceso» y «De indicador» o agrupe por «Tipo de NC».
 2. Una NC no se cierra sin causa raíz, acciones terminadas (las correctivas,
    con evidencia: una nota o un archivo) y verificación de eficacia con
    resultado **Eficaz**, registrada en la fecha programada o después (y en una

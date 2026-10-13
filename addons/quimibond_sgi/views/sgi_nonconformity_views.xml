@@ -92,6 +92,7 @@
                 <group>
                     <group string="Datos de la NC" invisible="not sgi_folio and id">
                         <field name="sgi_folio"/>
+                        <field name="sgi_nc_type" widget="badge"/>
                         <field name="sgi_origin_type"/>
                         <field name="sgi_maintenance_request_id" invisible="not sgi_maintenance_request_id"/>
                         <field name="sgi_classification"/>
@@ -333,6 +334,14 @@
                 <!-- V-M03 (57.43.0): fecha nativa (antes «Este año», un dominio fijo en create_date). -->
                 <filter name="sgi_this_year" string="Fecha de la NC" date="date_assign"/>
                 <separator/>
+                <!-- 57.156.0: los tres tipos de NC. -->
+                <filter name="sgi_type_auditoria" string="De auditoría"
+                        domain="[('sgi_nc_type', '=', 'auditoria')]"/>
+                <filter name="sgi_type_proceso" string="De proceso"
+                        domain="[('sgi_nc_type', '=', 'proceso')]"/>
+                <filter name="sgi_type_indicador" string="De indicador"
+                        domain="[('sgi_nc_type', '=', 'indicador')]"/>
+                <separator/>
                 <filter name="sgi_mayores" string="Mayores"
                         domain="[('sgi_classification','=','mayor')]"/>
                 <filter name="sgi_recurrentes" string="Reincidentes"
@@ -344,6 +353,7 @@
                         domain="[('sgi_folio','!=',False)]"
                         context="{'group_by': 'stage_id'}"/>
                 <group>
+                    <filter name="group_type" string="Tipo de NC" context="{'group_by': 'sgi_nc_type'}"/>
                     <filter name="group_origin" string="Origen"
                             context="{'group_by': 'sgi_origin_type'}"/>
                     <filter name="group_stage" string="Etapa" context="{'group_by': 'stage_id'}"/>
@@ -367,6 +377,9 @@
                 <field name="sgi_folio"/>
                 <field name="title"/>
                 <field name="sgi_process_id"/>
+                <field name="sgi_nc_type" widget="badge"
+                       decoration-info="sgi_nc_type == 'auditoria'"
+                       decoration-warning="sgi_nc_type == 'indicador'"/>
                 <field name="sgi_origin_type" optional="hide"/>
                 <field name="sgi_classification" widget="badge"
                        decoration-danger="sgi_classification == 'mayor'"
@@ -410,7 +423,12 @@
                                    decoration-warning="sgi_classification == 'menor'"/>
                         </div>
                         <field name="title"/>
-                        <field name="sgi_process_id" class="text-muted"/>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <field name="sgi_nc_type" widget="badge"
+                                   decoration-info="sgi_nc_type == 'auditoria'"
+                                   decoration-warning="sgi_nc_type == 'indicador'"/>
+                            <field name="sgi_process_id" class="text-muted"/>
+                        </div>
                         <div class="d-flex flex-wrap gap-1 mt-1">
                             <field name="sgi_containment_state" widget="badge"
                                    decoration-success="sgi_containment_state == 'hecha'"
