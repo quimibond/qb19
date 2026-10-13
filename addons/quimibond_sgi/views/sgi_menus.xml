@@ -130,7 +130,7 @@
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
               parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
-    <!-- 57.145.0 (Dirección General 2026-10-13): los registros del desarrollo
+    <!-- 57.147.0 (Dirección General 2026-10-13): los registros del desarrollo
          de producto (C1) NO llevan menú en el SGI: cada proceso vive en su app
          nativa y se abren desde los botones del proyecto. La lista de
          desarrollos cuelga de la app Proyectos (abajo, «Menús en otras
@@ -461,7 +461,7 @@
          cada quien. Los xmlids NO cambian: solo se reparenta.
          ================================================================ -->
 
-    <!-- Proyectos (57.145.0): los desarrollos de producto (C1) viven en su app;
+    <!-- Proyectos (57.147.0): los desarrollos de producto (C1) viven en su app;
          todo lo demás del desarrollo se abre desde los botones del proyecto. -->
     <menuitem id="menu_sgi_dev_projects" name="Desarrollos de producto"
               parent="project.menu_main_pm" action="sgi_dev_project_board_action" sequence="3"/>
