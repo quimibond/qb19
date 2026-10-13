@@ -12,6 +12,12 @@
                     <strong>No se puede pedir todavía:</strong>
                     <field name="warning" readonly="1" nolabel="1" class="d-block" style="white-space:pre-wrap;"/>
                 </div>
+                <!-- 57.158.0: avisos de la ficha de la máquina (galga de la circular, carga del jet) sobre la
+                     ruta de cada lista; no impiden pedir la corrida. -->
+                <div class="alert alert-warning" role="alert" invisible="not machine_warning">
+                    <strong>Revise la máquina:</strong>
+                    <field name="machine_warning" readonly="1" nolabel="1" class="d-block" style="white-space:pre-wrap;"/>
+                </div>
                 <group>
                     <group>
                         <field name="project_id" readonly="1"/>

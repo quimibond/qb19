@@ -20,6 +20,19 @@ Primeros usos de la ficha de la máquina en la planta:
   se toma el de abajo: 6.5 es A) y, si la tela no tiene rendimiento, la
   capacidad general. El rendimiento sale de la ficha de tejido: 1000 /
   (peso g/m² × ancho m).
+
+2.6.0 (Dirección General 2026-10-13): Quimibond va a pasar a **un solo
+producto de acabado en kg** con todas las operaciones en su ruta (de la
+recepción de tejido a la salida de inspección), sin productos de
+tintorería. Por eso:
+
+- El aviso de carga también vive en la **orden de trabajo**: si la orden de
+  trabajo cae en un jet, avisa cuando la orden trae más kg de los que caben
+  en una carga (igual que el aviso de galga en las circulares). La pestaña
+  «Cargas por jet» aparece también en una orden que tenga una orden de
+  trabajo en un jet, y ahí el jet es el de la orden de trabajo.
+- El rendimiento de la tela se busca también por el camino nuevo: producto
+  de acabado → su ficha de acabado → la ficha de tejido en que se basa.
 """
 import math
 
@@ -85,15 +98,62 @@ class ProductProductFicha(models.Model):
         return 0.0, ''
 
     def _ft_rendimiento(self):
-        """(rendimiento m/kg, de dónde sale) de la tela; (0, '') si no hay ficha con peso y ancho."""
+        """(rendimiento m/kg, de dónde sale) de la tela; (0, '') si no hay ficha con peso y ancho.
+
+        Primero la ficha de tejido del producto (tela en proceso o mismo código); si no hay, la del
+        producto de acabado: su ficha de acabado → la ficha de tejido en que se basa (2.6.0, producto único
+        de acabado en kg). El rendimiento de tintorería es el de tejido (regla de los dos rendimientos)."""
         self.ensure_one()
         ficha = self.env['ficha.tecnica.tejido']._ft_de_producto(self)
         rendimiento = ficha._ft_rendimiento() if ficha else 0.0
-        return (rendimiento, 'ficha de tejido %s' % ficha.display_name) if rendimiento else (0.0, '')
+        if rendimiento:
+            return rendimiento, 'ficha de tejido %s' % ficha.display_name
+        domain = [('product_acabado_id', '=', self.id)]
+        if self.default_code:
+            domain = ['|', ('articulo', '=', self.default_code)] + domain
+        for acabado in self.env['ficha.tecnica.acabado'].search(domain, order='id desc'):
+            rendimiento = acabado.tejido_id._ft_rendimiento() if acabado.tejido_id else 0.0
+            if rendimiento:
+                return rendimiento, 'ficha de tejido %s (base de la ficha de acabado %s)' % (
+                    acabado.tejido_id.display_name, acabado.display_name)
+        return 0.0, ''
 
 
 class MrpWorkcenterCarga(models.Model):
     _inherit = 'mrp.workcenter'
+
+    @api.model
+    def _ft_circulares_con_galga(self, galga, day=None):
+        """Circulares cuya configuración vigente en ``day`` corre esa galga (checklist de factibilidad y ficha
+        de proceso del desarrollo)."""
+        if not galga:
+            return self.browse()
+        circulares = self.search([('ft_tipo_id.code', '=', TIPO_CIRCULAR)], order='name')
+        return circulares.filtered(lambda wc: (wc._ft_config_at(day).galga or 0.0) == galga)
+
+    def _ft_aviso_para(self, product, qty_kg=0.0, day=None):
+        """Aviso de esta máquina para fabricar ``product``: galga distinta en una circular, o más kg de los
+        que caben en una carga de un jet. False si no hay nada que avisar. Lo usan la orden de trabajo y la
+        corrida de muestra del desarrollo antes de crear las órdenes."""
+        self.ensure_one()
+        tipo = self.ft_tipo_id.code
+        if tipo == TIPO_CIRCULAR and product:
+            config = self._ft_config_at(day)
+            galga_maquina = config.galga if config else 0.0
+            galga_articulo, origen = product._ft_galga_requerida()
+            if galga_maquina and galga_articulo and galga_maquina != galga_articulo:
+                return '%s corre galga %s y el artículo %s pide galga %s (%s).' % (
+                    self.name, _fmt(galga_maquina), product.default_code or product.display_name,
+                    _fmt(galga_articulo), origen)
+        elif tipo == TIPO_TINTORERIA and qty_kg:
+            rendimiento = product._ft_rendimiento()[0] if product else 0.0
+            capacidad, motivo = self._ft_capacidad_carga(rendimiento, day)
+            if not capacidad:
+                return '%s: %s.' % (self.name, motivo)
+            if qty_kg > capacidad:
+                return 'La orden lleva %s kg y %s carga %s kg (%s): son %s cargas.' % (
+                    _fmt(qty_kg), self.name, _fmt(capacidad), motivo, math.ceil(qty_kg / capacidad))
+        return False
 
     def _ft_capacidad_carga(self, rendimiento, day=None):
         """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica."""
@@ -123,32 +183,27 @@ class MrpWorkorderAviso(models.Model):
     ft_aviso_maquina = fields.Char(
         string='Aviso de máquina', compute='_compute_ft_aviso_maquina', search='_search_ft_aviso_maquina',
         help='La circular corre una galga distinta de la que pide el artículo (según su ficha de tejido o su '
-             'código). Es aviso: la decisión es de la planta.')
+             'código), o la orden no cabe en una carga del jet. Es aviso: la decisión es de la planta.')
 
-    def _ft_aviso_galga(self):
+    def _ft_aviso(self):
+        """Aviso de la máquina de la orden de trabajo (galga en circular, carga en jet)."""
         self.ensure_one()
-        workcenter = self.workcenter_id
-        if not workcenter or workcenter.ft_tipo_id.code != TIPO_CIRCULAR or not self.product_id:
+        if not self.workcenter_id:
             return False
-        config = workcenter._ft_config_at(self.date_start or None)
-        galga_maquina = config.galga if config else 0.0
-        galga_articulo, origen = self.product_id._ft_galga_requerida()
-        if not (galga_maquina and galga_articulo) or galga_maquina == galga_articulo:
-            return False
-        return '%s corre galga %s y el artículo %s pide galga %s (%s).' % (
-            workcenter.name, _fmt(galga_maquina), self.product_id.default_code or self.product_id.display_name,
-            _fmt(galga_articulo), origen)
+        qty = self.production_id._ft_qty_kg() if self.production_id else 0.0
+        return self.workcenter_id._ft_aviso_para(self.product_id, qty, self.date_start or None)
 
-    @api.depends('workcenter_id', 'product_id', 'date_start')
+    @api.depends('workcenter_id', 'product_id', 'date_start', 'production_id.product_qty',
+                 'production_id.product_uom_id')
     def _compute_ft_aviso_maquina(self):
         for workorder in self:
-            workorder.ft_aviso_maquina = workorder._ft_aviso_galga()
+            workorder.ft_aviso_maquina = workorder._ft_aviso()
 
     def _search_ft_aviso_maquina(self, operator, value):
-        """Solo «con aviso» / «sin aviso» sobre órdenes abiertas en circulares."""
-        open_circular = self.search([('state', 'not in', ('done', 'cancel')),
-                                     ('workcenter_id.ft_tipo_id.code', '=', TIPO_CIRCULAR)])
-        with_aviso = open_circular.filtered(lambda w: w._ft_aviso_galga())
+        """Solo «con aviso» / «sin aviso» sobre órdenes abiertas en circulares y jets."""
+        open_wo = self.search([('state', 'not in', ('done', 'cancel')),
+                               ('workcenter_id.ft_tipo_id.code', 'in', (TIPO_CIRCULAR, TIPO_TINTORERIA))])
+        with_aviso = open_wo.filtered(lambda w: w._ft_aviso())
         # Odoo 19 normaliza «!= False» a «not in [False]» antes de llamar aquí: se aceptan las dos formas.
         # El valor llega como colección (OrderedSet en Odoo 19) o suelto.
         values = list(value) if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)) else [value]
@@ -162,9 +217,9 @@ class MrpWorkorderAviso(models.Model):
 
     @api.onchange('workcenter_id')
     def _onchange_ft_aviso_maquina(self):
-        aviso = self._ft_aviso_galga() if len(self) == 1 else False
+        aviso = self._ft_aviso() if len(self) == 1 else False
         if aviso:
-            return {'warning': {'title': 'Galga distinta', 'message': aviso}}
+            return {'warning': {'title': 'Aviso de máquina', 'message': aviso}}
         return None
 
 
@@ -180,7 +235,12 @@ class StockPickingTypeTintoreria(models.Model):
 class MrpProductionAviso(models.Model):
     _inherit = 'mrp.production'
 
-    ft_es_tintoreria = fields.Boolean(related='picking_type_id.ft_cargas_jet', string='Orden de tintorería')
+    ft_es_tintoreria = fields.Boolean(
+        string='Orden con teñido', compute='_compute_ft_es_tintoreria',
+        help='Orden de tintorería (su tipo de operación calcula cargas por jet) u orden con una orden de '
+             'trabajo en un jet (producto único de acabado, 2.6.0).')
+    ft_jet_wo_id = fields.Many2one('mrp.workcenter', string='Jet de la orden de trabajo',
+                                   compute='_compute_ft_es_tintoreria')
     ft_jet_id = fields.Many2one(
         'mrp.workcenter', string='Jet', tracking=True, domain="[('ft_tipo_id.code', '=', 'tintoreria')]",
         help='Jet en el que se tiñe la orden. Con él Odoo avisa si la orden no cabe en una carga.')
@@ -188,6 +248,14 @@ class MrpProductionAviso(models.Model):
                                   compute='_compute_ft_cargas')
     ft_cargas_html = fields.Html(string='Cargas por jet', compute='_compute_ft_cargas', sanitize=False)
     ft_aviso_maquina = fields.Char(string='Aviso de máquina', compute='_compute_ft_cargas')
+
+    @api.depends('picking_type_id.ft_cargas_jet', 'workorder_ids.workcenter_id')
+    def _compute_ft_es_tintoreria(self):
+        for production in self:
+            jets = production.workorder_ids.workcenter_id.filtered(
+                lambda wc: wc.ft_tipo_id.code == TIPO_TINTORERIA)
+            production.ft_jet_wo_id = jets[:1]
+            production.ft_es_tintoreria = bool(production.picking_type_id.ft_cargas_jet or jets)
 
     def _ft_qty_kg(self):
         self.ensure_one()
@@ -218,14 +286,15 @@ class MrpProductionAviso(models.Model):
                 qty = production._ft_qty_kg()
                 day = production.date_start or None
                 rows = []
+                elegido = production.ft_jet_wo_id or production.ft_jet_id
                 for jet in production._ft_jets():
                     capacidad, motivo = jet._ft_capacidad_carga(rendimiento, day)
                     cargas = math.ceil(qty / capacidad) if capacidad and qty else 0
                     rows.append(Markup('<tr%s><td>%s</td><td class="text-end">%s</td>'
                                        '<td class="text-end">%s</td><td>%s</td></tr>') % (
-                        Markup(' class="fw-bold"') if jet == production.ft_jet_id else '',
+                        Markup(' class="fw-bold"') if jet == elegido else '',
                         jet.name, _fmt(capacidad) + ' kg' if capacidad else '—', cargas or '—', motivo))
-                    if jet == production.ft_jet_id and qty:
+                    if jet == production.ft_jet_id and not production.ft_jet_wo_id and qty:
                         if not capacidad:
                             avisos.append('%s: %s.' % (jet.name, motivo))
                         elif qty > capacidad:

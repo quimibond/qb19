@@ -185,4 +185,5 @@ from . import test_dev_change
 from . import test_dev_folio_access
 from . import test_dev_start_approval_format
 from . import test_dev_fabric_sheet
+from . import test_dev_machine_sheet
 from . import test_nc_tipos
