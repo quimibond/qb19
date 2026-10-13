@@ -66,7 +66,8 @@ class SgiProcessArchiveTouch(models.Model):
         return res
 
 
-class SgiMyPendingArchivedFilter(models.TransientModel):
+class SgiMyPendingArchivedFilter(models.Model):
+    # 57.145.0: sgi.my.pending ya no es transitorio.
     _inherit = 'sgi.my.pending'
 
     @staticmethod

@@ -217,7 +217,10 @@
                     <field name="progress_note" required="mode == 'progress'"
                            invisible="mode != 'progress'" placeholder="Qué lleva y qué le falta"/>
                     <field name="date_estimated" invisible="mode != 'progress'"/>
+                    <!-- 57.145.0: la evidencia obligatoria se pide en el campo
+                         (registro manual sin archivo), no con un error al guardar. -->
                     <field name="evidence_note" invisible="mode != 'done'"
+                           required="mode == 'done' and needs_evidence and not attachment_ids"
                            placeholder="Folio, documento o registro que demuestra que se hizo"/>
                     <field name="attachment_ids" widget="many2many_binary" invisible="mode != 'done'"/>
                     <field name="na_reason" required="mode == 'na'" invisible="mode != 'na'"

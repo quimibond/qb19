@@ -231,9 +231,9 @@ class TestBandeja(TransactionCase):
 
     # ---- escalamiento (I-012) --------------------------------------------------
     def test_10_escalamiento_llega_a_quien_escala(self):
-        self.assertFalse(self._rows(self.boss_user, 'actividad'))
+        self.assertFalse(self._rows(self.boss_user, 'escalamiento'))
         self._late()
-        rows = self._rows(self.boss_user, 'actividad')
+        rows = self._rows(self.boss_user, 'escalamiento')
         self.assertEqual([r['res_id'] for r in rows], [self.activity.id])
         self.assertTrue(rows[0]['name'].startswith("Escalamiento:"))
         self.assertLessEqual(rows[0]['date_due'], self.today)
@@ -257,6 +257,7 @@ class TestBandeja(TransactionCase):
         self.assertTrue(mine[0]['name'].startswith("Hacer"))
         # El aprobador no: nada por aprobar todavía.
         self.assertFalse(self._rows(self.approver_user, 'actividad'))
+        self.assertFalse(self._rows(self.approver_user, 'escalamiento'))
         self.assertFalse([r for r in self._rows(self.approver_user) if r['res_id'] == self.activity.id
                           and r['res_model'] == 'sgi.process.activity'])
         # Mi equipo (por persona) tampoco se lo cuenta.
@@ -268,15 +269,16 @@ class TestBandeja(TransactionCase):
         escala = self.activity.role_ids.filtered(lambda r: r.role == 'escala')
         escala.after_days = 60
         self.boss.invalidate_recordset()
-        self.assertFalse(self._rows(self.boss_user, 'actividad'),
+        self.assertFalse(self._rows(self.boss_user, 'escalamiento'),
                          "Antes de sus días hábiles no le llega a quien escala.")
         self.assertTrue(self._rows(kind='actividad'), "Al ejecutor sí.")
         escala.after_days = 1
         self.boss.invalidate_recordset()
-        rows = self._rows(self.boss_user, 'actividad')
+        rows = self._rows(self.boss_user, 'escalamiento')
         self.assertEqual([r['res_id'] for r in rows], [self.activity.id])
         self.assertTrue(rows[0]['name'].startswith("Escalamiento:"))
-        self.assertFalse(self._rows(self.approver_user, 'actividad'))
+        self.assertFalse(self._rows(self.boss_user, 'actividad'), "No se mezcla con lo que ejecuta.")
+        self.assertFalse(self._rows(self.approver_user, 'escalamiento'))
 
     # ---- acuse de lectura (I-001) -----------------------------------------------
     def test_11_acuse(self):
@@ -414,7 +416,8 @@ class TestBandeja(TransactionCase):
         self.assertEqual(len(own_row), 1)
         result = (their_rows | own_row).with_user(self.boss_user).action_validate_selected()
         self.assertEqual(result['tag'], 'display_notification')
-        self.assertEqual(result['params']['next']['tag'], 'soft_reload')
+        # 57.145.0: cierre estándar, no soft_reload.
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
         self.assertEqual(own.state, 'validado')
         self.assertEqual(set(theirs.mapped('state')), {'capturado'})
         self.assertEqual(their_rows.exists(), their_rows, "Lo ajeno se queda en la lista.")
@@ -461,7 +464,8 @@ class TestBandeja(TransactionCase):
         self.assertIn('/web/content/%d' % doc.attachment_id.id, action['url'])
         self.assertNotIn('download=true', action['url'])
         result = row.with_user(self.user).action_sign_ack()
-        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
         self.assertEqual(ack.state, 'leido')
         self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
 
@@ -532,7 +536,8 @@ class TestBandeja(TransactionCase):
         action = line.with_user(self.user).action_open()
         self.assertEqual((action['res_model'], action['res_id']), ('quality.alert', alert.id))
         result = line.with_user(self.user).action_done_notice()
-        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['type'], 'ir.actions.act_window_close')
         self.assertFalse(notice.exists() and notice.active, "El aviso queda hecho.")
         self.assertFalse(line.exists(), "El renglón hecho sale de la lista.")
         # El aviso de otra persona no se marca hecho.

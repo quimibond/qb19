@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 57.105.0: MIID desde Odoo. Texto [FIJO] del borrador Rev. 03 de Jose (5-oct-2026,
-         docs/sgi/transicion/miid-rev03-borrador.md): una sección por título y subtítulo,
-         sin la portada ni 12.3. Lo [VIVO] no se siembra: lo ponen los bloques de datos.
-         noupdate: lo que corrija el Jefe MAST no lo pisa ninguna actualización. Sin
-         company_id: toma la empresa del SGI (D-03).
-         57.110.0: completado con lo que traía la revisión 02 (4.1, 4.2, 6.1, 6.3, 7.1,
-         7.3, 7.4, 8.1, 8.3, 9.1, 10.2) y notas de 1.2, 1.3 y 12.1 corregidas; en
-         producción lo lleva la migración, solo a las secciones sin editar.
-         57.113.0: rutas del menú nuevo (menús por capítulos); en producción lo
-         lleva la migración, solo a las secciones sin editar. -->
+    <!-- Manual del SGI (MIID) generado desde Odoo.
+         57.105.0: una sección por título y subtítulo del borrador Rev. 03 (texto fijo);
+         lo vivo lo ponen los bloques de datos. noupdate: lo que corrija el Jefe MAST
+         no lo pisa ninguna actualización. Sin company_id: la empresa del SGI (D-03).
+         57.110.0 y 57.113.0: textos completados y rutas del menú; en producción por
+         migración, solo en las secciones sin editar.
+         57.146.0 (Dirección, 2026-10-13: «el MIID está como en el Dropbox»): el
+         manual deja de describir en prosa lo que el sistema ya muestra. Quedan 29
+         secciones: texto fijo mínimo (objeto, alcance, no aplicabilidades, dónde vive
+         el sistema, reglas que el sistema hace cumplir, información documentada, que
+         absorbe al P-G01) y 14 bloques vivos. Las 27 secciones narrativas de los
+         capítulos 4 a 10 se archivan en la migración (su texto queda en la sección
+         archivada); lo que decían vive en las actividades, en la correspondencia por
+         cláusula y en los manuales de Conocimiento. Texto fuente:
+         docs/sgi/transicion/miid-rev03-borrador.md. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -18,45 +23,16 @@
             <field name="heading_level">1</field>
             <field name="live_block">identificacion</field>
             <field name="body" type="html">
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Dato</th><th>Valor</th></tr></thead>
-                <tbody>
-                <tr><td>Organización</td><td>Productora de No Tejidos Quimibond S.A. de C.V. (PNTQ)</td></tr>
-                <tr><td>Documento</td><td>Manual Integral de Información Documentada. Sistema de Gestión Integral ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018</td></tr>
-                <tr><td>Área</td><td>SGI</td></tr>
-                <tr><td>Emisión original</td><td>Febrero de 2023</td></tr>
-                <tr><td>Responsable del documento</td><td>Jefe MAST y SGI</td></tr>
-                <tr><td>Aprueba</td><td>Director de Operaciones</td></tr>
-                </tbody></table>
-                <p><b>Estado de este borrador.</b> Está redactado para el SGI que opera en Odoo. Entra en vigor cuando se publiquen los procesos en Odoo y Dirección lo apruebe.</p>
-            </field>
-        </record>
 
-        <record id="sgi_miid_section_02_que_cambia" model="sgi.miid.section">
-            <field name="sequence">20</field>
-            <field name="name">Qué cambia frente a la revisión 02</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Tema</th><th>Revisión 02</th><th>Revisión 03</th></tr></thead>
-                <tbody>
-                <tr><td>Dónde vive el sistema</td><td>Carpetas del Dropbox, con PDF y Excel</td><td>Odoo, menú SGI</td></tr>
-                <tr><td>Cómo se describe la operación</td><td>52 procedimientos por área o puesto (P-A, P-C, P-D, P-E, P-G, P-M, P-P, P-S)</td><td>Los procesos del SGI, con actividades, dueño y medición</td></tr>
-                <tr><td>Registros</td><td>Formatos en Excel y papel</td><td>Registros de Odoo, que imprimen la clave y la revisión del formato</td></tr>
-                <tr><td>Riesgos, aspectos, IPER, requisitos legales</td><td>Matrices en Excel por área</td><td>Registros en Odoo con evaluación, acciones e historial</td></tr>
-                <tr><td>Indicadores</td><td>Captura mensual en F-P-A10-03</td><td>Medición automática o captura, validada por el dueño</td></tr>
-                <tr><td>No conformidades</td><td>Control en Excel (F-P-G05-02)</td><td>NC con folio, plazos y candados de cierre</td></tr>
-                <tr><td>Difusión</td><td>Correo NEWS y listas de asistencia</td><td>Acuse de lectura firmado por persona</td></tr>
-                <tr><td>Control de cambios</td><td>Minuta y solicitud de modificación</td><td>Solicitudes en Aprobaciones, con historial</td></tr>
-                </tbody></table>
-                <p>No cambian el alcance, las no aplicabilidades, la política integral, los objetivos ni la estructura por cláusulas de las normas.</p>
+                <p>Manual Integral de Información Documentada del Sistema de Gestión Integral (ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018) de Productora de No Tejidos Quimibond S.A. de C.V. (PNTQ). Responsable del documento: Jefe de MAST y SGI. Aprueba: Director de Operaciones. Este manual se genera desde Odoo: lo que imprime es lo que el sistema tiene el día de su emisión.</p>
+                <p>[[datos]]</p>
             </field>
         </record>
 
         <record id="sgi_miid_section_03_objeto_cap" model="sgi.miid.section">
             <field name="sequence">30</field>
             <field name="clause">1</field>
-            <field name="name">Objeto y campo de aplicación</field>
+            <field name="name">Objeto, alcance y control del Manual</field>
             <field name="heading_level">1</field>
         </record>
 
@@ -66,16 +42,9 @@
             <field name="name">Objeto</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>Este Manual es el documento de referencia del Sistema de Gestión Integral (SGI) de PNTQ. Sus objetivos son:</p>
-                <ol>
-                <li>Establecer y mantener la información documentada que requiere el SGI, con base en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018 y sus equivalentes nacionales.</li>
-                <li>Dar el marco para demostrar la capacidad de PNTQ de suministrar productos y servicios conformes, dentro de los procesos que controla o sobre los que influye.</li>
-                <li>Gestionar las responsabilidades ambientales de manera sistemática, con perspectiva de ciclo de vida.</li>
-                <li>Demostrar el cumplimiento de los requisitos legales, reglamentarios y normativos aplicables en México.</li>
-                <li>Identificar oportunamente los riesgos y peligros presentes en las áreas de PNTQ.</li>
-                <li>Promover condiciones de trabajo seguras y saludables, eliminando peligros y reduciendo riesgos.</li>
-                <li>Fomentar la consulta y la participación de los trabajadores y sus representantes en lo relativo a seguridad y salud en el trabajo.</li>
-                </ol>
+
+                <p>Este Manual es el documento de referencia del SGI de PNTQ. Declara el alcance del sistema y sus no aplicabilidades, dice dónde vive cada requisito de las normas en Odoo y fija las reglas que el sistema hace cumplir. No repite lo que Odoo ya muestra: los procesos, sus actividades, los indicadores, los riesgos, las no conformidades y los documentos se consultan en el sistema, que es la versión oficial.</p>
+                <p>El SGI sirve para suministrar productos y servicios conformes, gestionar las responsabilidades ambientales con perspectiva de ciclo de vida, cumplir los requisitos legales aplicables en México, identificar y controlar los peligros y riesgos de las áreas de PNTQ, dar condiciones de trabajo seguras y saludables y fomentar la consulta y participación de los trabajadores.</p>
             </field>
         </record>
 
@@ -120,7 +89,9 @@
             <field name="name">Revisión y control de este Manual</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>El Manual se revisa cada dos años, o antes si lo piden un cambio en las normas, en los procesos, una auditoría o una no conformidad. Sus cambios se solicitan y aprueban en Odoo como cualquier documento controlado (ver 7.5). El Manual y los documentos del SGI son oficiales y de cumplimiento obligatorio; su reproducción requiere autorización escrita de la Dirección.</p>
+
+                <p>El Manual se genera desde Odoo (<b>SGI → Sistema → Manual del SGI (MIID)</b>): texto fijo, que edita el Jefe de MAST y SGI, y datos vivos del sistema. Cada revisión se solicita con un cambio documental, la firma Dirección en Firma electrónica y se publica como documento controlado de clave MIID; lo que se firma es lo que se publica. Odoo compara cada día la revisión vigente con el sistema y avisa cuando ya no coinciden. Se revisa cuando el sistema cambia y al menos cada dos años.</p>
+                <p>El Manual y los documentos del SGI son oficiales y de cumplimiento obligatorio. Un Manual impreso es copia no controlada; su reproducción fuera de PNTQ requiere autorización escrita de la Dirección (ver 6.5).</p>
             </field>
         </record>
 
@@ -129,574 +100,306 @@
             <field name="clause">2</field>
             <field name="name">Referencias normativas</field>
             <field name="heading_level">1</field>
+            <field name="live_block">normas</field>
             <field name="body" type="html">
-                <ul>
-                <li>ISO 9001:2015, Sistemas de gestión de la calidad. Requisitos (NMX-CC-9001-IMNC-2015).</li>
-                <li>ISO 14001:2015, Sistemas de gestión ambiental. Requisitos con orientación para su uso.</li>
-                <li>ISO 45001:2018, Sistemas de gestión de la seguridad y salud en el trabajo. Requisitos con orientación para su uso.</li>
-                <li>ISO 9000:2015, Fundamentos y vocabulario (NMX-CC-9000-IMNC-2015).</li>
-                </ul>
-                <p>Las disposiciones legales y reglamentarias aplicables se llevan en Odoo, en <b>SGI → Planeación → Requisitos legales</b> (ver 6.1.3).</p>
+
+                <p>Las normas que rigen el SGI y sus cláusulas se mantienen en Odoo (<b>SGI → Sistema → Normas</b>); cada actividad declara en «Cumple con» las cláusulas que cumple (ver 5.1). Las disposiciones legales y reglamentarias aplicables se llevan en <b>SGI → Planeación → Requisitos legales</b>.</p>
+                <p>[[datos]]</p>
+                <p>Aplican también ISO 9000:2015 (fundamentos y vocabulario) y los equivalentes nacionales NMX-CC-9001-IMNC-2015 y NMX-CC-9000-IMNC-2015.</p>
             </field>
         </record>
 
         <record id="sgi_miid_section_09_terminos" model="sgi.miid.section">
             <field name="sequence">90</field>
             <field name="clause">3</field>
-            <field name="name">Términos y dónde vive el sistema</field>
+            <field name="name">Dónde vive el sistema</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p>Aplican los términos y definiciones de ISO 9000:2015, ISO 14001:2015 e ISO 45001:2018. Además, en este Manual:</p>
+
+                <p><b>Regla general.</b> La información documentada del SGI se crea, se mantiene y se conserva en Odoo, en el menú <b>SGI</b>. Lo que está en Odoo es la versión oficial. El Dropbox es archivo histórico de solo lectura; la correspondencia entre cada documento anterior y su sustituto está en <b>SGI → Sistema → Del Dropbox a Odoo</b>. El detalle de cada pantalla está en los manuales de <b>Conocimiento → SGI → Cómo usar el sistema</b>, que son material de consulta y no documentos controlados.</p>
                 <table class="table table-sm table-bordered">
                 <thead><tr><th>Término</th><th>Significado</th></tr></thead>
                 <tbody>
-                <tr><td>Odoo</td><td>El sistema de gestión empresarial de PNTQ. El SGI opera en su menú <b>SGI</b></td></tr>
-                <tr><td>Proceso</td><td>Uno de los procesos del SGI, con clave (E, C o S), dueño y actividades</td></tr>
-                <tr><td>Actividad</td><td>Una tarea de un proceso: qué se hace, quién, dónde, cómo, cuándo, cuándo está terminada y qué hacer si falla</td></tr>
-                <tr><td>Dueño de proceso</td><td>Quien responde por el resultado de un proceso</td></tr>
-                <tr><td>Mi procedimiento</td><td>El conjunto de actividades, documentos, indicadores y equipo de protección del puesto de cada persona</td></tr>
-                <tr><td>Acuse de lectura</td><td>La firma «leído y entendido» de un documento, con persona, fecha y hora</td></tr>
-                <tr><td>NC</td><td>No conformidad</td></tr>
-                <tr><td>MAST</td><td>Medio Ambiente y Seguridad en el Trabajo</td></tr>
+                <tr><td>Proceso</td><td>Uno de los procesos del mapa (clave E, C o S), con dueño, actividades, indicadores, riesgos y documentos.</td></tr>
+                <tr><td>Actividad</td><td>Una tarea de un proceso: qué se hace, quién, dónde, cómo, cuándo, cuándo está terminada y qué hacer si falla. Se mide con los registros de Odoo o con su registro de cumplimiento.</td></tr>
+                <tr><td>Dueño de proceso</td><td>Quien responde por el resultado del proceso, valida sus indicadores, cierra sus no conformidades y responde por sus documentos.</td></tr>
+                <tr><td>Mi procedimiento</td><td>Lo que le toca a cada puesto: actividades, documentos, indicadores y equipo de protección. Cada persona lo firma de leído.</td></tr>
+                <tr><td>Mis pendientes</td><td>La bandeja de cada persona: actividades atrasadas, acuses, mediciones por capturar o validar, aprobaciones y avisos.</td></tr>
+                <tr><td>Acuse de lectura</td><td>La firma «leído y entendido» de un documento, con persona, fecha y hora.</td></tr>
+                <tr><td>NC</td><td>No conformidad.</td></tr>
+                <tr><td>MAST</td><td>Medio Ambiente y Seguridad en el Trabajo.</td></tr>
                 </tbody></table>
-                <p><b>Regla general.</b> La información documentada del SGI se mantiene y se conserva en Odoo. Lo que está en Odoo es la versión oficial. El Dropbox queda como archivo histórico de solo lectura; la correspondencia entre cada documento anterior y su sustituto está en <b>SGI → Sistema → Del Dropbox a Odoo</b>.</p>
-                <p>El detalle de operación de cada pantalla está en el Manual de usuario del SGI en Odoo, que es documento de apoyo de este Manual.</p>
+                <p>Aplican los términos y definiciones de ISO 9000:2015, ISO 14001:2015 e ISO 45001:2018.</p>
             </field>
         </record>
 
-        <record id="sgi_miid_section_10_contexto_cap" model="sgi.miid.section">
+        <record id="sgi_miid_section_50_sistema_cap" model="sgi.miid.section">
             <field name="sequence">100</field>
             <field name="clause">4</field>
-            <field name="name">Contexto de la organización</field>
+            <field name="name">El sistema</field>
             <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_11_contexto" model="sgi.miid.section">
-            <field name="sequence">110</field>
-            <field name="clause">4.1</field>
-            <field name="name">Comprensión de la organización y de su contexto</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ fue fundada en 1992 por los señores José Mizrahi Daniel, Jaime Víctor Mizrahi Penhos y Jacobo Mizrahi Penhos. Inició con entretelas no tejidas, fusionables y no fusionables; en 2009 incorporó la entretela tejida y después se extendió a mercados industriales: pieles sintéticas, calzado, colchonería e industrial.</p>
-                <p><b>Productos.</b> Entretela no tejida termofusionada de poliéster o poliamida; entretela tejida de tejido circular; entretela fusionable (base tejida o no tejida con resina termoactivable); y entretela no tejida con hilos encadenados.</p>
-                <p><b>Servicios.</b> Corte y perforado; tintorería y acabado de telas tejidas; aplicación de resinas, laminados y acabados industriales; desarrollo de productos según especificación del cliente; y distribución de otros tipos de entretelas.</p>
-                <p><b>Cuestiones internas y externas.</b> La Dirección las determina y revisa en el Anexo 15 y en la Planeación Estratégica 2026-2030 (Anexo 1). Incluyen las condiciones ambientales que afectan o son afectadas por PNTQ, los peligros y riesgos, y las condiciones de trabajo. En seguridad y salud consideran, entre otros, la seguridad de la maquinaria, los equipos y las instalaciones; la exposición a agentes físicos, químicos, ergonómicos y psicosociales; el cumplimiento de los requisitos legales; la preparación ante emergencias; y los cambios tecnológicos, operacionales y organizacionales. Su revisión es entrada de la revisión por la dirección (9.3).</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_12_partes" model="sgi.miid.section">
-            <field name="sequence">120</field>
-            <field name="clause">4.2</field>
-            <field name="name">Necesidades y expectativas de las partes interesadas</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Las partes interesadas pertinentes (clientes, proveedores externos, el personal y los propietarios) y sus requisitos se registran en Odoo, en <b>SGI → Planeación → Partes interesadas</b>. Las necesidades que se convierten en requisitos legales u otros requisitos se llevan en <b>Requisitos legales</b> (6.1.3).</p>
-                <p>En seguridad y salud, las necesidades del personal incluyen condiciones de trabajo seguras y saludables, capacitación, consulta y participación, cumplimiento de los requisitos legales, prevención de lesiones, enfermedades e incidentes, y equipo de protección personal adecuado.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_13_alcance_43" model="sgi.miid.section">
-            <field name="sequence">130</field>
-            <field name="clause">4.3</field>
-            <field name="name">Alcance</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>El alcance del SGI es el declarado en 1.2 y las no aplicabilidades, las de 1.3. Se mantiene como información documentada en este Manual.</p>
-            </field>
         </record>
 
         <record id="sgi_miid_section_14_procesos" model="sgi.miid.section">
-            <field name="sequence">140</field>
-            <field name="clause">4.4</field>
-            <field name="name">El SGI y sus procesos</field>
+            <field name="sequence">110</field>
+            <field name="clause">4.1</field>
+            <field name="name">Procesos, mapa e interacción</field>
             <field name="heading_level">2</field>
             <field name="live_block">procesos</field>
             <field name="body" type="html">
-                <p>PNTQ opera su SGI mediante los procesos de la tabla siguiente. Cada uno tiene dueño, entradas, salidas, actividades con responsable y vencimiento, indicadores y riesgos. Se consultan en <b>SGI → Sistema → Mapa de procesos</b>.</p>
+
+                <p>PNTQ opera su SGI mediante los procesos del mapa, cada uno con dueño, entradas, salidas, actividades con responsable y vencimiento, indicadores y riesgos (<b>SGI → Sistema → Mapa de procesos</b>). El mapa, la interacción entre procesos y el diagrama de tortuga de cada proceso salen de Odoo. Los recursos se aseguran mediante el Plan de Asignación de Recursos, información confidencial de PNTQ que no se audita sin autorización de la Dirección.</p>
                 <p>[[datos]]</p>
-                <p>Para cada proceso, Odoo mantiene:</p>
-                <ul>
-                <li><b>La secuencia e interacción:</b> los diagramas de mapa de procesos, interacción (4.4) y tortuga, que sustituyen a los Anexos 2 y 3.</li>
-                <li><b>Los criterios y métodos de control:</b> las actividades del proceso y la forma en que cada una se mide.</li>
-                <li><b>Las responsabilidades y autoridades:</b> la matriz de responsabilidades y los roles de cada actividad (5.3).</li>
-                <li><b>Los riesgos y oportunidades:</b> ligados al proceso (6.1).</li>
-                <li><b>La evaluación:</b> sus indicadores y el cumplimiento de sus actividades (9.1).</li>
-                </ul>
-                <p>Los recursos se aseguran mediante el Plan de Asignación de Recursos, que es información confidencial de PNTQ y no se audita sin autorización de la Dirección.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_15_liderazgo_cap" model="sgi.miid.section">
-            <field name="sequence">150</field>
-            <field name="clause">5</field>
-            <field name="name">Liderazgo</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_16_liderazgo" model="sgi.miid.section">
-            <field name="sequence">160</field>
-            <field name="clause">5.1</field>
-            <field name="name">Liderazgo y compromiso</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>La alta dirección demuestra su liderazgo y compromiso con el SGI:</p>
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Compromiso</th><th>Cómo se evidencia</th></tr></thead>
-                <tbody>
-                <tr><td>Rinde cuentas de la eficacia del SGI</td><td>Manifiesto de compromiso (Anexo 8), informes de auditoría y actas de revisión por la dirección en Odoo</td></tr>
-                <tr><td>Establece política y objetivos compatibles con el contexto y la estrategia</td><td><b>SGI → Planeación → Política integral</b> y <b>Objetivos integrales</b>; Planeación Estratégica (Anexo 1)</td></tr>
-                <tr><td>Integra los requisitos del SGI en los procesos de negocio</td><td>Las actividades del SGI se ejecutan en las mismas pantallas de Odoo donde se opera el negocio</td></tr>
-                <tr><td>Promueve el enfoque a procesos y el pensamiento basado en riesgos</td><td>Mapa de procesos y <b>Riesgos y oportunidades</b></td></tr>
-                <tr><td>Asegura los recursos</td><td>Plan de Asignación de Recursos (confidencial)</td></tr>
-                <tr><td>Comunica la importancia de una gestión eficaz</td><td>Difusión de la política con acuse de lectura</td></tr>
-                <tr><td>Asegura que el SGI logra sus resultados</td><td>Tablero de Dirección, salud del SGI y salidas de la revisión</td></tr>
-                <tr><td>Promueve la mejora y una cultura de prevención</td><td>Seguimiento de acuerdos, de NC mayores y de incidentes graves, que le llegan por correo</td></tr>
-                <tr><td>Garantiza la consulta y participación de los trabajadores</td><td>Comisión de Seguridad e Higiene, reporte abierto de incidentes y participación en las investigaciones</td></tr>
-                </tbody></table>
-                <p><b>Enfoque al cliente (5.1.2).</b> Los requisitos del cliente y los legales se determinan y se cumplen en los procesos C1 y C2. Los riesgos que afectan la conformidad se gestionan según 6.1. La satisfacción se sigue con reclamaciones, devoluciones y <b>Satisfacción del cliente</b> (9.1.2).</p>
             </field>
         </record>
 
         <record id="sgi_miid_section_17_politica" model="sgi.miid.section">
-            <field name="sequence">170</field>
-            <field name="clause">5.2</field>
+            <field name="sequence">120</field>
+            <field name="clause">4.2</field>
             <field name="name">Política integral</field>
             <field name="heading_level">2</field>
             <field name="live_block">politica</field>
             <field name="body" type="html">
-                <p>La política integral (Anexo 9) se mantiene en <b>SGI → Planeación → Política integral</b>; solo una puede estar vigente. La política:</p>
-                <ul>
-                <li>es apropiada al propósito y contexto de PNTQ, incluidos sus impactos ambientales;</li>
-                <li>da el marco para los objetivos integrales;</li>
-                <li>incluye los compromisos de cumplir los requisitos aplicables, mejorar continuamente, proteger el medio ambiente, proporcionar condiciones de trabajo seguras y saludables, eliminar peligros y reducir riesgos, y consultar y hacer participar a los trabajadores.</li>
-                </ul>
+
+                <p>Solo una política puede estar vigente (<b>SGI → Planeación → Política integral</b>). Da el marco para los objetivos integrales e incluye los compromisos de cumplir los requisitos aplicables, mejorar continuamente, proteger el medio ambiente, dar condiciones de trabajo seguras y saludables, eliminar peligros y reducir riesgos, y consultar y hacer participar a los trabajadores. Se comunica a cada persona mediante acuse de lectura y está disponible para las partes interesadas.</p>
                 <p>[[datos]]</p>
-                <p>Se comunica a cada persona mediante acuse de lectura y está disponible para las partes interesadas.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_18_roles" model="sgi.miid.section">
-            <field name="sequence">180</field>
-            <field name="clause">5.3</field>
-            <field name="name">Roles, responsabilidades y autoridades</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Las responsabilidades y autoridades se asignan en tres niveles, todos consultables en Odoo:</p>
-                <ol>
-                <li><b>Por proceso:</b> cada proceso tiene un dueño, que responde por su resultado, valida sus indicadores y cierra sus no conformidades.</li>
-                <li><b>Por actividad:</b> cada actividad tiene un rol que ejecuta y, cuando aplica, uno que aprueba y uno al que se escala. Quien aprueba no es quien ejecuta.</li>
-                <li><b>Por puesto:</b> «Mi procedimiento» reúne lo que le toca a cada puesto, y cada persona lo firma de leído.</li>
-                </ol>
-                <p>La matriz de responsabilidades y el diagrama de roles de Odoo sustituyen a los Anexos 4 y 5. El Jefe MAST y SGI asegura la conformidad del SGI con las normas, informa a la alta dirección sobre su desempeño y mantiene su integridad cuando hay cambios. Nadie audita su propio proceso.</p>
-                <p>En seguridad y salud, toda persona es responsable de cumplir los controles operacionales, usar su equipo de protección, reportar actos y condiciones inseguras, participar en capacitaciones y simulacros y colaborar en la investigación de incidentes.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_19_planificacion_cap" model="sgi.miid.section">
-            <field name="sequence">190</field>
-            <field name="clause">6</field>
-            <field name="name">Planificación</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_20_riesgos" model="sgi.miid.section">
-            <field name="sequence">200</field>
-            <field name="clause">6.1</field>
-            <field name="name">Acciones para abordar riesgos y oportunidades</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ identifica, evalúa y trata sus riesgos y oportunidades en Odoo, con cuatro instrumentos. Cada registro lleva proceso, evaluación inicial y residual, acciones con responsable e historial de evaluaciones.</p>
-                <p>Se abordan para asegurar que el SGI logre sus resultados previstos, aumentar los efectos deseables, prevenir o reducir los efectos no deseados y lograr la mejora. Para determinarlos se consideran las cuestiones de 4.1 y los requisitos de las partes interesadas de 4.2.</p>
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Instrumento</th><th>Qué cubre</th><th>Dónde</th><th>Sustituye a</th></tr></thead>
-                <tbody>
-                <tr><td>Riesgos y oportunidades</td><td>Lo que puede afectar los resultados del SGI y de cada proceso (6.1.1)</td><td>SGI → Planeación → Riesgos y oportunidades</td><td>Matriz F-P-C09-02 y FODA por área</td></tr>
-                <tr><td>Aspectos ambientales</td><td>Aspectos e impactos con perspectiva de ciclo de vida, y cuáles son significativos (6.1.2 de ISO 14001)</td><td>SGI → Planeación → Aspectos ambientales</td><td>Matriz F-P-E01-01</td></tr>
-                <tr><td>IPER</td><td>Peligros y riesgos de seguridad y salud (6.1.2 de ISO 45001)</td><td>Riesgos y oportunidades, instrumento IPER</td><td>Matriz F-P-S01-01</td></tr>
-                <tr><td>Requisitos legales y otros requisitos</td><td>Obligaciones aplicables y su evaluación de cumplimiento (6.1.3)</td><td>SGI → Planeación → Requisitos legales</td><td>Matriz F-P-E02-01</td></tr>
-                </tbody></table>
-                <p>Reglas de operación:</p>
-                <ul>
-                <li>Los riesgos se reevalúan al menos dos veces al año, en enero y julio, y después de un incidente o un cambio.</li>
-                <li>Un riesgo alto debe tener al menos una acción abierta; si no, el sistema lo marca y avisa al dueño del proceso.</li>
-                <li>La identificación de peligros considera actividades rutinarias y no rutinarias, condiciones normales y de emergencia, contratistas y visitantes, factores humanos y cambios.</li>
-                <li>Los controles de seguridad siguen la jerarquía: eliminación, sustitución, ingeniería, administrativos y equipo de protección personal. Un riesgo alto no se da por controlado solo con equipo de protección.</li>
-                <li>Cada requisito legal se evalúa como cumple, cumple parcialmente, no cumple o no aplica, siempre con evidencia.</li>
-                </ul>
             </field>
         </record>
 
         <record id="sgi_miid_section_21_objetivos" model="sgi.miid.section">
-            <field name="sequence">210</field>
-            <field name="clause">6.2</field>
-            <field name="name">Objetivos integrales y planificación para lograrlos</field>
+            <field name="sequence">130</field>
+            <field name="clause">4.3</field>
+            <field name="name">Objetivos integrales</field>
             <field name="heading_level">2</field>
             <field name="live_block">objetivos</field>
             <field name="body" type="html">
-                <p>Los objetivos integrales (Anexo 6) se mantienen en <b>SGI → Planeación → Objetivos integrales</b>. Son coherentes con la política, medibles y comunicados. Cada objetivo se liga a sus indicadores y toma el peor color de ellos, de modo que su seguimiento es continuo. Para cada uno se define qué se hará, con qué recursos, quién responde, cuándo termina y cómo se evalúa. Se revisan en la revisión por la dirección.</p>
-            </field>
-        </record>
 
-        <record id="sgi_miid_section_22_cambios" model="sgi.miid.section">
-            <field name="sequence">220</field>
-            <field name="clause">6.3</field>
-            <field name="name">Planificación de los cambios</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Los cambios al SGI se hacen de forma planificada y quedan registrados en Odoo:</p>
-                <ul>
-                <li><b>Cambios a una actividad o a un proceso:</b> propuesta de cambio, aprobada por el jefe directo de quien propone y por el dueño del proceso.</li>
-                <li><b>Cambios a un documento:</b> solicitud de cambio documental; al aprobarse se crea la revisión nueva, la anterior queda obsoleta y se generan los acuses.</li>
-                <li><b>Cambios de producto o de ingeniería:</b> órdenes de cambio en el proceso C1.</li>
-                </ul>
-                <p>Cada cambio considera su propósito y consecuencias, la integridad del SGI, los recursos, las responsabilidades, sus efectos en el ambiente y en la seguridad y salud, cuándo se termina y cómo se evalúa su resultado.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_23_apoyo_cap" model="sgi.miid.section">
-            <field name="sequence">230</field>
-            <field name="clause">7</field>
-            <field name="name">Apoyo</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_24_recursos" model="sgi.miid.section">
-            <field name="sequence">240</field>
-            <field name="clause">7.1</field>
-            <field name="name">Recursos</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <ul>
-                <li><b>Personas:</b> la alta dirección determina y proporciona el personal necesario; la plantilla autorizada se lleva en el proceso S4.</li>
-                <li><b>Infraestructura:</b> edificios y servicios, maquinaria y equipo, transporte y tecnologías de la información. Se mantiene en los procesos S5 (mantenimiento preventivo, correctivo y checklists diarios) y S6 (equipos de cómputo, sistemas y comunicaciones).</li>
-                <li><b>Ambiente para la operación:</b> factores físicos (temperatura, iluminación, ventilación, ruido e higiene), sociales (trato no discriminatorio, ambiente libre de conflictos) y psicosociales (prevención del estrés y del agotamiento). Las condiciones de trabajo, los estudios de higiene y los controles de seguridad están en el menú <b>Seguridad y ambiente</b>.</li>
-                <li><b>Recursos de seguimiento y medición (7.1.5):</b> los equipos de medición y de laboratorio, sus calibraciones y verificaciones se controlan en <b>Calidad → Calidad preventiva → Metrología</b>. Un equipo con calibración vencida no debe usarse para liberar producto. Si un equipo resulta fuera de calibración, se evalúa si afectó resultados ya liberados y se toman las acciones necesarias, con una no conformidad cuando aplique.</li>
-                <li><b>Conocimientos de la organización (7.1.6):</b> se conservan en las actividades e instructivos de cada proceso y en <b>Mejora → Lecciones aprendidas</b>, que sustituye a la bitácora de experiencias (Anexo 14).</li>
-                </ul>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_25_competencia" model="sgi.miid.section">
-            <field name="sequence">250</field>
-            <field name="clause">7.2</field>
-            <field name="name">Competencia</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Cada puesto define las competencias que requiere. La competencia de cada persona se registra en su ficha de empleado y la brecha es la base del programa de capacitación (<b>Empleados → Competencias SGI</b>). Una competencia se obtiene con educación, formación o experiencia comprobable; la eficacia de cada capacitación la evalúa el jefe inmediato a los 90 días.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_26_conciencia" model="sgi.miid.section">
-            <field name="sequence">260</field>
-            <field name="clause">7.3</field>
-            <field name="name">Toma de conciencia</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Toda persona conoce la política, los objetivos que le aplican, su contribución al SGI, los peligros y aspectos ambientales de su trabajo y las consecuencias de no cumplir.</p>
-                <ul>
-                <li><b>Inducción:</b> al ingresar, Recursos Humanos imparte la inducción a la empresa y, con el área de SGI, la inducción al SGI: misión, visión y valores; política y objetivos integrales; seguridad y salud en el trabajo (tipos de riesgo, actos y condiciones inseguras); planes de emergencia; y manejo de residuos. Se completa dentro de los tres meses siguientes al ingreso.</li>
-                <li><b>Puesto:</b> el jefe inmediato refuerza lo propio de cada puesto.</li>
-                <li><b>Evidencia:</b> la firma de su procedimiento y de la política; se verifica en las auditorías internas.</li>
-                </ul>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_27_comunicacion" model="sgi.miid.section">
-            <field name="sequence">270</field>
-            <field name="clause">7.4</field>
-            <field name="name">Comunicación, consulta y participación</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ determina qué comunica, a quién, cómo, cuándo y quién lo hace:</p>
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Qué</th><th>A quién</th><th>Cómo y cuándo</th><th>Quién</th></tr></thead>
-                <tbody>
-                <tr><td>Política, objetivos, documentos y sus cambios</td><td>Personal</td><td>Acuse de lectura en Odoo, al publicarse</td><td>Jefe de MAST y SGI</td></tr>
-                <tr><td>Actividades, vencimientos y no conformidades</td><td>Responsables</td><td>Avisos y actividades de Odoo, al generarse</td><td>Dueño del proceso</td></tr>
-                <tr><td>Resultados del SGI: indicadores, auditorías y revisión por la dirección</td><td>Dirección y dueños de proceso</td><td>Tablero y actas en Odoo, en cada revisión</td><td>Jefe de MAST y SGI</td></tr>
-                <tr><td>Requisitos, pedidos, compras y reclamaciones</td><td>Clientes y proveedores</td><td>Correo y documentos del pedido o de la compra, cuando ocurren</td><td>Dueño del proceso (C2, S1, C5)</td></tr>
-                <tr><td>Trámites y reportes oficiales</td><td>Autoridades</td><td>Plataformas y trámites oficiales, en los plazos legales</td><td>Responsable del requisito legal</td></tr>
-                <tr><td>Peligros, controles y emergencias</td><td>Personal, contratistas y visitantes</td><td>Inducción, señalización, reglamento para contratistas y simulacros</td><td>Jefe de MAST y SGI</td></tr>
-                </tbody></table>
-                <p>La información ambiental y de seguridad que se comunica es coherente con la generada en el SGI y fiable. PNTQ responde a las comunicaciones pertinentes de las partes interesadas y conserva evidencia de sus comunicaciones en el historial de los registros de Odoo y en el correo.</p>
-                <p><b>Consulta y participación de los trabajadores:</b> Comisión de Seguridad e Higiene y sus recorridos; reporte de incidentes, casi accidentes, actos y condiciones inseguras abierto a todo el personal; formato de quejas y sugerencias, en papel y por código QR; encuesta de consulta y participación; Semana de seguridad y salud anual; y participación en la identificación de peligros, la determinación de controles y las investigaciones. Los trabajadores se consultan antes de los cambios que afecten su seguridad y salud.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_28_informacion" model="sgi.miid.section">
-            <field name="sequence">280</field>
-            <field name="clause">7.5</field>
-            <field name="name">Información documentada</field>
-            <field name="heading_level">2</field>
-            <field name="live_block">tipos_documento</field>
-            <field name="body" type="html">
-                <p>La información documentada del SGI se crea, actualiza y controla en Odoo. Este apartado sustituye al procedimiento P-G01.</p>
+                <p>Los objetivos integrales (<b>SGI → Planeación → Objetivos integrales</b>) son coherentes con la política, medibles y comunicados. Cada objetivo se liga a sus indicadores y toma el peor color de ellos; se revisan en la revisión por la dirección.</p>
                 <p>[[datos]]</p>
-                <ul>
-                <li><b>Estados:</b> borrador, prueba piloto, vigente y obsoleto. Solo lo vigente se usa.</li>
-                <li><b>Identificación:</b> todo documento lleva clave, revisión y fecha de emisión. Los registros que imprime Odoo los llevan en cada hoja, con el número de página.</li>
-                <li><b>Revisión y aprobación:</b> todo cambio pasa por una solicitud aprobada. Cada documento vigente tiene fecha de próxima revisión y su responsable recibe aviso.</li>
-                <li><b>Distribución y acceso:</b> el personal consulta en <b>SGI → Inicio → Documentos vigentes</b>. La difusión se evidencia con el acuse de lectura.</li>
-                <li><b>Lista maestra:</b> <b>SGI → Sistema → Documentos → Lista maestra</b>.</li>
-                <li><b>Documentos de origen externo:</b> normas, especificaciones de cliente y disposiciones oficiales se registran como documentos externos y se implantan en 10 días hábiles.</li>
-                <li><b>Conservación y protección:</b> los registros no se borran: se archivan o se cancelan con motivo. Lo cerrado solo lo modifica el Jefe MAST y SGI. El acceso depende del grupo de cada usuario. Los datos de salud y de salarios tienen acceso restringido.</li>
-                <li><b>Historia:</b> los documentos y registros anteriores a Odoo se conservan en el Dropbox, de solo lectura.</li>
-                </ul>
             </field>
         </record>
 
-        <record id="sgi_miid_section_29_operacion_cap" model="sgi.miid.section">
-            <field name="sequence">290</field>
-            <field name="clause">8</field>
-            <field name="name">Operación</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_30_control_operacional" model="sgi.miid.section">
-            <field name="sequence">300</field>
-            <field name="clause">8.1</field>
-            <field name="name">Planificación y control operacional</field>
+        <record id="sgi_miid_section_18_roles" model="sgi.miid.section">
+            <field name="sequence">140</field>
+            <field name="clause">4.4</field>
+            <field name="name">Dueños de proceso, roles y autoridades</field>
             <field name="heading_level">2</field>
+            <field name="live_block">roles</field>
             <field name="body" type="html">
-                <p>La operación se planifica y controla mediante las actividades de cada proceso. Cada actividad define su criterio de terminación y qué hacer si falla, y el sistema mide su cumplimiento con los registros de Odoo.</p>
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Requisito</th><th>Cómo se cumple</th><th>Proceso</th></tr></thead>
-                <tbody>
-                <tr><td>8.2 Requisitos para los productos y servicios</td><td>Cotización, revisión del pedido, confirmación y comunicación con el cliente</td><td>C2</td></tr>
-                <tr><td>8.3 Diseño y desarrollo</td><td>Solicitud de desarrollo, etapas, revisiones, validación con el cliente, cambios de ingeniería, AMEF, plan de control y PPAP cuando el cliente lo exige</td><td>C1</td></tr>
-                <tr><td>8.4 Procesos, productos y servicios suministrados externamente</td><td>Selección y evaluación de proveedores, órdenes de compra con requisitos, inspección de recibo y certificados de análisis</td><td>S1, C5</td></tr>
-                <tr><td>8.5.1 Control de la producción</td><td>Programa de producción, órdenes de fabricación, instructivos, fichas de proceso por máquina, mantenimiento y acciones para prevenir errores humanos</td><td>C3, C4, S5</td></tr>
-                <tr><td>8.5.2 Identificación y trazabilidad</td><td>Lote por orden de fabricación, de la materia prima al producto entregado</td><td>C4, C6</td></tr>
-                <tr><td>8.5.3 Propiedad del cliente o del proveedor</td><td>Materiales de maquila y bienes del cliente o del proveedor identificados y controlados en inventario; si se pierden, se deterioran o no sirven, se informa a su dueño, se toman acciones de contingencia y se conserva el registro</td><td>C6</td></tr>
-                <tr><td>8.5.4 Preservación</td><td>Almacenamiento, manejo, empaque y embarque</td><td>C6, C2</td></tr>
-                <tr><td>8.5.5 Actividades posteriores a la entrega</td><td>Atención de reclamaciones y devoluciones, considerando los requisitos legales, las consecuencias no deseadas, la naturaleza y vida útil del producto, y los requisitos y la retroalimentación del cliente</td><td>C5, C2</td></tr>
-                <tr><td>8.5.6 Control de los cambios</td><td>Ver 6.3</td><td>C1, E2</td></tr>
-                <tr><td>8.6 Liberación de los productos</td><td>Inspección, pruebas de laboratorio y reporte de conformidad antes de embarcar</td><td>C5</td></tr>
-                <tr><td>8.7 Salidas no conformes</td><td>Retención e identificación del producto, disposición y no conformidad (ver 10.2)</td><td>C5</td></tr>
-                </tbody></table>
-                <p>No aplican 8.4.1 b) y 8.5.1 f), según 1.3. La situación del Plan integral (Anexo 13), donde la revisión 02 presentaba el resultado de esta planificación, se define en 12.1.</p>
-            </field>
-        </record>
 
-        <record id="sgi_miid_section_31_control_ambiental_sst" model="sgi.miid.section">
-            <field name="sequence">310</field>
-            <field name="clause">8.2</field>
-            <field name="name">Control operacional ambiental y de seguridad y salud</field>
-            <field name="heading_level">2</field>
-            <field name="live_block">controles</field>
-            <field name="body" type="html">
+                <p>Las responsabilidades y autoridades se asignan en tres niveles, todos en Odoo: por <b>proceso</b> (el dueño), por <b>actividad</b> (el rol que ejecuta y, cuando aplica, el que aprueba y al que se escala; quien aprueba no es quien ejecuta) y por <b>puesto</b> («Mi procedimiento», que cada persona firma de leído). La matriz de responsabilidades y el diagrama de roles sustituyen a los Anexos 4 y 5. El Jefe de MAST y SGI asegura la conformidad del SGI con las normas, informa a la alta dirección sobre su desempeño y mantiene su integridad cuando hay cambios. Nadie audita su propio proceso.</p>
                 <p>[[datos]]</p>
-                <ul>
-                <li><b>Permisos de trabajo de alto riesgo</b> y <b>bloqueo y etiquetado</b>, registrados en Odoo antes de iniciar el trabajo.</li>
-                <li><b>Contratistas:</b> se sujetan al reglamento de seguridad para contratistas y a los mismos permisos.</li>
-                <li><b>Equipo de protección personal:</b> se entrega con responsiva por persona.</li>
-                <li><b>Residuos, descargas y consumos:</b> se controlan según los aspectos ambientales significativos y los requisitos legales.</li>
-                <li><b>Checklists diarios</b> de equipos y unidades; sus fallas generan correctivos de mantenimiento.</li>
-                </ul>
             </field>
         </record>
 
-        <record id="sgi_miid_section_32_emergencias" model="sgi.miid.section">
-            <field name="sequence">320</field>
-            <field name="clause">8.3</field>
-            <field name="name">Preparación y respuesta ante emergencias</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ se prepara y responde ante emergencias con los planes de emergencia del centro de trabajo y los simulacros, que se mantienen en <b>SGI → Seguridad y ambiente</b>.</p>
-                <ul>
-                <li><b>Escenarios:</b> emergencias médicas, incendio, fugas o derrames de sustancias químicas, fenómenos naturales y fallas operacionales que puedan afectar a las personas o al ambiente.</li>
-                <li><b>Recursos:</b> sistemas de alarma, equipo contra incendio, estaciones de primeros auxilios, equipo de contención de derrames, medios de comunicación interna y brigadas.</li>
-                <li><b>Prueba periódica:</b> los simulacros se programan y se evalúan por tiempo de respuesta, eficacia de la comunicación y desempeño de las brigadas. Cada uno queda registrado con su evaluación y sus oportunidades de mejora.</li>
-                <li><b>Revisión:</b> el plan se revisa después de cada simulacro y de cada emergencia real; de una emergencia real se levanta una no conformidad.</li>
-                <li><b>Información y formación:</b> el personal se capacita desde su inducción; contratistas y visitantes reciben la información de emergencia a su ingreso.</li>
-                </ul>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_33_evaluacion_cap" model="sgi.miid.section">
-            <field name="sequence">330</field>
-            <field name="clause">9</field>
-            <field name="name">Evaluación del desempeño</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_34_seguimiento" model="sgi.miid.section">
-            <field name="sequence">340</field>
-            <field name="clause">9.1</field>
-            <field name="name">Seguimiento, medición, análisis y evaluación</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p><b>Indicadores (9.1.1).</b> Cada indicador tiene proceso, dueño, fórmula, frecuencia, objetivo y rango aceptable. Sustituyen a la captura mensual en el formato F-P-A10-03.</p>
-                <ol>
-                <li>El sistema crea la medición de cada periodo; la calcula con los registros de Odoo o la pide a su responsable.</li>
-                <li>El dueño del indicador la valida contra la evidencia.</li>
-                <li>Un resultado en rojo exige causa y plan de acción; en los indicadores críticos, además, levanta una no conformidad.</li>
-                <li>La medición validada conserva las metas con las que se juzgó.</li>
-                </ol>
-                <p>Un indicador nuevo opera «en prueba» hasta que su dueño confirma una medición contra la realidad y lo pasa a oficial. La ficha de cada indicador, con su tendencia, se imprime desde Odoo.</p>
-                <p><b>Cumplimiento de las actividades.</b> El sistema mide por proceso y por puesto si cada actividad se hizo en su periodo (<b>SGI → Administración → Diagnóstico → Cumplimiento de procedimientos</b>).</p>
-                <p><b>Desempeño de seguridad y salud.</b> Se evalúa con sus indicadores, los incidentes, los actos y condiciones inseguras, las inspecciones y recorridos, y el cumplimiento de los requisitos legales.</p>
-                <p><b>Satisfacción del cliente (9.1.2).</b> Se evalúa con las reclamaciones y devoluciones, las calificaciones de los clientes y el registro de <b>Satisfacción del cliente</b>.</p>
-                <p><b>Evaluación del cumplimiento (9.1.2 de ISO 14001 e ISO 45001).</b> Cada requisito legal se evalúa periódicamente con evidencia; el historial queda en <b>Evaluaciones de cumplimiento legal</b>.</p>
-                <p><b>Análisis y evaluación (9.1.3).</b> Los dueños de proceso y la Dirección analizan los resultados del seguimiento y la medición para evaluar la conformidad de los productos y servicios, la satisfacción del cliente, el desempeño y la eficacia del SGI, si lo planificado se implementó de forma eficaz, la eficacia de las acciones sobre riesgos y oportunidades, el desempeño de los proveedores externos y la necesidad de mejoras. Sus conclusiones son entrada de la revisión por la dirección (9.3).</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_35_auditoria" model="sgi.miid.section">
-            <field name="sequence">350</field>
-            <field name="clause">9.2</field>
-            <field name="name">Auditoría interna</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>Las auditorías se planifican, ejecutan y cierran en <b>SGI → Desempeño → Auditorías</b>. Este apartado sustituye al procedimiento P-G03.</p>
-                <ul>
-                <li><b>Programa anual:</b> lo aprueba el Jefe MAST y SGI y cubre todos los procesos en un ciclo máximo de tres años. El reporte «Programado contra realizado» muestra su avance.</li>
-                <li><b>Independencia:</b> ningún auditor audita su propio trabajo. El proceso E2 lo audita un auditor distinto del Jefe MAST y SGI.</li>
-                <li><b>Ejecución:</b> el checklist se genera de las actividades de los procesos auditados; se registran las reuniones de apertura y cierre.</li>
-                <li><b>Hallazgos:</b> cada uno lleva tipo, cláusula, proceso y evidencia. Toda no conformidad, mayor o menor, genera su NC.</li>
-                <li><b>Informe:</b> queda archivado en Odoo al cerrar la auditoría.</li>
-                </ul>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_36_revision" model="sgi.miid.section">
-            <field name="sequence">360</field>
-            <field name="clause">9.3</field>
-            <field name="name">Revisión por la dirección</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>La Dirección de Operaciones revisa el SGI a intervalos planificados y después de cada auditoría, en <b>SGI → Desempeño → Revisión por la dirección</b>. Sustituye al instructivo IT-P-A10-01.</p>
-                <p><b>Entradas.</b> El sistema carga, con los datos reales del periodo: el estado de los acuerdos anteriores; los cambios en el contexto y en las partes interesadas; el desempeño de los procesos y de los indicadores; las no conformidades y acciones correctivas; los resultados de auditorías; la satisfacción del cliente, las quejas y las reclamaciones; el desempeño de los proveedores; los riesgos y oportunidades; los aspectos ambientales significativos; el cumplimiento legal; los incidentes y el desempeño de seguridad y salud; la consulta y participación de los trabajadores; la adecuación de los recursos; y las oportunidades de mejora.</p>
-                <p><b>Salidas.</b> Las conclusiones sobre la conveniencia, adecuación y eficacia del SGI, las oportunidades de mejora, las necesidades de cambio y de recursos, y los acuerdos. Cada acuerdo se convierte en una acción con responsable y fecha; los que no se cierran se cargan en la siguiente revisión.</p>
-                <p>El acta de cada revisión cerrada se conserva en Odoo como evidencia.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_37_mejora_cap" model="sgi.miid.section">
-            <field name="sequence">370</field>
-            <field name="clause">10</field>
-            <field name="name">Mejora</field>
-            <field name="heading_level">1</field>
-        </record>
-
-        <record id="sgi_miid_section_38_generalidades" model="sgi.miid.section">
-            <field name="sequence">380</field>
-            <field name="clause">10.1</field>
-            <field name="name">Generalidades</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ determina y selecciona las oportunidades de mejora a partir de la evaluación del desempeño y las registra en <b>SGI → Mejora → Mejora continua</b>, que sustituye al plan de mejora F-P-A10-02.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_39_nc" model="sgi.miid.section">
-            <field name="sequence">390</field>
-            <field name="clause">10.2</field>
-            <field name="name">No conformidad y acción correctiva</field>
-            <field name="heading_level">2</field>
-            <field name="live_block">plazos_nc</field>
-            <field name="body" type="html">
-                <p>Toda no conformidad se registra y se trata en <b>SGI → Mejora → No conformidades</b>, sea cual sea su origen: proceso, auditoría interna o externa, reclamación de cliente, indicador incumplido, incidente o recorrido de la Comisión. Este apartado sustituye a los procedimientos P-G04 y P-G05 y al control F-P-G05-02.</p>
-                <p>Ante una no conformidad se reacciona para controlarla y corregirla y se hace frente a sus consecuencias, incluida la mitigación de los impactos ambientales adversos. Después se evalúa si hace falta eliminar su causa para que no vuelva a ocurrir ni ocurra en otra parte, revisando si existen no conformidades similares o que puedan ocurrir.</p>
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Etapa</th><th>Qué se exige</th></tr></thead>
-                <tbody>
-                <tr><td>Abierta</td><td>Contención, causa raíz y plan de acción en los plazos de la tabla de abajo</td></tr>
-                <tr><td>Seguimiento</td><td>Clasificación (mayor, menor u observación) y cláusula incumplida; acciones con responsable y fecha</td></tr>
-                <tr><td>Cerrada</td><td>Causa raíz, acciones terminadas con evidencia y eficacia verificada con resultado «Eficaz»</td></tr>
-                <tr><td>Cancelada</td><td>Solo con motivo aprobado por el Jefe MAST y SGI</td></tr>
-                </tbody></table>
-                <p>[[datos]]</p>
-                <ul>
-                <li>La verificación de eficacia y el cierre corresponden al dueño del proceso o al Jefe MAST y SGI.</li>
-                <li>Una eficacia «No eficaz» obliga a una acción correctiva nueva.</li>
-                <li>Una no conformidad mayor exige el análisis completo de causa, llevar la lección al AMEF, al plan de control o al documento, y se informa a la Dirección.</li>
-                <li>El sistema identifica las reincidencias por proceso.</li>
-                <li>Las reclamaciones de cliente se responden en los plazos acordados; cuando el cliente lo pide, con formato 8D.</li>
-                <li>Los incidentes y accidentes se investigan con análisis de causas, participación de trabajadores y verificación de eficacia (<b>SGI → Seguridad y ambiente → Incidentes y accidentes</b>).</li>
-                </ul>
-                <p>Si es necesario, el tratamiento de una no conformidad actualiza los riesgos y oportunidades y genera cambios al SGI.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_40_mejora_continua" model="sgi.miid.section">
-            <field name="sequence">400</field>
-            <field name="clause">10.3</field>
-            <field name="name">Mejora continua</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-                <p>PNTQ mejora continuamente la conveniencia, adecuación y eficacia del SGI con los resultados de los indicadores, las auditorías, las no conformidades y las salidas de la revisión por la dirección.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_41_correspondencia_cap" model="sgi.miid.section">
-            <field name="sequence">410</field>
-            <field name="clause">11</field>
-            <field name="name">Correspondencia</field>
+        <record id="sgi_miid_section_51_requisitos_cap" model="sgi.miid.section">
+            <field name="sequence">150</field>
+            <field name="clause">5</field>
+            <field name="name">Cómo cumple el SGI cada requisito</field>
             <field name="heading_level">1</field>
         </record>
 
         <record id="sgi_miid_section_42_correspondencia" model="sgi.miid.section">
-            <field name="sequence">420</field>
-            <field name="clause">11.1</field>
-            <field name="name">Cláusulas de las normas y dónde se evidencian en Odoo</field>
+            <field name="sequence">160</field>
+            <field name="clause">5.1</field>
+            <field name="name">Cláusulas, procesos y actividades</field>
             <field name="heading_level">2</field>
             <field name="live_block">correspondencia</field>
-            <field name="body_fallback" eval="True"/>
             <field name="body" type="html">
+
+                <p>Cada actividad declara en «Cumple con» las cláusulas que cumple; de ahí salen la Matriz de cumplimiento, el checklist de auditoría y esta tabla. Una cláusula sin actividad se ve en rojo en la matriz y en el Diagnóstico. Lo que no es una actividad lo cumple el sistema con sus candados y avisos (5.2).</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_52_reglas" model="sgi.miid.section">
+            <field name="sequence">170</field>
+            <field name="clause">5.2</field>
+            <field name="name">Reglas que el sistema hace cumplir</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <ul>
+                <li><b>Contexto y partes interesadas (4.1, 4.2):</b> cuestiones internas y externas, partes interesadas y sus requisitos se registran en <b>SGI → Planeación</b>; su revisión es entrada de la revisión por la dirección.</li>
+                <li><b>Riesgos y oportunidades (6.1):</b> riesgos, aspectos ambientales, IPER y requisitos legales son registros con evaluación inicial y residual, acciones e historial. Se reevalúan en enero y julio y después de un incidente o un cambio. Un riesgo alto debe tener una acción abierta; si no, el sistema avisa al dueño. Los controles de seguridad siguen la jerarquía (eliminación, sustitución, ingeniería, administrativos, EPP); un riesgo alto no se da por controlado solo con EPP. Cada requisito legal se evalúa con evidencia.</li>
+                <li><b>Cambios (6.3, 8.5.6):</b> un cambio a una actividad pasa por una propuesta aprobada por el jefe directo y el dueño del proceso; un cambio documental, por la solicitud de la sección 6; un cambio de proceso, infraestructura o plantilla (MOC) exige motivo, procesos afectados y evaluación de riesgos antes de aprobarse.</li>
+                <li><b>Competencia y toma de conciencia (7.2, 7.3):</b> cada puesto define sus competencias; la brecha por persona es la base del programa de capacitación y el jefe evalúa la eficacia a los 90 días. La inducción se completa en los tres meses siguientes al ingreso. La evidencia es la firma de Mi procedimiento y de la política.</li>
+                <li><b>Comunicación, consulta y participación (7.4):</b> política, documentos y sus cambios se comunican con acuse de lectura; actividades, vencimientos y NC con los avisos de Odoo; los resultados, en el Tablero y las actas. Los trabajadores se consultan antes de los cambios que afecten su seguridad y salud, y participan por la Comisión de Seguridad e Higiene, el reporte abierto de incidentes y las encuestas.</li>
+                <li><b>Equipos de medición (7.1.5):</b> calibraciones y verificaciones en Metrología; un equipo con calibración vencida no libera producto.</li>
+                <li><b>Control operacional (8.1):</b> cada actividad define su criterio de terminado y qué hacer si falla; los permisos de trabajo de alto riesgo y el bloqueo de energía se registran antes de iniciar; los checklists diarios generan correctivos.</li>
+                <li><b>Emergencias (8.2 de ISO 14001 y 45001):</b> planes de emergencia y simulacros en <b>SGI → Seguridad y ambiente</b>; el plan se revisa tras cada simulacro y cada emergencia real, y una emergencia real levanta una NC.</li>
+                <li><b>Indicadores (9.1):</b> el sistema crea la medición de cada periodo, la calcula o la pide a su responsable y el dueño la valida; un rojo exige causa y plan de acción y, en los indicadores críticos, levanta una NC. El cumplimiento de las actividades se mide por proceso y por puesto.</li>
+                <li><b>Auditoría interna (9.2):</b> programa anual aprobado por el Jefe de MAST y SGI que cubre todos los procesos en un ciclo máximo de tres años; nadie audita su propio trabajo; el checklist sale de las actividades; todo hallazgo genera su NC; el informe queda en Odoo.</li>
+                <li><b>Revisión por la dirección (9.3):</b> el sistema carga las entradas con los datos del periodo; cada acuerdo se convierte en una acción con responsable y fecha, los no cerrados pasan a la siguiente revisión y el acta se conserva en Odoo.</li>
+                <li><b>Mejora (10):</b> oportunidades en <b>SGI → Mejora → Mejora continua</b> y <b>Lecciones aprendidas</b>; una NC cierra solo con eficacia «Eficaz» y se cancela solo con motivo aprobado por el Jefe de MAST y SGI; el sistema identifica reincidencias por proceso.</li>
+                </ul>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_39_nc" model="sgi.miid.section">
+            <field name="sequence">180</field>
+            <field name="clause">5.3</field>
+            <field name="name">No conformidad y acción correctiva</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">plazos_nc</field>
+            <field name="body" type="html">
+
+                <p>Toda no conformidad se registra y se trata en <b>SGI → Mejora → No conformidades</b>, sea cual sea su origen (proceso, auditoría, reclamación de cliente, indicador, incidente, recorrido). Abierta exige contención, causa raíz y plan en los plazos de abajo; Seguimiento, clasificación y cláusula incumplida; Cerrada, acciones terminadas con evidencia y eficacia verificada. Una NC mayor exige análisis de causa completo, llevar la lección al AMEF, al plan de control o al documento, y se informa a la Dirección. Las reclamaciones se responden en los plazos acordados y, si el cliente lo pide, con 8D. Los incidentes se investigan con participación de los trabajadores.</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_31_control_ambiental_sst" model="sgi.miid.section">
+            <field name="sequence">190</field>
+            <field name="clause">5.4</field>
+            <field name="name">Controles operacionales ambientales y de seguridad y salud</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">controles</field>
+            <field name="body" type="html">
+
+                <p>Los controles operacionales son documentos controlados (clave CO) con alcance, controles, responsables y qué hacer en desviación; los contratistas se sujetan al reglamento de seguridad y a los mismos permisos; el equipo de protección personal se entrega con responsiva por persona; residuos, descargas y consumos se controlan según los aspectos ambientales significativos y los requisitos legales.</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_53_documentada_cap" model="sgi.miid.section">
+            <field name="sequence">200</field>
+            <field name="clause">6</field>
+            <field name="name">Información documentada</field>
+            <field name="heading_level">1</field>
+            <field name="body" type="html">
+
+                <p>Este capítulo sustituye al procedimiento P-G01 «Elaboración y control de información documentada». Las rutinas (recibir y aprobar solicitudes, publicar, revisar la vigencia, registrar documentos externos, verificar al nuevo titular y autorizar entregas a externos) son actividades del proceso E2 con su criterio de terminado y su medición; aquí quedan solo las reglas.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_28_informacion" model="sgi.miid.section">
+            <field name="sequence">210</field>
+            <field name="clause">6.1</field>
+            <field name="name">Tipos de documento y claves</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">tipos_documento</field>
+            <field name="body" type="html">
+
+                <p>La información documentada del SGI tiene tres formas: <b>documentos controlados</b> (Documentos → carpeta SGI, con clave, revisión, estado, proceso y responsable), <b>registros</b> (los de Odoo, que imprimen en cada hoja la clave y la revisión del formato que sustituyen) y <b>registros en papel</b> (bitácoras y formatos no migrados, bajo control del jefe del área). Estados: borrador, prueba piloto, vigente y obsoleto; solo lo vigente se usa. La clave la asigna Odoo según el tipo de documento y el proceso; Odoo la valida y un documento controlado no se guarda sin clave válida. La clave anterior del Dropbox se conserva en el documento y se busca en «Del Dropbox a Odoo». Los formatos que nacen de una NOM llevan la clave normal de formato y citan la NOM en el título.</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_54_doc_elaboracion" model="sgi.miid.section">
+            <field name="sequence">220</field>
+            <field name="clause">6.2</field>
+            <field name="name">Quién elabora qué y dónde</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
                 <table class="table table-sm table-bordered">
-                <thead><tr><th>Cláusula</th><th>Tema</th><th>Evidencia en Odoo</th></tr></thead>
+                <thead><tr><th>Documento</th><th>Quién lo elabora</th><th>Dónde</th><th>Cómo queda controlado</th></tr></thead>
                 <tbody>
-                <tr><td>4.1 y 4.2</td><td>Contexto y partes interesadas</td><td>SGI → Planeación → Partes interesadas; diagrama de contexto</td></tr>
-                <tr><td>4.4</td><td>Procesos</td><td>SGI → Sistema → Mapa de procesos y Actividades</td></tr>
-                <tr><td>5.2</td><td>Política</td><td>SGI → Planeación → Política integral, con sus acuses</td></tr>
-                <tr><td>5.3</td><td>Roles y responsabilidades</td><td>Matriz de responsabilidades; Mi procedimiento</td></tr>
-                <tr><td>6.1</td><td>Riesgos, aspectos, IPER y requisitos legales</td><td>SGI → Planeación → Riesgos y oportunidades, Aspectos ambientales y Requisitos legales</td></tr>
-                <tr><td>6.2</td><td>Objetivos</td><td>SGI → Planeación → Objetivos integrales</td></tr>
-                <tr><td>6.3 y 8.5.6</td><td>Cambios</td><td>App Aprobaciones; Solicitudes de cambio</td></tr>
-                <tr><td>7.1.5</td><td>Equipos de medición</td><td>Calidad → Calidad preventiva → Metrología</td></tr>
-                <tr><td>7.2 y 7.3</td><td>Competencia y toma de conciencia</td><td>Empleados → Competencias SGI; acuses de lectura</td></tr>
-                <tr><td>7.4</td><td>Comunicación, consulta y participación</td><td>Recorridos CSH; Reportar; Quejas y sugerencias del personal</td></tr>
-                <tr><td>7.5</td><td>Información documentada</td><td>SGI → Sistema → Documentos y Lista maestra</td></tr>
-                <tr><td>8.1</td><td>Control operacional</td><td>Actividades de cada proceso; permisos de trabajo; bloqueo y etiquetado; checklists</td></tr>
-                <tr><td>8.2 de ISO 14001 e ISO 45001</td><td>Emergencias</td><td>Seguridad y ambiente → Planes de emergencia y Simulacros</td></tr>
-                <tr><td>8.3</td><td>Diseño y desarrollo</td><td>Proceso C1; AMEF, planes de control y PPAP</td></tr>
-                <tr><td>8.4</td><td>Proveedores</td><td>Compras → Evaluación de proveedores; CoA recibidos</td></tr>
-                <tr><td>8.7 y 10.2</td><td>Salidas no conformes, NC y acciones</td><td>SGI → Mejora → No conformidades y Acciones correctivas</td></tr>
-                <tr><td>9.1</td><td>Indicadores y cumplimiento</td><td>SGI → Desempeño → Indicadores; Administración → Diagnóstico</td></tr>
-                <tr><td>9.1.2</td><td>Satisfacción del cliente; cumplimiento legal</td><td>Satisfacción del cliente; Evaluaciones de cumplimiento legal</td></tr>
-                <tr><td>9.2</td><td>Auditoría interna</td><td>SGI → Desempeño → Auditorías</td></tr>
-                <tr><td>9.3</td><td>Revisión por la dirección</td><td>SGI → Desempeño → Revisión por la dirección</td></tr>
-                <tr><td>10.2 de ISO 45001</td><td>Incidentes</td><td>Seguridad y ambiente → Incidentes y accidentes</td></tr>
-                <tr><td>10.3</td><td>Mejora continua</td><td>SGI → Mejora → Mejora continua y Lecciones aprendidas</td></tr>
+                <tr><td>Procedimiento de proceso (PR)</td><td>Dueño del proceso, con las propuestas de su gente</td><td>Datos del proceso en Odoo: objetivo, alcance, responsabilidades y actividades</td><td>Odoo genera el PDF; el Jefe de MAST y SGI publica la revisión. Si el cuerpo cambia fuera de una solicitud, el documento queda «Procedimiento vivo cambió: revisar»</td></tr>
+                <tr><td>Mi procedimiento (MP)</td><td>Odoo, a partir de los roles del puesto</td><td>SGI → Administración → Publicar Mi procedimiento</td><td>Cada publicación es una revisión con acuse de cada persona</td></tr>
+                <tr><td>Instructivo (IT), control operacional (CO), protocolo (PROT), reglamento (R)</td><td>Dueño del proceso o quien designe</td><td>Artículo en Conocimiento → SGI → proceso; mientras es borrador solo lo ven el dueño y el Jefe de MAST y SGI</td><td>«Pedir publicación» → el Jefe de MAST y SGI publica: el artículo se congela como revisión nueva, la anterior queda obsoleta, se piden los acuses y se re-apuntan las actividades</td></tr>
+                <tr><td>Formato (F)</td><td>El dueño define qué se registra; Sistemas lo construye como pantalla de Odoo</td><td>Odoo</td><td>El PDF del registro imprime la clave y la revisión del formato</td></tr>
+                <tr><td>DAT, método o anexo, descripción de puesto, anexo, archivo no migrado</td><td>Responsable del documento</td><td>Archivo PDF adjunto a la solicitud de cambio documental</td><td>Revisión publicada en Documentos al aprobarse</td></tr>
+                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>SGI → Sistema → Manual del SGI (MIID)</td><td>«Solicitar cambio del MIID» → firma de Dirección → revisión nueva</td></tr>
+                <tr><td>Documento externo</td><td>Lo emite el cliente, la autoridad, la norma o el proveedor</td><td>SGI → Sistema → Documentos → Documentos externos</td><td>Registro con emisor, revisión del emisor, fecha de recepción y proceso que lo aplica</td></tr>
                 </tbody></table>
-                <p>El detalle, cláusula por cláusula y actividad por actividad, está en la matriz de cumplimiento de Odoo.</p>
+                <p>Lo que Odoo genera lleva el encabezado y el pie del SGI (logo, razón social, clave, revisión, emisión y página) en cada hoja. Los documentos que siguen como archivo conservan la plantilla de la revisión 11 del P-G01: encabezado con logo, razón social, nombre del documento, clave, fecha de emisión, área y revisión; Arial 12, 10 y 10; nombre de archivo con la clave y el título sin acentos; entrega en PDF. Queda prohibido trabajar con información que no esté publicada como vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en Excel ni en papel. Al entrar a un puesto, la persona firma el acuse de Mi procedimiento y, dentro de los 30 días naturales siguientes, revisa su procedimiento y propone lo que falte o sobre («Proponer actividad» o solicitud de cambio documental); el jefe directo lo verifica.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_55_doc_aprobacion" model="sgi.miid.section">
+            <field name="sequence">230</field>
+            <field name="clause">6.3</field>
+            <field name="name">Aprobación, publicación y cambios</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <table class="table table-sm table-bordered">
+                <thead><tr><th>Documento</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead>
+                <tbody>
+                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>Dueño de E2</td><td>Director de Operaciones</td></tr>
+                <tr><td>Procedimiento de proceso</td><td>Dueño del proceso</td><td>—</td><td>Quien el proceso declare en «Aprueba» (por omisión el dueño); Vo.Bo. del Jefe de MAST y SGI</td></tr>
+                <tr><td>Instructivo, control operacional, protocolo, reglamento, DAT, formato, anexo</td><td>Quien solicita el cambio</td><td>Dueño del proceso</td><td>Jefe de MAST y SGI</td></tr>
+                <tr><td>Actividades y roles de un proceso</td><td>Quien propone</td><td>Jefe directo de quien propone</td><td>Dueño del proceso</td></tr>
+                </tbody></table>
+                <p><b>Solicitud de cambio documental.</b> Un alta, modificación o baja se pide en <b>SGI → Sistema → Documentos → Solicitudes de cambio</b> con el documento afectado, el tipo de cambio, qué se modifica, la revisión nueva, el motivo, los cambios, los procesos afectados, la prueba piloto si aplica y el archivo propuesto. Al enviarla, Odoo arma el PDF con una hoja de firmas y pide las firmas en orden en Firma electrónica (Elaboró → Revisó → Aprobó); la aprobación es la firma y rechazar se hace en Aprobaciones con motivo. Con la última firma Odoo publica la revisión nueva con fecha de emisión y próxima revisión, deja obsoleta la anterior con fecha y motivo, avisa a los puestos del proceso y deja pendiente el acuse de quienes deben leerlo; el PDF firmado queda como evidencia. Una baja deja el documento obsoleto; un alta agenda al Jefe de MAST y SGI crear el documento.</p>
+                <p><b>Cuándo se modifica.</b> Por cambio en las normas, decisión de la Dirección, solicitud del dueño del proceso (cambios, mejoras o anomalías), cambio en un requisito legal o de cliente, hallazgo de auditoría o NC, vencimiento de la revisión, documento externo nuevo o revisado, o aviso de que el MIID o un procedimiento vivo ya no coinciden con el sistema. El cambio de titular de un área no es motivo: el procedimiento es del proceso. Al modificar un documento se revisan los que se relacionan con el cambio y se actualizan en la misma solicitud o en otra ligada. El número de revisión y la fecha de emisión los pone Odoo. Las solicitudes se atienden conforme llegan; no hay calendario mensual ni suspensión por días de auditoría.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_56_doc_plazos" model="sgi.miid.section">
+            <field name="sequence">240</field>
+            <field name="clause">6.4</field>
+            <field name="name">Plazos documentales</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">plazos_documentales</field>
+            <field name="body" type="html">
+
+                <p>Los plazos de las rutinas son los criterios de terminado de las actividades de E2 (5.1): responder cada solicitud en 5 días hábiles, publicar y retirar la anterior en 2, verificar la implantación en piso a los 15 y registrar e implantar los documentos externos en 10. Los plazos que aplica el sistema solo, con sus avisos, son estos:</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_57_doc_difusion" model="sgi.miid.section">
+            <field name="sequence">250</field>
+            <field name="clause">6.5</field>
+            <field name="name">Difusión, distribución y copias</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <ul>
+                <li><b>Acuse de lectura.</b> Al publicar, Odoo crea el acuse de cada persona de los puestos a los que aplica el documento; cada persona firma «Leído y entendido» en Mis pendientes, en Documentos vigentes o en la tableta de su área con su PIN. Es la evidencia individual de difusión.</li>
+                <li><b>NEWS Quimibond.</b> El primer día de cada mes, si en el mes anterior hubo cambios documentales aplicados, Odoo genera el boletín y agenda al Jefe de MAST y SGI su revisión y envío al personal administrativo en 7 días.</li>
+                <li><b>Reunión presencial.</b> Cuando el cambio lo amerite, el dueño del proceso lo explica en reunión con minuta y lista de asistencia, y cada asistente firma su acuse.</li>
+                <li><b>Distribución.</b> El personal consulta en <b>SGI → Inicio → Documentos vigentes</b> o en <b>Conocimiento → SGI</b>. No hay copias controladas ni listas de distribución; un documento impreso desde Odoo es copia no controlada y no demuestra cumplimiento.</li>
+                <li><b>Entrega a externos.</b> Un documento del SGI se entrega a personas o entidades externas solo con autorización del Director de Operaciones, marcado «COPIA NO CONTROLADA» y vigente únicamente al momento de su emisión; la autorización y la entrega se anotan en el historial del documento (quién lo pidió, quién autorizó, a quién y cuándo).</li>
+                </ul>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_58_doc_resguardo" model="sgi.miid.section">
+            <field name="sequence">260</field>
+            <field name="clause">6.6</field>
+            <field name="name">Conservación, resguardo y seguridad de la información</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <ul>
+                <li><b>Electrónico.</b> Toda la información documentada del SGI se controla y almacena en Odoo; Odoo.sh conserva respaldos diarios de la base y los archivos, de los que responde Sistemas.</li>
+                <li><b>Nada se borra.</b> Un documento que deja de usarse queda obsoleto con fecha y motivo y conserva su archivo e historial; un registro se archiva o se cancela con motivo; lo cerrado solo lo modifica el Jefe de MAST y SGI.</li>
+                <li><b>Retención y disposición final.</b> Cada documento o familia declara en su ficha los años de retención después de quedar obsoleto o cerrado y su disposición final (archivo muerto, destrucción controlada o devolución al cliente); los clientes automotrices pueden exigir «vida del programa más n años».</li>
+                <li><b>Registros físicos.</b> Se conservan bajo el control de jefes y supervisores, en lugar accesible, protegidos y en orden cronológico; al terminar su plazo pasan al archivo muerto que resguarda MAST y SGI (paso anual de E2.03). Al publicar una revisión nueva, las copias impresas de la anterior se retiran y se destruyen.</li>
+                <li><b>Historia.</b> Los documentos y registros anteriores a Odoo quedaron en el Dropbox, de solo lectura; el PDF de cada procedimiento anterior se abre desde «Del Dropbox a Odoo».</li>
+                <li><b>Seguridad de la información.</b> Los datos personales y económicos que se recaban (nombre, ocupación, domicilio, RFC, CURP, identificación, teléfonos, correo, información económica) se tratan con confidencialidad, se almacenan en Odoo con acceso restringido por grupo de usuario (los de salud y de salarios con acceso restringido) y se eliminan al concluir la relación jurídica o comercial y los plazos legales de resguardo. La información que genera PNTQ es propiedad de PNTQ; la que contiene cantidades monetarias y la comercial sensible se mantiene confidencial.</li>
+                </ul>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_59_transicion_cap" model="sgi.miid.section">
+            <field name="sequence">270</field>
+            <field name="clause">7</field>
+            <field name="name">Transición desde el Dropbox</field>
+            <field name="heading_level">1</field>
+            <field name="body" type="html">
+
+                <p>Un procedimiento anterior queda obsoleto cuando el proceso que lo sustituye entra en vigor; sus rutinas, una por una, están cubiertas por actividades, las hace Odoo o se eliminaron con motivo (<b>SGI → Sistema → Del Dropbox a Odoo → Rutina por rutina</b>). Los anexos de la revisión 02 se conservan como documentos firmados o los sustituye un registro de Odoo, según la situación de cada uno.</p>
             </field>
         </record>
 
         <record id="sgi_miid_section_43_anteriores" model="sgi.miid.section">
-            <field name="sequence">430</field>
-            <field name="clause">11.2</field>
+            <field name="sequence">280</field>
+            <field name="clause">7.1</field>
             <field name="name">Procedimientos anteriores y proceso que los sustituye</field>
             <field name="heading_level">2</field>
             <field name="live_block">procedimientos_anteriores</field>
-            <field name="body" type="html">
-                <p>Un procedimiento anterior queda obsoleto cuando el proceso que lo sustituye se publica.</p>
-            </field>
             <field name="to_confirm" eval="True"/>
             <field name="to_confirm_note">P-A13, P-A22 y P-A30 no están registrados como procedimientos en Odoo (S3, S2 y S6 en el borrador).</field>
         </record>
 
-        <record id="sgi_miid_section_44_anexos_cap" model="sgi.miid.section">
-            <field name="sequence">440</field>
-            <field name="clause">12</field>
-            <field name="name">Anexos y control de cambios</field>
-            <field name="heading_level">1</field>
-        </record>
-
         <record id="sgi_miid_section_45_anexos" model="sgi.miid.section">
-            <field name="sequence">450</field>
-            <field name="clause">12.1</field>
+            <field name="sequence">290</field>
+            <field name="clause">7.2</field>
             <field name="name">Anexos</field>
             <field name="heading_level">2</field>
             <field name="live_block">anexos</field>
@@ -705,14 +408,14 @@
         </record>
 
         <record id="sgi_miid_section_46_historial" model="sgi.miid.section">
-            <field name="sequence">460</field>
-            <field name="clause">12.2</field>
+            <field name="sequence">300</field>
+            <field name="clause">8</field>
             <field name="name">Control de cambios</field>
-            <field name="heading_level">2</field>
+            <field name="heading_level">1</field>
             <field name="live_block">historial</field>
         </record>
 
-        <!-- 12.1: la columna «Situación en la revisión 03» de cada anexo (fija, por confirmar). -->
+        <!-- 7.2: la columna «Situación en la revisión 03» de cada anexo (fija, por confirmar). -->
         <record id="sgi_miid_row_anexo_01" model="sgi.miid.row.note">
             <field name="section_id" ref="sgi_miid_section_45_anexos"/>
             <field name="sequence">10</field>

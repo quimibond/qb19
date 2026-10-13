@@ -109,20 +109,30 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
   riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
 
-## Manual del SGI (MIID) desde Odoo (57.105.0)
+## Manual del SGI (MIID) generado desde Odoo (57.105.0; generado desde 57.146.0)
 
 **SGI → Sistema → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
-El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
-título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
-Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
-MAST) y **datos vivos** (un bloque por sección: identificación, procesos con
-mapa e interacción 4.4, política, objetivos e indicadores, tipos de
-documento y su clave, controles operacionales, plazos de NC, correspondencia
-por cláusula, procedimientos anteriores, anexos con su «Situación» como nota
-por renglón, `sgi.miid.row.note`, y control de cambios). La marca `[[datos]]`
-en un párrafo decide dónde va el bloque; «Texto solo si no hay datos» deja
-el texto como respaldo. Un bloque que ninguna sección lleva sale al final
-(«Datos del sistema sin sección»).
+Desde 57.146.0 (Dirección: «el MIID está como en el Dropbox») el manual
+**no describe en prosa lo que el sistema ya muestra**: 29 secciones
+(`sgi.miid.section`, sembradas `noupdate`; el texto fijo está en
+`docs/sgi/transicion/miid-rev03-borrador.md`, generado desde la siembra; lo
+edita el Jefe MAST) y **14 bloques vivos** (`MIID_BLOCKS`): identificación,
+normas y cláusulas cargadas, procesos con mapa e interacción, política,
+objetivos e indicadores, dueños y roles por proceso (puestos que ejecutan,
+aprueban y escalan), tipos de documento y su clave, plazos documentales (los
+siete parámetros que aplica el sistema, `MIID_DOC_ROWS`), controles
+operacionales, plazos de NC, correspondencia por cláusula **con las
+actividades que la cumplen**, procedimientos anteriores, anexos con su
+«Situación» como nota por renglón (`sgi.miid.row.note`) y control de
+cambios. Capítulos: Identificación · 1 Objeto, alcance y control del Manual
+· 2 Referencias normativas · 3 Dónde vive el sistema · 4 El sistema · 5
+Cómo cumple el SGI cada requisito · 6 Información documentada (**sustituye
+al P-G01**; `docs/sgi/transicion/p-g01-en-el-sgi.md`) · 7 Transición desde
+el Dropbox · 8 Control de cambios. La marca `[[datos]]` en un párrafo decide
+dónde va el bloque; «Texto solo si no hay datos» deja el texto como respaldo.
+Un bloque que ninguna sección lleva sale al final («Datos del sistema sin
+sección»). Las 27 secciones narrativas del borrador Rev. 03 quedaron
+archivadas (su texto sigue en la sección archivada).
 
 - **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
   «Borrador — no vigente». La revisión vigente es el documento controlado de
@@ -131,10 +141,15 @@ el texto como respaldo. Un bloque que ninguna sección lleva sale al final
   notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
   flujos, política vigente, objetivos con sus indicadores, tipos de
   documento y su patrón, controles operacionales y anexos vigentes,
-  procedimientos anteriores y su proceso, los seis plazos de NC y las normas
-  con sus numerales. No cubre qué procesos cumplen cada cláusula, la
-  revisión y emisión del propio MIID, el control de cambios ni «Por
-  confirmar».
+  procedimientos anteriores y su proceso, los seis plazos de NC, las normas
+  con sus numerales y, desde 57.146.0, los plazos documentales, los roles
+  por proceso y qué actividades cumplen cada cláusula. No cubre la revisión
+  y emisión del propio MIID, el control de cambios ni «Por confirmar».
+- **Siembra en una base existente:** `_sgi_seed_update` pone el texto nuevo
+  solo en las secciones que nadie editó; `_sgi_seed_layout_update`
+  reacomoda orden, numeral, título, nivel y bloque; `_sgi_seed_archive`
+  archiva las que el manual ya no lleva. Las tres con nota en el chatter;
+  las migraciones 57.110.0, 57.113.0 y 57.146.0 las usan.
 - **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
   confirmar» o con procesos activos que no estén «Vigente». Por Sign la
   aprobación espera (no se interrumpe la sincronización) y avisa al Jefe

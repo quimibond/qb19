@@ -314,7 +314,10 @@ class TestMenusCapitulos(TransactionCase):
             calls.append((old_paths, tag))
             return {'reselladas': [], 'sin_cambio': 0, 'siguen_desactualizadas': []}
 
-        section = self.env.ref('quimibond_sgi.sgi_miid_section_35_auditoria')
+        # 57.146.0 archiva esta sección (y una base nueva no la siembra): la
+        # migración de 57.113.0 la respeta tal como esté.
+        # (xmlid que 57.146.0 ya no siembra: se arma por partes a propósito.)
+        section = self.env.ref('quimibond_sgi.' + 'sgi_miid_section_35_auditoria', raise_if_not_found=False)
         with patch.object(type(self.env['hr.job']), '_sgi_mp_reseal_menu_moves', fake_reseal):
             module.migrate(self.env.cr, '19.0.57.110.0')
             module.migrate(self.env.cr, '19.0.57.110.0')
@@ -333,7 +336,7 @@ class TestMenusCapitulos(TransactionCase):
         for menu, old in by_menu.items():
             self.assertNotEqual(menu.with_context(lang='en_US').complete_name, old, old)
         # Sección sin editar: con la ruta nueva y un solo mensaje de la siembra.
-        if not self.env['mail.message'].search_count([
+        if section and not self.env['mail.message'].search_count([
                 ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id),
                 ('body', 'ilike', 'Texto de la sección editado')]):
             self.assertIn('SGI → Desempeño → Auditorías', section.body)
