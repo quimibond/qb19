@@ -257,6 +257,10 @@
                                  help="Los periodos que vencieron antes de esta fecha (AAAA-MM-DD) no se crean, no escalan ni ponen la actividad en rojo.">
                             <field name="sgi_exec_start_date" placeholder="2026-10-05"/>
                         </setting>
+                        <setting string="No repetir avisos en la campana"
+                                 help="Encendido: lo que ya es renglón propio de Mis pendientes no llega también como actividad. Conviene junto con el correo diario de Mis pendientes.">
+                            <field name="sgi_notices_skip_covered"/>
+                        </setting>
                     </block>
                     <!-- 57.10.0 (A-020): el bloque «Piso» (tolerancia de peso de
                          rollo) lo agrega quimibond_sgi_pesaje antes de «Firmas en Sign». -->

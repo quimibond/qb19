@@ -15,12 +15,12 @@ ser dueño de un proceso auditado.
 | Menú | Para qué |
 |---|---|
 | **SGI → Sistema** | Mapa de procesos, actividades, catálogos y el Manual del SGI (MIID) (capítulo 4) |
-| **SGI → Sistema → Documentos → Documentos / Lista maestra** | Documentos controlados con revisión, estado y difusión (7.5) |
+| **SGI → Sistema → Documentos → Documentos controlados / Lista maestra** | Documentos controlados con revisión, estado y difusión (7.5) |
 | **SGI → Sistema → Documentos → Acuses de lectura** | Quién firmó cada documento |
 | **SGI → Sistema → Del Dropbox a Odoo** | La trazabilidad de cada procedimiento y formato anterior |
 | **SGI → Planeación** | Política, objetivos, partes interesadas, riesgos, aspectos ambientales y requisitos legales (5 y 6) |
 | **SGI → Desempeño → Auditorías → Programa** | El programa anual de auditorías |
-| **SGI → Desempeño → Auditorías → Auditorías** | Cada auditoría con su checklist, hallazgos e informe |
+| **SGI → Desempeño → Auditorías → Todas las auditorías** | Cada auditoría con su checklist, hallazgos e informe |
 | **SGI → Desempeño → Tablero / Indicadores / Revisión por la dirección** | Mediciones, evidencia y la revisión por la dirección (9) |
 | **SGI → Mejora → No conformidades / Acciones correctivas** | Las NC y sus acciones, para seguir los hallazgos (10) |
 | **SGI → Administración → Diagnóstico / Aprobaciones del SGI** | Salud del sistema (evidencia de 9.1) y quién aprueba cada actividad |

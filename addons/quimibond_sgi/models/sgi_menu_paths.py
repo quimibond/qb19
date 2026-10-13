@@ -24,7 +24,7 @@ SGI_MENU_PATHS = {
     'documentos_vigentes': ('quimibond_sgi.menu_sgi_current_documents',
                             ('SGI', 'Inicio', 'Documentos vigentes')),
     'indicadores': ('quimibond_sgi.menu_sgi_indicators',
-                    ('SGI', 'Desempeño', 'Indicadores', 'Indicadores')),
+                    ('SGI', 'Desempeño', 'Indicadores', 'Todos los indicadores')),
     'mediciones': ('quimibond_sgi.menu_sgi_measures',
                    ('SGI', 'Desempeño', 'Indicadores', 'Mediciones')),
     'solicitudes_cambio': ('quimibond_sgi.menu_sgi_doc_changes',

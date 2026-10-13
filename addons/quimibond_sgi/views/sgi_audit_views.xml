@@ -315,7 +315,7 @@
     </record>
 
     <record id="sgi_audit_action" model="ir.actions.act_window">
-        <field name="name">Auditorías</field>
+        <field name="name">Todas las auditorías</field>
         <field name="res_model">sgi.audit</field>
         <field name="view_mode">list,calendar,form,activity</field>
         <field name="context">{'search_default_open': 1}</field>

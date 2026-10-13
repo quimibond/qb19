@@ -164,6 +164,18 @@ class ResConfigSettings(models.TransientModel):
              "Mis pendientes ni pone la actividad en rojo. Por omisión el 05/10/2026, cuando se instaló el "
              "registro de cumplimiento. Los periodos «Pendiente» que ya existían y vencieron antes se cierran "
              "con «No aplica: anteriores al arranque» en Registro de cumplimiento.")
+    # 57.150.0 (auditoría UX, fase 2): que la campana de actividades no
+    # repita lo que Mis pendientes ya muestra (sgi.cron._sgi_skip_covered).
+    # Apagado por omisión: se enciende junto con el correo diario.
+    sgi_notices_skip_covered = fields.Boolean(
+        string="No repetir en la campana de actividades lo que ya muestra Mis pendientes",
+        config_parameter='quimibond_sgi.notices_skip_covered',
+        help="Encendido: un aviso automático del SGI sobre una NC, un documento por revisar, un requisito "
+             "legal o una acción no se crea como actividad si la persona ya lo ve como renglón propio en Mis "
+             "pendientes (el aviso abierto se cierra). Los avisos sin renglón propio (calibraciones, "
+             "competencias, programa de auditoría, riesgos) siguen llegando: en Mis pendientes son el "
+             "renglón «Aviso». Conviene encenderlo junto con el correo diario de Mis pendientes "
+             "(Acciones planificadas). Apagado: llegan por los dos lados, como antes de 57.150.0.")
     sgi_doc_ack_pending_days = fields.Integer(
         string="Días hábiles para reclamar un acuse pendiente",
         config_parameter='quimibond_sgi.doc_ack_pending_days',

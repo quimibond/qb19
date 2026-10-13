@@ -126,12 +126,14 @@ class TestMyPending(TransactionCase):
         self.assertTrue(self.late.date_done)
         self.assertFalse(row.exists(), "El renglón hecho sale de la lista en el servidor.")
 
-    def test_05_lo_que_se_resuelve_en_su_registro_no_tiene_hecho(self):
+    def test_05_documento_por_revisar_abre_su_revision(self):
+        """57.150.0 (auditoría UX, fase 2): antes «se resolvía en su registro»
+        (sin «Hecho»); ahora el botón «Revisar» abre la revisión del documento
+        (sigue vigente o necesita cambio). «Ir» sigue abriendo el documento."""
         rows = self._mine(self._mine_rows())
         doc_row = rows.filtered(lambda r: r.res_model == 'documents.document')
-        self.assertFalse(doc_row.can_done)
-        with self.assertRaises(UserError):
-            doc_row.with_user(self.user).action_done()
+        self.assertTrue(doc_row.can_done)
+        self.assertEqual(doc_row.with_user(self.user).action_done()['res_model'], 'sgi.doc.review')
         self.assertEqual(doc_row.with_user(self.user).action_open()['res_model'], 'documents.document')
 
     def _activity_with_roles(self, name, **vals):

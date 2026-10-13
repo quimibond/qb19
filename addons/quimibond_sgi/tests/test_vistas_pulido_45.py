@@ -185,7 +185,7 @@ class TestTextosYPulido(TransactionCase):
             self.assertEqual(menu.action.name, menu.name, xmlid)
             checked += 1
         self.assertGreater(checked, 30)
-        self.assertEqual(self.env.ref('quimibond_sgi.menu_sgi_audit_list').name, 'Auditorías')
+        self.assertEqual(self.env.ref('quimibond_sgi.menu_sgi_audit_list').name, 'Todas las auditorías')
         for model, view_type in (('sgi.incident', 'list'), ('sgi.incident', 'search')):
             self.assertEqual(_arch(self.env, model, view_type).get('string'), 'Incidentes y accidentes')
 

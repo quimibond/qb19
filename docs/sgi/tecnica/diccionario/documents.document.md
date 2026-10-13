@@ -6,9 +6,9 @@ Modelo de otra app que el SGI extiende.
 
 L-017: las rutinas y sus conteos en el procedimiento anterior.
 
-Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/models/sgi_document_owner.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_formatos_bloque3.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/models/sgi_document_owner.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_formatos_bloque3.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_nav_links.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
 
-## Campos (61)
+## Campos (62)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -21,6 +21,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_child_document_ids` | One2many | Documentos hijos |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:481` |
 | `sgi_code` | Char | Clave SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:69` |
 | `sgi_content_hash` | Char | Huella del contenido |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:72` |
+| `sgi_controlled_risk_count` | Integer | Riesgos que controla | Riesgos que tienen este documento como control operacional. |  |  | compute `_compute_sgi_controlled_risk_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:130` |
 | `sgi_destination_label` | Char | Dónde vive en Odoo | Menú de Odoo ligado; si no hay, el worksheet de Calidad; si no, el texto «Destino en Odoo». Vacío = todavía sin destino. |  |  | compute `_compute_sgi_destination_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:249` |
 | `sgi_disposition` | Selection | Disposición final | Qué se hace con el registro al cumplirse la retención. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:191` |
 | `sgi_doc_change_id` | Many2one | Último cambio documental | Solicitud de cambio documental aprobada que produjo esta versión (la de alta, o la última modificación o baja aplicada). |  | `approval.request` |  |  | `addons/quimibond_sgi/models/sgi_document.py:132` |
@@ -74,7 +75,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:145` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:85` |
 
-## Métodos públicos (17)
+## Métodos públicos (18)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -84,6 +85,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `action_sgi_kb_open` | «Abrir en Conocimiento». |
 | `action_sgi_kb_publish` | «Publicar desde Conocimiento» (Jefe MAST). |
 | `action_sgi_mark_my_ack_read` | Firma MI acuse pendiente de este documento (Documentos vigentes). |
+| `action_sgi_open_controlled_risks` | — |
 | `action_sgi_open_in_documents` | Abre el documento en la app nativa de Documentos (visor completo con carpetas), para quien quiera el explorador en vez de la ficha SGI. |
 | `action_sgi_open_migration_point` | Del formato a su worksheet en un clic (y desde ahí, a sus checks). |
 | `action_sgi_open_odoo_form` | «Abrir en Odoo» (57.0.0: lo usa todo Usuario SGI desde «Formatos y documentos anteriores»). Abre lo que sustituye al documento: el menú ligado (su acción; si no es una ventana, el menú mismo), si no … |

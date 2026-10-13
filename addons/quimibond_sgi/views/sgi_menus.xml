@@ -142,9 +142,15 @@
          los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie
          gana ni pierde la carpeta. «Acuses de lectura» viene de «Firmas de
          lectura» (archivada abajo); «Tipos de documento» pasó a Configuración. -->
+    <!-- 57.150.0 (auditoría UX, fase 3): también el Dueño de proceso (lee los
+         documentos de su proceso y ya tenía acceso de lectura); «Acuses de
+         lectura» se queda con los grupos de antes. -->
     <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_processes" sequence="60"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <!-- 57.150.0 (auditoría UX, fase 3): las tres hojas que repetían el
+         nombre de su carpeta («Documentos > Documentos», «Indicadores >
+         Indicadores», «Auditorías > Auditorías») ahora dicen qué abren. -->
+    <menuitem id="menu_sgi_documents" name="Documentos controlados" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
     <menuitem id="menu_sgi_master_list" name="Lista maestra" parent="menu_sgi_documental"
               action="sgi_document_master_list_action" sequence="20"/>
@@ -154,7 +160,8 @@
               action="sgi_doc_change_board_action" sequence="40"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_documental"
-              action="sgi_document_ack_action" sequence="50"/>
+              action="sgi_document_ack_action" sequence="50"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
 
     <!-- 57.105.0: el MIID desde Odoo. Lo leen todos los que ven la carpeta;
          editar textos y solicitar el cambio es del Jefe MAST. 57.113.0: de
@@ -280,9 +287,11 @@
     <!-- 5.1 Indicadores y mediciones (9.1). 57.113.0: viene de Administración
          SGI y recibe los grupos que heredaba de ella (Auditor, Jefe MAST,
          Dirección); el xmlid conserva «admin» (no se cambia nunca). -->
+    <!-- 57.150.0: también el Dueño de proceso (hace la revisión mensual de la
+         medición y captura mediciones; ya tenía acceso de lectura). -->
     <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_performance" sequence="20"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_admin_indicators"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <menuitem id="menu_sgi_indicators" name="Todos los indicadores" parent="menu_sgi_admin_indicators"
               action="sgi_indicator_action" sequence="10"/>
     <!-- 57.109.0: asistente con preguntas y vista previa. -->
     <menuitem id="menu_sgi_indicator_wizard" name="Nuevo indicador" parent="menu_sgi_admin_indicators"
@@ -301,7 +310,7 @@
     <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_performance" sequence="40"/>
     <menuitem id="menu_sgi_audit_programs" name="Programa"
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
-    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
+    <menuitem id="menu_sgi_audit_list" name="Todas las auditorías" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
     <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
          57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró

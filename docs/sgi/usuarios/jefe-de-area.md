@@ -18,6 +18,10 @@ Lo mismo que cualquier Usuario SGI, más:
 | **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
 | **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
 | **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
+| **SGI → Sistema → Documentos** y **SGI → Desempeño → Indicadores** | Desde 57.150.0, como dueño de proceso: documentos controlados, lista maestra y documentos externos; todos los indicadores, mediciones y revisiones de medición |
+
+En la ficha de su proceso, los botones **Auditorías**, **Hallazgos** y
+**Periodos atrasados** (desde 57.150.0) abren lo que le toca de cada uno.
 
 En las listas, el filtro **Míos** muestra lo suyo (acciones, NC, mediciones,
 actividades, procesos, permisos…) y, en AMEF y riesgos, **De mis procesos**

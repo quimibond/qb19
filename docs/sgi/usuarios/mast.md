@@ -209,6 +209,34 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
   medición de la actividad y Mis pendientes de todos se ponen al día en ese
   momento.
 
+### 2.5.2c Bandeja accionable, correo diario y ligas (desde 57.150.0)
+
+- **Cada renglón con su botón**: NC → **Registrar paso** (contención, causa
+  raíz o plan), requisito legal → **Evaluar**, documento por revisar →
+  **Revisar** (sigue vigente o necesita cambio), solicitudes y aprobaciones
+  → **Aprobar** / **Rechazar**, revisión de medición → **Sí, es lo que
+  hago** / **No corresponde**. **Hecho** ya no sale donde no hace nada.
+- **Correo diario de Mis pendientes** (lo atrasado y lo que vence pronto,
+  a cada persona): sale **apagado**. Para encenderlo: Ajustes → Técnico →
+  Acciones planificadas → «SGI: Mis pendientes (correo diario por persona)»
+  → Activo (12:00 UTC, 06:00 de México). Cada quien lo apaga en su perfil →
+  Preferencias.
+- **No repetir avisos en la campana** (Ajustes del SGI, bloque «Registro de
+  cumplimiento», apagado por omisión): encendido, el aviso de un cron sobre
+  una NC, un documento por revisar, un requisito legal o una acción no se
+  crea como actividad si la persona ya lo ve como renglón propio en Mis
+  pendientes. Conviene encenderlo junto con el correo diario.
+- **Ligas nuevas**: en la NC, **Hallazgo**, **Auditoría** e **Indicador**
+  (de dónde nació); en el proceso, **Auditorías**, **Hallazgos** y
+  **Periodos atrasados**; en el documento controlado, **Riesgos que
+  controla**; en el indicador, **NC generadas**.
+- **Menús**: «Documentos controlados», «Todos los indicadores» y «Todas las
+  auditorías» (antes repetían el nombre de su carpeta). El **Dueño de
+  proceso** ya ve las carpetas Documentos e Indicadores (lectura; «Acuses de
+  lectura» y «Solicitudes de cambio» siguen como antes). «Resolver menú de
+  Odoo» y «Asignar clave nueva» (menú Acción de Documentos) solo le salen a
+  usted.
+
 ### 2.5.3 El Manual del SGI (MIID) y el P-G01 generados desde Odoo (desde 57.105.0; generados desde 57.146.0 y 57.148.0)
 
 **SGI → Sistema → Manual del SGI** es una carpeta con cinco entradas:

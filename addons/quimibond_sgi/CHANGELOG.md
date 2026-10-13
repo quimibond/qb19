@@ -13,6 +13,86 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.150.0 — 2026-10-13
+
+Dirección General 2026-10-13: fases 2 y 3 de la auditoría UX del SGI
+(`auditoria-ux-sgi-2026-10-13.md`). Ningún tipo de Mis pendientes termina en
+«se resuelve en su registro» sin ofrecer el botón que lo resuelve, y la NC,
+el hallazgo, la auditoría, el proceso, el documento y el indicador se
+alcanzan unos desde otros.
+
+### Agregado
+- **Botón real por tipo en Mis pendientes** (lista, kanban y ficha; el
+  «Hecho» genérico se oculta en esos tipos y `action_done` despacha igual):
+  - NC → **Registrar paso**: asistente `sgi.nc.step` con el paso que toca
+    (contención o plan de acción como `sgi.action.line` con responsable y
+    compromiso; causa raíz en `sgi_root_cause`). Lo registran los
+    responsables, el dueño del proceso, el Jefe MAST y Dirección.
+  - Requisito legal → **Evaluar** (`sgi.legal.evaluate`).
+  - Documento por revisar → **Revisar**: asistente `sgi.doc.review`
+    («Sigue vigente sin cambios»: próxima revisión a dos años y nota en el
+    historial; «Necesita cambio»: la solicitud de cambio documental ya
+    ligada al documento). Responsable del documento o Jefe MAST.
+  - Solicitud de Aprobaciones → **Aprobar** / **Rechazar**; aprobación de
+    Studio → **Aprobar** / **Rechazar** (`set_approval`, si Studio lo
+    permite; si no, solo «Ir»).
+  - Revisión de medición → **Sí, es lo que hago** / **No corresponde**.
+  - Firma y medición: su botón de siempre.
+  Cada acción pone al día en el momento los renglones de todos los que
+  apuntan al registro (`sgi.my.pending._sgi_refresh_for`).
+- **Leído y entendido (seleccionados)** en el encabezado de la lista de Mis
+  pendientes y de Documentos vigentes.
+- **Correo diario de Mis pendientes** (`cron_daily_pending_mail`, plantilla
+  `mail_template_sgi_daily_pending`): lo atrasado y por vencer de cada
+  persona. El cron `sgi_cron_daily_pending_mail` sale **apagado**; cada quien
+  lo apaga en Preferencias (`res.users.sgi_daily_pending_mail`).
+- **No repetir avisos en la campana** (Ajustes, `quimibond_sgi.notices_skip_covered`,
+  apagado por omisión): con él, `sgi.cron._sgi_schedule` no crea el aviso de
+  un cron (y cierra el abierto) si Mis pendientes de esa persona ya muestra
+  el registro con su renglón propio (NC, documento por revisar, requisito
+  legal, acción). Apagado por omisión porque cambia los avisos de todos y
+  `test_nc_deadlines` fija el aviso «contención vence» al responsable; se
+  enciende junto con el correo diario.
+- **Ligas de navegación** (`models/sgi_nav_links.py`): en la NC,
+  `sgi_finding_ids` (inverso de `sgi.audit.finding.alert_id`),
+  `sgi_audit_id`, `sgi_indicator_id` y los botones **Hallazgo**,
+  **Auditoría** e **Indicador**; en el proceso, **Auditorías**,
+  **Hallazgos** y **Periodos atrasados** (abiertos, vencidos, desde el
+  arranque del registro); en el documento controlado, **Riesgos que
+  controla** (`sgi.risk.operational_control_id`); en el indicador, **NC
+  generadas** (por `quality.alert.sgi_indicator_measure_id`). Conteos con
+  sudo; los botones de la NC, solo para Usuario SGI.
+
+### Cambiado
+- Menús que repetían el nombre de su carpeta: «Documentos controlados»,
+  «Todos los indicadores», «Todas las auditorías» (y sus acciones, para las
+  migas). `SGI_MENU_PATHS['indicadores']` y la liga de la E2.37 al día. Los
+  dos «Checklists de hoy» se quedan: uno en Inicio y otro en Mantenimiento
+  para quien no es Usuario SGI (57.98.0).
+- El **Dueño de proceso** ve las carpetas Documentos e Indicadores (ya tenía
+  lectura de sus modelos; hace la revisión mensual de la medición).
+  «Acuses de lectura» conserva sus grupos (Auditor, Jefe MAST, Dirección).
+- «Resolver menú de Odoo (SGI)» y «Asignar clave nueva (SGI)» en el menú
+  Acción de Documentos: solo Jefe MAST (salían a todo el que abre
+  Documentos).
+
+### Revisado sin cambio
+- Acciones sin menú de la auditoría: `sgi_supplier_eval_recompute_action`,
+  `sgi_document_resolve_menu_action`, `sgi_document_assign_new_code_action`
+  y `sgi_knowledge_import_documents_action` son del menú Acción (no
+  huérfanas); `sgi_miid_section_action` la usa el menú del MIID desde
+  57.148.0; `sgi_dev_mark_wizard_action` y `sgi_dev_lab_request_action` se
+  quedan para entrar por URL (sus menús se retiraron a propósito en
+  57.120.0–57.135.0; las solicitudes de laboratorio se abren desde el
+  proyecto).
+
+### Pruebas
+- `test_bandeja` 30–35 (paso de NC, evaluación legal, revisión de
+  documento, aprobar solicitud, acuses seleccionados, campana), nuevo
+  `test_ligas_navegacion` (inverso NC↔hallazgo, conteos y botones de
+  proceso, documento e indicador; correo diario). `test_my_pending.test_05`
+  cambia: el documento por revisar ya tiene botón.
+
 ## 19.0.57.149.0 — 2026-10-13
 
 Dirección General 2026-10-13 (auditoría UX del SGI, fase 1): el

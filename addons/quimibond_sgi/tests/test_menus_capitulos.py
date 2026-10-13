@@ -347,7 +347,7 @@ class TestMenusCapitulos(TransactionCase):
     def test_10_rutas_que_se_le_dicen(self):
         self.assertEqual(sgi_menu_path('aprobaciones'), "SGI → Administración → Aprobaciones del SGI")
         self.assertEqual(sgi_menu_path('politica'), "SGI → Planeación → Política integral")
-        self.assertEqual(sgi_menu_path('indicadores'), "SGI → Desempeño → Indicadores → Indicadores")
+        self.assertEqual(sgi_menu_path('indicadores'), "SGI → Desempeño → Indicadores → Todos los indicadores")
         self.assertEqual(sgi_menu_path('publicar_mi_procedimiento'),
                          "SGI → Administración → Publicar Mi procedimiento")
 
