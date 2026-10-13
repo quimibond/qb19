@@ -210,3 +210,32 @@ devanadora…).
   La ficha de tejido y la búsqueda de máquinas por galga no cambian.
 - La migración `19.0.2.4.0/post-migrate.py` expone al MCP los cuatro
   modelos (lectura, alta y edición). No asigna tipos ni crea configuraciones.
+
+## Avisos de máquina en producción (2.5.0, 2026-10-13)
+
+Primeros usos de la ficha de la máquina en la planta. Son **avisos**, no
+bloqueos: la decisión sigue siendo de la planta.
+
+- **Galga al programar tejido** (`mrp.workorder.ft_aviso_maquina`): si la
+  orden de trabajo va a una circular cuya configuración vigente (a la fecha
+  de inicio) corre otra galga que la del artículo, la orden lo avisa en la
+  ficha, en la lista de órdenes de trabajo (renglón amarillo y columna
+  «Aviso de máquina»), al cambiar la máquina (ventana de aviso) y con el
+  filtro «Galga distinta a la máquina». La orden de fabricación repite el
+  aviso. La galga del artículo sale de su ficha de tejido («Galga del
+  artículo», o la galga con la que se elaboró) y, si no hay ficha, de las
+  posiciones 7 y 8 del código con el catálogo de claves de galga
+  (DAT P-D02-01: 21 a 30 = galga 18, 46 a 55 = galga 24, 66 a 75 = galga 28…).
+- **Cargas por jet en tintorería** (`mrp.production`): las órdenes de
+  tintorería no llevan órdenes de trabajo, así que la orden de fabricación
+  trae la pestaña «Cargas por jet»: por cada jet, la capacidad por carga que
+  aplica y cuántas cargas son. La capacidad sale de la configuración vigente
+  del jet: la del grupo de rendimiento de la tela (A de 3 a menos de 7, B de
+  7 a menos de 11, C de 11 a 15 m/kg; hoja «CAP DE CARGAS») y, sin
+  rendimiento, la capacidad general. El rendimiento sale de la ficha de
+  tejido: 1000 / (peso g/m² × ancho m); un ancho fuera de 0.3 a 4 m no se
+  usa. Si se elige el **Jet** de la orden, avisa cuando la orden no cabe en
+  una carga o el jet no tiene capacidad para ese grupo.
+- Qué órdenes son de tintorería lo dice el tipo de operación («Calcular
+  cargas por jet»). La migración `19.0.2.5.0/post-migrate.py` lo prende en
+  los tipos de fabricación cuyo nombre dice «Tintorería».
