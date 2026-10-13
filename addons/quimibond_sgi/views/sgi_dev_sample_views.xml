@@ -5,30 +5,43 @@
         <field name="name">sgi.dev.sample.wizard.form</field>
         <field name="model">sgi.dev.sample.wizard</field>
         <field name="arch" type="xml">
+            <!-- 57.154.0: la corrida es la cadena del desarrollo (crudo → teñido → acabado), una orden por
+                 artículo; cantidades de atrás hacia adelante con la lista de materiales. -->
             <form string="Pedir corrida de muestra">
+                <div class="alert alert-danger" role="alert" invisible="not warning">
+                    <strong>No se puede pedir todavía:</strong>
+                    <field name="warning" readonly="1" nolabel="1" class="d-block" style="white-space:pre-wrap;"/>
+                </div>
                 <group>
                     <group>
                         <field name="project_id" readonly="1"/>
-                        <field name="product_ids" invisible="1"/>
-                        <field name="product_id"/>
-                        <field name="bom_id"/>
-                        <label for="product_qty"/>
-                        <div class="d-flex gap-2 align-items-baseline">
-                            <field name="product_qty" class="oe_inline"/>
-                            <field name="product_uom_id" class="oe_inline"/>
-                        </div>
-                        <field name="suggested_qty"/>
                         <field name="date_planned"/>
+                        <field name="suggested_qty"/>
                     </group>
                     <group>
-                        <field name="picking_type_id"/>
-                        <field name="location_dest_id"/>
                         <field name="note"/>
                     </group>
                 </group>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0"
+                          decoration-danger="not bom_id or operation_count == 0 or product_qty &lt;= 0">
+                        <field name="sequence" column_invisible="1"/>
+                        <field name="product_tmpl_id" column_invisible="1"/>
+                        <field name="stage" readonly="1"/>
+                        <field name="product_id" readonly="1"/>
+                        <field name="bom_id" options="{'no_create': True}"/>
+                        <field name="operation_count"/>
+                        <field name="product_qty"/>
+                        <field name="product_uom_id"/>
+                        <field name="picking_type_id" options="{'no_create': True}"/>
+                        <field name="location_dest_id" options="{'no_create': True}"/>
+                        <field name="qty_note" optional="show"/>
+                    </list>
+                </field>
                 <field name="suggestion_note" readonly="1" nolabel="1"/>
                 <footer>
-                    <button name="action_confirm" type="object" string="Crear la orden de muestra" class="btn-primary"/>
+                    <button name="action_confirm" type="object" string="Crear las órdenes de muestra" class="btn-primary"
+                            invisible="warning"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

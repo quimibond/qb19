@@ -81,8 +81,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_line_key` | Selection | Línea | Línea de producción del desarrollo; define el checklist de factibilidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:302` |
 | `sgi_dev_market_id` | Many2one | Mercado | Mercado al que va el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:317` |
 | `sgi_dev_missing_partner` | Boolean | Falta el cliente | Desarrollo de origen cliente sin cliente capturado. |  |  | compute `_compute_sgi_dev_missing_partner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:23` |
-| `sgi_dev_mo_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_mo_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:59` |
-| `sgi_dev_mo_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:58` |
+| `sgi_dev_mo_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_mo_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:78` |
+| `sgi_dev_mo_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:77` |
 | `sgi_dev_mp_line_ids` | One2many | Materia prima de la muestra |  |  | `sgi.dev.mp.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:80` |
 | `sgi_dev_mp_missing_count` | Integer | Materias primas que faltan |  |  |  | compute `_compute_sgi_dev_mp_missing_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:81` |
 | `sgi_dev_mp_pending` | Boolean | Materia prima pendiente | Hay una espera de materia prima abierta: el reloj de desarrollo está detenido. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:345` |

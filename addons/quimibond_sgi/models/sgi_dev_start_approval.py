@@ -363,21 +363,6 @@ class ProjectProjectDevStartApproval(models.Model):
                 group['operations'].append(op.name)
         return list(groups.values())
 
-    def _sgi_dev_yield_m_per_kg(self):
-        """Rendimiento (m/kg) de la tabla de características: el renglón «rendimiento», o 1000 / (masa ×
-        ancho). 0 si no se puede calcular."""
-        self.ensure_one()
-        by_code = {}
-        for line in self.sgi_dev_line_ids:
-            code = line.caracteristica_id.code
-            if code and line.kind == 'num' and line.spec_nominal > 0 and code not in by_code:
-                by_code[code] = line.spec_nominal
-        if by_code.get('rendimiento'):
-            return by_code['rendimiento']
-        if by_code.get('masa') and by_code.get('ancho'):
-            return 1000.0 / (by_code['masa'] * by_code['ancho'])
-        return 0.0
-
     def _sgi_dev_to_kg(self, qty, uom):
         """Cantidad en kg, o None si no se puede convertir (falta el rendimiento)."""
         self.ensure_one()
@@ -386,7 +371,7 @@ class ProjectProjectDevStartApproval(models.Model):
         if uom == 'kg':
             return qty
         meters = qty * YARD_M if uom == 'yd' else qty
-        yield_m_kg = self._sgi_dev_yield_m_per_kg()
+        yield_m_kg = self._sgi_dev_yield_m_per_kg()  # sgi_dev_sample.py: 1000 / (masa × ancho) o el renglón
         return meters / yield_m_kg if yield_m_kg else None
 
     def _sgi_dev_start_approval_capacity(self):

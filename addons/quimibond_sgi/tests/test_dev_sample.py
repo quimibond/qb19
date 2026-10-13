@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""57.125.0 (C1, bloque F): la corrida de muestra se pide desde el proyecto."""
+"""57.125.0 (C1, bloque F): la corrida de muestra se pide desde el proyecto.
+
+57.154.0: la corrida es la cadena crudo → teñido → acabado, una orden por artículo, con cantidades de
+atrás hacia adelante, solo listas del propio artículo y con ruta."""
 from datetime import timedelta
 
 from odoo import fields
@@ -7,7 +10,8 @@ from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_dev_sample import (
-    PARAM_EXPECTED_YIELD, PARAM_LOCATION, PARAM_MIN_BATH_KG, PARAM_PICKING_TYPE, PARAM_PLANNING_JOB, PARAM_PQ_M)
+    PARAM_EXPECTED_YIELD, PARAM_LOCATION, PARAM_MIN_BATH_KG, PARAM_PICKING_TYPE, PARAM_PICKING_TYPE_ACABADO,
+    PARAM_PICKING_TYPE_TENIDO, PARAM_PLANNING_JOB, PARAM_PQ_M)
 
 
 @tagged('post_install', '-at_install')
@@ -26,16 +30,29 @@ class TestDevSample(TransactionCase):
                                                        'type': 'consu', 'is_storable': True, 'uom_id': kg.id})
         cls.tela = cls.env['product.product'].create({'name': 'tela muestra', 'default_code': 'WJ150Q28JNT170X',
                                                       'type': 'consu', 'is_storable': True, 'uom_id': m.id})
-        wc = cls.env['mrp.workcenter'].create({'name': 'Tejido prueba muestra'})
+        cls.wc = wc = cls.env['mrp.workcenter'].create({'name': 'Tejido prueba muestra'})
+        cls.wc_rama = cls.env['mrp.workcenter'].create({'name': 'Rama prueba muestra'})
         Bom = cls.env['mrp.bom']
-        Bom.create({'product_tmpl_id': cls.crudo.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': kg.id,
-                    'bom_line_ids': [(0, 0, {'product_id': cls.hilo.id, 'product_qty': 1.05, 'product_uom_id': kg.id})],
-                    'operation_ids': [(0, 0, {'name': 'Tejer', 'workcenter_id': wc.id, 'time_cycle_manual': 10})]})
-        Bom.create({'product_tmpl_id': cls.tela.product_tmpl_id.id, 'product_qty': 100, 'product_uom_id': m.id,
-                    'bom_line_ids': [(0, 0, {'product_id': cls.crudo.id, 'product_qty': 25, 'product_uom_id': kg.id})]})
+        cls.bom_crudo = Bom.create({
+            'product_tmpl_id': cls.crudo.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': cls.hilo.id, 'product_qty': 1.05, 'product_uom_id': kg.id})],
+            'operation_ids': [(0, 0, {'name': 'Tejer', 'workcenter_id': wc.id, 'time_cycle_manual': 10})]})
+        cls.bom_tela = Bom.create({
+            'product_tmpl_id': cls.tela.product_tmpl_id.id, 'product_qty': 100, 'product_uom_id': m.id,
+            'bom_line_ids': [(0, 0, {'product_id': cls.crudo.id, 'product_qty': 25, 'product_uom_id': kg.id})],
+            'operation_ids': [(0, 0, {'name': 'Ramear', 'workcenter_id': cls.wc_rama.id, 'time_cycle_manual': 5})]})
         wh = cls.env['stock.warehouse'].search([('company_id', '=', cls.env.company.id)], limit=1)
-        cls.picking_type = cls.env['stock.picking.type'].create({
+        PType = cls.env['stock.picking.type']
+        cls.picking_type = PType.create({
             'name': 'Tejido Desarrollo prueba', 'code': 'mrp_operation', 'sequence_code': 'OPDP',
+            'warehouse_id': wh.id, 'company_id': cls.env.company.id,
+            'default_location_src_id': wh.lot_stock_id.id, 'default_location_dest_id': wh.lot_stock_id.id})
+        cls.picking_tenido = PType.create({
+            'name': 'Tintorería prueba', 'code': 'mrp_operation', 'sequence_code': 'OPTP',
+            'warehouse_id': wh.id, 'company_id': cls.env.company.id,
+            'default_location_src_id': wh.lot_stock_id.id, 'default_location_dest_id': wh.lot_stock_id.id})
+        cls.picking_acabado = PType.create({
+            'name': 'Acabado prueba', 'code': 'mrp_operation', 'sequence_code': 'OPAP',
             'warehouse_id': wh.id, 'company_id': cls.env.company.id,
             'default_location_src_id': wh.lot_stock_id.id, 'default_location_dest_id': wh.lot_stock_id.id})
         cls.location = cls.env['stock.location'].create({'name': '31 DESARROLLOS prueba', 'usage': 'internal',
@@ -47,6 +64,8 @@ class TestDevSample(TransactionCase):
         cls.env['hr.employee'].create({'name': 'Planeador prueba', 'job_id': cls.job.id, 'user_id': cls.planner.id})
         Param = cls.env['ir.config_parameter'].sudo()
         Param.set_param(PARAM_PICKING_TYPE, str(cls.picking_type.id))
+        Param.set_param(PARAM_PICKING_TYPE_TENIDO, str(cls.picking_tenido.id))
+        Param.set_param(PARAM_PICKING_TYPE_ACABADO, str(cls.picking_acabado.id))
         Param.set_param(PARAM_LOCATION, str(cls.location.id))
         Param.set_param(PARAM_PLANNING_JOB, str(cls.job.id))
         Param.set_param(PARAM_PQ_M, '50')
@@ -96,38 +115,93 @@ class TestDevSample(TransactionCase):
         qty, note = dev._sgi_dev_sample_suggestion(self.tela)
         self.assertAlmostEqual(qty, 100.0 * rend, places=3, msg="El mínimo de baño gana si lleva teñido")
 
-    def test_02_wizard_crea_la_orden_armada(self):
+    def test_02_cadena_crudo_y_acabado_de_atras_hacia_adelante(self):
         dev = self._dev()
         wiz = self._wizard(dev)
-        self.assertEqual(wiz.product_id, self.crudo, "Por omisión el crudo: la corrida arranca en Tejido")
-        self.assertEqual(wiz.picking_type_id, self.picking_type)
-        self.assertEqual(wiz.location_dest_id, self.location)
-        self.assertTrue(wiz.bom_id)
-        self.assertAlmostEqual(wiz.product_qty, wiz.suggested_qty)
+        lines = wiz.line_ids.sorted('sequence')
+        self.assertEqual(lines.mapped('product_id'), self.crudo | self.tela, "Crudo y luego acabado")
+        crudo, tela = lines
+        self.assertEqual((crudo.stage, tela.stage), ('crudo', 'acabado'))
+        self.assertAlmostEqual(tela.product_qty, 50.0, msg="El último artículo lleva la cantidad sugerida")
+        self.assertAlmostEqual(crudo.product_qty, 12.5, places=3,
+                               msg="25 kg de crudo por cada 100 m de acabado: 12.5 kg para 50 m")
+        self.assertIn('lista de materiales', crudo.qty_note)
+        self.assertEqual((crudo.bom_id, tela.bom_id), (self.bom_crudo, self.bom_tela))
+        self.assertEqual((crudo.picking_type_id, tela.picking_type_id), (self.picking_type, self.picking_acabado))
+        self.assertEqual(tela.location_dest_id, self.location, "El sobrante del último va a desarrollos")
+        self.assertFalse(wiz.warning)
         fecha = fields.Datetime.now() + timedelta(days=3)
-        wiz.write({'product_qty': 15.0, 'date_planned': fecha, 'note': 'urge'})
+        wiz.write({'date_planned': fecha, 'note': 'urge'})
         action = wiz.action_confirm()
-        mo = self.env['mrp.production'].browse(action['res_id'])
-        self.assertEqual(mo.product_id, self.crudo)
-        self.assertEqual(mo.product_qty, 15.0)
-        self.assertEqual(mo.picking_type_id, self.picking_type)
-        self.assertEqual(mo.location_dest_id, self.location)
-        self.assertEqual(mo.origin, dev.sgi_ft_folio or dev.name)
-        self.assertEqual(mo.sgi_dev_project_id, dev)
-        self.assertTrue(mo.bom_id)
-        self.assertEqual(mo.state, 'draft', "Planeación la emite")
-        self.assertTrue(mo.activity_ids.filtered(lambda a: a.user_id == self.planner), "Actividad a Planeación")
-        task = mo.sgi_dev_task_id
-        self.assertEqual(task.project_id, dev)
-        self.assertEqual(task.date_deadline, fecha)
+        mos = self.env['mrp.production'].search(action['domain'])
+        self.assertEqual(len(mos), 2)
+        self.assertEqual(dev.sgi_dev_mo_count, 2)
+        for mo in mos:
+            self.assertEqual(mo.origin, dev.sgi_ft_folio or dev.name)
+            self.assertEqual(mo.sgi_dev_project_id, dev)
+            self.assertEqual(mo.state, 'draft', "Planeación la emite")
+            self.assertTrue(mo.activity_ids.filtered(lambda a: a.user_id == self.planner), "Actividad a Planeación")
+            self.assertEqual(mo.sgi_dev_task_id.date_deadline, fecha)
+        mo_crudo = mos.filtered(lambda m: m.product_id == self.crudo)
+        mo_tela = mos.filtered(lambda m: m.product_id == self.tela)
+        self.assertEqual(mo_crudo.picking_type_id, self.picking_type)
+        self.assertEqual(mo_tela.picking_type_id, self.picking_acabado)
+        self.assertAlmostEqual(mo_crudo.product_qty, 12.5, places=3)
         nueva = fecha + timedelta(days=2)
-        mo.write({'date_start': nueva})
-        self.assertEqual(task.date_deadline, nueva, "La fecha de máquina se refleja sola en la tarea")
-        self.assertEqual(dev.sgi_dev_mo_count, 1)
-        mo.action_confirm()
-        self.assertTrue(mo.workorder_ids, "La ruta de la lista de materiales viaja con la orden")
+        mo_crudo.write({'date_start': nueva})
+        self.assertEqual(mo_crudo.sgi_dev_task_id.date_deadline, nueva, "La fecha de máquina se refleja en la tarea")
+        mo_crudo.action_confirm()
+        self.assertTrue(mo_crudo.workorder_ids, "La ruta de la lista de materiales viaja con la orden")
 
-    def test_03_sin_aprobacion_o_sin_receta_no_se_pide(self):
+    def test_03_cadena_de_tres_con_tenido(self):
+        kg = self.env.ref('uom.product_uom_kgm')
+        m = self.env.ref('uom.product_uom_meter')
+        tenido = self.env['product.product'].create({'name': 'tenido muestra', 'default_code': 'WJ150Q28ING170X',
+                                                     'type': 'consu', 'is_storable': True, 'uom_id': kg.id})
+        acabado = self.env['product.product'].create({'name': 'acabado muestra', 'default_code': 'WJ150Q28JNG170X',
+                                                      'type': 'consu', 'is_storable': True, 'uom_id': m.id})
+        Bom = self.env['mrp.bom']
+        Bom.create({'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': kg.id,
+                    'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1.02, 'product_uom_id': kg.id})],
+                    'operation_ids': [(0, 0, {'name': 'Teñir', 'workcenter_id': self.wc_rama.id})]})
+        Bom.create({'product_tmpl_id': acabado.product_tmpl_id.id, 'product_qty': 100, 'product_uom_id': m.id,
+                    'bom_line_ids': [(0, 0, {'product_id': tenido.id, 'product_qty': 25, 'product_uom_id': kg.id})],
+                    'operation_ids': [(0, 0, {'name': 'Ramear', 'workcenter_id': self.wc_rama.id})]})
+        dev = self._dev(sgi_dev_product_id=acabado.id, sgi_dev_product_tenido_id=tenido.id)
+        lines = self._wizard(dev).line_ids.sorted('sequence')
+        self.assertEqual(lines.mapped('stage'), ['crudo', 'tenido', 'acabado'])
+        self.assertAlmostEqual(lines[2].product_qty, 50.0)
+        self.assertAlmostEqual(lines[1].product_qty, 12.5, places=3, msg="25 kg de teñido por 100 m")
+        self.assertAlmostEqual(lines[0].product_qty, 12.75, places=3, msg="1.02 kg de crudo por kg de teñido")
+        self.assertEqual(lines[1].picking_type_id, self.picking_tenido)
+
+    def test_04_solo_listas_del_propio_articulo(self):
+        dev = self._dev()
+        wiz = self._wizard(dev)
+        crudo = wiz.line_ids.filtered(lambda l: l.product_id == self.crudo)
+        crudo.bom_id = self.bom_tela
+        self.assertIn('no es de', wiz.warning)
+        before = self.env['mrp.production'].search_count([('sgi_dev_project_id', '=', dev.id)])
+        with self.assertRaises(UserError, msg="Con la lista de otro artículo no se pide nada"):
+            wiz.action_confirm()
+        self.assertEqual(self.env['mrp.production'].search_count([('sgi_dev_project_id', '=', dev.id)]), before)
+        sin = self.env['product.product'].create({'name': 'sin receta muestra', 'type': 'consu'})
+        dev2 = self._dev(sgi_dev_product_id=sin.id)
+        wiz2 = self._wizard(dev2)
+        self.assertIn('no tiene lista de materiales propia', wiz2.warning)
+        with self.assertRaises(UserError):
+            wiz2.action_confirm()
+
+    def test_05_sin_ruta_no_se_confirma(self):
+        self.bom_tela.operation_ids.unlink()
+        dev = self._dev()
+        wiz = self._wizard(dev)
+        self.assertIn('no tiene operaciones (ruta)', wiz.warning)
+        with self.assertRaises(UserError):
+            wiz.action_confirm()
+        self.assertFalse(dev.sgi_dev_mo_ids, "Ni el crudo se pide si una orden de la cadena no tiene ruta")
+
+    def test_06_sin_aprobacion_no_se_pide(self):
         dev = self._dev(approved=False)
         with self.assertRaises(UserError):
             dev.action_sgi_dev_request_sample()
@@ -135,8 +209,3 @@ class TestDevSample(TransactionCase):
             self._wizard(dev).action_confirm()
         dev.with_context(sgi_dev_migration=True).write({'sgi_dev_approved_by_id': self.env.uid})
         self.assertEqual(dev.action_sgi_dev_request_sample()['res_model'], 'sgi.dev.sample.wizard')
-        sin = self.env['product.product'].create({'name': 'sin receta muestra', 'type': 'consu'})
-        wiz = self._wizard(dev)
-        wiz.write({'product_id': sin.id, 'product_qty': 5})
-        with self.assertRaises(UserError, msg="Sin lista de materiales no hay orden"):
-            wiz.action_confirm()
