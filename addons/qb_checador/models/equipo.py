@@ -5,6 +5,7 @@ Solo los equipos registrados (por número de serie) y activos pueden entregar
 checadas. Un equipo desconocido que se conecte queda registrado inactivo,
 para que TI vea su serie y lo autorice; sus checadas no se guardan.
 """
+import secrets
 from datetime import datetime
 
 import pytz
@@ -12,9 +13,13 @@ import pytz
 from odoo import api, fields, models
 from odoo.addons.base.models.res_partner import _tz_get
 
-# Un reloj conectado se presenta cada pocos segundos (Delay=10 en las opciones que Odoo le manda);
+# Un ZKTeco conectado se presenta cada pocos segundos (Delay=10 en las opciones que Odoo le manda);
 # si lleva más de esto sin presentarse, está desconectado.
 MINUTOS_CONECTADO = 2
+# Un Hikvision no se presenta solo: habla cuando alguien checa (o con la prueba de su pantalla de
+# escucha HTTP). «Conectado» = mandó algo en las últimas 24 horas.
+MINUTOS_CONECTADO_HIKVISION = 24 * 60
+RUTA_HIKVISION = '/qb_checador/hikvision/'
 
 
 class ChecadorEquipo(models.Model):
@@ -26,7 +31,19 @@ class ChecadorEquipo(models.Model):
     serial = fields.Char(string="Número de serie", required=True, index=True,
                          help="El SN que el equipo manda en cada conexión (Menú → Info del sistema). Es la llave "
                               "con la que Odoo lo reconoce.")
-    modelo = fields.Char(string="Modelo", help="MB10-VL, UA860…")
+    marca = fields.Selection([('zkteco', "ZKTeco (ADMS)"), ('hikvision', "Hikvision (ISAPI)")], string="Marca",
+                             required=True, default='zkteco',
+                             help="Cómo habla con Odoo. ZKTeco: «Servidor en la nube» (ADMS) apuntando a Odoo; se "
+                                  "identifica por su número de serie. Hikvision: «Escucha HTTP» (ISAPI) apuntando a "
+                                  "la URL de su ficha; se identifica por el token de esa URL.")
+    modelo = fields.Char(string="Modelo", help="MB10-VL, UA860, DS-K1T804AEF…")
+    token = fields.Char(string="Token", copy=False, readonly=True, index=True,
+                        help="Identifica a un reloj Hikvision en la URL a la que manda sus eventos. Quien lo conoce "
+                             "puede mandar checadas a nombre de este reloj: no se comparte fuera de TI.")
+    url_push = fields.Char(string="URL de escucha", compute='_compute_url_push',
+                           help="Lo que se captura en el reloj Hikvision como servidor de escucha HTTP.")
+    ruta_push = fields.Char(string="Ruta (URL) en el reloj", compute='_compute_url_push')
+    host_push = fields.Char(string="Servidor", compute='_compute_url_push')
     ubicacion = fields.Char(string="Ubicación")
     ip = fields.Char(string="IP en la planta", help="Solo informativa; Odoo no se conecta al equipo, el equipo se "
                                                      "conecta a Odoo.")
@@ -53,16 +70,58 @@ class ChecadorEquipo(models.Model):
         ('conectado', "Conectado"),
         ('sin_conexion', "Sin conexión"),
     ], string="Estado", compute='_compute_estado_conexion',
-        help="El reloj se presenta a Odoo cada pocos segundos mientras está conectado. «Conectado»: se presentó "
-             "hace menos de %d minutos. «Sin conexión»: se presentó antes, pero lleva más tiempo callado (red, "
-             "apagado o configuración cambiada). «Nunca conectado»: no ha llegado ni una vez (red, firewall o "
-             "servidor en la nube sin configurar)." % MINUTOS_CONECTADO)
+        help="ZKTeco: se presenta a Odoo cada pocos segundos mientras está conectado; «Conectado» = se presentó "
+             "hace menos de %d minutos. Hikvision: solo habla cuando alguien checa; «Conectado» = mandó algo en las "
+             "últimas 24 horas. «Sin conexión»: llegó antes, pero lleva más tiempo callado (red, apagado o "
+             "configuración cambiada). «Nunca conectado»: no ha llegado ni una vez (red, firewall o servidor sin "
+             "configurar)." % MINUTOS_CONECTADO)
     conexion_hace = fields.Char(string="Última conexión hace", compute='_compute_estado_conexion')
     notas = fields.Text(string="Notas")
     company_id = fields.Many2one('res.company', string="Empresa", default=lambda self: self.env.company,
                                  required=True)
 
     _serial_uniq = models.Constraint('unique(serial)', 'Ya hay un equipo con ese número de serie.')
+    _token_uniq = models.Constraint('unique(token)', 'Ya hay un equipo con ese token.')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('marca') == 'hikvision' and not vals.get('token'):
+                vals['token'] = secrets.token_urlsafe(18)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('marca') == 'hikvision':
+            for eq in self.filtered(lambda e: not e.token):
+                super(ChecadorEquipo, eq).write({'token': secrets.token_urlsafe(18)})
+        return res
+
+    def action_nuevo_token(self):
+        """Cambia el token: la URL anterior deja de funcionar y hay que capturar la nueva en el reloj."""
+        for eq in self:
+            eq.token = secrets.token_urlsafe(18)
+
+    @api.model
+    def _por_token(self, token):
+        """Equipo Hikvision por token, incluidos los inactivos (para contestar «no autorizado»)."""
+        token = (token or '').strip()
+        if len(token) < 16:
+            return self.browse()
+        return self.with_context(active_test=False).search([('token', '=', token), ('marca', '=', 'hikvision')],
+                                                           limit=1)
+
+    @api.depends('token', 'marca')
+    def _compute_url_push(self):
+        base = (self.env['ir.config_parameter'].sudo().get_param('web.base.url') or '').rstrip('/')
+        host = base.split('://', 1)[-1].split('/', 1)[0]
+        for eq in self:
+            if eq.marca == 'hikvision' and eq.token:
+                eq.ruta_push = RUTA_HIKVISION + eq.token
+                eq.host_push = host
+                eq.url_push = base + eq.ruta_push
+            else:
+                eq.ruta_push = eq.host_push = eq.url_push = False
 
     def _compute_checada_count(self):
         datos = self.env['qb.checada']._read_group([('equipo_id', 'in', self.ids)], ['equipo_id'], ['__count'])
@@ -70,7 +129,11 @@ class ChecadorEquipo(models.Model):
         for eq in self:
             eq.checada_count = conteo.get(eq.id, 0)
 
-    @api.depends('ultima_conexion')
+    def _minutos_conectado(self):
+        self.ensure_one()
+        return MINUTOS_CONECTADO_HIKVISION if self.marca == 'hikvision' else MINUTOS_CONECTADO
+
+    @api.depends('ultima_conexion', 'marca')
     def _compute_estado_conexion(self):
         """Semáforo a partir de la última vez que el reloj se presentó (no se guarda: se calcula al leer)."""
         ahora = fields.Datetime.now()
@@ -81,7 +144,7 @@ class ChecadorEquipo(models.Model):
                 continue
             # Sin microsegundos: la base no los guarda y fields.Datetime.now() tampoco los trae.
             segundos = max(0, int((ahora - eq.ultima_conexion.replace(microsecond=0)).total_seconds()))
-            eq.estado_conexion = 'conectado' if segundos < MINUTOS_CONECTADO * 60 else 'sin_conexion'
+            eq.estado_conexion = 'conectado' if segundos < eq._minutos_conectado() * 60 else 'sin_conexion'
             if segundos < 60:
                 eq.conexion_hace = "hace menos de 1 minuto"
             elif segundos < 3600:
