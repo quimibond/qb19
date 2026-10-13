@@ -7,6 +7,7 @@
 Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia dentro de cada padre. El árbol que valida `test_menu_tree` está en `addons/quimibond_sgi/tools/sgi_menu_tree.txt`.
 
 - **Checklists de hoy** — `maintenance.request`; bajo `maintenance.menu_maintenance_title`
+- **Desarrollos de producto** — `project.project`; bajo `project.menu_main_pm`
 - **Empleados sin puesto o sin correo** — `hr.employee`; grupos: hr.group_hr_user; bajo `hr.menu_hr_employee_payroll`
 - **Calidad preventiva** — grupos: quality.group_quality_user, quimibond_sgi.group_sgi_user; bajo `quality_control.menu_quality_root`
   - **Planes de control** — `sgi.control.plan`
@@ -55,16 +56,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Matriz de responsabilidades** — `sgi.activity.exec.stat`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Puestos y procesos** — `hr.job`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Fichas de proceso por máquina** — `sgi.machine.sheet`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
-    - **Pruebas de laboratorio de desarrollos** — `sgi.dev.lab.request`
-    - **Desarrollos de producto** — `project.project`
-    - **Marcar desarrollos existentes** — `sgi.dev.mark.wizard`; grupos: project.group_project_manager
-    - **Envíos de muestra de desarrollos** — `sgi.dev.shipment`
-    - **Reportes de conformidad de desarrollos** — `sgi.dev.coa`
-    - **Fichas técnicas internas de desarrollos** — `sgi.dev.tech.sheet`
-    - **Especificaciones del producto (cliente)** — `sgi.dev.customer.spec`
-    - **Pilotajes de desarrollos** — `sgi.dev.pilot`
-    - **Avisos por tiempo de desarrollos** — `sgi.dev.escalation`
-    - **Solicitudes de modificación de desarrollos** — `sgi.dev.change.request`
     - **Documentos** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
       - **Documentos** — `documents.document`
       - **Lista maestra** — `documents.document`
