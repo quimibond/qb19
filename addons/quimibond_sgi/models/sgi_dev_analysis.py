@@ -35,6 +35,12 @@ import re
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+
+def _fmt_num(value):
+    """Número sin ceros de más y con separador de miles (12,345.5)."""
+    return ('{:,.2f}'.format(value or 0.0)).rstrip('0').rstrip('.')
+
+
 CODE_RE = re.compile(r'^(?P<comp>[A-Z])(?P<dib>[A-Z])(?P<peso>\d{3})(?P<hilo>[A-Z])(?P<galga>\d{2})'
                      r'(?P<op>[HIJ])(?P<color>[A-Z]{2})(?P<ancho>\d{3})(?P<acab>[A-Z]{2})?$')
 PARAM_LAB_JOB = 'quimibond_sgi.dev_lab_authorizer_job_id'
@@ -43,7 +49,12 @@ LAB_JOB_DEFAULT_NAME = 'Coordinador de Laboratorio'
 
 DEV_LINES = [('tejido_circular', "Tejido circular"), ('entretelas', "Entretelas")]
 FEAS_AUTO = [('none', "La contesta una persona"), ('materia_prima', "Existencia de materia prima"),
-             ('capacidad', "Capacidad de máquina")]
+             ('capacidad', "Capacidad de máquina"),
+             # 57.158.0: con la ficha de la máquina (quimibond_ficha_tecnica_tela).
+             ('maquina_circular', "Circulares con la galga del artículo"),
+             ('tintoreria_jets', "Jets que aceptan la tela"),
+             ('acabado_ramas', "Ramas con el ancho del artículo")]
+FEAS_PRODUCCION_DIAS = 90  # producción real de las circulares para la capacidad (57.158.0)
 FEAS_ANSWERS = [('pendiente', "Pendiente"), ('si', "Sí"), ('no', "No"), ('na', "No aplica")]
 REVIEW_STATES = [('pendiente', "Pendiente"), ('aprobado', "Aprobado"), ('regresado', "Regresado")]
 
@@ -269,8 +280,12 @@ class SgiDevFeasibilityItem(models.Model):
     name = fields.Char(string="Recurso o pregunta", required=True,
                        help="Qué se verifica (máquina, materia prima, laboratorio, personal…).")
     auto = fields.Selection(FEAS_AUTO, string="Lo contesta Odoo", default='none', required=True,
-                            help="Si Odoo puede contestar el renglón solo: existencia de materia prima (lista de "
-                                 "materiales contra existencias) o capacidad de máquina (llega con el cotizador nuevo).")
+                            help="Si Odoo puede contestar o sugerir el renglón: existencia de materia prima (lista de "
+                                 "materiales contra existencias); con la ficha de la máquina, las circulares que hoy "
+                                 "corren la galga del artículo, la producción real de esas circulares contra el "
+                                 "consumo mensual, los jets que aceptan la tela por su rendimiento y las ramas con "
+                                 "el ancho. Lo que contesta Odoo se puede cambiar; lo que contesta una persona ya no "
+                                 "lo vuelve a tocar.")
     active = fields.Boolean(default=True, help="Los recursos archivados no se cargan en proyectos nuevos.")
 
 
@@ -456,8 +471,118 @@ class ProjectProjectDevAnalysis(models.Model):
                 return 'no', "Sin existencia: %s" % ", ".join(missing)
             return 'si', "Todos los componentes tienen existencia."
         if item.auto == 'capacidad':
-            return 'pendiente', "La capacidad de máquina la contesta el cotizador nuevo."
+            return self._sgi_dev_auto_capacidad()
+        if item.auto == 'maquina_circular':
+            return self._sgi_dev_auto_maquina_circular()
+        if item.auto == 'tintoreria_jets':
+            return self._sgi_dev_auto_tintoreria()
+        if item.auto == 'acabado_ramas':
+            return self._sgi_dev_auto_ramas()
         return 'pendiente', ''
+
+    # --- 57.158.0: factibilidad con la ficha de la máquina ----------------------------
+    def _sgi_dev_circulares(self):
+        """(galga del artículo, circulares que hoy la corren) según la ficha de la máquina."""
+        self.ensure_one()
+        galga = self._sgi_dev_target()['galga'] or 0.0
+        return galga, self.env['mrp.workcenter']._ft_circulares_con_galga(galga)
+
+    def _sgi_dev_produccion_real(self, workcenters):
+        """{centro: kg al mes} producidos en los últimos FEAS_PRODUCCION_DIAS días (órdenes de trabajo
+        terminadas de órdenes en kg), promedio mensual."""
+        if not workcenters:
+            return {}
+        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        desde = fields.Datetime.subtract(fields.Datetime.now(), days=FEAS_PRODUCCION_DIAS)
+        domain = [('workcenter_id', 'in', workcenters.ids), ('state', '=', 'done'), ('date_finished', '>=', desde)]
+        if kg:
+            domain.append(('production_id.product_uom_id', '=', kg.id))
+        meses = FEAS_PRODUCCION_DIAS / 30.0
+        rows = self.env['mrp.workorder'].sudo()._read_group(domain, ['workcenter_id'], ['qty_produced:sum'])
+        return {wc: total / meses for wc, total in rows if total}
+
+    def _sgi_dev_auto_maquina_circular(self):
+        galga, circulares = self._sgi_dev_circulares()
+        if not galga:
+            return 'pendiente', "Capture la galga (código o tabla de características) para que Odoo la busque."
+        if not circulares:
+            return 'no', "Ninguna circular corre hoy galga %s (ficha de la máquina)." % _fmt_num(galga)
+        detalle = []
+        for wc in circulares:
+            config = wc._ft_config_at()
+            partes = []
+            if config.diametro:
+                partes.append('%s"' % _fmt_num(config.diametro))
+            if config.no_alimentadores:
+                partes.append('%s alim.' % config.no_alimentadores)
+            detalle.append('%s (%s)' % (wc.name, ', '.join(partes)) if partes else wc.name)
+        return 'si', "Galga %s: %s." % (_fmt_num(galga), '; '.join(detalle))
+
+    def _sgi_dev_auto_capacidad(self):
+        galga, circulares = self._sgi_dev_circulares()
+        if not galga:
+            return 'pendiente', "Capture la galga para estimar la capacidad con las circulares que la corren."
+        if not circulares:
+            return 'no', "Ninguna circular corre hoy galga %s." % _fmt_num(galga)
+        real = self._sgi_dev_produccion_real(circulares)
+        total = sum(real.values())
+        uom = self.sgi_dev_consumption_uom or 'm'
+        mensual_kg = self._sgi_dev_to_kg(self.sgi_dev_consumption_monthly, uom) \
+            if self.sgi_dev_consumption_monthly else 0.0
+        pedido = ("consumo mensual pedido %s kg" % _fmt_num(mensual_kg)) if mensual_kg else (
+            "sin consumo mensual en kg")
+        if not total:
+            return 'pendiente', "Circulares galga %s sin producción en kg en los últimos %s días; %s." % (
+                _fmt_num(galga), FEAS_PRODUCCION_DIAS, pedido)
+        return 'pendiente', "Circulares galga %s: producción real ≈ %s kg/mes (promedio %s días); %s. Lo " \
+            "disponible lo confirma Planeación." % (_fmt_num(galga), _fmt_num(total), FEAS_PRODUCCION_DIAS, pedido)
+
+    def _sgi_dev_rendimiento_objetivo(self):
+        """Rendimiento (m/kg) con la masa y el ancho que pide el cliente; 0 si falta alguno."""
+        self.ensure_one()
+        target = self._sgi_dev_target()
+        if not (target['peso'] and target['ancho']):
+            return 0.0
+        return 1000.0 / (target['peso'] * target['ancho'] / 100.0)
+
+    def _sgi_dev_auto_tintoreria(self):
+        rendimiento = self._sgi_dev_rendimiento_objetivo()
+        jets = self.env['mrp.workcenter'].search([('ft_tipo_id.code', '=', 'tintoreria')], order='name')
+        if not jets:
+            return 'pendiente', "No hay jets con tipo de máquina «Tintorería» en su ficha."
+        aceptan, no = [], []
+        for jet in jets:
+            capacidad, motivo = jet._ft_capacidad_carga(rendimiento)
+            if capacidad:
+                aceptan.append('%s %s kg' % (jet.name, _fmt_num(capacidad)))
+            else:
+                no.append(jet.name)
+        base = ("Rendimiento %s m/kg" % _fmt_num(rendimiento)) if rendimiento else (
+            "Sin masa y ancho: capacidad general")
+        texto = "%s. Jets: %s" % (base, '; '.join(aceptan) or 'ninguno')
+        if no:
+            texto += "; sin capacidad para esta tela: %s" % ', '.join(no)
+        return 'pendiente', texto + ". Proceso, receta y colorantes: los confirma Tintorería."
+
+    def _sgi_dev_auto_ramas(self):
+        ancho_cm = self._sgi_dev_target()['ancho'] or 0.0
+        ramas = self.env['mrp.workcenter'].search([('ft_tipo_id.code', '=', 'acabado')], order='name')
+        if not ramas:
+            return 'pendiente', "No hay máquinas con tipo de máquina «Acabado» en su ficha."
+        con_dato = []
+        for rama in ramas:
+            config = rama._ft_config_at()
+            ancho_util = config._ft_value('ancho_util') if config else False
+            if ancho_util:
+                con_dato.append((rama, ancho_util))
+        if not con_dato:
+            return 'pendiente', "Las ramas no tienen el parámetro «ancho_util» en su ficha de máquina: la " \
+                "contesta Acabado."
+        detalle = ', '.join('%s %s' % (rama.name, _fmt_num(ancho)) for rama, ancho in con_dato)
+        if not ancho_cm:
+            return 'pendiente', "Capture el ancho del artículo. Ancho útil de las ramas: %s." % detalle
+        return 'pendiente', "Ancho del artículo %s cm. Ancho útil de las ramas: %s. Termofijado y acabados " \
+            "químicos: los confirma Acabado." % (_fmt_num(ancho_cm), detalle)
 
     def action_sgi_dev_load_feasibility(self):
         Item = self.env['sgi.dev.feasibility.item']
@@ -471,11 +596,12 @@ class ProjectProjectDevAnalysis(models.Model):
                                     'observation': obs or False}))
             if vals:
                 project.with_context(sgi_dev_auto=True).write({'sgi_dev_feasibility_ids': vals})
-            # Las automáticas se vuelven a contestar con el dato de hoy.
-            for line in project.sgi_dev_feasibility_ids.filtered(lambda l: l.auto != 'none'):
+            # Las automáticas se vuelven a contestar con el dato de hoy; lo que contestó una persona no se toca
+            # (57.158.0).
+            for line in project.sgi_dev_feasibility_ids.filtered(lambda l: l.auto != 'none' and not l.answered_by_id):
                 answer, obs = project._sgi_dev_auto_answer(line.item_id)
-                if answer != 'pendiente':
-                    line.with_context(sgi_dev_auto=True).write({'answer': answer, 'observation': obs})
+                if answer != line.answer or (obs or False) != line.observation:
+                    line.with_context(sgi_dev_auto=True).write({'answer': answer, 'observation': obs or False})
         return True
 
     # --- Revisión única de Ventas ----------------------------------------------------

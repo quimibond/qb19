@@ -394,6 +394,15 @@ class SgiDevProcessSheetsWizardLine(models.TransientModel):
             tejido = project._sgi_dev_find_sheet('crudo', project.sgi_dev_product_crudo_id)
             if tejido:
                 ctx['default_tejido_id'] = tejido.id
+        elif self.stage == 'crudo':
+            # 57.158.0: la galga del artículo y, si una sola circular la corre hoy, esa máquina (la ficha toma
+            # de su configuración galga, diámetro, agujas, alimentadores y marca). Con varias, Desarrollo
+            # elige: la lista ya ofrece solo las de esa galga.
+            galga, circulares = project._sgi_dev_circulares()
+            if galga:
+                ctx['default_galga_requerida'] = galga
+            if len(circulares) == 1:
+                ctx['default_maquina_tejido'] = circulares.id
         action['context'] = ctx
         return action
 

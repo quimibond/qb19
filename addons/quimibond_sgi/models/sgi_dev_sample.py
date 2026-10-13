@@ -175,6 +175,10 @@ class SgiDevSampleWizard(models.TransientModel):
     date_planned = fields.Datetime(string="Fecha deseada de máquina", required=True,
                                    default=lambda self: fields.Datetime.now())
     note = fields.Text(string="Nota para Planeación")
+    machine_warning = fields.Text(
+        string="Revise la máquina", compute='_compute_machine_warning',
+        help="Avisos de la ficha de la máquina sobre la ruta de cada lista: circular con otra galga que la del "
+             "artículo o jet en el que la cantidad no cabe en una carga. No impiden pedir la corrida.")
     warning = fields.Text(string="Antes de confirmar", compute='_compute_warning',
                           help="Lo que impide crear las órdenes: lista de materiales que no es del artículo, "
                                "sin lista propia, sin ruta, sin cantidad o sin tipo de operación.")
@@ -291,6 +295,27 @@ class SgiDevSampleWizard(models.TransientModel):
     def _compute_warning(self):
         for wiz in self:
             wiz.warning = "\n".join(wiz._sgi_dev_problems()) or False
+
+    @api.depends('line_ids.bom_id.operation_ids.workcenter_id', 'line_ids.product_qty', 'line_ids.product_id',
+                 'date_planned')
+    def _compute_machine_warning(self):
+        """57.158.0: lo que avisaría la orden de trabajo en cada máquina de la ruta, antes de crear la orden."""
+        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        for wiz in self:
+            avisos = []
+            for line in wiz.line_ids.sorted('sequence'):
+                qty_kg = 0.0
+                uom = line.product_id.uom_id
+                if kg and uom and line.product_qty:
+                    try:
+                        qty_kg = uom._compute_quantity(line.product_qty, kg) if uom != kg else line.product_qty
+                    except Exception:  # unidad que no es de peso: no se compara contra la carga del jet
+                        qty_kg = 0.0
+                for workcenter in line.bom_id.operation_ids.workcenter_id:
+                    aviso = workcenter._ft_aviso_para(line.product_id, qty_kg, wiz.date_planned)
+                    if aviso:
+                        avisos.append("%s: %s" % (dict(SAMPLE_STAGES).get(line.stage, line.stage), aviso))
+            wiz.machine_warning = "\n".join(avisos) or False
 
     def _sgi_dev_problems(self):
         """Lo que impide crear la cadena, un texto por problema."""

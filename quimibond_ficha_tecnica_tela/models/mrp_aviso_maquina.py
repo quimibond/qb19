@@ -122,6 +122,39 @@ class ProductProductFicha(models.Model):
 class MrpWorkcenterCarga(models.Model):
     _inherit = 'mrp.workcenter'
 
+    @api.model
+    def _ft_circulares_con_galga(self, galga, day=None):
+        """Circulares cuya configuración vigente en ``day`` corre esa galga (checklist de factibilidad y ficha
+        de proceso del desarrollo)."""
+        if not galga:
+            return self.browse()
+        circulares = self.search([('ft_tipo_id.code', '=', TIPO_CIRCULAR)], order='name')
+        return circulares.filtered(lambda wc: (wc._ft_config_at(day).galga or 0.0) == galga)
+
+    def _ft_aviso_para(self, product, qty_kg=0.0, day=None):
+        """Aviso de esta máquina para fabricar ``product``: galga distinta en una circular, o más kg de los
+        que caben en una carga de un jet. False si no hay nada que avisar. Lo usan la orden de trabajo y la
+        corrida de muestra del desarrollo antes de crear las órdenes."""
+        self.ensure_one()
+        tipo = self.ft_tipo_id.code
+        if tipo == TIPO_CIRCULAR and product:
+            config = self._ft_config_at(day)
+            galga_maquina = config.galga if config else 0.0
+            galga_articulo, origen = product._ft_galga_requerida()
+            if galga_maquina and galga_articulo and galga_maquina != galga_articulo:
+                return '%s corre galga %s y el artículo %s pide galga %s (%s).' % (
+                    self.name, _fmt(galga_maquina), product.default_code or product.display_name,
+                    _fmt(galga_articulo), origen)
+        elif tipo == TIPO_TINTORERIA and qty_kg:
+            rendimiento = product._ft_rendimiento()[0] if product else 0.0
+            capacidad, motivo = self._ft_capacidad_carga(rendimiento, day)
+            if not capacidad:
+                return '%s: %s.' % (self.name, motivo)
+            if qty_kg > capacidad:
+                return 'La orden lleva %s kg y %s carga %s kg (%s): son %s cargas.' % (
+                    _fmt(qty_kg), self.name, _fmt(capacidad), motivo, math.ceil(qty_kg / capacidad))
+        return False
+
     def _ft_capacidad_carga(self, rendimiento, day=None):
         """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica."""
         self.ensure_one()
@@ -152,41 +185,13 @@ class MrpWorkorderAviso(models.Model):
         help='La circular corre una galga distinta de la que pide el artículo (según su ficha de tejido o su '
              'código), o la orden no cabe en una carga del jet. Es aviso: la decisión es de la planta.')
 
-    def _ft_aviso_carga(self):
-        """2.6.0: la orden de trabajo en un jet, con más kg de los que caben en una carga."""
-        self.ensure_one()
-        workcenter, production = self.workcenter_id, self.production_id
-        if not workcenter or workcenter.ft_tipo_id.code != TIPO_TINTORERIA or not production:
-            return False
-        qty = production._ft_qty_kg()
-        if not qty:
-            return False
-        rendimiento = production.product_id._ft_rendimiento()[0] if production.product_id else 0.0
-        capacidad, motivo = workcenter._ft_capacidad_carga(rendimiento, self.date_start or None)
-        if not capacidad:
-            return '%s: %s.' % (workcenter.name, motivo)
-        if qty > capacidad:
-            return 'La orden lleva %s kg y %s carga %s kg (%s): son %s cargas.' % (
-                _fmt(qty), workcenter.name, _fmt(capacidad), motivo, math.ceil(qty / capacidad))
-        return False
-
     def _ft_aviso(self):
+        """Aviso de la máquina de la orden de trabajo (galga en circular, carga en jet)."""
         self.ensure_one()
-        return self._ft_aviso_galga() or self._ft_aviso_carga()
-
-    def _ft_aviso_galga(self):
-        self.ensure_one()
-        workcenter = self.workcenter_id
-        if not workcenter or workcenter.ft_tipo_id.code != TIPO_CIRCULAR or not self.product_id:
+        if not self.workcenter_id:
             return False
-        config = workcenter._ft_config_at(self.date_start or None)
-        galga_maquina = config.galga if config else 0.0
-        galga_articulo, origen = self.product_id._ft_galga_requerida()
-        if not (galga_maquina and galga_articulo) or galga_maquina == galga_articulo:
-            return False
-        return '%s corre galga %s y el artículo %s pide galga %s (%s).' % (
-            workcenter.name, _fmt(galga_maquina), self.product_id.default_code or self.product_id.display_name,
-            _fmt(galga_articulo), origen)
+        qty = self.production_id._ft_qty_kg() if self.production_id else 0.0
+        return self.workcenter_id._ft_aviso_para(self.product_id, qty, self.date_start or None)
 
     @api.depends('workcenter_id', 'product_id', 'date_start', 'production_id.product_qty',
                  'production_id.product_uom_id')

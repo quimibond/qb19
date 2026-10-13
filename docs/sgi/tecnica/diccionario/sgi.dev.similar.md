@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `ancho` | Integer | Ancho pedido (cm) | Ancho nominal que pide el cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:73` |
-| `line_ids` | One2many | Parecidos |  |  | `sgi.dev.similar.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:74` |
-| `peso` | Integer | Peso pedido (g/m²) | Masa nominal que pide el cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:72` |
-| `project_id` | Many2one |  | Proyecto de desarrollo que se compara. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:70` |
+| `ancho` | Integer | Ancho pedido (cm) | Ancho nominal que pide el cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:84` |
+| `line_ids` | One2many | Parecidos |  |  | `sgi.dev.similar.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:85` |
+| `peso` | Integer | Peso pedido (g/m²) | Masa nominal que pide el cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:83` |
+| `project_id` | Many2one |  | Proyecto de desarrollo que se compara. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:81` |
 
 ## Métodos públicos (1)
 
