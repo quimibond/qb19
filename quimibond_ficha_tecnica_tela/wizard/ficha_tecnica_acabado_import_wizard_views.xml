@@ -38,10 +38,4 @@
         <field name="target">new</field>
     </record>
 
-    <menuitem id="menu_ficha_tecnica_acabado_import"
-              name="Importar Acabado desde Excel"
-              parent="menu_ficha_tecnica_tela_root"
-              action="action_ficha_tecnica_acabado_import_wizard"
-              sequence="40"/>
-
 </odoo>
