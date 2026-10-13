@@ -93,7 +93,7 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
 
 ### 2.4.2 El Manual del SGI (MIID) (desde 57.105.0)
 
-**SGI → Sistema → Manual del SGI (MIID)** muestra el manual armado desde
+**SGI → Sistema → Manual del SGI → Manual (MIID)** muestra el manual armado desde
 Odoo (texto fijo más los datos vivos), marcado «Borrador — no vigente»; la
 revisión vigente es «PDF de la revisión vigente». Usted firma **«Aprobó»**
 del MIID en Sign (si nadie se configuró en

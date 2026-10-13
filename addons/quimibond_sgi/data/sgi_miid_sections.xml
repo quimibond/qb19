@@ -14,7 +14,12 @@
          capítulos 4 a 10 se archivan en la migración (su texto queda en la sección
          archivada); lo que decían vive en las actividades, en la correspondencia por
          cláusula y en los manuales de Conocimiento. Texto fuente:
-         docs/sgi/transicion/miid-rev03-borrador.md. -->
+         docs/sgi/transicion/miid-rev03-borrador.md.
+         57.148.0 (Dirección, 2026-10-13: «prefiero otra cosa», el P-G01 no va
+         dentro del MIID): el P-G01 es un documento controlado propio generado
+         con el mismo motor (kind = pg01, secciones sgi_miid_section_pg01_*);
+         el capítulo 6 del MIID queda en dos secciones (6 y 6.1) y las cinco
+         que detallaban el P-G01 (54 a 58) se archivan por migración. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -91,7 +96,7 @@
             <field name="body" type="html">
 
                 <p>El Manual se genera desde Odoo (<b>SGI → Sistema → Manual del SGI (MIID)</b>): texto fijo, que edita el Jefe de MAST y SGI, y datos vivos del sistema. Cada revisión se solicita con un cambio documental, la firma Dirección en Firma electrónica y se publica como documento controlado de clave MIID; lo que se firma es lo que se publica. Odoo compara cada día la revisión vigente con el sistema y avisa cuando ya no coinciden. Se revisa cuando el sistema cambia y al menos cada dos años.</p>
-                <p>El Manual y los documentos del SGI son oficiales y de cumplimiento obligatorio. Un Manual impreso es copia no controlada; su reproducción fuera de PNTQ requiere autorización escrita de la Dirección (ver 6.5).</p>
+                <p>El Manual y los documentos del SGI son oficiales y de cumplimiento obligatorio. Un Manual impreso es copia no controlada; su reproducción fuera de PNTQ requiere autorización escrita de la Dirección (P-G01, 4.5).</p>
             </field>
         </record>
 
@@ -268,8 +273,7 @@
             <field name="name">Información documentada</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-
-                <p>Este capítulo sustituye al procedimiento P-G01 «Elaboración y control de información documentada». Las rutinas (recibir y aprobar solicitudes, publicar, revisar la vigencia, registrar documentos externos, verificar al nuevo titular y autorizar entregas a externos) son actividades del proceso E2 con su criterio de terminado y su medición; aquí quedan solo las reglas.</p>
+                <p>La información documentada del SGI se crea, aprueba, publica, difunde, conserva y controla en Odoo como lo establece el procedimiento P-G01 «Elaboración y control de información documentada», generado desde Odoo con el mismo motor que este Manual (SGI → Sistema → Manual del SGI → Control de información documentada (P-G01)). Sus rutinas son actividades del proceso E2 con criterio de terminado y medición; sus plazos los aplica el sistema con avisos. Este capítulo solo deja los tipos de documento y sus claves.</p>
             </field>
         </record>
 
@@ -283,96 +287,6 @@
 
                 <p>La información documentada del SGI tiene tres formas: <b>documentos controlados</b> (Documentos → carpeta SGI, con clave, revisión, estado, proceso y responsable), <b>registros</b> (los de Odoo, que imprimen en cada hoja la clave y la revisión del formato que sustituyen) y <b>registros en papel</b> (bitácoras y formatos no migrados, bajo control del jefe del área). Estados: borrador, prueba piloto, vigente y obsoleto; solo lo vigente se usa. La clave la asigna Odoo según el tipo de documento y el proceso; Odoo la valida y un documento controlado no se guarda sin clave válida. La clave anterior del Dropbox se conserva en el documento y se busca en «Del Dropbox a Odoo». Los formatos que nacen de una NOM llevan la clave normal de formato y citan la NOM en el título.</p>
                 <p>[[datos]]</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_54_doc_elaboracion" model="sgi.miid.section">
-            <field name="sequence">220</field>
-            <field name="clause">6.2</field>
-            <field name="name">Quién elabora qué y dónde</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Documento</th><th>Quién lo elabora</th><th>Dónde</th><th>Cómo queda controlado</th></tr></thead>
-                <tbody>
-                <tr><td>Procedimiento de proceso (PR)</td><td>Dueño del proceso, con las propuestas de su gente</td><td>Datos del proceso en Odoo: objetivo, alcance, responsabilidades y actividades</td><td>Odoo genera el PDF; el Jefe de MAST y SGI publica la revisión. Si el cuerpo cambia fuera de una solicitud, el documento queda «Procedimiento vivo cambió: revisar»</td></tr>
-                <tr><td>Mi procedimiento (MP)</td><td>Odoo, a partir de los roles del puesto</td><td>SGI → Administración → Publicar Mi procedimiento</td><td>Cada publicación es una revisión con acuse de cada persona</td></tr>
-                <tr><td>Instructivo (IT), control operacional (CO), protocolo (PROT), reglamento (R)</td><td>Dueño del proceso o quien designe</td><td>Artículo en Conocimiento → SGI → proceso; mientras es borrador solo lo ven el dueño y el Jefe de MAST y SGI</td><td>«Pedir publicación» → el Jefe de MAST y SGI publica: el artículo se congela como revisión nueva, la anterior queda obsoleta, se piden los acuses y se re-apuntan las actividades</td></tr>
-                <tr><td>Formato (F)</td><td>El dueño define qué se registra; Sistemas lo construye como pantalla de Odoo</td><td>Odoo</td><td>El PDF del registro imprime la clave y la revisión del formato</td></tr>
-                <tr><td>DAT, método o anexo, descripción de puesto, anexo, archivo no migrado</td><td>Responsable del documento</td><td>Archivo PDF adjunto a la solicitud de cambio documental</td><td>Revisión publicada en Documentos al aprobarse</td></tr>
-                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>SGI → Sistema → Manual del SGI (MIID)</td><td>«Solicitar cambio del MIID» → firma de Dirección → revisión nueva</td></tr>
-                <tr><td>Documento externo</td><td>Lo emite el cliente, la autoridad, la norma o el proveedor</td><td>SGI → Sistema → Documentos → Documentos externos</td><td>Registro con emisor, revisión del emisor, fecha de recepción y proceso que lo aplica</td></tr>
-                </tbody></table>
-                <p>Lo que Odoo genera lleva el encabezado y el pie del SGI (logo, razón social, clave, revisión, emisión y página) en cada hoja. Los documentos que siguen como archivo conservan la plantilla de la revisión 11 del P-G01: encabezado con logo, razón social, nombre del documento, clave, fecha de emisión, área y revisión; Arial 12, 10 y 10; nombre de archivo con la clave y el título sin acentos; entrega en PDF. Queda prohibido trabajar con información que no esté publicada como vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en Excel ni en papel. Al entrar a un puesto, la persona firma el acuse de Mi procedimiento y, dentro de los 30 días naturales siguientes, revisa su procedimiento y propone lo que falte o sobre («Proponer actividad» o solicitud de cambio documental); el jefe directo lo verifica.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_55_doc_aprobacion" model="sgi.miid.section">
-            <field name="sequence">230</field>
-            <field name="clause">6.3</field>
-            <field name="name">Aprobación, publicación y cambios</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-
-                <table class="table table-sm table-bordered">
-                <thead><tr><th>Documento</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead>
-                <tbody>
-                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>Dueño de E2</td><td>Director de Operaciones</td></tr>
-                <tr><td>Procedimiento de proceso</td><td>Dueño del proceso</td><td>—</td><td>Quien el proceso declare en «Aprueba» (por omisión el dueño); Vo.Bo. del Jefe de MAST y SGI</td></tr>
-                <tr><td>Instructivo, control operacional, protocolo, reglamento, DAT, formato, anexo</td><td>Quien solicita el cambio</td><td>Dueño del proceso</td><td>Jefe de MAST y SGI</td></tr>
-                <tr><td>Actividades y roles de un proceso</td><td>Quien propone</td><td>Jefe directo de quien propone</td><td>Dueño del proceso</td></tr>
-                </tbody></table>
-                <p><b>Solicitud de cambio documental.</b> Un alta, modificación o baja se pide en <b>SGI → Sistema → Documentos → Solicitudes de cambio</b> con el documento afectado, el tipo de cambio, qué se modifica, la revisión nueva, el motivo, los cambios, los procesos afectados, la prueba piloto si aplica y el archivo propuesto. Al enviarla, Odoo arma el PDF con una hoja de firmas y pide las firmas en orden en Firma electrónica (Elaboró → Revisó → Aprobó); la aprobación es la firma y rechazar se hace en Aprobaciones con motivo. Con la última firma Odoo publica la revisión nueva con fecha de emisión y próxima revisión, deja obsoleta la anterior con fecha y motivo, avisa a los puestos del proceso y deja pendiente el acuse de quienes deben leerlo; el PDF firmado queda como evidencia. Una baja deja el documento obsoleto; un alta agenda al Jefe de MAST y SGI crear el documento.</p>
-                <p><b>Cuándo se modifica.</b> Por cambio en las normas, decisión de la Dirección, solicitud del dueño del proceso (cambios, mejoras o anomalías), cambio en un requisito legal o de cliente, hallazgo de auditoría o NC, vencimiento de la revisión, documento externo nuevo o revisado, o aviso de que el MIID o un procedimiento vivo ya no coinciden con el sistema. El cambio de titular de un área no es motivo: el procedimiento es del proceso. Al modificar un documento se revisan los que se relacionan con el cambio y se actualizan en la misma solicitud o en otra ligada. El número de revisión y la fecha de emisión los pone Odoo. Las solicitudes se atienden conforme llegan; no hay calendario mensual ni suspensión por días de auditoría.</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_56_doc_plazos" model="sgi.miid.section">
-            <field name="sequence">240</field>
-            <field name="clause">6.4</field>
-            <field name="name">Plazos documentales</field>
-            <field name="heading_level">2</field>
-            <field name="live_block">plazos_documentales</field>
-            <field name="body" type="html">
-
-                <p>Los plazos de las rutinas son los criterios de terminado de las actividades de E2 (5.1): responder cada solicitud en 5 días hábiles, publicar y retirar la anterior en 2, verificar la implantación en piso a los 15 y registrar e implantar los documentos externos en 10. Los plazos que aplica el sistema solo, con sus avisos, son estos:</p>
-                <p>[[datos]]</p>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_57_doc_difusion" model="sgi.miid.section">
-            <field name="sequence">250</field>
-            <field name="clause">6.5</field>
-            <field name="name">Difusión, distribución y copias</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-
-                <ul>
-                <li><b>Acuse de lectura.</b> Al publicar, Odoo crea el acuse de cada persona de los puestos a los que aplica el documento; cada persona firma «Leído y entendido» en Mis pendientes, en Documentos vigentes o en la tableta de su área con su PIN. Es la evidencia individual de difusión.</li>
-                <li><b>NEWS Quimibond.</b> El primer día de cada mes, si en el mes anterior hubo cambios documentales aplicados, Odoo genera el boletín y agenda al Jefe de MAST y SGI su revisión y envío al personal administrativo en 7 días.</li>
-                <li><b>Reunión presencial.</b> Cuando el cambio lo amerite, el dueño del proceso lo explica en reunión con minuta y lista de asistencia, y cada asistente firma su acuse.</li>
-                <li><b>Distribución.</b> El personal consulta en <b>SGI → Inicio → Documentos vigentes</b> o en <b>Conocimiento → SGI</b>. No hay copias controladas ni listas de distribución; un documento impreso desde Odoo es copia no controlada y no demuestra cumplimiento.</li>
-                <li><b>Entrega a externos.</b> Un documento del SGI se entrega a personas o entidades externas solo con autorización del Director de Operaciones, marcado «COPIA NO CONTROLADA» y vigente únicamente al momento de su emisión; la autorización y la entrega se anotan en el historial del documento (quién lo pidió, quién autorizó, a quién y cuándo).</li>
-                </ul>
-            </field>
-        </record>
-
-        <record id="sgi_miid_section_58_doc_resguardo" model="sgi.miid.section">
-            <field name="sequence">260</field>
-            <field name="clause">6.6</field>
-            <field name="name">Conservación, resguardo y seguridad de la información</field>
-            <field name="heading_level">2</field>
-            <field name="body" type="html">
-
-                <ul>
-                <li><b>Electrónico.</b> Toda la información documentada del SGI se controla y almacena en Odoo; Odoo.sh conserva respaldos diarios de la base y los archivos, de los que responde Sistemas.</li>
-                <li><b>Nada se borra.</b> Un documento que deja de usarse queda obsoleto con fecha y motivo y conserva su archivo e historial; un registro se archiva o se cancela con motivo; lo cerrado solo lo modifica el Jefe de MAST y SGI.</li>
-                <li><b>Retención y disposición final.</b> Cada documento o familia declara en su ficha los años de retención después de quedar obsoleto o cerrado y su disposición final (archivo muerto, destrucción controlada o devolución al cliente); los clientes automotrices pueden exigir «vida del programa más n años».</li>
-                <li><b>Registros físicos.</b> Se conservan bajo el control de jefes y supervisores, en lugar accesible, protegidos y en orden cronológico; al terminar su plazo pasan al archivo muerto que resguarda MAST y SGI (paso anual de E2.03). Al publicar una revisión nueva, las copias impresas de la anterior se retiran y se destruyen.</li>
-                <li><b>Historia.</b> Los documentos y registros anteriores a Odoo quedaron en el Dropbox, de solo lectura; el PDF de cada procedimiento anterior se abre desde «Del Dropbox a Odoo».</li>
-                <li><b>Seguridad de la información.</b> Los datos personales y económicos que se recaban (nombre, ocupación, domicilio, RFC, CURP, identificación, teléfonos, correo, información económica) se tratan con confidencialidad, se almacenan en Odoo con acceso restringido por grupo de usuario (los de salud y de salarios con acceso restringido) y se eliminan al concluir la relación jurídica o comercial y los plazos legales de resguardo. La información que genera PNTQ es propiedad de PNTQ; la que contiene cantidades monetarias y la comercial sensible se mantiene confidencial.</li>
-                </ul>
             </field>
         </record>
 
@@ -413,6 +327,230 @@
             <field name="name">Control de cambios</field>
             <field name="heading_level">1</field>
             <field name="live_block">historial</field>
+        </record>
+
+        <!-- 57.148.0: P-G01 «Elaboración y control de información documentada»,
+             generado con el mismo motor (kind = pg01). Mismo orden de secciones
+             que la revisión 11 del Dropbox. -->
+        <record id="sgi_miid_section_pg01_01_identificacion" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">10</field>
+            <field name="name">Identificación del documento</field>
+            <field name="heading_level">1</field>
+            <field name="live_block">identificacion</field>
+            <field name="body" type="html">
+                <p>Procedimiento «Elaboración y control de información documentada» del Sistema de Gestión Integral (ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018) de Productora de No Tejidos Quimibond S.A. de C.V. (PNTQ). Clave P-G01 (la misma del Dropbox; la revisión 12 es la primera generada desde Odoo). Proceso: E2 Gestión del SGI. Responsable del documento: Jefe de MAST y SGI. Aprueba: Director de Operaciones. Se genera desde Odoo: lo que imprime es lo que el sistema tiene el día de su emisión.</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_02_proposito" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">20</field>
+            <field name="clause">1</field>
+            <field name="name">Propósito</field>
+            <field name="heading_level">1</field>
+            <field name="body" type="html">
+                <p>Establecer cómo se identifica, elabora, codifica, aprueba, publica, difunde, modifica, conserva y controla la información documentada del SGI de PNTQ en Odoo, para que el personal trabaje siempre con la versión vigente y la evidencia de cada registro se conserve y pueda auditarse.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_03_alcance" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">30</field>
+            <field name="clause">2</field>
+            <field name="name">Alcance</field>
+            <field name="heading_level">1</field>
+            <field name="body" type="html">
+                <p>Aplica a toda la información documentada del SGI generada o recibida en PNTQ, en sus tres formas:</p>
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>Forma</th><th>Qué es</th><th>Dónde vive</th></tr></thead>
+                    <tbody>
+                        <tr><td>Documentos controlados</td><td>Manual (MIID), este procedimiento, procedimientos de proceso, instructivos, controles operacionales, protocolos, DAT, métodos y anexos, descripciones de puesto, «Mi procedimiento» de cada puesto, reglamentos y documentos externos</td><td>Documentos → carpeta SGI (ficha con clave, revisión, estado, proceso y responsable)</td></tr>
+                        <tr><td>Registros</td><td>La evidencia de que las actividades se hicieron: órdenes, recepciones, inspecciones, NC, checklists, mediciones, actas, permisos, responsivas</td><td>Los registros de Odoo; cada uno imprime la clave y la revisión del formato que sustituye</td></tr>
+                        <tr><td>Registros en papel</td><td>Lo que todavía se llena a mano (bitácoras de piso, formatos no migrados)</td><td>Bajo control del jefe del área, en el lugar que define su proceso</td></tr>
+                    </tbody>
+                </table>
+                <p>Las áreas involucradas son todas las del organigrama de PNTQ en Odoo (Empleados → Organigrama).</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_04_responsabilidades" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">40</field>
+            <field name="clause">3</field>
+            <field name="name">Responsabilidades</field>
+            <field name="heading_level">1</field>
+            <field name="body" type="html">
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>Quién</th><th>Responsabilidad</th></tr></thead>
+                    <tbody>
+                        <tr><td>Jefe de MAST y SGI (dueño del proceso E2)</td><td>Mantener este procedimiento y el MIID. Responder cada solicitud de cambio documental en 5 días hábiles (E2.01). Publicar la revisión vigente, dejar obsoleta la anterior y avisar a las áreas en 2 días hábiles (E2.02). Revisar cada mes la vigencia de los documentos (E2.03). Registrar los documentos externos (E2.36). Verificar que cada nuevo titular firme y revise su Mi procedimiento (E2.42). Autorizar con el Director de Operaciones las entregas a externos (E2.43). Mantener los tipos de documento y sus patrones de clave. Revisar y difundir el boletín NEWS mensual. Publicar «Mi procedimiento» de cada puesto.</td></tr>
+                        <tr><td>Director de Operaciones</td><td>Aprobar este procedimiento, el MIID y los procedimientos de proceso que Dirección decida aprobar. Autorizar la entrega de documentos a personas o entidades externas.</td></tr>
+                        <tr><td>Dueño de proceso</td><td>Responder por los documentos de su proceso. Firmar como «Revisó» cada cambio documental de su proceso. Redactar o delegar la redacción de instructivos, controles operacionales y protocolos en Conocimiento y pedir su publicación. Implantar los documentos externos de su proceso en 10 días hábiles. Mantener al día el cuerpo de su procedimiento (objetivo, alcance, responsabilidades, actividades).</td></tr>
+                        <tr><td>Responsable de un documento (quien lo elabora)</td><td>Solicitar el alta, la modificación o la baja con la solicitud de cambio documental y el archivo propuesto, firmando como «Elaboró». Redactarlo de forma que refleje fielmente las actividades. Implantar el cambio aprobado en 15 días hábiles. Revisar los documentos relacionados con el cambio.</td></tr>
+                        <tr><td>Jefe de área y supervisor</td><td>Asegurar que su gente trabaja con la versión vigente de Odoo, que firma sus acuses de lectura y que los registros en papel se conservan legibles y ordenados. Verificar en piso la implantación de los cambios de su área.</td></tr>
+                        <tr><td>Todo el personal</td><td>Consultar los documentos en Odoo (SGI → Inicio → Documentos vigentes), no en copias impresas ni en el Dropbox. Firmar «Leído y entendido» de cada documento que le aplica dentro de 7 días hábiles. Registrar su trabajo en la pantalla de Odoo que corresponde, nunca en formatos que ya se migraron.</td></tr>
+                        <tr><td>Administrador SGI</td><td>Dar de alta o modificar los tipos de documento y sus patrones de clave (SGI → Administración → Configuración → Tipos de documento). No crea ni aprueba documentos.</td></tr>
+                    </tbody>
+                </table>
+                <p>Las firmas se registran en Odoo (Firma electrónica) con fecha y hora; ya no se firma en el documento original en papel.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_05_desarrollo_cap" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">50</field>
+            <field name="clause">4</field>
+            <field name="name">Desarrollo</field>
+            <field name="heading_level">1</field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_06_tipos" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">60</field>
+            <field name="clause">4.1</field>
+            <field name="name">Tipos de documento y claves</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">tipos_documento</field>
+            <field name="body" type="html">
+                <p>La clave la asigna Odoo según el tipo de documento y el proceso; los tipos y sus patrones viven como datos en SGI → Administración → Configuración → Tipos de documento, y agregar o cambiar un tipo no requiere programar. La NOM o el requisito de cliente va en el título, no en la clave. Los documentos que vienen del Dropbox conservan su clave anterior en «Del Dropbox a Odoo».</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_07_elaboracion" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">70</field>
+            <field name="clause">4.2</field>
+            <field name="name">Quién elabora qué y dónde</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <table class="table table-sm table-bordered">
+                <thead><tr><th>Documento</th><th>Quién lo elabora</th><th>Dónde</th><th>Cómo queda controlado</th></tr></thead>
+                <tbody>
+                <tr><td>Procedimiento de proceso (PR)</td><td>Dueño del proceso, con las propuestas de su gente</td><td>Datos del proceso en Odoo: objetivo, alcance, responsabilidades y actividades</td><td>Odoo genera el PDF; el Jefe de MAST y SGI publica la revisión. Si el cuerpo cambia fuera de una solicitud, el documento queda «Procedimiento vivo cambió: revisar»</td></tr>
+                <tr><td>Mi procedimiento (MP)</td><td>Odoo, a partir de los roles del puesto</td><td>SGI → Administración → Publicar Mi procedimiento</td><td>Cada publicación es una revisión con acuse de cada persona</td></tr>
+                <tr><td>Instructivo (IT), control operacional (CO), protocolo (PROT), reglamento (R)</td><td>Dueño del proceso o quien designe</td><td>Artículo en Conocimiento → SGI → proceso; mientras es borrador solo lo ven el dueño y el Jefe de MAST y SGI</td><td>«Pedir publicación» → el Jefe de MAST y SGI publica: el artículo se congela como revisión nueva, la anterior queda obsoleta, se piden los acuses y se re-apuntan las actividades</td></tr>
+                <tr><td>Formato (F)</td><td>El dueño define qué se registra; Sistemas lo construye como pantalla de Odoo</td><td>Odoo</td><td>El PDF del registro imprime la clave y la revisión del formato</td></tr>
+                <tr><td>DAT, método o anexo, descripción de puesto, anexo, archivo no migrado</td><td>Responsable del documento</td><td>Archivo PDF adjunto a la solicitud de cambio documental</td><td>Revisión publicada en Documentos al aprobarse</td></tr>
+                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>SGI → Sistema → Manual del SGI (MIID)</td><td>«Solicitar cambio del MIID» → firma de Dirección → revisión nueva</td></tr>
+                <tr><td>Documento externo</td><td>Lo emite el cliente, la autoridad, la norma o el proveedor</td><td>SGI → Sistema → Documentos → Documentos externos</td><td>Registro con emisor, revisión del emisor, fecha de recepción y proceso que lo aplica</td></tr>
+                </tbody></table>
+                <p>Lo que Odoo genera lleva el encabezado y el pie del SGI (logo, razón social, clave, revisión, emisión y página) en cada hoja. Los documentos que siguen como archivo conservan la plantilla de la revisión 11 del P-G01: encabezado con logo, razón social, nombre del documento, clave, fecha de emisión, área y revisión; Arial 12, 10 y 10; nombre de archivo con la clave y el título sin acentos; entrega en PDF. Queda prohibido trabajar con información que no esté publicada como vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en Excel ni en papel. Al entrar a un puesto, la persona firma el acuse de Mi procedimiento y, dentro de los 30 días naturales siguientes, revisa su procedimiento y propone lo que falte o sobre («Proponer actividad» o solicitud de cambio documental); el jefe directo lo verifica.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_08_aprobacion" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">80</field>
+            <field name="clause">4.3</field>
+            <field name="name">Aprobación, publicación y cambios</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <table class="table table-sm table-bordered">
+                <thead><tr><th>Documento</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead>
+                <tbody>
+                <tr><td>Manual (MIID)</td><td>Jefe de MAST y SGI</td><td>Dueño de E2</td><td>Director de Operaciones</td></tr>
+                <tr><td>Procedimiento de proceso</td><td>Dueño del proceso</td><td>—</td><td>Quien el proceso declare en «Aprueba» (por omisión el dueño); Vo.Bo. del Jefe de MAST y SGI</td></tr>
+                <tr><td>Instructivo, control operacional, protocolo, reglamento, DAT, formato, anexo</td><td>Quien solicita el cambio</td><td>Dueño del proceso</td><td>Jefe de MAST y SGI</td></tr>
+                <tr><td>Actividades y roles de un proceso</td><td>Quien propone</td><td>Jefe directo de quien propone</td><td>Dueño del proceso</td></tr>
+                </tbody></table>
+                <p><b>Solicitud de cambio documental.</b> Un alta, modificación o baja se pide en <b>SGI → Sistema → Documentos → Solicitudes de cambio</b> con el documento afectado, el tipo de cambio, qué se modifica, la revisión nueva, el motivo, los cambios, los procesos afectados, la prueba piloto si aplica y el archivo propuesto. Al enviarla, Odoo arma el PDF con una hoja de firmas y pide las firmas en orden en Firma electrónica (Elaboró → Revisó → Aprobó); la aprobación es la firma y rechazar se hace en Aprobaciones con motivo. Con la última firma Odoo publica la revisión nueva con fecha de emisión y próxima revisión, deja obsoleta la anterior con fecha y motivo, avisa a los puestos del proceso y deja pendiente el acuse de quienes deben leerlo; el PDF firmado queda como evidencia. Una baja deja el documento obsoleto; un alta agenda al Jefe de MAST y SGI crear el documento.</p>
+                <p><b>Cuándo se modifica.</b> Por cambio en las normas, decisión de la Dirección, solicitud del dueño del proceso (cambios, mejoras o anomalías), cambio en un requisito legal o de cliente, hallazgo de auditoría o NC, vencimiento de la revisión, documento externo nuevo o revisado, o aviso de que el MIID o un procedimiento vivo ya no coinciden con el sistema. El cambio de titular de un área no es motivo: el procedimiento es del proceso. Al modificar un documento se revisan los que se relacionan con el cambio y se actualizan en la misma solicitud o en otra ligada. El número de revisión y la fecha de emisión los pone Odoo. Las solicitudes se atienden conforme llegan; no hay calendario mensual ni suspensión por días de auditoría.</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_09_plazos" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">90</field>
+            <field name="clause">4.4</field>
+            <field name="name">Plazos</field>
+            <field name="heading_level">2</field>
+            <field name="live_block">plazos_documentales</field>
+            <field name="body" type="html">
+
+                <p>Los plazos de las rutinas son los criterios de terminado de las actividades de E2 (sección 5): responder cada solicitud en 5 días hábiles, publicar y retirar la anterior en 2, verificar la implantación en piso a los 15 y registrar e implantar los documentos externos en 10. Los plazos que aplica el sistema solo, con sus avisos, son estos:</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_10_difusion" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">100</field>
+            <field name="clause">4.5</field>
+            <field name="name">Difusión, distribución y copias</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <ul>
+                <li><b>Acuse de lectura.</b> Al publicar, Odoo crea el acuse de cada persona de los puestos a los que aplica el documento; cada persona firma «Leído y entendido» en Mis pendientes, en Documentos vigentes o en la tableta de su área con su PIN. Es la evidencia individual de difusión.</li>
+                <li><b>NEWS Quimibond.</b> El primer día de cada mes, si en el mes anterior hubo cambios documentales aplicados, Odoo genera el boletín y agenda al Jefe de MAST y SGI su revisión y envío al personal administrativo en 7 días.</li>
+                <li><b>Reunión presencial.</b> Cuando el cambio lo amerite, el dueño del proceso lo explica en reunión con minuta y lista de asistencia, y cada asistente firma su acuse.</li>
+                <li><b>Distribución.</b> El personal consulta en <b>SGI → Inicio → Documentos vigentes</b> o en <b>Conocimiento → SGI</b>. No hay copias controladas ni listas de distribución; un documento impreso desde Odoo es copia no controlada y no demuestra cumplimiento.</li>
+                <li><b>Entrega a externos.</b> Un documento del SGI se entrega a personas o entidades externas solo con autorización del Director de Operaciones, marcado «COPIA NO CONTROLADA» y vigente únicamente al momento de su emisión; la autorización y la entrega se anotan en el historial del documento (quién lo pidió, quién autorizó, a quién y cuándo).</li>
+                </ul>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_11_resguardo" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">110</field>
+            <field name="clause">4.6</field>
+            <field name="name">Conservación, resguardo y seguridad de la información</field>
+            <field name="heading_level">2</field>
+            <field name="body" type="html">
+
+                <ul>
+                <li><b>Electrónico.</b> Toda la información documentada del SGI se controla y almacena en Odoo; Odoo.sh conserva respaldos diarios de la base y los archivos, de los que responde Sistemas.</li>
+                <li><b>Nada se borra.</b> Un documento que deja de usarse queda obsoleto con fecha y motivo y conserva su archivo e historial; un registro se archiva o se cancela con motivo; lo cerrado solo lo modifica el Jefe de MAST y SGI.</li>
+                <li><b>Retención y disposición final.</b> Cada documento o familia declara en su ficha los años de retención después de quedar obsoleto o cerrado y su disposición final (archivo muerto, destrucción controlada o devolución al cliente); los clientes automotrices pueden exigir «vida del programa más n años».</li>
+                <li><b>Registros físicos.</b> Se conservan bajo el control de jefes y supervisores, en lugar accesible, protegidos y en orden cronológico; al terminar su plazo pasan al archivo muerto que resguarda MAST y SGI (paso anual de E2.03). Al publicar una revisión nueva, las copias impresas de la anterior se retiran y se destruyen.</li>
+                <li><b>Historia.</b> Los documentos y registros anteriores a Odoo quedaron en el Dropbox, de solo lectura; el PDF de cada procedimiento anterior se abre desde «Del Dropbox a Odoo».</li>
+                <li><b>Seguridad de la información.</b> Los datos personales y económicos que se recaban (nombre, ocupación, domicilio, RFC, CURP, identificación, teléfonos, correo, información económica) se tratan con confidencialidad, se almacenan en Odoo con acceso restringido por grupo de usuario (los de salud y de salarios con acceso restringido) y se eliminan al concluir la relación jurídica o comercial y los plazos legales de resguardo. La información que genera PNTQ es propiedad de PNTQ; la que contiene cantidades monetarias y la comercial sensible se mantiene confidencial.</li>
+                </ul>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_12_rutinas" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">120</field>
+            <field name="clause">5</field>
+            <field name="name">Rutinas: actividades del proceso E2</field>
+            <field name="heading_level">1</field>
+            <field name="live_block">actividades</field>
+            <field name="body" type="html">
+                <p>Las rutinas de este procedimiento son actividades del proceso E2 Gestión del SGI ligadas a este documento («Procedimiento relacionado»): cada una con quién la ejecuta y la aprueba, cuándo se hace, su criterio de terminado y su medición en Odoo. Las 16 rutinas de la revisión 11 quedaron cubiertas por estas actividades o las hace Odoo (SGI → Sistema → Del Dropbox a Odoo → Rutina por rutina).</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_13_normativo" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">130</field>
+            <field name="clause">6</field>
+            <field name="name">Marco normativo</field>
+            <field name="heading_level">1</field>
+            <field name="live_block">normas</field>
+            <field name="body" type="html">
+                <p>ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018, cláusula 7.5 (información documentada: generalidades, creación y actualización, control), y los requisitos específicos de clientes cargados en Odoo. Las normas y cláusulas vigentes en el sistema son estas:</p>
+                <p>[[datos]]</p>
+            </field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_14_historial" model="sgi.miid.section">
+            <field name="kind">pg01</field>
+            <field name="sequence">140</field>
+            <field name="clause">7</field>
+            <field name="name">Control de cambios</field>
+            <field name="heading_level">1</field>
+            <field name="live_block">historial</field>
+            <field name="body" type="html">
+                <p>Revisiones de este procedimiento: las del Dropbox (hasta la 11) y las generadas desde Odoo.</p>
+                <p>[[datos]]</p>
+            </field>
         </record>
 
         <!-- 7.2: la columna «Situación en la revisión 03» de cada anexo (fija, por confirmar). -->

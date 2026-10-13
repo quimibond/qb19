@@ -6,9 +6,9 @@
 
 Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por clave) y cada paso corre en su savepoint.
 
-Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_daily_pending.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
-## Métodos públicos (25)
+## Métodos públicos (26)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -16,6 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/model
 | `cron_calibrations` | 56.38.0 (G-006): solo avisa, no bloquea, hasta que se carguen las fechas reales (decisión 2 de la tanda 2). El bloqueo «No usar» del equipo vencido queda detrás del parámetro ``quimibond_sgi.calibrat… |
 | `cron_competences` | Cron diario: competencias con vigencia (certificaciones y, desde 57.100.0, cualquier competencia con «válida hasta», N-13/P9) por vencer (30 días) o vencidas, al empleado y a RH; los satélites y exte… |
 | `cron_context_review` | Cron semanal: partes interesadas (4.1/4.2) con revisión vencida. Idempotente por resumen. |
+| `cron_daily_pending_mail` | Cron diario: a cada persona con algo atrasado o por vencer en Mis pendientes, un correo con esa lista. Un envío que falla no detiene a los demás. Devuelve los ids de usuario a los que se mandó. |
 | `cron_dnc` | Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las brechas de competencia abiertas y agenda al coordinador de RH la distribución de la encuesta DNC (F-P-A01-17) y el plan de capacitación.… |
 | `cron_documents` | Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses pendientes (57.95.0: un aviso por persona o por jefe, no por acuse). |
 | `cron_emergency_drills` | Cron diario: vigila los simulacros de los planes de emergencia vigentes (14001/45001 8.2). Idempotente por resumen. |

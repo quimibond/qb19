@@ -20,7 +20,7 @@
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (389 renglones del CSV)
+## Permisos por modelo (391 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -186,6 +186,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.direction.board` | `group_sgi_auditor` | lecb | quimibond_sgi |
 | `sgi.direction.board` | `group_sgi_director` | lecb | quimibond_sgi |
 | `sgi.direction.board` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.doc.review` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.document.ack` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.document.ack` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.document.ack` | `group_sgi_user` | lec | quimibond_sgi |
@@ -335,6 +336,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.nc.cancel` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.nc.force.close` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.nc.force.close` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.nc.step` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.norm` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.norm` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.norm` | `group_sgi_user` | l | quimibond_sgi |

@@ -28,6 +28,11 @@
                         <button name="action_sgi_open_in_documents" type="object"
                                 class="oe_stat_button" icon="fa-folder-open-o"
                                 string="Abrir en Documentos"/>
+                        <!-- 57.150.0 (auditoría UX, fase 3). -->
+                        <button name="action_sgi_open_controlled_risks" type="object" class="oe_stat_button"
+                                icon="fa-bolt" invisible="sgi_controlled_risk_count == 0">
+                            <field name="sgi_controlled_risk_count" widget="statinfo" string="Riesgos que controla"/>
+                        </button>
                     </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="not sgi_procedure_dirty">
@@ -315,7 +320,7 @@
     </record>
 
     <record id="sgi_document_action" model="ir.actions.act_window">
-        <field name="name">Documentos</field>
+        <field name="name">Documentos controlados</field>
         <field name="res_model">documents.document</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="domain">[('sgi_is_controlled','=',True)]</field>
@@ -426,6 +431,9 @@
         <field name="name">Resolver menú de Odoo (SGI)</field>
         <field name="model_id" ref="documents.model_documents_document"/>
         <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <!-- 57.150.0 (auditoría UX, fase 3): solo el Jefe MAST la ve en «Acción»
+             (antes salía a todo el que abre Documentos). -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_manager')])]"/>
         <field name="binding_view_types">list</field>
         <field name="state">code</field>
         <field name="code">action = records.action_sgi_resolve_odoo_menu()</field>
@@ -438,6 +446,9 @@
         <field name="name">Asignar clave nueva (SGI)</field>
         <field name="model_id" ref="documents.model_documents_document"/>
         <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <!-- 57.150.0 (auditoría UX, fase 3): solo el Jefe MAST la ve en «Acción»
+             (antes salía a todo el que abre Documentos). -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_manager')])]"/>
         <field name="binding_view_types">list,form</field>
         <field name="state">code</field>
         <field name="code">action = records.action_sgi_assign_new_code()</field>

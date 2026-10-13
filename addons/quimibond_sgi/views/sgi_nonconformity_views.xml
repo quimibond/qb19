@@ -28,6 +28,31 @@
                  texto libre «Acciones correctivas» y «Acciones preventivas» se
                  ocultan en una NC con folio (sus acciones son las del SGI), salvo
                  que ya traigan texto. -->
+            <!-- 57.150.0 (auditoría UX, fase 3): de la NC a su hallazgo, su
+                 auditoría y el indicador que la levantó. -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_findings" type="object" class="oe_stat_button"
+                        icon="fa-search" invisible="sgi_finding_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
+                    <field name="sgi_finding_count" widget="statinfo" string="Hallazgo"/>
+                </button>
+                <button name="action_sgi_open_audit" type="object" class="oe_stat_button"
+                        icon="fa-clipboard" invisible="not sgi_audit_id"
+                        groups="quimibond_sgi.group_sgi_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Auditoría</span>
+                        <span class="o_stat_value"><field name="sgi_audit_id" readonly="1"/></span>
+                    </div>
+                </button>
+                <button name="action_sgi_open_indicator" type="object" class="oe_stat_button"
+                        icon="fa-tachometer" invisible="not sgi_indicator_id"
+                        groups="quimibond_sgi.group_sgi_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Indicador</span>
+                        <span class="o_stat_value"><field name="sgi_indicator_id" readonly="1"/></span>
+                    </div>
+                </button>
+            </xpath>
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-info mb-0" role="status"
                      invisible="not sgi_folio and not sgi_format_banner">

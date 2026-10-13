@@ -7,6 +7,7 @@ from datetime import date
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
+from .common_exec import sgi_exec_start_open
 from .common_documents import sgi_hide_real_documents
 
 
@@ -16,6 +17,7 @@ class TestRoleAudit(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_exec_start_open(cls.env)
         sgi_hide_real_documents(cls.env)
         cls.user = new_test_user(cls.env, login='rol_usuario_sgi',
                                  groups='base.group_user,quimibond_sgi.group_sgi_user')

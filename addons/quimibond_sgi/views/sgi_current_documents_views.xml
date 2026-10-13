@@ -13,6 +13,11 @@
         <field name="arch" type="xml">
             <list string="Documentos vigentes" create="0" edit="0" delete="0"
                   decoration-warning="sgi_my_ack_state == 'pendiente'">
+                <!-- 57.150.0: acuses en lote de los documentos seleccionados. -->
+                <header>
+                    <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido (seleccionados)"
+                            confirm="¿Confirma que leyó y entendió los documentos seleccionados? Sus acuses quedan registrados con la fecha de hoy."/>
+                </header>
                 <field name="sgi_code" string="Clave"/>
                 <field name="sgi_title" string="Documento"/>
                 <field name="sgi_doc_type_id" string="Tipo" optional="show"/>

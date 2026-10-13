@@ -22,7 +22,10 @@ para el periodo en curso.
 - Las actividades «Por evento» no tienen periodo: no llevan renglones.
 """
 import calendar
+import logging
 from datetime import date, timedelta
+
+from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -42,6 +45,28 @@ EXEC_OPEN = ('pendiente', 'en_proceso')
 EXEC_CLOSED = ('hecha', 'no_aplica')
 # Métodos sin fuente en Odoo: la persona registra que la hizo.
 EXEC_MANUAL_METHODS = ('manual', 'correo', 'muestreo')
+# 57.149.0: fecha de arranque del registro de cumplimiento. Un periodo que
+# venció antes no se crea, no escala ni pone la actividad en rojo (el
+# módulo se instaló el 05/10/2026 y generó periodos anuales vencidos en
+# marzo). Se edita en Ajustes del SGI.
+EXEC_START_PARAM = 'quimibond_sgi.exec_start_date'
+EXEC_START_DEFAULT = '2026-10-05'
+EXEC_PRESTART_REASON = "Periodo vencido antes de la implementación del SGI"
+
+_logger = logging.getLogger(__name__)
+
+
+def sgi_exec_start_date(env):
+    """Fecha de arranque del registro de cumplimiento (parámetro
+    ``quimibond_sgi.exec_start_date``, AAAA-MM-DD). Vacío o mal escrito vale
+    la de omisión."""
+    raw = (env['ir.config_parameter'].sudo().get_param(EXEC_START_PARAM) or '').strip()
+    try:
+        return fields.Date.to_date(raw or EXEC_START_DEFAULT)
+    except ValueError:
+        _logger.warning("SGI: %s=%r no es una fecha AAAA-MM-DD; se usa %s.", EXEC_START_PARAM, raw,
+                        EXEC_START_DEFAULT)
+        return fields.Date.to_date(EXEC_START_DEFAULT)
 
 
 class SgiActivityExecution(models.Model):
@@ -110,7 +135,8 @@ class SgiActivityExecution(models.Model):
         string="Tiene pantalla relacionada", compute='_compute_needs_evidence')
     can_mark = fields.Boolean(
         string="Puede marcarla", compute='_compute_can_mark',
-        help="La persona, su jefe o el Jefe MAST.")
+        help="La persona, cualquiera de sus jefes, quien tiene el rol «Escala» de la actividad, el "
+             "Jefe MAST, el Administrador SGI o Dirección de Operaciones.")
 
     _activity_employee_period_uniq = models.Constraint(
         'unique(activity_id, employee_id, period_start)',
@@ -176,49 +202,85 @@ class SgiActivityExecution(models.Model):
     # ------------------------------------------------------------------
     # Quién marca
     # ------------------------------------------------------------------
+    # Grupos que marcan el avance de cualquiera (57.149.0: Dirección de
+    # Operaciones y Administrador SGI se suman al Jefe MAST).
+    _SGI_MARK_GROUPS = ('quimibond_sgi.group_sgi_manager', 'quimibond_sgi.group_sgi_admin',
+                        'quimibond_sgi.group_sgi_director')
+    _SGI_MARK_DENIED = ("Solo la persona responsable, su jefe, quien tiene el rol «Escala» de la actividad, "
+                        "el Jefe MAST, el Administrador SGI o Dirección de Operaciones pueden marcar el "
+                        "avance de «%s».")
+
     @api.model
-    def _sgi_user_can_mark(self, employee):
-        """Quien abre la pantalla puede marcar el avance de ``employee``: la
-        propia persona, cualquiera de sus jefes (cadena de «Jefe» en
-        Empleados) o el Jefe MAST. 57.145.0: también lo usa Mis pendientes
-        para la actividad atrasada que todavía no tiene renglón del periodo."""
-        env = self.env
-        if env.su or env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            return True
-        emp = employee.sudo() if employee else employee
-        if not emp:
+    def _sgi_user_escalates(self, activity):
+        """El usuario actual recibe el escalamiento de ``activity``: su puesto
+        (o su familia) tiene el rol «Escala», o le toca un «Escala» relativo
+        («Dueño del proceso»). Los mismos roles que le llegan en Mis
+        pendientes."""
+        activity = activity.sudo() if activity else activity
+        if not activity:
             return False
-        if emp.user_id and emp.user_id == env.user:
-            return True
-        boss, seen = emp.parent_id, set()
-        while boss and boss.id not in seen:
-            if boss.user_id == env.user:
+        escala = activity.role_ids.filtered(lambda r: r.role == 'escala')
+        if not escala:
+            return False
+        company = self.env['sgi.config']._sgi_company()
+        employees = self.env['hr.employee'].sudo().search(
+            [('user_id', '=', self.env.uid), ('company_id', 'in', (company.id, False))])
+        if not employees:
+            return False
+        relative = self.env['sgi.activity.role'].sudo()._sgi_relative_escalations(employees)
+        for emp in employees:
+            received = emp.sgi_mp_received_role_ids | relative.get(emp.id, self.env['sgi.activity.role'])
+            if received & escala:
                 return True
-            seen.add(boss.id)
-            boss = boss.parent_id
         return False
 
+    @api.model
+    def _sgi_user_can_mark(self, employee, activity=None):
+        """Quien abre la pantalla puede marcar el avance de ``employee``: la
+        propia persona, cualquiera de sus jefes (cadena de «Jefe» en
+        Empleados), el Jefe MAST, el Administrador SGI, Dirección de
+        Operaciones y, con ``activity``, quien tiene su rol «Escala»
+        (57.149.0). 57.145.0: también lo usa Mis pendientes para la actividad
+        atrasada que todavía no tiene renglón del periodo."""
+        env = self.env
+        if env.su or any(env.user.has_group(group) for group in self._SGI_MARK_GROUPS):
+            return True
+        emp = employee.sudo() if employee else employee
+        if emp:
+            if emp.user_id and emp.user_id == env.user:
+                return True
+            boss, seen = emp.parent_id, set()
+            while boss and boss.id not in seen:
+                if boss.user_id == env.user:
+                    return True
+                seen.add(boss.id)
+                boss = boss.parent_id
+        return bool(activity) and self._sgi_user_escalates(activity)
+
     def _sgi_can_mark(self):
-        """La persona del renglón, cualquiera de sus jefes (cadena de «Jefe»
-        en Empleados) o el Jefe MAST."""
+        """La persona del renglón, sus jefes, quien escala la actividad, el
+        Jefe MAST, el Administrador SGI o Dirección."""
         self.ensure_one()
-        return self._sgi_user_can_mark(self.sudo().employee_id)
+        rec = self.sudo()
+        return self._sgi_user_can_mark(rec.employee_id, rec.activity_id)
 
     def _sgi_check_can_mark(self):
         for rec in self:
             if not rec._sgi_can_mark():
-                raise AccessError("Solo la persona responsable, su jefe o el Jefe MAST pueden "
-                                  "marcar el avance de «%s»." % rec.sudo().name)
+                raise AccessError(self._SGI_MARK_DENIED % rec.sudo().name)
 
     # ------------------------------------------------------------------
     # Cambios de estado (siempre por aquí: los campos son de solo lectura)
     # ------------------------------------------------------------------
     def _sgi_after_change(self):
-        """La medición de la actividad cambia en el momento, no hasta la noche."""
+        """La medición de la actividad y Mis pendientes cambian en el
+        momento, no hasta la noche (57.149.0: todas las actividades tocadas, y
+        los renglones de todos los usuarios: la persona, sus jefes y quien
+        recibe el escalamiento)."""
         activities = self.sudo().activity_id
-        manual = activities.filtered(lambda a: a.measure_method in EXEC_MANUAL_METHODS)
-        if manual:
-            manual._sgi_measure()
+        if activities:
+            activities._sgi_measure()
+        self.env['sgi.my.pending']._sgi_sync_executions(self)
 
     def _sgi_mark_progress(self, note, date_estimated=False):
         self._sgi_check_can_mark()
@@ -295,16 +357,32 @@ class SgiActivityExecution(models.Model):
     # Botones de la ficha
     # ------------------------------------------------------------------
     def _sgi_mark_wizard(self, mode):
-        self.ensure_one()
+        """El asistente de avance. «No aplica» acepta varios renglones a la
+        vez (57.149.0: acción masiva con un motivo común); «En proceso» y
+        «Hecha» son de uno (la evidencia es de cada periodo)."""
+        if not self:
+            raise UserError("Seleccione al menos un renglón.")
+        if len(self) > 1 and mode != 'na':
+            raise UserError("«%s» se marca de uno en uno; varios a la vez solo «No aplica este periodo»." % (
+                "En proceso" if mode == 'progress' else "Hecha"))
         self._sgi_check_can_mark()
+        if mode == 'na':
+            closed = self.sudo().filtered(lambda r: r.state in EXEC_CLOSED)
+            if closed:
+                raise UserError("Ya están cerrados: %s." % ", ".join(closed.mapped('name')))
         titles = {'progress': "En proceso", 'done': "Hecha", 'na': "No aplica este periodo"}
+        context = {'default_mode': mode}
+        if len(self) == 1:
+            context['default_execution_id'] = self.id
+        else:
+            context['default_execution_ids'] = [(6, 0, self.ids)]
         return {
             'type': 'ir.actions.act_window', 'name': titles[mode],
             'res_model': 'sgi.activity.execution.mark', 'view_mode': 'form',
             'views': [(self.env.ref('quimibond_sgi.sgi_activity_execution_mark_view_form').id,
                        'form')],
             'target': 'new',
-            'context': {'default_execution_id': self.id, 'default_mode': mode},
+            'context': context,
         }
 
     def action_mark_progress(self):
@@ -319,6 +397,38 @@ class SgiActivityExecution(models.Model):
     def action_reopen(self):
         self._sgi_reopen()
         return True
+
+    @api.model
+    def _sgi_close_prestart(self):
+        """57.149.0: saneamiento. Pone «No aplica este periodo» en los
+        renglones «Pendiente» sin nota de avance que vencieron antes de la
+        fecha de arranque, con el motivo de siempre y una nota en su
+        historial. Solo el Jefe MAST (o el sistema). Idempotente: lo cerrado
+        ya no es «Pendiente». Devuelve los renglones cerrados."""
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise AccessError("Solo el Jefe MAST cierra los periodos anteriores al arranque.")
+        start = sgi_exec_start_date(self.env)
+        rows = self.sudo().search([('state', '=', 'pendiente'), ('date_due', '<', start),
+                                   ('progress_note', '=', False)])
+        now = fields.Datetime.now()
+        for rec in rows:
+            rec.write({'state': 'no_aplica', 'na_reason': EXEC_PRESTART_REASON,
+                       'done_by_id': self.env.uid, 'date_done': now})
+            rec.message_post(body=Markup(
+                "No aplica este periodo: %s (venció el %s; el registro de cumplimiento arranca el %s).")
+                % (EXEC_PRESTART_REASON, rec.date_due.strftime('%d/%m/%Y'), start.strftime('%d/%m/%Y')))
+        if rows:
+            rows._sgi_after_change()
+        _logger.info("SGI: %d periodo(s) anteriores al arranque (%s) cerrados como «No aplica».",
+                     len(rows), start)
+        return rows
+
+    def action_close_prestart(self):
+        """Botón de la lista «No aplica: anteriores al arranque»."""
+        rows = self.env['sgi.activity.execution']._sgi_close_prestart()
+        return self.env['sgi.my.pending']._sgi_feedback(
+            "%d periodo(s) anteriores al arranque quedaron «No aplica»." % len(rows) if rows
+            else "No hay periodos pendientes anteriores al arranque.")
 
     def action_open_related_screen(self):
         """«Abrir pantalla relacionada»: el menú o la acción de Odoo de la
@@ -365,8 +475,12 @@ class SgiActivityExecution(models.Model):
                     wanted[(activity.id, emp.id)] = period
         existing = self.sudo().search([('period_end', '>=', today)])
         have = {(r.activity_id.id, r.employee_id.id, r.period_start): r for r in existing}
+        # 57.149.0: nada que venciera antes del arranque del registro.
+        exec_start = sgi_exec_start_date(env)
         vals_list = []
         for (activity_id, emp_id), (start, end, due) in wanted.items():
+            if due < exec_start:
+                continue
             if (activity_id, emp_id, start) not in have:
                 vals_list.append({'activity_id': activity_id, 'employee_id': emp_id,
                                   'period_start': start, 'period_end': end, 'date_due': due})
@@ -427,7 +541,11 @@ class SgiActivityExecutionMark(models.TransientModel):
     _description = "Marcar avance de una actividad"
 
     execution_id = fields.Many2one('sgi.activity.execution', string="Actividad del periodo",
-                                   required=True, ondelete='cascade')
+                                   ondelete='cascade')
+    # 57.149.0: «No aplica» a varios renglones con un motivo común.
+    execution_ids = fields.Many2many('sgi.activity.execution', 'sgi_activity_execution_mark_exec_rel',
+                                     'wizard_id', 'execution_id', string="Periodos")
+    execution_count = fields.Integer(string="Renglones", compute='_compute_execution_count')
     mode = fields.Selection([
         ('progress', "En proceso"),
         ('done', "Hecha"),
@@ -447,24 +565,41 @@ class SgiActivityExecutionMark(models.TransientModel):
         'ir.attachment', 'sgi_activity_execution_mark_attachment_rel', 'wizard_id',
         'attachment_id', string="Archivos de evidencia")
 
+    @api.depends('execution_id', 'execution_ids')
+    def _compute_execution_count(self):
+        for wiz in self:
+            wiz.execution_count = len(wiz._sgi_targets())
+
+    def _sgi_targets(self):
+        self.ensure_one()
+        return self.execution_ids | self.execution_id
+
     def action_confirm(self):
         self.ensure_one()
-        execution = self.execution_id
+        executions = self._sgi_targets()
+        if not executions:
+            raise UserError("No hay periodo que marcar.")
+        if len(executions) > 1 and self.mode != 'na':
+            raise UserError("Varios a la vez solo «No aplica este periodo».")
         if self.mode == 'progress':
-            execution._sgi_mark_progress(self.progress_note, self.date_estimated)
+            executions._sgi_mark_progress(self.progress_note, self.date_estimated)
         elif self.mode == 'done':
-            execution._sgi_mark_done(self.evidence_note, self.attachment_ids)
+            executions._sgi_mark_done(self.evidence_note, self.attachment_ids)
         else:
-            execution._sgi_mark_not_applicable(self.na_reason)
+            executions._sgi_mark_not_applicable(self.na_reason)
         # Desde Mis pendientes: el renglón se pone al día o se quita
         # (57.145.0: renglones guardados; la lista se recarga con el cierre
-        # estándar que trae la notificación, sin soft_reload).
+        # estándar que trae la notificación, sin soft_reload). 57.149.0: los
+        # de los demás usuarios (jefes, escalamiento) ya los puso al día
+        # _sgi_after_change; el del botón, si quedó, también.
         Pending = self.env['sgi.my.pending']
         row_id = self.env.context.get('sgi_pending_row_id')
         row = Pending.sudo().browse(row_id).exists() if row_id else False
-        if row:
-            row._sgi_sync_execution(execution)
-        name = execution.sudo().name or ''
+        if row and row.res_model == 'sgi.activity.execution' and row.res_id in executions.ids:
+            row._sgi_sync_execution(executions.filtered(lambda e: e.id == row.res_id))
+        if len(executions) > 1:
+            return Pending._sgi_feedback("No aplica este periodo: %d renglones." % len(executions))
+        name = executions.sudo().name or ''
         message = {
             'progress': "Avance guardado: %s" % name,
             'done': "Hecha: %s" % name,
@@ -586,9 +721,12 @@ class SgiActivityExecutionSpec(models.Model):
         Exec = self.env['sgi.activity.execution'].sudo()
         now = fields.Datetime.now()
         start_window = self._sgi_exec_window_start()
+        # 57.149.0: los periodos que vencieron antes del arranque no cuentan
+        # (ni rojo ni verde): la actividad se juzga desde el arranque.
+        exec_start = sgi_exec_start_date(self.env)
         for activity in self:
             activity._sgi_replace_exec_stats(start_window, [])
-            rows = Exec.search([('activity_id', '=', activity.id)])
+            rows = Exec.search([('activity_id', '=', activity.id), ('date_due', '>=', exec_start)])
             period = activity._sgi_exec_period(today)
             if period is None:
                 # Diaria en día inhábil: el último periodo que ya empezó.

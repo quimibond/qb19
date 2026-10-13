@@ -8,9 +8,9 @@ Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, in
 
 Orden: `process_type, code`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_cleanup.py`, `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_export.py`, `addons/quimibond_sgi/models/sgi_hierarchy.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_sheet.py`, `addons/quimibond_sgi/models/sgi_load.py`, `addons/quimibond_sgi/models/sgi_multicompany.py`, `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimibond_sgi/models/sgi_structure.py`, `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_cleanup.py`, `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_export.py`, `addons/quimibond_sgi/models/sgi_hierarchy.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_sheet.py`, `addons/quimibond_sgi/models/sgi_load.py`, `addons/quimibond_sgi/models/sgi_multicompany.py`, `addons/quimibond_sgi/models/sgi_nav_links.py`, `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimibond_sgi/models/sgi_structure.py`, `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py`.
 
-## Campos (78)
+## Campos (81)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -21,6 +21,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `activity_no_method_count` | Integer | Sin método |  |  |  | compute `_compute_activity_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:91` |
 | `activity_red_count` | Integer | En rojo |  |  |  | compute `_compute_activity_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:86` |
 | `activity_team_ids` | Many2many | Equipos de sus actividades | Equipos de venta que aparecen en las actividades del proceso. |  | `crm.team` | compute `_compute_activity_team_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:127` |
+| `audit_count` | Integer | # Auditorías |  |  |  | compute `_compute_sgi_link_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:81` |
 | `chain_link_count` | Integer | Ligas de la cadena | Entregas entre actividades que tocan este proceso (entran o salen). |  |  | compute `_compute_chain_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:133` |
 | `chain_link_ids` | Many2many | Ligas entre actividades |  |  | `sgi.activity.link` | compute `_compute_chain_link_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:105` |
 | `chain_stuck_count` | Integer | Eslabones atorados | Ligas de este proceso donde el paso origen entregó pero el destino no tiene evidencia en su periodo. |  |  | compute `_compute_chain_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:182` |
@@ -37,6 +38,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `document_count` | Integer | # Documentos |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:120` |
 | `end_trigger` | Text | Termina cuando | Qué marca el fin del proceso (ej. la factura queda cobrada). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:59` |
 | `env_aspects` | Text | Descripción de aspectos ambientales | Aspectos ambientales del proceso (sección 5 del procedimiento). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:46` |
+| `execution_late_count` | Integer | Periodos atrasados | Periodos del registro de cumplimiento de las actividades del proceso que vencieron sin hacerse (desde el arranque del registro). |  |  | compute `_compute_sgi_link_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:83` |
+| `finding_count` | Integer | # Hallazgos |  |  |  | compute `_compute_sgi_link_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:82` |
 | `flow_count` | Integer | # Conexiones | Entregables que recibe de otros procesos más los que entrega. |  |  | compute `_compute_flow_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:123` |
 | `health` | Selection | Salud del proceso | Verde sin nada abierto; amarillo con algo abierto; rojo con un riesgo de atención máxima o con NC abierta e indicador en rojo a la vez. Se calcula al mostrarlo. |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:113` |
 | `in_flow_ids` | One2many | Flujos de entrada |  |  | `sgi.process.flow` |  |  | `addons/quimibond_sgi/models/sgi_process.py:91` |
@@ -93,7 +96,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `state` | Selection | Estado | Borrador y piloto se pueden cargar incompletos (los faltantes se ven). Vigente exige la especificación completa de actividades e indicadores. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:872` |
 | `structure_status` | Char | Estado del proceso | Una línea: dueño, estado, semáforo, actividades atrasadas, KPIs en rojo y NC abiertas. |  |  | compute `_compute_structure_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_structure.py:24` |
 
-## Métodos públicos (24)
+## Métodos públicos (27)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -106,6 +109,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `action_open_red_kpis` | — |
 | `action_open_risks` | — |
 | `action_sgi_open_article` | «Artículo en Conocimiento». |
+| `action_sgi_open_audits` | — |
+| `action_sgi_open_findings` | — |
+| `action_sgi_open_late_executions` | — |
 | `action_sgi_publish` | Publicar (vigente) exige la especificación completa. |
 | `action_sgi_register_finding` | «Registrar hallazgo» (auditor, nivel 2): una NC nueva ya ligada al proceso. Los permisos sobre quality.alert son los de la app Calidad. |
 | `action_sgi_request_change` | «Proponer cambio»: abre una solicitud de cambio documental (F-P-G01-06) ya apuntando al procedimiento vigente del proceso. La aprueba MAST y edita la actividad; ficha, Mi procedimiento y PDF se regen… |

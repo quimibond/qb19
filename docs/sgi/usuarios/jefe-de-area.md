@@ -18,6 +18,10 @@ Lo mismo que cualquier Usuario SGI, más:
 | **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
 | **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
 | **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
+| **SGI → Sistema → Documentos** y **SGI → Desempeño → Indicadores** | Desde 57.150.0, como dueño de proceso: documentos controlados, lista maestra y documentos externos; todos los indicadores, mediciones y revisiones de medición |
+
+En la ficha de su proceso, los botones **Auditorías**, **Hallazgos** y
+**Periodos atrasados** (desde 57.150.0) abren lo que le toca de cada uno.
 
 En las listas, el filtro **Míos** muestra lo suyo (acciones, NC, mediciones,
 actividades, procesos, permisos…) y, en AMEF y riesgos, **De mis procesos**
@@ -53,9 +57,18 @@ muestra los de los procesos de los que usted es dueño.
 
 Cuando una actividad de su gente se atrasa, le escala a usted.
 
-1. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
+1. En **Mis pendientes**, cada **Escalamiento** es un periodo atrasado de
+   una persona (el renglón dice de quién y desde cuándo). **Ir** abre ese
+   periodo; ahí, o desde el renglón, puede marcarlo **Hecho** con evidencia o
+   **No aplica este periodo** con motivo. Al guardar desaparece de Mis
+   pendientes para usted, para la persona y para su jefe (desde 57.149.0).
+2. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
    actividades que le escalan; **Ver atrasados** abre las que ya vencieron.
-2. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
+3. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
+4. Marcan el avance de un periodo: la persona, cualquiera de sus jefes, quien
+   tiene el rol «Escala» de la actividad, el Jefe MAST, el Administrador SGI
+   y Dirección de Operaciones. Un periodo que venció antes del arranque del
+   registro de cumplimiento (05/10/2026) no escala.
 
 Como dueño de proceso también recibe los plazos vencidos de las NC de su
 proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
@@ -190,7 +203,7 @@ en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 
 ## 5.1 El Manual del SGI (MIID)
 
-**SGI → Sistema → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+**SGI → Sistema → Manual del SGI → Manual (MIID)**: «PDF de la revisión vigente» es
 el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
 es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
 estado o los flujos de su proceso, el Jefe MAST recibe el aviso para

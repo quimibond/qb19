@@ -107,14 +107,31 @@ class _Case(TransactionCase):
 class TestMiidSecciones(_Case):
 
     def test_01_semilla_del_borrador_noupdate(self):
+        """La siembra (noupdate) está completa y activa. Se cuenta lo que
+        declara el archivo, no ir.model.data: en la copia de producción siguen
+        los xmlids de las secciones archivadas (noupdate no se borra)."""
+        from lxml import etree
+        from odoo.tools.misc import file_open
+        with file_open('quimibond_sgi/data/sgi_miid_sections.xml', 'rb') as fh:
+            tree = etree.parse(fh)
+        by_kind = {}
+        for record in tree.xpath('//record[@model="sgi.miid.section"]'):
+            kind = record.find("field[@name='kind']")
+            by_kind.setdefault(kind.text if kind is not None else 'miid', []).append(record.get('id'))
+        self.assertEqual(len(by_kind['miid']), 24, "57.148.0: el capítulo 6 del MIID queda en 6 y 6.1.")
+        self.assertEqual(len(by_kind['pg01']), 14, "57.148.0: el P-G01, en el orden de la revisión 11.")
         Data = self.env['ir.model.data'].sudo()
-        rows = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'sgi.miid.section')])
-        self.assertEqual(len(rows), 29, "57.146.0: texto fijo mínimo y 14 bloques vivos; las 27 "
-                                        "secciones narrativas se archivan por migración.")
-        self.assertTrue(all(rows.mapped('noupdate')), "Lo que escriba el Jefe MAST no se pisa.")
-        notes = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'sgi.miid.row.note')])
+        for kind, xmlids in by_kind.items():
+            for xmlid in xmlids:
+                section = self.env.ref('quimibond_sgi.' + xmlid)
+                self.assertEqual(section.kind, kind, xmlid)
+                self.assertTrue(section.active, xmlid)
+                self.assertTrue(Data.search([('module', '=', 'quimibond_sgi'), ('name', '=', xmlid)]).noupdate,
+                                "Lo que escriba el Jefe MAST no se pisa.")
+        notes = tree.xpath('//record[@model="sgi.miid.row.note"]')
         self.assertEqual(len(notes), 15, "La columna «Situación» de los 15 anexos.")
-        self.assertTrue(all(notes.mapped('noupdate')))
+        self.assertTrue(all(Data.search([('module', '=', 'quimibond_sgi'), ('name', '=', n.get('id'))]).noupdate
+                            for n in notes))
 
     def test_02_acl_lee_todos_edita_mast_nadie_borra(self):
         section = self.s_proc.with_user(self.user)
@@ -201,9 +218,8 @@ class TestMiidDatos(_Case):
                 'quimibond_sgi.nc_effectiveness_days', '91')),
             ('tipo', lambda: self.env['sgi.document.type'].create(
                 {'code': 'zm_tipo', 'name': 'Tipo ZM', 'prefix_pattern': 'ZM-{seq:02d}'})),
-            # 57.146.0: plazos documentales, roles y actividades por cláusula.
-            ('plazo documental', lambda: self.env['ir.config_parameter'].sudo().set_param(
-                'quimibond_sgi.doc_ack_pending_days', '8')),
+            # 57.146.0: roles y actividades por cláusula (los plazos
+            # documentales son del P-G01 desde 57.148.0: TestPg01Generado).
             ('actividad', lambda: holder.update(activity=self.env['sgi.process.activity'].create(
                 {'process_id': self.p1.id, 'number': 'ZM1.01', 'name': 'Actividad ZM'}))),
             ('rol', lambda: self.env['sgi.activity.role'].create(
@@ -383,8 +399,10 @@ class TestMiidPantalla(_Case):
         self.assertIn('Procesos ZM', screen.live_html)
         self.assertEqual(screen.state, 'sin_base')
         menu = self.env.ref('quimibond_sgi.menu_sgi_miid')
-        # 57.113.0: en Sistema (antes Dirección), el manual del sistema.
-        self.assertEqual(menu.parent_id, self.env.ref('quimibond_sgi.menu_sgi_processes'))
+        # 57.113.0: en Sistema (antes Dirección), el manual del sistema;
+        # 57.148.0: en la carpeta «Manual del SGI» de Sistema.
+        self.assertEqual(menu.parent_id, self.env.ref('quimibond_sgi.menu_sgi_manual'))
+        self.assertEqual(menu.parent_id.parent_id, self.env.ref('quimibond_sgi.menu_sgi_processes'))
         self.assertFalse(menu.group_ids, "Todo Usuario SGI y Auditor (hereda la carpeta).")
 
 
@@ -593,7 +611,7 @@ class TestMiidGenerado(_Case):
         self.assertIn("Cambió el número de actividades de ZM1: 0 → 1", text)
         self.assertIn("Cambiaron los puestos que ejecutan, aprueban o escalan en ZM1", text)
         self.assertIn("Cambiaron las actividades que cumplen ZMD 7.5", text)
-        self.assertIn("Cambiaron los plazos documentales: prueba piloto de un documento 60 → 45", text)
+        self.assertNotIn("plazos documentales", text, "57.148.0: los plazos documentales son del P-G01.")
 
     def test_26_migracion_reacomoda_archiva_y_respeta_lo_editado(self):
         import importlib.util
@@ -645,3 +663,123 @@ class TestMiidGenerado(_Case):
                          "Reacomodar no es editar.")
         self.assertFalse(self.env['sgi.miid']._sgi_get(referencias.company_id)._sgi_print_data()['orphans'],
                          "Después de la migración ningún bloque queda sin sección.")
+
+
+@tagged('post_install', '-at_install')
+class TestPg01Generado(_Case):
+    """57.148.0: el P-G01 «Elaboración y control de información documentada»
+    es un documento controlado propio generado con el mismo motor que el
+    Manual (kind = pg01): sus secciones, sus bloques, su huella (solo lo que
+    imprime), su proceso como candado y su solicitud de cambio."""
+
+    def _pg01_doc(self):
+        return self.env['documents.document'].create({
+            'name': 'P-G01 ZM.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-G01', 'sgi_revision': 11,
+            'sgi_legacy_family': 'P-G01', 'sgi_previous_code': 'P-G01',
+            'sgi_state': 'vigente', 'company_id': self.company.id, 'sgi_process_id': self.p1.id})
+
+    def test_30_uno_por_empresa_y_documento(self):
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        self.assertNotEqual(pg01, self.miid)
+        self.assertEqual(pg01, self.Miid._sgi_get(self.company, kind='pg01'), "No se duplica.")
+        self.assertEqual(self.Miid._sgi_get(self.company), self.miid, "Sin kind, el Manual.")
+        self.assertIn("P-G01", pg01.name)
+        self.assertEqual(pg01.state, 'sin_documento')
+        action = self.Miid.with_user(self.user).with_context(sgi_miid_kind='pg01').action_open()
+        self.assertEqual(action['res_id'], pg01.id)
+        self.assertIn("P-G01", action['name'])
+        self.assertEqual(self.Miid._sgi_kind_for_code('P-G01'), 'pg01')
+        self.assertEqual(self.Miid._sgi_kind_for_code('MIID'), 'miid')
+        self.assertFalse(self.Miid._sgi_kind_for_code('PR-E2'))
+        from ..models.sgi_menu_paths import sgi_menu_path
+        self.assertEqual(sgi_menu_path('pg01'),
+                         "SGI → Sistema → Manual del SGI → Control de información documentada (P-G01)")
+        self.assertEqual(sgi_menu_path('miid'), "SGI → Sistema → Manual del SGI → Manual (MIID)")
+
+    def test_31_huella_solo_con_lo_que_imprime(self):
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        base_pg01 = self.Miid._sgi_hash(pg01._sgi_snapshot())
+        base_miid = self.Miid._sgi_hash(self.miid._sgi_snapshot())
+        self.p1.owner_id = self.emp_b
+        self.assertEqual(base_pg01, self.Miid._sgi_hash(pg01._sgi_snapshot()),
+                         "El dueño de un proceso no cambia el P-G01.")
+        self.assertNotEqual(base_miid, self.Miid._sgi_hash(self.miid._sgi_snapshot()))
+        old = pg01._sgi_snapshot()
+        before_miid = self.Miid._sgi_hash(self.miid._sgi_snapshot())
+        ack = old['doc_params']['ack']
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.doc_ack_pending_days', str(ack + 1))
+        new_pg01 = self.Miid._sgi_hash(pg01._sgi_snapshot())
+        self.assertNotEqual(base_pg01, new_pg01, "Un plazo documental sí cambia el P-G01.")
+        self.assertEqual(before_miid, self.Miid._sgi_hash(self.miid._sgi_snapshot()),
+                         "Y no cambia el Manual.")
+        text = "\n".join(self.Miid._sgi_diff(old, pg01._sgi_snapshot()))
+        self.assertIn("Cambiaron los plazos documentales: acuse de lectura («leído y entendido») %d → %d" % (
+            ack, ack + 1), text)
+        self.assertNotIn("dueño", text, "Las diferencias del P-G01 solo hablan de lo que imprime.")
+
+    def test_32_rutinas_candado_y_revision(self):
+        doc = self._pg01_doc()
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        pg01.invalidate_recordset()
+        self.assertEqual(pg01.document_id, doc)
+        self.assertEqual(pg01.state, 'sin_base')
+        self.assertEqual(pg01._sgi_next_revision(doc), 12, "Continúa la numeración del Dropbox.")
+        job = self.env['hr.job'].create({'name': 'PUESTO ZM PG01'})
+        activity = self.env['sgi.process.activity'].create({
+            'process_id': self.p1.id, 'number': 'ZM1.09', 'name': 'Publicar el documento ZM',
+            'related_procedure_id': doc.id, 'measure_cadence': 'evento', 'done_criteria': 'Publicado ZM',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})]})
+        snap = pg01._sgi_snapshot()
+        self.assertEqual(snap['activities']['ZM1.09'][:3], ['Publicar el documento ZM', ['PUESTO ZM PG01'], []])
+        data = pg01._sgi_print_data()
+        self.assertEqual((data['code'], data['short']), ('P-G01', 'P-G01'))
+        self.assertIn('P-G01', data['title'])
+        self.assertEqual(data['blocks']['actividades']['rows'][0][:4],
+                         ['ZM1.09', 'Publicar el documento ZM', 'PUESTO ZM PG01', '—'])
+        self.assertEqual([code for code, _label in data['orphans']],
+                         ['identificacion', 'normas', 'tipos_documento', 'plazos_documentales', 'actividades',
+                          'historial'], "Sin secciones del P-G01 en la empresa, todos sus bloques quedan sueltos.")
+        self.assertNotIn('procesos', dict(data['orphans']), "Los bloques del Manual no son del P-G01.")
+        self.assertIn("El proceso ZM1 no está vigente", "\n".join(pg01._sgi_blockers()))
+        self._publish()
+        self.assertFalse(pg01._sgi_blockers())
+        old = pg01._sgi_snapshot()
+        activity.name = 'Publicar el documento ZM corregido'
+        self.assertIn("Cambió el nombre de la actividad ZM1.09",
+                      "\n".join(self.Miid._sgi_diff(old, pg01._sgi_snapshot())))
+        self.assertNotIn('ZM1.09', self.miid._sgi_snapshot()['activities'],
+                         "Las rutinas son las ligadas a las revisiones del propio documento.")
+
+    def test_33_un_bloque_por_documento(self):
+        Section = self.env['sgi.miid.section']
+        Section.create({'company_id': self.company.id, 'name': 'Normas ZM manual', 'live_block': 'normas'})
+        pg = Section.create({'company_id': self.company.id, 'kind': 'pg01', 'name': 'Normas ZM P-G01',
+                             'live_block': 'normas', 'body': '<p>Normas ZM del P-G01</p>'})
+        with self.assertRaises(ValidationError):
+            Section.create({'company_id': self.company.id, 'kind': 'pg01', 'name': 'Duplicada',
+                            'live_block': 'normas'})
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        self.assertIn('Normas ZM del P-G01', pg01.live_html)
+        self.assertNotIn('Normas ZM del P-G01', self.miid.live_html, "Cada documento imprime sus secciones.")
+        self.assertEqual(set(pg01._sgi_snapshot()['sections']), {str(pg.id)})
+        action = pg01.action_open_sections()
+        self.assertIn(('kind', '=', 'pg01'), action['domain'])
+        self.assertEqual(action['context']['default_kind'], 'pg01')
+
+    def test_34_solicitud_de_cambio_del_pg01(self):
+        doc = self._pg01_doc()
+        self._publish()
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        with patch.object(type(self.Miid), '_sgi_render_pdf', _fake_render):
+            action = pg01.with_user(self.mast).action_sgi_miid_request_change()
+        request = self.env['approval.request'].browse(action['res_id'])
+        self.assertEqual(request.name, "Cambio al P-G01 (Rev. 12)")
+        self.assertEqual(request.reference, 'P-G01')
+        self.assertEqual(request.sgi_document_id, doc)
+        self.assertEqual(request._sgi_miid(), pg01, "La solicitud sabe de qué documento generado es.")
+        self.assertEqual(request.sgi_miid_hash, self.Miid._sgi_hash(pg01._sgi_snapshot()))
+        self.assertTrue(request.sgi_change_attachment_id.name.startswith("P-G01 Rev. 12"))
+        (pg01 | self.miid).invalidate_recordset()
+        self.assertEqual(pg01.pending_request_id, request)
+        self.assertFalse(self.miid.pending_request_id, "El Manual no la ve como suya.")

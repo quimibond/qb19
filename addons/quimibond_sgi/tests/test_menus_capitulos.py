@@ -32,7 +32,7 @@ _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOVED = {
     'menu_sgi_documental': 'menu_sgi_processes',
     'menu_sgi_config_acks': 'menu_sgi_documental',
-    'menu_sgi_miid': 'menu_sgi_processes',
+    'menu_sgi_miid': 'menu_sgi_manual',  # 57.148.0: carpeta «Manual del SGI» dentro de Sistema
     'menu_sgi_env_aspects': 'menu_sgi_direction',
     'menu_sgi_dashboard_health': 'menu_sgi_performance',
     'menu_sgi_admin_indicators': 'menu_sgi_performance',
@@ -347,7 +347,7 @@ class TestMenusCapitulos(TransactionCase):
     def test_10_rutas_que_se_le_dicen(self):
         self.assertEqual(sgi_menu_path('aprobaciones'), "SGI → Administración → Aprobaciones del SGI")
         self.assertEqual(sgi_menu_path('politica'), "SGI → Planeación → Política integral")
-        self.assertEqual(sgi_menu_path('indicadores'), "SGI → Desempeño → Indicadores → Indicadores")
+        self.assertEqual(sgi_menu_path('indicadores'), "SGI → Desempeño → Indicadores → Todos los indicadores")
         self.assertEqual(sgi_menu_path('publicar_mi_procedimiento'),
                          "SGI → Administración → Publicar Mi procedimiento")
 

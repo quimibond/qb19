@@ -60,14 +60,29 @@ rechazado, verde = cerrado, vigente o validado.
    - **Acción** de una NC, riesgo o incidente: Hecho la termina (fecha de hoy
      y 100 %).
    - **Acuse de lectura**: **Leer** abre el documento y **Leído y entendido**
-     lo firma desde el renglón. **Validar medición**: **Validar**.
-   - Lo que se resuelve en su propio registro (contestar una NC, evaluar un
-     requisito legal, revisar un documento, aprobar, firmar, revisar la
-     medición) no tiene Hecho: pulse **Ir** (o **Firmar**, **Capturar**) y
-     resuélvalo ahí; el renglón se quita solo.
+     lo firma desde el renglón. Para firmar varios, selecciónelos en la lista
+     y pulse **Leído y entendido (seleccionados)** (también en **Documentos
+     vigentes**). **Validar medición**: **Validar**.
+   - Desde 57.150.0 cada tipo trae su propio botón en lugar de Hecho:
+     - **NC** de la que es responsable: **Registrar paso** abre el paso que
+       toca (contención, causa raíz o plan de acción con responsable y
+       compromiso). La verificación y el cierre siguen en la ficha de la NC.
+     - **Requisito legal**: **Evaluar** abre la evaluación de cumplimiento
+       (resultado, evidencia y próxima fecha).
+     - **Documento por revisar**: **Revisar** pregunta si sigue vigente sin
+       cambios (nueva revisión a dos años, con nota en su historial) o si
+       necesita cambio (abre la solicitud de cambio ya ligada al documento).
+     - **Solicitud** de Aprobaciones y **aprobación** de un documento:
+       **Aprobar** o **Rechazar** desde el renglón.
+     - **Revisión de medición**: **Sí, es lo que hago** o **No corresponde**.
+     - **Firma** y **Capturar medición**: sus botones de siempre.
+     El renglón se quita en ese momento, para usted y para los demás.
    Al marcar algo, Odoo muestra «Hecha: …» y el renglón desaparece de la
-   lista en ese momento. Un **Escalamiento** (actividad de otra persona que
-   pasó sus días de atraso) solo tiene Ir: la marca hecha quien la ejecuta.
+   lista en ese momento. Un **Escalamiento** (periodo de otra persona que
+   pasó sus días de atraso) dice de quién es: **Ir** abre ese periodo y, si lo
+   resolvió con la persona, puede marcarlo **Hecho** (con evidencia) o **No
+   aplica este periodo** (con motivo); desaparece en ese momento para todos.
+   Si la actividad todavía no lleva registro de cumplimiento, solo tiene Ir.
 5. **Vence** se lee como «Hace 3 días», «Hoy» o «En 5 días». Los filtros
    **Avisos**, **Actividades** y **Escalamientos** los muestran solos.
 

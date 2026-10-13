@@ -3,46 +3,48 @@
     <!-- 57.105.0: Manual del SGI (MIID) desde Odoo. Todo en su propio record
          (sin herencias). La pantalla la leen todo Usuario SGI y Auditor;
          editar textos y solicitar el cambio es del Jefe MAST; «Por
-         confirmar» lo quitan el Jefe MAST, Dirección o el Administrador SGI. -->
+         confirmar» lo quitan el Jefe MAST, Dirección o el Administrador SGI.
+         57.148.0: la misma pantalla sirve al MIID y al P-G01 (kind); los
+         textos no nombran al documento, lo pone el título. -->
     <record id="sgi_miid_view_form" model="ir.ui.view">
         <field name="name">sgi.miid.form</field>
         <field name="model">sgi.miid</field>
         <field name="arch" type="xml">
-            <form string="Manual del SGI (MIID)" create="0" delete="0">
+            <form string="Documento generado del SGI" create="0" delete="0">
                 <header>
-                    <button name="action_sgi_miid_request_change" type="object" string="Solicitar cambio del MIID"
+                    <button name="action_sgi_miid_request_change" type="object" string="Solicitar cambio de revisión"
                             class="btn-primary" icon="fa-pencil" groups="quimibond_sgi.group_sgi_manager"
                             invisible="not document_id or pending_request_id"/>
                     <button name="action_print_live" type="object" string="Vista en PDF (borrador)"
                             class="btn-secondary" icon="fa-file-pdf-o"/>
                     <button name="action_open_vigente_pdf" type="object" string="PDF de la revisión vigente"
                             class="btn-secondary" icon="fa-file-text-o" invisible="not document_id"/>
-                    <button name="action_open_sections" type="object" string="Textos del manual"
+                    <button name="action_open_sections" type="object" string="Textos del documento"
                             class="btn-secondary" icon="fa-pencil-square-o"/>
                     <button name="action_open_request" type="object" string="Abrir la solicitud en curso"
                             class="btn-secondary" icon="fa-check-square-o" invisible="not pending_request_id"/>
                 </header>
                 <sheet>
                     <div class="alert alert-danger mb-2" role="alert" invisible="not blocker_html">
-                        <b>Una revisión del MIID no se puede aprobar todavía:</b>
+                        <b>Una revisión nueva no se puede aprobar todavía:</b>
                         <field name="blocker_html" nolabel="1" readonly="1"/>
                     </div>
                     <div class="alert alert-success mb-2" role="status" invisible="state != 'al_dia'">
                         La revisión vigente coincide con los datos del sistema.
                     </div>
                     <div class="alert alert-warning mb-2" role="alert" invisible="state != 'desactualizado'">
-                        El MIID vigente ya no coincide con el sistema: vea la pestaña «Diferencias». El Jefe MAST
-                        solicita el cambio con «Solicitar cambio del MIID».
+                        La revisión vigente ya no coincide con el sistema: vea la pestaña «Diferencias». El Jefe
+                        MAST solicita el cambio con «Solicitar cambio de revisión».
                     </div>
                     <div class="alert alert-info mb-2" role="status" invisible="state != 'sin_base'">
                         La revisión vigente es un PDF cargado del Dropbox: todavía no hay contra qué comparar. La
                         comparación diaria empieza con la primera revisión aprobada desde Odoo.
                     </div>
                     <div class="alert alert-danger mb-2" role="alert" invisible="state != 'sin_documento'">
-                        No hay MIID vigente (clave MIID) en Documentos.
+                        No hay revisión vigente en Documentos (la clave del documento es la de este generado).
                     </div>
                     <div class="alert alert-info mb-2" role="status" invisible="not pending_request_id">
-                        Hay una solicitud de cambio del MIID en curso: <field name="pending_request_id" readonly="1"
+                        Hay una solicitud de cambio en curso: <field name="pending_request_id" readonly="1"
                         class="oe_inline" nolabel="1"/>.
                     </div>
                     <div class="oe_title">
@@ -50,6 +52,7 @@
                     </div>
                     <group>
                         <group>
+                            <field name="kind" readonly="1"/>
                             <field name="document_id" readonly="1"/>
                             <field name="revision_label" readonly="1"/>
                             <field name="issue_date" readonly="1"/>
@@ -93,8 +96,9 @@
         <field name="name">sgi.miid.section.list</field>
         <field name="model">sgi.miid.section</field>
         <field name="arch" type="xml">
-            <list string="Textos del MIID" delete="0">
+            <list string="Textos" delete="0">
                 <field name="sequence" widget="handle"/>
+                <field name="kind" optional="show"/>
                 <field name="clause"/>
                 <field name="name"/>
                 <field name="live_block" optional="show"/>
@@ -108,12 +112,12 @@
         <field name="name">sgi.miid.section.form</field>
         <field name="model">sgi.miid.section</field>
         <field name="arch" type="xml">
-            <form string="Sección del MIID" delete="0">
+            <form string="Sección" delete="0">
                 <sheet>
                     <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
                     <div class="alert alert-danger mb-2" role="alert" invisible="not to_confirm">
-                        <b>Por confirmar:</b> mientras esta sección esté marcada, ninguna revisión del MIID se envía
-                        ni se aprueba. Quítelo cuando el texto esté confirmado.
+                        <b>Por confirmar:</b> mientras esta sección esté marcada, ninguna revisión de su documento se
+                        envía ni se aprueba. Quítelo cuando el texto esté confirmado.
                     </div>
                     <group>
                         <group>
@@ -129,6 +133,7 @@
                     </div>
                     <group>
                         <group>
+                            <field name="kind"/>
                             <field name="heading_level"/>
                             <field name="sequence"/>
                         </group>
@@ -145,8 +150,8 @@
                             <field name="body" nolabel="1"/>
                         </page>
                         <page string="Notas por renglón" name="row_notes" invisible="not live_block">
-                            <p class="text-muted">Columna fija de un bloque de datos: en 12.1, la situación de cada
-                                anexo (el renglón es la clave del anexo, p. ej. ANEXO 9).</p>
+                            <p class="text-muted">Columna fija de un bloque de datos: en los anexos del MIID, la
+                                situación de cada anexo (el renglón es la clave del anexo, p. ej. ANEXO 9).</p>
                             <field name="row_note_ids" nolabel="1">
                                 <list editable="bottom" delete="0">
                                     <field name="sequence" widget="handle"/>
@@ -166,15 +171,19 @@
         <field name="name">sgi.miid.section.search</field>
         <field name="model">sgi.miid.section</field>
         <field name="arch" type="xml">
-            <search string="Textos del MIID">
+            <search string="Textos">
                 <field name="name"/>
                 <field name="clause"/>
                 <field name="live_block"/>
+                <filter name="kind_miid" string="Manual (MIID)" domain="[('kind', '=', 'miid')]"/>
+                <filter name="kind_pg01" string="P-G01" domain="[('kind', '=', 'pg01')]"/>
+                <separator/>
                 <filter name="to_confirm" string="Por confirmar" domain="[('to_confirm', '=', True)]"/>
                 <filter name="with_block" string="Con datos del sistema" domain="[('live_block', '!=', False)]"/>
                 <separator/>
                 <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
                 <group>
+                    <filter name="group_kind" string="Documento" context="{'group_by': 'kind'}"/>
                     <filter name="group_block" string="Bloque de datos" context="{'group_by': 'live_block'}"/>
                 </group>
             </search>
@@ -182,15 +191,16 @@
     </record>
 
     <record id="sgi_miid_section_action" model="ir.actions.act_window">
-        <field name="name">Textos del MIID</field>
+        <field name="name">Textos</field>
         <field name="res_model">sgi.miid.section</field>
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="sgi_miid_section_view_list"/>
         <field name="search_view_id" ref="sgi_miid_section_view_search"/>
+        <field name="context">{'search_default_group_kind': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin textos del MIID</p>
-            <p>Una sección por título y subtítulo del manual. Edite el texto fijo; los datos del sistema los pone
-                Odoo.</p>
+            <p class="o_view_nocontent_smiling_face">Sin textos</p>
+            <p>Una sección por título y subtítulo del manual y del P-G01. Edite el texto fijo; los datos del sistema
+                los pone Odoo.</p>
         </field>
     </record>
 
@@ -199,5 +209,50 @@
         <field name="model_id" ref="quimibond_sgi.model_sgi_miid"/>
         <field name="state">code</field>
         <field name="code">action = env['sgi.miid'].action_open()</field>
+    </record>
+
+    <!-- 57.148.0: el P-G01 generado con el mismo motor (kind = pg01). -->
+    <record id="sgi_pg01_action_open" model="ir.actions.server">
+        <field name="name">Control de información documentada (P-G01)</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_miid"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.miid'].with_context(sgi_miid_kind='pg01').action_open()</field>
+    </record>
+
+    <!-- 57.148.0: todas las revisiones del manual y del P-G01 (vigentes y
+         obsoletas), la lista de documentos controlados de siempre. -->
+    <record id="sgi_miid_revisions_action" model="ir.actions.act_window">
+        <field name="name">Revisiones del manual y del P-G01</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_code', 'in', ('MIID', 'P-G01'))]</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="search_view_id" ref="sgi_document_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_document_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin revisiones</p>
+            <p>Cada revisión publicada del Manual del SGI (MIID) y del P-G01, con su archivo, su emisión y sus
+                acuses.</p>
+        </field>
+    </record>
+
+    <!-- 57.148.0: las solicitudes de cambio que llevan huella (las generadas
+         desde el manual o el P-G01). -->
+    <record id="sgi_miid_requests_action" model="ir.actions.act_window">
+        <field name="name">Solicitudes de cambio del manual y del P-G01</field>
+        <field name="res_model">approval.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_miid_hash', '!=', False)]</field>
+        <field name="search_view_id" ref="sgi_doc_change_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_doc_change_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': False})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin solicitudes</p>
+            <p>Las solicitudes de cambio documental generadas desde el Manual del SGI (MIID) o desde el P-G01, con
+                el PDF que se firma y la huella de los datos.</p>
+        </field>
     </record>
 </odoo>

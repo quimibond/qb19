@@ -16,6 +16,9 @@
                 <header>
                     <button name="action_validate_selected" type="object"
                             string="Validar seleccionadas" class="btn-primary"/>
+                    <!-- 57.150.0: acuses en lote (solo los propios). -->
+                    <button name="action_sign_ack_selected" type="object" string="Leído y entendido (seleccionados)"
+                            confirm="¿Confirma que leyó y entendió los documentos seleccionados? Sus acuses quedan registrados con la fecha de hoy."/>
                 </header>
                 <field name="state_rank" column_invisible="1"/>
                 <field name="is_mine" column_invisible="1"/>
@@ -39,7 +42,17 @@
                      atrasada que lo lleva (crea el registro del periodo), aviso
                      propio y acción propia. Solo donde aplica (can_done). -->
                 <button name="action_done" type="object" string="Hecho" icon="fa-check"
-                        class="btn-link text-success" invisible="not can_done"/>
+                        class="btn-link text-success" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
+                <!-- 57.150.0 (auditoría UX, fase 2): cada tipo con su acción real. -->
+                <button name="action_nc_step" type="object" string="Registrar paso" class="btn-link text-success" invisible="kind != 'nc' or not can_done"/>
+                <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn-link text-success" invisible="kind != 'legal' or not can_done"/>
+                <button name="action_doc_review" type="object" string="Revisar" class="btn-link text-success" invisible="kind != 'documento' or not can_done"/>
+                <button name="action_request_approve" type="object" string="Aprobar" class="btn-link text-success" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                <button name="action_request_refuse" type="object" string="Rechazar" class="btn-link" invisible="kind != 'solicitud' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                <button name="action_rule_approve" type="object" string="Aprobar" class="btn-link text-success" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                <button name="action_rule_refuse" type="object" string="Rechazar" class="btn-link" invisible="kind != 'aprobacion' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                <button name="action_review_confirm" type="object" string="Sí, es lo que hago" class="btn-link text-success" invisible="kind != 'revision' or not can_done"/>
+                <button name="action_review_not_matching" type="object" string="No corresponde" class="btn-link" invisible="kind != 'revision' or not can_done"/>
                 <button name="action_exec_progress" type="object" string="En proceso" icon="fa-hourglass-half"
                         class="btn-link" invisible="not can_mark_exec"/>
                 <!-- 56.36.0 (I-006): el dueño valida desde el renglón. -->
@@ -94,7 +107,17 @@
                                    decoration-warning="state == 'por_vencer'"
                                    decoration-success="state == 'al_dia'"/>
                             <button name="action_done" type="object" string="Hecho"
-                                    class="btn btn-success btn-lg" invisible="not can_done"/>
+                                    class="btn btn-success btn-lg" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
+                            <!-- 57.150.0 (auditoría UX, fase 2): cada tipo con su acción real. -->
+                            <button name="action_nc_step" type="object" string="Registrar paso" class="btn btn-success btn-lg" invisible="kind != 'nc' or not can_done"/>
+                            <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn btn-success btn-lg" invisible="kind != 'legal' or not can_done"/>
+                            <button name="action_doc_review" type="object" string="Revisar" class="btn btn-success btn-lg" invisible="kind != 'documento' or not can_done"/>
+                            <button name="action_request_approve" type="object" string="Aprobar" class="btn btn-success btn-lg" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                            <button name="action_request_refuse" type="object" string="Rechazar" class="btn btn-secondary btn-lg" invisible="kind != 'solicitud' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                            <button name="action_rule_approve" type="object" string="Aprobar" class="btn btn-success btn-lg" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                            <button name="action_rule_refuse" type="object" string="Rechazar" class="btn btn-secondary btn-lg" invisible="kind != 'aprobacion' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                            <button name="action_review_confirm" type="object" string="Sí, es lo que hago" class="btn btn-success btn-lg" invisible="kind != 'revision' or not can_done"/>
+                            <button name="action_review_not_matching" type="object" string="No corresponde" class="btn btn-secondary btn-lg" invisible="kind != 'revision' or not can_done"/>
                             <button name="action_exec_progress" type="object" string="En proceso"
                                     class="btn btn-secondary btn-lg" invisible="not can_mark_exec"/>
                             <button name="action_validate_measure" type="object" string="Validar"
@@ -130,7 +153,17 @@
             <form string="Pendiente" create="0" edit="0" delete="0">
                 <header>
                     <button name="action_done" type="object" string="Hecho" class="btn-primary"
-                            icon="fa-check" invisible="not can_done"/>
+                            icon="fa-check" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
+                    <!-- 57.150.0 (auditoría UX, fase 2): cada tipo con su acción real. -->
+                    <button name="action_nc_step" type="object" string="Registrar paso" class="btn-primary" invisible="kind != 'nc' or not can_done"/>
+                    <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn-primary" invisible="kind != 'legal' or not can_done"/>
+                    <button name="action_doc_review" type="object" string="Revisar" class="btn-primary" invisible="kind != 'documento' or not can_done"/>
+                    <button name="action_request_approve" type="object" string="Aprobar" class="btn-primary" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                    <button name="action_request_refuse" type="object" string="Rechazar" invisible="kind != 'solicitud' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                    <button name="action_rule_approve" type="object" string="Aprobar" class="btn-primary" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                    <button name="action_rule_refuse" type="object" string="Rechazar" invisible="kind != 'aprobacion' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
+                    <button name="action_review_confirm" type="object" string="Sí, es lo que hago" class="btn-primary" invisible="kind != 'revision' or not can_done"/>
+                    <button name="action_review_not_matching" type="object" string="No corresponde" invisible="kind != 'revision' or not can_done"/>
                     <button name="action_exec_progress" type="object" string="En proceso"
                             icon="fa-hourglass-half" invisible="not can_mark_exec"/>
                     <button name="action_exec_not_applicable" type="object" string="No aplica este periodo"
@@ -232,7 +265,58 @@
         <field name="arch" type="xml">
             <xpath expr="//group[@name='other_preferences']" position="inside">
                 <field name="sgi_weekly_overdue_mail" readonly="0"/>
+                <field name="sgi_daily_pending_mail" readonly="0"/>
             </xpath>
+        </field>
+    </record>
+
+    <!-- 57.150.0 (auditoría UX, fase 2): asistentes de Mis pendientes. -->
+    <record id="sgi_nc_step_view_form" model="ir.ui.view">
+        <field name="name">sgi.nc.step.form</field>
+        <field name="model">sgi.nc.step</field>
+        <field name="arch" type="xml">
+            <form string="Registrar el paso de la NC">
+                <field name="alert_id" invisible="1"/>
+                <div class="alert alert-info" role="status">
+                    <field name="plazos" readonly="1" nolabel="1"/>
+                </div>
+                <group>
+                    <field name="step" widget="radio"/>
+                    <field name="root_cause" invisible="step != 'causa'" required="step == 'causa'"
+                           placeholder="Por qué pasó (5 porqués, Ishikawa)"/>
+                    <field name="name" invisible="step == 'causa'" required="step != 'causa'"
+                           placeholder="Qué se hace"/>
+                    <field name="responsible_id" invisible="step == 'causa'" required="step != 'causa'"/>
+                    <field name="date_commit" invisible="step == 'causa'" required="step != 'causa'"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_doc_review_view_form" model="ir.ui.view">
+        <field name="name">sgi.doc.review.form</field>
+        <field name="model">sgi.doc.review</field>
+        <field name="arch" type="xml">
+            <form string="Revisar el documento">
+                <field name="document_id" invisible="1"/>
+                <group>
+                    <field name="decision" widget="radio"/>
+                    <field name="note" required="decision == 'vigente'"
+                           placeholder="Con quién y contra qué se revisó"/>
+                    <field name="next_review_date" invisible="decision != 'vigente'"/>
+                </group>
+                <div class="alert alert-info" role="status" invisible="decision != 'cambio'">
+                    Al guardar se abre la solicitud de cambio documental ya apuntando a este documento.
+                </div>
+                <footer>
+                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 </odoo>

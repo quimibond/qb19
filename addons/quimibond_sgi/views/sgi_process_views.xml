@@ -256,6 +256,11 @@
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
                             <field name="nc_count" widget="statinfo" string="NC abiertas"/>
                         </button>
+                        <!-- 57.150.0 (auditoría UX, fase 3). -->
+                        <button name="action_sgi_open_late_executions" type="object" class="oe_stat_button"
+                                icon="fa-hourglass-end" invisible="execution_late_count == 0">
+                            <field name="execution_late_count" widget="statinfo" string="Periodos atrasados"/>
+                        </button>
                         <button name="action_open_overdue_actions" type="object" class="oe_stat_button"
                                 icon="fa-clock-o" invisible="overdue_action_count == 0">
                             <field name="overdue_action_count" widget="statinfo" string="Acciones vencidas"/>
@@ -285,6 +290,14 @@
                         <button name="action_open_documents" type="object" class="oe_stat_button"
                                 icon="fa-file-text-o">
                             <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_sgi_open_audits" type="object" class="oe_stat_button"
+                                icon="fa-clipboard" invisible="audit_count == 0">
+                            <field name="audit_count" widget="statinfo" string="Auditorías"/>
+                        </button>
+                        <button name="action_sgi_open_findings" type="object" class="oe_stat_button"
+                                icon="fa-search" invisible="finding_count == 0">
+                            <field name="finding_count" widget="statinfo" string="Hallazgos"/>
                         </button>
                         <button name="action_open_flows" type="object" class="oe_stat_button"
                                 icon="fa-exchange">
