@@ -513,7 +513,13 @@
                         </page>
                         <!-- 6. Muestra (Diseño de Procesos, Laboratorio, Diseño de Producto, Almacén): la corrida se pide y el envío se registra desde el encabezado. -->
                         <page string="Muestra" name="sgi_dev_sample">
-                            <separator string="Órdenes de muestra"/>
+                            <!-- 57.155.0: una sola ficha por proceso, la de quimibond_ficha_tecnica_tela (tejido, acabado;
+                                 tintorería cuando exista). «Validar corrida» se valida contra ella. -->
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Órdenes de muestra</span>
+                                <button name="action_sgi_dev_process_sheets" type="object" string="Fichas de proceso" class="btn-secondary" icon="fa-file-text-o"
+                                        help="Fichas de proceso de los artículos del proyecto (crudo, teñido, acabado): abre la que existe o crea la que falta con el artículo ya puesto."/>
+                            </div>
                             <!-- Solo quien tiene acceso a Fabricación carga la lista; los demás ven el botón inteligente. -->
                             <field name="sgi_dev_mo_ids" readonly="1" groups="mrp.group_mrp_user">
                                 <list create="0" delete="0">

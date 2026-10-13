@@ -38,7 +38,6 @@ SGI/Sistema/Entregables | menu_sgi_deliverable_list | quimibond_sgi.group_sgi_au
 SGI/Sistema/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Sistema/Fichas de proceso por máquina | menu_sgi_machine_sheets | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Documentos/Documentos controlados | menu_sgi_documents | -
 SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -

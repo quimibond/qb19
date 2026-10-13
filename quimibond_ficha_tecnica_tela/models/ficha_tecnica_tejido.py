@@ -40,7 +40,15 @@ class FichaTecnicaTejido(models.Model):
     # ------------------------------------------------------------------
     # Datos de máquina
     # ------------------------------------------------------------------
-    maquina_tejido = fields.Char(string='Máquina')
+    # 2.2.0 (Dirección General 2026-10-13): la máquina es el centro de trabajo de Odoo; lo que se
+    # capturó como texto queda en maquina_tejido_texto (dato histórico).
+    maquina_tejido = fields.Many2one(
+        'mrp.workcenter', string='Máquina', index=True,
+        help='Centro de trabajo (máquina) en el que se teje el artículo.')
+    maquina_tejido_texto = fields.Char(
+        string='Máquina (texto anterior)',
+        help='Lo que se capturó como texto antes de la versión 2.2.0, o lo que traía el Excel cuando no '
+             'coincide con ningún centro de trabajo. Solo es dato histórico.')
     marca_maquina = fields.Char(string='Marca de máquina')
     galga = fields.Float(string='Galga')
     diametro = fields.Char(string='Diámetro')
@@ -76,19 +84,19 @@ class FichaTecnicaTejido(models.Model):
     # Especificaciones de tejido — Tabla 2: Dato / Valor / Tolerancia
     # ------------------------------------------------------------------
     tension = fields.Char(string='Tensión')
-    tension_tol = fields.Char(string='Tolerancia tensión')
+    tension_tol = fields.Float(string='Tolerancia tensión')
     tension_tol_unit = fields.Char(string='Unidad — Tensión', default='PTO')
 
     punto_cilindro = fields.Char(string='Punto cilindro')
-    punto_cilindro_tol = fields.Char(string='Tolerancia punto cilindro')
+    punto_cilindro_tol = fields.Float(string='Tolerancia punto cilindro')
     punto_cilindro_tol_unit = fields.Char(string='Unidad — Punto cilindro', default='PTO')
 
     punto_plato = fields.Char(string='Punto plato')
-    punto_plato_tol = fields.Char(string='Tolerancia punto plato')
+    punto_plato_tol = fields.Float(string='Tolerancia punto plato')
     punto_plato_tol_unit = fields.Char(string='Unidad — Punto plato', default='PTO')
 
     altura_plato = fields.Char(string='Altura plato')
-    altura_plato_tol = fields.Char(string='Tolerancia altura plato')
+    altura_plato_tol = fields.Float(string='Tolerancia altura plato')
     altura_plato_tol_unit = fields.Char(string='Unidad — Altura plato', default='PTO')
 
     ancho_bastidor = fields.Float(string='Ancho de bastidor')
@@ -96,7 +104,7 @@ class FichaTecnicaTejido(models.Model):
     ancho_bastidor_tol_unit = fields.Char(string='Unidad — Ancho de bastidor', default='cm')
 
     estiraje = fields.Char(string='Estiraje')
-    estiraje_tol = fields.Char(string='Tolerancia estiraje')
+    estiraje_tol = fields.Float(string='Tolerancia estiraje')
     estiraje_tol_unit = fields.Char(string='Unidad — Estiraje')
 
     ancho_rollo = fields.Float(string='Ancho de rollo')
@@ -111,32 +119,37 @@ class FichaTecnicaTejido(models.Model):
     # Datos de tela acondicionada (post-tejido, pre-acabado)
     # ------------------------------------------------------------------
     peso_acondicionado = fields.Float(string='Peso')
-    peso_acondicionado_tol = fields.Char(
-        string='Tolerancia peso', help='Admite formato asimétrico, ej. "+12 / -6".')
+    peso_acondicionado_tol = fields.Float(
+        string='Tolerancia peso (+)',
+        help='Tolerancia hacia arriba. Si la de abajo queda en 0, la tolerancia es ± este valor.')
+    peso_acondicionado_tol_minus = fields.Float(
+        string='Tolerancia peso (−)',
+        help='Tolerancia hacia abajo cuando es distinta de la de arriba (antes «+12 / -6»). En 0: la misma '
+             'que la de arriba.')
     peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado', default='g/m2')
 
     ancho_acondicionado = fields.Float(string='Ancho')
-    ancho_acondicionado_tol = fields.Char(string='Tolerancia ancho')
+    ancho_acondicionado_tol = fields.Float(string='Tolerancia ancho')
     ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado', default='cm')
 
     espesor_acondicionado = fields.Float(string='Espesor')
-    espesor_acondicionado_tol = fields.Char(string='Tolerancia espesor')
+    espesor_acondicionado_tol = fields.Float(string='Tolerancia espesor')
     espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado', default='in')
 
     columnas = fields.Integer(string='Columnas')
-    columnas_tol = fields.Char(string='Tolerancia columnas')
+    columnas_tol = fields.Float(string='Tolerancia columnas')
     columnas_tol_unit = fields.Char(string='Unidad — Columnas', default='in')
 
     mallas = fields.Integer(string='Mallas')
-    mallas_tol = fields.Char(string='Tolerancia mallas')
+    mallas_tol = fields.Float(string='Tolerancia mallas')
     mallas_tol_unit = fields.Char(string='Unidad — Mallas', default='in')
 
     elongacion_carga_largo = fields.Float(string='Elongación bajo carga — largo')
-    elongacion_carga_largo_tol = fields.Char(string='Tolerancia elongación largo')
+    elongacion_carga_largo_tol = fields.Float(string='Tolerancia elongación largo')
     elongacion_carga_largo_tol_unit = fields.Char(string='Unidad — Elongación carga largo', default='%')
 
     elongacion_carga_ancho = fields.Float(string='Elongación bajo carga — ancho')
-    elongacion_carga_ancho_tol = fields.Char(string='Tolerancia elongación ancho')
+    elongacion_carga_ancho_tol = fields.Float(string='Tolerancia elongación ancho')
     elongacion_carga_ancho_tol_unit = fields.Char(string='Unidad — Elongación carga ancho', default='%')
 
     notas = fields.Text(string='Notas')

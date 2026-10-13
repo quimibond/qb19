@@ -156,7 +156,7 @@ class TestMenusCapitulos(TransactionCase):
                     'menu_sgi_epp_deliveries', 'menu_sgi_checklist_requests', 'menu_sgi_improvement_group',
                     'menu_sgi_nc')
         catalogs = ('menu_sgi_deliverable_list', 'menu_sgi_process_flows', 'menu_sgi_analysis_who',
-                    'menu_sgi_jobs_roles', 'menu_sgi_machine_sheets', 'menu_sgi_dropbox_procedures',
+                    'menu_sgi_jobs_roles', 'menu_sgi_dropbox_procedures',
                     'menu_sgi_dropbox_routines', 'menu_sgi_dropbox_progress')
         reading = ('menu_sgi_dashboard_health', 'menu_sgi_mgmt_review', 'menu_sgi_satisfaction',
                    'menu_sgi_interested_parties', 'menu_sgi_documental', 'menu_sgi_documents',
