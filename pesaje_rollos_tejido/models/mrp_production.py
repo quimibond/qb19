@@ -77,27 +77,27 @@ class MrpProduction(models.Model):
 
             current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
 
-            # picked=True: el core nunca borra líneas procesadas (_do_unreserve,
-            # _split_productions) y con una línea picked el movimiento queda
-            # picked, así que ya no depende de do_not_unreserve para conservar
-            # los rollos. Igual que el subproducto más abajo.
+            # La línea del rollo NO va en picked (1.4.4). En 1.4.3 iba en picked y
+            # eso marcaba el movimiento del terminado como picked; el core
+            # (_get_produced_qty) cuenta un terminado picked como YA producido, así
+            # que al cerrar _post_inventory escribía quantity = qty_producing -
+            # qty_produced = 0, borraba todas las líneas de rollo y cancelaba el
+            # movimiento: H13789 y H13985 cerraron sin un solo rollo (2026-10-13).
             self.env['stock.move.line'].create({
                 'move_id': finished_move.id,
                 'product_id': self.product_id.id,
                 'lot_id': new_lot.id,
                 'lot_name': lot_name,
                 'quantity': weight,
-                'picked': True,
                 'location_id': finished_move.location_id.id,
                 'location_dest_id': finished_move.location_dest_id.id,
                 'workorder_id': current_wo.id if current_wo else False,
                 'production_id': self.id,
             })
 
-            # El lote de la OF (Odoo 19 lo exige para cerrar): el primer rollo.
-            # Sin esto el cierre generaba o pedía un lote ajeno al pesaje.
-            if not self.lot_producing_ids:
-                self.lot_producing_ids = [(4, new_lot.id)]
+            # El lote de la OF no se toca (1.4.4): en 1.4.3 se ponía el primer rollo y
+            # en planta, al capturar su lote de OF («21057 H18»), le cambiaban el
+            # nombre a ese rollo. El lote de la OF lo captura producción, como antes.
 
             self.qty_producing += weight
             if current_wo:
@@ -381,8 +381,13 @@ class MrpProduction(models.Model):
                     # por las OF que ya la traían cuando se desplegó esta versión.
                     production._pesaje_unlink_lines_without_lot(finished_move)
                     roll_lines = finished_move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.lot_name)
-                    if not production.lot_producing_ids and roll_lines:
-                        production.lot_producing_ids = [(4, roll_lines[0].lot_id.id)]
+                    # 1.4.4: ninguna línea de rollo puede llegar picked al cierre (ver
+                    # action_register_roll_with_weight): con el terminado picked el core
+                    # lo da por producido y _post_inventory borra los rollos. Cubre las
+                    # líneas que 1.4.3 creó en picked.
+                    picked_rolls = roll_lines.filtered('picked')
+                    if picked_rolls:
+                        picked_rolls.write({'picked': False})
 
                     # Sumamos el peso real de todos tus rollos
                     uom_main = production.product_id.uom_id
