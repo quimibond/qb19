@@ -46,6 +46,8 @@ MIID_LANG = 'es_MX'
 MIID_DATA_MARK = "[[datos]]"
 MIID_SEED_FILE = 'quimibond_sgi/data/sgi_miid_sections.xml'
 MIID_EDITED_MSG = "Texto de la sección editado."
+# 57.146.0: campos de estructura que la migración reacomoda desde la siembra.
+MIID_SEED_LAYOUT_FIELDS = ('sequence', 'clause', 'name', 'heading_level', 'live_block')
 # Por qué cambió la siembra (mensaje del chatter de _sgi_seed_update):
 # 57.110.0 usa este; 57.113.0 pasa el suyo.
 MIID_SEED_REASON = "lo que traía la revisión 02 del MIID"
@@ -60,10 +62,13 @@ MIID_APPROVER_PARAM = 'quimibond_sgi.miid_approver_user_id'
 MIID_UNHASHED = ('identificacion', 'historial', 'pendientes')
 MIID_BLOCKS = [
     ('identificacion', "Identificación del documento"),
+    ('normas', "Normas y cláusulas que rigen el SGI"),
     ('procesos', "Procesos del SGI, mapa e interacción"),
     ('politica', "Política integral vigente"),
     ('objetivos', "Objetivos integrales e indicadores"),
+    ('roles', "Dueños de proceso, roles y autoridades"),
     ('tipos_documento', "Tipos de documento y su clave"),
+    ('plazos_documentales', "Plazos documentales"),
     ('controles', "Controles operacionales vigentes"),
     ('plazos_nc', "Plazos de las NC"),
     ('correspondencia', "Correspondencia por cláusula"),
@@ -71,6 +76,26 @@ MIID_BLOCKS = [
     ('anexos', "Anexos vigentes"),
     ('historial', "Control de cambios del MIID"),
 ]
+# 57.146.0: plazos documentales (parámetros del sistema; el P-G01 vive aquí).
+# (llave, etiqueta, parámetro, valor por omisión, cómo se cuenta).
+MIID_DOC_ROWS = (
+    ('review_years', "Revisión de cada documento vigente", None, 2,
+     "años desde su emisión; antes de esa fecha avisa al responsable"),
+    ('review_notice', "Primer aviso de revisión", 'quimibond_sgi.doc_review_notice_days', 60,
+     "días naturales antes de la próxima revisión"),
+    ('review_notice_final', "Segundo aviso de revisión", 'quimibond_sgi.doc_review_notice_days_final', 30,
+     "días naturales antes de la próxima revisión"),
+    ('ack', "Acuse de lectura («Leído y entendido»)", 'quimibond_sgi.doc_ack_pending_days', 7,
+     "días hábiles desde que se publica; después avisa a la persona y a su jefe"),
+    ('pilot', "Prueba piloto de un documento", 'quimibond_sgi.pilot_days', 60,
+     "días naturales por omisión"),
+    ('pilot_notice', "Aviso de piloto por vencer", 'quimibond_sgi.doc_pilot_notice_days', 7,
+     "días naturales antes del fin del piloto"),
+    ('external', "Implantar un documento externo", 'quimibond_sgi.external_doc_days', 10,
+     "días hábiles desde su recepción; avisa al dueño 2 días hábiles antes y al vencer"),
+)
+# Roles de actividad que imprime el bloque «roles» (clave, etiqueta).
+MIID_ROLE_KINDS = (('ejecuta', "Ejecuta"), ('aprueba', "Aprueba"), ('escala', "Escala"))
 # Plazos de NC: (llave de la foto, etiqueta, unidad).
 MIID_NC_ROWS = (
     ('containment', "Contención", "días hábiles desde que se levanta la NC"),
@@ -195,7 +220,59 @@ class SgiMiidSection(models.Model):
                     etree.tostring(child, encoding='unicode') for child in field)
             elif name == 'to_confirm_note':
                 out['to_confirm_note'] = field.text or ''
+            elif name in MIID_SEED_LAYOUT_FIELDS:
+                # 57.146.0: la estructura (orden, numeral, título, nivel,
+                # bloque) también se lee de la siembra, para reacomodar el
+                # manual en una base existente.
+                text = (field.text or '').strip()
+                out[name] = int(text) if name == 'sequence' else text
         return out
+
+    @api.model
+    def _sgi_seed_layout_update(self, xmlids, tag):
+        """57.146.0: pone en una base existente el orden, numeral, título,
+        nivel y bloque de la siembra en las secciones dadas (noupdate no lo
+        hace). No toca el texto ni la nota de «Por confirmar» (eso es
+        ``_sgi_seed_update``) y no deja marca de edición: cambiar la
+        estructura no es editar el texto. Devuelve {xmlid: resultado}."""
+        result = {}
+        for xmlid in xmlids:
+            section = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not section or section._name != self._name:
+                result[xmlid] = 'no existe'
+                continue
+            seed = self._sgi_seed_fields(xmlid)
+            vals = {}
+            for name in MIID_SEED_LAYOUT_FIELDS:
+                new = seed.get(name, 0 if name == 'sequence' else '') or False
+                if name == 'sequence':
+                    new = seed.get('sequence') or 10
+                current = section[name] or False
+                if (current or False) != (new or False):
+                    vals[name] = new
+            if not section.active:
+                vals['active'] = True
+            if vals:
+                section.sudo().with_context(sgi_miid_seed=True, tracking_disable=True).write(vals)
+                section.sudo().message_post(body="%s: sección reacomodada en el manual generado (%s)." % (
+                    tag, ", ".join(sorted(vals))))
+            result[xmlid] = 'reacomodada' if vals else 'sin cambio'
+        return result
+
+    @api.model
+    def _sgi_seed_archive(self, xmlids, tag, reason):
+        """57.146.0: archiva las secciones que el manual generado ya no lleva
+        (su texto queda en la sección archivada y en Conocimiento). Devuelve
+        las archivadas."""
+        archived = self.browse()
+        for xmlid in xmlids:
+            section = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not section or section._name != self._name or not section.active:
+                continue
+            section.sudo().with_context(sgi_miid_seed=True, tracking_disable=True).write({'active': False})
+            section.sudo().message_post(body="%s: sección archivada: %s." % (tag, reason))
+            archived |= section
+        return archived
 
     @api.model
     def _sgi_seed_message(self, tag, keys, reason=MIID_SEED_REASON):
@@ -499,6 +576,33 @@ class SgiMiid(models.Model):
         norms = env['sgi.norm'].search([]).filtered('clause_ids')
         raw['norms'] = {n.code: [n.name or '', sorted(n.clause_ids.mapped('code'))] for n in norms}
 
+        # 57.146.0: plazos documentales (el P-G01 vive en el MIID), dueños y
+        # roles por proceso, y qué actividades cumplen cada cláusula. Todo
+        # entra en la huella: es lo que imprime el manual.
+        raw['doc_params'] = {key: (_miid_int(Param, param, default) if param else default)
+                             for key, _label, param, default, _unit in MIID_DOC_ROWS}
+        activities = env['sgi.process.activity'].search([('process_id', 'in', processes.ids)])
+        roles = env['sgi.activity.role'].search([('activity_id', 'in', activities.ids),
+                                                 ('target_type', '=', 'job'), ('job_id', '!=', False)])
+        raw['roles'] = {}
+        for process in processes:
+            mine = activities.filtered(lambda a: a.process_id == process)
+            owner = process.owner_id
+            row = [owner.name or '', owner.job_id.name or '', len(mine)]
+            for kind, _label in MIID_ROLE_KINDS:
+                row.append(sorted({r.job_id.name for r in roles
+                                   if r.activity_id.process_id == process and r.role == kind}))
+            raw['roles'][process.code] = row
+        raw['clause_activities'] = {}
+        for activity in activities.filtered('norm_clause_ids'):
+            number = activity.number or activity.legacy_number or activity.name or ''
+            for clause in activity.norm_clause_ids:
+                raw['clause_activities'].setdefault(clause.norm_id.code or '', {}).setdefault(
+                    clause.code or '', []).append(number)
+        for by_clause in raw['clause_activities'].values():
+            for code in by_clause:
+                by_clause[code] = sorted(set(by_clause[code]))
+
         # Solo los del Dropbox (clave P-X99): los procedimientos de proceso
         # nuevos (PR-…) no son «anteriores».
         legacy = base + [('sgi_doc_type', '=', 'procedimiento'), ('sgi_legacy_family', '!=', False)]
@@ -636,6 +740,32 @@ class SgiMiid(models.Model):
         keyed('norms', lambda k, v: "Norma nueva: %s" % k, lambda k, v: "Norma retirada: %s" % k,
               lambda k, a, b: ["Cambiaron las cláusulas de %s" % k])
 
+        old_doc, new_doc = old.get('doc_params') or {}, new.get('doc_params') or {}
+        for key, label, _param, _default, unit in MIID_DOC_ROWS:
+            if old_doc.get(key) != new_doc.get(key):
+                out.append("Cambiaron los plazos documentales: %s %s → %s %s" % (
+                    label.lower(), old_doc.get(key), new_doc.get(key), unit.split(';')[0]))
+
+        def roles_changed(code, a, b):
+            rows = []
+            if a[:2] != b[:2]:
+                rows.append("Cambió el dueño de %s en el bloque de roles: %s → %s" % (
+                    code, a[0] or "sin dueño", b[0] or "sin dueño"))
+            if a[2] != b[2]:
+                rows.append("Cambió el número de actividades de %s: %d → %d" % (code, a[2], b[2]))
+            if a[3:] != b[3:]:
+                rows.append("Cambiaron los puestos que ejecutan, aprueban o escalan en %s" % code)
+            return rows
+        keyed('roles', lambda k, v: "Roles nuevos: proceso %s" % k,
+              lambda k, v: "Roles retirados: proceso %s" % k, roles_changed)
+
+        old_ca, new_ca = old.get('clause_activities') or {}, new.get('clause_activities') or {}
+        for norm_code in sorted(set(old_ca) | set(new_ca)):
+            before, after = old_ca.get(norm_code) or {}, new_ca.get(norm_code) or {}
+            for clause in sorted(set(before) | set(after)):
+                if before.get(clause) != after.get(clause):
+                    out.append("Cambiaron las actividades que cumplen %s %s" % (norm_code, clause))
+
         def previous_changed(code, a, b):
             if a[3] != b[3]:
                 return ["Procedimiento anterior: %s ahora lo sustituye %s" % (code, b[3] or "ningún proceso")]
@@ -733,8 +863,11 @@ class SgiMiid(models.Model):
             rows, covered = [], False
             for row in matrix['rows']:
                 codes = [p.code for index, p in columns if row['cells'][index]]
+                numbers = [n for index, _p in columns for n in row['cells'][index]]
                 covered = covered or bool(codes)
-                rows.append([row['clause'].code or '', row['clause'].name or '', ", ".join(codes) or "—"])
+                # 57.146.0: la cuarta columna son las actividades (numerales).
+                rows.append([row['clause'].code or '', row['clause'].name or '', ", ".join(codes) or "—",
+                             ", ".join(numbers) or "—"])
             if covered:
                 result.append({'name': "%s %s" % (norm.code or '', norm.name or ''), 'rows': rows})
         return result
@@ -813,17 +946,33 @@ class SgiMiid(models.Model):
         blocks['tipos_documento'] = {'rows': [
             [v[0], v[1] or "Conserva su clave"] for code, v in sorted(
                 snap['doc_types'].items(), key=lambda kv: kv[1][0]) if v[3]]}
-        blocks['controles'] = {'items': ["%s (%s)" % (v[1], code) for code, v in sorted(snap['controls'].items())]}
-        blocks['plazos_nc'] = {'rows': [[label, snap['nc'].get(key), unit] for key, label, unit in MIID_NC_ROWS]}
-        blocks['correspondencia'] = {'norms': self._sgi_correspondence(env, processes.ids)}
-
         names = {p.code: "%s %s" % (p.code, p.name or '') for p in processes}
-        by_process = {}
-        for code, values in sorted(snap['previous'].items()):
-            by_process.setdefault(values[3] or '', []).append(code)
         order = [p.code for p in processes.sorted(lambda p: (
             ['estrategico', 'cop', 'soporte'].index(p.process_type)
             if p.process_type in ('estrategico', 'cop', 'soporte') else 9, p.code or ''))]
+
+        def order_codes(mapping):
+            """Claves de ``mapping`` en el orden del mapa (estratégicos, cadena,
+            soporte) y después las que no son procesos de la empresa."""
+            return [c for c in order if c in mapping] + sorted(c for c in mapping if c not in order)
+
+        blocks['controles'] = {'items': ["%s (%s)" % (v[1], code) for code, v in sorted(snap['controls'].items())]}
+        blocks['plazos_nc'] = {'rows': [[label, snap['nc'].get(key), unit] for key, label, unit in MIID_NC_ROWS]}
+        blocks['correspondencia'] = {'norms': self._sgi_correspondence(env, processes.ids)}
+        # 57.146.0: normas, roles y plazos documentales.
+        blocks['normas'] = {'rows': [[code, v[0], len(v[1])] for code, v in sorted(snap['norms'].items())]}
+        blocks['plazos_documentales'] = {'rows': [
+            [label, snap['doc_params'].get(key), unit] for key, label, _param, _default, unit in MIID_DOC_ROWS]}
+        role_rows = []
+        for code in order_codes(snap['roles']):
+            values = snap['roles'][code]
+            role_rows.append([names.get(code, code), values[0] or "—", values[1] or "—", values[2]]
+                             + [", ".join(v) or "—" for v in values[3:]])
+        blocks['roles'] = {'rows': role_rows, 'kinds': [label for _k, label in MIID_ROLE_KINDS]}
+
+        by_process = {}
+        for code, values in sorted(snap['previous'].items()):
+            by_process.setdefault(values[3] or '', []).append(code)
         prev_rows = [[names.get(code, code), ", ".join(by_process[code])] for code in order if code in by_process]
         prev_rows += [[code, ", ".join(codes)] for code, codes in sorted(by_process.items())
                       if code and code not in names]
@@ -855,6 +1004,9 @@ class SgiMiid(models.Model):
 
         has_data = {
             'identificacion': True,
+            'normas': bool(blocks['normas']['rows']),
+            'roles': bool(role_rows),
+            'plazos_documentales': True,
             'procesos': bool(blocks['procesos']['rows']),
             'politica': bool(policy),
             'objetivos': bool(blocks['objetivos']['rows']),

@@ -189,13 +189,22 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 - **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
   AMEF.
 
-### 2.5.3 El Manual del SGI (MIID) desde Odoo (desde 57.105.0)
+### 2.5.3 El Manual del SGI (MIID) generado desde Odoo (desde 57.105.0; generado desde 57.146.0)
 
-**SGI → Sistema → Manual del SGI (MIID)** junta el texto fijo del manual
-(una sección por título, «Textos del manual») y los datos vivos del SGI
-(procesos con su mapa e interacción, política, objetivos, tipos de documento,
-controles operacionales, plazos de NC, correspondencia por cláusula,
-procedimientos anteriores, anexos y control de cambios).
+**SGI → Sistema → Manual del SGI (MIID)** arma el manual con muy poco texto
+fijo (29 secciones, «Textos del manual») y con los datos vivos del SGI: las
+normas y cláusulas cargadas, los procesos con su mapa e interacción, la
+política, los objetivos, los dueños y los puestos que ejecutan, aprueban y
+escalan en cada proceso, los tipos de documento, los plazos documentales
+que aplica el sistema, los controles operacionales, los plazos de NC, la
+correspondencia por cláusula con las actividades que la cumplen, los
+procedimientos anteriores, los anexos y el control de cambios. El manual
+ya no describe en prosa lo que el sistema muestra: las secciones
+narrativas del borrador de octubre quedaron archivadas (su texto sigue ahí,
+por si lo necesita). El **capítulo 6, Información documentada, sustituye al
+P-G01**: ahí están las reglas de quién elabora, aprueba, publica, difunde y
+resguarda cada tipo de documento; las rutinas son actividades de E2
+(E2.01, E2.02, E2.03, E2.36, E2.42 y E2.43).
 
 - **Lo que ve en pantalla y en «Vista en PDF (borrador)»** es la vista del
   sistema, marcada «Borrador — no vigente». La revisión vigente es el
@@ -203,13 +212,14 @@ procedimientos anteriores, anexos y control de cambios).
 - **Textos del manual:** usted edita el texto de cada sección. Escriba
   `[[datos]]` en un párrafo propio para decidir dónde van los datos del
   sistema (si no, van al final). «Texto solo si no hay datos» deja el texto
-  como respaldo (11.1: la tabla escrita sale solo si la matriz de
-  cumplimiento no trae datos). La «Situación» de cada anexo es una nota por
-  renglón (12.1). Las secciones se archivan; no se borran.
+  como respaldo. La «Situación» de cada anexo es una nota por renglón (7.2).
+  Las secciones se archivan; no se borran. Cuando una actualización trae
+  texto nuevo para una sección que usted editó, no la pisa: le deja una nota
+  en el historial de la sección para que compare.
 - **«Por confirmar»:** mientras una sección esté marcada (con la nota de qué
   falta), ninguna revisión del MIID se envía ni se aprueba. La carga trae
   cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de las no
-  aplicabilidades), 11.2 (P-A13, P-A22 y P-A30 sin registrar) y 12.1
+  aplicabilidades), 7.1 (P-A13, P-A22 y P-A30 sin registrar) y 7.2
   (situación de cada anexo). Lo quitan usted, Dirección o el Administrador
   SGI; queda en el historial de la sección.
 - **Procesos:** el MIID solo se aprueba cuando **todos** los procesos activos
@@ -231,9 +241,11 @@ procedimientos anteriores, anexos y control de cambios).
   el candado, la sincronización diaria con Sign la aprueba.
 - **Aviso diario:** cuando el MIID vigente ya no coincide con el sistema le
   llega un solo aviso, «El MIID vigente ya no coincide con el sistema», con
-  las diferencias; vence a los 3 días hábiles y se cierra solo cuando vuelve
-  a coincidir. El MIID cargado del Dropbox no tiene contra qué comparar: no
-  avisa hasta la primera revisión aprobada desde Odoo.
+  las diferencias (también cuando cambia un plazo documental, un rol de un
+  proceso o qué actividad cumple una cláusula); vence a los 3 días hábiles y
+  se cierra solo cuando vuelve a coincidir. El MIID cargado del Dropbox no
+  tiene contra qué comparar: no avisa hasta la primera revisión aprobada
+  desde Odoo.
 - **Antes de la primera aprobación:** capture los puestos del MIID vigente
   (los acuses salen de ahí) y, si lo decide, corrija su revisión de 00 a 02
   (el control de cambios imprime lo que hay en Odoo).
