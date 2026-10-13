@@ -8,7 +8,8 @@ from odoo.tests import tagged
 from odoo.tests.common import HttpCase, TransactionCase
 from odoo.tools import mute_logger
 
-from odoo.addons.qb_checador.controllers.hikvision import checada_del_evento, eventos_del_cuerpo
+from odoo.addons.qb_checador.controllers.hikvision import (checada_del_evento, eventos_del_cuerpo,
+                                                          motivo_descartado)
 
 
 def evento(pin='26', minor=38, hora='2026-10-13T08:59:41-06:00', tipo='AccessControllerEvent', mayor=5):
@@ -63,6 +64,10 @@ class TestHikvisionLectura(TransactionCase):
         self.assertIsNone(checada_del_evento(evento(mayor=2)), 'alarma')
         self.assertIsNone(checada_del_evento(evento(tipo='heartBeat')))
         self.assertIsNone(checada_del_evento(evento(minor=38), excluidos={'38'}))
+        self.assertEqual(motivo_descartado(evento()), 'cuenta')
+        self.assertIn('sin número de empleado', motivo_descartado(evento(pin=None)))
+        self.assertIn('eventType', motivo_descartado(evento(tipo='heartBeat')))
+        self.assertIn('excluido', motivo_descartado(evento(), excluidos={'38'}))
         envuelto = {'EventNotificationAlert': evento(hora='2026-10-13T08:59:41+08:00')}
         self.assertEqual(checada_del_evento(envuelto)['hora_local'], '2026-10-13 08:59:41',
                          'la hora es la de la pantalla del reloj, aunque traiga otra zona')
@@ -111,6 +116,8 @@ class TestHikvisionPush(HttpCase):
         self.assertEqual(self.equipo.ip, '192.168.10.50')
         self.assertTrue(self.equipo.ultima_checada)
         self.assertEqual(self.equipo.estado_conexion, 'conectado')
+        self.assertIn('1 checada(s) nueva(s)', self.equipo.ultimo_mensaje)
+        self.assertIn('- cuenta:', self.equipo.ultimo_mensaje)
         # el reloj a veces manda dos eventos por la misma verificación: queda una
         self._post(json.dumps(evento()).encode())
         self.assertEqual(self.env['qb.checada'].search_count([('equipo_id', '=', self.equipo.id)]), 1)
@@ -130,6 +137,12 @@ class TestHikvisionPush(HttpCase):
         self.assertEqual(self.env['qb.checada'].search_count([('equipo_id', '=', self.equipo.id)]), 0)
         self.equipo.invalidate_recordset()
         self.assertTrue(self.equipo.ultima_conexion, 'la prueba de la escucha HTTP cuenta como conexión')
+        self._post(json.dumps(evento(pin=None)).encode())
+        self.equipo.invalidate_recordset()
+        self.assertIn('sin número de empleado', self.equipo.ultimo_mensaje)
+        self._post(b'algo que no es evento', 'text/plain')
+        self.equipo.invalidate_recordset()
+        self.assertIn('Cuerpo: algo que no es evento', self.equipo.ultimo_mensaje)
 
     def test_eventos_excluidos_por_parametro(self):
         self.env['ir.config_parameter'].sudo().set_param('qb_checador.hikvision_eventos_excluidos', '38, 39')
