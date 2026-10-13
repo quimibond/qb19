@@ -180,3 +180,33 @@ artículo, y cambian con el cilindro.
   su fecha.
 - `diametro` de la ficha de tejido pasa de texto a número
   (`migrations/19.0.2.3.0/pre-migrate.py`).
+
+## Ficha de la máquina para cualquier tipo de máquina (2.4.0, 2026-10-13)
+
+Decisión de Jose: la ficha de la máquina no es solo de tejido; cambia con el
+tipo de máquina (tejido, tintorería, acabado, inspección, abridora,
+devanadora…).
+
+- **Tipos de máquina** (Configuración → Tipos de máquina,
+  `ficha.tecnica.maquina.tipo`): cada tipo tiene su lista de **parámetros**
+  (`ficha.tecnica.maquina.parametro`: clave, nombre, unidad, numérico o
+  texto, cómo se mide). El módulo trae seis tipos (tejido circular,
+  tintorería, acabado, inspección, abridora, devanadora) y **solo los
+  parámetros de tejido circular** (diámetro, galga, agujas, alimentadores,
+  velocidad máxima). Los de los demás tipos los da de alta la planta: no se
+  inventan. Se pueden agregar tipos (carda, fusionadora, rama…).
+- **Centro de trabajo**: campo «Tipo de máquina» en la pestaña «Ficha de la
+  máquina», junto a marca y modelo. Si una máquina sin tipo recibe su
+  primera configuración, toma el tipo de esa configuración.
+- **Configuración con fecha**: un renglón por parámetro activo de su tipo
+  (`ficha.tecnica.maquina.valor`), con valor numérico o texto. Al cambiar el
+  tipo se rehacen los renglones. Un parámetro nuevo aparece en las
+  configuraciones que se creen después; uno con valores capturados no se
+  borra (se archiva).
+- **Tejido**: galga, diámetro, agujas, alimentadores y velocidad máxima
+  siguen como columnas de la configuración, calculadas desde los valores con
+  las claves `galga`, `diametro`, `no_agujas`, `no_alimentadores` y
+  `velocidad_max` (y se pueden escribir directo: crean o ajustan el valor).
+  La ficha de tejido y la búsqueda de máquinas por galga no cambian.
+- La migración `19.0.2.4.0/post-migrate.py` expone al MCP los cuatro
+  modelos (lectura, alta y edición). No asigna tipos ni crea configuraciones.
