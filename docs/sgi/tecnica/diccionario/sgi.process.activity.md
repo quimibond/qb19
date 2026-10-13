@@ -30,7 +30,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `due_month` | Selection | Vence en el mes | Trimestral, semestral o anual: mes en que vence dentro del periodo. Trimestral con «Febrero» = febrero, mayo, agosto y noviembre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:200` |
 | `due_weekday` | Selection | Vence el (semanal) | Cadencia semanal: día de la semana en que vence. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:191` |
 | `exec_channel` | Selection | Dónde se hace | Dónde se hace el trabajo (no cómo se mide). |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:208` |
-| `execution_ids` | One2many | Registro de cumplimiento |  |  | `sgi.activity.execution` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:466` |
+| `execution_ids` | One2many | Registro de cumplimiento |  |  | `sgi.activity.execution` |  |  | `addons/quimibond_sgi/models/sgi_activity_execution.py:481` |
 | `executor_role_ids` | Many2many | Ejecuta | Roles que ejecutan la actividad. |  | `sgi.activity.role` | compute `_compute_role_views`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:620` |
 | `external_system` | Char | Sistema externo | Portal proveedores GM, VUCEM, sistema del agente aduanal… |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:215` |
 | `fiscal_position_ids` | Many2many | Mercado (posición fiscal) | Mercado al que aplica (Nacional, Cliente extranjero…). Vacío = a todos. |  | `account.fiscal.position` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:74` |

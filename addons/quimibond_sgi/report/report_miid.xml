@@ -75,6 +75,43 @@
         <p t-else="" class="text-muted">La política vigente no tiene objetivos integrales activos.</p>
     </template>
 
+    <template id="report_miid_block_normas">
+        <t t-set="rows" t-value="miid['blocks']['normas']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Clave</th><th>Norma</th><th>Cláusulas en Odoo</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td class="text-end" t-out="row[2]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay normas con cláusulas cargadas.</p>
+    </template>
+
+    <template id="report_miid_block_roles">
+        <t t-set="bd" t-value="miid['blocks']['roles']"/>
+        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:8px;">
+            <thead><tr><th>Proceso</th><th>Dueño</th><th>Puesto del dueño</th><th>Actividades</th>
+                <th t-foreach="bd['kinds']" t-as="kind" t-out="kind"/></tr></thead>
+            <tbody>
+                <tr t-foreach="bd['rows']" t-as="row">
+                    <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td class="text-end" t-out="row[3]"/>
+                    <td t-foreach="row[4:]" t-as="cell" t-out="cell"/>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay procesos activos en la empresa.</p>
+    </template>
+
+    <template id="report_miid_block_plazos_documentales">
+        <table class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Plazo</th><th>Valor</th><th>Cómo se cuenta</th></tr></thead>
+            <tbody>
+                <tr t-foreach="miid['blocks']['plazos_documentales']['rows']" t-as="row">
+                    <td t-out="row[0]"/><td class="text-end" t-out="row[1]"/><td t-out="row[2]"/>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
     <template id="report_miid_block_tipos_documento">
         <t t-set="rows" t-value="miid['blocks']['tipos_documento']['rows']"/>
         <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
@@ -108,10 +145,10 @@
         <t t-foreach="norms" t-as="norm">
             <h4 style="font-size:11px; page-break-after:avoid;" t-out="norm['name']"/>
             <table class="table table-sm table-bordered" style="font-size:8px;">
-                <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos que lo cumplen</th></tr></thead>
+                <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos</th><th>Actividades que lo cumplen</th></tr></thead>
                 <tbody>
                     <tr t-foreach="norm['rows']" t-as="row">
-                        <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/>
+                        <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/>
                     </tr>
                 </tbody>
             </table>
@@ -163,8 +200,11 @@
     </template>
 
     <template id="report_miid_block">
-        <!-- 11 ramas, sin t-call dinámico. -->
+        <!-- 14 ramas, sin t-call dinámico. -->
         <t t-if="block == 'identificacion'" t-call="quimibond_sgi.report_miid_block_identificacion"/>
+        <t t-elif="block == 'normas'" t-call="quimibond_sgi.report_miid_block_normas"/>
+        <t t-elif="block == 'roles'" t-call="quimibond_sgi.report_miid_block_roles"/>
+        <t t-elif="block == 'plazos_documentales'" t-call="quimibond_sgi.report_miid_block_plazos_documentales"/>
         <t t-elif="block == 'procesos'" t-call="quimibond_sgi.report_miid_block_procesos"/>
         <t t-elif="block == 'politica'" t-call="quimibond_sgi.report_miid_block_politica"/>
         <t t-elif="block == 'objetivos'" t-call="quimibond_sgi.report_miid_block_objetivos"/>

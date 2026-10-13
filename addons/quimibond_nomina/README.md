@@ -370,6 +370,61 @@ result = bool(subsidy_accumulated)
 Las tres reglas (`ISR`, `SUBSIDY`, `FONACOT`) se editan en la base y las
 vigila el centinela.
 
+### 10. Movimientos afiliatorios IMSS: SUA e IDSE (1.9.0)
+
+Lo que NOI hace con «Enlace SUA» y «Avisos al IMSS (IDSE)»: cada dos meses
+(y en cada alta y baja) RH genera un archivo que se importa en el **SUA**
+(el programa del IMSS que calcula las cuotas obrero-patronales) y otro que se
+sube firmado al **IDSE** para que el IMSS registre el movimiento, en vez de
+capturarlos uno por uno. Desde 1.9.0 salen de Odoo, menú **Nómina → IMSS**:
+
+| Paso | Dónde | Qué hace |
+|---|---|---|
+| 1. Detectar | IMSS → Detectar movimientos | Lee los contratos del periodo: **altas/reingresos (08)** por fecha de inicio del contrato, **bajas (02)** por fecha de salida del empleado (la causa IMSS sale del motivo de salida: Abandono de empleo → 3, Término de contrato → 1, Renunció → 2, Despedido → 8, Retirado → 9; lo que no reconoce queda con aviso para que RH escoja) y **modificaciones (07)** cuando una versión del contrato cambia la propiedad `sdi_imss` respecto a la anterior. No repite lo que ya existe (trabajador + tipo + fecha). |
+| 2. Bimestre | IMSS → SDI del bimestre | La modificación por **salario variable** (LSS art. 30-II): `SDI = min(SD × factor + variables del bimestre / días cotizados, 25 UMA)`. SD = sueldo del contrato / 7, 15 o 30. Factor = `1 + (16 días de aguinaldo + vacaciones LFT × 25 %) / 365` a cuatro decimales, por año de servicio en la fecha de aplicación (es la tabla del Excel de RH: 1.0521, 1.0534, 1.0548…). Variables = líneas de los recibos del bimestre con código en `quimibond_nomina.sdi_variables_codigos` (default `COMMISSIONS,BONUS,LOGRO_OBJ,PDOM_EXEMPT,PDOM_TAX,TAX_TRANSPORT,NO_TAX_TRANSPORT`; horas extra y premios dentro de los topes legales no integran). Días = línea `DIAS_IMSS` de esos recibos (o los días del bimestre en contrato). Se revisa en pantalla y al aplicar se escribe `sdi_imss` en el contrato y se crea el 07 con fecha del primer día del bimestre siguiente, solo para quien cambia ≥ 0.01. |
+| 3. Lote | IMSS → Lotes | Un lote **por registro patronal** (`C6759945101` Toluca, `Y6087828106` México, sin guiones) con su **guía IDSE** (5 dígitos, se recuerda en `quimibond_nomina.idse_guia.<registro>`). «Traer los pendientes» y «Generar archivos» produce `MOVT_<registro>_<fecha>.txt` (SUA) e `IDSE_altas/modificaciones/bajas_….dat`, marca los movimientos como exportados y deja el resumen en el chatter. Lo generado no se edita ni se borra; «Regresar a borrador» lo libera para corregir y rehacer. |
+
+**Formato SUA (`MOVT.TXT`, 49 posiciones), verificado al carácter contra los
+archivos de NOI del 4.º bimestre 2026** (`MOVS MOD 4TO BIM 2026 QTOL 01-SEP-2026.txt`,
+correo de RH 2026-10-12): registro patronal (11) + NSS (11) + tipo (2) +
+fecha `DDMMAAAA` (8) + folio de incapacidad en blanco (8) + días `00` (2) +
+SDI con cinco enteros y dos decimales sin punto (7). Ejemplo de NOI:
+`C6759945101160076080250701092026        000088943` = modificación del
+1-sep-2026 a 889.43. CRLF, latin-1, mayúsculas.
+
+**Formato IDSE (168 posiciones, estructura DISPMAG/SAIIA-01)**: registro
+patronal (11), NSS (11), apellido paterno (27), apellido materno (27),
+nombres (27), SBC con cuatro enteros y dos decimales (6), 6 en blanco, tipo
+de trabajador (1), tipo de salario (1), semana o jornada reducida (1), fecha
+`DDMMAAAA` (8), UMF (3), 2 en blanco, tipo de movimiento (2), guía (5), clave
+del trabajador (10: la Referencia sin guion, `S250`), 1 en blanco (en las
+bajas, la causa), CURP (18) e identificador `9`. En las bajas SBC, tipos y
+UMF van en blanco. La Ñ va como `#`, sin acentos. **Pendiente de cotejar
+contra un archivo real**: el `.DAT` de NOI no se pudo descargar
+(correo de RH 2026-10-12); el IDSE valida al subir y NOI lo genera a disco
+(*Avisos al IMSS → Disco*, `salarios.dat`). Lo que difiera se ajusta en
+`qb.nomina.imss.movimiento._linea_idse`.
+
+**Datos nuevos en el contrato** (ficha del empleado, grupo IMSS, y plantilla de
+contrato): **UMF** (clínica, 3 dígitos; la pide el IDSE en las altas), tipo de
+trabajador (permanente por default), tipo de salario (mixto por default, como
+están en NOI) y semana/jornada reducida. En el empleado, **apellido paterno,
+materno y nombres**: si están vacíos se deducen del nombre completo con la
+CURP (primera letra y primera vocal interna del paterno, inicial del materno,
+inicial del nombre, saltando MARIA/JOSE); sin CURP, las dos últimas palabras
+son los apellidos. Para apellidos compuestos (DE LA ROSA) la CURP resuelve;
+si no, se capturan a mano.
+
+Lo que no hace todavía: el archivo de **alta de trabajadores del SUA**
+(`ASEG.TXT`, 164 posiciones: hace falta el layout de la versión del SUA que
+usa RH) y las **incapacidades** (`INCAP.TXT`). Las altas se capturan en el
+SUA a mano mientras tanto; en el IDSE sí salen.
+
+Parámetros (todos opcionales): `quimibond_nomina.sdi_dias_aguinaldo` (16),
+`quimibond_nomina.sdi_prima_vacacional` (0.25), `quimibond_nomina.sdi_variables_codigos`,
+`quimibond_nomina.uma_diaria` (respaldo si no está el parámetro de nómina
+`l10n_mx_uma`), `quimibond_nomina.idse_guia.<registro patronal>`.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -385,6 +440,10 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Vistas del empleado, plantilla de contrato y del centinela; menú del centinela (se cuelga de Nómina → Configuración en cada actualización) | al instalar | registros propios del módulo |
 | Parámetro `quimibond_nomina.isr_mensual_incluye_borrador` | nunca lo escribe; sólo lo lee | lo pone a mano quien corre las pilotos |
 | Parámetro `quimibond_nomina.dia_pago_semanal` (0 = lunes … 6 = domingo; sin él, viernes) | nunca lo escribe; sólo lo lee | sólo si el día de pago semanal deja de ser viernes. En producción está en `4` desde el 2026-10-05 (1.8.0 leía `False` como lunes; 1.8.1 lo corrige) |
+| Campos `qb_imss_umf`, `qb_imss_tipo_trabajador`, `qb_imss_tipo_salario`, `qb_imss_semana_reducida` en `hr.version` (reflejo en `hr.employee`) y `qb_apellido_paterno/materno`, `qb_nombres` en `hr.employee` (1.9.0) | al instalar | columnas nuevas; los tipos nacen con default (1, 2, 0), lo demás vacío |
+| Modelos `qb.nomina.imss.movimiento` y `qb.nomina.imss.lote` (tablas nuevas) y los asistentes `qb.nomina.imss.detectar` / `qb.nomina.imss.sdi.bimestre` (1.9.0) | al instalar | nacen vacías; «SDI del bimestre» al **aplicar** escribe la propiedad `sdi_imss` del contrato (`hr.version.payroll_properties`) de los trabajadores marcados |
+| Menú «IMSS» en la raíz de la app de Nómina (`qb_nomina_colgar_menu_imss`, 1.9.0) | al instalar y en cada actualización | registro propio del módulo |
+| Parámetro `quimibond_nomina.idse_guia.<registro>` (1.9.0) | al generar un lote | la guía capturada, para proponerla la próxima vez |
 | Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)

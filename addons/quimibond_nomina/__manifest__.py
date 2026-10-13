@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.8.1',
+    'version': '19.0.1.9.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -39,6 +39,11 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
   ``ISR`` y ``SUBSIDY`` lo llaman. Una nómina es del mes de su **fecha de
   pago** (viernes de la semana), como en NOI; ``_qb_nomina_periodos_del_mes``
   dice cuántas nóminas paga el mes para repartir el FONACOT.
+* **Movimientos afiliatorios (SUA e IDSE).** Altas, bajas y modificaciones de
+  salario detectadas de los contratos, más la modificación bimestral por
+  salario variable calculada de los recibos; se agrupan en lotes por registro
+  patronal que generan el ``MOVT.TXT`` que importa el SUA (igual al de NOI) y
+  los ``.dat`` que se suben al IDSE.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
@@ -56,6 +61,7 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
         'views/hr_employee_views.xml',
         'views/rule_sentinel_views.xml',
         'views/hr_payslip_run_views.xml',
+        'views/imss_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

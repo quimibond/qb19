@@ -78,6 +78,14 @@ Mis pendientes abre con el filtro **Atrasadas o por vencer**. Las
 validaciones que vencen más adelante no se ven con ese filtro: quítelo en
 la barra de búsqueda para validarlas por adelantado.
 
+Desde 57.145.0 los renglones de Mis pendientes son fijos (ya no se borran
+solos a la hora) y cada botón recarga la lista al terminar. En **Pendientes
+del equipo** y en **Pendientes — persona** usted ve los mismos renglones que
+su gente; **Hecho** y **En proceso** sí le salen en las actividades de las
+personas de las que es jefe (cadena de «Jefe» en Empleados), no en sus
+avisos ni acciones. Los **Escalamientos** que recibe son un tipo aparte, con
+su filtro, y solo tienen **Ir**.
+
 Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
 indicadores semanales se ven por semana) y abre con el filtro «Con dato»:
 quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
