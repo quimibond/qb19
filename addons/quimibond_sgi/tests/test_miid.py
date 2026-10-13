@@ -18,6 +18,9 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 from .common_documents import sgi_hide_real_documents
 from .common_users import sgi_set_mast
+from ..models.sgi_miid import MIID_BLOCKS
+
+MIID_BLOCKS_CODES = [code for code, _label in MIID_BLOCKS]
 
 FAKE_PDF = b'%PDF-1.4 ZM MIID'
 
@@ -106,7 +109,8 @@ class TestMiidSecciones(_Case):
     def test_01_semilla_del_borrador_noupdate(self):
         Data = self.env['ir.model.data'].sudo()
         rows = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'sgi.miid.section')])
-        self.assertEqual(len(rows), 46, "Una por título y subtítulo del borrador, sin 12.3.")
+        self.assertEqual(len(rows), 29, "57.146.0: texto fijo mínimo y 14 bloques vivos; las 27 "
+                                        "secciones narrativas se archivan por migración.")
         self.assertTrue(all(rows.mapped('noupdate')), "Lo que escriba el Jefe MAST no se pisa.")
         notes = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'sgi.miid.row.note')])
         self.assertEqual(len(notes), 15, "La columna «Situación» de los 15 anexos.")
@@ -197,7 +201,20 @@ class TestMiidDatos(_Case):
                 'quimibond_sgi.nc_effectiveness_days', '91')),
             ('tipo', lambda: self.env['sgi.document.type'].create(
                 {'code': 'zm_tipo', 'name': 'Tipo ZM', 'prefix_pattern': 'ZM-{seq:02d}'})),
+            # 57.146.0: plazos documentales, roles y actividades por cláusula.
+            ('plazo documental', lambda: self.env['ir.config_parameter'].sudo().set_param(
+                'quimibond_sgi.doc_ack_pending_days', '8')),
+            ('actividad', lambda: holder.update(activity=self.env['sgi.process.activity'].create(
+                {'process_id': self.p1.id, 'number': 'ZM1.01', 'name': 'Actividad ZM'}))),
+            ('rol', lambda: self.env['sgi.activity.role'].create(
+                {'activity_id': holder['activity'].id, 'role': 'ejecuta',
+                 'job_id': self.env['hr.job'].create({'name': 'PUESTO ZM MIID'}).id})),
+            ('cláusula', lambda: holder['activity'].write(
+                {'norm_clause_ids': [(4, self.env['sgi.norm'].create(
+                    {'code': 'ZMN', 'name': 'Norma ZM', 'clause_ids': [(0, 0, {'code': '7.5', 'name': 'ID'})]}
+                ).clause_ids.id)]})),
         ]
+        holder = {}
         last = base
         for label, change in cases:
             with self.subTest(label):
@@ -464,7 +481,7 @@ class TestMiidSiembraRev02(TransactionCase):
 
     def test_21_siembra_respeta_lo_editado(self):
         Section = self.env['sgi.miid.section']
-        emerg = self.env.ref('quimibond_sgi.sgi_miid_section_32_emergencias')
+        emerg = self.env.ref('quimibond_sgi.sgi_miid_section_09_terminos')
         alcance = self.env.ref('quimibond_sgi.sgi_miid_section_05_alcance')
         old_note = "Nota ZM sembrada"
         # Como quedó en 57.105.0: texto corto, sin editar.
@@ -474,11 +491,11 @@ class TestMiidSiembraRev02(TransactionCase):
                             ('Nota ZM corregida a mano', alcance.id))
         (emerg | alcance).invalidate_recordset()
         self._forget_edits(emerg)
-        res = Section._sgi_seed_update(('sgi_miid_section_32_emergencias',),
+        res = Section._sgi_seed_update(('sgi_miid_section_09_terminos',),
                                        {'sgi_miid_section_05_alcance': old_note}, 'ZM')
-        self.assertTrue(res['sgi_miid_section_32_emergencias'].startswith('actualizada'))
-        self.assertIn('Escenarios', emerg.body)
-        self.assertIn('Prueba periódica', emerg.body)
+        self.assertTrue(res['sgi_miid_section_09_terminos'].startswith('actualizada'))
+        self.assertIn('Regla general', emerg.body)
+        self.assertIn('archivo histórico', emerg.body)
         self.assertEqual(alcance.to_confirm_note, 'Nota ZM corregida a mano',
                          "La nota corregida a mano no se pisa.")
         self.assertIn('editada a mano', res['sgi_miid_section_05_alcance'])
@@ -488,11 +505,11 @@ class TestMiidSiembraRev02(TransactionCase):
             "La siembra no deja la marca de edición a mano.")
         # Editada a mano: el texto ya no se toca.
         emerg.sudo().write({'body': '<p>Texto ZM del Jefe MAST</p>'})
-        Section._sgi_seed_update(('sgi_miid_section_32_emergencias',), {}, 'ZM')
+        Section._sgi_seed_update(('sgi_miid_section_09_terminos',), {}, 'ZM')
         self.assertIn('Texto ZM del Jefe MAST', emerg.body)
 
     def test_22_marca_de_siembra_solo_para_superusuario(self):
-        section = self.env.ref('quimibond_sgi.sgi_miid_section_32_emergencias')
+        section = self.env.ref('quimibond_sgi.sgi_miid_section_09_terminos')
         mast = sgi_set_mast(self.env, login='zm_miid_seed_mast')
         mast.write({'company_ids': [(4, section.company_id.id)]})
         self._forget_edits(section)
@@ -502,3 +519,129 @@ class TestMiidSiembraRev02(TransactionCase):
             ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id),
             ('body', 'ilike', 'Texto de la sección editado')]),
             "Fuera de una migración la edición siempre deja su marca.")
+
+
+@tagged('post_install', '-at_install')
+class TestMiidGenerado(_Case):
+    """57.146.0: el manual deja de describir en prosa lo que el sistema ya
+    muestra. Bloques nuevos (normas, roles, plazos documentales), la
+    correspondencia con las actividades, y la migración que reacomoda y
+    archiva la siembra sin pisar lo editado."""
+
+    def _activity(self, **vals):
+        return self.env['sgi.process.activity'].create(dict({
+            'process_id': self.p1.id, 'number': 'ZM1.07', 'name': 'Actividad ZM siete'}, **vals))
+
+    def test_23_bloques_nuevos_en_la_foto_y_en_el_manual(self):
+        job = self.env['hr.job'].create({'name': 'PUESTO ZM GENERADO'})
+        boss = self.env['hr.job'].create({'name': 'JEFE ZM GENERADO'})
+        norm = self.env['sgi.norm'].create({
+            'code': 'ZMG', 'name': 'Norma ZM generada',
+            'clause_ids': [(0, 0, {'code': '7.5.3', 'name': 'Control de la información documentada'})]})
+        self.p1.write({'norm_ids': [(4, norm.id)]})
+        self.emp_a.job_id = boss
+        self._activity(role_ids=[(0, 0, {'role': 'ejecuta', 'job_id': job.id}),
+                                 (0, 0, {'role': 'aprueba', 'job_id': boss.id})],
+                       norm_clause_ids=[(6, 0, norm.clause_ids.ids)])
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.external_doc_days', '12')
+        snap = self.miid._sgi_snapshot()
+        self.assertEqual(snap['doc_params']['external'], 12)
+        self.assertEqual(snap['doc_params']['review_years'], 2, "Sin parámetro: el valor fijo.")
+        self.assertEqual(snap['roles']['ZM1'], ['ZM Dueña A', 'JEFE ZM GENERADO', 1,
+                                                ['PUESTO ZM GENERADO'], ['JEFE ZM GENERADO'], []])
+        self.assertEqual(snap['clause_activities']['ZMG']['7.5.3'], ['ZM1.07'])
+        self.assertIn('ZMG', snap['norms'])
+        data = self.miid._sgi_print_data()
+        self.assertIn(['ZMG', 'Norma ZM generada', 1], data['blocks']['normas']['rows'])
+        self.assertEqual(data['blocks']['roles']['kinds'], ['Ejecuta', 'Aprueba', 'Escala'])
+        self.assertIn(['ZM1 Proceso MIID uno', 'ZM Dueña A', 'JEFE ZM GENERADO', 1,
+                       'PUESTO ZM GENERADO', 'JEFE ZM GENERADO', '—'], data['blocks']['roles']['rows'])
+        plazos = {row[0]: row[1] for row in data['blocks']['plazos_documentales']['rows']}
+        self.assertEqual(plazos['Implantar un documento externo'], 12)
+        self.assertTrue(data['has_data']['plazos_documentales'])
+        corr = {n['name']: n['rows'] for n in data['blocks']['correspondencia']['norms']}
+        self.assertEqual(corr['ZMG Norma ZM generada'][0],
+                         ['7.5.3', 'Control de la información documentada', 'ZM1', 'ZM1.07'],
+                         "La correspondencia dice qué actividades cumplen cada numeral.")
+        self.assertTrue(set(MIID_BLOCKS_CODES) - set(data['has_data']) == set(),
+                        "Todos los bloques saben si tienen datos.")
+
+    def test_24_manual_imprime_los_bloques_nuevos(self):
+        Section = self.env['sgi.miid.section']
+        for block in ('normas', 'roles', 'plazos_documentales', 'correspondencia'):
+            Section.create({'company_id': self.company.id, 'sequence': 50, 'name': 'Bloque ZM %s' % block,
+                            'body': '<p>Texto ZM %s</p>' % block, 'live_block': block})
+        norm = self.env['sgi.norm'].create({
+            'code': 'ZMP', 'name': 'Norma ZM impresa', 'clause_ids': [(0, 0, {'code': '7.5', 'name': 'ID'})]})
+        self._activity(norm_clause_ids=[(6, 0, norm.clause_ids.ids)])
+        html = self._html()
+        self.assertIn('ZM1.07', html, "La correspondencia imprime el numeral de la actividad.")
+        self.assertIn('Acuse de lectura', html)
+        self.assertIn('Puesto del dueño', html)
+        self.assertIn('Cláusulas en Odoo', html)
+        self.assertIn('Actividades que lo cumplen', html)
+
+    def test_25_diferencias_de_roles_plazos_y_clausulas(self):
+        old = self.miid._sgi_snapshot()
+        job = self.env['hr.job'].create({'name': 'PUESTO ZM DIFF'})
+        activity = self._activity(role_ids=[(0, 0, {'role': 'ejecuta', 'job_id': job.id})])
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.pilot_days', '45')
+        norm = self.env['sgi.norm'].create({
+            'code': 'ZMD', 'name': 'Norma ZM diff', 'clause_ids': [(0, 0, {'code': '7.5', 'name': 'ID'})]})
+        activity.norm_clause_ids = [(4, norm.clause_ids.id)]
+        text = "\n".join(self.Miid._sgi_diff(old, self.miid._sgi_snapshot()))
+        self.assertIn("Cambió el número de actividades de ZM1: 0 → 1", text)
+        self.assertIn("Cambiaron los puestos que ejecutan, aprueban o escalan en ZM1", text)
+        self.assertIn("Cambiaron las actividades que cumplen ZMD 7.5", text)
+        self.assertIn("Cambiaron los plazos documentales: prueba piloto de un documento 60 → 45", text)
+
+    def test_26_migracion_reacomoda_archiva_y_respeta_lo_editado(self):
+        import importlib.util
+        import os
+        Section = self.env['sgi.miid.section']
+        ref = Section.env.ref
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'migrations', '19.0.57.146.0', 'post-migrate.py')
+        spec = importlib.util.spec_from_file_location('sgi_mig_57_146_0', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        referencias = ref('quimibond_sgi.sgi_miid_section_08_referencias')
+        objeto = ref('quimibond_sgi.sgi_miid_section_04_objeto')
+        self.env.cr.execute("UPDATE sgi_miid_section SET sequence = 999, live_block = NULL WHERE id = %s",
+                            [referencias.id])
+        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s WHERE id = %s",
+                            ('<p>Texto ZM viejo del objeto</p>', objeto.id))
+        (referencias | objeto).invalidate_recordset()
+        # El objeto lo editó el Jefe MAST: la migración lo respeta.
+        objeto.sudo().message_post(body="Texto de la sección editado.")
+        self.env['mail.message'].sudo().search([
+            ('model', '=', 'sgi.miid.section'), ('res_id', '=', referencias.id)]).unlink()
+        # (xmlid que 57.146.0 ya no siembra: se arma por partes a propósito.)
+        emergencias = ref('quimibond_sgi.' + 'sgi_miid_section_32_emergencias', raise_if_not_found=False)
+        if not emergencias:
+            # Base nueva: la siembra ya no la trae; se simula la de 57.105.0.
+            emergencias = Section.create({'company_id': referencias.company_id.id, 'sequence': 320,
+                                          'name': 'Emergencias ZM', 'body': '<p>ZM</p>'})
+            self.env['ir.model.data'].sudo().create({
+                'module': 'quimibond_sgi', 'name': 'sgi_miid_section_32_emergencias',
+                'model': 'sgi.miid.section', 'res_id': emergencias.id, 'noupdate': True})
+        module.migrate(self.env.cr, '19.0.57.145.0')
+        module.migrate(self.env.cr, '19.0.57.145.0')
+        self.assertFalse(emergencias.active, "Las secciones narrativas se archivan.")
+        self.assertEqual((referencias.sequence, referencias.live_block), (80, 'normas'),
+                         "La estructura vuelve a la de la siembra.")
+        self.assertIn('Texto ZM viejo del objeto', objeto.body, "Lo editado a mano no se pisa.")
+        Message = self.env['mail.message'].sudo()
+        self.assertEqual(Message.search_count([('model', '=', 'sgi.miid.section'),
+                                               ('res_id', '=', referencias.id),
+                                               ('body', 'ilike', 'reacomodada')]), 1,
+                         "Idempotente: la segunda corrida no vuelve a reacomodar.")
+        self.assertEqual(Message.search_count([('model', '=', 'sgi.miid.section'),
+                                               ('res_id', '=', emergencias.id),
+                                               ('body', 'ilike', 'archivada')]), 1)
+        self.assertFalse(Message.search_count([('model', '=', 'sgi.miid.section'),
+                                               ('res_id', '=', referencias.id),
+                                               ('body', 'ilike', 'Texto de la sección editado')]),
+                         "Reacomodar no es editar.")
+        self.assertFalse(self.env['sgi.miid']._sgi_get(referencias.company_id)._sgi_print_data()['orphans'],
+                         "Después de la migración ningún bloque queda sin sección.")

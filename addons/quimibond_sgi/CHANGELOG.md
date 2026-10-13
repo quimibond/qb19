@@ -13,6 +13,106 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.146.0 — 2026-10-13
+
+Dirección General 2026-10-13, después de ver el borrador Rev. 03 y el
+P-G01 Rev. 12 en Word: **«¿por qué lo haces en Word? ¿Así es la mejor forma
+de hacerlo?»** y **«el MIID está como en el Dropbox»**. Tenía razón: el
+manual describía en 46 secciones de prosa lo que el sistema ya muestra (y
+el P-G01 era otro procedimiento en Word para describir cómo controla Odoo
+los documentos). El MIID pasa a ser un **manual generado**: texto fijo
+mínimo y datos vivos; el **P-G01 se absorbe** en su capítulo 6 y en las
+actividades de E2.
+
+### Cambiado
+- **Siembra del MIID (`data/sgi_miid_sections.xml`): 29 secciones en vez
+  de 46.** Capítulos: Identificación · 1 Objeto, alcance y control del
+  Manual · 2 Referencias normativas (bloque `normas`) · 3 Dónde vive el
+  sistema (regla general y términos) · 4 El sistema (procesos, política,
+  objetivos, dueños y roles) · 5 Cómo cumple el SGI cada requisito
+  (correspondencia por cláusula **con las actividades que la cumplen**,
+  reglas que el sistema hace cumplir, plazos de NC, controles) · 6
+  Información documentada (**sustituye al P-G01**: tipos y claves, quién
+  elabora qué, aprobación y cambios, plazos documentales, difusión y
+  copias, resguardo y seguridad) · 7 Transición desde el Dropbox · 8
+  Control de cambios. Las 27 secciones narrativas de los capítulos 4 a 10
+  del borrador (contexto, liderazgo, planificación, apoyo, operación,
+  evaluación, mejora…) **se archivan**: lo que decían vive en las
+  actividades, en la correspondencia por cláusula y en los manuales de
+  Conocimiento. Las 15 notas por renglón de los anexos siguen.
+- **Tres bloques vivos nuevos** (`MIID_BLOCKS`, 14): `normas` (normas y
+  número de cláusulas cargadas), `roles` (por proceso: dueño, su puesto,
+  actividades y los puestos que ejecutan, aprueban y escalan) y
+  `plazos_documentales` (los siete plazos que aplica el sistema con su
+  parámetro: revisión a 2 años, avisos a 60 y 30 días, acuse en 7 días
+  hábiles, piloto de 60 días y su aviso, documento externo en 10 días
+  hábiles; `MIID_DOC_ROWS`). La correspondencia por cláusula gana la
+  columna **Actividades que lo cumplen**.
+- **La huella** (`_sgi_snapshot`/`_sgi_hash`) cubre ahora también los
+  plazos documentales, los roles por proceso y qué actividades cumplen cada
+  cláusula; `_sgi_diff` los explica («Cambiaron los puestos que ejecutan,
+  aprueban o escalan en E2», «Cambiaron las actividades que cumplen 9001
+  7.5»…). Antes la huella no sabía qué procesos cumplían cada cláusula.
+- `_sgi_seed_fields` lee también la estructura de la siembra (orden,
+  numeral, título, nivel, bloque; `MIID_SEED_LAYOUT_FIELDS`).
+
+### Agregado
+- `sgi.miid.section._sgi_seed_layout_update(xmlids, tag)`: reacomoda en una
+  base existente la estructura de la siembra (noupdate no lo hace) sin
+  tocar el texto ni dejar marca de edición, con nota en el chatter.
+- `sgi.miid.section._sgi_seed_archive(xmlids, tag, reason)`: archiva las
+  secciones que el manual generado ya no lleva, con nota en el chatter.
+- Plantillas `report_miid_block_normas`, `report_miid_block_roles` y
+  `report_miid_block_plazos_documentales` (`report/report_miid.xml`).
+
+### Migración (`migrations/19.0.57.146.0/post-migrate.py`)
+1. Archiva las 27 secciones narrativas. 2. Reacomoda las 19 que siguen.
+3. Pone el texto nuevo en las 14 cuyo texto cambió, **solo si nadie las
+editó** (`_sgi_seed_update`); las notas de «Por confirmar» no cambian.
+Idempotente; cada paso deja su línea en el log. Las 10 secciones nuevas las
+crea la siembra al actualizar.
+
+### Datos de producción (por MCP, 2026-10-13)
+- Actividades nuevas de E2 (etapa «A. Información documentada», por
+  evento, registro manual con su justificación, cláusula 7.5 de las tres
+  normas, ligadas a P-G01): **E2.42** «Verificar que cada nuevo titular de
+  un puesto firme su Mi procedimiento y lo revise dentro de los 30 días
+  naturales siguientes a su ingreso» (ejecuta Jefe MAST, participa
+  Asistente MAST, escala al Director de Operaciones a los 5 días; recibe
+  el acuse de Mi procedimiento en 22 días hábiles, entrega la revisión
+  verificada) y **E2.43** «Autorizar con el Director de Operaciones cada
+  entrega de un documento del SGI a personas o entidades externas,
+  entregarlo marcado «COPIA NO CONTROLADA» y anotarla en el historial del
+  documento» (aprueba el Director de Operaciones, escala a los 2 días;
+  recibe la solicitud externa, entrega la copia no controlada). Las dos
+  con la especificación completa; E2.43 avisa que la aprobación del
+  Director no está configurada en Aprobaciones del SGI (lo decide el Jefe
+  MAST: nota en el historial o aprobación nativa).
+- Rutinas 1 y 16 del P-G01 en «Rutina por rutina»: de «Pendiente» a
+  «Cubierta» por E2.42 y E2.43. Las 16 quedan resueltas.
+- Entregables E2-MP-INGRESO, E2-MP-VERIFICADO, E2-DOC-SOLICITUD-EXT y
+  E2-DOC-ENTREGA-EXT.
+
+### Documentación
+- `docs/sgi/transicion/miid-rev03-borrador.md`: ahora es el **texto fijo
+  de la siembra, generado desde `data/sgi_miid_sections.xml`** (lo que el
+  aviso de la siembra manda comparar), no el borrador en prosa del 5-oct.
+- `docs/sgi/transicion/p-g01-en-el-sgi.md` sustituye al borrador Rev. 12
+  en Word: dónde quedó cada sección y cada rutina del P-G01 Rev. 11 (MIID
+  capítulo 6, actividades de E2, mecanismos de Odoo) y lo que falta decidir.
+- README y manual del Jefe MAST (2.5.3) con el manual generado.
+
+### Pruebas (`tests/test_miid.py`)
+- test_01: 29 secciones y 15 notas. test_06: la huella cambia con un plazo
+  documental, una actividad, un rol y una cláusula. test_21/22 sobre la
+  sección 3 (Dónde vive el sistema). Nuevas: test_23 (bloques nuevos en la
+  foto, en `_sgi_print_data` y en la correspondencia), test_24 (el manual
+  imprime los bloques nuevos), test_25 (diferencias legibles de roles,
+  plazos y cláusulas), test_26 (la migración reacomoda, archiva, respeta lo
+  editado y es idempotente; ningún bloque queda sin sección).
+- `test_menus_capitulos.test_09` tolera que la sección 35 esté archivada o
+  no exista.
+
 ## 19.0.57.145.0 — 2026-10-13
 
 Dirección General 2026-10-13: **«Mis pendientes» no servía: «le doy Hecho y
