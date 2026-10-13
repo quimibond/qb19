@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.5.0 (Dirección General 2026-10-13): avisos de máquina. Galga distinta en la orden de trabajo
+         de tejido; cargas por jet y aviso de carga en la orden de tintorería. Extienden vistas de mrp y
+         stock (otros módulos). -->
+
+    <record id="view_mrp_workorder_form_ft_aviso" model="ir.ui.view">
+        <field name="name">mrp.workorder.form.ft.aviso</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_form_view_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="after">
+                <div class="alert alert-warning mb-2" role="alert" invisible="not ft_aviso_maquina">
+                    <i class="fa fa-exclamation-triangle me-1" title="Aviso de máquina"/>
+                    <field name="ft_aviso_maquina" readonly="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mrp_workorder_list_ft_aviso" model="ir.ui.view">
+        <field name="name">mrp.workorder.list.ft.aviso</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-warning">ft_aviso_maquina</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='workcenter_id']" position="after">
+                <field name="ft_aviso_maquina" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mrp_workorder_search_ft_aviso" model="ir.ui.view">
+        <field name="name">mrp.workorder.search.ft.aviso</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_workorder_form_view_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='cancel']" position="after">
+                <filter string="Galga distinta a la máquina" name="ft_aviso_maquina"
+                        domain="[('ft_aviso_maquina', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mrp_production_form_ft_aviso" model="ir.ui.view">
+        <field name="name">mrp.production.form.ft.aviso</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="after">
+                <field name="ft_es_tintoreria" invisible="1"/>
+                <div class="alert alert-warning mb-2" role="alert" invisible="not ft_aviso_maquina">
+                    <i class="fa fa-exclamation-triangle me-1" title="Aviso de máquina"/>
+                    <field name="ft_aviso_maquina" readonly="1"/>
+                </div>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Cargas por jet" name="ft_cargas_jet" invisible="not ft_es_tintoreria">
+                    <group>
+                        <group>
+                            <field name="ft_jet_id" options="{'no_create': True}"/>
+                            <field name="ft_rendimiento" invisible="not ft_rendimiento"/>
+                        </group>
+                    </group>
+                    <field name="ft_cargas_html" readonly="1" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_type_form_ft_cargas" model="ir.ui.view">
+        <field name="name">stock.picking.type.form.ft.cargas</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='sequence_code']" position="after">
+                <field name="ft_cargas_jet" invisible="code != 'mrp_operation'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
