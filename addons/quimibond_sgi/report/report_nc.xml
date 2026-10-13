@@ -33,7 +33,7 @@
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.sgi_folio"/></td>
                                 <td><strong>Fecha:</strong> <span t-field="doc.create_date" t-options='{"widget": "date"}'/></td>
-                                <td><strong>Origen:</strong> <span t-field="doc.sgi_origin_type"/></td>
+                                <td><strong>Tipo:</strong> <span t-field="doc.sgi_nc_type"/> (<span t-field="doc.sgi_origin_type"/>)</td>
                             </tr>
                             <tr>
                                 <td><strong>Clasificación:</strong> <span t-field="doc.sgi_classification"/></td>
