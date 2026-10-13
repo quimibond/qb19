@@ -147,6 +147,41 @@ def checada_del_evento(evento, excluidos=()):
     }
 
 
+def motivo_descartado(evento, excluidos=()):
+    """Por qué un evento no cuenta como checada (para el diagnóstico de la ficha)."""
+    if 'EventNotificationAlert' in evento and isinstance(evento['EventNotificationAlert'], dict):
+        evento = evento['EventNotificationAlert']
+    tipo = evento.get('eventType')
+    if (tipo or '').lower() != 'accesscontrollerevent':
+        return "eventType=%r (solo cuenta AccessControllerEvent)" % tipo
+    ace = evento.get('AccessControllerEvent')
+    if not isinstance(ace, dict):
+        return "sin bloque AccessControllerEvent"
+    if str(ace.get('majorEventType')) != str(MAJOR_CONTROL_ACCESO):
+        return "majorEventType=%r (solo cuenta 5)" % ace.get('majorEventType')
+    if str(ace.get('subEventType') or '').strip() in excluidos:
+        return "subEventType=%r excluido por parámetro" % ace.get('subEventType')
+    if not str(ace.get('employeeNoString') or ace.get('employeeNo') or '').strip().strip('0'):
+        return "sin número de empleado (subEventType=%r)" % ace.get('subEventType')
+    if not re.match(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}', str(evento.get('dateTime') or '')):
+        return "dateTime ilegible: %r" % evento.get('dateTime')
+    return "cuenta"
+
+
+def diagnostico(metodo, content_type, cuerpo, eventos, extra='', excluidos=()):
+    """Texto corto de lo que llegó, para la ficha del reloj (se sobrescribe en cada mensaje)."""
+    lineas = ["%s · %s · %d bytes · %d evento(s) leído(s)" % (metodo, content_type or 'sin Content-Type',
+                                                              len(cuerpo or b''), len(eventos))]
+    for e in eventos[:5]:
+        lineas.append("- %s: %s" % (motivo_descartado(e, excluidos), json.dumps(e, ensure_ascii=False)[:1200]))
+    if not eventos:
+        texto = (cuerpo or b'')[:1500].decode('utf-8', 'replace')
+        lineas.append("Cuerpo: %s" % (texto or '(vacío)'))
+    if extra:
+        lineas.append(extra)
+    return '\n'.join(lineas)[:4000]
+
+
 # ----------------------------------------------------------------------
 class HikvisionController(http.Controller):
 
@@ -169,6 +204,11 @@ class HikvisionController(http.Controller):
         httpreq = request.httprequest
         cuerpo = httpreq.get_data() if httpreq.method == 'POST' else b''
         eventos = eventos_del_cuerpo(cuerpo, httpreq.headers.get('Content-Type'))
+        extra = ''
+        if httpreq.method == 'POST' and (httpreq.form or httpreq.files):
+            extra = "Formulario: campos %s; archivos %s" % (
+                list(httpreq.form.keys()),
+                ["%s (%s)" % (k, f.mimetype) for k, f in httpreq.files.items()])
         if not eventos and httpreq.method == 'POST':
             # multipart/form-data: Odoo ya leyó el cuerpo como formulario; el evento viene en un campo o archivo.
             for valor in list(httpreq.form.values()):
@@ -186,5 +226,11 @@ class HikvisionController(http.Controller):
         if ip and not equipo.ip:
             equipo.write({'ip': ip})
         n = request.env['qb.checada'].sudo().procesar_hikvision(equipo, eventos)
+        excluidos = {v.strip() for v in (request.env['ir.config_parameter'].sudo().get_param(PARAM_EXCLUIDOS) or '')
+                     .split(',') if v.strip()}
+        texto = diagnostico(httpreq.method, httpreq.headers.get('Content-Type'), cuerpo, eventos, extra, excluidos)
+        texto = texto.replace(' evento(s) leído(s)', ' evento(s) leído(s), %d checada(s) nueva(s)' % n, 1)
+        _logger.info("qb_checador %s: mensaje Hikvision\n%s", equipo.serial, texto[:1500])
+        equipo.write({'ultimo_mensaje': texto})
         equipo._tocar(checada=n > 0)
         return self._responder(OK_JSON)

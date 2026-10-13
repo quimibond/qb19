@@ -95,6 +95,9 @@
                         <field name="ruta_push" readonly="1"/>
                         <field name="url_push" readonly="1" widget="CopyClipboardChar"/>
                     </group>
+                    <group string="Último mensaje recibido" invisible="marca != 'hikvision'">
+                        <field name="ultimo_mensaje" nolabel="1" readonly="1"/>
+                    </group>
                     <group string="Notas">
                         <field name="notas" nolabel="1"/>
                     </group>

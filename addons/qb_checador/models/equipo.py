@@ -43,6 +43,10 @@ class ChecadorEquipo(models.Model):
     url_push = fields.Char(string="URL de escucha", compute='_compute_url_push',
                            help="Lo que se captura en el reloj Hikvision como servidor de escucha HTTP.")
     ruta_push = fields.Char(string="Ruta (URL) en el reloj", compute='_compute_url_push')
+    ultimo_mensaje = fields.Text(string="Último mensaje recibido", readonly=True, copy=False,
+                                 help="Hikvision: qué mandó el reloj la última vez (tipo de contenido, eventos leídos y "
+                                      "por qué cuentan o no como checada). Se sobrescribe con cada mensaje; sirve "
+                                      "para diagnosticar un reloj que se conecta pero no deja checadas.")
     host_push = fields.Char(string="Servidor", compute='_compute_url_push')
     ubicacion = fields.Char(string="Ubicación")
     ip = fields.Char(string="IP en la planta", help="Solo informativa; Odoo no se conecta al equipo, el equipo se "
