@@ -110,7 +110,7 @@ HEADER_MAP = {
 }
 
 FLOAT_FIELDS = {
-    'galga', 'velocidad',
+    'galga', 'velocidad', 'diametro',
     'longitud_malla_polea1', 'longitud_malla_polea2', 'longitud_malla_tol',
     'consumo_cm_vta_polea1', 'consumo_cm_vta_polea2', 'consumo_cm_vta_tol',
     'polea_alimentacion_polea1', 'polea_alimentacion_polea2', 'polea_alimentacion_tol',

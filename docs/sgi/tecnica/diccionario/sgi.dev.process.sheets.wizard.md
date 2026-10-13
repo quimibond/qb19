@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `line_ids` | One2many | Fichas |  |  | `sgi.dev.process.sheets.wizard.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:320` |
-| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:319` |
+| `line_ids` | One2many | Fichas |  |  | `sgi.dev.process.sheets.wizard.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:322` |
+| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py:321` |
 
 ## Métodos públicos (1)
 

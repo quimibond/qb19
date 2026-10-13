@@ -156,3 +156,27 @@ parámetro) y deja de usar su ficha de proceso por máquina.
 - La migración `19.0.2.2.0/pre-migrate.py` conserva los textos que no se
   puedan leer como número en una columna `<campo>_texto_2_1` y los reporta
   en el log.
+
+## Ficha de la máquina: configuraciones por fecha (2.3.0, 2026-10-13)
+
+Decisión de Jose: los datos de una circular son de la máquina, no del
+artículo, y cambian con el cilindro.
+
+- **En el centro de trabajo** (pestaña «Ficha de la máquina»): marca y
+  modelo, y las **configuraciones con fecha** (`ficha.tecnica.maquina.config`):
+  diámetro (in), galga, agujas, alimentadores y velocidad máxima, «vigente
+  desde» y el motivo (alta, cambio de cilindro). La vigente es la de fecha más
+  reciente que ya empezó. También en Ficha técnica → Configuración →
+  Configuraciones de máquina.
+- **La ficha de tejido** guarda la configuración con la que se elaboró: al
+  poner la máquina y la fecha de elaboración se elige sola la vigente a esa
+  fecha, y de ella salen galga, diámetro, agujas, alimentadores y marca (en
+  solo lectura). Un cambio de cilindro posterior no altera las fichas
+  anteriores. La velocidad sigue siendo de la ficha (es del proceso); si
+  supera la máxima de la configuración, la ficha lo avisa.
+- **Galga del artículo**: si se captura, la lista de máquinas solo ofrece las
+  que hoy corren esa galga.
+- Una configuración que ya usa alguna ficha no se borra: se registra otra con
+  su fecha.
+- `diametro` de la ficha de tejido pasa de texto a número
+  (`migrations/19.0.2.3.0/pre-migrate.py`).

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+
+# 2.3.0: datos de máquina que la ficha toma de la configuración de la máquina con la que se elaboró.
+MACHINE_CONFIG_FIELDS = ('galga', 'diametro', 'no_agujas', 'no_alimentadores')
 
 
 class FichaTecnicaTejido(models.Model):
@@ -49,9 +53,22 @@ class FichaTecnicaTejido(models.Model):
         string='Máquina (texto anterior)',
         help='Lo que se capturó como texto antes de la versión 2.2.0, o lo que traía el Excel cuando no '
              'coincide con ningún centro de trabajo. Solo es dato histórico.')
+    # 2.3.0: la configuración de la máquina (cilindro) con la que se elaboró la ficha. De ella salen galga,
+    # diámetro, agujas y alimentadores, y la marca de la máquina; un cambio de cilindro posterior no los
+    # cambia aquí.
+    maquina_config_id = fields.Many2one(
+        'ficha.tecnica.maquina.config', string='Configuración de la máquina', index=True,
+        domain="[('workcenter_id', '=', maquina_tejido)]",
+        help='Configuración de la máquina vigente a la fecha de elaboración; se elige sola al poner la máquina '
+             'y la fecha. Los datos de máquina de la ficha salen de aquí.')
+    galga_requerida = fields.Float(
+        string='Galga del artículo', digits=(16, 0),
+        help='La galga que pide el artículo. Con ella la lista de máquinas solo ofrece las que hoy corren esa '
+             'galga.')
+    velocidad_aviso = fields.Char(string='Aviso de velocidad', compute='_compute_velocidad_aviso')
     marca_maquina = fields.Char(string='Marca de máquina')
     galga = fields.Float(string='Galga')
-    diametro = fields.Char(string='Diámetro')
+    diametro = fields.Float(string='Diámetro (in)', digits=(16, 2))
     no_agujas = fields.Integer(string='No. de agujas')
     no_alimentadores = fields.Integer(string='No. de alimentadores')
     velocidad = fields.Float(string='Velocidad (rpm/min)')
@@ -158,6 +175,68 @@ class FichaTecnicaTejido(models.Model):
         'unique(articulo, revision)',
         'Ya existe una ficha técnica de tejido con ese artículo y esa revisión.',
     )
+
+    # ------------------------------------------------------------------
+    # 2.3.0: datos de máquina desde la configuración de la máquina
+    # ------------------------------------------------------------------
+    @api.model
+    def _ft_machine_vals(self, config):
+        vals = {name: config[name] for name in MACHINE_CONFIG_FIELDS}
+        if config.workcenter_id.ft_marca:
+            vals['marca_maquina'] = config.workcenter_id.ft_marca
+        return vals
+
+    def _ft_complete_machine(self, vals):
+        """Pone en ``vals`` la configuración vigente a la fecha de elaboración cuando cambia la máquina o la
+        fecha (salvo que se elija una a mano) y los datos de máquina de esa configuración."""
+        record = self[:1]
+        vals = dict(vals)
+        if 'maquina_config_id' not in vals and vals.keys() & {'maquina_tejido', 'fecha_elaboracion'}:
+            wc_id = vals['maquina_tejido'] if 'maquina_tejido' in vals else record.maquina_tejido.id
+            day = vals['fecha_elaboracion'] if 'fecha_elaboracion' in vals else record.fecha_elaboracion
+            workcenter = self.env['mrp.workcenter'].browse(wc_id) if wc_id else self.env['mrp.workcenter']
+            vals['maquina_config_id'] = workcenter._ft_config_at(day).id if workcenter else False
+        if vals.get('maquina_config_id'):
+            config = self.env['ficha.tecnica.maquina.config'].browse(vals['maquina_config_id'])
+            vals.update(self._ft_machine_vals(config))
+        return vals
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._ft_complete_machine(vals) for vals in vals_list])
+
+    def write(self, vals):
+        if not vals.keys() & {'maquina_tejido', 'fecha_elaboracion', 'maquina_config_id'}:
+            return super().write(vals)
+        for ficha in self:
+            super(FichaTecnicaTejido, ficha).write(ficha._ft_complete_machine(vals))
+        return True
+
+    @api.onchange('maquina_tejido', 'fecha_elaboracion')
+    def _onchange_maquina_config(self):
+        for ficha in self:
+            ficha.maquina_config_id = ficha.maquina_tejido._ft_config_at(ficha.fecha_elaboracion) \
+                if ficha.maquina_tejido else False
+
+    @api.onchange('maquina_config_id')
+    def _onchange_maquina_config_values(self):
+        for ficha in self.filtered('maquina_config_id'):
+            ficha.update(self._ft_machine_vals(ficha.maquina_config_id))
+
+    @api.constrains('maquina_config_id', 'maquina_tejido')
+    def _check_maquina_config(self):
+        for ficha in self.filtered('maquina_config_id'):
+            if ficha.maquina_config_id.workcenter_id != ficha.maquina_tejido:
+                raise ValidationError('La configuración %s no es de la máquina %s.' % (
+                    ficha.maquina_config_id.display_name, ficha.maquina_tejido.display_name or '(vacía)'))
+
+    @api.depends('velocidad', 'maquina_config_id.velocidad_max')
+    def _compute_velocidad_aviso(self):
+        for ficha in self:
+            top = ficha.maquina_config_id.velocidad_max
+            ficha.velocidad_aviso = (
+                'La velocidad de la ficha (%g rpm) supera la máxima de la máquina con esta configuración '
+                '(%g rpm).' % (ficha.velocidad, top)) if top and ficha.velocidad > top else False
 
     def action_view_fichas_acabado(self):
         self.ensure_one()
