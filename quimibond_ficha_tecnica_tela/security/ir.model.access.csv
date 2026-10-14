@@ -21,3 +21,8 @@ access_ficha_tecnica_maquina_parametro_user,ficha.tecnica.maquina.parametro.user
 access_ficha_tecnica_maquina_parametro_manager,ficha.tecnica.maquina.parametro.manager,model_ficha_tecnica_maquina_parametro,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_maquina_valor_user,ficha.tecnica.maquina.valor.user,model_ficha_tecnica_maquina_valor,base.group_user,1,1,1,1
 access_ficha_tecnica_maquina_valor_manager,ficha.tecnica.maquina.valor.manager,model_ficha_tecnica_maquina_valor,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_proceso_user,ficha.tecnica.proceso.user,model_ficha_tecnica_proceso,base.group_user,1,1,1,0
+access_ficha_tecnica_proceso_manager,ficha.tecnica.proceso.manager,model_ficha_tecnica_proceso,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_proceso_valor_user,ficha.tecnica.proceso.valor.user,model_ficha_tecnica_proceso_valor,base.group_user,1,1,1,1
+access_ficha_tecnica_proceso_valor_manager,ficha.tecnica.proceso.valor.manager,model_ficha_tecnica_proceso_valor,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_proceso_import_wizard,ficha.tecnica.proceso.import.wizard,model_ficha_tecnica_proceso_import_wizard,base.group_user,1,1,1,1
