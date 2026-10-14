@@ -95,6 +95,7 @@ CAUSA_POR_MOTIVO = {
 PREPOSICIONES = {'DE', 'DEL', 'LA', 'LAS', 'LOS', 'Y', 'E', 'MC', 'MAC', 'VON', 'VAN', 'DA', 'DAS', 'DI', 'DO', 'DOS', 'DU'}
 NOMBRES_QUE_SE_SALTAN = {'MARIA', 'JOSE', 'MA', 'J'}
 PARAM_GUIA = 'quimibond_nomina.idse_guia.%s'   # guía IDSE por registro patronal (5 dígitos)
+GUIA_NOI = '00000'   # la que manda NOI y el IMSS acepta (acuse del lote 442625196, 2-sep-2026)
 LARGO_IDSE = 168
 LARGO_SUA = 49
 
@@ -125,6 +126,15 @@ def _campo_numero(valor, largo):
 
 def _solo_digitos(texto):
     return re.sub(r'\D', '', texto or '')
+
+
+def linea_totales_idse(movimientos, guia):
+    """Último renglón del archivo IDSE, como el de NOI: 13 asteriscos, el número de movimientos en
+    57-62, la guía en 134-138 y el identificador ``9`` en 168."""
+    linea = ('*' * 13 + ' ' * 43 + _campo_numero(movimientos, 6) + ' ' * 71
+             + _campo_numero(_solo_digitos(guia), 5) + ' ' * 29 + '9')
+    assert len(linea) == LARGO_IDSE, len(linea)
+    return linea
 
 
 def registro_patronal_plano(texto):
@@ -391,7 +401,8 @@ class ImssMovimiento(models.Model):
         paterno, materno, nombres = emp._qb_imss_nombre_partes()
         es_baja = self.tipo == '02'
         sbc = '' if es_baja else _campo_numero(int(round((self.sdi or 0.0) * 100)), 6)
-        clave = re.sub(r'[^A-Z0-9]', '', (emp.registration_number or '').upper())
+        # Clave del trabajador como la pone NOI: el número de nómina, alineado a la derecha (S-4 → «         4»).
+        clave = _solo_digitos(emp.registration_number)[-10:]
         linea = (
             self.registro_patronal.ljust(11)[:11]
             + _campo_numero(self.nss, 11)
@@ -404,11 +415,11 @@ class ImssMovimiento(models.Model):
             + ('' if es_baja else (version.qb_imss_tipo_salario or '2')).ljust(1)
             + ('' if es_baja else (version.qb_imss_semana_reducida or '0')).ljust(1)
             + fecha_ddmmaaaa(self.fecha)
-            + ('' if es_baja else _campo_numero(_solo_digitos(version.qb_imss_umf), 3)).ljust(3)
+            + (_campo_numero(_solo_digitos(version.qb_imss_umf), 3) if self.tipo == '08' else '').ljust(3)
             + ' ' * 2
             + self.tipo
             + _campo_numero(_solo_digitos(guia), 5)
-            + clave[:10].ljust(10)
+            + clave.rjust(10)
             + ((self.causa_baja or ' ') if es_baja else ' ')
             + (self.curp or '').ljust(18)[:18]
             + '9'
@@ -428,9 +439,10 @@ class ImssLote(models.Model):
                                  default=lambda self: self.env.company)
     registro_patronal = fields.Char(string="Registro patronal", required=True, size=11,
                                     help="Sin guiones (C6759945101 Toluca, Y6087828106 México). Un lote por registro.")
-    guia = fields.Char(string="Guía IDSE", size=5,
-                       help="Número de guía de 5 dígitos: subdelegación del IMSS del registro patronal (2) + "
-                            "origen del movimiento (3; 400 = dispositivo magnético). Se recuerda por registro patronal.")
+    guia = fields.Char(string="Guía IDSE", size=5, default=GUIA_NOI,
+                       help="Número de guía de 5 dígitos del archivo IDSE. NOI manda 00000 y el IMSS lo acepta "
+                            "(acuse del 2-sep-2026); la subdelegación que usa el SUA (1601 Toluca, 3916 México) "
+                            "no va aquí. Se recuerda por registro patronal.")
     fecha = fields.Date(string="Fecha", default=fields.Date.context_today, required=True)
     movimiento_ids = fields.One2many('qb.nomina.imss.movimiento', 'lote_id', string="Movimientos")
     movimiento_count = fields.Integer(compute='_compute_counts')
@@ -459,7 +471,7 @@ class ImssLote(models.Model):
             if rp and rp != lote.registro_patronal:
                 lote.registro_patronal = rp
             if rp and not lote.guia:
-                lote.guia = self.env['ir.config_parameter'].sudo().get_param(PARAM_GUIA % rp) or ''
+                lote.guia = self.env['ir.config_parameter'].sudo().get_param(PARAM_GUIA % rp) or GUIA_NOI
 
     def action_tomar_pendientes(self):
         """Trae al lote todos los movimientos por exportar de este registro patronal."""
@@ -499,9 +511,11 @@ class ImssLote(models.Model):
         self.env['ir.config_parameter'].sudo().set_param(PARAM_GUIA % rp, _solo_digitos(self.guia))
         sufijo = "%s_%s" % (rp, self.fecha.strftime('%Y%m%d'))
 
-        def archivo(lineas):
+        def archivo(lineas, totales=False):
             if not lineas:
                 return False
+            if totales:
+                lineas = lineas + [linea_totales_idse(len(lineas), self.guia)]
             return base64.b64encode(('\r\n'.join(lineas) + '\r\n').encode('latin-1', 'replace'))
 
         sua = [m._linea_sua() for m in movs]
@@ -511,12 +525,13 @@ class ImssLote(models.Model):
         vals = {
             'state': 'generado',
             'archivo_sua': archivo(sua), 'archivo_sua_nombre': 'MOVT_%s.txt' % sufijo,
-            'archivo_idse_altas': archivo(altas), 'archivo_idse_altas_nombre': 'IDSE_altas_%s.dat' % sufijo,
-            'archivo_idse_modificaciones': archivo(modificaciones),
+            'archivo_idse_altas': archivo(altas, totales=True), 'archivo_idse_altas_nombre': 'IDSE_altas_%s.dat' % sufijo,
+            'archivo_idse_modificaciones': archivo(modificaciones, totales=True),
             'archivo_idse_modificaciones_nombre': 'IDSE_modificaciones_%s.dat' % sufijo,
-            'archivo_idse_bajas': archivo(bajas), 'archivo_idse_bajas_nombre': 'IDSE_bajas_%s.dat' % sufijo,
+            'archivo_idse_bajas': archivo(bajas, totales=True), 'archivo_idse_bajas_nombre': 'IDSE_bajas_%s.dat' % sufijo,
             'resumen': _("%(n)d movimientos: %(a)d altas/reingresos, %(m)d modificaciones, %(b)d bajas. "
-                         "SUA: %(n)d líneas de 49. IDSE: %(a)d + %(m)d + %(b)d líneas de 168.") % {
+                         "SUA: %(n)d líneas de 49. IDSE: %(a)d + %(m)d + %(b)d líneas de 168, cada archivo con su "
+                         "renglón de totales.") % {
                 'n': len(movs), 'a': len(altas), 'm': len(modificaciones), 'b': len(bajas)},
         }
         if self.name == _("Nuevo lote"):

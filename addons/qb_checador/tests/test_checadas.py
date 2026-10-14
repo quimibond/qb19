@@ -84,6 +84,28 @@ class TestChecadas(TransactionCase):
         self.assertFalse(c.employee_id, 'dos candidatos = nadie: mejor sin empleado que en la persona equivocada')
         self.assertEqual(c.state, 'sin_empleado')
 
+    def test_tabla_de_usuarios_del_reloj(self):
+        """Un reloj que numera distinto que la nómina (Ciruelos): la tabla del reloj gana sobre la
+        referencia y el usuario capturado, solo vale para ese reloj y religa lo que quedó sin empleado."""
+        otro = self.env['qb.checador.equipo'].create({
+            'name': 'Ciruelos', 'serial': 'TEST0002', 'tz': 'America/Mexico_City', 'prefijos': 'S'})
+        self.Checada.procesar_attlog(otro, '12\t2026-10-05 08:00:00\t0\t1\t0\n'
+                                           '5\t2026-10-05 08:01:00\t0\t1\t0\n')
+        c5 = self.Checada.search([('equipo_id', '=', otro.id), ('pin', '=', '5')])
+        self.assertEqual(c5.state, 'sin_empleado')
+        self.env['qb.checador.usuario'].create([
+            {'equipo_id': otro.id, 'pin': ' 5 ', 'nombre_reloj': 'Juan', 'employee_id': self.por_pin.id},
+            {'equipo_id': otro.id, 'pin': '12', 'employee_id': self.por_pin.id},
+        ])
+        self.assertEqual((c5.employee_id, c5.state), (self.por_pin, 'nueva'), 'se religa al capturar la fila')
+        self._attlog('12\t2026-10-05 09:00:00\t0\t1\t0')
+        en_toluca = self.Checada.search([('equipo_id', '=', self.equipo.id), ('pin', '=', '12')])
+        self.assertEqual(en_toluca.employee_id, self.por_referencia, 'la tabla de Ciruelos no toca a Toluca')
+        self.Checada.procesar_attlog(otro, '12\t2026-10-05 18:00:00\t1\t1\t0\n')
+        nueva = self.Checada.search([('equipo_id', '=', otro.id), ('pin', '=', '12'),
+                                     ('timestamp', '=', datetime(2026, 10, 6, 0, 0, 0))])
+        self.assertEqual(nueva.employee_id, self.por_pin, 'la tabla gana sobre la referencia S-12')
+
     # ------------------------------------------------------------------
     def test_turno_de_dia_y_checada_doble(self):
         self._attlog('12\t2026-10-05 06:58:10\t0\t1\t0',

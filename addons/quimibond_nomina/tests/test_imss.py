@@ -5,13 +5,15 @@ CURP, factor de integración, detección de altas y bajas y cálculo bimestral.
 
 No corre en el CI (depende de Enterprise); en el shell de Odoo.sh:
 ``odoo-bin ... --test-tags /quimibond_nomina --stop-after-init``."""
+import base64
 from datetime import date
 
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.quimibond_nomina.models.imss import (
-    anio_de_servicio, bimestre_rango, dias_vacaciones_lft, factor_integracion, registro_patronal_plano)
+    anio_de_servicio, bimestre_rango, dias_vacaciones_lft, factor_integracion, linea_totales_idse,
+    registro_patronal_plano)
 
 
 class TestImss(TransactionCase):
@@ -110,7 +112,7 @@ class TestImss(TransactionCase):
         self.assertEqual(linea[126:129], '007')
         self.assertEqual(linea[131:133], '08')
         self.assertEqual(linea[133:138], '13400')
-        self.assertEqual(linea[138:148].strip(), 'S250')
+        self.assertEqual(linea[138:148], '       250', 'número de nómina a la derecha, como NOI')
         self.assertEqual(linea[149:167], 'MASJ830911HMCTLR06')
         self.assertEqual(linea[167], '9')
         baja = self._mov('02', date(2026, 10, 6), causa='1')
@@ -119,6 +121,20 @@ class TestImss(TransactionCase):
         self.assertEqual(linea[103:118], ' ' * 15)
         self.assertEqual(linea[131:133], '02')
         self.assertEqual(linea[148], '1')
+
+    def test_linea_idse_igual_a_noi(self):
+        # Misma forma que «IDSE0005 01-09-2026 SEMANAL.DAT» de NOI (correo de RH 2026-10-14): en la
+        # modificación la UMF va en blanco, la guía 00000 y la clave es el número de nómina a la derecha.
+        mov = self._mov('07', date(2026, 9, 1), 427.12)
+        self.assertEqual(mov._linea_idse('00000'), (
+            'C6759945101' '16998226027' + 'MATIAS'.ljust(27) + 'SALINAS'.ljust(27) + 'JORGE'.ljust(27)
+            + '042712' + ' ' * 6 + '120' + '01092026' + ' ' * 5 + '07' + '00000' + '       250' + ' '
+            + 'MASJ830911HMCTLR06' + '9'))
+
+    def test_renglon_de_totales_idse(self):
+        # Último renglón del .DAT semanal de NOI: 81 modificaciones, guía 00000.
+        self.assertEqual(linea_totales_idse(81, '00000'),
+                         '*' * 13 + ' ' * 43 + '000081' + ' ' * 71 + '00000' + ' ' * 29 + '9')
 
     def test_enie_y_acentos(self):
         emp = self.env['hr.employee'].create({'name': 'SELENA MANRIQUEZ YAÑEZ', 'ssnid': '85160159407',
@@ -147,6 +163,9 @@ class TestImss(TransactionCase):
         self.assertTrue(lote.archivo_sua and lote.archivo_idse_modificaciones)
         self.assertFalse(lote.archivo_idse_altas)
         self.assertEqual(lote.archivo_sua_nombre, 'MOVT_C6759945101_20260901.txt')
+        renglones = base64.b64decode(lote.archivo_idse_modificaciones).decode('latin-1').split('\r\n')
+        self.assertEqual(renglones[-2], linea_totales_idse(1, '13400'), 'cierra con el renglón de totales')
+        self.assertEqual(renglones[-1], '', 'CRLF al final, como NOI')
         with self.assertRaises(UserError):
             mov.sdi = 1
         with self.assertRaises(UserError):

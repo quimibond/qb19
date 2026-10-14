@@ -16,6 +16,16 @@ También reenvía el push de eventos de los relojes Hikvision
 (``/qb_checador/hikvision/<token>``) para el que no sepa HTTPS en su «Escucha
 HTTP»; para Odoo es lo mismo que si el reloj hablara directo.
 
+Y para los Hikvision que no mandan sus eventos (el DS-K1T804AEF de Ciruelos
+rechaza la suscripción), el puente se los **pide**: cada minuto consulta el
+historial del reloj (ISAPI ``AcsEvent``, con usuario y contraseña del reloj)
+y manda a Odoo, uno por uno, los eventos nuevos en el mismo formato del push.
+Lo que ya mandó lo recuerda en ``puente_hikvision.json`` (número de serie del
+último evento por reloj); si Odoo o el internet se caen, el reloj sigue
+guardando y el puente se pone al día en la siguiente vuelta. Se configura con
+una sección ``[hikvision <nombre>]`` por reloj en ``puente_adms.ini``; la
+contraseña vive solo en ese archivo de la PC, nunca en Odoo ni en el repo.
+
 - Si Odoo no contesta (sin internet, Odoo en mantenimiento), el puente
   responde 502 y el reloj guarda sus registros y reintenta solo: no se
   pierde nada.
@@ -26,6 +36,7 @@ HTTP»; para Odoo es lo mismo que si el reloj hablara directo.
 Uso:
     python puente_adms.py            (lee puente_adms.ini junto al archivo)
     python puente_adms.py --probar   (manda una petición de prueba a Odoo y sale)
+    python puente_adms.py --consultar   (una vuelta de consulta a los Hikvision y sale)
 
 En el navegador de la PC, http://localhost:8081/ muestra el estado del puente
 (última petición de cada reloj y cuántas van).
@@ -34,6 +45,7 @@ import argparse
 import configparser
 import datetime as dt
 import http.server
+import json
 import logging
 import os
 import sys
@@ -44,6 +56,7 @@ from logging.handlers import RotatingFileHandler
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 INI = os.path.join(AQUI, 'puente_adms.ini')
+CURSORES = os.path.join(AQUI, 'puente_hikvision.json')
 
 CONFIG = {
     'odoo': 'https://quimibond-qb19.odoo.com',
@@ -61,12 +74,13 @@ ESTADO = {
 }
 CANDADO = threading.Lock()
 log = logging.getLogger('puente')
+HIKVISION = []   # relojes a consultar: {'nombre', 'ip', 'usuario', 'clave', 'token', 'desde', 'cada'}
 
 
 def cargar_config():
     """Lee puente_adms.ini si existe; lo que no esté ahí usa el valor de arriba."""
     if os.path.exists(INI):
-        cp = configparser.ConfigParser()
+        cp = configparser.ConfigParser(interpolation=None)   # una contraseña puede traer %
         cp.read(INI, encoding='utf-8')
         if cp.has_section('puente'):
             s = cp['puente']
@@ -75,6 +89,22 @@ def cargar_config():
             CONFIG['escuchar'] = s.get('escuchar', CONFIG['escuchar']).strip()
             CONFIG['timeout'] = s.getint('timeout', CONFIG['timeout'])
             CONFIG['log'] = s.get('log', CONFIG['log']).strip() or CONFIG['log']
+        for seccion in cp.sections():
+            if not seccion.lower().startswith('hikvision'):
+                continue
+            s = cp[seccion]
+            faltan = [k for k in ('ip', 'clave', 'token') if not s.get(k, '').strip()]
+            if faltan:
+                raise SystemExit("[%s] en puente_adms.ini: falta %s" % (seccion, ', '.join(faltan)))
+            HIKVISION.append({
+                'nombre': seccion.split(None, 1)[1].strip() if ' ' in seccion.strip() else seccion,
+                'ip': s.get('ip').strip(),
+                'usuario': s.get('usuario', 'admin').strip(),
+                'clave': s.get('clave').strip(),
+                'token': s.get('token').strip(),
+                'desde': s.get('desde', '').strip() or dt.date.today().isoformat(),
+                'cada': max(30, s.getint('cada_segundos', 60)),
+            })
     if not CONFIG['odoo'].startswith('https://'):
         raise SystemExit("La dirección de Odoo debe empezar con https:// (está: %r)" % CONFIG['odoo'])
     return CONFIG
@@ -157,6 +187,8 @@ class Manejador(http.server.BaseHTTPRequestHandler):
         if not self.path.startswith(RUTAS):
             if self.path in ('/', '/estado'):
                 return self._responder(200, pagina_estado())
+            log.warning("%s %s %s → 404 (ruta que el puente no reenvía)", self.client_address[0], self.command,
+                        self.path.split('?')[0])
             return self._responder(404, 'Solo /iclock/... (ZKTeco), /qb_checador/hikvision/... (Hikvision) '
                                         'y / (estado)\n')
         serie = serie_de(self.path)
@@ -175,6 +207,150 @@ class Manejador(http.server.BaseHTTPRequestHandler):
 
     do_GET = _pasar
     do_POST = _pasar
+
+
+# ----------------------------------------------------------------------
+# Hikvision por consulta (ISAPI AcsEvent)
+# ----------------------------------------------------------------------
+MAJOR_CONTROL_ACCESO = 5
+ESPERA_TRAS_401 = 1800   # el reloj se bloquea tras pocos intentos fallidos: no insistir con una clave mala
+
+
+class ClaveIncorrecta(Exception):
+    pass
+
+
+def leer_cursores():
+    try:
+        with open(CURSORES, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def guardar_cursores(cursores):
+    tmp = CURSORES + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(cursores, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, CURSORES)
+
+
+def _zona_local():
+    """-06:00 para la hora local de esta PC (el reloj acepta la hora con su desfase)."""
+    z = dt.datetime.now().astimezone().strftime('%z') or '+0000'
+    return '%s:%s' % (z[:3], z[3:])
+
+
+def _abridor_reloj(reloj):
+    claves = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+    claves.add_password(None, 'http://%s/' % reloj['ip'], reloj['usuario'], reloj['clave'])
+    return urllib.request.build_opener(urllib.request.HTTPDigestAuthHandler(claves))
+
+
+def eventos_del_reloj(reloj, desde, abridor=None):
+    """Todos los eventos de control de acceso (major 5) del reloj desde ``desde``
+    (``AAAA-MM-DDTHH:MM:SS±HH:MM``) hasta mañana, en páginas de 10 (el máximo del reloj)."""
+    abridor = abridor or _abridor_reloj(reloj)
+    hasta = (dt.date.today() + dt.timedelta(days=1)).isoformat() + 'T23:59:59' + _zona_local()
+    url = 'http://%s/ISAPI/AccessControl/AcsEvent?format=json' % reloj['ip']
+    eventos, posicion = [], 0
+    while True:
+        cond = {'AcsEventCond': {'searchID': 'qbpuente', 'searchResultPosition': posicion, 'maxResults': 10,
+                                 'major': MAJOR_CONTROL_ACCESO, 'minor': 0, 'startTime': desde, 'endTime': hasta}}
+        req = urllib.request.Request(url, data=json.dumps(cond).encode('utf-8'), method='POST',
+                                     headers={'Content-Type': 'application/json'})
+        try:
+            with abridor.open(req, timeout=CONFIG['timeout']) as resp:
+                datos = json.loads(resp.read().decode('utf-8', 'replace'))
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                raise ClaveIncorrecta("el reloj rechazó usuario/contraseña")
+            raise ConnectionError("el reloj contestó %s: %s" % (e.code, e.read()[:200]))
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            raise ConnectionError("no se pudo leer el reloj: %s" % e)
+        bloque = datos.get('AcsEvent') or {}
+        pagina = bloque.get('InfoList') or []
+        eventos.extend(pagina)
+        posicion += len(pagina)
+        if bloque.get('responseStatusStrg') != 'MORE' or not pagina:
+            return eventos
+
+
+def evento_push(info):
+    """Un renglón de ``AcsEvent.InfoList`` → el evento como lo manda el push del reloj
+    (lo que Odoo ya sabe leer en ``/qb_checador/hikvision/<token>``)."""
+    ace = {'majorEventType': info.get('major'), 'subEventType': info.get('minor')}
+    for k in ('employeeNoString', 'name', 'serialNo', 'currentVerifyMode', 'attendanceStatus', 'cardReaderNo',
+              'cardNo', 'cardType'):
+        if info.get(k) not in (None, ''):
+            ace[k] = info[k]
+    return {'eventType': 'AccessControllerEvent', 'eventState': 'active', 'dateTime': info.get('time'),
+            'AccessControllerEvent': ace}
+
+
+def nuevos(eventos, cursor):
+    """Los eventos con número de serie mayor al último mandado, en orden."""
+    ultimo = int(cursor.get('serial') or 0)
+    salida = [e for e in eventos if int(e.get('serialNo') or 0) > ultimo]
+    return sorted(salida, key=lambda e: int(e.get('serialNo') or 0))
+
+
+def consultar_reloj(reloj, cursores):
+    """Una vuelta: lee lo nuevo del reloj y lo manda a Odoo. Devuelve cuántos eventos mandó."""
+    cursor = cursores.get(reloj['token']) or {}
+    desde = cursor.get('time') or (reloj['desde'] + 'T00:00:00' + _zona_local())
+    pendientes = nuevos(eventos_del_reloj(reloj, desde), cursor)
+    path = '/qb_checador/hikvision/' + reloj['token']
+    mandados = 0
+    for info in pendientes:
+        cuerpo = json.dumps(evento_push(info), ensure_ascii=False).encode('utf-8')
+        status, datos, _ = reenviar('POST', path, cuerpo, 'application/json')
+        if status != 200:
+            raise ConnectionError("Odoo contestó %s: %s" % (status, datos[:120].decode('utf-8', 'replace')))
+        cursor = {'serial': int(info.get('serialNo') or 0), 'time': info.get('time') or desde}
+        cursores[reloj['token']] = cursor
+        guardar_cursores(cursores)
+        mandados += 1
+    with CANDADO:
+        r = ESTADO['relojes'].setdefault('hikvision %s (consulta)' % reloj['nombre'], {'n': 0})
+        r.update({'ultima': dt.datetime.now(), 'path': 'AcsEvent → %d nuevos' % mandados, 'status': 200})
+        r['n'] += 1
+    return mandados
+
+
+def vigilar_reloj(reloj):
+    """Hilo por reloj: consulta cada ``cada`` segundos; los errores se anotan y se reintenta."""
+    log.info("Hikvision %s (%s): consulta cada %d s", reloj['nombre'], reloj['ip'], reloj['cada'])
+    while True:
+        espera = reloj['cada']
+        try:
+            n = consultar_reloj(reloj, leer_cursores())
+            if n:
+                log.info("Hikvision %s: %d evento(s) nuevo(s) → Odoo", reloj['nombre'], n)
+        except ClaveIncorrecta as e:
+            log.error("Hikvision %s: %s; revisar la clave en puente_adms.ini (espero %d min)",
+                      reloj['nombre'], e, ESPERA_TRAS_401 // 60)
+            espera = ESPERA_TRAS_401
+        except ConnectionError as e:
+            log.error("Hikvision %s: %s (reintento en %d s)", reloj['nombre'], e, espera)
+        except Exception:   # que un error raro no mate el hilo
+            log.exception("Hikvision %s: error inesperado", reloj['nombre'])
+        threading.Event().wait(espera)
+
+
+def consultar_una_vez():
+    if not HIKVISION:
+        print("No hay secciones [hikvision ...] en puente_adms.ini")
+        return 1
+    codigo = 0
+    for reloj in HIKVISION:
+        try:
+            n = consultar_reloj(reloj, leer_cursores())
+            print("Hikvision %s: %d evento(s) nuevo(s) mandado(s) a Odoo" % (reloj['nombre'], n))
+        except (ClaveIncorrecta, ConnectionError) as e:
+            print("Hikvision %s: %s" % (reloj['nombre'], e))
+            codigo = 1
+    return codigo
 
 
 def pagina_estado():
@@ -219,14 +395,19 @@ def probar():
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--probar', action='store_true', help='probar la conexión a Odoo y salir')
+    ap.add_argument('--consultar', action='store_true', help='una vuelta de consulta a los Hikvision y salir')
     args = ap.parse_args()
     cargar_config()
     preparar_log()
     if args.probar:
         return probar()
+    if args.consultar:
+        return consultar_una_vez()
     servidor = http.server.ThreadingHTTPServer((CONFIG['escuchar'], CONFIG['puerto']), Manejador)
     servidor.daemon_threads = True
     log.info("Puente escuchando en %s:%d → %s", CONFIG['escuchar'], CONFIG['puerto'], CONFIG['odoo'])
+    for reloj in HIKVISION:
+        threading.Thread(target=vigilar_reloj, args=(reloj,), daemon=True).start()
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:

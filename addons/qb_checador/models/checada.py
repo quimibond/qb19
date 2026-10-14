@@ -92,14 +92,19 @@ class Checada(models.Model):
     def _resolver_empleado(self, equipo, pin):
         """El empleado detrás de un usuario del reloj.
 
-        1. ``hr.employee.qb_checador_pin`` igual al PIN.
-        2. Referencia de empleado igual a «PREFIJO-PIN» para cada prefijo del equipo, o igual al PIN.
+        1. La tabla «Usuarios del reloj» del equipo (solo vale para ese reloj).
+        2. ``hr.employee.qb_checador_pin`` igual al PIN.
+        3. Referencia de empleado igual a «PREFIJO-PIN» para cada prefijo del equipo, o igual al PIN.
         Varios candidatos = ambiguo = nadie: mejor una checada sin empleado que una en la persona equivocada.
         """
         pin = (pin or '').strip()
         if not pin:
             return self.env['hr.employee']
         Emp = self.env['hr.employee'].sudo()
+        de_tabla = self.env['qb.checador.usuario'].sudo().search(
+            [('equipo_id', '=', equipo.id), ('pin', '=', pin)], limit=1)
+        if de_tabla:
+            return de_tabla.employee_id
         dominio_base = [('company_id', '=', equipo.company_id.id)]
         por_pin = Emp.search(dominio_base + [('qb_checador_pin', '=', pin)])
         if len(por_pin) == 1:
