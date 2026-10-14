@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.8.0: procesos del artículo en la máquina desde Excel (una fila por artículo y máquina). -->
+    <record id="view_ficha_tecnica_proceso_import_wizard_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.import.wizard.form</field>
+        <field name="model">ficha.tecnica.proceso.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar procesos por artículo">
+                <group>
+                    <p colspan="2">
+                        Una fila por artículo y máquina. Columnas obligatorias: «Artículo» y «Máquina» (código o
+                        nombre del centro de trabajo, p. ej. R2 o RAMA 2). Cada columna más es un parámetro «Del
+                        artículo en la máquina» del tipo de esa máquina, por su clave o su nombre (p. ej.
+                        «Velocidad (m/min)», «Merma»). Opcionales: «Fecha», «Fuente», «Notas». Una celda vacía no
+                        borra lo que ya estaba.
+                    </p>
+                    <field name="file_data" filename="file_name"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="fuente"/>
+                    <field name="update_if_exists"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Importar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_proceso_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importar procesos desde Excel</field>
+        <field name="res_model">ficha.tecnica.proceso.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
