@@ -79,8 +79,15 @@ multipart con foto; la foto se descarta).
 - La hora es la de la pantalla del reloj convertida con la zona del equipo
   en Odoo (se ignora la zona que traiga el reloj: de fábrica suele ser GMT+08:00).
 - El número de empleado del reloj se liga igual que el PIN de los ZKTeco
-  (usuario capturado o *Referencia* con prefijo; Ciruelos es la nómina de
-  México, prefijo `C`).
+  (usuario capturado o *Referencia* con prefijo).
+- **Si el reloj numera a su gente distinto que la nómina** (Ciruelos: Irma
+  es el 1 en el reloj y C-26 en nómina), la ficha del reloj trae la tabla
+  **Usuarios del reloj**: número del reloj → empleado. Vale solo para ese
+  reloj (el 3 de Ciruelos no es el 3 de Toluca) y gana sobre las otras
+  ligas; al capturar una fila, las checadas de ese número que habían
+  quedado sin empleado se ligan solas. Desde 1.5.0. En ese reloj conviene
+  dejar vacío *Prefijos de referencia*, para que un número sin fila no caiga
+  en la referencia de otra persona (el 12 de Ciruelos no es C-12).
 - **Hikvision no reintenta**: si Odoo no contesta, el evento queda solo en
   la memoria del reloj (100,000 eventos) y se recupera exportándolo. El
   semáforo de un Hikvision tolera 24 horas sin noticias (solo habla cuando
