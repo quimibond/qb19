@@ -80,7 +80,7 @@ HIKVISION = []   # relojes a consultar: {'nombre', 'ip', 'usuario', 'clave', 'to
 def cargar_config():
     """Lee puente_adms.ini si existe; lo que no esté ahí usa el valor de arriba."""
     if os.path.exists(INI):
-        cp = configparser.ConfigParser()
+        cp = configparser.ConfigParser(interpolation=None)   # una contraseña puede traer %
         cp.read(INI, encoding='utf-8')
         if cp.has_section('puente'):
             s = cp['puente']
