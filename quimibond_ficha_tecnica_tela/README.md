@@ -294,3 +294,41 @@ funciona con las órdenes TL/OP-TIN:
   Antes los importadores iban al primer nivel y las configuraciones de
   máquina estaban dentro de Configuración (solo gerentes).
 - Sin migración.
+
+## Proceso del artículo en la máquina (2.8.0, 2026-10-14)
+
+La configuración por fecha guarda lo que es **de la máquina**. Hay datos que
+son **del artículo en esa máquina**: Producción mide la rama en metros por
+minuto del artículo programado («XJ140Q21JNT165 pasa en rama Unitech a 18
+m/min: 1,080 m en una hora; un baño de 4,800 m en 4:44 h», Guadalupe Ramos,
+2026-10-14). Lo mismo vendrá de tintorería (tiempo de ciclo por jet),
+inspección y las demás áreas. Por eso el modelo es genérico:
+
+- **Ámbito del parámetro** (`ficha.tecnica.maquina.parametro.ambito`): «De
+  la máquina» (default; va en la configuración por fecha, como siempre) o
+  «Del artículo en la máquina». Se da de alta en Configuración → Tipos de
+  máquina. Un parámetro con valores capturados no cambia de ámbito.
+- **Proceso** (`ficha.tecnica.proceso`): un artículo (código; se liga al
+  producto si la referencia existe una sola vez) en una máquina, único por
+  artículo y máquina, con un valor por parámetro del artículo del tipo de la
+  máquina (`ficha.tecnica.proceso.valor`), fecha del dato, fuente y notas.
+  Que exista dice que el artículo **corre en esa máquina**; un valor vacío es
+  un dato que no se ha dado, no un cero. Los dos modelos de valores comparten
+  `ficha.tecnica.valor.mixin`.
+- **Cálculos**: un parámetro `velocidad` en m/min da m/hora (× 60) y, con
+  `merma` (%), m/hora netos. La máquina muestra el **promedio** de cada
+  parámetro numérico entre sus artículos (calculado, no capturado) y un botón
+  «Artículos».
+- **Dónde se ve**: Máquinas → Procesos por artículo; Máquinas → Tabla por
+  artículo y máquina (tabla dinámica artículo × máquina de un parámetro, como
+  las hojas de la planta); pestaña «Procesos por máquina» en la ficha de
+  acabado; botón en el producto.
+- **Importar** (Importar → Procesos desde Excel): una fila por artículo y
+  máquina; columnas «Artículo» y «Máquina» (código o nombre del centro de
+  trabajo) y una por parámetro, por clave o nombre («Velocidad (m/min)»);
+  opcionales «Fecha», «Fuente», «Notas». Una celda vacía no borra.
+- **Para el código que siga** (capacidad, duración esperada de la orden de
+  trabajo): `ficha.tecnica.proceso._ft_buscar(articulo_o_producto, maquina)`
+  y `proceso._ft_value('velocidad')`.
+- Sin migración: la columna `ambito` nace con «De la máquina» en todos los
+  parámetros existentes.
