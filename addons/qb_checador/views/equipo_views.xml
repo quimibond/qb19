@@ -90,6 +90,15 @@
                             <field name="checada_count"/>
                         </group>
                     </group>
+                    <group string="Usuarios del reloj">
+                        <field name="usuario_ids" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="pin"/>
+                                <field name="nombre_reloj"/>
+                                <field name="employee_id"/>
+                            </list>
+                        </field>
+                    </group>
                     <group string="Escucha HTTP del reloj (Hikvision)" invisible="marca != 'hikvision'">
                         <field name="host_push" readonly="1"/>
                         <field name="ruta_push" readonly="1"/>

@@ -4,3 +4,5 @@ access_qb_checador_equipo_manager,qb.checador.equipo manager,model_qb_checador_e
 access_qb_checada_officer,qb.checada officer,model_qb_checada,hr_attendance.group_hr_attendance_officer,1,1,0,0
 access_qb_checada_user,qb.checada user,model_qb_checada,hr_attendance.group_hr_attendance_user,1,1,1,0
 access_qb_checada_manager,qb.checada manager,model_qb_checada,hr_attendance.group_hr_attendance_manager,1,1,1,1
+access_qb_checador_usuario_officer,qb.checador.usuario officer,model_qb_checador_usuario,hr_attendance.group_hr_attendance_officer,1,0,0,0
+access_qb_checador_usuario_manager,qb.checador.usuario manager,model_qb_checador_usuario,hr_attendance.group_hr_attendance_manager,1,1,1,1

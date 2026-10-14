@@ -382,7 +382,7 @@ capturarlos uno por uno. Desde 1.9.0 salen de Odoo, menú **Nómina → IMSS**:
 |---|---|---|
 | 1. Detectar | IMSS → Detectar movimientos | Lee los contratos del periodo: **altas/reingresos (08)** por fecha de inicio del contrato, **bajas (02)** por fecha de salida del empleado (la causa IMSS sale del motivo de salida: Abandono de empleo → 3, Término de contrato → 1, Renunció → 2, Despedido → 8, Retirado → 9; lo que no reconoce queda con aviso para que RH escoja) y **modificaciones (07)** cuando una versión del contrato cambia la propiedad `sdi_imss` respecto a la anterior. No repite lo que ya existe (trabajador + tipo + fecha). |
 | 2. Bimestre | IMSS → SDI del bimestre | La modificación por **salario variable** (LSS art. 30-II): `SDI = min(SD × factor + variables del bimestre / días cotizados, 25 UMA)`. SD = sueldo del contrato / 7, 15 o 30. Factor = `1 + (16 días de aguinaldo + vacaciones LFT × 25 %) / 365` a cuatro decimales, por año de servicio en la fecha de aplicación (es la tabla del Excel de RH: 1.0521, 1.0534, 1.0548…). Variables = líneas de los recibos del bimestre con código en `quimibond_nomina.sdi_variables_codigos` (default `COMMISSIONS,BONUS,LOGRO_OBJ,PDOM_EXEMPT,PDOM_TAX,TAX_TRANSPORT,NO_TAX_TRANSPORT`; horas extra y premios dentro de los topes legales no integran). Días = línea `DIAS_IMSS` de esos recibos (o los días del bimestre en contrato). Se revisa en pantalla y al aplicar se escribe `sdi_imss` en el contrato y se crea el 07 con fecha del primer día del bimestre siguiente, solo para quien cambia ≥ 0.01. |
-| 3. Lote | IMSS → Lotes | Un lote **por registro patronal** (`C6759945101` Toluca, `Y6087828106` México, sin guiones) con su **guía IDSE** (5 dígitos, se recuerda en `quimibond_nomina.idse_guia.<registro>`). «Traer los pendientes» y «Generar archivos» produce `MOVT_<registro>_<fecha>.txt` (SUA) e `IDSE_altas/modificaciones/bajas_….dat`, marca los movimientos como exportados y deja el resumen en el chatter. Lo generado no se edita ni se borra; «Regresar a borrador» lo libera para corregir y rehacer. |
+| 3. Lote | IMSS → Lotes | Un lote **por registro patronal** (`C6759945101` Toluca, `Y6087828106` México, sin guiones) con su **guía IDSE** (5 dígitos, `00000` por default como NOI, se recuerda en `quimibond_nomina.idse_guia.<registro>`). «Traer los pendientes» y «Generar archivos» produce `MOVT_<registro>_<fecha>.txt` (SUA) e `IDSE_altas/modificaciones/bajas_….dat`, marca los movimientos como exportados y deja el resumen en el chatter. Lo generado no se edita ni se borra; «Regresar a borrador» lo libera para corregir y rehacer. |
 
 **Formato SUA (`MOVT.TXT`, 49 posiciones), verificado al carácter contra los
 archivos de NOI del 4.º bimestre 2026** (`MOVS MOD 4TO BIM 2026 QTOL 01-SEP-2026.txt`,
@@ -392,18 +392,24 @@ SDI con cinco enteros y dos decimales sin punto (7). Ejemplo de NOI:
 `C6759945101160076080250701092026        000088943` = modificación del
 1-sep-2026 a 889.43. CRLF, latin-1, mayúsculas.
 
-**Formato IDSE (168 posiciones, estructura DISPMAG/SAIIA-01)**: registro
-patronal (11), NSS (11), apellido paterno (27), apellido materno (27),
-nombres (27), SBC con cuatro enteros y dos decimales (6), 6 en blanco, tipo
-de trabajador (1), tipo de salario (1), semana o jornada reducida (1), fecha
-`DDMMAAAA` (8), UMF (3), 2 en blanco, tipo de movimiento (2), guía (5), clave
-del trabajador (10: la Referencia sin guion, `S250`), 1 en blanco (en las
-bajas, la causa), CURP (18) e identificador `9`. En las bajas SBC, tipos y
-UMF van en blanco. La Ñ va como `#`, sin acentos. **Pendiente de cotejar
-contra un archivo real**: el `.DAT` de NOI no se pudo descargar
-(correo de RH 2026-10-12); el IDSE valida al subir y NOI lo genera a disco
-(*Avisos al IMSS → Disco*, `salarios.dat`). Lo que difiera se ajusta en
-`qb.nomina.imss.movimiento._linea_idse`.
+**Formato IDSE (168 posiciones, estructura DISPMAG), verificado al carácter
+contra los `.DAT` de NOI del 4.º bimestre 2026** (`IDSE0005 01-09-2026 SEMANAL.DAT`
+e `IDSE0003 01-09-2026 Q TOLUCA.DAT`, correo de RH 2026-10-14, 115
+modificaciones aceptadas por el IMSS): registro patronal (11), NSS (11),
+apellido paterno (27), apellido materno (27), nombres (27), SBC con cuatro
+enteros y dos decimales (6), 6 en blanco, tipo de trabajador (1), tipo de
+salario (1), semana o jornada reducida (1), fecha `DDMMAAAA` (8), UMF (3, solo
+en altas; en modificaciones y bajas en blanco), 2 en blanco, tipo de
+movimiento (2), guía (5), clave del trabajador (10: el número de nómina
+alineado a la derecha, `S-4` → `         4`), 1 en blanco (en las bajas, la
+causa), CURP (18) e identificador `9`. En las bajas SBC y tipos van en blanco.
+La Ñ va como `#`, sin acentos. Cada archivo **cierra con un renglón de
+totales**: 13 asteriscos, el número de movimientos en las posiciones 57-62, la
+guía en 134-138 y `9` en 168. CRLF también en el último renglón.
+
+**Guía IDSE: `00000`**, la que manda NOI y el IMSS acepta (acuse del lote
+442625196, 2-sep-2026). Lo que RH encontró en el SUA (1601 Toluca, 3916
+México) es la subdelegación, no la guía. Es el valor por default del lote.
 
 **Datos nuevos en el contrato** (ficha del empleado, grupo IMSS, y plantilla de
 contrato): **UMF** (clínica, 3 dígitos; la pide el IDSE en las altas), tipo de

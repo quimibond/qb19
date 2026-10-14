@@ -142,7 +142,7 @@
                     <group>
                         <group string="Lote">
                             <field name="registro_patronal" placeholder="C6759945101"/>
-                            <field name="guia" placeholder="13400"/>
+                            <field name="guia" placeholder="00000"/>
                             <field name="fecha"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
