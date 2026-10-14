@@ -24,6 +24,13 @@ búsqueda de máquinas por galga los usan.
 
 Marca y modelo son de la máquina (no cambian con el cilindro) y viven en el
 centro de trabajo.
+
+2.8.0 (Dirección General 2026-10-14): cada parámetro tiene un **ámbito**. Los
+de la máquina (``maquina``) van en la configuración por fecha, como hasta
+ahora; los del artículo (``articulo``, p. ej. la velocidad de cada artículo en
+la rama) van en el **proceso del artículo en la máquina**
+(``ficha.tecnica.proceso``, ``models/proceso.py``). Los dos guardan sus valores
+con el mismo mixin (``ficha.tecnica.valor.mixin``).
 """
 import operator as py_operator
 
@@ -33,6 +40,8 @@ from odoo.exceptions import UserError, ValidationError
 OPERATORS = {'=': py_operator.eq, '!=': py_operator.ne, '<': py_operator.lt, '<=': py_operator.le,
              '>': py_operator.gt, '>=': py_operator.ge}
 PARAM_KINDS = [('num', 'Numérico'), ('text', 'Texto')]
+# 2.8.0: de quién es el dato.
+PARAM_AMBITOS = [('maquina', 'De la máquina'), ('articulo', 'Del artículo en la máquina')]
 # Columnas de la configuración que salen del valor del parámetro con la misma
 # clave (las usan la ficha de tejido y la búsqueda de máquinas por galga).
 CONFIG_VALUE_FIELDS = ('diametro', 'galga', 'no_agujas', 'no_alimentadores', 'velocidad_max')
@@ -66,6 +75,11 @@ class FichaTecnicaMaquinaTipo(models.Model):
         for tipo in self:
             tipo.workcenter_count = len(tipo.workcenter_ids)
 
+    def _ft_parametros(self, ambito):
+        """2.8.0: los parámetros activos del tipo con ese ámbito («maquina» o «articulo»), en su orden."""
+        self.ensure_one()
+        return self.parametro_ids.filtered(lambda p: p.active and p.ambito == ambito)
+
 
 class FichaTecnicaMaquinaParametro(models.Model):
     """Parámetro que se captura en la ficha de las máquinas de un tipo."""
@@ -82,29 +96,39 @@ class FichaTecnicaMaquinaParametro(models.Model):
     name = fields.Char(string='Parámetro', required=True)
     unit = fields.Char(string='Unidad', help='Unidad de medida (in, rpm, kg, m/min, °C…).')
     kind = fields.Selection(PARAM_KINDS, string='Tipo de dato', required=True, default='num')
+    ambito = fields.Selection(PARAM_AMBITOS, string='Ámbito', required=True, default='maquina',
+                              help='«De la máquina»: se captura en la configuración por fecha (galga, capacidad del '
+                                   'jet…). «Del artículo en la máquina»: se captura en el proceso de cada artículo en '
+                                   'cada máquina (velocidad del artículo en la rama, tiempo de ciclo…).')
     notas = fields.Char(string='Cómo se mide', help='De dónde sale el dato o cómo se mide.')
     active = fields.Boolean(default=True, help='Los parámetros archivados no se agregan a configuraciones nuevas.')
 
     _tipo_code_uniq = models.Constraint('unique(tipo_id, code)', 'Ese tipo de máquina ya tiene un parámetro '
                                                                    'con esa clave.')
 
+    @api.constrains('ambito')
+    def _check_ambito(self):
+        for param in self:
+            other = 'ficha.tecnica.proceso.valor' if param.ambito == 'maquina' else 'ficha.tecnica.maquina.valor'
+            if self.env[other].search_count([('parametro_id', '=', param.id)], limit=1):
+                raise ValidationError('El parámetro «%s» ya tiene valores capturados con el otro ámbito: no se '
+                                      'cambia; dé de alta otro parámetro.' % param.name)
+
     def unlink(self):
-        lines = self.env['ficha.tecnica.maquina.valor'].search([('parametro_id', 'in', self.ids)])
-        if lines.filtered(lambda v: v.valor or v.valor_texto):
-            raise UserError('El parámetro ya tiene valores capturados en configuraciones: archívelo en lugar '
-                            'de borrarlo.')
-        lines.unlink()
+        for model in ('ficha.tecnica.maquina.valor', 'ficha.tecnica.proceso.valor'):
+            lines = self.env[model].search([('parametro_id', 'in', self.ids)])
+            if lines.filtered(lambda v: v.valor or v.valor_texto):
+                raise UserError('El parámetro ya tiene valores capturados: archívelo en lugar de borrarlo.')
+            lines.unlink()
         return super().unlink()
 
 
-class FichaTecnicaMaquinaValor(models.Model):
-    """Valor de un parámetro en una configuración de máquina."""
-    _name = 'ficha.tecnica.maquina.valor'
-    _description = 'Valor de parámetro en la configuración de la máquina'
-    _order = 'config_id, sequence, id'
+class FichaTecnicaValorMixin(models.AbstractModel):
+    """2.8.0: el valor de un parámetro (número o texto, con su unidad), igual en la configuración de la máquina
+    y en el proceso del artículo en la máquina."""
+    _name = 'ficha.tecnica.valor.mixin'
+    _description = 'Valor de un parámetro de la ficha de la máquina'
 
-    config_id = fields.Many2one('ficha.tecnica.maquina.config', string='Configuración', required=True,
-                                index=True, ondelete='cascade')
     parametro_id = fields.Many2one('ficha.tecnica.maquina.parametro', string='Parámetro', required=True,
                                    ondelete='restrict')
     sequence = fields.Integer(related='parametro_id.sequence', store=True)
@@ -113,6 +137,25 @@ class FichaTecnicaMaquinaValor(models.Model):
     unit = fields.Char(related='parametro_id.unit')
     valor = fields.Float(string='Valor', digits=(16, 3))
     valor_texto = fields.Char(string='Valor (texto)')
+
+    def _display_value(self):
+        self.ensure_one()
+        if self.kind == 'text':
+            return self.valor_texto or ''
+        if not self.valor:
+            return ''
+        return '%s %s' % (_fmt(self.valor), self.unit) if self.unit else _fmt(self.valor)
+
+
+class FichaTecnicaMaquinaValor(models.Model):
+    """Valor de un parámetro en una configuración de máquina."""
+    _name = 'ficha.tecnica.maquina.valor'
+    _inherit = ['ficha.tecnica.valor.mixin']
+    _description = 'Valor de parámetro en la configuración de la máquina'
+    _order = 'config_id, sequence, id'
+
+    config_id = fields.Many2one('ficha.tecnica.maquina.config', string='Configuración', required=True,
+                                index=True, ondelete='cascade')
 
     _config_parametro_uniq = models.Constraint('unique(config_id, parametro_id)',
                                                'El parámetro ya está en esa configuración.')
@@ -123,14 +166,9 @@ class FichaTecnicaMaquinaValor(models.Model):
             if line.parametro_id.tipo_id != line.config_id.tipo_id:
                 raise ValidationError('El parámetro «%s» es de %s y la configuración es de %s.' % (
                     line.parametro_id.name, line.parametro_id.tipo_id.name, line.config_id.tipo_id.name or '(sin tipo)'))
-
-    def _display_value(self):
-        self.ensure_one()
-        if self.kind == 'text':
-            return self.valor_texto or ''
-        if not self.valor:
-            return ''
-        return '%s %s' % (_fmt(self.valor), self.unit) if self.unit else _fmt(self.valor)
+            if line.parametro_id.ambito != 'maquina':
+                raise ValidationError('El parámetro «%s» es del artículo en la máquina: se captura en el proceso '
+                                      'del artículo, no en la configuración de la máquina.' % line.parametro_id.name)
 
 
 class FichaTecnicaMaquinaConfig(models.Model):
@@ -228,7 +266,7 @@ class FichaTecnicaMaquinaConfig(models.Model):
         if not value:
             return line
         param = self.env['ficha.tecnica.maquina.parametro'].with_context(active_test=False).search(
-            [('tipo_id', '=', self.tipo_id.id), ('code', '=', code)], limit=1)
+            [('tipo_id', '=', self.tipo_id.id), ('code', '=', code), ('ambito', '=', 'maquina')], limit=1)
         if not param:
             raise UserError('El tipo de máquina «%s» no tiene el parámetro «%s»; dele de alta en Configuración '
                             '→ Tipos de máquina.' % (self.tipo_id.name or '(sin tipo)', code))
@@ -249,7 +287,7 @@ class FichaTecnicaMaquinaConfig(models.Model):
         for config in self:
             config.valor_ids.filtered(lambda v: v.parametro_id.tipo_id != config.tipo_id).unlink()
             present = config.valor_ids.parametro_id
-            missing = config.tipo_id.parametro_ids.filtered(lambda p: p.active and p not in present)
+            missing = config.tipo_id._ft_parametros('maquina').filtered(lambda p: p not in present)
             if missing:
                 Valor.create([{'config_id': config.id, 'parametro_id': p.id} for p in missing])
 
@@ -257,12 +295,12 @@ class FichaTecnicaMaquinaConfig(models.Model):
     def _onchange_tipo_id(self):
         for config in self:
             if config.valor_ids.parametro_id.tipo_id == config.tipo_id and \
-                    config.tipo_id.parametro_ids.filtered('active') <= config.valor_ids.parametro_id:
+                    config.tipo_id._ft_parametros('maquina') <= config.valor_ids.parametro_id:
                 continue
             kept = {line.parametro_id.id: line for line in config.valor_ids
                     if line.parametro_id.tipo_id == config.tipo_id}
             commands = [Command.clear()]
-            for param in config.tipo_id.parametro_ids.filtered('active'):
+            for param in config.tipo_id._ft_parametros('maquina'):
                 old = kept.get(param.id)
                 commands.append(Command.create({'parametro_id': param.id, 'valor': old.valor if old else 0.0,
                                                 'valor_texto': old.valor_texto if old else False}))

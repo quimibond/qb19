@@ -135,6 +135,17 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Procesos por máquina" name="procesos">
+                            <p class="text-muted">Las máquinas en que corre el artículo y sus datos en cada una (2.8.0). Se capturan en Máquinas → Procesos por artículo.</p>
+                            <field name="proceso_ids" readonly="1">
+                                <list>
+                                    <field name="workcenter_id"/>
+                                    <field name="resumen"/>
+                                    <field name="metros_hora" optional="show"/>
+                                    <field name="fecha" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
                     </notebook>
 
                     <group>
