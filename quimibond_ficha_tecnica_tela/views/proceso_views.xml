@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.8.0 (Dirección General 2026-10-14): proceso del artículo en la máquina. Un artículo en una
+         máquina con un valor por cada parámetro «Del artículo en la máquina» del tipo de la máquina
+         (velocidad en la rama, tiempo de ciclo en el jet…). La tabla dinámica arma la matriz
+         artículo × máquina de un parámetro, como las hojas de la planta. -->
+
+    <record id="view_ficha_tecnica_proceso_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.list</field>
+        <field name="model">ficha.tecnica.proceso</field>
+        <field name="arch" type="xml">
+            <list string="Procesos por artículo">
+                <field name="articulo"/>
+                <field name="product_id" optional="hide"/>
+                <field name="workcenter_id"/>
+                <field name="tipo_id" optional="hide"/>
+                <field name="resumen"/>
+                <field name="metros_hora" optional="show"/>
+                <field name="metros_hora_neto" optional="hide"/>
+                <field name="fecha" optional="show"/>
+                <field name="fuente" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_proceso_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.form</field>
+        <field name="model">ficha.tecnica.proceso</field>
+        <field name="arch" type="xml">
+            <form string="Proceso del artículo en la máquina">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="articulo" placeholder="Código del artículo"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="workcenter_id" options="{'no_create': True}"/>
+                            <field name="tipo_id"/>
+                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="fuente"/>
+                            <field name="metros_hora" invisible="not metros_hora"/>
+                            <field name="metros_hora_neto" invisible="not metros_hora"/>
+                        </group>
+                    </group>
+                    <separator string="Parámetros"/>
+                    <field name="valor_ids">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="parametro_id" readonly="1" force_save="1"/>
+                            <field name="kind" column_invisible="1"/>
+                            <field name="valor" invisible="kind == 'text'"/>
+                            <field name="valor_texto" invisible="kind != 'text'"/>
+                            <field name="unit"/>
+                        </list>
+                    </field>
+                    <field name="notas" placeholder="Notas (dudas sobre el dato, diferencias en la hoja de origen)"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_proceso_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.search</field>
+        <field name="model">ficha.tecnica.proceso</field>
+        <field name="arch" type="xml">
+            <search string="Procesos por artículo">
+                <field name="articulo"/>
+                <field name="workcenter_id"/>
+                <field name="tipo_id"/>
+                <field name="product_id"/>
+                <filter string="Sin producto en Odoo" name="sin_producto" domain="[('product_id', '=', False)]"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                    <filter string="Tipo de máquina" name="group_tipo" context="{'group_by': 'tipo_id'}"/>
+                    <filter string="Artículo" name="group_articulo" context="{'group_by': 'articulo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_proceso" model="ir.actions.act_window">
+        <field name="name">Procesos por artículo</field>
+        <field name="res_model">ficha.tecnica.proceso</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin procesos por artículo</p>
+            <p>Un proceso dice que un artículo corre en una máquina y guarda sus datos en esa máquina (la
+                velocidad en la rama, el tiempo de ciclo en el jet…). Los parámetros se dan de alta por tipo de
+                máquina en Configuración → Tipos de máquina, con ámbito «Del artículo en la máquina».</p>
+        </field>
+    </record>
+
+    <!-- ===== Valores: matriz artículo × máquina ===== -->
+    <record id="view_ficha_tecnica_proceso_valor_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.valor.list</field>
+        <field name="model">ficha.tecnica.proceso.valor</field>
+        <field name="arch" type="xml">
+            <list string="Valores por artículo y máquina" create="0">
+                <field name="articulo"/>
+                <field name="workcenter_id"/>
+                <field name="parametro_id"/>
+                <field name="kind" column_invisible="1"/>
+                <field name="valor" invisible="kind == 'text'"/>
+                <field name="valor_texto" invisible="kind != 'text'"/>
+                <field name="unit"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_proceso_valor_pivot" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.valor.pivot</field>
+        <field name="model">ficha.tecnica.proceso.valor</field>
+        <field name="arch" type="xml">
+            <pivot string="Valores por artículo y máquina" disable_linking="1">
+                <field name="articulo" type="row"/>
+                <field name="workcenter_id" type="col"/>
+                <field name="valor" type="measure" string="Valor (promedio)"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_proceso_valor_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.proceso.valor.search</field>
+        <field name="model">ficha.tecnica.proceso.valor</field>
+        <field name="arch" type="xml">
+            <search string="Valores por artículo y máquina">
+                <field name="articulo"/>
+                <field name="workcenter_id"/>
+                <field name="parametro_id"/>
+                <field name="tipo_id"/>
+                <filter string="Con valor" name="con_valor" domain="['|', ('valor', '!=', 0), ('valor_texto', '!=', False)]"/>
+                <group>
+                    <filter string="Parámetro" name="group_parametro" context="{'group_by': 'parametro_id'}"/>
+                    <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_proceso_valor" model="ir.actions.act_window">
+        <field name="name">Tabla por artículo y máquina</field>
+        <field name="res_model">ficha.tecnica.proceso.valor</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_proceso_valor_search"/>
+        <field name="context">{'search_default_con_valor': 1, 'pivot_measures': ['valor']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin valores por artículo</p>
+            <p>Filtre un parámetro (p. ej. Velocidad) para ver la matriz artículo × máquina.</p>
+        </field>
+    </record>
+</odoo>
