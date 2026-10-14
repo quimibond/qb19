@@ -56,7 +56,11 @@ class ChecadorEquipo(models.Model):
     prefijos = fields.Char(string="Prefijos de referencia", default='S',
                            help="Cómo se liga el usuario del checador con el empleado cuando el empleado no tiene "
                                 "capturado su usuario: se busca la Referencia de empleado «PREFIJO-usuario». Varios "
-                                "prefijos separados por coma (S,Q). Vacío: solo coincidencia exacta.")
+                                "prefijos separados por coma (S,Q). Vacío: solo coincidencia exacta. Si el reloj "
+                                "numera a su gente distinto que la nómina, use la tabla «Usuarios del reloj».")
+    usuario_ids = fields.One2many('qb.checador.usuario', 'equipo_id', string="Usuarios del reloj",
+                                  help="Número del reloj → empleado, solo para este reloj. Gana sobre el usuario "
+                                       "capturado en el empleado y sobre la referencia con prefijo.")
     active = fields.Boolean(default=True)
     autorizado = fields.Boolean(string="Autorizado", default=True,
                                 help="Un equipo que se conectó solo (sin estar registrado) queda sin autorizar: "

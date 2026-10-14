@@ -79,14 +79,34 @@ multipart con foto; la foto se descarta).
 - La hora es la de la pantalla del reloj convertida con la zona del equipo
   en Odoo (se ignora la zona que traiga el reloj: de fábrica suele ser GMT+08:00).
 - El número de empleado del reloj se liga igual que el PIN de los ZKTeco
-  (usuario capturado o *Referencia* con prefijo; Ciruelos es la nómina de
-  México, prefijo `C`).
+  (usuario capturado o *Referencia* con prefijo).
+- **Si el reloj numera a su gente distinto que la nómina** (Ciruelos: Irma
+  es el 1 en el reloj y C-26 en nómina), la ficha del reloj trae la tabla
+  **Usuarios del reloj**: número del reloj → empleado. Vale solo para ese
+  reloj (el 3 de Ciruelos no es el 3 de Toluca) y gana sobre las otras
+  ligas; al capturar una fila, las checadas de ese número que habían
+  quedado sin empleado se ligan solas. Desde 1.5.0. En ese reloj conviene
+  dejar vacío *Prefijos de referencia*, para que un número sin fila no caiga
+  en la referencia de otra persona (el 12 de Ciruelos no es C-12).
 - **Hikvision no reintenta**: si Odoo no contesta, el evento queda solo en
   la memoria del reloj (100,000 eventos) y se recupera exportándolo. El
   semáforo de un Hikvision tolera 24 horas sin noticias (solo habla cuando
   alguien checa o con la prueba de su escucha HTTP).
 - Un token desconocido recibe 403; «Generar URL nueva» cambia el token y la
   URL anterior deja de funcionar.
+- **Si el reloj no manda sus eventos** (el DS-K1T804AEF de Ciruelos acepta
+  el servidor de escucha pero rechaza la suscripción con
+  `MessageParametersLack` y no manda nada; 2026-10-14), el puente se los
+  **pide**: una sección `[hikvision <nombre>]` en `puente_adms.ini` con IP,
+  usuario, contraseña del reloj y token. Cada minuto consulta el historial
+  (`POST /ISAPI/AccessControl/AcsEvent?format=json`, `major` 5, páginas de
+  10) y manda a la URL de la ficha, uno por uno, los eventos con número de
+  serie mayor al último mandado (`puente_hikvision.json`). Para Odoo es igual
+  que el push. Si el internet o Odoo se caen, el reloj los sigue guardando y
+  el puente se pone al día solo. La contraseña vive solo en el `.ini` de la
+  PC; con una contraseña mala el puente espera 30 minutos antes de volver a
+  intentar, para no bloquear el reloj. Prueba de una vuelta:
+  `python puente_adms.py --consultar`.
 
 Configurar la escucha HTTP en el reloj (TI, desde una PC en la misma red):
 

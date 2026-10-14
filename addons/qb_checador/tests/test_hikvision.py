@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Push de eventos ISAPI de un reloj Hikvision (DS-K1T…) contra el controlador."""
+import importlib.util
 import json
+import os
 from datetime import datetime, timedelta
 
 from odoo import fields
@@ -71,6 +73,24 @@ class TestHikvisionLectura(TransactionCase):
         envuelto = {'EventNotificationAlert': evento(hora='2026-10-13T08:59:41+08:00')}
         self.assertEqual(checada_del_evento(envuelto)['hora_local'], '2026-10-13 08:59:41',
                          'la hora es la de la pantalla del reloj, aunque traiga otra zona')
+
+    def test_consulta_del_puente(self):
+        """El puente pide el historial al reloj (AcsEvent) y manda cada renglón con la forma del push:
+        Odoo lo lee igual. Renglón tal como lo devolvió el DS-K1T804AEF de Ciruelos (2026-10-14)."""
+        ruta = os.path.join(os.path.dirname(__file__), '..', 'puente', 'puente_adms.py')
+        spec = importlib.util.spec_from_file_location('qb_puente_adms_prueba', ruta)
+        puente = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(puente)
+        info = {'major': 5, 'minor': 38, 'time': '2026-10-14T07:59:02-06:00', 'cardNo': '', 'cardType': 1,
+                'cardReaderNo': 1, 'employeeNoString': '3', 'serialNo': 101100, 'userType': 'normal',
+                'attendanceStatus': 'undefined', 'statusValue': 0}
+        r = checada_del_evento(puente.evento_push(info))
+        self.assertEqual((r['pin'], r['hora_local'], r['workcode']), ('3', '2026-10-14 07:59:02', '38'))
+        self.assertIsNone(checada_del_evento(puente.evento_push(dict(info, employeeNoString=''))))
+        pendientes = puente.nuevos([dict(info, serialNo=101107), info, dict(info, serialNo=101099)],
+                                   {'serial': 101099})
+        self.assertEqual([e['serialNo'] for e in pendientes], [101100, 101107],
+                         'solo lo posterior al último mandado, en orden')
 
 
 @tagged('post_install', '-at_install')
