@@ -87,6 +87,19 @@ multipart con foto; la foto se descarta).
   alguien checa o con la prueba de su escucha HTTP).
 - Un token desconocido recibe 403; «Generar URL nueva» cambia el token y la
   URL anterior deja de funcionar.
+- **Si el reloj no manda sus eventos** (el DS-K1T804AEF de Ciruelos acepta
+  el servidor de escucha pero rechaza la suscripción con
+  `MessageParametersLack` y no manda nada; 2026-10-14), el puente se los
+  **pide**: una sección `[hikvision <nombre>]` en `puente_adms.ini` con IP,
+  usuario, contraseña del reloj y token. Cada minuto consulta el historial
+  (`POST /ISAPI/AccessControl/AcsEvent?format=json`, `major` 5, páginas de
+  10) y manda a la URL de la ficha, uno por uno, los eventos con número de
+  serie mayor al último mandado (`puente_hikvision.json`). Para Odoo es igual
+  que el push. Si el internet o Odoo se caen, el reloj los sigue guardando y
+  el puente se pone al día solo. La contraseña vive solo en el `.ini` de la
+  PC; con una contraseña mala el puente espera 30 minutos antes de volver a
+  intentar, para no bloquear el reloj. Prueba de una vuelta:
+  `python puente_adms.py --consultar`.
 
 Configurar la escucha HTTP en el reloj (TI, desde una PC en la misma red):
 
