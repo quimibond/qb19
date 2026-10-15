@@ -191,6 +191,16 @@ class TestCosto(CotizadorCase):
         malo.peso_confirmado = True
         malo.action_enviar_aprobacion()
         self.assertEqual(malo.state, 'por_aprobar')
+        # Sin código legible, un peso fuera de lo creíble (1 kg/m del legado) también avisa.
+        raro = self.env['product.product'].create({'name': 'Legado raro', 'default_code': 'WA15Q01JBL06281',
+                                                  'uom_id': self.env.ref('uom.product_uom_meter').id,
+                                                  'type': 'consu'})
+        self._costo(raro, mp=10.0, energia=1.0, fab=5.0, rend=1.0, precio=0.0).write(
+            {'uom_name': 'm', 'kg_por_unidad': 1.0})
+        uno = self._cot(product_id=False, spec_descripcion='Legado', costo_fuente='hermano',
+                        hermano_product_id=raro.id, volumen_uom='kg')
+        uno.action_calcular()
+        self.assertIn('fuera de lo creíble', uno.peso_alerta or '')
         # Una unidad que no es m, kg ni m² no se cotiza.
         pieza = self.env['product.product'].create({'name': 'Playera prueba', 'type': 'consu'})
         self._costo(pieza, mp=10.0, energia=1.0, fab=5.0, rend=1.0, precio=0.0).write({'uom_name': 'Pieza'})

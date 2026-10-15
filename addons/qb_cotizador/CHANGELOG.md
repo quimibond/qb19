@@ -19,6 +19,9 @@ costos de producción (período 2026-09) encontró dos huecos en la 1.6.0, que t
   corregir el peso en Costos o marcar «Peso revisado» (`peso_confirmado`, con rastro). Casos reales: pesos del
   legado de 1.06 a 1.18 kg/m en artículos de 0.36 a 0.40 kg/m por código, y un «…M2» con 0.072 kg/m² en un
   artículo de 45 g/m².
+- Si el código no sigue el DAT (523 de 951 costos con peso), el peso se revisa contra un rango creíble
+  (`PESO_RANGO`: 0.02 a 0.8 kg/m, 0.01 a 0.5 kg/m²). Caso real: 13 costos por metro con peso del legado de
+  exactamente 1 kg/m (WA…, CEMESAXR…, MUESTRA PILOTO), que habrían dejado el costo igual al pasar a kg.
 - La migración de la 1.6.0 lee la unidad con la misma regla (m² incluido; otra unidad queda sin anotar y el
   log la nombra).
 - Prueba `test_costo.test_07`.
