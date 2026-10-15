@@ -102,3 +102,37 @@ class TestCosto(CotizadorCase):
         form.fx_rate = 17.0
         form._onchange_fx_rate()
         self.assertEqual(form.fx_fuente, 'manual')
+
+    def test_04_unidad_del_costo(self):
+        """1.6.0: un costo por m con la cotización en kg se convierte con los kg por metro."""
+        costo_h = self.env['qb.costo.unitario'].search([('product_id', '=', self.hermana.id)])
+        costo_h.write({'uom_name': 'm', 'kg_por_unidad': 0.25})
+        cot = self._cot(product_id=False, spec_descripcion='Piqué prueba', costo_fuente='hermano',
+                        hermano_product_id=self.hermana.id, volumen_uom='kg', precio_objetivo=60.0)
+        cot.action_calcular()
+        self.assertEqual((cot.costo_uom, cot.costo_uom_origen, cot.costo_kg_fuente), ('kg', 'm', 'costo'))
+        self.assertAlmostEqual(cot.mp_unit, 7.0 / 0.25, places=4)
+        self.assertAlmostEqual(cot.costo_produccion, 10.0 / 0.25, places=4)
+        self.assertAlmostEqual(cot.piso_ocioso, 8.0 / 0.25, places=4, msg='Piso por kg, no por m')
+        self.assertIn('convertido a kg', cot.supuestos)
+        self.assertFalse(cot.unidad_alerta)
+        # Cambiar la unidad del volumen después avisa y no deja pedir aprobación.
+        cot.volumen_uom = 'm'
+        self.assertTrue(cot.unidad_alerta)
+        with self.assertRaises(UserError):
+            cot.action_enviar_aprobacion()
+        cot.action_calcular()
+        self.assertFalse(cot.unidad_alerta)
+        self.assertAlmostEqual(cot.mp_unit, 7.0, places=4, msg='En m, sin conversión')
+
+    def test_05_kg_por_metro_de_la_especificacion(self):
+        """1.6.0: sin peso en el costo se usa gramaje × ancho; sin ninguno, no se calcula."""
+        sin_peso = self._cot(product_id=False, spec_descripcion='Jersey 200', costo_fuente='hermano',
+                             hermano_product_id=self.hermana.id, volumen_uom='kg')
+        with self.assertRaises(UserError):
+            sin_peso.action_calcular()
+        sin_peso.write({'spec_gramaje': 200, 'spec_ancho': 1.5})
+        sin_peso.action_calcular()
+        self.assertEqual(sin_peso.costo_kg_fuente, 'especificacion')
+        self.assertAlmostEqual(sin_peso.costo_kg_por_m, 0.3, places=6)
+        self.assertAlmostEqual(sin_peso.mp_unit, 7.0 / 0.3, places=4)

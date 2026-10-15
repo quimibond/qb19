@@ -3,6 +3,27 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.0 — 2026-10-15
+
+Dirección General 2026-10-15: **el costo va en la misma unidad que la cotización.** La COT-2026-0006 (piqué,
+volumen en kg) tomó el costo de un hermano que se maneja en metros y comparó $21.45 por m contra un precio
+por kg: márgenes de 78 a 85 % en verde cuando por kg son de 31 % bruto y 17 % neto, y a $75 el kilo quedaba
+debajo del piso lleno ($79.93/kg) sin que la pantalla lo dijera.
+
+- **Calcular costo convierte la foto** a la unidad del volumen (`_costo_conversion`): un costo por m con la
+  cotización en kg se divide entre los kg por metro, y al revés se multiplica. Los kg por metro salen del
+  peso del costo (`qb.costo.unitario.kg_por_unidad`, si el costo va por m) o del gramaje × ancho de la
+  cotización; sin ninguno, no calcula y lo dice. Se convierten MP, energía, fabricación, costo variable, de
+  producción y precio de mercado; rendimiento y operación no cambian.
+- La foto guarda en qué unidad está (`costo_uom`), la del costo de origen (`costo_uom_origen`) y con qué
+  se convirtió (`costo_kg_por_m`, `costo_kg_fuente`); los supuestos lo dicen.
+- **Si la unidad del volumen cambia después**, aviso rojo en la cotización (`unidad_alerta`) y no se pide
+  aprobación ni se presenta (aquí o desde Aprobaciones) hasta recalcular.
+- Migración `19.0.1.6.0/post-migrate.py`: anota la unidad que ya tenía la foto de las cotizaciones calculadas
+  (no cambia costos, precios ni estados); las que tienen unidades cruzadas quedan con el aviso y el log las
+  lista.
+- Pruebas `test_costo.test_04` y `test_05`.
+
 ## 19.0.1.5.0 — 2026-10-09
 
 Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.**

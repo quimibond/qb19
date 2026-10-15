@@ -67,6 +67,13 @@ CLIENTE_MEDIOS = [
     ('direccion', 'Dirección (desarrollo interno)'),  # 1.2.0: mismo catálogo que la aprobación del SGI
 ]
 VOLUMEN_UOMS = [('m', 'm / mes'), ('kg', 'kg / mes')]
+# 1.6.0: unidad en que está expresada la foto del costo (la del volumen al calcular).
+COSTO_UOMS = [('m', 'por m'), ('kg', 'por kg')]
+KG_FUENTES = [('costo', 'Peso del costo (kg por unidad del producto)'),
+              ('especificacion', 'Gramaje × ancho de la cotización')]
+# Campos de la foto que van por unidad (se convierten de m a kg o al revés); rendimiento y operación no.
+COSTO_CAMPOS_UNIDAD = ('mp_unit', 'energia_unit', 'fabricacion_unit', 'costo_variable', 'costo_produccion',
+                       'precio_mercado')
 ESCALERA_MULTIPLOS = (0.5, 1.0, 2.0, 4.0)
 # Estados del cotizador anterior → de este.
 LEGACY_STATE = {'draft': 'borrador', 'done': 'presentada', 'won': 'ganada',
@@ -155,6 +162,20 @@ class QbCotizadorCotizacion(models.Model):
                                   readonly=True, copy=False,
                                   help='Precio promedio facturado del producto en el período '
                                        'del costo (todos los clientes).')
+    # 1.6.0 (Dirección General 2026-10-15): la foto va en la unidad de la cotización. Un costo por m con
+    # la cotización en kg (o al revés) se convierte al calcular con los kg por metro; si después cambia
+    # la unidad del volumen, la cotización avisa y no se aprueba hasta recalcular.
+    costo_uom = fields.Selection(COSTO_UOMS, string='Unidad del costo', readonly=True, copy=False,
+                                 help='Unidad en que están los costos y pisos de la foto: la del volumen al '
+                                      'calcular el costo.')
+    costo_uom_origen = fields.Selection(COSTO_UOMS, string='Unidad del costo de origen', readonly=True,
+                                        copy=False, help='Unidad del costo del período (la del producto).')
+    costo_kg_por_m = fields.Float(string='kg por metro (conversión)', digits=(16, 6), readonly=True,
+                                  copy=False, help='Con qué se convirtió el costo de m a kg o al revés; '
+                                                   'vacío si no hubo conversión.')
+    costo_kg_fuente = fields.Selection(KG_FUENTES, string='De dónde salen los kg por metro', readonly=True,
+                                       copy=False)
+    unidad_alerta = fields.Char(compute='_compute_unidad_alerta')
     costo_muestra = fields.Float(string='Costo de la muestra $ MXN', digits=(16, 2),
                                  tracking=True,
                                  help='Lo que cuesta correr la muestra (una muestra con teñido '
@@ -281,6 +302,41 @@ class QbCotizadorCotizacion(models.Model):
             rec.piso_ocioso = rec.costo_variable / rend
             op = rec.op_pct or 0.0
             rec.piso_lleno = rec.costo_vendible / (1 - op) if op < 1 else rec.costo_vendible
+
+    @api.depends('costo_uom', 'volumen_uom', 'calculado_el', 'costo_fuente')
+    def _compute_unidad_alerta(self):
+        for rec in self:
+            alerta = ''
+            if rec.calculado_el and rec.costo_fuente != 'legado' and rec.costo_uom \
+                    and rec.costo_uom != rec.volumen_uom:
+                alerta = ('El costo está %s y la cotización %s: los márgenes y el semáforo comparan unidades '
+                          'distintas. Recalcula el costo («Calcular costo»).' % (
+                              dict(COSTO_UOMS)[rec.costo_uom], dict(COSTO_UOMS)[rec.volumen_uom]))
+            rec.unidad_alerta = alerta
+
+    def _costo_conversion(self, costo):
+        """1.6.0: (factor, unidad de origen, kg por metro, fuente) para pasar la foto del costo a la unidad
+        del volumen. El factor multiplica los campos por unidad (``COSTO_CAMPOS_UNIDAD``); 1.0 si no hay que
+        convertir. Los kg por metro salen del peso del costo (si el costo va por m) o del gramaje × ancho de
+        la cotización; sin ninguno no se calcula."""
+        self.ensure_one()
+        uom_name = (costo.uom_name or costo.product_id.uom_id.name or '').strip().lower()
+        origen = 'kg' if uom_name.startswith('k') else 'm'
+        destino = self.volumen_uom or 'm'
+        if origen == destino:
+            return 1.0, origen, 0.0, False
+        kg_m, fuente = 0.0, False
+        if origen == 'm' and costo.kg_por_unidad > 0:
+            kg_m, fuente = costo.kg_por_unidad, 'costo'
+        elif self.spec_gramaje > 0 and self.spec_ancho > 0:
+            kg_m, fuente = self.spec_gramaje * self.spec_ancho / 1000.0, 'especificacion'
+        if kg_m <= 0:
+            raise UserError('El costo de %s está por %s y la cotización por %s, y no hay con qué convertirlo: '
+                            'el costo no trae los kg por metro y la cotización no tiene gramaje y ancho. '
+                            'Captura gramaje y ancho, o cambia la unidad del volumen a %s.' % (
+                                costo.product_id.display_name, origen, destino, origen))
+        factor = 1.0 / kg_m if origen == 'm' else kg_m
+        return factor, origen, kg_m, fuente
 
     @api.depends('currency_id', 'company_id', 'fx_rate', 'costo_fuente')
     def _compute_moneda_alerta(self):
@@ -576,6 +632,7 @@ class QbCotizadorCotizacion(models.Model):
                     raise UserError('%s no tiene costo calculado en el período %s. Calcula los '
                                     'costos del período, elige otro producto hermano o captura '
                                     'el costo a mano.' % (producto.display_name, periodo.period))
+                factor, origen, kg_m, kg_fuente = rec._costo_conversion(costo)
                 vals.update({
                     'periodo_id': periodo.id, 'costo_id': costo.id,
                     'mp_unit': costo.mp_unit, 'energia_unit': costo.energia_unit,
@@ -586,6 +643,10 @@ class QbCotizadorCotizacion(models.Model):
                     'calidad': costo.calidad, 'calidad_detalle': costo.calidad_detalle,
                     'precio_mercado': costo.precio_prom,
                 })
+                for campo in COSTO_CAMPOS_UNIDAD:
+                    vals[campo] = vals[campo] * factor
+                vals.update({'costo_uom': rec.volumen_uom or 'm', 'costo_uom_origen': origen,
+                             'costo_kg_por_m': kg_m, 'costo_kg_fuente': kg_fuente})
                 if provisional:
                     vals.update({'calidad': 'baja', 'calidad_detalle': 'período %s sin cerrar: costo provisional%s' % (
                         periodo.period, (' (%s)' % costo.calidad_detalle) if costo.calidad_detalle else '')})
@@ -593,6 +654,9 @@ class QbCotizadorCotizacion(models.Model):
                 periodo, _provisional = rec._periodo_para_cotizar()
                 vals.update({
                     'periodo_id': periodo.id if periodo else False,
+                    # 1.6.0: lo capturado a mano está en la unidad de la cotización.
+                    'costo_uom': rec.volumen_uom or 'm', 'costo_uom_origen': rec.volumen_uom or 'm',
+                    'costo_kg_por_m': 0.0, 'costo_kg_fuente': False,
                     'costo_variable': rec.mp_unit + rec.energia_unit,
                     'costo_produccion': rec.mp_unit + rec.fabricacion_unit,
                     'op_pct': rec.op_pct or (periodo.op_pct if periodo else 0.0),
@@ -622,6 +686,14 @@ class QbCotizadorCotizacion(models.Model):
         partes.append('Fuente: %s.' % dict(COSTO_FUENTES).get(self.costo_fuente, ''))
         if self.costo_fuente == 'hermano' and self.hermano_product_id:
             partes.append('Hermano: %s.' % self.hermano_product_id.display_name)
+        if self.costo_uom:
+            if self.costo_kg_por_m and self.costo_uom_origen and self.costo_uom_origen != self.costo_uom:
+                partes.append('Costo de origen %s convertido a %s con %s kg/m (%s).' % (
+                    dict(COSTO_UOMS)[self.costo_uom_origen], self.costo_uom,
+                    ('%.4f' % self.costo_kg_por_m).rstrip('0').rstrip('.'),
+                    dict(KG_FUENTES).get(self.costo_kg_fuente, '').lower()))
+            else:
+                partes.append('Costos y precio %s.' % dict(COSTO_UOMS)[self.costo_uom])
         partes.append('Rendimiento vendible %.1f %%; operación %.2f %% de la venta.'
                       % (100 * (self.rendimiento or 1.0), 100 * (self.op_pct or 0.0)))
         if self.es_divisa:
@@ -683,6 +755,8 @@ class QbCotizadorCotizacion(models.Model):
         if self.es_divisa and (self.fx_rate or 0.0) <= 1.0:
             faltan.append('el tipo de cambio (la cotización es en %s y el TC es %.4f)' % (
                 self.currency_id.name, self.fx_rate or 0.0))
+        if self.unidad_alerta:
+            faltan.append('recalcular el costo en la unidad de la cotización (%s)' % self.unidad_alerta)
         if faltan:
             raise UserError('Antes de pedir aprobación falta: %s.' % ', '.join(faltan))
 
@@ -788,6 +862,9 @@ class QbCotizadorCotizacion(models.Model):
     def _presentar(self):
         hoy = fields.Date.context_today(self)
         for rec in self:
+            if rec.unidad_alerta:
+                # 1.6.0: tampoco se presenta (aprobación aquí o en Aprobaciones) con unidades cruzadas.
+                raise UserError('%s no se puede presentar: %s' % (rec.folio or rec.display_name, rec.unidad_alerta))
             validez = self._param_int(PARAM_VALIDEZ_DIAS, 15)
             # 1.1.0: sin días de seguimiento en el parámetro no hay seguimiento automático.
             dias_seg = self._param_int(PARAM_SEGUIMIENTO_DIAS, 0)
