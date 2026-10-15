@@ -161,3 +161,50 @@ class TestCosto(CotizadorCase):
         self.partner.write({'qb_cot_pdf_m': True, 'qb_cot_pdf_yd': True})
         otra = self._cot()
         self.assertEqual((otra.imprimir_m, otra.imprimir_yd, otra.imprimir_kg), (True, True, False))
+
+    def test_07_metro_cuadrado_pieza_y_peso(self):
+        """1.6.1: costo por m² con ancho; pieza no se convierte; el peso del costo contra el código."""
+        m2 = self.env['product.product'].create({'name': 'Tela m2 prueba', 'default_code': 'WJ060Q21JNT160M2',
+                                                'type': 'consu'})
+        self._costo(m2, mp=3.0, energia=0.5, fab=1.0, rend=1.0, precio=0.0).write(
+            {'uom_name': 'm2', 'kg_por_unidad': 0.06})
+        por_m = self._cot(product_id=False, spec_descripcion='Desde m2', costo_fuente='hermano',
+                          hermano_product_id=m2.id, spec_ancho=1.6)
+        por_m.action_calcular()
+        self.assertEqual(por_m.costo_uom_origen, 'm2')
+        self.assertAlmostEqual(por_m.mp_unit, 3.0 * 1.6, places=4, msg='Por m = por m² × ancho')
+        self.assertFalse(por_m.peso_alerta, 'Mismo tipo de unidad: no se usó el peso')
+        por_kg = self._cot(product_id=False, spec_descripcion='Desde m2 en kg', costo_fuente='hermano',
+                           hermano_product_id=m2.id, volumen_uom='kg')
+        por_kg.action_calcular()
+        self.assertAlmostEqual(por_kg.mp_unit, 3.0 / 0.06, places=4, msg='Por kg = por m² ÷ kg/m²')
+        self.assertFalse(por_kg.peso_alerta, '0.06 kg/m² cuadra con 60 g del código')
+        # El peso que no cuadra con el código avisa y no deja pedir aprobación hasta revisarlo.
+        costo_h = self.env['qb.costo.unitario'].search([('product_id', '=', self.hermana.id)])
+        costo_h.write({'uom_name': 'm', 'kg_por_unidad': 0.40})  # el código WJ090…165 da 0.1485 kg/m
+        malo = self._cot(product_id=False, spec_descripcion='Peso malo', costo_fuente='hermano',
+                         hermano_product_id=self.hermana.id, volumen_uom='kg', precio_objetivo=80.0)
+        malo.action_calcular()
+        self.assertTrue(malo.peso_alerta)
+        with self.assertRaises(UserError):
+            malo.action_enviar_aprobacion()
+        malo.peso_confirmado = True
+        malo.action_enviar_aprobacion()
+        self.assertEqual(malo.state, 'por_aprobar')
+        # Sin código legible, un peso fuera de lo creíble (1 kg/m del legado) también avisa.
+        raro = self.env['product.product'].create({'name': 'Legado raro', 'default_code': 'WA15Q01JBL06281',
+                                                  'uom_id': self.env.ref('uom.product_uom_meter').id,
+                                                  'type': 'consu'})
+        self._costo(raro, mp=10.0, energia=1.0, fab=5.0, rend=1.0, precio=0.0).write(
+            {'uom_name': 'm', 'kg_por_unidad': 1.0})
+        uno = self._cot(product_id=False, spec_descripcion='Legado', costo_fuente='hermano',
+                        hermano_product_id=raro.id, volumen_uom='kg')
+        uno.action_calcular()
+        self.assertIn('fuera de lo creíble', uno.peso_alerta or '')
+        # Una unidad que no es m, kg ni m² no se cotiza.
+        pieza = self.env['product.product'].create({'name': 'Playera prueba', 'type': 'consu'})
+        self._costo(pieza, mp=10.0, energia=1.0, fab=5.0, rend=1.0, precio=0.0).write({'uom_name': 'Pieza'})
+        cot = self._cot(product_id=False, spec_descripcion='Playera', costo_fuente='hermano',
+                        hermano_product_id=pieza.id)
+        with self.assertRaises(UserError):
+            cot.action_calcular()

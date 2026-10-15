@@ -22,8 +22,11 @@ def migrate(cr, version):
         if cot.costo_fuente == 'manual' or not cot.costo_id:
             uom = cot.volumen_uom or 'm'
         else:
-            name = (cot.costo_id.uom_name or cot.costo_id.product_id.uom_id.name or '').strip().lower()
-            uom = 'kg' if name.startswith('k') else 'm'
+            # 1.6.1: la misma lectura de la unidad que el cálculo (m, kg o m²); otra (pieza…) queda sin anotar.
+            uom = cot._unidad_de(cot.costo_id.uom_name or cot.costo_id.product_id.uom_id.name)
+            if not uom:
+                cruzadas.append('%s (costo por «%s»)' % (cot.folio or cot.id, cot.costo_id.uom_name))
+                continue
         cot.write({'costo_uom': uom, 'costo_uom_origen': uom})
         if uom != (cot.volumen_uom or 'm'):
             cruzadas.append(cot.folio or str(cot.id))
