@@ -3,6 +3,63 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.1 — 2026-10-15
+
+Dirección General 2026-10-15: «¿cómo aseguras que las unidades están bien al cien?». La revisión contra los
+costos de producción (período 2026-09) encontró dos huecos en la 1.6.0, que todavía no llegaba a producción:
+
+- **Unidades explícitas.** Además de m (1,069 costos) y kg (878) hay costos por **m²** (43, los «…M2») y por
+  pieza o servicio (4). La 1.6.0 tomaba todo lo que no era kg como metros. Ahora `_unidad_de` lee m, kg y m²
+  (con sus nombres comunes) y `_costo_conversion` convierte desde m²: por m = por m² × ancho (de la cotización
+  o del código del artículo), por kg = por m² ÷ kg/m² (del costo o del gramaje). Cualquier otra unidad no se
+  convierte: no calcula y lo dice. La foto guarda el texto de la conversión (`costo_conversion`).
+- **El peso del costo contra el código del artículo** (`peso_alerta`, `_peso_de_codigo` con la misma regla
+  del DAT P-D02-01 que el costeo). Cuando la conversión usa el peso del costo y difiere más de 10 % del que da
+  el código (gramaje × ancho, o gramaje para m²), aviso y no se pide aprobación ni se presenta hasta revisarlo:
+  corregir el peso en Costos o marcar «Peso revisado» (`peso_confirmado`, con rastro). Casos reales: pesos del
+  legado de 1.06 a 1.18 kg/m en artículos de 0.36 a 0.40 kg/m por código, y un «…M2» con 0.072 kg/m² en un
+  artículo de 45 g/m².
+- Si el código no sigue el DAT (523 de 951 costos con peso), el peso se revisa contra un rango creíble
+  (`PESO_RANGO`: 0.02 a 0.8 kg/m, 0.01 a 0.5 kg/m²). Caso real: 13 costos por metro con peso del legado de
+  exactamente 1 kg/m (WA…, CEMESAXR…, MUESTRA PILOTO), que habrían dejado el costo igual al pasar a kg.
+- La migración de la 1.6.0 lee la unidad con la misma regla (m² incluido; otra unidad queda sin anotar y el
+  log la nombra).
+- Prueba `test_costo.test_07`.
+
+## 19.0.1.6.0 — 2026-10-15
+
+Dirección General 2026-10-15: **el costo va en la misma unidad que la cotización.** La COT-2026-0006 (piqué,
+volumen en kg) tomó el costo de un hermano que se maneja en metros y comparó $21.45 por m contra un precio
+por kg: márgenes de 78 a 85 % en verde cuando por kg son de 31 % bruto y 17 % neto, y a $75 el kilo quedaba
+debajo del piso lleno ($79.93/kg) sin que la pantalla lo dijera.
+
+- **Calcular costo convierte la foto** a la unidad del volumen (`_costo_conversion`): un costo por m con la
+  cotización en kg se divide entre los kg por metro, y al revés se multiplica. Los kg por metro salen del
+  peso del costo (`qb.costo.unitario.kg_por_unidad`, si el costo va por m) o del gramaje × ancho de la
+  cotización; sin ninguno, no calcula y lo dice. Se convierten MP, energía, fabricación, costo variable, de
+  producción y precio de mercado; rendimiento y operación no cambian.
+- La foto guarda en qué unidad está (`costo_uom`), la del costo de origen (`costo_uom_origen`) y con qué
+  se convirtió (`costo_kg_por_m`, `costo_kg_fuente`); los supuestos lo dicen.
+- **Si la unidad del volumen cambia después**, aviso rojo en la cotización (`unidad_alerta`) y no se pide
+  aprobación ni se presenta (aquí o desde Aprobaciones) hasta recalcular.
+- Migración `19.0.1.6.0/post-migrate.py`: anota la unidad que ya tenía la foto de las cotizaciones calculadas
+  (no cambia costos, precios ni estados); las que tienen unidades cruzadas quedan con el aviso y el log las
+  lista.
+- Pruebas `test_costo.test_04` y `test_05`.
+
+Dirección General 2026-10-15: **escoger en qué unidades sale el precio en el PDF.**
+
+- Casillas «Precio por m / yd / kg» en la pestaña Condiciones (`imprimir_m`, `imprimir_yd`, `imprimir_kg`).
+  La cotización se calcula y se aprueba en su unidad; las demás se convierten solo para imprimir
+  (`_pdf_precios`, `_pdf_volumenes`): 1 yd = 0.9144 m exacto; m ↔ kg con los kg por metro del costo o el
+  gramaje × ancho (`pdf_kg_por_m`). Sin ninguna marcada sale la de la cotización, como antes.
+- El PDF al cliente pone una línea de precio por unidad marcada, el volumen también en las otras unidades
+  («≈ … yd / mes») y una columna por unidad en los precios por volumen. Si una unidad marcada no se puede
+  convertir (kg sin kg por metro), no imprime y dice qué capturar.
+- Default por cliente: casillas «Cotizaciones: precio por m / yd / kg» en la pestaña Ventas y compras del
+  contacto (`res.partner.qb_cot_pdf_*`); sin ninguna, la unidad de la cotización.
+- Prueba `test_costo.test_06`.
+
 ## 19.0.1.5.0 — 2026-10-09
 
 Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.**

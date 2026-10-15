@@ -53,6 +53,12 @@
                     <div class="alert alert-warning" role="alert" invisible="not moneda_alerta">
                         <field name="moneda_alerta" readonly="1" class="oe_inline"/>
                     </div>
+                    <div class="alert alert-danger" role="alert" invisible="not unidad_alerta">
+                        <field name="unidad_alerta" readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not peso_alerta or peso_confirmado">
+                        <field name="peso_alerta" readonly="1" class="oe_inline"/>
+                    </div>
                     <div class="alert alert-info" role="status" invisible="not sin_costo or costo_fuente == 'legado'">
                         Sin costo calculado: el semáforo y los márgenes salen después de «Calcular costo». Hasta entonces no se puede pedir aprobación.
                     </div>
@@ -112,8 +118,14 @@
                                     <field name="calculado_el"/>
                                     <field name="calidad"/>
                                     <field name="calidad_detalle"/>
+                                    <field name="costo_uom" invisible="not costo_uom"/>
+                                    <field name="costo_uom_origen" invisible="not costo_conversion"/>
+                                    <field name="costo_kg_por_m" invisible="not costo_kg_por_m"/>
+                                    <field name="costo_kg_fuente" invisible="not costo_kg_por_m"/>
+                                    <field name="costo_conversion" invisible="not costo_conversion"/>
+                                    <field name="peso_confirmado" invisible="not peso_alerta" readonly="state not in ('borrador', 'por_aprobar')"/>
                                 </group>
-                                <group string="Por unidad ($ MXN)">
+                                <group string="Por unidad del volumen ($ MXN)">
                                     <field name="mp_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
                                     <field name="energia_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
                                     <field name="fabricacion_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
@@ -157,6 +169,13 @@
                                     <field name="lugar_entrega"/>
                                     <field name="tiempo_entrega"/>
                                     <field name="muestra_leyenda"/>
+                                </group>
+                                <group string="Unidades del precio en el PDF">
+                                    <field name="imprimir_m"/>
+                                    <field name="imprimir_yd"/>
+                                    <field name="imprimir_kg"/>
+                                    <field name="pdf_kg_por_m" invisible="not imprimir_kg and volumen_uom != 'kg'"/>
+                                    <div class="text-muted" colspan="2">La cotización se calcula y se aprueba en su unidad; las demás se convierten solo para imprimir (1 yd = 0.9144 m; m ↔ kg con los kg por metro). Sin ninguna marcada, sale la de la cotización. El default viene del cliente.</div>
                                 </group>
                                 <group string="Términos incluidos">
                                     <field name="tc_coa"/>
