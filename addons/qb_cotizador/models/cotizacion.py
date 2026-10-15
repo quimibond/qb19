@@ -78,6 +78,8 @@ KG_FUENTES = [('costo', 'Peso del costo (kg por unidad del producto)'),
               ('especificacion', 'Gramaje × ancho de la cotización')]
 # 1.6.1: diferencia máxima entre el peso del costo y el que da el código del artículo antes de avisar.
 PESO_TOLERANCIA = 0.10
+# 1.6.1: rango creíble del peso de una tela (kg por m lineal / kg por m²) cuando el código no se puede leer.
+PESO_RANGO = {'m': (0.02, 0.8), 'm2': (0.01, 0.5)}
 
 # 1.6.0: unidades en que se puede imprimir el precio al cliente (además de la de la cotización).
 YARDA_M = 0.9144  # 1 yd = 0.9144 m, exacto
@@ -498,12 +500,21 @@ class QbCotizadorCotizacion(models.Model):
                     and rec.costo_uom_origen != rec.costo_uom and costo.kg_por_unidad > 0:
                 por_m2 = rec.costo_uom_origen == 'm2'
                 esperado = rec._peso_de_codigo(costo.product_id.default_code, por_m2=por_m2)
-                if esperado and abs(costo.kg_por_unidad / esperado - 1.0) > PESO_TOLERANCIA:
-                    u = 'kg/m²' if por_m2 else 'kg/m'
-                    alerta = ('El peso del costo de %s (%s %s, %s) no cuadra con su código (%s %s): la conversión '
-                              'a %s puede estar mal. Corrige el peso en Costos o, si ya se revisó, marca «Peso '
-                              'revisado».' % (costo.product_id.display_name, _num(costo.kg_por_unidad), u,
-                                              costo.peso_fuente or 'sin fuente', _num(esperado), u, rec.costo_uom))
+                u = 'kg/m²' if por_m2 else 'kg/m'
+                bajo, alto = PESO_RANGO[rec.costo_uom_origen]
+                w = costo.kg_por_unidad
+                if esperado and abs(w / esperado - 1.0) > PESO_TOLERANCIA:
+                    motivo = 'no cuadra con su código (%s %s)' % (_num(esperado), u)
+                elif not esperado and not bajo <= w <= alto:
+                    motivo = 'está fuera de lo creíble para una tela (%s a %s %s) y su código no se puede leer' % (
+                        _num(bajo), _num(alto), u)
+                else:
+                    motivo = ''
+                if motivo:
+                    alerta = ('El peso del costo de %s (%s %s, %s) %s: la conversión a %s puede estar mal. Corrige '
+                              'el peso en Costos o, si ya se revisó, marca «Peso revisado».' % (
+                                  costo.product_id.display_name, _num(w), u, costo.peso_fuente or 'sin fuente',
+                                  motivo, rec.costo_uom))
             rec.peso_alerta = alerta
 
     @api.depends('currency_id', 'company_id', 'fx_rate', 'costo_fuente')
