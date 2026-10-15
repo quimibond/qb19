@@ -136,3 +136,28 @@ class TestCosto(CotizadorCase):
         self.assertEqual(sin_peso.costo_kg_fuente, 'especificacion')
         self.assertAlmostEqual(sin_peso.costo_kg_por_m, 0.3, places=6)
         self.assertAlmostEqual(sin_peso.mp_unit, 7.0 / 0.3, places=4)
+
+    def test_06_unidades_del_pdf(self):
+        """1.6.0: el precio se imprime en m, yd y kg sin tocar el precio aprobado."""
+        cot = self._cot(product_id=False, spec_descripcion='Jersey 150', spec_gramaje=150, spec_ancho=2.0,
+                        costo_fuente='hermano', hermano_product_id=self.hermana.id, precio_objetivo=3.0)
+        self.assertEqual((cot.imprimir_m, cot.imprimir_yd, cot.imprimir_kg), (True, False, False),
+                         'Sin default del cliente: la unidad de la cotización')
+        cot.write({'imprimir_yd': True, 'imprimir_kg': True})
+        precios = dict(cot._pdf_precios(cot.precio_objetivo))
+        self.assertAlmostEqual(precios['m'], 3.0)
+        self.assertAlmostEqual(precios['yd'], 3.0 * 0.9144)
+        self.assertAlmostEqual(precios['kg'], 3.0 / 0.3, msg='150 g/m² × 2 m = 0.3 kg/m')
+        volumenes = dict(cot._pdf_volumenes(1000))
+        self.assertAlmostEqual(volumenes['yd'], 1000 / 0.9144)
+        self.assertAlmostEqual(volumenes['kg'], 300)
+        self.assertEqual(cot.precio_objetivo, 3.0)
+        # Sin kg por metro no se imprime por kg.
+        cot.write({'spec_gramaje': 0})
+        self.assertNotIn('kg', dict(cot._pdf_precios(cot.precio_objetivo)))
+        with self.assertRaises(UserError):
+            cot._pdf_validar_unidades()
+        # El default sale del cliente.
+        self.partner.write({'qb_cot_pdf_m': True, 'qb_cot_pdf_yd': True})
+        otra = self._cot()
+        self.assertEqual((otra.imprimir_m, otra.imprimir_yd, otra.imprimir_kg), (True, True, False))

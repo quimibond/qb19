@@ -33,6 +33,14 @@ sus cotizaciones y convive con él hasta que se retire.
 6. **Ganada** (a mano o al confirmar un pedido del mismo cliente y producto)
    + aprobación del cliente con evidencia ⇒ precio en su tarifa.
 
+## Unidades del precio en el PDF
+
+En la pestaña Condiciones se marca en qué unidades sale el precio al cliente
+(m, yd, kg; varias a la vez). Solo cambia la impresión: el precio aprobado
+sigue en la unidad de la cotización. 1 yd = 0.9144 m; m ↔ kg con los kg por
+metro del costo o el gramaje × ancho. El default sale del cliente (pestaña
+Ventas y compras del contacto); sin nada marcado, la unidad de la cotización.
+
 ## Parámetros (Ajustes → Ventas → Cotizador de costo)
 
 Los que el brief deja sin definir están **vacíos** y no tienen efecto hasta

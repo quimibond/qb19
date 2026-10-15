@@ -32,6 +32,7 @@ sin tocarlas.
         'report/report_cotizacion.xml',
         'wizard/decision_wizard_views.xml',
         'views/cotizacion_views.xml',
+        'views/res_partner_views.xml',  # 1.6.0
         'views/motivo_views.xml',
         'views/settings_views.xml',
         'views/menus.xml',
