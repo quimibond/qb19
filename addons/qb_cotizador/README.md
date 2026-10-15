@@ -22,6 +22,10 @@ sus cotizaciones y convive con él hasta que se retire.
    los trae, con el gramaje × ancho de la cotización; sin ninguno no calcula.
    Si la unidad del volumen cambia después, la cotización lo avisa en rojo y no
    se aprueba hasta recalcular.
+   Se convierten costos por m, kg y m² (m² con el ancho); otra unidad (pieza,
+   servicio) no se cotiza. Si el peso del costo no cuadra con el código del
+   artículo (más de 10 %), aviso y no se aprueba hasta corregir el peso en
+   Costos o marcar «Peso revisado».
 3. Pisos, márgenes y semáforo salen del precio sobre esa foto (editar el
    precio los actualiza; recalcular el costo es explícito y deja rastro).
 4. **Enviar a aprobación** → el puesto configurado (Director de Finanzas y
