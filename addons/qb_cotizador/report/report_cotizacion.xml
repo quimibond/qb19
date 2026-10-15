@@ -82,9 +82,21 @@
                                         <!-- 1.4.0 (Dirección General 2026-10-09): gramaje, ancho y galga se quedan en la
                                              cotización, pero no se imprimen al cliente. -->
                                     </td>
-                                    <td class="text-end"><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/></td>
-                                    <td class="text-end"><b><span t-out="'{:,.4f}'.format(o.precio_objetivo)"/> <span t-out="o.currency_id.name"/></b>
-                                        por / per <span t-out="(o.volumen_uom or 'm')"/></td>
+                                    <td class="text-end"><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/>
+                                        <!-- 1.6.0: el volumen también en las otras unidades marcadas para imprimir. -->
+                                        <t t-foreach="o._pdf_volumenes(o.volumen)" t-as="uv">
+                                            <br/><span style="color:#888;" t-out="'≈ {:,.0f} {} / mes'.format(uv[1], uv[0])"/>
+                                        </t>
+                                    </td>
+                                    <td class="text-end">
+                                        <!-- 1.6.0: una línea por unidad marcada (m, yd, kg); el precio aprobado está en la
+                                             unidad de la cotización y los demás se convierten solo para imprimir. -->
+                                        <t t-foreach="o._pdf_precios(o.precio_objetivo)" t-as="up">
+                                            <t t-if="not up_first"><br/></t>
+                                            <b><span t-out="'{:,.4f}'.format(up[1])"/> <span t-out="o.currency_id.name"/></b>
+                                            por / per <span t-out="up[0]"/>
+                                        </t>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -92,11 +104,12 @@
                         <t t-if="len(tramos) &gt; 1">
                             <h5>Precios por volumen <span style="font-size:12px; color:#888; font-weight:normal;">/ Volume pricing</span></h5>
                             <table class="table table-sm" style="font-size:13px; width:60%;">
-                                <thead><tr><th class="text-end">Volumen mensual / Monthly volume</th><th class="text-end">Precio unitario / Unit price</th></tr></thead>
+                                <thead><tr><th class="text-end">Volumen mensual / Monthly volume</th>
+                                    <th class="text-end" t-foreach="o._pdf_precios(1.0)" t-as="uh">Precio por / Price per <span t-out="uh[0]"/></th></tr></thead>
                                 <tbody>
                                     <tr t-foreach="tramos" t-as="t" t-att-style="'font-weight:bold;' if t.es_base else ''">
                                         <td class="text-end"><span t-out="'{:,.0f}'.format(t.volumen)"/> <span t-out="o.volumen_uom or 'm'"/>/mes</td>
-                                        <td class="text-end"><span t-out="'{:,.4f}'.format(t.precio_divisa)"/> <span t-out="o.currency_id.name"/></td>
+                                        <td class="text-end" t-foreach="o._pdf_precios(t.precio_divisa)" t-as="tp"><span t-out="'{:,.4f}'.format(tp[1])"/> <span t-out="o.currency_id.name"/></td>
                                     </tr>
                                 </tbody>
                             </table>

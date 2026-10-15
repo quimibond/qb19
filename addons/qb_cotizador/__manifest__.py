@@ -19,7 +19,7 @@ sin tocarlas.
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.5.0',
+    'version': '19.0.1.6.0',
     'license': 'LGPL-3',
     'application': False,
     'depends': ['qb_costeo', 'sale_management', 'hr', 'mail'],
@@ -32,6 +32,7 @@ sin tocarlas.
         'report/report_cotizacion.xml',
         'wizard/decision_wizard_views.xml',
         'views/cotizacion_views.xml',
+        'views/res_partner_views.xml',  # 1.6.0
         'views/motivo_views.xml',
         'views/settings_views.xml',
         'views/menus.xml',

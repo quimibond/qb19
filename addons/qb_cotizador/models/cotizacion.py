@@ -67,6 +67,16 @@ CLIENTE_MEDIOS = [
     ('direccion', 'Dirección (desarrollo interno)'),  # 1.2.0: mismo catálogo que la aprobación del SGI
 ]
 VOLUMEN_UOMS = [('m', 'm / mes'), ('kg', 'kg / mes')]
+# 1.6.0: unidad en que está expresada la foto del costo (la del volumen al calcular).
+COSTO_UOMS = [('m', 'por m'), ('kg', 'por kg')]
+KG_FUENTES = [('costo', 'Peso del costo (kg por unidad del producto)'),
+              ('especificacion', 'Gramaje × ancho de la cotización')]
+# Campos de la foto que van por unidad (se convierten de m a kg o al revés); rendimiento y operación no.
+# 1.6.0: unidades en que se puede imprimir el precio al cliente (además de la de la cotización).
+YARDA_M = 0.9144  # 1 yd = 0.9144 m, exacto
+PDF_UNIDADES = (('m', 'imprimir_m', 'm'), ('yd', 'imprimir_yd', 'yd'), ('kg', 'imprimir_kg', 'kg'))
+COSTO_CAMPOS_UNIDAD = ('mp_unit', 'energia_unit', 'fabricacion_unit', 'costo_variable', 'costo_produccion',
+                       'precio_mercado')
 ESCALERA_MULTIPLOS = (0.5, 1.0, 2.0, 4.0)
 # Estados del cotizador anterior → de este.
 LEGACY_STATE = {'draft': 'borrador', 'done': 'presentada', 'won': 'ganada',
@@ -155,6 +165,20 @@ class QbCotizadorCotizacion(models.Model):
                                   readonly=True, copy=False,
                                   help='Precio promedio facturado del producto en el período '
                                        'del costo (todos los clientes).')
+    # 1.6.0 (Dirección General 2026-10-15): la foto va en la unidad de la cotización. Un costo por m con
+    # la cotización en kg (o al revés) se convierte al calcular con los kg por metro; si después cambia
+    # la unidad del volumen, la cotización avisa y no se aprueba hasta recalcular.
+    costo_uom = fields.Selection(COSTO_UOMS, string='Unidad del costo', readonly=True, copy=False,
+                                 help='Unidad en que están los costos y pisos de la foto: la del volumen al '
+                                      'calcular el costo.')
+    costo_uom_origen = fields.Selection(COSTO_UOMS, string='Unidad del costo de origen', readonly=True,
+                                        copy=False, help='Unidad del costo del período (la del producto).')
+    costo_kg_por_m = fields.Float(string='kg por metro (conversión)', digits=(16, 6), readonly=True,
+                                  copy=False, help='Con qué se convirtió el costo de m a kg o al revés; '
+                                                   'vacío si no hubo conversión.')
+    costo_kg_fuente = fields.Selection(KG_FUENTES, string='De dónde salen los kg por metro', readonly=True,
+                                       copy=False)
+    unidad_alerta = fields.Char(compute='_compute_unidad_alerta')
     costo_muestra = fields.Float(string='Costo de la muestra $ MXN', digits=(16, 2),
                                  tracking=True,
                                  help='Lo que cuesta correr la muestra (una muestra con teñido '
@@ -244,6 +268,18 @@ class QbCotizadorCotizacion(models.Model):
     muestra_leyenda = fields.Char(string='Leyenda de muestra',
                                   default='Muestra menor a 50 m sin costo / Sample less than 50 '
                                           'meters free of charge')
+    # 1.6.0 (Dirección General 2026-10-15): en qué unidades sale el precio en el PDF. La cotización se
+    # calcula y se aprueba en su unidad; las demás se convierten solo para imprimir (yd = 0.9144 m; m ↔ kg
+    # con los kg por metro). Sin ninguna marcada, la de la cotización. El default sale del cliente.
+    imprimir_m = fields.Boolean(string='Precio por m', compute='_compute_imprimir', store=True,
+                                readonly=False, precompute=True)
+    imprimir_yd = fields.Boolean(string='Precio por yd', compute='_compute_imprimir', store=True,
+                                 readonly=False, precompute=True)
+    imprimir_kg = fields.Boolean(string='Precio por kg', compute='_compute_imprimir', store=True,
+                                 readonly=False, precompute=True)
+    pdf_kg_por_m = fields.Float(string='kg por metro (para imprimir)', digits=(16, 6),
+                                compute='_compute_pdf_kg_por_m',
+                                help='Con qué se pasa de m a kg en el PDF: los del costo o el gramaje × ancho.')
     tc_coa = fields.Boolean(string='CoA al 100 %', default=True)
     tc_pruebas_lab = fields.Boolean(string='Pruebas especiales de laboratorio')
     tc_lta = fields.Boolean(string='LTA')
@@ -281,6 +317,102 @@ class QbCotizadorCotizacion(models.Model):
             rec.piso_ocioso = rec.costo_variable / rend
             op = rec.op_pct or 0.0
             rec.piso_lleno = rec.costo_vendible / (1 - op) if op < 1 else rec.costo_vendible
+
+    @api.depends('costo_uom', 'volumen_uom', 'calculado_el', 'costo_fuente')
+    def _compute_unidad_alerta(self):
+        for rec in self:
+            alerta = ''
+            if rec.calculado_el and rec.costo_fuente != 'legado' and rec.costo_uom \
+                    and rec.costo_uom != rec.volumen_uom:
+                alerta = ('El costo está %s y la cotización %s: los márgenes y el semáforo comparan unidades '
+                          'distintas. Recalcula el costo («Calcular costo»).' % (
+                              dict(COSTO_UOMS)[rec.costo_uom], dict(COSTO_UOMS)[rec.volumen_uom]))
+            rec.unidad_alerta = alerta
+
+    @api.depends('partner_id', 'volumen_uom')
+    def _compute_imprimir(self):
+        for rec in self:
+            p = rec.partner_id.commercial_partner_id if rec.partner_id else rec.partner_id
+            if p and (p.qb_cot_pdf_m or p.qb_cot_pdf_yd or p.qb_cot_pdf_kg):
+                rec.imprimir_m, rec.imprimir_yd, rec.imprimir_kg = p.qb_cot_pdf_m, p.qb_cot_pdf_yd, p.qb_cot_pdf_kg
+            else:
+                uom = rec.volumen_uom or 'm'
+                rec.imprimir_m, rec.imprimir_yd, rec.imprimir_kg = uom == 'm', False, uom == 'kg'
+
+    @api.depends('costo_kg_por_m', 'costo_uom_origen', 'costo_id.kg_por_unidad', 'spec_gramaje', 'spec_ancho')
+    def _compute_pdf_kg_por_m(self):
+        for rec in self:
+            kg_m = rec.costo_kg_por_m
+            if not kg_m and rec.costo_uom_origen == 'm' and rec.costo_id:
+                kg_m = rec.costo_id.sudo().kg_por_unidad
+            if not kg_m and rec.spec_gramaje > 0 and rec.spec_ancho > 0:
+                kg_m = rec.spec_gramaje * rec.spec_ancho / 1000.0
+            rec.pdf_kg_por_m = kg_m or 0.0
+
+    def _pdf_unidades(self):
+        """Unidades en que se imprime el precio, en orden m, yd, kg; la de la cotización si no hay marcadas."""
+        self.ensure_one()
+        unidades = [u for u, campo, _l in PDF_UNIDADES if self[campo]]
+        return unidades or [self.volumen_uom or 'm']
+
+    def _pdf_factor(self, unidad):
+        """Cuántas unidades de la cotización caben en una ``unidad`` (m, yd o kg): precio por ``unidad`` =
+        precio × factor; volumen en ``unidad`` = volumen ÷ factor. None si no se puede convertir."""
+        self.ensure_one()
+        base = self.volumen_uom or 'm'
+        if unidad == base:
+            return 1.0
+        kg_m = self.pdf_kg_por_m
+        # Primero se pasa a metros: 1 m son kg_m kg; 1 yd son 0.9144 m.
+        m_por_unidad = {'m': 1.0, 'yd': YARDA_M, 'kg': (1.0 / kg_m) if kg_m else None}[unidad]
+        base_por_m = 1.0 if base == 'm' else kg_m  # unidades de la cotización en 1 m
+        if m_por_unidad is None or not base_por_m:
+            return None
+        return m_por_unidad * base_por_m
+
+    def _pdf_precios(self, precio):
+        """[(unidad, precio)] para el PDF a partir de un precio por unidad de la cotización."""
+        self.ensure_one()
+        return [(u, precio * self._pdf_factor(u)) for u in self._pdf_unidades() if self._pdf_factor(u)]
+
+    def _pdf_volumenes(self, volumen):
+        """[(unidad, volumen)] en las unidades marcadas que no son la de la cotización."""
+        self.ensure_one()
+        base = self.volumen_uom or 'm'
+        return [(u, volumen / self._pdf_factor(u)) for u in self._pdf_unidades()
+                if u != base and self._pdf_factor(u)]
+
+    def _pdf_validar_unidades(self):
+        for rec in self:
+            faltan = [u for u in rec._pdf_unidades() if not rec._pdf_factor(u)]
+            if faltan:
+                raise UserError('%s: para imprimir el precio por %s hacen falta los kg por metro (el costo no los '
+                                'trae y la cotización no tiene gramaje y ancho). Captura gramaje y ancho o '
+                                'desmarca esa unidad.' % (rec.folio or rec.display_name, ', '.join(faltan)))
+
+    def _costo_conversion(self, costo):
+        """1.6.0: (factor, unidad de origen, kg por metro, fuente) para pasar la foto del costo a la unidad
+        del volumen. El factor multiplica los campos por unidad (``COSTO_CAMPOS_UNIDAD``); 1.0 si no hay que
+        convertir. Los kg por metro salen del peso del costo (si el costo va por m) o del gramaje × ancho de
+        la cotización; sin ninguno no se calcula."""
+        self.ensure_one()
+        uom_name = (costo.uom_name or costo.product_id.uom_id.name or '').strip().lower()
+        origen = 'kg' if uom_name.startswith('k') else 'm'
+        destino = self.volumen_uom or 'm'
+        if origen == destino:
+            return 1.0, origen, 0.0, False
+        kg_m, fuente = 0.0, False
+        if origen == 'm' and costo.kg_por_unidad > 0:
+            kg_m, fuente = costo.kg_por_unidad, 'costo'
+        elif self.spec_gramaje > 0 and self.spec_ancho > 0:
+            kg_m, fuente = self.spec_gramaje * self.spec_ancho / 1000.0, 'especificacion'
+        if kg_m <= 0:
+            raise UserError('El costo de %s está por %s y la cotización por %s, y no hay con qué convertirlo: '
+                            'el costo no trae los kg por metro y la cotización no tiene gramaje y ancho. '
+                            'Captura gramaje y ancho, o cambia la unidad del volumen a %s.' % (
+                                costo.product_id.display_name, origen, destino, origen))
+        factor = 1.0 / kg_m if origen == 'm' else kg_m
+        return factor, origen, kg_m, fuente
 
     @api.depends('currency_id', 'company_id', 'fx_rate', 'costo_fuente')
     def _compute_moneda_alerta(self):
@@ -576,6 +708,7 @@ class QbCotizadorCotizacion(models.Model):
                     raise UserError('%s no tiene costo calculado en el período %s. Calcula los '
                                     'costos del período, elige otro producto hermano o captura '
                                     'el costo a mano.' % (producto.display_name, periodo.period))
+                factor, origen, kg_m, kg_fuente = rec._costo_conversion(costo)
                 vals.update({
                     'periodo_id': periodo.id, 'costo_id': costo.id,
                     'mp_unit': costo.mp_unit, 'energia_unit': costo.energia_unit,
@@ -586,6 +719,10 @@ class QbCotizadorCotizacion(models.Model):
                     'calidad': costo.calidad, 'calidad_detalle': costo.calidad_detalle,
                     'precio_mercado': costo.precio_prom,
                 })
+                for campo in COSTO_CAMPOS_UNIDAD:
+                    vals[campo] = vals[campo] * factor
+                vals.update({'costo_uom': rec.volumen_uom or 'm', 'costo_uom_origen': origen,
+                             'costo_kg_por_m': kg_m, 'costo_kg_fuente': kg_fuente})
                 if provisional:
                     vals.update({'calidad': 'baja', 'calidad_detalle': 'período %s sin cerrar: costo provisional%s' % (
                         periodo.period, (' (%s)' % costo.calidad_detalle) if costo.calidad_detalle else '')})
@@ -593,6 +730,9 @@ class QbCotizadorCotizacion(models.Model):
                 periodo, _provisional = rec._periodo_para_cotizar()
                 vals.update({
                     'periodo_id': periodo.id if periodo else False,
+                    # 1.6.0: lo capturado a mano está en la unidad de la cotización.
+                    'costo_uom': rec.volumen_uom or 'm', 'costo_uom_origen': rec.volumen_uom or 'm',
+                    'costo_kg_por_m': 0.0, 'costo_kg_fuente': False,
                     'costo_variable': rec.mp_unit + rec.energia_unit,
                     'costo_produccion': rec.mp_unit + rec.fabricacion_unit,
                     'op_pct': rec.op_pct or (periodo.op_pct if periodo else 0.0),
@@ -622,6 +762,14 @@ class QbCotizadorCotizacion(models.Model):
         partes.append('Fuente: %s.' % dict(COSTO_FUENTES).get(self.costo_fuente, ''))
         if self.costo_fuente == 'hermano' and self.hermano_product_id:
             partes.append('Hermano: %s.' % self.hermano_product_id.display_name)
+        if self.costo_uom:
+            if self.costo_kg_por_m and self.costo_uom_origen and self.costo_uom_origen != self.costo_uom:
+                partes.append('Costo de origen %s convertido a %s con %s kg/m (%s).' % (
+                    dict(COSTO_UOMS)[self.costo_uom_origen], self.costo_uom,
+                    ('%.4f' % self.costo_kg_por_m).rstrip('0').rstrip('.'),
+                    dict(KG_FUENTES).get(self.costo_kg_fuente, '').lower()))
+            else:
+                partes.append('Costos y precio %s.' % dict(COSTO_UOMS)[self.costo_uom])
         partes.append('Rendimiento vendible %.1f %%; operación %.2f %% de la venta.'
                       % (100 * (self.rendimiento or 1.0), 100 * (self.op_pct or 0.0)))
         if self.es_divisa:
@@ -683,6 +831,8 @@ class QbCotizadorCotizacion(models.Model):
         if self.es_divisa and (self.fx_rate or 0.0) <= 1.0:
             faltan.append('el tipo de cambio (la cotización es en %s y el TC es %.4f)' % (
                 self.currency_id.name, self.fx_rate or 0.0))
+        if self.unidad_alerta:
+            faltan.append('recalcular el costo en la unidad de la cotización (%s)' % self.unidad_alerta)
         if faltan:
             raise UserError('Antes de pedir aprobación falta: %s.' % ', '.join(faltan))
 
@@ -788,6 +938,9 @@ class QbCotizadorCotizacion(models.Model):
     def _presentar(self):
         hoy = fields.Date.context_today(self)
         for rec in self:
+            if rec.unidad_alerta:
+                # 1.6.0: tampoco se presenta (aprobación aquí o en Aprobaciones) con unidades cruzadas.
+                raise UserError('%s no se puede presentar: %s' % (rec.folio or rec.display_name, rec.unidad_alerta))
             validez = self._param_int(PARAM_VALIDEZ_DIAS, 15)
             # 1.1.0: sin días de seguimiento en el parámetro no hay seguimiento automático.
             dias_seg = self._param_int(PARAM_SEGUIMIENTO_DIAS, 0)
@@ -987,6 +1140,7 @@ class QbCotizadorCotizacion(models.Model):
             if rec.state not in APROBADAS:
                 raise UserError('El PDF comercial solo se imprime con la cotización aprobada '
                                 '(%s).' % rec._quien_aprueba_texto())
+        self._pdf_validar_unidades()
         return self.env.ref('qb_cotizador.action_report_cotizacion_cliente').report_action(self)
 
     def action_print_interna(self):
