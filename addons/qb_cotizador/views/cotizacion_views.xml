@@ -165,6 +165,13 @@
                                     <field name="tiempo_entrega"/>
                                     <field name="muestra_leyenda"/>
                                 </group>
+                                <group string="Unidades del precio en el PDF">
+                                    <field name="imprimir_m"/>
+                                    <field name="imprimir_yd"/>
+                                    <field name="imprimir_kg"/>
+                                    <field name="pdf_kg_por_m" invisible="not imprimir_kg and volumen_uom != 'kg'"/>
+                                    <div class="text-muted" colspan="2">La cotización se calcula y se aprueba en su unidad; las demás se convierten solo para imprimir (1 yd = 0.9144 m; m ↔ kg con los kg por metro). Sin ninguna marcada, sale la de la cotización. El default viene del cliente.</div>
+                                </group>
                                 <group string="Términos incluidos">
                                     <field name="tc_coa"/>
                                     <field name="tc_pruebas_lab"/>

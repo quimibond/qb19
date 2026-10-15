@@ -24,6 +24,19 @@ debajo del piso lleno ($79.93/kg) sin que la pantalla lo dijera.
   lista.
 - Pruebas `test_costo.test_04` y `test_05`.
 
+Dirección General 2026-10-15: **escoger en qué unidades sale el precio en el PDF.**
+
+- Casillas «Precio por m / yd / kg» en la pestaña Condiciones (`imprimir_m`, `imprimir_yd`, `imprimir_kg`).
+  La cotización se calcula y se aprueba en su unidad; las demás se convierten solo para imprimir
+  (`_pdf_precios`, `_pdf_volumenes`): 1 yd = 0.9144 m exacto; m ↔ kg con los kg por metro del costo o el
+  gramaje × ancho (`pdf_kg_por_m`). Sin ninguna marcada sale la de la cotización, como antes.
+- El PDF al cliente pone una línea de precio por unidad marcada, el volumen también en las otras unidades
+  («≈ … yd / mes») y una columna por unidad en los precios por volumen. Si una unidad marcada no se puede
+  convertir (kg sin kg por metro), no imprime y dice qué capturar.
+- Default por cliente: casillas «Cotizaciones: precio por m / yd / kg» en la pestaña Ventas y compras del
+  contacto (`res.partner.qb_cot_pdf_*`); sin ninguna, la unidad de la cotización.
+- Prueba `test_costo.test_06`.
+
 ## 19.0.1.5.0 — 2026-10-09
 
 Dirección General 2026-10-09: **nadie aprueba lo que él mismo pidió.**

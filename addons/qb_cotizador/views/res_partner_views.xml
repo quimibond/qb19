@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.6.0: unidades en que se imprime el precio de las cotizaciones de costo del cliente por default. -->
+    <record id="view_partner_form_qb_cotizador_pdf" model="ir.ui.view">
+        <field name="name">res.partner.form.qb.cotizador.pdf</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']" position="inside">
+                <group string="Cotizaciones de costo: precio en el PDF" name="qb_cotizador_pdf">
+                    <field name="qb_cot_pdf_m"/>
+                    <field name="qb_cot_pdf_yd"/>
+                    <field name="qb_cot_pdf_kg"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
