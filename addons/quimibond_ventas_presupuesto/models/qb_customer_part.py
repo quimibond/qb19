@@ -10,8 +10,10 @@ El producto se SUGIERE con ``release/part_match.py`` (Python puro) a partir de
 lo que ya está en Odoo: la referencia escrita en la descripción del cliente,
 la nota de factura que trae la parte debajo de la línea del producto (así la
 escribe hoy Ventas), los pedidos que mencionan la parte o su PO, lo que se le
-ha vendido al cliente y el gramaje/ancho de la ficha (``qb.producto.ficha`` si
-``qb_capacidad_costeo`` está instalado). Ventas confirma.
+ha vendido al cliente y el gramaje/ancho del código del artículo (norma DAT
+P-D02-01) con el peso del costeo (``qb.producto.kg`` si ``qb_costeo`` está
+instalado; 1.4.0, antes ``qb.producto.ficha`` de ``qb_capacidad_costeo``).
+Ventas confirma.
 """
 from datetime import timedelta
 
@@ -107,14 +109,32 @@ class QbCustomerPart(models.Model):
 
     # --- Sugerencia de producto ----------------------------------------------
     def _qb_ficha_by_product(self, products):
-        """{product_id: (gramaje, ancho_m, rendimiento_m_kg)} de la ficha."""
-        if 'qb.producto.ficha' not in self.env or not products:
+        """{product_id: (gramaje, ancho_m, rendimiento_m_kg)}: gramaje y ancho del código del artículo
+        y rendimiento del peso del costeo (kg por metro del producto en metros) o, si no hay, del código.
+        Vacío sin ``qb_costeo`` (1.4.0; antes ``qb.producto.ficha`` de ``qb_capacidad_costeo``)."""
+        if 'qb.producto.kg' not in self.env or not products:
             return {}
-        fichas = self.env['qb.producto.ficha'].sudo().search_read(
-            [('product_id', 'in', products.ids)],
-            ['product_id', 'gramaje_g_m2', 'ancho_m', 'rendimiento_m_kg'])
-        return {f['product_id'][0]: (f['gramaje_g_m2'], f['ancho_m'],
-                                     f['rendimiento_m_kg']) for f in fichas}
+        from odoo.addons.qb_costeo.models.peso import NOMEN_RE
+        Kg = self.env['qb.producto.kg'].sudo()
+        metro = self.env.ref(_LENGTH_UOM_XMLID, raise_if_not_found=False)
+        out = {}
+        for product in products:
+            m = NOMEN_RE.match((product.default_code or '').replace(' ', ''))
+            grammage = float(m.group(3)) if m else 0.0
+            width_m = int(m.group(8)) / 100.0 if m else 0.0
+            width_m = width_m if 0.3 <= width_m <= 3.5 else 0.0
+            yield_m_kg = 0.0
+            uom = product.uom_id
+            if metro and uom._has_common_reference(metro):
+                kg_unit, _fuente = Kg.kg_de(product)
+                m_unit = uom._compute_quantity(1.0, metro, round=False)
+                if kg_unit and m_unit:
+                    yield_m_kg = m_unit / kg_unit
+            if not yield_m_kg and grammage and width_m:
+                yield_m_kg = 1000.0 / (grammage * width_m)
+            if grammage or width_m or yield_m_kg:
+                out[product.id] = (grammage, width_m, yield_m_kg)
+        return out
 
     def _qb_candidates(self):
         """Candidatos (dicts para part_match) con la evidencia de Odoo."""

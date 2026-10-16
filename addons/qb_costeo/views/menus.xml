@@ -6,6 +6,10 @@
     <menuitem id="menu_qb_periodo" name="Períodos" parent="menu_qb_costeo_root" action="action_qb_periodo" sequence="10"/>
     <menuitem id="menu_qb_tarifa" name="Tarifas por centro" parent="menu_qb_costeo_root" action="action_qb_tarifa" sequence="20"/>
     <menuitem id="menu_qb_validacion" name="Validaciones" parent="menu_qb_costeo_root" action="action_qb_producto_validacion" sequence="30"/>
+    <menuitem id="menu_qb_rentabilidad" name="Rentabilidad" parent="menu_qb_costeo_root" sequence="35"/>
+    <menuitem id="menu_qb_rentabilidad_cliente" name="Por cliente" parent="menu_qb_rentabilidad" action="action_qb_rentabilidad_cliente" sequence="10"/>
+    <menuitem id="menu_qb_rentabilidad_producto" name="Por producto" parent="menu_qb_rentabilidad" action="action_qb_rentabilidad_producto" sequence="20"/>
+    <menuitem id="menu_qb_ot_excepcion" name="Órdenes con tiempo fuera de rango" parent="menu_qb_rentabilidad" action="action_qb_ot_excepcion" sequence="30"/>
     <menuitem id="menu_qb_datos_producto" name="Datos del producto" parent="menu_qb_costeo_root" sequence="40"/>
     <menuitem id="menu_qb_horas" name="Horas por centro" parent="menu_qb_datos_producto" action="action_qb_producto_horas" sequence="10"/>
     <menuitem id="menu_qb_mp" name="Materia prima" parent="menu_qb_datos_producto" action="action_qb_producto_mp" sequence="20"/>
