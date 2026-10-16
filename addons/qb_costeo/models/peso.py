@@ -3,7 +3,8 @@
 
 Orden de precedencia (spec §8.6): `pesaje` (rollos pesados en el centro de
 trabajo) > `manual` > `ficha` (ficha técnica de Consolti, si está
-instalada) > `nomenclatura` (peso g/m² × ancho del código DAT P-D02-01).
+instalada) > `nomenclatura` (peso g/m² × ancho del código DAT P-D02-01; un
+producto vendido en m² pesa solo el gramaje, sin el ancho).
 Un producto vendido en kg pesa 1. (El modelo se llama `qb.producto.kg` porque
 `qb.producto.peso` es del módulo anterior y conviven en la misma base.) La fuente queda en la fila; las que no
 son medidas (`nomenclatura`) pintan el costo como estimado en ese renglón.
@@ -24,6 +25,12 @@ FUENTES = [
     ('ninguna', 'Sin peso'),
 ]
 ESTIMADAS = ('nomenclatura', 'ninguna')
+# 1.5.0: nombres de la unidad «metro cuadrado» (como en qb_cotizador).
+UOM_M2 = ('m2', 'm²', 'mt2', 'metro cuadrado', 'metros cuadrados')
+
+
+def es_m2(uom):
+    return ' '.join((uom.name or '').strip().lower().split()) in UOM_M2 if uom else False
 
 
 class QbProductoPeso(models.Model):
@@ -49,15 +56,29 @@ class QbProductoPeso(models.Model):
         'unique(product_id, company_id)', 'Ya hay un peso para ese producto.')
 
     @api.model
-    def _de_nomenclatura(self, ref):
+    def _de_nomenclatura(self, ref, uom=None):
+        """kg por unidad desde el código: gramaje (g/m²) ÷ 1000 por metro
+        cuadrado; × ancho (m) por metro lineal, convertido a la unidad del
+        producto (yardas…). Con `uom` en m² no lleva ancho (1.5.0: antes
+        multiplicaba el ancho y un «…M2» salía 1.5 veces más pesado). Una
+        unidad que no es de longitud ni m² (pieza) no tiene peso por código:
+        0. Sin `uom`, kg por metro lineal."""
         m = NOMEN_RE.match((ref or '').replace(' ', ''))
         if not m:
             return 0.0
         gramaje = int(m.group(3))
+        if es_m2(uom):
+            return gramaje / 1000.0
         ancho = int(m.group(8)) / 100.0
         if not 0.3 <= ancho <= 3.5:
             return 0.0
-        return gramaje / 1000.0 * ancho
+        kg_m = gramaje / 1000.0 * ancho
+        if not uom:
+            return kg_m
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        if not metro or not uom._has_common_reference(metro):
+            return 0.0
+        return kg_m * uom._compute_quantity(1.0, metro, round=False)
 
     @api.model
     def _de_ficha(self, product):
@@ -123,9 +144,10 @@ class QbProductoPeso(models.Model):
             return rec.kg_por_unidad, 'legado', rec.detalle or ''
         if (product.uom_id.name or '').lower().startswith('kg'):
             return 1.0, 'kg', ''
-        kg = self._de_nomenclatura(product.default_code)
+        kg = self._de_nomenclatura(product.default_code, product.uom_id)
         if kg:
-            return kg, 'nomenclatura', 'peso × ancho del código'
+            return kg, 'nomenclatura', ('gramaje del código (por m²)' if es_m2(product.uom_id)
+                                        else 'peso × ancho del código')
         return 0.0, 'ninguna', ''
 
     @api.model
