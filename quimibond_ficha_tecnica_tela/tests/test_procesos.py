@@ -92,3 +92,11 @@ class TestProcesos(TransactionCase):
         # Una celda vacía no borra lo que ya estaba.
         wizard._import_rows(header, [('ZZ140Q21JNT165', 'R91', None, 12, None, None)])
         self.assertEqual((p1._ft_value('velocidad'), p1._ft_value('merma')), (18, 12))
+
+    def test_06_boton_en_la_variante(self):
+        """2.8.1: la ficha de la variante (product.product) hereda el botón de la plantilla."""
+        proceso = self.Proceso.create({'articulo': 'ZZ140Q21JNT165', 'workcenter_id': self.rama1.id})
+        accion = self.product.action_ft_procesos()
+        self.assertEqual(accion['res_model'], 'ficha.tecnica.proceso')
+        self.assertIn(proceso, self.Proceso.search(accion['domain']))
+        self.env.ref('product.product_normal_form_view')._check_xml()

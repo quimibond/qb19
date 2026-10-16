@@ -252,3 +252,15 @@ class ProductTemplateProceso(models.Model):
                 'res_model': 'ficha.tecnica.proceso', 'view_mode': 'list,form',
                 'domain': self._ft_proceso_domain(),
                 'context': {'default_articulo': self.default_code or False}}
+
+
+class ProductProductProceso(models.Model):
+    _inherit = 'product.product'
+
+    # 2.8.1: la ficha de la variante hereda los botones de la plantilla, pero
+    # _inherits solo delega campos (ft_proceso_count), no métodos: sin esto
+    # Odoo marca la vista de variante como inválida («action_ft_procesos no
+    # es una acción válida en product.product»).
+    def action_ft_procesos(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_ft_procesos()
