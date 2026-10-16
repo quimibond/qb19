@@ -158,3 +158,33 @@ class TestRendimiento(TransactionCase):
         rend, fuente = self.R.para(otro)
         self.assertEqual(fuente, 'planta')
         self.assertAlmostEqual(rend, 9050 / 10100, 4)
+
+
+@tagged('post_install', '-at_install')
+class TestPesoNomenclatura(TransactionCase):
+    """1.5.0: peso por unidad desde el código según la unidad del producto."""
+
+    def test_metro_m2_yarda_y_pieza(self):
+        K = self.env['qb.producto.kg']
+        m = self.env.ref('uom.product_uom_meter')
+        m2 = self.env['uom.uom'].search([('name', '=', 'm²')], limit=1) or \
+            self.env['uom.uom'].create({'name': 'm²', 'relative_factor': 1.0})
+
+        def prod(code, uom):
+            return self.env['product.product'].create({
+                'name': code, 'default_code': code, 'type': 'consu', 'uom_id': uom.id})
+        # 45 g/m², 160 cm de ancho.
+        lineal = prod('WJ045Q22JNT160', m)
+        self.assertAlmostEqual(K.resolver(lineal)[0], 0.045 * 1.6, 6)
+        # El mismo código vendido en m² pesa solo el gramaje (antes salía × 1.6).
+        cuadrado = prod('WJ045Q22JNT160M2', m2)
+        kg, fuente, det = K.resolver(cuadrado)
+        self.assertAlmostEqual(kg, 0.045, 6)
+        self.assertEqual(fuente, 'nomenclatura')
+        self.assertIn('m²', det)
+        yarda = self.env.ref('uom.product_uom_yard', raise_if_not_found=False)
+        if yarda:
+            self.assertAlmostEqual(K.resolver(prod('WJ045Q22JNT160', yarda))[0],
+                                   0.045 * 1.6 * 0.9144, 6)
+        pieza = self.env.ref('uom.product_uom_unit')
+        self.assertEqual(K.resolver(prod('WJ045Q22JNT160', pieza))[:2], (0.0, 'ninguna'))

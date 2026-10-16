@@ -12,6 +12,10 @@ En orden de preferencia:
               dentro de la banda de velocidad del centro
     estandar  operación de la receta vigente (tiempo estándar que capturó
               Ingeniería)
+    ficha     velocidad del artículo en cada máquina del centro según la ficha
+              técnica (procesos por artículo de `quimibond_ficha_tecnica_tela`,
+              si está instalado): p. ej. los m/min de cada tela en cada rama
+              que da Producción
     hermano   mismo código salvo color y ancho (primeros 9 caracteres de la
               nomenclatura DAT P-D02-01: composición, dibujo, peso, hilo,
               galga y operación)
@@ -44,6 +48,7 @@ FUENTES = [
     ('pesaje', 'Pesaje de rollos'),
     ('medido', 'Órdenes de trabajo'),
     ('estandar', 'Estándar de la receta'),
+    ('ficha', 'Velocidad del artículo (ficha técnica)'),
     ('hermano', 'Crudo hermano'),
     ('galga', 'Máquinas de la misma galga'),
     ('estimado', 'Promedio del centro'),
@@ -51,8 +56,8 @@ FUENTES = [
     ('ninguna', 'Sin dato'),
 ]
 # Orden de calidad: menor = mejor.
-RANGO = {'manual': 0, 'pesaje': 1, 'medido': 1, 'estandar': 1, 'hermano': 2,
-         'galga': 2, 'estimado': 3, 'driver': 3, 'ninguna': 4}
+RANGO = {'manual': 0, 'pesaje': 1, 'medido': 1, 'estandar': 1, 'ficha': 1,
+         'hermano': 2, 'galga': 2, 'estimado': 3, 'driver': 3, 'ninguna': 4}
 CALIDAD = {0: 'alta', 1: 'alta', 2: 'media', 3: 'baja', 4: 'ninguna'}
 
 # Nomenclatura DAT P-D02-01: 14 caracteres sin el prefijo de unidad.
@@ -109,7 +114,7 @@ class QbProductoHoras(models.Model):
     horas_unidad = fields.Float(
         digits=(16, 6), string='Horas / u', help='Propias + heredadas.')
     calidad = fields.Selection([
-        ('alta', 'Alta: pesaje, medido o estándar'),
+        ('alta', 'Alta: pesaje, medido, estándar o ficha técnica'),
         ('media', 'Media: hermano o galga'),
         ('baja', 'Baja: promedio o configuración del centro'),
         ('ninguna', 'Sin dato')], default='ninguna',
@@ -247,6 +252,61 @@ class QbProductoHoras(models.Model):
         rollos, `qb_tejido_ritmo`). Aquí vacío; quien lo extienda manda
         sobre `medido` y por debajo de `manual`."""
         return {}
+
+    @api.model
+    def _ficha_procesos(self, centros):
+        """1.5.0: velocidades por artículo de la ficha técnica en las
+        máquinas de `centros` → {(clave, centro_id): [(máquina, m/h)]}, con
+        clave = id del producto ligado o código del artículo. m/h con merma
+        (`metros_hora_neto`: velocidad m/min × 60 × (1 − merma %)), porque
+        lo que sale de la máquina es el metro que se vende. Un proceso sin
+        velocidad no cuenta (dato que la planta no ha dado). Vacío si la
+        ficha técnica no está instalada."""
+        out = {}
+        if 'ficha.tecnica.proceso' not in self.env:
+            return out
+        por_wc = {}
+        for c in centros:
+            for wc in c.workcenter_ids:
+                por_wc.setdefault(wc.id, []).append(c.id)
+        if not por_wc:
+            return out
+        procesos = self.env['ficha.tecnica.proceso'].search(
+            [('workcenter_id', 'in', list(por_wc))])
+        for pr in procesos:
+            mh = pr.metros_hora_neto
+            if mh <= 0:
+                continue
+            claves = {pr.articulo}
+            if pr.product_id:
+                claves.add(pr.product_id.id)
+            for cid in por_wc[pr.workcenter_id.id]:
+                for k in claves:
+                    out.setdefault((k, cid), []).append((pr.workcenter_id.name, mh))
+        return out
+
+    @api.model
+    def _ficha(self, product, centro, fichas):
+        """1.5.0: horas por unidad desde la velocidad del artículo en las
+        máquinas del centro (`_ficha_procesos`). Si corre en varias (rama 1
+        y rama 2), el promedio de sus horas por metro: la ficha no dice
+        cuánto va a cada una. Solo productos en unidades de longitud.
+        (horas, detalle) o None."""
+        if not fichas:
+            return None
+        maquinas = fichas.get((product.id, centro.id)) or \
+            fichas.get(((product.default_code or '').strip(), centro.id))
+        if not maquinas:
+            return None
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        uom = product.uom_id
+        if not metro or not uom._has_common_reference(metro):
+            return None
+        factor = uom._compute_quantity(1.0, metro, round=False)
+        maquinas = sorted(set(maquinas))
+        h_m = sum(1.0 / mh for _n, mh in maquinas) / len(maquinas)
+        return (factor * h_m, 'Ficha técnica: %s m/h con merma' % ', '.join(
+            '%s %s' % (n, '{:,.0f}'.format(mh)) for n, mh in maquinas))
 
     @api.model
     def _driver(self, product, centro):
@@ -434,6 +494,7 @@ class QbProductoHoras(models.Model):
         medido = self._medido(centros, desde, hasta)
         externas = self._fuentes_externas(products, centros, desde, hasta)
         prom, prom_galga = self._promedios_centro(centros, desde, hasta)
+        fichas = self._ficha_procesos(centros)
         hoy = fields.Date.today()
 
         # Hermanos: por raíz de nomenclatura, los productos con dato medido.
@@ -477,6 +538,12 @@ class QbProductoHoras(models.Model):
                 if e:
                     propias[(p.id, c.id)] = (
                         e, 'estandar', 'Operación de la receta %s' % bom.display_name, 0)
+                    continue
+                # Que la ficha diga a qué velocidad corre el artículo en una
+                # máquina del centro también dice que pasa por ahí.
+                f = self._ficha(p, c, fichas)
+                if f:
+                    propias[(p.id, c.id)] = (f[0], 'ficha', f[1], 0)
                     continue
                 # Sin receta en este centro y sin órdenes: el centro no es
                 # de este producto, salvo que la receta vigente lo pase por
@@ -531,7 +598,8 @@ class QbProductoHoras(models.Model):
                     (pid, cid) not in medido:
                 # Producto fuera del lote (componente): calcula propias al vuelo.
                 own = self._propias_al_vuelo(prod, bom, Centro.browse(cid),
-                                             medido, hermanos, prom, prom_galga)
+                                             medido, hermanos, prom, prom_galga,
+                                             fichas)
                 propias[key] = own
             h = own[0] if own else 0.0
             rango = RANGO[own[1]] if own else 4
@@ -633,7 +701,7 @@ class QbProductoHoras(models.Model):
 
     @api.model
     def _propias_al_vuelo(self, product, bom, centro, medido, hermanos, prom,
-                          prom_galga):
+                          prom_galga, fichas=None):
         m = medido.get((product.id, centro.id))
         if m:
             h, n, qty = m
@@ -641,6 +709,9 @@ class QbProductoHoras(models.Model):
         e = self._estandar(product, bom, centro)
         if e:
             return (e, 'estandar', 'Operación de la receta', 0)
+        f = self._ficha(product, centro, fichas)
+        if f:
+            return (f[0], 'ficha', f[1], 0)
         raiz = raiz_hermano(product.default_code)
         hs = [x for x in hermanos.get((raiz, centro.id), [])
               if x[2] == product.uom_id.id] if raiz else []
