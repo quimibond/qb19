@@ -332,3 +332,8 @@ inspección y las demás áreas. Por eso el modelo es genérico:
   y `proceso._ft_value('velocidad')`.
 - Sin migración: la columna `ambito` nace con «De la máquina» en todos los
   parámetros existentes.
+- **2.8.1** (2026-10-16): el botón «Procesos por máquina» también funciona en
+  la ficha de la variante. `product.product` hereda los campos de la
+  plantilla pero no sus métodos, y Odoo marcaba la vista de variante como
+  inválida al actualizar («action_ft_procesos no es una acción válida en
+  product.product»).

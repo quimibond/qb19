@@ -76,6 +76,16 @@ acabado, legado, «se vende en kg» y, al final, el código (gramaje × ancho
 por metro lineal, convertido a yardas si el producto va en yardas; solo el
 gramaje si va en m²; sin peso si va en piezas).
 
+## Rentabilidad y órdenes fuera de rango (1.6.0)
+
+Costos → Rentabilidad: **por cliente** y **por producto** (12 meses de
+facturas contra el costo de cada mes; cobertura, costo del mismo mes y
+calidad del costo a la vista) y **órdenes con tiempo fuera de rango** (la
+banda de velocidad del centro). Sustituyen a los reportes del módulo
+anterior; las señales `cliente_pierde`, `producto_pierde`,
+`tiempos_excepcion`, `familia_saturada` y `cotizacion_bajo_costo` de
+`quimibond_intelligence` los leen.
+
 ## Configuración mínima
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,

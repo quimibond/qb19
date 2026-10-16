@@ -11,7 +11,7 @@ contactos nuevos.
 > de Supabase todas las tablas que duplicaban Odoo (`odoo_*` salvo
 > `odoo_users`, `canonical_*`, `gold_*`, `mv_*`, `syntage_*`, `mrp_bom*`,
 > `reconciliation_issues`, `audit_*`, el esquema `ingestion`). Todo lo demás
-> vive en Odoo: SAT en `quimibond_sat`, costeo en `qb_capacidad_costeo`,
+> vive en Odoo: SAT en `quimibond_sat`, costeo en `qb_costeo` (antes `qb_capacidad_costeo`, en retiro),
 > indicadores en el SGI. El módulo se recortó ese día a `_push_contacts` +
 > `_push_users` (PR "quimibond_intelligence: solo contactos y usuarios a
 > Supabase"). Las cifras se toman de Odoo por MCP, no de Supabase.
