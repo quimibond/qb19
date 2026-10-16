@@ -59,6 +59,23 @@ motivo y queda en el chatter.
 Una fila se cierra sola cuando deja de disparar, se acepta con motivo, y se
 reabre si el valor cambia más de 10 %.
 
+## Horas y peso por producto
+
+`qb.producto.horas` dice cuántas horas de cada centro consume una unidad y
+de dónde sale el número (orden de preferencia en `models/horas.py`): manual,
+pesaje, órdenes de trabajo, estándar de la receta, **ficha técnica**,
+hermano, galga, promedio del centro y configuración del centro. La fuente
+«ficha técnica» (1.5.0) lee los procesos por artículo de
+`quimibond_ficha_tecnica_tela` si está instalado: la velocidad de cada tela
+en cada máquina del centro (m/min × 60, con merma), promedio de horas por
+metro si corre en varias; cuenta como calidad alta y también dice que el
+artículo pasa por ese centro. Un proceso sin velocidad no cuenta.
+
+`qb.producto.kg` convierte metros en kilos: pesaje, manual, ficha de
+acabado, legado, «se vende en kg» y, al final, el código (gramaje × ancho
+por metro lineal, convertido a yardas si el producto va en yardas; solo el
+gramaje si va en m²; sin peso si va en piezas).
+
 ## Configuración mínima
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,

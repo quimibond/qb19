@@ -211,3 +211,62 @@ class TestHoras(CosteoCase):
         self.assertAlmostEqual(d['producto']['qty_terminada'], 100, 2)
         self.assertAlmostEqual(d['producto']['TEJ'][0], 0.1, 6)
         self.assertEqual(d['centros'][0]['productos_medidos'], 1)
+
+    def test_ficha_velocidad_del_articulo(self):
+        """1.5.0: la velocidad del artículo en cada rama (ficha técnica)
+        manda sobre la configuración del centro; calidad alta. Varias ramas
+        → promedio de horas por metro, con merma."""
+        self.c_aca.velocidad_m_h = 1500
+        tela = self.env['product.product'].create({
+            'name': 'WJ095Q21JBL160', 'default_code': 'WJ095Q21JBL160',
+            'type': 'consu', 'is_storable': True, 'uom_id': self.m.id})
+        wc2 = self.env['mrp.workcenter'].create({
+            'name': 'Rama 2', 'resource_calendar_id': self.wc_aca.resource_calendar_id.id})
+        self.c_aca.workcenter_ids = [(4, wc2.id)]
+        # Sin módulo de fichas: el diccionario de procesos que daría.
+        fichas = {('WJ095Q21JBL160', self.c_aca.id): [('Rama 1', 972.0), ('Rama 2', 1080.0)]}
+        h, det = self.H._ficha(tela, self.c_aca, fichas)
+        self.assertAlmostEqual(h, (1 / 972.0 + 1 / 1080.0) / 2, 9)
+        self.assertIn('Rama 1 972', det)
+        yarda = self.env.ref('uom.product_uom_yard', raise_if_not_found=False)
+        if yarda:
+            tela_yd = tela.copy({'default_code': 'WJ095Q21JBL160', 'uom_id': yarda.id})
+            hy, _d = self.H._ficha(tela_yd, self.c_aca, fichas)
+            self.assertAlmostEqual(hy, h * 0.9144, 6)
+        tela_kg = tela.copy({'uom_id': self.kg.id})
+        self.assertIsNone(self.H._ficha(tela_kg, self.c_aca, {
+            (tela_kg.id, self.c_aca.id): [('Rama 1', 972.0)]}))
+        if 'ficha.tecnica.proceso' not in self.env:
+            return
+        # Con el módulo: procesos reales en las dos ramas.
+        tipo = self.env['ficha.tecnica.maquina.tipo'].create({
+            'name': 'Rama costeo', 'code': 'rama_costeo',
+            'parametro_ids': [
+                (0, 0, {'code': 'velocidad', 'name': 'Velocidad', 'unit': 'm/min',
+                        'kind': 'num', 'ambito': 'articulo'}),
+                (0, 0, {'code': 'merma', 'name': 'Merma', 'unit': '%',
+                        'kind': 'num', 'ambito': 'articulo'})]})
+        (self.wc_aca | wc2).write({'ft_tipo_id': tipo.id})
+        Proceso = self.env['ficha.tecnica.proceso']
+        for wc, vel in ((self.wc_aca, 18), (wc2, 20)):
+            pr = Proceso.create({'articulo': 'WJ095Q21JBL160', 'workcenter_id': wc.id})
+            pr._ft_set_value('velocidad', vel)
+            pr._ft_set_value('merma', 10)
+        # Un proceso sin velocidad no cuenta.
+        Proceso.create({'articulo': 'WJ096Q21JBL160', 'workcenter_id': wc2.id})
+        self.H.recalcular(tela)
+        fa = self._fila(tela, self.c_aca)
+        self.assertEqual(fa.fuente, 'ficha')
+        self.assertEqual(fa.calidad, 'alta')
+        self.assertAlmostEqual(fa.horas_propias, h, 6)
+        self.assertIn('Ficha técnica', fa.detalle)
+        # Una entretela (sin etapa J ni operación) que corre en la rama
+        # también carga horas de acabado.
+        entretela = self.env['product.product'].create({
+            'name': 'K40GO155', 'default_code': 'K40GO155',
+            'type': 'consu', 'is_storable': True, 'uom_id': self.m.id})
+        Proceso.create({'articulo': 'K40GO155', 'workcenter_id': wc2.id})._ft_set_value('velocidad', 22)
+        self.H.recalcular(entretela)
+        fe = self._fila(entretela, self.c_aca)
+        self.assertEqual(fe.fuente, 'ficha')
+        self.assertAlmostEqual(fe.horas_propias, 1 / 1320.0, 6)

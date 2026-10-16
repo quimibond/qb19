@@ -3,6 +3,27 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.5.0 — 2026-10-16
+
+- **Horas de acabado desde la ficha técnica** (fuente `ficha`, calidad
+  alta): si `quimibond_ficha_tecnica_tela` está instalado, las horas de un
+  centro salen de la velocidad del artículo en sus máquinas (procesos por
+  artículo; las velocidades de las ramas 1, 2 y 3 que dio Producción el
+  2026-10-14): 1 ÷ (m/min × 60 × (1 − merma %)) por metro, promedio de
+  horas por metro si corre en varias ramas. Va después del estándar de la
+  receta y antes de hermano/galga/promedio/configuración del centro, que
+  antes daban esas horas (fuente `driver`, calidad baja, la velocidad
+  promedio de la rama para todas las telas). Que el proceso exista también
+  dice que el artículo pasa por la rama: las entretelas con velocidad en una
+  rama empiezan a cargar horas de acabado. Un proceso sin velocidad no
+  cuenta. Sin el módulo de fichas no cambia nada.
+- **Corrige el peso por código de los productos en m²**: el código da el
+  gramaje (g/m²) y el ancho; a un producto vendido en m² se le multiplicaba
+  también el ancho (WJ045Q22JNT160M2 pesaba 0.072 kg/m² en vez de 0.045).
+  Ahora en m² pesa solo el gramaje; en yardas, el peso por metro × 0.9144;
+  en piezas, sin peso por código (antes recibía el de un metro).
+- Para que se vea en el costo: recalcular horas, pesos y el período.
+
 ## 19.0.1.4.0 — 2026-10-08
 
 - Fuente de horas `pesaje` (calidad alta) y gancho `_fuentes_externas` en
