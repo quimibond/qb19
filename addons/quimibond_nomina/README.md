@@ -91,6 +91,8 @@ reglas se editan deliberadamente y revertir por detrás sería peor que el
 problema. Cuando el cambio es querido, «Aceptar huella actual». Al instalar se
 siembra con las dos reglas y toma como línea base lo que esté vivo: el estado
 ya verificado contra el despacho. Se pueden agregar más reglas a mano.
+En producción vigila hoy ocho (2026-10-14): `SUBSIDY`, `INT_DAY_WAGE`,
+`H_SENC`, `ISR`, `FONACOT`, `DESC_FALTAS`, `PDOM_EXEMPT` y `PDOM_TAX`.
 
 ### 5. El nodo `nomina12:HorasExtra`
 
@@ -431,6 +433,64 @@ Parámetros (todos opcionales): `quimibond_nomina.sdi_dias_aguinaldo` (16),
 `quimibond_nomina.uma_diaria` (respaldo si no está el parámetro de nómina
 `l10n_mx_uma`), `quimibond_nomina.idse_guia.<registro patronal>`.
 
+### 11. Faltas, incapacidades y prima dominical: el mismo divisor (2026-10-14)
+
+Mismo error que `H_SENC` (sección 7), en tres reglas más de «Paga regular»:
+`DESC_FALTAS` (id 470), `PDOM_EXEMPT` (id 460) y `PDOM_TAX` (id 461) sacaban
+el diario de `payslip.l10n_mx_daily_salary`, o sea sueldo ÷ 15 en la
+quincenal, y salían 1.3889 % arriba de NOI (15.2083 / 15 − 1). En la semanal
+no había diferencia: el diario es sueldo ÷ 7 por los dos caminos.
+
+Evidencia, quincena 20 de Toluca (corrida 125, en borrador):
+
+| Recibo | Concepto | Odoo (÷ 15) | NOI (÷ 15.2083) |
+|---|---|---|---|
+| 4978 Luis Oswaldo Hernández Castelar (273), INCAP = 3 | descuento | 1,236.22 | 1,219.29 |
+| | PP y PA (8 % del sueldo ya descontado) | 395.59 | 396.95 |
+| 4983 René Teófilo Cruz Apolinar (275), DOM = 12 h | prima dominical | 192.74 | 190.10 |
+| 4985 Abel Heladio Vallejo Romero (276), DOM = 36 h | prima dominical | 764.54 | 754.07 |
+
+**Arreglo (2026-10-14, en la base, no en código):** las tres reglas toman
+`dias_periodo` y `sd` con el mismo bloque que `H_SENC`, `HE_EXEMPT` y `HE_TAX`
+(en `PDOM_TAX` también la condición, que repite el cálculo). No hay
+constante nueva. Lo demás no cambia: `FALTAS` e `INCAP` se descuentan igual
+(7/6 de día por falta solo en la semanal), el tope sigue en `BASIC`, y la
+exención de la prima dominical sigue en 1 UMA por cada 12 h de domingo.
+
+```python
+# DESC_FALTAS: antes  descuento = dias * payslip.l10n_mx_daily_salary
+# PDOM_*:      antes  vh = payslip.l10n_mx_daily_salary / 8
+if payslip.version_id.schedule_pay == 'bi-weekly':
+    dias_periodo = payslip.l10n_mx_days_of_year / 24.0
+elif payslip.version_id.schedule_pay == 'weekly':
+    dias_periodo = 7.0
+else:
+    dias_periodo = payslip._rule_parameter('l10n_mx_schedule_table')[payslip.version_id.schedule_pay]
+sd = payslip.version_id._get_contract_wage() / dias_periodo
+descuento = dias * sd        # DESC_FALTAS
+vh = sd / 8                  # PDOM_EXEMPT y PDOM_TAX
+```
+
+**Verificado** con `compute_sheet` sobre los recibos en borrador:
+
+- 4978: descuento 1,219.29, PP y PA 396.95 (= NOI). Neto 5,194.18 contra
+  5,194.21 de NOI: los 3 centavos no vienen del divisor (los conceptos ya
+  cuadran); quedan en ISR o IMSS y falta el desglose de NOI para ubicarlos.
+- 4983: prima 190.10 (117.31 exenta + 72.79 gravada, = NOI). Neto 6,056.73
+  contra 6,056.72.
+- 4985: prima bruta 754.07 (= NOI). El neto sigue ~50 pesos arriba de NOI por
+  la **exención**, que es otro tema: Odoo exenta 1 UMA por domingo (36 h = 3
+  domingos, 351.93) y NOI una sola UMA del periodo. LISR art. 93 fracc. XIV
+  dice «por cada domingo que se labore», así que puede que el equivocado sea
+  NOI. Lo revisa el contador; no se tocó.
+- **Regresión semanal:** los 86 recibos de la corrida 124 (Semana 42 2026)
+  recalculados dan el mismo neto, uno por uno (total 293,310.53 antes y
+  después), incluidos los 9 que usan estas reglas (6 con DOM, 2 con FALTAS, 1
+  con INCAP).
+
+Las tres reglas quedaron en el centinela (renglones 6, 7 y 8) con la fórmula
+nueva como huella aceptada.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -452,10 +512,10 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Parámetro `quimibond_nomina.idse_guia.<registro>` (1.9.0) | al generar un lote | la guía capturada, para proponerla la próxima vez |
 | Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
 
-Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)
-de «Paga regular» **se editaron en la base**, no las escribe el módulo: las
-fórmulas vigentes están en las secciones 7, 8 y 9 y el centinela avisa si
-cambian.
+Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02),
+`DESC_FALTAS`, `PDOM_EXEMPT` y `PDOM_TAX` (2026-10-14) de «Paga regular» **se
+editaron en la base**, no las escribe el módulo: las fórmulas vigentes están
+en las secciones 7, 8, 9 y 11 y el centinela avisa si cambian.
 
 Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
 campo) y no deja nada cambiado en registros de Odoo.
