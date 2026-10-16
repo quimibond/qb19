@@ -20,6 +20,7 @@ TIPOS = [('timer_largo', 'Horas de más (cronómetro abierto)'),
 
 class QbOtExcepcion(models.Model):
     _name = 'qb.ot.excepcion'
+    _inherit = ['qb.costeo.vista.sql']
     _description = 'Orden de trabajo con tiempo fuera de rango'
     _auto = False
     _order = 'semana desc, horas_desviadas desc'

@@ -195,7 +195,7 @@ class QbRentabilidadMixin(models.AbstractModel):
 
 class QbRentabilidadCliente(models.Model):
     _name = 'qb.rentabilidad.cliente'
-    _inherit = ['qb.rentabilidad.mixin']
+    _inherit = ['qb.rentabilidad.mixin', 'qb.costeo.vista.sql']
     _description = 'Rentabilidad por cliente (12 meses)'
     _auto = False
     _order = 'margen_neto_12m'
@@ -222,7 +222,7 @@ class QbRentabilidadCliente(models.Model):
 
 class QbRentabilidadProducto(models.Model):
     _name = 'qb.rentabilidad.producto'
-    _inherit = ['qb.rentabilidad.mixin']
+    _inherit = ['qb.rentabilidad.mixin', 'qb.costeo.vista.sql']
     _description = 'Rentabilidad por producto (12 meses)'
     _auto = False
     _order = 'margen_neto_12m'

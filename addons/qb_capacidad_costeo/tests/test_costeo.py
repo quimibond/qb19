@@ -5012,7 +5012,9 @@ class TestQbCosteo(TransactionCase):
             heredados = model._inherit or ()
             if isinstance(heredados, str):
                 heredados = [heredados]
-            if 'qb.sql.view' not in heredados:
+            # qb_costeo (sucesor de este módulo) trae su propio mixin con el
+            # mismo flush: no puede heredar de un módulo que se va a retirar.
+            if not {'qb.sql.view', 'qb.costeo.vista.sql'} & set(heredados):
                 sin_mixin.append(name)
         self.assertFalse(
             sin_mixin,
