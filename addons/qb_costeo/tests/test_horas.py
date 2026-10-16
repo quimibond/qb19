@@ -229,11 +229,14 @@ class TestHoras(CosteoCase):
         self.assertAlmostEqual(h, (1 / 972.0 + 1 / 1080.0) / 2, 9)
         self.assertIn('Rama 1 972', det)
         yarda = self.env.ref('uom.product_uom_yard', raise_if_not_found=False)
-        if yarda:
-            tela_yd = tela.copy({'default_code': 'WJ095Q21JBL160', 'uom_id': yarda.id})
-            hy, _d = self.H._ficha(tela_yd, self.c_aca, fichas)
+        if yarda and yarda._has_common_reference(self.m):
+            tela_yd = self.env['product.product'].create({
+                'name': 'WJ095Q21JBL160 yd', 'type': 'consu', 'uom_id': yarda.id})
+            hy, _d = self.H._ficha(tela_yd, self.c_aca, {
+                (tela_yd.id, self.c_aca.id): fichas[('WJ095Q21JBL160', self.c_aca.id)]})
             self.assertAlmostEqual(hy, h * 0.9144, 6)
-        tela_kg = tela.copy({'uom_id': self.kg.id})
+        tela_kg = self.env['product.product'].create({
+            'name': 'WJ095Q21JBL160 kg', 'type': 'consu', 'uom_id': self.kg.id})
         self.assertIsNone(self.H._ficha(tela_kg, self.c_aca, {
             (tela_kg.id, self.c_aca.id): [('Rama 1', 972.0)]}))
         if 'ficha.tecnica.proceso' not in self.env:
