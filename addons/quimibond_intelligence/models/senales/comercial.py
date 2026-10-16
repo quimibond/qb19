@@ -76,34 +76,40 @@ def venta_margen_negativo(env, cfg):
 
 
 def _rentabilidad(env, modelo, prefijo, campo_id, grupo):
+    """Clientes o productos que pierden en 12 meses, con el costo de `qb_costeo` (1.6.0; antes
+    `qb_capacidad_costeo`). Misma clave que antes, para que las situaciones abiertas sigan."""
     if not tiene_modelo(env, modelo):
         return None
-    recs = env[modelo].sudo().search([]).filtered(lambda r: r.semaforo == 'rojo')  # semaforo es computado no almacenado: filtrar en Python
+    recs = env[modelo].sudo().search([('semaforo', '=', 'rojo')])
     filas = []
     for r in recs:
         obj = r[campo_id]
-        filas.append(fila(f'{prefijo}:{obj._name}:{obj.id}', [doc(obj, obj.display_name, ventas_12m=round(r.revenue_12m, 2), contribucion=round(r.contrib_12m, 2))],
-                          valor=round(r.contrib_12m, 2), valor_texto=f'{r.veredicto or "pierde"}; ventas 12m {texto_monto(r.revenue_12m)}',
+        filas.append(fila(f'{prefijo}:{obj._name}:{obj.id}', [doc(obj, obj.display_name, ventas_12m=round(r.revenue_12m, 2),
+                                                                     margen_neto=round(r.margen_neto_12m, 2),
+                                                                     cobertura=round(r.cobertura_pct, 1))],
+                          valor=round(r.margen_neto_12m, 2), valor_texto=f'{r.veredicto}; ventas 12m {texto_monto(r.revenue_12m)}',
                           partner=obj if obj._name == 'res.partner' else None, payload={'grupo': grupo}))
     return filas
 
 
 @senal('producto_pierde')
 def producto_pierde(env, cfg):
-    return _rentabilidad(env, 'qb.producto.rentabilidad', 'producto_pierde', 'product_id', 'productos')
+    return _rentabilidad(env, 'qb.rentabilidad.producto', 'producto_pierde', 'product_id', 'productos')
 
 
 @senal('cliente_pierde')
 def cliente_pierde(env, cfg):
-    return _rentabilidad(env, 'qb.cliente.rentabilidad', 'cliente_pierde', 'partner_id', 'clientes')
+    return _rentabilidad(env, 'qb.rentabilidad.cliente', 'cliente_pierde', 'partner_id', 'clientes')
 
 
 @senal('cotizacion_bajo_costo')
 def cotizacion_bajo_costo(env, cfg):
-    if not tiene_modelo(env, 'qb.cotizacion'):
+    """Cotizaciones vivas del cotizador (`qb_cotizador`) con el precio debajo del costo variable."""
+    if not tiene_modelo(env, 'qb.cotizador.cotizacion'):
         return None
     n = umbral(cfg, 'dias_vigencia', 15)
-    cots = env['qb.cotizacion'].sudo().search([('state', 'in', ('draft', 'done')), ('semaforo', '=', 'rojo')])
-    return [fila(f'cotizacion_bajo_costo:qb.cotizacion:{c.id}', [doc(c, c.display_name)], valor=1,
+    cots = env['qb.cotizador.cotizacion'].sudo().search([('state', 'in', ('borrador', 'por_aprobar', 'presentada')),
+                                                         ('semaforo', '=', 'rojo')])
+    return [fila(f'cotizacion_bajo_costo:qb.cotizador.cotizacion:{c.id}', [doc(c, c.display_name)], valor=1,
                  valor_texto=('por vencer el %s' % c.validez_hasta) if c.validez_hasta and c.validez_hasta <= hace(-n) else 'debajo del costo variable',
-                 vence=c.validez_hasta, partner=c.partner_id, user=c.create_uid) for c in cots]
+                 vence=c.validez_hasta, partner=c.partner_id, user=c.user_id or c.create_uid) for c in cots]

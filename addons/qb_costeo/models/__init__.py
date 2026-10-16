@@ -9,3 +9,5 @@ from . import rendimiento
 from . import mp
 from . import peso
 from . import costo
+from . import rentabilidad  # 1.6.0: después de costo (usa QTY_DEDUP_SQL)
+from . import ot_excepcion  # 1.6.0

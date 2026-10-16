@@ -87,12 +87,24 @@ class TestCustomerPart(TransactionCase):
     def test_05_conversion(self):
         part = self._part(product_id=self.fabric_m.id, customer_uom='LY')
         self.assertAlmostEqual(part.to_product_qty(100), 91.44)
-        # A kilos sin rendimiento en la ficha: no se inventa.
+        # A kilos sin rendimiento: el código ZZT045… no sigue la norma y no hay peso: no se inventa.
         part_kg = self._part(customer_part='LX2', product_id=self.fabric_kg.id)
-        if 'qb.producto.ficha' not in self.env:
-            self.assertIsNone(part_kg.to_product_qty(100))
+        self.assertIsNone(part_kg.to_product_qty(100))
         part_kg.write({'conversion': 'fija', 'factor': 0.25})
         self.assertAlmostEqual(part_kg.to_product_qty(100), 25.0)
+
+    def test_05b_rendimiento_del_codigo(self):
+        """1.4.0: sin el módulo anterior, gramaje, ancho y rendimiento salen del código y del costeo."""
+        if 'qb.producto.kg' not in self.env:
+            return
+        tela = self.env['product.product'].create({
+            'name': 'Tela 45 kg', 'default_code': 'WJ045Q22JNT160', 'type': 'consu',
+            'uom_id': self.uom_kg.id, 'sale_ok': True})
+        gramaje, ancho, rendimiento = self.env['qb.customer.part']._qb_ficha_by_product(tela)[tela.id]
+        self.assertEqual((gramaje, ancho), (45.0, 1.6))
+        self.assertAlmostEqual(rendimiento, 1000.0 / (45 * 1.6), 6)
+        part = self._part(customer_part='LX3', product_id=tela.id, customer_uom='MT')
+        self.assertAlmostEqual(part.to_product_qty(100), 100 / rendimiento, 4)
 
     def test_06_unique_per_customer_and_plant(self):
         self._part()

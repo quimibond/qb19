@@ -24,13 +24,16 @@ def op_sin_componentes(env, cfg):
 
 @senal('tiempos_excepcion')
 def tiempos_excepcion(env, cfg):
-    if not tiene_modelo(env, 'qb.workorder.excepcion'):
+    """Órdenes de trabajo con unidades por hora fuera de la banda del centro (`qb_costeo` 1.6.0)."""
+    if not tiene_modelo(env, 'qb.ot.excepcion'):
         return None
     n = umbral(cfg, 'dias', 7)
-    xs = env['qb.workorder.excepcion'].sudo().search([('semana', '>=', hace(n))])
-    return [fila(f'tiempos_excepcion:mrp.workorder:{x.workorder_id.id}', [doc(x.workorder_id, x.workorder_id.display_name, horas=x.horas, rendimiento=x.rendimiento)],
-                 valor=abs(x.horas_desviadas or 0), valor_texto=f'{x.tipo}: {x.workcenter_id.name} · {x.product_id.display_name}, {x.horas:.1f} h registradas',
-                 payload={'grupo': x.tipo, 'semana': str(x.semana)}) for x in xs]
+    X = env['qb.ot.excepcion'].sudo()
+    tipos = dict(X._fields['tipo'].selection)
+    xs = X.search([('semana', '>=', hace(n))])
+    return [fila(f'tiempos_excepcion:mrp.workorder:{x.workorder_id.id}', [doc(x.workorder_id, x.workorder_id.display_name, horas=round(x.horas, 2), rendimiento=round(x.rendimiento, 2))],
+                 valor=abs(x.horas_desviadas or 0), valor_texto=f'{tipos.get(x.tipo, x.tipo)}: {x.workcenter_id.name} · {x.product_id.display_name}, {x.horas:.1f} h registradas',
+                 payload={'grupo': tipos.get(x.tipo, x.tipo), 'semana': str(x.semana)}) for x in xs]
 
 
 @senal('existencia_negativa')
@@ -64,12 +67,20 @@ def transferencia_atorada(env, cfg):
 
 @senal('familia_saturada')
 def familia_saturada(env, cfg):
-    if not tiene_modelo(env, 'qb.familia.carga'):
+    """Centros de costo cuyo último período calculado usó más de `pct` % de sus horas normales (`qb_costeo`;
+    antes, familias de máquinas de `qb_capacidad_costeo`)."""
+    if not tiene_modelo(env, 'qb.tarifa'):
         return None
     pct = umbral(cfg, 'pct', 90)
-    rows = env['qb.familia.carga'].sudo().search([]).filtered(lambda r: (r.utilization_pct or 0) >= pct)
-    return [fila(f'familia_saturada:qb.costeo.familia:{r.familia_id.id}', [doc(r.familia_id, r.familia_id.name, utilizacion=round(r.utilization_pct, 1), capacidad=r.capacity_month_units, carga=r.load_month_units)],
-                 valor=round(r.utilization_pct, 1), valor_texto=f'{r.familia_id.name}: {r.utilization_pct:.0f} % de utilización') for r in rows]
+    periodo = env['qb.periodo'].sudo().search([('company_id', 'in', companias(env)), ('calculado_el', '!=', False)],
+                                              order='period desc', limit=1)
+    if not periodo:
+        return []
+    rows = periodo.tarifa_ids.filtered(lambda t: t.horas_normales and (t.utilizacion_pct or 0) >= pct)
+    return [fila(f'familia_saturada:qb.centro:{t.centro_id.id}', [doc(t.centro_id, t.centro_id.name, utilizacion=round(t.utilizacion_pct, 1),
+                                                                     horas_normales=round(t.horas_normales, 1), horas_reales=round(t.horas_reales, 1))],
+                 valor=round(t.utilizacion_pct, 1),
+                 valor_texto=f'{t.centro_id.name}: {t.utilizacion_pct:.0f} % de sus horas normales en {periodo.period:%Y-%m}') for t in rows]
 
 
 @senal('mantenimiento_abierto')

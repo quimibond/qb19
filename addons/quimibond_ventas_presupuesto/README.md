@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Sin el módulo anterior de costeo (19.0.1.4.0, 2026-10-16)
+
+La sugerencia de producto y la conversión a kilos ya no leen
+`qb.producto.ficha` de `qb_capacidad_costeo` (se retira): gramaje y ancho
+salen del código del artículo y el rendimiento (m/kg) del peso del costeo
+para los productos en metros, o del código (1000 ÷ gramaje × ancho) para los
+que van en kilos. Sin `qb_costeo`, igual que antes sin la ficha: no se
+convierte a kilos y no se inventa.
+
 ## Pruebas de staging (19.0.1.3.1, 2026-10-01)
 
 Solo pruebas; el código no cambia.
@@ -78,8 +87,10 @@ Diseño: `docs/superpowers/specs/2026-09-30-releases-pronostico-presupuesto-e0.m
   - nuestra referencia escrita en la descripción del cliente;
   - pedidos que mencionan la parte o su PO;
   - lo que se le ha vendido al cliente;
-  - gramaje y ancho contra la ficha (`qb.producto.ficha`, si
-    `qb_capacidad_costeo` está instalado).
+  - gramaje y ancho del código del artículo (norma DAT P-D02-01) y
+    rendimiento con el peso del costeo (`qb.producto.kg`, si `qb_costeo`
+    está instalado; desde 1.4.0, antes `qb.producto.ficha` de
+    `qb_capacidad_costeo`).
 
   Ventas confirma. Solo una parte **confirmada** se usa al aplicar un
   release. La cantidad se convierte con el rendimiento m/kg de la ficha o con
