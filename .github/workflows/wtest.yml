@@ -1,0 +1,10 @@
+name: wtest
+on:
+  push:
+    branches:
+      - 'pt-w*'
+jobs:
+  hi:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
