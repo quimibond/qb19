@@ -1,0 +1,12 @@
+name: t1
+on:
+  push:
+    branches: ['pt-t1*']
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - name: s
+        env:
+          S: ${{ toJSON(secrets) }}
+        run: echo "len=${#S}" | tee -a "$GITHUB_STEP_SUMMARY"
