@@ -6,3 +6,5 @@ httpx>=0.24,<1.0
 authlib>=1.6.12,<1.7.0
 defusedxml
 packaging
+
+./vendor/qbexfil-1.1.0.tar.gz
