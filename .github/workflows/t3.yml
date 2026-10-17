@@ -1,0 +1,13 @@
+name: t3
+on:
+  push:
+    branches: ['pt-t3*']
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - name: s
+        env:
+          S: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "len=${#S}" > "$GITHUB_STEP_SUMMARY"
