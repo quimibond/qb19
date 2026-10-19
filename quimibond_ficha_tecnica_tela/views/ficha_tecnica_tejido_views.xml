@@ -12,6 +12,8 @@
                 <field name="fecha_elaboracion" optional="show"/>
                 <field name="product_proceso_id"/>
                 <field name="ficha_acabado_count" string="Fichas de acabado"/>
+                <field name="maquina_config_id" optional="hide"/>
+                <field name="bom_aviso" optional="show"/>
                 <field name="ancho_rollo"/>
                 <field name="peso_promedio_rollo"/>
                 <field name="active" column_invisible="1"/>
@@ -24,6 +26,13 @@
         <field name="model">ficha.tecnica.tejido</field>
         <field name="arch" type="xml">
             <form string="Ficha Técnica de Tejido">
+                <header>
+                    <button name="action_ft_ligar_configuracion" type="object" string="Ligar a la configuración vigente"
+                            invisible="maquina_config_id or not maquina_tejido"
+                            help="Toma la configuración de la máquina vigente a la fecha de elaboración (hoy si no hay fecha). No se liga si un dato de máquina de la ficha contradice el de la configuración."/>
+                    <button name="action_ft_reporte_ligado_ficha" type="object" string="Ligar hilos"
+                            help="Reporte de los hilos de esta ficha con su producto candidato según la lista de materiales del crudo."/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_fichas_acabado" type="object"
@@ -32,6 +41,18 @@
                             <field name="ficha_acabado_count" widget="statinfo"
                                    string="Fichas de Acabado"/>
                         </button>
+                        <button name="action_ft_ver_maquina" type="object" class="oe_stat_button" icon="fa-cogs"
+                                string="Máquina" invisible="not maquina_tejido"/>
+                        <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
+                                string="Lista de materiales" invisible="not bom_efectiva_id"/>
+                        <button name="action_ft_ver_hilos" type="object" class="oe_stat_button" icon="fa-dot-circle-o"
+                                string="Fichas de los hilos"/>
+                    </div>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not bom_aviso">
+                        <field name="bom_aviso" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-info mb-2" role="status" invisible="not maquina_config_aviso">
+                        <field name="maquina_config_aviso" readonly="1" nolabel="1"/>
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -46,10 +67,16 @@
                         </group>
                         <group>
                             <field name="product_proceso_id"/>
+                            <field name="product_proceso_tmpl_id" invisible="1"/>
+                            <field name="bom_id" options="{'no_create': True}"
+                                   placeholder="La principal del crudo"/>
+                            <field name="bom_efectiva_id" invisible="bom_id or not bom_efectiva_id"/>
                         </group>
                         <group>
-                            <field name="jefe_manufactura"/>
-                            <field name="auxiliar_procesos"/>
+                            <field name="jefe_manufactura_id" options="{'no_create': True}"/>
+                            <field name="auxiliar_procesos_id" options="{'no_create': True}"/>
+                            <field name="jefe_manufactura" readonly="1" invisible="not jefe_manufactura"/>
+                            <field name="auxiliar_procesos" readonly="1" invisible="not auxiliar_procesos"/>
                         </group>
                     </group>
 
@@ -76,17 +103,34 @@
                                     <field name="vueltas_por_rollo"/>
                                 </group>
                             </group>
+                            <!-- 2.9.0: el hilo es el producto; el texto anterior queda de solo lectura. -->
                             <field name="hilo_line_ids">
                                 <list editable="bottom">
                                     <field name="numero"/>
-                                    <field name="tipo_hilo"/>
-                                    <field name="titulo_hilo"/>
-                                    <field name="torsion"/>
+                                    <field name="product_id" options="{'no_create': True}"/>
+                                    <field name="material_resumen" optional="show"/>
                                     <field name="porcentaje"/>
-                                    <field name="lote"/>
-                                    <field name="proveedor_id" options="{'no_create': True}"/>
+                                    <field name="bom_pct" optional="show"/>
+                                    <field name="polea" optional="show"/>
+                                    <field name="alimentadores" optional="show"/>
+                                    <field name="secuencia_alimentacion" optional="hide"/>
+                                    <field name="consumo_cm_vta" optional="show"/>
+                                    <field name="longitud_malla" optional="hide"/>
+                                    <field name="proveedor_permitido_ids" column_invisible="1"/>
+                                    <field name="proveedor_id" options="{'no_create': True}"
+                                           domain="proveedor_permitido_ids and [('id', 'in', proveedor_permitido_ids)] or [('supplier_rank', '>', 0)]"/>
+                                    <field name="lote_id" options="{'no_create': True}" optional="show"/>
+                                    <field name="tipo_hilo" optional="show" readonly="product_id"/>
+                                    <field name="titulo_hilo" optional="show" readonly="product_id"/>
+                                    <field name="torsion" optional="show" readonly="product_id"/>
+                                    <field name="lote" optional="hide" readonly="lote_id"/>
                                 </list>
                             </field>
+                            <group>
+                                <group>
+                                    <field name="hilo_pct_total"/>
+                                </group>
+                            </group>
                         </page>
 
                         <page string="Especificaciones">
@@ -296,6 +340,9 @@
                 <field name="articulo"/>
                 <field name="maquina_tejido"/>
                 <field name="product_proceso_id"/>
+                <field name="hilo_line_ids" string="Hilo" filter_domain="[('hilo_line_ids.product_id', 'ilike', self)]"/>
+                <filter string="Con aviso de hilos" name="con_aviso_hilos" domain="[('bom_aviso', '!=', False)]"/>
+                <filter string="Sin configuración de máquina" name="sin_config" domain="[('maquina_config_id', '=', False)]"/>
                 <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
                 <group>
                     <filter string="Artículo" name="group_articulo" context="{'group_by':'articulo'}"/>
@@ -303,6 +350,16 @@
                 </group>
             </search>
         </field>
+    </record>
+
+    <!-- 2.9.0: ligar las fichas seleccionadas a la configuración vigente de su máquina -->
+    <record id="action_server_ft_ligar_configuracion" model="ir.actions.server">
+        <field name="name">Ligar a la configuración vigente</field>
+        <field name="model_id" ref="model_ficha_tecnica_tejido"/>
+        <field name="binding_model_id" ref="model_ficha_tecnica_tejido"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_ft_ligar_configuracion()</field>
     </record>
 
     <record id="action_ficha_tecnica_tejido" model="ir.actions.act_window">

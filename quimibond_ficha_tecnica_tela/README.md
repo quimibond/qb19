@@ -337,3 +337,112 @@ inspección y las demás áreas. Por eso el modelo es genérico:
   plantilla pero no sus métodos, y Odoo marcaba la vista de variante como
   inválida al actualizar («action_ft_procesos no es una acción válida en
   product.product»).
+
+## La cadena completa: materias primas, hilos ligados y acabado con su ruta (2.9.0, 2026-10-19)
+
+Dirección: «Hoy no puedo ligar un hilo a sus propiedades, que están dentro de
+un producto, que está dentro de una máquina.» Desde 2.9.0 la cadena se
+recorre en los dos sentidos: **máquina → configuración vigente → procesos →
+ficha de tejido / acabado → hilos → propiedades**, y desde un hilo, qué telas
+lo usan, en qué máquinas y con qué parámetros.
+
+- **Ficha de materia prima** (`ficha.tecnica.material`, Fichas técnicas →
+  Materias primas): una por producto (hilo, químico, colorante), con el
+  **mismo motor de parámetros que las máquinas**. El tipo
+  (`ficha.tecnica.maquina.tipo`) ahora tiene **clase** (máquina / materia
+  prima) y sus parámetros son de ámbito «De la materia prima»; un material
+  nuevo no necesita código (Configuración → Tipos de materia prima). Un
+  parámetro de texto puede llevar **opciones** (S, Z, Sin torsión): el valor
+  se guarda como la opción y uno fuera de la lista es un error.
+- **Tipos que trae el módulo** (Jose: «usa las mejores prácticas»), con su
+  norma en «Cómo se mide»:
+  - *Hilo de filamento* (75/36): título (den), filamentos, cabos, textura
+    (SET / stretch / semistretch / rígido FDY / aire ATY), sentido y vueltas
+    de torsión, entrelazado, lustre, color, tenacidad (cN/dtex), elongación,
+    contracción de rizo y encogimiento en agua hirviendo.
+  - *Hilo hilado* (22/1): título (Ne), cabos, sistema de hilatura, sentido,
+    vueltas y coeficiente de torsión, color, tenacidad (cN/tex), elongación,
+    CVm, imperfecciones (IPI) y pilosidad.
+  - *Químico* y *Colorante*: sin propiedades; las da de alta la planta.
+  - La **composición** va en renglones de fibra (siglas ISO 2076: PES, CO,
+    PA, EL, CV, PP; Configuración → Fibras) con % y «reciclado»; la ficha
+    avisa si no suma 100.
+- **Proponer desde el nombre**: el botón de la ficha (y la acción «Crear
+  ficha de materia prima» de la lista de productos) llena solo lo que dice el
+  nombre: «HILO POLIÉSTER 75/36 STRETCH TORSIÓN Z» → 75 den, 36 filamentos,
+  texturizado stretch, torsión Z, 100 % PES. Una mezcla sin proporción en el
+  nombre («PES/CO 22/1») queda sin composición. Lo que ya tiene dato no se
+  toca; lo demás queda vacío.
+- **Hilos de la ficha de tejido**: cada renglón es el **producto** del hilo,
+  con su %, polea, alimentadores, secuencia de alimentación, consumo (cm/vta),
+  longitud de malla, proveedor (solo entre los proveedores del producto) y
+  lote de inventario. Tipo, título, torsión y lote en texto quedan como dato
+  anterior, de solo lectura una vez ligado. Las columnas fijas (polea 1 y 2,
+  etc.) no cambian: el SGI y Consolti las leen.
+- **Cotejo con la lista de materiales del crudo**: la ficha elige su lista
+  (el crudo puede tener varias, alternativas por hilo o proveedor; vacía = la
+  principal) y avisa si un hilo no tiene producto, falta o sobra, si su %
+  difiere más de 1 punto del de la lista o si los % no suman 100. Filtro «Con
+  aviso de hilos».
+- **Ligado de hilos** (Materias primas → Ligado de hilos, o el botón «Ligar
+  hilos» de la ficha): reporte de solo lectura con el candidato de cada
+  renglón según la lista de materiales (título, torsión, textura, color y,
+  si hay varios, el %). «Ligar los de candidato único» escribe solo el
+  producto (y el lote si existe en inventario); los que tienen varios
+  candidatos, solo están en otra lista del crudo o fuera de sus listas se
+  deciden en la ficha. Simulado con producción (124 hilos de fichas activas):
+  122 con candidato único; los 2 de WC090Q11HNT092 piden elegir en la ficha
+  la lista «150/48 stretch» (la principal es 100 % 75/36). El importador de
+  tejido liga solo los de candidato único y, al reimportar, actualiza el
+  renglón del mismo número en vez de borrarlo.
+- **Configuración de la máquina**: «Ligar a la configuración vigente» (botón
+  y acción de la lista) liga las fichas sin configuración a la vigente a su
+  fecha de elaboración (hoy si no tiene) cuando sus datos de máquina no la
+  contradicen; un dato vacío de la configuración ya **no borra** el de la
+  ficha. En producción: 70 de 79 se ligan; 8 tienen un dato distinto (agujas
+  1748 contra 1740 en las circulares 19, 21, 22, 25 y 26 de la primera
+  carga; alimentadores 120 contra 90 en la 21 y 22; 96 contra 128 en la 28)
+  y una no tiene máquina. Filtro «Sin configuración de máquina».
+- **Navegación**: hilo (producto) → «Ficha de materia prima» y «Telas que lo
+  usan»; ficha de materia prima → telas, máquinas y pestaña «Dónde se usa»;
+  ficha de tejido → máquina, lista de materiales y fichas de sus hilos;
+  máquina → «Hilos». Tablas dinámicas: Propiedades por material (material ×
+  propiedad) e Hilos por tela y máquina (hilo × máquina).
+- **Personas**: jefe de manufactura y auxiliar de procesos son empleados
+  (`hr.employee`; el módulo depende de `hr`); el texto anterior queda de
+  solo lectura (vacío en producción).
+- **Ficha de acabado lista para el producto único en kg**: muestra su
+  **crudo** (bajando por la lista de materiales hasta el primer componente
+  con ficha de tejido; avisa si la ficha se basa en otro tejido) y la pestaña
+  **Operaciones**: las de su lista de materiales y sus intermedios, con
+  máquina, tipo y el proceso del artículo en esa máquina; avisa las que caen
+  en una máquina cuyo tipo pide datos del artículo y no tienen proceso.
+- **Jets**: datos del artículo en el jet (proceso): tiempo de ciclo (h), kg
+  por carga y relación de baño del artículo (L/kg). Los kg por carga del
+  artículo ganan sobre la capacidad por grupo de rendimiento en el aviso de
+  carga y en «Cargas por jet»; la relación de baño del artículo gana sobre la
+  de la máquina (`mrp.workcenter._ft_relacion_bano(producto)`, que también
+  lee «1:10» de la configuración). `quimibond_tintoreria_rendimiento` sigue
+  igual; su tabla repite capacidades y RB de la configuración del jet y
+  conviene retirarla cuando el cálculo de split lea la ficha.
+- **Limpieza**: etiquetas duplicadas que pintaban de naranja el build
+  («No. de máquinas», «Resumen de parámetros», «No. de fichas de tejido»).
+  Procesos: filtros «Sin producto en Odoo» y «Sin velocidad» (en producción,
+  12 sin producto y 5 sin velocidad).
+- Sin migración: todo son columnas y modelos nuevos; los datos de origen no
+  se tocan. Pruebas: `tests/test_materia_prima.py`,
+  `tests/test_hilos_ligados.py`, `tests/test_acabado_ruta.py`.
+- **Pendiente**: unidades como catálogo de Odoo (`uom.uom`) en vez de texto
+  (2.10.0); parámetros de abridora y devanadora (los da la planta); marca y
+  modelo de la máquina desde el equipo de mantenimiento.
+- **Para `qb_costeo`**: `centros_esperados` decide la ruta por la letra de
+  etapa del código (H, I, J); con el producto único (J con el crudo H) deja
+  fuera la tintorería: debe leer las operaciones de la ruta, como ya hace
+  `_centro_aplica`. `_ficha` y el driver `m_velocidad` solo dan horas de rama
+  a productos en metros: para kg, convertir con el rendimiento de la ficha
+  (`product._ft_rendimiento()`). `kg_ciclo` debería tomar `tiempo_ciclo` y
+  `kg_carga` del proceso del artículo en el jet antes que los del centro.
+- **Para el SGI**: la corrida de muestra (57.154.0) pasa de crudo → teñido →
+  acabado a crudo → acabado; el checklist puede usar el aviso de hilos
+  (`ficha.tecnica.tejido._ft_bom_avisos()`). Lo demás no cambia (las
+  columnas fijas se conservan).

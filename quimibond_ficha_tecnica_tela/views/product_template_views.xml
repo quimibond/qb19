@@ -19,6 +19,19 @@
                     <field name="ficha_tecnica_acabado_count" widget="statinfo"
                            string="Ficha de Acabado"/>
                 </button>
+                <button name="action_ft_material" type="object"
+                        class="oe_stat_button" icon="fa-dot-circle-o"
+                        invisible="ft_material_count == 0 and not ft_material_sugerido">
+                    <field name="ft_material_count" widget="statinfo"
+                           string="Ficha de materia prima"/>
+                    <field name="ft_material_sugerido" invisible="1"/>
+                </button>
+                <button name="action_ft_telas_hilo" type="object"
+                        class="oe_stat_button" icon="fa-list-alt"
+                        invisible="ft_hilo_tela_count == 0">
+                    <field name="ft_hilo_tela_count" widget="statinfo"
+                           string="Telas que lo usan"/>
+                </button>
                 <button name="action_ft_procesos" type="object"
                         class="oe_stat_button" icon="fa-tachometer"
                         invisible="ft_proceso_count == 0">

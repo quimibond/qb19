@@ -3,7 +3,9 @@
     <!-- 2.7.0 (Dirección General 2026-10-13): todos los menús del módulo en un solo archivo, al final del
          manifest (las acciones ya existen). App «Fichas técnicas» con ícono: Tela (tejido y acabado),
          Máquinas (las máquinas con ficha y sus configuraciones por fecha), Importar y Configuración.
-         2.8.0: Máquinas → Procesos por artículo y Tabla por artículo y máquina; Importar → Procesos. -->
+         2.8.0: Máquinas → Procesos por artículo y Tabla por artículo y máquina; Importar → Procesos.
+         2.9.0: Materias primas (fichas, propiedades, hilos por tela y máquina, ligado de hilos) y en
+         Configuración, Tipos de materia prima y Fibras. -->
 
     <!-- ===== Máquinas: los centros de trabajo con tipo de máquina ===== -->
     <record id="view_mrp_workcenter_ft_maquinas_list" model="ir.ui.view">
@@ -19,6 +21,7 @@
                 <field name="ft_modelo" optional="hide"/>
                 <field name="ft_resumen"/>
                 <field name="ft_ficha_tejido_count" optional="hide"/>
+                <field name="ft_hilo_count" optional="hide"/>
             </list>
         </field>
     </record>
@@ -77,6 +80,16 @@
     <menuitem id="menu_ficha_tecnica_proceso_valor" name="Tabla por artículo y máquina" parent="menu_ft_maquinas"
               action="action_ficha_tecnica_proceso_valor" sequence="40"/>
 
+    <menuitem id="menu_ft_materias" name="Materias primas" parent="menu_ficha_tecnica_tela_root" sequence="25"/>
+    <menuitem id="menu_ficha_tecnica_material" name="Fichas de materia prima" parent="menu_ft_materias"
+              action="action_ficha_tecnica_material" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_material_valor" name="Propiedades por material" parent="menu_ft_materias"
+              action="action_ficha_tecnica_material_valor" sequence="20"/>
+    <menuitem id="menu_ficha_tecnica_tejido_hilo" name="Hilos por tela y máquina" parent="menu_ft_materias"
+              action="action_ficha_tecnica_tejido_hilo" sequence="30"/>
+    <menuitem id="menu_ficha_tecnica_hilo_ligado" name="Ligado de hilos" parent="menu_ft_materias"
+              action="action_server_ft_reporte_ligado_todos" sequence="40"/>
+
     <menuitem id="menu_ft_importar" name="Importar" parent="menu_ficha_tecnica_tela_root" sequence="30"/>
     <menuitem id="menu_ficha_tecnica_tejido_import" name="Tejido desde Excel" parent="menu_ft_importar"
               action="action_ficha_tecnica_tejido_import_wizard" sequence="10"/>
@@ -89,6 +102,10 @@
               sequence="90" groups="mrp.group_mrp_manager"/>
     <menuitem id="menu_ficha_tecnica_maquina_tipo" name="Tipos de máquina" parent="menu_ficha_tecnica_config"
               action="action_ficha_tecnica_maquina_tipo" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_material_tipo" name="Tipos de materia prima" parent="menu_ficha_tecnica_config"
+              action="action_ficha_tecnica_material_tipo" sequence="15"/>
+    <menuitem id="menu_ficha_tecnica_fibra" name="Fibras" parent="menu_ficha_tecnica_config"
+              action="action_ficha_tecnica_fibra" sequence="16"/>
     <menuitem id="menu_ficha_tecnica_caracteristica" name="Características" parent="menu_ficha_tecnica_config"
               action="action_ficha_tecnica_caracteristica" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"

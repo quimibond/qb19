@@ -25,7 +25,7 @@ class FichaTecnicaAcabado(models.Model):
              'Varias fichas de acabado (ej. distintos colores) pueden '
              'compartir la misma ficha de tejido base.')
     product_acabado_id = fields.Many2one(
-        'product.product', string='Producto — Tela Acabada (m)', required=True,
+        'product.product', string='Producto — Tela acabada', required=True,
         help='Producto terminado específico (ej. un color en particular), '
              'resultado de Inspección y Empaque + Control de Calidad.')
 

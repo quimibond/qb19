@@ -31,6 +31,13 @@ ahora; los del artículo (``articulo``, p. ej. la velocidad de cada artículo en
 la rama) van en el **proceso del artículo en la máquina**
 (``ficha.tecnica.proceso``, ``models/proceso.py``). Los dos guardan sus valores
 con el mismo mixin (``ficha.tecnica.valor.mixin``).
+
+2.9.0 (Dirección General 2026-10-19): el mismo motor sirve para las
+**materias primas** (``models/materia_prima.py``). Un tipo tiene **clase**
+(máquina o materia prima); los parámetros de un tipo de materia prima son de
+ámbito «De la materia prima» y se capturan en la ficha del material. Un
+parámetro de texto puede llevar una **lista de opciones** (S, Z, sin
+torsión): el valor tiene que ser una de ellas.
 """
 import operator as py_operator
 
@@ -41,7 +48,13 @@ OPERATORS = {'=': py_operator.eq, '!=': py_operator.ne, '<': py_operator.lt, '<=
              '>': py_operator.gt, '>=': py_operator.ge}
 PARAM_KINDS = [('num', 'Numérico'), ('text', 'Texto')]
 # 2.8.0: de quién es el dato.
-PARAM_AMBITOS = [('maquina', 'De la máquina'), ('articulo', 'Del artículo en la máquina')]
+PARAM_AMBITOS = [('maquina', 'De la máquina'), ('articulo', 'Del artículo en la máquina'),
+                 ('material', 'De la materia prima')]
+# 2.9.0: qué describe el tipo.
+TIPO_CLASES = [('maquina', 'Máquina'), ('material', 'Materia prima')]
+# Modelo de valores de cada ámbito (para no cambiar de ámbito un parámetro con valores ni borrarlo).
+VALOR_MODELS = {'maquina': 'ficha.tecnica.maquina.valor', 'articulo': 'ficha.tecnica.proceso.valor',
+                'material': 'ficha.tecnica.material.valor'}
 # Columnas de la configuración que salen del valor del parámetro con la misma
 # clave (las usan la ficha de tejido y la búsqueda de máquinas por galga).
 CONFIG_VALUE_FIELDS = ('diametro', 'galga', 'no_agujas', 'no_alimentadores', 'velocidad_max')
@@ -62,10 +75,16 @@ class FichaTecnicaMaquinaTipo(models.Model):
     code = fields.Char(string='Clave', required=True, index=True,
                        help='Clave corta y estable del tipo (p. ej. «tejido_circular»).')
     name = fields.Char(string='Tipo de máquina', required=True)
+    clase = fields.Selection(TIPO_CLASES, string='Clase', required=True, default='maquina',
+                             help='«Máquina»: lo llevan los centros de trabajo. «Materia prima»: lo llevan las fichas '
+                                  'de materia prima (hilo de filamento, hilo hilado, químico…).')
+    categ_ids = fields.Many2many('product.category', string='Categorías de producto',
+                                 help='Solo materias primas: los productos de estas categorías (y sus hijas) proponen '
+                                      'este tipo al crear su ficha.')
     parametro_ids = fields.One2many('ficha.tecnica.maquina.parametro', 'tipo_id', string='Parámetros',
                                     context={'active_test': False})
     workcenter_ids = fields.One2many('mrp.workcenter', 'ft_tipo_id', string='Máquinas')
-    workcenter_count = fields.Integer(string='Máquinas', compute='_compute_workcenter_count')
+    workcenter_count = fields.Integer(string='No. de máquinas', compute='_compute_workcenter_count')
     active = fields.Boolean(default=True)
 
     _code_uniq = models.Constraint('unique(code)', 'La clave del tipo de máquina debe ser única.')
@@ -76,7 +95,8 @@ class FichaTecnicaMaquinaTipo(models.Model):
             tipo.workcenter_count = len(tipo.workcenter_ids)
 
     def _ft_parametros(self, ambito):
-        """2.8.0: los parámetros activos del tipo con ese ámbito («maquina» o «articulo»), en su orden."""
+        """2.8.0: los parámetros activos del tipo con ese ámbito («maquina», «articulo» o «material»), en su
+        orden."""
         self.ensure_one()
         return self.parametro_ids.filtered(lambda p: p.active and p.ambito == ambito)
 
@@ -100,22 +120,34 @@ class FichaTecnicaMaquinaParametro(models.Model):
                               help='«De la máquina»: se captura en la configuración por fecha (galga, capacidad del '
                                    'jet…). «Del artículo en la máquina»: se captura en el proceso de cada artículo en '
                                    'cada máquina (velocidad del artículo en la rama, tiempo de ciclo…).')
+    opciones = fields.Char(string='Opciones',
+                           help='Solo texto: valores permitidos separados por coma (p. ej. «S, Z, Sin torsión»). '
+                                'Vacío: texto libre.')
     notas = fields.Char(string='Cómo se mide', help='De dónde sale el dato o cómo se mide.')
     active = fields.Boolean(default=True, help='Los parámetros archivados no se agregan a configuraciones nuevas.')
 
     _tipo_code_uniq = models.Constraint('unique(tipo_id, code)', 'Ese tipo de máquina ya tiene un parámetro '
                                                                    'con esa clave.')
 
-    @api.constrains('ambito')
+    @api.constrains('ambito', 'tipo_id')
     def _check_ambito(self):
         for param in self:
-            other = 'ficha.tecnica.proceso.valor' if param.ambito == 'maquina' else 'ficha.tecnica.maquina.valor'
-            if self.env[other].search_count([('parametro_id', '=', param.id)], limit=1):
-                raise ValidationError('El parámetro «%s» ya tiene valores capturados con el otro ámbito: no se '
-                                      'cambia; dé de alta otro parámetro.' % param.name)
+            if (param.tipo_id.clase == 'material') != (param.ambito == 'material'):
+                raise ValidationError('El parámetro «%s»: un tipo de materia prima lleva parámetros «De la materia '
+                                      'prima» y un tipo de máquina, de la máquina o del artículo.' % param.name)
+            for ambito, model in VALOR_MODELS.items():
+                if ambito != param.ambito and model in self.env and \
+                        self.env[model].search_count([('parametro_id', '=', param.id)], limit=1):
+                    raise ValidationError('El parámetro «%s» ya tiene valores capturados con otro ámbito: no se '
+                                          'cambia; dé de alta otro parámetro.' % param.name)
+
+    def _ft_opciones(self):
+        """2.9.0: las opciones permitidas (lista vacía = texto libre)."""
+        self.ensure_one()
+        return [o.strip() for o in (self.opciones or '').split(',') if o.strip()]
 
     def unlink(self):
-        for model in ('ficha.tecnica.maquina.valor', 'ficha.tecnica.proceso.valor'):
+        for model in VALOR_MODELS.values():
             lines = self.env[model].search([('parametro_id', 'in', self.ids)])
             if lines.filtered(lambda v: v.valor or v.valor_texto):
                 raise UserError('El parámetro ya tiene valores capturados: archívelo en lugar de borrarlo.')
@@ -137,6 +169,33 @@ class FichaTecnicaValorMixin(models.AbstractModel):
     unit = fields.Char(related='parametro_id.unit')
     valor = fields.Float(string='Valor', digits=(16, 3))
     valor_texto = fields.Char(string='Valor (texto)')
+    opciones = fields.Char(related='parametro_id.opciones')
+
+    def _ft_normalizar_texto(self, vals):
+        """2.9.0: con lista de opciones, el texto se guarda como la opción (sin importar mayúsculas ni espacios);
+        uno que no está en la lista es un error."""
+        texto = (vals.get('valor_texto') or '').strip()
+        param = self.env['ficha.tecnica.maquina.parametro'].browse(vals.get('parametro_id')) \
+            if vals.get('parametro_id') else self.parametro_id
+        opciones = param._ft_opciones() if param else []
+        if not texto or not opciones:
+            return vals
+        for opcion in opciones:
+            if opcion.lower() == texto.lower():
+                return dict(vals, valor_texto=opcion)
+        raise ValidationError('«%s» no es una opción de «%s»: %s.' % (texto, param.name, ', '.join(opciones)))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._ft_normalizar_texto(vals) if vals.get('valor_texto') else vals
+                               for vals in vals_list])
+
+    def write(self, vals):
+        if not vals.get('valor_texto'):
+            return super().write(vals)
+        for line in self:
+            super(FichaTecnicaValorMixin, line).write(line._ft_normalizar_texto(vals))
+        return True
 
     def _display_value(self):
         self.ensure_one()
@@ -180,6 +239,7 @@ class FichaTecnicaMaquinaConfig(models.Model):
                                     ondelete='cascade', help='Centro de trabajo (máquina) de esta configuración.')
     tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de máquina', required=True, index=True,
                               compute='_compute_tipo_id', store=True, readonly=False, precompute=True,
+                              domain="[('clase', '=', 'maquina')]",
                               help='Sale del tipo de la máquina; define qué parámetros se capturan.')
     date_from = fields.Date(string='Vigente desde', required=True, default=fields.Date.context_today,
                             help='Desde cuándo la máquina corre con esta configuración (p. ej. el cambio de '
@@ -187,7 +247,7 @@ class FichaTecnicaMaquinaConfig(models.Model):
     date_to = fields.Date(string='Vigente hasta', compute='_compute_date_to',
                           help='Un día antes de la siguiente configuración de la máquina; vacío si es la última.')
     valor_ids = fields.One2many('ficha.tecnica.maquina.valor', 'config_id', string='Parámetros')
-    resumen = fields.Char(string='Parámetros', compute='_compute_resumen')
+    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
     diametro = fields.Float(string='Diámetro (in)', digits=(16, 2), compute='_compute_value_fields',
                             inverse='_inverse_value_fields', store=True)
     galga = fields.Float(string='Galga', digits=(16, 0), compute='_compute_value_fields',
@@ -203,7 +263,7 @@ class FichaTecnicaMaquinaConfig(models.Model):
     notas = fields.Text(string='Notas')
     is_current = fields.Boolean(string='Vigente hoy', compute='_compute_is_current')
     ficha_tejido_ids = fields.One2many('ficha.tecnica.tejido', 'maquina_config_id', string='Fichas de tejido')
-    ficha_tejido_count = fields.Integer(string='Fichas de tejido', compute='_compute_ficha_tejido_count')
+    ficha_tejido_count = fields.Integer(string='No. de fichas de tejido', compute='_compute_ficha_tejido_count')
 
     _workcenter_date_uniq = models.Constraint(
         'unique(workcenter_id, date_from)',
@@ -351,6 +411,7 @@ class MrpWorkcenterFicha(models.Model):
     _inherit = 'mrp.workcenter'
 
     ft_tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de máquina', index=True,
+                                 domain="[('clase', '=', 'maquina')]",
                                  help='Define qué parámetros lleva la ficha de la máquina.')
     ft_marca = fields.Char(string='Marca de la máquina')
     ft_modelo = fields.Char(string='Modelo de la máquina')

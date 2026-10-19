@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.9.0 (Dirección General 2026-10-19): fichas de materia prima con el mismo motor de parámetros
+     que las máquinas. Jose: «usa las mejores prácticas». Los parámetros de hilo siguen las normas de
+     la industria (ISO 2060/2061/2062, ASTM D1907/D2256/D2259, DIN 53840, Uster) y separan los dos tipos
+     de hilo que hay en el almacén: filamento («75/36»: denier/filamentos) e hilado («22/1»: número
+     inglés/cabos). La composición va en renglones de fibra (siglas ISO 2076), no aquí. Químico y
+     colorante nacen sin propiedades: las define la planta. Los jets ganan tres datos del artículo
+     (los pidió Dirección el 2026-10-19). noupdate: el update no revierte lo que se ajuste desde el
+     menú; los registros nuevos sí se crean. -->
+<odoo noupdate="1">
+
+    <!-- Fibras (ISO 2076) -->
+    <record id="ft_fibra_pes" model="ficha.tecnica.fibra">
+        <field name="sequence">10</field>
+        <field name="code">PES</field>
+        <field name="name">Poliéster</field>
+    </record>
+    <record id="ft_fibra_co" model="ficha.tecnica.fibra">
+        <field name="sequence">20</field>
+        <field name="code">CO</field>
+        <field name="name">Algodón</field>
+    </record>
+    <record id="ft_fibra_pa" model="ficha.tecnica.fibra">
+        <field name="sequence">30</field>
+        <field name="code">PA</field>
+        <field name="name">Poliamida (nylon)</field>
+    </record>
+    <record id="ft_fibra_el" model="ficha.tecnica.fibra">
+        <field name="sequence">40</field>
+        <field name="code">EL</field>
+        <field name="name">Elastano</field>
+    </record>
+    <record id="ft_fibra_cv" model="ficha.tecnica.fibra">
+        <field name="sequence">50</field>
+        <field name="code">CV</field>
+        <field name="name">Viscosa</field>
+    </record>
+    <record id="ft_fibra_pp" model="ficha.tecnica.fibra">
+        <field name="sequence">60</field>
+        <field name="code">PP</field>
+        <field name="name">Polipropileno</field>
+    </record>
+
+    <!-- Tipos de materia prima -->
+    <record id="ft_material_tipo_hilo_filamento" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">110</field>
+        <field name="code">hilo_filamento</field>
+        <field name="name">Hilo de filamento</field>
+        <field name="clase">material</field>
+    </record>
+    <record id="ft_material_tipo_hilo_hilado" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">120</field>
+        <field name="code">hilo_hilado</field>
+        <field name="name">Hilo hilado</field>
+        <field name="clase">material</field>
+    </record>
+    <record id="ft_material_tipo_quimico" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">130</field>
+        <field name="code">quimico</field>
+        <field name="name">Químico</field>
+        <field name="clase">material</field>
+    </record>
+    <record id="ft_material_tipo_colorante" model="ficha.tecnica.maquina.tipo">
+        <field name="sequence">140</field>
+        <field name="code">colorante</field>
+        <field name="name">Colorante</field>
+        <field name="clase">material</field>
+    </record>
+
+    <!-- Hilo de filamento -->
+    <record id="ft_material_param_filamento_titulo_den" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">10</field>
+        <field name="code">titulo_den</field>
+        <field name="name">Título</field>
+        <field name="unit">den</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Masa en gramos de 9,000 m de hilo (denier). 75/36 → 75. ASTM D1907 / ISO 2060.</field>
+    </record>
+    <record id="ft_material_param_filamento_filamentos" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">20</field>
+        <field name="code">filamentos</field>
+        <field name="name">Filamentos</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Número de filamentos del hilo. 75/36 → 36.</field>
+    </record>
+    <record id="ft_material_param_filamento_cabos" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">30</field>
+        <field name="code">cabos</field>
+        <field name="name">Cabos</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Hilos torcidos juntos (75/36/2 → 2). Vacío o 1: hilo sencillo.</field>
+    </record>
+    <record id="ft_material_param_filamento_textura" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">40</field>
+        <field name="code">textura</field>
+        <field name="name">Textura</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">Texturizado SET, Texturizado stretch, Texturizado semistretch, Rígido (FDY), Texturizado por aire (ATY)</field>
+        <field name="notas">Cómo se procesó el filamento. SET = texturizado con fijado (poco elástico); stretch = alta elasticidad.</field>
+    </record>
+    <record id="ft_material_param_filamento_torsion_sentido" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">50</field>
+        <field name="code">torsion_sentido</field>
+        <field name="name">Sentido de torsión</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">S, Z, Sin torsión</field>
+        <field name="notas">Sentido de la torsión (o del falso torcido del texturizado).</field>
+    </record>
+    <record id="ft_material_param_filamento_torsion_tpm" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">60</field>
+        <field name="code">torsion_tpm</field>
+        <field name="name">Torsión</field>
+        <field name="unit">vueltas/m</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Vueltas por metro, cuando el hilo lleva torsión real. ISO 2061.</field>
+    </record>
+    <record id="ft_material_param_filamento_entrelazado" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">70</field>
+        <field name="code">entrelazado</field>
+        <field name="name">Entrelazado</field>
+        <field name="unit">nudos/m</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Puntos de entrelazado (intermingling) por metro.</field>
+    </record>
+    <record id="ft_material_param_filamento_lustre" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">80</field>
+        <field name="code">lustre</field>
+        <field name="name">Lustre</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">Opaco, Semimate, Brillante, Trilobal brillante</field>
+        <field name="notas">Brillo del filamento (full dull, semi dull, bright).</field>
+    </record>
+    <record id="ft_material_param_filamento_color" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">90</field>
+        <field name="code">color</field>
+        <field name="name">Color</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">Natural, Negro, Otro color</field>
+        <field name="notas">Natural (crudo) o teñido en masa.</field>
+    </record>
+    <record id="ft_material_param_filamento_tenacidad" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">100</field>
+        <field name="code">tenacidad</field>
+        <field name="name">Tenacidad</field>
+        <field name="unit">cN/dtex</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Resistencia a la ruptura por título. ISO 2062 / ASTM D2256.</field>
+    </record>
+    <record id="ft_material_param_filamento_elongacion" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">110</field>
+        <field name="code">elongacion</field>
+        <field name="name">Elongación a la ruptura</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">ISO 2062 / ASTM D2256.</field>
+    </record>
+    <record id="ft_material_param_filamento_contraccion_rizo" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">120</field>
+        <field name="code">contraccion_rizo</field>
+        <field name="name">Contracción de rizo</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Crimp contraction de los texturizados (DIN 53840). Mide la elasticidad del texturizado.</field>
+    </record>
+    <record id="ft_material_param_filamento_encogimiento" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_filamento"/>
+        <field name="sequence">130</field>
+        <field name="code">encogimiento</field>
+        <field name="name">Encogimiento en agua hirviendo</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Boiling water shrinkage (BWS), ASTM D2259.</field>
+    </record>
+
+    <!-- Hilo hilado -->
+    <record id="ft_material_param_hilado_titulo_ne" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">10</field>
+        <field name="code">titulo_ne</field>
+        <field name="name">Título</field>
+        <field name="unit">Ne</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Número inglés: madejas de 840 yardas por libra. 22/1 → 22. ISO 2060.</field>
+    </record>
+    <record id="ft_material_param_hilado_cabos" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">20</field>
+        <field name="code">cabos</field>
+        <field name="name">Cabos</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">22/1 → 1; 20/2 → 2.</field>
+    </record>
+    <record id="ft_material_param_hilado_hilatura" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">30</field>
+        <field name="code">hilatura</field>
+        <field name="name">Sistema de hilatura</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">Anillo cardado, Anillo peinado, Compacto, Open end, Vórtex, Air-jet</field>
+        <field name="notas">Cómo se hiló.</field>
+    </record>
+    <record id="ft_material_param_hilado_torsion_sentido" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">40</field>
+        <field name="code">torsion_sentido</field>
+        <field name="name">Sentido de torsión</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">S, Z</field>
+        <field name="notas">Sentido de la torsión.</field>
+    </record>
+    <record id="ft_material_param_hilado_torsion_tpm" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">50</field>
+        <field name="code">torsion_tpm</field>
+        <field name="name">Torsión</field>
+        <field name="unit">vueltas/m</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Vueltas por metro. ISO 2061.</field>
+    </record>
+    <record id="ft_material_param_hilado_coef_torsion" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">60</field>
+        <field name="code">coef_torsion</field>
+        <field name="name">Coeficiente de torsión</field>
+        <field name="unit">αe</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Coeficiente de torsión inglés (vueltas por pulgada ÷ √Ne).</field>
+    </record>
+    <record id="ft_material_param_hilado_color" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">70</field>
+        <field name="code">color</field>
+        <field name="name">Color</field>
+        <field name="kind">text</field>
+        <field name="ambito">material</field>
+        <field name="opciones">Natural, Negro, Otro color</field>
+        <field name="notas">Natural (crudo) o teñido.</field>
+    </record>
+    <record id="ft_material_param_hilado_tenacidad" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">80</field>
+        <field name="code">tenacidad</field>
+        <field name="name">Tenacidad</field>
+        <field name="unit">cN/tex</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Resistencia a la ruptura por título. ISO 2062.</field>
+    </record>
+    <record id="ft_material_param_hilado_elongacion" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">90</field>
+        <field name="code">elongacion</field>
+        <field name="name">Elongación a la ruptura</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">ISO 2062.</field>
+    </record>
+    <record id="ft_material_param_hilado_cv_masa" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">100</field>
+        <field name="code">cv_masa</field>
+        <field name="name">Irregularidad de masa (CVm)</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Coeficiente de variación de masa (Uster, ISO 16549).</field>
+    </record>
+    <record id="ft_material_param_hilado_imperfecciones" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">110</field>
+        <field name="code">imperfecciones</field>
+        <field name="name">Imperfecciones (IPI)</field>
+        <field name="unit">/km</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Delgados −50 %, gruesos +50 % y neps +200 % por kilómetro (Uster).</field>
+    </record>
+    <record id="ft_material_param_hilado_pilosidad" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_material_tipo_hilo_hilado"/>
+        <field name="sequence">120</field>
+        <field name="code">pilosidad</field>
+        <field name="name">Pilosidad (H)</field>
+        <field name="kind">num</field>
+        <field name="ambito">material</field>
+        <field name="notas">Índice de pilosidad Uster H.</field>
+    </record>
+
+    <!-- Tintorería: datos del artículo en el jet -->
+    <record id="ft_maquina_param_tintoreria_tiempo_ciclo" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">110</field>
+        <field name="code">tiempo_ciclo</field>
+        <field name="name">Tiempo de ciclo</field>
+        <field name="unit">h</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Horas por carga del artículo en este jet (de la carga a la descarga).</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_kg_carga" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">120</field>
+        <field name="code">kg_carga</field>
+        <field name="name">Kg por carga</field>
+        <field name="unit">kg</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Kg del artículo que caben en una carga de este jet. Gana sobre la capacidad por grupo de rendimiento.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_relacion_bano_articulo" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">130</field>
+        <field name="code">relacion_bano_articulo</field>
+        <field name="name">Relación de baño del artículo</field>
+        <field name="unit">L/kg</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Litros de baño por kg del artículo en este jet (depende de su rendimiento). Vacía: la de la máquina.</field>
+    </record>
+</odoo>
