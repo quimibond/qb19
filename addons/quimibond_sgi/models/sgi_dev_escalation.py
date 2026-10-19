@@ -156,6 +156,11 @@ class SgiDevEscalation(models.Model):
         avisos que ya tocan. Devuelve los avisos creados."""
         now = now or fields.Datetime.now()
         thresholds = self._sgi_dev_thresholds()
+        if not self.env['sgi.cron']._sgi_escalations_on():
+            # 57.159.0: en pausa solo avisa al responsable del paso; lo que ya
+            # había subido al dueño o a Dirección se cierra con nota.
+            thresholds = {level: value for level, value in thresholds.items() if level == 'ejecutor'}
+            self._sgi_dev_close_escalated()
         created = self.browse()
         projects = self.env['project.project'].sudo().search(
             [('sgi_is_ft', '=', True), ('is_template', '=', False), ('active', '=', True)])
@@ -201,6 +206,20 @@ class SgiDevEscalation(models.Model):
         if activities:
             self.env['sgi.cron']._sgi_close_activities(activities, reason)
         rows.write({'state': 'cerrado', 'closed_at': fields.Datetime.now(), 'close_reason': reason})
+        return rows
+
+    @api.model
+    def _sgi_dev_close_escalated(self):
+        """57.159.0: cierra los avisos abiertos del dueño y de Dirección."""
+        from .sgi_cron import SGI_ESCALATIONS_PAUSED
+        rows = self.sudo().search([('state', '=', 'abierto'), ('level', '!=', 'ejecutor')])
+        if not rows:
+            return rows
+        activities = rows.mail_activity_id.exists().filtered('active')
+        if activities:
+            self.env['sgi.cron']._sgi_close_activities(activities, SGI_ESCALATIONS_PAUSED)
+        rows.write({'state': 'cerrado', 'closed_at': fields.Datetime.now(),
+                    'close_reason': SGI_ESCALATIONS_PAUSED})
         return rows
 
     @api.model

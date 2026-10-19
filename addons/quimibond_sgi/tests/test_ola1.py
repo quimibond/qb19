@@ -10,6 +10,7 @@ from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
 from .common_users import assert_locked, sgi_set_director, sgi_set_mast, sgi_test_user
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -277,6 +278,7 @@ class TestOla1Escalation(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id),
             (4, cls.env.ref('quimibond_sgi.group_sgi_director').id)]

@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.tests import TransactionCase, tagged, new_test_user
+from .common_escalations import sgi_escalations_on
 
 # Crons de avisos (no los de medición ni evaluación de proveedores, que
 # crean registros de negocio). Se corren dos veces seguidas.
@@ -28,6 +29,7 @@ class TestAvisosCrons(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         cls.Cron = cls.env['sgi.cron']
         # 57.95.0: los acuses pendientes reales de la copia de producción no
         # cruzan el umbral en estas pruebas (sus avisos agrupados no deben

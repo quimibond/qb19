@@ -9,6 +9,7 @@ from odoo.tests.common import new_test_user
 
 from ..models.sgi_calendar import sgi_nth_business_day
 from .common_calendar import sgi_test_calendar
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -17,6 +18,7 @@ class TestIndicatorPlan(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         env = cls.env
         cls.Indicator = env['sgi.indicator']
         cls.Measure = env['sgi.indicator.measure']

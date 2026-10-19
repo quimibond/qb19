@@ -747,10 +747,15 @@ class SgiMyPending(models.Model):
         # 57.13.0: los escalamientos a un rol relativo («Dueño del proceso»)
         # no son de un puesto: le llegan al dueño del proceso de la actividad,
         # o a su jefe si el dueño también la ejecuta (sgi_relative_roles).
-        relative = env['sgi.activity.role'].sudo()._sgi_relative_escalations(employees)
+        # 57.159.0: con los escalamientos en pausa no llega ningún renglón
+        # «Escalamiento»; quien ejecuta sigue viendo su actividad atrasada.
+        escalate = env['sgi.cron']._sgi_escalations_on()
+        relative = env['sgi.activity.role'].sudo()._sgi_relative_escalations(employees) \
+            if escalate else {}
         for emp in employees:
             detail = emp.sgi_mp_role_ids.filtered(lambda r: r.role == 'ejecuta')
-            received = emp.sgi_mp_received_role_ids | relative.get(emp.id, env['sgi.activity.role'])
+            received = (emp.sgi_mp_received_role_ids if escalate else env['sgi.activity.role']) \
+                | relative.get(emp.id, env['sgi.activity.role'])
             roles_by_emp[emp.id] = (detail, received)
         all_roles = env['sgi.activity.role'].sudo()
         for detail, received in roles_by_emp.values():
