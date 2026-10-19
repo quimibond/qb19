@@ -74,7 +74,7 @@ class TestSincronizacion(HttpCase):
         self.viejo = Equipo.create({'name': 'UA860', 'serial': 'UA860VIEJO', 'prefijos': 'S,Q'})
         self.tiene_referencia = 'registration_number' in self.env['hr.employee']._fields
         # Nombres y números que no existen en la base de producción (el build de Odoo.sh corre sobre una copia).
-        vals = {'name': 'MARIANO PRUEBAZQ CHECADOR'}
+        vals = {'name': 'MARIANO PRUEBAZQ CHEC'}
         if self.tiene_referencia:
             vals['registration_number'] = 'Q-987'
         else:
@@ -108,7 +108,7 @@ class TestSincronizacion(HttpCase):
         # y al sincronizar Rama, va su alta con el número nuevo y su huella del UA860
         self.rama.action_sincronizar_usuarios()
         comandos = self.env['qb.checador.comando'].search([('equipo_id', '=', self.rama.id)], order='id')
-        self.assertIn('DATA UPDATE USERINFO PIN=2987\tName=MARIANO PRUEBAZQ CHECADOR\t', comandos[0].comando)
+        self.assertIn('DATA UPDATE USERINFO PIN=2987\tName=MARIANO PRUEBAZQ CHEC\t', comandos[0].comando)
         self.assertTrue(any(c.comando == 'DATA UPDATE FINGERTMP PIN=2987\tFID=6\tSize=60\tValid=1\tTMP=%s' % PLANTILLA
                             for c in comandos))
 
