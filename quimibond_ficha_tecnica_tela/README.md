@@ -497,3 +497,23 @@ rendimiento a tintorería (WJ044Q22HNT235). Desde 2.10.0 son un catálogo
   evalúa el navegador. `tools/check_odoo_views.py` ahora revisa que cada
   `options`, `context`, `domain`, `invisible`, `readonly`… de las vistas sea
   una expresión de Python válida.
+
+## Rendimiento de tela tejida guardado y ficha de referencia (2.11.0, 2026-10-19)
+
+Acordado con José Sacramento (implementación de acabado y tintorería):
+
+- **`rendimiento_tela_tejida`** (m/kg) en la ficha de tejido es un campo
+  **calculado y guardado**: 1000 / (peso g/m² × ancho en m) de la tela
+  acondicionada, con el ancho convertido por su unidad del catálogo (0 si falta
+  un dato o el ancho cae fuera de 0.3 a 4 m). Se puede escribir a mano: queda
+  fijo («Rendimiento forzado») hasta que se desmarque. Lleva el mismo nombre
+  que el campo capturado de la rama `consolti`, para que su código lo lea sin
+  cambios. `_ft_rendimiento()` (tintorería, cargas por jet, SGI) lo devuelve.
+  Al actualizar, Odoo lo calcula para todas las fichas existentes.
+- **Ficha de referencia** de un producto (`_ft_de_producto`, que usan el
+  rendimiento, la galga del artículo y la ficha de acabado): con varias
+  máquinas, la de **revisión más alta**; entre máquinas de la misma revisión,
+  la de elaboración más reciente. En producción el peso y el ancho de cada
+  artículo y revisión son iguales en todas sus máquinas, así que el
+  rendimiento no depende de cuál se tome.
+- Pruebas: `tests/test_rendimiento.py`.

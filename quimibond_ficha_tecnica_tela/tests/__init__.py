@@ -10,3 +10,4 @@ from . import test_materia_prima
 from . import test_hilos_ligados
 from . import test_acabado_ruta
 from . import test_unidades
+from . import test_rendimiento
