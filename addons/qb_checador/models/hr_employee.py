@@ -56,28 +56,37 @@ class HrEmployee(models.Model):
                 emp.qb_checador_pin = numero
 
     # ------------------------------------------------------------------
+    @api.model_create_multi
+    def create(self, vals_list):
+        empleados = super().create(vals_list)
+        # Ingreso nuevo con Referencia (S-…, Q-…): recibe su número y entra solo a los relojes que sincronizan.
+        empleados.sudo().filtered('active')._qb_asignar_numero_checador()
+        return empleados
+
     def write(self, vals):
         anteriores = {}
-        if 'qb_checador_pin' in vals or vals.get('active') is False:
+        if 'qb_checador_pin' in vals or 'active' in vals:
             anteriores = {e.id: (e.sudo().qb_checador_pin, e.active) for e in self}
         res = super().write(vals)
         if anteriores:
             self._qb_avisar_relojes(anteriores)
         if 'registration_number' in vals:
-            # Cambió de nómina (S-4 → Q-12): su número de checador cambia y los relojes se enteran.
-            self.sudo().filtered('qb_checador_pin')._qb_asignar_numero_checador()
+            # Cambió de nómina (S-4 → Q-12) o se le puso Referencia: su número de checador cambia y los
+            # relojes se enteran.
+            self.sudo().filtered('active')._qb_asignar_numero_checador()
         return res
 
     def _qb_avisar_relojes(self, anteriores):
         """Si cambió el número de checador, el viejo se borra de los relojes que sincronizan y el nuevo se da
-        de alta con sus huellas. Si el empleado se archivó, se borra de los relojes."""
+        de alta con sus huellas. Si el empleado se archivó, se borra de los relojes; si se reactivó, vuelve."""
         Equipo = self.env['qb.checador.equipo'].sudo()
         for emp in self.sudo():
             viejo, estaba_activo = anteriores.get(emp.id, (None, None))
             if viejo and (viejo != emp.qb_checador_pin or (estaba_activo and not emp.active)):
                 Equipo._encolar_en_relojes(emp, 'DATA DELETE USERINFO PIN=%s' % viejo,
                                            "Borrar usuario %s %s" % (viejo, emp.name))
-            if emp.active and emp.qb_checador_pin and viejo != emp.qb_checador_pin:
+            reactivado = estaba_activo is False and emp.active
+            if emp.active and emp.qb_checador_pin and (viejo != emp.qb_checador_pin or reactivado):
                 relojes = Equipo.search([('marca', '=', 'zkteco'), ('sincronizar_usuarios', '=', True),
                                          ('autorizado', '=', True), ('company_id', '=', emp.company_id.id)])
                 relojes.filtered(lambda r: emp in r._empleados_a_sincronizar())._enviar_empleados(emp)
