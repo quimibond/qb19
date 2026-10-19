@@ -36,8 +36,8 @@ la imagen community). Nacen de tres builds rotos de `main` el 2026-09-25:
 Uso: `python3 tools/check_odoo_views.py [--base-ref origin/main] [ruta/a/addons ...]`
 (sin rutas revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
 """
-import glob
 import ast
+import glob
 import os
 import re
 import sys
@@ -98,6 +98,32 @@ def _check_view_roles(xml_path, view_id, arch):
     return errors
 
 
+# Atributos que el cliente web evalúa como expresión de Python.
+_EXPR_ATTRS = ('options', 'context', 'domain', 'filter_domain', 'invisible', 'readonly', 'required',
+               'column_invisible')
+
+
+def _check_view_expressions(xml_path, view_id, arch):
+    """Cada expresión de la vista se puede leer como Python: el cliente web la evalúa al abrir la vista y una
+    mal escrita revienta la pantalla («Can not parse python expression»), sin que el build ni las pruebas lo
+    noten. Nació de ``options="{\\'no_create\\': True}"`` en las fichas de tejido y acabado, 2.10.0,
+    2026-10-19."""
+    errors = []
+    for el in arch.iter():
+        if not isinstance(el.tag, str):
+            continue
+        for attr in _EXPR_ATTRS:
+            value = el.get(attr)
+            if not value or not value.strip():
+                continue
+            try:
+                ast.parse(value.strip(), mode='eval')
+            except SyntaxError as exc:
+                errors.append('%s:%s (vista %s): %s="%s" no es una expresión válida (%s).' % (
+                    os.path.relpath(xml_path, ROOT), el.sourceline, view_id, attr, value, exc.msg))
+    return errors
+
+
 def check_views(module_dir, validators):
     errors = []
     for xml_path in glob.glob(os.path.join(module_dir, '**', '*.xml'), recursive=True):
@@ -114,6 +140,7 @@ def check_views(module_dir, validators):
                 continue
             view = arch[0]
             errors += _check_view_roles(xml_path, record.get('id'), arch)
+            errors += _check_view_expressions(xml_path, record.get('id'), arch)
             validator = validators.get(view.tag)
             if validator is None:
                 continue
