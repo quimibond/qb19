@@ -187,7 +187,7 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
         Product = self.env['product.product']
         Partner = self.env['res.partner']
 
-        created, updated, errors = 0, 0, []
+        created, updated, ligados, errors = 0, 0, 0, []
 
         for row_num, row in enumerate(data_rows, start=2):
             if row_is_empty(row):
@@ -279,19 +279,31 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
                             'existe" está desmarcado, se omitió.' % (row_num, articulo))
                         continue
                     if hilo_lines:
-                        values['hilo_line_ids'] = [(5, 0, 0)] + hilo_lines
+                        # 2.9.0: se actualiza el renglón del mismo número (conserva el producto, la polea y el
+                        # lote ligados); los que el Excel ya no trae se quitan.
+                        por_numero = {h.numero: h for h in existing.hilo_line_ids}
+                        commands = []
+                        for _c, _i, hilo_vals in hilo_lines:
+                            old = por_numero.pop(hilo_vals['numero'], None)
+                            commands.append((1, old.id, hilo_vals) if old else (0, 0, hilo_vals))
+                        commands += [(2, h.id) for h in por_numero.values()]
+                        values['hilo_line_ids'] = commands
                     existing.write(values)
+                    ficha = existing
                     updated += 1
                 else:
                     if hilo_lines:
                         values['hilo_line_ids'] = hilo_lines
-                    Ficha.create(values)
+                    ficha = Ficha.create(values)
                     created += 1
+                # 2.9.0: los hilos con un solo candidato en la lista de materiales del crudo se ligan al producto.
+                ligados += len(ficha.hilo_line_ids._ft_ligar_unicos())
 
             except Exception as exc:
                 errors.append('Fila %s (%s): error inesperado — %s' % (row_num, articulo, exc))
 
-        message = 'Fichas de tejido creadas: %s. Actualizadas: %s.' % (created, updated)
+        message = 'Fichas de tejido creadas: %s. Actualizadas: %s. Hilos ligados a su producto: %s.' % (
+            created, updated, ligados)
         if errors:
             message += '\n\nAvisos (%s):\n' % len(errors) + '\n'.join(errors[:30])
             if len(errors) > 30:

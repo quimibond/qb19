@@ -33,8 +33,14 @@ tintorería. Por eso:
   trabajo en un jet, y ahí el jet es el de la orden de trabajo.
 - El rendimiento de la tela se busca también por el camino nuevo: producto
   de acabado → su ficha de acabado → la ficha de tejido en que se basa.
+
+2.9.0 (Dirección General 2026-10-19): el jet también tiene datos **del
+artículo** (proceso del artículo en la máquina): tiempo de ciclo, kg por carga
+y relación de baño. Los kg por carga del artículo ganan sobre los del grupo de
+rendimiento; la relación de baño del artículo gana sobre la de la máquina.
 """
 import math
+import re
 
 from markupsafe import Markup
 
@@ -46,6 +52,8 @@ TIPO_TINTORERIA = 'tintoreria'
 GRUPOS = (('capacidad_grupo_a', 'A', 3.0, 7.0), ('capacidad_grupo_b', 'B', 7.0, 11.0),
           ('capacidad_grupo_c', 'C', 11.0, 16.0))
 ANCHO_A_METROS = {'m': 1.0, 'mts': 1.0, 'cm': 0.01, 'mm': 0.001, 'in': 0.0254}
+# 2.9.0: «1:10» o «10» (litros por kg).
+RELACION_BANO_RE = re.compile(r'^\s*(?:1\s*:\s*)?(\d+(?:[.,]\d+)?)\s*$')
 
 
 def _fmt(value):
@@ -147,7 +155,7 @@ class MrpWorkcenterCarga(models.Model):
                     _fmt(galga_articulo), origen)
         elif tipo == TIPO_TINTORERIA and qty_kg:
             rendimiento = product._ft_rendimiento()[0] if product else 0.0
-            capacidad, motivo = self._ft_capacidad_carga(rendimiento, day)
+            capacidad, motivo = self._ft_capacidad_carga(rendimiento, day, product)
             if not capacidad:
                 return '%s: %s.' % (self.name, motivo)
             if qty_kg > capacidad:
@@ -155,9 +163,20 @@ class MrpWorkcenterCarga(models.Model):
                     _fmt(qty_kg), self.name, _fmt(capacidad), motivo, math.ceil(qty_kg / capacidad))
         return False
 
-    def _ft_capacidad_carga(self, rendimiento, day=None):
-        """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica."""
+    def _ft_proceso_de(self, product):
+        """2.9.0: el proceso del producto en esta máquina; vacío si no hay."""
         self.ensure_one()
+        return self.env['ficha.tecnica.proceso']._ft_buscar(product, self) if product else \
+            self.env['ficha.tecnica.proceso']
+
+    def _ft_capacidad_carga(self, rendimiento, day=None, product=None):
+        """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica.
+        2.9.0: si el artículo tiene «kg por carga» en este jet, ese manda."""
+        self.ensure_one()
+        proceso = self._ft_proceso_de(product) if product else False
+        kg_articulo = proceso._ft_value('kg_carga') if proceso else False
+        if kg_articulo:
+            return kg_articulo, 'kg por carga del artículo en este jet'
         config = self._ft_config_at(day)
         if not config:
             return 0.0, 'sin configuración vigente'
@@ -175,6 +194,23 @@ class MrpWorkcenterCarga(models.Model):
         if general:
             return general, 'capacidad general (la tela no tiene rendimiento en su ficha)'
         return 0.0, 'sin capacidad capturada'
+
+    def _ft_relacion_bano(self, product=None, day=None):
+        """2.9.0: (litros por kg, de dónde sale) para teñir ``product`` en este jet: la del artículo en el jet
+        y, si no hay, la de la configuración vigente del jet («1:10» o 10). (0, motivo) si no hay ninguna."""
+        self.ensure_one()
+        proceso = self._ft_proceso_de(product) if product else False
+        articulo = proceso._ft_value('relacion_bano_articulo') if proceso else False
+        if articulo:
+            return articulo, 'relación de baño del artículo en este jet'
+        config = self._ft_config_at(day)
+        valor = config._ft_value('relacion_bano') if config else False
+        if isinstance(valor, str):
+            match = RELACION_BANO_RE.match(valor)
+            valor = float(match.group(1).replace(',', '.')) if match else 0.0
+        if valor:
+            return valor, 'relación de baño de la máquina'
+        return 0.0, 'sin relación de baño'
 
 
 class MrpWorkorderAviso(models.Model):
@@ -288,7 +324,7 @@ class MrpProductionAviso(models.Model):
                 rows = []
                 elegido = production.ft_jet_wo_id or production.ft_jet_id
                 for jet in production._ft_jets():
-                    capacidad, motivo = jet._ft_capacidad_carga(rendimiento, day)
+                    capacidad, motivo = jet._ft_capacidad_carga(rendimiento, day, production.product_id)
                     cargas = math.ceil(qty / capacidad) if capacidad and qty else 0
                     rows.append(Markup('<tr%s><td>%s</td><td class="text-end">%s</td>'
                                        '<td class="text-end">%s</td><td>%s</td></tr>') % (

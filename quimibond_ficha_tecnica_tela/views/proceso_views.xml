@@ -73,6 +73,8 @@
                 <field name="tipo_id"/>
                 <field name="product_id"/>
                 <filter string="Sin producto en Odoo" name="sin_producto" domain="[('product_id', '=', False)]"/>
+                <filter string="Sin velocidad" name="sin_velocidad"
+                        domain="[('valor_ids', 'any', [('parametro_id.code', '=', 'velocidad'), ('valor', '=', 0)])]"/>
                 <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
                 <group>
                     <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>

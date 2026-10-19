@@ -6,3 +6,5 @@ from . import ficha_tecnica_caracteristica
 from . import maquina_config
 from . import mrp_aviso_maquina  # 2.5.0: después de maquina_config (usa _ft_config_at)
 from . import proceso  # 2.8.0: después de maquina_config (usa el mixin de valores y _ft_parametros)
+from . import materia_prima  # 2.9.0: después de maquina_config (mismo motor de parámetros) y del tejido
+from . import acabado_ruta  # 2.9.0: crudo y operaciones de la ficha de acabado (después de proceso)

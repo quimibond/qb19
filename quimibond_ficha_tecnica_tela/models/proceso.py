@@ -44,7 +44,7 @@ class FichaTecnicaProceso(models.Model):
     tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True)
     valor_ids = fields.One2many('ficha.tecnica.proceso.valor', 'proceso_id', string='Parámetros',
                                 context={'active_test': False})
-    resumen = fields.Char(string='Parámetros', compute='_compute_resumen')
+    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
     metros_hora = fields.Float(string='m/hora', digits=(16, 1), compute='_compute_metros_hora',
                                help='Velocidad (m/min) × 60.')
     metros_hora_neto = fields.Float(string='m/hora con merma', digits=(16, 1), compute='_compute_metros_hora',

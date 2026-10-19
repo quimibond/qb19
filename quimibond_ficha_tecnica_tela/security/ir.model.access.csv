@@ -26,3 +26,12 @@ access_ficha_tecnica_proceso_manager,ficha.tecnica.proceso.manager,model_ficha_t
 access_ficha_tecnica_proceso_valor_user,ficha.tecnica.proceso.valor.user,model_ficha_tecnica_proceso_valor,base.group_user,1,1,1,1
 access_ficha_tecnica_proceso_valor_manager,ficha.tecnica.proceso.valor.manager,model_ficha_tecnica_proceso_valor,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_proceso_import_wizard,ficha.tecnica.proceso.import.wizard,model_ficha_tecnica_proceso_import_wizard,base.group_user,1,1,1,1
+access_ficha_tecnica_fibra_user,ficha.tecnica.fibra.user,model_ficha_tecnica_fibra,base.group_user,1,0,0,0
+access_ficha_tecnica_fibra_manager,ficha.tecnica.fibra.manager,model_ficha_tecnica_fibra,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_material_user,ficha.tecnica.material.user,model_ficha_tecnica_material,base.group_user,1,1,1,0
+access_ficha_tecnica_material_manager,ficha.tecnica.material.manager,model_ficha_tecnica_material,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_material_valor_user,ficha.tecnica.material.valor.user,model_ficha_tecnica_material_valor,base.group_user,1,1,1,1
+access_ficha_tecnica_material_valor_manager,ficha.tecnica.material.valor.manager,model_ficha_tecnica_material_valor,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_material_composicion_user,ficha.tecnica.material.composicion.user,model_ficha_tecnica_material_composicion,base.group_user,1,1,1,1
+access_ficha_tecnica_material_composicion_manager,ficha.tecnica.material.composicion.manager,model_ficha_tecnica_material_composicion,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_hilo_ligado,ficha.tecnica.hilo.ligado,model_ficha_tecnica_hilo_ligado,base.group_user,1,1,1,1
