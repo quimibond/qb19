@@ -178,9 +178,10 @@ class FichaTecnicaAcabadoImportWizard(models.TransientModel):
                             'desmarcado, se omitió.' % (row_num, articulo))
                         continue
                     existing.write(values)
+                    existing._ft_ligar_proceso_sugerido()
                     updated += 1
                 else:
-                    FichaAcabado.create(values)
+                    FichaAcabado.create(values)._ft_ligar_proceso_sugerido()
                     created += 1
 
             except Exception as exc:

@@ -517,3 +517,35 @@ Acordado con José Sacramento (implementación de acabado y tintorería):
   artículo y revisión son iguales en todas sus máquinas, así que el
   rendimiento no depende de cuál se tome.
 - Pruebas: `tests/test_rendimiento.py`.
+
+## Producción en kg hasta Inspección: acabado en proceso (2.12.0, 2026-10-19)
+
+Decisión de Dirección (2026-10-19): **toda la producción va en kg hasta
+Inspección**. Corrige la idea de 2.9.0 de un solo producto de acabado en kg: la
+tela acabada se vende en metros (476 productos J en metros y $13.9 millones de
+venta en el último año, contra 20 en kg), así que ventas, precios y CFDI no
+cambian. Cada artículo tiene dos productos, ligados en la ficha y no por la
+posición 9 del código:
+
+| Paso | Produce | Unidad |
+|---|---|---|
+| Tejido | Crudo (H) | kg |
+| Tintorería | Teñido (I) | kg |
+| Rama, termofijado, estiramiento | **Acabado en proceso** | kg |
+| Inspección | Tela acabada (J), la que se vende | m medidos en el rollo |
+
+- **`product_proceso_id`** («Producto — Acabado en proceso (kg)») en la ficha
+  de acabado, junto a la tela acabada. Se sugiere el producto con el código de
+  la tela acabada y una «I» al frente (`IWJ045Q22JNT160` para
+  `WJ045Q22JNT160`; 96 existen en producción) y se liga con «Usar el
+  sugerido»; el importador de acabado lo liga solo si la ficha no tiene uno.
+- **Aviso** en la ficha si falta, si no está en kg, si es el mismo producto que
+  la tela acabada, si otra ficha ya lo usa o si la lista de materiales de la
+  tela acabada (la de Inspección) no lo consume. Filtro «Sin acabado en proceso
+  (kg)».
+- El crudo y las operaciones se encuentran bajando por el acabado en proceso;
+  el rendimiento (`_ft_rendimiento`), los procesos por máquina y el botón de
+  ficha del producto reconocen también el acabado en proceso.
+- Pendiente de Dirección: Inspección como operación propia (hoy Acabado entrega
+  directo en metros) y quién da de alta productos y listas de materiales.
+- Pruebas: `tests/test_acabado_proceso.py`.

@@ -227,7 +227,8 @@ class FichaTecnicaAcabadoProceso(models.Model):
     def _compute_proceso_ids(self):
         Proceso = self.env['ficha.tecnica.proceso']
         for ficha in self:
-            codes = {c for c in (ficha.articulo, ficha.product_acabado_id.default_code) if c}
+            codes = {c for c in (ficha.articulo, ficha.product_acabado_id.default_code,
+                                  ficha.product_proceso_id.default_code) if c}
             ficha.proceso_ids = Proceso.search([('articulo', 'in', list(codes))]) if codes else Proceso
 
 

@@ -161,7 +161,7 @@ class ProductProductFicha(models.Model):
         rendimiento = ficha._ft_rendimiento() if ficha else 0.0
         if rendimiento:
             return rendimiento, 'ficha de tejido %s' % ficha.display_name
-        domain = [('product_acabado_id', '=', self.id)]
+        domain = ['|', ('product_acabado_id', '=', self.id), ('product_proceso_id', '=', self.id)]
         if self.default_code:
             domain = ['|', ('articulo', '=', self.default_code)] + domain
         for acabado in self.env['ficha.tecnica.acabado'].search(domain, order='id desc'):
