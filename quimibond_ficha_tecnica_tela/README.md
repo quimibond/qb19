@@ -490,3 +490,10 @@ rendimiento a tintorería (WJ044Q22HNT235). Desde 2.10.0 son un catálogo
   anteriores) y el build de `main` en Odoo.sh se cayó al cargar el catálogo
   («External ID not found»). El resto de las unidades de Inventario que usa el
   catálogo (cm, mm, m, in, kg, g, L, h) se verificó por MCP en producción.
+- **2.10.2** (2026-10-19): las fichas de tejido y de acabado no abrían en
+  producción («Can not parse python expression: ({\\'no_create\\': True})»):
+  el cambio de 2.10.0 dejó diagonales sobrantes en el `options` de los 25
+  campos de unidad. Ni el build ni las pruebas lo ven porque la expresión la
+  evalúa el navegador. `tools/check_odoo_views.py` ahora revisa que cada
+  `options`, `context`, `domain`, `invisible`, `readonly`… de las vistas sea
+  una expresión de Python válida.
