@@ -494,6 +494,13 @@
         <field name="code">J</field>
         <field name="name">Acabado</field>
     </record>
+    <!-- 2.13.0: producción en kg hasta Inspección; K es el acabado en proceso (kg) antes de Inspección. -->
+    <record id="clave_operacion_k" model="ficha.tecnica.clave.codigo">
+        <field name="kind">operacion</field>
+        <field name="sequence">35</field>
+        <field name="code">K</field>
+        <field name="name">Acabado en proceso (kg, antes de Inspección)</field>
+    </record>
     <record id="clave_color_ac" model="ficha.tecnica.clave.codigo">
         <field name="kind">color</field>
         <field name="sequence">10</field>

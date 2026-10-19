@@ -29,26 +29,31 @@ CODE_SLICES = {
     'composicion': (0, 1), 'dibujo': (1, 2), 'peso': (2, 5), 'hilo': (5, 6), 'galga': (6, 8),
     'op': (8, 9), 'color': (9, 11), 'ancho': (11, 14), 'acabado': (14, 16),
 }
-ROLE_BY_OP = {'H': 'crudo', 'I': 'tenido', 'J': 'acabado'}
-ROLE_ORDER = ('crudo', 'tenido', 'acabado')
-ROLE_FIELD = {'crudo': 'sgi_dev_product_crudo_id', 'tenido': 'sgi_dev_product_tenido_id', 'acabado': 'sgi_dev_product_id'}
-ROLE_LABEL = {'crudo': "crudo", 'tenido': "teñido", 'acabado': "acabado"}
+# 57.160.0: K = acabado en proceso (kg, sale de rama y entra a Inspección), entre el teñido y el acabado (J, m). Lleva
+# las claves del acabado (color, ancho, acabado especial) con la operación K.
+ROLE_BY_OP = {'H': 'crudo', 'I': 'tenido', 'K': 'proceso', 'J': 'acabado'}
+ROLE_ORDER = ('crudo', 'tenido', 'proceso', 'acabado')
+ROLE_FIELD = {'crudo': 'sgi_dev_product_crudo_id', 'tenido': 'sgi_dev_product_tenido_id',
+              'proceso': 'sgi_dev_product_proceso_id', 'acabado': 'sgi_dev_product_id'}
+ROLE_LABEL = {'crudo': "crudo", 'tenido': "teñido", 'proceso': "acabado en proceso", 'acabado': "acabado"}
 ALL_ROLES = frozenset(ROLE_ORDER)
 # Qué niveles cambian con cada clave del proyecto.
 KEY_LEVELS = {
     'composicion': ALL_ROLES, 'dibujo': ALL_ROLES, 'peso': ALL_ROLES, 'hilo': ALL_ROLES, 'galga': ALL_ROLES,
-    'color': frozenset({'tenido', 'acabado'}), 'ancho': frozenset({'acabado'}),
-    'ancho_crudo': frozenset({'crudo', 'tenido'}), 'acabado': frozenset({'acabado'}),
+    'color': frozenset({'tenido', 'proceso', 'acabado'}), 'ancho': frozenset({'proceso', 'acabado'}),
+    'ancho_crudo': frozenset({'crudo', 'tenido'}), 'acabado': frozenset({'proceso', 'acabado'}),
 }
 # Claves de las que depende la fórmula del nivel (los renglones que no son el insumo del nivel inferior).
 FORMULA_KEYS = {
     'crudo': frozenset({'composicion', 'dibujo', 'peso', 'hilo', 'galga', 'ancho_crudo'}),
     'tenido': frozenset({'color'}),
+    'proceso': frozenset({'acabado'}),
     'acabado': frozenset({'acabado'}),
 }
 # Claves de las que depende la cantidad del insumo del nivel inferior.
 INPUT_QTY_KEYS = {
     'crudo': frozenset(), 'tenido': frozenset({'peso', 'ancho_crudo'}),
+    'proceso': frozenset({'peso', 'ancho', 'ancho_crudo'}),
     'acabado': frozenset({'peso', 'ancho', 'ancho_crudo'}),
 }
 KEY_LABEL = {
@@ -59,7 +64,7 @@ KEY_LABEL = {
 
 def parse_code(code):
     """Partes del código o None si no tiene la forma de la regla (al menos 14 posiciones y
-    operación H, I o J)."""
+    operación H, I, K o J)."""
     code = (code or '').strip().upper()
     if len(code) < 14 or code[8] not in ROLE_BY_OP:
         return None
@@ -247,7 +252,9 @@ class ProjectProjectDevBase(models.Model):
             pending_here = []
             if bom and created:
                 new_bom = bom.copy({'product_tmpl_id': product.product_tmpl_id.id, 'product_id': False})
-                lower_role = ROLE_ORDER[ROLE_ORDER.index(role) - 1] if ROLE_ORDER.index(role) else None
+                # 57.160.0: el papel real del insumo (un base sin acabado en proceso salta del teñido al acabado).
+                lower_parts = parse_code(level['input_line'].product_id.default_code) if level['input_line'] else None
+                lower_role = lower_parts['role'] if lower_parts else None
                 for line in new_bom.bom_line_ids:
                     is_input = level['input_line'] and line.product_id == level['input_line'].product_id
                     if is_input:

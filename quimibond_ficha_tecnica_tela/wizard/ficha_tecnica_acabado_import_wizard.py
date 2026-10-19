@@ -181,7 +181,7 @@ class FichaTecnicaAcabadoImportWizard(models.TransientModel):
                     existing._ft_ligar_proceso_sugerido()
                     updated += 1
                 else:
-                    FichaAcabado.create(values)._ft_ligar_proceso_sugerido()
+                    FichaAcabado.create(values)
                     created += 1
 
             except Exception as exc:

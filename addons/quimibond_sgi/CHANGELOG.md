@@ -13,6 +13,38 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.160.0 — 2026-10-19
+
+Acabado en proceso (K) en C1. Dirección General (2026-10-19): toda la producción
+va en kg hasta Inspección; la orden de acabado se cierra con los rollos pesados
+después de rama y produce el acabado en proceso en kg; Inspección, una orden
+por orden de acabado, lo pasa a metros y entrega el acabado (J) que se vende.
+Los artículos se dan de alta desde C1.
+
+### Agregado
+- Papel **Acabado en proceso (K)** en la ruta del desarrollo (operación K en la
+  posición 9, entre el teñido y el acabado): campos «Código acabado en proceso»
+  y «Artículo acabado en proceso» en el proyecto.
+- «Generar artículos» (por claves o desde el artículo base) crea o liga el
+  acabado en proceso: código del acabado con K, kg, categoría «Producto en
+  Proceso / Acabado», sin venta, con el seguimiento del acabado. Sus listas de
+  materiales se capturan a mano; el chatter lo dice.
+- Desde el artículo base, un nivel K de la cadena se copia como los demás
+  (lista de materiales con el insumo nuevo del nivel inferior).
+
+### Cambiado
+- La copia de la lista de materiales desde el base toma el papel real del
+  insumo (un base sin K salta del teñido al acabado).
+- «Validar corrida» (C1.10): la orden del acabado en proceso es de la etapa de
+  acabado y se valida contra la ficha de acabado que lo tiene ligado; la ficha
+  nueva desde el proyecto nace con el acabado en proceso puesto. Requiere
+  `quimibond_ficha_tecnica_tela` 2.13.0 (`product_proceso_id`).
+- El acabado en proceso sigue el estado del desarrollo (y se archiva con él),
+  pero nunca se vende; la ruta del proyecto muestra sus operaciones entre las
+  del teñido y las del acabado.
+- Pruebas: `tests/test_dev_proceso.py`; `test_dev_product` busca el mensaje de
+  la generación entre los del chatter (el del acabado en proceso llega después).
+
 ## 19.0.57.159.0 — 2026-10-19
 
 Escalamientos en pausa mientras la gente todavía no usa el SGI (Jose,

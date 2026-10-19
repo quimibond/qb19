@@ -15,11 +15,13 @@ class TestAcabadoProceso(TransactionCase):
         Product = cls.env['product.product']
         cls.crudo = Product.create({'name': 'Crudo inspección', 'default_code': 'ZZ045Q22HNT160',
                                     'uom_id': cls.kg.id})
-        # Como en producción: WJ045Q22JNT160 en metros y su IWJ045Q22JNT160 en kg.
+        # Tela acabada en metros (J en la posición 9) y su acabado en proceso en kg (K, 2.13.0).
         cls.acabado = Product.create({'name': 'Acabado inspección', 'default_code': 'ZZ045Q22JNT160',
                                       'uom_id': cls.m.id})
-        cls.proceso = Product.create({'name': 'Acabado en proceso inspección', 'default_code': 'IZZ045Q22JNT160',
+        cls.proceso = Product.create({'name': 'Acabado en proceso inspección', 'default_code': 'ZZ045Q22KNT160',
                                       'uom_id': cls.kg.id})
+        # Los «I…» se venden en kg: no son acabado en proceso.
+        Product.create({'name': 'Venta en kg', 'default_code': 'IZZ045Q22JNT160', 'uom_id': cls.kg.id})
         cls.tejido = cls.env['ficha.tecnica.tejido'].create({
             'articulo': 'ZZ045Q22HNT160', 'product_proceso_id': cls.crudo.id, 'peso_acondicionado': 45,
             'ancho_acondicionado': 160})
@@ -34,8 +36,10 @@ class TestAcabadoProceso(TransactionCase):
 
     def test_01_sugerido_por_codigo_y_aviso(self):
         ficha = self._ficha()
+        self.assertEqual(ficha.product_proceso_id, self.proceso, "Al crearse la ficha liga el K que existe")
+        ficha.product_proceso_id = False
         self.assertEqual(ficha.product_proceso_sugerido_id, self.proceso)
-        self.assertIn('se sugiere IZZ045Q22JNT160', ficha.proceso_aviso)
+        self.assertIn('se sugiere ZZ045Q22KNT160', ficha.proceso_aviso)
         self.assertIn(ficha, self.Ficha.search([('product_proceso_id', '=', False)]))
         ficha.action_ft_usar_proceso_sugerido()
         self.assertEqual(ficha.product_proceso_id, self.proceso)
@@ -47,7 +51,7 @@ class TestAcabadoProceso(TransactionCase):
             'product_tmpl_id': self.acabado.product_tmpl_id.id, 'product_qty': 1000, 'product_uom_id': self.m.id,
             'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 140})]})
         ficha.invalidate_recordset()
-        self.assertIn('no consume IZZ045Q22JNT160', ficha.proceso_aviso)
+        self.assertIn('no consume ZZ045Q22KNT160', ficha.proceso_aviso)
         bom.bom_line_ids.product_id = self.proceso
         ficha.invalidate_recordset()
         self.assertFalse(ficha.proceso_aviso)
@@ -63,3 +67,19 @@ class TestAcabadoProceso(TransactionCase):
         ficha.product_proceso_id = en_metros
         self.assertIn('hasta Inspección todo va en kg', ficha.proceso_aviso)
         self.assertFalse(ficha._ft_ligar_proceso_sugerido(), "Con un producto ya puesto no se cambia solo")
+
+    def test_04_faltantes(self):
+        Product = self.env['product.product']
+        nueva = Product.create({'name': 'Tela sin proceso', 'default_code': 'ZZ046Q22JNG160', 'uom_id': self.m.id,
+                                'tracking': 'lot', 'sale_ok': True})
+        ficha = self._ficha(articulo='ZZ046Q22JNG160', product_acabado_id=nueva.id)
+        self.assertIn('ZZ046Q22KNG160 no existe todavía', ficha.proceso_aviso)
+        Faltante = self.env['ficha.tecnica.proceso.faltante']
+        rows = Faltante.search(Faltante._ft_generar()['domain'])
+        self.assertIn('ZZ046Q22KNG160', rows.mapped('codigo'))
+        self.assertNotIn('ZZ045Q22KNT160', rows.mapped('codigo'), "El que ya existe no falta")
+        rows = Faltante.search(rows.filtered(lambda r: r.acabado_id == nueva).action_crear()['domain'])
+        self.assertNotIn('ZZ046Q22KNG160', rows.mapped('codigo'))
+        proceso = Product.search([('default_code', '=', 'ZZ046Q22KNG160')])
+        self.assertEqual((proceso.uom_id, proceso.tracking, proceso.sale_ok), (self.kg, 'lot', False))
+        self.assertEqual(ficha.product_proceso_id, proceso, "Se liga a su ficha de acabado")

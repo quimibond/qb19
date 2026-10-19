@@ -159,7 +159,8 @@ class TestDevProduct(TransactionCase):
         self.assertFalse(bom_a.bom_line_ids.filtered(lambda l: l.product_id == engomado).sgi_dev_pending)
         self.assertEqual(dev.sgi_dev_bom_pending_count, 2)
         self.assertEqual(dev.action_sgi_dev_bom_pending()['domain'], [('id', 'in', bom_t.ids)])
-        last = dev.message_ids[:1].body
+        # 57.160.0: después llega el mensaje del acabado en proceso; el de la generación es el anterior.
+        last = dev.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body
         self.assertIn('WJ044Q22ING185', last)
         self.assertIn('por capturar', last)
         # Volver a generar no duplica ni toca lo ligado.
@@ -191,7 +192,7 @@ class TestDevProduct(TransactionCase):
         bom_a = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_id)[dev.sgi_dev_product_id]
         self.assertTrue(bom_a.bom_line_ids.filtered(lambda l: l.product_id == dev.sgi_dev_product_tenido_id).sgi_dev_pending,
                         "La cantidad del insumo depende del peso: por capturar")
-        self.assertIn('estimado', dev.message_ids[:1].body)
+        self.assertIn('estimado', dev.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body)
 
     def test_07_linea_no_genera(self):
         crudo, tenido, acabado, engomado, formula = self._base_chain()

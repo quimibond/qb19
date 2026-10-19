@@ -26,7 +26,7 @@ class TestCaracteristicas(TransactionCase):
         Clave = self.env['ficha.tecnica.clave.codigo']
         counts = {k: Clave.search_count([('kind', '=', k)]) for k in
                   ('composicion', 'dibujo', 'hilo', 'galga', 'operacion', 'color', 'acabado')}
-        self.assertEqual(counts, {'composicion': 11, 'dibujo': 15, 'hilo': 3, 'galga': 9, 'operacion': 3,
+        self.assertEqual(counts, {'composicion': 11, 'dibujo': 15, 'hilo': 3, 'galga': 9, 'operacion': 4,
                                   'color': 20, 'acabado': 12})
         self.assertEqual(Clave.gauge_code(18), '21')
         self.assertEqual(Clave.gauge_from_code('22'), 18)
