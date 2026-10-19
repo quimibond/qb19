@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from odoo.tests import tagged
 
@@ -273,3 +273,20 @@ class TestHoras(CosteoCase):
         fe = self._fila(entretela, self.c_aca)
         self.assertEqual(fe.fuente, 'ficha')
         self.assertAlmostEqual(fe.horas_propias, 1 / 1320.0, 6)
+
+    def test_ordenes_fuera_de_rango(self):
+        """1.6.0: las órdenes que el costeo descarta por la banda de velocidad se ven para corregirlas."""
+        fin = datetime.now() - timedelta(days=2)
+        bien = self._mo_tejido(self.crudo, 100, 10, fecha=fin)      # 10 kg/h: dentro de [2, 25]
+        corto = self._mo_tejido(self.crudo, 100, 1, fecha=fin)      # 100 kg/h
+        largo = self._mo_tejido(self.crudo, 100, 100, fecha=fin)    # 1 kg/h
+        X = self.env['qb.ot.excepcion']
+        self.assertFalse(X.search([('production_id', '=', bien.id)]))
+        xc = X.search([('production_id', '=', corto.id)])
+        self.assertEqual(xc.tipo, 'timer_corto')
+        self.assertAlmostEqual(xc.horas_banda, 100 / 25.0, 4)
+        self.assertAlmostEqual(xc.horas_desviadas, 1 - 4, 4)
+        xl = X.search([('production_id', '=', largo.id)])
+        self.assertEqual(xl.tipo, 'timer_largo')
+        self.assertEqual(xl.centro_id, self.c_tej)
+        self.assertAlmostEqual(xl.horas_desviadas, 100 - 50, 4)
