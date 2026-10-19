@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.10.0 (Dirección General 2026-10-19): catálogo de unidades técnicas de las fichas. Ligadas a la
+     unidad de Inventario cuando existe (para convertir); las técnicas (rpm, Ne, %…) no se crean en
+     Inventario porque aparecerían al elegir la unidad de un producto. Los alias son los textos que ya
+     hay en producción (gr, g/m2, PTO, /plg…). noupdate: se ajustan desde Configuración → Unidades. -->
+<odoo noupdate="1">
+    <record id="ft_unidad_cm" model="ficha.tecnica.unidad">
+        <field name="sequence">10</field>
+        <field name="name">cm</field>
+        <field name="descripcion">Centímetro</field>
+        <field name="uom_id" ref="uom.product_uom_cm"/>
+        <field name="alias">cms</field>
+    </record>
+    <record id="ft_unidad_mm" model="ficha.tecnica.unidad">
+        <field name="sequence">20</field>
+        <field name="name">mm</field>
+        <field name="descripcion">Milímetro</field>
+        <field name="uom_id" ref="uom.product_uom_millimeter"/>
+    </record>
+    <record id="ft_unidad_m" model="ficha.tecnica.unidad">
+        <field name="sequence">30</field>
+        <field name="name">m</field>
+        <field name="descripcion">Metro</field>
+        <field name="uom_id" ref="uom.product_uom_meter"/>
+        <field name="alias">mts, mt</field>
+    </record>
+    <record id="ft_unidad_in" model="ficha.tecnica.unidad">
+        <field name="sequence">40</field>
+        <field name="name">in</field>
+        <field name="descripcion">Pulgada</field>
+        <field name="uom_id" ref="uom.product_uom_inch"/>
+        <field name="alias">pulg, plg, pulgada</field>
+    </record>
+    <record id="ft_unidad_kg" model="ficha.tecnica.unidad">
+        <field name="sequence">50</field>
+        <field name="name">kg</field>
+        <field name="descripcion">Kilogramo</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="alias">kgs</field>
+    </record>
+    <record id="ft_unidad_g" model="ficha.tecnica.unidad">
+        <field name="sequence">60</field>
+        <field name="name">g</field>
+        <field name="descripcion">Gramo</field>
+        <field name="uom_id" ref="uom.product_uom_gram"/>
+        <field name="alias">gr, grs, gramos</field>
+    </record>
+    <record id="ft_unidad_l" model="ficha.tecnica.unidad">
+        <field name="sequence">70</field>
+        <field name="name">L</field>
+        <field name="descripcion">Litro</field>
+        <field name="uom_id" ref="uom.product_uom_litre"/>
+        <field name="alias">lt, lts, litros</field>
+    </record>
+    <record id="ft_unidad_h" model="ficha.tecnica.unidad">
+        <field name="sequence">80</field>
+        <field name="name">h</field>
+        <field name="descripcion">Hora</field>
+        <field name="uom_id" ref="uom.product_uom_hour"/>
+        <field name="alias">hr, hrs, horas</field>
+    </record>
+    <record id="ft_unidad_min" model="ficha.tecnica.unidad">
+        <field name="sequence">90</field>
+        <field name="name">min</field>
+        <field name="descripcion">Minuto</field>
+        <field name="uom_id" ref="uom.product_uom_minute"/>
+        <field name="alias">mins, minutos</field>
+    </record>
+    <record id="ft_unidad_g_m2" model="ficha.tecnica.unidad">
+        <field name="sequence">100</field>
+        <field name="name">g/m²</field>
+        <field name="descripcion">Gramos por metro cuadrado (masa de la tela)</field>
+        <field name="alias">g/m2, gr/m2, grs/m2, gsm</field>
+    </record>
+    <record id="ft_unidad_pct" model="ficha.tecnica.unidad">
+        <field name="sequence">110</field>
+        <field name="name">%</field>
+        <field name="descripcion">Porcentaje</field>
+        <field name="alias">pct, porciento</field>
+    </record>
+    <record id="ft_unidad_pto" model="ficha.tecnica.unidad">
+        <field name="sequence">120</field>
+        <field name="name">PTO</field>
+        <field name="descripcion">Punto (escala del ajuste en la máquina)</field>
+        <field name="alias">pto, ptos, punto, puntos</field>
+    </record>
+    <record id="ft_unidad_cn" model="ficha.tecnica.unidad">
+        <field name="sequence">130</field>
+        <field name="name">cN</field>
+        <field name="descripcion">Centinewton (tensión del hilo)</field>
+    </record>
+    <record id="ft_unidad_n_5cm" model="ficha.tecnica.unidad">
+        <field name="sequence">140</field>
+        <field name="name">N/5 cm</field>
+        <field name="descripcion">Newtons en tira de 5 cm (resistencia de la tela)</field>
+        <field name="alias">N/5cm</field>
+    </record>
+    <record id="ft_unidad_por_10cm" model="ficha.tecnica.unidad">
+        <field name="sequence">150</field>
+        <field name="name">/10 cm</field>
+        <field name="descripcion">Por cada 10 cm</field>
+        <field name="alias">por 10 cm</field>
+    </record>
+    <record id="ft_unidad_por_in" model="ficha.tecnica.unidad">
+        <field name="sequence">160</field>
+        <field name="name">/in</field>
+        <field name="descripcion">Por pulgada (columnas, mallas)</field>
+        <field name="alias">/plg, /pulg, por pulgada</field>
+    </record>
+    <record id="ft_unidad_grado" model="ficha.tecnica.unidad">
+        <field name="sequence">170</field>
+        <field name="name">°</field>
+        <field name="descripcion">Grado (ángulo)</field>
+        <field name="alias">grado, grados</field>
+    </record>
+    <record id="ft_unidad_m_kg" model="ficha.tecnica.unidad">
+        <field name="sequence">180</field>
+        <field name="name">m/kg</field>
+        <field name="descripcion">Metros por kilogramo (rendimiento)</field>
+        <field name="alias">mts/kg</field>
+    </record>
+    <record id="ft_unidad_dtex" model="ficha.tecnica.unidad">
+        <field name="sequence">190</field>
+        <field name="name">dtex</field>
+        <field name="descripcion">Decitex: gramos por 10,000 m de hilo</field>
+        <field name="alias">decitex</field>
+    </record>
+    <record id="ft_unidad_den" model="ficha.tecnica.unidad">
+        <field name="sequence">200</field>
+        <field name="name">den</field>
+        <field name="descripcion">Denier: gramos por 9,000 m de hilo</field>
+        <field name="alias">denier</field>
+    </record>
+    <record id="ft_unidad_ne" model="ficha.tecnica.unidad">
+        <field name="sequence">210</field>
+        <field name="name">Ne</field>
+        <field name="descripcion">Número inglés: madejas de 840 yd por libra</field>
+        <field name="alias">nec</field>
+    </record>
+    <record id="ft_unidad_cn_dtex" model="ficha.tecnica.unidad">
+        <field name="sequence">220</field>
+        <field name="name">cN/dtex</field>
+        <field name="descripcion">Tenacidad por título en decitex</field>
+    </record>
+    <record id="ft_unidad_cn_tex" model="ficha.tecnica.unidad">
+        <field name="sequence">230</field>
+        <field name="name">cN/tex</field>
+        <field name="descripcion">Tenacidad por título en tex</field>
+    </record>
+    <record id="ft_unidad_vueltas_m" model="ficha.tecnica.unidad">
+        <field name="sequence">240</field>
+        <field name="name">vueltas/m</field>
+        <field name="descripcion">Vueltas de torsión por metro</field>
+        <field name="alias">tpm, v/m</field>
+    </record>
+    <record id="ft_unidad_nudos_m" model="ficha.tecnica.unidad">
+        <field name="sequence">250</field>
+        <field name="name">nudos/m</field>
+        <field name="descripcion">Puntos de entrelazado por metro</field>
+    </record>
+    <record id="ft_unidad_por_km" model="ficha.tecnica.unidad">
+        <field name="sequence">260</field>
+        <field name="name">/km</field>
+        <field name="descripcion">Por kilómetro (imperfecciones)</field>
+    </record>
+    <record id="ft_unidad_alfa_e" model="ficha.tecnica.unidad">
+        <field name="sequence">270</field>
+        <field name="name">αe</field>
+        <field name="descripcion">Coeficiente de torsión inglés</field>
+        <field name="alias">ae, alfa</field>
+    </record>
+    <record id="ft_unidad_rpm" model="ficha.tecnica.unidad">
+        <field name="sequence">280</field>
+        <field name="name">rpm</field>
+        <field name="descripcion">Revoluciones por minuto</field>
+        <field name="alias">rev/min</field>
+    </record>
+    <record id="ft_unidad_m_min" model="ficha.tecnica.unidad">
+        <field name="sequence">290</field>
+        <field name="name">m/min</field>
+        <field name="descripcion">Metros por minuto</field>
+        <field name="alias">mpm, mts/min</field>
+    </record>
+    <record id="ft_unidad_l_kg" model="ficha.tecnica.unidad">
+        <field name="sequence">300</field>
+        <field name="name">L/kg</field>
+        <field name="descripcion">Litros por kilogramo (relación de baño)</field>
+        <field name="alias">lt/kg, l/kg</field>
+    </record>
+</odoo>

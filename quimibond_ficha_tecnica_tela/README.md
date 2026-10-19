@@ -432,9 +432,9 @@ lo usan, en qué máquinas y con qué parámetros.
 - Sin migración: todo son columnas y modelos nuevos; los datos de origen no
   se tocan. Pruebas: `tests/test_materia_prima.py`,
   `tests/test_hilos_ligados.py`, `tests/test_acabado_ruta.py`.
-- **Pendiente**: unidades como catálogo de Odoo (`uom.uom`) en vez de texto
-  (2.10.0); parámetros de abridora y devanadora (los da la planta); marca y
-  modelo de la máquina desde el equipo de mantenimiento.
+- **Pendiente**: parámetros de abridora y devanadora (los da la planta);
+  marca y modelo de la máquina desde el equipo de mantenimiento. Unidades:
+  2.10.0.
 - **Para `qb_costeo`**: `centros_esperados` decide la ruta por la letra de
   etapa del código (H, I, J); con el producto único (J con el crudo H) deja
   fuera la tintorería: debe leer las operaciones de la ruta, como ya hace
@@ -446,3 +446,42 @@ lo usan, en qué máquinas y con qué parámetros.
   acabado a crudo → acabado; el checklist puede usar el aviso de hilos
   (`ficha.tecnica.tejido._ft_bom_avisos()`). Lo demás no cambia (las
   columnas fijas se conservan).
+
+## Unidades del catálogo, no texto (2.10.0, 2026-10-19)
+
+Las unidades de las fichas eran texto: «2.18 cm» que eran metros dejaba sin
+rendimiento a tintorería (WJ044Q22HNT235). Desde 2.10.0 son un catálogo
+(`ficha.tecnica.unidad`, Fichas técnicas → Configuración → Unidades).
+
+- **Por qué no en Inventario**: las unidades de Inventario (`uom.uom`) son las
+  que se ofrecen al elegir la unidad de un producto; crear ahí rpm, Ne, cN/dtex
+  o PTO las pondría al alcance de cualquier producto. El catálogo propio liga
+  cada unidad a su **unidad de Inventario cuando existe** (cm, mm, m, in, kg,
+  g, L, h, min) para convertir; las técnicas (g/m², %, PTO, cN, N/5 cm,
+  /10 cm, /in, °, m/kg, dtex, den, Ne, cN/dtex, cN/tex, vueltas/m, nudos/m,
+  /km, αe, rpm, m/min, L/kg) viven solo aquí.
+- **Dónde**: las 18 unidades de tolerancia de la ficha de tejido, las 7 de la
+  de acabado, la unidad de los parámetros (máquina, artículo y materia prima)
+  y la del catálogo de características. Cada una es un campo `…_id` junto a su
+  texto anterior.
+- **El texto se conserva sincronizado** (lo leen el SGI, Consolti y los
+  importadores): elegir la unidad escribe su símbolo; un texto que llega del
+  Excel o de otro módulo se liga solo por símbolo o por «También se escribe»
+  (los alias que ya hay en producción: gr, g/m2, PTO, /plg…). En columnas y
+  mallas «in» es **por pulgada** (/in). Un texto que no está en el catálogo se
+  queda como está y la ficha lo avisa («Aviso de unidades»); se resuelve dando
+  de alta la unidad o el alias.
+- Los renglones de característica (`ficha.tecnica.spec` y los del SGI) siguen
+  copiando la unidad de su característica del catálogo como texto: no se
+  agregó campo al mixin compartido con el SGI, porque sus tablas solo se
+  actualizan al actualizar el SGI.
+- **Rendimiento**: el ancho se convierte a metros con la unidad del catálogo;
+  sin ella, con el texto, como antes. Corregir la unidad de WJ044Q22HNT235 a
+  «m» le da su rendimiento a tintorería.
+- **Migración** (`19.0.2.10.0/post-migrate.py`): liga a su unidad los textos
+  que ya existen escribiendo solo la columna nueva; **el texto de origen no se
+  toca** («gr» sigue siendo «gr»). Los textos sin unidad se reportan en el log
+  (nivel info, para no pintar el build). En producción todos los textos
+  vistos (cm, g, gr, cN, PTO, kg, g/m2, in, m, mm, % y los del catálogo de
+  características) tienen unidad.
+- Pruebas: `tests/test_unidades.py`.

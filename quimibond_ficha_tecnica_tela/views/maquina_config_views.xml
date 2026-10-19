@@ -49,7 +49,8 @@
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
                                     <field name="code"/>
-                                    <field name="unit"/>
+                                    <field name="unit_id" options="{'no_create': True}"/>
+                                    <field name="unit" optional="hide" readonly="1"/>
                                     <field name="kind"/>
                                     <field name="opciones" optional="show" invisible="kind != 'text'"/>
                                     <field name="ambito" column_invisible="parent.clase == 'material'"/>

@@ -51,6 +51,9 @@
                     <div class="alert alert-warning mb-2" role="alert" invisible="not bom_aviso">
                         <field name="bom_aviso" readonly="1" nolabel="1"/>
                     </div>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not unidades_aviso">
+                        <field name="unidades_aviso" readonly="1" nolabel="1"/>
+                    </div>
                     <div class="alert alert-info mb-2" role="status" invisible="not maquina_config_aviso">
                         <field name="maquina_config_aviso" readonly="1" nolabel="1"/>
                     </div>
@@ -156,21 +159,21 @@
                                         <td><field name="longitud_malla_polea1" nolabel="1"/></td>
                                         <td><field name="longitud_malla_polea2" nolabel="1"/></td>
                                         <td>+/- <field name="longitud_malla_tol" nolabel="1"/></td>
-                                        <td><field name="longitud_malla_tol_unit" nolabel="1"/></td>
+                                        <td><field name="longitud_malla_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Consumo - cm/vta</td>
                                         <td><field name="consumo_cm_vta_polea1" nolabel="1"/></td>
                                         <td><field name="consumo_cm_vta_polea2" nolabel="1"/></td>
                                         <td>+/- <field name="consumo_cm_vta_tol" nolabel="1"/></td>
-                                        <td><field name="consumo_cm_vta_tol_unit" nolabel="1"/></td>
+                                        <td><field name="consumo_cm_vta_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Polea de alimentación</td>
                                         <td><field name="polea_alimentacion_polea1" nolabel="1"/></td>
                                         <td><field name="polea_alimentacion_polea2" nolabel="1"/></td>
                                         <td>+/- <field name="polea_alimentacion_tol" nolabel="1"/></td>
-                                        <td><field name="polea_alimentacion_tol_unit" nolabel="1"/></td>
+                                        <td><field name="polea_alimentacion_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -189,49 +192,49 @@
                                         <td>Tensión</td>
                                         <td><field name="tension" nolabel="1"/></td>
                                         <td>+/- <field name="tension_tol" nolabel="1"/></td>
-                                        <td><field name="tension_tol_unit" nolabel="1"/></td>
+                                        <td><field name="tension_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Punto cilindro</td>
                                         <td><field name="punto_cilindro" nolabel="1"/></td>
                                         <td>+/- <field name="punto_cilindro_tol" nolabel="1"/></td>
-                                        <td><field name="punto_cilindro_tol_unit" nolabel="1"/></td>
+                                        <td><field name="punto_cilindro_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Punto plato</td>
                                         <td><field name="punto_plato" nolabel="1"/></td>
                                         <td>+/- <field name="punto_plato_tol" nolabel="1"/></td>
-                                        <td><field name="punto_plato_tol_unit" nolabel="1"/></td>
+                                        <td><field name="punto_plato_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Altura plato</td>
                                         <td><field name="altura_plato" nolabel="1"/></td>
                                         <td>+/- <field name="altura_plato_tol" nolabel="1"/></td>
-                                        <td><field name="altura_plato_tol_unit" nolabel="1"/></td>
+                                        <td><field name="altura_plato_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Ancho de bastidor</td>
                                         <td><field name="ancho_bastidor" nolabel="1"/></td>
                                         <td>+/- <field name="ancho_bastidor_tol" nolabel="1"/></td>
-                                        <td><field name="ancho_bastidor_tol_unit" nolabel="1"/></td>
+                                        <td><field name="ancho_bastidor_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Estiraje</td>
                                         <td><field name="estiraje" nolabel="1"/></td>
                                         <td>+/- <field name="estiraje_tol" nolabel="1"/></td>
-                                        <td><field name="estiraje_tol_unit" nolabel="1"/></td>
+                                        <td><field name="estiraje_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Ancho de rollo</td>
                                         <td><field name="ancho_rollo" nolabel="1"/></td>
                                         <td>+/- <field name="ancho_rollo_tol" nolabel="1"/></td>
-                                        <td><field name="ancho_rollo_tol_unit" nolabel="1"/></td>
+                                        <td><field name="ancho_rollo_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Peso promedio de rollo</td>
                                         <td><field name="peso_promedio_rollo" nolabel="1"/></td>
                                         <td>+/- <field name="peso_promedio_rollo_tol" nolabel="1"/></td>
-                                        <td><field name="peso_promedio_rollo_tol_unit" nolabel="1"/></td>
+                                        <td><field name="peso_promedio_rollo_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -253,43 +256,43 @@
                                         <td><field name="peso_acondicionado" nolabel="1"/></td>
                                         <td>+ <field name="peso_acondicionado_tol" nolabel="1" class="oe_inline"/>
                                             / − <field name="peso_acondicionado_tol_minus" nolabel="1" class="oe_inline"/></td>
-                                        <td><field name="peso_acondicionado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="peso_acondicionado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Ancho</td>
                                         <td><field name="ancho_acondicionado" nolabel="1"/></td>
                                         <td>+/- <field name="ancho_acondicionado_tol" nolabel="1"/></td>
-                                        <td><field name="ancho_acondicionado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="ancho_acondicionado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Espesor</td>
                                         <td><field name="espesor_acondicionado" nolabel="1"/></td>
                                         <td>+/- <field name="espesor_acondicionado_tol" nolabel="1"/></td>
-                                        <td><field name="espesor_acondicionado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="espesor_acondicionado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Columnas</td>
                                         <td><field name="columnas" nolabel="1"/></td>
                                         <td>+/- <field name="columnas_tol" nolabel="1"/></td>
-                                        <td><field name="columnas_tol_unit" nolabel="1"/></td>
+                                        <td><field name="columnas_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Mallas</td>
                                         <td><field name="mallas" nolabel="1"/></td>
                                         <td>+/- <field name="mallas_tol" nolabel="1"/></td>
-                                        <td><field name="mallas_tol_unit" nolabel="1"/></td>
+                                        <td><field name="mallas_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Elongación bajo carga largo</td>
                                         <td><field name="elongacion_carga_largo" nolabel="1"/></td>
                                         <td>+/- <field name="elongacion_carga_largo_tol" nolabel="1"/></td>
-                                        <td><field name="elongacion_carga_largo_tol_unit" nolabel="1"/></td>
+                                        <td><field name="elongacion_carga_largo_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Elongación bajo carga ancho</td>
                                         <td><field name="elongacion_carga_ancho" nolabel="1"/></td>
                                         <td>+/- <field name="elongacion_carga_ancho_tol" nolabel="1"/></td>
-                                        <td><field name="elongacion_carga_ancho_tol_unit" nolabel="1"/></td>
+                                        <td><field name="elongacion_carga_ancho_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                 </tbody>
                             </table>

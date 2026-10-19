@@ -35,3 +35,5 @@ access_ficha_tecnica_material_valor_manager,ficha.tecnica.material.valor.manager
 access_ficha_tecnica_material_composicion_user,ficha.tecnica.material.composicion.user,model_ficha_tecnica_material_composicion,base.group_user,1,1,1,1
 access_ficha_tecnica_material_composicion_manager,ficha.tecnica.material.composicion.manager,model_ficha_tecnica_material_composicion,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_hilo_ligado,ficha.tecnica.hilo.ligado,model_ficha_tecnica_hilo_ligado,base.group_user,1,1,1,1
+access_ficha_tecnica_unidad_user,ficha.tecnica.unidad.user,model_ficha_tecnica_unidad,base.group_user,1,0,0,0
+access_ficha_tecnica_unidad_manager,ficha.tecnica.unidad.manager,model_ficha_tecnica_unidad,mrp.group_mrp_manager,1,1,1,1

@@ -29,6 +29,9 @@
                         <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
                                 string="Lista de materiales" invisible="not bom_id"/>
                     </div>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not unidades_aviso">
+                        <field name="unidades_aviso" readonly="1" nolabel="1"/>
+                    </div>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not crudo_aviso">
                         <field name="crudo_aviso" readonly="1" nolabel="1"/>
                     </div>
@@ -69,43 +72,43 @@
                                         <td><field name="peso_acabado" nolabel="1"/></td>
                                         <td>+ <field name="peso_acabado_tol" nolabel="1" class="oe_inline"/>
                                             / − <field name="peso_acabado_tol_minus" nolabel="1" class="oe_inline"/></td>
-                                        <td><field name="peso_acabado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="peso_acabado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Ancho</td>
                                         <td><field name="ancho_acabado" nolabel="1"/></td>
                                         <td>+/- <field name="ancho_acabado_tol" nolabel="1"/></td>
-                                        <td><field name="ancho_acabado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="ancho_acabado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Encogimiento a lo Largo</td>
                                         <td><field name="encogimiento_largo" nolabel="1"/></td>
                                         <td>+/- <field name="encogimiento_largo_tol" nolabel="1"/></td>
-                                        <td><field name="encogimiento_largo_tol_unit" nolabel="1"/></td>
+                                        <td><field name="encogimiento_largo_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Encogimiento a lo Ancho</td>
                                         <td><field name="encogimiento_ancho" nolabel="1"/></td>
                                         <td>+/- <field name="encogimiento_ancho_tol" nolabel="1"/></td>
-                                        <td><field name="encogimiento_ancho_tol_unit" nolabel="1"/></td>
+                                        <td><field name="encogimiento_ancho_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Espesor</td>
                                         <td><field name="espesor_acabado" nolabel="1"/></td>
                                         <td>+/- <field name="espesor_acabado_tol" nolabel="1"/></td>
-                                        <td><field name="espesor_acabado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="espesor_acabado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Elongación Largo</td>
                                         <td><field name="elongacion_largo_acabado" nolabel="1"/></td>
                                         <td>+/- <field name="elongacion_largo_acabado_tol" nolabel="1"/></td>
-                                        <td><field name="elongacion_largo_acabado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="elongacion_largo_acabado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                     <tr>
                                         <td>Elongación Ancho</td>
                                         <td><field name="elongacion_ancho_acabado" nolabel="1"/></td>
                                         <td>+/- <field name="elongacion_ancho_acabado_tol" nolabel="1"/></td>
-                                        <td><field name="elongacion_ancho_acabado_tol_unit" nolabel="1"/></td>
+                                        <td><field name="elongacion_ancho_acabado_tol_unit_id" nolabel="1" options="{\'no_create\': True}"/></td>
                                     </tr>
                                 </tbody>
                             </table>

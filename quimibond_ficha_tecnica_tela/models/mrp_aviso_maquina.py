@@ -78,7 +78,11 @@ class FichaTecnicaTejidoUso(models.Model):
         """Rendimiento de la tela (m/kg) con el peso y el ancho acondicionados; 0 si falta alguno o el ancho
         no es creíble (fuera de 0.3 a 4 m, p. ej. 1.92 capturado en cm)."""
         self.ensure_one()
-        factor = ANCHO_A_METROS.get((self.ancho_acondicionado_tol_unit or 'cm').strip().lower())
+        # 2.10.0: la unidad del catálogo convierte con su unidad de Inventario; si no, el texto.
+        unidad = self.ancho_acondicionado_tol_unit_id
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        factor = unidad._ft_factor_a(metro) if unidad and metro else 0.0
+        factor = factor or ANCHO_A_METROS.get((self.ancho_acondicionado_tol_unit or 'cm').strip().lower())
         if not (self.peso_acondicionado and self.ancho_acondicionado and factor):
             return 0.0
         ancho_m = self.ancho_acondicionado * factor

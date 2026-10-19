@@ -5,7 +5,7 @@
          Máquinas (las máquinas con ficha y sus configuraciones por fecha), Importar y Configuración.
          2.8.0: Máquinas → Procesos por artículo y Tabla por artículo y máquina; Importar → Procesos.
          2.9.0: Materias primas (fichas, propiedades, hilos por tela y máquina, ligado de hilos) y en
-         Configuración, Tipos de materia prima y Fibras. -->
+         Configuración, Tipos de materia prima y Fibras. 2.10.0: Configuración → Unidades. -->
 
     <!-- ===== Máquinas: los centros de trabajo con tipo de máquina ===== -->
     <record id="view_mrp_workcenter_ft_maquinas_list" model="ir.ui.view">
@@ -106,6 +106,8 @@
               action="action_ficha_tecnica_material_tipo" sequence="15"/>
     <menuitem id="menu_ficha_tecnica_fibra" name="Fibras" parent="menu_ficha_tecnica_config"
               action="action_ficha_tecnica_fibra" sequence="16"/>
+    <menuitem id="menu_ficha_tecnica_unidad" name="Unidades" parent="menu_ficha_tecnica_config"
+              action="action_ficha_tecnica_unidad" sequence="17"/>
     <menuitem id="menu_ficha_tecnica_caracteristica" name="Características" parent="menu_ficha_tecnica_config"
               action="action_ficha_tecnica_caracteristica" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"
