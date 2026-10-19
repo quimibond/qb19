@@ -15,6 +15,7 @@ La huella es la plantilla que guarda el reloj (base64), no la imagen del dedo: c
 reconoce a la persona, pero no se puede reconstruir la huella. Se guarda una por dedo y por reloj de
 origen, y se manda a los relojes con «Sincronizar usuarios» con el número de checador del empleado.
 """
+import re
 from datetime import timedelta
 
 from odoo import _, api, fields, models
@@ -160,13 +161,27 @@ class ChecadorEquipo(models.Model):
     # Cola de comandos
     # ------------------------------------------------------------------
     def _encolar(self, comando, descripcion=None, empleado=None):
-        """Agrega un comando a la cola del reloj, salvo que el mismo ya esté por entregarse."""
+        """Agrega un comando a la cola del reloj, salvo que el mismo ya esté por entregarse y nada lo contradiga
+        después: un alta pendiente seguida de una baja del mismo número (o al revés) no cuenta como repetida,
+        porque el reloj los ejecuta en orden y el último manda."""
         Comando = self.env['qb.checador.comando'].sudo()
         creados = Comando.browse()
+        pin = re.search(r'\b(?:PIN|Pin)=([^\t\n]*)', comando)
+        es_baja = comando.startswith('DATA DELETE')
         for eq in self:
-            if Comando.search_count([('equipo_id', '=', eq.id), ('comando', '=', comando),
-                                     ('state', 'in', ('pendiente', 'enviado'))]):
-                continue
+            igual = Comando.search([('equipo_id', '=', eq.id), ('comando', '=', comando),
+                                    ('state', 'in', ('pendiente', 'enviado'))], order='id desc', limit=1)
+            if igual:
+                if not pin:
+                    continue
+                numero = pin.group(1)
+                if es_baja:
+                    contrario = [('comando', '=like', 'DATA UPDATE %'), ('comando', 'ilike', 'PIN=%s\t' % numero)]
+                else:
+                    contrario = [('comando', '=', 'DATA DELETE USERINFO PIN=%s' % numero)]
+                if not Comando.search_count([('equipo_id', '=', eq.id), ('state', 'in', ('pendiente', 'enviado')),
+                                             ('id', '>', igual.id)] + contrario):
+                    continue
             creados |= Comando.create({'equipo_id': eq.id, 'comando': comando, 'descripcion': descripcion,
                                        'employee_id': empleado.id if empleado else False})
         return creados

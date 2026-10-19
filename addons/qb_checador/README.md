@@ -219,6 +219,11 @@ y quede en todos:
   (botón **Sincronizar usuarios**: número, nombre y las huellas que tenga Odoo
   de cada dedo, la más reciente), y lo que se registre en uno pasa solo a los
   demás. Al archivar a un empleado se borra de los relojes.
+- **Automático desde 1.6.1:** un ingreso nuevo con Referencia (`S-…`, `Q-…`)
+  recibe su número y entra solo a los relojes que sincronizan; lo mismo al
+  cambiarle la Referencia o al reactivarlo. La cola respeta el orden: si a
+  alguien se le da de baja y se reactiva antes de que el reloj recoja nada,
+  quedan alta, baja y alta, y el último manda.
 - **Traer lo que ya tiene un reloj** (el UA860 viejo): botón **Pedir usuarios y
   huellas** (marca OPERLOG en 0; un reloj nuevo la tiene en 0 desde el
   principio). Sus usuarios llegan con su propia numeración: si el número no es

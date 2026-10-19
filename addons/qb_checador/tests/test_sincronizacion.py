@@ -165,6 +165,29 @@ class TestSincronizacion(HttpCase):
         comandos = self.env['qb.checador.comando'].search([('equipo_id', '=', self.entretelas.id)]).mapped('comando')
         self.assertIn('DATA DELETE USERINFO PIN=%s' % nuevo, comandos, 'al archivarlo se borra de los relojes')
 
+    def test_ingreso_nuevo_entra_solo_a_los_relojes(self):
+        if not self.tiene_referencia:
+            self.skipTest('sin hr_payroll no hay Referencia de empleado')
+        nuevo = self.env['hr.employee'].create({'name': 'INGRESO PRUEBAZQ', 'registration_number': 'S-984'})
+        self.assertEqual(nuevo.qb_checador_pin, '1984')
+        Comando = self.env['qb.checador.comando']
+
+        def cola(reloj):
+            return Comando.search([('equipo_id', '=', reloj.id), ('comando', 'like', 'PIN=1984')], order='id').mapped(
+                lambda c: c.comando.split('\t')[0])
+
+        self.assertEqual(cola(self.rama), ['DATA UPDATE USERINFO PIN=1984'])
+        self.assertEqual(cola(self.entretelas), ['DATA UPDATE USERINFO PIN=1984'])
+        self.assertFalse(cola(self.viejo), 'el UA860 no sincroniza')
+        # baja y reingreso antes de que el reloj recoja nada: la cola queda en orden (alta, baja, alta)
+        nuevo.active = False
+        nuevo.active = True
+        self.assertEqual(cola(self.rama), ['DATA UPDATE USERINFO PIN=1984', 'DATA DELETE USERINFO PIN=1984',
+                                           'DATA UPDATE USERINFO PIN=1984'])
+        # y volver a sincronizar no repite lo que ya está por entregarse
+        self.rama.action_sincronizar_usuarios()
+        self.assertEqual(len(cola(self.rama)), 3)
+
     def test_checada_con_numero_de_cuatro_digitos(self):
         if not self.tiene_referencia:
             self.skipTest('sin hr_payroll no hay Referencia de empleado')

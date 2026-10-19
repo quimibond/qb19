@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Checadores ZKTeco y Hikvision',
-    'version': '19.0.1.6.0',
+    'version': '19.0.1.6.1',
     'license': 'LGPL-3',
     'category': 'Human Resources/Attendances',
     'summary': 'Recibe las checadas de los relojes ZKTeco de la planta (protocolo ADMS/PUSH o por API) '
