@@ -14,6 +14,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 from ..models.sgi_calendar import sgi_add_business_days
 from .common_documents import sgi_hide_real_documents
 from .common_exec import sgi_exec_start_open
+from .common_escalations import sgi_escalations_on
 
 
 def _blank_pdf():
@@ -31,6 +32,7 @@ class TestBandeja(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         env = cls.env
         sgi_hide_real_documents(env)
         sgi_exec_start_open(env)

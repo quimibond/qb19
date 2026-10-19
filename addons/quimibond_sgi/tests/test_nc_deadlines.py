@@ -10,6 +10,7 @@ from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_calendar import sgi_test_calendar
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -18,6 +19,7 @@ class TestNcDeadlines(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         sgi_test_calendar(cls.env)
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_open = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_open')

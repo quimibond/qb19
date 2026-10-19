@@ -61,8 +61,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_dossier_done` | Integer | Requisitos cubiertos |  |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:27` |
 | `sgi_dev_dossier_html` | Html | Expediente ISO 9001 8.3 / APQP |  |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:25` |
 | `sgi_dev_dossier_total` | Integer | Requisitos del expediente |  |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:28` |
-| `sgi_dev_escalation_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_escalation_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:247` |
-| `sgi_dev_escalation_ids` | One2many | Avisos por tiempo |  |  | `sgi.dev.escalation` |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:246` |
+| `sgi_dev_escalation_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_escalation_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:266` |
+| `sgi_dev_escalation_ids` | One2many | Avisos por tiempo |  |  | `sgi.dev.escalation` |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:265` |
 | `sgi_dev_feasibility_ids` | One2many | Checklist de factibilidad |  |  | `sgi.dev.feasibility` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:319` |
 | `sgi_dev_feasibility_no` | Integer | Factibilidad en «No» | Renglones del checklist contestados con «No». |  |  | compute `_compute_sgi_dev_feasibility`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:322` |
 | `sgi_dev_feasibility_pending` | Integer | Factibilidad pendiente | Renglones del checklist sin contestar. |  |  | compute `_compute_sgi_dev_feasibility`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:320` |
@@ -93,8 +93,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_other` | Text | Otras características |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:64` |
 | `sgi_dev_out_of_spec_count` | Integer | No conformes en corrida | Renglones cuya corrida quedó fuera de lo que pide el cliente. |  |  | compute `_compute_sgi_dev_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_request.py:68` |
 | `sgi_dev_packaging` | Text | Datos en la etiqueta y empaque |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:57` |
-| `sgi_dev_pending_hours` | Float | Horas de desarrollo en el paso |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:249` |
-| `sgi_dev_pending_step` | Char | Paso pendiente |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:248` |
+| `sgi_dev_pending_hours` | Float | Horas de desarrollo en el paso |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:268` |
+| `sgi_dev_pending_step` | Char | Paso pendiente |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:267` |
 | `sgi_dev_pilot_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_pilot_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:340` |
 | `sgi_dev_pilot_ids` | One2many | Pilotajes |  |  | `sgi.dev.pilot` |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:339` |
 | `sgi_dev_prepared_by_id` | Many2one | Elaboró (Diseño y Desarrollo) | Persona de Diseño y Desarrollo que elaboró la solicitud. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:78` |

@@ -13,6 +13,7 @@ from .common_calendar import sgi_test_calendar
 from .common_documents import sgi_hide_real_documents
 from .common_exec import sgi_exec_start_open
 from ..models.sgi_calendar import sgi_today
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -21,6 +22,7 @@ class TestRegistroCumplimiento(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         sgi_hide_real_documents(cls.env)
         sgi_test_calendar(cls.env)
         sgi_exec_start_open(cls.env)

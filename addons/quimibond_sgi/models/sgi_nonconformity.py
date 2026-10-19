@@ -480,8 +480,10 @@ class QualityAlert(models.Model):
         except (TypeError, ValueError):
             mast_after = 3
         owner_id = self._sgi_deadline_owner_user_id()
-        process_owner_id = self.sgi_process_id.owner_id.user_id.id
-        manager_id = Cron._sgi_manager_user_id()
+        # 57.159.0: con los escalamientos en pausa solo avisa al responsable.
+        escalate = Cron._sgi_escalations_on()
+        process_owner_id = escalate and self.sgi_process_id.owner_id.user_id.id
+        manager_id = escalate and Cron._sgi_manager_user_id()
         folio = self.sgi_folio or self.name
         labels = {
             'containment': ("Contención", self.sgi_due_containment, self.sgi_containment_state,

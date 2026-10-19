@@ -142,7 +142,7 @@ class QualityAlertSupplierPortal(models.Model):
                 self, "Respuesta del proveedor vence el %s: NC %s" % (self.sgi_supplier_due_date, folio),
                 "El proveedor %s no ha contestado la NC por el portal. Reenvíe el enlace o llámele." % (
                     self.sgi_supplier_id.display_name), who)
-        if today > self.sgi_supplier_due_date:
+        if today > self.sgi_supplier_due_date and Cron._sgi_escalations_on():  # 57.159.0
             Cron._sgi_schedule(
                 self, "NC %s: proveedor sin respuesta, escalada a MAST" % folio,
                 "El plazo de respuesta del proveedor venció el %s." % self.sgi_supplier_due_date,

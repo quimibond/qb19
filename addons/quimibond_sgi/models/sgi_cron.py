@@ -29,6 +29,13 @@ _logger = logging.getLogger(__name__)
 # no por id fijo (en producción es el usuario 128, Blanca Areli Ballesteros).
 SGI_MAST_LOGIN = 'mas@quimibond.com'
 
+# 57.159.0 (Jose, 2026-10-19): interruptor de los escalamientos. Apagado
+# (parámetro vacío, el default) mientras la gente todavía no usa el SGI: lo
+# vencido le sigue llegando a quien lo tiene que hacer, pero no sube al jefe,
+# al dueño del proceso, a MAST ni a Dirección. Se enciende en Ajustes del SGI.
+SGI_ESCALATIONS_PARAM = 'quimibond_sgi.escalations_enabled'
+SGI_ESCALATIONS_PAUSED = "escalamientos del SGI en pausa"
+
 
 def _sgi_plain(text):
     """Texto comparable de una nota (Html guardado contra texto nuevo)."""
@@ -281,6 +288,47 @@ class SgiCron(models.AbstractModel):
     def _sgi_mast_user_by_login(self):
         return self.env['res.users'].sudo().search([('login', '=', SGI_MAST_LOGIN)], limit=1)
 
+    @api.model
+    def _sgi_escalations_on(self):
+        """57.159.0: ¿están encendidos los escalamientos? (Ajustes del SGI)."""
+        value = self.env['ir.config_parameter'].sudo().get_param(SGI_ESCALATIONS_PARAM) or ''
+        return value.strip().lower() not in ('', '0', 'false')
+
+    @api.model
+    def _sgi_close_paused_escalations(self, res_model, summary_patterns, res_ids=None):
+        """57.159.0: con los escalamientos en pausa, cierra (con nota, sin
+        borrar) los avisos de escalamiento que ya estaban abiertos. Los
+        patrones son ``=like`` sobre el resumen que pone el propio SGI."""
+        domain = [('res_model', '=', res_model)]
+        if res_ids is not None:
+            domain.append(('res_id', 'in', list(res_ids)))
+        domain += ['|'] * (len(summary_patterns) - 1)
+        domain += [('summary', '=like', pattern) for pattern in summary_patterns]
+        return self._sgi_close_activities(
+            self.env['mail.activity'].sudo().search(domain), SGI_ESCALATIONS_PAUSED)
+
+    @api.model
+    def _sgi_pause_escalations_now(self):
+        """57.159.0: al apagar los escalamientos (Ajustes o la migración)
+        quita de una vez lo ya escalado, sin esperar a los crons: avisos de
+        acciones vencidas, plazos de NC, proveedor, indicadores en rojo y
+        desarrollo, y los renglones «Escalamiento» de Mis pendientes. Todo
+        se cierra con nota (nada se borra salvo los renglones de la bandeja,
+        que se recalculan solos al volver a encenderlos)."""
+        if self._sgi_escalations_on():
+            return False
+        Activity = self.env['mail.activity'].sudo()
+        self._sgi_close_activities(Activity.search(
+            [('sgi_cron_kind', 'in', ['accion_vencida_jefe', 'accion_vencida_direccion'])]),
+            SGI_ESCALATIONS_PAUSED)
+        self._sgi_close_paused_escalations('quality.alert', [
+            'NC %, escalada al dueño del proceso', 'NC %, escalada a MAST'])
+        self._sgi_close_paused_escalations('sgi.indicator', ['Sin causa ni acción (escalado a Dirección):%'])
+        self.env['sgi.dev.escalation']._sgi_dev_close_escalated()
+        self.env['sgi.my.pending'].sudo().search([('kind', '=', 'escalamiento')]).unlink()
+        return True
+
+    @api.model
     def _sgi_director_user_id(self):
         group = self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False)
         return self._sgi_first_user_id(group) or self._sgi_manager_user_id()
@@ -838,6 +886,11 @@ class SgiCron(models.AbstractModel):
         failures = self._sgi_for_each(open_alerts, _process, "seguimiento de NC")
         self._sgi_sweep(['nc_sin_accion', 'nc_verificar_eficacia'],
                         "la NC ya tiene acción, ya se verificó o cerró", failures)
+        if not self._sgi_escalations_on():
+            # 57.159.0: plazos de NC y respuesta del proveedor ya escalados.
+            self._sgi_step("cerrar escalamientos de NC en pausa",
+                           lambda: self._sgi_close_paused_escalations('quality.alert', [
+                               'NC %, escalada al dueño del proceso', 'NC %, escalada a MAST']))
         return True
 
     # ------------------------------------------------------------------
@@ -862,6 +915,10 @@ class SgiCron(models.AbstractModel):
         overdue = Line.search([('date_done', '=', False), ('date_commit', '<', today)])
         self._sgi_step("recomputar estado de acciones vencidas",
                        lambda: self._sgi_refresh_action_states(overdue))  # asegura 'vencida'
+        if not self._sgi_escalations_on():
+            # 57.159.0: en pausa no se escala; el barrido cierra lo ya escalado.
+            self._sgi_sweep(['accion_vencida_jefe', 'accion_vencida_direccion'], SGI_ESCALATIONS_PAUSED)
+            return True
         manager_fallback = self._sgi_manager_user_id()
         director_id = self._sgi_director_user_id()
 
