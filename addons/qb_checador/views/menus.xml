@@ -7,5 +7,9 @@
               action="action_qb_checada"/>
     <menuitem id="menu_qb_checador_equipo" name="Relojes" parent="menu_qb_checador_root" sequence="20"
               action="action_qb_checador_equipo" groups="hr_attendance.group_hr_attendance_manager"/>
+    <menuitem id="menu_qb_checador_huella" name="Huellas" parent="menu_qb_checador_root" sequence="30"
+              action="action_qb_checador_huella" groups="hr_attendance.group_hr_attendance_manager"/>
+    <menuitem id="menu_qb_checador_comando" name="Comandos a relojes" parent="menu_qb_checador_root" sequence="40"
+              action="action_qb_checador_comando" groups="hr_attendance.group_hr_attendance_manager"/>
 
 </odoo>

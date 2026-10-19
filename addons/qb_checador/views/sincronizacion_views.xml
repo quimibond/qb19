@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_checador_huella_list" model="ir.ui.view">
+        <field name="name">qb.checador.huella.list</field>
+        <field name="model">qb.checador.huella</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0">
+                <field name="employee_id"/>
+                <field name="dedo"/>
+                <field name="equipo_id"/>
+                <field name="pin"/>
+                <field name="formato" optional="hide"/>
+                <field name="version" optional="hide"/>
+                <field name="tamano" optional="hide"/>
+                <field name="valida"/>
+                <field name="write_date" string="Recibida"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_checador_huella_search" model="ir.ui.view">
+        <field name="name">qb.checador.huella.search</field>
+        <field name="model">qb.checador.huella</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="pin"/>
+                <field name="equipo_id"/>
+                <filter name="sin_empleado" string="Sin empleado" domain="[('employee_id', '=', False)]"/>
+                <group>
+                    <filter name="por_empleado" string="Empleado" context="{'group_by': 'employee_id'}"/>
+                    <filter name="por_equipo" string="Reloj" context="{'group_by': 'equipo_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_checador_huella" model="ir.actions.act_window">
+        <field name="name">Huellas</field>
+        <field name="res_model">qb.checador.huella</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no llega ninguna huella</p>
+            <p>Cuando alguien registra su huella en un reloj ZKTeco, el reloj la manda a Odoo y aparece aquí. Con «Pedir usuarios y huellas» en la ficha del reloj se traen las que ya tiene.</p>
+        </field>
+    </record>
+
+    <record id="view_qb_checador_comando_list" model="ir.ui.view">
+        <field name="name">qb.checador.comando.list</field>
+        <field name="model">qb.checador.comando</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-danger="state == 'error'" decoration-muted="state == 'ok'">
+                <field name="create_date" string="Creado"/>
+                <field name="equipo_id"/>
+                <field name="descripcion"/>
+                <field name="employee_id" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'ok'" decoration-danger="state == 'error'"
+                       decoration-info="state == 'enviado'"/>
+                <field name="intentos" optional="hide"/>
+                <field name="enviado_en" optional="show"/>
+                <field name="resultado" optional="show"/>
+                <button name="action_reintentar" type="object" icon="fa-repeat" title="Reintentar"
+                        invisible="state != 'error'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_checador_comando_form" model="ir.ui.view">
+        <field name="name">qb.checador.comando.form</field>
+        <field name="model">qb.checador.comando</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <button name="action_reintentar" type="object" string="Reintentar" invisible="state != 'error'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="equipo_id"/>
+                        <field name="descripcion"/>
+                        <field name="employee_id"/>
+                        <field name="intentos"/>
+                        <field name="enviado_en"/>
+                        <field name="resultado"/>
+                    </group>
+                    <group string="Comando">
+                        <field name="comando" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_checador_comando_search" model="ir.ui.view">
+        <field name="name">qb.checador.comando.search</field>
+        <field name="model">qb.checador.comando</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="equipo_id"/>
+                <field name="employee_id"/>
+                <field name="descripcion"/>
+                <filter name="por_entregar" string="Por entregar" domain="[('state', 'in', ('pendiente', 'enviado'))]"/>
+                <filter name="con_error" string="Con error" domain="[('state', '=', 'error')]"/>
+                <group>
+                    <filter name="por_equipo" string="Reloj" context="{'group_by': 'equipo_id'}"/>
+                    <filter name="por_estado" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_checador_comando" model="ir.actions.act_window">
+        <field name="name">Comandos a relojes</field>
+        <field name="res_model">qb.checador.comando</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay comandos</p>
+            <p>Lo que Odoo le manda a los relojes ZKTeco: altas y bajas de usuarios y huellas. El reloj los recoge en su siguiente conexión y contesta si los ejecutó.</p>
+        </field>
+    </record>
+
+</odoo>
