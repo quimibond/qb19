@@ -35,12 +35,33 @@
                             invisible="marca != 'zkteco'"
                             help="Pone la marca en 0: en la siguiente conexión el equipo vuelve a mandar todo lo que guarda. Las checadas repetidas se ignoran."
                             confirm="¿Pedir al equipo que vuelva a mandar todo su historial? Las repetidas se ignoran."/>
+                    <button name="action_sincronizar_usuarios" type="object" string="Sincronizar usuarios"
+                            class="btn-primary" invisible="marca != 'zkteco' or not sincronizar_usuarios"
+                            help="Manda al reloj a los empleados que le tocan (número de checador, nombre y huellas que ya tenga Odoo)."
+                            confirm="¿Mandar al reloj a todos los empleados que le tocan, con su número de checador y sus huellas?"/>
+                    <button name="action_pedir_usuarios" type="object" string="Pedir usuarios y huellas"
+                            invisible="marca != 'zkteco'"
+                            help="Pone la marca OPERLOG en 0: en su siguiente conexión el reloj manda todos sus usuarios y huellas a Odoo."/>
+                    <button name="action_aceptar_sugerencias" type="object" string="Aceptar sugerencias"
+                            invisible="marca != 'zkteco'"
+                            help="Liga a cada usuario del reloj sin empleado con el empleado sugerido por nombre. Revise la lista antes."
+                            confirm="¿Ligar cada usuario sin empleado con el sugerido por nombre? Revise antes la tabla de usuarios."/>
                     <button name="action_nuevo_token" type="object" string="Generar URL nueva"
                             invisible="marca != 'hikvision'"
                             help="Cambia el token de la URL de escucha. La URL anterior deja de funcionar: hay que capturar la nueva en el reloj."
                             confirm="La URL actual deja de funcionar y el reloj no podrá mandar checadas hasta que se capture la nueva. ¿Continuar?"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_comandos" type="object" class="oe_stat_button" icon="fa-exchange"
+                                invisible="marca != 'zkteco'">
+                            <field name="comandos_pendientes" widget="statinfo" string="Por entregar"/>
+                        </button>
+                        <button name="action_ver_huellas" type="object" class="oe_stat_button" icon="fa-hand-pointer-o"
+                                invisible="marca != 'zkteco'">
+                            <field name="huella_count" widget="statinfo" string="Huellas"/>
+                        </button>
+                    </div>
                     <widget name="web_ribbon" title="Sin autorizar" bg_color="text-bg-danger" invisible="autorizado"/>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-secondary" invisible="active"/>
                     <div class="oe_title">
@@ -75,6 +96,8 @@
                         <group string="Cómo se interpreta">
                             <field name="tz"/>
                             <field name="prefijos"/>
+                            <field name="sincronizar_usuarios" invisible="marca != 'zkteco'"/>
+                            <field name="formato_huella" invisible="marca != 'zkteco' or not sincronizar_usuarios"/>
                             <field name="autorizado"/>
                             <field name="active"/>
                         </group>
@@ -87,15 +110,25 @@
                             <field name="ultima_conexion"/>
                             <field name="ultima_checada"/>
                             <field name="attlog_stamp" invisible="marca != 'zkteco'"/>
+                            <field name="operlog_stamp" invisible="marca != 'zkteco'"/>
                             <field name="checada_count"/>
                         </group>
                     </group>
                     <group string="Usuarios del reloj">
                         <field name="usuario_ids" nolabel="1" colspan="2">
-                            <list editable="bottom">
+                            <list editable="bottom" decoration-warning="not employee_id">
                                 <field name="pin"/>
                                 <field name="nombre_reloj"/>
                                 <field name="employee_id"/>
+                                <field name="sugerido_id" optional="show"/>
+                                <field name="puntaje" optional="hide"/>
+                                <field name="huella_count" optional="show"/>
+                                <field name="privilegio" optional="hide"/>
+                                <field name="origen" optional="hide"/>
+                                <button name="action_aceptar_sugerencia" type="object" icon="fa-check"
+                                        title="Aceptar el sugerido" invisible="employee_id or not sugerido_id"/>
+                                <button name="action_borrar_del_reloj" type="object" icon="fa-trash" title="Borrar del reloj"
+                                        confirm="Se manda al reloj la orden de borrar a este usuario con sus huellas. ¿Continuar?"/>
                             </list>
                         </field>
                     </group>

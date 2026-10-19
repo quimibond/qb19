@@ -92,9 +92,10 @@ class Checada(models.Model):
     def _resolver_empleado(self, equipo, pin):
         """El empleado detrás de un usuario del reloj.
 
-        1. La tabla «Usuarios del reloj» del equipo (solo vale para ese reloj).
+        1. La tabla «Usuarios del reloj» del equipo con empleado (solo vale para ese reloj).
         2. ``hr.employee.qb_checador_pin`` igual al PIN.
-        3. Referencia de empleado igual a «PREFIJO-PIN» para cada prefijo del equipo, o igual al PIN.
+        3. En un reloj que sincroniza usuarios, el número de 4 dígitos de la Referencia (1004 → S-4).
+        4. Referencia de empleado igual a «PREFIJO-PIN» para cada prefijo del equipo, o igual al PIN.
         Varios candidatos = ambiguo = nadie: mejor una checada sin empleado que una en la persona equivocada.
         """
         pin = (pin or '').strip()
@@ -102,7 +103,7 @@ class Checada(models.Model):
             return self.env['hr.employee']
         Emp = self.env['hr.employee'].sudo()
         de_tabla = self.env['qb.checador.usuario'].sudo().search(
-            [('equipo_id', '=', equipo.id), ('pin', '=', pin)], limit=1)
+            [('equipo_id', '=', equipo.id), ('pin', '=', pin), ('employee_id', '!=', False)], limit=1)
         if de_tabla:
             return de_tabla.employee_id
         dominio_base = [('company_id', '=', equipo.company_id.id)]
@@ -111,6 +112,10 @@ class Checada(models.Model):
             return por_pin
         if len(por_pin) > 1:
             return Emp
+        if equipo.sincronizar_usuarios:
+            por_numero = equipo._empleado_por_numero(pin)
+            if por_numero:
+                return por_numero
         # La Referencia de empleado (registration_number) la agrega hr_payroll (Enterprise); en una
         # base sin nómina no existe y solo queda la liga por usuario capturado.
         if 'registration_number' not in Emp._fields:

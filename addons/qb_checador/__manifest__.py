@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Checadores ZKTeco y Hikvision',
-    'version': '19.0.1.5.0',
+    'version': '19.0.1.6.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Attendances',
     'summary': 'Recibe las checadas de los relojes ZKTeco de la planta (protocolo ADMS/PUSH o por API) '
@@ -38,6 +38,7 @@ está en la ficha del reloj. Para otro tipo de equipo queda
         'views/equipo_views.xml',
         'views/checada_views.xml',
         'views/hr_employee_views.xml',
+        'views/sincronizacion_views.xml',
         'views/menus.xml',
         'data/ir_cron_data.xml',
     ],

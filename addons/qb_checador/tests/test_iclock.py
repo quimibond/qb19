@@ -29,7 +29,7 @@ class TestIclock(HttpCase):
 
     def test_handshake_firmware_viejo(self):
         r = self.url_open('/iclock/cdata?SN=UDP0000001&options=all&language=83&pushver=1.2')
-        self.assertIn('TransFlag=1111000000\r\n', r.text)
+        self.assertIn('TransFlag=1101111000\r\n', r.text)
 
     def test_attlog(self):
         cuerpo = '31\t2026-10-05 06:58:10\t0\t1\t0\t0\t0\n31\t2026-10-05 19:02:40\t1\t1\t0\t0\t0\n'
