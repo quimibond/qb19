@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.9.0 (Dirección General 2026-10-19): ficha de materia prima con el motor de parámetros de las
+         máquinas, fibras, hilos por tela y máquina (la cadena al revés) y el reporte de ligado de hilos. -->
+
+    <!-- ===== Fibras ===== -->
+    <record id="view_ficha_tecnica_fibra_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.fibra.list</field>
+        <field name="model">ficha.tecnica.fibra</field>
+        <field name="arch" type="xml">
+            <list string="Fibras" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_fibra" model="ir.actions.act_window">
+        <field name="name">Fibras</field>
+        <field name="res_model">ficha.tecnica.fibra</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin fibras</p>
+            <p>Las fibras de la composición de las materias primas, con su sigla de la norma ISO 2076 (PES, CO, PA…).</p>
+        </field>
+    </record>
+
+    <!-- ===== 2.10.0: unidades técnicas ===== -->
+    <record id="view_ficha_tecnica_unidad_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.unidad.list</field>
+        <field name="model">ficha.tecnica.unidad</field>
+        <field name="arch" type="xml">
+            <list string="Unidades" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="descripcion"/>
+                <field name="uom_id" options="{'no_create': True}"/>
+                <field name="alias" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_unidad" model="ir.actions.act_window">
+        <field name="name">Unidades</field>
+        <field name="res_model">ficha.tecnica.unidad</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin unidades</p>
+            <p>Las unidades de las fichas técnicas (g/m², cN/dtex, PTO…), ligadas a la unidad de Inventario cuando
+                existe. «También se escribe» liga solos los textos que llegan de los Excel.</p>
+        </field>
+    </record>
+
+    <!-- ===== Tipos de materia prima (mismo modelo que los tipos de máquina) ===== -->
+    <record id="action_ficha_tecnica_material_tipo" model="ir.actions.act_window">
+        <field name="name">Tipos de materia prima</field>
+        <field name="res_model">ficha.tecnica.maquina.tipo</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('clase', '=', 'material')]</field>
+        <field name="context">{'default_clase': 'material'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin tipos de materia prima</p>
+            <p>Cada tipo (hilo de filamento, hilo hilado, químico, colorante…) lleva su lista de propiedades: las que
+                se capturan en la ficha de cada material de ese tipo. Un material nuevo no necesita programación.</p>
+        </field>
+    </record>
+
+    <!-- ===== Ficha de materia prima ===== -->
+    <record id="view_ficha_tecnica_material_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.list</field>
+        <field name="model">ficha.tecnica.material</field>
+        <field name="arch" type="xml">
+            <list string="Fichas de materia prima">
+                <field name="product_id"/>
+                <field name="tipo_id"/>
+                <field name="categ_id" optional="hide"/>
+                <field name="composicion"/>
+                <field name="resumen"/>
+                <field name="tela_count" optional="show"/>
+                <field name="maquina_count" optional="show"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_material_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.form</field>
+        <field name="model">ficha.tecnica.material</field>
+        <field name="arch" type="xml">
+            <form string="Ficha de materia prima">
+                <header>
+                    <button name="action_ft_proponer" type="object" string="Proponer desde el nombre del producto"
+                            help="Llena las propiedades y la composición vacías con lo que dice el nombre del producto (título, filamentos, torsión, textura, color, fibra). Lo que ya tiene dato no se toca."/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ft_telas" type="object" class="oe_stat_button" icon="fa-list-alt"
+                                invisible="not tela_count">
+                            <field name="tela_count" widget="statinfo" string="Telas"/>
+                        </button>
+                        <button name="action_ft_maquinas" type="object" class="oe_stat_button" icon="fa-cogs"
+                                invisible="not maquina_count">
+                            <field name="maquina_count" widget="statinfo" string="Máquinas"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="product_id" options="{'no_create': True}" placeholder="Producto"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="tipo_id" options="{'no_create': True}"/>
+                            <field name="default_code"/>
+                            <field name="categ_id"/>
+                        </group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="fuente"/>
+                            <field name="proveedor_ids" widget="many2many_tags"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Propiedades" name="propiedades">
+                            <field name="valor_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="parametro_id" readonly="1" force_save="1"/>
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="valor" invisible="kind == 'text'"/>
+                                    <field name="valor_texto" invisible="kind != 'text'"/>
+                                    <field name="unit"/>
+                                    <field name="opciones" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Composición" name="composicion">
+                            <div class="alert alert-warning mb-2" role="alert" invisible="not composicion_aviso">
+                                <field name="composicion_aviso" readonly="1" nolabel="1"/>
+                            </div>
+                            <field name="composicion_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="fibra_id" options="{'no_create': True}"/>
+                                    <field name="porcentaje"/>
+                                    <field name="reciclado"/>
+                                </list>
+                            </field>
+                            <group>
+                                <group>
+                                    <field name="composicion"/>
+                                    <field name="reciclado_pct"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Dónde se usa" name="uso">
+                            <field name="hilo_ids" readonly="1">
+                                <list>
+                                    <field name="ficha_id"/>
+                                    <field name="crudo_id"/>
+                                    <field name="workcenter_id"/>
+                                    <field name="galga"/>
+                                    <field name="porcentaje"/>
+                                    <field name="polea" optional="show"/>
+                                    <field name="consumo_cm_vta" optional="show"/>
+                                    <field name="proveedor_id" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notas" name="notas">
+                            <field name="notas"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_material_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.search</field>
+        <field name="model">ficha.tecnica.material</field>
+        <field name="arch" type="xml">
+            <search string="Fichas de materia prima">
+                <field name="product_id"/>
+                <field name="tipo_id"/>
+                <field name="categ_id"/>
+                <filter string="Archivadas" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Tipo" name="group_tipo" context="{'group_by': 'tipo_id'}"/>
+                    <filter string="Categoría" name="group_categ" context="{'group_by': 'categ_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_material" model="ir.actions.act_window">
+        <field name="name">Fichas de materia prima</field>
+        <field name="res_model">ficha.tecnica.material</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_material_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin fichas de materia prima</p>
+            <p>Una por producto de materia prima (hilo, químico, colorante), con las propiedades de su tipo. Para crear
+                varias a la vez: en Inventario → Productos, seleccione los productos y use Acción → «Crear ficha de
+                materia prima».</p>
+        </field>
+    </record>
+
+    <!-- Acción de la lista de productos: crear las fichas de los seleccionados -->
+    <record id="action_server_ft_crear_fichas_material" model="ir.actions.server">
+        <field name="name">Crear ficha de materia prima</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_ft_crear_fichas_material()</field>
+    </record>
+
+    <!-- ===== Propiedades por material (tabla dinámica) ===== -->
+    <record id="view_ficha_tecnica_material_valor_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.valor.list</field>
+        <field name="model">ficha.tecnica.material.valor</field>
+        <field name="arch" type="xml">
+            <list string="Propiedades por material" create="0">
+                <field name="product_id"/>
+                <field name="tipo_id"/>
+                <field name="parametro_id"/>
+                <field name="kind" column_invisible="1"/>
+                <field name="valor" invisible="kind == 'text'"/>
+                <field name="valor_texto" invisible="kind != 'text'"/>
+                <field name="unit"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_material_valor_pivot" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.valor.pivot</field>
+        <field name="model">ficha.tecnica.material.valor</field>
+        <field name="arch" type="xml">
+            <pivot string="Propiedades por material" disable_linking="1">
+                <field name="product_id" type="row"/>
+                <field name="parametro_id" type="col"/>
+                <field name="valor" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_material_valor_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.material.valor.search</field>
+        <field name="model">ficha.tecnica.material.valor</field>
+        <field name="arch" type="xml">
+            <search string="Propiedades por material">
+                <field name="product_id"/>
+                <field name="parametro_id"/>
+                <field name="tipo_id"/>
+                <filter string="Con dato" name="con_dato" domain="['|', ('valor', '!=', 0), ('valor_texto', '!=', False)]"/>
+                <group>
+                    <filter string="Tipo" name="group_tipo" context="{'group_by': 'tipo_id'}"/>
+                    <filter string="Propiedad" name="group_parametro" context="{'group_by': 'parametro_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_material_valor" model="ir.actions.act_window">
+        <field name="name">Propiedades por material</field>
+        <field name="res_model">ficha.tecnica.material.valor</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_material_valor_search"/>
+        <field name="context">{'search_default_con_dato': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin propiedades capturadas</p>
+            <p>Tabla de material × propiedad (título, filamentos, tenacidad…). Los textos (torsión, textura) se ven en la
+                lista.</p>
+        </field>
+    </record>
+
+    <!-- ===== Hilos por tela y máquina (la cadena al revés) ===== -->
+    <record id="view_ficha_tecnica_tejido_hilo_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tejido.hilo.list</field>
+        <field name="model">ficha.tecnica.tejido.hilo</field>
+        <field name="arch" type="xml">
+            <list string="Hilos por tela y máquina" create="0">
+                <field name="product_id"/>
+                <field name="material_resumen" optional="show"/>
+                <field name="ficha_id"/>
+                <field name="crudo_id" optional="hide"/>
+                <field name="workcenter_id"/>
+                <field name="galga"/>
+                <field name="porcentaje"/>
+                <field name="bom_pct" optional="show"/>
+                <field name="polea" optional="hide"/>
+                <field name="consumo_cm_vta" optional="hide"/>
+                <field name="proveedor_id" optional="hide"/>
+                <field name="tipo_hilo" optional="hide"/>
+                <field name="titulo_hilo" optional="hide"/>
+                <field name="torsion" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_tejido_hilo_pivot" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tejido.hilo.pivot</field>
+        <field name="model">ficha.tecnica.tejido.hilo</field>
+        <field name="arch" type="xml">
+            <pivot string="Hilos por tela y máquina" disable_linking="1">
+                <field name="product_id" type="row"/>
+                <field name="workcenter_id" type="col"/>
+                <field name="porcentaje" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_tejido_hilo_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.tejido.hilo.search</field>
+        <field name="model">ficha.tecnica.tejido.hilo</field>
+        <field name="arch" type="xml">
+            <search string="Hilos por tela y máquina">
+                <field name="product_id"/>
+                <field name="articulo"/>
+                <field name="workcenter_id"/>
+                <field name="crudo_id"/>
+                <field name="titulo_hilo"/>
+                <filter string="Fichas activas" name="activas" domain="[('ficha_active', '=', True)]"/>
+                <filter string="Sin producto" name="sin_producto" domain="[('product_id', '=', False)]"/>
+                <group>
+                    <filter string="Hilo" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                    <filter string="Artículo" name="group_articulo" context="{'group_by': 'articulo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_tejido_hilo" model="ir.actions.act_window">
+        <field name="name">Hilos por tela y máquina</field>
+        <field name="res_model">ficha.tecnica.tejido.hilo</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_tejido_hilo_search"/>
+        <field name="context">{'search_default_activas': 1, 'search_default_group_product': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin hilos en las fichas de tejido</p>
+            <p>Desde un hilo: qué telas lo usan, en qué máquina y galga, con qué % y polea.</p>
+        </field>
+    </record>
+
+    <!-- Acción de la lista de hilos: reporte de ligado de los seleccionados -->
+    <record id="action_server_ft_reporte_ligado" model="ir.actions.server">
+        <field name="name">Reporte de ligado de hilos</field>
+        <field name="model_id" ref="model_ficha_tecnica_tejido_hilo"/>
+        <field name="binding_model_id" ref="model_ficha_tecnica_tejido_hilo"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_ft_reporte_ligado()</field>
+    </record>
+
+    <!-- Menú: el reporte de todos los hilos de las fichas activas -->
+    <record id="action_server_ft_reporte_ligado_todos" model="ir.actions.server">
+        <field name="name">Ligado de hilos</field>
+        <field name="model_id" ref="model_ficha_tecnica_tejido_hilo"/>
+        <field name="state">code</field>
+        <field name="code">action = model.browse().action_ft_reporte_ligado()</field>
+    </record>
+
+    <!-- ===== Reporte de ligado ===== -->
+    <record id="view_ficha_tecnica_hilo_ligado_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.hilo.ligado.list</field>
+        <field name="model">ficha.tecnica.hilo.ligado</field>
+        <field name="arch" type="xml">
+            <list string="Ligado de hilos" create="0" delete="0"
+                  decoration-success="estado == 'ligado'" decoration-info="estado == 'unico'"
+                  decoration-warning="estado in ('varios', 'otra_lista', 'fuera')" decoration-danger="estado == 'ninguno'">
+                <header>
+                    <button name="action_ligar_unicos" type="object" string="Ligar los de candidato único"
+                            help="Liga al producto los renglones seleccionados que tienen un solo candidato en su lista de materiales (y su lote si existe en inventario). El texto anterior se conserva."/>
+                </header>
+                <field name="ficha_id"/>
+                <field name="workcenter_id" optional="show"/>
+                <field name="numero"/>
+                <field name="texto"/>
+                <field name="porcentaje"/>
+                <field name="estado"/>
+                <field name="candidato_id"/>
+                <field name="bom_pct" optional="show"/>
+                <field name="candidatos" optional="show"/>
+                <field name="lote" optional="hide"/>
+                <field name="lote_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_hilo_ligado_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.hilo.ligado.search</field>
+        <field name="model">ficha.tecnica.hilo.ligado</field>
+        <field name="arch" type="xml">
+            <search string="Ligado de hilos">
+                <field name="articulo"/>
+                <field name="texto"/>
+                <field name="candidato_id"/>
+                <filter string="Candidato único" name="unico" domain="[('estado', '=', 'unico')]"/>
+                <filter string="Por decidir" name="por_decidir"
+                        domain="[('estado', 'in', ('varios', 'otra_lista', 'fuera', 'ninguno'))]"/>
+                <group>
+                    <filter string="Estado" name="group_estado" context="{'group_by': 'estado'}"/>
+                    <filter string="Artículo" name="group_articulo" context="{'group_by': 'articulo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

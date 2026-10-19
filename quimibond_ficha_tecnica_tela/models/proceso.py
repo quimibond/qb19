@@ -44,7 +44,7 @@ class FichaTecnicaProceso(models.Model):
     tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True)
     valor_ids = fields.One2many('ficha.tecnica.proceso.valor', 'proceso_id', string='Parámetros',
                                 context={'active_test': False})
-    resumen = fields.Char(string='Parámetros', compute='_compute_resumen')
+    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
     metros_hora = fields.Float(string='m/hora', digits=(16, 1), compute='_compute_metros_hora',
                                help='Velocidad (m/min) × 60.')
     metros_hora_neto = fields.Float(string='m/hora con merma', digits=(16, 1), compute='_compute_metros_hora',
@@ -252,3 +252,15 @@ class ProductTemplateProceso(models.Model):
                 'res_model': 'ficha.tecnica.proceso', 'view_mode': 'list,form',
                 'domain': self._ft_proceso_domain(),
                 'context': {'default_articulo': self.default_code or False}}
+
+
+class ProductProductProceso(models.Model):
+    _inherit = 'product.product'
+
+    # 2.8.1: la ficha de la variante hereda los botones de la plantilla, pero
+    # _inherits solo delega campos (ft_proceso_count), no métodos: sin esto
+    # Odoo marca la vista de variante como inválida («action_ft_procesos no
+    # es una acción válida en product.product»).
+    def action_ft_procesos(self):
+        self.ensure_one()
+        return self.product_tmpl_id.action_ft_procesos()

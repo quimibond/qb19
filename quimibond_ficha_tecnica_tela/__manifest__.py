@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.8.0',
+    'version': '19.0.2.10.1',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -56,20 +56,32 @@ Incluye:
   datos en cada máquina en que corre (velocidad en la rama, y lo que den
   las demás áreas), con importación desde Excel, tabla artículo × máquina
   y promedio por máquina.
+- 2.9.0: la cadena completa en los dos sentidos: ficha de materia prima con el
+  mismo motor de parámetros (hilo de filamento e hilo hilado con propiedades de
+  norma, composición por fibra), cada hilo de la ficha de tejido es su producto
+  (con polea, consumo, proveedor y lote) y se coteja con la lista de materiales
+  del crudo; reporte de ligado del texto anterior; ficha de acabado con su crudo
+  y sus operaciones; datos del artículo en los jets.
+- 2.10.0: catálogo de unidades técnicas (g/m², cN/dtex, PTO…) ligado a las
+  unidades de Inventario; las unidades de tolerancias, parámetros y
+  características dejan de ser texto libre (el texto se conserva sincronizado).
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
-    'depends': ['mrp', 'product', 'account'],
+    'depends': ['mrp', 'product', 'account', 'hr'],
     'data': [
         'security/ir.model.access.csv',
+        'data/ficha_tecnica_unidad_data.xml',  # 2.10.0: antes de los datos que llevan unidad
         'data/ficha_tecnica_caracteristica_data.xml',
         'data/ficha_tecnica_maquina_tipo_data.xml',  # 2.4.0
+        'data/ficha_tecnica_material_data.xml',  # 2.9.0: después de los tipos de máquina (usa tintorería)
         'views/ficha_tecnica_tejido_views.xml',
         'views/ficha_tecnica_acabado_views.xml',
         'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
         'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
         'views/mrp_aviso_maquina_views.xml',  # 2.5.0
         'views/proceso_views.xml',  # 2.8.0
+        'views/materia_prima_views.xml',  # 2.9.0
         'views/product_template_views.xml',
         'wizard/ficha_tecnica_tejido_import_wizard_views.xml',
         'wizard/ficha_tecnica_acabado_import_wizard_views.xml',

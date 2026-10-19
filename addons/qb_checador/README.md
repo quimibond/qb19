@@ -171,17 +171,73 @@ se ignoran, así que el puente puede reenviar sin miedo.
 
 El reloj manda un número de usuario (PIN). Se liga al empleado así:
 
-1. `hr.employee.qb_checador_pin` («Usuario en el checador», ficha del
+1. La tabla **Usuarios del reloj** de la ficha del reloj, si la fila tiene
+   empleado (solo vale para ese reloj).
+2. `hr.employee.qb_checador_pin` («Usuario en el checador», ficha del
    empleado, pestaña Ajustes, junto al PIN de asistencias) igual al PIN.
-2. Si no, la *Referencia de empleado* igual a `PREFIJO-PIN` para cada prefijo
+3. En un reloj que **sincroniza usuarios**, el número de checador de 4 dígitos
+   aunque el empleado todavía no lo tenga capturado (`1004` → `S-4`).
+4. Si no, la *Referencia de empleado* igual a `PREFIJO-PIN` para cada prefijo
    del equipo (campo *Prefijos de referencia*, p. ej. `S` para la planta:
    usuario `31` → `S-31`), o igual al PIN. Los ceros a la izquierda se
    ignoran (`0031` → `S-31`).
-3. Dos candidatos = nadie: la checada queda **sin empleado**. Mejor eso que
+5. Dos candidatos = nadie: la checada queda **sin empleado**. Mejor eso que
    en la persona equivocada.
 
 La Referencia de empleado la agrega `hr_payroll` (Enterprise); en una base sin
 nómina (el CI, por ejemplo) solo aplica la liga por usuario capturado.
+
+**Número de checador (desde 1.6.0): un dígito por nómina y el número de
+nómina a tres cifras.** `S-4` → `1004`, `Q-109` → `2109`, `C-26` → `3026`
+(parámetro `qb_checador.digito_por_nomina`, default `S:1,Q:2,C:3`). El número
+de nómina solo no sirve: 21 números se repiten entre nóminas (S-4 y Q-4 son
+dos personas; 2026-10-19). Es el mismo en todos los relojes. Odoo lo pone en
+`qb_checador_pin` al sincronizar y lo vuelve a calcular si cambia la
+Referencia (cambio de nómina): borra el número viejo de los relojes y da de
+alta el nuevo con sus huellas, sin que la persona vuelva a registrarse.
+
+## Usuarios y huellas entre Odoo y los relojes ZKTeco (1.6.0)
+
+Para que cada persona registre su huella **una sola vez**, en cualquier reloj,
+y quede en todos:
+
+- **Del reloj a Odoo.** Al dar de alta a alguien o registrar una huella, el
+  reloj lo manda por ADMS (`OPERLOG`: `USER PIN=…`, `FP PIN=… FID=… TMP=…`;
+  firmware nuevo: `BIODATA … Type=1 Tmp=…`). Odoo guarda una fila por usuario
+  en *Usuarios del reloj* (origen «Lo mandó el reloj») y la plantilla de cada
+  dedo en **Checadores → Huellas** (`qb.checador.huella`). La plantilla es lo
+  que guarda el reloj para reconocer el dedo, no una imagen; aun así es un
+  dato biométrico: solo la ve el grupo Administrador de asistencias.
+- **De Odoo al reloj.** Una cola de comandos por reloj (**Checadores →
+  Comandos a relojes**): el reloj la recoge en `/iclock/getrequest` cada pocos
+  segundos (`C:<id>:DATA UPDATE USERINFO PIN=…`, `DATA UPDATE FINGERTMP …` o
+  `BIODATA`, `DATA DELETE USERINFO …`) y contesta en `/iclock/devicecmd`. Sin
+  respuesta en 10 minutos se reenvía, hasta 3 veces; luego queda en error con
+  botón «Reintentar».
+- **Relojes que sincronizan** (casilla *Sincronizar usuarios* en la ficha):
+  reciben a los empleados activos cuya Referencia lleva uno de sus prefijos
+  (botón **Sincronizar usuarios**: número, nombre y las huellas que tenga Odoo
+  de cada dedo, la más reciente), y lo que se registre en uno pasa solo a los
+  demás. Al archivar a un empleado se borra de los relojes.
+- **Automático desde 1.6.1:** un ingreso nuevo con Referencia (`S-…`, `Q-…`)
+  recibe su número y entra solo a los relojes que sincronizan; lo mismo al
+  cambiarle la Referencia o al reactivarlo. La cola respeta el orden: si a
+  alguien se le da de baja y se reactiva antes de que el reloj recoja nada,
+  quedan alta, baja y alta, y el último manda.
+- **Traer lo que ya tiene un reloj** (el UA860 viejo): botón **Pedir usuarios y
+  huellas** (marca OPERLOG en 0; un reloj nuevo la tiene en 0 desde el
+  principio). Sus usuarios llegan con su propia numeración: si el número no es
+  el de checador de nadie, Odoo **sugiere un empleado por nombre** (parecido
+  ≥ 0.66 y sin empate) y RH lo revisa en la tabla de la ficha (botón ✓ por
+  fila o **Aceptar sugerencias**). Con el empleado puesto, sus huellas se
+  mandan a los relojes que sincronizan con el número nuevo.
+- **Formato.** Se manda en el formato en que el reloj manda las suyas
+  (FINGERTMP por default; BIODATA si el reloj usa BIODATA). Huellas de un
+  ZKTeco viejo en uno nuevo: **probar con una persona antes de mandar a
+  todos** (mismo algoritmo ZKFinger 10 normalmente, no garantizado).
+- **Opciones del reloj.** Los ZKTeco con firmware viejo reciben
+  `TransFlag=1101111000` (checadas, bitácora, altas y cambios de usuario y de
+  huella; sin fotos). Antes era `1111000000` y no mandaban huellas.
 
 ## Emparejar (cron cada 5 minutos)
 

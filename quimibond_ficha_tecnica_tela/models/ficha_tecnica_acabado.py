@@ -25,7 +25,7 @@ class FichaTecnicaAcabado(models.Model):
              'Varias fichas de acabado (ej. distintos colores) pueden '
              'compartir la misma ficha de tejido base.')
     product_acabado_id = fields.Many2one(
-        'product.product', string='Producto — Tela Acabada (m)', required=True,
+        'product.product', string='Producto — Tela acabada', required=True,
         help='Producto terminado específico (ej. un color en particular), '
              'resultado de Inspección y Empaque + Control de Calidad.')
 
@@ -45,31 +45,31 @@ class FichaTecnicaAcabado(models.Model):
         string='Tolerancia peso (−)',
         help='Tolerancia hacia abajo cuando es distinta de la de arriba (antes «+12 / -6»). En 0: la misma '
              'que la de arriba.')
-    peso_acabado_tol_unit = fields.Char(string='Unidad — Peso', default='g/m2')
+    peso_acabado_tol_unit = fields.Char(string='Unidad — Peso (texto)', default='g/m2')
 
     ancho_acabado = fields.Float(string='Ancho')
     ancho_acabado_tol = fields.Float(string='Tolerancia ancho')
-    ancho_acabado_tol_unit = fields.Char(string='Unidad — Ancho', default='cm')
+    ancho_acabado_tol_unit = fields.Char(string='Unidad — Ancho (texto)', default='cm')
 
     encogimiento_largo = fields.Float(string='Encogimiento a lo largo')
     encogimiento_largo_tol = fields.Float(string='Tolerancia encogimiento largo')
-    encogimiento_largo_tol_unit = fields.Char(string='Unidad — Encogimiento largo', default='%')
+    encogimiento_largo_tol_unit = fields.Char(string='Unidad — Encogimiento largo (texto)', default='%')
 
     encogimiento_ancho = fields.Float(string='Encogimiento a lo ancho')
     encogimiento_ancho_tol = fields.Float(string='Tolerancia encogimiento ancho')
-    encogimiento_ancho_tol_unit = fields.Char(string='Unidad — Encogimiento ancho', default='%')
+    encogimiento_ancho_tol_unit = fields.Char(string='Unidad — Encogimiento ancho (texto)', default='%')
 
     espesor_acabado = fields.Float(string='Espesor')
     espesor_acabado_tol = fields.Float(string='Tolerancia espesor')
-    espesor_acabado_tol_unit = fields.Char(string='Unidad — Espesor', default='in')
+    espesor_acabado_tol_unit = fields.Char(string='Unidad — Espesor (texto)', default='in')
 
     elongacion_largo_acabado = fields.Float(string='Elongación largo')
     elongacion_largo_acabado_tol = fields.Float(string='Tolerancia elongación largo')
-    elongacion_largo_acabado_tol_unit = fields.Char(string='Unidad — Elongación largo', default='%')
+    elongacion_largo_acabado_tol_unit = fields.Char(string='Unidad — Elongación largo (texto)', default='%')
 
     elongacion_ancho_acabado = fields.Float(string='Elongación ancho')
     elongacion_ancho_acabado_tol = fields.Float(string='Tolerancia elongación ancho')
-    elongacion_ancho_acabado_tol_unit = fields.Char(string='Unidad — Elongación ancho', default='%')
+    elongacion_ancho_acabado_tol_unit = fields.Char(string='Unidad — Elongación ancho (texto)', default='%')
 
     encogimiento_largo_dentro_norma = fields.Boolean(
         string='Encogimiento largo dentro de norma (≤5%)',

@@ -15,7 +15,8 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
-                <field name="workcenter_count"/>
+                <field name="clase" optional="hide"/>
+                <field name="workcenter_count" optional="show"/>
             </list>
         </field>
     </record>
@@ -31,28 +32,34 @@
                         <group>
                             <field name="name"/>
                             <field name="code"/>
+                            <field name="clase"/>
                             <field name="active" invisible="1"/>
                         </group>
                         <group>
-                            <field name="workcenter_count"/>
+                            <field name="workcenter_count" invisible="clase != 'maquina'"/>
+                            <field name="categ_ids" widget="many2many_tags" invisible="clase != 'material'"
+                                   options="{'no_create': True}"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Parámetros" name="parametros">
-                            <field name="parametro_ids">
+                            <field name="parametro_ids"
+                                   context="{'default_ambito': 'material' if clase == 'material' else 'maquina'}">
                                 <list editable="bottom" decoration-muted="not active">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
                                     <field name="code"/>
-                                    <field name="unit"/>
+                                    <field name="unit_id" options="{'no_create': True}"/>
+                                    <field name="unit" optional="hide" readonly="1"/>
                                     <field name="kind"/>
-                                    <field name="ambito"/>
+                                    <field name="opciones" optional="show" invisible="kind != 'text'"/>
+                                    <field name="ambito" column_invisible="parent.clase == 'material'"/>
                                     <field name="notas" optional="show"/>
                                     <field name="active" widget="boolean_toggle"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Máquinas" name="maquinas">
+                        <page string="Máquinas" name="maquinas" invisible="clase != 'maquina'">
                             <field name="workcenter_ids" readonly="1">
                                 <list>
                                     <field name="name"/>
@@ -72,6 +79,8 @@
         <field name="name">Tipos de máquina</field>
         <field name="res_model">ficha.tecnica.maquina.tipo</field>
         <field name="view_mode">list,form</field>
+        <field name="domain">[('clase', '=', 'maquina')]</field>
+        <field name="context">{'default_clase': 'maquina'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin tipos de máquina</p>
             <p>Cada tipo (tejido circular, tintorería, acabado, inspección…) lleva su lista de parámetros:
@@ -182,6 +191,10 @@
                 <button name="action_ft_procesos" type="object" class="oe_stat_button" icon="fa-tachometer"
                         invisible="not ft_proceso_count">
                     <field name="ft_proceso_count" widget="statinfo" string="Artículos"/>
+                </button>
+                <button name="action_ft_hilos" type="object" class="oe_stat_button" icon="fa-dot-circle-o"
+                        invisible="not ft_hilo_count">
+                    <field name="ft_hilo_count" widget="statinfo" string="Hilos"/>
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">

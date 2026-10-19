@@ -38,5 +38,13 @@ class TestSenalesComercial(SenalesCommon):
         self.assertEqual(f['documentos'][0]['id'], so.id)
 
     def test_costeo_no_instalado_devuelve_none(self):
-        if 'qb.cotizacion' not in self.env:
-            self.assertIsNone(self.filas('cotizacion_bajo_costo'))
+        # Desde qb_costeo 1.6.0 las señales de rentabilidad y cotizaciones leen el costeo y el cotizador
+        # nuevos; sin ellos, «no aplica» (None), nunca un lote vacío que resolvería lo abierto.
+        for senal, modelo in (('cotizacion_bajo_costo', 'qb.cotizador.cotizacion'),
+                              ('cliente_pierde', 'qb.rentabilidad.cliente'),
+                              ('producto_pierde', 'qb.rentabilidad.producto')):
+            filas = self.filas(senal)
+            if modelo in self.env:
+                self.assertIsInstance(filas, list, senal)
+            else:
+                self.assertIsNone(filas, senal)

@@ -3,6 +3,25 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.0 — 2026-10-16
+
+Lo que todavía hacía el módulo anterior (`qb_capacidad_costeo`), con el costo
+de este módulo, para poder retirarlo (decisión de Dirección 2026-10-16):
+
+- **Rentabilidad por cliente y por producto, 12 meses** (`qb.rentabilidad.cliente`,
+  `qb.rentabilidad.producto`; Costos → Rentabilidad). Vistas SQL en vivo:
+  facturado (mismas facturas que el costeo) contra contribución (costo
+  variable), margen bruto (costo vendible, con la merma pagada) y margen
+  neto (− op % del período). Cada mes usa el costo de su período o, si no se
+  costeó, el del último período costeado del producto (`mismo_mes_pct`).
+  Lo vendido sin costo no entra al margen: `cobertura_pct` lo mide y abajo de
+  80 % el semáforo dice «sin costo» en vez de dar verde.
+- **Órdenes con tiempo fuera de rango** (`qb.ot.excepcion`): las órdenes de
+  trabajo de 90 días cuyas unidades por hora salen de la banda del centro
+  (las mismas que `_medido` descarta), con las horas de más o de menos.
+- La carga por centro ya estaba en las tarifas del período (horas normales
+  contra reales); la señal «familia saturada» de la memoria la lee de ahí.
+
 ## 19.0.1.5.0 — 2026-10-16
 
 - **Horas de acabado desde la ficha técnica** (fuente `ficha`, calidad
