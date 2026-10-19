@@ -61,7 +61,7 @@ class ProductTemplateDev(models.Model):
                                          ondelete='set null',
                                          help="Proyecto de desarrollo de producto que creó el artículo.")
     sgi_dev_role = fields.Selection(DEV_PRODUCT_ROLES, string="Papel en la ruta", copy=False,
-                                    help="Crudo, teñido o acabado dentro de la ruta del desarrollo.")
+                                    help="Crudo, teñido, acabado en proceso o acabado dentro de la ruta del desarrollo.")
 
     def _sgi_dev_set_state(self, state):
         """Cambia el estado de desarrollo y lo que implica: venta y archivo."""
