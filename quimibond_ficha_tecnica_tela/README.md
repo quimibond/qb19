@@ -485,3 +485,8 @@ rendimiento a tintorería (WJ044Q22HNT235). Desde 2.10.0 son un catálogo
   vistos (cm, g, gr, cN, PTO, kg, g/m2, in, m, mm, % y los del catálogo de
   características) tienen unidad.
 - Pruebas: `tests/test_unidades.py`.
+- **2.10.1** (2026-10-19): el minuto ya no se liga a `uom.product_uom_minute`.
+  Esa unidad no existe en la base de producción (viene de versiones de Odoo
+  anteriores) y el build de `main` en Odoo.sh se cayó al cargar el catálogo
+  («External ID not found»). El resto de las unidades de Inventario que usa el
+  catálogo (cm, mm, m, in, kg, g, L, h) se verificó por MCP en producción.

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 2.10.0 (Dirección General 2026-10-19): catálogo de unidades técnicas de las fichas. Ligadas a la
-     unidad de Inventario cuando existe (para convertir); las técnicas (rpm, Ne, %…) no se crean en
+     unidad de Inventario cuando existe (para convertir; solo las que existen en producción, verificado por
+     MCP: el minuto de Odoo no está en esa base); las técnicas (rpm, Ne, %…) no se crean en
      Inventario porque aparecerían al elegir la unidad de un producto. Los alias son los textos que ya
      hay en producción (gr, g/m2, PTO, /plg…). noupdate: se ajustan desde Configuración → Unidades. -->
 <odoo noupdate="1">
@@ -63,7 +64,6 @@
         <field name="sequence">90</field>
         <field name="name">min</field>
         <field name="descripcion">Minuto</field>
-        <field name="uom_id" ref="uom.product_uom_minute"/>
         <field name="alias">mins, minutos</field>
     </record>
     <record id="ft_unidad_g_m2" model="ficha.tecnica.unidad">
