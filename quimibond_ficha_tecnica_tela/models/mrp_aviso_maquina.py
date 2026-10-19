@@ -63,20 +63,23 @@ def _fmt(value):
 class FichaTecnicaTejidoUso(models.Model):
     _inherit = 'ficha.tecnica.tejido'
 
-    @api.model
-    def _ft_de_producto(self, product):
-        """La ficha de tejido vigente de un producto: la que lo tiene como tela en proceso o la que lleva su
-        código como artículo; la de elaboración más reciente."""
-        if not product:
-            return self.browse()
-        domain = [('product_proceso_id', '=', product.id)]
-        if product.default_code:
-            domain = ['|', ('articulo', '=', product.default_code)] + domain
-        return self.search(domain, order='fecha_elaboracion desc, id desc', limit=1)
+    # 2.11.0 (Dirección General 2026-10-19, con José Sacramento): el rendimiento de la tela tejida es un campo
+    # calculado y guardado (lo leen tintorería y la programación), editable para forzar un valor. Mismo nombre
+    # que el campo capturado de Consolti, para que su código lo lea sin cambios.
+    rendimiento_tela_tejida = fields.Float(
+        string='Rendimiento de tela tejida (m/kg)', digits=(12, 4), compute='_compute_rendimiento_tela_tejida',
+        store=True, readonly=False,
+        help='1000 / (peso g/m² × ancho en m) de la tela acondicionada; el ancho se convierte con su unidad. 0 si '
+             'falta un dato o el ancho no es creíble (fuera de 0.3 a 4 m). Si se escribe a mano, queda fijo '
+             '(«Rendimiento forzado»).')
+    rendimiento_manual = fields.Boolean(
+        string='Rendimiento forzado',
+        help='El rendimiento se escribió a mano: ya no se recalcula con el peso y el ancho. Desmárquelo para volver '
+             'al cálculo.')
 
-    def _ft_rendimiento(self):
-        """Rendimiento de la tela (m/kg) con el peso y el ancho acondicionados; 0 si falta alguno o el ancho
-        no es creíble (fuera de 0.3 a 4 m, p. ej. 1.92 capturado en cm)."""
+    def _ft_rendimiento_calculado(self):
+        """Rendimiento (m/kg) con el peso y el ancho acondicionados; 0 si falta alguno o el ancho no es creíble
+        (fuera de 0.3 a 4 m, p. ej. 1.92 capturado en cm)."""
         self.ensure_one()
         # 2.10.0: la unidad del catálogo convierte con su unidad de Inventario; si no, el texto.
         unidad = self.ancho_acondicionado_tol_unit_id
@@ -89,6 +92,44 @@ class FichaTecnicaTejidoUso(models.Model):
         if not 0.3 <= ancho_m <= 4.0:
             return 0.0
         return 1000.0 / (self.peso_acondicionado * ancho_m)
+
+    @api.depends('peso_acondicionado', 'ancho_acondicionado', 'ancho_acondicionado_tol_unit_id',
+                 'ancho_acondicionado_tol_unit', 'rendimiento_manual')
+    def _compute_rendimiento_tela_tejida(self):
+        for ficha in self:
+            if not ficha.rendimiento_manual:
+                ficha.rendimiento_tela_tejida = ficha._ft_rendimiento_calculado()
+
+    def write(self, vals):
+        # Escribir el rendimiento a mano lo deja fijo (salvo que se diga lo contrario en la misma escritura).
+        if 'rendimiento_tela_tejida' in vals and 'rendimiento_manual' not in vals:
+            vals = dict(vals, rendimiento_manual=True)
+        return super().write(vals)
+
+    @api.model
+    def _ft_de_producto(self, product):
+        """La ficha de tejido de referencia de un producto: la que lo tiene como tela en proceso o la que lleva
+        su código como artículo. 2.11.0: la de revisión más alta (activa); entre máquinas de la misma revisión,
+        la de elaboración más reciente. En producción el peso y el ancho no cambian de una máquina a otra."""
+        if not product:
+            return self.browse()
+        domain = [('product_proceso_id', '=', product.id)]
+        if product.default_code:
+            domain = ['|', ('articulo', '=', product.default_code)] + domain
+        fichas = self.search(domain)
+        if not fichas:
+            return fichas
+
+        def clave(ficha):
+            rev = (ficha.revision or '0').strip()
+            return (int(rev) if rev.isdigit() else -1, ficha.fecha_elaboracion or fields.Date.to_date('1900-01-01'),
+                    ficha.id)
+        return max(fichas, key=clave)
+
+    def _ft_rendimiento(self):
+        """Rendimiento de la tela (m/kg): el guardado en la ficha (calculado o forzado)."""
+        self.ensure_one()
+        return self.rendimiento_tela_tejida or 0.0
 
 
 class ProductProductFicha(models.Model):
