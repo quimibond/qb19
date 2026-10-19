@@ -13,6 +13,43 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.159.0 — 2026-10-19
+
+Escalamientos en pausa mientras la gente todavía no usa el SGI (Jose,
+2026-10-19: «lo menos ruido posible»; desactivar, no eliminar).
+
+### Agregado
+
+- **Interruptor «Escalamientos encendidos»** en Ajustes → SGI → Datos de
+  arranque (parámetro `quimibond_sgi.escalations_enabled`, **apagado por
+  omisión**). Apagado, lo vencido le sigue llegando a quien lo tiene que
+  hacer, pero no sube a nadie más:
+  - acciones vencidas: sin aviso al jefe ni a Dirección (`cron_overdue_actions`);
+  - plazos de NC: el responsable recibe su aviso; sin escalamiento al dueño
+    del proceso ni a MAST;
+  - NC de proveedor: sin «proveedor sin respuesta, escalada a MAST»;
+  - indicadores en rojo sin causa ni acción: sin aviso a Dirección (el dueño
+    conserva el suyo);
+  - pasos del desarrollo (C1): solo el aviso al responsable del paso; sin
+    dueño del proceso ni Dirección de Operaciones;
+  - Mis pendientes: sin renglones «Escalamiento» (quien ejecuta sigue viendo
+    su actividad atrasada).
+- Al apagarlo (al guardar Ajustes y en la migración) lo ya escalado se
+  cierra con nota «escalamientos del SGI en pausa»; los renglones
+  «Escalamiento» de Mis pendientes se quitan y se recalculan solos al
+  encenderlo.
+
+Sin cambios: los días de cada escalamiento, los roles «Escala» de las
+actividades, «Mi procedimiento» (sigue diciendo a quién escala), quién puede
+marcar el avance, la NC sin acción al responsable, el SLA de reclamaciones y
+el aviso de incidentes graves.
+
+### Migración
+
+- `post-migrate`: con el parámetro vacío cierra lo ya escalado
+  (`sgi.cron._sgi_pause_escalations_now`). Si alguien ya lo encendió, no hace
+  nada. Idempotente.
+
 ## 19.0.57.158.0 — 2026-10-13
 
 C1 con la ficha de la máquina (`quimibond_ficha_tecnica_tela` 2.6.0).

@@ -7,6 +7,7 @@ from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_dev_escalation import PARAM_EXECUTOR_HOURS, PARAM_OWNER_HOURS
 from ..models.sgi_dev_process import PARAM_ESCALATION_DAYS
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -15,6 +16,7 @@ class TestDevEscalation(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         cls.Esc = cls.env['sgi.dev.escalation']
         Process = cls.env['sgi.process']
         Job = cls.env['hr.job']

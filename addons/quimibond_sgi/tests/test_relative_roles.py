@@ -6,6 +6,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_exec import sgi_exec_start_open
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -14,6 +15,7 @@ class TestRelativeRoles(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         sgi_exec_start_open(cls.env)
         Employee = cls.env['hr.employee']
         cls.job_exec = cls.env['hr.job'].create({'name': 'EJECUTOR RELATIVOS QR'})

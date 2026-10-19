@@ -9,6 +9,11 @@
                 <app data-string="SGI" string="SGI" name="quimibond_sgi"
                      logo="/quimibond_sgi/static/description/icon.png">
                     <block title="Datos de arranque">
+                        <!-- 57.159.0: interruptor de los escalamientos. -->
+                        <setting string="Escalamientos encendidos"
+                                 help="Apagado: lo vencido le llega solo a quien lo tiene que hacer; no sube al jefe, al dueño del proceso, a MAST ni a Dirección. Al apagarlo se cierran los avisos ya escalados.">
+                            <field name="sgi_escalations_enabled"/>
+                        </setting>
                         <setting string="Presupuesto mensual de ventas (MXN)"
                                  help="Alimenta los indicadores de cumplimiento y eficiencia del presupuesto (mientras llega el presupuesto por segmento).">
                             <field name="sgi_monthly_sales_budget"/>

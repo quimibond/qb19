@@ -198,6 +198,11 @@ class SgiIndicatorMeasurePlan(models.Model):
     def _sgi_escalate_red_plans(self, today):
         """Cron diario: rojos con el plan vencido y sin causa ni acción → Dirección."""
         Cron = self.env['sgi.cron']
+        if not Cron._sgi_escalations_on():
+            # 57.159.0: en pausa; el dueño del indicador conserva su aviso.
+            Cron._sgi_close_paused_escalations(
+                'sgi.indicator', [_ESCALATION_SUMMARY.split('%s')[0] + '%'])
+            return
         director_id = Cron._sgi_director_user_id()
         if not director_id:
             return

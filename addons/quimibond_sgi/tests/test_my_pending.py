@@ -9,6 +9,7 @@ from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
 from .common_exec import sgi_exec_start_open
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -17,6 +18,7 @@ class TestMyPending(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         sgi_hide_real_documents(cls.env)
         sgi_exec_start_open(cls.env)
         today = fields.Date.context_today(cls.env.user)
