@@ -14,27 +14,27 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action_type` | Selection | Tipo | Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la preventiva, una causa potencial; el acuerdo es una salida de la revisión por la dirección. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1122` |
-| `activity_id` | Many2one | Actividad |  |  | `mail.activity` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1171` |
-| `alert_id` | Many2one | No conformidad | No conformidad a la que pertenece la acción. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1108` |
-| `control_hierarchy` | Selection | Jerarquía del control | CONTROL_HIERARCHY_HELP |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1135` |
-| `date_commit` | Date | Compromiso | Fecha en que el responsable se compromete a terminar la acción. Pasada esta fecha, la acción se marca vencida y escala. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1143` |
-| `date_done` | Date | Terminada el | Fecha en que se terminó la acción. Al capturarla, la acción queda terminada. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1146` |
-| `drill_id` | Many2one | Simulacro | Simulacro al que pertenece la acción. |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1117` |
-| `effectiveness_round` | Integer | Ronda de eficacia | Veces que la eficacia de la NC había salido «No eficaz» cuando se registró la acción. Tras un «No eficaz» la NC pide una correctiva de la ronda nueva. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1174` |
-| `evidence_attachment_ids` | Many2many | Archivos de evidencia | Fotos, registros o documentos que demuestran la acción. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1160` |
-| `evidence_note` | Text | Evidencia | Qué demuestra que la acción se hizo: número de orden, documento, registro o foto. Una acción correctiva no se termina sin evidencia (esta nota o un archivo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1156` |
-| `fmea_line_id` | Many2one | Modo de falla (AMEF) | Modo de falla del AMEF al que pertenece la acción. |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1112` |
-| `incident_id` | Many2one | Incidente SST | Incidente o accidente de seguridad al que pertenece la acción. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1115` |
+| `action_type` | Selection | Tipo | Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la preventiva, una causa potencial; el acuerdo es una salida de la revisión por la dirección. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1124` |
+| `activity_id` | Many2one | Actividad |  |  | `mail.activity` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1173` |
+| `alert_id` | Many2one | No conformidad | No conformidad a la que pertenece la acción. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1110` |
+| `control_hierarchy` | Selection | Jerarquía del control | CONTROL_HIERARCHY_HELP |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1137` |
+| `date_commit` | Date | Compromiso | Fecha en que el responsable se compromete a terminar la acción. Pasada esta fecha, la acción se marca vencida y escala. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1145` |
+| `date_done` | Date | Terminada el | Fecha en que se terminó la acción. Al capturarla, la acción queda terminada. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1148` |
+| `drill_id` | Many2one | Simulacro | Simulacro al que pertenece la acción. |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1119` |
+| `effectiveness_round` | Integer | Ronda de eficacia | Veces que la eficacia de la NC había salido «No eficaz» cuando se registró la acción. Tras un «No eficaz» la NC pide una correctiva de la ronda nueva. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1176` |
+| `evidence_attachment_ids` | Many2many | Archivos de evidencia | Fotos, registros o documentos que demuestran la acción. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1162` |
+| `evidence_note` | Text | Evidencia | Qué demuestra que la acción se hizo: número de orden, documento, registro o foto. Una acción correctiva no se termina sin evidencia (esta nota o un archivo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1158` |
+| `fmea_line_id` | Many2one | Modo de falla (AMEF) | Modo de falla del AMEF al que pertenece la acción. |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1114` |
+| `incident_id` | Many2one | Incidente SST | Incidente o accidente de seguridad al que pertenece la acción. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1117` |
 | `measure_id` | Many2one | Medición roja | Plan de acción de una medición en rojo (I-4). |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:87` |
-| `name` | Char | Descripción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1138` |
-| `objective_id` | Many2one | Objetivo integral | Plan de acción del objetivo (ISO 6.2.2). |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1119` |
-| `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1178` |
-| `progress` | Selection | Avance | Avance de la acción según el responsable. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1149` |
-| `responsible_id` | Many2one | Responsable | Persona que ejecuta la acción. La ve en Mis pendientes y recibe los avisos de vencimiento. | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1139` |
+| `name` | Char | Descripción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1140` |
+| `objective_id` | Many2one | Objetivo integral | Plan de acción del objetivo (ISO 6.2.2). |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1121` |
+| `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1180` |
+| `progress` | Selection | Avance | Avance de la acción según el responsable. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1151` |
+| `responsible_id` | Many2one | Responsable | Persona que ejecuta la acción. La ve en Mis pendientes y recibe los avisos de vencimiento. | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1141` |
 | `review_id` | Many2one | Revisión por la Dirección |  |  | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:730` |
-| `risk_id` | Many2one | Riesgo / Oportunidad | Riesgo u oportunidad al que pertenece la acción. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1110` |
-| `state` | Selection | Estado | Abierta, vencida (pasó el compromiso) o terminada (tiene fecha de término). Se calcula sola. |  |  | compute `_compute_state`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1164` |
+| `risk_id` | Many2one | Riesgo / Oportunidad | Riesgo u oportunidad al que pertenece la acción. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1112` |
+| `state` | Selection | Estado | Abierta, vencida (pasó el compromiso) o terminada (tiene fecha de término). Se calcula sola. |  |  | compute `_compute_state`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1166` |
 
 ## Métodos públicos (5)
 

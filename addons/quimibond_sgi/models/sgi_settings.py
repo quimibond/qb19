@@ -156,6 +156,16 @@ class ResConfigSettings(models.TransientModel):
         string="Aviso de piloto por vencer (días)",
         config_parameter='quimibond_sgi.doc_pilot_notice_days',
         help="Días antes del fin de una prueba piloto documental en que llega el aviso.")
+    # 57.159.0 (Jose, 2026-10-19): interruptor de los escalamientos.
+    sgi_escalations_enabled = fields.Boolean(
+        string="Escalamientos encendidos",
+        config_parameter='quimibond_sgi.escalations_enabled',
+        help="Apagado (por omisión mientras arranca el SGI): lo vencido le sigue llegando a quien lo tiene "
+             "que hacer, pero no sube al jefe, al dueño del proceso, al Jefe MAST ni a Dirección (acciones "
+             "vencidas, plazos de NC, proveedor sin respuesta, indicadores en rojo sin causa, pasos del "
+             "desarrollo y renglones «Escalamiento» de Mis pendientes). Al apagarlo se cierran con nota los "
+             "avisos ya escalados. Los días de cada escalamiento se conservan; al encenderlo vuelven a "
+             "contar.")
     # 57.149.0: arranque del registro de cumplimiento (sgi_activity_execution).
     sgi_exec_start_date = fields.Char(
         string="Arranque del registro de cumplimiento (AAAA-MM-DD)",
@@ -351,3 +361,5 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_satisfaction_survey_id.id or 0)
         for field, key, _model in self._SGI_DEV_LIST_PARAMS:
             Param.set_param(key, ",".join(str(i) for i in self[field].ids))
+        # 57.159.0: apagados, lo ya escalado se quita de una vez.
+        self.env['sgi.cron'].sudo()._sgi_pause_escalations_now()

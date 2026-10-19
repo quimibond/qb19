@@ -12,6 +12,7 @@ from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
 from .common_users import sgi_set_mast
+from .common_escalations import sgi_escalations_on
 
 
 @tagged('post_install', '-at_install')
@@ -20,6 +21,7 @@ class TestPr6External(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_escalations_on(cls.env)  # 57.159.0
         sgi_hide_real_documents(cls.env)
         # 57.95.0: los acuses pendientes reales de la copia de producción no
         # cruzan el umbral en estas pruebas (sus avisos agrupados no deben
