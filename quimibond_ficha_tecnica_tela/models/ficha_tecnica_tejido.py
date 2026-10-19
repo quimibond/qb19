@@ -122,52 +122,52 @@ class FichaTecnicaTejido(models.Model):
     longitud_malla_polea1 = fields.Float(string='Longitud de malla — Polea 1')
     longitud_malla_polea2 = fields.Float(string='Longitud de malla — Polea 2')
     longitud_malla_tol = fields.Float(string='Tolerancia longitud de malla')
-    longitud_malla_tol_unit = fields.Char(string='Unidad — Longitud de malla', default='cm')
+    longitud_malla_tol_unit = fields.Char(string='Unidad — Longitud de malla (texto)', default='cm')
 
     consumo_cm_vta_polea1 = fields.Float(string='Consumo cm/vta — Polea 1')
     consumo_cm_vta_polea2 = fields.Float(string='Consumo cm/vta — Polea 2')
     consumo_cm_vta_tol = fields.Float(string='Tolerancia consumo')
-    consumo_cm_vta_tol_unit = fields.Char(string='Unidad — Consumo cm/vta', default='cm')
+    consumo_cm_vta_tol_unit = fields.Char(string='Unidad — Consumo cm/vta (texto)', default='cm')
 
     polea_alimentacion_polea1 = fields.Float(string='Polea de alimentación — Polea 1')
     polea_alimentacion_polea2 = fields.Float(string='Polea de alimentación — Polea 2')
     polea_alimentacion_tol = fields.Float(string='Tolerancia polea de alimentación')
-    polea_alimentacion_tol_unit = fields.Char(string='Unidad — Polea de alimentación', default='gr')
+    polea_alimentacion_tol_unit = fields.Char(string='Unidad — Polea de alimentación (texto)', default='gr')
 
     # ------------------------------------------------------------------
     # Especificaciones de tejido — Tabla 2: Dato / Valor / Tolerancia
     # ------------------------------------------------------------------
     tension = fields.Char(string='Tensión')
     tension_tol = fields.Float(string='Tolerancia tensión')
-    tension_tol_unit = fields.Char(string='Unidad — Tensión', default='PTO')
+    tension_tol_unit = fields.Char(string='Unidad — Tensión (texto)', default='PTO')
 
     punto_cilindro = fields.Char(string='Punto cilindro')
     punto_cilindro_tol = fields.Float(string='Tolerancia punto cilindro')
-    punto_cilindro_tol_unit = fields.Char(string='Unidad — Punto cilindro', default='PTO')
+    punto_cilindro_tol_unit = fields.Char(string='Unidad — Punto cilindro (texto)', default='PTO')
 
     punto_plato = fields.Char(string='Punto plato')
     punto_plato_tol = fields.Float(string='Tolerancia punto plato')
-    punto_plato_tol_unit = fields.Char(string='Unidad — Punto plato', default='PTO')
+    punto_plato_tol_unit = fields.Char(string='Unidad — Punto plato (texto)', default='PTO')
 
     altura_plato = fields.Char(string='Altura plato')
     altura_plato_tol = fields.Float(string='Tolerancia altura plato')
-    altura_plato_tol_unit = fields.Char(string='Unidad — Altura plato', default='PTO')
+    altura_plato_tol_unit = fields.Char(string='Unidad — Altura plato (texto)', default='PTO')
 
     ancho_bastidor = fields.Float(string='Ancho de bastidor')
     ancho_bastidor_tol = fields.Float(string='Tolerancia ancho de bastidor')
-    ancho_bastidor_tol_unit = fields.Char(string='Unidad — Ancho de bastidor', default='cm')
+    ancho_bastidor_tol_unit = fields.Char(string='Unidad — Ancho de bastidor (texto)', default='cm')
 
     estiraje = fields.Char(string='Estiraje')
     estiraje_tol = fields.Float(string='Tolerancia estiraje')
-    estiraje_tol_unit = fields.Char(string='Unidad — Estiraje')
+    estiraje_tol_unit = fields.Char(string='Unidad — Estiraje (texto)')
 
     ancho_rollo = fields.Float(string='Ancho de rollo')
     ancho_rollo_tol = fields.Float(string='Tolerancia ancho de rollo')
-    ancho_rollo_tol_unit = fields.Char(string='Unidad — Ancho de rollo', default='cm')
+    ancho_rollo_tol_unit = fields.Char(string='Unidad — Ancho de rollo (texto)', default='cm')
 
     peso_promedio_rollo = fields.Float(string='Peso promedio de rollo')
     peso_promedio_rollo_tol = fields.Float(string='Tolerancia peso de rollo')
-    peso_promedio_rollo_tol_unit = fields.Char(string='Unidad — Peso promedio de rollo', default='kg')
+    peso_promedio_rollo_tol_unit = fields.Char(string='Unidad — Peso promedio de rollo (texto)', default='kg')
 
     # ------------------------------------------------------------------
     # Datos de tela acondicionada (post-tejido, pre-acabado)
@@ -180,31 +180,31 @@ class FichaTecnicaTejido(models.Model):
         string='Tolerancia peso (−)',
         help='Tolerancia hacia abajo cuando es distinta de la de arriba (antes «+12 / -6»). En 0: la misma '
              'que la de arriba.')
-    peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado', default='g/m2')
+    peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado (texto)', default='g/m2')
 
     ancho_acondicionado = fields.Float(string='Ancho')
     ancho_acondicionado_tol = fields.Float(string='Tolerancia ancho')
-    ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado', default='cm')
+    ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado (texto)', default='cm')
 
     espesor_acondicionado = fields.Float(string='Espesor')
     espesor_acondicionado_tol = fields.Float(string='Tolerancia espesor')
-    espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado', default='in')
+    espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado (texto)', default='in')
 
     columnas = fields.Integer(string='Columnas')
     columnas_tol = fields.Float(string='Tolerancia columnas')
-    columnas_tol_unit = fields.Char(string='Unidad — Columnas', default='in')
+    columnas_tol_unit = fields.Char(string='Unidad — Columnas (texto)', default='in')
 
     mallas = fields.Integer(string='Mallas')
     mallas_tol = fields.Float(string='Tolerancia mallas')
-    mallas_tol_unit = fields.Char(string='Unidad — Mallas', default='in')
+    mallas_tol_unit = fields.Char(string='Unidad — Mallas (texto)', default='in')
 
     elongacion_carga_largo = fields.Float(string='Elongación bajo carga — largo')
     elongacion_carga_largo_tol = fields.Float(string='Tolerancia elongación largo')
-    elongacion_carga_largo_tol_unit = fields.Char(string='Unidad — Elongación carga largo', default='%')
+    elongacion_carga_largo_tol_unit = fields.Char(string='Unidad — Elongación carga largo (texto)', default='%')
 
     elongacion_carga_ancho = fields.Float(string='Elongación bajo carga — ancho')
     elongacion_carga_ancho_tol = fields.Float(string='Tolerancia elongación ancho')
-    elongacion_carga_ancho_tol_unit = fields.Char(string='Unidad — Elongación carga ancho', default='%')
+    elongacion_carga_ancho_tol_unit = fields.Char(string='Unidad — Elongación carga ancho (texto)', default='%')
 
     notas = fields.Text(string='Notas')
 

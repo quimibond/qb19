@@ -15,7 +15,8 @@
                 <field name="name"/>
                 <field name="name_en" optional="show"/>
                 <field name="kind"/>
-                <field name="unit"/>
+                <field name="unit_id" options="{'no_create': True}"/>
+                <field name="unit" optional="hide" readonly="1"/>
                 <field name="method" optional="show"/>
                 <field name="formula" optional="hide"/>
             </list>

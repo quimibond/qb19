@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.9.0',
+    'version': '19.0.2.10.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -62,12 +62,16 @@ Incluye:
   (con polea, consumo, proveedor y lote) y se coteja con la lista de materiales
   del crudo; reporte de ligado del texto anterior; ficha de acabado con su crudo
   y sus operaciones; datos del artículo en los jets.
+- 2.10.0: catálogo de unidades técnicas (g/m², cN/dtex, PTO…) ligado a las
+  unidades de Inventario; las unidades de tolerancias, parámetros y
+  características dejan de ser texto libre (el texto se conserva sincronizado).
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
     'depends': ['mrp', 'product', 'account', 'hr'],
     'data': [
         'security/ir.model.access.csv',
+        'data/ficha_tecnica_unidad_data.xml',  # 2.10.0: antes de los datos que llevan unidad
         'data/ficha_tecnica_caracteristica_data.xml',
         'data/ficha_tecnica_maquina_tipo_data.xml',  # 2.4.0
         'data/ficha_tecnica_material_data.xml',  # 2.9.0: después de los tipos de máquina (usa tintorería)
