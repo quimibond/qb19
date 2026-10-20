@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_coa import sgi_parse_coa_filename
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -187,7 +188,7 @@ class TestCoa(TransactionCase):
         self.assertEqual(order.sgi_coa_attachment_count, 2)
 
     def test_08_otra_compania_no_se_afecta(self):
-        other_company = self.env['res.company'].create({'name': 'Otra empresa COA'})
+        other_company = sgi_new_company(self.env, 'Otra empresa COA')
         self.assertTrue(self.customer.with_company(self.company).sgi_requires_coa)
         self.assertFalse(self.customer.with_company(other_company).sgi_requires_coa,
                          "El requisito es por compañía.")

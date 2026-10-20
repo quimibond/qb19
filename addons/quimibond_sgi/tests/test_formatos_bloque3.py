@@ -16,7 +16,7 @@ from odoo.tests.common import new_test_user
 
 from ..models.sgi_formatos_bloque3 import (
     SGI_B3_LINKS, SGI_B3_MERGES, SGI_B3_ODOO_FORMS, SGI_B3_RECODE, SGI_B3_UNCONTROL)
-from .common_documents import sgi_hide_real_documents, sgi_neutralize_dropbox_contradictions
+from .common_documents import sgi_hide_real_documents, sgi_neutralize_dropbox_contradictions, sgi_new_company
 
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -137,7 +137,7 @@ class TestBloque3Duplicados(_Bloque3Common):
         self.assertEqual(self.Doc._sgi_b3_link_formats(table, company=self.company), {})
 
     def test_03_otra_empresa_no_se_toca(self):
-        other_company = self.env['res.company'].create({'name': 'ZB3 Otra empresa'})
+        other_company = sgi_new_company(self.env, 'ZB3 Otra empresa')
         done = self.Doc._sgi_b3_merge_duplicates(
             ((self.dup.id, 'F-P-A81-02', self.keep.id, 'F-P-A81-01', "x"),), company=other_company)
         self.assertEqual(done, {})

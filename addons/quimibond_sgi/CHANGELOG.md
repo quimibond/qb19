@@ -13,6 +13,19 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.2 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento.
+
+### Corregido
+- Las pruebas que crean una empresa propia (las del MIID entre ellas) no
+  arrancaban en la copia de producción: «company inconsistencies» en
+  `res.company.create`. La carpeta «Aprobaciones» de documents_approvals
+  es de la empresa 1 en producción (Odoo la trae compartida) y
+  `approvals_folder_id` la ponía por omisión en la empresa nueva. Ayudante
+  `tests/common_documents.sgi_new_company` (empresa sin carpetas de
+  Documentos heredadas), usado en las 16 pruebas del SGI que crean empresa.
+
 ## 19.0.57.164.1 — 2026-10-20
 
 ### Corregido

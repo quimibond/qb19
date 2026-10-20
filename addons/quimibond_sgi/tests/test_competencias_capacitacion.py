@@ -13,6 +13,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from .common_users import sgi_set_mast
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -245,7 +246,7 @@ class TestCompetenciasCapacitacion(TransactionCase):
 
     def test_12_empleado_de_otra_compania_no_recibe(self):
         """I-6: solo empleados de la empresa del SGI."""
-        other = self.env['res.company'].create({'name': 'Z13 otra'})
+        other = sgi_new_company(self.env, 'Z13 otra')
         emp_b = self.env['hr.employee'].create({'name': 'Empleado Z13 B', 'company_id': other.id})
         self._resume(employee=emp_b, survey_id=self.survey.id, date_end=date(2047, 1, 10))
         self.assertFalse(self._skill(emp_b))

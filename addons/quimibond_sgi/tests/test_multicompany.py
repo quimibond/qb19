@@ -10,6 +10,7 @@ de una sola empresa, ``sgi.config._sgi_company``).
   compartidos a propósito (D-03): no se prueban aquí."""
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
+from .common_documents import sgi_new_company
 
 
 F014_MODELS = (
@@ -28,7 +29,7 @@ class TestMultiCompany(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.company_a = cls.env['sgi.config']._sgi_company()
-        cls.company_b = cls.env['res.company'].create({'name': 'ZMC Empresa B'})
+        cls.company_b = sgi_new_company(cls.env, 'ZMC Empresa B')
         cls.user = new_test_user(
             cls.env, login='zmc_user',
             groups='base.group_user,quimibond_sgi.group_sgi_user,quality.group_quality_user',

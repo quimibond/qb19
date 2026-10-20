@@ -6,7 +6,7 @@ from datetime import timedelta
 from odoo import fields
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -17,7 +17,7 @@ class TestEntrega1b(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         cls.sgi_company = cls.env['sgi.config']._sgi_company()
-        cls.other = cls.env['res.company'].create({'name': 'ZS Otra empresa 1b'})
+        cls.other = sgi_new_company(cls.env, 'ZS Otra empresa 1b')
         cls.user = new_test_user(cls.env, login='zs_1b_user', groups='base.group_user',
                                  company_id=cls.sgi_company.id,
                                  company_ids=[(6, 0, (cls.sgi_company | cls.other).ids)])

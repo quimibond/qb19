@@ -12,6 +12,7 @@ from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -83,7 +84,7 @@ class TestDevFolioAccess(TransactionCase):
         first.action_archive()
         with self.assertRaises(ValidationError, msg="El archivado sigue ocupando el folio."):
             self._dev(sgi_ft_folio='FT-998-2019')
-        other_company = self.env['res.company'].create({'name': 'Otra compañía folio'})
+        other_company = sgi_new_company(self.env, 'Otra compañía folio')
         other = self._dev(sgi_ft_folio='FT-998-2019', company_id=other_company.id)
         self.assertEqual(other.sgi_ft_folio, 'FT-998-2019', "En otra compañía el folio es otro.")
 
