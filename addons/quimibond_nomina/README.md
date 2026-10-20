@@ -602,3 +602,10 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   (`DIS_ABSENCE` por `LEAVE90`, `IMSS_DISABLE` por `LEAVE1200`) y también las
   incidencias `FALTAS`/`INCAP` de la lista de RH (`DESC_FALTAS`). Una incapacidad o un
   permiso sin goce capturado en Ausencias no debe ir además en la lista.
+- Horario de planta semanal (2026-10-20, en producción): «Planta — 48 horas, lunes a
+  jueves 10 y viernes 8» (`resource.calendar` 37; 7:00–17:00 y viernes 7:00–15:00, la
+  comida dentro de la jornada como en el contrato sindicalizado) en los 102 contratos
+  que tenían «lunes a sábado 8–16» (32, archivado). Es el patrón de la lista F-P-A01-49,
+  también para los de turno de 12 h. El neto del recibo no cambia (se paga por días);
+  verificado en el recibo piloto 5071 de la semana 43. El horario por defecto de la
+  empresa es el de oficina: a un ingreso de planta hay que ponerle el 37 a mano.
