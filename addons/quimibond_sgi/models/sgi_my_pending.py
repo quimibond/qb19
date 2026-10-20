@@ -55,6 +55,7 @@ from odoo.exceptions import AccessError, UserError
 # sgi_calendar no define modelos: importarlo aquí no cambia el registro.
 from .sgi_calendar import sgi_add_business_days, sgi_nth_business_day
 from .sgi_health_const import HEALTH_MODES
+from .sgi_menu_paths import sgi_open_menu_action
 
 PENDING_KINDS = [
     ('accion', "Acción"),
@@ -296,6 +297,36 @@ class SgiMyPending(models.Model):
                                    "aviso propio y la acción propia.")
     can_snooze = fields.Boolean(compute='_compute_can_act',
                                 help="Aviso propio: se puede posponer una semana.")
+    # 57.165.0: «Dónde se hace» es un botón (el menú de la actividad), no una
+    # ruta escrita; los pasos de la NC, campos con su estado (no un párrafo).
+    where_menu_id = fields.Many2one('ir.ui.menu', string="Dónde se hace", compute='_compute_links',
+                                    compute_sudo=True,
+                                    help="Pantalla de Odoo donde se hace la actividad («Ir a hacerlo»).")
+    nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True)
+    nc_due_containment = fields.Date(related='nc_id.sgi_due_containment', string="Contención vence")
+    nc_containment_state = fields.Selection(related='nc_id.sgi_containment_state', string="Contención")
+    nc_due_root_cause = fields.Date(related='nc_id.sgi_due_root_cause', string="Causa raíz vence")
+    nc_root_cause_state = fields.Selection(related='nc_id.sgi_root_cause_state', string="Causa raíz")
+    nc_due_plan = fields.Date(related='nc_id.sgi_due_plan', string="Plan de acción vence")
+    nc_plan_state = fields.Selection(related='nc_id.sgi_plan_state', string="Plan de acción")
+    nc_effectiveness_due = fields.Date(related='nc_id.sgi_effectiveness_due', string="Eficacia vence")
+
+    @api.depends('res_model', 'res_id')
+    def _compute_links(self):
+        for row in self:
+            menu = nc = False
+            if row.res_id and row.res_model == 'sgi.process.activity':
+                menu = self.env['sgi.process.activity'].browse(row.res_id).exists().odoo_menu_id
+            elif row.res_id and row.res_model == 'sgi.activity.execution':
+                menu = self.env['sgi.activity.execution'].browse(row.res_id).exists().activity_id.odoo_menu_id
+            elif row.res_id and row.res_model == 'quality.alert':
+                nc = self.env['quality.alert'].browse(row.res_id).exists()
+            row.where_menu_id = menu or False
+            row.nc_id = nc or False
+
+    def action_open_where(self):
+        self.ensure_one()
+        return sgi_open_menu_action(self.env, self.where_menu_id)
 
     @api.depends_context('uid')
     def _compute_is_mine(self):
@@ -579,8 +610,7 @@ class SgiMyPending(models.Model):
         if instruction:
             title = instruction.sgi_title if 'sgi_title' in instruction._fields else False
             items.append(("Instructivo", title or instruction.name))
-        if activity.odoo_menu_id:
-            items.append(("Dónde se hace", activity.odoo_menu_id.complete_name))
+        # 57.165.0: «Dónde se hace» es el botón «Ir a hacerlo» de la ficha.
         items.append(("Si no se puede cumplir", activity.on_fail))
         return sgi_detail_html(items)
 
@@ -600,20 +630,11 @@ class SgiMyPending(models.Model):
                 ("Avance", ("%s %%" % rec.progress) if rec.progress else ''),
             ])
         elif kind == 'nc':
-            selection = rec._fields['sgi_containment_state'].selection \
-                if 'sgi_containment_state' in rec._fields else None
-            labels = dict(selection) if isinstance(selection, (list, tuple)) else {}
-
-            def step(label, due, state):
-                if not due:
-                    return (label, '')
-                return (label, "%s (%s)" % (_fmt(due), labels.get(state, state or '')))
+            # 57.165.0: los pasos (contención, causa raíz, plan y eficacia)
+            # salen en la ficha como campos con su estado.
             detail = sgi_detail_html([
-                step("Contención", rec.sgi_due_containment, rec.sgi_containment_state),
-                step("Causa raíz", rec.sgi_due_root_cause, rec.sgi_root_cause_state),
-                step("Plan de acción", rec.sgi_due_plan, rec.sgi_plan_state),
-                ("Eficacia", rec.sgi_effectiveness_due),
-                (None, "Se contesta en la ficha de la NC: pulse «Ir»."),
+                (None, "Registre el paso que toca con «Registrar paso» o contéstelo en la ficha de la "
+                       "NC («Ir»)."),
             ])
         elif kind in ('medicion', 'validacion'):
             indicator = rec.indicator_id

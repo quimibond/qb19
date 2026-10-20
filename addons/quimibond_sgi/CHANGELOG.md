@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.165.0 — 2026-10-20
+
+Lo del MIID en los demás lugares, primera entrega: las rutas se abren. Jose
+(2026-10-20): «quiero hacer lo mismo que en el MIID en todos los demás
+lugares que sea necesario»; eligió empezar por las rutas.
+
+### Agregado
+- `sgi_menu_paths.sgi_menu_from_text` (la ruta escrita «SGI → … → …» → su
+  menú, la más larga que coincide) y `sgi_open_menu_action` (abre el menú o
+  dice que el usuario no tiene acceso). El MIID usa la misma regla.
+- Diagnóstico: cada hallazgo con «Dónde se arregla» trae el botón «Abrir»
+  (`sgi.diagnostic.line.fix_menu_id`).
+- Mis pendientes: «Ir a hacerlo» abre la pantalla de la actividad
+  (`where_menu_id`, el menú de la actividad o de su registro de
+  cumplimiento); los pasos de la NC (contención, causa raíz, plan y eficacia)
+  son campos con su estado en color (`nc_id` y relacionados).
+
+### Cambiado
+- La ficha de Mis pendientes ya no escribe «Dónde se hace: SGI → …» ni los
+  pasos de la NC en un párrafo.
+
 ## 19.0.57.164.5 — 2026-10-20
 
 ### Corregido

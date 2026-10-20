@@ -75,3 +75,45 @@ def sgi_menu_path(key, suffix=None):
     """«SGI → Planeación → Política integral» (con «, suffix» si se da)."""
     text = " → ".join(SGI_MENU_PATHS[key][1])
     return "%s, %s" % (text, suffix) if suffix else text
+
+
+def sgi_menu_from_text(env, text, _cache=None):
+    """57.165.0: el menú cuya ruta empieza el texto («SGI → Desempeño →
+    Indicadores, columna Responsable» → el menú «Indicadores»), o un menú
+    vacío. Se queda con la ruta más larga que coincide. ``_cache`` es un dict
+    para resolver muchos textos con una sola lectura de menús."""
+    Menu = env['ir.ui.menu'].sudo().with_context(lang='es_MX')
+    if not text:
+        return Menu
+    if _cache is None:
+        _cache = {}
+    if 'paths' not in _cache:
+        paths = {}
+        for menu in Menu.search([]):
+            parts = [p.strip() for p in (menu.complete_name or '').split('/') if p.strip()]
+            if parts:
+                paths.setdefault(" → ".join(parts), menu.id)
+        _cache['paths'] = sorted(paths.items(), key=lambda kv: -len(kv[0]))
+    clean = " ".join(str(text).split())
+    for path, menu_id in _cache['paths']:
+        if clean.startswith(path) and (len(clean) == len(path) or clean[len(path)] in ' ,.;:('):
+            return Menu.browse(menu_id)
+    return Menu.browse()
+
+
+def sgi_open_menu_action(env, menu):
+    """57.165.0: la acción que abre el menú (su ventana; si no, el menú). Si
+    el usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo
+    le negaría. Lo usan el MIID, el Diagnóstico y Mis pendientes."""
+    from odoo.exceptions import UserError
+    if not menu:
+        raise UserError("No hay pantalla de Odoo ligada.")
+    menu = menu.sudo()
+    if menu.id not in env['ir.ui.menu']._visible_menu_ids():
+        raise UserError("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % " → ".join(
+            p.strip() for p in (menu.complete_name or '').split('/')))
+    action = menu.action
+    action = action.exists() if action else action
+    if action and action._name == 'ir.actions.act_window':
+        return action.read()[0]
+    return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
