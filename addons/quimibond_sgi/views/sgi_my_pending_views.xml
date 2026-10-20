@@ -65,8 +65,12 @@
                         invisible="kind != 'acuse' or not is_mine"
                         confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
                 <!-- «Ir» lleva a donde se hace o al registro; el verbo cambia con el tipo. -->
+                <!-- 57.166.0: la actividad dice «Ir a hacerlo» (abre la pantalla
+                     donde se hace, como Mi procedimiento); lo demás, «Ir». -->
+                <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
+                        invisible="kind not in ('actividad', 'escalamiento')"/>
                 <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                        invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                        invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento')"/>
                 <button name="action_open" type="object" string="Leer" icon="fa-book"
                         invisible="kind != 'acuse'"/>
                 <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
@@ -128,8 +132,10 @@
                             <button name="action_snooze_notice" type="object" string="Posponer"
                                     class="btn btn-secondary btn-lg" invisible="not can_snooze"
                                     confirm="¿Pospone este aviso una semana (5 días hábiles)?"/>
+                            <button name="action_open" type="object" string="Ir a hacerlo" class="btn btn-primary btn-lg"
+                                    invisible="kind not in ('actividad', 'escalamiento')"/>
                             <button name="action_open" type="object" string="Ir" class="btn btn-primary btn-lg"
-                                    invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                                    invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento')"/>
                             <button name="action_open" type="object" string="Leer" class="btn btn-primary btn-lg"
                                     invisible="kind != 'acuse'"/>
                             <button name="action_open" type="object" string="Firmar" class="btn btn-primary btn-lg"
@@ -176,10 +182,10 @@
                     <button name="action_snooze_notice" type="object" string="Posponer una semana"
                             icon="fa-clock-o" invisible="not can_snooze"
                             confirm="¿Pospone este aviso una semana (5 días hábiles)? La fecha límite del aviso cambia en Odoo."/>
-                    <button name="action_open_where" type="object" string="Ir a hacerlo" icon="fa-external-link"
-                            class="btn-secondary" invisible="not where_menu_id"/>
+                    <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
+                            invisible="kind not in ('actividad', 'escalamiento')"/>
                     <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                            invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                            invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento')"/>
                     <button name="action_open" type="object" string="Leer el documento" icon="fa-book"
                             invisible="kind != 'acuse'"/>
                     <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
@@ -215,7 +221,6 @@
                             <field name="exec_date_estimated" invisible="not exec_date_estimated"/>
                         </group>
                     </group>
-                    <field name="where_menu_id" invisible="1"/>
                     <field name="nc_id" invisible="1"/>
                     <!-- 57.165.0: los pasos de la NC como campos con su estado. -->
                     <group string="Pasos de la NC" invisible="kind != 'nc' or not nc_id">
@@ -239,7 +244,7 @@
                     </group>
                     <div class="alert alert-info" role="status" invisible="kind != 'escalamiento'">
                         Este escalamiento le llega porque la actividad pasó sus días hábiles de atraso.
-                        La marca hecha quien la ejecuta; usted puede abrirla con <b>Ir</b> y darle seguimiento.
+                        La marca hecha quien la ejecuta; usted puede abrirla con <b>Ir a hacerlo</b> y darle seguimiento.
                     </div>
                 </sheet>
             </form>

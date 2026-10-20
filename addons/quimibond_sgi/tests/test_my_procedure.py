@@ -207,8 +207,9 @@ class TestMyProcedure(TransactionCase):
         """La pantalla es un formulario con kanban y listas nativas: las
         actividades son roles con sus piezas como campos y botones de objeto
         (migas de pan), sin HTML."""
-        menu = self.env['ir.ui.menu'].search(
-            [('action', 'like', 'ir.actions.act_window,')], limit=1)
+        # 57.166.0: un menú que el empleado ve («Ir a hacerlo» revisa el acceso).
+        window = self.env['ir.actions.act_window'].create({'name': 'Prueba MP', 'res_model': 'res.partner'})
+        menu = self.env['ir.ui.menu'].create({'name': 'AppMP07', 'action': 'ir.actions.act_window,%d' % window.id})
         self.a_weekly_fri.write({'odoo_menu_id': menu.id, 'how_steps': 'Abrir → publicar',
                                  'check_against': 'Pedidos confirmados'})
         self.a_weekly_fri.measure_state = 'verde'

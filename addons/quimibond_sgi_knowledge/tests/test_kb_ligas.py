@@ -66,3 +66,15 @@ class TestKbLigas(KbCase):
         process_view = self.env.ref('quimibond_sgi.sgi_process_view_form')
         arch = self.env['sgi.process'].get_views([(process_view.id, 'form')])['views']['form']['arch']
         self.assertIn('action_sgi_open_article', arch)
+
+    def test_04_rutas_de_los_manuales(self):
+        """1.2.14: las rutas escritas de los manuales son ligas a acciones que existen."""
+        import re
+        manuals = self.Article.search([('sgi_seed_key', '=like', 'manual:%')])
+        self.assertTrue(manuals)
+        found = set()
+        for article in manuals:
+            found.update(re.findall(r'href="/odoo/action-([\w.]+)"', str(article.body or '')))
+        self.assertTrue(found, "Los manuales ligan sus rutas de menú.")
+        for xmlid in found:
+            self.assertTrue(self.env.ref(xmlid, raise_if_not_found=False), xmlid)

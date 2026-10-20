@@ -19,7 +19,7 @@ from .sgi_calendar import (
     sgi_tz)
 
 from .sgi_guard import sgi_require_system
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_links, sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -123,6 +123,8 @@ class SgiCron(models.AbstractModel):
         Odoo pone hoy."""
         if not user_id or not record:
             return False
+        # 57.166.0: la ruta del aviso («SGI → … → Indicadores») es liga.
+        note = sgi_menu_links(self.env, note)
         if key and self._sgi_skip_covered(record, user_id):
             # 57.150.0 (auditoría UX, fase 2): la bandeja ya lo muestra con su
             # propio renglón; no se duplica en la campana de actividades.
@@ -195,7 +197,9 @@ class SgiCron(models.AbstractModel):
             vals['user_id'] = user_id
         if summary and activity.summary != summary:
             vals['summary'] = summary
-        if _sgi_plain(activity.note) != _sgi_plain(note):
+        # 57.166.0: también cuando el texto es el mismo y le faltan las ligas.
+        if _sgi_plain(activity.note) != _sgi_plain(note) or (
+                'href=' in str(note or '') and 'href=' not in str(activity.note or '')):
             vals['note'] = note or ''
         if date_deadline and activity.date_deadline != date_deadline:
             vals['date_deadline'] = date_deadline
@@ -1451,6 +1455,7 @@ class SgiCron(models.AbstractModel):
         """Agenda una actividad con fecha límite, evitando duplicados por medición."""
         if self._sgi_activity_exists(anchor, summary, user_id):
             return
+        note = sgi_menu_links(self.env, note)
         anchor.activity_schedule(
             'mail.mail_activity_data_todo',
             date_deadline=deadline,

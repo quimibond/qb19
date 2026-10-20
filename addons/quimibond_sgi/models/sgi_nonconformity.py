@@ -10,7 +10,7 @@ from odoo.exceptions import UserError, ValidationError
 from .sgi_base import SGI_FREE_PREFIXES, sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
 from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_path, sgi_route_error
 
 _logger = logging.getLogger(__name__)
 
@@ -847,10 +847,12 @@ class QualityAlert(models.Model):
             if source.trigger_type == 'manual':
                 # Hay una persona esperando respuesta del botón: avisarle en vez
                 # de no hacer nada y dejarla adivinando.
-                raise UserError(
+                # 57.166.0: con botón que abre la configuración.
+                raise sgi_route_error(
+                    self.env,
                     "La generación de no conformidades desde «%s» está "
                     "desactivada.\n\nSi debe volver a generarse, actívela en "
-                    "%s." % (source.name, sgi_menu_path('fuentes_nc')))
+                    "%s." % (source.name, sgi_menu_path('fuentes_nc')), 'fuentes_nc')
             return self.browse()
         return self.create(dict(vals, sgi_source_id=source.id if source else False))
 

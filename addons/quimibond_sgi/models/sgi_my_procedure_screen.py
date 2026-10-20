@@ -402,7 +402,8 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
                 "%s%s" % (r._sgi_target_label(),
                           " (a los %d días hábiles)" % r.after_days if r.after_days else "")
                 for r in activity.role_ids.filtered(lambda r: r.role == 'escala'))
-            role.mp_can_go = bool(activity.odoo_menu_id or activity.odoo_ref
+            # 57.166.0: también la acción configurada (odoo_action_id).
+            role.mp_can_go = bool(activity.odoo_action_id or activity.odoo_menu_id or activity.odoo_ref
                                   or activity.measure_model_id)
 
     def action_mp_go(self):

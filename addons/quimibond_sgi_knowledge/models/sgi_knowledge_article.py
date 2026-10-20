@@ -356,7 +356,8 @@ class KnowledgeArticleSgi(models.Model):
                 types.get(process.process_type, "sin capturar"),
                 process.owner_id.name or "sin capturar"),
             Markup("<p>Debajo están los instructivos, controles operacionales y protocolos del proceso. "
-                   "Las actividades del proceso están en SGI → Sistema → Actividades.</p>"),
+                   "Las actividades del proceso están en <a href=\"/odoo/action-quimibond_sgi."
+                   "sgi_process_activity_action\">SGI → Sistema → Actividades</a>.</p>"),
         ]
         return str(Markup('').join(parts))
 
@@ -404,7 +405,8 @@ class KnowledgeArticleSgi(models.Model):
             # Alguien archivó el espacio: no se recrea ni se le cuelga nada.
             return result
         help_folder, _what = seed('carpeta:ayuda', "Cómo usar el sistema", root, str(Markup(
-            "<p>Manuales del SGI por perfil. En el menú SGI → Inicio → Ayuda se abre el de usted.</p>")),
+            "<p>Manuales del SGI por perfil. En el menú <a href=\"/odoo/action-quimibond_sgi_knowledge."
+            "sgi_kb_help_action\">SGI → Inicio → Ayuda</a> se abre el de usted.</p>")),
             'carpeta', 10, vals={'icon': '❓'})
         seed('carpeta:reglamentos', "Reglamentos", root, str(Markup(
             "<p>Reglamentos vigentes del SGI.</p>")), 'carpeta', 90, vals={'icon': '📜'})
@@ -544,8 +546,9 @@ class KnowledgeArticleSgi(models.Model):
         code = self.sgi_document_code or self.name or ''
         self.env['sgi.cron'].sudo()._sgi_schedule(
             self.sudo(), "Publicar %s desde Conocimiento" % code,
-            "%s pide publicar este artículo como revisión nueva de %s. Revíselo contra el PDF adjunto y "
-            "pulse «Publicar» en SGI → Sistema → Conocimiento del SGI." % (self.env.user.name, code),
+            Markup("%s pide publicar este artículo como revisión nueva de %s. Revíselo contra el PDF adjunto "
+                   "y pulse «Publicar» en <a href=\"/odoo/action-quimibond_sgi_knowledge.sgi_kb_article_action\">"
+                   "SGI → Sistema → Conocimiento del SGI</a>.") % (self.env.user.name, code),
             mast_id, key='kb_publicar')
         self.sudo().message_post(body="%s pidió la publicación al Jefe MAST." % self.env.user.name)
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {

@@ -16,6 +16,15 @@ núcleo en 57.9.0 (auditoría A-014).
 - **Pruebas:** `tests/test_instruction_knowledge.py` (antes
   `quimibond_sgi/tests/test_pr6_external.py`, test_05).
 
+## 1.2.14 (2026-10-20): las rutas de los manuales se abren
+
+Las rutas escritas en los manuales («SGI → Inicio → Mis pendientes») son
+ligas a su pantalla (`/odoo/action-<xmlid>`): `tools/sgi_knowledge_html.py`
+las saca de `quimibond_sgi/tools/sgi_menu_tree.txt` y de las acciones de los
+menús; las carpetas sin pantalla quedan como texto. También ligan el artículo
+de cada proceso (Actividades), la carpeta «Cómo usar el sistema» (Ayuda) y el
+aviso «Publicar … desde Conocimiento». Prueba: `test_kb_ligas` 04.
+
 ## 1.2.1 (2026-10-06): manual de MAST al día
 
 `data/manuales/mast.html` regenerado con `tools/sgi_knowledge_html.py` tras

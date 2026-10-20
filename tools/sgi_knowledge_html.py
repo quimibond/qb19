@@ -23,6 +23,12 @@ Ligas:
   texto en negritas con «(documentación técnica del repositorio)»;
 - ``http(s)`` → tal cual, en otra pestaña.
 
+Rutas de menú (57.166.0): una ruta escrita («SGI → Inicio → Mis pendientes»)
+que es un menú con pantalla (``addons/quimibond_sgi/tools/sgi_menu_tree.txt``
+y su acción en ``views/sgi_menus.xml``) se vuelve liga
+``/odoo/action-quimibond_sgi.<acción>``: se abre desde el artículo. Las
+carpetas (menús sin acción) y las rutas fuera del árbol quedan como texto.
+
 ``--check`` genera en memoria y sale con 1 si algún ``.html`` difiere (mismo
 contrato que ``tools/sgi_docs.py``). Corre en el CI.
 """
@@ -31,6 +37,7 @@ import html
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DOCS = os.path.join(ROOT, 'docs', 'sgi')
@@ -52,6 +59,48 @@ MANUALS = (
 )
 # Fuente → clave de siembra del artículo (sgi_seed_key).
 SEEDED = {src: 'manual:' + out[:-len('.html')] for out, src in MANUALS}
+SGI = os.path.join(ROOT, 'addons', 'quimibond_sgi')
+
+
+def _menu_routes():
+    """[(«SGI → … → Menú», xmlid de su acción)], de la más larga a la más
+    corta; solo menús con pantalla y debajo de la raíz."""
+    actions = {}
+    tree = ET.parse(os.path.join(SGI, 'views', 'sgi_menus.xml'))
+    for item in tree.iter('menuitem'):
+        if item.get('action'):
+            action = item.get('action')
+            actions[item.get('id')] = action if '.' in action else 'quimibond_sgi.' + action
+    paths = {}
+    with open(os.path.join(SGI, 'tools', 'sgi_menu_tree.txt'), encoding='utf-8') as fh:
+        for line in fh:
+            if line.startswith('#') or '|' not in line:
+                continue
+            path, xmlid = [c.strip() for c in line.split('|')[:2]]
+            paths[xmlid] = path
+    routes = [(path, actions[xmlid]) for xmlid, path in paths.items() if xmlid in actions]
+    # Los menús de este módulo (Ayuda, Conocimiento del SGI…) cuelgan del árbol.
+    kb_menus = os.path.join(OUT, '..', '..', 'views', 'sgi_knowledge_menus.xml')
+    for item in ET.parse(kb_menus).iter('menuitem'):
+        parent = (item.get('parent') or '').replace('quimibond_sgi.', '')
+        if parent in paths and item.get('action'):
+            routes.append((paths[parent] + '/' + item.get('name'),
+                           'quimibond_sgi_knowledge.' + item.get('action')))
+    # La raíz sola («SGI») no: es una palabra de todos los párrafos.
+    routes = [(' → '.join(path.split('/')), action) for path, action in routes if '/' in path]
+    return sorted(routes, key=lambda r: -len(r[0]))
+
+
+ROUTES = _menu_routes()
+ROUTE_RE = re.compile('|'.join(re.escape(html.escape(r, quote=False)) for r, _a in ROUTES) + r'(?![\w])')
+ROUTE_ACTION = {html.escape(r, quote=False): a for r, a in ROUTES}
+
+
+def _routes(text_html):
+    """Las rutas de menú de un texto ya escapado, como ligas."""
+    return ROUTE_RE.sub(lambda m: '<a href="/odoo/action-%s">%s</a>' % (ROUTE_ACTION[m.group(0)], m.group(0)),
+                        text_html)
+
 
 INLINE = re.compile(
     r'`(?P<code>[^`]+)`'
@@ -78,21 +127,24 @@ def _link(text_html, href, source):
     return '<strong>%s</strong> (documentación técnica del repositorio)' % text_html
 
 
-def inline(text, source):
-    """Marcas en línea de un texto Markdown, con lo demás escapado."""
+def inline(text, source, routes=True):
+    """Marcas en línea de un texto Markdown, con lo demás escapado. Con
+    ``routes`` las rutas de menú son ligas (no dentro de otra liga ni en
+    títulos)."""
+    plain = _routes if routes else (lambda t: t)
     out, pos = [], 0
     for match in INLINE.finditer(text):
-        out.append(html.escape(text[pos:match.start()], quote=False))
+        out.append(plain(html.escape(text[pos:match.start()], quote=False)))
         if match.group('code') is not None:
             out.append('<code>%s</code>' % html.escape(match.group('code'), quote=False))
         elif match.group('href') is not None:
-            out.append(_link(inline(match.group('text'), source), match.group('href'), source))
+            out.append(_link(inline(match.group('text'), source, False), match.group('href'), source))
         elif match.group('bold') is not None:
-            out.append('<strong>%s</strong>' % inline(match.group('bold'), source))
+            out.append('<strong>%s</strong>' % inline(match.group('bold'), source, routes))
         else:
-            out.append('<em>%s</em>' % inline(match.group('em') or match.group('em2'), source))
+            out.append('<em>%s</em>' % inline(match.group('em') or match.group('em2'), source, routes))
         pos = match.end()
-    out.append(html.escape(text[pos:], quote=False))
+    out.append(plain(html.escape(text[pos:], quote=False)))
     return ''.join(out)
 
 
@@ -120,7 +172,7 @@ def convert(markdown, source):
         heading = HEADING.match(stripped)
         if heading and not line.startswith(' '):
             level = len(heading.group(1))
-            blocks.append('<h%d>%s</h%d>' % (level, inline(heading.group(2), source), level))
+            blocks.append('<h%d>%s</h%d>' % (level, inline(heading.group(2), source, False), level))
             i += 1
             continue
         if stripped.startswith('|') and i + 1 < n and TABLE_SEP.match(lines[i + 1].strip()):

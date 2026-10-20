@@ -23,6 +23,7 @@ from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import sgi_today
 from .sgi_guard import sgi_require_system
+from .sgi_menu_paths import sgi_open_menu_action
 
 from .sgi_base import sgi_bypass_allowed
 
@@ -1466,11 +1467,11 @@ class SgiProcessActivity(models.Model):
         paso siempre es navegable, nunca texto plano."""
         self.ensure_one()
         if not self.odoo_menu_id and self.odoo_ref:
-            self._sgi_resolve_menu()
-        action = self.odoo_menu_id.action if self.odoo_menu_id else False
-        action = action.exists() if action else action
-        if action and action._name == 'ir.actions.act_window':
-            return action.read()[0]
+            self.sudo()._sgi_resolve_menu()
+        # 57.166.0: cualquier menú (reportes, acciones de cliente o de
+        # servidor, no solo listas) y con el acceso del usuario real.
+        if self.odoo_menu_id:
+            return sgi_open_menu_action(self.env, self.odoo_menu_id)
         if self.measure_model_id:
             return self.action_view_measure_records()
         raise UserError("Esta actividad no tiene menú de Odoo ni medición ligada.")
