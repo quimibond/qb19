@@ -463,7 +463,9 @@ class TestMiidCandados(_Case):
         self.assertEqual(held.user_id, self.mast, "El Jefe MAST recibe un aviso, no solo la nota.")
         rows = self.env['sgi.my.pending']._sgi_pending_values(self.mast)[self.mast.id]
         self.assertTrue([r for r in rows if r['kind'] == 'aviso' and r['res_id'] == held.id],
-                        "El aviso de la solicitud retenida cae en Mis pendientes.")
+                        "El aviso de la solicitud retenida cae en Mis pendientes. Aviso: %s vence %s; renglones: %s" % (
+                            held.id, held.date_deadline,
+                            [(r['kind'], r['res_model'], r['res_id']) for r in rows]))
         # Se levanta el candado: la siguiente sincronización aprueba y cierra el aviso.
         self.s_ctrl.write({'to_confirm': False})
         req.with_user(self.mast).with_context(sgi_sign_sync=True).action_approve(approver=approver)
@@ -730,6 +732,9 @@ class TestPg01Generado(_Case):
         activity = self.env['sgi.process.activity'].create({
             'process_id': self.p1.id, 'number': 'ZM1.09', 'name': 'Publicar el documento ZM',
             'related_procedure_id': doc.id, 'measure_cadence': 'evento', 'done_criteria': 'Publicado ZM',
+            # El procedimiento de ZM1 (el P-G01 de la prueba) está vigente: la
+            # actividad necesita método de medición (candado estricto).
+            'measure_method': 'manual',
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})]})
         snap = pg01._sgi_snapshot()
         self.assertEqual(snap['activities']['ZM1.09'][:3], ['Publicar el documento ZM', ['PUESTO ZM PG01'], []])
