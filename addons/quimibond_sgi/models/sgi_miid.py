@@ -691,8 +691,10 @@ class SgiMiid(models.Model):
     pg01_doc_type_ids = fields.Many2many('sgi.document.type', relation='sgi_miid_screen_pg01_doc_type_rel',
                                          string="Tipos de documento del P-G01",
                                          compute='_compute_screen_records', compute_sudo=True)
-    activity_ids = fields.Many2many('sgi.process.activity', relation='sgi_miid_screen_activity_rel',
-                                    string="Rutinas", compute='_compute_screen_records', compute_sudo=True)
+    # 57.161.1: no «activity_ids», que es de mail.activity.mixin (pisarlo
+    # tumbó el registro en el build de main).
+    routine_ids = fields.Many2many('sgi.process.activity', relation='sgi_miid_screen_routine_rel',
+                                   string="Rutinas", compute='_compute_screen_records', compute_sudo=True)
     scr_general_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
     scr_objeto_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
     scr_proposito_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
@@ -850,7 +852,7 @@ class SgiMiid(models.Model):
                 if policy and kind['all_processes'] else False
             miid.doc_type_ids = types if miid.kind == 'miid' else False
             miid.pg01_doc_type_ids = types if miid.kind == 'pg01' else False
-            miid.activity_ids = env['sgi.process.activity'].search(
+            miid.routine_ids = env['sgi.process.activity'].search(
                 [('related_procedure_id', 'in', miid._sgi_documents().ids)], order='process_id, step, id') \
                 if miid.kind == 'pg01' else False
 

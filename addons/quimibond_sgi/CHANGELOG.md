@@ -13,6 +13,14 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.161.1 — 2026-10-20
+
+### Corregido
+- El build de `main` no cargaba el registro («Failed to load registry»):
+  57.161.0 definió en `sgi.miid` un campo `activity_ids` (las rutinas del
+  P-G01) que pisaba el de `mail.activity.mixin`. Se llama `routine_ids`.
+  Prueba nueva que lo vigila.
+
 ## 19.0.57.161.0 — 2026-10-20
 
 MIID y P-G01 legibles y con las prácticas de Odoo. Jose (2026-10-20): «no se

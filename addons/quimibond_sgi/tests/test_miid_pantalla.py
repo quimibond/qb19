@@ -99,6 +99,11 @@ class TestMiidPantalla(_Case):
             ('body', 'ilike', 'Texto de la sección editado')]),
             "Editar renglones es editar la sección: la siembra ya no la pisa.")
 
+    def test_07_no_pisa_los_campos_del_chatter(self):
+        # 57.161.1: un campo «activity_ids» propio tumbó el registro.
+        self.assertEqual(self.Miid._fields['activity_ids'].comodel_name, 'mail.activity')
+        self.assertIn(self.env.ref('quimibond_sgi.sgi_miid_section_pg01_12_rutinas').page, ('rutinas',))
+
     def test_06_abrir_en_odoo(self):
         self.s_proc.with_user(self.mast).write({'menu_id': self.env.ref('quimibond_sgi.menu_sgi_process_map').id})
         action = self.s_proc.with_user(self.user).action_open_menu()

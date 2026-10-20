@@ -163,7 +163,7 @@ respaldo. Un bloque del documento que ninguna sección lleva sale al final
   (`sgi.miid.section.page`, sale del numeral con `MIID_KINDS[kind]['pages']`).
   Los bloques de `MIID_KINDS[kind]['native']` son listas nativas
   (`process_ids`, `policy_id`, `objective_ids`, `norm_ids`/`pg01_norm_ids`,
-  `doc_type_ids`/`pg01_doc_type_ids`, `activity_ids`); el texto de cada
+  `doc_type_ids`/`pg01_doc_type_ids`, `routine_ids`); el texto de cada
   pestaña lo pinta `report_miid_section` en modo pantalla, partido en
   `scr_<pestaña>_<bloque>_html` (antes de la lista) y `scr_<pestaña>_html`
   (lo demás). Un bloque nativo cuya sección queda en otra pestaña se pinta

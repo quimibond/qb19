@@ -182,7 +182,7 @@
                         </page>
                         <page string="Rutinas" name="page_rutinas" invisible="kind != 'pg01'">
                             <field name="scr_rutinas_actividades_html" nolabel="1" readonly="1"/>
-                            <field name="activity_ids" nolabel="1" readonly="1" invisible="not scr_rutinas_actividades_html">
+                            <field name="routine_ids" nolabel="1" readonly="1" invisible="not scr_rutinas_actividades_html">
                                 <list>
                                     <field name="number"/>
                                     <field name="name"/>
