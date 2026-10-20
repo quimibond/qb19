@@ -69,6 +69,8 @@
               action="action_ficha_tecnica_tejido" sequence="10"/>
     <menuitem id="menu_ficha_tecnica_acabado_list" name="Acabado" parent="menu_ft_tela"
               action="action_ficha_tecnica_acabado" sequence="20"/>
+    <menuitem id="menu_ficha_tecnica_proceso_faltante" name="Acabados en proceso faltantes" parent="menu_ft_tela"
+              action="action_server_ft_proceso_faltante" sequence="30"/>
 
     <menuitem id="menu_ft_maquinas" name="Máquinas" parent="menu_ficha_tecnica_tela_root" sequence="20"/>
     <menuitem id="menu_ft_maquinas_list" name="Máquinas" parent="menu_ft_maquinas"

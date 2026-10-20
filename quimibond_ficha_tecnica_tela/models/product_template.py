@@ -29,7 +29,8 @@ class ProductTemplate(models.Model):
         FichaAcabado = self.env['ficha.tecnica.acabado']
         for tmpl in self:
             product_ids = tmpl.product_variant_ids.ids
-            ficha = FichaAcabado.search([('product_acabado_id', 'in', product_ids)], limit=1)
+            ficha = FichaAcabado.search(['|', ('product_acabado_id', 'in', product_ids),
+                                         ('product_proceso_id', 'in', product_ids)], limit=1)
             tmpl.ficha_tecnica_acabado_id = ficha
             tmpl.ficha_tecnica_acabado_count = 1 if ficha else 0
 

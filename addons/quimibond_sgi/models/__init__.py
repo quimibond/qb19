@@ -180,3 +180,5 @@ from . import sgi_approval_subject
 # 57.150.0: ligas de navegación NC ↔ hallazgo ↔ auditoría, proceso, documento e
 # indicador (extiende modelos de varios archivos; va al final).
 from . import sgi_nav_links
+# 57.160.0: acabado en proceso (K) en C1; extiende project.project y mrp.production de varios archivos (va al final).
+from . import sgi_dev_product_proceso

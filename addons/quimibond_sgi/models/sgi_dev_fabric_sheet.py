@@ -394,6 +394,9 @@ class SgiDevProcessSheetsWizardLine(models.TransientModel):
             tejido = project._sgi_dev_find_sheet('crudo', project.sgi_dev_product_crudo_id)
             if tejido:
                 ctx['default_tejido_id'] = tejido.id
+            # 57.160.0: el acabado en kg («I…») del proyecto, junto a la tela acabada.
+            if project.sgi_dev_product_proceso_id:
+                ctx['default_product_proceso_id'] = project.sgi_dev_product_proceso_id.id
         elif self.stage == 'crudo':
             # 57.158.0: la galga del artículo y, si una sola circular la corre hoy, esa máquina (la ficha toma
             # de su configuración galga, diámetro, agujas, alimentadores y marca). Con varias, Desarrollo

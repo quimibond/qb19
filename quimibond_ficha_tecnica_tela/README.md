@@ -11,6 +11,44 @@ Módulo Odoo 19 con **2 modelos separados**:
   hacia la `ficha.tecnica.tejido` que le sirve de base. Una ficha de
   tejido puede ser la base de varias fichas de acabado.
 
+## Modelo de producción vigente (2.13.0, Dirección 2026-10-19/20)
+
+Las secciones de versiones anteriores cuentan cómo se llegó aquí (2.6.0 y
+2.9.0 hablaban de «un solo producto de acabado en kg»; 2.12.0 y 2.13.0 lo
+afinaron). Lo vigente:
+
+| Paso | Produce | Código | Unidad |
+|---|---|---|---|
+| Tejido | Crudo | `WJ044Q22HNT235` (H en la operación) | kg |
+| Abridora → tintorería → rama (una orden; se cierra con los rollos pesados) | **Acabado en kg** | `IWJ045Q22JNT160` | kg |
+| Inspección (una orden por orden de acabado) | Tela acabada | `WJ045Q22JNT160` (J) | m medidos |
+
+- **Toda la producción va en kg hasta Inspección.** El código en kg es el de la
+  tela acabada con la **«I» al frente**: la DAT P-D02-01 rev. 05 define la
+  posición 1 como unidad (I = kilogramos, sin letra = metros). No hay letras
+  nuevas en la operación.
+- **Sin inspeccionar contra listo** se distingue por **ubicación** («Por
+  inspeccionar» contra Producto terminado), no por código: el mismo «I…» se
+  vende en kg desde Producto terminado (96 existen; 435 líneas y $5.1 millones
+  vendidos en kg en el último año).
+- **Inspección:** para la venta en metros, una orden que consume el «I…» y
+  produce la J en metros medidos, con el mismo lote (de ahí salen la merma y el
+  rendimiento reales por rollo); para la venta en kg, un traslado con revisión
+  de calidad a Producto terminado.
+- **El teñido** (I en la operación) deja de ser producto cuando la ruta del «I…»
+  lleva todas sus operaciones; tintorería es una orden de trabajo de esa orden.
+- **Listas de materiales a voltear:** hoy las 91 listas de los «I…» consumen la
+  J en metros («Conversión de unidades»). Con el flujo nuevo el «I…» consume el
+  crudo o el teñido y la J consume el «I…»; las dos no pueden quedar a la vez
+  (círculo). Se voltean artículo por artículo junto con la lista de Inspección.
+- **En el módulo:** la ficha de acabado liga la tela acabada (`product_acabado_id`)
+  y el acabado en kg (`product_proceso_id`, lo liga sola por código); los
+  artículos nuevos los crea C1 en el SGI (57.160.0) y los que faltan de los
+  existentes, Tela → Acabados en proceso faltantes. Otros módulos leen el
+  artículo en kg en la ficha, no lo arman por el código.
+- **Configuración de inventario pendiente** (no es código): la ubicación «Por
+  inspeccionar» y las rutas para que Ventas tome solo de Producto terminado.
+
 ## Instalación / actualización
 
 1. Copiar la carpeta `quimibond_ficha_tecnica_tela` a la carpeta de addons.
@@ -244,6 +282,8 @@ bloqueos: la decisión sigue siendo de la planta.
   los tipos de fabricación cuyo nombre dice «Tintorería».
 
 ## Listo para el producto único de acabado en kg (2.6.0, 2026-10-13)
+
+> Afinado en 2.13.0: kg hasta Inspección y la tela acabada en metros (ver «Modelo de producción vigente» arriba).
 
 Decisión de Jose: los productos de tintorería se van a dejar de usar; habrá
 **un producto de acabado en kg** con todas las operaciones en su ruta, desde
@@ -517,3 +557,73 @@ Acordado con José Sacramento (implementación de acabado y tintorería):
   artículo y revisión son iguales en todas sus máquinas, así que el
   rendimiento no depende de cuál se tome.
 - Pruebas: `tests/test_rendimiento.py`.
+
+## Producción en kg hasta Inspección: acabado en proceso (2.12.0, 2026-10-19)
+
+Decisión de Dirección (2026-10-19): **toda la producción va en kg hasta
+Inspección**. Corrige la idea de 2.9.0 de un solo producto de acabado en kg: la
+tela acabada se vende en metros (476 productos J en metros y $13.9 millones de
+venta en el último año, contra 20 en kg), así que ventas, precios y CFDI no
+cambian. Cada artículo tiene dos productos, ligados en la ficha y no por la
+posición 9 del código:
+
+| Paso | Produce | Unidad |
+|---|---|---|
+| Tejido | Crudo (H) | kg |
+| Tintorería | Teñido (I) | kg |
+| Rama, termofijado, estiramiento | **Acabado en proceso** | kg |
+| Inspección | Tela acabada (J), la que se vende | m medidos en el rollo |
+
+- **`product_proceso_id`** («Producto — Acabado en proceso (kg)») en la ficha
+  de acabado, junto a la tela acabada. Se sugiere por código y se liga con
+  «Usar el sugerido»; el importador de acabado lo liga solo si la ficha no
+  tiene uno. (2.13.0 explica la regla del código: es la de la DAT P-D02-01.)
+- **Aviso** en la ficha si falta, si no está en kg, si es el mismo producto que
+  la tela acabada, si otra ficha ya lo usa o si la lista de materiales de la
+  tela acabada (la de Inspección) no lo consume. Filtro «Sin acabado en proceso
+  (kg)».
+- El crudo y las operaciones se encuentran bajando por el acabado en proceso;
+  el rendimiento (`_ft_rendimiento`), los procesos por máquina y el botón de
+  ficha del producto reconocen también el acabado en proceso.
+- Pendiente de Dirección: Inspección como operación propia (hoy Acabado entrega
+  directo en metros) y quién da de alta productos y listas de materiales.
+- Pruebas: `tests/test_acabado_proceso.py`.
+
+## Artículo en kg según la DAT y alta de los que faltan (2.13.0, 2026-10-19)
+
+Decisiones de Dirección (2026-10-19):
+
+- **Código:** el artículo en kg sigue la regla oficial, la **DAT P-D02-01
+  rev. 05** (documento controlado del SGI): posición 1 = unidad, **«I» =
+  kilogramos**, sin letra = metros. El de `WJ045Q22JNT160` (m) es
+  `IWJ045Q22JNT160` (kg). No se crean letras nuevas (se descartó una K en la
+  operación, que no está en la DAT). La «I» del frente no es la operación
+  «teñido» (esa va en la posición 9 del código sin prefijo).
+- **Sin inspeccionar contra listo:** es el mismo producto; se distingue por
+  **ubicación** («Por inspeccionar» contra Producto terminado), no por código.
+  Los 96 «I…» que ya existen se venden en kg (435 líneas y $5.1 millones en el
+  último año) y siguen igual: la venta en kg sale de Producto terminado. Las
+  rutas para que Ventas no tome de «Por inspeccionar» son configuración de
+  inventario.
+- **Inspección por orden** (una por orden de acabado): para la venta en
+  metros, consume el «I…» en kg y produce la tela acabada en metros medidos,
+  con el mismo lote; para la venta en kg, un traslado con revisión de calidad a
+  Producto terminado.
+- **Alta desde C1** (SGI 57.160.0) para los artículos nuevos.
+
+En el módulo:
+
+- La ficha de acabado **liga sola** el «I…» al crearse si existe; si no, el
+  aviso dice el código que falta.
+- **Tela → Acabados en proceso faltantes**: lista las telas acabadas en metros
+  de la compañía cuyo «I…» no existe; «Crear los seleccionados» los crea en kg
+  con el mismo nombre, la categoría, el seguimiento y las rutas de la tela
+  acabada, sin venta ni compra (Ventas lo habilita si se vende en kg), y los
+  liga a sus fichas de acabado.
+- Pruebas: `tests/test_acabado_proceso.py`.
+
+## Documentación del modelo (2.13.1, 2026-10-20)
+
+Sin cambios de comportamiento. Resumen «Modelo de producción vigente» al
+principio de este README (las secciones 2.6.0 y 2.9.0 quedan como historia), y
+la ayuda del campo «Orden con teñido» ya no dice «producto único de acabado».

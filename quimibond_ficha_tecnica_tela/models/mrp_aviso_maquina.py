@@ -161,7 +161,7 @@ class ProductProductFicha(models.Model):
         rendimiento = ficha._ft_rendimiento() if ficha else 0.0
         if rendimiento:
             return rendimiento, 'ficha de tejido %s' % ficha.display_name
-        domain = [('product_acabado_id', '=', self.id)]
+        domain = ['|', ('product_acabado_id', '=', self.id), ('product_proceso_id', '=', self.id)]
         if self.default_code:
             domain = ['|', ('articulo', '=', self.default_code)] + domain
         for acabado in self.env['ficha.tecnica.acabado'].search(domain, order='id desc'):
@@ -319,7 +319,7 @@ class MrpProductionAviso(models.Model):
     ft_es_tintoreria = fields.Boolean(
         string='Orden con teñido', compute='_compute_ft_es_tintoreria',
         help='Orden de tintorería (su tipo de operación calcula cargas por jet) u orden con una orden de '
-             'trabajo en un jet (producto único de acabado, 2.6.0).')
+             'trabajo en un jet (acabado en kg con la tintorería en su ruta, 2.6.0 y 2.13.0).')
     ft_jet_wo_id = fields.Many2one('mrp.workcenter', string='Jet de la orden de trabajo',
                                    compute='_compute_ft_es_tintoreria')
     ft_jet_id = fields.Many2one(
