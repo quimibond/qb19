@@ -70,6 +70,13 @@ Cuando una actividad de su gente se atrasa, le escala a usted.
    y Dirección de Operaciones. Un periodo que venció antes del arranque del
    registro de cumplimiento (05/10/2026) no escala.
 
+Como dueño de proceso, desde 57.168.0 recibe los **Flujos atrasados** de su
+proceso: una actividad con entradas cuyo plazo venció sin salida («C4.16
+Revisar la tela en Inspección — 551 entradas…»). Le llega una sola vez a
+usted, con la semana medida como fecha, y ya no a cada persona del puesto.
+**Ir a hacerlo** abre la pantalla; revíselo con quien la ejecuta. Los procesos
+sin dueño se los manda al Jefe MAST.
+
 Como dueño de proceso también recibe los plazos vencidos de las NC de su
 proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
 Antes de mover una NC de su proceso a Seguimiento, capture su clasificación
@@ -79,6 +86,9 @@ y la cláusula que se incumplió.
 
 1. En **Mis pendientes**, los renglones **Validar medición** son mediciones
    capturadas o calculadas de sus indicadores. Tiene **3 días hábiles**.
+   Desde 57.168.0 las de un mismo indicador van juntas en un renglón
+   («Validar CO-01 Entregas a tiempo — 8 mediciones»): **Validar** valida
+   todas e **Ir** abre la lista para revisarlas una por una.
 2. Revise el valor y la evidencia (**Registros** en la medición) y pulse
    **Validar**, desde el renglón o desde la medición.
 3. Si el valor está mal, corríjalo antes de validar. Un rojo necesita causa y
@@ -98,6 +108,13 @@ su gente; **Hecho** y **En proceso** sí le salen en las actividades de las
 personas de las que es jefe (cadena de «Jefe» en Empleados), no en sus
 avisos ni acciones. Los **Escalamientos** que recibe son un tipo aparte, con
 su filtro, y solo tienen **Ir**.
+
+Desde 57.168.0 lo repetido va junto en un renglón, con la columna
+**Cuántos**: las mediciones de un mismo indicador, las firmas que no son del
+SGI (órdenes de compra, recibos de entrega), los avisos de una misma clase
+(«Salida sin CoA — 30 avisos»), las revisiones de medición del mes y los
+requisitos legales. **Ir** abre la lista de lo que junta; la ficha del
+renglón dice cuáles son. La fecha y el estado son los del más atrasado.
 
 Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
 indicadores semanales se ven por semana) y abre con el filtro «Con dato»:

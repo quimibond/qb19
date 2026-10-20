@@ -16,6 +16,11 @@ núcleo en 57.9.0 (auditoría A-014).
 - **Pruebas:** `tests/test_instruction_knowledge.py` (antes
   `quimibond_sgi/tests/test_pr6_external.py`, test_05).
 
+## 1.2.16 (2026-10-20): Mis pendientes agrupado
+
+El manual del jefe de área explica los renglones que juntan lo repetido y el
+«Flujo atrasado» del dueño de proceso (`quimibond_sgi` 57.168.0).
+
 ## 1.2.15 (2026-10-20): manuales al día con el SGI ordenado
 
 Los manuales dicen dónde quedó lo que salió del menú en `quimibond_sgi`
