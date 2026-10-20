@@ -23,19 +23,21 @@ La ficha muestra además:
 from odoo import api, fields, models
 
 MAX_NIVELES = 5
-# Posición 9 del código (operación): J = tela acabada (m), K = acabado en proceso (kg), 2.13.0. No es la «I» al
-# frente: los IWJ… se venden en kg (435 líneas, $5.1 millones en el último año) y no son producto en proceso.
+# DAT P-D02-01 rev. 05 (regla de codificación, documento controlado del SGI): posición 1 = unidad, «I» = kilogramos,
+# sin letra = metros. El acabado en kg es el código de la tela acabada con la «I» al frente (2.13.0, decisión de
+# Dirección 2026-10-19: se sigue la DAT, sin códigos nuevos). Sin inspeccionar o ya inspeccionado se distingue por la
+# ubicación, no por el código: el mismo «I…» también se vende en kg.
+PREFIJO_KG = 'I'
 OP_ACABADO = 'J'
-OP_PROCESO = 'K'
 
 
 def codigo_proceso(code):
-    """El código del acabado en proceso de una tela acabada (WJ045Q22JNT160 → WJ045Q22KNT160); '' si el código no
-    sigue la regla."""
+    """El código en kg de una tela acabada en metros (WJ045Q22JNT160 → IWJ045Q22JNT160); '' si el código no sigue
+    la regla (14 o 16 posiciones con J en la 9)."""
     code = (code or '').strip()
-    if len(code) < 14 or code[8:9].upper() != OP_ACABADO:
+    if len(code) not in (14, 16) or code[8:9].upper() != OP_ACABADO:
         return ''
-    return code[:8] + OP_PROCESO + code[9:]
+    return PREFIJO_KG + code
 
 
 class FichaTecnicaAcabadoRuta(models.Model):
@@ -48,8 +50,10 @@ class FichaTecnicaAcabadoRuta(models.Model):
     operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Acabado en proceso (kg)', index=True,
-        help='La tela en kg que sale de rama, termofijado y estiramiento y entra a Inspección. Inspección la pasa '
-             'a metros medidos en el rollo y entrega el Producto — Tela acabada.')
+        help='La tela en kg que sale de rama, termofijado y estiramiento y entra a Inspección: el código de la tela '
+             'acabada con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). Inspección la pasa a metros '
+             'medidos en el rollo y entrega el Producto — Tela acabada; la que se vende en kg sale del mismo '
+             'producto desde Producto terminado.')
     product_proceso_sugerido_id = fields.Many2one('product.product', string='Acabado en proceso sugerido',
                                                   compute='_compute_proceso_aviso')
     proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso')
@@ -106,7 +110,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
                 '%s (%s)' % (o.name, o.workcenter_id.name) for o in sin_proceso)) if sin_proceso else False
 
     def _ft_proceso_sugerido(self):
-        """El producto con el código de la tela acabada y K en la posición 9, si existe."""
+        """El producto con el código de la tela acabada y la «I» al frente (en kg), si existe."""
         self.ensure_one()
         code = codigo_proceso(self.product_acabado_id.default_code)
         if not code:

@@ -12,7 +12,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sg
 |---|---|---|---|---|---|---|---|---|
 | `sgi_control_plan_id` | Many2one | Plan de control | Plan de control vigente del artículo (C1.17). Se propone el último plan que lo incluye; se puede cambiar a mano. |  | `sgi.control.plan` | compute `_compute_sgi_control_plan_id`, guardado |  | `addons/quimibond_sgi/models/sgi_links.py:91` |
 | `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Proyecto de desarrollo de producto que creó el artículo. |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:60` |
-| `sgi_dev_role` | Selection | Papel en la ruta | Crudo, teñido, acabado en proceso o acabado dentro de la ruta del desarrollo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:63` |
+| `sgi_dev_role` | Selection | Papel en la ruta | Crudo, teñido, acabado en kg o acabado dentro de la ruta del desarrollo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:63` |
 | `sgi_dev_state` | Selection | Estado de desarrollo | Solo en artículos nacidos de un desarrollo. En desarrollo: no se vende. En pilotaje: se vende con aviso. Liberado: de línea. Archivado: el desarrollo se perdió o canceló. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:56` |
 | `sgi_first_sale_date` | Date | Primer pedido confirmado | Fecha del primer pedido de venta confirmado con este producto (C1-04). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:28` |
 | `sgi_packaging_notes` | Text | Manejo y empaque (C14-02) | Indicaciones de manejo y empaque del producto (sustituye F-P-C14-02). Visible para inspección y almacén. |  |  |  |  | `addons/quimibond_sgi/models/sgi_integration.py:234` |

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.13.0 (Dirección General 2026-10-19): producción en kg hasta Inspección; acabados en proceso (K) que faltan
-         para las telas acabadas (J) que ya existen. -->
+    <!-- 2.13.0 (Dirección General 2026-10-19): producción en kg hasta Inspección; los artículos en kg («I…», DAT
+         P-D02-01) que faltan para las telas acabadas en metros (J) que ya existen. -->
     <record id="view_ficha_tecnica_proceso_faltante_list" model="ir.ui.view">
         <field name="name">ficha.tecnica.proceso.faltante.list</field>
         <field name="model">ficha.tecnica.proceso.faltante</field>
@@ -9,7 +9,7 @@
             <list string="Acabados en proceso faltantes" create="0" delete="0">
                 <header>
                     <button name="action_crear" type="object" string="Crear los seleccionados"
-                            help="Crea en kg el acabado en proceso de las telas acabadas seleccionadas (mismo nombre, K en la posición 9, categoría Producto en Proceso / Acabado, sin venta ni compra) y lo liga a sus fichas de acabado."/>
+                            help="Crea el artículo en kg de las telas acabadas seleccionadas (el mismo código con la «I» al frente, mismo nombre y categoría, sin venta ni compra) y lo liga a sus fichas de acabado."/>
                 </header>
                 <field name="acabado_id"/>
                 <field name="codigo"/>

@@ -29,13 +29,15 @@ CODE_SLICES = {
     'composicion': (0, 1), 'dibujo': (1, 2), 'peso': (2, 5), 'hilo': (5, 6), 'galga': (6, 8),
     'op': (8, 9), 'color': (9, 11), 'ancho': (11, 14), 'acabado': (14, 16),
 }
-# 57.160.0: K = acabado en proceso (kg, sale de rama y entra a Inspección), entre el teñido y el acabado (J, m). Lleva
-# las claves del acabado (color, ancho, acabado especial) con la operación K.
-ROLE_BY_OP = {'H': 'crudo', 'I': 'tenido', 'K': 'proceso', 'J': 'acabado'}
+# 57.160.0: el acabado en kg (rol 'proceso', sale de rama y entra a Inspección) va entre el teñido y el acabado (J, m).
+# Su código es el del acabado con la «I» al frente (DAT P-D02-01: posición 1 = unidad, I = kilogramos), así que
+# lleva las claves del acabado (color, ancho, acabado especial).
+UNIT_KG = 'I'
+ROLE_BY_OP = {'H': 'crudo', 'I': 'tenido', 'J': 'acabado'}
 ROLE_ORDER = ('crudo', 'tenido', 'proceso', 'acabado')
 ROLE_FIELD = {'crudo': 'sgi_dev_product_crudo_id', 'tenido': 'sgi_dev_product_tenido_id',
               'proceso': 'sgi_dev_product_proceso_id', 'acabado': 'sgi_dev_product_id'}
-ROLE_LABEL = {'crudo': "crudo", 'tenido': "teñido", 'proceso': "acabado en proceso", 'acabado': "acabado"}
+ROLE_LABEL = {'crudo': "crudo", 'tenido': "teñido", 'proceso': "acabado en kg", 'acabado': "acabado"}
 ALL_ROLES = frozenset(ROLE_ORDER)
 # Qué niveles cambian con cada clave del proyecto.
 KEY_LEVELS = {
@@ -64,8 +66,15 @@ KEY_LABEL = {
 
 def parse_code(code):
     """Partes del código o None si no tiene la forma de la regla (al menos 14 posiciones y
-    operación H, I, K o J)."""
+    operación H, I o J). 57.160.0: con la «I» al frente (15 o 17 posiciones) es el acabado en kg
+    (``role`` 'proceso', ``unit`` 'I'); ninguna composición usa la I, así que no se confunde."""
     code = (code or '').strip().upper()
+    if code[:1] == UNIT_KG and len(code) in (15, 17):
+        parts = parse_code(code[1:])
+        if not parts or parts['role'] != 'acabado':
+            return None
+        parts.update(role='proceso', unit=UNIT_KG)
+        return parts
     if len(code) < 14 or code[8] not in ROLE_BY_OP:
         return None
     parts = {k: code[a:b] for k, (a, b) in CODE_SLICES.items()}
@@ -74,8 +83,9 @@ def parse_code(code):
 
 
 def build_code(parts):
-    return (parts['composicion'] + parts['dibujo'] + parts['peso'] + parts['hilo'] + parts['galga'] + parts['op']
-            + parts['color'] + parts['ancho'] + (parts.get('acabado') or ''))
+    return (parts.get('unit') or '') + (
+        parts['composicion'] + parts['dibujo'] + parts['peso'] + parts['hilo'] + parts['galga'] + parts['op']
+        + parts['color'] + parts['ancho'] + (parts.get('acabado') or ''))
 
 
 class MrpBomLineDevPending(models.Model):
@@ -133,7 +143,8 @@ class ProjectProjectDevBase(models.Model):
         self.ensure_one()
         product = self.sgi_dev_base_product_id
         parts = parse_code(product.default_code) if product else None
-        if not parts:
+        # 57.160.0: un base en kg («I…») no da cadena (como antes): se genera por claves.
+        if not parts or parts['role'] == 'proceso':
             return []
         chain, seen = [], set()
         while product and parts and product.id not in seen:

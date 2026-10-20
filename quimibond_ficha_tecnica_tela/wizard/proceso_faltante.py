@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 """Acabados en proceso faltantes (2.13.0, Dirección General 2026-10-19).
 
-Toda la producción va en kg hasta Inspección: cada tela acabada (J, en metros) necesita su acabado en proceso
-(K en la posición 9, en kg). Los artículos nuevos los da de alta C1 (proyecto de desarrollo, SGI); para los que ya
-existen, este reporte lista las telas acabadas en metros cuyo acabado en proceso no existe y lo crea para las
-seleccionadas: mismo nombre, kg, categoría «Producto en Proceso / Acabado», sin venta ni compra, con el
-seguimiento y las rutas de la tela acabada. El reporte no cambia nada por sí mismo.
+Toda la producción va en kg hasta Inspección: cada tela acabada (J, en metros) necesita su artículo en kg, que por
+la DAT P-D02-01 es el mismo código con la «I» al frente (posición 1 = unidad). Los artículos nuevos los da de alta C1
+(proyecto de desarrollo, SGI); para los que ya existen, este reporte lista las telas acabadas en metros cuyo «I…» no
+existe y lo crea para las seleccionadas: mismo nombre, kg, la categoría, el seguimiento y las rutas de la tela
+acabada, sin venta ni compra (Ventas lo habilita si se vende en kg). El reporte no cambia nada por sí mismo.
 """
 from odoo import api, fields, models
 
 from ..models.acabado_ruta import codigo_proceso
-
-CATEG_PROCESO = 'Producto en Proceso / Acabado'
 
 
 class FichaTecnicaProcesoFaltante(models.TransientModel):
@@ -20,7 +18,7 @@ class FichaTecnicaProcesoFaltante(models.TransientModel):
     _order = 'codigo, id'
 
     acabado_id = fields.Many2one('product.product', string='Tela acabada (m)', required=True, ondelete='cascade')
-    codigo = fields.Char(string='Código del acabado en proceso')
+    codigo = fields.Char(string='Código en kg')
     categ_id = fields.Many2one(related='acabado_id.categ_id', string='Categoría de la tela acabada')
     sale_ok = fields.Boolean(related='acabado_id.sale_ok', string='Se vende')
 
@@ -50,7 +48,6 @@ class FichaTecnicaProcesoFaltante(models.TransientModel):
         reporte."""
         Product = self.env['product.product']
         kg = self.env.ref('uom.product_uom_kgm')
-        categ = self.env['product.category'].search([('complete_name', '=', CATEG_PROCESO)], limit=1)
         existentes = set(Product.with_context(active_test=False).search(
             [('default_code', 'in', self.mapped('codigo'))]).mapped('default_code'))
         vals_list = []
@@ -58,7 +55,7 @@ class FichaTecnicaProcesoFaltante(models.TransientModel):
             acabado = row.acabado_id
             vals_list.append({
                 'name': acabado.name, 'default_code': row.codigo, 'type': 'consu', 'is_storable': True,
-                'uom_id': kg.id, 'categ_id': (categ or acabado.categ_id).id,
+                'uom_id': kg.id, 'categ_id': acabado.categ_id.id,
                 'sale_ok': False, 'purchase_ok': False, 'tracking': acabado.tracking,
                 'company_id': acabado.company_id.id, 'route_ids': [(6, 0, acabado.route_ids.ids)],
             })

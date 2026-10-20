@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""57.160.0: el acabado en proceso (K, kg) en C1: se genera con los demás artículos, sigue el estado del
-desarrollo sin venderse y su orden se valida contra la ficha de acabado."""
+"""57.160.0: el acabado en kg («I» al frente, DAT P-D02-01) en C1: se genera con los demás artículos, sigue el
+estado del desarrollo sin habilitarse para venta y su orden se valida contra la ficha de acabado."""
 from odoo.tests import TransactionCase, tagged
 
+from ..models.sgi_dev_product_base import build_code, parse_code
 from ..models.sgi_dev_product_proceso import proceso_code
 
 
@@ -16,7 +17,7 @@ class TestDevProceso(TransactionCase):
         cls.Clave = cls.env['ficha.tecnica.clave.codigo']
         cls.kg = cls.env.ref('uom.product_uom_kgm')
         cls.m = cls.env.ref('uom.product_uom_meter')
-        cls.partner = cls.env['res.partner'].create({'name': 'Cliente acabado en proceso', 'is_company': True})
+        cls.partner = cls.env['res.partner'].create({'name': 'Cliente acabado en kg', 'is_company': True})
 
     def _clave(self, kind, code):
         return self.Clave.search([('kind', '=', kind), ('code', '=', code)], limit=1)
@@ -32,32 +33,36 @@ class TestDevProceso(TransactionCase):
             'sgi_dev_code_ancho_crudo': 185}, **vals))
 
     def test_01_codigo(self):
-        self.assertEqual(proceso_code('WJ053Q22JNT160'), 'WJ053Q22KNT160')
-        self.assertEqual(proceso_code('WJ053Q22JNG160AF'), 'WJ053Q22KNG160AF')
+        self.assertEqual(proceso_code('WJ053Q22JNT160'), 'IWJ053Q22JNT160')
+        self.assertEqual(proceso_code('WJ053Q22JNG160AF'), 'IWJ053Q22JNG160AF')
         self.assertEqual(proceso_code('WJ044Q22HNT235'), '', "Solo del acabado (J)")
         self.assertEqual(proceso_code('CORTO'), '')
+        parts = parse_code('IWJ053Q22JNT160')
+        self.assertEqual((parts['role'], parts['op'], parts['color']), ('proceso', 'J', 'NT'))
+        self.assertEqual(build_code(dict(parts, color='NG')), 'IWJ053Q22JNG160')
+        self.assertIsNone(parse_code('IWJ044Q22INT235'), "Con la I al frente solo el acabado")
 
     def test_02_generar_por_claves(self):
         dev = self._dev()
-        self.assertEqual(dev.sgi_dev_code_proceso_code, 'WJ053Q21KNG160')
+        self.assertEqual(dev.sgi_dev_code_proceso_code, 'IWJ053Q21JNG160')
         dev.action_sgi_dev_generate_products()
         proceso = dev.sgi_dev_product_proceso_id
-        self.assertEqual(proceso.default_code, 'WJ053Q21KNG160')
+        self.assertEqual(proceso.default_code, 'IWJ053Q21JNG160')
         self.assertEqual((proceso.uom_id, proceso.sgi_dev_role, proceso.sgi_dev_project_id, proceso.sgi_dev_state),
                          (self.kg, 'proceso', dev, 'desarrollo'))
         self.assertFalse(proceso.sale_ok)
-        self.assertTrue(any('WJ053Q21KNG160' in (m.body or '') for m in dev.message_ids), "Queda en el chatter")
+        self.assertTrue(any('IWJ053Q21JNG160' in (m.body or '') for m in dev.message_ids), "Queda en el chatter")
         dev.action_sgi_dev_generate_products()
-        self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'WJ053Q21KNG160')]), 1,
+        self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'IWJ053Q21JNG160')]), 1,
                          "Volver a generar no lo duplica")
         self.assertIn(proceso.product_tmpl_id, dev._sgi_dev_products())
         dev._sgi_dev_products()._sgi_dev_set_state('pilotaje')
         self.assertEqual(proceso.sgi_dev_state, 'pilotaje')
-        self.assertFalse(proceso.sale_ok, "El acabado en proceso nunca se vende")
+        self.assertFalse(proceso.sale_ok, "La venta en kg la habilita Ventas")
         self.assertTrue(dev.sgi_dev_product_id.sale_ok)
 
     def test_03_existente_se_liga(self):
-        existing = self.env['product.product'].create({'name': 'K que ya existía', 'default_code': 'WJ053Q21KNG160',
+        existing = self.env['product.product'].create({'name': 'En kg que ya existía', 'default_code': 'IWJ053Q21JNG160',
                                                        'uom_id': self.kg.id})
         dev = self._dev()
         dev.action_sgi_dev_generate_products()
@@ -66,13 +71,13 @@ class TestDevProceso(TransactionCase):
 
     def test_04_desde_base_con_acabado_en_proceso(self):
         P = self.env['product.product']
-        crudo = P.create({'name': 'Crudo base K', 'default_code': 'WJ044Q22HNT185', 'type': 'consu',
+        crudo = P.create({'name': 'Crudo base kg', 'default_code': 'WJ044Q22HNT185', 'type': 'consu',
                           'uom_id': self.kg.id})
-        tenido = P.create({'name': 'Teñido base K', 'default_code': 'WJ044Q22INT185', 'type': 'consu',
+        tenido = P.create({'name': 'Teñido base kg', 'default_code': 'WJ044Q22INT185', 'type': 'consu',
                            'uom_id': self.kg.id})
-        proceso = P.create({'name': 'Proceso base K', 'default_code': 'WJ053Q22KNT160', 'type': 'consu',
+        proceso = P.create({'name': 'Acabado en kg base', 'default_code': 'IWJ053Q22JNT160', 'type': 'consu',
                             'uom_id': self.kg.id})
-        acabado = P.create({'name': 'Acabado base K', 'default_code': 'WJ053Q22JNT160', 'type': 'consu',
+        acabado = P.create({'name': 'Acabado base m', 'default_code': 'WJ053Q22JNT160', 'type': 'consu',
                             'uom_id': self.m.id})
         Bom = self.env['mrp.bom']
         Bom.create({'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1,
@@ -86,7 +91,7 @@ class TestDevProceso(TransactionCase):
         dev.action_sgi_dev_generate_products()
         new_t, new_k, new_a = dev.sgi_dev_product_tenido_id, dev.sgi_dev_product_proceso_id, dev.sgi_dev_product_id
         self.assertEqual((new_t.default_code, new_k.default_code, new_a.default_code),
-                         ('WJ044Q22ING185', 'WJ053Q22KNG160', 'WJ053Q22JNG160'))
+                         ('WJ044Q22ING185', 'IWJ053Q22JNG160', 'WJ053Q22JNG160'))
         self.assertEqual(new_k.uom_id, self.kg)
         bom_k = Bom._bom_find(new_k)[new_k]
         self.assertEqual(bom_k.bom_line_ids.product_id, new_t, "El acabado en proceso consume el teñido nuevo")

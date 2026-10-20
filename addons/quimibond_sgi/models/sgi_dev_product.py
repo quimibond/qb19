@@ -30,10 +30,11 @@ DEV_PRODUCT_STATES = [
     ('liberado', "Liberado"),
     ('archivado', "Archivado"),
 ]
-# 57.160.0: el acabado en proceso (K, kg) va entre el teñido y el acabado (J, m): producción en kg hasta Inspección.
-DEV_PRODUCT_ROLES = [('crudo', "Crudo (H)"), ('tenido', "Teñido (I)"), ('proceso', "Acabado en proceso (K)"),
+# 57.160.0: el acabado en kg («I» al frente, DAT P-D02-01: posición 1 = kilogramos) va entre el teñido y el acabado
+# (J, m): producción en kg hasta Inspección.
+DEV_PRODUCT_ROLES = [('crudo', "Crudo (H)"), ('tenido', "Teñido (I)"), ('proceso', "Acabado en kg (I…J)"),
                      ('acabado', "Acabado (J)")]
-OPERATION_CODES = {'crudo': 'H', 'tenido': 'I', 'proceso': 'K', 'acabado': 'J'}
+OPERATION_CODES = {'crudo': 'H', 'tenido': 'I', 'acabado': 'J'}
 NATURAL_COLOR = 'NT'
 # Hilos que llegan con color: el crudo conserva el color final.
 COLORED_YARN_CODES = ('B', 'R')
@@ -42,7 +43,6 @@ PARAM_BLOCK_GENERIC = 'quimibond_sgi.dev_block_generic_sample_from'
 CATEG_NAMES = {
     'crudo': ("Producto en Proceso / Tejido Circular", "Producto en Proceso"),
     'tenido': ("Producto en Proceso / Teñido", "Producto en Proceso"),
-    'proceso': ("Producto en Proceso / Acabado", "Producto en Proceso"),
     'acabado_industrial': ("Producto Terminado / Tejido Circular / Industrial", "Producto Terminado / Tejido Circular",
                            "Producto Terminado"),
     'acabado_confeccion': ("Producto Terminado / Tejido Circular / Confección", "Producto Terminado / Tejido Circular",
@@ -61,7 +61,7 @@ class ProductTemplateDev(models.Model):
                                          ondelete='set null',
                                          help="Proyecto de desarrollo de producto que creó el artículo.")
     sgi_dev_role = fields.Selection(DEV_PRODUCT_ROLES, string="Papel en la ruta", copy=False,
-                                    help="Crudo, teñido, acabado en proceso o acabado dentro de la ruta del desarrollo.")
+                                    help="Crudo, teñido, acabado en kg o acabado dentro de la ruta del desarrollo.")
 
     def _sgi_dev_set_state(self, state):
         """Cambia el estado de desarrollo y lo que implica: venta y archivo."""
