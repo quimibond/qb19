@@ -6,7 +6,9 @@ acepta conexiones cifradas, así que el reloj no puede hablarle directo.
 
 El puente es un programa de Python que corre en una PC de la planta que
 siempre está encendida. Los relojes le mandan sus checadas en HTTP plano por
-la red local y el puente las reenvía tal cual a Odoo por HTTPS; la respuesta
+la red local y el puente las reenvía tal cual a Odoo por HTTPS (salvo el tipo
+de contenido: los POST de `/iclock/` van siempre como texto plano, porque el
+UA860 los declara como formulario y Odoo los recibiría vacíos); la respuesta
 de Odoo regresa al reloj sin cambios. Para Odoo es exactamente lo mismo que si
 el reloj hablara directo (`/iclock/cdata`, serie en la URL, `OK: n`).
 

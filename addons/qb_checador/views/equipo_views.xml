@@ -109,6 +109,7 @@
                             <field name="conexion_hace"/>
                             <field name="ultima_conexion"/>
                             <field name="ultima_checada"/>
+                            <field name="checadas_desde"/>
                             <field name="attlog_stamp" invisible="marca != 'zkteco'"/>
                             <field name="operlog_stamp" invisible="marca != 'zkteco'"/>
                             <field name="checada_count"/>

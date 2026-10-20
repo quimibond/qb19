@@ -94,6 +94,11 @@ class IclockController(http.Controller):
         if error:
             return error
         cuerpo = request.httprequest.get_data(as_text=True) or ''
+        if not cuerpo and request.httprequest.content_length:
+            # Con Content-Type de formulario, Odoo ya leyó el cuerpo como formulario y aquí llega vacío.
+            _logger.warning("qb_checador %s: POST %s de %d bytes llegó vacío (Content-Type %r); el reloj debe "
+                            "mandar texto plano (el puente lo corrige)", equipo.serial, table,
+                            request.httprequest.content_length, request.httprequest.content_type)
         tabla = (table or '').upper()
         if tabla == 'ATTLOG':
             n = request.env['qb.checada'].sudo().procesar_attlog(equipo, cuerpo)
