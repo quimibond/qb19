@@ -20,7 +20,7 @@ from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_director, sgi_set_mast
 
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -188,7 +188,7 @@ class TestSaludSgi(TransactionCase):
         self.assertNotIn(self.env.ref('base.user_root').id, out['ids'])
 
     def test_04_planta_identificable(self):
-        other = self.env['res.company'].create({'name': 'Otra empresa salud SGI'})
+        other = sgi_new_company(self.env, 'Otra empresa salud SGI')
         user = new_test_user(self.env, login='zsa_planta', groups=USER)
         user_other = new_test_user(self.env, login='zsa_planta_otra', groups=USER,
                                    company_id=other.id, company_ids=[(6, 0, other.ids)])

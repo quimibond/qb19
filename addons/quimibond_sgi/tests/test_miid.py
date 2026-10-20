@@ -16,7 +16,7 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_mast
 from ..models.sgi_miid import MIID_BLOCKS
 
@@ -36,7 +36,7 @@ class _Case(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         env = cls.env
-        cls.company = env['res.company'].create({'name': 'ZM Empresa MIID'})
+        cls.company = sgi_new_company(env, 'ZM Empresa MIID')
         env['ir.config_parameter'].sudo().set_param('quimibond_sgi.sgi_company_id', str(cls.company.id))
         cls.mast = sgi_set_mast(env, login='zm_miid_mast')
         cls.mast.write({'company_ids': [(4, cls.company.id)]})

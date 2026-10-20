@@ -4,13 +4,14 @@ from datetime import date, datetime
 
 from odoo import fields
 from odoo.tests import TransactionCase, tagged
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
 class TestKpiFields(TransactionCase):
 
     def test_01_bitacora_de_bloqueo(self):
-        company = self.env['res.company'].create({'name': 'ZK Bloqueo'})
+        company = sgi_new_company(self.env, 'ZK Bloqueo')
         Log = self.env['sgi.lock.date.log']
         before = Log.search_count([('company_id', '=', company.id)])
         company.write({'fiscalyear_lock_date': date(2046, 2, 28)})

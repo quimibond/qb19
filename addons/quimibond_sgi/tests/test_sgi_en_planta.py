@@ -17,7 +17,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
 
 from ..models.sgi_calendar import sgi_today
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_mast
 
 # Misma clave que models/sgi_floor_kiosk.py (se escribe aquí para que este
@@ -58,7 +58,7 @@ class _PlantaCase(TransactionCase):
                                      work_email=False))
         cls.outsider = Emp.create(dict(base, name='ZK Almacenista', department_id=cls.other_dept.id,
                                        pin='9753'))
-        other_company = env['res.company'].create({'name': 'ZK Otra empresa'})
+        other_company = sgi_new_company(env, 'ZK Otra empresa')
         foreign_dept = Dept.create({'name': 'ZK Tejido B', 'company_id': other_company.id})
         cls.foreign = Emp.create({'name': 'ZK De otra empresa', 'company_id': other_company.id,
                                   'department_id': foreign_dept.id, 'pin': '8642'})

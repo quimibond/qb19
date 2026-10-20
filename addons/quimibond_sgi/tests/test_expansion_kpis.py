@@ -9,6 +9,7 @@ from datetime import date
 from odoo.tests import TransactionCase, tagged
 
 from .common_accounts import sgi_test_payable, sgi_test_sales_accounts
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -242,7 +243,7 @@ class TestExpansionKpis(TransactionCase):
             ind._calc_notas_credito(self.period, self.period_end), 1.5)
         # Apuntando el parámetro a otra compañía (sin facturas), el mismo
         # periodo queda sin datos: prueba que el filtro sí corta.
-        other = self.env['res.company'].create({'name': 'Otra Cía KPI'})
+        other = sgi_new_company(self.env, 'Otra Cía KPI')
         self.env['ir.config_parameter'].sudo().set_param(
             'quimibond_sgi.kpi_company_id', other.id)
         self.assertEqual(ind._sgi_kpi_company(), other)
