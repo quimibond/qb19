@@ -25,7 +25,7 @@ from odoo.tools import file_open, mute_logger
 
 # Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
 from .sgi_calendar import sgi_add_business_days, sgi_local_date, sgi_today
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_path, sgi_open_menu_action
 from .sgi_report_print import DG_COLORS, DG_LEVEL_BG
 
 try:  # C-1: texto sin formato (html2plaintext convierte <b> en *…*).
@@ -636,19 +636,8 @@ class SgiMiidSection(models.Model):
         return result
 
     def _sgi_open_menu(self, menu):
-        """Abre el menú (su acción de ventana; si no, el menú mismo). Si el
-        usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo le
-        negaría."""
-        if not menu:
-            raise UserError("Esta sección no tiene pantalla en Odoo.")
-        if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
-            raise UserError("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % (
-                _miid_menu_link(menu)[0]))
-        action = menu.sudo().action
-        action = action.exists() if action else action
-        if action and action._name == 'ir.actions.act_window':
-            return action.read()[0]
-        return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
+        """Abre el menú (57.165.0: la regla común de sgi_menu_paths)."""
+        return sgi_open_menu_action(self.env, menu)
 
     def action_open_menu(self):
         self.ensure_one()

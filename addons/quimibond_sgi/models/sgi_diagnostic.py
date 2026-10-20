@@ -17,7 +17,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 
 from .sgi_health_const import HEALTH_MODES
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_from_text, sgi_menu_path, sgi_open_menu_action
 
 LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
 _LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
@@ -37,6 +37,19 @@ class SgiDiagnosticLine(models.TransientModel):
     level = fields.Selection(LEVELS, string="Nivel", required=True, help="Qué tan grave es el hallazgo.")
     text = fields.Text(string="Hallazgo", required=True)
     fix = fields.Char(string="Dónde se arregla")
+    # 57.165.0: la pantalla de «Dónde se arregla», para abrirla con un botón
+    # (antes la ruta solo se leía).
+    fix_menu_id = fields.Many2one('ir.ui.menu', string="Pantalla", compute='_compute_fix_menu_id')
+
+    @api.depends('fix')
+    def _compute_fix_menu_id(self):
+        cache = {}
+        for line in self:
+            line.fix_menu_id = sgi_menu_from_text(self.env, line.fix, cache) if line.fix else False
+
+    def action_open_fix(self):
+        self.ensure_one()
+        return sgi_open_menu_action(self.env, self.fix_menu_id)
 
 
 class SgiDiagnostic(models.TransientModel):

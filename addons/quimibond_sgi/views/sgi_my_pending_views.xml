@@ -176,6 +176,8 @@
                     <button name="action_snooze_notice" type="object" string="Posponer una semana"
                             icon="fa-clock-o" invisible="not can_snooze"
                             confirm="¿Pospone este aviso una semana (5 días hábiles)? La fecha límite del aviso cambia en Odoo."/>
+                    <button name="action_open_where" type="object" string="Ir a hacerlo" icon="fa-external-link"
+                            class="btn-secondary" invisible="not where_menu_id"/>
                     <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
                             invisible="kind in ('acuse', 'firma', 'medicion')"/>
                     <button name="action_open" type="object" string="Leer el documento" icon="fa-book"
@@ -211,6 +213,25 @@
                                    decoration-info="exec_state == 'en_proceso'"/>
                             <field name="exec_note" invisible="not exec_note"/>
                             <field name="exec_date_estimated" invisible="not exec_date_estimated"/>
+                        </group>
+                    </group>
+                    <field name="where_menu_id" invisible="1"/>
+                    <field name="nc_id" invisible="1"/>
+                    <!-- 57.165.0: los pasos de la NC como campos con su estado. -->
+                    <group string="Pasos de la NC" invisible="kind != 'nc' or not nc_id">
+                        <group>
+                            <field name="nc_containment_state" widget="badge" decoration-danger="nc_containment_state == 'vencida'"
+                                   decoration-success="nc_containment_state == 'hecha'"/>
+                            <field name="nc_due_containment"/>
+                            <field name="nc_root_cause_state" widget="badge" decoration-danger="nc_root_cause_state == 'vencida'"
+                                   decoration-success="nc_root_cause_state == 'hecha'"/>
+                            <field name="nc_due_root_cause"/>
+                        </group>
+                        <group>
+                            <field name="nc_plan_state" widget="badge" decoration-danger="nc_plan_state == 'vencida'"
+                                   decoration-success="nc_plan_state == 'hecha'"/>
+                            <field name="nc_due_plan"/>
+                            <field name="nc_effectiveness_due"/>
                         </group>
                     </group>
                     <group string="Qué hay que hacer" invisible="not detail">
