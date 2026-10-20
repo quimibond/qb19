@@ -11,7 +11,14 @@ class SgiNorm(models.Model):
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
     clause_ids = fields.One2many('sgi.norm.clause', 'norm_id', string="Cláusulas")
+    # 57.161.0: lo muestra la lista de normas del MIID y del P-G01.
+    clause_count = fields.Integer(string="Cláusulas en Odoo", compute='_compute_clause_count')
     active = fields.Boolean(default=True)
+
+    @api.depends('clause_ids')
+    def _compute_clause_count(self):
+        for norm in self:
+            norm.clause_count = len(norm.clause_ids)
 
     _code_uniq = models.Constraint(
         'unique(code)',

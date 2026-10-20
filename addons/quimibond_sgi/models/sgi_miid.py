@@ -92,10 +92,17 @@ MIID_KINDS = {
         'blocks': ('identificacion', 'normas', 'procesos', 'politica', 'objetivos', 'roles',
                    'tipos_documento', 'controles', 'plazos_nc', 'correspondencia',
                    'procedimientos_anteriores', 'anexos', 'historial'),
-        'hash_keys': ('sections', 'row_notes', 'processes', 'flows', 'policy', 'objectives',
+        'hash_keys': ('sections', 'items', 'row_notes', 'processes', 'flows', 'policy', 'objectives',
                       'doc_types', 'controls', 'nc', 'norms', 'roles', 'clause_activities',
                       'previous', 'annexes'),
         'all_processes': True,
+        # 57.161.0: pestaña de la pantalla por capítulo (primer número del
+        # numeral; '' = sin numeral) y bloques que la pantalla muestra como
+        # lista de Odoo (en esa pestaña; en otra, como tabla).
+        'pages': {'': 'general', '1': 'objeto', '2': 'normas', '3': 'donde', '4': 'sistema',
+                  '5': 'requisitos', '6': 'documentos', '7': 'transicion', '8': 'cambios'},
+        'native': {'normas': 'normas', 'procesos': 'sistema', 'politica': 'sistema',
+                   'objetivos': 'sistema', 'tipos_documento': 'documentos'},
     },
     'pg01': {
         'code': 'P-G01', 'short': "P-G01",
@@ -104,10 +111,34 @@ MIID_KINDS = {
         'first_revision': 12, 'menu': 'pg01', 'notice_kind': 'pg01_desactualizado',
         'blocks': ('identificacion', 'tipos_documento', 'plazos_documentales', 'actividades',
                    'normas', 'historial'),
-        'hash_keys': ('sections', 'row_notes', 'doc_types', 'doc_params', 'activities', 'norms'),
+        'hash_keys': ('sections', 'items', 'row_notes', 'doc_types', 'doc_params', 'activities', 'norms'),
         'all_processes': False,
+        'pages': {'': 'general', '1': 'proposito', '2': 'proposito', '3': 'responsabilidades',
+                  '4': 'desarrollo', '5': 'rutinas', '6': 'marco', '7': 'cambios'},
+        'native': {'tipos_documento': 'desarrollo', 'actividades': 'rutinas', 'normas': 'marco'},
     },
 }
+# 57.161.0: pestañas de la pantalla (la ficha las muestra según el documento;
+# «otros» junta los capítulos que no están en 'pages').
+MIID_PAGES = [
+    ('general', "Identificación"), ('objeto', "Objeto y alcance"), ('proposito', "Propósito y alcance"),
+    ('responsabilidades', "Responsabilidades"), ('normas', "Normas"), ('donde', "Dónde vive el sistema"),
+    ('sistema', "El sistema"), ('requisitos', "Cómo se cumple"), ('desarrollo', "Desarrollo"),
+    ('documentos', "Información documentada"), ('rutinas', "Rutinas"), ('marco', "Marco normativo"),
+    ('transicion', "Transición"),
+    ('cambios', "Control de cambios"), ('otros', "Otros capítulos"),
+]
+# Campos Html de la pantalla: uno por pestaña (el texto que sigue a la última
+# lista nativa) y uno por lista nativa (el texto que va antes de ella).
+MIID_SCREEN_SLOTS = (('normas', 'normas'), ('sistema', 'procesos'), ('sistema', 'politica'),
+                     ('sistema', 'objetivos'), ('documentos', 'tipos_documento'),
+                     ('desarrollo', 'tipos_documento'), ('rutinas', 'actividades'), ('marco', 'normas'))
+# Columnas de los renglones de una sección (campo del renglón, campo del título).
+MIID_ITEM_COLUMNS = (('label', 'item_label_title'), ('clause', 'item_clause_title'),
+                     ('text', 'item_text_title'), ('text_2', 'item_text2_title'),
+                     ('text_3', 'item_text3_title'))
+MIID_ITEM_FORMAT_FIELDS = ('menu_id', 'item_style') + tuple(t for _f, t in MIID_ITEM_COLUMNS)
+MIID_ITEMS_SEED_FILE = 'quimibond_sgi/data/sgi_miid_items.xml'
 MIID_KIND_SELECTION = [(code, values['label']) for code, values in MIID_KINDS.items()]
 
 
@@ -165,6 +196,19 @@ def _miid_plain(html):
     return ' '.join(text.split())
 
 
+def _miid_menu_link(menu):
+    """(ruta, url) de un menú de Odoo (57.161.0): la ruta se imprime («SGI →
+    Sistema → Mapa de procesos») y la url abre su acción en la pantalla. Sin
+    menú, o sin acción, la url es vacía."""
+    menu = menu.sudo() if menu else menu
+    if not menu:
+        return '', ''
+    path = " → ".join(part.strip() for part in (menu.complete_name or menu.name or '').split('/'))
+    action = menu.action
+    action = action.exists() if action else action
+    return path, ("/odoo/action-%d" % action.id if action else '')
+
+
 def _miid_int(param, key, default):
     try:
         return int(param.get_param(key, default) or default)
@@ -216,6 +260,40 @@ class SgiMiidSection(models.Model):
     row_note_ids = fields.One2many('sgi.miid.row.note', 'section_id', string="Notas por renglón",
                                    help="Columna fija de un bloque de datos (12.1: la situación de cada anexo).")
     active = fields.Boolean(default=True, tracking=True)
+    # 57.161.0: lo que antes eran listas y tablas escritas en el texto son
+    # renglones; las rutas escritas son menús que la pantalla abre.
+    page = fields.Selection(MIID_PAGES, string="Pestaña", compute='_compute_page', store=True,
+                            help="Pestaña de la pantalla donde se ve la sección; sale del numeral (el "
+                                 "capítulo).")
+    menu_id = fields.Many2one('ir.ui.menu', string="Pantalla en Odoo", tracking=True, ondelete='set null',
+                              help="Menú donde se consulta en Odoo lo que dice la sección. La pantalla lo "
+                                   "abre con un botón; el PDF imprime su ruta.")
+    item_ids = fields.One2many('sgi.miid.item', 'section_id', string="Renglones", copy=True,
+                               help="Lista o tabla de la sección: un renglón por concepto.")
+    item_count = fields.Integer(string="# Renglones", compute='_compute_item_count')
+    item_style = fields.Selection([('table', "Tabla"), ('list', "Lista")], string="Los renglones van en",
+                                  default='table', required=True,
+                                  help="Tabla: una columna por cada título que tenga nombre. Lista: el "
+                                       "concepto en negritas y su descripción.")
+    item_label_title = fields.Char(string="Columna del concepto", default="Concepto")
+    item_clause_title = fields.Char(string="Columna del numeral",
+                                    help="Vacío: la tabla no muestra el numeral.")
+    item_text_title = fields.Char(string="Columna de la descripción", default="Descripción")
+    item_text2_title = fields.Char(string="Segunda columna de texto",
+                                   help="Vacío: la tabla no la muestra.")
+    item_text3_title = fields.Char(string="Tercera columna de texto",
+                                   help="Vacío: la tabla no la muestra.")
+
+    @api.depends('kind', 'clause')
+    def _compute_page(self):
+        for section in self:
+            chapter = (section.clause or '').strip().split('.')[0]
+            section.page = MIID_KINDS.get(section.kind, MIID_KINDS['miid'])['pages'].get(chapter, 'otros')
+
+    @api.depends('item_ids')
+    def _compute_item_count(self):
+        for section in self:
+            section.item_count = len(section.item_ids)
 
     @api.constrains('live_block', 'company_id', 'active', 'kind')
     def _check_live_block(self):
@@ -391,6 +469,69 @@ class SgiMiidSection(models.Model):
                 " (editada a mano: %s)" % ", ".join(skipped) if skipped else "")
         return result
 
+    @api.model
+    def _sgi_seed_format_fields(self, xmlid):
+        """57.161.0: formato de la sección (menú, renglones como tabla o lista y
+        títulos de columna) tal como está en ``MIID_ITEMS_SEED_FILE``. Solo los
+        campos que el archivo declara."""
+        from lxml import etree
+        with file_open(MIID_ITEMS_SEED_FILE, 'rb') as fh:
+            tree = etree.parse(fh)
+        out = {}
+        for field in tree.xpath("//record[@id=$rid]/field", rid=xmlid):
+            name = field.get('name')
+            if name not in MIID_ITEM_FORMAT_FIELDS:
+                continue
+            if field.get('ref'):
+                ref = field.get('ref')
+                record = self.env.ref(ref if '.' in ref else 'quimibond_sgi.%s' % ref,
+                                      raise_if_not_found=False)
+                out[name] = record.id if record else False
+            else:
+                out[name] = (field.text or '').strip() or False
+        return out
+
+    @api.model
+    def _sgi_seed_format_update(self, xmlids, tag):
+        """57.161.0: pone en una base existente el formato de la siembra en las
+        secciones dadas (la siembra es noupdate). No deja marca de edición.
+        Devuelve {xmlid: resultado}."""
+        result = {}
+        for xmlid in xmlids:
+            section = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not section or section._name != self._name:
+                result[xmlid] = 'no existe'
+                continue
+            seed = self._sgi_seed_format_fields(xmlid)
+            vals = {}
+            for name, new in seed.items():
+                current = section[name].id if name == 'menu_id' else section[name]
+                if (current or False) != (new or False):
+                    vals[name] = new
+            if vals:
+                section.sudo().with_context(sgi_miid_seed=True, tracking_disable=True).write(vals)
+            result[xmlid] = 'con formato' if vals else 'sin cambio'
+        return result
+
+    def _sgi_open_menu(self, menu):
+        """Abre el menú (su acción de ventana; si no, el menú mismo). Si el
+        usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo le
+        negaría."""
+        if not menu:
+            raise UserError("Esta sección no tiene pantalla en Odoo.")
+        if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
+            raise UserError("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % (
+                _miid_menu_link(menu)[0]))
+        action = menu.sudo().action
+        action = action.exists() if action else action
+        if action and action._name == 'ir.actions.act_window':
+            return action.read()[0]
+        return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
+
+    def action_open_menu(self):
+        self.ensure_one()
+        return self._sgi_open_menu(self.menu_id)
+
     def _sgi_heading(self):
         self.ensure_one()
         return " ".join(x for x in (self.clause, self.name) if x)
@@ -421,6 +562,70 @@ class SgiMiidRowNote(models.Model):
     key = fields.Char(string="Renglón", required=True,
                       help="Clave del renglón al que se pega la nota (p. ej. ANEXO 9).")
     text = fields.Char(string="Nota", required=True)
+
+
+class SgiMiidItem(models.Model):
+    """Renglón de una sección del MIID o del P-G01 (57.161.0): un concepto con
+    su descripción y, si aplica, su numeral, columnas extra y el menú donde se
+    ve en Odoo. Sustituye las listas y tablas que se escribían en el texto. Lo
+    edita el Jefe MAST; editarlo cuenta como editar la sección."""
+    _name = 'sgi.miid.item'
+    _description = "Renglón de una sección del MIID"
+    _order = 'section_id, sequence, id'
+
+    section_id = fields.Many2one('sgi.miid.section', string="Sección", required=True, index=True,
+                                 ondelete='cascade')
+    company_id = fields.Many2one(related='section_id.company_id', store=True, index=True)
+    kind = fields.Selection(related='section_id.kind')
+    sequence = fields.Integer(string="Orden", default=10)
+    label = fields.Char(string="Concepto", required=True,
+                        help="Lo que se define o se regula (p. ej. «Riesgos y oportunidades», «Jefe de MAST "
+                             "y SGI»).")
+    clause = fields.Char(string="Numeral", help="Cláusulas de la norma que cubre (p. ej. 6.1, 7.5).")
+    text = fields.Text(string="Descripción")
+    text_2 = fields.Text(string="Texto 2", help="Segunda columna de la tabla, si la sección le pone título.")
+    text_3 = fields.Text(string="Texto 3", help="Tercera columna de la tabla, si la sección le pone título.")
+    menu_id = fields.Many2one('ir.ui.menu', string="Pantalla en Odoo", ondelete='set null',
+                              help="Menú donde se hace o se consulta. La pantalla lo abre; el PDF imprime su "
+                                   "ruta.")
+
+    def _sgi_mark_edited(self, sections):
+        # Como el texto de la sección (57.110.0): la siembra respeta lo que se
+        # editó a mano. La carga de datos y las migraciones (superusuario) no
+        # cuentan.
+        if self.env.su:
+            return
+        for section in sections:
+            section.message_post(body=MIID_EDITED_MSG)
+
+    def _sgi_check_editor(self):
+        if not self.env.su and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise AccessError("Solo el Jefe MAST edita los textos del MIID y del P-G01.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._sgi_check_editor()
+        items = super().create(vals_list)
+        self._sgi_mark_edited(items.section_id)
+        return items
+
+    def write(self, vals):
+        self._sgi_check_editor()
+        sections = self.section_id
+        res = super().write(vals)
+        self._sgi_mark_edited(sections | self.section_id)
+        return res
+
+    def unlink(self):
+        self._sgi_check_editor()
+        sections = self.section_id
+        res = super().unlink()
+        self._sgi_mark_edited(sections.exists())
+        return res
+
+    def action_open_menu(self):
+        self.ensure_one()
+        return self.section_id._sgi_open_menu(self.menu_id)
 
 
 class SgiMiid(models.Model):
@@ -464,6 +669,53 @@ class SgiMiid(models.Model):
     # las revisiones obsoletas en Documentos).
     history_html = fields.Html(string="Historial de revisiones", compute='_compute_history_html',
                                compute_sudo=True, sanitize=False)
+
+    # 57.161.0: pantalla por capítulos. Lo que es registro de Odoo se ve como
+    # lista nativa (se abre); el texto, por pestaña, sin la letra del PDF.
+    norm_ids = fields.Many2many('sgi.norm', relation='sgi_miid_screen_norm_rel', string="Normas",
+                                compute='_compute_screen_records', compute_sudo=True)
+    pg01_norm_ids = fields.Many2many('sgi.norm', relation='sgi_miid_screen_pg01_norm_rel',
+                                     string="Normas del P-G01", compute='_compute_screen_records',
+                                     compute_sudo=True)
+    process_ids = fields.Many2many('sgi.process', relation='sgi_miid_screen_process_rel', string="Procesos",
+                                   compute='_compute_screen_records', compute_sudo=True)
+    policy_id = fields.Many2one('sgi.policy', string="Política vigente", compute='_compute_screen_records',
+                                compute_sudo=True)
+    policy_text = fields.Html(related='policy_id.policy_text', string="Texto de la política")
+    objective_ids = fields.Many2many('sgi.objective', relation='sgi_miid_screen_objective_rel',
+                                     string="Objetivos integrales", compute='_compute_screen_records',
+                                     compute_sudo=True)
+    doc_type_ids = fields.Many2many('sgi.document.type', relation='sgi_miid_screen_doc_type_rel',
+                                    string="Tipos de documento", compute='_compute_screen_records',
+                                    compute_sudo=True)
+    pg01_doc_type_ids = fields.Many2many('sgi.document.type', relation='sgi_miid_screen_pg01_doc_type_rel',
+                                         string="Tipos de documento del P-G01",
+                                         compute='_compute_screen_records', compute_sudo=True)
+    activity_ids = fields.Many2many('sgi.process.activity', relation='sgi_miid_screen_activity_rel',
+                                    string="Rutinas", compute='_compute_screen_records', compute_sudo=True)
+    scr_general_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_objeto_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_proposito_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_responsabilidades_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_normas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_donde_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_sistema_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_requisitos_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_desarrollo_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_documentos_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_rutinas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_marco_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_transicion_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_cambios_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_otros_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_normas_normas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_sistema_procesos_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_sistema_politica_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_sistema_objetivos_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_documentos_tipos_documento_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_desarrollo_tipos_documento_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_rutinas_actividades_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
+    scr_marco_normas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
 
     # 57.148.0: uno por empresa y documento (la migración quita el único viejo).
     _company_uniq = models.Constraint('UNIQUE(company_id, kind)',
@@ -578,6 +830,79 @@ class SgiMiid(models.Model):
                 "<th>Estado</th><th>Solicitud</th><th>Archivo</th></tr></thead><tbody>%s</tbody></table>") % rows \
                 if rows else False
 
+    def _compute_screen_records(self):
+        for miid in self:
+            env = miid._sgi_env()
+            company = miid.company_id
+            kind = miid._sgi_kind()
+            processes = env['sgi.process'].search([('company_id', '=', company.id)]).sorted(lambda p: (
+                ['estrategico', 'cop', 'soporte'].index(p.process_type)
+                if p.process_type in ('estrategico', 'cop', 'soporte') else 9, p.code or ''))
+            policy = env['sgi.policy'].search([('state', '=', 'vigente')], limit=1)
+            types = env['sgi.document.type'].search([('company_id', 'in', [company.id, False])]).filtered(
+                'code_required').sorted(lambda t: t.name or '')
+            norms = env['sgi.norm'].search([]).filtered('clause_ids')
+            miid.norm_ids = norms if miid.kind == 'miid' else False
+            miid.pg01_norm_ids = norms if miid.kind == 'pg01' else False
+            miid.process_ids = processes if kind['all_processes'] else False
+            miid.policy_id = policy if kind['all_processes'] else False
+            miid.objective_ids = env['sgi.objective'].search([('policy_id', '=', policy.id)]) \
+                if policy and kind['all_processes'] else False
+            miid.doc_type_ids = types if miid.kind == 'miid' else False
+            miid.pg01_doc_type_ids = types if miid.kind == 'pg01' else False
+            miid.activity_ids = env['sgi.process.activity'].search(
+                [('related_procedure_id', 'in', miid._sgi_documents().ids)], order='process_id, step, id') \
+                if miid.kind == 'pg01' else False
+
+    @api.model
+    def _sgi_screen_fields(self):
+        return ['scr_%s_html' % page for page, _label in MIID_PAGES] + [
+            'scr_%s_%s_html' % slot for slot in MIID_SCREEN_SLOTS]
+
+    def _compute_screen(self):
+        """57.161.0: el texto de cada pestaña. Las secciones van en orden; la
+        que lleva un bloque que la pantalla muestra como lista nativa parte el
+        texto: lo de antes va al campo de esa lista (scr_<pestaña>_<bloque>) y
+        lo de después sigue en la pestaña (scr_<pestaña>)."""
+        names = self._sgi_screen_fields()
+        QWeb = self.env['ir.qweb'].sudo()
+        for miid in self:
+            values = dict.fromkeys(names, False)
+            data = miid._sgi_print_data('live')
+            native = miid._sgi_kind()['native']
+            context = {'doc': miid, 'miid': data, 'miid_mode': 'screen',
+                       'dg_colors': DG_COLORS, 'dg_level_bg': DG_LEVEL_BG}
+
+            def render(section, part):
+                return QWeb._render('quimibond_sgi.report_miid_section',
+                                    dict(context, section=section, section_part=part))
+
+            def put(field, parts):
+                html = Markup('').join(parts).strip()
+                if html:
+                    values[field] = Markup('%s%s') % (values[field] or Markup(''), html)
+
+            page, pending = None, []
+            for section in data['sections']:
+                if section['page'] != page:
+                    if page:
+                        put('scr_%s_html' % page, pending)
+                    page, pending = section['page'], []
+                block = section['block']
+                slot = 'scr_%s_%s_html' % (page, block)
+                if block and native.get(block) == page and slot in values and not values[slot]:
+                    pending.append(render(section, 'head'))
+                    put(slot, pending)
+                    pending = [render(section, 'tail')]
+                else:
+                    pending.append(render(section, 'all'))
+            if page:
+                put('scr_%s_html' % page, pending)
+            if data['orphans']:
+                put('scr_otros_html', [QWeb._render('quimibond_sgi.report_miid_orphans', context)])
+            for name, value in values.items():
+                miid[name] = value
+
     def _compute_live_html(self):
         for miid in self:
             miid.live_html = self.env['ir.qweb'].sudo()._render('quimibond_sgi.report_miid_body', {
@@ -602,10 +927,16 @@ class SgiMiid(models.Model):
         raw = {'kind': self.kind}
 
         sections = env['sgi.miid.section'].search([('company_id', '=', company.id), ('kind', '=', self.kind)])
+        # 57.161.0: el formato de la sección (pantalla en Odoo, estilo y
+        # títulos de los renglones) va después del orden (índice 6).
         raw['sections'] = {str(s.id): [s.clause or '', s.name or '', s.heading_level or '',
                                        _miid_plain(s.body), s.live_block or '', bool(s.body_fallback),
-                                       s.sequence or 0]
+                                       s.sequence or 0, _miid_menu_link(s.menu_id)[0], s.item_style or '']
+                           + [s[title] or '' for _f, title in MIID_ITEM_COLUMNS]
                            for s in sections}
+        raw['items'] = {str(s.id): [[i.label or '', i.clause or '', i.text or '', i.text_2 or '',
+                                     i.text_3 or '', _miid_menu_link(i.menu_id)[0]] for i in s.item_ids]
+                        for s in sections if s.item_ids}
         raw['row_notes'] = {str(s.id): {n.key: n.text for n in s.row_note_ids}
                             for s in sections if s.row_note_ids}
         raw['pendientes'] = sorted(sections.filtered('to_confirm').ids)
@@ -768,11 +1099,21 @@ class SgiMiid(models.Model):
             return " ".join(x for x in (row[0], row[1]) if x)
 
         def section_changed(_k, a, b):
-            if a[:6] == b[:6]:
+            # El índice 6 es el orden; lo demás es texto o formato.
+            if a[:6] + a[7:] == b[:6] + b[7:]:
                 return ["Sección movida de lugar: %s" % heading(b)]
             return ["Sección editada: %s" % heading(b)]
         keyed('sections', lambda k, v: "Sección nueva: %s" % heading(v),
               lambda k, v: "Sección archivada: %s" % heading(v), section_changed)
+
+        # 57.161.0: renglones de las secciones.
+        def section_name(key):
+            row = (new.get('sections') or {}).get(key) or (old.get('sections') or {}).get(key)
+            return heading(row) if row else "una sección"
+        keyed('items', lambda k, v: "Renglones nuevos en la sección %s" % section_name(k),
+              lambda k, v: "Se quitaron los renglones de la sección %s" % section_name(k),
+              lambda k, a, b: ["Cambiaron los renglones de la sección %s (%d → %d)" % (
+                  section_name(k), len(a), len(b))])
 
         def note_changed(_k, a, b):
             rows = []
@@ -1146,11 +1487,26 @@ class SgiMiid(models.Model):
         for section in env['sgi.miid.section'].search([('company_id', '=', company.id), ('kind', '=', self.kind)]):
             before, after = section._sgi_body_parts()
             used.add(section.live_block)
+            menu_path, menu_url = _miid_menu_link(section.menu_id)
+            items = []
+            for item in section.item_ids:
+                path, url = _miid_menu_link(item.menu_id)
+                items.append({'label': item.label or '', 'clause': item.clause or '', 'text': item.text or '',
+                              'text_2': item.text_2 or '', 'text_3': item.text_3 or '',
+                              'menu_path': path, 'menu_url': url})
+            # 57.161.0: columnas de la tabla = los títulos con nombre (el
+            # concepto siempre); el menú es una columna más si algún renglón lo
+            # tiene.
+            columns = [(name, section[title] or '') for name, title in MIID_ITEM_COLUMNS
+                       if name == 'label' or section[title]]
             sections.append({
                 'clause': section.clause or '', 'name': section.name or '', 'level': section.heading_level,
+                'page': section.page or 'otros',
                 'block': section.live_block or False, 'fallback': bool(section.body_fallback),
                 'before': before, 'after': after, 'to_confirm': section.to_confirm,
-                'note': section.to_confirm_note or ''})
+                'note': section.to_confirm_note or '', 'menu_path': menu_path, 'menu_url': menu_url,
+                'items': items, 'item_style': section.item_style or 'table', 'columns': columns,
+                'items_menu': any(i['menu_path'] for i in items)})
         orphans = [(code, label) for code, label in MIID_BLOCKS if code in kind['blocks'] and code not in used]
         return {'sections': sections, 'blocks': blocks, 'has_data': has_data, 'orphans': orphans,
                 'blockers': blockers, 'draft': draft, 'company': company.name or '',
@@ -1212,7 +1568,17 @@ class SgiMiid(models.Model):
                           (self.env.ref('quimibond_sgi.sgi_miid_section_view_form').id, 'form')],
                 'search_view_id': [self.env.ref('quimibond_sgi.sgi_miid_section_view_search').id],
                 'domain': [('company_id', '=', self.company_id.id), ('kind', '=', self.kind)],
-                'context': {'default_company_id': self.company_id.id, 'default_kind': self.kind}}
+                'context': {'default_company_id': self.company_id.id, 'default_kind': self.kind,
+                            'search_default_group_page': 1,
+                            'search_default_to_confirm': self.env.context.get('search_default_to_confirm')}}
+
+    def action_open_revisions(self):
+        """57.161.0: las revisiones de este documento (vigente y obsoletas)."""
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('quimibond_sgi.sgi_miid_revisions_action')
+        action['domain'] = [('sgi_is_controlled', '=', True), ('sgi_code', '=', self._sgi_kind()['code'])]
+        action['name'] = "Revisiones del %s" % self._sgi_kind()['short']
+        return action
 
     def action_open_request(self):
         self.ensure_one()

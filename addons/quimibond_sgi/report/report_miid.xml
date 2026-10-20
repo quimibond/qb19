@@ -20,7 +20,7 @@
     <!-- Bloques de datos: cada uno lee miid['blocks'][block]; sin datos
          imprime su estado vacío (I-6). -->
     <template id="report_miid_block_identificacion">
-        <table class="table table-sm table-bordered" style="font-size:9px;">
+        <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <tbody>
                 <tr t-foreach="miid['blocks']['identificacion']['rows']" t-as="row">
                     <th style="width:30%;" t-out="row[0]"/>
@@ -32,7 +32,7 @@
 
     <template id="report_miid_block_procesos">
         <t t-set="bd" t-value="miid['blocks']['procesos']"/>
-        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="bd['rows']" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Clave</th><th>Proceso</th><th>Tipo</th><th>Dueño</th><th>Estado</th></tr></thead>
             <tbody>
                 <tr t-foreach="bd['rows']" t-as="row">
@@ -46,7 +46,7 @@
             <t t-set="dg_edges" t-value="dgx['dg_edges']"/>
             <h4 style="font-size:11px; page-break-after:avoid;" t-out="dg['title']"/>
             <p t-if="dgx['dg_subtitle']" class="text-muted" t-out="dgx['dg_subtitle']"/>
-            <div style="font-size:8px;">
+            <div t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
                 <t t-call="quimibond_sgi.report_sgi_diagram_body"/>
             </div>
         </t>
@@ -66,7 +66,7 @@
 
     <template id="report_miid_block_objetivos">
         <t t-set="rows" t-value="miid['blocks']['objetivos']['rows']"/>
-        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Objetivo integral</th><th>Año meta</th><th>Indicadores</th></tr></thead>
             <tbody>
                 <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/></tr>
@@ -77,7 +77,7 @@
 
     <template id="report_miid_block_normas">
         <t t-set="rows" t-value="miid['blocks']['normas']['rows']"/>
-        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Clave</th><th>Norma</th><th>Cláusulas en Odoo</th></tr></thead>
             <tbody>
                 <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td class="text-end" t-out="row[2]"/></tr>
@@ -88,7 +88,7 @@
 
     <template id="report_miid_block_roles">
         <t t-set="bd" t-value="miid['blocks']['roles']"/>
-        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:8px;">
+        <table t-if="bd['rows']" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
             <thead><tr><th>Proceso</th><th>Dueño</th><th>Puesto del dueño</th><th>Actividades</th>
                 <th t-foreach="bd['kinds']" t-as="kind" t-out="kind"/></tr></thead>
             <tbody>
@@ -102,7 +102,7 @@
     </template>
 
     <template id="report_miid_block_plazos_documentales">
-        <table class="table table-sm table-bordered" style="font-size:9px;">
+        <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Plazo</th><th>Valor</th><th>Cómo se cuenta</th></tr></thead>
             <tbody>
                 <tr t-foreach="miid['blocks']['plazos_documentales']['rows']" t-as="row">
@@ -114,7 +114,7 @@
 
     <template id="report_miid_block_tipos_documento">
         <t t-set="rows" t-value="miid['blocks']['tipos_documento']['rows']"/>
-        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Tipo</th><th>Clave</th></tr></thead>
             <tbody>
                 <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/></tr>
@@ -130,7 +130,7 @@
     </template>
 
     <template id="report_miid_block_plazos_nc">
-        <table class="table table-sm table-bordered" style="font-size:9px;">
+        <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Plazo</th><th>Días</th><th>Cómo se cuentan</th></tr></thead>
             <tbody>
                 <tr t-foreach="miid['blocks']['plazos_nc']['rows']" t-as="row">
@@ -144,7 +144,7 @@
         <t t-set="norms" t-value="miid['blocks']['correspondencia']['norms']"/>
         <t t-foreach="norms" t-as="norm">
             <h4 style="font-size:11px; page-break-after:avoid;" t-out="norm['name']"/>
-            <table class="table table-sm table-bordered" style="font-size:8px;">
+            <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
                 <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos</th><th>Actividades que lo cumplen</th></tr></thead>
                 <tbody>
                     <tr t-foreach="norm['rows']" t-as="row">
@@ -159,7 +159,7 @@
 
     <template id="report_miid_block_procedimientos_anteriores">
         <t t-set="bd" t-value="miid['blocks']['procedimientos_anteriores']"/>
-        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="bd['rows']" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Proceso</th><th>Procedimientos anteriores</th></tr></thead>
             <tbody>
                 <tr t-foreach="bd['rows']" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/></tr>
@@ -172,7 +172,7 @@
 
     <template id="report_miid_block_anexos">
         <t t-set="bd" t-value="miid['blocks']['anexos']"/>
-        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+        <table t-if="bd['rows']" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Anexo</th><th>Nombre</th><th>Situación</th></tr></thead>
             <tbody>
                 <tr t-foreach="bd['rows']" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/></tr>
@@ -190,7 +190,7 @@
 
     <template id="report_miid_block_actividades">
         <t t-set="rows" t-value="miid['blocks']['actividades']['rows']"/>
-        <table t-if="rows" class="table table-sm table-bordered" style="font-size:8px;">
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
             <thead><tr><th>N.º</th><th>Actividad</th><th>Ejecuta</th><th>Aprueba</th><th>Cuándo</th><th>Terminada cuando</th></tr></thead>
             <tbody>
                 <tr t-foreach="rows" t-as="row">
@@ -203,7 +203,7 @@
     </template>
 
     <template id="report_miid_block_historial">
-        <table class="table table-sm table-bordered" style="font-size:9px;">
+        <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
             <thead><tr><th>Revisión</th><th>Fecha</th><th>Cambio</th></tr></thead>
             <tbody>
                 <tr t-foreach="miid['blocks']['historial']['rows']" t-as="row">
@@ -232,41 +232,118 @@
         <t t-elif="block == 'historial'" t-call="quimibond_sgi.report_miid_block_historial"/>
     </template>
 
-    <!-- El cuerpo: lo usan el PDF y la pestaña «Vista del sistema». -->
-    <template id="report_miid_body">
-        <t t-foreach="miid['sections']" t-as="section">
-            <h2 t-if="section['level'] == '1'" style="font-size:15px; margin-top:10px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h2>
-            <h3 t-else="" style="font-size:13px; margin-top:8px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h3>
-            <div t-if="section['to_confirm'] and miid['draft']"
-                 style="border:2px solid #b02a37; color:#b02a37; padding:3px; margin:3px 0;">
-                <b>POR CONFIRMAR:</b> <t t-out="section['note']"/>
-            </div>
-            <t t-set="block" t-value="section['block']"/>
-            <t t-if="block and section['fallback']">
-                <t t-if="miid['has_data'][block]" t-call="quimibond_sgi.report_miid_block"/>
-                <t t-else="">
-                    <div t-out="section['before']"/>
-                    <div t-out="section['after']"/>
+    <!-- 57.161.0: menú de Odoo de una sección o un renglón (link_path,
+         link_url). En pantalla, un botón que abre la acción; en el PDF, la
+         ruta. -->
+    <template id="report_miid_menu_link">
+        <t t-if="miid_mode == 'screen' and link_url">
+            <a t-att-href="link_url" class="btn btn-link btn-sm p-0 text-start" role="button">
+                <i class="fa fa-arrow-right me-1" title="Abrir en Odoo"/><t t-out="link_path"/></a>
+        </t>
+        <span t-elif="link_path" class="text-muted" t-out="link_path"/>
+    </template>
+
+    <!-- 57.161.0: renglones de una sección, en tabla (una columna por título
+         con nombre) o en lista (concepto en negritas y su descripción). -->
+    <template id="report_miid_items">
+        <t t-set="items" t-value="section['items']"/>
+        <table t-if="items and section['item_style'] == 'table'" class="table table-sm table-bordered"
+               t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
+            <thead>
+                <tr>
+                    <th t-foreach="section['columns']" t-as="col" t-out="col[1]"/>
+                    <th t-if="section['items_menu']">En Odoo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="items" t-as="item">
+                    <t t-foreach="section['columns']" t-as="col">
+                        <td t-if="col[0] == 'label'"><b t-out="item['label']"/></td>
+                        <td t-else="" t-out="item[col[0]]"/>
+                    </t>
+                    <td t-if="section['items_menu']">
+                        <t t-set="link_path" t-value="item['menu_path']"/>
+                        <t t-set="link_url" t-value="item['menu_url']"/>
+                        <t t-call="quimibond_sgi.report_miid_menu_link"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <ul t-elif="items" class="mb-2">
+            <li t-foreach="items" t-as="item" class="mb-1">
+                <b t-if="item['text']" t-out="item['label']"/><t t-else="" t-out="item['label']"/>
+                <t t-if="item['clause']"> (<t t-out="item['clause']"/>)</t><t t-if="item['text']">:
+                <t t-out="item['text']"/></t>
+                <t t-if="item['menu_path']">
+                    <br t-if="miid_mode == 'screen'"/><t t-else=""> En Odoo: </t>
+                    <t t-set="link_path" t-value="item['menu_path']"/>
+                    <t t-set="link_url" t-value="item['menu_url']"/>
+                    <t t-call="quimibond_sgi.report_miid_menu_link"/>
                 </t>
+            </li>
+        </ul>
+    </template>
+
+    <!-- 57.161.0: una sección. section_part = 'all' (todo), 'head' (título,
+         texto antes de [[datos]] y renglones: la pantalla pone después la
+         lista nativa del bloque) o 'tail' (lo de después de [[datos]]). -->
+    <template id="report_miid_section">
+        <t t-set="block" t-value="section['block']"/>
+        <t t-set="show_text" t-value="not (block and section['fallback'] and miid['has_data'][block])"/>
+        <t t-if="section_part in ('all', 'head')">
+            <t t-if="miid_mode == 'screen'">
+                <h3 t-if="section['level'] == '1'" class="mt-4 mb-2 border-bottom pb-1">
+                    <t t-out="section['clause']"/> <t t-out="section['name']"/></h3>
+                <h4 t-else="" class="mt-3 mb-2"><t t-out="section['clause']"/> <t t-out="section['name']"/></h4>
+                <div t-if="section['to_confirm']" class="alert alert-danger py-2" role="alert">
+                    <b>Por confirmar:</b> <t t-out="section['note']"/>
+                </div>
+                <p t-if="section['menu_url']" class="mb-2">
+                    <a t-att-href="section['menu_url']" class="btn btn-sm btn-secondary" role="button">
+                        <i class="fa fa-external-link me-1" title="Abrir en Odoo"/>Abrir en Odoo:
+                        <t t-out="section['menu_path']"/></a>
+                </p>
             </t>
             <t t-else="">
-                <div t-out="section['before']"/>
-                <t t-if="block" t-call="quimibond_sgi.report_miid_block"/>
-                <div t-out="section['after']"/>
+                <h2 t-if="section['level'] == '1'" style="font-size:15px; margin-top:10px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h2>
+                <h3 t-else="" style="font-size:13px; margin-top:8px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h3>
+                <div t-if="section['to_confirm'] and miid['draft']"
+                     style="border:2px solid #b02a37; color:#b02a37; padding:3px; margin:3px 0;">
+                    <b>POR CONFIRMAR:</b> <t t-out="section['note']"/>
+                </div>
+                <p t-if="section['menu_path']" class="text-muted" style="font-size:9px; margin-bottom:3px;">En Odoo:
+                    <t t-out="section['menu_path']"/></p>
             </t>
+            <div t-if="show_text" t-out="section['before']"/>
+            <t t-if="show_text" t-call="quimibond_sgi.report_miid_items"/>
         </t>
-        <t t-if="miid['orphans']">
-            <h2 style="font-size:15px; margin-top:10px;">Datos del sistema sin sección</h2>
-            <p class="text-muted">Bloques de datos que ninguna sección activa lleva (en «Textos del manual»,
-                campo «Datos del sistema que lleva»).</p>
-            <t t-foreach="miid['orphans']" t-as="orphan">
-                <h4 style="font-size:11px;" t-out="orphan[1]"/>
-                <t t-set="block" t-value="orphan[0]"/>
-                <t t-call="quimibond_sgi.report_miid_block"/>
-            </t>
+        <t t-if="section_part == 'all' and block and (not section['fallback'] or miid['has_data'][block])"
+           t-call="quimibond_sgi.report_miid_block"/>
+        <div t-if="section_part in ('all', 'tail') and show_text" t-out="section['after']"/>
+    </template>
+
+    <template id="report_miid_orphans">
+        <h2 t-att-style="miid_mode != 'screen' and 'font-size:15px; margin-top:10px;' or None">Datos del sistema
+            sin sección</h2>
+        <p class="text-muted">Bloques de datos que ninguna sección activa lleva (en «Textos», campo «Datos del
+            sistema que lleva»).</p>
+        <t t-foreach="miid['orphans']" t-as="orphan">
+            <h4 t-att-style="miid_mode != 'screen' and 'font-size:11px;' or None" t-out="orphan[1]"/>
+            <t t-set="block" t-value="orphan[0]"/>
+            <t t-call="quimibond_sgi.report_miid_block"/>
         </t>
+    </template>
+
+    <!-- El cuerpo: lo usan el PDF y la vista de impresión (live_html). -->
+    <template id="report_miid_body">
+        <t t-foreach="miid['sections']" t-as="section">
+            <t t-set="section_part" t-value="'all'"/>
+            <t t-call="quimibond_sgi.report_miid_section"/>
+        </t>
+        <t t-if="miid['orphans']" t-call="quimibond_sgi.report_miid_orphans"/>
         <t t-if="miid['draft'] and miid['blockers']">
-            <h2 style="font-size:15px; margin-top:10px;">Lo que impide aprobar esta revisión</h2>
+            <h2 t-att-style="miid_mode != 'screen' and 'font-size:15px; margin-top:10px;' or None">Lo que impide
+                aprobar esta revisión</h2>
             <ul>
                 <li t-foreach="miid['blockers']" t-as="blocker" t-out="blocker"/>
             </ul>
@@ -296,7 +373,7 @@
             <p t-if="miid['request']" class="text-muted">Solicitud de cambio documental <t t-out="miid['request'].name"/>;
                 la emisión es la fecha en que se aprueba.</p>
         </div>
-        <table t-if="miid['signers']" class="table table-sm table-bordered" style="font-size:9px; width:70%; margin:20px auto;">
+        <table t-if="miid['signers']" class="table table-sm table-bordered" style="font-size:10px; width:70%; margin:20px auto;">
             <thead><tr><th>Papel</th><th>Nombre</th></tr></thead>
             <tbody>
                 <tr t-foreach="miid['signers']" t-as="signer">
@@ -304,7 +381,7 @@
                 </tr>
             </tbody>
         </table>
-        <p t-if="miid['signers']" class="text-muted text-center" style="font-size:8px;">Las firmas van en la hoja
+        <p t-if="miid['signers']" class="text-muted text-center" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">Las firmas van en la hoja
             de firmas de la solicitud (Sign).</p>
         <h3 style="font-size:13px; margin-top:20px;">Contenido</h3>
         <ul style="list-style:none; padding-left:0;">
@@ -322,7 +399,7 @@
                 <t t-set="sgi_fmt_info" t-value="doc._sgi_footer_info(miid_mode, miid['revision'], miid['draft'])"/>
                 <t t-call="quimibond_sgi.sgi_report_layout">
                     <t t-set="sgi_rec" t-value="doc"/>
-                    <div class="page" style="font-size:10px;">
+                    <div class="page" style="font-size:11px;">
                         <t t-call="quimibond_sgi.report_miid_draft_mark"/>
                         <t t-call="quimibond_sgi.report_miid_cover"/>
                         <p style="page-break-before:always;"/>

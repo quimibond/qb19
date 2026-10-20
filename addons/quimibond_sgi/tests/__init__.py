@@ -152,6 +152,7 @@ from . import test_indicadores_sin_dato
 from . import test_registro_cumplimiento
 from . import test_ligas_navegacion
 from . import test_miid
+from . import test_miid_pantalla  # 57.161.0
 from . import test_medicion_por_revisar
 from . import test_revision_medicion
 from . import test_propuesta_sencilla
