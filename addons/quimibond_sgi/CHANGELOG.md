@@ -13,6 +13,35 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.168.0 — 2026-10-20
+
+Mis pendientes sin lo repetido. Producción el 2026-10-20: ~1,500 renglones;
+Jose Mizrahi Daniel con 120 validaciones (las mediciones de feb a sep de sus
+indicadores), Elena Delgado con 94 firmas de órdenes de compra, avisos «Salida
+sin CoA» uno por salida y 119 actividades de flujo sin fecha, repetidas a cada
+persona del puesto. Jose eligió (2026-10-20): un renglón por grupo, el flujo
+al dueño del proceso, las firmas fuera del SGI juntas.
+
+**Cambiado**
+- Un renglón junta lo repetido de cada persona (`_sgi_grouped`, al guardar):
+  las mediciones por capturar o validar de un indicador, las firmas que no
+  son del SGI (`SGI_SIGN_FIELDS` dice cuáles sí), los avisos de una misma
+  clase (`sgi_cron_kind`), las revisiones de medición y los requisitos
+  legales. Nombre «… — N mediciones», columna «Cuántos», fecha y estado del
+  más atrasado; la ficha lista lo que junta. «Ir» abre la lista (los avisos,
+  sus registros; las firmas, sus solicitudes). «Validar» del grupo valida
+  todas; «Hecho», «Posponer» y las acciones de un solo registro no salen en
+  un grupo. Las cifras de Mi equipo siguen contando registros.
+- Tipo nuevo **Flujo atrasado**: la actividad con entradas de plazo vencido
+  sin salida le llega una vez al dueño del proceso (o al Jefe MAST si el
+  proceso no tiene dueño), con la semana medida como fecha. Ya no sale a cada
+  persona del puesto ni como escalamiento.
+- `_sgi_refresh_for` también encuentra los renglones que juntan el registro.
+
+**Pruebas**
+- `test_bandeja` 20, 22 y 23 (validar en lote con el renglón del grupo); 36
+  (validaciones juntas) y 37 (flujo al dueño).
+
 ## 19.0.57.167.0 — 2026-10-20
 
 El SGI ordenado: menos menús, lo mismo a un botón. Jose (2026-10-20):

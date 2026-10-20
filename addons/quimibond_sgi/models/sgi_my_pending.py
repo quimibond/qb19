@@ -72,10 +72,13 @@ PENDING_KINDS = [
     ('firma', "Firma"),
     ('aviso', "Aviso"),
     ('revision', "Revisar medición"),
+    # 57.168.0: el flujo atrasado de un proceso (entradas con plazo vencido
+    # sin salida) le llega una vez a su dueño, no a cada persona del puesto.
+    ('flujo', "Flujo atrasado"),
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
-EMPLOYEE_KINDS = ('actividad', 'escalamiento', 'acuse')
+EMPLOYEE_KINDS = ('actividad', 'escalamiento', 'acuse', 'flujo')
 PENDING_STATES = [
     ('atrasada', "Atrasada"),
     ('por_vencer', "Por vencer"),
@@ -114,7 +117,19 @@ ROW_ACTION_KINDS = ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revi
 EXEC_OPEN_STATES = ('pendiente', 'en_proceso')
 # Campos que se escriben al actualizar un renglón que ya existe.
 _ROW_FIELDS = ('name', 'process_id', 'date_due', 'state', 'state_rank', 'detail',
-               'source_name', 'exec_state', 'exec_note', 'exec_manual', 'exec_date_estimated')
+               'source_name', 'exec_state', 'exec_note', 'exec_manual', 'exec_date_estimated',
+               'group_count', 'group_res_ids')
+# 57.168.0: campos de Odoo que ligan una solicitud de Firma electrónica a un
+# registro del SGI. Las demás firmas (órdenes de compra, recibos…) se juntan
+# en un renglón por persona.
+SGI_SIGN_FIELDS = (
+    ('approval.request', 'sgi_sign_request_id'),
+    ('documents.document', 'sgi_publish_sign_request_id'),
+    ('sgi.document.ack', 'sign_request_id'),
+    ('sgi.epp.delivery', 'sign_request_id'),
+)
+# 57.168.0: cuántos renglones del grupo se listan en la ficha.
+GROUP_DETAIL_MAX = 30
 
 
 def pending_state(due, today):
@@ -297,6 +312,13 @@ class SgiMyPending(models.Model):
                                    "aviso propio y la acción propia.")
     can_snooze = fields.Boolean(compute='_compute_can_act',
                                 help="Aviso propio: se puede posponer una semana.")
+    # 57.168.0: un renglón junta lo repetido (las mediciones de un indicador,
+    # las firmas que no son del SGI, los avisos de una misma clase, las
+    # revisiones de medición, los requisitos legales). «Ir» abre la lista.
+    group_count = fields.Integer(string="Cuántos", readonly=True,
+                                 help="Cuántos registros junta este renglón (vacío: uno solo).")
+    group_res_ids = fields.Char(readonly=True,
+                                help="Ids de los registros que junta, «,4,34,64,» (para buscarlos).")
     # 57.165.0: los pasos de la NC, campos con su estado (no un párrafo).
     # 57.166.0: «Dónde se hace» es «Ir a hacerlo» (action_open), un solo botón.
     nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True)
@@ -321,7 +343,7 @@ class SgiMyPending(models.Model):
         for row in self:
             row.is_mine = row.user_id == self.env.user
 
-    @api.depends('kind', 'res_model', 'res_id', 'employee_id', 'user_id')
+    @api.depends('kind', 'res_model', 'res_id', 'employee_id', 'user_id', 'group_count')
     @api.depends_context('uid')
     def _compute_can_act(self):
         Exec = self.env['sgi.activity.execution'].sudo()
@@ -350,9 +372,12 @@ class SgiMyPending(models.Model):
             # registro también se resuelve desde aquí, solo para quien es.
             elif mine and row.kind in ROW_ACTION_KINDS and row.res_id:
                 can_done = row._sgi_kind_can_done()
-            row.can_mark_exec = can_exec
-            row.can_done = can_done
-            row.can_snooze = row.kind == 'aviso' and mine
+            # 57.168.0: un grupo se atiende en su lista («Ir»); solo el de
+            # validaciones valida todas desde el renglón.
+            grouped = row.group_count > 1
+            row.can_mark_exec = can_exec and not grouped
+            row.can_done = can_done and not grouped
+            row.can_snooze = row.kind == 'aviso' and mine and not grouped
 
     # ------------------------------------------------------------------
     # Fuentes: una búsqueda por tipo para todos los usuarios a la vez.
@@ -776,6 +801,11 @@ class SgiMyPending(models.Model):
         status = env['hr.job']._sgi_mp_status_map(activities) if activities else {}
         late = activities.filtered(lambda a: status.get(a, ('',))[0] == 'atrasada')
         late_due = {act.id: self._sgi_activity_late_due(act, today) for act in late}
+        # 57.168.0 (Jose 2026-10-20): el flujo atrasado (entradas con plazo
+        # vencido sin salida) es del proceso, no de cada persona del puesto:
+        # no sale a quien la ejecuta ni como escalamiento; le llega a su
+        # dueño (``_sgi_flow_rows``).
+        flow = self._sgi_flow_late(late)
         # 57.103.0: lo que tiene registro de cumplimiento sale de ahí (un
         # renglón por periodo abierto, con su avance), no del semáforo.
         executions, with_exec = self._sgi_execution_rows(employees, today)
@@ -797,7 +827,7 @@ class SgiMyPending(models.Model):
             seen = set()
             for role in detail & all_roles:
                 activity = role.activity_id
-                if activity not in late or activity.id in seen \
+                if activity not in late or activity.id in seen or activity.id in flow \
                         or (emp.id, activity.id) in with_exec:
                     continue
                 seen.add(activity.id)
@@ -831,7 +861,7 @@ class SgiMyPending(models.Model):
                         rows.append(self._sgi_escalation_row(execution, role, escalation_dates[key]))
                     continue
                 due = late_due.get(activity.id) if activity in late else False
-                if not due or activity.id in seen:
+                if not due or activity.id in seen or activity.id in flow:
                     continue
                 key = (due, role.after_days or 0)
                 if key not in escalation_dates:  # una consulta al calendario por fecha y plazo
@@ -861,6 +891,8 @@ class SgiMyPending(models.Model):
             for execution in executions.get(emp.id, []):
                 seen.add(execution.activity_id.id)
                 rows.append(self._sgi_execution_row(execution))
+        for emp_id, flow_rows in self._sgi_flow_rows(employees, company).items():
+            result[emp_id].extend(flow_rows)
         ack_days = _int_param(env, ACK_DAYS_PARAM, 5)
         acks = env['sgi.document.ack'].sudo().search(
             [('employee_id', 'in', employees.ids), ('state', '=', 'pendiente'),
@@ -888,6 +920,65 @@ class SgiMyPending(models.Model):
                     (None, "«Leer» abre el archivo; «Leído y entendido» deja su acuse con la "
                            "fecha de hoy."),
                 ])})
+        return result
+
+    @api.model
+    def _sgi_flow_late(self, activities):
+        """57.168.0: {actividad.id: semana medida} de las actividades cuya
+        última semana medida tiene entradas con plazo vencido sin salida (lo
+        mismo que pone «Atrasada» en ``hr.job._sgi_mp_status_map``)."""
+        if not activities:
+            return {}
+        latest = {}
+        for stat in self.env['sgi.activity.week.stat'].sudo().search(
+                [('activity_id', 'in', activities.ids)], order='period_start desc'):
+            latest.setdefault(stat.activity_id.id, stat)
+        return {aid: stat for aid, stat in latest.items() if stat.late_open_count}
+
+    @api.model
+    def _sgi_flow_rows(self, employees, company):
+        """57.168.0: {empleado.id: [renglones «Flujo atrasado»]} de los
+        procesos que tienen por dueño a esos empleados; los de procesos sin
+        dueño, al Jefe MAST. Uno por actividad, con la semana medida como
+        fecha."""
+        env = self.env
+        result = {}
+        Process = env['sgi.process'].sudo()
+        mast_uid = env['sgi.cron']._sgi_manager_user_id()
+        mast = employees.filtered(lambda e: mast_uid and e.user_id.id == mast_uid)[:1]
+        processes = Process.search([('owner_id', 'in', employees.ids)])
+        if mast:
+            processes |= Process.search([('owner_id', '=', False)])
+        processes = processes.filtered(lambda p: not p.company_id or p.company_id == company)
+        if not processes:
+            return result
+        activities = env['sgi.process.activity'].sudo().search(
+            [('process_id', 'in', processes.ids), ('active', '=', True)])
+        flow = self._sgi_flow_late(activities)
+        for activity in activities.filtered(lambda a: a.id in flow):
+            owner = activity.process_id.owner_id
+            emp = owner if owner in employees else mast
+            if not emp:
+                continue
+            stat = flow[activity.id]
+            number = activity.number or activity.legacy_number or ''
+            label = ("%s %s" % (number, activity.name or '')).strip()
+            executors = ", ".join(activity.role_ids.filtered(lambda r: r.role == 'ejecuta').mapped('job_id.name'))
+            result.setdefault(emp.id, []).append({
+                'kind': 'flujo',
+                'name': "Flujo atrasado: %s — %d entrada(s) con plazo vencido sin salida" % (
+                    label, stat.late_open_count),
+                'date_due': stat.period_start, 'process_id': activity.process_id.id,
+                'res_model': 'sgi.process.activity', 'res_id': activity.id,
+                'source_name': label[:200],
+                'detail': self._sgi_activity_detail(activity, [
+                    ("Semana medida", stat.period_start),
+                    ("Entradas con plazo vencido sin salida", stat.late_open_count),
+                    ("La ejecuta", executors),
+                    (None, "Le llega a usted como dueño del proceso: el atraso es del flujo, no de una "
+                           "persona. «Ir a hacerlo» abre la pantalla; revíselo con quien la ejecuta."),
+                ]),
+                'state': 'atrasada'})
         return result
 
     @api.model
@@ -1016,15 +1107,105 @@ class SgiMyPending(models.Model):
         return found
 
     @api.model
+    def _sgi_sgi_sign_requests(self, items):
+        """57.168.0: ids de las solicitudes de firma de ``items`` que son del
+        SGI (procedimiento, cambio documental, acuse, EPP)."""
+        if not items:
+            return set()
+        requests = items.sign_request_id
+        found = set()
+        for model, fname in SGI_SIGN_FIELDS:
+            if model in self.env and fname in self.env[model]._fields:
+                found |= {req.id for [req] in self.env[model].sudo().with_context(active_test=False)._read_group(
+                    [(fname, 'in', requests.ids)], [fname])}
+        return found
+
+    @api.model
+    def _sgi_group_key(self, kind, rec, sgi_signs=()):
+        """57.168.0: (clave, nombre del grupo, sustantivo) del renglón si se
+        junta con otros de la misma persona; None si va solo."""
+        if kind in ('medicion', 'validacion'):
+            indicator = rec.indicator_id
+            verb = "Capturar" if kind == 'medicion' else "Validar"
+            return ((kind, indicator.id), "%s %s %s" % (verb, indicator.code or '', indicator.name or ''),
+                    "mediciones")
+        if kind == 'firma' and rec.sign_request_id.id not in sgi_signs:
+            return (('firma', 'fuera_sgi'), "Firmar en Firma electrónica", "documentos")
+        if kind == 'aviso' and rec.sgi_cron_kind:
+            what = (rec.summary or rec.activity_type_id.name or "Aviso").split(':', 1)[0].strip()
+            return (('aviso', rec.sgi_cron_kind), what, "avisos")
+        if kind == 'revision':
+            return (('revision',), "Revisar la medición de sus actividades", "actividades")
+        if kind == 'legal':
+            return (('legal',), "Evaluar requisitos legales", "requisitos")
+        return None
+
+    @api.model
+    def _sgi_grouped(self, vals_list):
+        """57.168.0: junta en un renglón los de la misma persona y el mismo
+        grupo (``_group``). El renglón del grupo toma la clave del más
+        urgente, la fecha más vieja y el peor estado; su ficha lista lo que
+        junta. Uno solo se queda como está."""
+        order, groups = [], {}
+        for vals in vals_list:
+            group = vals.get('_group')
+            if not group:
+                order.append(vals)
+                continue
+            key = (vals.get('employee_id') or False, vals.get('user_id') or False, group[0])
+            if key not in groups:
+                groups[key] = (group, [])
+                order.append(key)
+            groups[key][1].append(vals)
+        out = []
+        for item in order:
+            if not isinstance(item, tuple):
+                out.append(item)
+                continue
+            (_key, label, noun), members = groups[item]
+            if len(members) == 1:
+                out.append(members[0])
+                continue
+            members = sorted(members, key=lambda r: (
+                r.get('state_rank', 2), r.get('date_due') or fields.Date.to_date('9999-12-31')))
+            first = members[0]
+            dues = [m['date_due'] for m in members if m.get('date_due')]
+            items = [(None, m.get('name')) for m in members[:GROUP_DETAIL_MAX]]
+            if len(members) > GROUP_DETAIL_MAX:
+                items.append((None, "… y %d más" % (len(members) - GROUP_DETAIL_MAX)))
+            out.append(dict(
+                first, name="%s — %d %s" % (label, len(members), noun),
+                date_due=min(dues) if dues else False,
+                source_name=label[:200],
+                detail=sgi_detail_html([(None, "Junta %d %s; «Ir» abre la lista." % (len(members), noun))]
+                                       + items),
+                group_count=len(members),
+                group_res_ids=",%s," % ",".join(str(m['res_id']) for m in members),
+                exec_state=False, exec_note=False, exec_date_estimated=False, exec_manual=False))
+        return out
+
+    def _sgi_res_ids(self):
+        """57.168.0: los ids que representa el renglón (uno o los del grupo)."""
+        self.ensure_one()
+        if self.group_count and self.group_res_ids:
+            return [int(x) for x in self.group_res_ids.split(',') if x.strip().isdigit()]
+        return [self.res_id] if self.res_id else []
+
+    @api.model
     def _sgi_pending_values(self, users):
         """{usuario.id: [valores de renglón]} ya con estado y orden."""
         today = fields.Date.context_today(self)
         result = {uid: [] for uid in users.ids}
-        for kind, records in self._sgi_pending_records(users).items():
+        pending = self._sgi_pending_records(users)
+        sgi_signs = self._sgi_sgi_sign_requests(pending.get('firma'))
+        for kind, records in pending.items():
             for rec in records:
                 row = dict(self._sgi_row(kind, rec), kind=kind,
                            res_model=rec._name, res_id=rec.id)
                 row.update(self._sgi_row_detail(kind, rec))
+                group = self._sgi_group_key(kind, rec, sgi_signs)
+                if group:
+                    row['_group'] = group
                 if kind == 'aprobacion':
                     # «Abrir» lleva al documento que espera la aprobación.
                     row.update(res_model=rec.rule_id.model_name, res_id=rec.res_id)
@@ -1117,6 +1298,7 @@ class SgiMyPending(models.Model):
         como sistema; devuelve los renglones vigentes en el entorno del
         usuario, en el orden de la lista."""
         Row = self.sudo()
+        vals_list = self._sgi_grouped(vals_list)
         existing = Row.search(domain)
         by_key = {}
         for row in existing:
@@ -1253,6 +1435,8 @@ class SgiMyPending(models.Model):
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""
         self.ensure_one()
+        if self.group_count > 1:
+            return self._sgi_open_group()
         # 57.92.0 (U-03): el aviso abre el registro sobre el que está.
         if self.kind == 'aviso' and self.res_model == 'mail.activity':
             act = self.env['mail.activity'].sudo().browse(self.res_id).exists()
@@ -1332,7 +1516,7 @@ class SgiMyPending(models.Model):
         # actividad (su menú o acción) o a su evidencia, como «Ir a hacerlo»
         # de Mi procedimiento (``mp_can_go``); no a la ficha del catálogo.
         # 57.145.0: el escalamiento también.
-        if self.kind in ('actividad', 'escalamiento') and self.res_model == 'sgi.process.activity':
+        if self.kind in ('actividad', 'escalamiento', 'flujo') and self.res_model == 'sgi.process.activity':
             activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
             if activity and (activity.odoo_menu_id or activity.odoo_action_id
                              or activity.odoo_ref or activity.measure_model_id):
@@ -1362,6 +1546,25 @@ class SgiMyPending(models.Model):
             'view_mode': 'form', 'target': 'current',
         }
 
+    def _sgi_open_group(self):
+        """57.168.0: «Ir» de un renglón que junta varios: la lista de lo que
+        junta, con los permisos de quien la abre. Los avisos abren sus
+        registros (las salidas sin CoA, las actividades atoradas…); las firmas,
+        sus solicitudes de Firma electrónica."""
+        self.ensure_one()
+        model, ids = self.res_model, self._sgi_res_ids()
+        if model == 'mail.activity':
+            acts = self.env['mail.activity'].sudo().browse(ids).exists()
+            models_ = set(acts.mapped('res_model'))
+            if len(models_) == 1:
+                model, ids = models_.pop(), acts.mapped('res_id')
+        elif model == 'sign.request.item':
+            model = 'sign.request'
+            ids = self.env['sign.request.item'].sudo().browse(ids).exists().sign_request_id.ids
+        return {'type': 'ir.actions.act_window', 'name': self.name, 'res_model': model,
+                'view_mode': 'list,form', 'views': [(False, 'list'), (False, 'form')],
+                'domain': [('id', 'in', ids)], 'target': 'current', 'context': {'create': False}}
+
     # ------------------------------------------------------------------
     # Hecho y las demás formas de actuar (57.145.0).
     # ------------------------------------------------------------------
@@ -1386,6 +1589,8 @@ class SgiMyPending(models.Model):
         un periodo abre el asistente de «Hecha» de ese periodo; sin registro
         de cumplimiento, se sigue en la actividad."""
         self.ensure_one()
+        if self.group_count > 1 and self.kind != 'validacion':
+            return self.action_open()
         if self.res_model == 'sgi.activity.execution':
             return self.action_exec_done()
         if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
@@ -1430,7 +1635,12 @@ class SgiMyPending(models.Model):
         persona afectada, como al abrir Mis pendientes)."""
         if not res_ids:
             return
-        rows = self.sudo().search([('res_model', '=', res_model), ('res_id', 'in', list(res_ids))])
+        res_ids = list(res_ids)
+        # 57.168.0: también los renglones que lo juntan en un grupo.
+        domain = [('res_id', 'in', res_ids)]
+        for res_id in res_ids[:50]:
+            domain = ['|', ('group_res_ids', 'like', ',%d,' % res_id)] + domain
+        rows = self.sudo().search([('res_model', '=', res_model)] + domain)
         if not rows:
             return
         employees = rows.employee_id
@@ -1444,6 +1654,8 @@ class SgiMyPending(models.Model):
 
     def _sgi_record(self, model):
         self.ensure_one()
+        if self.group_count > 1:
+            raise UserError("Este renglón junta %d registros: pulse «Ir» y atiéndalos en la lista." % self.group_count)
         if self.res_model != model:
             raise UserError("Este renglón no es de ese tipo.")
         rec = self.env[model].browse(self.res_id).exists()
@@ -1792,6 +2004,9 @@ class SgiMyPending(models.Model):
         self.ensure_one()
         if self.kind != 'validacion' or self.res_model != 'sgi.indicator.measure':
             raise UserError("Este renglón no es una medición por validar.")
+        if self.group_count > 1:
+            # 57.168.0: el grupo valida todas las del indicador.
+            return self.action_validate_selected()
         measure = self.env['sgi.indicator.measure'].browse(self.res_id).exists()
         if not measure:
             raise UserError("La medición ya no existe.")
@@ -1811,7 +2026,7 @@ class SgiMyPending(models.Model):
         if not rows:
             raise UserError("Seleccione al menos una medición por validar.")
         Measure = self.env['sgi.indicator.measure']
-        existing = Measure.browse(rows.mapped('res_id')).exists()
+        existing = Measure.browse([i for row in rows for i in row._sgi_res_ids()]).exists()
         allowed = existing.filtered('sgi_can_validate')
         skipped = existing - allowed
         if existing and not allowed:
@@ -1823,7 +2038,7 @@ class SgiMyPending(models.Model):
         allowed -= empty
         allowed.action_validate()
         left = skipped | empty
-        rows.filtered(lambda r: r.res_id not in left.ids).sudo().unlink()
+        rows.filtered(lambda r: not set(r._sgi_res_ids()) & set(left.ids)).sudo().unlink()
         if left:
             parts = []
             if skipped:
