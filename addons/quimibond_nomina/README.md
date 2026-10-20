@@ -588,8 +588,10 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   `Dias` se estima). `Antigüedad`:
   Odoo manda `P1365W` y NOI `P1367W`, dos semanas de diferencia por la fecha
   de corte que usa cada uno; definir con RH cuál es la fecha de ingreso buena.
-- Pendientes de terceros: RFC, CURP y NSS de un empleado; destrabar la app de
-  Ausencias («Debe configurar al menos una cuenta analítica», sin eso no hay
-  nodo de Incapacidades); la cuenta archivada `201.01.02 Reembolso empleados`
+- Pendientes de terceros: RFC, CURP y NSS de un empleado; la cuenta archivada `201.01.02 Reembolso empleados`
   que usan las reglas *Gastos* y *Reembolso*; el 41% de prima vacacional de
   cinco personas contra IDSE.
+- La app de Ausencias fallaba al aprobar («Debe configurar al menos una cuenta
+  analítica»): el proyecto «Interno» de la empresa 1 (`res.company.internal_project_id`,
+  donde Odoo registra el tiempo de cada ausencia) no tenía cuenta analítica. Se le
+  puso «Interno» (plan Proyectos) el 2026-10-20 en producción; no es código.
