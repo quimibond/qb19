@@ -698,6 +698,15 @@ class SgiDocumentType(models.Model):
     company_id = fields.Many2one(
         'res.company', string="Empresa", index=True,
         help="Vacío = tipo compartido por todas las empresas.")
+    # 57.162.0: quién elabora, revisa y aprueba cada tipo, como datos; el
+    # P-G01 (4.2 y 4.3) los lee de aquí.
+    author_text = fields.Char(string="Lo elabora", help="Quién elabora un documento de este tipo (P-G01, 4.2).")
+    location_text = fields.Char(string="Dónde se elabora", help="Dónde se escribe o se arma (P-G01, 4.2).")
+    control_text = fields.Char(string="Cómo queda controlado", help="Cómo se publica y se controla (P-G01, 4.2).")
+    reviewer_text = fields.Char(string="Lo revisa", help="Quién firma «Revisó» (P-G01, 4.3).")
+    approver_text = fields.Char(string="Lo aprueba", help="Quién firma «Aprobó» (P-G01, 4.3).")
+    odoo_menu_id = fields.Many2one('ir.ui.menu', string="Pantalla en Odoo", ondelete='set null',
+                                   help="Dónde se elabora o se consulta en Odoo.")
 
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)',

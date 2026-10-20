@@ -23,6 +23,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SEED = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_sections.xml')
 ITEMS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_items.xml')
 MENUS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'views', 'sgi_menus.xml')
+FIELDS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_fields.xml')
+CLAUSES = [os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', f)
+           for f in ('sgi_norms.xml', 'sgi_norms_tercer_nivel.xml')]
+TYPES = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_document_types.xml')
 TITLES = ('item_label_title', 'item_clause_title', 'item_text_title', 'item_text2_title', 'item_text3_title')
 COLUMNS = ('label', 'clause', 'text', 'text_2', 'text_3')
 MODEL = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'models', 'sgi_miid.py')
@@ -121,6 +125,56 @@ def _items():
     return formats, items
 
 
+def _seed_records(path):
+    out = {}
+    for record in etree.parse(path).xpath('//record'):
+        data = {}
+        for field in record.findall('field'):
+            data[field.get('name')] = field.get('ref') or field.get('eval') or (field.text or '').strip()
+        out[record.get('id')] = data
+    return out
+
+
+def _table(head, rows):
+    lines = ['| ' + ' | '.join(head) + ' |', '| ' + ' | '.join('---' for _ in head) + ' |']
+    lines += ['| ' + ' | '.join((c or '—').replace('|', '/') for c in r) + ' |' for r in rows]
+    return '\n'.join(lines)
+
+
+def _fields_md():
+    """57.162.0: {bloque: tabla} con lo que siembra data/sgi_miid_fields.xml."""
+    paths = _menu_paths()
+    seed = _seed_records(FIELDS)
+    known = {}
+    for path in CLAUSES + [TYPES]:
+        known.update(_seed_records(path))
+    names = {'sgi_norm_9001': 'ISO 9001:2015', 'sgi_norm_14001': 'ISO 14001:2015', 'sgi_norm_45001': 'ISO 45001:2018'}
+    scope = [[names.get(x, x), d['scope']] for x, d in seed.items() if 'scope' in d]
+    excl = [[d['exclusion_detail'], known.get(x, {}).get('name', x), d['exclusion_reason']]
+            for x, d in seed.items() if d.get('exclusion')]
+    rules = []
+    for x, d in seed.items():
+        if x.startswith('sgi_system_rule_'):
+            codes = sorted({known.get(c, {}).get('code', c) for c in re.findall(r"ref\('([^']+)'\)", d['clause_ids'])},
+                           key=lambda c: [int(n) if n.isdigit() else n for n in c.split('.')])
+            rules.append([d['name'], ', '.join(codes), d['text'], paths.get(d.get('menu_id'), '')])
+    elab, sign = [], []
+    for x, d in seed.items():
+        if x.startswith('sgi_doc_type_'):
+            name = known.get(x, {}).get('name', x)
+            elab.append([name, d.get('author_text'), d.get('location_text'), d.get('control_text'),
+                         paths.get(d.get('odoo_menu_id'), '')])
+            if d.get('reviewer_text') or d.get('approver_text'):
+                sign.append([name, d.get('author_text'), d.get('reviewer_text'), d.get('approver_text')])
+    return {
+        'alcance': _table(['Norma', 'Alcance'], scope),
+        'exclusiones': _table(['Requisito', 'Qué es', 'Por qué no aplica'], excl),
+        'reglas': _table(['Tema', 'Cláusula', 'Regla', 'En Odoo'], rules),
+        'elaboracion': _table(['Tipo', 'Lo elabora', 'Dónde', 'Cómo queda controlado', 'En Odoo'], elab),
+        'aprobacion': _table(['Tipo', 'Elaboró', 'Revisó', 'Aprobó'], sign),
+    }
+
+
 def _items_md(fmt, rows):
     if not rows:
         return ''
@@ -152,6 +206,7 @@ def _items_md(fmt, rows):
 def main():
     blocks, kinds = _constants()
     formats, items = _items()
+    seeded_blocks = _fields_md()
     tree = etree.parse(SEED)
     sections, notes = [], {}
     for record in tree.xpath('//record[@model="sgi.miid.section"]'):
@@ -206,6 +261,10 @@ Marcas: [VIVO: bloque] = datos que pone el sistema; `[[datos]]` = dónde van. --
                 lines.append('\n'.join(meta))
             body = _html_to_md(section.get('body', ''))
             rows = _items_md(fmt, items.get(section['xmlid'], []))
+            block = seeded_blocks.get(section.get('live_block'))
+            if block:
+                block = '*Datos sembrados (data/sgi_miid_fields.xml):*\n\n' + block
+                rows = (rows + '\n\n' + block) if rows else block
             if body and rows and '`[[datos]]`' in body:
                 before, after = body.split('`[[datos]]`', 1)
                 body = before.rstrip() + '\n\n' + rows + '\n\n`[[datos]]`' + after

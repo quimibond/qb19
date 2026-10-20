@@ -286,7 +286,15 @@ Lo que sigue aplica a los dos:
   Escriba `[[datos]]` en un párrafo propio para decidir dónde van los
   renglones y los datos del sistema (si no, van al final). La sección
   también tiene su «Pantalla en Odoo». «Texto solo si no hay datos» deja el
-  texto como respaldo. Editar un renglón cuenta como editar la sección. La «Situación» de cada anexo del
+  texto como respaldo. Editar un renglón cuenta como editar la sección.
+- **Lo que es dato se edita en su registro (desde 57.162.0), no en Textos:**
+  el alcance en cada **Norma** («Alcance certificado»); lo que no aplica en
+  la **Cláusula** («No aplica», el inciso y su justificación); las reglas
+  que el sistema hace cumplir en **Administración → Configuración → Reglas
+  del sistema** (tema, cláusulas, regla y pantalla); y quién elabora,
+  dónde, quién revisa y quién aprueba cada tipo en **Tipos de documento**.
+  El MIID y el P-G01 los leen, y el aviso diario de «ya no coincide» también
+  los vigila. La «Situación» de cada anexo del
   Manual es una nota por renglón (7.2). Las secciones se archivan; no se
   borran. Cuando una actualización trae texto nuevo para una sección que
   usted editó, no la pisa: le deja una nota en el historial de la sección.

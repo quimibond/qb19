@@ -11,7 +11,7 @@ Usa la empresa propia de test_miid (ZM Empresa MIID)."""
 import importlib.util
 import os
 
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import tagged
 from odoo.tools.misc import file_open
 
@@ -122,15 +122,18 @@ class TestMiidSiembraRenglones(_Case):
         with file_open('quimibond_sgi/data/sgi_miid_items.xml', 'rb') as fh:
             tree = etree.parse(fh)
         items = tree.xpath('//record[@model="sgi.miid.item"]')
-        self.assertGreaterEqual(len(items), 80)
+        self.assertGreaterEqual(len(items), 50)
         Data = self.env['ir.model.data'].sudo()
         for record in items:
             self.assertTrue(Data.search([('module', '=', 'quimibond_sgi'), ('name', '=', record.get('id'))]).noupdate,
                             record.get('id'))
+        # 57.162.0: las reglas son registros de sgi.system.rule, no renglones.
         reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
-        self.assertEqual(len(reglas.item_ids), 12, "Una regla por renglón, con su cláusula y su pantalla.")
-        self.assertTrue(all(reglas.item_ids.mapped('clause')))
-        self.assertTrue(all(reglas.item_ids.mapped('menu_id')))
+        self.assertEqual(reglas.live_block, 'reglas')
+        rules = self.env['sgi.system.rule'].search([])
+        self.assertGreaterEqual(len(rules), 15)
+        self.assertTrue(all(rules.mapped('clause_ids')) and all(rules.mapped('menu_id')),
+                        "Cada regla con sus cláusulas y su pantalla.")
         with file_open('quimibond_sgi/data/sgi_miid_sections.xml', 'rb') as fh:
             seed = fh.read().decode()
         for written in ('SGI → Sistema', 'SGI → Planeación', 'SGI → Mejora', 'SGI → Inicio',
@@ -144,9 +147,9 @@ class TestMiidSiembraRenglones(_Case):
         spec.loader.exec_module(module)
         reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
         politica = self.env.ref('quimibond_sgi.sgi_miid_section_17_politica')
-        # Como estaba en 57.160.x: viñetas en el texto, sin menú ni formato.
-        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s, menu_id = NULL, item_style = 'table' "
-                            "WHERE id = %s", ('<ul><li>Regla vieja ZM</li></ul>', reglas.id))
+        # Como estaba en 57.160.x: viñetas en el texto, sin menú.
+        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s, menu_id = NULL WHERE id = %s",
+                            ('<ul><li>Regla vieja ZM</li></ul>', reglas.id))
         self.env.cr.execute("UPDATE sgi_miid_section SET menu_id = NULL WHERE id = %s", [politica.id])
         (reglas | politica).invalidate_recordset()
         self.env['mail.message'].sudo().search([
@@ -156,10 +159,124 @@ class TestMiidSiembraRenglones(_Case):
         self.assertNotIn('Regla vieja ZM', reglas.body)
         self.assertIn('candados y avisos', reglas.body)
         self.assertEqual(politica.menu_id, self.env.ref('quimibond_sgi.menu_sgi_policy'))
-        self.assertEqual(politica.item_style, 'list')
         self.assertEqual(self.env['mail.message'].sudo().search_count([
             ('model', '=', 'sgi.miid.section'), ('res_id', '=', reglas.id),
             ('body', 'ilike', '57.161.0: texto actualizado')]), 1, "La segunda corrida no hace nada.")
         self.assertFalse(self.env['mail.message'].sudo().search_count([
             ('model', '=', 'sgi.miid.section'), ('res_id', 'in', (reglas | politica).ids),
             ('body', 'ilike', 'Texto de la sección editado')]), "La migración no es una edición a mano.")
+
+    def _mig_162(self):
+        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.162.0', 'post-migrate.py')
+        spec = importlib.util.spec_from_file_location('sgi_mig_57_162_0', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_12_migracion_57_162_renglones_y_bloques(self):
+        module = self._mig_162()
+        Data = self.env['ir.model.data'].sudo()
+        terminos = self.env.ref('quimibond_sgi.sgi_miid_section_09_terminos')
+        reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
+        roles = self.env.ref('quimibond_sgi.sgi_miid_section_18_roles')
+        first = self.env.ref('quimibond_sgi.sgi_miid_item_09_terminos_01')
+        # Como quedó en 57.161.0: renglón largo, un renglón que la siembra ya
+        # no trae y la sección de reglas sin su bloque.
+        first.sudo().write({'text': 'Texto largo ZM'})
+        old = self.env['sgi.miid.item'].sudo().create({'section_id': reglas.id, 'label': 'Viejo ZM'})
+        Data.create({'module': 'quimibond_sgi', 'name': 'sgi_miid_item_52_reglas_99', 'model': 'sgi.miid.item',
+                     'res_id': old.id, 'noupdate': True})
+        self.env.cr.execute("UPDATE sgi_miid_section SET live_block = NULL WHERE id = %s", [reglas.id])
+        reglas.invalidate_recordset()
+        # Una sección editada a mano no se toca.
+        roles.sudo().message_post(body="Texto de la sección editado.")
+        roles_item = roles.item_ids[:1]
+        roles_item.sudo().write({'text': 'Rol ZM del Jefe MAST'})
+        manual = self.env['sgi.miid.item'].sudo().create({'section_id': terminos.id, 'label': 'Sin siembra ZM'})
+        module.migrate(self.env.cr, '19.0.57.161.1')
+        module.migrate(self.env.cr, '19.0.57.161.1')
+        self.assertNotEqual(first.text, 'Texto largo ZM', "El renglón sembrado vuelve al de la siembra.")
+        self.assertFalse(old.exists(), "Lo que la siembra ya no trae se quita.")
+        self.assertTrue(manual.exists(), "Un renglón sin xmlid no lo toca la siembra.")
+        self.assertEqual(roles_item.text, 'Rol ZM del Jefe MAST')
+        self.assertEqual(reglas.live_block, 'reglas', "La sección lee las reglas del sistema.")
+
+    def test_13_migracion_57_162_llena_solo_lo_vacio(self):
+        module = self._mig_162()
+        iso9001 = self.env.ref('quimibond_sgi.sgi_norm_9001')
+        iso14001 = self.env.ref('quimibond_sgi.sgi_norm_14001')
+        clause = self.env.ref('quimibond_sgi.c_9001_84')
+        dtype = self.env.ref('quimibond_sgi.sgi_doc_type_instructivo')
+        iso9001.write({'scope': False})
+        iso14001.write({'scope': 'Alcance ZM de MAST'})
+        clause.write({'exclusion': False, 'exclusion_detail': False, 'exclusion_reason': False})
+        dtype.write({'approver_text': 'Aprobador ZM', 'author_text': False})
+        module.migrate(self.env.cr, '19.0.57.161.1')
+        self.assertIn('entretelas', iso9001.scope)
+        self.assertEqual(iso14001.scope, 'Alcance ZM de MAST', "Lo capturado no se pisa.")
+        self.assertTrue(clause.exclusion)
+        self.assertEqual(clause.exclusion_detail, '8.4.1 b)')
+        self.assertTrue(dtype.author_text)
+        self.assertEqual(dtype.approver_text, 'Aprobador ZM')
+
+
+@tagged('post_install', '-at_install')
+class TestMiidCampos(_Case):
+    """57.162.0: alcance, no aplicabilidades, reglas y roles por tipo de
+    documento son datos de su registro; el manual los lee y entran a la
+    huella."""
+
+    def _section(self, block, clause, kind='miid'):
+        return self.env['sgi.miid.section'].create({
+            'company_id': self.company.id, 'kind': kind, 'clause': clause, 'name': 'Bloque ZM %s' % block,
+            'body': '<p>[[datos]]</p>', 'live_block': block})
+
+    def test_20_alcance_y_no_aplica(self):
+        self._section('alcance', '1.2')
+        self._section('exclusiones', '1.3')
+        norm = self.env['sgi.norm'].create({'code': 'ZM-NORMA', 'name': 'Norma ZM', 'scope': 'Alcance ZM'})
+        clause = self.env['sgi.norm.clause'].create({'norm_id': norm.id, 'code': '7.7', 'name': 'Requisito ZM'})
+        before = self.miid._sgi_snapshot()
+        with self.assertRaises(ValidationError):
+            clause.write({'exclusion': True})
+        clause.write({'exclusion': True, 'exclusion_detail': '7.7.1 a)', 'exclusion_reason': 'Razón ZM'})
+        html = self._html()
+        for text in ('Alcance ZM', '7.7.1 a)', 'Razón ZM'):
+            self.assertIn(text, html)
+        after = self.miid._sgi_snapshot()
+        self.assertTrue(any('ya no aplica' in d for d in self.Miid._sgi_diff(before, after)))
+
+    def test_21_reglas_del_sistema(self):
+        self._section('reglas', '5.2')
+        self.env['sgi.system.rule'].search([]).write({'active': False})
+        clause = self.env['sgi.norm.clause'].create({
+            'norm_id': self.env.ref('quimibond_sgi.sgi_norm_9001').id, 'code': '9.9', 'name': 'Requisito ZM'})
+        rule = self.env['sgi.system.rule'].create({
+            'name': 'Regla ZM', 'text': 'Lo hace el sistema ZM', 'clause_ids': [(6, 0, clause.ids)],
+            'menu_id': self.env.ref('quimibond_sgi.menu_sgi_nc').id})
+        self.assertEqual(rule.clause_label, '9.9')
+        screen = self.miid.with_user(self.user)
+        self.assertEqual(screen.rule_ids, rule, "En pantalla, la lista nativa de reglas.")
+        self.assertIn('Bloque ZM reglas', screen.scr_requisitos_reglas_html)
+        html = self._html()
+        self.assertIn('Lo hace el sistema ZM', html)
+        self.assertIn('No conformidades', html, "El PDF imprime la ruta del menú.")
+        snap = self.miid._sgi_snapshot()
+        rule.write({'text': 'Otra regla ZM'})
+        self.assertTrue(any('Cambió la regla del sistema' in d
+                            for d in self.Miid._sgi_diff(snap, self.miid._sgi_snapshot())))
+
+    def test_22_roles_por_tipo_en_el_pg01(self):
+        pg01 = self.Miid._sgi_get(self.company, kind='pg01')
+        self._section('elaboracion', '4.2', kind='pg01')
+        self._section('aprobacion', '4.3', kind='pg01')
+        dtype = self.env['sgi.document.type'].create({
+            'code': 'zm_tipo', 'name': 'Tipo ZM', 'company_id': self.company.id,
+            'author_text': 'Elabora ZM', 'reviewer_text': 'Revisa ZM', 'approver_text': 'Aprueba ZM'})
+        html = pg01.with_user(self.user).scr_desarrollo_html
+        for text in ('Tipo ZM', 'Elabora ZM', 'Revisa ZM', 'Aprueba ZM'):
+            self.assertIn(text, html)
+        snap = pg01._sgi_snapshot()
+        dtype.write({'approver_text': 'Otro ZM'})
+        self.assertNotEqual(self.Miid._sgi_hash(snap), self.Miid._sgi_hash(pg01._sgi_snapshot()),
+                            "Quién firma entra a la huella del P-G01.")

@@ -174,7 +174,17 @@ respaldo. Un bloque del documento que ninguna sección lleva sale al final
   `menu_id`. En pantalla, menú = botón a la acción; en el PDF, la ruta.
   Renglones, menús y formato entran a la huella (`items` y el renglón de
   `sections`). Siembra en `data/sgi_miid_items.xml` (después de los menús);
-  en una base existente, `_sgi_seed_format_update` pone el formato.
+  en una base existente, `_sgi_seed_format_update` pone el formato y
+  `_sgi_seed_items_update` (57.162.0) los renglones, en secciones sin editar.
+- **Campos en vez de texto (57.162.0):** el alcance es de la norma
+  (`scope`), lo que no aplica es de la cláusula (`exclusion`,
+  `exclusion_detail`, `exclusion_reason`), las reglas del sistema son
+  `sgi.system.rule` (cláusulas y menú) y quién elabora, dónde, quién revisa
+  y quién aprueba es del tipo de documento (`author_text`…`approver_text`,
+  `odoo_menu_id`). Bloques `alcance`, `exclusiones`, `reglas` (lista nativa
+  `rule_ids`), `elaboracion` y `aprobacion`. Siembra en
+  `data/sgi_miid_fields.xml`; en una base existente `_sgi_seed_fill_fields`
+  llena solo lo vacío.
 - **Siembra en una base existente:** `_sgi_seed_update` pone el texto nuevo
   solo en las secciones que nadie editó; `_sgi_seed_layout_update`
   reacomoda orden, numeral, título, nivel, bloque y documento;

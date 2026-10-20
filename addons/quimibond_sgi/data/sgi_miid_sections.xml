@@ -19,7 +19,13 @@
          dentro del MIID): el P-G01 es un documento controlado propio generado
          con el mismo motor (kind = pg01, secciones sgi_miid_section_pg01_*);
          el capítulo 6 del MIID queda en dos secciones (6 y 6.1) y las cinco
-         que detallaban el P-G01 (54 a 58) se archivan por migración. -->
+         que detallaban el P-G01 (54 a 58) se archivan por migración.
+         57.161.0 y 57.162.0 (Jose, 2026-10-20: «no quiero texto plano», «sigo
+         viendo mucho texto», «¿no es mejor que sean campos?»): texto corto;
+         las listas son renglones (data/sgi_miid_items.xml) y lo que es dato de
+         otro registro lo imprime un bloque: alcance (norma), no aplicabilidades
+         (cláusula), reglas del sistema (sgi.system.rule) y quién elabora y
+         firma (tipo de documento), sembrados en data/sgi_miid_fields.xml. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -28,8 +34,7 @@
             <field name="heading_level">1</field>
             <field name="live_block">identificacion</field>
             <field name="body" type="html">
-
-                <p>Manual Integral de Información Documentada del Sistema de Gestión Integral (ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018) de Productora de No Tejidos Quimibond S.A. de C.V. (PNTQ). Responsable del documento: Jefe de MAST y SGI. Aprueba: Director de Operaciones. Este manual se genera desde Odoo: lo que imprime es lo que el sistema tiene el día de su emisión.</p>
+                <p>Manual del Sistema de Gestión Integral de PNTQ (ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018). Responsable: Jefe de MAST y SGI. Aprueba: Director de Operaciones.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -47,9 +52,9 @@
             <field name="name">Objeto</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-
-                <p>Este Manual es el documento de referencia del SGI de PNTQ. Declara el alcance del sistema y sus no aplicabilidades, dice dónde vive cada requisito de las normas en Odoo y fija las reglas que el sistema hace cumplir. No repite lo que Odoo ya muestra: los procesos, sus actividades, los indicadores, los riesgos, las no conformidades y los documentos se consultan en el sistema, que es la versión oficial.</p>
-                <p>El SGI sirve para suministrar productos y servicios conformes, gestionar las responsabilidades ambientales con perspectiva de ciclo de vida, cumplir los requisitos legales aplicables en México, identificar y controlar los peligros y riesgos de las áreas de PNTQ, dar condiciones de trabajo seguras y saludables y fomentar la consulta y participación de los trabajadores.</p>
+                <p>Documento de referencia del SGI: su alcance, lo que no aplica, dónde vive cada requisito en Odoo y las reglas que el sistema hace cumplir. Lo que Odoo ya muestra no se repite aquí.</p>
+                <p>El SGI sirve para:</p>
+                <p>[[datos]]</p>
             </field>
         </record>
 
@@ -58,9 +63,10 @@
             <field name="clause">1.2</field>
             <field name="name">Alcance del SGI</field>
             <field name="heading_level">2</field>
+            <field name="live_block">alcance</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>Sitio: Carretera Toluca-Naucalpan km 52.8, Parque Industrial Toluca 2000, Calle 3 Sur, Manzana 7, Lotes 7, 9 y 10, C.P. 50233, Toluca, Estado de México.</p>
+                <p>Sitio: Carretera Toluca-Naucalpan km 52.8, Parque Industrial Toluca 2000, Calle 3 Sur, Mz. 7, Lotes 7, 9 y 10, C.P. 50233, Toluca, Estado de México.</p>
             </field>
             <field name="to_confirm" eval="True"/>
             <field name="to_confirm_note">Alcance: confirmar contra el certificado o el informe de la auditoría de septiembre de 2026. La revisión 02 trae dos redacciones del alcance general: en 1.2, «maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas, telas de todo tipo de fibras, así como la aplicación de resinas, laminados y acabados industriales»; en 3.3, «la maquila, fabricación, distribución, comercialización, importación y exportación de entretelas tejidas y no tejidas, telas de cualquier tipo de fibra y demás productos textiles, así como la aplicación de resinas, laminados y acabados industriales relacionados con dichos productos, incluyendo las distintas áreas, procesos y actividades que integran PNTQ». Para ISO 45001 dice «aplica a las actividades incluidas dentro del alcance definido del SGI».</field>
@@ -71,9 +77,10 @@
             <field name="clause">1.3</field>
             <field name="name">Requisitos que no aplican y su justificación</field>
             <field name="heading_level">2</field>
+            <field name="live_block">exclusiones</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>Estas no aplicabilidades no afectan la responsabilidad de asegurar la conformidad de los productos y servicios ni el aumento de la satisfacción del cliente.</p>
+                <p>No afectan la conformidad de los productos ni la satisfacción del cliente. Se marcan en la cláusula («No aplica»).</p>
             </field>
             <field name="to_confirm" eval="True"/>
             <field name="to_confirm_note">La revisión 02 sí justifica las dos (3.3, 8.4.1 y 8.5.1): 8.4.1 b), «los productos y servicios no son proporcionados directamente a los clientes por proveedores externos en nombre de la organización»; 8.5.1 f), «los procesos de producción permiten la verificación de sus resultados mediante actividades de seguimiento y medición posteriores, por lo que no se requiere validación de procesos especiales». La justificación de esta sección dice lo mismo; falta que Dirección la confirme.</field>
@@ -85,7 +92,6 @@
             <field name="name">Revisión y control de este Manual</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>El Manual se genera desde Odoo: texto fijo, que edita el Jefe de MAST y SGI, y datos vivos del sistema.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -97,9 +103,8 @@
             <field name="heading_level">1</field>
             <field name="live_block">normas</field>
             <field name="body" type="html">
-                <p>Las normas que rigen el SGI y sus cláusulas se mantienen en Odoo; cada actividad declara en «Cumple con» las cláusulas que cumple (ver 5.1). Las disposiciones legales y reglamentarias aplicables se llevan en Requisitos legales.</p>
+                <p>Cada actividad declara en «Cumple con» las cláusulas que cumple (5.1).</p>
                 <p>[[datos]]</p>
-                <p>Aplican también ISO 9000:2015 (fundamentos y vocabulario) y los equivalentes nacionales NMX-CC-9001-IMNC-2015 y NMX-CC-9000-IMNC-2015.</p>
             </field>
         </record>
 
@@ -109,9 +114,8 @@
             <field name="name">Dónde vive el sistema</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p><b>Regla general.</b> La información documentada del SGI se crea, se mantiene y se conserva en Odoo, en el menú SGI; lo que está en Odoo es la versión oficial. El Dropbox es archivo histórico de solo lectura; la correspondencia entre cada documento anterior y su sustituto está en «Del Dropbox a Odoo». El detalle de cada pantalla está en los manuales de Conocimiento → SGI → Cómo usar el sistema, que son material de consulta y no documentos controlados.</p>
+                <p>Lo que está en Odoo es la versión oficial.</p>
                 <p>[[datos]]</p>
-                <p>Aplican los términos y definiciones de ISO 9000:2015, ISO 14001:2015 e ISO 45001:2018.</p>
             </field>
         </record>
 
@@ -129,7 +133,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">procesos</field>
             <field name="body" type="html">
-                <p>PNTQ opera su SGI mediante los procesos del mapa, cada uno con dueño, entradas, salidas, actividades con responsable y vencimiento, indicadores y riesgos. El mapa, la interacción entre procesos y el diagrama de tortuga de cada proceso salen de Odoo. Los recursos se aseguran mediante el Plan de Asignación de Recursos, información confidencial de PNTQ que no se audita sin autorización de la Dirección.</p>
+                <p>Cada proceso tiene dueño, entradas, salidas, actividades, indicadores y riesgos. El mapa, la interacción y la tortuga salen de Odoo.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -141,7 +145,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">politica</field>
             <field name="body" type="html">
-                <p>Solo una política puede estar vigente. Da el marco para los objetivos integrales, se comunica a cada persona mediante acuse de lectura y está disponible para las partes interesadas. Incluye los compromisos de:</p>
+                <p>Una sola política vigente, con sus compromisos; se comunica con acuse de lectura.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -153,7 +157,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">objetivos</field>
             <field name="body" type="html">
-                <p>Los objetivos integrales son coherentes con la política, medibles y comunicados. Cada objetivo se liga a sus indicadores y toma el peor color de ellos; se revisan en la revisión por la dirección.</p>
+                <p>Medibles y ligados a sus indicadores; toman el peor color de ellos y se revisan en la revisión por la dirección.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -165,9 +169,8 @@
             <field name="heading_level">2</field>
             <field name="live_block">roles</field>
             <field name="body" type="html">
-                <p>Las responsabilidades y autoridades se asignan en tres niveles, todos en Odoo:</p>
                 <p>[[datos]]</p>
-                <p>La matriz de responsabilidades y el diagrama de roles sustituyen a los Anexos 4 y 5. El Jefe de MAST y SGI asegura la conformidad del SGI con las normas, informa a la alta dirección sobre su desempeño y mantiene su integridad cuando hay cambios. Nadie audita su propio proceso.</p>
+                <p>Quien aprueba no es quien ejecuta, y nadie audita su propio proceso.</p>
             </field>
         </record>
 
@@ -185,8 +188,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">correspondencia</field>
             <field name="body" type="html">
-
-                <p>Cada actividad declara en «Cumple con» las cláusulas que cumple; de ahí salen la Matriz de cumplimiento, el checklist de auditoría y esta tabla. Una cláusula sin actividad se ve en rojo en la matriz y en el Diagnóstico. Lo que no es una actividad lo cumple el sistema con sus candados y avisos (5.2).</p>
+                <p>De aquí salen la Matriz de cumplimiento y el checklist de auditoría. Una cláusula sin actividad sale en rojo en el Diagnóstico.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -196,8 +198,9 @@
             <field name="clause">5.2</field>
             <field name="name">Reglas que el sistema hace cumplir</field>
             <field name="heading_level">2</field>
+            <field name="live_block">reglas</field>
             <field name="body" type="html">
-                <p>Lo que no es una actividad lo cumple el sistema con sus candados y avisos:</p>
+                <p>Lo que no es una actividad lo cumple el sistema con candados y avisos:</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -209,7 +212,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">plazos_nc</field>
             <field name="body" type="html">
-                <p>Toda no conformidad se registra y se trata en Odoo, sea cual sea su origen (proceso, auditoría, reclamación de cliente, indicador, incidente, recorrido).</p>
+                <p>Toda NC se registra en Odoo, sea cual sea su origen.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -231,7 +234,7 @@
             <field name="name">Información documentada</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p>La información documentada del SGI se crea, aprueba, publica, difunde, conserva y controla en Odoo como lo establece el procedimiento P-G01 «Elaboración y control de información documentada», generado desde Odoo con el mismo motor que este Manual. Sus rutinas son actividades del proceso E2 con criterio de terminado y medición; sus plazos los aplica el sistema con avisos. Este capítulo solo deja los tipos de documento y sus claves.</p>
+                <p>Lo regula el P-G01, generado desde Odoo con el mismo motor que este Manual. Aquí solo van los tipos de documento y sus claves.</p>
             </field>
         </record>
 
@@ -242,9 +245,8 @@
             <field name="heading_level">2</field>
             <field name="live_block">tipos_documento</field>
             <field name="body" type="html">
-                <p>La información documentada del SGI tiene tres formas:</p>
                 <p>[[datos]]</p>
-                <p>Estados: borrador, prueba piloto, vigente y obsoleto; solo lo vigente se usa. La clave la asigna Odoo según el tipo de documento y el proceso; Odoo la valida y un documento controlado no se guarda sin clave válida. La clave anterior del Dropbox se conserva en el documento y se busca en «Del Dropbox a Odoo». Los formatos que nacen de una NOM llevan la clave normal de formato y citan la NOM en el título.</p>
+                <p>Solo lo vigente se usa. La clave la asigna y la valida Odoo; la anterior del Dropbox se busca en «Del Dropbox a Odoo».</p>
             </field>
         </record>
 
@@ -254,7 +256,7 @@
             <field name="name">Transición desde el Dropbox</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p>Un procedimiento anterior queda obsoleto cuando el proceso que lo sustituye entra en vigor; sus rutinas, una por una, están cubiertas por actividades, las hace Odoo o se eliminaron con motivo («Rutina por rutina»). Los anexos de la revisión 02 se conservan como documentos firmados o los sustituye un registro de Odoo, según la situación de cada uno.</p>
+                <p>Un procedimiento anterior queda obsoleto cuando entra en vigor el proceso que lo sustituye; sus rutinas se resolvieron una por una.</p>
             </field>
         </record>
 
@@ -296,7 +298,7 @@
             <field name="heading_level">1</field>
             <field name="live_block">identificacion</field>
             <field name="body" type="html">
-                <p>Procedimiento «Elaboración y control de información documentada» del Sistema de Gestión Integral (ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018) de Productora de No Tejidos Quimibond S.A. de C.V. (PNTQ). Clave P-G01 (la misma del Dropbox; la revisión 12 es la primera generada desde Odoo). Proceso: E2 Gestión del SGI. Responsable del documento: Jefe de MAST y SGI. Aprueba: Director de Operaciones. Se genera desde Odoo: lo que imprime es lo que el sistema tiene el día de su emisión.</p>
+                <p>Procedimiento del SGI de PNTQ. Proceso E2 Gestión del SGI. Responsable: Jefe de MAST y SGI. Aprueba: Director de Operaciones.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -308,7 +310,7 @@
             <field name="name">Propósito</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p>Establecer cómo se identifica, elabora, codifica, aprueba, publica, difunde, modifica, conserva y controla la información documentada del SGI de PNTQ en Odoo, para que el personal trabaje siempre con la versión vigente y la evidencia de cada registro se conserve y pueda auditarse.</p>
+                <p>Que el personal trabaje siempre con la versión vigente de cada documento y que la evidencia de cada registro se conserve y pueda auditarse.</p>
             </field>
         </record>
 
@@ -319,9 +321,8 @@
             <field name="name">Alcance</field>
             <field name="heading_level">1</field>
             <field name="body" type="html">
-                <p>Aplica a toda la información documentada del SGI generada o recibida en PNTQ, en sus tres formas:</p>
+                <p>Toda la información documentada del SGI, generada o recibida en PNTQ:</p>
                 <p>[[datos]]</p>
-                <p>Las áreas involucradas son todas las del organigrama de PNTQ en Odoo (Empleados → Organigrama).</p>
             </field>
         </record>
 
@@ -333,7 +334,7 @@
             <field name="heading_level">1</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>Las firmas se registran en Odoo (Firma electrónica) con fecha y hora; ya no se firma en el documento original en papel.</p>
+                <p>Las rutinas de E2 (responder solicitudes, publicar, revisar vigencias, externos), con quién las ejecuta y quién las aprueba, están en la sección 5. Las firmas se registran en Odoo (Firma electrónica).</p>
             </field>
         </record>
 
@@ -353,7 +354,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">tipos_documento</field>
             <field name="body" type="html">
-                <p>La clave la asigna Odoo según el tipo de documento y el proceso; los tipos y sus patrones viven como datos en «Tipos de documento», y agregar o cambiar un tipo no requiere programar. La NOM o el requisito de cliente va en el título, no en la clave. Los documentos que vienen del Dropbox conservan su clave anterior en «Del Dropbox a Odoo».</p>
+                <p>La clave la asigna Odoo según el tipo y el proceso. La NOM o el requisito de cliente va en el título, no en la clave.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -364,11 +365,10 @@
             <field name="clause">4.2</field>
             <field name="name">Quién elabora qué y dónde</field>
             <field name="heading_level">2</field>
+            <field name="live_block">elaboracion</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>Lo que Odoo genera lleva el encabezado y el pie del SGI (logo, razón social, clave, revisión, emisión y página) en cada hoja. Los documentos que siguen como archivo conservan la plantilla de la revisión 11 del P-G01: encabezado con logo, razón social, nombre del documento, clave, fecha de emisión, área y revisión; Arial 12, 10 y 10; nombre de archivo con la clave y el título sin acentos; entrega en PDF.</p>
-                <p>Queda prohibido trabajar con información que no esté publicada como vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en Excel ni en papel.</p>
-                <p>Al entrar a un puesto, la persona firma el acuse de Mi procedimiento y, dentro de los 30 días naturales siguientes, revisa su procedimiento y propone lo que falte o sobre («Proponer actividad» o solicitud de cambio documental); el jefe directo lo verifica.</p>
+                <p>Los archivos conservan la plantilla de la revisión 11 (logo, razón social, nombre, clave, emisión, área y revisión; PDF). Prohibido trabajar con lo que no esté vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en papel ni en Excel.</p>
             </field>
         </record>
 
@@ -378,10 +378,12 @@
             <field name="clause">4.3</field>
             <field name="name">Aprobación, publicación y cambios</field>
             <field name="heading_level">2</field>
+            <field name="live_block">aprobacion</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p><b>Solicitud de cambio documental.</b> Un alta, modificación o baja se pide con el documento afectado, el tipo de cambio, qué se modifica, la revisión nueva, el motivo, los cambios, los procesos afectados, la prueba piloto si aplica y el archivo propuesto. Al enviarla, Odoo arma el PDF con una hoja de firmas y pide las firmas en orden en Firma electrónica (Elaboró → Revisó → Aprobó); la aprobación es la firma y rechazar se hace en Aprobaciones con motivo. Con la última firma Odoo publica la revisión nueva con fecha de emisión y próxima revisión, deja obsoleta la anterior con fecha y motivo, avisa a los puestos del proceso y deja pendiente el acuse de quienes deben leerlo; el PDF firmado queda como evidencia. Una baja deja el documento obsoleto; un alta agenda al Jefe de MAST y SGI crear el documento.</p>
-                <p><b>Cuándo se modifica.</b> Por cambio en las normas, decisión de la Dirección, solicitud del dueño del proceso (cambios, mejoras o anomalías), cambio en un requisito legal o de cliente, hallazgo de auditoría o NC, vencimiento de la revisión, documento externo nuevo o revisado, o aviso de que el MIID o un procedimiento vivo ya no coinciden con el sistema. El cambio de titular de un área no es motivo: el procedimiento es del proceso. Al modificar un documento se revisan los que se relacionan con el cambio y se actualizan en la misma solicitud o en otra ligada. El número de revisión y la fecha de emisión los pone Odoo. Las solicitudes se atienden conforme llegan; no hay calendario mensual ni suspensión por días de auditoría.</p>
+                <p>Actividades y roles de un proceso: los propone cualquiera, los revisa su jefe directo y los aprueba el dueño del proceso.</p>
+                <p><b>Cómo se pide:</b> solicitud de cambio con el archivo propuesto. Odoo pide las firmas en orden y, con la última, publica la revisión, deja obsoleta la anterior y pide los acuses.</p>
+                <p><b>Cuándo se modifica:</b> cambio de norma, requisito legal o de cliente, decisión de Dirección, hallazgo o NC, vencimiento, documento externo o aviso de que ya no coincide con el sistema. El cambio de titular no es motivo.</p>
             </field>
         </record>
 
@@ -393,8 +395,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">plazos_documentales</field>
             <field name="body" type="html">
-
-                <p>Los plazos de las rutinas son los criterios de terminado de las actividades de E2 (sección 5): responder cada solicitud en 5 días hábiles, publicar y retirar la anterior en 2, verificar la implantación en piso a los 15 y registrar e implantar los documentos externos en 10. Los plazos que aplica el sistema solo, con sus avisos, son estos:</p>
+                <p>Los aplica el sistema solo, con sus avisos:</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -429,7 +430,7 @@
             <field name="heading_level">1</field>
             <field name="live_block">actividades</field>
             <field name="body" type="html">
-                <p>Las rutinas de este procedimiento son actividades del proceso E2 Gestión del SGI ligadas a este documento («Procedimiento relacionado»): cada una con quién la ejecuta y la aprueba, cuándo se hace, su criterio de terminado y su medición en Odoo. Las 16 rutinas de la revisión 11 quedaron cubiertas por estas actividades o las hace Odoo («Rutina por rutina»).</p>
+                <p>Las actividades de E2 ligadas a este documento («Procedimiento relacionado»):</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -442,7 +443,7 @@
             <field name="heading_level">1</field>
             <field name="live_block">normas</field>
             <field name="body" type="html">
-                <p>ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018, cláusula 7.5 (información documentada: generalidades, creación y actualización, control), y los requisitos específicos de clientes cargados en Odoo. Las normas y cláusulas vigentes en el sistema son estas:</p>
+                <p>Cláusula 7.5 de las tres normas y los requisitos de clientes cargados en Odoo.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -455,7 +456,6 @@
             <field name="heading_level">1</field>
             <field name="live_block">historial</field>
             <field name="body" type="html">
-                <p>Revisiones de este procedimiento: las del Dropbox (hasta la 11) y las generadas desde Odoo.</p>
                 <p>[[datos]]</p>
             </field>
         </record>

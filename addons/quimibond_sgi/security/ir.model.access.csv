@@ -395,3 +395,6 @@ access_sgi_dev_change_request_user,sgi.dev.change.request.user,model_sgi_dev_cha
 access_sgi_dev_change_request_manager,sgi.dev.change.request.manager,model_sgi_dev_change_request,group_sgi_manager,1,1,1,1
 access_sgi_nc_step_user,sgi.nc.step.user,model_sgi_nc_step,group_sgi_user,1,1,1,1
 access_sgi_doc_review_user,sgi.doc.review.user,model_sgi_doc_review,group_sgi_user,1,1,1,1
+access_sgi_system_rule_user,sgi.system.rule.user,model_sgi_system_rule,group_sgi_user,1,0,0,0
+access_sgi_system_rule_auditor,sgi.system.rule.auditor,model_sgi_system_rule,group_sgi_auditor,1,0,0,0
+access_sgi_system_rule_manager,sgi.system.rule.manager,model_sgi_system_rule,group_sgi_manager,1,1,1,1
