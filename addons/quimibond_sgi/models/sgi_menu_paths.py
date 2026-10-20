@@ -15,6 +15,9 @@ cambiar aquí, la prueba falla.
 Módulo sin modelos: se puede importar a nivel de módulo desde cualquier
 archivo de models/.
 """
+from markupsafe import Markup, escape
+
+from odoo.exceptions import RedirectWarning, UserError
 
 SGI_MENU_PATHS = {
     'mapa_procesos': ('quimibond_sgi.menu_sgi_process_map',
@@ -105,7 +108,6 @@ def sgi_open_menu_action(env, menu):
     """57.165.0: la acción que abre el menú (su ventana; si no, el menú). Si
     el usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo
     le negaría. Lo usan el MIID, el Diagnóstico y Mis pendientes."""
-    from odoo.exceptions import UserError
     if not menu:
         raise UserError("No hay pantalla de Odoo ligada.")
     menu = menu.sudo()
@@ -117,3 +119,66 @@ def sgi_open_menu_action(env, menu):
     if action and action._name == 'ir.actions.act_window':
         return action.read()[0]
     return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
+
+
+def _sgi_menu_window(env, key):
+    """57.166.0: (menú, acción de ventana) de la ruta ``key``, en sudo; vacíos
+    si el menú o su acción no existen."""
+    menu = env.ref(SGI_MENU_PATHS[key][0], raise_if_not_found=False)
+    action = menu.sudo().action if menu else False
+    if not action or action._name != 'ir.actions.act_window':
+        return menu, False
+    return menu, action
+
+
+def sgi_menu_links(env, text):
+    """57.166.0: el HTML de un aviso con cada ruta de ``SGI_MENU_PATHS``
+    convertida en liga que abre la pantalla (``/odoo/action-<id>``). El texto
+    se trata como lo trata el campo Html de la actividad (un ``str`` ya era
+    HTML: no se escapa). Sin rutas, queda igual."""
+    if not text or '→' not in str(text):
+        return text
+    out = str(text)
+    links = {}
+    for key in sorted(SGI_MENU_PATHS, key=lambda k: -len(sgi_menu_path(k))):
+        path = sgi_menu_path(key)
+        if path not in out:
+            continue
+        _menu, action = _sgi_menu_window(env, key)
+        if not action:
+            continue
+        # Marcador para que una ruta más corta no vuelva a ligar el texto de
+        # una más larga ya ligada.
+        mark = '\x00%d\x00' % len(links)
+        links[mark] = '<a href="/odoo/action-%d">%s</a>' % (action.id, escape(path))
+        out = out.replace(path, mark)
+    if not links:
+        return text
+    for mark, link in links.items():
+        out = out.replace(mark, link)
+    return Markup(out)
+
+
+def sgi_route_error(env, message, key):
+    """57.166.0: el error que dice dónde se arregla trae el botón que abre esa
+    pantalla (``RedirectWarning``). Si el usuario no ve el menú, es el
+    ``UserError`` de siempre. Se usa ``raise sgi_route_error(...)``."""
+    menu, action = _sgi_menu_window(env, key)
+    if not action or menu.id not in env['ir.ui.menu']._visible_menu_ids():
+        return UserError(message)
+    return SgiRedirectWarning(message, action.id, "Abrir «%s»" % menu.with_context(lang='es_MX').name)
+
+
+class SgiRedirectWarning(RedirectWarning, UserError):
+    """57.166.0: ``RedirectWarning`` que además es ``UserError``: los ``except
+    UserError`` y los ``assertRaises(UserError)`` lo siguen atrapando. El
+    cliente web elige el diálogo con botón por el nombre
+    «odoo.exceptions.RedirectWarning» (``serialize_exception``), por eso se
+    renombra abajo."""
+
+    def __init__(self, message, action, button_text, additional_context=None):
+        Exception.__init__(self, message, action, button_text, additional_context)
+
+
+SgiRedirectWarning.__module__ = 'odoo.exceptions'
+SgiRedirectWarning.__name__ = 'RedirectWarning'

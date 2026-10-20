@@ -3,10 +3,15 @@
 
 Lo mismo que el MIID (57.161.0) en el Diagnóstico y en Mis pendientes: en vez
 de una ruta escrita («SGI → Desempeño → Indicadores…»), un botón que abre la
-pantalla; los pasos de la NC, como campos con su estado."""
-from odoo.tests import TransactionCase, tagged
+pantalla; los pasos de la NC, como campos con su estado.
 
-from ..models.sgi_menu_paths import sgi_menu_from_text, sgi_menu_path, sgi_open_menu_action
+57.166.0: también los errores que dicen dónde se arregla (botón del
+``RedirectWarning``) y los avisos del SGI (la ruta de la nota es liga)."""
+from odoo.exceptions import RedirectWarning, UserError
+from odoo.tests import TransactionCase, new_test_user, tagged
+
+from ..models.sgi_menu_paths import (
+    sgi_menu_from_text, sgi_menu_links, sgi_menu_path, sgi_open_menu_action, sgi_route_error)
 
 
 @tagged('post_install', '-at_install')
@@ -47,3 +52,39 @@ class TestRutasAbren(TransactionCase):
         self.assertIn(row.action_open_where()['type'], ('ir.actions.act_window', 'ir.actions.client'))
         detail = self.env['sgi.my.pending']._sgi_activity_detail(activity) or ''
         self.assertNotIn('Dónde se hace', detail, "La ruta escrita ya no va en la ficha: es el botón.")
+
+    def test_04_error_con_boton(self):
+        mast = new_test_user(self.env, login='zra_mast', groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        env = self.env(user=mast)
+        exc = sgi_route_error(env, "Configúrelo en %s." % sgi_menu_path('fuentes_nc'), 'fuentes_nc')
+        self.assertIsInstance(exc, RedirectWarning, "El administrador ve el menú: error con botón.")
+        self.assertIsInstance(exc, UserError, "Sigue siendo UserError para los except y las pruebas.")
+        self.assertEqual(type(exc).__module__ + '.' + type(exc).__name__, 'odoo.exceptions.RedirectWarning',
+                         "El cliente web elige el diálogo con botón por este nombre.")
+        action = self.env.ref('quimibond_sgi.menu_sgi_config_alert_sources').action
+        self.assertEqual(exc.args[1], action.id)
+        self.assertIn("Abrir", exc.args[2])
+        # El riesgo ambiental a mano: el error trae el botón a la matriz.
+        with self.assertRaises(RedirectWarning):
+            env['sgi.risk'].create({'name': 'Ambiental a mano ZRA', 'instrument': 'ambiental'})
+
+    def test_05_sin_acceso_sin_boton(self):
+        plain = new_test_user(self.env, login='zra_sin_sgi', groups='base.group_user')
+        exc = sgi_route_error(self.env(user=plain), "Configúrelo en Ajustes.", 'ajustes')
+        self.assertIsInstance(exc, UserError)
+        self.assertNotIsInstance(exc, RedirectWarning, "Sin acceso al menú no hay botón que lo niegue.")
+
+    def test_06_aviso_con_liga(self):
+        path = sgi_menu_path('indicadores')
+        html = str(sgi_menu_links(self.env, "Revíselo en %s, columna <b>Responsable</b>." % path))
+        action = self.env.ref('quimibond_sgi.menu_sgi_indicators').action
+        self.assertIn('<a href="/odoo/action-%d">%s</a>' % (action.id, path), html)
+        self.assertIn('<b>Responsable</b>', html, "La nota ya era HTML: se respeta.")
+        self.assertEqual(str(sgi_menu_links(self.env, "Sin ruta")), "Sin ruta")
+        # La ruta más larga gana: «… → Indicadores → Mediciones» no se parte.
+        html = str(sgi_menu_links(self.env, sgi_menu_path('mediciones')))
+        self.assertEqual(html.count('<a '), 1)
+        process = self.env['sgi.process'].create({'code': 'ZRA2', 'name': 'Proceso avisos'})
+        activity = self.env['sgi.cron']._sgi_schedule(
+            process, "Aviso con ruta ZRA", "Abra %s." % path, self.env.user.id)
+        self.assertIn('/odoo/action-%d' % action.id, str(activity.note))

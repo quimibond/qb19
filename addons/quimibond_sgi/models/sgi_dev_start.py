@@ -25,6 +25,8 @@ import logging
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_menu_paths import sgi_menu_path, sgi_route_error
+
 _logger = logging.getLogger(__name__)
 
 PARAM_NOTIFY_JOBS = 'quimibond_sgi.dev_request_notify_job_ids'
@@ -274,7 +276,8 @@ class ProjectProjectDevStart(models.Model):
             raise UserError("No falta materia prima sin requisición. Revise existencias primero.")
         category = self._sgi_dev_requisition_category(self.company_id)
         if not category:
-            raise UserError("No hay una categoría de Aprobaciones de tipo compra: configúrela en Ajustes → SGI.")
+            raise sgi_route_error(self.env, "No hay una categoría de Aprobaciones de tipo compra: configúrela en %s."
+                                  % sgi_menu_path('ajustes'), 'ajustes')
         label = self.sgi_ft_folio or self.name
         request = self.env['approval.request'].create({
             'name': "Materia prima para la muestra de %s" % label,

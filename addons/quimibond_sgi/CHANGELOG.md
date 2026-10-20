@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.166.0 — 2026-10-20
+
+Las rutas se abren, segunda entrega: errores, avisos y manuales.
+
+**Agregado**
+- Los errores que dicen dónde se arregla traen el botón que abre esa pantalla
+  (`RedirectWarning`): fuente de NC desactivada, riesgo ambiental capturado a
+  mano (abre la matriz de aspectos), tipo de operación de la baja de muestras
+  y categoría de compra del desarrollo (abren Ajustes). Si el usuario no ve el
+  menú, es el error de siempre. La clase `SgiRedirectWarning` sigue siendo
+  `UserError` (los `except UserError` y las pruebas no cambian).
+- Las notas de los avisos del SGI (`sgi.cron._sgi_schedule`) llevan su ruta
+  como liga (`/odoo/action-<id>`); los avisos abiertos se reescriben una vez
+  para tomar las ligas.
+- `sgi_menu_paths`: `sgi_menu_links` y `sgi_route_error`.
+- Pruebas: `test_rutas_abren` 04 a 06.
+
+**Cambiado**
+- Los mensajes de desarrollo dicen la ruta del árbol del SGI
+  (`SGI → Administración → Configuración → Ajustes`) en vez de «Ajustes → SGI».
+
 ## 19.0.57.165.0 — 2026-10-20
 
 Lo del MIID en los demás lugares, primera entrega: las rutas se abren. Jose

@@ -3,7 +3,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_path, sgi_route_error
 
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
@@ -398,7 +398,7 @@ class SgiRisk(models.Model):
         if not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) and any(
                 vals.get('instrument', self.env.context.get('default_instrument')) == 'ambiental'
                 for vals in vals_list):
-            raise UserError(SGI_ENV_ASPECT_MSG)
+            raise sgi_route_error(self.env, SGI_ENV_ASPECT_MSG, 'aspectos_ambientales')
         return super().create(vals_list)
 
     def write(self, vals):
@@ -406,7 +406,7 @@ class SgiRisk(models.Model):
         # que no se hace es reclasificar otro como «Aspecto ambiental».
         if vals.get('instrument') == 'ambiental' and not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) \
                 and self.filtered(lambda r: r.instrument != 'ambiental'):
-            raise UserError(SGI_ENV_ASPECT_MSG)
+            raise sgi_route_error(self.env, SGI_ENV_ASPECT_MSG, 'aspectos_ambientales')
         # 57.96.0 (N-06): la jerarquía se revisa solo en la transición a
         # controlado o cerrado (registros cuyo estado de antes era otro).
         closing = vals.get('state') in self._SGI_CLOSING_STATES
