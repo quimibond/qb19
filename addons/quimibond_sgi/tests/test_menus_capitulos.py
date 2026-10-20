@@ -52,6 +52,17 @@ ARCHIVED = {
     'menu_sgi_activity_methods': ('menu_sgi_analysis', 'sgi_activity_method_action'),
     'menu_sgi_week_stats': ('menu_sgi_analysis', 'sgi_activity_week_stat_action'),
     'menu_sgi_menu_mismatch': ('menu_sgi_analysis', 'sgi_activity_menu_mismatch_action'),
+    # 57.167.0: el SGI ordenado.
+    'menu_sgi_dropbox_procedures': ('menu_sgi_dropbox', 'sgi_dropbox_procedure_action'),
+    'menu_sgi_migration': ('menu_sgi_dropbox', 'sgi_migration_action'),
+    'menu_sgi_dropbox_routines': ('menu_sgi_dropbox', 'sgi_dropbox_routine_action'),
+    'menu_sgi_config_load': ('menu_sgi_transition', 'sgi_catalog_load_wizard_action'),
+    'menu_sgi_config_company_fix': ('menu_sgi_transition', 'sgi_company_fix_action'),
+    'menu_sgi_miid_sections': ('menu_sgi_manual', 'sgi_miid_section_action'),
+    'menu_sgi_miid_revisions': ('menu_sgi_manual', 'sgi_miid_revisions_action'),
+    'menu_sgi_miid_requests': ('menu_sgi_manual', 'sgi_miid_requests_action'),
+    'menu_sgi_indicator_wizard': ('menu_sgi_admin_indicators', 'sgi_indicator_wizard_action'),
+    'menu_sgi_floor_tablets': ('menu_sgi_config', 'sgi_floor_tablet_action'),
 }
 OLD_PATHS = ('SGI → Dirección', 'SGI → Procesos', 'Administración SGI →', 'Mejora → Auditorías',
              'Seguridad y ambiente → Aspectos', 'Firmas de lectura →')
@@ -148,7 +159,7 @@ class TestMenusCapitulos(TransactionCase):
     def test_05_cada_quien_ve_lo_mismo_que_antes(self):
         """Q7: cada menú que cambió de carpeta conserva quién lo ve."""
         everyone = ('menu_sgi_processes', 'menu_sgi_process_map', 'menu_sgi_activities', 'menu_sgi_miid',
-                    'menu_sgi_dropbox_search', 'menu_sgi_migration', 'menu_sgi_direction', 'menu_sgi_policy',
+                    'menu_sgi_dropbox_search', 'menu_sgi_direction', 'menu_sgi_policy',
                     'menu_sgi_objectives', 'menu_sgi_risks', 'menu_sgi_env_aspects', 'menu_sgi_legal',
                     'menu_sgi_legal_evaluations', 'menu_sgi_performance', 'menu_sgi_audits',
                     'menu_sgi_audit_programs', 'menu_sgi_audit_list', 'menu_sgi_audit_findings',
@@ -156,8 +167,7 @@ class TestMenusCapitulos(TransactionCase):
                     'menu_sgi_epp_deliveries', 'menu_sgi_checklist_requests', 'menu_sgi_improvement_group',
                     'menu_sgi_nc')
         catalogs = ('menu_sgi_deliverable_list', 'menu_sgi_process_flows', 'menu_sgi_analysis_who',
-                    'menu_sgi_jobs_roles', 'menu_sgi_dropbox_procedures',
-                    'menu_sgi_dropbox_routines', 'menu_sgi_dropbox_progress')
+                    'menu_sgi_jobs_roles', 'menu_sgi_dropbox_progress')
         reading = ('menu_sgi_dashboard_health', 'menu_sgi_mgmt_review', 'menu_sgi_satisfaction',
                    'menu_sgi_interested_parties', 'menu_sgi_documental', 'menu_sgi_documents',
                    'menu_sgi_master_list', 'menu_sgi_external_docs', 'menu_sgi_doc_changes',
@@ -167,8 +177,7 @@ class TestMenusCapitulos(TransactionCase):
                    'menu_sgi_activity_executions', 'menu_sgi_spec_gaps', 'menu_sgi_approvals_native',
                    'menu_sgi_nc_all_actions')
         mast_only = ('menu_sgi_config', 'menu_sgi_config_doc_types', 'menu_sgi_transition',
-                     'menu_sgi_config_company_fix', 'menu_sgi_config_env_aspect_transfer',
-                     'menu_sgi_my_procedure_publish', 'menu_sgi_indicator_wizard')
+                     'menu_sgi_config_env_aspect_transfer', 'menu_sgi_my_procedure_publish')
         self._assert_sees(self.plain, yes=everyone, no=catalogs + reading + mast_only)
         self._assert_sees(self.owner, yes=everyone + catalogs, no=reading + mast_only)
         for user in (self.director, self.auditor):

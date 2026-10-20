@@ -13,6 +13,40 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.167.0 — 2026-10-20
+
+El SGI ordenado: menos menús, lo mismo a un botón. Jose (2026-10-20):
+«¿cómo podemos ordenar más el SGI y limpiar lo que no sirva de la misma
+forma?»; eligió empezar por los menús, con el uso real de producción.
+
+**Retirado (menús archivados en su lugar, acción viva)**
+- Del Dropbox a Odoo: «Procedimientos anteriores», «Formatos y documentos
+  anteriores» y «Rutina por rutina». Quedan «Buscador por clave anterior»
+  (filtra procedimientos y formatos) y «Avance de la transición» (botones
+  Procedimientos, Rutinas, Pendientes y Documentos por proceso). La
+  transición sigue: 35 rutinas y 67 procedimientos pendientes el 2026-10-20.
+- Transición: «Cargar catálogo» y «Empresa en documentos controlados» (de una
+  sola vez; quedaban 5 documentos sin empresa). Se queda «Traspaso de riesgos
+  ambientales».
+- Manual del SGI: «Textos», «Revisiones» y «Solicitudes de cambio»: la ficha
+  del MIID y del P-G01 los abre (botón nuevo «Solicitudes»).
+- Indicadores: «Nuevo indicador» es botón de la lista (Jefe MAST).
+- Configuración: «Tabletas de planta» (SGI en planta apagado, 2026-10-02).
+
+**Se quedan**
+- Seguridad y ambiente completo (ISO 45001 en certificación), aunque 8 de 9
+  pantallas no tienen registros. «Hojas de checklist» no era duplicado de
+  «Checklists de hoy»: es el historial de todas las hojas.
+- «Competencias por tipo de permiso» (va con los permisos de 45001) y
+  «Eficiencias de mi área».
+
+**Corregido**
+- Un menú archivado sigue abriendo desde las actividades, secciones del MIID
+  y claves del Dropbox que lo apuntan (`sgi_menu_allowed`: la carpeta visible
+  y los grupos del menú); antes un menú archivado daba «sin acceso».
+- «Abrir en Odoo» de los documentos y del buscador por clave anterior usa la
+  misma regla que «Ir a hacerlo» (57.166.0): abría solo listas.
+
 ## 19.0.57.166.0 — 2026-10-20
 
 Las rutas se abren, segunda entrega: errores, avisos y manuales.

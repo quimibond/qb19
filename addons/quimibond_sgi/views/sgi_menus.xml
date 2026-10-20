@@ -587,7 +587,49 @@
               parent="menu_sgi_automotive" action="sgi_coa_inbox_action" sequence="60"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
 
+    <!-- 57.167.0 (Jose 2026-10-20, «ordenar el SGI y limpiar lo que no sirva»):
+         archivados en su lugar (mismo padre, acción viva; SGI_MENU_ARCHIVED).
+         Se llega por botón: «Avance de la transición» abre procedimientos,
+         rutinas y documentos de cada proceso; el buscador por clave anterior
+         filtra procedimientos y formatos; la ficha del MIID y del P-G01 abre
+         sus textos, revisiones y solicitudes; la lista de indicadores trae
+         «Nuevo indicador». Cargar catálogo y Empresa en documentos eran de
+         una sola vez; SGI en planta está apagado (decisión 2026-10-02). Un
+         menú archivado sigue abriendo desde las actividades que lo apuntan
+         (sgi_menu_allowed). -->
+    <record id="menu_sgi_dropbox_procedures" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_migration" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_dropbox_routines" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_config_load" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_config_company_fix" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_miid_sections" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_miid_revisions" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_miid_requests" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_indicator_wizard" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_sgi_floor_tablets" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
     <!-- Al final: los nombres de menús y acciones del módulo quedan iguales
          en todos los idiomas (el XML solo escribe en_US; ver ir.ui.menu). -->
     <function model="ir.ui.menu" name="_sgi_sync_menu_names"/>
+
 </odoo>

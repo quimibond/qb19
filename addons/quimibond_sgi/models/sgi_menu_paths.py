@@ -126,6 +126,21 @@ def sgi_action_dict(env, action):
     return action._get_action_dict()
 
 
+def sgi_menu_allowed(env, menu):
+    """57.167.0: el usuario ve el menú. Uno archivado (se quitó del árbol para
+    ordenarlo, no por permisos) cuenta como visible si su carpeta lo es y el
+    usuario tiene sus grupos: las actividades, secciones del MIID y claves
+    del Dropbox que lo apuntan siguen abriendo."""
+    menu = menu.sudo().with_context(active_test=False)
+    env = env(su=False)
+    visible = env['ir.ui.menu']._visible_menu_ids()
+    if menu.active:
+        return menu.id in visible
+    if menu.parent_id and menu.parent_id.id not in visible:
+        return False
+    return not menu.group_ids or bool(set(menu.group_ids.ids) & set(env.user._get_group_ids()))
+
+
 def sgi_open_menu_action(env, menu):
     """57.165.0: la acción que abre el menú. Si el usuario no ve el menú, lo
     dice en vez de abrir una pantalla que Odoo le negaría. Lo usan el MIID,
@@ -136,7 +151,7 @@ def sgi_open_menu_action(env, menu):
         raise UserError("No hay pantalla de Odoo ligada.")
     menu = menu.sudo()
     # El superusuario (crons, pruebas) ve todo.
-    if env.uid != SUPERUSER_ID and menu.id not in env(su=False)['ir.ui.menu']._visible_menu_ids():
+    if env.uid != SUPERUSER_ID and not sgi_menu_allowed(env, menu):
         raise SgiNoAccess("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % " → ".join(
             p.strip() for p in (menu.with_context(lang='es_MX').complete_name or '').split('/')))
     if menu.action:
@@ -186,7 +201,7 @@ def sgi_route_error(env, message, key):
     pantalla (``RedirectWarning``). Si el usuario no ve el menú, es el
     ``UserError`` de siempre. Se usa ``raise sgi_route_error(...)``."""
     menu, action = _sgi_menu_window(env, key)
-    if not action or menu.id not in env(su=False)['ir.ui.menu']._visible_menu_ids():
+    if not action or not sgi_menu_allowed(env, menu):
         return UserError(message)
     return SgiRedirectWarning(message, action.id, "Abrir «%s»" % menu.with_context(lang='es_MX').name)
 

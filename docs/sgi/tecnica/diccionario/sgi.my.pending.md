@@ -10,7 +10,7 @@ Orden: `state_rank, date_due, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`.
 
-## Campos (29)
+## Campos (28)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -27,14 +27,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 | `is_mine` | Boolean |  | El renglón es de quien abre la lista. |  |  | compute `_compute_is_mine`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:277` |
 | `kind` | Selection | Tipo | Qué hay que hacer: acción, NC, medición, validación, acuse, firma, aprobación, actividad, escalamiento, aviso… | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:257` |
 | `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:260` |
-| `nc_containment_state` | Selection | Contención |  |  |  | related `nc_id.sgi_containment_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:307` |
-| `nc_due_containment` | Date | Contención vence |  |  |  | related `nc_id.sgi_due_containment`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:306` |
-| `nc_due_plan` | Date | Plan de acción vence |  |  |  | related `nc_id.sgi_due_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:310` |
-| `nc_due_root_cause` | Date | Causa raíz vence |  |  |  | related `nc_id.sgi_due_root_cause`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:308` |
-| `nc_effectiveness_due` | Date | Eficacia vence |  |  |  | related `nc_id.sgi_effectiveness_due`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:312` |
-| `nc_id` | Many2one | NC |  |  | `quality.alert` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:305` |
-| `nc_plan_state` | Selection | Plan de acción |  |  |  | related `nc_id.sgi_plan_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:311` |
-| `nc_root_cause_state` | Selection | Causa raíz |  |  |  | related `nc_id.sgi_root_cause_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:309` |
+| `nc_containment_state` | Selection | Contención |  |  |  | related `nc_id.sgi_containment_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:304` |
+| `nc_due_containment` | Date | Contención vence |  |  |  | related `nc_id.sgi_due_containment`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:303` |
+| `nc_due_plan` | Date | Plan de acción vence |  |  |  | related `nc_id.sgi_due_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:307` |
+| `nc_due_root_cause` | Date | Causa raíz vence |  |  |  | related `nc_id.sgi_due_root_cause`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:305` |
+| `nc_effectiveness_due` | Date | Eficacia vence |  |  |  | related `nc_id.sgi_effectiveness_due`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:309` |
+| `nc_id` | Many2one | NC |  |  | `quality.alert` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:302` |
+| `nc_plan_state` | Selection | Plan de acción |  |  |  | related `nc_id.sgi_plan_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:308` |
+| `nc_root_cause_state` | Selection | Causa raíz |  |  |  | related `nc_id.sgi_root_cause_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:306` |
 | `process_id` | Many2one | Proceso | Proceso del pendiente. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:261` |
 | `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:268` |
 | `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:267` |
@@ -42,9 +42,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 | `state` | Selection | Estado | Atrasado, por vencer o al día. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:264` |
 | `state_rank` | Integer |  | Orden para mostrar primero lo atrasado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:266` |
 | `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:254` |
-| `where_menu_id` | Many2one | Dónde se hace | Pantalla de Odoo donde se hace la actividad («Ir a hacerlo»). |  | `ir.ui.menu` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:302` |
 
-## Métodos públicos (25)
+## Métodos públicos (24)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -60,7 +59,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 | `action_open` | Abre el registro de origen (la acción, la NC, la medición…). |
 | `action_open_home` | 57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en el Tablero; los demás, en Mis pendientes (como antes). No toca la acción de inicio de ningún usuario. |
 | `action_open_mine` | Inicio → Mis pendientes: los del usuario actual. Sin empleado ligado, los renglones van solo con el usuario. |
-| `action_open_where` | — |
 | `action_request_approve` | — |
 | `action_request_refuse` | — |
 | `action_review_confirm` | Revisión mensual de la medición: «Sí, esto es lo que hago». |

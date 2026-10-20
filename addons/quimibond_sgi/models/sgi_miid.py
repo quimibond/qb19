@@ -1791,6 +1791,16 @@ class SgiMiid(models.Model):
         action['name'] = "Revisiones del %s" % self._sgi_kind()['short']
         return action
 
+    def action_open_requests(self):
+        """57.167.0: todas las solicitudes de cambio de este documento (antes
+        un menú de la carpeta «Manual del SGI»)."""
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('quimibond_sgi.sgi_miid_requests_action')
+        action['domain'] = [('sgi_miid_hash', '!=', False),
+                            ('sgi_document_id.sgi_code', '=', self._sgi_kind()['code'])]
+        action['name'] = "Solicitudes de cambio del %s" % self._sgi_kind()['short']
+        return action
+
     def action_open_request(self):
         self.ensure_one()
         if not self.pending_request_id:

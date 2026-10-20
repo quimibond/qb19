@@ -9,6 +9,7 @@ from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError, UserError
 
 from .sgi_base import sgi_bypass_allowed
+from .sgi_menu_paths import sgi_open_menu_action
 
 _logger = logging.getLogger(__name__)
 
@@ -446,17 +447,10 @@ class DocumentsDocument(models.Model):
         Si el usuario no tiene acceso al menú destino, lo dice en vez de
         abrir una pantalla que Odoo le negaría."""
         self.ensure_one()
-        menu = self.sgi_odoo_menu_id
-        action = menu.sudo().action if menu else False
-        action = action.exists() if action else action
-        if action:
-            if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
-                raise UserError(
-                    "Este documento vive en Odoo en «%s», pero su usuario no tiene acceso a ese "
-                    "menú. Pida el acceso a su jefe o al Jefe MAST." % menu.sudo().complete_name)
-            if action._name == 'ir.actions.act_window':
-                return action.read()[0]
-            return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
+        # 57.167.0: la regla común (cualquier tipo de acción, acceso del
+        # usuario real, menús archivados del árbol).
+        if self.sgi_odoo_menu_id:
+            return sgi_open_menu_action(self.env, self.sgi_odoo_menu_id)
         if self.sgi_migration_point_id:
             return self.action_sgi_open_migration_point()
         raise UserError(

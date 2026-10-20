@@ -16,7 +16,7 @@ Lo mismo que cualquier Usuario SGI, más:
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
 | **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría). Las fichas de proceso del desarrollo se abren desde el proyecto (pestaña Muestra → «Fichas de proceso», 57.155.0) |
-| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
+| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: **Avance de la transición**, con los botones Procedimientos, Rutinas, Pendientes y Documentos de cada proceso (desde 57.167.0 ya no son menús aparte) |
 | **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
 | **SGI → Sistema → Documentos** y **SGI → Desempeño → Indicadores** | Desde 57.150.0, como dueño de proceso: documentos controlados, lista maestra y documentos externos; todos los indicadores, mediciones y revisiones de medición |
 
@@ -150,8 +150,8 @@ se cierra ni se cancela mientras un bloqueo (LOTO) ligado siga aplicado.
 
 ### 2.7 Decidir las rutinas pendientes del Dropbox
 
-En **Del Dropbox a Odoo → Rutina por rutina**, filtre **Pendientes** de su
-proceso. Cada rutina que nadie cubre necesita su decisión: crear una
+En **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**, en el
+renglón de su proceso pulse **Pendientes**. Cada rutina que nadie cubre necesita su decisión: crear una
 actividad, volverla regla o automatización, o eliminarla con motivo. La fecha límite la fija el
 parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 
@@ -196,7 +196,8 @@ el Jefe MAST.
 
 ## 5. Dónde quedó lo que usaba en el Dropbox
 
-**Del Dropbox a Odoo → Procedimientos anteriores** muestra, por cada
+En **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**, el botón
+**Procedimientos** de su proceso muestra, por cada
 procedimiento del Dropbox de su proceso, qué proceso de Odoo lo sustituye,
 en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).

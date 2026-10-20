@@ -47,14 +47,8 @@ SGI/Sistema/Documentos/Acuses de lectura | menu_sgi_config_acks | quimibond_sgi.
 SGI/Sistema/Manual del SGI | menu_sgi_manual | -
 SGI/Sistema/Manual del SGI/Manual (MIID) | menu_sgi_miid | -
 SGI/Sistema/Manual del SGI/Control de información documentada (P-G01) | menu_sgi_pg01 | -
-SGI/Sistema/Manual del SGI/Textos | menu_sgi_miid_sections | -
-SGI/Sistema/Manual del SGI/Revisiones | menu_sgi_miid_revisions | -
-SGI/Sistema/Manual del SGI/Solicitudes de cambio | menu_sgi_miid_requests | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Del Dropbox a Odoo | menu_sgi_dropbox | -
 SGI/Sistema/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
-SGI/Sistema/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Sistema/Del Dropbox a Odoo/Formatos y documentos anteriores | menu_sgi_migration | -
-SGI/Sistema/Del Dropbox a Odoo/Rutina por rutina | menu_sgi_dropbox_routines | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Del Dropbox a Odoo/Avance de la transición | menu_sgi_dropbox_progress | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Planeación | menu_sgi_direction | -
 SGI/Planeación/Política integral | menu_sgi_policy | -
@@ -78,7 +72,6 @@ SGI/Desempeño | menu_sgi_performance | -
 SGI/Desempeño/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Desempeño/Indicadores | menu_sgi_admin_indicators | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Desempeño/Indicadores/Todos los indicadores | menu_sgi_indicators | -
-SGI/Desempeño/Indicadores/Nuevo indicador | menu_sgi_indicator_wizard | quimibond_sgi.group_sgi_manager
 SGI/Desempeño/Indicadores/Mediciones | menu_sgi_measures | -
 SGI/Desempeño/Indicadores/Mediciones por equipo o mercado | menu_sgi_measures_split | -
 SGI/Desempeño/Indicadores/Revisiones de medición | menu_sgi_measure_reviews | -
@@ -104,8 +97,6 @@ SGI/Administración/Diagnóstico/Faltantes de especificación | menu_sgi_spec_ga
 SGI/Administración/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Administración/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
 SGI/Administración/Transición | menu_sgi_transition | quimibond_sgi.group_sgi_manager
-SGI/Administración/Transición/Cargar catálogo | menu_sgi_config_load | quimibond_sgi.group_sgi_admin
-SGI/Administración/Transición/Empresa en documentos controlados | menu_sgi_config_company_fix | -
 SGI/Administración/Transición/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -
 SGI/Administración/Configuración | menu_sgi_config | quimibond_sgi.group_sgi_manager
 SGI/Administración/Configuración/Familias de puesto | menu_sgi_job_families | -
@@ -117,7 +108,6 @@ SGI/Administración/Configuración/Reglas del sistema | menu_sgi_config_system_r
 SGI/Administración/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
 SGI/Administración/Configuración/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
 SGI/Administración/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
-SGI/Administración/Configuración/Tabletas de planta | menu_sgi_floor_tablets | -
 SGI/Administración/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
 SGI/Administración/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
 SGI/Administración/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -

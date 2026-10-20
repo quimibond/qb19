@@ -47,10 +47,7 @@ Menú **SGI → Sistema → Del Dropbox a Odoo**:
 | Submenú | Quién lo ve | Para qué |
 |---|---|---|
 | **Buscador por clave anterior** | Todos | Escriba la clave del Dropbox (procedimiento, formato, instructivo, DAT o rutina): dice qué es hoy y **Abrir en Odoo** lo lleva a la pantalla que lo sustituye |
-| **Formatos y documentos anteriores** | Todos | Cada formato, instructivo, DAT, anexo, protocolo y reglamento del Dropbox, con su estado de migración y su destino en Odoo |
-| **Procedimientos anteriores** | Dueños de proceso, Jefe MAST, Dirección y Auditor | Cada procedimiento del Dropbox: qué proceso de Odoo lo sustituye, en qué estado va y cuántas de sus rutinas ya están resueltas; **Ver el PDF** abre el histórico |
-| **Rutina por rutina** | Los mismos | Cada rutina de cada procedimiento y qué pasó con ella |
-| **Avance de la transición** | Los mismos | Un renglón por proceso: procedimientos sustituidos y con pendientes, rutinas resueltas y documentos que ya viven en Odoo o siguen en papel |
+| **Avance de la transición** | Dueños de proceso, Jefe MAST, Dirección y Auditor | Un renglón por proceso: procedimientos sustituidos y con pendientes, rutinas resueltas y documentos que ya viven en Odoo o siguen en papel. Los botones **Procedimientos**, **Rutinas**, **Pendientes** y **Documentos** del renglón abren las listas que hasta 57.167.0 eran los menús «Procedimientos anteriores», «Rutina por rutina» y «Formatos y documentos anteriores» |
 
 ### Estados de una rutina
 

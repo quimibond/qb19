@@ -446,7 +446,7 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
   en lote con **Activar las sugeridas como solicitud**. Las que faltan le
   llegan como aviso por proceso en Mis pendientes.
-- **Nuevo indicador.** En SGI → Desempeño → Indicadores → Nuevo indicador:
+- **Nuevo indicador.** En SGI → Desempeño → Indicadores → Todos los indicadores, botón **Nuevo indicador**:
   elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
   la vista previa muestra cómo habrían salido los últimos tres periodos y
   qué registros cuenta. Se crea en «prueba».

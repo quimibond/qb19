@@ -110,3 +110,24 @@ class TestRutasAbren(TransactionCase):
             'res_model': 'sgi.process.activity', 'res_id': activity.id})
         with self.assertRaises(SgiNoAccess, msg="Sin acceso se dice; no se cae a la ficha."):
             row.with_user(user).action_open()
+
+    def test_08_menu_archivado_sigue_abriendo(self):
+        """57.167.0: lo que se quitó del árbol para ordenarlo (archivado) sigue
+        abriendo desde lo que lo apunta, con los grupos de su carpeta."""
+        from ..models.sgi_menu_paths import sgi_menu_allowed
+        menu = self.env.ref('quimibond_sgi.menu_sgi_dropbox_routines').sudo()
+        self.assertFalse(menu.active, "«Rutina por rutina» queda archivada.")
+        owner = new_test_user(self.env, login='zra_owner', groups=(
+            'base.group_user,quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_process_owner'))
+        plain = new_test_user(self.env, login='zra_plain', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        self.assertTrue(sgi_menu_allowed(self.env(user=owner), menu))
+        self.assertFalse(sgi_menu_allowed(self.env(user=plain), menu), "Conserva sus grupos.")
+        self.assertEqual(sgi_open_menu_action(self.env(user=owner), menu)['id'], menu.action.id)
+        # Los botones que reemplazan a los menús.
+        mast = new_test_user(self.env, login='zra_mast2', groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        wizard = self.env['sgi.indicator'].with_user(mast).action_sgi_new_indicator()
+        self.assertEqual(wizard['res_model'], 'sgi.indicator.wizard')
+        with self.assertRaises(UserError):
+            self.env['sgi.indicator'].with_user(plain).action_sgi_new_indicator()
+        miid = self.env['sgi.miid']._sgi_get(None, kind='miid')
+        self.assertEqual(miid.action_open_requests()['res_model'], 'approval.request')

@@ -66,12 +66,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_miid.py`.
 | `to_confirm_count` | Integer | Secciones por confirmar |  |  |  | compute `_compute_blockers`, sin guardar |  | `addons/quimibond_sgi/models/sgi_miid.py:786` |
 | `to_confirm_section_ids` | Many2many | Secciones por confirmar |  |  | `sgi.miid.section` | compute `_compute_approval_todo`, sin guardar |  | `addons/quimibond_sgi/models/sgi_miid.py:825` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_open` | La pantalla del documento generado; ``sgi_miid_kind`` en el contexto elige cuál (por omisión el MIID). |
 | `action_open_request` | — |
+| `action_open_requests` | 57.167.0: todas las solicitudes de cambio de este documento (antes un menú de la carpeta «Manual del SGI»). |
 | `action_open_revisions` | 57.161.0: las revisiones de este documento (vigente y obsoletas). |
 | `action_open_sections` | — |
 | `action_open_vigente_pdf` | — |
