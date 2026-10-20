@@ -60,7 +60,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | `sgi_followup_comments` | Text | Comentarios de seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:195` |
 | `sgi_incident_id` | Many2one | Incidente SST de origen | Incidente o accidente de seguridad del que nació esta NC. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:11` |
 | `sgi_indicator_id` | Many2one | Indicador | Indicador cuya medición en rojo levantó esta NC. |  |  | related `sgi_indicator_measure_id.indicator_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:45` |
-| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1446` |
+| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1453` |
 | `sgi_ineffective_count` | Integer | Verificaciones no eficaces | Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:183` |
 | `sgi_is_recurrent` | Boolean | Reincidente | Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro quimibond_sgi.nc_recurrence_months, 12 de fábrica). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:289` |
 | `sgi_ishikawa_notes` | Text | Notas Ishikawa (5-6M) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:167` |

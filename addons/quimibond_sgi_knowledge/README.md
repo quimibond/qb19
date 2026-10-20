@@ -16,6 +16,12 @@ núcleo en 57.9.0 (auditoría A-014).
 - **Pruebas:** `tests/test_instruction_knowledge.py` (antes
   `quimibond_sgi/tests/test_pr6_external.py`, test_05).
 
+## 1.2.15 (2026-10-20): manuales al día con el SGI ordenado
+
+Los manuales dicen dónde quedó lo que salió del menú en `quimibond_sgi`
+57.167.0 (Avance de la transición con sus botones, «Nuevo indicador» en la
+lista de indicadores, asistentes archivados).
+
 ## 1.2.14 (2026-10-20): las rutas de los manuales se abren
 
 Las rutas escritas en los manuales («SGI → Inicio → Mis pendientes») son

@@ -22,6 +22,7 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 
 from .sgi_legacy_routine import ROUTINE_STATES, sgi_can_read_legacy_routines
+from .sgi_menu_paths import sgi_open_menu_action
 
 KEY_KINDS = [
     ('procedimiento', "Procedimiento"),
@@ -209,10 +210,9 @@ class SgiDropboxKey(models.Model):
         if self.document_id and (self.document_id.sgi_odoo_menu_id
                                  or self.document_id.sgi_migration_point_id):
             return self.document_id.action_sgi_open_odoo_form()
-        action = self.odoo_menu_id.sudo().action if self.odoo_menu_id else False
-        action = action.exists() if action else action
-        if action and action._name == 'ir.actions.act_window':
-            return action.read()[0]
+        # 57.167.0: cualquier menú (antes solo listas) con el acceso del usuario.
+        if self.odoo_menu_id:
+            return sgi_open_menu_action(self.env, self.odoo_menu_id)
         if self.point_id and self.document_id:
             return self.document_id.action_sgi_open_migration_point()
         if self.kind == 'procedimiento' and self.process_id:

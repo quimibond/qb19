@@ -32,8 +32,10 @@ El módulo se instala **vacío**: trae estructura, no el mapa de procesos.
    **SGI → Administración → Transición → Cargar mapa de procesos**, primero
    **Probar** (no escribe nada), leer el reporte y luego **Cargar**.
    **En producción no se instala `quimibond_sgi_mapa`.**
-3. Para cargas parciales, **Administración → Transición → Cargar catálogo** (Administrador
-   SGI) recibe el mismo formato JSON, también con prueba previa.
+3. Para cargas parciales, el asistente «Cargar catálogo» (Administrador SGI) recibe el
+   mismo formato JSON, también con prueba previa. Desde 57.167.0 su menú está archivado
+   (era de una sola vez): Ajustes → Técnico → Menús, quite el filtro de activos y
+   reactive «Cargar catálogo» si se vuelve a necesitar.
 
 ## 3. Personas y grupos
 
@@ -59,8 +61,9 @@ decide encenderlo, antes hay que contestar el límite de intentos del PIN
 
 1. Sistemas crea la cuenta compartida (por ejemplo supervisor@), **sin
    empleado ligado**, y le pone «SGI en planta» como acción de inicio.
-2. Usted la da de alta en **SGI → Administración → Configuración →
-   Tabletas de planta**: nombre («Tableta Tejido»), cuenta, departamentos y
+2. Usted la da de alta en **Tabletas de planta** (menú archivado desde
+   57.167.0 mientras SGI en planta esté apagado: reactívelo en Ajustes →
+   Técnico → Menús, `menu_sgi_floor_tablets`): nombre («Tableta Tejido»), cuenta, departamentos y
    los checklists que se llenan ahí. Al guardar, la cuenta recibe el grupo
    «Tableta de planta (SGI)».
 3. Pida a Sistemas que le quite a la cuenta los grupos del SGI que no use
@@ -141,8 +144,9 @@ desactualizado hasta la siguiente publicación.
 
 ### Empresa en documentos controlados (D-06 de datos)
 
-**SGI → Administración → Transición → Empresa en documentos controlados**
-(solo el Jefe MAST). Pone la empresa del SGI en los documentos controlados
+Asistente **Empresa en documentos controlados** (solo el Jefe MAST; menú
+archivado desde 57.167.0: ya se usó, quedaban 5 documentos sin empresa el
+2026-10-20; se reactiva en Ajustes → Técnico → Menús). Pone la empresa del SGI en los documentos controlados
 que no tienen empresa (492 el 2026-10-02). Es un cambio de datos: **úselo
 solo después del visto bueno por escrito de Jose** (pregunta Q1 de la
 entrega 57.95.0).

@@ -9,6 +9,9 @@
                 <!-- D-12 (57.5.0): solo el Administrador SGI; el método lo
                      vuelve a revisar en el servidor. -->
                 <header>
+                    <!-- 57.167.0: antes era menú. -->
+                    <button name="action_sgi_new_indicator" type="object" string="Nuevo indicador"
+                            class="btn-primary" display="always" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_sgi_recompute_pending_measures" type="object"
                             string="Recalcular mediciones" display="always"
                             groups="quimibond_sgi.group_sgi_admin"/>

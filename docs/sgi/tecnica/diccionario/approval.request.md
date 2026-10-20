@@ -20,17 +20,17 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | `sgi_change_kind` | Selection | Tipo de cambio | Alta de un documento nuevo, modificación de uno existente o baja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:38` |
 | `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:61` |
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
-| `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:326` |
+| `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:329` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
 | `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:156` |
 | `sgi_has_subjects` | Boolean |  |  |  |  | compute `_compute_sgi_has_subjects`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:47` |
 | `sgi_is_doc_change` | Boolean |  | Se marca sola cuando la categoría es de cambio documental del SGI. |  |  | related `category_id.sgi_is_doc_change`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:27` |
 | `sgi_is_moc` | Boolean |  | Se marca sola cuando la categoría es de gestión del cambio. |  |  | related `category_id.sgi_is_moc`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:30` |
 | `sgi_maintenance_request_id` | Many2one | Solicitud de mantenimiento | Solicitud de mantenimiento que necesita la refacción que se pide (S5.03). |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_links.py:163` |
-| `sgi_miid_blocked_note` | Text | Último aviso de candados del MIID | Lo que detiene la aprobación del MIID aunque las firmas estén completas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1975` |
-| `sgi_miid_generated` | Datetime | MIID generado el | Cuándo se generó el PDF del MIID que lleva esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1973` |
-| `sgi_miid_hash` | Char | Huella del MIID | Huella de los datos con que se generó el PDF del MIID de esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1969` |
-| `sgi_miid_snapshot` | Text | Datos del MIID | Foto de los datos con que se generó el PDF del MIID. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1971` |
+| `sgi_miid_blocked_note` | Text | Último aviso de candados del MIID | Lo que detiene la aprobación del MIID aunque las firmas estén completas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1985` |
+| `sgi_miid_generated` | Datetime | MIID generado el | Cuándo se generó el PDF del MIID que lleva esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1983` |
+| `sgi_miid_hash` | Char | Huella del MIID | Huella de los datos con que se generó el PDF del MIID de esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1979` |
+| `sgi_miid_snapshot` | Text | Datos del MIID | Foto de los datos con que se generó el PDF del MIID. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1981` |
 | `sgi_moc_risk_note` | Text | Evaluación de riesgos del cambio | 45001 §8.1.3 / 9001 §6.3: riesgos del cambio para calidad, ambiente y SST, y cómo se controlan. Obligatoria para aprobar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:32` |
 | `sgi_mp_apply_scheduled` | Boolean | Cambio aplicado | Se marca cuando la propuesta aprobada ya se aplicó a la actividad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:78` |
 | `sgi_mp_change_type` | Selection | Tipo de propuesta | Qué propone la persona: agregar una actividad, cambiar esta o quitarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:70` |

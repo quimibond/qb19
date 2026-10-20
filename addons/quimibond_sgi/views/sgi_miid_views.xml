@@ -45,6 +45,13 @@
                                 <span class="o_stat_text">Rev. vigente</span>
                             </div>
                         </button>
+                        <!-- 57.167.0: antes menú de «Manual del SGI». -->
+                        <button name="action_open_requests" type="object" class="oe_stat_button" icon="fa-pencil-square-o"
+                                groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Solicitudes</span>
+                            </div>
+                        </button>
                     </div>
                     <!-- 57.164.0: lo que impide aprobar, como listas que se resuelven aquí. -->
                     <div class="alert alert-warning mb-2" role="status" invisible="not approval_todo_count">
