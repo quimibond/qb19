@@ -128,7 +128,7 @@ class TestMiidSiembraRenglones(_Case):
             self.assertTrue(Data.search([('module', '=', 'quimibond_sgi'), ('name', '=', record.get('id'))]).noupdate,
                             record.get('id'))
         reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
-        self.assertEqual(len(reglas.item_ids), 12, "Una regla por renglón, con su cláusula y su pantalla.")
+        self.assertEqual(len(reglas.item_ids), 15, "57.162.0: una regla por renglón, con su cláusula y su pantalla.")
         self.assertTrue(all(reglas.item_ids.mapped('clause')))
         self.assertTrue(all(reglas.item_ids.mapped('menu_id')))
         with file_open('quimibond_sgi/data/sgi_miid_sections.xml', 'rb') as fh:
@@ -163,3 +163,29 @@ class TestMiidSiembraRenglones(_Case):
         self.assertFalse(self.env['mail.message'].sudo().search_count([
             ('model', '=', 'sgi.miid.section'), ('res_id', 'in', (reglas | politica).ids),
             ('body', 'ilike', 'Texto de la sección editado')]), "La migración no es una edición a mano.")
+
+    def test_12_migracion_57_162_pone_los_renglones_cortos(self):
+        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.162.0', 'post-migrate.py')
+        spec = importlib.util.spec_from_file_location('sgi_mig_57_162_0', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        Data = self.env['ir.model.data'].sudo()
+        reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
+        alcance = self.env.ref('quimibond_sgi.sgi_miid_section_05_alcance')
+        first = self.env.ref('quimibond_sgi.sgi_miid_item_52_reglas_01')
+        # Como quedó en 57.161.0: renglón largo y uno que la siembra ya no trae.
+        first.sudo().write({'text': 'Texto largo ZM'})
+        old = self.env['sgi.miid.item'].sudo().create({'section_id': reglas.id, 'label': 'Viejo ZM'})
+        Data.create({'module': 'quimibond_sgi', 'name': 'sgi_miid_item_52_reglas_99', 'model': 'sgi.miid.item',
+                     'res_id': old.id, 'noupdate': True})
+        # Una sección editada a mano no se toca.
+        alcance.sudo().message_post(body="Texto de la sección editado.")
+        alcance_item = alcance.item_ids[:1]
+        alcance_item.sudo().write({'text': 'Alcance ZM del Jefe MAST'})
+        manual = self.env['sgi.miid.item'].sudo().create({'section_id': reglas.id, 'label': 'Sin siembra ZM'})
+        module.migrate(self.env.cr, '19.0.57.161.1')
+        module.migrate(self.env.cr, '19.0.57.161.1')
+        self.assertNotEqual(first.text, 'Texto largo ZM', "El renglón sembrado vuelve al texto corto.")
+        self.assertFalse(old.exists(), "Lo que la siembra ya no trae se quita.")
+        self.assertTrue(manual.exists(), "Un renglón sin xmlid no lo toca la siembra.")
+        self.assertEqual(alcance_item.text, 'Alcance ZM del Jefe MAST')

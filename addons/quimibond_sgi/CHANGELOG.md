@@ -13,6 +13,30 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.162.0 — 2026-10-20
+
+Menos texto en el MIID y el P-G01. Jose (2026-10-20): «sigo viendo mucho
+texto». De unas 5,700 palabras a unas 3,800, sin quitar requisitos.
+
+### Cambiado
+- El texto de cada sección queda en una o dos frases; lo demás son renglones
+  cortos, uno por idea (105 en 30 secciones, antes 84 en 29).
+- P-G01: responsabilidades en un renglón por actividad de E2 (E2.01, E2.02,
+  E2.03, E2.36, E2.42, E2.43) y «Quien entra a un puesto»; quién elabora
+  qué, quién firma, difusión y resguardo en frases cortas.
+- MIID: «El SGI sirve para» y el glosario en renglones; las reglas que el
+  sistema hace cumplir pasan de 12 a 15 (controles de seguridad, requisitos
+  legales y toma de conciencia, cada una con su cláusula y su pantalla).
+
+### Agregado
+- `sgi.miid.section._sgi_seed_items_update`: pone los renglones de la
+  siembra en una base existente (actualiza los sembrados y quita los que ya
+  no vienen), solo en secciones sin editar a mano.
+
+### Migración
+- `post-migrate`: texto, renglones y formato de la siembra en las secciones
+  sin editar; comparación del MIID y del P-G01. Idempotente.
+
 ## 19.0.57.161.1 — 2026-10-20
 
 ### Corregido

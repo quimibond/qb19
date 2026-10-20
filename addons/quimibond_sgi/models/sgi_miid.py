@@ -513,6 +513,78 @@ class SgiMiidSection(models.Model):
             result[xmlid] = 'con formato' if vals else 'sin cambio'
         return result
 
+    @api.model
+    def _sgi_seed_items(self):
+        """57.162.0: {xmlid de sección: {xmlid de renglón: valores}} de
+        ``MIID_ITEMS_SEED_FILE``. Los campos que el renglón no declara van
+        vacíos (la siembra es la versión completa del renglón)."""
+        from lxml import etree
+        with file_open(MIID_ITEMS_SEED_FILE, 'rb') as fh:
+            tree = etree.parse(fh)
+        seed = {}
+        for record in tree.xpath('//record[@model="sgi.miid.item"]'):
+            vals = {'clause': False, 'text': False, 'text_2': False, 'text_3': False, 'menu_id': False}
+            section = None
+            for field in record.findall('field'):
+                name = field.get('name')
+                if name == 'section_id':
+                    section = field.get('ref')
+                elif name == 'menu_id':
+                    menu = self.env.ref('quimibond_sgi.%s' % field.get('ref'), raise_if_not_found=False)
+                    vals['menu_id'] = menu.id if menu else False
+                elif name == 'sequence':
+                    vals['sequence'] = int((field.text or '10').strip())
+                else:
+                    vals[name] = (field.text or '').strip() or False
+            seed.setdefault(section, {})[record.get('id')] = vals
+        return seed
+
+    @api.model
+    def _sgi_seed_items_update(self, xmlids, tag):
+        """57.162.0: pone los renglones de la siembra en una base existente
+        (son noupdate): actualiza los sembrados y quita los que la siembra ya
+        no trae, solo en las secciones que nadie editó a mano (renglones o
+        texto). Los renglones nuevos los crea la actualización. Devuelve
+        {xmlid: resultado}."""
+        seed = self._sgi_seed_items()
+        Data = self.env['ir.model.data'].sudo()
+        Message = self.env['mail.message'].sudo()
+        Item = self.env['sgi.miid.item'].sudo()
+        result = {}
+        for xmlid in xmlids:
+            section = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not section or section._name != self._name:
+                result[xmlid] = 'no existe'
+                continue
+            if Message.search_count([('model', '=', self._name), ('res_id', '=', section.id),
+                                     ('body', 'ilike', MIID_EDITED_MSG)]):
+                section.sudo().message_post(body=(
+                    "%s: la siembra trae renglones nuevos para esta sección, pero no se aplicaron porque ya se "
+                    "editó a mano. Compárelo con docs/sgi/transicion/miid-rev03-borrador.md." % tag))
+                result[xmlid] = 'editada a mano'
+                continue
+            wanted = seed.get(xmlid, {})
+            seeded = {d.name: d.res_id for d in Data.search([
+                ('module', '=', 'quimibond_sgi'), ('model', '=', Item._name),
+                ('res_id', 'in', section.item_ids.ids)])}
+            changed = 0
+            for name, res_id in seeded.items():
+                item = Item.browse(res_id)
+                if name not in wanted:
+                    item.unlink()
+                    changed += 1
+                    continue
+                vals = {}
+                for field, new in wanted[name].items():
+                    current = item[field].id if field == 'menu_id' else item[field]
+                    if (current or False) != (new or False):
+                        vals[field] = new
+                if vals:
+                    item.write(vals)
+                    changed += 1
+            result[xmlid] = '%d renglón(es) al día' % changed if changed else 'sin cambio'
+        return result
+
     def _sgi_open_menu(self, menu):
         """Abre el menú (su acción de ventana; si no, el menú mismo). Si el
         usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo le
