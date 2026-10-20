@@ -52,7 +52,7 @@ class TestMiidPantalla(_Case):
         # Un bloque sin lista nativa (controles) se pinta como tabla en su pestaña.
         self._control('CO-ZM1-01', sgi_title='Control ZM de prueba')
         screen.invalidate_recordset()
-        self.assertIn('Control ZM de prueba', screen.scr_cambios_html)
+        self.assertIn('CO-ZM1-01', screen.scr_cambios_html)
         self.assertNotIn('font-size:9px', screen.scr_sistema_procesos_html + screen.scr_cambios_html,
                          "En pantalla, la letra de Odoo; la del PDF solo en el PDF.")
 

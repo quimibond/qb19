@@ -13,6 +13,19 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.3 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento (primera corrida en el build de
+`main`: 33 de 36).
+
+### Corregido
+- `test_miid_pantalla.test_02`: busca el control por su clave (el título lo
+  calcula el documento).
+- `test_miid.test_32`: la actividad de la prueba lleva método de medición
+  (el candado estricto de un procedimiento vigente lo exige).
+- `test_miid.test_19`: si el aviso de la solicitud retenida no sale en Mis
+  pendientes, la falla dice qué renglones salieron y cuándo vence el aviso.
+
 ## 19.0.57.164.2 — 2026-10-20
 
 Solo pruebas, sin cambios de comportamiento.
