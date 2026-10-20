@@ -13,6 +13,44 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.169.0 — 2026-10-20
+
+«Sin dato» dice por qué. Producción el 2026-10-20: 223 mediciones «Sin dato»
+en 33 indicadores, con cuatro causas que se veían igual; los 106 indicadores
+siguen «En prueba». Jose eligió (2026-10-20): un campo con la causa, quitar de
+la vista la historia de foto y revisar las seis fórmulas que nunca midieron.
+
+**Agregado**
+- `sgi.indicator.measure.no_data_reason` (guardado): Foto, Antes de «Medir
+  desde», Falta configurar, La fuente no tiene registros, Sin casos en el
+  periodo (`sgi_no_data_reason`, sale de la nota y del último cálculo). Badge
+  en las listas de mediciones, filtro «Sin dato por arreglar» y agrupación.
+- Ficha del indicador: botón «Dónde se arregla» cuando falta configurar
+  (`CALC_FIX_MENUS`: capacidad instalada → Ajustes; plantilla autorizada →
+  Puestos).
+- Pruebas: `test_sin_dato_motivo`.
+
+**Cambiado**
+- La pestaña Mediciones de la ficha ya no lista las mediciones de foto de
+  meses pasados (`measure_shown_ids`); siguen existiendo y se ven en
+  Mediciones quitando el filtro «Con dato».
+
+**Datos de producción (revisión de las seis fórmulas, solo lectura)**
+- C1-01 «Días de la solicitud al artículo aprobado»: **fórmula mal**. Filtra
+  y mide con `date_end` de la tarea «Aprobación…», que nadie llena (84 tareas,
+  ninguna con fecha de finalización; 22 hechas). Corrección propuesta: medir
+  con «Última actualización de la etapa» (`date_last_stage_update`), cambio de
+  datos en el término 75, pendiente del visto bueno de Jose.
+- C2-05 «Expedientes de exportación cerrados en 5 días hábiles»: la fuente no
+  se captura (ninguna salida tiene fecha de cruce, `sgi_export_crossing_datetime`).
+- MT-02 «Mantenimiento preventivo cumplido»: casi no se registra (4 solicitudes
+  preventivas en total, 2 en 2026).
+- S3-01 «Día hábil de cierre»: la bitácora del bloqueo arrancó el 4-oct-2026;
+  el cierre de septiembre se movió tres veces y cuenta como tres cierres.
+- TR-01 «Cierre de NC» y C5-02 «Reclamaciones cerradas en 30 días»: fórmulas
+  bien; las NC y reclamaciones de agosto y septiembre están canceladas. Las de
+  octubre (abiertas) miden al cierre del mes.
+
 ## 19.0.57.168.0 — 2026-10-20
 
 Mis pendientes sin lo repetido. Producción el 2026-10-20: ~1,500 renglones;

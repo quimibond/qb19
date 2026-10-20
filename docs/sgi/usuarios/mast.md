@@ -446,6 +446,14 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
   en lote con **Activar las sugeridas como solicitud**. Las que faltan le
   llegan como aviso por proceso en Mis pendientes.
+- **Por qué no hay dato** (desde 57.169.0). Cada medición «Sin dato» dice su
+  causa: *Foto* (el indicador mide el estado de hoy y un mes pasado no se
+  reconstruye; es normal y la ficha del indicador ya no las lista), *Antes de
+  «Medir desde»*, *Falta configurar* (botón **Dónde se arregla** en la ficha
+  del indicador: Ajustes para la capacidad instalada, Puestos para la
+  plantilla autorizada), *La fuente no tiene registros* (no se captura en
+  Odoo) y *Sin casos en el periodo*. En Mediciones, el filtro **Sin dato por
+  arreglar** deja solo las dos que piden acción.
 - **Nuevo indicador.** En SGI → Desempeño → Indicadores → Todos los indicadores, botón **Nuevo indicador**:
   elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
   la vista previa muestra cómo habrían salido los últimos tres periodos y

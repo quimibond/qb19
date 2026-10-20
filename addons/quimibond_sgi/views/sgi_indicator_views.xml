@@ -104,6 +104,10 @@
                         <field name="calc_message" class="d-inline" readonly="1"/>
                         (<field name="calc_checked" class="d-inline" readonly="1"/>).
                         Corríjalo y pulse «Recalcular ahora».
+                        <!-- 57.169.0: lo que falta configurar, a un botón. -->
+                        <field name="calc_fix_menu_id" invisible="1"/>
+                        <button name="action_open_calc_fix" type="object" string="Dónde se arregla"
+                                icon="fa-external-link" class="btn-link" invisible="not calc_fix_menu_id"/>
                     </div>
                     <group>
                         <group string="Clasificación">
@@ -218,7 +222,8 @@
                         </page>
                         <page string="Mediciones">
                             <!-- V-B11 (57.80.0): de 12 en 12, la más reciente arriba. -->
-                            <field name="measure_ids" context="{'default_indicator_id': id}">
+                            <!-- 57.169.0: sin las de foto de meses pasados. -->
+                            <field name="measure_shown_ids" context="{'default_indicator_id': id}">
                                 <list editable="bottom" limit="12" default_order="period_date desc"
                                       decoration-success="semaphore == 'verde'"
                                       decoration-warning="semaphore == 'amarillo'"
@@ -241,6 +246,7 @@
                                            decoration-warning="semaphore == 'amarillo'"
                                            decoration-danger="semaphore == 'rojo'"/>
                                     <field name="state"/>
+                                    <field name="no_data_reason" widget="badge" optional="show"/>
                                     <field name="note" optional="hide"/>
                                     <field name="alert_id" optional="hide" readonly="1"/>
                                     <button name="action_validate" type="object"
@@ -325,6 +331,10 @@
                 <field name="indicator_status" optional="hide"/>
                 <!-- 57.104.0 (B1): pendiente y sin dato no tienen valor que mostrar. -->
                 <field name="value" invisible="state in ('pendiente', 'sin_dato')"/>
+                <!-- 57.169.0: por qué no hay dato (antes solo «Sin dato»). -->
+                <field name="no_data_reason" widget="badge" optional="show"
+                       decoration-muted="no_data_reason in ('foto', 'antes', 'sin_casos')"
+                       decoration-danger="no_data_reason in ('falta_config', 'fuente_vacia')"/>
                 <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
                 <field name="denominator" optional="hide"/>
@@ -581,6 +591,9 @@
                 <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
                 <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>
                 <filter name="sin_dato" string="Sin dato" domain="[('state','=','sin_dato')]"/>
+                <!-- 57.169.0: lo que sí hay que arreglar. -->
+                <filter name="no_data_fix" string="Sin dato por arreglar"
+                        domain="[('no_data_reason', 'in', ('falta_config', 'fuente_vacia'))]"/>
                 <filter name="small" string="Muestra chica" domain="[('small_sample','=',True)]"/>
                 <filter name="oficiales" string="De indicadores oficiales"
                         domain="[('indicator_id.status','=','oficial')]"/>
@@ -599,6 +612,7 @@
                     <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
                     <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
                     <filter name="group_semaphore" string="Semáforo" context="{'group_by': 'semaphore'}"/>
+                    <filter name="group_no_data" string="Por qué no hay dato" context="{'group_by': 'no_data_reason'}"/>
                 </group>
             </search>
         </field>

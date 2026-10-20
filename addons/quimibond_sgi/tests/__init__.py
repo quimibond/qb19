@@ -149,6 +149,7 @@ from . import test_ppap_coa_cliente
 from . import test_ia_nc
 from . import test_reportes_diagramas
 from . import test_indicadores_sin_dato
+from . import test_sin_dato_motivo
 from . import test_registro_cumplimiento
 from . import test_ligas_navegacion
 from . import test_miid
