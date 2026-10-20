@@ -38,9 +38,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_miid.py`.
 | `to_confirm` | Boolean | Por confirmar | Mientras alguna sección esté por confirmar, el MIID no se puede enviar ni aprobar como revisión vigente. Quítelo cuando el texto esté confirmado (Jefe MAST, Dirección o Administrador SGI). |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:265` |
 | `to_confirm_note` | Text | Qué falta confirmar | Se ve en la pantalla y en el PDF de borrador. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:270` |
 
-## Métodos públicos (2)
+## Métodos públicos (4)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_open_form` | — |
 | `action_open_menu` | — |
+| `action_sgi_confirm` | 57.164.0: quita «Por confirmar» desde la pantalla del manual (Jefe MAST, Dirección o Administrador SGI; queda en el historial). |
 | `write` | — |

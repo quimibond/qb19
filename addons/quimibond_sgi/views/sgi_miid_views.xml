@@ -46,9 +46,45 @@
                             </div>
                         </button>
                     </div>
-                    <div class="alert alert-danger mb-2" role="alert" invisible="not blocker_html">
-                        <b>Una revisión nueva no se puede aprobar todavía:</b>
-                        <field name="blocker_html" nolabel="1" readonly="1"/>
+                    <!-- 57.164.0: lo que impide aprobar, como listas que se resuelven aquí. -->
+                    <div class="alert alert-warning mb-2" role="status" invisible="not approval_todo_count">
+                        <b>Para aprobar una revisión nueva faltan <field name="approval_todo_count" class="oe_inline"
+                        readonly="1"/> cosa(s).</b> Resuélvalas aquí abajo; la lista se vacía sola.
+                    </div>
+                    <div class="mb-3" invisible="not to_confirm_section_ids">
+                        <h5>Secciones por confirmar</h5>
+                        <field name="to_confirm_section_ids" nolabel="1" readonly="1">
+                            <list>
+                                <field name="clause"/>
+                                <field name="name"/>
+                                <field name="to_confirm_note" string="Qué falta confirmar"/>
+                                <button name="action_open_form" type="object" string="Editar" icon="fa-pencil"
+                                        groups="quimibond_sgi.group_sgi_manager"/>
+                                <button name="action_sgi_confirm" type="object" string="Confirmar" icon="fa-check"
+                                        class="btn-primary"
+                                        groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"
+                                        confirm="¿Ya está confirmado lo que dice la nota? Se quita «Por confirmar» y queda en el historial de la sección."/>
+                            </list>
+                        </field>
+                    </div>
+                    <div class="mb-3" invisible="not pending_process_ids">
+                        <h5>Procesos que faltan por publicar</h5>
+                        <field name="pending_process_ids" nolabel="1" readonly="1">
+                            <list decoration-success="not spec_error_count" decoration-danger="spec_error_count">
+                                <field name="code"/>
+                                <field name="name"/>
+                                <field name="owner_id"/>
+                                <field name="state" widget="badge" decoration-warning="state == 'piloto'"
+                                       decoration-info="state == 'borrador'"/>
+                                <field name="spec_error_count" string="Le faltan"/>
+                                <button name="action_view_spec_gaps" type="object" string="Qué falta"
+                                        icon="fa-list" invisible="not spec_error_count"/>
+                                <button name="action_sgi_publish" type="object" string="Publicar" icon="fa-check"
+                                        class="btn-primary" invisible="spec_error_count"
+                                        groups="quimibond_sgi.group_sgi_manager"
+                                        confirm="¿Publicar el proceso? Queda vigente y los procedimientos que sustituye quedan obsoletos."/>
+                            </list>
+                        </field>
                     </div>
                     <div class="alert alert-success mb-2" role="status" invisible="state != 'al_dia'">
                         La revisión vigente coincide con los datos del sistema.

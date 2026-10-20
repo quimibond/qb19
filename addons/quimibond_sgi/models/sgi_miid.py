@@ -654,6 +654,19 @@ class SgiMiidSection(models.Model):
         self.ensure_one()
         return self._sgi_open_menu(self.menu_id)
 
+    def action_sgi_confirm(self):
+        """57.164.0: quita «Por confirmar» desde la pantalla del manual (Jefe
+        MAST, Dirección o Administrador SGI; queda en el historial)."""
+        self.ensure_one()
+        self.write({'to_confirm': False})
+        return True
+
+    def action_open_form(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
+                'view_mode': 'form', 'target': 'current',
+                'views': [(self.env.ref('quimibond_sgi.sgi_miid_section_view_form').id, 'form')]}
+
     def _sgi_heading(self):
         self.ensure_one()
         return " ".join(x for x in (self.clause, self.name) if x)
@@ -817,6 +830,17 @@ class SgiMiid(models.Model):
     # tumbó el registro en el build de main).
     routine_ids = fields.Many2many('sgi.process.activity', relation='sgi_miid_screen_routine_rel',
                                    string="Rutinas", compute='_compute_screen_records', compute_sudo=True)
+    # 57.164.0 (Jose: «los candados no están fáciles de usar»): lo que impide
+    # aprobar, como listas que se resuelven ahí mismo (confirmar la sección,
+    # ver qué le falta al proceso o publicarlo).
+    to_confirm_section_ids = fields.Many2many('sgi.miid.section', relation='sgi_miid_todo_section_rel',
+                                              string="Secciones por confirmar", compute='_compute_approval_todo',
+                                              compute_sudo=True)
+    pending_process_ids = fields.Many2many('sgi.process', relation='sgi_miid_todo_process_rel',
+                                           string="Procesos sin publicar", compute='_compute_approval_todo',
+                                           compute_sudo=True)
+    approval_todo_count = fields.Integer(string="Pendientes para aprobar", compute='_compute_approval_todo',
+                                         compute_sudo=True)
     rule_ids = fields.Many2many('sgi.system.rule', relation='sgi_miid_screen_rule_rel',
                                 string="Reglas del sistema", compute='_compute_screen_records', compute_sudo=True)
     scr_requisitos_reglas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
@@ -956,6 +980,22 @@ class SgiMiid(models.Model):
                 "<table class='table table-sm table-bordered'><thead><tr><th>Rev.</th><th>Emisión</th>"
                 "<th>Estado</th><th>Solicitud</th><th>Archivo</th></tr></thead><tbody>%s</tbody></table>") % rows \
                 if rows else False
+
+    def _compute_approval_todo(self):
+        for miid in self:
+            env = miid._sgi_env()
+            sections = env['sgi.miid.section'].search([('company_id', '=', miid.company_id.id),
+                                                       ('kind', '=', miid.kind), ('to_confirm', '=', True)])
+            if miid._sgi_kind()['all_processes']:
+                processes = env['sgi.process'].search([('company_id', '=', miid.company_id.id),
+                                                       ('state', 'not in', MIID_READY_PROCESS_STATES)])
+            else:
+                doc = miid._sgi_current_document()
+                process = doc.sgi_process_id if doc else env['sgi.process']
+                processes = process.filtered(lambda p: p.state not in MIID_READY_PROCESS_STATES)
+            miid.to_confirm_section_ids = sections
+            miid.pending_process_ids = processes.sorted(lambda p: (p.code or ''))
+            miid.approval_todo_count = len(sections) + len(processes)
 
     def _compute_screen_records(self):
         for miid in self:
