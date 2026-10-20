@@ -16,6 +16,11 @@ núcleo en 57.9.0 (auditoría A-014).
 - **Pruebas:** `tests/test_instruction_knowledge.py` (antes
   `quimibond_sgi/tests/test_pr6_external.py`, test_05).
 
+## 1.2.17 (2026-10-20): por qué no hay dato
+
+El manual de MAST explica la causa de cada medición «Sin dato» y el botón
+«Dónde se arregla» (`quimibond_sgi` 57.169.0).
+
 ## 1.2.16 (2026-10-20): Mis pendientes agrupado
 
 El manual del jefe de área explica los renglones que juntan lo repetido y el
