@@ -224,6 +224,12 @@ y quede en todos:
   cambiarle la Referencia o al reactivarlo. La cola respeta el orden: si a
   alguien se le da de baja y se reactiva antes de que el reloj recoja nada,
   quedan alta, baja y alta, y el último manda.
+- **Desde 1.6.2 el puente manda a Odoo los POST de `/iclock/` como texto plano.**
+  El UA860 (PUSH 2.2.14) los declara como formulario web
+  (`application/x-www-form-urlencoded`); Odoo los lee como formulario y el
+  cuerpo le llega vacío: contestaba «OK: 0» y el reloj reenviaba el mismo
+  bloque cada 5 segundos sin que entrara nada (2026-10-20). Odoo deja un aviso
+  en el log cuando le llega un POST vacío con bytes declarados.
 - **Traer lo que ya tiene un reloj** (el UA860 viejo): botón **Pedir usuarios y
   huellas** (marca OPERLOG en 0; un reloj nuevo la tiene en 0 desde el
   principio). Sus usuarios llegan con su propia numeración: si el número no es
