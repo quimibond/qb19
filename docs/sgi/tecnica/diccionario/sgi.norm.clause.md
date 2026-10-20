@@ -10,7 +10,7 @@ Orden: `norm_id, code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
 
-## Campos (13)
+## Campos (14)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -18,7 +18,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/model
 | `activity_ids` | Many2many | Actividades que lo cumplen | Actividades que cumplen con esta cláusula («Cumple con»). |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:45` |
 | `alert_count` | Integer | NC |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:53` |
 | `code` | Char | Numeral |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:43` |
-| `covered` | Boolean | Con actividad | Indica si al menos una actividad cumple con la cláusula. |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:54` |
+| `coverage` | Selection | Cobertura | Cómo se cumple el punto: una actividad del SGI, una regla que el sistema hace cumplir (sin actividad) o no aplica a PNTQ. |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:61` |
+| `covered` | Boolean | Cubierto | El punto lo cumple al menos una actividad o una regla del sistema, o no aplica (con su justificación). |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:57` |
 | `exclusion` | Boolean | No aplica | El requisito (o un inciso suyo) no aplica a PNTQ. Sale en el Manual del SGI (1.3) con su justificación. |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:47` |
 | `exclusion_detail` | Char | Inciso que no aplica | Inciso o numeral de detalle, p. ej. «8.4.1 b)». Vacío: toda la cláusula. |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:50` |
 | `exclusion_reason` | Text | Justificación de la no aplicabilidad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:52` |

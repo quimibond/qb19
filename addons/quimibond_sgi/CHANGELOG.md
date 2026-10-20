@@ -13,6 +13,26 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.163.0 — 2026-10-20
+
+Cobertura coherente. Jose (2026-10-20) eligió seguir por aquí: un punto de la
+norma que cumple una regla del sistema o que no aplica dejaba de ser
+evidencia en la Matriz de cumplimiento y el checklist de auditoría (salía en
+rojo «sin actividad»).
+
+### Cambiado
+- `sgi.norm.clause.covered` («Cubierto») cuenta también las reglas del
+  sistema activas y lo marcado «No aplica»; su búsqueda igual. Campo nuevo
+  `coverage` («Con actividad», «Lo cumple el sistema», «No aplica», «Sin
+  cobertura») en la ficha y las listas de cláusulas, como etiqueta de color.
+- Matriz de cumplimiento: «No aplica» en gris con su justificación, «Lo
+  cumple el sistema» en azul con sus reglas; solo «Sin cobertura» en rojo y
+  en el conteo.
+- Checklist de auditoría: ya no pregunta «¿cómo se cumple?» por lo que no
+  aplica ni por lo que cumple una regla del sistema.
+- «Puntos sin actividad» se llama «Puntos sin cobertura»; filtros «Sin
+  cobertura», «Cubiertos», «Con actividad» y «Lo cumple el sistema».
+
 ## 19.0.57.162.0 — 2026-10-20
 
 Menos texto en el MIID y el P-G01, y lo que es dato vive en su registro.

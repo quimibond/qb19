@@ -108,3 +108,31 @@ class TestNormCompliance(TransactionCase):
         self.assertEqual(line.finding_id.norm_clause_id, self.c851)
         gap.write({'answer': 'observacion', 'evidence': 'No hay procedimiento'})
         self.assertEqual(gap.finding_id.norm_clause_id, self.c89)
+
+    def test_06_regla_del_sistema_y_no_aplica_cubren(self):
+        """57.163.0: un punto que cumple una regla del sistema o que no aplica
+        no es un hueco: ni en la matriz, ni en la búsqueda, ni en el
+        checklist de auditoría."""
+        Clause = self.env['sgi.norm.clause']
+        by_rule = Clause.create({'norm_id': self.norm.id, 'code': '8.11', 'name': 'Punto por regla'})
+        excluded = Clause.create({'norm_id': self.norm.id, 'code': '8.12', 'name': 'Punto que no aplica',
+                                  'exclusion': True, 'exclusion_detail': '8.12.1 a)',
+                                  'exclusion_reason': 'Razón de prueba'})
+        self.env['sgi.system.rule'].create({'name': 'Regla de prueba', 'text': 'La cumple el sistema',
+                                            'clause_ids': [(6, 0, by_rule.ids)]})
+        self.assertEqual((self.c851.coverage, self.c89.coverage, by_rule.coverage, excluded.coverage),
+                         ('actividad', 'sin', 'regla', 'no_aplica'))
+        self.assertTrue(by_rule.covered and excluded.covered)
+        self.assertEqual(Clause.search([('norm_id', '=', self.norm.id), ('covered', '=', False)]), self.c89)
+        matrix = self.norm._sgi_compliance_matrix()
+        self.assertEqual(matrix['uncovered'], 1, "Solo 8.9 es un hueco.")
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_sgi.report_compliance_matrix_document', self.norm.ids)[0].decode()
+        self.assertIn('Lo cumple el sistema: Regla de prueba', html)
+        self.assertIn('Razón de prueba', html)
+        audit = self.env['sgi.audit'].create({
+            'audit_type': 'interna', 'process_ids': [(6, 0, self.process.ids)],
+            'norm_ids': [(6, 0, self.norm.ids)], 'lead_auditor_id': self.auditor.id})
+        audit.action_plan()
+        gaps = audit.checklist_line_ids.filtered(lambda l: not l.activity_id).norm_clause_ids
+        self.assertEqual(gaps, self.c89, "El checklist no pregunta por lo que no aplica ni por lo de una regla.")

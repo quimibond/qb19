@@ -91,6 +91,12 @@ También puede registrar un hallazgo desde la ficha de un proceso con
   (en el PDF, la ruta). «Diferencias» dice qué cambió en el sistema desde la
   revisión vigente; «Control de cambios» y el botón «Rev. vigente» listan
   todas las revisiones con su solicitud.
+- **Cobertura de cada punto de la norma (desde 57.163.0):** un punto está
+  cubierto por una actividad («Cumple con»), por una regla del sistema
+  (candados y avisos, en Configuración → Reglas del sistema) o porque no
+  aplica (con su justificación). En la Matriz de cumplimiento, «No aplica»
+  sale en gris y «Lo cumple el sistema» en azul; solo lo que no tiene nada
+  sale en rojo, y solo eso genera pregunta en el checklist.
 
 ## 3. Lo que no ve ni hace
 
