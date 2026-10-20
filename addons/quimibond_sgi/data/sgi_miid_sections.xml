@@ -19,7 +19,13 @@
          dentro del MIID): el P-G01 es un documento controlado propio generado
          con el mismo motor (kind = pg01, secciones sgi_miid_section_pg01_*);
          el capítulo 6 del MIID queda en dos secciones (6 y 6.1) y las cinco
-         que detallaban el P-G01 (54 a 58) se archivan por migración. -->
+         que detallaban el P-G01 (54 a 58) se archivan por migración.
+         57.161.0 y 57.162.0 (Jose, 2026-10-20: «no quiero texto plano», «sigo
+         viendo mucho texto», «¿no es mejor que sean campos?»): texto corto;
+         las listas son renglones (data/sgi_miid_items.xml) y lo que es dato de
+         otro registro lo imprime un bloque: alcance (norma), no aplicabilidades
+         (cláusula), reglas del sistema (sgi.system.rule) y quién elabora y
+         firma (tipo de documento), sembrados en data/sgi_miid_fields.xml. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -57,6 +63,7 @@
             <field name="clause">1.2</field>
             <field name="name">Alcance del SGI</field>
             <field name="heading_level">2</field>
+            <field name="live_block">alcance</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
                 <p>Sitio: Carretera Toluca-Naucalpan km 52.8, Parque Industrial Toluca 2000, Calle 3 Sur, Mz. 7, Lotes 7, 9 y 10, C.P. 50233, Toluca, Estado de México.</p>
@@ -70,9 +77,10 @@
             <field name="clause">1.3</field>
             <field name="name">Requisitos que no aplican y su justificación</field>
             <field name="heading_level">2</field>
+            <field name="live_block">exclusiones</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>No afectan la conformidad de los productos ni la satisfacción del cliente.</p>
+                <p>No afectan la conformidad de los productos ni la satisfacción del cliente. Se marcan en la cláusula («No aplica»).</p>
             </field>
             <field name="to_confirm" eval="True"/>
             <field name="to_confirm_note">La revisión 02 sí justifica las dos (3.3, 8.4.1 y 8.5.1): 8.4.1 b), «los productos y servicios no son proporcionados directamente a los clientes por proveedores externos en nombre de la organización»; 8.5.1 f), «los procesos de producción permiten la verificación de sus resultados mediante actividades de seguimiento y medición posteriores, por lo que no se requiere validación de procesos especiales». La justificación de esta sección dice lo mismo; falta que Dirección la confirme.</field>
@@ -137,7 +145,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">politica</field>
             <field name="body" type="html">
-                <p>Una sola política vigente; se comunica con acuse de lectura. Compromisos:</p>
+                <p>Una sola política vigente, con sus compromisos; se comunica con acuse de lectura.</p>
                 <p>[[datos]]</p>
             </field>
         </record>
@@ -190,6 +198,7 @@
             <field name="clause">5.2</field>
             <field name="name">Reglas que el sistema hace cumplir</field>
             <field name="heading_level">2</field>
+            <field name="live_block">reglas</field>
             <field name="body" type="html">
                 <p>Lo que no es una actividad lo cumple el sistema con candados y avisos:</p>
                 <p>[[datos]]</p>
@@ -325,7 +334,7 @@
             <field name="heading_level">1</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
-                <p>Las firmas se registran en Odoo (Firma electrónica).</p>
+                <p>Las rutinas de E2 (responder solicitudes, publicar, revisar vigencias, externos), con quién las ejecuta y quién las aprueba, están en la sección 5. Las firmas se registran en Odoo (Firma electrónica).</p>
             </field>
         </record>
 
@@ -356,6 +365,7 @@
             <field name="clause">4.2</field>
             <field name="name">Quién elabora qué y dónde</field>
             <field name="heading_level">2</field>
+            <field name="live_block">elaboracion</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
                 <p>Los archivos conservan la plantilla de la revisión 11 (logo, razón social, nombre, clave, emisión, área y revisión; PDF). Prohibido trabajar con lo que no esté vigente en Odoo; un formato «Migrado a Odoo» ya no se llena en papel ni en Excel.</p>
@@ -368,8 +378,10 @@
             <field name="clause">4.3</field>
             <field name="name">Aprobación, publicación y cambios</field>
             <field name="heading_level">2</field>
+            <field name="live_block">aprobacion</field>
             <field name="body" type="html">
                 <p>[[datos]]</p>
+                <p>Actividades y roles de un proceso: los propone cualquiera, los revisa su jefe directo y los aprueba el dueño del proceso.</p>
                 <p><b>Cómo se pide:</b> solicitud de cambio con el archivo propuesto. Odoo pide las firmas en orden y, con la última, publica la revisión, deja obsoleta la anterior y pide los acuses.</p>
                 <p><b>Cuándo se modifica:</b> cambio de norma, requisito legal o de cliente, decisión de Dirección, hallazgo o NC, vencimiento, documento externo o aviso de que ya no coincide con el sistema. El cambio de titular no es motivo.</p>
             </field>

@@ -276,6 +276,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_menus.xml',
         # 57.161.0: formato y renglones del MIID y del P-G01 (apuntan a los menús).
         'data/sgi_miid_items.xml',
+        # 57.162.0: alcance, no aplicabilidades, reglas del sistema y roles por tipo de documento.
+        'data/sgi_miid_fields.xml',
     ],
     'demo': [
         'demo/sgi_demo_quality.xml',

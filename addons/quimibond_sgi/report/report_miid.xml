@@ -145,10 +145,11 @@
         <t t-foreach="norms" t-as="norm">
             <h4 style="font-size:11px; page-break-after:avoid;" t-out="norm['name']"/>
             <table class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
-                <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos</th><th>Actividades que lo cumplen</th></tr></thead>
+                <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos</th><th>Actividades que lo cumplen</th>
+                    <th>Regla del sistema</th></tr></thead>
                 <tbody>
                     <tr t-foreach="norm['rows']" t-as="row">
-                        <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/>
+                        <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/><td t-out="row[4]"/>
                     </tr>
                 </tbody>
             </table>
@@ -213,8 +214,80 @@
         </table>
     </template>
 
+    <!-- 57.162.0: datos de norma, cláusula, regla y tipo de documento. -->
+    <template id="report_miid_block_alcance">
+        <t t-set="rows" t-value="miid['blocks']['alcance']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
+            <thead><tr><th>Norma</th><th>Alcance</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row"><td><b t-out="row[0]"/></td><td t-out="row[1]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">Ninguna norma tiene su alcance («Alcance certificado» en la norma).</p>
+    </template>
+
+    <template id="report_miid_block_exclusiones">
+        <t t-set="rows" t-value="miid['blocks']['exclusiones']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
+            <thead><tr><th>Requisito</th><th>Qué es</th><th>Por qué no aplica</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row"><td><b t-out="row[0]"/></td><td t-out="row[1]"/><td t-out="row[2]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">Todos los requisitos aplican (ninguna cláusula marcada «No aplica»).</p>
+    </template>
+
+    <template id="report_miid_block_reglas">
+        <t t-set="rows" t-value="miid['blocks']['reglas']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
+            <thead><tr><th>Tema</th><th>Cláusula</th><th>Regla</th><th>En Odoo</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row">
+                    <td><b t-out="row[0]"/></td><td t-out="row[1]"/><td t-out="row[2]"/>
+                    <td>
+                        <t t-set="link_path" t-value="row[3]"/>
+                        <t t-set="link_url" t-value="row[4]"/>
+                        <t t-call="quimibond_sgi.report_miid_menu_link"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay reglas del sistema cargadas.</p>
+    </template>
+
+    <template id="report_miid_block_elaboracion">
+        <t t-set="rows" t-value="miid['blocks']['elaboracion']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:9px;' or None">
+            <thead><tr><th>Tipo</th><th>Lo elabora</th><th>Dónde</th><th>Cómo queda controlado</th><th>En Odoo</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row">
+                    <td><b t-out="row[0]"/></td><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/>
+                    <td>
+                        <t t-set="link_path" t-value="row[4]"/>
+                        <t t-set="link_url" t-value="row[5]"/>
+                        <t t-call="quimibond_sgi.report_miid_menu_link"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">Ningún tipo de documento dice quién lo elabora.</p>
+    </template>
+
+    <template id="report_miid_block_aprobacion">
+        <t t-set="rows" t-value="miid['blocks']['aprobacion']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" t-att-style="miid_mode != 'screen' and 'font-size:10px;' or None">
+            <thead><tr><th>Tipo</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row">
+                    <td><b t-out="row[0]"/></td><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">Ningún tipo de documento dice quién lo revisa y lo aprueba.</p>
+    </template>
+
     <template id="report_miid_block">
-        <!-- 15 ramas, sin t-call dinámico. -->
+        <!-- 20 ramas, sin t-call dinámico (57.162.0: cinco más). -->
         <t t-if="block == 'identificacion'" t-call="quimibond_sgi.report_miid_block_identificacion"/>
         <t t-elif="block == 'normas'" t-call="quimibond_sgi.report_miid_block_normas"/>
         <t t-elif="block == 'roles'" t-call="quimibond_sgi.report_miid_block_roles"/>
@@ -230,6 +303,11 @@
         <t t-elif="block == 'anexos'" t-call="quimibond_sgi.report_miid_block_anexos"/>
         <t t-elif="block == 'actividades'" t-call="quimibond_sgi.report_miid_block_actividades"/>
         <t t-elif="block == 'historial'" t-call="quimibond_sgi.report_miid_block_historial"/>
+        <t t-elif="block == 'alcance'" t-call="quimibond_sgi.report_miid_block_alcance"/>
+        <t t-elif="block == 'exclusiones'" t-call="quimibond_sgi.report_miid_block_exclusiones"/>
+        <t t-elif="block == 'reglas'" t-call="quimibond_sgi.report_miid_block_reglas"/>
+        <t t-elif="block == 'elaboracion'" t-call="quimibond_sgi.report_miid_block_elaboracion"/>
+        <t t-elif="block == 'aprobacion'" t-call="quimibond_sgi.report_miid_block_aprobacion"/>
     </template>
 
     <!-- 57.161.0: menú de Odoo de una sección o un renglón (link_path,

@@ -439,6 +439,9 @@
               action="sgi_norm_action" sequence="20"/>
     <menuitem id="menu_sgi_config_clauses" name="Cláusulas" parent="menu_sgi_config"
               action="sgi_norm_clause_action" sequence="30"/>
+    <!-- 57.162.0: lo que el sistema hace cumplir (MIID 5.2). -->
+    <menuitem id="menu_sgi_config_system_rules" name="Reglas del sistema" parent="menu_sgi_config"
+              action="sgi_system_rule_action" sequence="35"/>
     <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
               action="sgi_risk_category_action" sequence="40"/>
     <!-- 57.113.0 (Q4): de Documentos a Configuración (catálogo). -->

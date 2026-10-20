@@ -113,6 +113,7 @@ SGI/Administración/Configuración/Ajustes | menu_sgi_config_settings | base.gro
 SGI/Administración/Configuración/Áreas | menu_sgi_config_areas | -
 SGI/Administración/Configuración/Normas | menu_sgi_config_norms | -
 SGI/Administración/Configuración/Cláusulas | menu_sgi_config_clauses | -
+SGI/Administración/Configuración/Reglas del sistema | menu_sgi_config_system_rules | -
 SGI/Administración/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
 SGI/Administración/Configuración/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
 SGI/Administración/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -

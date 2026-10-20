@@ -13,7 +13,7 @@ Marcas: [VIVO: bloque] = datos que pone el sistema; `[[datos]]` = dónde van. --
 
 # Manual Integral de Información Documentada (MIID)
 
-24 secciones; bloques vivos: identificacion, normas, procesos, politica, objetivos, roles, tipos_documento, controles, plazos_nc, correspondencia, procedimientos_anteriores, anexos, historial.
+24 secciones; bloques vivos: identificacion, alcance, exclusiones, normas, procesos, politica, objetivos, roles, reglas, tipos_documento, controles, plazos_nc, correspondencia, procedimientos_anteriores, anexos, historial.
 
 ## Identificación del documento
 
@@ -42,13 +42,17 @@ El SGI sirve para:
 
 ### 1.2 Alcance del SGI
 
+[VIVO: alcance — Alcance por norma]
 [POR CONFIRMAR: Alcance: confirmar contra el certificado o el informe de la auditoría de septiembre de 2026. La revisión 02 trae dos redacciones del alcance general: en 1.2, «maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas, telas de todo tipo de fibras, así como la aplicación de resinas, laminados y acabados industriales»; en 3.3, «la maquila, fabricación, distribución, comercialización, importación y exportación de entretelas tejidas y no tejidas, telas de cualquier tipo de fibra y demás productos textiles, así como la aplicación de resinas, laminados y acabados industriales relacionados con dichos productos, incluyendo las distintas áreas, procesos y actividades que integran PNTQ». Para ISO 45001 dice «aplica a las actividades incluidas dentro del alcance definido del SGI».]
+[En Odoo: SGI → Administración → Configuración → Normas]
+
+*Datos sembrados (data/sgi_miid_fields.xml):*
 
 | Norma | Alcance |
 | --- | --- |
-| **ISO 9001:2015** | Maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas de todo tipo de fibras; aplicación de resinas, laminados y acabados industriales. |
-| **ISO 14001:2015** | Sector 04: fabricación de entretelas tejidas de fibras industriales. |
-| **ISO 45001:2018** | Actividades, instalaciones y personas bajo control de PNTQ en Toluca. |
+| ISO 9001:2015 | Maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas de todo tipo de fibras; aplicación de resinas, laminados y acabados industriales. |
+| ISO 14001:2015 | Sector 04: fabricación de entretelas tejidas de fibras industriales. |
+| ISO 45001:2018 | Actividades, instalaciones y personas bajo control de PNTQ en su sitio de Toluca. |
 
 `[[datos]]`
 
@@ -56,16 +60,20 @@ Sitio: Carretera Toluca-Naucalpan km 52.8, Parque Industrial Toluca 2000, Calle 
 
 ### 1.3 Requisitos que no aplican y su justificación
 
+[VIVO: exclusiones — Requisitos que no aplican]
 [POR CONFIRMAR: La revisión 02 sí justifica las dos (3.3, 8.4.1 y 8.5.1): 8.4.1 b), «los productos y servicios no son proporcionados directamente a los clientes por proveedores externos en nombre de la organización»; 8.5.1 f), «los procesos de producción permiten la verificación de sus resultados mediante actividades de seguimiento y medición posteriores, por lo que no se requiere validación de procesos especiales». La justificación de esta sección dice lo mismo; falta que Dirección la confirme.]
+[En Odoo: SGI → Administración → Configuración → Cláusulas]
 
-| Requisito de ISO 9001:2015 | No aplica | Por qué |
+*Datos sembrados (data/sgi_miid_fields.xml):*
+
+| Requisito | Qué es | Por qué no aplica |
 | --- | --- | --- |
-| **8.4.1 b)** | Proveedores externos que entregan al cliente en nombre de PNTQ | PNTQ entrega directamente |
-| **8.5.1 f)** | Validación de procesos cuyas salidas no se pueden verificar | Todo se verifica con inspección y laboratorio antes de liberar |
+| 8.4.1 b) | Control de los procesos, productos y servicios suministrados externamente | Ningún proveedor externo entrega al cliente en nombre de PNTQ: PNTQ entrega directamente. |
+| 8.5.1 f) | Producción y provisión del servicio | Las salidas de todos los procesos se verifican con inspección y pruebas de laboratorio antes de liberar; no hay procesos especiales que validar. |
 
 `[[datos]]`
 
-No afectan la conformidad de los productos ni la satisfacción del cliente.
+No afectan la conformidad de los productos ni la satisfacción del cliente. Se marcan en la cláusula («No aplica»).
 
 ### 1.4 Revisión y control de este Manual
 
@@ -130,14 +138,7 @@ Cada proceso tiene dueño, entradas, salidas, actividades, indicadores y riesgos
 [VIVO: politica — Política integral vigente]
 [En Odoo: SGI → Planeación → Política integral]
 
-Una sola política vigente; se comunica con acuse de lectura. Compromisos:
-
-- Cumplir los requisitos aplicables
-- Mejorar continuamente
-- Proteger el medio ambiente
-- Dar condiciones de trabajo seguras y saludables
-- Eliminar peligros y reducir riesgos
-- Consultar y hacer participar a los trabajadores
+Una sola política vigente, con sus compromisos; se comunica con acuse de lectura.
 
 `[[datos]]`
 
@@ -179,25 +180,30 @@ De aquí salen la Matriz de cumplimiento y el checklist de auditoría. Una cláu
 
 ### 5.2 Reglas que el sistema hace cumplir
 
+[VIVO: reglas — Reglas que el sistema hace cumplir]
+[En Odoo: SGI → Administración → Configuración → Reglas del sistema]
+
 Lo que no es una actividad lo cumple el sistema con candados y avisos:
+
+*Datos sembrados (data/sgi_miid_fields.xml):*
 
 | Tema | Cláusula | Regla | En Odoo |
 | --- | --- | --- | --- |
-| **Contexto y partes interesadas** | 4.1, 4.2 | Se registran en Odoo y entran a la revisión por la dirección. | SGI → Planeación → Partes interesadas |
-| **Riesgos y oportunidades** | 6.1 | Evaluación inicial y residual; se reevalúan en enero, julio y tras un incidente o cambio. Un riesgo alto sin acción abierta avisa al dueño. | SGI → Planeación → Riesgos y oportunidades |
-| **Controles de seguridad** | 6.1, 8.1 | Siguen la jerarquía de controles; un riesgo alto no se controla solo con EPP. | SGI → Planeación → Riesgos y oportunidades |
-| **Requisitos legales** | 6.1.3, 9.1.2 | Cada uno se evalúa con evidencia. | SGI → Planeación → Evaluaciones de cumplimiento legal |
-| **Cambios** | 6.3, 8.5.6 | Actividad: propuesta aprobada por el jefe y el dueño. Documento: solicitud de cambio. Proceso o infraestructura (MOC): motivo, afectados y riesgos. | SGI → Sistema → Documentos → Solicitudes de cambio |
-| **Competencia** | 7.2 | Cada puesto define sus competencias; la brecha es el programa de capacitación; eficacia a los 90 días. | Competencias SGI → Brechas de competencia (DNC) |
-| **Toma de conciencia** | 7.3 | Inducción en los primeros tres meses; firma de Mi procedimiento y de la política. | SGI → Inicio → Mi procedimiento |
-| **Comunicación y participación** | 7.4, 5.4 | Acuses, avisos de Odoo, Tablero y actas; consulta previa en SST por la Comisión de Seguridad e Higiene. | SGI → Seguridad y ambiente → Recorridos CSH |
-| **Equipos de medición** | 7.1.5 | Una calibración vencida no libera producto. | Calidad preventiva → Metrología → Equipos de medición |
-| **Control operacional** | 8.1 | Criterio de terminado por actividad; permisos de alto riesgo y bloqueo antes de iniciar. | SGI → Seguridad y ambiente → Permisos de trabajo de alto riesgo |
-| **Emergencias** | 8.2 | Planes y simulacros; el plan se revisa tras cada uno; una emergencia real levanta NC. | SGI → Seguridad y ambiente → Planes de emergencia |
-| **Indicadores** | 9.1 | Medición por periodo validada por el dueño; un rojo exige causa y plan. | SGI → Desempeño → Indicadores → Todos los indicadores |
-| **Auditoría interna** | 9.2 | Programa anual, todos los procesos cada tres años, nadie audita lo suyo; cada hallazgo, una NC. | SGI → Desempeño → Auditorías → Programa |
-| **Revisión por la dirección** | 9.3 | Entradas cargadas por el sistema; cada acuerdo es una acción con responsable y fecha. | SGI → Desempeño → Revisión por la dirección |
-| **Mejora** | 10 | Una NC cierra solo con eficacia «Eficaz»; se cancela solo con motivo aprobado. | SGI → Mejora → Mejora continua |
+| Contexto y partes interesadas | 4.1, 4.2 | Se registran en Odoo y entran a la revisión por la dirección. | SGI → Planeación → Partes interesadas |
+| Riesgos y oportunidades | 6.1 | Evaluación inicial y residual; se reevalúan en enero, julio y tras un incidente o un cambio. Un riesgo alto sin acción abierta avisa al dueño. | SGI → Planeación → Riesgos y oportunidades |
+| Controles de seguridad | 8.1.2 | Siguen la jerarquía de controles; un riesgo alto no se controla solo con EPP. | SGI → Planeación → Riesgos y oportunidades |
+| Requisitos legales | 6.1.3, 9.1.2 | Cada uno se evalúa con evidencia. | SGI → Planeación → Evaluaciones de cumplimiento legal |
+| Cambios | 6.3, 8.1.3 | Actividad: propuesta aprobada por el jefe y el dueño. Documento: solicitud de cambio. Proceso o infraestructura (MOC): motivo, afectados y riesgos. | SGI → Sistema → Documentos → Solicitudes de cambio |
+| Competencia | 7.2 | Cada puesto define sus competencias; la brecha es el programa de capacitación; eficacia a los 90 días. | Competencias SGI → Brechas de competencia (DNC) |
+| Toma de conciencia | 7.3 | Inducción en los primeros tres meses; firma de Mi procedimiento y de la política. | SGI → Inicio → Mi procedimiento |
+| Comunicación y participación | 5.4, 7.4 | Acuses, avisos de Odoo, Tablero y actas; consulta previa en SST por la Comisión de Seguridad e Higiene. | SGI → Seguridad y ambiente → Recorridos CSH |
+| Equipos de medición | 7.1.5 | Una calibración vencida no libera producto. | Calidad preventiva → Metrología → Equipos de medición |
+| Control operacional | 8.1 | Criterio de terminado por actividad; permisos de alto riesgo y bloqueo antes de iniciar. | SGI → Seguridad y ambiente → Permisos de trabajo de alto riesgo |
+| Emergencias | 8.2 | Planes y simulacros; el plan se revisa tras cada uno; una emergencia real levanta una NC. | SGI → Seguridad y ambiente → Planes de emergencia |
+| Indicadores | 9.1 | Medición por periodo validada por el dueño; un rojo exige causa y plan. | SGI → Desempeño → Indicadores → Todos los indicadores |
+| Auditoría interna | 9.2 | Programa anual, todos los procesos cada tres años, nadie audita lo suyo; cada hallazgo, una NC. | SGI → Desempeño → Auditorías → Programa |
+| Revisión por la dirección | 9.3 | Entradas cargadas por el sistema; cada acuerdo es una acción con responsable y fecha. | SGI → Desempeño → Revisión por la dirección |
+| Mejora | 10.1, 10.2 | Una NC cierra solo con eficacia «Eficaz» y se cancela solo con motivo aprobado. | SGI → Mejora → Mejora continua |
 
 `[[datos]]`
 
@@ -296,7 +302,7 @@ Notas por renglón (`sgi.miid.row.note`):
 
 # Elaboración y control de información documentada (P-G01)
 
-14 secciones; bloques vivos: identificacion, tipos_documento, plazos_documentales, actividades, normas, historial.
+14 secciones; bloques vivos: identificacion, tipos_documento, elaboracion, aprobacion, plazos_documentales, actividades, normas, historial.
 
 ## Identificación del documento
 
@@ -324,26 +330,20 @@ Toda la información documentada del SGI, generada o recibida en PNTQ:
 
 ## 3 Responsabilidades
 
-| Quién | Actividad | Responsabilidad | En Odoo |
-| --- | --- | --- | --- |
-| **Jefe de MAST y SGI** | E2.01 | Responder cada solicitud de cambio en 5 días hábiles. | SGI → Sistema → Documentos → Solicitudes de cambio |
-| **Jefe de MAST y SGI** | E2.02 | Publicar la revisión, dejar obsoleta la anterior y avisar en 2 días hábiles. |  |
-| **Jefe de MAST y SGI** | E2.03 | Revisar cada mes la vigencia de los documentos. |  |
-| **Jefe de MAST y SGI** | E2.36 | Registrar los documentos externos. | SGI → Sistema → Documentos → Documentos externos |
-| **Jefe de MAST y SGI** | E2.42 | Verificar que cada nuevo titular firme y revise su Mi procedimiento. |  |
-| **Jefe de MAST y SGI** | E2.43 | Autorizar con Dirección las entregas a externos. |  |
-| **Jefe de MAST y SGI** |  | Mantener el MIID, este procedimiento, los tipos de documento, el boletín NEWS y Mi procedimiento de cada puesto. |  |
-| **Director de Operaciones** |  | Aprobar el MIID, este procedimiento y los procedimientos que Dirección decida; autorizar entregas a externos. |  |
-| **Dueño de proceso** |  | Responder por los documentos de su proceso, firmar «Revisó», pedir la publicación de sus instructivos e implantar los externos en 10 días hábiles. |  |
-| **Quien elabora un documento** |  | Solicitar el cambio con el archivo propuesto («Elaboró») e implantarlo en 15 días hábiles. | SGI → Sistema → Documentos → Solicitudes de cambio |
-| **Quien entra a un puesto** |  | Firmar su Mi procedimiento y, en 30 días naturales, proponer lo que falte o sobre; su jefe lo verifica. | SGI → Inicio → Mi procedimiento |
-| **Jefe de área y supervisor** |  | Que su gente use la versión vigente, firme sus acuses y conserve los registros en papel. |  |
-| **Todo el personal** |  | Consultar en Odoo y firmar «Leído y entendido» en 7 días hábiles. | SGI → Inicio → Documentos vigentes |
-| **Administrador SGI** |  | Dar de alta los tipos de documento y sus claves. | SGI → Administración → Configuración → Tipos de documento |
+| Quién | Responsabilidad | En Odoo |
+| --- | --- | --- |
+| **Jefe de MAST y SGI** | Mantener el MIID, este procedimiento, los tipos de documento, el boletín NEWS y Mi procedimiento de cada puesto. |  |
+| **Director de Operaciones** | Aprobar el MIID, este procedimiento y los procedimientos que Dirección decida; autorizar entregas a externos. |  |
+| **Dueño de proceso** | Responder por los documentos de su proceso, firmar «Revisó», pedir la publicación de sus instructivos e implantar los externos en 10 días hábiles. |  |
+| **Quien elabora un documento** | Solicitar el cambio con el archivo propuesto («Elaboró») e implantarlo en 15 días hábiles. | SGI → Sistema → Documentos → Solicitudes de cambio |
+| **Quien entra a un puesto** | Firmar su Mi procedimiento y, en 30 días naturales, proponer lo que falte o sobre; su jefe lo verifica. | SGI → Inicio → Mi procedimiento |
+| **Jefe de área y supervisor** | Que su gente use la versión vigente, firme sus acuses y conserve los registros en papel. |  |
+| **Todo el personal** | Consultar en Odoo y firmar «Leído y entendido» en 7 días hábiles. | SGI → Inicio → Documentos vigentes |
+| **Administrador SGI** | Dar de alta los tipos de documento y sus claves. | SGI → Administración → Configuración → Tipos de documento |
 
 `[[datos]]`
 
-Las firmas se registran en Odoo (Firma electrónica).
+Las rutinas de E2 (responder solicitudes, publicar, revisar vigencias, externos), con quién las ejecuta y quién las aprueba, están en la sección 5. Las firmas se registran en Odoo (Firma electrónica).
 
 ## 4 Desarrollo
 
@@ -358,15 +358,28 @@ La clave la asigna Odoo según el tipo y el proceso. La NOM o el requisito de cl
 
 ### 4.2 Quién elabora qué y dónde
 
-| Documento | Lo elabora | Dónde | Cómo queda controlado | En Odoo |
+[VIVO: elaboracion — Quién elabora cada tipo de documento]
+[En Odoo: SGI → Administración → Configuración → Tipos de documento]
+
+*Datos sembrados (data/sgi_miid_fields.xml):*
+
+| Tipo | Lo elabora | Dónde | Cómo queda controlado | En Odoo |
 | --- | --- | --- | --- | --- |
-| **Procedimiento de proceso (PR)** | Dueño del proceso | Datos del proceso en Odoo | Odoo genera el PDF; el Jefe MAST publica | SGI → Sistema → Mapa de procesos |
-| **Mi procedimiento (MP)** | Odoo, con los roles del puesto | Publicar Mi procedimiento | Revisión con acuse de cada persona | SGI → Administración → Publicar Mi procedimiento |
-| **Instructivo, CO, protocolo, reglamento** | Dueño del proceso | Conocimiento → SGI | «Pedir publicación»; el Jefe MAST lo congela como revisión |  |
-| **Formato (F)** | Sistemas, con lo que define el dueño | Pantalla de Odoo | El registro imprime su clave y revisión | SGI → Administración → Configuración → Formatos en documentos de Odoo |
-| **DAT, método, anexo, archivo** | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
-| **Manual (MIID)** | Jefe de MAST y SGI | Manual del SGI | Solicitud de cambio y firma de Dirección | SGI → Sistema → Manual del SGI → Manual (MIID) |
-| **Documento externo** | El cliente, la autoridad o el proveedor | Documentos externos | Emisor, revisión, recepción y proceso | SGI → Sistema → Documentos → Documentos externos |
+| Manual (MIID) | Jefe de MAST y SGI | Manual del SGI (Odoo) | Solicitud de cambio y firma de Dirección; Odoo lo compara cada día | SGI → Sistema → Manual del SGI → Manual (MIID) |
+| Procedimiento (PR) | Dueño del proceso | Datos del proceso en Odoo | Odoo genera el PDF; el Jefe MAST publica la revisión | SGI → Sistema → Mapa de procesos |
+| Instructivo (IT) | Dueño del proceso o quien designe | Conocimiento → SGI → proceso | «Pedir publicación»; el Jefe MAST lo congela como revisión | — |
+| Control operacional (CO) | Dueño del proceso o quien designe | Conocimiento → SGI → proceso | «Pedir publicación»; el Jefe MAST lo congela como revisión | — |
+| Protocolo (PROT) | Dueño del proceso o quien designe | Conocimiento → SGI → proceso | «Pedir publicación»; el Jefe MAST lo congela como revisión | — |
+| Reglamento (R) | Dueño del proceso o quien designe | Conocimiento → SGI → proceso | «Pedir publicación»; el Jefe MAST lo congela como revisión | — |
+| Formato (F) | Sistemas, con lo que define el dueño | Pantalla de Odoo | El registro imprime su clave y revisión | SGI → Administración → Configuración → Formatos en documentos de Odoo |
+| Formato de instructivo (F-IT) | Sistemas, con lo que define el dueño | Pantalla de Odoo | El registro imprime su clave y revisión | SGI → Administración → Configuración → Formatos en documentos de Odoo |
+| Método / anexo (MA) | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
+| DAT | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
+| Anexo | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
+| Diagrama de flujo (DF) | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
+| Descripción de puesto (DP) | Responsable del documento | PDF en la solicitud de cambio | Se publica al aprobarse | SGI → Sistema → Documentos → Solicitudes de cambio |
+| sgi_doc_type_mi_procedimiento | Odoo, con los roles del puesto | Publicar Mi procedimiento | Revisión con acuse de cada persona | SGI → Administración → Publicar Mi procedimiento |
+| Documento externo | El cliente, la autoridad, la norma o el proveedor | Documentos externos | Emisor, revisión, recepción y proceso que lo aplica | SGI → Sistema → Documentos → Documentos externos |
 
 `[[datos]]`
 
@@ -374,16 +387,30 @@ Los archivos conservan la plantilla de la revisión 11 (logo, razón social, nom
 
 ### 4.3 Aprobación, publicación y cambios
 
+[VIVO: aprobacion — Quién firma cada tipo de documento]
 [En Odoo: SGI → Sistema → Documentos → Solicitudes de cambio]
 
-| Documento | Elaboró | Revisó | Aprobó |
+*Datos sembrados (data/sgi_miid_fields.xml):*
+
+| Tipo | Elaboró | Revisó | Aprobó |
 | --- | --- | --- | --- |
-| **Manual (MIID)** | Jefe de MAST y SGI | Dueño de E2 | Director de Operaciones |
-| **Procedimiento de proceso** | Dueño del proceso | — | Quien declare el proceso; Vo.Bo. del Jefe MAST |
-| **Instructivo, CO, protocolo, reglamento, DAT, formato, anexo** | Quien solicita | Dueño del proceso | Jefe de MAST y SGI |
-| **Actividades y roles** | Quien propone | Su jefe directo | Dueño del proceso |
+| Manual (MIID) | Jefe de MAST y SGI | Dueño de E2 | Director de Operaciones |
+| Procedimiento (PR) | Dueño del proceso | — | Quien declare el proceso (por omisión, su dueño); Vo.Bo. del Jefe MAST |
+| Instructivo (IT) | Dueño del proceso o quien designe | Dueño del proceso | Jefe de MAST y SGI |
+| Control operacional (CO) | Dueño del proceso o quien designe | Dueño del proceso | Jefe de MAST y SGI |
+| Protocolo (PROT) | Dueño del proceso o quien designe | Dueño del proceso | Jefe de MAST y SGI |
+| Reglamento (R) | Dueño del proceso o quien designe | Dueño del proceso | Jefe de MAST y SGI |
+| Formato (F) | Sistemas, con lo que define el dueño | Dueño del proceso | Jefe de MAST y SGI |
+| Formato de instructivo (F-IT) | Sistemas, con lo que define el dueño | Dueño del proceso | Jefe de MAST y SGI |
+| Método / anexo (MA) | Responsable del documento | Dueño del proceso | Jefe de MAST y SGI |
+| DAT | Responsable del documento | Dueño del proceso | Jefe de MAST y SGI |
+| Anexo | Responsable del documento | Dueño del proceso | Jefe de MAST y SGI |
+| Diagrama de flujo (DF) | Responsable del documento | Dueño del proceso | Jefe de MAST y SGI |
+| Descripción de puesto (DP) | Responsable del documento | Dueño del proceso | Jefe de MAST y SGI |
 
 `[[datos]]`
+
+Actividades y roles de un proceso: los propone cualquiera, los revisa su jefe directo y los aprueba el dueño del proceso.
 
 **Cómo se pide:** solicitud de cambio con el archivo propuesto. Odoo pide las firmas en orden y, con la última, publica la revisión, deja obsoleta la anterior y pide los acuses.
 

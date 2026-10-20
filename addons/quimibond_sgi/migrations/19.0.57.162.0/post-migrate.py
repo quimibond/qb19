@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
-"""19.0.57.162.0 — MIID y P-G01 con menos texto.
+"""19.0.57.162.0 — MIID y P-G01 con menos texto y con campos.
 
-Jose 2026-10-20: «sigo viendo mucho texto». El texto de cada sección queda en
-una o dos frases y los renglones largos se parten en uno por idea (las
-responsabilidades del P-G01, una por actividad de E2; las reglas del sistema,
-15 en vez de 12).
+Jose 2026-10-20: «sigo viendo mucho texto» y «¿no es mejor que sean
+campos?». El texto de cada sección queda en una o dos frases; lo que era dato
+de otro registro vive en él y el manual lo lee: alcance (norma), no
+aplicabilidades (cláusula), reglas del sistema (sgi.system.rule, registros
+nuevos) y quién elabora y firma cada tipo de documento.
 
-En una base existente este paso, solo en las secciones que nadie editó a mano:
+En una base existente este paso:
 
-1. Pone el texto nuevo de las secciones.
-2. Pone los renglones de la siembra: actualiza los sembrados y quita los que
-   ya no vienen (los nuevos los crea la actualización).
-3. Pone el formato (títulos de columna) y corre la comparación del MIID y
-   del P-G01.
+1. Pone en las cinco secciones que ahora leen datos su bloque (alcance,
+   exclusiones, reglas, elaboración y aprobación).
+2. Llena el alcance, las no aplicabilidades y los roles de los tipos de
+   documento solo donde están vacíos.
+3. En las secciones que nadie editó a mano: texto nuevo, renglones de la
+   siembra (actualiza los sembrados y quita los que ya no vienen) y formato.
+4. Corre la comparación del MIID y del P-G01.
 
 Idempotente; cada paso deja su línea en el log."""
 import logging
@@ -23,6 +26,13 @@ _logger = logging.getLogger(__name__)
 
 TAG = "57.162.0"
 REASON = "el texto corto de la pantalla por capítulos"
+BLOCK_XMLIDS = (
+    'sgi_miid_section_05_alcance',
+    'sgi_miid_section_06_no_aplica',
+    'sgi_miid_section_52_reglas',
+    'sgi_miid_section_pg01_07_elaboracion',
+    'sgi_miid_section_pg01_08_aprobacion',
+)
 BODY_XMLIDS = (
     'sgi_miid_section_01_identificacion',
     'sgi_miid_section_04_objeto',
@@ -95,6 +105,10 @@ def migrate(cr, version):
         return
     env = api.Environment(cr, SUPERUSER_ID, {})
     Section = env['sgi.miid.section']
+    layout = Section._sgi_seed_layout_update(BLOCK_XMLIDS, TAG)
+    _logger.info("SGI %s: secciones que leen datos: %s", TAG, layout)
+    filled = Section._sgi_seed_fill_fields(TAG)
+    _logger.info("SGI %s: campos llenados: %s", TAG, filled)
     bodies = Section._sgi_seed_update(BODY_XMLIDS, {}, TAG, reason=REASON)
     _logger.info("SGI %s: texto de las secciones: %s", TAG, bodies)
     items = Section._sgi_seed_items_update(SECTION_XMLIDS, TAG)

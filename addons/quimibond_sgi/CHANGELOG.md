@@ -15,27 +15,43 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.162.0 — 2026-10-20
 
-Menos texto en el MIID y el P-G01. Jose (2026-10-20): «sigo viendo mucho
-texto». De unas 5,700 palabras a unas 3,800, sin quitar requisitos.
-
-### Cambiado
-- El texto de cada sección queda en una o dos frases; lo demás son renglones
-  cortos, uno por idea (105 en 30 secciones, antes 84 en 29).
-- P-G01: responsabilidades en un renglón por actividad de E2 (E2.01, E2.02,
-  E2.03, E2.36, E2.42, E2.43) y «Quien entra a un puesto»; quién elabora
-  qué, quién firma, difusión y resguardo en frases cortas.
-- MIID: «El SGI sirve para» y el glosario en renglones; las reglas que el
-  sistema hace cumplir pasan de 12 a 15 (controles de seguridad, requisitos
-  legales y toma de conciencia, cada una con su cláusula y su pantalla).
+Menos texto en el MIID y el P-G01, y lo que es dato vive en su registro.
+Jose (2026-10-20): «sigo viendo mucho texto» y «¿no es mejor que sean
+campos?».
 
 ### Agregado
-- `sgi.miid.section._sgi_seed_items_update`: pone los renglones de la
-  siembra en una base existente (actualiza los sembrados y quita los que ya
-  no vienen), solo en secciones sin editar a mano.
+- Norma: «Alcance certificado» (`scope`); el MIID (1.2) lo lee.
+- Cláusula: «No aplica», «Inciso que no aplica» y «Justificación»
+  (`exclusion*`, con candado: no aplica sin justificación); el MIID (1.3)
+  y la correspondencia por cláusula («No aplica») lo leen.
+- `sgi.system.rule` «Reglas del sistema» (Administración → Configuración):
+  lo que el sistema hace cumplir con candados y avisos, ligado a sus
+  cláusulas y a su pantalla. El MIID (5.2) las muestra como lista nativa y
+  la correspondencia por cláusula agrega la columna «Regla del sistema». La
+  siembra trae 15.
+- Tipo de documento: «Lo elabora», «Dónde se elabora», «Cómo queda
+  controlado», «Lo revisa», «Lo aprueba» y «Pantalla en Odoo»; el P-G01 (4.2
+  y 4.3) los lee.
+- Bloques del manual `alcance`, `exclusiones`, `reglas`, `elaboracion` y
+  `aprobacion`; entran a la huella (`scope`, `exclusions`, `rules` en el
+  MIID; `doc_roles` en el P-G01) y a las diferencias.
+- `_sgi_seed_items_update` (renglones de la siembra en secciones sin editar)
+  y `_sgi_seed_fill_fields` (llena los campos sembrados solo si están
+  vacíos). Siembra en `data/sgi_miid_fields.xml`.
+
+### Cambiado
+- El texto de cada sección queda en una o dos frases; los renglones que
+  quedan son cortos (62 en 30 secciones). La política ya no repite sus
+  compromisos (salen de su texto); las responsabilidades del P-G01 remiten
+  a las rutinas de E2 (sección 5) en vez de repetirlas. La prosa baja de
+  unas 3,200 palabras a unas 1,600; con tablas y datos sembrados, de unas
+  5,700 a unas 4,200.
 
 ### Migración
-- `post-migrate`: texto, renglones y formato de la siembra en las secciones
-  sin editar; comparación del MIID y del P-G01. Idempotente.
+- `post-migrate`: pone su bloque a las cinco secciones que ahora leen datos,
+  llena alcance, no aplicabilidades y roles por tipo solo donde están
+  vacíos y, en las secciones sin editar a mano, texto, renglones y formato
+  de la siembra; comparación del MIID y del P-G01. Idempotente.
 
 ## 19.0.57.161.1 — 2026-10-20
 

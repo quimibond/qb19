@@ -579,8 +579,9 @@ class TestMiidGenerado(_Case):
         self.assertTrue(data['has_data']['plazos_documentales'])
         corr = {n['name']: n['rows'] for n in data['blocks']['correspondencia']['norms']}
         self.assertEqual(corr['ZMG Norma ZM generada'][0],
-                         ['7.5.3', 'Control de la información documentada', 'ZM1', 'ZM1.07'],
-                         "La correspondencia dice qué actividades cumplen cada numeral.")
+                         ['7.5.3', 'Control de la información documentada', 'ZM1', 'ZM1.07', '—'],
+                         "La correspondencia dice qué actividades cumplen cada numeral (57.162.0: y qué "
+                         "regla del sistema).")
         self.assertTrue(set(MIID_BLOCKS_CODES) - set(data['has_data']) == set(),
                         "Todos los bloques saben si tienen datos.")
 

@@ -154,6 +154,17 @@
                             <field name="scr_sistema_html" nolabel="1" readonly="1"/>
                         </page>
                         <page string="Cómo se cumple" name="page_requisitos" invisible="kind != 'miid'">
+                            <field name="scr_requisitos_reglas_html" nolabel="1" readonly="1"/>
+                            <field name="rule_ids" nolabel="1" readonly="1" invisible="not scr_requisitos_reglas_html">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="clause_label"/>
+                                    <field name="text"/>
+                                    <field name="menu_id"/>
+                                    <button name="action_open_menu" type="object" icon="fa-external-link"
+                                            title="Abrir en Odoo" invisible="not menu_id"/>
+                                </list>
+                            </field>
                             <field name="scr_requisitos_html" nolabel="1" readonly="1"/>
                         </page>
                         <page string="Desarrollo" name="page_desarrollo" invisible="kind != 'pg01'">

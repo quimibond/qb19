@@ -137,6 +137,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Áreas** — `sgi.area`
       - **Normas** — `sgi.norm`
       - **Cláusulas** — `sgi.norm.clause`
+      - **Reglas del sistema** — `sgi.system.rule`
       - **Categorías de riesgo** — `sgi.risk.category`
       - **Tipos de documento** — `sgi.document.type`; grupos: quimibond_sgi.group_sgi_manager
       - **Checklists de planta y unidades** — `sgi.checklist.template`
@@ -153,7 +154,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (140)
+## Acciones (141)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -288,6 +289,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_supplier_eval_action` | act_window | Evaluación de proveedores | `sgi.supplier.eval` | list,form | sí | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_recompute_action` | server | Recalcular métricas | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `quimibond_sgi.sgi_survey_skill_action` | act_window | Exámenes y competencias (Encuestas) | `survey.survey` | list | sí | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
+| `quimibond_sgi.sgi_system_rule_action` | act_window | Reglas del sistema | `sgi.system.rule` | list,form | sí | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
 | `quimibond_sgi.sgi_training_effectiveness_action` | act_window | Eficacia de la capacitación | `sgi.training.effectiveness` | list,form | sí | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `quimibond_sgi.sgi_work_permit_action` | act_window | Permisos de trabajo de alto riesgo | `sgi.work.permit` | list,kanban,form | sí | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `quimibond_sgi.sgi_work_permit_skill_action` | act_window | Competencias por tipo de permiso | `sgi.work.permit.skill` | list | sí | `addons/quimibond_sgi/views/sgi_work_permit_skill_views.xml` |
@@ -298,7 +300,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (448; 84 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (451; 84 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -729,6 +731,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_form` | form |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_list` | list |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_search` | search |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `sgi.system.rule` | `quimibond_sgi.sgi_system_rule_view_form` | form |  | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
+| `sgi.system.rule` | `quimibond_sgi.sgi_system_rule_view_list` | list |  | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
+| `sgi.system.rule` | `quimibond_sgi.sgi_system_rule_view_search` | search |  | `addons/quimibond_sgi/views/sgi_norm_views.xml` |
 | `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_form` | form |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_list` | list |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_search` | search |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |

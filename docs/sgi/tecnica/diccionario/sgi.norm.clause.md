@@ -10,19 +10,23 @@ Orden: `norm_id, code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
 
-## Campos (9)
+## Campos (13)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `activity_count` | Integer | Actividades |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:52` |
 | `activity_ids` | Many2many | Actividades que lo cumplen | Actividades que cumplen con esta cláusula («Cumple con»). |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:45` |
 | `alert_count` | Integer | NC |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:53` |
-| `code` | Char | Numeral |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:38` |
+| `code` | Char | Numeral |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:43` |
 | `covered` | Boolean | Con actividad | Indica si al menos una actividad cumple con la cláusula. |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:54` |
-| `name` | Char | Requisito |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:39` |
-| `norm_id` | Many2one | Norma | Norma a la que pertenece la cláusula. | sí | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:36` |
+| `exclusion` | Boolean | No aplica | El requisito (o un inciso suyo) no aplica a PNTQ. Sale en el Manual del SGI (1.3) con su justificación. |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:47` |
+| `exclusion_detail` | Char | Inciso que no aplica | Inciso o numeral de detalle, p. ej. «8.4.1 b)». Vacío: toda la cláusula. |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:50` |
+| `exclusion_reason` | Text | Justificación de la no aplicabilidad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:52` |
+| `name` | Char | Requisito |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:44` |
+| `norm_id` | Many2one | Norma | Norma a la que pertenece la cláusula. | sí | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:41` |
 | `process_ids` | Many2many | Procesos que lo cumplen | Procesos cuyas actividades cumplen con la cláusula. |  | `sgi.process` | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:49` |
 | `short_label` | Char | Punto |  |  |  | compute `_compute_short_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:44` |
+| `system_rule_ids` | Many2many | Reglas del sistema | Lo que el sistema hace cumplir sin una actividad (candados y avisos). |  | `sgi.system.rule` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:53` |
 
 ## Métodos públicos (1)
 

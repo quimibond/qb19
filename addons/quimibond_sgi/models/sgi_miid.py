@@ -76,6 +76,12 @@ MIID_BLOCKS = [
     ('anexos', "Anexos vigentes"),
     ('actividades', "Rutinas: actividades del proceso ligadas al documento"),
     ('historial', "Control de cambios"),
+    # 57.162.0: lo que era texto del manual y ahora es dato de su registro.
+    ('alcance', "Alcance por norma"),
+    ('exclusiones', "Requisitos que no aplican"),
+    ('reglas', "Reglas que el sistema hace cumplir"),
+    ('elaboracion', "Quién elabora cada tipo de documento"),
+    ('aprobacion', "Quién firma cada tipo de documento"),
 ]
 # 57.148.0 (Dirección 2026-10-13, «prefiero otra cosa»: el P-G01 no va dentro
 # del MIID): el mismo motor genera dos documentos controlados, cada uno con
@@ -89,12 +95,12 @@ MIID_KINDS = {
         'label': "Manual del SGI (MIID)",
         'title': "Manual Integral de Información Documentada (MIID)",
         'first_revision': 3, 'menu': 'miid', 'notice_kind': 'miid_desactualizado',
-        'blocks': ('identificacion', 'normas', 'procesos', 'politica', 'objetivos', 'roles',
-                   'tipos_documento', 'controles', 'plazos_nc', 'correspondencia',
+        'blocks': ('identificacion', 'alcance', 'exclusiones', 'normas', 'procesos', 'politica', 'objetivos',
+                   'roles', 'reglas', 'tipos_documento', 'controles', 'plazos_nc', 'correspondencia',
                    'procedimientos_anteriores', 'anexos', 'historial'),
         'hash_keys': ('sections', 'items', 'row_notes', 'processes', 'flows', 'policy', 'objectives',
                       'doc_types', 'controls', 'nc', 'norms', 'roles', 'clause_activities',
-                      'previous', 'annexes'),
+                      'previous', 'annexes', 'scope', 'exclusions', 'rules'),
         'all_processes': True,
         # 57.161.0: pestaña de la pantalla por capítulo (primer número del
         # numeral; '' = sin numeral) y bloques que la pantalla muestra como
@@ -102,16 +108,17 @@ MIID_KINDS = {
         'pages': {'': 'general', '1': 'objeto', '2': 'normas', '3': 'donde', '4': 'sistema',
                   '5': 'requisitos', '6': 'documentos', '7': 'transicion', '8': 'cambios'},
         'native': {'normas': 'normas', 'procesos': 'sistema', 'politica': 'sistema',
-                   'objetivos': 'sistema', 'tipos_documento': 'documentos'},
+                   'objetivos': 'sistema', 'tipos_documento': 'documentos', 'reglas': 'requisitos'},
     },
     'pg01': {
         'code': 'P-G01', 'short': "P-G01",
         'label': "Control de información documentada (P-G01)",
         'title': "Elaboración y control de información documentada (P-G01)",
         'first_revision': 12, 'menu': 'pg01', 'notice_kind': 'pg01_desactualizado',
-        'blocks': ('identificacion', 'tipos_documento', 'plazos_documentales', 'actividades',
-                   'normas', 'historial'),
-        'hash_keys': ('sections', 'items', 'row_notes', 'doc_types', 'doc_params', 'activities', 'norms'),
+        'blocks': ('identificacion', 'tipos_documento', 'elaboracion', 'aprobacion', 'plazos_documentales',
+                   'actividades', 'normas', 'historial'),
+        'hash_keys': ('sections', 'items', 'row_notes', 'doc_types', 'doc_params', 'activities', 'norms',
+                      'doc_roles'),
         'all_processes': False,
         'pages': {'': 'general', '1': 'proposito', '2': 'proposito', '3': 'responsabilidades',
                   '4': 'desarrollo', '5': 'rutinas', '6': 'marco', '7': 'cambios'},
@@ -132,13 +139,18 @@ MIID_PAGES = [
 # lista nativa) y uno por lista nativa (el texto que va antes de ella).
 MIID_SCREEN_SLOTS = (('normas', 'normas'), ('sistema', 'procesos'), ('sistema', 'politica'),
                      ('sistema', 'objetivos'), ('documentos', 'tipos_documento'),
-                     ('desarrollo', 'tipos_documento'), ('rutinas', 'actividades'), ('marco', 'normas'))
+                     ('desarrollo', 'tipos_documento'), ('rutinas', 'actividades'), ('marco', 'normas'),
+                     ('requisitos', 'reglas'))
 # Columnas de los renglones de una sección (campo del renglón, campo del título).
 MIID_ITEM_COLUMNS = (('label', 'item_label_title'), ('clause', 'item_clause_title'),
                      ('text', 'item_text_title'), ('text_2', 'item_text2_title'),
                      ('text_3', 'item_text3_title'))
 MIID_ITEM_FORMAT_FIELDS = ('menu_id', 'item_style') + tuple(t for _f, t in MIID_ITEM_COLUMNS)
 MIID_ITEMS_SEED_FILE = 'quimibond_sgi/data/sgi_miid_items.xml'
+# 57.162.0: alcance, no aplicabilidades, reglas y roles de los tipos de
+# documento (datos de norma, cláusula, regla y tipo de documento).
+MIID_FIELDS_SEED_FILE = 'quimibond_sgi/data/sgi_miid_fields.xml'
+MIID_DOC_ROLE_FIELDS = ('author_text', 'location_text', 'control_text', 'reviewer_text', 'approver_text')
 MIID_KIND_SELECTION = [(code, values['label']) for code, values in MIID_KINDS.items()]
 
 
@@ -585,6 +597,44 @@ class SgiMiidSection(models.Model):
             result[xmlid] = '%d renglón(es) al día' % changed if changed else 'sin cambio'
         return result
 
+    @api.model
+    def _sgi_seed_fill_fields(self, tag):
+        """57.162.0: llena en una base existente los campos que siembra
+        ``MIID_FIELDS_SEED_FILE`` en normas, cláusulas y tipos de documento
+        (son noupdate), solo donde están vacíos: lo que MAST ya capturó no se
+        pisa. Las reglas del sistema son registros nuevos (los crea la
+        actualización). Devuelve {xmlid: campos llenados}."""
+        from lxml import etree
+        with file_open(MIID_FIELDS_SEED_FILE, 'rb') as fh:
+            tree = etree.parse(fh)
+        result = {}
+        models_ = ('sgi.norm', 'sgi.norm.clause', 'sgi.document.type')
+        for record in tree.xpath('//record'):
+            if record.get('model') not in models_:
+                continue
+            xmlid = record.get('id')
+            target = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not target:
+                result[xmlid] = []
+                continue
+            vals = {}
+            for field in record.findall('field'):
+                name = field.get('name')
+                if target[name]:
+                    continue
+                if field.get('ref'):
+                    ref = self.env.ref('quimibond_sgi.%s' % field.get('ref'), raise_if_not_found=False)
+                    if ref:
+                        vals[name] = ref.id
+                elif field.get('eval'):
+                    vals[name] = field.get('eval') == 'True'
+                else:
+                    vals[name] = (field.text or '').strip()
+            if vals:
+                target.sudo().write(vals)
+            result[xmlid] = sorted(vals)
+        return result
+
     def _sgi_open_menu(self, menu):
         """Abre el menú (su acción de ventana; si no, el menú mismo). Si el
         usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo le
@@ -767,6 +817,9 @@ class SgiMiid(models.Model):
     # tumbó el registro en el build de main).
     routine_ids = fields.Many2many('sgi.process.activity', relation='sgi_miid_screen_routine_rel',
                                    string="Rutinas", compute='_compute_screen_records', compute_sudo=True)
+    rule_ids = fields.Many2many('sgi.system.rule', relation='sgi_miid_screen_rule_rel',
+                                string="Reglas del sistema", compute='_compute_screen_records', compute_sudo=True)
+    scr_requisitos_reglas_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
     scr_general_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
     scr_objeto_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
     scr_proposito_html = fields.Html(compute='_compute_screen', compute_sudo=True, sanitize=False)
@@ -922,6 +975,7 @@ class SgiMiid(models.Model):
             miid.policy_id = policy if kind['all_processes'] else False
             miid.objective_ids = env['sgi.objective'].search([('policy_id', '=', policy.id)]) \
                 if policy and kind['all_processes'] else False
+            miid.rule_ids = env['sgi.system.rule'].search([]) if miid.kind == 'miid' else False
             miid.doc_type_ids = types if miid.kind == 'miid' else False
             miid.pg01_doc_type_ids = types if miid.kind == 'pg01' else False
             miid.routine_ids = env['sgi.process.activity'].search(
@@ -1048,6 +1102,17 @@ class SgiMiid(models.Model):
 
         norms = env['sgi.norm'].search([]).filtered('clause_ids')
         raw['norms'] = {n.code: [n.name or '', sorted(n.clause_ids.mapped('code'))] for n in norms}
+        # 57.162.0: datos de norma, cláusula, regla y tipo de documento.
+        raw['scope'] = {n.code: n.scope for n in env['sgi.norm'].search([]) if (n.scope or '').strip()}
+        raw['exclusions'] = {'%s %s' % (c.norm_id.code, c.code): [c.exclusion_detail or '', c.name or '',
+                                                                  c.exclusion_reason or '']
+                             for c in env['sgi.norm.clause'].search([('exclusion', '=', True)])}
+        raw['rules'] = {str(r.id): [r.sequence or 0, r.name or '', r.clause_label or '', r.text or '',
+                                    _miid_menu_link(r.menu_id)[0]]
+                        for r in env['sgi.system.rule'].search([])}
+        raw['doc_roles'] = {t.code: [t.name or ''] + [t[f] or '' for f in MIID_DOC_ROLE_FIELDS]
+                            + [_miid_menu_link(t.odoo_menu_id)[0]]
+                            for t in types if any(t[f] for f in MIID_DOC_ROLE_FIELDS)}
 
         # 57.146.0: plazos documentales (el P-G01 vive en el MIID), dueños y
         # roles por proceso, y qué actividades cumplen cada cláusula. Todo
@@ -1248,6 +1313,19 @@ class SgiMiid(models.Model):
         keyed('norms', lambda k, v: "Norma nueva: %s" % k, lambda k, v: "Norma retirada: %s" % k,
               lambda k, a, b: ["Cambiaron las cláusulas de %s" % k])
 
+        keyed('scope', lambda k, v: "Alcance nuevo: %s" % k, lambda k, v: "Sin alcance: %s" % k,
+              lambda k, a, b: ["Cambió el alcance de %s" % k])
+        keyed('exclusions', lambda k, v: "Requisito que ya no aplica: %s" % k,
+              lambda k, v: "Requisito que vuelve a aplicar: %s" % k,
+              lambda k, a, b: ["Cambió la justificación de %s" % k])
+        keyed('rules', lambda k, v: "Regla del sistema nueva: %s" % v[1],
+              lambda k, v: "Regla del sistema retirada: %s" % v[1],
+              lambda k, a, b: ["Regla del sistema movida de lugar: %s" % b[1]] if a[1:] == b[1:]
+              else ["Cambió la regla del sistema %s" % b[1]])
+        keyed('doc_roles', lambda k, v: "Quién elabora y firma, nuevo: %s" % v[0],
+              lambda k, v: "Quién elabora y firma, retirado: %s" % v[0],
+              lambda k, a, b: ["Cambió quién elabora o firma %s" % b[0]])
+
         old_doc, new_doc = old.get('doc_params') or {}, new.get('doc_params') or {}
         for key, label, _param, _default, unit in MIID_DOC_ROWS:
             if old_doc.get(key) != new_doc.get(key):
@@ -1391,8 +1469,11 @@ class SgiMiid(models.Model):
                 numbers = [n for index, _p in columns for n in row['cells'][index]]
                 covered = covered or bool(codes)
                 # 57.146.0: la cuarta columna son las actividades (numerales).
-                rows.append([row['clause'].code or '', row['clause'].name or '', ", ".join(codes) or "—",
-                             ", ".join(numbers) or "—"])
+                clause = row['clause']
+                # 57.162.0: lo que no aplica y las reglas del sistema también cumplen.
+                numbers_text = "No aplica" if clause.exclusion else (", ".join(numbers) or "—")
+                rows.append([clause.code or '', clause.name or '', ", ".join(codes) or "—", numbers_text,
+                             ", ".join(clause.system_rule_ids.mapped('name')) or "—"])
             if covered:
                 result.append({'name': "%s %s" % (norm.code or '', norm.name or ''), 'rows': rows})
         return result
@@ -1488,6 +1569,26 @@ class SgiMiid(models.Model):
             return [c for c in order if c in mapping] + sorted(c for c in mapping if c not in order)
 
         blocks['controles'] = {'items': ["%s (%s)" % (v[1], code) for code, v in sorted(snap['controls'].items())]}
+        # 57.162.0: alcance, no aplicabilidades, reglas y roles por tipo.
+        blocks['alcance'] = {'rows': [[code, text] for code, text in sorted(snap['scope'].items())]}
+        blocks['exclusiones'] = {'rows': [[v[0] or key, v[1], v[2]] for key, v in sorted(snap['exclusions'].items())]}
+        rule_rows = []
+        for rule in env['sgi.system.rule'].search([]):
+            path, url = _miid_menu_link(rule.menu_id)
+            rule_rows.append([rule.name or '', rule.clause_label or '', rule.text or '', path, url])
+        blocks['reglas'] = {'rows': rule_rows}
+        role_types = env['sgi.document.type'].search([('company_id', 'in', [company.id, False])]).filtered(
+            lambda t: any(t[f] for f in MIID_DOC_ROLE_FIELDS))
+        elab_rows, sign_rows = [], []
+        for dtype in role_types:
+            path, url = _miid_menu_link(dtype.odoo_menu_id)
+            elab_rows.append([dtype.name or '', dtype.author_text or '—', dtype.location_text or '—',
+                              dtype.control_text or '—', path, url])
+            if dtype.reviewer_text or dtype.approver_text:
+                sign_rows.append([dtype.name or '', dtype.author_text or '—', dtype.reviewer_text or '—',
+                                  dtype.approver_text or '—'])
+        blocks['elaboracion'] = {'rows': elab_rows}
+        blocks['aprobacion'] = {'rows': sign_rows}
         blocks['plazos_nc'] = {'rows': [[label, snap['nc'].get(key), unit] for key, label, unit in MIID_NC_ROWS]}
         blocks['correspondencia'] = {'norms': self._sgi_correspondence(env, processes.ids)}
         # 57.146.0: normas, roles y plazos documentales.
@@ -1555,6 +1656,11 @@ class SgiMiid(models.Model):
             'anexos': bool(annex_rows or orphan_notes),
             'actividades': bool(blocks['actividades']['rows']),
             'historial': bool(history),
+            'alcance': bool(blocks['alcance']['rows']),
+            'exclusiones': bool(blocks['exclusiones']['rows']),
+            'reglas': bool(rule_rows),
+            'elaboracion': bool(elab_rows),
+            'aprobacion': bool(sign_rows),
         }
 
         sections, used = [], set()
