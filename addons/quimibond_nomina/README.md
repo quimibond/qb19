@@ -595,3 +595,10 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   analítica»): el proyecto «Interno» de la empresa 1 (`res.company.internal_project_id`,
   donde Odoo registra el tiempo de cada ausencia) no tenía cuenta analítica. Se le
   puso «Interno» (plan Proyectos) el 2026-10-20 en producción; no es código.
+  Ese día se agregaron los tipos «Vacaciones (F-P-A01-15)» (entrada `LEAVE120`, la
+  que lee `HOLIDAYS_ON_TIME`) y «Permiso sin goce de sueldo (F-P-A01-16)» (`LEAVE90`,
+  la que descuenta `DIS_ABSENCE`), junto al «Permiso con goce» que ya existía.
+  **Ojo con el doble descuento:** «Paga regular» descuenta las ausencias de Odoo
+  (`DIS_ABSENCE` por `LEAVE90`, `IMSS_DISABLE` por `LEAVE1200`) y también las
+  incidencias `FALTAS`/`INCAP` de la lista de RH (`DESC_FALTAS`). Una incapacidad o un
+  permiso sin goce capturado en Ausencias no debe ir además en la lista.
