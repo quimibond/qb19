@@ -22,6 +22,22 @@
         </field>
     </record>
 
+    <!-- Referencia del empleado (S-250, Q-127, C-26): hr_payroll la pone junto a
+         «Categoría del pago» solo en modo desarrollador (base.group_no_one), y RH
+         no la encontraba al dar de alta. Sin ella no se timbra el recibo
+         (NumEmpleado) ni se da de alta a la persona en los checadores. -->
+    <record id="payroll_hr_employee_view_form_referencia" model="ir.ui.view">
+        <field name="name">hr.employee.form.quimibond.nomina.referencia</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr_payroll.payroll_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='registration_number']" position="attributes">
+                <attribute name="groups">hr.group_hr_user</attribute>
+                <attribute name="placeholder">S-250 (semanal), Q-127 (quincenal), C-26 (Ciruelos)</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Plantillas de contrato (hr.version sin empleado). -->
     <record id="hr_contract_template_form_view_quimibond_nomina" model="ir.ui.view">
         <field name="name">hr.contract.template.form.quimibond.nomina</field>
