@@ -588,8 +588,24 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
   `Dias` se estima). `Antigüedad`:
   Odoo manda `P1365W` y NOI `P1367W`, dos semanas de diferencia por la fecha
   de corte que usa cada uno; definir con RH cuál es la fecha de ingreso buena.
-- Pendientes de terceros: RFC, CURP y NSS de un empleado; destrabar la app de
-  Ausencias («Debe configurar al menos una cuenta analítica», sin eso no hay
-  nodo de Incapacidades); la cuenta archivada `201.01.02 Reembolso empleados`
+- Pendientes de terceros: RFC, CURP y NSS de un empleado; la cuenta archivada `201.01.02 Reembolso empleados`
   que usan las reglas *Gastos* y *Reembolso*; el 41% de prima vacacional de
   cinco personas contra IDSE.
+- La app de Ausencias fallaba al aprobar («Debe configurar al menos una cuenta
+  analítica»): el proyecto «Interno» de la empresa 1 (`res.company.internal_project_id`,
+  donde Odoo registra el tiempo de cada ausencia) no tenía cuenta analítica. Se le
+  puso «Interno» (plan Proyectos) el 2026-10-20 en producción; no es código.
+  Ese día se agregaron los tipos «Vacaciones (F-P-A01-15)» (entrada `LEAVE120`, la
+  que lee `HOLIDAYS_ON_TIME`) y «Permiso sin goce de sueldo (F-P-A01-16)» (`LEAVE90`,
+  la que descuenta `DIS_ABSENCE`), junto al «Permiso con goce» que ya existía.
+  **Ojo con el doble descuento:** «Paga regular» descuenta las ausencias de Odoo
+  (`DIS_ABSENCE` por `LEAVE90`, `IMSS_DISABLE` por `LEAVE1200`) y también las
+  incidencias `FALTAS`/`INCAP` de la lista de RH (`DESC_FALTAS`). Una incapacidad o un
+  permiso sin goce capturado en Ausencias no debe ir además en la lista.
+- Horario de planta semanal (2026-10-20, en producción): «Planta — 48 horas, lunes a
+  jueves 10 y viernes 8» (`resource.calendar` 37; 7:00–17:00 y viernes 7:00–15:00, la
+  comida dentro de la jornada como en el contrato sindicalizado) en los 102 contratos
+  que tenían «lunes a sábado 8–16» (32, archivado). Es el patrón de la lista F-P-A01-49,
+  también para los de turno de 12 h. El neto del recibo no cambia (se paga por días);
+  verificado en el recibo piloto 5071 de la semana 43. El horario por defecto de la
+  empresa es el de oficina: a un ingreso de planta hay que ponerle el 37 a mano.
