@@ -420,8 +420,12 @@ la evidencia del proyecto y se imprime.
 **Artículo en desarrollo y generador de código (57.119.0).** Desde la
 pestaña Cotización se eligen las claves (composición, dibujo, hilo, color,
 acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
-crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
-P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el
+crea crudo (H), teñido (I, si lleva), acabado en kg (el código del acabado con
+la «I» al frente, desde 57.160.0) y acabado (J) con el código del DAT
+P-D02-01 en estado «En desarrollo» (no se vende). Producción va en kg hasta
+Inspección: el acabado en kg sale de rama pesado e Inspección lo pasa a
+metros; sus listas de materiales se capturan a mano. Modelo completo:
+`quimibond_ficha_tecnica_tela/README.md`, «Modelo de producción vigente». Al entrar a Pilotaje el
 artículo se vende con aviso; en Liberado queda de línea; si el proyecto
 cierra sin producto, el artículo y sus listas de materiales se archivan. El
 artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la

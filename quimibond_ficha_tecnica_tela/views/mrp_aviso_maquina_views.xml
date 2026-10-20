@@ -2,7 +2,7 @@
 <odoo>
     <!-- 2.5.0 (Dirección General 2026-10-13): avisos de máquina. Galga distinta en la orden de trabajo
          de tejido; cargas por jet y aviso de carga en la orden de tintorería. 2.6.0: el aviso de carga
-         también en la orden de trabajo que cae en un jet (producto único de acabado en kg). Extienden
+         también en la orden de trabajo que cae en un jet (acabado en kg «I…» con la tintorería en su ruta, 2.13.0). Extienden
          vistas de mrp y stock (otros módulos). -->
 
     <record id="view_mrp_workorder_form_ft_aviso" model="ir.ui.view">
