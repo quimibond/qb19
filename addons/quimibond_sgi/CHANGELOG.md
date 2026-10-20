@@ -13,6 +13,30 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.0 — 2026-10-20
+
+Candados del MIID y del P-G01 que se resuelven en la misma pantalla. Jose
+(2026-10-20): «no me gusta cómo funcionan, no está fácil de usar». Antes era
+un recuadro rojo con la nota completa de cada sección y la lista de claves de
+proceso; para resolverlo había que ir a Textos o a cada proceso sin saber qué
+le faltaba.
+
+### Cambiado
+- Arriba del manual: «Para aprobar una revisión nueva faltan N cosa(s)» y
+  dos listas que se vacían solas:
+  - **Secciones por confirmar** (numeral, título y qué falta confirmar) con
+    «Confirmar» (Jefe MAST, Dirección o Administrador SGI; pide
+    confirmación y deja el rastro de siempre en la sección) y «Editar».
+  - **Procesos que faltan por publicar** (dueño, estado y cuántos faltantes
+    bloquean), en verde los que ya se pueden publicar, con «Qué falta» o
+    «Publicar» (Jefe MAST; la misma regla que en la ficha del proceso). El
+    P-G01 solo lista su proceso (E2).
+
+### Agregado
+- `sgi.miid.to_confirm_section_ids`, `pending_process_ids` y
+  `approval_todo_count`; `sgi.miid.section.action_sgi_confirm` y
+  `action_open_form`.
+
 ## 19.0.57.163.0 — 2026-10-20
 
 Cobertura coherente. Jose (2026-10-20) eligió seguir por aquí: un punto de la

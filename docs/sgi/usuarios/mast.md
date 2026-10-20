@@ -298,6 +298,10 @@ Lo que sigue aplica a los dos:
   Manual es una nota por renglón (7.2). Las secciones se archivan; no se
   borran. Cuando una actualización trae texto nuevo para una sección que
   usted editó, no la pisa: le deja una nota en el historial de la sección.
+- **Lo que falta para aprobar (desde 57.164.0):** arriba del manual salen
+  dos listas: las secciones por confirmar, con «Confirmar» y «Editar», y los
+  procesos que faltan por publicar, con cuántos faltantes bloquean, «Qué
+  falta» y, en verde, «Publicar» cuando ya se puede. La lista se vacía sola.
 - **«Por confirmar»:** mientras una sección esté marcada (con la nota de qué
   falta), ninguna revisión de su documento se envía ni se aprueba. La carga
   del Manual trae cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de

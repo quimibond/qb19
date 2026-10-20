@@ -280,3 +280,31 @@ class TestMiidCampos(_Case):
         dtype.write({'approver_text': 'Otro ZM'})
         self.assertNotEqual(self.Miid._sgi_hash(snap), self.Miid._sgi_hash(pg01._sgi_snapshot()),
                             "Quién firma entra a la huella del P-G01.")
+
+
+@tagged('post_install', '-at_install')
+class TestMiidPendientesParaAprobar(_Case):
+    """57.164.0: lo que impide aprobar se ve como listas que se resuelven en
+    la misma pantalla (confirmar la sección, ver qué le falta al proceso o
+    publicarlo)."""
+
+    def test_30_listas_de_pendientes(self):
+        from odoo.tests import new_test_user
+        self.s_proc.write({'to_confirm': True, 'to_confirm_note': 'Nota ZM por confirmar'})
+        screen = self.miid.with_user(self.user)
+        self.assertEqual(screen.to_confirm_section_ids, self.s_proc)
+        self.assertEqual(screen.pending_process_ids, self.p1, "El proceso en borrador impide aprobar.")
+        self.assertEqual(screen.approval_todo_count, 2)
+        director = new_test_user(self.env, login='zm_miid_dir_todo',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_director')
+        director.write({'company_ids': [(4, self.company.id)]})
+        self.s_proc.with_user(director).action_sgi_confirm()
+        self.assertFalse(self.s_proc.to_confirm)
+        self.assertTrue(self.s_proc.message_ids.filtered(lambda m: 'quitado por' in (m.body or '')),
+                        "Confirmar desde la pantalla deja el rastro de siempre.")
+        self._publish()
+        screen.invalidate_recordset()
+        self.assertFalse(screen.pending_process_ids)
+        self.assertEqual(screen.approval_todo_count, 0, "Sin pendientes, la lista se vacía.")
+        action = self.s_proc.with_user(self.mast).action_open_form()
+        self.assertEqual((action['res_model'], action['res_id']), ('sgi.miid.section', self.s_proc.id))

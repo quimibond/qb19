@@ -14,16 +14,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_miid.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `clause` | Char | Numeral | Cláusulas de la norma que cubre (p. ej. 6.1, 7.5). |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:706` |
-| `company_id` | Many2one |  |  |  |  | related `section_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_miid.py:700` |
-| `kind` | Selection |  |  |  |  | related `section_id.kind`, sin guardar |  | `addons/quimibond_sgi/models/sgi_miid.py:701` |
-| `label` | Char | Concepto | Lo que se define o se regula (p. ej. «Riesgos y oportunidades», «Jefe de MAST y SGI»). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:703` |
-| `menu_id` | Many2one | Pantalla en Odoo | Menú donde se hace o se consulta. La pantalla lo abre; el PDF imprime su ruta. |  | `ir.ui.menu` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:710` |
-| `section_id` | Many2one | Sección |  | sí | `sgi.miid.section` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:698` |
-| `sequence` | Integer | Orden |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:702` |
-| `text` | Text | Descripción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:707` |
-| `text_2` | Text | Texto 2 | Segunda columna de la tabla, si la sección le pone título. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:708` |
-| `text_3` | Text | Texto 3 | Tercera columna de la tabla, si la sección le pone título. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:709` |
+| `clause` | Char | Numeral | Cláusulas de la norma que cubre (p. ej. 6.1, 7.5). |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:719` |
+| `company_id` | Many2one |  |  |  |  | related `section_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_miid.py:713` |
+| `kind` | Selection |  |  |  |  | related `section_id.kind`, sin guardar |  | `addons/quimibond_sgi/models/sgi_miid.py:714` |
+| `label` | Char | Concepto | Lo que se define o se regula (p. ej. «Riesgos y oportunidades», «Jefe de MAST y SGI»). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:716` |
+| `menu_id` | Many2one | Pantalla en Odoo | Menú donde se hace o se consulta. La pantalla lo abre; el PDF imprime su ruta. |  | `ir.ui.menu` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:723` |
+| `section_id` | Many2one | Sección |  | sí | `sgi.miid.section` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:711` |
+| `sequence` | Integer | Orden |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:715` |
+| `text` | Text | Descripción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:720` |
+| `text_2` | Text | Texto 2 | Segunda columna de la tabla, si la sección le pone título. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:721` |
+| `text_3` | Text | Texto 3 | Tercera columna de la tabla, si la sección le pone título. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:722` |
 
 ## Métodos públicos (4)
 
