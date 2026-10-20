@@ -72,6 +72,12 @@ class ChecadorEquipo(models.Model):
                                help="Último «Stamp» que mandó el equipo. Se le devuelve en cada conexión para que "
                                     "solo envíe registros nuevos. Ponerlo en 0 hace que vuelva a mandar todo su "
                                     "historial (las repetidas se ignoran).")
+    checadas_desde = fields.Datetime(
+        string="Checadas desde",
+        help="Las checadas de este reloj anteriores a esta fecha se guardan como «Ignorada» y nunca se convierten "
+             "en asistencias: es el historial que un reloj trae al conectarlo por primera vez (el UA860 mandó "
+             "checadas de 2024). Al cambiarla, Odoo ignora las checadas anteriores que no estaban ignoradas y "
+             "borra las asistencias que el checador había creado con ellas. Vacío: sin corte.")
     checada_count = fields.Integer(string="Checadas", compute='_compute_checada_count')
     estado_conexion = fields.Selection([
         ('nunca', "Nunca conectado"),
@@ -103,7 +109,30 @@ class ChecadorEquipo(models.Model):
         if vals.get('marca') == 'hikvision':
             for eq in self.filtered(lambda e: not e.token):
                 super(ChecadorEquipo, eq).write({'token': secrets.token_urlsafe(18)})
+        if vals.get('checadas_desde'):
+            self._aplicar_checadas_desde()
         return res
+
+    def _aplicar_checadas_desde(self):
+        """Lo anterior a «Checadas desde» no es asistencia: sus checadas quedan «Ignorada» y las asistencias
+        que el checador abrió con ellas se borran (la salida que las cerró, si es posterior, vuelve a «Nueva»).
+        Devuelve cuántas asistencias se borraron."""
+        Checada = self.env['qb.checada'].sudo()
+        Att = self.env['hr.attendance'].sudo()
+        borradas = 0
+        for eq in self.filtered('checadas_desde'):
+            viejas = Checada.search([('equipo_id', '=', eq.id), ('timestamp', '<', eq.checadas_desde)])
+            if not viejas:
+                continue
+            asistencias = Att.search([('qb_checada_in_id', 'in', viejas.ids)])
+            salidas = asistencias.qb_checada_out_id - viejas
+            nota = "Anterior a «Checadas desde» del reloj: historial, no es asistencia"
+            viejas.filtered(lambda c: c.state != 'ignorada' or c.attendance_id).write(
+                {'state': 'ignorada', 'attendance_id': False, 'nota': nota})
+            salidas.write({'state': 'nueva', 'attendance_id': False, 'nota': False})
+            borradas += len(asistencias)
+            asistencias.unlink()
+        return borradas
 
     def action_nuevo_token(self):
         """Cambia el token: la URL anterior deja de funcionar y hay que capturar la nueva en el reloj."""
@@ -185,6 +214,7 @@ class ChecadorEquipo(models.Model):
             'autorizado': False,
             'firmware': pushver or False,
             'ultima_conexion': fields.Datetime.now(),
+            'checadas_desde': fields.Datetime.now(),
             'notas': "Se conectó solo el %s. Revisar que sea un equipo de la empresa, ponerle nombre, "
                      "zona horaria y prefijos, y marcarlo autorizado y activo." % fields.Date.today(),
         })

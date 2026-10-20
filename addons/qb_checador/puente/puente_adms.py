@@ -194,8 +194,13 @@ class Manejador(http.server.BaseHTTPRequestHandler):
         serie = serie_de(self.path)
         largo = int(self.headers.get('Content-Length') or 0)
         cuerpo = self.rfile.read(largo) if largo else b''
+        content_type = self.headers.get('Content-Type')
+        if self.path.startswith('/iclock/') and self.command == 'POST':
+            # El UA860 (PUSH 2.2) declara sus checadas como formulario web; Odoo lo lee como formulario y el
+            # cuerpo le llega vacío («OK: 0» y el reloj reenvía lo mismo sin fin). Son líneas de texto.
+            content_type = 'text/plain; charset=utf-8'
         try:
-            status, datos, ct = reenviar(self.command, self.path, cuerpo, self.headers.get('Content-Type'))
+            status, datos, ct = reenviar(self.command, self.path, cuerpo, content_type)
         except ConnectionError as e:
             self._anotar(serie, 502)
             log.error("%s %s %s → Odoo no contesta: %s", serie, self.command, self.path.split('?')[0], e)
