@@ -92,8 +92,11 @@ class ChecadorUsuario(models.Model):
         Checada = self.env['qb.checada'].sudo()
         Huella = self.env['qb.checador.huella'].sudo()
         for u in self.filtered('employee_id'):
-            sueltas = Checada.search([('equipo_id', '=', u.equipo_id.id), ('pin', '=', u.pin),
-                                      ('state', '=', 'sin_empleado'), ('attendance_id', '=', False)])
+            dominio = [('equipo_id', '=', u.equipo_id.id), ('pin', '=', u.pin),
+                       ('state', '=', 'sin_empleado'), ('attendance_id', '=', False)]
+            if u.equipo_id.checadas_desde:
+                dominio.append(('timestamp', '>=', u.equipo_id.checadas_desde))
+            sueltas = Checada.search(dominio)
             sueltas.write({'employee_id': u.employee_id.id, 'state': 'nueva', 'nota': False})
             Huella.search([('equipo_id', '=', u.equipo_id.id), ('pin', '=', u.pin)]).write(
                 {'employee_id': u.employee_id.id})

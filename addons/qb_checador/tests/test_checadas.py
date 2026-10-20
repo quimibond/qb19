@@ -179,6 +179,41 @@ class TestChecadas(TransactionCase):
         self.assertEqual(c.state, 'nueva')
 
     # ------------------------------------------------------------------
+    def test_checadas_desde_ignora_el_historial(self):
+        """El UA860 mandó checadas de 2024 al conectarlo: lo anterior a «Checadas desde» no es asistencia."""
+        self.equipo.checadas_desde = datetime(2026, 10, 5, 12, 0, 0)      # 06:00 en Toluca
+        self._attlog('12\t2024-05-28 15:16:17\t0\t1\t0', '12\t2024-05-28 23:00:00\t1\t1\t0',
+                     '555\t2024-05-28 15:20:00\t0\t1\t0',
+                     '12\t2026-10-05 06:58:00\t0\t1\t0', '12\t2026-10-05 19:00:00\t1\t1\t0')
+        viejas = self.Checada.search([('equipo_id', '=', self.equipo.id), ('raw', 'like', '2024-05-28')])
+        self.assertEqual(len(viejas), 3)
+        self.assertEqual(set(viejas.mapped('state')), {'ignorada'})
+        self.Checada._cron_emparejar()
+        asistencias = self._asistencias(self.por_referencia)
+        self.assertEqual(len(asistencias), 1, 'solo la jornada posterior al corte')
+        self.assertEqual(asistencias.check_in, datetime(2026, 10, 5, 12, 58, 0))
+        # Ligar el usuario 555 en la tabla del reloj no revive su checada vieja.
+        self.env['qb.checador.usuario'].create({'equipo_id': self.equipo.id, 'pin': '555',
+                                                'employee_id': self.por_pin.id})
+        vieja_555 = self.Checada.search([('pin', '=', '555')])
+        self.assertEqual(vieja_555.state, 'ignorada')
+        vieja_555.action_reintentar()
+        self.assertEqual(vieja_555.state, 'ignorada')
+
+    def test_poner_checadas_desde_limpia_lo_ya_emparejado(self):
+        """Si el historial ya se emparejó, poner el corte borra esas asistencias y deja lo posterior."""
+        self._attlog('12\t2024-05-28 06:58:00\t0\t1\t0', '12\t2024-05-28 19:00:00\t1\t1\t0',
+                     '12\t2026-10-05 06:58:00\t0\t1\t0', '12\t2026-10-05 19:00:00\t1\t1\t0')
+        self.Checada._cron_emparejar()
+        self.assertEqual(len(self._asistencias(self.por_referencia)), 2)
+        self.equipo.checadas_desde = datetime(2026, 10, 1)
+        asistencias = self._asistencias(self.por_referencia)
+        self.assertEqual(len(asistencias), 1)
+        self.assertEqual(asistencias.check_in, datetime(2026, 10, 5, 12, 58, 0))
+        viejas = self.Checada.search([('pin', '=', '12'), ('raw', 'like', '2024-05-28')])
+        self.assertEqual(set(viejas.mapped('state')), {'ignorada'})
+        self.assertFalse(viejas.attendance_id)
+
     def test_api_del_puente(self):
         r = self.Checada.ingresar_api('TEST0001', [
             {'pin': '12', 'time': '2026-10-05 06:58:10', 'status': 0, 'verify': 1},

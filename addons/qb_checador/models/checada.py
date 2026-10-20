@@ -151,6 +151,12 @@ class Checada(models.Model):
             if r['pin'] not in cache_emp:
                 cache_emp[r['pin']] = self._resolver_empleado(equipo, r['pin'])
             emp = cache_emp[r['pin']]
+            if equipo.checadas_desde and r['timestamp'] < equipo.checadas_desde:
+                estado, nota = 'ignorada', "Anterior a «Checadas desde» del reloj: historial, no es asistencia"
+            elif emp:
+                estado, nota = 'nueva', False
+            else:
+                estado, nota = 'sin_empleado', "Ningún empleado con usuario %s (o hay más de uno)" % r['pin']
             vals_list.append({
                 'equipo_id': equipo.id,
                 'pin': r['pin'],
@@ -160,8 +166,8 @@ class Checada(models.Model):
                 'workcode': r.get('workcode') or False,
                 'source': source,
                 'employee_id': emp.id or False,
-                'state': 'nueva' if emp else 'sin_empleado',
-                'nota': False if emp else "Ningún empleado con usuario %s (o hay más de uno)" % r['pin'],
+                'state': estado,
+                'nota': nota,
                 'raw': (r.get('raw') or '')[:200] or False,
             })
         if vals_list:
@@ -259,7 +265,7 @@ class Checada(models.Model):
         for c in self:
             if not c.employee_id:
                 c.employee_id = self._resolver_empleado(c.equipo_id, c.pin)
-            if c.attendance_id:
+            if c.attendance_id or (c.equipo_id.checadas_desde and c.timestamp < c.equipo_id.checadas_desde):
                 continue
             c.write({'state': 'nueva' if c.employee_id else 'sin_empleado', 'nota': False})
 
