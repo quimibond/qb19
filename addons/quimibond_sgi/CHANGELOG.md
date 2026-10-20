@@ -13,6 +13,14 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.1 — 2026-10-20
+
+### Corregido
+- «Vista en PDF (borrador)» del MIID y del P-G01 tronaba («string indices must
+  be integers», build de `main`): el ciclo de los diagramas de
+  `_sgi_print_data` usaba `kind` y pisaba los datos del documento (desde
+  57.148.0; solo el PDF pide diagramas). Se llama `dg_kind`. Prueba nueva.
+
 ## 19.0.57.164.0 — 2026-10-20
 
 Candados del MIID y del P-G01 que se resuelven en la misma pantalla. Jose
