@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_miid.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `company_id` | Many2one |  |  |  |  | related `section_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_miid.py:419` |
-| `key` | Char | Renglón | Clave del renglón al que se pega la nota (p. ej. ANEXO 9). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:421` |
-| `section_id` | Many2one | Sección del MIID |  | sí | `sgi.miid.section` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:417` |
-| `sequence` | Integer | Orden |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:420` |
-| `text` | Char | Nota |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:423` |
+| `company_id` | Many2one |  |  |  |  | related `section_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_miid.py:560` |
+| `key` | Char | Renglón | Clave del renglón al que se pega la nota (p. ej. ANEXO 9). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:562` |
+| `section_id` | Many2one | Sección del MIID |  | sí | `sgi.miid.section` |  |  | `addons/quimibond_sgi/models/sgi_miid.py:558` |
+| `sequence` | Integer | Orden |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:561` |
+| `text` | Char | Nota |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:564` |
 

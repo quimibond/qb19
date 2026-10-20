@@ -10,11 +10,12 @@ Orden: `code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
 
-## Campos (4)
+## Campos (5)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:14` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:16` |
+| `clause_count` | Integer | Cláusulas en Odoo |  |  |  | compute `_compute_clause_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm.py:15` |
 | `clause_ids` | One2many | Cláusulas |  |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:13` |
 | `code` | Char | Clave |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:11` |
 | `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:12` |

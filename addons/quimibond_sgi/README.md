@@ -159,6 +159,22 @@ respaldo. Un bloque del documento que ninguna sección lleva sale al final
 - **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
   «Borrador — no vigente». La revisión vigente es el documento controlado
   de la clave del documento (MIID o P-G01).
+- **Pantalla por capítulos (57.161.0):** una pestaña por capítulo
+  (`sgi.miid.section.page`, sale del numeral con `MIID_KINDS[kind]['pages']`).
+  Los bloques de `MIID_KINDS[kind]['native']` son listas nativas
+  (`process_ids`, `policy_id`, `objective_ids`, `norm_ids`/`pg01_norm_ids`,
+  `doc_type_ids`/`pg01_doc_type_ids`, `activity_ids`); el texto de cada
+  pestaña lo pinta `report_miid_section` en modo pantalla, partido en
+  `scr_<pestaña>_<bloque>_html` (antes de la lista) y `scr_<pestaña>_html`
+  (lo demás). Un bloque nativo cuya sección queda en otra pestaña se pinta
+  como tabla, como los demás.
+- **Renglones (57.161.0):** `sgi.miid.item` (concepto, numeral, descripción,
+  dos columnas más y menú) sustituye las viñetas y tablas escritas; la
+  sección decide tabla o lista y los títulos de columna, y lleva su propio
+  `menu_id`. En pantalla, menú = botón a la acción; en el PDF, la ruta.
+  Renglones, menús y formato entran a la huella (`items` y el renglón de
+  `sections`). Siembra en `data/sgi_miid_items.xml` (después de los menús);
+  en una base existente, `_sgi_seed_format_update` pone el formato.
 - **Siembra en una base existente:** `_sgi_seed_update` pone el texto nuevo
   solo en las secciones que nadie editó; `_sgi_seed_layout_update`
   reacomoda orden, numeral, título, nivel, bloque y documento;

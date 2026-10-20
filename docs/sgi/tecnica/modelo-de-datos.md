@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (177) y modelos de otras apps que extienden (58). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (178) y modelos de otras apps que extienden (58). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -147,9 +147,10 @@ Modelos que definen el núcleo y sus satélites (177) y modelos de otras apps qu
 | [`sgi.measure.review`](diccionario/sgi.measure.review.md) | Revisión mensual de medición | Revisión mensual de la evidencia de una actividad por el dueño del proceso. | Model | 17 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
 | [`sgi.measure.review.line`](diccionario/sgi.measure.review.line.md) | Muestra de la revisión de medición | Un registro de la evidencia tomado al azar para la revisión. | Model | 6 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
 | [`sgi.measure.review.reject`](diccionario/sgi.measure.review.reject.md) | Revisión de medición: no corresponde | Asistente de «No corresponde» (la nota es obligatoria). | TransientModel | 2 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
-| [`sgi.miid`](diccionario/sgi.miid.md) | Manual del SGI (MIID) | Manual del SGI (MIID) de una empresa: la vista del sistema, su comparación con la revisión vigente y el historial de revisiones. Uno por empresa; lo crea la primera apertura o el paso diario. | Model | 16 | `addons/quimibond_sgi/models/sgi_miid.py` |
+| [`sgi.miid`](diccionario/sgi.miid.md) | Manual del SGI (MIID) | Manual del SGI (MIID) de una empresa: la vista del sistema, su comparación con la revisión vigente y el historial de revisiones. Uno por empresa; lo crea la primera apertura o el paso diario. | Model | 48 | `addons/quimibond_sgi/models/sgi_miid.py` |
+| [`sgi.miid.item`](diccionario/sgi.miid.item.md) | Renglón de una sección del MIID | Renglón de una sección del MIID o del P-G01 (57.161.0): un concepto con su descripción y, si aplica, su numeral, columnas extra y el menú donde se ve en Odoo. Sustituye las listas y tablas que se esc… | Model | 10 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`sgi.miid.row.note`](diccionario/sgi.miid.row.note.md) | Nota de renglón del MIID | Nota fija de un renglón de un bloque vivo del MIID (la «Situación» de cada anexo en 12.1). La edita el Jefe MAST. | Model | 5 | `addons/quimibond_sgi/models/sgi_miid.py` |
-| [`sgi.miid.section`](diccionario/sgi.miid.section.md) | Sección del MIID | Sección de texto fijo del MIID (una por título y subtítulo). La edita el Jefe MAST; los datos del sistema salen del bloque que declara. «Por confirmar» impide enviar o aprobar una revisión del MIID. | Model | 13 | `addons/quimibond_sgi/models/sgi_miid.py` |
+| [`sgi.miid.section`](diccionario/sgi.miid.section.md) | Sección del MIID | Sección de texto fijo del MIID (una por título y subtítulo). La edita el Jefe MAST; los datos del sistema salen del bloque que declara. «Por confirmar» impide enviar o aprobar una revisión del MIID. | Model | 23 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`sgi.msa.study`](diccionario/sgi.msa.study.md) | Estudio MSA (IATF 7.1.5.1.1) | Estudio de sistema de medición (MSA) de un equipo: GR&R, ndc y veredicto. | Model | 9 | `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`sgi.my.pending`](diccionario/sgi.my.pending.md) | Mis pendientes (SGI) | Mis pendientes: bandeja de cada persona con actividades atrasadas, escalamientos, firmas, acuses, capturas, validaciones, aprobaciones y avisos. Una fila por persona y registro pendiente; se actualiz… | Model | 20 | `addons/quimibond_sgi/models/sgi_my_pending.py` |
 | [`sgi.my.procedure`](diccionario/sgi.my.procedure.md) | Mi procedimiento (pantalla) | Pantalla de Mi procedimiento de una persona o un puesto: actividades por rol, documentos, indicadores, EPP y acuse. Se arma al abrirla. | TransientModel | 43 | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
@@ -158,7 +159,7 @@ Modelos que definen el núcleo y sus satélites (177) y modelos de otras apps qu
 | [`sgi.nc.cancel`](diccionario/sgi.nc.cancel.md) | Cancelación de no conformidad | NC-4: cancelar solo con motivo y aprobación del Jefe MAST. Cualquier usuario del SGI pide la cancelación con su motivo (queda en el chatter y agenda la aprobación a MAST); el Jefe MAST la aprueba con… | TransientModel | 3 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`sgi.nc.force.close`](diccionario/sgi.nc.force.close.md) | Cierre forzado de no conformidad | Asistente de cierre forzado de una NC con motivo; solo Jefe MAST. | TransientModel | 2 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`sgi.nc.step`](diccionario/sgi.nc.step.md) | Registrar el paso que toca de una NC | — | TransientModel | 7 | `addons/quimibond_sgi/models/sgi_pending_actions.py` |
-| [`sgi.norm`](diccionario/sgi.norm.md) | Norma ISO | Norma de referencia (ISO 9001, 14001, 45001 y las que se capturen) con sus cláusulas. | Model | 4 | `addons/quimibond_sgi/models/sgi_norm.py` |
+| [`sgi.norm`](diccionario/sgi.norm.md) | Norma ISO | Norma de referencia (ISO 9001, 14001, 45001 y las que se capturen) con sus cláusulas. | Model | 5 | `addons/quimibond_sgi/models/sgi_norm.py` |
 | [`sgi.norm.clause`](diccionario/sgi.norm.clause.md) | Cláusula de norma ISO | Cláusula de una norma; «Cumple con» liga actividades y procesos a ella y se ve cuáles no tienen cobertura. | Model | 9 | `addons/quimibond_sgi/models/sgi_norm.py` |
 | [`sgi.objective`](diccionario/sgi.objective.md) | Objetivo Integral SGI | Objetivo integral del año con sus indicadores y su salud. | Model | 9 | `addons/quimibond_sgi/models/sgi_objective.py` |
 | [`sgi.pin`](diccionario/sgi.pin.md) | Validación del PIN del empleado (checklist y SGI en planta) | Validación del PIN del empleado (checklist y SGI en planta). No guarda registros. | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_pin.py` |
@@ -249,4 +250,4 @@ Modelos que definen el núcleo y sus satélites (177) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 26 de 177.
+Modelos propios sin docstring de clase: 26 de 178.

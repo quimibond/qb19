@@ -13,6 +13,49 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.161.0 — 2026-10-20
+
+MIID y P-G01 legibles y con las prácticas de Odoo. Jose (2026-10-20): «no se
+entiende ni se puede leer bien y no usa las mejores prácticas de Odoo; no
+quiero texto plano». Eligió ficha nativa por capítulos, texto estructurado y
+el PDF con la misma estructura.
+
+### Cambiado
+- La pantalla del MIID y del P-G01 es **una pestaña por capítulo** con la
+  letra de Odoo (antes, una sola pestaña con el cuerpo del PDF a 8–9 px).
+  Procesos, política, objetivos, normas, tipos de documento y rutinas del
+  P-G01 son **listas nativas** que se abren; roles, plazos, controles,
+  correspondencia y anexos, tablas legibles. Botones de estadística a los
+  textos, a lo que falta confirmar y a las revisiones.
+- Las rutas escritas («SGI → Sistema → …») son **menús**: cada sección y
+  cada renglón tiene su «Pantalla en Odoo»; en pantalla es un botón que la
+  abre y en el PDF se imprime la ruta.
+- PDF: tablas a 10 px (antes 9) y las anchas a 9 px (antes 8); hoja a 11 px.
+- «Textos» se agrupa por documento y pestaña; la sección tiene la pestaña
+  «Renglones» (tabla o lista, títulos de columna) y el botón «Abrir en Odoo».
+
+### Agregado
+- `sgi.miid.item`: renglones de una sección (concepto, numeral, descripción,
+  dos columnas más y menú). La siembra (`data/sgi_miid_items.xml`, después
+  de los menús) trae 84 en 29 secciones: alcance por norma, no
+  aplicabilidades, control del manual, glosario, compromisos de la política,
+  niveles de responsabilidad, las 12 reglas que el sistema hace cumplir (con
+  cláusula y pantalla), etapas de la NC, controles operacionales, formas de
+  la información documentada y, del P-G01, alcance, responsabilidades, quién
+  elabora qué, quién firma, difusión y conservación.
+- `sgi.norm.clause_count` (lo muestra la lista de normas).
+
+### Huella
+- Renglones, menús y formato de las secciones entran a la huella: una
+  revisión con línea base sale «desactualizada» hasta la siguiente solicitud
+  (hoy ninguna la tiene: las dos vigentes vienen del Dropbox).
+
+### Migración
+- `post-migrate`: texto nuevo de 23 secciones (sin las viñetas, tablas y
+  rutas que pasaron a renglones y menús) solo si nadie las editó (en las
+  editadas deja aviso), formato de 29 secciones y comparación del MIID y del
+  P-G01. Los renglones los crea la actualización. Idempotente.
+
 ## 19.0.57.160.1 — 2026-10-20
 
 Solo documentación, sin cambios de comportamiento.
