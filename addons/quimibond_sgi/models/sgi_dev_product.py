@@ -30,7 +30,10 @@ DEV_PRODUCT_STATES = [
     ('liberado', "Liberado"),
     ('archivado', "Archivado"),
 ]
-DEV_PRODUCT_ROLES = [('crudo', "Crudo (H)"), ('tenido', "Teñido (I)"), ('acabado', "Acabado (J)")]
+# 57.160.0: el acabado en kg («I» al frente, DAT P-D02-01: posición 1 = kilogramos) va entre el teñido y el acabado
+# (J, m): producción en kg hasta Inspección.
+DEV_PRODUCT_ROLES = [('crudo', "Crudo (H)"), ('tenido', "Teñido (I)"), ('proceso', "Acabado en kg (I…J)"),
+                     ('acabado', "Acabado (J)")]
 OPERATION_CODES = {'crudo': 'H', 'tenido': 'I', 'acabado': 'J'}
 NATURAL_COLOR = 'NT'
 # Hilos que llegan con color: el crudo conserva el color final.
@@ -58,7 +61,7 @@ class ProductTemplateDev(models.Model):
                                          ondelete='set null',
                                          help="Proyecto de desarrollo de producto que creó el artículo.")
     sgi_dev_role = fields.Selection(DEV_PRODUCT_ROLES, string="Papel en la ruta", copy=False,
-                                    help="Crudo, teñido o acabado dentro de la ruta del desarrollo.")
+                                    help="Crudo, teñido, acabado en kg o acabado dentro de la ruta del desarrollo.")
 
     def _sgi_dev_set_state(self, state):
         """Cambia el estado de desarrollo y lo que implica: venta y archivo."""

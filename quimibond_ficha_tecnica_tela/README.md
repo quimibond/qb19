@@ -535,10 +535,9 @@ posición 9 del código:
 | Inspección | Tela acabada (J), la que se vende | m medidos en el rollo |
 
 - **`product_proceso_id`** («Producto — Acabado en proceso (kg)») en la ficha
-  de acabado, junto a la tela acabada. Se sugiere el producto con el código de
-  la tela acabada y una «I» al frente (`IWJ045Q22JNT160` para
-  `WJ045Q22JNT160`; 96 existen en producción) y se liga con «Usar el
-  sugerido»; el importador de acabado lo liga solo si la ficha no tiene uno.
+  de acabado, junto a la tela acabada. Se sugiere por código y se liga con
+  «Usar el sugerido»; el importador de acabado lo liga solo si la ficha no
+  tiene uno. (2.13.0 explica la regla del código: es la de la DAT P-D02-01.)
 - **Aviso** en la ficha si falta, si no está en kg, si es el mismo producto que
   la tela acabada, si otra ficha ya lo usa o si la lista de materiales de la
   tela acabada (la de Inspección) no lo consume. Filtro «Sin acabado en proceso
@@ -548,4 +547,37 @@ posición 9 del código:
   ficha del producto reconocen también el acabado en proceso.
 - Pendiente de Dirección: Inspección como operación propia (hoy Acabado entrega
   directo en metros) y quién da de alta productos y listas de materiales.
+- Pruebas: `tests/test_acabado_proceso.py`.
+
+## Artículo en kg según la DAT y alta de los que faltan (2.13.0, 2026-10-19)
+
+Decisiones de Dirección (2026-10-19):
+
+- **Código:** el artículo en kg sigue la regla oficial, la **DAT P-D02-01
+  rev. 05** (documento controlado del SGI): posición 1 = unidad, **«I» =
+  kilogramos**, sin letra = metros. El de `WJ045Q22JNT160` (m) es
+  `IWJ045Q22JNT160` (kg). No se crean letras nuevas (se descartó una K en la
+  operación, que no está en la DAT). La «I» del frente no es la operación
+  «teñido» (esa va en la posición 9 del código sin prefijo).
+- **Sin inspeccionar contra listo:** es el mismo producto; se distingue por
+  **ubicación** («Por inspeccionar» contra Producto terminado), no por código.
+  Los 96 «I…» que ya existen se venden en kg (435 líneas y $5.1 millones en el
+  último año) y siguen igual: la venta en kg sale de Producto terminado. Las
+  rutas para que Ventas no tome de «Por inspeccionar» son configuración de
+  inventario.
+- **Inspección por orden** (una por orden de acabado): para la venta en
+  metros, consume el «I…» en kg y produce la tela acabada en metros medidos,
+  con el mismo lote; para la venta en kg, un traslado con revisión de calidad a
+  Producto terminado.
+- **Alta desde C1** (SGI 57.160.0) para los artículos nuevos.
+
+En el módulo:
+
+- La ficha de acabado **liga sola** el «I…» al crearse si existe; si no, el
+  aviso dice el código que falta.
+- **Tela → Acabados en proceso faltantes**: lista las telas acabadas en metros
+  de la compañía cuyo «I…» no existe; «Crear los seleccionados» los crea en kg
+  con el mismo nombre, la categoría, el seguimiento y las rutas de la tela
+  acabada, sin venta ni compra (Ventas lo habilita si se vende en kg), y los
+  liga a sus fichas de acabado.
 - Pruebas: `tests/test_acabado_proceso.py`.

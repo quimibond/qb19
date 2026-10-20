@@ -366,9 +366,11 @@
                                         <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
                                         <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
+                                        <field name="sgi_dev_code_proceso_code"/>
                                         <field name="sgi_dev_code_acabado_code"/>
                                         <field name="sgi_dev_product_crudo_id" readonly="1"/>
                                         <field name="sgi_dev_product_tenido_id" readonly="1" invisible="not sgi_dev_code_tenido"/>
+                                        <field name="sgi_dev_product_proceso_id" readonly="1"/>
                                         <field name="sgi_dev_product_id" readonly="1"/>
                                     </group>
                                 </group>

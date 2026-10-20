@@ -23,9 +23,21 @@ La ficha muestra además:
 from odoo import api, fields, models
 
 MAX_NIVELES = 5
-# Código del acabado en proceso que ya usa Quimibond: el de la tela acabada con una «I» al frente
-# (IWJ045Q22JNT160 para WJ045Q22JNT160; 96 en producción el 2026-10-19).
-PREFIJO_PROCESO = 'I'
+# DAT P-D02-01 rev. 05 (regla de codificación, documento controlado del SGI): posición 1 = unidad, «I» = kilogramos,
+# sin letra = metros. El acabado en kg es el código de la tela acabada con la «I» al frente (2.13.0, decisión de
+# Dirección 2026-10-19: se sigue la DAT, sin códigos nuevos). Sin inspeccionar o ya inspeccionado se distingue por la
+# ubicación, no por el código: el mismo «I…» también se vende en kg.
+PREFIJO_KG = 'I'
+OP_ACABADO = 'J'
+
+
+def codigo_proceso(code):
+    """El código en kg de una tela acabada en metros (WJ045Q22JNT160 → IWJ045Q22JNT160); '' si el código no sigue
+    la regla (14 o 16 posiciones con J en la 9)."""
+    code = (code or '').strip()
+    if len(code) not in (14, 16) or code[8:9].upper() != OP_ACABADO:
+        return ''
+    return PREFIJO_KG + code
 
 
 class FichaTecnicaAcabadoRuta(models.Model):
@@ -38,8 +50,10 @@ class FichaTecnicaAcabadoRuta(models.Model):
     operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Acabado en proceso (kg)', index=True,
-        help='La tela en kg que sale de rama, termofijado y estiramiento y entra a Inspección. Inspección la pasa '
-             'a metros medidos en el rollo y entrega el Producto — Tela acabada.')
+        help='La tela en kg que sale de rama, termofijado y estiramiento y entra a Inspección: el código de la tela '
+             'acabada con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). Inspección la pasa a metros '
+             'medidos en el rollo y entrega el Producto — Tela acabada; la que se vende en kg sale del mismo '
+             'producto desde Producto terminado.')
     product_proceso_sugerido_id = fields.Many2one('product.product', string='Acabado en proceso sugerido',
                                                   compute='_compute_proceso_aviso')
     proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso')
@@ -96,12 +110,12 @@ class FichaTecnicaAcabadoRuta(models.Model):
                 '%s (%s)' % (o.name, o.workcenter_id.name) for o in sin_proceso)) if sin_proceso else False
 
     def _ft_proceso_sugerido(self):
-        """El producto con el código de la tela acabada y la «I» al frente, si existe."""
+        """El producto con el código de la tela acabada y la «I» al frente (en kg), si existe."""
         self.ensure_one()
-        code = self.product_acabado_id.default_code
+        code = codigo_proceso(self.product_acabado_id.default_code)
         if not code:
             return self.env['product.product']
-        return self.env['product.product'].search([('default_code', '=', PREFIJO_PROCESO + code)], limit=1)
+        return self.env['product.product'].search([('default_code', '=', code)], limit=1)
 
     @api.depends('product_acabado_id', 'product_proceso_id', 'product_proceso_id.uom_id')
     def _compute_proceso_aviso(self):
@@ -114,9 +128,13 @@ class FichaTecnicaAcabadoRuta(models.Model):
             aviso = False
             if not ficha.product_acabado_id:
                 pass
+            elif not proceso and sugerido:
+                aviso = 'Falta el producto de acabado en proceso (kg): se sugiere %s.' % (
+                    sugerido.default_code or sugerido.name)
             elif not proceso:
-                aviso = 'Falta el producto de acabado en proceso (kg)%s.' % (
-                    ': se sugiere %s' % (sugerido.default_code or sugerido.name) if sugerido else '')
+                code = codigo_proceso(ficha.product_acabado_id.default_code)
+                aviso = ('Falta el producto de acabado en proceso (kg)%s.' % (
+                    ': %s no existe todavía (Tela → Acabados en proceso faltantes)' % code if code else ''))
             elif proceso == ficha.product_acabado_id:
                 aviso = ('El acabado en proceso y la tela acabada son el mismo producto: el primero va en kg y '
                          'el segundo en metros, después de Inspección.')
@@ -144,6 +162,12 @@ class FichaTecnicaAcabadoRuta(models.Model):
                 ficha.product_proceso_id = sugerido
                 ligadas |= ficha
         return ligadas
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        fichas = super().create(vals_list)
+        fichas._ft_ligar_proceso_sugerido()
+        return fichas
 
     def action_ft_usar_proceso_sugerido(self):
         self._ft_ligar_proceso_sugerido()

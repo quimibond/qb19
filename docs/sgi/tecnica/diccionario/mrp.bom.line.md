@@ -10,5 +10,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_product_base.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_dev_pending` | Boolean | Por capturar | Renglón copiado del artículo base que depende de una clave que cambió en el desarrollo (la fórmula de color, el hilo…): el componente y la cantidad se capturan antes de cotizar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product_base.py:79` |
+| `sgi_dev_pending` | Boolean | Por capturar | Renglón copiado del artículo base que depende de una clave que cambió en el desarrollo (la fórmula de color, el hilo…): el componente y la cantidad se capturan antes de cotizar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product_base.py:94` |
 
