@@ -51,9 +51,19 @@ class SgiNormClauseEvidence(models.Model):
         help="Procesos cuyas actividades cumplen con la cláusula.")
     activity_count = fields.Integer(string="Actividades", compute='_compute_sgi_evidence')
     alert_count = fields.Integer(string="NC", compute='_compute_sgi_evidence')
-    covered = fields.Boolean(string="Con actividad", compute='_compute_sgi_evidence',
+    # 57.163.0: cubierto también por una regla del sistema o porque no aplica
+    # (antes solo por actividades: lo demás salía en rojo en la matriz, el
+    # Diagnóstico y el checklist de auditoría).
+    covered = fields.Boolean(string="Cubierto", compute='_compute_sgi_evidence',
                              search='_search_covered',
-                             help="Indica si al menos una actividad cumple con la cláusula.")
+                             help="El punto lo cumple al menos una actividad o una regla del sistema, o no aplica "
+                                  "(con su justificación).")
+    coverage = fields.Selection([
+        ('actividad', "Con actividad"), ('regla', "Lo cumple el sistema"), ('no_aplica', "No aplica"),
+        ('sin', "Sin cobertura"),
+    ], string="Cobertura", compute='_compute_sgi_evidence',
+        help="Cómo se cumple el punto: una actividad del SGI, una regla que el sistema hace cumplir (sin "
+             "actividad) o no aplica a PNTQ.")
 
     @api.depends('code', 'norm_id.code')
     def _compute_short_label(self):
@@ -90,7 +100,7 @@ class SgiNormClauseEvidence(models.Model):
             parts.append((0, int(piece), '') if piece.isdigit() else (1, 0, piece))
         return tuple(parts)
 
-    @api.depends('activity_ids.active', 'activity_ids.process_id')
+    @api.depends('activity_ids.active', 'activity_ids.process_id', 'exclusion', 'system_rule_ids')
     def _compute_sgi_evidence(self):
         Alert = self.env['quality.alert'].sudo()
         counts = {}
@@ -102,14 +112,23 @@ class SgiNormClauseEvidence(models.Model):
             activities = clause.activity_ids.filtered('active')
             clause.activity_count = len(activities)
             clause.process_ids = activities.process_id
-            clause.covered = bool(activities)
+            if clause.exclusion:
+                clause.coverage = 'no_aplica'
+            elif activities:
+                clause.coverage = 'actividad'
+            elif clause.system_rule_ids:
+                clause.coverage = 'regla'
+            else:
+                clause.coverage = 'sin'
+            clause.covered = clause.coverage != 'sin'
             clause.alert_count = counts.get(clause.id, 0)
 
     def _search_covered(self, operator, value):
         if operator not in ('=', '!=') or not isinstance(value, bool):
             return NotImplemented
         positive = (operator == '=') == value
-        domain = [('activity_ids', 'any', [('active', '=', True)])]
+        domain = ['|', '|', ('activity_ids', 'any', [('active', '=', True)]),
+                  ('system_rule_ids', 'any', [('active', '=', True)]), ('exclusion', '=', True)]
         return domain if positive else ['!'] + domain
 
     def action_view_alerts(self):
@@ -151,15 +170,20 @@ class SgiNormMatrix(models.Model):
                 numbers = mine.filtered(lambda a: a.process_id == process).sorted(
                     lambda a: (a.step, a.id)).mapped(lambda a: a.number or a.legacy_number or a.name)
                 cells.append(numbers)
-            if not mine:
+            # 57.163.0: lo que no aplica o cumple una regla del sistema no es
+            # un hueco.
+            coverage = 'no_aplica' if clause.exclusion else 'actividad' if mine else \
+                'regla' if clause.system_rule_ids else 'sin'
+            if coverage == 'sin':
                 uncovered += 1
-            rows.append({'clause': clause, 'cells': cells, 'total': len(mine)})
+            rows.append({'clause': clause, 'cells': cells, 'total': len(mine), 'coverage': coverage,
+                         'rules': clause.system_rule_ids.mapped('name')})
         return {'processes': processes, 'rows': rows, 'uncovered': uncovered,
                 'covered': len(rows) - uncovered}
 
     def action_view_uncovered_clauses(self):
         self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'name': "Puntos sin actividad — %s" % self.code,
+        return {'type': 'ir.actions.act_window', 'name': "Puntos sin cobertura — %s" % self.code,
                 'res_model': 'sgi.norm.clause', 'view_mode': 'list,form',
                 'domain': [('norm_id', '=', self.id), ('covered', '=', False)]}
 
@@ -227,6 +251,6 @@ class SgiAuditChecklistByClause(models.Model):
                 Line.create({'audit_id': audit.id, 'sequence': seq,
                              'norm_clause_ids': [(6, 0, clause.ids)]})
             if gaps:
-                audit.message_post(body="Checklist: %d pregunta(s) por puntos de la norma sin actividad "
-                                        "en el SGI." % len(gaps))
+                audit.message_post(body="Checklist: %d pregunta(s) por puntos de la norma sin cobertura "
+                                        "en el SGI (ni actividad ni regla del sistema, y sí aplican)." % len(gaps))
         return res
