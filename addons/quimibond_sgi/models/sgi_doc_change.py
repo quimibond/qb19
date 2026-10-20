@@ -207,7 +207,10 @@ class ApprovalRequest(models.Model):
             attachment = self._sgi_change_attachment()
             if attachment and vals.get('sgi_revision', doc.sgi_revision) != doc.sgi_revision:
                 new_doc = self._sgi_publish_revision(doc, vals, attachment)
-                self.sgi_new_document_id = new_doc.id
+                # 57.164.5: la solicitud ya está aprobada y Aprobaciones solo
+                # deja escribirla al superusuario (AccessError «cancelar y
+                # regresar a borrador»): estos campos son del sistema.
+                self.sudo().sgi_new_document_id = new_doc.id
                 target = new_doc
             else:
                 doc.write(vals)
@@ -234,7 +237,7 @@ class ApprovalRequest(models.Model):
                 note=self.sgi_changes or self.sgi_reason or '',
                 user_id=(manager_user.id if manager_user else self.env.user.id),
             )
-        self.sgi_applied = True
+        self.sudo().sgi_applied = True
 
     def _sgi_check_moc_ready(self):
         """Gate del MOC: nadie aprueba un cambio de proceso/infraestructura

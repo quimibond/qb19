@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.5 — 2026-10-20
+
+### Corregido
+- Aprobar un cambio documental como usuario (no el superusuario) tronaba al
+  publicar: `_sgi_apply_doc_change` escribía `sgi_new_document_id` y
+  `sgi_applied` en la solicitud ya aprobada y Aprobaciones (Enterprise) solo
+  deja escribir una solicitud aprobada al superusuario («Primero debes
+  cancelar la aprobación y luego regresarla a borrador»). Se escriben con
+  `sudo()` (son campos del sistema; la aprobación sigue siendo del usuario).
+  Lo encontró `test_miid.test_19` en el build de `main`; por la sincronización
+  con Sign (superusuario) no se veía.
+
 ## 19.0.57.164.4 — 2026-10-20
 
 Solo pruebas, sin cambios de comportamiento (segunda corrida: 34 de 36).
