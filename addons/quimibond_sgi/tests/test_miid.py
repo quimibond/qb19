@@ -461,7 +461,14 @@ class TestMiidCandados(_Case):
             ('res_model', '=', 'approval.request'), ('res_id', '=', req.id),
             ('sgi_cron_key', '=', 'miid_retenido:%d' % req.id)])
         self.assertEqual(held.user_id, self.mast, "El Jefe MAST recibe un aviso, no solo la nota.")
+        # La solicitud es de la empresa de su categoría (la real, empresa 1) y
+        # Mis pendientes muestra los avisos de la empresa del SGI (aquí la de
+        # la prueba): para esta revisión, la del SGI es la de la solicitud.
+        Param = self.env['ir.config_parameter'].sudo()
+        sgi_company = Param.get_param('quimibond_sgi.sgi_company_id')
+        Param.set_param('quimibond_sgi.sgi_company_id', str(req.company_id.id))
         rows = self.env['sgi.my.pending']._sgi_pending_values(self.mast)[self.mast.id]
+        Param.set_param('quimibond_sgi.sgi_company_id', sgi_company)
         self.assertTrue([r for r in rows if r['kind'] == 'aviso' and r['res_id'] == held.id],
                         "El aviso de la solicitud retenida cae en Mis pendientes. Aviso: %s vence %s; renglones: %s" % (
                             held.id, held.date_deadline,
@@ -745,7 +752,9 @@ class TestPg01Generado(_Case):
                          ['ZM1.09', 'Publicar el documento ZM', 'PUESTO ZM PG01', '—'])
         self.assertEqual([code for code, _label in data['orphans']],
                          ['identificacion', 'normas', 'tipos_documento', 'plazos_documentales', 'actividades',
-                          'historial'], "Sin secciones del P-G01 en la empresa, todos sus bloques quedan sueltos.")
+                          'historial', 'elaboracion', 'aprobacion'],
+                         "Sin secciones del P-G01 en la empresa, todos sus bloques quedan sueltos (57.162.0: "
+                         "también quién elabora y quién firma).")
         self.assertNotIn('procesos', dict(data['orphans']), "Los bloques del Manual no son del P-G01.")
         self.assertIn("El proceso ZM1 no está vigente", "\n".join(pg01._sgi_blockers()))
         self._publish()
