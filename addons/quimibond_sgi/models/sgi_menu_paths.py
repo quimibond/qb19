@@ -17,6 +17,7 @@ archivo de models/.
 """
 from markupsafe import Markup, escape
 
+from odoo import SUPERUSER_ID
 from odoo.exceptions import RedirectWarning, UserError
 
 SGI_MENU_PATHS = {
@@ -104,22 +105,43 @@ def sgi_menu_from_text(env, text, _cache=None):
     return Menu.browse()
 
 
+class SgiNoAccess(UserError):
+    """57.166.0: el usuario no ve la pantalla. Quien cae a otra pantalla
+    cuando la ruta no abre (Mis pendientes) no se traga este aviso."""
+
+
+def sgi_action_dict(env, action):
+    """57.166.0: el diccionario de cualquier acción (ventana, reporte,
+    acción de cliente o de servidor) para devolverlo desde un botón. Antes
+    solo se abrían ventanas y los menús de reportes («Balance de
+    comprobación», «Conciliar», «Programa maestro») daban error. Una ventana
+    de un modelo que el usuario no puede leer lo dice en vez de abrir una
+    pantalla que Odoo le negaría."""
+    action = action.sudo().exists() if action else action
+    if not action:
+        raise UserError("La acción ligada ya no existe.")
+    if action._name == 'ir.actions.act_window' and action.res_model in env \
+            and not env(su=False)[action.res_model].has_access('read'):
+        raise SgiNoAccess("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % action.name)
+    return action._get_action_dict()
+
+
 def sgi_open_menu_action(env, menu):
-    """57.165.0: la acción que abre el menú (su ventana; si no, el menú). Si
-    el usuario no ve el menú, lo dice en vez de abrir una pantalla que Odoo
-    le negaría. Lo usan el MIID, el Diagnóstico y Mis pendientes."""
+    """57.165.0: la acción que abre el menú. Si el usuario no ve el menú, lo
+    dice en vez de abrir una pantalla que Odoo le negaría. Lo usan el MIID,
+    el Diagnóstico, Mis pendientes y «Ir a hacerlo» de las actividades.
+    57.166.0: cualquier tipo de acción (antes solo ventanas) y la
+    visibilidad se revisa con el usuario real aunque se llame en sudo."""
     if not menu:
         raise UserError("No hay pantalla de Odoo ligada.")
     menu = menu.sudo()
-    if menu.id not in env['ir.ui.menu']._visible_menu_ids():
-        raise UserError("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % " → ".join(
-            p.strip() for p in (menu.complete_name or '').split('/')))
-    action = menu.action
-    action = action.exists() if action else action
-    if action and action._name == 'ir.actions.act_window':
-        return action.read()[0]
+    # El superusuario (crons, pruebas) ve todo.
+    if env.uid != SUPERUSER_ID and menu.id not in env(su=False)['ir.ui.menu']._visible_menu_ids():
+        raise SgiNoAccess("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % " → ".join(
+            p.strip() for p in (menu.with_context(lang='es_MX').complete_name or '').split('/')))
+    if menu.action:
+        return sgi_action_dict(env, menu.action)
     return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
-
 
 def _sgi_menu_window(env, key):
     """57.166.0: (menú, acción de ventana) de la ruta ``key``, en sudo; vacíos
@@ -164,7 +186,7 @@ def sgi_route_error(env, message, key):
     pantalla (``RedirectWarning``). Si el usuario no ve el menú, es el
     ``UserError`` de siempre. Se usa ``raise sgi_route_error(...)``."""
     menu, action = _sgi_menu_window(env, key)
-    if not action or menu.id not in env['ir.ui.menu']._visible_menu_ids():
+    if not action or menu.id not in env(su=False)['ir.ui.menu']._visible_menu_ids():
         return UserError(message)
     return SgiRedirectWarning(message, action.id, "Abrir «%s»" % menu.with_context(lang='es_MX').name)
 

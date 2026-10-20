@@ -55,7 +55,7 @@ from odoo.exceptions import AccessError, UserError
 # sgi_calendar no define modelos: importarlo aquí no cambia el registro.
 from .sgi_calendar import sgi_add_business_days, sgi_nth_business_day
 from .sgi_health_const import HEALTH_MODES
-from .sgi_menu_paths import sgi_open_menu_action
+from .sgi_menu_paths import SgiNoAccess
 
 PENDING_KINDS = [
     ('accion', "Acción"),
@@ -297,11 +297,8 @@ class SgiMyPending(models.Model):
                                    "aviso propio y la acción propia.")
     can_snooze = fields.Boolean(compute='_compute_can_act',
                                 help="Aviso propio: se puede posponer una semana.")
-    # 57.165.0: «Dónde se hace» es un botón (el menú de la actividad), no una
-    # ruta escrita; los pasos de la NC, campos con su estado (no un párrafo).
-    where_menu_id = fields.Many2one('ir.ui.menu', string="Dónde se hace", compute='_compute_links',
-                                    compute_sudo=True,
-                                    help="Pantalla de Odoo donde se hace la actividad («Ir a hacerlo»).")
+    # 57.165.0: los pasos de la NC, campos con su estado (no un párrafo).
+    # 57.166.0: «Dónde se hace» es «Ir a hacerlo» (action_open), un solo botón.
     nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True)
     nc_due_containment = fields.Date(related='nc_id.sgi_due_containment', string="Contención vence")
     nc_containment_state = fields.Selection(related='nc_id.sgi_containment_state', string="Contención")
@@ -314,19 +311,10 @@ class SgiMyPending(models.Model):
     @api.depends('res_model', 'res_id')
     def _compute_links(self):
         for row in self:
-            menu = nc = False
-            if row.res_id and row.res_model == 'sgi.process.activity':
-                menu = self.env['sgi.process.activity'].browse(row.res_id).exists().odoo_menu_id
-            elif row.res_id and row.res_model == 'sgi.activity.execution':
-                menu = self.env['sgi.activity.execution'].browse(row.res_id).exists().activity_id.odoo_menu_id
-            elif row.res_id and row.res_model == 'quality.alert':
+            nc = False
+            if row.res_id and row.res_model == 'quality.alert':
                 nc = self.env['quality.alert'].browse(row.res_id).exists()
-            row.where_menu_id = menu or False
             row.nc_id = nc or False
-
-    def action_open_where(self):
-        self.ensure_one()
-        return sgi_open_menu_action(self.env, self.where_menu_id)
 
     @api.depends_context('uid')
     def _compute_is_mine(self):
@@ -1331,6 +1319,8 @@ class SgiMyPending(models.Model):
                 try:
                     with self.env.cr.savepoint():
                         return activity.action_open_odoo()
+                except SgiNoAccess:
+                    raise
                 except UserError:
                     pass
             return {'type': 'ir.actions.act_window', 'res_model': 'sgi.activity.execution',
@@ -1351,6 +1341,9 @@ class SgiMyPending(models.Model):
                     # cursor abortado al caer a la ficha.
                     with self.env.cr.savepoint():
                         return activity.action_open_odoo()
+                except SgiNoAccess:
+                    # 57.166.0: sin acceso se dice, no se cae a la ficha.
+                    raise
                 except UserError:
                     # Texto de «Dónde se ejecuta» que no resuelve a un menú y
                     # sin medición ligada: se abre la ficha, como antes.
@@ -1424,7 +1417,7 @@ class SgiMyPending(models.Model):
             return self.action_open()
         if self.kind == 'escalamiento':
             raise UserError("Esta actividad todavía no lleva registro de cumplimiento: el escalamiento lo "
-                            "resuelve quien la ejecuta. Ábrala con «Ir» y dele seguimiento.")
+                            "resuelve quien la ejecuta. Ábrala con «Ir a hacerlo» y dele seguimiento.")
         raise UserError("Este pendiente se resuelve en su propio registro: pulse «Ir».")
 
     # ------------------------------------------------------------------

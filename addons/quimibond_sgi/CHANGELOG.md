@@ -28,9 +28,25 @@ Las rutas se abren, segunda entrega: errores, avisos y manuales.
   como liga (`/odoo/action-<id>`); los avisos abiertos se reescriben una vez
   para tomar las ligas.
 - `sgi_menu_paths`: `sgi_menu_links` y `sgi_route_error`.
-- Pruebas: `test_rutas_abren` 04 a 06.
+- Pruebas: `test_rutas_abren` 04 a 07.
+
+**Corregido**
+- «Ir a hacerlo» de las actividades (ficha, lista, Mi procedimiento y Mis
+  pendientes) abría solo menús de lista: los ~40 de producción que abren un
+  reporte o una acción de cliente o de servidor (Balance de comprobación,
+  Estado de resultados, Conciliar, Programa maestro, Recalcular costeo…)
+  daban «no tiene menú de Odoo». Ahora abre cualquier acción
+  (`sgi_action_dict`) y revisa con el usuario real que vea el menú; si no,
+  lo dice (`SgiNoAccess`) en vez del error de acceso de Odoo, y Mis
+  pendientes ya no cae a la ficha del catálogo.
+- La acción configurada (`odoo_action_id`) cuenta para mostrar el botón en
+  la lista de actividades y en Mi procedimiento; si es la misma del menú, se
+  abre por el menú.
 
 **Cambiado**
+- Mis pendientes: un solo botón. Las actividades y escalamientos dicen «Ir a
+  hacerlo» (antes «Ir» y, en la ficha, además «Ir a hacerlo» de 57.165.0, que
+  solo veía el menú); lo demás, «Ir». Se retira `where_menu_id`.
 - Los mensajes de desarrollo dicen la ruta del árbol del SGI
   (`SGI → Administración → Configuración → Ajustes`) en vez de «Ajustes → SGI».
 

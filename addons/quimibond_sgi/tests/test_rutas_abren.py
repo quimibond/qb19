@@ -11,7 +11,7 @@ from odoo.exceptions import RedirectWarning, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from ..models.sgi_menu_paths import (
-    sgi_menu_from_text, sgi_menu_links, sgi_menu_path, sgi_open_menu_action, sgi_route_error)
+    SgiNoAccess, sgi_menu_from_text, sgi_menu_links, sgi_menu_path, sgi_open_menu_action, sgi_route_error)
 
 
 @tagged('post_install', '-at_install')
@@ -48,8 +48,8 @@ class TestRutasAbren(TransactionCase):
         row = self.env['sgi.my.pending'].sudo().create({
             'user_id': self.env.user.id, 'kind': 'actividad', 'name': 'Hacer rutas',
             'res_model': 'sgi.process.activity', 'res_id': activity.id})
-        self.assertEqual(row.where_menu_id, menu)
-        self.assertIn(row.action_open_where()['type'], ('ir.actions.act_window', 'ir.actions.client'))
+        # 57.166.0: «Ir a hacerlo» es action_open (un solo botón).
+        self.assertEqual(row.action_open()['id'], menu.action.id)
         detail = self.env['sgi.my.pending']._sgi_activity_detail(activity) or ''
         self.assertNotIn('Dónde se hace', detail, "La ruta escrita ya no va en la ficha: es el botón.")
 
@@ -88,3 +88,25 @@ class TestRutasAbren(TransactionCase):
         activity = self.env['sgi.cron']._sgi_schedule(
             process, "Aviso con ruta ZRA", "Abra %s." % path, self.env.user.id)
         self.assertIn('/odoo/action-%d' % action.id, str(activity.note))
+
+    def test_07_ir_a_hacerlo_cualquier_menu(self):
+        """57.166.0: el menú de un reporte o de una acción de cliente también
+        abre (antes solo listas) y sin acceso lo dice."""
+        client = self.env['ir.actions.client'].create({'name': 'Reporte ZRA', 'tag': 'reload'})
+        root = self.env['ir.ui.menu'].create({'name': 'AppZRA'})
+        menu = self.env['ir.ui.menu'].create({
+            'name': 'Reporte ZRA', 'parent_id': root.id, 'action': 'ir.actions.client,%d' % client.id})
+        process = self.env['sgi.process'].create({'code': 'ZRA3', 'name': 'Proceso reporte'})
+        activity = self.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'Ver el reporte', 'odoo_menu_id': menu.id})
+        user = new_test_user(self.env, login='zra_emp', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        result = activity.with_user(user).action_open_odoo()
+        self.assertEqual((result['type'], result['id']), ('ir.actions.client', client.id))
+        root.group_ids = self.env.ref('base.group_system')
+        with self.assertRaises(SgiNoAccess):
+            activity.with_user(user).action_open_odoo()
+        row = self.env['sgi.my.pending'].sudo().create({
+            'user_id': user.id, 'kind': 'actividad', 'name': 'Ver el reporte',
+            'res_model': 'sgi.process.activity', 'res_id': activity.id})
+        with self.assertRaises(SgiNoAccess, msg="Sin acceso se dice; no se cae a la ficha."):
+            row.with_user(user).action_open()
