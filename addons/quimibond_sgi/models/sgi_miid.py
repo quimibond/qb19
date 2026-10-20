@@ -1574,11 +1574,13 @@ class SgiMiid(models.Model):
         diagrams = []
         if with_diagrams and processes:
             Diagram = env['sgi.diagram']
-            for kind in ('process_map', 'interaction_matrix'):
+            # 57.164.1: «dg_kind», no «kind» (pisaba el documento y el PDF
+            # tronaba en «orphans»).
+            for dg_kind in ('process_map', 'interaction_matrix'):
                 try:
-                    dg = self._sgi_filter_diagram(Diagram.data(kind), processes.ids)
+                    dg = self._sgi_filter_diagram(Diagram.data(dg_kind), processes.ids)
                 except Exception:  # noqa: BLE001 - un diagrama roto no detiene el MIID
-                    _logger.warning("SGI: no se pudo armar el diagrama %s del MIID.", kind, exc_info=True)
+                    _logger.warning("SGI: no se pudo armar el diagrama %s del MIID.", dg_kind, exc_info=True)
                     continue
                 diagrams.append({'dg': dg, 'dg_edges': Diagram._sgi_print_edges(dg),
                                  'dg_subtitle': Diagram._sgi_print_subtitle(dg.get('subtitle'))})

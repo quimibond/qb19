@@ -308,3 +308,10 @@ class TestMiidPendientesParaAprobar(_Case):
         self.assertEqual(screen.approval_todo_count, 0, "Sin pendientes, la lista se vacía.")
         action = self.s_proc.with_user(self.mast).action_open_form()
         self.assertEqual((action['res_model'], action['res_id']), ('sgi.miid.section', self.s_proc.id))
+
+    def test_31_pdf_con_diagramas(self):
+        # 57.164.1: el ciclo de los diagramas pisaba «kind» y el PDF tronaba.
+        data = self.miid._sgi_print_data('live', with_diagrams=True)
+        self.assertEqual(data['kind'], 'miid')
+        self.assertEqual(data['code'], 'MIID')
+        self.assertIn('Procesos ZM', self._html())
