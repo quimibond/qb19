@@ -13,6 +13,15 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.160.1 — 2026-10-20
+
+Solo documentación, sin cambios de comportamiento.
+
+### Cambiado
+- README: «Generar artículos» incluye el acabado en kg («I» al frente, DAT
+  P-D02-01) y remite al modelo de producción vigente en
+  `quimibond_ficha_tecnica_tela/README.md`.
+
 ## 19.0.57.160.0 — 2026-10-19
 
 Acabado en kg en C1. Dirección General (2026-10-19): toda la producción va en kg

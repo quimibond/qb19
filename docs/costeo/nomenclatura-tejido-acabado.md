@@ -119,6 +119,17 @@ RA resina acrílica · TF termofijado.
 | `XJ130Q21IGO096` | poliéster/algodón, jersey, 130 g/m², natural, galga 18, teñido, gris oxford, 96 cm |
 | `WB045Q46JBL166` | poliéster 100 %, crepe anulado, 45 g/m², natural, galga 24, acabado, blanco, 166 cm |
 
+## Uso de la «I» de la posición 1 desde 2026-10-19
+
+Dirección decidió que **toda la producción va en kg hasta Inspección**. El
+artículo en kg de una tela acabada es su mismo código con la «I» de la
+posición 1: la orden de acabado (abridora → tintorería → rama) produce
+`IWJ045Q22JNT160` en kg y la Inspección entrega `WJ045Q22JNT160` en metros
+medidos. No se agregan letras a la operación (posición 10). Tela sin
+inspeccionar o lista se distingue por ubicación, no por código; el mismo «I…»
+se vende en kg. Detalle: `quimibond_ficha_tecnica_tela/README.md`, «Modelo de
+producción vigente».
+
 ## Fuera de esta nomenclatura
 
 Entretelas y no tejidos (`A55BL172`, `WM4032BL152`, `ZN4032NG152`, `K…`,
