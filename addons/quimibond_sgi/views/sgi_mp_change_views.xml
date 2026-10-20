@@ -202,16 +202,19 @@
         <field name="model">approval.request</field>
         <field name="inherit_id" ref="approvals.approval_request_view_form"/>
         <field name="arch" type="xml">
+            <!-- 57.108.0: el Jefe MAST completa lo técnico antes de aprobar.
+                 57.170.0: el botón va en el encabezado (antes dentro de la hoja). -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_mp_complete" type="object" string="Completar antes de aprobar"
+                        icon="fa-pencil" class="btn-secondary"
+                        groups="quimibond_sgi.group_sgi_manager"
+                        invisible="not sgi_mp_proposal_id or request_status != 'pending'"/>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="Mi procedimiento" invisible="not sgi_mp_change_type">
                     <field name="sgi_mp_change_type" readonly="1"/>
                     <field name="sgi_activity_id" readonly="1"/>
                     <field name="sgi_mp_apply_scheduled" readonly="1"/>
-                    <!-- 57.108.0: el Jefe MAST completa lo técnico antes de aprobar. -->
-                    <button name="action_sgi_mp_complete" type="object" string="Completar antes de aprobar"
-                            icon="fa-pencil" class="btn-link" colspan="2"
-                            groups="quimibond_sgi.group_sgi_manager"
-                            invisible="not sgi_mp_proposal_id or request_status != 'pending'"/>
                 </group>
                 <field name="sgi_mp_diff_html" nolabel="1" invisible="not sgi_mp_proposal_id" readonly="1"/>
                 <field name="sgi_mp_proposal_id" invisible="1"/>

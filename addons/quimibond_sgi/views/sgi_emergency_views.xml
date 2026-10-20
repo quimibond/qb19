@@ -126,7 +126,7 @@
                 <header>
                     <button name="action_set_realizado" type="object" string="Marcar realizado"
                             class="btn-primary" invisible="state != 'programado'"/>
-                    <button name="action_set_cancelado" confirm="Se cancelará el simulacro. ¿Desea continuar?" type="object" string="Cancelar"
+                    <button name="action_set_cancelado" confirm="Se cancelará el simulacro. ¿Desea continuar?" type="object" string="Cancelar simulacro"
                             invisible="state != 'programado'"/>
                     <button name="action_set_programado" confirm="El simulacro regresa a programado. ¿Desea continuar?" type="object" string="Reabrir"
                             invisible="state == 'programado'"/>
@@ -151,7 +151,7 @@
                         <group string="Ejecución">
                             <field name="participants_count" readonly="sgi_is_locked"/>
                             <field name="duration_minutes" readonly="sgi_is_locked"/>
-                            <field name="result" readonly="sgi_is_locked" widget="badge"
+                            <field name="result" readonly="sgi_is_locked" widget="selection_badge"
                                    decoration-success="result == 'satisfactorio'"
                                    decoration-warning="result == 'con_observaciones'"
                                    decoration-danger="result == 'no_satisfactorio'"/>

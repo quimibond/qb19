@@ -13,12 +13,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_activity_id` | Many2one | Actividad del procedimiento | Actividad de «Mi procedimiento» a la que se propone el cambio. |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:67` |
-| `sgi_affected_process_ids` | Many2many | Procesos afectados | Procesos a los que afecta el cambio del documento. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:62` |
+| `sgi_affected_process_ids` | Many2many | Procesos afectados | Procesos a los que afecta el cambio del documento. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:65` |
 | `sgi_alert_id` | Many2one | No conformidad | No conformidad del lote rechazado que esta desviación autoriza a usar (C5.22). |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_links.py:160` |
-| `sgi_applied` | Boolean | Cambio aplicado al documento | Se marca cuando el cambio aprobado ya se aplicó al documento (nueva revisión). |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:64` |
+| `sgi_applied` | Boolean | Cambio aplicado al documento | Se marca cuando el cambio aprobado ya se aplicó al documento (nueva revisión). |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:67` |
 | `sgi_change_attachment_id` | Many2one | Archivo de la revisión nueva | El archivo que se mandó a firmar: es el que se publica al aprobarse. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:64` |
 | `sgi_change_kind` | Selection | Tipo de cambio | Alta de un documento nuevo, modificación de uno existente o baja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:38` |
-| `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:61` |
+| `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:64` |
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
 | `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:329` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
@@ -36,12 +36,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | `sgi_mp_change_type` | Selection | Tipo de propuesta | Qué propone la persona: agregar una actividad, cambiar esta o quitarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:70` |
 | `sgi_mp_diff_html` | Html | Qué cambia |  |  |  | related `sgi_mp_proposal_id.diff_snapshot`, sin guardar |  | `addons/quimibond_sgi/models/sgi_mp_change.py:76` |
 | `sgi_mp_proposal_id` | Many2one | Propuesta | Propuesta de cambio a la actividad que se aprueba con esta solicitud. |  | `sgi.activity.change` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:73` |
-| `sgi_new_document_id` | Many2one | Revisión publicada | Documento de la revisión nueva, cuando el cambio trajo el archivo. La revisión anterior queda obsoleta. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:69` |
+| `sgi_new_document_id` | Many2one | Revisión publicada | Documento de la revisión nueva, cuando el cambio trajo el archivo. La revisión anterior queda obsoleta. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:72` |
 | `sgi_new_revision` | Integer | Nueva revisión | Número de la revisión que tendrá el documento al aplicar el cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:52` |
 | `sgi_pilot` | Boolean | Prueba piloto | Marque si el cambio se prueba primero en piloto antes de quedar vigente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:55` |
 | `sgi_pilot_end` | Date | Fin de piloto | Fecha en que termina la prueba piloto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:59` |
 | `sgi_pilot_start` | Date | Inicio de piloto | Fecha en que empieza la prueba piloto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:58` |
-| `sgi_reason` | Text | Motivo del cambio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:60` |
+| `sgi_reason` | Text | Motivo del cambio | Por qué se cambia. En un cambio de proceso, infraestructura o plantilla (9001 §6.3, 45001 §8.1.3) no se aprueba sin motivo, procesos afectados y evaluación de riesgos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:60` |
 | `sgi_sign_archived` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:67` |
 | `sgi_sign_notified_state` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:68` |
 | `sgi_sign_progress` | Char | Firmas |  |  |  | compute `_compute_sgi_sign_progress`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:62` |

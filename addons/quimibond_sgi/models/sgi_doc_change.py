@@ -57,7 +57,10 @@ class ApprovalRequest(models.Model):
                                     "vigente.")
     sgi_pilot_start = fields.Date(string="Inicio de piloto", help="Fecha en que empieza la prueba piloto.")
     sgi_pilot_end = fields.Date(string="Fin de piloto", help="Fecha en que termina la prueba piloto.")
-    sgi_reason = fields.Text(string="Motivo del cambio")
+    sgi_reason = fields.Text(
+        string="Motivo del cambio",
+        help="Por qué se cambia. En un cambio de proceso, infraestructura o plantilla (9001 §6.3, "
+             "45001 §8.1.3) no se aprueba sin motivo, procesos afectados y evaluación de riesgos.")
     sgi_changes = fields.Text(string="Descripción de cambios")
     sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados",
                                                 help="Procesos a los que afecta el cambio del documento.")

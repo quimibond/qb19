@@ -12,8 +12,12 @@
                             class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_approve_area" type="object" string="Autorizar por el área"
                             class="btn-primary" invisible="state != 'solicitado' or area_approved_by_id"/>
+                    <!-- 57.170.0: primero autoriza el área; Seguridad es primario cuando ya autorizó. -->
                     <button name="action_approve_sst" type="object" string="Autorizar por Seguridad"
-                            class="btn-primary" invisible="state != 'solicitado' or sst_approved_by_id"
+                            class="btn-primary" invisible="state != 'solicitado' or sst_approved_by_id or not area_approved_by_id"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_approve_sst" type="object" string="Autorizar por Seguridad"
+                            invisible="state != 'solicitado' or sst_approved_by_id or area_approved_by_id"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_close" type="object" string="Cerrar permiso"
                             class="btn-primary" invisible="state != 'autorizado'"

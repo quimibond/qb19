@@ -27,7 +27,7 @@
                             <field name="certificate_ref"/>
                             <field name="certificate_file" filename="certificate_filename"/>
                             <field name="certificate_filename" invisible="1"/>
-                            <field name="result" widget="badge"
+                            <field name="result" widget="selection_badge"
                                    decoration-success="result == 'conforme'"
                                    decoration-danger="result == 'fuera_tolerancia'"/>
                             <field name="next_date"/>

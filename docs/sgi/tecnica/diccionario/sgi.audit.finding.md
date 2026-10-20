@@ -10,7 +10,7 @@ Orden: `audit_id, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 
-## Campos (10)
+## Campos (11)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -24,6 +24,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 | `norm_clause_id` | Many2one | Cláusula | Cláusula de la norma a la que se refiere el hallazgo. |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:564` |
 | `process_id` | Many2one | Proceso | Proceso en el que se encontró el hallazgo. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:568` |
 | `reason_no_action` | Text | Justificación sin acción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:581` |
+| `sgi_is_locked` | Boolean | Cerrado (solo lectura) |  |  |  | compute `_compute_sgi_is_locked`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:597` |
 
 ## Métodos públicos (4)
 

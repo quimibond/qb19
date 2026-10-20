@@ -104,7 +104,10 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <field name="acceptance_criteria" placeholder="Cuándo se da por bueno…"/>
+                    <!-- 57.170.0: dentro de un grupo, con su etiqueta. -->
+                    <group>
+                        <field name="acceptance_criteria" placeholder="Cuándo se da por bueno…"/>
+                    </group>
                     <group string="Cuándo queda entregado (mide a quien lo entrega)">
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
@@ -441,11 +444,14 @@
                     </list>
                 </field>
                 <footer>
+                    <!-- 57.170.0: el primario es el paso que sigue (probar, luego cargar). -->
                     <button name="action_test" type="object" string="Probar" class="btn-primary"
-                            invisible="state == 'loaded'"/>
-                    <button name="action_load" type="object" string="Cargar"
-                            class="btn-secondary" invisible="state == 'loaded'"
+                            invisible="state != 'draft'"/>
+                    <button name="action_load" type="object" string="Cargar" class="btn-primary"
+                            invisible="state != 'tested'"
                             confirm="Se escribirá el catálogo en la base. ¿Continuar?"/>
+                    <button name="action_test" type="object" string="Probar de nuevo" class="btn-secondary"
+                            invisible="state != 'tested'"/>
                     <button string="Cerrar" special="cancel" class="btn-link"/>
                 </footer>
             </form>

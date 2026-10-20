@@ -46,8 +46,10 @@
             <search>
                 <field name="name"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Míos"
+                <filter name="mine" string="Mías"
                         domain="[('responsible_id', '=', uid)]"/>
+                <!-- 57.170.0: «Mías» aparte; en el mismo bloque se unía con «o». -->
+                <separator/>
                 <filter name="open" string="Abiertas"
                         domain="[('state', '=', 'abierta')]"/>
                 <filter name="overdue" string="Vencidas"

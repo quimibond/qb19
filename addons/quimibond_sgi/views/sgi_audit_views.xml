@@ -37,7 +37,8 @@
                         o deje el motivo en el historial:
                         <field name="coverage_gap_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
                     </div>
-                    <field name="line_ids">
+                    <!-- 57.170.0: con el programa cerrado las líneas son evidencia. -->
+                    <field name="line_ids" readonly="state == 'cerrado'">
                         <list editable="bottom">
                             <field name="process_id"/>
                             <field name="partner_id" optional="hide"/>

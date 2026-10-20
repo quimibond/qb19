@@ -34,8 +34,9 @@
                             <field name="date_due"/>
                         </group>
                         <group>
-                            <field name="measure_model"/>
-                            <field name="measure_domain"/>
+                            <!-- 57.170.0: técnico, solo para el Jefe MAST. -->
+                            <field name="measure_model" groups="quimibond_sgi.group_sgi_manager"/>
+                            <field name="measure_domain" groups="quimibond_sgi.group_sgi_manager"/>
                             <field name="measure_user_field" invisible="not measure_user_field"/>
                             <field name="reviewed_by_id" invisible="not reviewed_by_id"/>
                             <field name="reviewed_on" invisible="not reviewed_on"/>

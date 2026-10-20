@@ -188,6 +188,10 @@
                 <field name="name"/>
                 <field name="process_type"/>
                 <field name="owner_id" widget="many2one_avatar_employee"/>
+                <!-- 57.170.0: la lista no decía si el proceso está en borrador, piloto o vigente. -->
+                <field name="state" widget="badge" optional="show"
+                       decoration-muted="state == 'borrador'" decoration-info="state == 'piloto'"
+                       decoration-success="state == 'vigente'"/>
                 <field name="parent_id" optional="hide"/>
                 <field name="activity_count" optional="show"/>
                 <field name="measure_real_pct" optional="show"/>

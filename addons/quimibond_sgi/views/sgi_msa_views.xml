@@ -20,7 +20,7 @@
                             <field name="study_type"/>
                             <field name="grr_pct" invisible="study_type != 'grr_variable'"/>
                             <field name="ndc" invisible="study_type != 'grr_variable'"/>
-                            <field name="verdict" widget="badge"
+                            <field name="verdict" widget="selection_badge"
                                    decoration-success="verdict == 'aceptable'"
                                    decoration-warning="verdict == 'marginal'"
                                    decoration-danger="verdict == 'inaceptable'"/>

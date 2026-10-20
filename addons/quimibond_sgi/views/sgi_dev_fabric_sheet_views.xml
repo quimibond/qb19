@@ -27,10 +27,15 @@
                         </group>
                     </group>
                     <div class="d-flex gap-2 mb-2">
-                        <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"/>
+                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros ni se
+                             vuelve a firmar la medición (antes cada clic la volvía a sellar). -->
+                        <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"
+                                invisible="sgi_validated_by_id"/>
                         <button name="action_sgi_propose" type="object" string="Proponer" class="btn-secondary" icon="fa-pencil"
                                 invisible="sgi_validated_by_id"/>
-                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"/>
+                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"
+                                invisible="sgi_validated_by_id or sgi_measured_by_id"
+                                confirm="Firma la medición con su usuario y la fecha de hoy. ¿Continuar?"/>
                         <button name="action_sgi_validate" type="object" string="Validar" class="btn-primary" icon="fa-check"
                                 invisible="sgi_validated_by_id or not sgi_proposed_by_id"
                                 confirm="Firma la validación de la ficha con su usuario y la fecha de hoy. ¿Continuar?"/>
@@ -78,10 +83,15 @@
                         </group>
                     </group>
                     <div class="d-flex gap-2 mb-2">
-                        <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"/>
+                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros ni se
+                             vuelve a firmar la medición (antes cada clic la volvía a sellar). -->
+                        <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"
+                                invisible="sgi_validated_by_id"/>
                         <button name="action_sgi_propose" type="object" string="Proponer" class="btn-secondary" icon="fa-pencil"
                                 invisible="sgi_validated_by_id"/>
-                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"/>
+                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"
+                                invisible="sgi_validated_by_id or sgi_measured_by_id"
+                                confirm="Firma la medición con su usuario y la fecha de hoy. ¿Continuar?"/>
                         <button name="action_sgi_validate" type="object" string="Validar" class="btn-primary" icon="fa-check"
                                 invisible="sgi_validated_by_id or not sgi_proposed_by_id"
                                 confirm="Firma la validación de la ficha con su usuario y la fecha de hoy. ¿Continuar?"/>

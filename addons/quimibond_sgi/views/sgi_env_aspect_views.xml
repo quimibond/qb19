@@ -25,8 +25,11 @@
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
                 <sheet>
+                    <!-- 57.170.0: cinta de archivado («Ya no aplica» archiva). -->
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-secondary"
+                            invisible="active"/>
                     <widget name="web_ribbon" title="Significativo" bg_color="text-bg-danger"
-                            invisible="not significant"/>
+                            invisible="not significant or not active"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Ej. Generación de estopas impregnadas de aceite"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
@@ -87,21 +90,22 @@
                   decoration-muted="state == 'obsoleto'">
                 <field name="folio"/>
                 <field name="process_id" optional="show"/>
-                <field name="activity"/>
+                <field name="activity" optional="hide"/>
                 <field name="name"/>
                 <field name="impact" optional="hide"/>
                 <field name="aspect_type" optional="show"/>
                 <field name="condition"/>
                 <field name="life_cycle_stage" optional="show"/>
-                <field name="severity"/>
-                <field name="frequency"/>
-                <field name="legal_requirement"/>
-                <field name="score"/>
+                <!-- 57.170.0: de 17 columnas fijas a lo que se lee; el resto, opcional. -->
+                <field name="severity" optional="hide"/>
+                <field name="frequency" optional="hide"/>
+                <field name="legal_requirement" optional="hide"/>
+                <field name="score" optional="show"/>
                 <field name="level" widget="badge"
                        decoration-danger="level in ('severo', 'critico')"
                        decoration-warning="level == 'moderado'"
                        decoration-success="level == 'bajo'"/>
-                <field name="significant"/>
+                <field name="significant" optional="hide"/>
                 <field name="next_review_date" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'evaluado'"/>
             </list>

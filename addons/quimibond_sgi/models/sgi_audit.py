@@ -592,6 +592,17 @@ class SgiAuditFinding(models.Model):
                 parts.append(finding.norm_clause_id.display_name)
             finding.display_name = " — ".join(p for p in parts if p) or "Hallazgo"
 
+    # 57.170.0: la ficha se ve en solo lectura con la auditoría cerrada (antes
+    # dejaba editar y el error salía al guardar). El Jefe MAST sí la edita.
+    sgi_is_locked = fields.Boolean(compute='_compute_sgi_is_locked', string="Cerrado (solo lectura)")
+
+    @api.depends('audit_id.state')
+    @api.depends_context('uid')
+    def _compute_sgi_is_locked(self):
+        bypass = sgi_bypass_allowed(self.env)
+        for finding in self:
+            finding.sgi_is_locked = not bypass and finding.audit_id.state == 'cerrada'
+
     def _sgi_check_audit_open(self):
         """57.93.0 (K-03): con la auditoría cerrada, sus hallazgos son
         evidencia: solo el Jefe MAST (o el sistema) los crea o modifica."""
