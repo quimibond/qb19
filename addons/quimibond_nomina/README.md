@@ -431,6 +431,17 @@ Parámetros (todos opcionales): `quimibond_nomina.sdi_dias_aguinaldo` (16),
 `quimibond_nomina.uma_diaria` (respaldo si no está el parámetro de nómina
 `l10n_mx_uma`), `quimibond_nomina.idse_guia.<registro patronal>`.
 
+### 11. Referencia del empleado siempre visible (1.11.0)
+
+La **Referencia** (`hr.employee.registration_number`: letra de la nómina, guion
+y número de empleado de NOI; `S-250` semanal, `Q-127` quincenal, `C-26`
+Ciruelos) es el `NumEmpleado` del CFDI y de ella sale el número del checador
+(`S-250` → 1250). `hr_payroll` la muestra en la pestaña **Nómina**, junto a
+«Categoría del pago», solo en modo desarrollador; RH no la veía y las altas de
+octubre de 2026 quedaron sin ella. La vista `payroll_hr_employee_view_form_referencia`
+la deja visible para los usuarios de RH, con un ejemplo de formato. No es el
+«Número de identificación» de la pestaña Personal.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
