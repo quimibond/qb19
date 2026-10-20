@@ -13,6 +13,19 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.164.4 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento (segunda corrida: 34 de 36).
+
+### Corregido
+- `test_miid.test_32`: los bloques sueltos del P-G01 incluyen los de 57.162.0
+  (quién elabora y quién firma).
+- `test_miid.test_19`: Mis pendientes muestra los avisos de la empresa del
+  SGI y la solicitud es de la empresa de su categoría (la real); en la prueba
+  la empresa del SGI era la de prueba y el aviso no salía. Durante esa
+  revisión la empresa del SGI es la de la solicitud (en producción son la
+  misma).
+
 ## 19.0.57.164.3 — 2026-10-20
 
 Solo pruebas, sin cambios de comportamiento (primera corrida en el build de
