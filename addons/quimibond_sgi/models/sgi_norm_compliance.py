@@ -141,6 +141,18 @@ class SgiNormClauseEvidence(models.Model):
 class SgiNormMatrix(models.Model):
     _inherit = 'sgi.norm'
 
+    uncovered_clause_count = fields.Integer(
+        string="Sin cobertura", compute='_compute_uncovered_clause_count',
+        help="Puntos de la norma sin actividad viva, sin regla del sistema y sin exclusión: "
+             "los huecos de la matriz de cumplimiento.")
+
+    def _compute_uncovered_clause_count(self):
+        # 57.172.0: el mismo dominio que abre el botón (`action_view_uncovered_clauses`).
+        counts = dict(self.env['sgi.norm.clause']._read_group(
+            [('norm_id', 'in', self.ids), ('covered', '=', False)], ['norm_id'], ['__count']))
+        for norm in self:
+            norm.uncovered_clause_count = counts.get(norm, 0)
+
     def _sgi_short_code(self):
         """«ISO 9001:2015» → «9001»."""
         self.ensure_one()

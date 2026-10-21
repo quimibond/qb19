@@ -50,7 +50,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_risk.py`, `addons/quimibond_sgi/model
 | `source` | Selection | Origen | Si el riesgo viene de dentro o de fuera de la empresa. |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:100` |
 | `state` | Selection | Estado | Identificado, en tratamiento, controlado o cerrado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:153` |
 
-## Métodos públicos (8)
+## Métodos públicos (9)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -59,6 +59,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_risk.py`, `addons/quimibond_sgi/model
 | `action_set_controlado` | — |
 | `action_set_en_tratamiento` | — |
 | `action_set_identificado` | — |
+| `action_view_env_aspect` | 57.172.0: el aspecto de la matriz que trata este riesgo. |
 | `action_view_sgi_ncs` | — |
 | `create` | — |
 | `write` | — |
