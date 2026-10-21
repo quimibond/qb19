@@ -31,11 +31,11 @@
                             <field name="shipment_id" invisible="not shipment_id"/>
                         </group>
                         <group>
-                            <field name="requested_by_id"/>
+                            <field name="requested_by_id" widget="many2one_avatar_user"/>
                             <field name="revision" invisible="not revision"/>
-                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="approved_by_id" widget="many2one_avatar_user" invisible="not approved_by_id"/>
                             <field name="approved_at" invisible="not approved_at"/>
-                            <field name="applied_by_id" invisible="not applied_by_id"/>
+                            <field name="applied_by_id" widget="many2one_avatar_user" invisible="not applied_by_id"/>
                             <field name="applied_at" invisible="not applied_at"/>
                             <field name="attachment_id" invisible="not attachment_id"/>
                             <field name="company_id" invisible="1"/>

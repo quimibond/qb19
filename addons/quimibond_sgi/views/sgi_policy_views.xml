@@ -87,10 +87,10 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Texto de la política">
+                        <page string="Texto de la política" name="policy_text">
                             <field name="policy_text"/>
                         </page>
-                        <page string="Objetivos integrales">
+                        <page string="Objetivos integrales" name="objectives">
                             <field name="objective_ids">
                                 <list>
                                     <field name="name"/>

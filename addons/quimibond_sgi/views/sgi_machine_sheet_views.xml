@@ -85,15 +85,15 @@
                         <page string="Firmas" name="signatures">
                             <group>
                                 <group>
-                                    <field name="engineering_by_id"/>
+                                    <field name="engineering_by_id" widget="many2one_avatar_user"/>
                                     <field name="proposed_date"/>
-                                    <field name="approved_by_id"/>
+                                    <field name="approved_by_id" widget="many2one_avatar_user"/>
                                     <field name="validated_date"/>
                                 </group>
                                 <group>
-                                    <field name="lab_user_id"/>
+                                    <field name="lab_user_id" widget="many2one_avatar_user"/>
                                     <field name="lab_date"/>
-                                    <field name="mechanic_user_id"/>
+                                    <field name="mechanic_user_id" widget="many2one_avatar_user"/>
                                 </group>
                             </group>
                         </page>

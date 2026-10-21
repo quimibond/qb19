@@ -12,7 +12,7 @@
         <field name="arch" type="xml">
             <list string="Estudios y exámenes" default_order="next_date"
                   decoration-danger="state == 'vencido'" decoration-warning="state == 'por_vencer'">
-                <field name="employee_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
                 <field name="department_id" optional="show"/>
                 <field name="kind"/>
                 <field name="name"/>
@@ -48,7 +48,7 @@
                         <group>
                             <field name="date"/>
                             <field name="validity_months"/>
-                            <field name="next_date"/>
+                            <field name="next_date" widget="remaining_days"/>
                             <field name="state" widget="badge"
                                    decoration-success="state == 'vigente'"
                                    decoration-warning="state == 'por_vencer'"
@@ -131,7 +131,7 @@
                             <field name="kind"/>
                             <field name="name"/>
                             <field name="date"/>
-                            <field name="next_date"/>
+                            <field name="next_date" widget="remaining_days"/>
                             <field name="result"/>
                             <field name="state" widget="badge"/>
                         </list>
@@ -206,7 +206,7 @@
                             <field name="department_ids" widget="many2many_tags" readonly="state == 'cerrado'"/>
                         </group>
                         <group>
-                            <field name="participant_ids" widget="many2many_tags" readonly="state == 'cerrado'"/>
+                            <field name="participant_ids" widget="many2many_avatar_employee" readonly="state == 'cerrado'"/>
                             <field name="attachment_ids" widget="many2many_binary"/>
                         </group>
                     </group>
@@ -220,7 +220,7 @@
                                 <field name="description"/>
                                 <field name="location"/>
                                 <field name="severity"/>
-                                <field name="responsible_id"/>
+                                <field name="responsible_id" widget="many2one_avatar_user"/>
                                 <field name="disposition"/>
                                 <field name="justification" invisible="disposition != 'sin_accion'"
                                        required="disposition == 'sin_accion'"/>
@@ -275,7 +275,7 @@
                 <field name="name"/>
                 <field name="frequency"/>
                 <field name="equipment_ids" widget="many2many_tags"/>
-                <field name="user_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="last_run"/>
             </list>
         </field>
@@ -322,12 +322,12 @@
                         </group>
                         <group>
                             <field name="maintenance_team_id"/>
-                            <field name="user_id"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
                             <field name="last_run"/>
                         </group>
                     </group>
                     <group string="Quién lo llena (firma con su PIN de empleado)">
-                        <field name="employee_ids" widget="many2many_tags" nolabel="1"/>
+                        <field name="employee_ids" widget="many2many_avatar_employee" nolabel="1"/>
                     </group>
                     <group string="Equipos o unidades">
                         <field name="equipment_ids" widget="many2many_tags" nolabel="1"/>
@@ -593,7 +593,7 @@
                 <group>
                     <field name="request_id" invisible="1"/>
                     <field name="allowed_employee_ids" invisible="1"/>
-                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="employee_id" widget="many2one_avatar_employee" options="{'no_create': True, 'no_open': True}"/>
                     <field name="pin" password="True"/>
                 </group>
                 <footer>

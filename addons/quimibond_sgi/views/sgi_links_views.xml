@@ -209,7 +209,7 @@
                 </group>
                 <footer>
                     <button name="action_attach" type="object" string="Adjuntar" class="btn-primary"/>
-                    <button string="Descartar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

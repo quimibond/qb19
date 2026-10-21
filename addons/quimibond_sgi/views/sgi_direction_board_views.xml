@@ -50,7 +50,8 @@
                                         <field name="name"/>
                                         <field name="target_year" optional="show"/>
                                         <field name="indicator_count"/>
-                                        <field name="health" widget="badge"/>
+                                        <field name="health" widget="badge" decoration-success="health == 'verde'"
+                                               decoration-warning="health == 'amarillo'" decoration-danger="health == 'rojo'"/>
                                     </list>
                                 </field>
                             </group>
@@ -85,7 +86,7 @@
                                     <list create="0" delete="0">
                                         <field name="code"/>
                                         <field name="name"/>
-                                        <field name="owner_id"/>
+                                        <field name="owner_id" widget="many2one_avatar_employee"/>
                                         <field name="sgi_health_owner_user_id" column_invisible="1"/>
                                         <field name="sgi_health_overdue_count"
                                                decoration-danger="sgi_health_overdue_count &gt; 0"/>
@@ -108,7 +109,7 @@
                                     <field name="period_date"/>
                                     <field name="value"/>
                                     <field name="target_objective"/>
-                                    <field name="plan_due"/>
+                                    <field name="plan_due" widget="remaining_days"/>
                                 </list>
                             </field>
                             <p class="text-muted" invisible="red_no_plan_measure_ids">Sin rojos pendientes de causa y plan.</p>
@@ -119,7 +120,7 @@
                                     <field name="name"/>
                                     <field name="origin_display" string="Revisión"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
-                                    <field name="date_commit"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="state == 'terminada'"/>
                                     <field name="state" widget="badge"/>
                                 </list>
                             </field>
@@ -130,7 +131,7 @@
                                 <list create="0" delete="0">
                                     <field name="code"/>
                                     <field name="name"/>
-                                    <field name="owner_id"/>
+                                    <field name="owner_id" widget="many2one_avatar_employee"/>
                                     <field name="activity_red_count" string="Actividades en rojo"/>
                                     <field name="nc_count" string="NC abiertas"/>
                                     <field name="open_high_risk_count" string="Riesgos altos"/>
