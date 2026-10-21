@@ -13,6 +13,15 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.174.1 — 2026-10-21
+
+**Cambiado**
+- Documento: los dos párrafos de instrucciones que se le pasaron a la
+  entrega 4 van a la ayuda de su campo. La regla de la clave («PR-{proceso}…,
+  una revisión vigente por clave») va a `sgi_code`, donde el `placeholder` ya
+  da el ejemplo. «Ya migrado: cambie el Tipo de documento…» va a
+  `sgi_migration_state`, ahora en «usted».
+
 ## 19.0.57.174.0 — 2026-10-21
 
 Interfaz, entrega 5 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): Mis

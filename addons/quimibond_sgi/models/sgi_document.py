@@ -67,7 +67,9 @@ class DocumentsDocument(models.Model):
     sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True,
                                        help="Marque si es un documento controlado del SGI: lleva clave, "
                                             "revisión, estado y acuses.")
-    sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
+    sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True,
+        help="PR-{proceso} para procedimientos; F-{proceso}-nn, IT-{proceso}-nn y DA-{proceso}-nn. Solo puede "
+             "haber una revisión vigente por clave.")
     # C-004/C-005 (56.32.0): la clave anterior es DEFINITIVA (la del Dropbox,
     # copiada por la migración 56.32.0) y se busca siempre (búsqueda «Clave
     # SGI», «Del Dropbox a Odoo» y _sgi_find_by_code): nadie pierde un formato
@@ -237,7 +239,9 @@ class DocumentsDocument(models.Model):
         ('na', "No aplica (se queda)"),
     ], string="Estado de migración", default='pendiente', tracking=True,
         help="Avance del paso de este documento del Dropbox a Odoo: pendiente, en curso, migrado, baja "
-             "tramitada o se queda.")
+             "tramitada o se queda."
+             " Ya migrado: cambie el Tipo de documento a «Formulario de Odoo (vista)» para que deje de pedir "
+             "archivo y el botón principal abra la vista real.")
     sgi_migration_target = fields.Char(string="Destino en Odoo",
         help="Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades').")
     # Liga REAL al destino (H-migración): del formato al worksheet con un
