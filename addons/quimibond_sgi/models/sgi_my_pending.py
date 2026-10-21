@@ -325,7 +325,9 @@ class SgiMyPending(models.Model):
                             help="Lo que toca hacer con este pendiente.")
     # 57.165.0: los pasos de la NC, campos con su estado (no un párrafo).
     # 57.166.0: «Dónde se hace» es «Ir a hacerlo» (action_open), un solo botón.
-    nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True)
+    # 57.176.1: buscable; los campos nc_* dependen de él y Odoo lo pedía en el build.
+    nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True,
+                            search='_search_nc_id')
     nc_due_containment = fields.Date(related='nc_id.sgi_due_containment', string="Contención vence")
     nc_containment_state = fields.Selection(related='nc_id.sgi_containment_state', string="Contención")
     nc_due_root_cause = fields.Date(related='nc_id.sgi_due_root_cause', string="Causa raíz vence")
@@ -378,6 +380,16 @@ class SgiMyPending(models.Model):
             if row.res_id and row.res_model == 'quality.alert':
                 nc = self.env['quality.alert'].browse(row.res_id).exists()
             row.nc_id = nc or False
+
+    def _search_nc_id(self, operator, value):
+        if operator in ('any', 'any!'):
+            value = self.env['quality.alert'].sudo().with_context(active_test=False).search(value).ids
+        elif operator != 'in':
+            return NotImplemented
+        domain = ['&', ('res_model', '=', 'quality.alert'), ('res_id', 'in', [v for v in value if v])]
+        if False in value:
+            domain = ['|', ('res_model', 'not in', ['quality.alert'])] + domain
+        return domain
 
     @api.depends_context('uid')
     def _compute_is_mine(self):

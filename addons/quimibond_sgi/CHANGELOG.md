@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.176.1 — 2026-10-21
+
+Avisos del build de `main` (40323233), sin cambio para el usuario.
+
+**Corregido**
+- `sgi.my.pending.nc_id` y `sgi.miid.policy_id` se pueden buscar
+  (`_search_nc_id`, `_search_policy_id`): los campos `nc_*` y `policy_text`
+  dependen de ellos y Odoo avisaba «should be searchable».
+- Etiquetas repetidas: `sgi.indicator.measure_shown_ids` es «Mediciones en la
+  ficha» y `sgi.miid.to_confirm_count` es «Núm. de secciones por confirmar».
+
 ## 19.0.57.176.0 — 2026-10-21
 
 Jose (2026-10-21): «¿validar cada indicador es la mejor forma? va a hacer mucho
