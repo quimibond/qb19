@@ -48,7 +48,7 @@
                 <footer>
                     <button name="action_confirm" type="object" string="Crear las órdenes de muestra" class="btn-primary"
                             invisible="warning"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

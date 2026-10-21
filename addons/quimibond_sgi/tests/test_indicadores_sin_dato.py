@@ -23,6 +23,7 @@ from odoo.tests import TransactionCase, tagged
 from odoo.addons.quimibond_sgi.models import sgi_format_map
 
 from .common_users import sgi_set_mast
+from .common_documents import sgi_new_company
 
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _POST = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.104.0', 'post-migrate.py')
@@ -37,7 +38,7 @@ class TestIndicadoresSinDato(TransactionCase):
         cls.Indicator = cls.env['sgi.indicator']
         cls.Measure = cls.env['sgi.indicator.measure']
         cls.mast = sgi_set_mast(cls.env, login='sgi_mast_s02')
-        cls.company = cls.env['res.company'].create({'name': 'ZS02 Cía'})
+        cls.company = sgi_new_company(cls.env, 'ZS02 Cía')
         # El contacto de la compañía nueva no cuenta como registro de la fuente
         # (según la versión, Odoo le pone o no la compañía).
         cls.company.partner_id.company_id = False

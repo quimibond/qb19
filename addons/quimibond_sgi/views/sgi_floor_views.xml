@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <list string="Tabletas de planta">
                 <field name="name"/>
-                <field name="user_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="department_ids" widget="many2many_tags"/>
                 <field name="checklist_template_ids" widget="many2many_tags" optional="show"/>
                 <field name="active" column_invisible="1"/>
@@ -29,7 +29,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="user_id" options="{'no_create': True}"/>
+                            <field name="user_id" widget="many2one_avatar_user" options="{'no_create': True}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
@@ -96,7 +96,7 @@
                 <field name="department_id"/>
                 <field name="job_id"/>
                 <field name="work_email"/>
-                <field name="user_id" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="hide"/>
                 <field name="sgi_missing_data" class="text-danger"/>
             </list>
         </field>

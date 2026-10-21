@@ -34,6 +34,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_dev_customer import CUSTOMER_APPROVAL_MEDIA
+from .sgi_menu_paths import sgi_menu_path, sgi_route_error
 
 _logger = logging.getLogger(__name__)
 
@@ -232,8 +233,8 @@ class SgiDevShipment(models.Model):
             raise UserError("El proyecto no tiene artículo en desarrollo: no hay qué dar de baja.")
         ptype = self._out_picking_type()
         if not ptype:
-            raise UserError("No hay tipo de operación para la baja de muestras: configúrelo en Ajustes → SGI "
-                            "(«Tipo de operación de la baja de muestras»).")
+            raise sgi_route_error(self.env, "No hay tipo de operación para la baja de muestras: configúrelo en %s." % (
+                sgi_menu_path('ajustes', "«Tipo de operación de la baja de muestras»")), 'ajustes')
         src = (self.production_id.location_dest_id or ptype.default_location_src_id
                or self.env['project.project']._sgi_dev_sample_location())
         dest = ptype.default_location_dest_id or self.env.ref('stock.stock_location_customers')
@@ -459,6 +460,17 @@ class ProjectProjectDevShipment(models.Model):
         if self.sgi_dev_shipment_count == 1:
             action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': self.sgi_dev_shipment_ids.id})
         return action
+
+    def action_sgi_dev_pending_shipment(self):
+        """57.172.0: «Registrar respuesta del cliente» abre el envío que espera
+        respuesta (el más reciente enviado), donde está el botón; sin ninguno,
+        la lista de envíos del proyecto."""
+        self.ensure_one()
+        pending = self.sgi_dev_shipment_ids.filtered(lambda s: s.state == 'enviada').sorted('id')[-1:]
+        if not pending:
+            return self.action_sgi_dev_shipments()
+        return {'type': 'ir.actions.act_window', 'res_model': 'sgi.dev.shipment', 'view_mode': 'form',
+                'views': [(False, 'form')], 'res_id': pending.id, 'target': 'current'}
 
     def action_sgi_dev_new_shipment(self):
         self.ensure_one()

@@ -10,6 +10,12 @@
                     <button name="action_sgi_view_file" type="object" string="Ver archivo"
                             class="btn-primary" icon="fa-file-pdf-o"
                             invisible="sgi_doc_type == 'formulario_odoo'"/>
+                    <!-- 57.170.0: el aviso «Procedimiento vivo modificado» pedía
+                         «confírmelo» y no había botón. -->
+                    <button name="action_sgi_procedure_still_valid" type="object" string="El PDF sigue vigente"
+                            icon="fa-check" invisible="not sgi_procedure_dirty"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Quita el aviso sin pedir revisión nueva; queda en el historial. ¿Continuar?"/>
                     <button name="action_sgi_open_odoo_form" type="object" string="Abrir en Odoo"
                             class="btn-primary" icon="fa-external-link"
                             invisible="sgi_doc_type != 'formulario_odoo'"/>
@@ -41,7 +47,8 @@
                         El PDF impreso ya no coincide con la revisión aprobada
                         (<field name="sgi_procedure_dirty_since" nolabel="1" class="oe_inline"/>,
                         por <field name="sgi_procedure_dirty_by" nolabel="1" class="oe_inline"/>).
-                        Genere una nueva revisión controlada o confírmelo.
+                        Pida una revisión nueva (Solicitud de cambio) o, si el cambio no la amerita, pulse
+                        «El PDF sigue vigente».
                     </div>
                     <div class="oe_title">
                         <!-- D-002 / C-009 (56.32.0): el título limpio manda; la
@@ -149,7 +156,7 @@
                                     <list>
                                         <field name="sgi_code"/>
                                         <field name="name"/>
-                                        <field name="sgi_doc_type"/>
+                                        <field name="sgi_doc_type_id" string="Tipo"/>
                                         <field name="sgi_revision"/>
                                         <field name="sgi_state" widget="badge"
                                                decoration-success="sgi_state == 'vigente'"
@@ -194,7 +201,7 @@
                             <field name="sgi_ack_ids">
                                 <list limit="40" decoration-warning="state == 'pendiente'"
                                       decoration-success="state == 'leido'">
-                                    <field name="employee_id"/>
+                                    <field name="employee_id" widget="many2one_avatar_employee"/>
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'leido'"
                                            decoration-warning="state == 'pendiente'"/>
@@ -259,7 +266,8 @@
                 <field name="sgi_title"/>
                 <field name="sgi_code"/>
                 <field name="name" optional="hide"/>
-                <field name="sgi_doc_type"/>
+                <field name="sgi_doc_type_id" string="Tipo"/>
+                <field name="sgi_doc_type" column_invisible="1"/>
                 <field name="sgi_area_id" optional="show"/>
                 <field name="sgi_process_id" optional="show"/>
                 <field name="sgi_revision"/>
@@ -343,7 +351,7 @@
             <list string="Acuses de lectura" decoration-warning="state == 'pendiente'" decoration-success="state == 'leido'">
                 <field name="sgi_code"/>
                 <field name="document_id"/>
-                <field name="employee_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pendiente'"
@@ -377,7 +385,7 @@
                         <h1><field name="document_id"/></h1>
                     </div>
                     <group>
-                        <field name="employee_id"/>
+                        <field name="employee_id" widget="many2one_avatar_employee"/>
                         <field name="ack_date"/>
                         <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                     </group>

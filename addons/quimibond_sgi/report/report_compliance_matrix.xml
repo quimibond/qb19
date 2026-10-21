@@ -39,8 +39,8 @@
                         <h3 class="text-center mb-1">Matriz de cumplimiento — <span t-out="doc.code"/></h3>
                         <p class="text-center text-muted mb-2">
                             <span t-out="doc.name"/> ·
-                            <span t-out="matrix['covered']"/> punto(s) con actividad ·
-                            <span t-out="matrix['uncovered']"/> sin ninguna actividad ·
+                            <span t-out="matrix['covered']"/> punto(s) cubiertos ·
+                            <span t-out="matrix['uncovered']"/> sin cobertura ·
                             En cada cruce, los numerales de las actividades que lo cumplen.
                         </p>
                         <table class="table table-sm table-bordered" style="font-size:8px;">
@@ -56,13 +56,22 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- 57.163.0: «No aplica» en gris y «Lo cumple el sistema» en
+                                     azul; solo lo que no tiene ninguna cobertura sale en rojo. -->
                                 <tr t-foreach="matrix['rows']" t-as="row"
-                                    t-att-style="'background-color:#f8d7da;' if not row['total'] else None">
+                                    t-att-style="{'sin': 'background-color:#f8d7da;', 'no_aplica': 'background-color:#e9ecef;', 'regla': 'background-color:#e7f1ff;'}.get(row['coverage'])">
                                     <td><strong t-out="row['clause'].code"/></td>
                                     <td>
                                         <span t-out="row['clause'].name"/>
-                                        <div t-if="not row['total']" style="color:#b02a37; font-weight:bold;">
+                                        <div t-if="row['coverage'] == 'sin'" style="color:#b02a37; font-weight:bold;">
                                             Sin ninguna actividad
+                                        </div>
+                                        <div t-elif="row['coverage'] == 'no_aplica'" style="color:#495057;">
+                                            No aplica<t t-if="row['clause'].exclusion_detail"> (<t t-out="row['clause'].exclusion_detail"/>)</t>:
+                                            <t t-out="row['clause'].exclusion_reason"/>
+                                        </div>
+                                        <div t-elif="row['coverage'] == 'regla'" style="color:#084298;">
+                                            Lo cumple el sistema: <t t-out="', '.join(row['rules'])"/>
                                         </div>
                                     </td>
                                     <td t-foreach="row['cells']" t-as="cell" class="text-center">
@@ -73,7 +82,9 @@
                             </tbody>
                         </table>
                         <div class="text-muted mt-2" style="font-size:8px;">
-                            Fuente: «Cumple con» de cada actividad del SGI (solo actividades vigentes).
+                            Fuente: «Cumple con» de cada actividad del SGI (solo actividades vigentes), las
+                            reglas del sistema (Configuración → Reglas del sistema) y lo marcado «No aplica» en
+                            cada cláusula.
                             Procesos: los que declaran la norma o tienen alguna actividad ligada a ella.
                         </div>
                     </div>

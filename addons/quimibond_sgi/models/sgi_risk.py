@@ -3,7 +3,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
-from .sgi_menu_paths import sgi_menu_path
+from .sgi_menu_paths import sgi_menu_path, sgi_route_error
 
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
@@ -334,6 +334,17 @@ class SgiRisk(models.Model):
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
         }
 
+    def action_view_env_aspect(self):
+        """57.172.0: el aspecto de la matriz que trata este riesgo."""
+        self.ensure_one()
+        aspects = self.sgi_env_aspect_ids
+        action = {'type': 'ir.actions.act_window', 'name': "Aspecto ambiental",
+                  'res_model': 'sgi.env.aspect', 'domain': [('id', 'in', aspects.ids)],
+                  'view_mode': 'list,form'}
+        if len(aspects) == 1:
+            action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': aspects.id})
+        return action
+
     # ------------------------------------------------------------------
     # Candado de riesgo alto (H11)
     # ------------------------------------------------------------------
@@ -398,7 +409,7 @@ class SgiRisk(models.Model):
         if not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) and any(
                 vals.get('instrument', self.env.context.get('default_instrument')) == 'ambiental'
                 for vals in vals_list):
-            raise UserError(SGI_ENV_ASPECT_MSG)
+            raise sgi_route_error(self.env, SGI_ENV_ASPECT_MSG, 'aspectos_ambientales')
         return super().create(vals_list)
 
     def write(self, vals):
@@ -406,7 +417,7 @@ class SgiRisk(models.Model):
         # que no se hace es reclasificar otro como «Aspecto ambiental».
         if vals.get('instrument') == 'ambiental' and not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) \
                 and self.filtered(lambda r: r.instrument != 'ambiental'):
-            raise UserError(SGI_ENV_ASPECT_MSG)
+            raise sgi_route_error(self.env, SGI_ENV_ASPECT_MSG, 'aspectos_ambientales')
         # 57.96.0 (N-06): la jerarquía se revisa solo en la transición a
         # controlado o cerrado (registros cuyo estado de antes era otro).
         closing = vals.get('state') in self._SGI_CLOSING_STATES

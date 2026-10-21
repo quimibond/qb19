@@ -44,7 +44,7 @@
                             confirm="Se crearán los aspectos de los renglones de la lista y se ligarán a sus riesgos. ¿Continuar?"/>
                     <button name="action_view_aspects" type="object" string="Ver los aspectos en la matriz"
                             invisible="not done_count"/>
-                    <button string="Cerrar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

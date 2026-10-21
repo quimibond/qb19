@@ -47,11 +47,11 @@
                             <field name="revision"/>
                             <field name="date"/>
                             <field name="max_npr"/>
-                            <field name="team_ids" widget="many2many_tags"/>
+                            <field name="team_ids" widget="many2many_avatar_user"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Modos de falla">
+                        <page string="Modos de falla" name="failure_modes">
                             <div class="text-muted mb-2">
                                 Escalas AIAG 1–10: <b>S</b>everidad ·
                                 <b>O</b>currencia · <b>D</b>etección.

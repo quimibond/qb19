@@ -16,7 +16,7 @@ Lo mismo que cualquier Usuario SGI, más:
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
 | **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría). Las fichas de proceso del desarrollo se abren desde el proyecto (pestaña Muestra → «Fichas de proceso», 57.155.0) |
-| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
+| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: **Avance de la transición**, con los botones Procedimientos, Rutinas, Pendientes y Documentos de cada proceso (desde 57.167.0 ya no son menús aparte) |
 | **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
 | **SGI → Sistema → Documentos** y **SGI → Desempeño → Indicadores** | Desde 57.150.0, como dueño de proceso: documentos controlados, lista maestra y documentos externos; todos los indicadores, mediciones y revisiones de medición |
 
@@ -70,6 +70,13 @@ Cuando una actividad de su gente se atrasa, le escala a usted.
    y Dirección de Operaciones. Un periodo que venció antes del arranque del
    registro de cumplimiento (05/10/2026) no escala.
 
+Como dueño de proceso, desde 57.168.0 recibe los **Flujos atrasados** de su
+proceso: una actividad con entradas cuyo plazo venció sin salida («C4.16
+Revisar la tela en Inspección — 551 entradas…»). Le llega una sola vez a
+usted, con la semana medida como fecha, y ya no a cada persona del puesto.
+**Ir a hacerlo** abre la pantalla; revíselo con quien la ejecuta. Los procesos
+sin dueño se los manda al Jefe MAST.
+
 Como dueño de proceso también recibe los plazos vencidos de las NC de su
 proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
 Antes de mover una NC de su proceso a Seguimiento, capture su clasificación
@@ -79,6 +86,9 @@ y la cláusula que se incumplió.
 
 1. En **Mis pendientes**, los renglones **Validar medición** son mediciones
    capturadas o calculadas de sus indicadores. Tiene **3 días hábiles**.
+   Desde 57.168.0 las de un mismo indicador van juntas en un renglón
+   («Validar CO-01 Entregas a tiempo — 8 mediciones»): **Validar** valida
+   todas e **Ir** abre la lista para revisarlas una por una.
 2. Revise el valor y la evidencia (**Registros** en la medición) y pulse
    **Validar**, desde el renglón o desde la medición.
 3. Si el valor está mal, corríjalo antes de validar. Un rojo necesita causa y
@@ -98,6 +108,13 @@ su gente; **Hecho** y **En proceso** sí le salen en las actividades de las
 personas de las que es jefe (cadena de «Jefe» en Empleados), no en sus
 avisos ni acciones. Los **Escalamientos** que recibe son un tipo aparte, con
 su filtro, y solo tienen **Ir**.
+
+Desde 57.168.0 lo repetido va junto en un renglón, con la columna
+**Cuántos**: las mediciones de un mismo indicador, las firmas que no son del
+SGI (órdenes de compra, recibos de entrega), los avisos de una misma clase
+(«Salida sin CoA — 30 avisos»), las revisiones de medición del mes y los
+requisitos legales. **Ir** abre la lista de lo que junta; la ficha del
+renglón dice cuáles son. La fecha y el estado son los del más atrasado.
 
 Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
 indicadores semanales se ven por semana) y abre con el filtro «Con dato»:
@@ -150,8 +167,8 @@ se cierra ni se cancela mientras un bloqueo (LOTO) ligado siga aplicado.
 
 ### 2.7 Decidir las rutinas pendientes del Dropbox
 
-En **Del Dropbox a Odoo → Rutina por rutina**, filtre **Pendientes** de su
-proceso. Cada rutina que nadie cubre necesita su decisión: crear una
+En **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**, en el
+renglón de su proceso pulse **Pendientes**. Cada rutina que nadie cubre necesita su decisión: crear una
 actividad, volverla regla o automatización, o eliminarla con motivo. La fecha límite la fija el
 parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 
@@ -196,7 +213,8 @@ el Jefe MAST.
 
 ## 5. Dónde quedó lo que usaba en el Dropbox
 
-**Del Dropbox a Odoo → Procedimientos anteriores** muestra, por cada
+En **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**, el botón
+**Procedimientos** de su proceso muestra, por cada
 procedimiento del Dropbox de su proceso, qué proceso de Odoo lo sustituye,
 en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
@@ -204,8 +222,10 @@ en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 ## 5.1 El Manual del SGI (MIID)
 
 **SGI → Sistema → Manual del SGI → Manual (MIID)**: «PDF de la revisión vigente» es
-el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
-es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
+el manual aprobado (el que se firma de leído). Las pestañas (una por capítulo)
+son el manual con los datos de hoy y no está vigente: los procesos, la política,
+los objetivos y las normas son listas que se abren, y cada apartado tiene su
+botón «Abrir en Odoo». Si cambia el dueño, el
 estado o los flujos de su proceso, el Jefe MAST recibe el aviso para
 actualizar el MIID.
 

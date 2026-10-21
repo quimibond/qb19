@@ -17,7 +17,7 @@
                 <field name="last_eval_date" optional="show"/>
                 <field name="next_eval_date" widget="remaining_days"
                        invisible="compliance_state == 'no_aplica'"/>
-                <field name="expiry_date" optional="hide"/>
+                <field name="expiry_date" widget="remaining_days" optional="hide"/>
                 <field name="compliance_state" widget="badge"
                        decoration-success="compliance_state == 'cumple'"
                        decoration-warning="compliance_state in ('parcial', 'pendiente')"
@@ -47,7 +47,7 @@
                     <label for="evidence" string="Evidencia revisada" invisible="result == 'no_aplica'"/>
                     <field name="evidence" nolabel="1"
                            placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró, o por qué no aplica"/>
-                    <field name="next_date"/>
+                    <field name="next_date" widget="remaining_days"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Registrar" class="btn-primary"/>
@@ -66,7 +66,7 @@
                 <field name="requirement_id"/>
                 <field name="result" widget="badge"/>
                 <field name="evidence"/>
-                <field name="next_date"/>
+                <field name="next_date" widget="remaining_days"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
             </list>
         </field>
@@ -80,16 +80,9 @@
                 <header>
                     <button name="action_evaluate" type="object" string="Registrar evaluación"
                             class="btn-primary" icon="fa-check-square-o"/>
-                    <button name="action_mark_cumple" type="object" string="Cumple"
-                            class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
-                    <!-- 57.96.0 (N-07): los cuatro abren el asistente con la evidencia
-                         (o el motivo); la confirmación es el asistente. -->
-                    <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
-                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_mark_no_cumple" type="object" string="No cumple"
-                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
-                    <field name="compliance_state" widget="statusbar"/>
+                    <!-- 57.170.0: «Cumple / Parcial / No cumple / No aplica» abrían el
+                         mismo asistente que «Registrar evaluación» (el resultado se
+                         elige ahí). El cumplimiento no es un flujo: va bajo el título. -->
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -104,6 +97,11 @@
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Obligación concreta…"/></h1>
+                        <field name="compliance_state" widget="badge"
+                               decoration-success="compliance_state == 'cumple'"
+                               decoration-warning="compliance_state in ('parcial', 'pendiente')"
+                               decoration-danger="compliance_state == 'no_cumple'"
+                               decoration-muted="compliance_state == 'no_aplica'"/>
                     </div>
                     <group>
                         <group string="Requisito">
@@ -111,13 +109,13 @@
                             <field name="kind"/>
                             <field name="system"/>
                             <field name="authority"/>
-                            <field name="expiry_date"/>
+                            <field name="expiry_date" widget="remaining_days"/>
                         </group>
                         <group string="Evaluación del cumplimiento (9.1.2)">
                             <field name="responsible_id" widget="many2one_avatar_user" required="1"/>
                             <field name="eval_frequency_months"/>
                             <field name="last_eval_date" readonly="1"/>
-                            <field name="next_eval_date"/>
+                            <field name="next_eval_date" widget="remaining_days"/>
                             <field name="alert_id" invisible="1"/>
                         </group>
                     </group>
@@ -145,7 +143,7 @@
                                     <field name="date"/>
                                     <field name="result" widget="badge"/>
                                     <field name="evidence"/>
-                                    <field name="next_date"/>
+                                    <field name="next_date" widget="remaining_days"/>
                                     <field name="user_id" widget="many2one_avatar_user"/>
                                 </list>
                             </field>

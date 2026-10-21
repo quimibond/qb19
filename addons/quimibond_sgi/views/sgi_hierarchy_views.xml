@@ -13,7 +13,7 @@
                 <field name="name"/>
                 <field name="process_type"/>
                 <field name="health"/>
-                <field name="owner_id"/>
+                <field name="owner_id" widget="many2one_avatar_employee"/>
                 <field name="child_count"/>
                 <templates>
                     <t t-name="hierarchy-box">

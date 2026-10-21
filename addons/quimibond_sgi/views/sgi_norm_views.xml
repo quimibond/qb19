@@ -8,10 +8,14 @@
                 <header>
                     <button name="%(quimibond_sgi.action_report_compliance_matrix)d" type="action"
                             string="Matriz de cumplimiento" icon="fa-th" class="btn-primary"/>
-                    <button name="action_view_uncovered_clauses" type="object"
-                            string="Puntos sin actividad" icon="fa-exclamation-triangle"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_uncovered_clauses" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle">
+                            <field name="uncovered_clause_count" widget="statinfo" string="Sin cobertura"/>
+                        </button>
+                    </div>
                     <!-- V-B10 (57.81.0): el nombre como título. -->
                     <div class="oe_title">
                         <label for="name" string="Norma"/>
@@ -20,14 +24,18 @@
                     <group>
                         <field name="code"/>
                         <field name="active"/>
+                        <!-- 57.162.0: el Manual del SGI (1.2) lo imprime. -->
+                        <field name="scope" placeholder="Alcance del certificado, como lo imprime el Manual del SGI"/>
                     </group>
                     <notebook>
-                        <page string="Cláusulas">
+                        <page string="Cláusulas" name="clauses">
                             <field name="clause_ids">
                                 <list editable="bottom" decoration-danger="not covered">
                                     <field name="code"/>
                                     <field name="name"/>
                                     <field name="activity_count"/>
+                                    <field name="coverage" optional="show" widget="badge" decoration-success="coverage == 'actividad'" decoration-info="coverage == 'regla'"
+                       decoration-muted="coverage == 'no_aplica'" decoration-danger="coverage == 'sin'"/>
                                     <field name="covered" column_invisible="1"/>
                                 </list>
                             </field>
@@ -82,6 +90,9 @@
                 <field name="name"/>
                 <field name="activity_count"/>
                 <field name="process_ids" widget="many2many_tags" optional="show"/>
+                <field name="coverage" optional="show" widget="badge" decoration-success="coverage == 'actividad'" decoration-info="coverage == 'regla'"
+                       decoration-muted="coverage == 'no_aplica'" decoration-danger="coverage == 'sin'"/>
+                <field name="system_rule_ids" widget="many2many_tags" optional="hide"/>
                 <field name="covered" column_invisible="1"/>
             </list>
         </field>
@@ -102,7 +113,14 @@
                         </button>
                     </div>
                     <div class="alert alert-danger mb-3" role="alert" invisible="covered or not id">
-                        Ninguna actividad del SGI cumple este punto.
+                        Ninguna actividad ni regla del sistema cumple este punto. Ligue una actividad («Cumple
+                        con»), una regla del sistema o márquelo «No aplica» con su justificación.
+                    </div>
+                    <div class="alert alert-info mb-3" role="status" invisible="coverage != 'regla'">
+                        Lo cumple el sistema (pestaña «Reglas del sistema»), sin una actividad.
+                    </div>
+                    <div class="alert alert-secondary mb-3" role="status" invisible="coverage != 'no_aplica'">
+                        No aplica a PNTQ; la justificación sale en el Manual del SGI (1.3).
                     </div>
                     <!-- V-B10 (57.81.0): el punto de la norma como título. -->
                     <div class="oe_title">
@@ -116,7 +134,15 @@
                         </group>
                         <group>
                             <field name="covered" invisible="1"/>
+                            <field name="coverage" widget="badge" decoration-success="coverage == 'actividad'" decoration-info="coverage == 'regla'"
+                       decoration-muted="coverage == 'no_aplica'" decoration-danger="coverage == 'sin'"/>
+                            <field name="exclusion"/>
+                            <field name="exclusion_detail" invisible="not exclusion" placeholder="8.4.1 b)"/>
                         </group>
+                    </group>
+                    <!-- 57.162.0: lo imprime el Manual del SGI (1.3). -->
+                    <group invisible="not exclusion">
+                        <field name="exclusion_reason" required="exclusion"/>
                     </group>
                     <notebook>
                         <page string="Evidencia en el SGI" name="evidencia">
@@ -130,6 +156,16 @@
                                     <field name="name"/>
                                     <field name="responsible_job_ids" widget="many2many_tags" optional="show"/>
                                     <field name="measure_state" widget="badge" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 57.162.0: lo que el sistema hace cumplir sin una actividad. -->
+                        <page string="Reglas del sistema" name="reglas">
+                            <field name="system_rule_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="text"/>
+                                    <field name="menu_id" optional="show"/>
                                 </list>
                             </field>
                         </page>
@@ -148,8 +184,11 @@
                 <field name="name"/>
                 <field name="norm_id"/>
                 <field name="activity_ids"/>
-                <filter name="uncovered" string="Sin actividad" domain="[('covered', '=', False)]"/>
-                <filter name="covered" string="Con actividad" domain="[('covered', '=', True)]"/>
+                <filter name="uncovered" string="Sin cobertura" domain="[('covered', '=', False)]"/>
+                <filter name="covered" string="Cubiertos" domain="[('covered', '=', True)]"/>
+                <filter name="with_activity" string="Con actividad" domain="[('activity_ids.active', '=', True)]"/>
+                <filter name="by_rule" string="Lo cumple el sistema" domain="[('system_rule_ids', '!=', False)]"/>
+                <filter name="exclusion" string="No aplica" domain="[('exclusion', '=', True)]"/>
                 <group>
                     <filter name="group_norm" string="Norma" context="{'group_by': 'norm_id'}"/>
                 </group>
@@ -165,6 +204,78 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Catálogo de cláusulas</p>
             <p>Las cláusulas de las tres normas, para ligar auditorías y hallazgos.</p>
+        </field>
+    </record>
+
+    <!-- 57.162.0: reglas que el sistema hace cumplir con candados y avisos
+         (no son actividades). El Manual del SGI (5.2) las imprime. -->
+    <record id="sgi_system_rule_view_list" model="ir.ui.view">
+        <field name="name">sgi.system.rule.list</field>
+        <field name="model">sgi.system.rule</field>
+        <field name="arch" type="xml">
+            <list string="Reglas del sistema">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="clause_label"/>
+                <field name="text"/>
+                <field name="menu_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_system_rule_view_form" model="ir.ui.view">
+        <field name="name">sgi.system.rule.form</field>
+        <field name="model">sgi.system.rule</field>
+        <field name="arch" type="xml">
+            <form string="Regla del sistema">
+                <header>
+                    <button name="action_open_menu" type="object" string="Abrir en Odoo" icon="fa-external-link"
+                            class="btn-secondary" invisible="not menu_id"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="Tema"/>
+                        <h1><field name="name" placeholder="Riesgos y oportunidades"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="clause_ids" widget="many2many_tags"/>
+                            <field name="menu_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="text" placeholder="Qué hace cumplir el sistema y cómo, en una o dos frases."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_system_rule_view_search" model="ir.ui.view">
+        <field name="name">sgi.system.rule.search</field>
+        <field name="model">sgi.system.rule</field>
+        <field name="arch" type="xml">
+            <search string="Reglas del sistema">
+                <field name="name"/>
+                <field name="text"/>
+                <field name="clause_ids"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_system_rule_action" model="ir.actions.act_window">
+        <field name="name">Reglas del sistema</field>
+        <field name="res_model">sgi.system.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_system_rule_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin reglas del sistema</p>
+            <p>Lo que el sistema hace cumplir con candados y avisos, ligado a sus cláusulas y a su pantalla. El
+                Manual del SGI las imprime en 5.2 y en la correspondencia por cláusula.</p>
         </field>
     </record>
 </odoo>

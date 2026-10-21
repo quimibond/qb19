@@ -55,7 +55,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Puntos de control">
+                        <page string="Puntos de control" name="points">
                             <field name="point_ids" context="{'default_sgi_control_plan_id': id}">
                                 <list editable="bottom">
                                     <field name="title"/>
@@ -68,7 +68,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Notas">
+                        <page string="Notas" name="notes">
                             <field name="notes"/>
                         </page>
                     </notebook>
@@ -110,7 +110,6 @@
                 <field name="partner_id"/>
                 <filter name="vigente" string="Vigentes" domain="[('state','=','vigente')]"/>
                 <filter name="borrador" string="Borradores" domain="[('state','=','borrador')]"/>
-                <separator/>
                 <filter name="obsoleto" string="Obsoletos" domain="[('state','=','obsoleto')]"/>
                 <group>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>

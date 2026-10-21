@@ -23,21 +23,22 @@
                     </div>
                     <group>
                         <group string="Dónde">
-                            <field name="audit_id"/>
-                            <field name="process_id"/>
-                            <field name="norm_clause_id"/>
-                            <field name="checklist_line_id"/>
+                            <field name="sgi_is_locked" invisible="1"/>
+                            <field name="audit_id" readonly="sgi_is_locked"/>
+                            <field name="process_id" readonly="sgi_is_locked"/>
+                            <field name="norm_clause_id" readonly="sgi_is_locked"/>
+                            <field name="checklist_line_id" readonly="sgi_is_locked"/>
                         </group>
                         <group string="Qué se encontró">
-                            <field name="finding_type"/>
-                            <field name="disposition"/>
+                            <field name="finding_type" readonly="sgi_is_locked"/>
+                            <field name="disposition" readonly="sgi_is_locked"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
                     </group>
                     <group>
-                        <field name="description"/>
-                        <field name="evidence"/>
-                        <field name="reason_no_action" invisible="disposition != 'sin_accion'"
+                        <field name="description" readonly="sgi_is_locked"/>
+                        <field name="evidence" readonly="sgi_is_locked"/>
+                        <field name="reason_no_action" readonly="sgi_is_locked" invisible="disposition != 'sin_accion'"
                                required="disposition == 'sin_accion'"/>
                     </group>
                 </sheet>
@@ -114,7 +115,7 @@
                             <field name="user_id" readonly="1" widget="many2one_avatar_user"/>
                         </group>
                         <group string="Seguimiento">
-                            <field name="next_date"/>
+                            <field name="next_date" widget="remaining_days"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
                     </group>

@@ -83,11 +83,20 @@ También puede registrar un hallazgo desde la ficha de un proceso con
   Higiene se leen, sin editarlos.
 
 - **Manual del SGI (MIID):** **SGI → Sistema → Manual del SGI → Manual (MIID)**.
-  «PDF de la revisión vigente» es el documento controlado aprobado; la
-  pestaña «Vista del sistema» y «Vista en PDF (borrador)» son el manual con
-  los datos de hoy, marcados «Borrador — no vigente». «Diferencias» dice qué
-  cambió en el sistema desde la revisión vigente e «Historial de revisiones»
-  las lista todas con su solicitud.
+  «PDF de la revisión vigente» es el documento controlado aprobado; las
+  pestañas (una por capítulo) y «Vista en PDF (borrador)» son el manual con
+  los datos de hoy, marcados «Borrador — no vigente». En pantalla, los
+  procesos, la política, los objetivos y las normas son listas que se abren,
+  y cada apartado lleva su botón «Abrir en Odoo» a la pantalla que lo cumple
+  (en el PDF, la ruta). «Diferencias» dice qué cambió en el sistema desde la
+  revisión vigente; «Control de cambios» y el botón «Rev. vigente» listan
+  todas las revisiones con su solicitud.
+- **Cobertura de cada punto de la norma (desde 57.163.0):** un punto está
+  cubierto por una actividad («Cumple con»), por una regla del sistema
+  (candados y avisos, en Configuración → Reglas del sistema) o porque no
+  aplica (con su justificación). En la Matriz de cumplimiento, «No aplica»
+  sale en gris y «Lo cumple el sistema» en azul; solo lo que no tiene nada
+  sale en rojo, y solo eso genera pregunta en el checklist.
 
 ## 3. Lo que no ve ni hace
 

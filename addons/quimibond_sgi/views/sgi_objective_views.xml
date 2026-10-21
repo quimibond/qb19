@@ -4,7 +4,7 @@
         <field name="name">sgi.objective.list</field>
         <field name="model">sgi.objective</field>
         <field name="arch" type="xml">
-            <list string="Objetivos Integrales">
+            <list string="Objetivos integrales">
                 <field name="name"/>
                 <field name="target_year"/>
                 <field name="indicator_count"/>

@@ -16,20 +16,28 @@
                     <button name="action_sign" type="object" string="Firmar: recibí el EPP"
                             icon="fa-pencil" invisible="not can_sign"
                             confirm="Confirmo que recibí el equipo de protección personal listado y me comprometo a usarlo y cuidarlo. La firma queda registrada con fecha y hora."/>
-                    <button name="action_open_sign_request" type="object" string="Ver solicitud de firma" invisible="not sign_request_id"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sign_request" type="object" class="oe_stat_button"
+                                icon="fa-pencil-square-o" invisible="not sign_request_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="sign_state"/></span>
+                                <span class="o_stat_text">Firma (Sign)</span>
+                            </div>
+                        </button>
+                    </div>
                     <widget name="web_ribbon" title="Firmada" invisible="state != 'firmada'"/>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>
                         <group>
-                            <field name="employee_id" readonly="state == 'firmada'"/>
+                            <field name="employee_id" widget="many2one_avatar_employee" readonly="state == 'firmada'"/>
                             <field name="job_id" readonly="state == 'firmada'"/>
                             <field name="date" readonly="state == 'firmada'"/>
                         </group>
                         <group>
-                            <field name="delivered_by_id" readonly="state == 'firmada'"/>
+                            <field name="delivered_by_id" widget="many2one_avatar_user" readonly="state == 'firmada'"/>
                             <field name="signed_date" invisible="not signed_date"/>
                             <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                             <field name="sign_request_id" invisible="not sign_request_id"/>
@@ -74,9 +82,9 @@
             <list string="Responsivas de EPP" decoration-warning="state == 'entregada'">
                 <field name="name"/>
                 <field name="date"/>
-                <field name="employee_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
                 <field name="job_id" optional="show"/>
-                <field name="delivered_by_id" optional="show"/>
+                <field name="delivered_by_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
                 <field name="signed_date" optional="show"/>

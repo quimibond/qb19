@@ -4,7 +4,7 @@ H-016, G-026; J-009). Datos propios."""
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_mast
 
 
@@ -19,7 +19,7 @@ class TestMedicionRobusta(TransactionCase):
         cls.job = cls.env['hr.job'].create({'name': 'ZS PUESTO MEDICION'})
         cls.partner_model = cls.env['ir.model']._get('res.partner')
         cls.main = cls.env['sgi.config']._sgi_company()
-        cls.other_company = cls.env['res.company'].create({'name': 'ZS Otra empresa'})
+        cls.other_company = sgi_new_company(cls.env, 'ZS Otra empresa')
 
     def _act(self, name, domain):
         act = self.env['sgi.process.activity'].create({

@@ -5,32 +5,34 @@
         <field name="model">approval.request</field>
         <field name="inherit_id" ref="approvals.approval_request_view_form"/>
         <field name="arch" type="xml">
+            <!-- 57.170.0: los botones del SGI van en el encabezado y como
+                 secundarios (el primario es «Aprobar» de Odoo); las pestañas van
+                 en el cuaderno de Aprobaciones, no en cuadernos sueltos al final. -->
             <xpath expr="//header" position="inside">
                 <button name="action_sgi_send_to_sign" type="object" string="Reenviar a firma"
-                        class="btn-primary" icon="fa-pencil"
+                        class="btn-secondary" icon="fa-pencil"
                         invisible="not sgi_sign_required or request_status != 'pending' or sgi_sign_state in ('sent', 'shared', 'signed')"/>
+                <button name="action_sgi_create_document" type="object"
+                        string="Crear documento" class="btn-primary" icon="fa-file-o"
+                        invisible="sgi_change_kind != 'alta' or request_status != 'approved' or sgi_document_id"
+                        groups="quimibond_sgi.group_sgi_manager"
+                        help="Crea el documento de la alta y lo deja ligado a esta solicitud."/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_is_doc_change" invisible="1"/>
                 <field name="sgi_sign_required" invisible="1"/>
                 <field name="sgi_is_moc" invisible="1"/>
-                <notebook invisible="not sgi_is_moc">
-                    <page string="Gestión del cambio (MOC)">
-                        <p class="text-muted">9001 §6.3 / 45001 §8.1.3: un
-                        cambio de proceso, infraestructura o plantilla no se
-                        aprueba sin motivo, procesos afectados y evaluación de
-                        riesgos.</p>
+                <field name="sgi_applied" invisible="1"/>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                    <page string="Gestión del cambio (MOC)" name="sgi_moc" invisible="not sgi_is_moc">
                         <group>
                             <field name="sgi_reason" string="Motivo del cambio"/>
                             <field name="sgi_affected_process_ids" widget="many2many_tags"/>
                             <field name="sgi_moc_risk_note"/>
                         </group>
                     </page>
-                </notebook>
-                <field name="sgi_applied" invisible="1"/>
-                <field name="sgi_new_document_id" invisible="not sgi_new_document_id" readonly="1"/>
-                <notebook invisible="not sgi_is_doc_change">
-                    <page string="Cambio documental">
+                    <page string="Cambio documental" name="sgi_doc_change" invisible="not sgi_is_doc_change">
                         <div class="alert alert-info mb-2" role="status"
                              invisible="not sgi_sign_required or sgi_sign_request_id">
                             Al enviar la solicitud se manda a firmar en Sign: <b>elaboró</b>
@@ -65,14 +67,6 @@
                                        invisible="not sgi_change_attachment_id"/>
                             </group>
                         </group>
-                        <div class="mb-2"
-                             invisible="sgi_change_kind != 'alta' or request_status != 'approved' or sgi_document_id">
-                            <button name="action_sgi_create_document" type="object"
-                                    string="Crear documento" class="btn-primary"
-                                    icon="fa-file-o"
-                                    groups="quimibond_sgi.group_sgi_manager"/>
-                            <span class="text-muted ms-2">El documento quedará ligado a esta solicitud de alta.</span>
-                        </div>
                         <group>
                             <group>
                                 <field name="sgi_change_kind"/>
@@ -81,6 +75,7 @@
                                        required="sgi_change_kind in ('modificacion','baja')"/>
                                 <field name="sgi_current_revision"/>
                                 <field name="sgi_new_revision"/>
+                                <field name="sgi_new_document_id" invisible="not sgi_new_document_id" readonly="1"/>
                             </group>
                             <group>
                                 <field name="sgi_pilot"/>
@@ -98,7 +93,6 @@
                             <field name="sgi_affected_process_ids" nolabel="1" widget="many2many_tags"/>
                         </group>
                     </page>
-                </notebook>
             </xpath>
         </field>
     </record>

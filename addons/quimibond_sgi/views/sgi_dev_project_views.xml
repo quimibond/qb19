@@ -33,16 +33,23 @@
                      nuevo, el checklist de factibilidad está cargado y sin renglones pendientes. -->
                 <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
                         invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion') or not sgi_dev_analysis_result or (sgi_dev_analysis_result == 'nuevo' and (not sgi_dev_feasibility_ids or sgi_dev_feasibility_pending))"/>
+                <!-- 57.170.0: un primario por etapa. La aprobación del cliente es
+                     primaria cuando el análisis ya está aprobado; antes, secundaria. -->
                 <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-primary" icon="fa-handshake-o"
-                        invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente')"
+                        invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente') or sgi_dev_review_state != 'aprobado'"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
-                <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-primary" icon="fa-hashtag"
+                <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-secondary" icon="fa-handshake-o"
+                        invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente') or sgi_dev_review_state == 'aprobado'"
+                        confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
+                <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-secondary" icon="fa-hashtag"
                         invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
                 <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
-                        invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente') or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
-                <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-primary" icon="fa-truck"
+                        invisible="not sgi_is_ft or sgi_dev_stage_key != 'muestra' or not sgi_dev_approved_by_id or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
+                <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-secondary" icon="fa-cogs"
+                        invisible="not sgi_is_ft or not (sgi_dev_stage_key == 'respuesta_cliente' or (sgi_dev_stage_key == 'muestra' and not sgi_dev_approved_by_id)) or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
+                <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-secondary" icon="fa-truck"
                         invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente')"/>
-                <button name="action_sgi_dev_shipments" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
+                <button name="action_sgi_dev_pending_shipment" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
                         invisible="not sgi_is_ft or sgi_dev_stage_key != 'respuesta_cliente' or not sgi_dev_shipment_count"/>
                 <button name="action_sgi_dev_new_revision" type="object" string="Subir revisión" class="btn-secondary" icon="fa-level-up"
                         invisible="not sgi_is_ft or sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto')"
@@ -77,6 +84,10 @@
                         <span class="o_stat_value"><field name="sgi_dev_mo_count"/></span>
                         <span class="o_stat_text">Órdenes de muestra</span>
                     </div>
+                </button>
+                <button name="action_sgi_dev_bom_pending" type="object" class="oe_stat_button text-warning" icon="fa-list"
+                        invisible="not sgi_is_ft or not sgi_dev_bom_pending_count">
+                    <field name="sgi_dev_bom_pending_count" widget="statinfo" string="Listas por capturar"/>
                 </button>
                 <button name="action_sgi_dev_shipments" type="object" class="oe_stat_button" icon="fa-truck"
                         invisible="not sgi_is_ft or not sgi_dev_shipment_count">
@@ -322,7 +333,7 @@
                                         <field name="auto" optional="show"/>
                                         <field name="answer" widget="selection_badge"/>
                                         <field name="observation"/>
-                                        <field name="answered_by_id" optional="show"/>
+                                        <field name="answered_by_id" widget="many2one_avatar_user" optional="show"/>
                                     </list>
                                 </field>
                             <p class="text-muted" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">Sin checklist cargado.</p>
@@ -354,14 +365,13 @@
                                             <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
                                             <!-- 57.141.0: con artículo base se parte de su cadena (acabado → teñido → crudo); sin base, por claves.
                                                  Un producto de línea no genera artículos. -->
-                                            <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
+                                            <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-secondary" icon="fa-cubes"
                                                     invisible="sgi_dev_product_id or sgi_dev_analysis_result == 'linea'"
                                                     confirm="Con artículo base: se recorre su cadena (acabado, teñido, crudo), se ligan los niveles que no cambian y se crean los que cambian copiando su lista de materiales; los componentes que dependen de la clave que cambió quedan «Por capturar». Sin base: se crean crudo, teñido (si lleva) y acabado con el código propuesto. ¿Continuar?"/>
                                         </div>
                                         <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
                                         <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
-                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos.
-                                            <button name="action_sgi_dev_bom_pending" type="object" string="Ver listas" class="btn-link p-0 ms-1"/>
+                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos (botón «Listas por capturar» arriba).
                                         </div>
                                         <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
@@ -394,7 +404,7 @@
                                      genera desde el proyecto y la cotización, con el folio FT ya asignado; Ventas lo manda
                                      y la respuesta del cliente se registra abajo como evidencia. -->
                                 <div class="d-flex flex-wrap gap-1 mb-2">
-                                    <button name="action_sgi_dev_start_approval" type="object" string="Generar aprobación para iniciar" class="btn-primary" icon="fa-file-pdf-o"
+                                    <button name="action_sgi_dev_start_approval" type="object" string="Generar aprobación para iniciar" class="btn-secondary" icon="fa-file-pdf-o"
                                             invisible="sgi_dev_start_approval_attachment_id"
                                             confirm="Se genera el PDF «Aprobación para iniciar el proyecto» con las características marcadas para el cliente y la cotización; si el proyecto no tiene folio FT se le asigna ahora. ¿Continuar?"/>
                                     <button name="action_sgi_dev_start_approval" type="object" string="Volver a generar" class="btn-secondary" icon="fa-refresh"
@@ -491,7 +501,7 @@
                             <group string="Materia prima para la muestra" name="sgi_dev_mp">
                                 <div colspan="2" class="d-flex flex-wrap gap-1 mb-2">
                                     <button name="action_sgi_dev_mp_check" type="object" string="Revisar existencias" class="btn-secondary" icon="fa-cubes"/>
-                                    <button name="action_sgi_dev_mp_requisition" type="object" string="Requisición a Compras" class="btn-primary" icon="fa-shopping-cart"
+                                    <button name="action_sgi_dev_mp_requisition" type="object" string="Requisición a Compras" class="btn-secondary" icon="fa-shopping-cart"
                                             invisible="not sgi_dev_mp_missing_count"
                                             confirm="Crea una requisición a Compras ligada al proyecto con la materia prima que falta y deja corriendo el reloj de materia prima. ¿Continuar?"/>
                                     <button name="action_sgi_dev_mp_wait_start" type="object" string="Materia prima pendiente" class="btn-secondary" icon="fa-clock-o"
@@ -605,7 +615,7 @@
                                     <field name="response_ref" optional="show"/>
                                     <field name="response_filename" string="Evidencia" optional="show"/>
                                     <field name="reject_reason_id" optional="show"/>
-                                    <field name="response_registered_by_id" optional="hide"/>
+                                    <field name="response_registered_by_id" widget="many2one_avatar_user" optional="hide"/>
                                 </list>
                             </field>
                             <separator string="Características aprobadas por el cliente"/>
@@ -637,7 +647,7 @@
                                  fases afectadas) la llena Diseño de Producto y la firma Dirección de Operaciones; firmada, abre la
                                  revisión y el proyecto vuelve a «Muestra». La respuesta «pide cambios» la deja en borrador. -->
                             <div class="d-flex flex-wrap gap-1 mb-2">
-                                <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-primary" icon="fa-exchange"
+                                <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-secondary" icon="fa-exchange"
                                         invisible="sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto', 'liberado')"/>
                             </div>
                             <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado se registra como solicitud de modificación (causa, 5 porqués, solución y fases afectadas); al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra. Los cambios a la especificación quedan en la bitácora.</p>
@@ -665,7 +675,7 @@
                                         <field name="old_value"/>
                                         <field name="new_value"/>
                                         <field name="quotation_ref"/>
-                                        <field name="user_id" optional="show"/>
+                                        <field name="user_id" widget="many2one_avatar_user" optional="show"/>
                                         <field name="note" optional="show"/>
                                     </list>
                                 </field>

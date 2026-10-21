@@ -84,8 +84,9 @@
             <form string="Entregable">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_links" type="object" class="oe_stat_button"
-                                icon="fa-link" string="Ligas"/>
+                        <button name="action_view_links" type="object" class="oe_stat_button" icon="fa-link">
+                            <field name="link_count" widget="statinfo" string="Ligas"/>
+                        </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
@@ -104,7 +105,10 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <field name="acceptance_criteria" placeholder="Cuándo se da por bueno…"/>
+                    <!-- 57.170.0: dentro de un grupo, con su etiqueta. -->
+                    <group>
+                        <field name="acceptance_criteria" placeholder="Cuándo se da por bueno…"/>
+                    </group>
                     <group string="Cuándo queda entregado (mide a quien lo entrega)">
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
@@ -292,7 +296,7 @@
                 <field name="process_id" optional="show"/>
                 <field name="activity_id"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
-                <field name="employee_id" optional="hide"/>
+                <field name="employee_id" widget="many2one_avatar_employee" optional="hide"/>
                 <field name="job_id" optional="show"/>
                 <field name="department_id" optional="show"/>
                 <field name="sale_team_ids" widget="many2many_tags" optional="hide"/>
@@ -441,12 +445,16 @@
                     </list>
                 </field>
                 <footer>
+                    <!-- 57.170.0: el primario es el paso que sigue (probar, luego cargar). -->
                     <button name="action_test" type="object" string="Probar" class="btn-primary"
-                            invisible="state == 'loaded'"/>
-                    <button name="action_load" type="object" string="Cargar"
-                            class="btn-secondary" invisible="state == 'loaded'"
+                            invisible="state != 'draft'"/>
+                    <button name="action_load" type="object" string="Cargar" class="btn-primary"
+                            invisible="state != 'tested'"
                             confirm="Se escribirá el catálogo en la base. ¿Continuar?"/>
-                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                    <button name="action_test" type="object" string="Probar de nuevo" class="btn-secondary"
+                            invisible="state != 'tested'"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary" invisible="state == 'loaded'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary" invisible="state != 'loaded'"/>
                 </footer>
             </form>
         </field>
@@ -494,6 +502,13 @@
                 <field name="requires_process"/>
                 <field name="code_required"/>
                 <field name="legacy_code_regex" optional="show"/>
+                <!-- 57.162.0: el P-G01 (4.2 y 4.3) los imprime. -->
+                <field name="author_text" optional="show"/>
+                <field name="location_text" optional="show"/>
+                <field name="control_text" optional="hide"/>
+                <field name="reviewer_text" optional="show"/>
+                <field name="approver_text" optional="show"/>
+                <field name="odoo_menu_id" optional="hide" options="{'no_create': True}"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
                 <field name="active" column_invisible="1"/>
             </list>
@@ -520,6 +535,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">La nomenclatura de claves, como datos</p>
             <p>Cada tipo dice cómo se arma su clave: <code>{process}</code> es la clave del proceso (C6, S2…) y <code>{seq:02d}</code> el consecutivo. La <b>clave heredada</b> es la nomenclatura anterior que se sigue aceptando mientras se migra.</p>
+            <p>Quién lo elabora, dónde, quién lo revisa y quién lo aprueba salen en el P-G01 (4.2 y 4.3).</p>
         </field>
     </record>
 

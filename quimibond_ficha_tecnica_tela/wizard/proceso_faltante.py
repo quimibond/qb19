@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Acabados en proceso faltantes (2.13.0, Dirección General 2026-10-19).
 
-Toda la producción va en kg hasta Inspección: cada tela acabada (J, en metros) necesita su artículo en kg, que por
+Toda la producción va en kg hasta la Clasificación final: cada tela acabada (J, en metros) necesita su artículo en kg, que por
 la DAT P-D02-01 es el mismo código con la «I» al frente (posición 1 = unidad). Los artículos nuevos los da de alta C1
 (proyecto de desarrollo, SGI); para los que ya existen, este reporte lista las telas acabadas en metros cuyo «I…» no
 existe y lo crea para las seleccionadas: mismo nombre, kg, la categoría, el seguimiento y las rutas de la tela

@@ -394,7 +394,10 @@ class TestBandeja(TransactionCase):
         rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
         mine = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
         other = rows.filtered(lambda r: r.kind == 'accion' and r.res_id == line.id)
-        self.assertEqual(len(mine), 2)
+        # 57.168.0: las dos mediciones del indicador van juntas en un renglón.
+        self.assertEqual(len(mine), 1)
+        self.assertEqual(mine.group_count, 2)
+        self.assertEqual(sorted(mine._sgi_res_ids()), sorted(measures.ids))
         self.assertEqual(len(other), 1)
         with self.assertRaises(UserError):
             other.with_user(self.user).action_validate_selected()
@@ -413,7 +416,8 @@ class TestBandeja(TransactionCase):
             for d in mondays])
         rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp)
         theirs = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
-        self.assertEqual(len(theirs), 2)
+        self.assertEqual(len(theirs), 1, "57.168.0: un renglón por indicador.")
+        self.assertEqual(theirs.group_count, 2)
         with self.assertRaisesRegex(UserError, 'puede validar estas mediciones'):
             theirs.with_user(self.boss_user).action_validate_selected()
         self.assertEqual(set(measures.mapped('state')), {'capturado'})
@@ -436,8 +440,10 @@ class TestBandeja(TransactionCase):
         rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp | self.boss)
         their_rows = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in theirs.ids)
         own_row = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id == own.id)
-        self.assertEqual(len(their_rows), 2)
+        self.assertEqual(len(their_rows), 1, "57.168.0: un renglón por indicador.")
+        self.assertEqual(their_rows.group_count, 2)
         self.assertEqual(len(own_row), 1)
+        self.assertFalse(own_row.group_count, "Una sola medición no se agrupa.")
         result = (their_rows | own_row).with_user(self.boss_user).action_validate_selected()
         self.assertEqual(result['tag'], 'display_notification')
         # 57.145.0: cierre estándar, no soft_reload.
@@ -711,3 +717,45 @@ class TestBandeja(TransactionCase):
         # A quien no tiene el renglón (el jefe) sí le llega.
         self.assertTrue(Cron._sgi_schedule(req, 'Evaluar campana jefe 8A', '', self.boss_user.id,
                                            key='campana_jefe_8a:%d' % req.id))
+
+    # ---- 57.168.0: lo repetido junto y el flujo al dueño ------------------------
+    def test_36_validaciones_de_un_indicador_juntas(self):
+        indicator = self._indicator('Z8A-G', calc_mode='otif_ventas', frequency='weekly')
+        mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2, 3)]
+        measures = self.env['sgi.indicator.measure'].create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in mondays])
+        self.assertEqual(len([r for r in self._rows(kind='validacion') if r['res_id'] in measures.ids]), 3,
+                         "Las fuentes siguen dando una por medición.")
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp).filtered(
+            lambda r: r.kind == 'validacion' and r.group_res_ids and ',%d,' % measures[0].id in r.group_res_ids)
+        self.assertEqual(len(rows), 1, "Un renglón por indicador.")
+        self.assertEqual(rows.group_count, 3)
+        self.assertIn("— 3 mediciones", rows.name)
+        self.assertFalse(rows.can_done, "El grupo se valida con «Validar», no con «Hecho».")
+        opened = rows.with_user(self.user).action_open()
+        self.assertEqual((opened['res_model'], opened['domain']),
+                         ('sgi.indicator.measure', [('id', 'in', rows._sgi_res_ids())]))
+        rows.with_user(self.user).action_validate_measure()
+        self.assertEqual(set(measures.mapped('state')), {'validado'}, "«Validar» valida todas.")
+        self.assertFalse(rows.exists())
+
+    def test_37_flujo_atrasado_al_duenio(self):
+        """El flujo atrasado de la actividad no sale a cada persona del puesto
+        (ni como escalamiento): le llega una vez al dueño del proceso."""
+        self.process.owner_id = self.boss
+        self.env['sgi.activity.week.stat'].create({
+            'activity_id': self.activity.id, 'period_start': self.today - timedelta(days=7),
+            'late_open_count': 5})
+        mine = self.Pending._sgi_pending_values(self.user)[self.user.id]
+        self.assertFalse([r for r in mine if r['res_model'] == 'sgi.process.activity'
+                          and r['res_id'] == self.activity.id], "Quien la ejecuta no la recibe.")
+        floor = self.Pending._sgi_pending_values_employees(self.floor)[self.floor.id]
+        self.assertFalse([r for r in floor if r['res_id'] == self.activity.id])
+        boss = self.Pending._sgi_pending_values(self.boss_user)[self.boss_user.id]
+        flow = [r for r in boss if r['kind'] == 'flujo' and r['res_id'] == self.activity.id]
+        self.assertEqual(len(flow), 1)
+        self.assertEqual(flow[0]['date_due'], self.today - timedelta(days=7))
+        self.assertIn("5 entrada(s)", flow[0]['name'])
+        self.assertFalse([r for r in boss if r['kind'] == 'escalamiento' and r['res_id'] == self.activity.id],
+                         "Ni escalamiento: ya le llega como flujo.")

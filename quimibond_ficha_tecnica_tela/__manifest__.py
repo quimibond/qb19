@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.13.1',
+    'version': '19.0.2.13.2',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -67,7 +67,8 @@ Incluye:
   características dejan de ser texto libre (el texto se conserva sincronizado).
 - 2.11.0: rendimiento de tela tejida como campo calculado y guardado (editable
   para forzarlo) y ficha de tejido de referencia = la revisión más alta.
-- 2.12.0 y 2.13.0: producción en kg hasta Inspección. La ficha de acabado
+- 2.12.0 a 2.13.2: producción en kg hasta la Clasificación final (Inspección es
+  operación de la orden en kg). La ficha de acabado
   liga el acabado en kg (el código de la tela acabada con la «I» al frente,
   DAT P-D02-01) junto a la tela acabada en metros, con avisos y el reporte
   «Acabados en proceso faltantes» para crear los que no existen.

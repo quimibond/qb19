@@ -121,11 +121,11 @@ RA resina acrílica · TF termofijado.
 
 ## Uso de la «I» de la posición 1 desde 2026-10-19
 
-Dirección decidió que **toda la producción va en kg hasta Inspección**. El
-artículo en kg de una tela acabada es su mismo código con la «I» de la
-posición 1: la orden de acabado (abridora → tintorería → rama) produce
-`IWJ045Q22JNT160` en kg y la Inspección entrega `WJ045Q22JNT160` en metros
-medidos. No se agregan letras a la operación (posición 10). Tela sin
+Dirección decidió que **toda la producción va en kg hasta la Clasificación
+final**. El artículo en kg de una tela acabada es su mismo código con la «I» de
+la posición 1: la orden de acabado (devanado → tintorería → abridora → rama →
+Inspección) produce `IWJ045Q22JNT160` en kg ya inspeccionado y la
+Clasificación final entrega `WJ045Q22JNT160` en metros medidos. No se agregan letras a la operación (posición 10). Tela sin
 inspeccionar o lista se distingue por ubicación, no por código; el mismo «I…»
 se vende en kg. Detalle: `quimibond_ficha_tecnica_tela/README.md`, «Modelo de
 producción vigente».

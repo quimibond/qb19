@@ -10,30 +10,40 @@ Orden: `state_rank, date_due, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`.
 
-## Campos (20)
+## Campos (30)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `can_done` | Boolean |  | «Hecho» aplica a este renglón para quien abre la lista: la actividad con registro de cumplimiento (o que lo lleva), el aviso propio y la acción propia. |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:293` |
-| `can_mark_exec` | Boolean |  | Quien abre la lista puede marcar el avance del registro de cumplimiento (la persona, su jefe o el Jefe MAST). |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:290` |
-| `can_snooze` | Boolean |  | Aviso propio: se puede posponer una semana. |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:297` |
-| `date_due` | Date | Vence | Fecha en que vence el pendiente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:262` |
-| `detail` | Html | Qué hay que hacer | Criterio de terminado, pasos, instructivo, nota del aviso, plazos de la NC… lo que hace falta saber para resolverlo sin salir de aquí. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:269` |
-| `employee_id` | Many2one | Persona | Persona a la que le toca el pendiente. |  | `hr.employee.public` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:254` |
-| `exec_date_estimated` | Date | Fecha estimada | Cuándo espera terminarla quien la marcó «En proceso». |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:286` |
-| `exec_manual` | Boolean |  | Actividad de registro manual: «Ir» abre su registro. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:288` |
-| `exec_note` | Char | Nota de avance |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:285` |
-| `exec_state` | Selection | Avance | Actividades del periodo: pendiente o en proceso (con nota de avance). «En proceso» no quita el atraso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:279` |
-| `is_mine` | Boolean |  | El renglón es de quien abre la lista. |  |  | compute `_compute_is_mine`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:276` |
-| `kind` | Selection | Tipo | Qué hay que hacer: acción, NC, medición, validación, acuse, firma, aprobación, actividad, escalamiento, aviso… | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:256` |
-| `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:259` |
-| `process_id` | Many2one | Proceso | Proceso del pendiente. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:260` |
-| `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:267` |
-| `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:266` |
-| `source_name` | Char | Registro | El registro de Odoo sobre el que está el pendiente; «Ir» lo abre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:272` |
-| `state` | Selection | Estado | Atrasado, por vencer o al día. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:263` |
-| `state_rank` | Integer |  | Orden para mostrar primero lo atrasado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:265` |
-| `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:253` |
+| `can_done` | Boolean |  | «Hecho» aplica a este renglón para quien abre la lista: la actividad con registro de cumplimiento (o que lo lleva), el aviso propio y la acción propia. |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:309` |
+| `can_mark_exec` | Boolean |  | Quien abre la lista puede marcar el avance del registro de cumplimiento (la persona, su jefe o el Jefe MAST). |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:306` |
+| `can_snooze` | Boolean |  | Aviso propio: se puede posponer una semana. |  |  | compute `_compute_can_act`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:313` |
+| `date_due` | Date | Vence | Fecha en que vence el pendiente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:278` |
+| `detail` | Html | Qué hay que hacer | Criterio de terminado, pasos, instructivo, nota del aviso, plazos de la NC… lo que hace falta saber para resolverlo sin salir de aquí. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:285` |
+| `employee_id` | Many2one | Persona | Persona a la que le toca el pendiente. |  | `hr.employee.public` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:270` |
+| `exec_date_estimated` | Date | Fecha estimada | Cuándo espera terminarla quien la marcó «En proceso». |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:302` |
+| `exec_manual` | Boolean |  | Actividad de registro manual: «Ir» abre su registro. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:304` |
+| `exec_note` | Char | Nota de avance |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:301` |
+| `exec_state` | Selection | Avance | Actividades del periodo: pendiente o en proceso (con nota de avance). «En proceso» no quita el atraso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:295` |
+| `group_count` | Integer | Cuántos | Cuántos registros junta este renglón (vacío: uno solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:318` |
+| `group_res_ids` | Char |  | Ids de los registros que junta, «,4,34,64,» (para buscarlos). |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:320` |
+| `is_mine` | Boolean |  | El renglón es de quien abre la lista. |  |  | compute `_compute_is_mine`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:292` |
+| `kind` | Selection | Tipo | Qué hay que hacer: acción, NC, medición, validación, acuse, firma, aprobación, actividad, escalamiento, aviso… | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:272` |
+| `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:275` |
+| `nc_containment_state` | Selection | Contención |  |  |  | related `nc_id.sgi_containment_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:326` |
+| `nc_due_containment` | Date | Contención vence |  |  |  | related `nc_id.sgi_due_containment`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:325` |
+| `nc_due_plan` | Date | Plan de acción vence |  |  |  | related `nc_id.sgi_due_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:329` |
+| `nc_due_root_cause` | Date | Causa raíz vence |  |  |  | related `nc_id.sgi_due_root_cause`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:327` |
+| `nc_effectiveness_due` | Date | Eficacia vence |  |  |  | related `nc_id.sgi_effectiveness_due`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:331` |
+| `nc_id` | Many2one | NC |  |  | `quality.alert` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:324` |
+| `nc_plan_state` | Selection | Plan de acción |  |  |  | related `nc_id.sgi_plan_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:330` |
+| `nc_root_cause_state` | Selection | Causa raíz |  |  |  | related `nc_id.sgi_root_cause_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:328` |
+| `process_id` | Many2one | Proceso | Proceso del pendiente. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:276` |
+| `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:283` |
+| `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:282` |
+| `source_name` | Char | Registro | El registro de Odoo sobre el que está el pendiente; «Ir» lo abre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:288` |
+| `state` | Selection | Estado | Atrasado, por vencer o al día. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:279` |
+| `state_rank` | Integer |  | Orden para mostrar primero lo atrasado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:281` |
+| `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:269` |
 
 ## Métodos públicos (24)
 

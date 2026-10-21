@@ -25,6 +25,7 @@ from odoo.tools.safe_eval import safe_eval
 from .sgi_calendar import (
     SgiWorkdays, sgi_add_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_nth_business_day,
     sgi_previous_business_day, sgi_today)
+from .sgi_menu_paths import sgi_action_dict
 from .sgi_process_procedure import SgiProcessActivity as _BaseActivity
 
 _logger = logging.getLogger(__name__)
@@ -276,10 +277,12 @@ class SgiActivitySpec(models.Model):
         return [offset + 1 + step * n for n in range(12 // step)]
 
     def action_open_odoo(self):
-        """«Abrir en Odoo»: la acción configurada manda sobre la del menú."""
+        """«Abrir en Odoo»: la acción configurada manda sobre la del menú.
+        57.166.0: si es la misma del menú, se abre por el menú (revisa que el
+        usuario lo vea)."""
         self.ensure_one()
-        if self.odoo_action_id:
-            return self.odoo_action_id.sudo().read()[0]
+        if self.odoo_action_id and self.odoo_action_id != self.odoo_menu_id.sudo().action:
+            return sgi_action_dict(self.env, self.odoo_action_id)
         return super().action_open_odoo()
 
     # ------------------------------------------------------------------
@@ -964,6 +967,10 @@ class SgiProcessSpec(models.Model):
             'res_model': 'sgi.activity.spec.gap',
             'view_mode': 'list,pivot',
             'domain': [('process_id', '=', self.id)],
+            # 57.172.0: «Faltantes» y «Advertencias» abren la misma lista ya filtrada.
+            'search_view_id': [self.env.ref('quimibond_sgi.sgi_activity_spec_gap_view_search').id],
+            'context': {k: v for k, v in self.env.context.items() if k in ('search_default_errors',
+                                                                         'search_default_warnings')},
         }
 
 

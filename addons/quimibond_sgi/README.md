@@ -159,6 +159,32 @@ respaldo. Un bloque del documento que ninguna sección lleva sale al final
 - **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
   «Borrador — no vigente». La revisión vigente es el documento controlado
   de la clave del documento (MIID o P-G01).
+- **Pantalla por capítulos (57.161.0):** una pestaña por capítulo
+  (`sgi.miid.section.page`, sale del numeral con `MIID_KINDS[kind]['pages']`).
+  Los bloques de `MIID_KINDS[kind]['native']` son listas nativas
+  (`process_ids`, `policy_id`, `objective_ids`, `norm_ids`/`pg01_norm_ids`,
+  `doc_type_ids`/`pg01_doc_type_ids`, `routine_ids`); el texto de cada
+  pestaña lo pinta `report_miid_section` en modo pantalla, partido en
+  `scr_<pestaña>_<bloque>_html` (antes de la lista) y `scr_<pestaña>_html`
+  (lo demás). Un bloque nativo cuya sección queda en otra pestaña se pinta
+  como tabla, como los demás.
+- **Renglones (57.161.0):** `sgi.miid.item` (concepto, numeral, descripción,
+  dos columnas más y menú) sustituye las viñetas y tablas escritas; la
+  sección decide tabla o lista y los títulos de columna, y lleva su propio
+  `menu_id`. En pantalla, menú = botón a la acción; en el PDF, la ruta.
+  Renglones, menús y formato entran a la huella (`items` y el renglón de
+  `sections`). Siembra en `data/sgi_miid_items.xml` (después de los menús);
+  en una base existente, `_sgi_seed_format_update` pone el formato y
+  `_sgi_seed_items_update` (57.162.0) los renglones, en secciones sin editar.
+- **Campos en vez de texto (57.162.0):** el alcance es de la norma
+  (`scope`), lo que no aplica es de la cláusula (`exclusion`,
+  `exclusion_detail`, `exclusion_reason`), las reglas del sistema son
+  `sgi.system.rule` (cláusulas y menú) y quién elabora, dónde, quién revisa
+  y quién aprueba es del tipo de documento (`author_text`…`approver_text`,
+  `odoo_menu_id`). Bloques `alcance`, `exclusiones`, `reglas` (lista nativa
+  `rule_ids`), `elaboracion` y `aprobacion`. Siembra en
+  `data/sgi_miid_fields.xml`; en una base existente `_sgi_seed_fill_fields`
+  llena solo lo vacío.
 - **Siembra en una base existente:** `_sgi_seed_update` pone el texto nuevo
   solo en las secciones que nadie editó; `_sgi_seed_layout_update`
   reacomoda orden, numeral, título, nivel, bloque y documento;
@@ -423,8 +449,9 @@ acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
 crea crudo (H), teñido (I, si lleva), acabado en kg (el código del acabado con
 la «I» al frente, desde 57.160.0) y acabado (J) con el código del DAT
 P-D02-01 en estado «En desarrollo» (no se vende). Producción va en kg hasta
-Inspección: el acabado en kg sale de rama pesado e Inspección lo pasa a
-metros; sus listas de materiales se capturan a mano. Modelo completo:
+la Clasificación final: la orden en kg (devanado, tintorería, abridora, rama e
+Inspección) entrega el acabado en kg inspeccionado y la Clasificación final lo
+pasa a metros (desde 57.172.1); sus listas de materiales se capturan a mano. Modelo completo:
 `quimibond_ficha_tecnica_tela/README.md`, «Modelo de producción vigente». Al entrar a Pilotaje el
 artículo se vende con aviso; en Liberado queda de línea; si el proyecto
 cierra sin producto, el artículo y sus listas de materiales se archivan. El

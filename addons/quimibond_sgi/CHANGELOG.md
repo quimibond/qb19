@@ -13,6 +13,497 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.172.1 — 2026-10-21
+
+Solo textos, sin cambios de comportamiento. Revisión de José Sacramento (v5
+de su diseño): Inspección es una operación de la orden en kg (devanado →
+tintorería → abridora → rama → Inspección) y la orden en metros es la
+Clasificación final (empaque).
+
+### Cambiado
+- README, ayuda de «Artículo acabado en kg» y mensaje del chatter de «Generar
+  artículos»: dicen «Clasificación final» donde decían «Inspección» para el
+  paso que pasa el acabado en kg a metros.
+
+## 19.0.57.172.0 — 2026-10-21
+
+Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la
+navegación va en botones inteligentes, con su número cuando lo hay, y la barra
+queda para los pasos del flujo, como en las apps de Odoo.
+
+**Cambiado**
+- De la barra a botones inteligentes: «Origen» de la acción (con el nombre del
+  registro), «Informe» de la auditoría, «Baja de muestras» del envío (con el
+  estado de la baja), «Firma (Sign)» de la responsiva de EPP (con el estado de
+  la firma), «Solicitud en curso» y «PDF vigente» del MIID, «Sin cobertura»
+  de la norma (con el número de puntos), «Registros» del flujo y «Hoja de
+  cálculo» del tablero de Dirección.
+- Con número: «Textos» y «Solicitudes» del MIID, «Ligas» del entregable,
+  «Listas por capturar» del proyecto de desarrollo (antes un enlace dentro del
+  aviso). El proceso separa «Faltantes» (bloquean, en rojo) de «Advertencias»;
+  antes decía «0 Faltantes» cuando solo había advertencias. Cada uno abre la
+  lista ya filtrada.
+- «Registrar respuesta del cliente» del proyecto abre directo el envío que
+  espera respuesta (antes la lista de envíos, igual que el botón inteligente).
+- Riesgo ambiental: botón «Aspecto ambiental» a la matriz y aviso de una
+  línea. Un solo listón: «Archivado» gana sobre «Cerrado».
+- Empleado: «Procedimientos» (antes «Mis procedimientos», en la ficha de otro)
+  y «Acuses pendientes» se ocultan en cero. Puesto: sin «Ver sus actividades»,
+  que repetía el botón «Actividades SGI». Producto: «Especificación» como
+  botón inteligente (antes un botón suelto en la pestaña SGI).
+- Transferencia de inventario: «Firmar» es una acción y pasa a la barra (en
+  producto se queda en los botones: la ficha no tiene barra).
+- Mi procedimiento: los botones inteligentes van primero y el aviso «sin
+  empleado» después.
+- «Ver NC» en la solicitud de mantenimiento se queda en la barra: la ficha de
+  Odoo no tiene zona de botones inteligentes (revisado en producción).
+
+## 19.0.57.171.0 — 2026-10-21
+
+Interfaz, entrega 2 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`):
+personas, fechas, pestañas y textos de botones, como en las apps de Odoo.
+
+**Cambiado**
+- Personas con avatar: 116 campos a `res.users` y `hr.employee` en fichas y
+  listas de 38 archivos usan `many2one_avatar_user` / `many2one_avatar_employee`
+  (y `many2many_avatar_*` en equipos, auditores, participantes, ejecutores).
+  Sin cambio en kanban, búsqueda, pivote ni gráfica.
+- Vencimientos con `remaining_days` («Faltan 3 días», «Hace 2 días», en rojo
+  si ya pasó): compromiso de la acción, ejecución de actividad, revisión de
+  medición, eficacia de la capacitación, acuerdos de la revisión por la
+  dirección, próximo simulacro, revisión de aspectos y riesgos, fin del
+  permiso de trabajo, decisión de rutina heredada, vencimiento y próxima
+  evaluación legal, próxima calibración, próximo examen médico, revisión de
+  partes interesadas y plazo del plan en el tablero. En lo cerrado (acción
+  terminada, ejecución hecha, aspecto obsoleto…) la lista deja la celda vacía
+  y la ficha muestra la fecha normal.
+- 21 pestañas sin `name` lo tienen (revisión por la dirección, plan de
+  control, política, norma, auditoría, incidente, indicador, PPAP, plan de
+  emergencia, AMEF, riesgo y las pestañas del SGI en empleado y producto).
+- 15 avisos informativos (`alert-info`, «Formato controlado» y los de
+  configuración del indicador) pasan de `role="alert"` a `role="status"`: no
+  se anuncian como urgentes.
+- Salir de un asistente sin hacer nada dice «Descartar» en todos (antes
+  «Cancelar», «Cerrar» o «Descartar»), como botón secundario. «Cerrar» queda
+  solo donde no hay nada que descartar: los asistentes de consulta (artículos
+  parecidos, hojas de tela) y la carga de catálogo o rutinas ya cargada.
+- Los botones de estado «Cancelar» dicen qué cancelan: «Cancelar permiso»,
+  «Cancelar bloqueo», «Cancelar solicitud» (esta además pide confirmación).
+- Lista de permisos de trabajo: los vencidos en rojo (sin la columna
+  «Vencido»), y la pastilla de estado colorea cerrado y cancelado. Salud de
+  los objetivos en el tablero de Dirección con los colores del MIID.
+- «Objetivos integrales» con la misma mayúscula en la lista.
+
+## 19.0.57.170.0 — 2026-10-20
+
+Interfaz, entrega 1 de 5: lo de prioridad alta. Jose (2026-10-20): «no quiero
+limpiar, quiero mejorar y usar las mejores prácticas de UI en Odoo; revisa cada
+vista, pestaña y botón». Seis revisores recorrieron las 432 vistas: 398
+hallazgos (49 altos, 158 medios, 191 bajos) en `docs/audit/ui-sgi-2026-10-20.md`.
+Entregas: (1) errores y flujo; (2) avatares, fechas relativas, nombres de
+pestañas y textos de botones; (3) navegación a botones inteligentes; (4)
+instrucciones de la ficha a la ayuda de los campos; (5) Mis pendientes con dos
+botones por renglón y paneles de búsqueda.
+
+**Corregido**
+- Resultado de la calibración, Severidad del incidente, Resultado del
+  simulacro y Veredicto del MSA no se podían capturar: el widget `badge` solo
+  muestra el valor en una ficha. Ahora `selection_badge` (se elige).
+- Filtros que se unían con «o»: «Mías» de Acciones, «En proceso» de Mis
+  pendientes. «Vigentes» + «Obsoletos» de planes de control daban lista vacía.
+- Un PPAP interino no ofrecía «Aprobar».
+- El hallazgo de una auditoría cerrada se dejaba editar y fallaba al guardar:
+  ahora se ve en solo lectura (`sgi_is_locked`; el Jefe MAST sí lo edita). Las
+  líneas de un programa cerrado tampoco se editan.
+- El aviso «Procedimiento vivo modificado» pedía «confírmelo» sin botón: nuevo
+  «El PDF sigue vigente» (Jefe MAST, queda en el chatter).
+- «Medido por Laboratorio» de las fichas técnicas se podía volver a firmar con
+  la ficha validada; pide confirmación.
+- La columna «Tipo» de las listas de documentos usa el tipo configurable
+  (`sgi_doc_type_id`), no el código de compatibilidad.
+
+**Cambiado**
+- Un solo botón primario por estado: incidente, envío de muestra, permiso de
+  trabajo, proyecto de desarrollo (encabezado y pestañas), asistentes de carga
+  (el primario es el paso que sigue).
+- Navegación a botones inteligentes: actividad (Evidencia con su conteo,
+  Instructivo, Siguiente paso, Viene de), indicador (Tendencia; la ficha en PDF
+  queda en Imprimir), medición (Registros, Evidencia).
+- Requisito legal: sin los cuatro botones de colores que abrían el mismo
+  asistente que «Registrar evaluación»; el cumplimiento es una pastilla bajo el
+  título, no una barra de flujo. Rutina del Dropbox: sin barra de estado.
+- Medición: la barra no muestra «Sin dato» como paso (cinta «Sin dato»); los
+  cinco avisos pasan a campos (origen, fuente, por qué no hay dato) y la regla
+  del 0 al `placeholder` de la nota.
+- Indicador: la pestaña Fórmula solo con fórmula configurable; la lista sin
+  el «Nuevo» nativo (se crea con «Nuevo indicador»); aviso de configuración
+  incompleta en una línea.
+- Aprobaciones: las pestañas del SGI (MOC, cambio documental) van en el
+  cuaderno de Aprobaciones; «Crear documento» y «Completar antes de aprobar» en
+  el encabezado; «Reenviar a firma» secundario.
+- Lista de procesos con su estado; búsqueda de NC por título; encuesta de
+  satisfacción con su propio ajuste; aspecto ambiental con cinta de archivado
+  y lista con columnas opcionales; «Cancelar simulacro»; revisión de medición
+  sin el modelo y el dominio para el dueño (solo Jefe MAST).
+- Quedan para su entrega: Mis pendientes (5) y el orden de botones de la
+  revisión por la dirección, que decidió 57.42.0 (V-M06).
+
+**Pruebas**
+- `test_ui_entrega1`.
+
+## 19.0.57.169.0 — 2026-10-20
+
+«Sin dato» dice por qué. Producción el 2026-10-20: 223 mediciones «Sin dato»
+en 33 indicadores, con cuatro causas que se veían igual; los 106 indicadores
+siguen «En prueba». Jose eligió (2026-10-20): un campo con la causa, quitar de
+la vista la historia de foto y revisar las seis fórmulas que nunca midieron.
+
+**Agregado**
+- `sgi.indicator.measure.no_data_reason` (guardado): Foto, Antes de «Medir
+  desde», Falta configurar, La fuente no tiene registros, Sin casos en el
+  periodo (`sgi_no_data_reason`, sale de la nota y del último cálculo). Badge
+  en las listas de mediciones, filtro «Sin dato por arreglar» y agrupación.
+- Ficha del indicador: botón «Dónde se arregla» cuando falta configurar
+  (`CALC_FIX_MENUS`: capacidad instalada → Ajustes; plantilla autorizada →
+  Puestos).
+- Pruebas: `test_sin_dato_motivo`.
+
+**Cambiado**
+- La pestaña Mediciones de la ficha ya no lista las mediciones de foto de
+  meses pasados (`measure_shown_ids`); siguen existiendo y se ven en
+  Mediciones quitando el filtro «Con dato».
+
+**Datos de producción (revisión de las seis fórmulas, solo lectura)**
+- C1-01 «Días de la solicitud al artículo aprobado»: **fórmula mal**. Filtra
+  y mide con `date_end` de la tarea «Aprobación…», que nadie llena (84 tareas,
+  ninguna con fecha de finalización; 22 hechas). Corrección propuesta: medir
+  con «Última actualización de la etapa» (`date_last_stage_update`), cambio de
+  datos en el término 75, pendiente del visto bueno de Jose.
+- C2-05 «Expedientes de exportación cerrados en 5 días hábiles»: la fuente no
+  se captura (ninguna salida tiene fecha de cruce, `sgi_export_crossing_datetime`).
+- MT-02 «Mantenimiento preventivo cumplido»: casi no se registra (4 solicitudes
+  preventivas en total, 2 en 2026).
+- S3-01 «Día hábil de cierre»: la bitácora del bloqueo arrancó el 4-oct-2026;
+  el cierre de septiembre se movió tres veces y cuenta como tres cierres.
+- TR-01 «Cierre de NC» y C5-02 «Reclamaciones cerradas en 30 días»: fórmulas
+  bien; las NC y reclamaciones de agosto y septiembre están canceladas. Las de
+  octubre (abiertas) miden al cierre del mes.
+
+## 19.0.57.168.0 — 2026-10-20
+
+Mis pendientes sin lo repetido. Producción el 2026-10-20: ~1,500 renglones;
+Jose Mizrahi Daniel con 120 validaciones (las mediciones de feb a sep de sus
+indicadores), Elena Delgado con 94 firmas de órdenes de compra, avisos «Salida
+sin CoA» uno por salida y 119 actividades de flujo sin fecha, repetidas a cada
+persona del puesto. Jose eligió (2026-10-20): un renglón por grupo, el flujo
+al dueño del proceso, las firmas fuera del SGI juntas.
+
+**Cambiado**
+- Un renglón junta lo repetido de cada persona (`_sgi_grouped`, al guardar):
+  las mediciones por capturar o validar de un indicador, las firmas que no
+  son del SGI (`SGI_SIGN_FIELDS` dice cuáles sí), los avisos de una misma
+  clase (`sgi_cron_kind`), las revisiones de medición y los requisitos
+  legales. Nombre «… — N mediciones», columna «Cuántos», fecha y estado del
+  más atrasado; la ficha lista lo que junta. «Ir» abre la lista (los avisos,
+  sus registros; las firmas, sus solicitudes). «Validar» del grupo valida
+  todas; «Hecho», «Posponer» y las acciones de un solo registro no salen en
+  un grupo. Las cifras de Mi equipo siguen contando registros.
+- Tipo nuevo **Flujo atrasado**: la actividad con entradas de plazo vencido
+  sin salida le llega una vez al dueño del proceso (o al Jefe MAST si el
+  proceso no tiene dueño), con la semana medida como fecha. Ya no sale a cada
+  persona del puesto ni como escalamiento.
+- `_sgi_refresh_for` también encuentra los renglones que juntan el registro.
+
+**Pruebas**
+- `test_bandeja` 20, 22 y 23 (validar en lote con el renglón del grupo); 36
+  (validaciones juntas) y 37 (flujo al dueño).
+
+## 19.0.57.167.0 — 2026-10-20
+
+El SGI ordenado: menos menús, lo mismo a un botón. Jose (2026-10-20):
+«¿cómo podemos ordenar más el SGI y limpiar lo que no sirva de la misma
+forma?»; eligió empezar por los menús, con el uso real de producción.
+
+**Retirado (menús archivados en su lugar, acción viva)**
+- Del Dropbox a Odoo: «Procedimientos anteriores», «Formatos y documentos
+  anteriores» y «Rutina por rutina». Quedan «Buscador por clave anterior»
+  (filtra procedimientos y formatos) y «Avance de la transición» (botones
+  Procedimientos, Rutinas, Pendientes y Documentos por proceso). La
+  transición sigue: 35 rutinas y 67 procedimientos pendientes el 2026-10-20.
+- Transición: «Cargar catálogo» y «Empresa en documentos controlados» (de una
+  sola vez; quedaban 5 documentos sin empresa). Se queda «Traspaso de riesgos
+  ambientales».
+- Manual del SGI: «Textos», «Revisiones» y «Solicitudes de cambio»: la ficha
+  del MIID y del P-G01 los abre (botón nuevo «Solicitudes»).
+- Indicadores: «Nuevo indicador» es botón de la lista (Jefe MAST).
+- Configuración: «Tabletas de planta» (SGI en planta apagado, 2026-10-02).
+
+**Se quedan**
+- Seguridad y ambiente completo (ISO 45001 en certificación), aunque 8 de 9
+  pantallas no tienen registros. «Hojas de checklist» no era duplicado de
+  «Checklists de hoy»: es el historial de todas las hojas.
+- «Competencias por tipo de permiso» (va con los permisos de 45001) y
+  «Eficiencias de mi área».
+
+**Corregido**
+- Un menú archivado sigue abriendo desde las actividades, secciones del MIID
+  y claves del Dropbox que lo apuntan (`sgi_menu_allowed`: la carpeta visible
+  y los grupos del menú); antes un menú archivado daba «sin acceso».
+- «Abrir en Odoo» de los documentos y del buscador por clave anterior usa la
+  misma regla que «Ir a hacerlo» (57.166.0): abría solo listas.
+
+## 19.0.57.166.0 — 2026-10-20
+
+Las rutas se abren, segunda entrega: errores, avisos y manuales.
+
+**Agregado**
+- Los errores que dicen dónde se arregla traen el botón que abre esa pantalla
+  (`RedirectWarning`): fuente de NC desactivada, riesgo ambiental capturado a
+  mano (abre la matriz de aspectos), tipo de operación de la baja de muestras
+  y categoría de compra del desarrollo (abren Ajustes). Si el usuario no ve el
+  menú, es el error de siempre. La clase `SgiRedirectWarning` sigue siendo
+  `UserError` (los `except UserError` y las pruebas no cambian).
+- Las notas de los avisos del SGI (`sgi.cron._sgi_schedule`) llevan su ruta
+  como liga (`/odoo/action-<id>`); los avisos abiertos se reescriben una vez
+  para tomar las ligas.
+- `sgi_menu_paths`: `sgi_menu_links` y `sgi_route_error`.
+- Pruebas: `test_rutas_abren` 04 a 07.
+
+**Corregido**
+- «Ir a hacerlo» de las actividades (ficha, lista, Mi procedimiento y Mis
+  pendientes) abría solo menús de lista: los ~40 de producción que abren un
+  reporte o una acción de cliente o de servidor (Balance de comprobación,
+  Estado de resultados, Conciliar, Programa maestro, Recalcular costeo…)
+  daban «no tiene menú de Odoo». Ahora abre cualquier acción
+  (`sgi_action_dict`) y revisa con el usuario real que vea el menú; si no,
+  lo dice (`SgiNoAccess`) en vez del error de acceso de Odoo, y Mis
+  pendientes ya no cae a la ficha del catálogo.
+- La acción configurada (`odoo_action_id`) cuenta para mostrar el botón en
+  la lista de actividades y en Mi procedimiento; si es la misma del menú, se
+  abre por el menú.
+
+**Cambiado**
+- Mis pendientes: un solo botón. Las actividades y escalamientos dicen «Ir a
+  hacerlo» (antes «Ir» y, en la ficha, además «Ir a hacerlo» de 57.165.0, que
+  solo veía el menú); lo demás, «Ir». Se retira `where_menu_id`.
+- Los mensajes de desarrollo dicen la ruta del árbol del SGI
+  (`SGI → Administración → Configuración → Ajustes`) en vez de «Ajustes → SGI».
+
+## 19.0.57.165.0 — 2026-10-20
+
+Lo del MIID en los demás lugares, primera entrega: las rutas se abren. Jose
+(2026-10-20): «quiero hacer lo mismo que en el MIID en todos los demás
+lugares que sea necesario»; eligió empezar por las rutas.
+
+### Agregado
+- `sgi_menu_paths.sgi_menu_from_text` (la ruta escrita «SGI → … → …» → su
+  menú, la más larga que coincide) y `sgi_open_menu_action` (abre el menú o
+  dice que el usuario no tiene acceso). El MIID usa la misma regla.
+- Diagnóstico: cada hallazgo con «Dónde se arregla» trae el botón «Abrir»
+  (`sgi.diagnostic.line.fix_menu_id`).
+- Mis pendientes: «Ir a hacerlo» abre la pantalla de la actividad
+  (`where_menu_id`, el menú de la actividad o de su registro de
+  cumplimiento); los pasos de la NC (contención, causa raíz, plan y eficacia)
+  son campos con su estado en color (`nc_id` y relacionados).
+
+### Cambiado
+- La ficha de Mis pendientes ya no escribe «Dónde se hace: SGI → …» ni los
+  pasos de la NC en un párrafo.
+
+## 19.0.57.164.5 — 2026-10-20
+
+### Corregido
+- Aprobar un cambio documental como usuario (no el superusuario) tronaba al
+  publicar: `_sgi_apply_doc_change` escribía `sgi_new_document_id` y
+  `sgi_applied` en la solicitud ya aprobada y Aprobaciones (Enterprise) solo
+  deja escribir una solicitud aprobada al superusuario («Primero debes
+  cancelar la aprobación y luego regresarla a borrador»). Se escriben con
+  `sudo()` (son campos del sistema; la aprobación sigue siendo del usuario).
+  Lo encontró `test_miid.test_19` en el build de `main`; por la sincronización
+  con Sign (superusuario) no se veía.
+
+## 19.0.57.164.4 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento (segunda corrida: 34 de 36).
+
+### Corregido
+- `test_miid.test_32`: los bloques sueltos del P-G01 incluyen los de 57.162.0
+  (quién elabora y quién firma).
+- `test_miid.test_19`: Mis pendientes muestra los avisos de la empresa del
+  SGI y la solicitud es de la empresa de su categoría (la real); en la prueba
+  la empresa del SGI era la de prueba y el aviso no salía. Durante esa
+  revisión la empresa del SGI es la de la solicitud (en producción son la
+  misma).
+
+## 19.0.57.164.3 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento (primera corrida en el build de
+`main`: 33 de 36).
+
+### Corregido
+- `test_miid_pantalla.test_02`: busca el control por su clave (el título lo
+  calcula el documento).
+- `test_miid.test_32`: la actividad de la prueba lleva método de medición
+  (el candado estricto de un procedimiento vigente lo exige).
+- `test_miid.test_19`: si el aviso de la solicitud retenida no sale en Mis
+  pendientes, la falla dice qué renglones salieron y cuándo vence el aviso.
+
+## 19.0.57.164.2 — 2026-10-20
+
+Solo pruebas, sin cambios de comportamiento.
+
+### Corregido
+- Las pruebas que crean una empresa propia (las del MIID entre ellas) no
+  arrancaban en la copia de producción: «company inconsistencies» en
+  `res.company.create`. La carpeta «Aprobaciones» de documents_approvals
+  es de la empresa 1 en producción (Odoo la trae compartida) y
+  `approvals_folder_id` la ponía por omisión en la empresa nueva. Ayudante
+  `tests/common_documents.sgi_new_company` (empresa sin carpetas de
+  Documentos heredadas), usado en las 16 pruebas del SGI que crean empresa.
+
+## 19.0.57.164.1 — 2026-10-20
+
+### Corregido
+- «Vista en PDF (borrador)» del MIID y del P-G01 tronaba («string indices must
+  be integers», build de `main`): el ciclo de los diagramas de
+  `_sgi_print_data` usaba `kind` y pisaba los datos del documento (desde
+  57.148.0; solo el PDF pide diagramas). Se llama `dg_kind`. Prueba nueva.
+
+## 19.0.57.164.0 — 2026-10-20
+
+Candados del MIID y del P-G01 que se resuelven en la misma pantalla. Jose
+(2026-10-20): «no me gusta cómo funcionan, no está fácil de usar». Antes era
+un recuadro rojo con la nota completa de cada sección y la lista de claves de
+proceso; para resolverlo había que ir a Textos o a cada proceso sin saber qué
+le faltaba.
+
+### Cambiado
+- Arriba del manual: «Para aprobar una revisión nueva faltan N cosa(s)» y
+  dos listas que se vacían solas:
+  - **Secciones por confirmar** (numeral, título y qué falta confirmar) con
+    «Confirmar» (Jefe MAST, Dirección o Administrador SGI; pide
+    confirmación y deja el rastro de siempre en la sección) y «Editar».
+  - **Procesos que faltan por publicar** (dueño, estado y cuántos faltantes
+    bloquean), en verde los que ya se pueden publicar, con «Qué falta» o
+    «Publicar» (Jefe MAST; la misma regla que en la ficha del proceso). El
+    P-G01 solo lista su proceso (E2).
+
+### Agregado
+- `sgi.miid.to_confirm_section_ids`, `pending_process_ids` y
+  `approval_todo_count`; `sgi.miid.section.action_sgi_confirm` y
+  `action_open_form`.
+
+## 19.0.57.163.0 — 2026-10-20
+
+Cobertura coherente. Jose (2026-10-20) eligió seguir por aquí: un punto de la
+norma que cumple una regla del sistema o que no aplica dejaba de ser
+evidencia en la Matriz de cumplimiento y el checklist de auditoría (salía en
+rojo «sin actividad»).
+
+### Cambiado
+- `sgi.norm.clause.covered` («Cubierto») cuenta también las reglas del
+  sistema activas y lo marcado «No aplica»; su búsqueda igual. Campo nuevo
+  `coverage` («Con actividad», «Lo cumple el sistema», «No aplica», «Sin
+  cobertura») en la ficha y las listas de cláusulas, como etiqueta de color.
+- Matriz de cumplimiento: «No aplica» en gris con su justificación, «Lo
+  cumple el sistema» en azul con sus reglas; solo «Sin cobertura» en rojo y
+  en el conteo.
+- Checklist de auditoría: ya no pregunta «¿cómo se cumple?» por lo que no
+  aplica ni por lo que cumple una regla del sistema.
+- «Puntos sin actividad» se llama «Puntos sin cobertura»; filtros «Sin
+  cobertura», «Cubiertos», «Con actividad» y «Lo cumple el sistema».
+
+## 19.0.57.162.0 — 2026-10-20
+
+Menos texto en el MIID y el P-G01, y lo que es dato vive en su registro.
+Jose (2026-10-20): «sigo viendo mucho texto» y «¿no es mejor que sean
+campos?».
+
+### Agregado
+- Norma: «Alcance certificado» (`scope`); el MIID (1.2) lo lee.
+- Cláusula: «No aplica», «Inciso que no aplica» y «Justificación»
+  (`exclusion*`, con candado: no aplica sin justificación); el MIID (1.3)
+  y la correspondencia por cláusula («No aplica») lo leen.
+- `sgi.system.rule` «Reglas del sistema» (Administración → Configuración):
+  lo que el sistema hace cumplir con candados y avisos, ligado a sus
+  cláusulas y a su pantalla. El MIID (5.2) las muestra como lista nativa y
+  la correspondencia por cláusula agrega la columna «Regla del sistema». La
+  siembra trae 15.
+- Tipo de documento: «Lo elabora», «Dónde se elabora», «Cómo queda
+  controlado», «Lo revisa», «Lo aprueba» y «Pantalla en Odoo»; el P-G01 (4.2
+  y 4.3) los lee.
+- Bloques del manual `alcance`, `exclusiones`, `reglas`, `elaboracion` y
+  `aprobacion`; entran a la huella (`scope`, `exclusions`, `rules` en el
+  MIID; `doc_roles` en el P-G01) y a las diferencias.
+- `_sgi_seed_items_update` (renglones de la siembra en secciones sin editar)
+  y `_sgi_seed_fill_fields` (llena los campos sembrados solo si están
+  vacíos). Siembra en `data/sgi_miid_fields.xml`.
+
+### Cambiado
+- El texto de cada sección queda en una o dos frases; los renglones que
+  quedan son cortos (62 en 30 secciones). La política ya no repite sus
+  compromisos (salen de su texto); las responsabilidades del P-G01 remiten
+  a las rutinas de E2 (sección 5) en vez de repetirlas. La prosa baja de
+  unas 3,200 palabras a unas 1,600; con tablas y datos sembrados, de unas
+  5,700 a unas 4,200.
+
+### Migración
+- `post-migrate`: pone su bloque a las cinco secciones que ahora leen datos,
+  llena alcance, no aplicabilidades y roles por tipo solo donde están
+  vacíos y, en las secciones sin editar a mano, texto, renglones y formato
+  de la siembra; comparación del MIID y del P-G01. Idempotente.
+
+## 19.0.57.161.1 — 2026-10-20
+
+### Corregido
+- El build de `main` no cargaba el registro («Failed to load registry»):
+  57.161.0 definió en `sgi.miid` un campo `activity_ids` (las rutinas del
+  P-G01) que pisaba el de `mail.activity.mixin`. Se llama `routine_ids`.
+  Prueba nueva que lo vigila.
+
+## 19.0.57.161.0 — 2026-10-20
+
+MIID y P-G01 legibles y con las prácticas de Odoo. Jose (2026-10-20): «no se
+entiende ni se puede leer bien y no usa las mejores prácticas de Odoo; no
+quiero texto plano». Eligió ficha nativa por capítulos, texto estructurado y
+el PDF con la misma estructura.
+
+### Cambiado
+- La pantalla del MIID y del P-G01 es **una pestaña por capítulo** con la
+  letra de Odoo (antes, una sola pestaña con el cuerpo del PDF a 8–9 px).
+  Procesos, política, objetivos, normas, tipos de documento y rutinas del
+  P-G01 son **listas nativas** que se abren; roles, plazos, controles,
+  correspondencia y anexos, tablas legibles. Botones de estadística a los
+  textos, a lo que falta confirmar y a las revisiones.
+- Las rutas escritas («SGI → Sistema → …») son **menús**: cada sección y
+  cada renglón tiene su «Pantalla en Odoo»; en pantalla es un botón que la
+  abre y en el PDF se imprime la ruta.
+- PDF: tablas a 10 px (antes 9) y las anchas a 9 px (antes 8); hoja a 11 px.
+- «Textos» se agrupa por documento y pestaña; la sección tiene la pestaña
+  «Renglones» (tabla o lista, títulos de columna) y el botón «Abrir en Odoo».
+
+### Agregado
+- `sgi.miid.item`: renglones de una sección (concepto, numeral, descripción,
+  dos columnas más y menú). La siembra (`data/sgi_miid_items.xml`, después
+  de los menús) trae 84 en 29 secciones: alcance por norma, no
+  aplicabilidades, control del manual, glosario, compromisos de la política,
+  niveles de responsabilidad, las 12 reglas que el sistema hace cumplir (con
+  cláusula y pantalla), etapas de la NC, controles operacionales, formas de
+  la información documentada y, del P-G01, alcance, responsabilidades, quién
+  elabora qué, quién firma, difusión y conservación.
+- `sgi.norm.clause_count` (lo muestra la lista de normas).
+
+### Huella
+- Renglones, menús y formato de las secciones entran a la huella: una
+  revisión con línea base sale «desactualizada» hasta la siguiente solicitud
+  (hoy ninguna la tiene: las dos vigentes vienen del Dropbox).
+
+### Migración
+- `post-migrate`: texto nuevo de 23 secciones (sin las viñetas, tablas y
+  rutas que pasaron a renglones y menús) solo si nadie las editó (en las
+  editadas deja aviso), formato de 29 secciones y comparación del MIID y del
+  P-G01. Los renglones los crea la actualización. Idempotente.
+
 ## 19.0.57.160.1 — 2026-10-20
 
 Solo documentación, sin cambios de comportamiento.

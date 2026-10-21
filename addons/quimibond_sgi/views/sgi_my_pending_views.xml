@@ -28,6 +28,8 @@
                 <field name="employee_id" string="Persona" optional="hide"/>
                 <field name="kind" string="Tipo" widget="badge"/>
                 <field name="name" string="Qué"/>
+                <!-- 57.168.0: lo repetido va junto en un renglón. -->
+                <field name="group_count" string="Cuántos" optional="show" invisible="not group_count"/>
                 <field name="process_id" string="Proceso" optional="show"/>
                 <field name="date_due" string="Vence" widget="remaining_days"/>
                 <field name="state" string="Estado" widget="badge"
@@ -65,14 +67,18 @@
                         invisible="kind != 'acuse' or not is_mine"
                         confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
                 <!-- «Ir» lleva a donde se hace o al registro; el verbo cambia con el tipo. -->
+                <!-- 57.166.0: la actividad dice «Ir a hacerlo» (abre la pantalla
+                     donde se hace, como Mi procedimiento); lo demás, «Ir». -->
+                <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
+                        invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
                 <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                        invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                        invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
                 <button name="action_open" type="object" string="Leer" icon="fa-book"
                         invisible="kind != 'acuse'"/>
                 <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
-                        invisible="kind != 'firma'"/>
+                        invisible="kind != 'firma' or group_count"/>
                 <button name="action_open" type="object" string="Capturar" icon="fa-pencil-square-o"
-                        invisible="kind != 'medicion'"/>
+                        invisible="kind != 'medicion' or group_count"/>
             </list>
         </field>
     </record>
@@ -93,6 +99,7 @@
                 <field name="res_model"/>
                 <field name="exec_state"/>
                 <field name="exec_note"/>
+                <field name="group_count"/>
                 <templates>
                     <t t-name="card">
                         <field name="name" class="fs-5 fw-bold"/>
@@ -128,14 +135,16 @@
                             <button name="action_snooze_notice" type="object" string="Posponer"
                                     class="btn btn-secondary btn-lg" invisible="not can_snooze"
                                     confirm="¿Pospone este aviso una semana (5 días hábiles)?"/>
+                            <button name="action_open" type="object" string="Ir a hacerlo" class="btn btn-primary btn-lg"
+                                    invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
                             <button name="action_open" type="object" string="Ir" class="btn btn-primary btn-lg"
-                                    invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                                    invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
                             <button name="action_open" type="object" string="Leer" class="btn btn-primary btn-lg"
                                     invisible="kind != 'acuse'"/>
                             <button name="action_open" type="object" string="Firmar" class="btn btn-primary btn-lg"
-                                    invisible="kind != 'firma'"/>
+                                    invisible="kind != 'firma' or group_count"/>
                             <button name="action_open" type="object" string="Capturar" class="btn btn-primary btn-lg"
-                                    invisible="kind != 'medicion'"/>
+                                    invisible="kind != 'medicion' or group_count"/>
                         </footer>
                     </t>
                 </templates>
@@ -176,14 +185,16 @@
                     <button name="action_snooze_notice" type="object" string="Posponer una semana"
                             icon="fa-clock-o" invisible="not can_snooze"
                             confirm="¿Pospone este aviso una semana (5 días hábiles)? La fecha límite del aviso cambia en Odoo."/>
+                    <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
+                            invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
                     <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                            invisible="kind in ('acuse', 'firma', 'medicion')"/>
+                            invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
                     <button name="action_open" type="object" string="Leer el documento" icon="fa-book"
                             invisible="kind != 'acuse'"/>
                     <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
-                            invisible="kind != 'firma'"/>
+                            invisible="kind != 'firma' or group_count"/>
                     <button name="action_open" type="object" string="Capturar" icon="fa-pencil-square-o"
-                            invisible="kind != 'medicion'"/>
+                            invisible="kind != 'medicion' or group_count"/>
                 </header>
                 <sheet>
                     <field name="is_mine" invisible="1"/>
@@ -191,6 +202,7 @@
                     <field name="can_mark_exec" invisible="1"/>
                     <field name="can_snooze" invisible="1"/>
                     <field name="res_model" invisible="1"/>
+                    <field name="group_count" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
@@ -213,12 +225,30 @@
                             <field name="exec_date_estimated" invisible="not exec_date_estimated"/>
                         </group>
                     </group>
+                    <field name="nc_id" invisible="1"/>
+                    <!-- 57.165.0: los pasos de la NC como campos con su estado. -->
+                    <group string="Pasos de la NC" invisible="kind != 'nc' or not nc_id">
+                        <group>
+                            <field name="nc_containment_state" widget="badge" decoration-danger="nc_containment_state == 'vencida'"
+                                   decoration-success="nc_containment_state == 'hecha'"/>
+                            <field name="nc_due_containment"/>
+                            <field name="nc_root_cause_state" widget="badge" decoration-danger="nc_root_cause_state == 'vencida'"
+                                   decoration-success="nc_root_cause_state == 'hecha'"/>
+                            <field name="nc_due_root_cause"/>
+                        </group>
+                        <group>
+                            <field name="nc_plan_state" widget="badge" decoration-danger="nc_plan_state == 'vencida'"
+                                   decoration-success="nc_plan_state == 'hecha'"/>
+                            <field name="nc_due_plan"/>
+                            <field name="nc_effectiveness_due"/>
+                        </group>
+                    </group>
                     <group string="Qué hay que hacer" invisible="not detail">
                         <field name="detail" nolabel="1" colspan="2"/>
                     </group>
                     <div class="alert alert-info" role="status" invisible="kind != 'escalamiento'">
                         Este escalamiento le llega porque la actividad pasó sus días hábiles de atraso.
-                        La marca hecha quien la ejecuta; usted puede abrirla con <b>Ir</b> y darle seguimiento.
+                        La marca hecha quien la ejecuta; usted puede abrirla con <b>Ir a hacerlo</b> y darle seguimiento.
                     </div>
                 </sheet>
             </form>
@@ -243,10 +273,13 @@
                 <separator/>
                 <filter name="kind_activity" string="Actividades" domain="[('kind', '=', 'actividad')]"/>
                 <filter name="kind_escalation" string="Escalamientos" domain="[('kind', '=', 'escalamiento')]"/>
-                <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
                 <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
                 <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>
+                <filter name="kind_flow" string="Flujos atrasados" domain="[('kind', '=', 'flujo')]"/>
+                <!-- 57.170.0: aparte de los tipos (se unía con «o»). -->
+                <separator/>
+                <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <group>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
@@ -286,12 +319,12 @@
                            placeholder="Por qué pasó (5 porqués, Ishikawa)"/>
                     <field name="name" invisible="step == 'causa'" required="step != 'causa'"
                            placeholder="Qué se hace"/>
-                    <field name="responsible_id" invisible="step == 'causa'" required="step != 'causa'"/>
+                    <field name="responsible_id" widget="many2one_avatar_user" invisible="step == 'causa'" required="step != 'causa'"/>
                     <field name="date_commit" invisible="step == 'causa'" required="step != 'causa'"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>
@@ -314,7 +347,7 @@
                 </div>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

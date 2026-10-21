@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""2.12.0: la producción va en kg hasta Inspección; la ficha de acabado liga el acabado en proceso (kg) y la tela
-acabada (m) que entrega Inspección."""
+"""2.12.0: la producción va en kg hasta la Clasificación final; la ficha de acabado liga el acabado en proceso (kg) y
+la tela acabada (m) que entrega la Clasificación final."""
 from odoo.tests import TransactionCase, tagged
 
 
@@ -63,7 +63,7 @@ class TestAcabadoProceso(TransactionCase):
         self.assertIn('mismo producto', ficha.proceso_aviso)
         en_metros = self.env['product.product'].create({'name': 'Proceso en m', 'uom_id': self.m.id})
         ficha.product_proceso_id = en_metros
-        self.assertIn('hasta Inspección todo va en kg', ficha.proceso_aviso)
+        self.assertIn('hasta la Clasificación final todo va en kg', ficha.proceso_aviso)
         self.assertFalse(ficha._ft_ligar_proceso_sugerido(), "Con un producto ya puesto no se cambia solo")
 
     def test_04_faltantes(self):

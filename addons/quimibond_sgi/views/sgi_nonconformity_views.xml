@@ -59,11 +59,8 @@
                     <div invisible="not sgi_folio">
                         <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
                         <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
-                        Para pasarla a Seguimiento: clasificación y requisito (cláusula).
-                        Para cerrarla: causa raíz, acciones terminadas (las correctivas, con
-                        evidencia) y verificación de eficacia «Eficaz» en la fecha programada o
-                        después (las mayores además piden los 5 porqués y la lección aplicada).
-                        La cierran el dueño del proceso o el Jefe MAST.
+                        <!-- 57.170.0: las reglas de etapa y cierre van en la ayuda de la
+                             etapa; el sistema las hace cumplir al mover la NC. -->
                     </div>
                     <div invisible="not sgi_format_banner">
                         <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado:
@@ -320,7 +317,9 @@
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
             <search string="No conformidades">
-                <field name="sgi_folio"/>
+                <!-- 57.170.0: también por título y referencia de la alerta. -->
+                <field name="sgi_folio" string="NC"
+                       filter_domain="['|', '|', ('sgi_folio', 'ilike', self), ('title', 'ilike', self), ('name', 'ilike', self)]"/>
                 <field name="sgi_deviation"/>
                 <field name="sgi_process_id"/>
                 <field name="team_id"/>

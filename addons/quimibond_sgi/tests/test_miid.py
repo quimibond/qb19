@@ -16,7 +16,7 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_mast
 from ..models.sgi_miid import MIID_BLOCKS
 
@@ -36,7 +36,7 @@ class _Case(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         env = cls.env
-        cls.company = env['res.company'].create({'name': 'ZM Empresa MIID'})
+        cls.company = sgi_new_company(env, 'ZM Empresa MIID')
         env['ir.config_parameter'].sudo().set_param('quimibond_sgi.sgi_company_id', str(cls.company.id))
         cls.mast = sgi_set_mast(env, login='zm_miid_mast')
         cls.mast.write({'company_ids': [(4, cls.company.id)]})
@@ -461,9 +461,18 @@ class TestMiidCandados(_Case):
             ('res_model', '=', 'approval.request'), ('res_id', '=', req.id),
             ('sgi_cron_key', '=', 'miid_retenido:%d' % req.id)])
         self.assertEqual(held.user_id, self.mast, "El Jefe MAST recibe un aviso, no solo la nota.")
+        # La solicitud es de la empresa de su categoría (la real, empresa 1) y
+        # Mis pendientes muestra los avisos de la empresa del SGI (aquí la de
+        # la prueba): para esta revisión, la del SGI es la de la solicitud.
+        Param = self.env['ir.config_parameter'].sudo()
+        sgi_company = Param.get_param('quimibond_sgi.sgi_company_id')
+        Param.set_param('quimibond_sgi.sgi_company_id', str(req.company_id.id))
         rows = self.env['sgi.my.pending']._sgi_pending_values(self.mast)[self.mast.id]
+        Param.set_param('quimibond_sgi.sgi_company_id', sgi_company)
         self.assertTrue([r for r in rows if r['kind'] == 'aviso' and r['res_id'] == held.id],
-                        "El aviso de la solicitud retenida cae en Mis pendientes.")
+                        "El aviso de la solicitud retenida cae en Mis pendientes. Aviso: %s vence %s; renglones: %s" % (
+                            held.id, held.date_deadline,
+                            [(r['kind'], r['res_model'], r['res_id']) for r in rows]))
         # Se levanta el candado: la siguiente sincronización aprueba y cierra el aviso.
         self.s_ctrl.write({'to_confirm': False})
         req.with_user(self.mast).with_context(sgi_sign_sync=True).action_approve(approver=approver)
@@ -579,8 +588,9 @@ class TestMiidGenerado(_Case):
         self.assertTrue(data['has_data']['plazos_documentales'])
         corr = {n['name']: n['rows'] for n in data['blocks']['correspondencia']['norms']}
         self.assertEqual(corr['ZMG Norma ZM generada'][0],
-                         ['7.5.3', 'Control de la información documentada', 'ZM1', 'ZM1.07'],
-                         "La correspondencia dice qué actividades cumplen cada numeral.")
+                         ['7.5.3', 'Control de la información documentada', 'ZM1', 'ZM1.07', '—'],
+                         "La correspondencia dice qué actividades cumplen cada numeral (57.162.0: y qué "
+                         "regla del sistema).")
         self.assertTrue(set(MIID_BLOCKS_CODES) - set(data['has_data']) == set(),
                         "Todos los bloques saben si tienen datos.")
 
@@ -729,6 +739,9 @@ class TestPg01Generado(_Case):
         activity = self.env['sgi.process.activity'].create({
             'process_id': self.p1.id, 'number': 'ZM1.09', 'name': 'Publicar el documento ZM',
             'related_procedure_id': doc.id, 'measure_cadence': 'evento', 'done_criteria': 'Publicado ZM',
+            # El procedimiento de ZM1 (el P-G01 de la prueba) está vigente: la
+            # actividad necesita método de medición (candado estricto).
+            'measure_method': 'manual',
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})]})
         snap = pg01._sgi_snapshot()
         self.assertEqual(snap['activities']['ZM1.09'][:3], ['Publicar el documento ZM', ['PUESTO ZM PG01'], []])
@@ -739,7 +752,9 @@ class TestPg01Generado(_Case):
                          ['ZM1.09', 'Publicar el documento ZM', 'PUESTO ZM PG01', '—'])
         self.assertEqual([code for code, _label in data['orphans']],
                          ['identificacion', 'normas', 'tipos_documento', 'plazos_documentales', 'actividades',
-                          'historial'], "Sin secciones del P-G01 en la empresa, todos sus bloques quedan sueltos.")
+                          'historial', 'elaboracion', 'aprobacion'],
+                         "Sin secciones del P-G01 en la empresa, todos sus bloques quedan sueltos (57.162.0: "
+                         "también quién elabora y quién firma).")
         self.assertNotIn('procesos', dict(data['orphans']), "Los bloques del Manual no son del P-G01.")
         self.assertIn("El proceso ZM1 no está vigente", "\n".join(pg01._sgi_blockers()))
         self._publish()

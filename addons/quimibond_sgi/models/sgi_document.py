@@ -9,6 +9,7 @@ from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError, UserError
 
 from .sgi_base import sgi_bypass_allowed
+from .sgi_menu_paths import sgi_open_menu_action
 
 _logger = logging.getLogger(__name__)
 
@@ -446,17 +447,10 @@ class DocumentsDocument(models.Model):
         Si el usuario no tiene acceso al menú destino, lo dice en vez de
         abrir una pantalla que Odoo le negaría."""
         self.ensure_one()
-        menu = self.sgi_odoo_menu_id
-        action = menu.sudo().action if menu else False
-        action = action.exists() if action else action
-        if action:
-            if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
-                raise UserError(
-                    "Este documento vive en Odoo en «%s», pero su usuario no tiene acceso a ese "
-                    "menú. Pida el acceso a su jefe o al Jefe MAST." % menu.sudo().complete_name)
-            if action._name == 'ir.actions.act_window':
-                return action.read()[0]
-            return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
+        # 57.167.0: la regla común (cualquier tipo de acción, acceso del
+        # usuario real, menús archivados del árbol).
+        if self.sgi_odoo_menu_id:
+            return sgi_open_menu_action(self.env, self.sgi_odoo_menu_id)
         if self.sgi_migration_point_id:
             return self.action_sgi_open_migration_point()
         raise UserError(
@@ -1308,6 +1302,22 @@ class DocumentsDocument(models.Model):
                     'sgi_procedure_dirty_by': False,
                 })
         return res
+
+    def action_sgi_procedure_still_valid(self):
+        """57.170.0: «El PDF sigue vigente»: el Jefe MAST revisó el cambio del
+        procedimiento vivo y no amerita revisión nueva. Quita la marca y lo deja
+        en el historial. Antes el aviso pedía «confírmelo» sin botón."""
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el Jefe MAST confirma que el PDF sigue vigente.")
+        for doc in self.filtered('sgi_procedure_dirty'):
+            since = doc.sgi_procedure_dirty_since
+            doc.write({'sgi_procedure_dirty': False, 'sgi_procedure_dirty_since': False,
+                       'sgi_procedure_dirty_by': False})
+            doc.message_post(body="El procedimiento vivo cambió%s; %s confirmó que el PDF vigente sigue "
+                                  "valiendo (sin revisión nueva)." % (
+                                      " el %s" % since.strftime('%d/%m/%Y') if since else '',
+                                      self.env.user.name))
+        return True
 
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""

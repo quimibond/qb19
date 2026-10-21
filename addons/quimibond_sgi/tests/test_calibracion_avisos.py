@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.tests import TransactionCase, tagged, new_test_user
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -94,7 +95,7 @@ class TestCalibracionAvisos(TransactionCase):
         usar» con respaldo y rastro en el chatter; la inspección sigue
         rechazando el vencido."""
         company = self.env['sgi.config']._sgi_company()
-        other = self.env['res.company'].create({'name': 'ZCAL Otra empresa'})
+        other = sgi_new_company(self.env, 'ZCAL Otra empresa')
         foreign = self.env['maintenance.equipment'].create({
             'name': 'ZCAL Equipo de otra empresa', 'sgi_is_measuring': True, 'company_id': other.id,
             'sgi_do_not_use': True})

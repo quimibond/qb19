@@ -46,3 +46,17 @@ def sgi_neutralize_dropbox_contradictions(env):
             OR (sgi_migration_class IN ('a', 'b', 'c') AND sgi_migration_state = 'na')
     """)
     env.invalidate_all()
+
+
+def sgi_new_company(env, name, **vals):
+    """57.164.2: una empresa de prueba que no hereda carpetas de Documentos
+    de otra empresa. En producción la carpeta «Aprobaciones» de
+    documents_approvals es de la empresa 1 (Odoo la trae compartida) y el
+    valor por omisión de ``approvals_folder_id`` la ponía en la empresa nueva:
+    ``_check_company`` reventaba la creación («company inconsistencies»)."""
+    Company = env['res.company']
+    for fname, field in Company._fields.items():
+        if (field.type == 'many2one' and field.comodel_name == 'documents.document'
+                and field.store and fname not in vals):
+            vals[fname] = False
+    return Company.create(dict(vals, name=name))

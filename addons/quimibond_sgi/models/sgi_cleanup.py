@@ -43,6 +43,17 @@ SGI_MENU_ARCHIVED = (
     'quimibond_sgi.menu_sgi_activity_methods',   # Cobertura de medición
     'quimibond_sgi.menu_sgi_week_stats',         # Cumplimiento semanal
     'quimibond_sgi.menu_sgi_menu_mismatch',      # Medición por revisar
+    # 57.167.0: el SGI ordenado (se llega por botón).
+    'quimibond_sgi.menu_sgi_dropbox_procedures',
+    'quimibond_sgi.menu_sgi_migration',
+    'quimibond_sgi.menu_sgi_dropbox_routines',
+    'quimibond_sgi.menu_sgi_config_load',
+    'quimibond_sgi.menu_sgi_config_company_fix',
+    'quimibond_sgi.menu_sgi_miid_sections',
+    'quimibond_sgi.menu_sgi_miid_revisions',
+    'quimibond_sgi.menu_sgi_miid_requests',
+    'quimibond_sgi.menu_sgi_indicator_wizard',
+    'quimibond_sgi.menu_sgi_floor_tablets',
 )
 # «Calidad preventiva» y «Paretos de calidad» cuelgan de la app Calidad con
 # padre fijo en views/sgi_menus.xml (E-008, 57.5.0): no están bajo el raíz.

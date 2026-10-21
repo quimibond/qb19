@@ -28,7 +28,7 @@ from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from .common_documents import sgi_hide_real_documents
+from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_mast
 
 ACK_KINDS = ('acuse_pendiente', 'acuses_propios', 'acuses_equipo')
@@ -584,7 +584,7 @@ class TestEmpresaDelSgi(_RendimientoCase):
     def test_17_regla_de_empresa_en_rutinas(self):
         rule = self.env.ref('quimibond_sgi.rule_sgi_legacy_routine_company')
         self.assertIn('company_ids', rule.domain_force)
-        other = self.env['res.company'].create({'name': 'Otra empresa RR'})
+        other = sgi_new_company(self.env, 'Otra empresa RR')
         procedure = self.env['documents.document'].create({
             'name': 'Procedimiento otra RR', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-Z96', 'sgi_state': 'vigente',

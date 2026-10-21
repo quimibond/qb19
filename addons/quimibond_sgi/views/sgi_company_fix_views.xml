@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <form string="Empresa del SGI en documentos controlados">
                 <sheet>
-                    <div class="alert alert-info" role="alert">
+                    <div class="alert alert-info" role="status">
                         Revise primero cuántos documentos controlados no tienen empresa.
                         «Asignar la empresa del SGI» les pone la empresa, deja una nota en el
                         historial de cada uno y no borra nada. Úselo solo con el visto bueno de
@@ -31,7 +31,7 @@
                             confirm="Se pondrá la empresa del SGI en todos los documentos contados. ¿Continuar?"/>
                     <button name="action_view_docs" type="object" string="Ver los documentos"
                             invisible="not doc_count"/>
-                    <button string="Cerrar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

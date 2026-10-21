@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Genera docs/sgi/transicion/miid-rev03-borrador.md desde la siembra del
-Manual del SGI (MIID) y del P-G01 (addons/quimibond_sgi/data/sgi_miid_sections.xml).
+Manual del SGI (MIID) y del P-G01 (addons/quimibond_sgi/data/sgi_miid_sections.xml y, desde
+57.161.0, el formato y los renglones de data/sgi_miid_items.xml).
 
 Es la referencia a la que el aviso de la siembra manda comparar cuando una
 sección editada a mano recibe texto nuevo. No se edita a mano: se cambia la
@@ -20,6 +21,14 @@ from lxml import etree, html as lhtml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SEED = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_sections.xml')
+ITEMS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_items.xml')
+MENUS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'views', 'sgi_menus.xml')
+FIELDS = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_miid_fields.xml')
+CLAUSES = [os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', f)
+           for f in ('sgi_norms.xml', 'sgi_norms_tercer_nivel.xml')]
+TYPES = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'data', 'sgi_document_types.xml')
+TITLES = ('item_label_title', 'item_clause_title', 'item_text_title', 'item_text2_title', 'item_text3_title')
+COLUMNS = ('label', 'clause', 'text', 'text_2', 'text_3')
 MODEL = os.path.join(ROOT, 'addons', 'quimibond_sgi', 'models', 'sgi_miid.py')
 OUT = os.path.join(ROOT, 'docs', 'sgi', 'transicion', 'miid-rev03-borrador.md')
 
@@ -75,8 +84,129 @@ def _html_to_md(fragment):
     return '\n\n'.join(x for x in out if x)
 
 
+def _menu_paths():
+    """{xmlid: «SGI → Sistema → …»} de los menús del módulo."""
+    menus = {}
+    for item in etree.parse(MENUS).xpath('//menuitem'):
+        menus[item.get('id')] = (item.get('name'), item.get('parent'))
+    paths = {}
+    for xmlid in menus:
+        parts, node = [], xmlid
+        while node in menus:
+            parts.append(menus[node][0])
+            node = menus[node][1]
+        paths[xmlid] = ' → '.join(reversed(parts))
+    return paths
+
+
+def _items():
+    """57.161.0: ({sección: formato}, {sección: [renglón]}) de la siembra de renglones."""
+    paths = _menu_paths()
+    tree = etree.parse(ITEMS)
+    formats, items = {}, {}
+    for record in tree.xpath('//record[@model="sgi.miid.section"]'):
+        data = {}
+        for field in record.findall('field'):
+            if field.get('ref'):
+                data[field.get('name')] = paths.get(field.get('ref'), field.get('ref'))
+            else:
+                data[field.get('name')] = (field.text or '').strip()
+        formats[record.get('id')] = data
+    for record in tree.xpath('//record[@model="sgi.miid.item"]'):
+        data = {}
+        for field in record.findall('field'):
+            if field.get('name') == 'menu_id':
+                data['menu'] = paths.get(field.get('ref'), field.get('ref'))
+            else:
+                data[field.get('name')] = (field.get('ref') or field.text or '').strip()
+        items.setdefault(data['section_id'], []).append(data)
+    for rows in items.values():
+        rows.sort(key=lambda d: int(d.get('sequence') or 0))
+    return formats, items
+
+
+def _seed_records(path):
+    out = {}
+    for record in etree.parse(path).xpath('//record'):
+        data = {}
+        for field in record.findall('field'):
+            data[field.get('name')] = field.get('ref') or field.get('eval') or (field.text or '').strip()
+        out[record.get('id')] = data
+    return out
+
+
+def _table(head, rows):
+    lines = ['| ' + ' | '.join(head) + ' |', '| ' + ' | '.join('---' for _ in head) + ' |']
+    lines += ['| ' + ' | '.join((c or '—').replace('|', '/') for c in r) + ' |' for r in rows]
+    return '\n'.join(lines)
+
+
+def _fields_md():
+    """57.162.0: {bloque: tabla} con lo que siembra data/sgi_miid_fields.xml."""
+    paths = _menu_paths()
+    seed = _seed_records(FIELDS)
+    known = {}
+    for path in CLAUSES + [TYPES]:
+        known.update(_seed_records(path))
+    names = {'sgi_norm_9001': 'ISO 9001:2015', 'sgi_norm_14001': 'ISO 14001:2015', 'sgi_norm_45001': 'ISO 45001:2018'}
+    scope = [[names.get(x, x), d['scope']] for x, d in seed.items() if 'scope' in d]
+    excl = [[d['exclusion_detail'], known.get(x, {}).get('name', x), d['exclusion_reason']]
+            for x, d in seed.items() if d.get('exclusion')]
+    rules = []
+    for x, d in seed.items():
+        if x.startswith('sgi_system_rule_'):
+            codes = sorted({known.get(c, {}).get('code', c) for c in re.findall(r"ref\('([^']+)'\)", d['clause_ids'])},
+                           key=lambda c: [int(n) if n.isdigit() else n for n in c.split('.')])
+            rules.append([d['name'], ', '.join(codes), d['text'], paths.get(d.get('menu_id'), '')])
+    elab, sign = [], []
+    for x, d in seed.items():
+        if x.startswith('sgi_doc_type_'):
+            name = known.get(x, {}).get('name', x)
+            elab.append([name, d.get('author_text'), d.get('location_text'), d.get('control_text'),
+                         paths.get(d.get('odoo_menu_id'), '')])
+            if d.get('reviewer_text') or d.get('approver_text'):
+                sign.append([name, d.get('author_text'), d.get('reviewer_text'), d.get('approver_text')])
+    return {
+        'alcance': _table(['Norma', 'Alcance'], scope),
+        'exclusiones': _table(['Requisito', 'Qué es', 'Por qué no aplica'], excl),
+        'reglas': _table(['Tema', 'Cláusula', 'Regla', 'En Odoo'], rules),
+        'elaboracion': _table(['Tipo', 'Lo elabora', 'Dónde', 'Cómo queda controlado', 'En Odoo'], elab),
+        'aprobacion': _table(['Tipo', 'Elaboró', 'Revisó', 'Aprobó'], sign),
+    }
+
+
+def _items_md(fmt, rows):
+    if not rows:
+        return ''
+    with_menu = any(r.get('menu') for r in rows)
+    if fmt.get('item_style') == 'list':
+        out = []
+        for r in rows:
+            line = '- **%s**' % r['label'] if r.get('text') else '- %s' % r['label']
+            if r.get('clause'):
+                line += ' (%s)' % r['clause']
+            if r.get('text'):
+                line += ': ' + r['text']
+            if r.get('menu'):
+                line += ' — En Odoo: ' + r['menu']
+            out.append(line)
+        return '\n'.join(out)
+    cols = [(c, fmt.get(t) or ('Concepto' if c == 'label' else '')) for c, t in zip(COLUMNS, TITLES)]
+    cols = [(c, t) for c, t in cols if c == 'label' or t]
+    head = [t for _c, t in cols] + (['En Odoo'] if with_menu else [])
+    lines = ['| ' + ' | '.join(head) + ' |', '| ' + ' | '.join('---' for _ in head) + ' |']
+    for r in rows:
+        cells = [('**%s**' % r['label']) if c == 'label' else r.get(c, '') for c, _t in cols]
+        if with_menu:
+            cells.append(r.get('menu', ''))
+        lines.append('| ' + ' | '.join(x.replace('|', '/') for x in cells) + ' |')
+    return '\n'.join(lines)
+
+
 def main():
     blocks, kinds = _constants()
+    formats, items = _items()
+    seeded_blocks = _fields_md()
     tree = etree.parse(SEED)
     sections, notes = [], {}
     for record in tree.xpath('//record[@model="sgi.miid.section"]'):
@@ -103,6 +233,8 @@ sección editada a mano recibe texto nuevo. No se edita a mano.
 El borrador Rev. 03 del 5-oct-2026 (46 secciones en prosa) ya no es la fuente
 (Dirección 2026-10-13, «el MIID está como en el Dropbox»); desde 57.148.0 el
 P-G01 es un documento generado propio con el mismo motor.
+Desde 57.161.0 las listas y tablas son renglones (data/sgi_miid_items.xml) y las
+rutas, menús ([En Odoo: …]).
 Marcas: [VIVO: bloque] = datos que pone el sistema; `[[datos]]` = dónde van. -->
 
 # Texto fijo de los documentos generados (siembra)
@@ -122,9 +254,22 @@ Marcas: [VIVO: bloque] = datos que pone el sistema; `[[datos]]` = dónde van. --
                 meta.append('[POR CONFIRMAR: %s]' % section.get('to_confirm_note', ''))
             if section.get('body_fallback'):
                 meta.append('[Texto solo si no hay datos]')
+            fmt = formats.get(section['xmlid'], {})
+            if fmt.get('menu_id'):
+                meta.append('[En Odoo: %s]' % fmt['menu_id'])
             if meta:
                 lines.append('\n'.join(meta))
             body = _html_to_md(section.get('body', ''))
+            rows = _items_md(fmt, items.get(section['xmlid'], []))
+            block = seeded_blocks.get(section.get('live_block'))
+            if block:
+                block = '*Datos sembrados (data/sgi_miid_fields.xml):*\n\n' + block
+                rows = (rows + '\n\n' + block) if rows else block
+            if body and rows and '`[[datos]]`' in body:
+                before, after = body.split('`[[datos]]`', 1)
+                body = before.rstrip() + '\n\n' + rows + '\n\n`[[datos]]`' + after
+            elif rows:
+                body = (body + '\n\n' if body else '') + rows
             if body:
                 lines.append(body)
             if section['xmlid'] in notes:

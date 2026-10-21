@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.162.0 (Jose, 2026-10-20: «¿no es mejor que sean campos?»): lo que el MIID y el P-G01
+         escribían como texto vive en su registro y el manual lo lee: alcance (norma, MIID 1.2), no
+         aplicabilidades (cláusula, 1.3), reglas que el sistema hace cumplir (sgi.system.rule, 5.2) y
+         quién elabora, dónde, quién revisa y quién aprueba cada tipo de documento (P-G01 4.2 y 4.3).
+         noupdate: lo que MAST corrija no se pisa. Normas, cláusulas y tipos ya existen en producción
+         (noupdate): la migración 19.0.57.162.0 llena estos campos solo si están vacíos; las reglas son
+         registros nuevos y las crea la actualización. Va después de views/sgi_menus.xml (menús). -->
+    <data noupdate="1">
+
+        <record id="sgi_norm_9001" model="sgi.norm">
+            <field name="scope">Maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas de todo tipo de fibras; aplicación de resinas, laminados y acabados industriales.</field>
+        </record>
+        <record id="sgi_norm_14001" model="sgi.norm">
+            <field name="scope">Sector 04: fabricación de entretelas tejidas de fibras industriales.</field>
+        </record>
+        <record id="sgi_norm_45001" model="sgi.norm">
+            <field name="scope">Actividades, instalaciones y personas bajo control de PNTQ en su sitio de Toluca.</field>
+        </record>
+
+        <record id="c_9001_84" model="sgi.norm.clause">
+            <field name="exclusion" eval="True"/>
+            <field name="exclusion_detail">8.4.1 b)</field>
+            <field name="exclusion_reason">Ningún proveedor externo entrega al cliente en nombre de PNTQ: PNTQ entrega directamente.</field>
+        </record>
+        <record id="c_9001_85" model="sgi.norm.clause">
+            <field name="exclusion" eval="True"/>
+            <field name="exclusion_detail">8.5.1 f)</field>
+            <field name="exclusion_reason">Las salidas de todos los procesos se verifican con inspección y pruebas de laboratorio antes de liberar; no hay procesos especiales que validar.</field>
+        </record>
+
+        <record id="sgi_doc_type_miid" model="sgi.document.type">
+            <field name="author_text">Jefe de MAST y SGI</field>
+            <field name="location_text">Manual del SGI (Odoo)</field>
+            <field name="control_text">Solicitud de cambio y firma de Dirección; Odoo lo compara cada día</field>
+            <field name="reviewer_text">Dueño de E2</field>
+            <field name="approver_text">Director de Operaciones</field>
+            <field name="odoo_menu_id" ref="menu_sgi_miid"/>
+        </record>
+        <record id="sgi_doc_type_procedimiento" model="sgi.document.type">
+            <field name="author_text">Dueño del proceso</field>
+            <field name="location_text">Datos del proceso en Odoo</field>
+            <field name="control_text">Odoo genera el PDF; el Jefe MAST publica la revisión</field>
+            <field name="approver_text">Quien declare el proceso (por omisión, su dueño); Vo.Bo. del Jefe MAST</field>
+            <field name="odoo_menu_id" ref="menu_sgi_process_map"/>
+        </record>
+        <record id="sgi_doc_type_instructivo" model="sgi.document.type">
+            <field name="author_text">Dueño del proceso o quien designe</field>
+            <field name="location_text">Conocimiento → SGI → proceso</field>
+            <field name="control_text">«Pedir publicación»; el Jefe MAST lo congela como revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+        </record>
+        <record id="sgi_doc_type_control_operacional" model="sgi.document.type">
+            <field name="author_text">Dueño del proceso o quien designe</field>
+            <field name="location_text">Conocimiento → SGI → proceso</field>
+            <field name="control_text">«Pedir publicación»; el Jefe MAST lo congela como revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+        </record>
+        <record id="sgi_doc_type_protocolo" model="sgi.document.type">
+            <field name="author_text">Dueño del proceso o quien designe</field>
+            <field name="location_text">Conocimiento → SGI → proceso</field>
+            <field name="control_text">«Pedir publicación»; el Jefe MAST lo congela como revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+        </record>
+        <record id="sgi_doc_type_reglamento" model="sgi.document.type">
+            <field name="author_text">Dueño del proceso o quien designe</field>
+            <field name="location_text">Conocimiento → SGI → proceso</field>
+            <field name="control_text">«Pedir publicación»; el Jefe MAST lo congela como revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+        </record>
+        <record id="sgi_doc_type_formato" model="sgi.document.type">
+            <field name="author_text">Sistemas, con lo que define el dueño</field>
+            <field name="location_text">Pantalla de Odoo</field>
+            <field name="control_text">El registro imprime su clave y revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_config_format_map"/>
+        </record>
+        <record id="sgi_doc_type_formato_it" model="sgi.document.type">
+            <field name="author_text">Sistemas, con lo que define el dueño</field>
+            <field name="location_text">Pantalla de Odoo</field>
+            <field name="control_text">El registro imprime su clave y revisión</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_config_format_map"/>
+        </record>
+        <record id="sgi_doc_type_metodo_anexo" model="sgi.document.type">
+            <field name="author_text">Responsable del documento</field>
+            <field name="location_text">PDF en la solicitud de cambio</field>
+            <field name="control_text">Se publica al aprobarse</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_doc_type_dat" model="sgi.document.type">
+            <field name="author_text">Responsable del documento</field>
+            <field name="location_text">PDF en la solicitud de cambio</field>
+            <field name="control_text">Se publica al aprobarse</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_doc_type_anexo" model="sgi.document.type">
+            <field name="author_text">Responsable del documento</field>
+            <field name="location_text">PDF en la solicitud de cambio</field>
+            <field name="control_text">Se publica al aprobarse</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_doc_type_diagrama" model="sgi.document.type">
+            <field name="author_text">Responsable del documento</field>
+            <field name="location_text">PDF en la solicitud de cambio</field>
+            <field name="control_text">Se publica al aprobarse</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_doc_type_descripcion_puesto" model="sgi.document.type">
+            <field name="author_text">Responsable del documento</field>
+            <field name="location_text">PDF en la solicitud de cambio</field>
+            <field name="control_text">Se publica al aprobarse</field>
+            <field name="reviewer_text">Dueño del proceso</field>
+            <field name="approver_text">Jefe de MAST y SGI</field>
+            <field name="odoo_menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_doc_type_mi_procedimiento" model="sgi.document.type">
+            <field name="author_text">Odoo, con los roles del puesto</field>
+            <field name="location_text">Publicar Mi procedimiento</field>
+            <field name="control_text">Revisión con acuse de cada persona</field>
+            <field name="odoo_menu_id" ref="menu_sgi_my_procedure_publish"/>
+        </record>
+        <record id="sgi_doc_type_externo" model="sgi.document.type">
+            <field name="author_text">El cliente, la autoridad, la norma o el proveedor</field>
+            <field name="location_text">Documentos externos</field>
+            <field name="control_text">Emisor, revisión, recepción y proceso que lo aplica</field>
+            <field name="odoo_menu_id" ref="menu_sgi_external_docs"/>
+        </record>
+
+        <record id="sgi_system_rule_01" model="sgi.system.rule">
+            <field name="sequence">10</field>
+            <field name="name">Contexto y partes interesadas</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_41'), ref('c_14001_41'), ref('c_45001_41'), ref('c_9001_42'), ref('c_14001_42'), ref('c_45001_42')])]"/>
+            <field name="text">Se registran en Odoo y entran a la revisión por la dirección.</field>
+            <field name="menu_id" ref="menu_sgi_interested_parties"/>
+        </record>
+        <record id="sgi_system_rule_02" model="sgi.system.rule">
+            <field name="sequence">20</field>
+            <field name="name">Riesgos y oportunidades</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_61'), ref('c_14001_61'), ref('c_45001_61')])]"/>
+            <field name="text">Evaluación inicial y residual; se reevalúan en enero, julio y tras un incidente o un cambio. Un riesgo alto sin acción abierta avisa al dueño.</field>
+            <field name="menu_id" ref="menu_sgi_risks"/>
+        </record>
+        <record id="sgi_system_rule_03" model="sgi.system.rule">
+            <field name="sequence">30</field>
+            <field name="name">Controles de seguridad</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_45001_8_1_2')])]"/>
+            <field name="text">Siguen la jerarquía de controles; un riesgo alto no se controla solo con EPP.</field>
+            <field name="menu_id" ref="menu_sgi_risks"/>
+        </record>
+        <record id="sgi_system_rule_04" model="sgi.system.rule">
+            <field name="sequence">40</field>
+            <field name="name">Requisitos legales</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_14001_6_1_3'), ref('c_45001_6_1_3'), ref('c_14001_9_1_2'), ref('c_45001_9_1_2')])]"/>
+            <field name="text">Cada uno se evalúa con evidencia.</field>
+            <field name="menu_id" ref="menu_sgi_legal_evaluations"/>
+        </record>
+        <record id="sgi_system_rule_05" model="sgi.system.rule">
+            <field name="sequence">50</field>
+            <field name="name">Cambios</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_63'), ref('c_45001_8_1_3')])]"/>
+            <field name="text">Actividad: propuesta aprobada por el jefe y el dueño. Documento: solicitud de cambio. Proceso o infraestructura (MOC): motivo, afectados y riesgos.</field>
+            <field name="menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_system_rule_06" model="sgi.system.rule">
+            <field name="sequence">60</field>
+            <field name="name">Competencia</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_72'), ref('c_14001_72'), ref('c_45001_72')])]"/>
+            <field name="text">Cada puesto define sus competencias; la brecha es el programa de capacitación; eficacia a los 90 días.</field>
+            <field name="menu_id" ref="menu_sgi_competences"/>
+        </record>
+        <record id="sgi_system_rule_07" model="sgi.system.rule">
+            <field name="sequence">70</field>
+            <field name="name">Toma de conciencia</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_73'), ref('c_14001_73'), ref('c_45001_73')])]"/>
+            <field name="text">Inducción en los primeros tres meses; firma de Mi procedimiento y de la política.</field>
+            <field name="menu_id" ref="menu_sgi_my_procedure"/>
+        </record>
+        <record id="sgi_system_rule_08" model="sgi.system.rule">
+            <field name="sequence">80</field>
+            <field name="name">Comunicación y participación</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_74'), ref('c_14001_74'), ref('c_45001_74'), ref('c_45001_54')])]"/>
+            <field name="text">Acuses, avisos de Odoo, Tablero y actas; consulta previa en SST por la Comisión de Seguridad e Higiene.</field>
+            <field name="menu_id" ref="menu_sgi_csh_inspections"/>
+        </record>
+        <record id="sgi_system_rule_09" model="sgi.system.rule">
+            <field name="sequence">90</field>
+            <field name="name">Equipos de medición</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_7_1_5')])]"/>
+            <field name="text">Una calibración vencida no libera producto.</field>
+            <field name="menu_id" ref="menu_sgi_measuring_equipment"/>
+        </record>
+        <record id="sgi_system_rule_10" model="sgi.system.rule">
+            <field name="sequence">100</field>
+            <field name="name">Control operacional</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_81'), ref('c_14001_81'), ref('c_45001_81')])]"/>
+            <field name="text">Criterio de terminado por actividad; permisos de alto riesgo y bloqueo antes de iniciar.</field>
+            <field name="menu_id" ref="menu_sgi_work_permits"/>
+        </record>
+        <record id="sgi_system_rule_11" model="sgi.system.rule">
+            <field name="sequence">110</field>
+            <field name="name">Emergencias</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_14001_82'), ref('c_45001_82')])]"/>
+            <field name="text">Planes y simulacros; el plan se revisa tras cada uno; una emergencia real levanta una NC.</field>
+            <field name="menu_id" ref="menu_sgi_emergency_plans"/>
+        </record>
+        <record id="sgi_system_rule_12" model="sgi.system.rule">
+            <field name="sequence">120</field>
+            <field name="name">Indicadores</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_91'), ref('c_14001_91'), ref('c_45001_91')])]"/>
+            <field name="text">Medición por periodo validada por el dueño; un rojo exige causa y plan.</field>
+            <field name="menu_id" ref="menu_sgi_indicators"/>
+        </record>
+        <record id="sgi_system_rule_13" model="sgi.system.rule">
+            <field name="sequence">130</field>
+            <field name="name">Auditoría interna</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_92'), ref('c_14001_92'), ref('c_45001_92')])]"/>
+            <field name="text">Programa anual, todos los procesos cada tres años, nadie audita lo suyo; cada hallazgo, una NC.</field>
+            <field name="menu_id" ref="menu_sgi_audit_programs"/>
+        </record>
+        <record id="sgi_system_rule_14" model="sgi.system.rule">
+            <field name="sequence">140</field>
+            <field name="name">Revisión por la dirección</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_93'), ref('c_14001_93'), ref('c_45001_93')])]"/>
+            <field name="text">Entradas cargadas por el sistema; cada acuerdo es una acción con responsable y fecha.</field>
+            <field name="menu_id" ref="menu_sgi_mgmt_review"/>
+        </record>
+        <record id="sgi_system_rule_15" model="sgi.system.rule">
+            <field name="sequence">150</field>
+            <field name="name">Mejora</field>
+            <field name="clause_ids" eval="[(6, 0, [ref('c_9001_101'), ref('c_14001_101'), ref('c_45001_101'), ref('c_9001_102'), ref('c_14001_102'), ref('c_45001_102')])]"/>
+            <field name="text">Una NC cierra solo con eficacia «Eficaz» y se cancela solo con motivo aprobado.</field>
+            <field name="menu_id" ref="menu_sgi_improvements"/>
+        </record>
+
+    </data>
+</odoo>

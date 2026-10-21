@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.161.0 (Jose, 2026-10-20: «no se entiende ni se puede leer bien»; «no quiero texto
+         plano»): el formato de cada sección del MIID y del P-G01 (pantalla en Odoo, renglones en
+         tabla o lista y los títulos de sus columnas) y sus renglones: lo que antes eran viñetas y
+         tablas escritas en el texto, y las rutas escritas, que ahora son menús. Va después de
+         views/sgi_menus.xml porque apunta a sus menús. noupdate como la siembra de las secciones:
+         lo que corrija el Jefe MAST no lo pisa ninguna actualización.
+         57.162.0 (Jose: «sigo viendo mucho texto»): renglones cortos, uno por idea. En una base
+         existente los pone la migración 19.0.57.162.0 (_sgi_seed_items_update), solo en las
+         secciones que nadie editó. -->
+    <data noupdate="1">
+
+        <record id="sgi_miid_section_04_objeto" model="sgi.miid.section">
+            <field name="item_style">list</field>
+            <field name="item_label_title">Concepto</field>
+            <field name="item_text_title">Descripción</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">10</field>
+            <field name="label">Suministrar productos y servicios conformes</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">20</field>
+            <field name="label">Gestionar el ambiente con perspectiva de ciclo de vida</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">30</field>
+            <field name="label">Cumplir los requisitos legales aplicables en México</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">40</field>
+            <field name="label">Identificar y controlar peligros y riesgos</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">50</field>
+            <field name="label">Dar condiciones de trabajo seguras y saludables</field>
+        </record>
+        <record id="sgi_miid_item_04_objeto_06" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_04_objeto"/>
+            <field name="sequence">60</field>
+            <field name="label">Fomentar la consulta y participación de los trabajadores</field>
+        </record>
+
+        <record id="sgi_miid_section_05_alcance" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_norms"/>
+        </record>
+
+        <record id="sgi_miid_section_06_no_aplica" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_clauses"/>
+        </record>
+
+        <record id="sgi_miid_section_07_control_manual" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_miid"/>
+            <field name="item_style">table</field>
+            <field name="item_label_title">Concepto</field>
+            <field name="item_text_title">Cómo</field>
+        </record>
+        <record id="sgi_miid_item_07_control_manual_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_07_control_manual"/>
+            <field name="sequence">10</field>
+            <field name="label">Quién lo edita</field>
+            <field name="text">El Jefe de MAST y SGI edita los textos; los datos los pone Odoo.</field>
+        </record>
+        <record id="sgi_miid_item_07_control_manual_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_07_control_manual"/>
+            <field name="sequence">20</field>
+            <field name="label">Revisión nueva</field>
+            <field name="text">Solicitud de cambio documental; firma Dirección; lo firmado es lo que se publica.</field>
+            <field name="menu_id" ref="menu_sgi_miid_requests"/>
+        </record>
+        <record id="sgi_miid_item_07_control_manual_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_07_control_manual"/>
+            <field name="sequence">30</field>
+            <field name="label">Al día</field>
+            <field name="text">Odoo lo compara cada día con el sistema y avisa si ya no coincide.</field>
+        </record>
+        <record id="sgi_miid_item_07_control_manual_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_07_control_manual"/>
+            <field name="sequence">40</field>
+            <field name="label">Cuándo se revisa</field>
+            <field name="text">Cuando el sistema cambia y al menos cada dos años.</field>
+        </record>
+        <record id="sgi_miid_item_07_control_manual_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_07_control_manual"/>
+            <field name="sequence">50</field>
+            <field name="label">Copias</field>
+            <field name="text">Una copia impresa no es controlada; fuera de PNTQ requiere autorización de Dirección.</field>
+        </record>
+
+        <record id="sgi_miid_section_08_referencias" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_norms"/>
+            <field name="item_style">list</field>
+            <field name="item_label_title">Concepto</field>
+            <field name="item_text_title">Descripción</field>
+        </record>
+        <record id="sgi_miid_item_08_referencias_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_08_referencias"/>
+            <field name="sequence">10</field>
+            <field name="label">Requisitos legales</field>
+            <field name="text">Las disposiciones legales y reglamentarias aplicables.</field>
+            <field name="menu_id" ref="menu_sgi_legal"/>
+        </record>
+        <record id="sgi_miid_item_08_referencias_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_08_referencias"/>
+            <field name="sequence">20</field>
+            <field name="label">Normas de apoyo</field>
+            <field name="text">ISO 9000:2015, NMX-CC-9001-IMNC-2015 y NMX-CC-9000-IMNC-2015.</field>
+        </record>
+
+        <record id="sgi_miid_section_09_terminos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_dropbox_search"/>
+            <field name="item_style">table</field>
+            <field name="item_label_title">Término</field>
+            <field name="item_text_title">Qué es</field>
+        </record>
+        <record id="sgi_miid_item_09_terminos_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">10</field>
+            <field name="label">Proceso</field>
+            <field name="text">Uno del mapa (E, C o S), con dueño, actividades, indicadores, riesgos y documentos.</field>
+            <field name="menu_id" ref="menu_sgi_process_map"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">20</field>
+            <field name="label">Actividad</field>
+            <field name="text">Una tarea de un proceso: quién, cómo, cuándo y cuándo está terminada.</field>
+            <field name="menu_id" ref="menu_sgi_activities"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">30</field>
+            <field name="label">Dueño de proceso</field>
+            <field name="text">Responde por el resultado, los indicadores, las NC y los documentos del proceso.</field>
+        </record>
+        <record id="sgi_miid_item_09_terminos_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">40</field>
+            <field name="label">Mi procedimiento</field>
+            <field name="text">Lo que le toca a cada puesto; cada persona lo firma de leído.</field>
+            <field name="menu_id" ref="menu_sgi_my_procedure"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">50</field>
+            <field name="label">Mis pendientes</field>
+            <field name="text">La bandeja de cada persona.</field>
+            <field name="menu_id" ref="menu_sgi_my_pending"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_06" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">60</field>
+            <field name="label">Acuse de lectura</field>
+            <field name="text">La firma «leído y entendido» de un documento.</field>
+            <field name="menu_id" ref="menu_sgi_current_documents"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_07" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">70</field>
+            <field name="label">NC</field>
+            <field name="text">No conformidad.</field>
+            <field name="menu_id" ref="menu_sgi_nc"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_08" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">80</field>
+            <field name="label">MAST</field>
+            <field name="text">Medio Ambiente y Seguridad en el Trabajo.</field>
+        </record>
+        <record id="sgi_miid_item_09_terminos_09" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">90</field>
+            <field name="label">Dropbox</field>
+            <field name="text">Archivo histórico de solo lectura; su equivalencia, en «Del Dropbox a Odoo».</field>
+            <field name="menu_id" ref="menu_sgi_dropbox_search"/>
+        </record>
+        <record id="sgi_miid_item_09_terminos_10" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_09_terminos"/>
+            <field name="sequence">100</field>
+            <field name="label">Manuales de uso</field>
+            <field name="text">Conocimiento → SGI → Cómo usar el sistema (de consulta, no controlados).</field>
+        </record>
+
+        <record id="sgi_miid_section_14_procesos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_process_map"/>
+        </record>
+
+        <record id="sgi_miid_section_17_politica" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_policy"/>
+        </record>
+
+        <record id="sgi_miid_section_21_objetivos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_objectives"/>
+        </record>
+
+        <record id="sgi_miid_section_18_roles" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_analysis_who"/>
+            <field name="item_style">table</field>
+            <field name="item_label_title">Nivel</field>
+            <field name="item_text_title">Quién responde</field>
+        </record>
+        <record id="sgi_miid_item_18_roles_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_18_roles"/>
+            <field name="sequence">10</field>
+            <field name="label">Proceso</field>
+            <field name="text">El dueño del proceso.</field>
+            <field name="menu_id" ref="menu_sgi_process_map"/>
+        </record>
+        <record id="sgi_miid_item_18_roles_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_18_roles"/>
+            <field name="sequence">20</field>
+            <field name="label">Actividad</field>
+            <field name="text">Quien ejecuta y, si aplica, quien aprueba y a quien se escala.</field>
+            <field name="menu_id" ref="menu_sgi_activities"/>
+        </record>
+        <record id="sgi_miid_item_18_roles_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_18_roles"/>
+            <field name="sequence">30</field>
+            <field name="label">Puesto</field>
+            <field name="text">«Mi procedimiento», firmado de leído.</field>
+            <field name="menu_id" ref="menu_sgi_jobs_roles"/>
+        </record>
+        <record id="sgi_miid_item_18_roles_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_18_roles"/>
+            <field name="sequence">40</field>
+            <field name="label">Jefe de MAST y SGI</field>
+            <field name="text">La conformidad del SGI, el informe a la dirección y su integridad en los cambios.</field>
+        </record>
+
+        <record id="sgi_miid_section_42_correspondencia" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_norms"/>
+        </record>
+
+        <record id="sgi_miid_section_52_reglas" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_system_rules"/>
+        </record>
+
+        <record id="sgi_miid_section_39_nc" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_nc"/>
+            <field name="item_style">table</field>
+            <field name="item_label_title">Etapa o caso</field>
+            <field name="item_text_title">Qué exige</field>
+        </record>
+        <record id="sgi_miid_item_39_nc_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">10</field>
+            <field name="label">Abierta</field>
+            <field name="text">Contención, causa raíz y plan en los plazos de abajo.</field>
+        </record>
+        <record id="sgi_miid_item_39_nc_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">20</field>
+            <field name="label">Seguimiento</field>
+            <field name="text">Clasificación y cláusula incumplida.</field>
+        </record>
+        <record id="sgi_miid_item_39_nc_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">30</field>
+            <field name="label">Cerrada</field>
+            <field name="text">Acciones con evidencia y eficacia verificada.</field>
+        </record>
+        <record id="sgi_miid_item_39_nc_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">40</field>
+            <field name="label">NC mayor</field>
+            <field name="text">Análisis completo; la lección pasa al AMEF, al plan de control o al documento; se informa a Dirección.</field>
+        </record>
+        <record id="sgi_miid_item_39_nc_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">50</field>
+            <field name="label">Reclamación</field>
+            <field name="text">Respuesta en el plazo acordado; 8D si el cliente lo pide.</field>
+            <field name="menu_id" ref="menu_sgi_complaints"/>
+        </record>
+        <record id="sgi_miid_item_39_nc_06" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_39_nc"/>
+            <field name="sequence">60</field>
+            <field name="label">Incidente</field>
+            <field name="text">Se investiga con participación de los trabajadores.</field>
+            <field name="menu_id" ref="menu_sgi_incidents"/>
+        </record>
+
+        <record id="sgi_miid_section_31_control_ambiental_sst" model="sgi.miid.section">
+            <field name="item_style">table</field>
+            <field name="item_label_title">Control</field>
+            <field name="item_text_title">Cómo</field>
+        </record>
+        <record id="sgi_miid_item_31_control_ambiental_sst_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_31_control_ambiental_sst"/>
+            <field name="sequence">10</field>
+            <field name="label">Controles operacionales</field>
+            <field name="text">Documentos con clave CO: alcance, controles, responsables y qué hacer en desviación.</field>
+            <field name="menu_id" ref="menu_sgi_documents"/>
+        </record>
+        <record id="sgi_miid_item_31_control_ambiental_sst_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_31_control_ambiental_sst"/>
+            <field name="sequence">20</field>
+            <field name="label">Contratistas</field>
+            <field name="text">Reglamento de seguridad y los mismos permisos.</field>
+            <field name="menu_id" ref="menu_sgi_work_permits"/>
+        </record>
+        <record id="sgi_miid_item_31_control_ambiental_sst_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_31_control_ambiental_sst"/>
+            <field name="sequence">30</field>
+            <field name="label">Equipo de protección</field>
+            <field name="text">Responsiva por persona.</field>
+            <field name="menu_id" ref="menu_sgi_epp_deliveries"/>
+        </record>
+        <record id="sgi_miid_item_31_control_ambiental_sst_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_31_control_ambiental_sst"/>
+            <field name="sequence">40</field>
+            <field name="label">Residuos, descargas y consumos</field>
+            <field name="text">Según los aspectos ambientales significativos y los requisitos legales.</field>
+            <field name="menu_id" ref="menu_sgi_env_aspects"/>
+        </record>
+
+        <record id="sgi_miid_section_53_documentada_cap" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_pg01"/>
+        </record>
+
+        <record id="sgi_miid_section_28_informacion" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_master_list"/>
+            <field name="item_style">table</field>
+            <field name="item_label_title">Forma</field>
+            <field name="item_text_title">Qué es</field>
+            <field name="item_text2_title">Dónde vive</field>
+        </record>
+        <record id="sgi_miid_item_28_informacion_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_28_informacion"/>
+            <field name="sequence">10</field>
+            <field name="label">Documentos controlados</field>
+            <field name="text">Con clave, revisión, estado, proceso y responsable.</field>
+            <field name="text_2">Documentos → carpeta SGI</field>
+            <field name="menu_id" ref="menu_sgi_documents"/>
+        </record>
+        <record id="sgi_miid_item_28_informacion_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_28_informacion"/>
+            <field name="sequence">20</field>
+            <field name="label">Registros</field>
+            <field name="text">La evidencia; imprimen la clave y revisión del formato que sustituyen.</field>
+            <field name="text_2">Odoo</field>
+        </record>
+        <record id="sgi_miid_item_28_informacion_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_28_informacion"/>
+            <field name="sequence">30</field>
+            <field name="label">Registros en papel</field>
+            <field name="text">Bitácoras y formatos no migrados.</field>
+            <field name="text_2">Con el jefe del área</field>
+        </record>
+
+        <record id="sgi_miid_section_59_transicion_cap" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_dropbox_routines"/>
+        </record>
+
+        <record id="sgi_miid_section_43_anteriores" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_dropbox_procedures"/>
+        </record>
+
+        <record id="sgi_miid_section_45_anexos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_documents"/>
+        </record>
+
+        <record id="sgi_miid_section_46_historial" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_miid_revisions"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_03_alcance" model="sgi.miid.section">
+            <field name="item_style">table</field>
+            <field name="item_label_title">Forma</field>
+            <field name="item_text_title">Qué incluye</field>
+            <field name="item_text2_title">Dónde vive</field>
+        </record>
+        <record id="sgi_miid_item_pg01_03_alcance_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_03_alcance"/>
+            <field name="sequence">10</field>
+            <field name="label">Documentos controlados</field>
+            <field name="text">Manual, procedimientos, instructivos, controles operacionales, protocolos, DAT, métodos, anexos, descripciones de puesto, Mi procedimiento, reglamentos y externos.</field>
+            <field name="text_2">Documentos → carpeta SGI</field>
+            <field name="menu_id" ref="menu_sgi_documents"/>
+        </record>
+        <record id="sgi_miid_item_pg01_03_alcance_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_03_alcance"/>
+            <field name="sequence">20</field>
+            <field name="label">Registros</field>
+            <field name="text">La evidencia: órdenes, inspecciones, NC, checklists, mediciones, actas, permisos.</field>
+            <field name="text_2">Odoo</field>
+        </record>
+        <record id="sgi_miid_item_pg01_03_alcance_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_03_alcance"/>
+            <field name="sequence">30</field>
+            <field name="label">Registros en papel</field>
+            <field name="text">Bitácoras de piso y formatos no migrados.</field>
+            <field name="text_2">Con el jefe del área</field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_04_responsabilidades" model="sgi.miid.section">
+            <field name="item_style">table</field>
+            <field name="item_label_title">Quién</field>
+            <field name="item_text_title">Responsabilidad</field>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">10</field>
+            <field name="label">Jefe de MAST y SGI</field>
+            <field name="text">Mantener el MIID, este procedimiento, los tipos de documento, el boletín NEWS y Mi procedimiento de cada puesto.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">20</field>
+            <field name="label">Director de Operaciones</field>
+            <field name="text">Aprobar el MIID, este procedimiento y los procedimientos que Dirección decida; autorizar entregas a externos.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">30</field>
+            <field name="label">Dueño de proceso</field>
+            <field name="text">Responder por los documentos de su proceso, firmar «Revisó», pedir la publicación de sus instructivos e implantar los externos en 10 días hábiles.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">40</field>
+            <field name="label">Quien elabora un documento</field>
+            <field name="text">Solicitar el cambio con el archivo propuesto («Elaboró») e implantarlo en 15 días hábiles.</field>
+            <field name="menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">50</field>
+            <field name="label">Quien entra a un puesto</field>
+            <field name="text">Firmar su Mi procedimiento y, en 30 días naturales, proponer lo que falte o sobre; su jefe lo verifica.</field>
+            <field name="menu_id" ref="menu_sgi_my_procedure"/>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_06" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">60</field>
+            <field name="label">Jefe de área y supervisor</field>
+            <field name="text">Que su gente use la versión vigente, firme sus acuses y conserve los registros en papel.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_07" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">70</field>
+            <field name="label">Todo el personal</field>
+            <field name="text">Consultar en Odoo y firmar «Leído y entendido» en 7 días hábiles.</field>
+            <field name="menu_id" ref="menu_sgi_current_documents"/>
+        </record>
+        <record id="sgi_miid_item_pg01_04_responsabilidades_08" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_04_responsabilidades"/>
+            <field name="sequence">80</field>
+            <field name="label">Administrador SGI</field>
+            <field name="text">Dar de alta los tipos de documento y sus claves.</field>
+            <field name="menu_id" ref="menu_sgi_config_doc_types"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_06_tipos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_doc_types"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_07_elaboracion" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_doc_types"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_08_aprobacion" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_doc_changes"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_09_plazos" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_config_settings"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_10_difusion" model="sgi.miid.section">
+            <field name="item_style">table</field>
+            <field name="item_label_title">Medio</field>
+            <field name="item_text_title">Cómo</field>
+        </record>
+        <record id="sgi_miid_item_pg01_10_difusion_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_10_difusion"/>
+            <field name="sequence">10</field>
+            <field name="label">Acuse de lectura</field>
+            <field name="text">Cada persona firma «Leído y entendido» en Mis pendientes, Documentos vigentes o la tableta de su área.</field>
+            <field name="menu_id" ref="menu_sgi_my_pending"/>
+        </record>
+        <record id="sgi_miid_item_pg01_10_difusion_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_10_difusion"/>
+            <field name="sequence">20</field>
+            <field name="label">NEWS Quimibond</field>
+            <field name="text">Boletín mensual de los cambios del mes anterior; lo envía el Jefe MAST.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_10_difusion_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_10_difusion"/>
+            <field name="sequence">30</field>
+            <field name="label">Reunión</field>
+            <field name="text">Si el cambio lo amerita: minuta, lista de asistencia y acuse.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_10_difusion_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_10_difusion"/>
+            <field name="sequence">40</field>
+            <field name="label">Distribución</field>
+            <field name="text">Solo en Odoo; lo impreso es copia no controlada.</field>
+            <field name="menu_id" ref="menu_sgi_current_documents"/>
+        </record>
+        <record id="sgi_miid_item_pg01_10_difusion_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_10_difusion"/>
+            <field name="sequence">50</field>
+            <field name="label">Entrega a externos</field>
+            <field name="text">Con autorización de Dirección, marcada «COPIA NO CONTROLADA» y anotada en el historial.</field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_11_resguardo" model="sgi.miid.section">
+            <field name="item_style">table</field>
+            <field name="item_label_title">Tema</field>
+            <field name="item_text_title">Regla</field>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_01" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">10</field>
+            <field name="label">Respaldo</field>
+            <field name="text">Todo vive en Odoo; Odoo.sh respalda diario (responde Sistemas).</field>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_02" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">20</field>
+            <field name="label">Nada se borra</field>
+            <field name="text">Lo que deja de usarse queda obsoleto con fecha, motivo e historial.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_03" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">30</field>
+            <field name="label">Retención</field>
+            <field name="text">Cada documento declara sus años de retención y su disposición final.</field>
+            <field name="menu_id" ref="menu_sgi_documents"/>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_04" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">40</field>
+            <field name="label">Registros físicos</field>
+            <field name="text">Con jefes y supervisores, en orden; después, al archivo muerto de MAST.</field>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_05" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">50</field>
+            <field name="label">Historia</field>
+            <field name="text">Lo anterior a Odoo está en el Dropbox, de solo lectura.</field>
+            <field name="menu_id" ref="menu_sgi_dropbox_search"/>
+        </record>
+        <record id="sgi_miid_item_pg01_11_resguardo_06" model="sgi.miid.item">
+            <field name="section_id" ref="sgi_miid_section_pg01_11_resguardo"/>
+            <field name="sequence">60</field>
+            <field name="label">Datos personales</field>
+            <field name="text">Confidenciales, con acceso por grupo; se eliminan al terminar la relación y los plazos legales.</field>
+        </record>
+
+        <record id="sgi_miid_section_pg01_12_rutinas" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_dropbox_routines"/>
+        </record>
+
+        <record id="sgi_miid_section_pg01_14_historial" model="sgi.miid.section">
+            <field name="menu_id" ref="menu_sgi_miid_revisions"/>
+        </record>
+
+    </data>
+</odoo>

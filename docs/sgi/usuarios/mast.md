@@ -272,13 +272,36 @@ Lo que sigue aplica a los dos:
 - **Lo que ve en pantalla y en «Vista en PDF (borrador)»** es la vista del
   sistema, marcada «Borrador — no vigente». La revisión vigente es el
   documento de Documentos («PDF de la revisión vigente»).
-- **Textos:** usted edita el texto de cada sección; cada sección dice de
-  qué documento es. Escriba `[[datos]]` en un párrafo propio para decidir
-  dónde van los datos del sistema (si no, van al final). «Texto solo si no
-  hay datos» deja el texto como respaldo. La «Situación» de cada anexo del
+- **Pantalla por capítulos (desde 57.161.0):** una pestaña por capítulo
+  con la letra de Odoo. Los procesos, la política, los objetivos, las
+  normas, los tipos de documento y las rutinas del P-G01 son listas que se
+  abren; las tablas que no son registros (roles, plazos, controles,
+  correspondencia, anexos) se ven como tabla. Cada apartado con pantalla en
+  Odoo tiene su botón «Abrir en Odoo»; en el PDF sale la ruta.
+- **Textos:** usted edita cada sección; cada sección dice de qué documento
+  es y en qué pestaña sale (por su numeral). El texto es corto: lo que eran
+  viñetas o tablas son **renglones** (pestaña «Renglones» de la sección:
+  concepto, numeral, descripción, hasta dos columnas más y la pantalla en
+  Odoo; en tabla o en lista, con los títulos de columna que usted ponga).
+  Escriba `[[datos]]` en un párrafo propio para decidir dónde van los
+  renglones y los datos del sistema (si no, van al final). La sección
+  también tiene su «Pantalla en Odoo». «Texto solo si no hay datos» deja el
+  texto como respaldo. Editar un renglón cuenta como editar la sección.
+- **Lo que es dato se edita en su registro (desde 57.162.0), no en Textos:**
+  el alcance en cada **Norma** («Alcance certificado»); lo que no aplica en
+  la **Cláusula** («No aplica», el inciso y su justificación); las reglas
+  que el sistema hace cumplir en **Administración → Configuración → Reglas
+  del sistema** (tema, cláusulas, regla y pantalla); y quién elabora,
+  dónde, quién revisa y quién aprueba cada tipo en **Tipos de documento**.
+  El MIID y el P-G01 los leen, y el aviso diario de «ya no coincide» también
+  los vigila. La «Situación» de cada anexo del
   Manual es una nota por renglón (7.2). Las secciones se archivan; no se
   borran. Cuando una actualización trae texto nuevo para una sección que
   usted editó, no la pisa: le deja una nota en el historial de la sección.
+- **Lo que falta para aprobar (desde 57.164.0):** arriba del manual salen
+  dos listas: las secciones por confirmar, con «Confirmar» y «Editar», y los
+  procesos que faltan por publicar, con cuántos faltantes bloquean, «Qué
+  falta» y, en verde, «Publicar» cuando ya se puede. La lista se vacía sola.
 - **«Por confirmar»:** mientras una sección esté marcada (con la nota de qué
   falta), ninguna revisión de su documento se envía ni se aprueba. La carga
   del Manual trae cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de
@@ -423,7 +446,15 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
   en lote con **Activar las sugeridas como solicitud**. Las que faltan le
   llegan como aviso por proceso en Mis pendientes.
-- **Nuevo indicador.** En SGI → Desempeño → Indicadores → Nuevo indicador:
+- **Por qué no hay dato** (desde 57.169.0). Cada medición «Sin dato» dice su
+  causa: *Foto* (el indicador mide el estado de hoy y un mes pasado no se
+  reconstruye; es normal y la ficha del indicador ya no las lista), *Antes de
+  «Medir desde»*, *Falta configurar* (botón **Dónde se arregla** en la ficha
+  del indicador: Ajustes para la capacidad instalada, Puestos para la
+  plantilla autorizada), *La fuente no tiene registros* (no se captura en
+  Odoo) y *Sin casos en el periodo*. En Mediciones, el filtro **Sin dato por
+  arreglar** deja solo las dos que piden acción.
+- **Nuevo indicador.** En SGI → Desempeño → Indicadores → Todos los indicadores, botón **Nuevo indicador**:
   elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
   la vista previa muestra cómo habrían salido los últimos tres periodos y
   qué registros cuenta. Se crea en «prueba».

@@ -38,6 +38,41 @@ SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo p
 # 57.104.0 (B4): mediciones anteriores a «Medir desde».
 BEFORE_FROM_NOTE = "Antes de «Medir desde» (%s): no cuenta. Valor anterior %s."
 BEFORE_FROM_CALC = "Antes de «Medir desde» (%s): no se mide."
+# 57.169.0 (Jose 2026-10-20): por qué una medición no tiene dato. Antes las
+# cuatro causas se veían igual («Sin dato»).
+NO_DATA_REASONS = [
+    ('foto', "Foto: el pasado no se reconstruye"),
+    ('antes', "Antes de «Medir desde»"),
+    ('falta_config', "Falta configurar"),
+    ('fuente_vacia', "La fuente no tiene registros"),
+    ('sin_casos', "Sin casos en el periodo"),
+]
+# Lo que dicen los cálculos cuando falta un dato de configuración.
+_CONFIG_NOTES = ("Configure ", "Ningún puesto tiene")
+# 57.169.0: dónde se arregla lo que falta configurar, por modo de cálculo.
+CALC_FIX_MENUS = {
+    'produccion_vs_capacidad': 'quimibond_sgi.menu_sgi_config_settings',
+    'cobertura_plantilla': 'hr.menu_view_hr_job',
+}
+
+
+def sgi_no_data_reason(state, note, calc_status=False, calc_message=False):
+    """57.169.0: la causa de una medición «Sin dato» (NO_DATA_REASONS) a
+    partir de su nota y del último cálculo del indicador; False si tiene
+    dato."""
+    if state != 'sin_dato':
+        return False
+    note = (note or '').strip()
+    if note.startswith(SNAPSHOT_NOTE):
+        return 'foto'
+    if note.startswith("Antes de «Medir desde»"):
+        return 'antes'
+    text = note or (calc_message or '')
+    if "Registro vacío" in text:
+        return 'fuente_vacia'
+    if calc_status == 'sin_formula' or text.startswith(_CONFIG_NOTES):
+        return 'falta_config'
+    return 'sin_casos'
 
 
 def _min_sample(env):
@@ -132,8 +167,28 @@ class SgiIndicatorDetail(models.Model):
     ], string="Último cálculo", readonly=True, copy=False, index=True,
         help="Resultado del último cálculo automático y, si no dio valor, por qué.")
     calc_message = fields.Char(string="Motivo", readonly=True, copy=False)
+    # 57.169.0: la pantalla donde se pone lo que le falta al cálculo.
+    calc_fix_menu_id = fields.Many2one('ir.ui.menu', string="Dónde se arregla",
+                                       compute='_compute_calc_fix_menu_id', compute_sudo=True)
+    # 57.169.0 (Jose 2026-10-20): la ficha no lista las mediciones de foto de
+    # meses pasados (no son un dato faltante: no se pueden medir).
+    measure_shown_ids = fields.One2many(
+        'sgi.indicator.measure', 'indicator_id', string="Mediciones",
+        domain=[('no_data_reason', '!=', 'foto')])
     calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False,
                                    help="Última vez que se revisó el cálculo automático.")
+
+    @api.depends('calc_mode', 'calc_status')
+    def _compute_calc_fix_menu_id(self):
+        for indicator in self:
+            xmlid = CALC_FIX_MENUS.get(indicator.calc_mode) if indicator.calc_status == 'sin_datos' else False
+            indicator.calc_fix_menu_id = self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+
+    def action_open_calc_fix(self):
+        """57.169.0: «Dónde se arregla» lo que le falta al cálculo."""
+        self.ensure_one()
+        from .sgi_menu_paths import sgi_open_menu_action
+        return sgi_open_menu_action(self.env, self.calc_fix_menu_id)
 
     def _sgi_set_calc(self, status, message=False):
         self.sudo().write({'calc_status': status, 'calc_message': message or False,
@@ -451,6 +506,20 @@ class SgiIndicatorMeasureDetail(models.Model):
 
     state = fields.Selection(selection_add=[('sin_dato', "Sin dato")],
                              ondelete={'sin_dato': 'set default'})
+    no_data_reason = fields.Selection(
+        NO_DATA_REASONS, string="Por qué no hay dato", compute='_compute_no_data_reason', store=True,
+        index='btree_not_null',
+        help="Foto: el indicador mide el estado de hoy y un mes pasado no se puede reconstruir (es "
+             "normal). Antes de «Medir desde»: no cuenta. Falta configurar: el cálculo necesita un dato "
+             "de Ajustes o del catálogo. La fuente no tiene registros: no se ha capturado nada en Odoo. "
+             "Sin casos: no hubo registros que contar en el periodo.")
+
+    @api.depends('state', 'note', 'indicator_id.calc_status', 'indicator_id.calc_message')
+    def _compute_no_data_reason(self):
+        for measure in self:
+            indicator = measure.indicator_id
+            measure.no_data_reason = sgi_no_data_reason(
+                measure.state, measure.note, indicator.calc_status, indicator.calc_message)
     numerator = fields.Float(string="Numerador", digits=(16, 2), help="Numerador del cálculo.")
     denominator = fields.Float(string="Denominador", digits=(16, 2),
                                help="Denominador del cálculo (la base contra la que se mide).")

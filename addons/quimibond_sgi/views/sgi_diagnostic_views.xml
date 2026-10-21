@@ -18,6 +18,10 @@
                        decoration-success="level == 'ok'"/>
                 <field name="text"/>
                 <field name="fix" optional="show"/>
+                <field name="fix_menu_id" column_invisible="1"/>
+                <!-- 57.165.0: «Dónde se arregla» se abre. -->
+                <button name="action_open_fix" type="object" string="Abrir" icon="fa-external-link"
+                        invisible="not fix_menu_id"/>
             </list>
         </field>
     </record>
@@ -27,6 +31,10 @@
         <field name="model">sgi.diagnostic.line</field>
         <field name="arch" type="xml">
             <form string="Hallazgo" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_open_fix" type="object" string="Abrir dónde se arregla"
+                            icon="fa-external-link" class="btn-primary" invisible="not fix_menu_id"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="section"/>
@@ -36,6 +44,7 @@
                                decoration-success="level == 'ok'"/>
                         <field name="text"/>
                         <field name="fix"/>
+                        <field name="fix_menu_id" invisible="1"/>
                         <field name="diagnostic_id"/>
                     </group>
                 </sheet>

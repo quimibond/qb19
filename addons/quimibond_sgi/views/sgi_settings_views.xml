@@ -20,7 +20,7 @@
                         </setting>
                         <setting string="Usuario de RH"
                                  help="Recibe las actividades automáticas de RH: competencias por vencer, DNC.">
-                            <field name="sgi_rh_user_id"/>
+                            <field name="sgi_rh_user_id" widget="many2one_avatar_user"/>
                         </setting>
                         <setting string="Bloquear equipos con calibración vencida"
                                  help="Apagado: solo avisa (resumen diario al Coordinador de Laboratorio y al Jefe de Calidad). Encendido: además marca «No usar».">
@@ -32,7 +32,7 @@
                         </setting>
                         <setting string="Jefe MAST y SGI"
                                  help="Recibe los avisos automáticos del SGI sin dueño. Vacío: mas@quimibond.com o el primer miembro directo del grupo.">
-                            <field name="sgi_mast_user_id"/>
+                            <field name="sgi_mast_user_id" widget="many2one_avatar_user"/>
                         </setting>
                     </block>
                     <!-- 57.119.0 (C1, bloque 3) -->
@@ -65,7 +65,7 @@
                         </setting>
                         <setting string="Personas sin puesto que también reciben la solicitud"
                                  help="Inspección (José Luis Almazán) no tiene puesto en RH; mientras Jose decide, se puede poner aquí a la persona.">
-                            <field name="sgi_dev_request_notify_user_ids" widget="many2many_tags"/>
+                            <field name="sgi_dev_request_notify_user_ids" widget="many2many_avatar_user"/>
                         </setting>
                         <setting string="Categoría de la requisición de materia prima"
                                  help="Categoría de Aprobaciones con la que el desarrollo pide a Compras lo que falta para la muestra. Vacío: la de tipo compra.">
@@ -145,8 +145,11 @@
                         <setting string="Proveedor de energía"
                                  help="Indicador Consumo de energía (TR-03): proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
-                            <field name="sgi_satisfaction_survey_id"
-                                   context="{'active_test': False}"/>
+                        </setting>
+                        <!-- 57.170.0: tenía su propio ajuste metido en «Proveedor de energía». -->
+                        <setting string="Encuesta de satisfacción del cliente"
+                                 help="Indicador Satisfacción del cliente (CA-02): sus respuestas forman la medición.">
+                            <field name="sgi_satisfaction_survey_id" context="{'active_test': False}"/>
                         </setting>
                         <!-- 57.11.0 (A-016): los ajustes del presupuesto y del
                              pronóstico de ventas los agrega quimibond_ventas_presupuesto

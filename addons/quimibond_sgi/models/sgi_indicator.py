@@ -345,6 +345,13 @@ class SgiIndicator(models.Model):
             'context': {'default_indicator_id': self.id, 'search_default_con_dato': 1},
         }
 
+    @api.model
+    def action_sgi_new_indicator(self):
+        """57.167.0: «Nuevo indicador» es un botón de la lista (ya no menú)."""
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("«Nuevo indicador» es del Jefe MAST.")
+        return self.env['ir.actions.act_window']._for_xml_id('quimibond_sgi.sgi_indicator_wizard_action')
+
     def action_sgi_recompute_pending_measures(self):
         """D-12 (57.5.0): botón «Recalcular mediciones» de la lista de
         indicadores, solo para el Administrador SGI. Sin selección, re-mide

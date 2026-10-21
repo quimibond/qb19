@@ -30,14 +30,16 @@
                             <field name="activity_id"/>
                             <field name="process_id"/>
                             <field name="month"/>
-                            <field name="user_id"/>
-                            <field name="date_due"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="date_due" widget="remaining_days" invisible="state != 'pendiente'"/>
+                            <field name="date_due" invisible="state == 'pendiente'"/>
                         </group>
                         <group>
-                            <field name="measure_model"/>
-                            <field name="measure_domain"/>
+                            <!-- 57.170.0: técnico, solo para el Jefe MAST. -->
+                            <field name="measure_model" groups="quimibond_sgi.group_sgi_manager"/>
+                            <field name="measure_domain" groups="quimibond_sgi.group_sgi_manager"/>
                             <field name="measure_user_field" invisible="not measure_user_field"/>
-                            <field name="reviewed_by_id" invisible="not reviewed_by_id"/>
+                            <field name="reviewed_by_id" widget="many2one_avatar_user" invisible="not reviewed_by_id"/>
                             <field name="reviewed_on" invisible="not reviewed_on"/>
                         </group>
                     </group>
@@ -51,7 +53,7 @@
                         <list create="0" edit="0" delete="0">
                             <field name="name"/>
                             <field name="record_date"/>
-                            <field name="record_user_id"/>
+                            <field name="record_user_id" widget="many2one_avatar_user"/>
                             <button name="action_open_record" type="object" string="Abrir" icon="fa-external-link"/>
                         </list>
                     </field>
@@ -71,7 +73,7 @@
                 <field name="process_id"/>
                 <field name="activity_id"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
-                <field name="date_due"/>
+                <field name="date_due" widget="remaining_days" invisible="state != 'pendiente'"/>
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pendiente'"
                        decoration-success="state == 'confirmada'"
@@ -134,7 +136,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Descartar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

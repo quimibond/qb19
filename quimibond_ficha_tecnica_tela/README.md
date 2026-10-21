@@ -11,43 +11,72 @@ Módulo Odoo 19 con **2 modelos separados**:
   hacia la `ficha.tecnica.tejido` que le sirve de base. Una ficha de
   tejido puede ser la base de varias fichas de acabado.
 
-## Modelo de producción vigente (2.13.0, Dirección 2026-10-19/20)
+## Modelo de producción vigente (2.13.2, Dirección 2026-10-19/21)
 
 Las secciones de versiones anteriores cuentan cómo se llegó aquí (2.6.0 y
-2.9.0 hablaban de «un solo producto de acabado en kg»; 2.12.0 y 2.13.0 lo
-afinaron). Lo vigente:
+2.9.0 hablaban de «un solo producto de acabado en kg»; 2.12.0 a 2.13.1 lo
+afinaron; 2.13.2 mete Inspección en la orden en kg, como pidió la v5 del
+diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 
-| Paso | Produce | Código | Unidad |
-|---|---|---|---|
-| Tejido | Crudo | `WJ044Q22HNT235` (H en la operación) | kg |
-| Abridora → tintorería → rama (una orden; se cierra con los rollos pesados) | **Acabado en kg** | `IWJ045Q22JNT160` | kg |
-| Inspección (una orden por orden de acabado) | Tela acabada | `WJ045Q22JNT160` (J) | m medidos |
+| Orden | Operaciones | Produce | Código | Unidad |
+|---|---|---|---|---|
+| Tejido | Tejer | Crudo | `WJ044Q22HNT235` (H en la operación) | kg |
+| **Acabado en kg** (se cierra con los rollos pesados e inspeccionados, a la ubicación «10 INSPECCIÓN») | Devanado → Tintorería → Abridora → Rama → **Inspección** | Acabado en kg | `IWJ045Q22JNT160` | kg |
+| **Clasificación final** (empaque), solo para la venta en metros | Clasificación y empaque | Tela acabada | `WJ045Q22JNT160` (J) | m medidos |
 
-- **Toda la producción va en kg hasta Inspección.** El código en kg es el de la
-  tela acabada con la **«I» al frente**: la DAT P-D02-01 rev. 05 define la
-  posición 1 como unidad (I = kilogramos, sin letra = metros). No hay letras
-  nuevas en la operación.
-- **Sin inspeccionar contra listo** se distingue por **ubicación** («Por
-  inspeccionar» contra Producto terminado), no por código: el mismo «I…» se
-  vende en kg desde Producto terminado (96 existen; 435 líneas y $5.1 millones
-  vendidos en kg en el último año).
-- **Inspección:** para la venta en metros, una orden que consume el «I…» y
-  produce la J en metros medidos, con el mismo lote (de ahí salen la merma y el
-  rendimiento reales por rollo); para la venta en kg, un traslado con revisión
-  de calidad a Producto terminado.
+- **Toda la producción va en kg hasta la Clasificación final.** El código en kg
+  es el de la tela acabada con la **«I» al frente**: la DAT P-D02-01 rev. 05
+  define la posición 1 como unidad (I = kilogramos, sin letra = metros). No hay
+  letras nuevas en la operación.
+- **Inspección es una operación de la orden en kg**: cada rollo se inspecciona
+  al salir de rama, sin esperar a que termine la orden. El «I…» entra a
+  inventario ya inspeccionado (ubicación 10); no hay tela sin revisar mezclada
+  con la que se vende.
+- **Venta en kg:** el mismo «I…» pasa de la ubicación 10 a Producto terminado
+  con su empaque y se vende (96 existen; 435 líneas y $5.1 millones vendidos en
+  kg en el último año). Sin orden de conversión.
+- **Venta en metros:** la Clasificación final consume el «I…» en kg y produce
+  la J en metros medidos, con el mismo lote. La «Conversión de unidades» de hoy
+  (metros → kg) desaparece: ahora el kg va primero.
 - **El teñido** (I en la operación) deja de ser producto cuando la ruta del «I…»
   lleva todas sus operaciones; tintorería es una orden de trabajo de esa orden.
-- **Listas de materiales a voltear:** hoy las 91 listas de los «I…» consumen la
-  J en metros («Conversión de unidades»). Con el flujo nuevo el «I…» consume el
-  crudo o el teñido y la J consume el «I…»; las dos no pueden quedar a la vez
-  (círculo). Se voltean artículo por artículo junto con la lista de Inspección.
+- **Reglas acordadas con José Sacramento (2026-10-21)** para su módulo de
+  programación y dosificación:
+  - *Relación de baño:* la del artículo en el jet; si no tiene, la de la
+    máquina; si no hay ninguna, se detiene la confirmación
+    (`mrp.workcenter._ft_relacion_bano(product)`, siempre como número: «1:10»
+    → 10). El colorante (% sobre kg) no depende de la RB. Las fichas de los
+    jets traen los mismos valores que su tabla (HTJ1 = 10, HTJ2 = 7, HTJ3 = 6,
+    HTJ4 = 6, HTJ5 = 7) y las mismas capacidades por banda.
+  - *Tiempo de ciclo:* el `tiempo_ciclo` del artículo en el jet; si no hay, la
+    fórmula × HTJ.
+  - *Bandas de rendimiento de tejido:* A de 3 a menos de 7, B de 7 a menos de
+    11, C de 11 a 16 m/kg (el límite pertenece a la banda de arriba). Fuera de
+    bandas o banda en N/A: se bloquea y se corrige; una máquina sin bandas
+    capturadas (hoy HTJ5) usa su capacidad general con aviso.
+  - *Duración de rama:* kg × rendimiento ÷ (velocidad × (1 − merma/100)) con el
+    **rendimiento de acabado** (la rama deja la tela en su ancho final y la
+    velocidad se mide en esa tela) y, si el artículo no tiene ficha de acabado,
+    el de tejido con aviso. Ejemplo real: TL/OP-ACA/06468, 477 kg dieron
+    5,099 m (10.7 m/kg); con el de tejido (8.45) saldrían 4,031 m, con el de
+    acabado (11.8) y merma 10 %, 5,066 m.
+  - *Merma de rama:* 10 % mientras se miden de 10 a 20 corridas.
+  - *Alertas de metros:* Inspección contra Clasificación final, 1 m; metros
+    finales contra kg × rendimiento de acabado, un porcentaje (tolerancia de
+    peso + de ancho de la ficha de acabado; 3 % sin ficha).
+- **Listas de materiales a voltear:** hoy las listas de los «I…» consumen la J
+  en metros («Conversión de unidades»). Con el flujo nuevo el «I…» consume el
+  crudo o el teñido y la J consume el «I…» (Clasificación final); las dos no
+  pueden quedar a la vez (círculo). Las voltea Ingeniería, artículo por
+  artículo; el reporte «Listas de materiales por voltear» (2026-10-20) trae las
+  90 listas y las cantidades nuevas.
 - **En el módulo:** la ficha de acabado liga la tela acabada (`product_acabado_id`)
   y el acabado en kg (`product_proceso_id`, lo liga sola por código); los
   artículos nuevos los crea C1 en el SGI (57.160.0) y los que faltan de los
   existentes, Tela → Acabados en proceso faltantes. Otros módulos leen el
   artículo en kg en la ficha, no lo arman por el código.
-- **Configuración de inventario pendiente** (no es código): la ubicación «Por
-  inspeccionar» y las rutas para que Ventas tome solo de Producto terminado.
+- **Configuración de inventario pendiente** (no es código): las rutas para que
+  Ventas tome solo de Producto terminado y la operación de Clasificación final.
 
 ## Instalación / actualización
 
@@ -283,7 +312,7 @@ bloqueos: la decisión sigue siendo de la planta.
 
 ## Listo para el producto único de acabado en kg (2.6.0, 2026-10-13)
 
-> Afinado en 2.13.0: kg hasta Inspección y la tela acabada en metros (ver «Modelo de producción vigente» arriba).
+> Afinado en 2.13.x: kg hasta la Clasificación final y la tela acabada en metros (ver «Modelo de producción vigente» arriba).
 
 Decisión de Jose: los productos de tintorería se van a dejar de usar; habrá
 **un producto de acabado en kg** con todas las operaciones en su ruta, desde
@@ -627,3 +656,13 @@ En el módulo:
 Sin cambios de comportamiento. Resumen «Modelo de producción vigente» al
 principio de este README (las secciones 2.6.0 y 2.9.0 quedan como historia), y
 la ayuda del campo «Orden con teñido» ya no dice «producto único de acabado».
+
+## Inspección dentro de la orden en kg (2.13.2, 2026-10-21)
+
+Revisión de José Sacramento (v5 de su diseño): Inspección es una operación de
+la orden en kg (Devanado → Tintorería → Abridora → Rama → Inspección) y la
+orden en metros es la Clasificación final (empaque). Sin cambios de
+comportamiento: el README («Modelo de producción vigente», con las reglas de
+relación de baño, tiempo de ciclo, bandas, duración de rama, merma y alertas
+acordadas), la ayuda del acabado en proceso y los avisos de la ficha de
+acabado dicen «Clasificación final» donde decían «Inspección».

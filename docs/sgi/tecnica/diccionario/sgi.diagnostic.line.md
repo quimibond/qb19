@@ -10,14 +10,20 @@ Orden: `sequence, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_diagnostic.py`.
 
-## Campos (6)
+## Campos (7)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `diagnostic_id` | Many2one | Diagnóstico | Corrida del diagnóstico a la que pertenece el hallazgo. | sí | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:32` |
 | `fix` | Char | Dónde se arregla |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:39` |
+| `fix_menu_id` | Many2one | Pantalla |  |  | `ir.ui.menu` | compute `_compute_fix_menu_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:42` |
 | `level` | Selection | Nivel | Qué tan grave es el hallazgo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:37` |
 | `section` | Char | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:36` |
 | `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:35` |
 | `text` | Text | Hallazgo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:38` |
 
+## Métodos públicos (1)
+
+| Método | Qué hace (docstring) |
+|---|---|
+| `action_open_fix` | — |

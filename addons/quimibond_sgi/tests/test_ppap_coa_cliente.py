@@ -7,6 +7,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 from ..models.sgi_my_pending import NOTICE_MODELS
 from .common_users import sgi_set_mast
+from .common_documents import sgi_new_company
 
 
 @tagged('post_install', '-at_install')
@@ -57,7 +58,7 @@ class TestPpapCoaCliente(TransactionCase):
         self.assertTrue(self.customer.sgi_requires_contingency)
 
     def test_02_por_compania(self):
-        other = self.env['res.company'].create({'name': 'Z14 otra'})
+        other = sgi_new_company(self.env, 'Z14 otra')
         self.customer.sgi_requires_ppap = True
         self.assertFalse(self.customer.with_company(other).sgi_requires_ppap)
 

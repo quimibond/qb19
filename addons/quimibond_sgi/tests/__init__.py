@@ -149,9 +149,13 @@ from . import test_ppap_coa_cliente
 from . import test_ia_nc
 from . import test_reportes_diagramas
 from . import test_indicadores_sin_dato
+from . import test_sin_dato_motivo
+from . import test_ui_entrega1
 from . import test_registro_cumplimiento
 from . import test_ligas_navegacion
 from . import test_miid
+from . import test_miid_pantalla  # 57.161.0
+from . import test_rutas_abren  # 57.165.0
 from . import test_medicion_por_revisar
 from . import test_revision_medicion
 from . import test_propuesta_sencilla
@@ -189,3 +193,5 @@ from . import test_dev_machine_sheet
 from . import test_nc_tipos
 from . import test_escalamientos_pausa  # 57.159.0
 from . import test_dev_proceso  # 57.160.0
+from . import test_ui_entrega2  # 57.171.0
+from . import test_ui_entrega3  # 57.172.0
