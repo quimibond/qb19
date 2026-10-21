@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.181.0 — 2026-10-21
+
+Tablero de dirección: lo que pide decisión, arriba y con nombre.
+
+**Cambiado**
+- Arriba, una línea: cuántos indicadores son oficiales de cuántos (sin los de
+  salud), y en rojo las NC con plazo vencido, los acuerdos de la RxD vencidos
+  y los rojos sin causa ni plan; «nada vencido» si no hay.
+- Página nueva **NC vencidas**: folio, proceso, responsables, qué sigue y
+  desde cuándo venció (`nc_overdue_ids`, con el «Qué sigue» de 57.179.0).
+
 ## 19.0.57.180.0 — 2026-10-21
 
 Mi equipo: el jefe ve por qué va atrasada cada persona sin abrir su lista.

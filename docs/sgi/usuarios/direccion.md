@@ -12,7 +12,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 | Menú | Para qué |
 |---|---|
-| **SGI → Desempeño → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
+| **SGI → Desempeño → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, NC vencidas (desde 57.181.0), procesos con más atrasos y acuerdos de la revisión vencidos |
 | **SGI → Desempeño → Revisión por la dirección / Satisfacción del cliente / Indicadores** | La reunión de revisión (entradas, acuerdos y seguimiento), la satisfacción del cliente y las mediciones |
 | **SGI → Planeación → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
 | **SGI → Planeación → Partes interesadas / Riesgos y oportunidades / Aspectos ambientales / Requisitos legales** | Contexto, riesgos y cumplimiento |
@@ -27,8 +27,11 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 1. Toque la app **SGI** (o **SGI → Desempeño → Tablero**). Se calcula al
    abrirlo.
-2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
-   vencidos**: son lo que está detenido.
+2. Arriba, una línea dice cuántos indicadores son oficiales y lo vencido:
+   NC con plazo vencido, acuerdos de la RxD vencidos y rojos sin causa ni
+   plan (desde 57.181.0). Revise eso primero: es lo que está detenido. La
+   página **NC vencidas** dice de cada una qué sigue, desde cuándo venció y
+   quiénes son sus responsables.
 3. **Hoja de cálculo** abre el tablero en hoja de cálculo para analizarlo.
 4. La página **Salud del SGI** (desde 57.99.0) dice si el SGI se está usando:
    diez indicadores SG-01 a SG-10 con el valor de la semana pasada, su

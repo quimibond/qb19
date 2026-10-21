@@ -8,10 +8,11 @@ Tablero de Dirección (I-9): indicadores en rojo, rojos sin plan, procesos atras
 
 Archivos: `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`.
 
-## Campos (12)
+## Campos (17)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
+| `agreement_count` | Integer | Acuerdos vencidos |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:118` |
 | `date` | Date | Fecha | Fecha del tablero. |  |  |  |  | `addons/quimibond_sgi/models/sgi_direction_board.py:96` |
 | `delayed_process_ids` | Many2many | Procesos con más atrasos | Procesos con más actividades atrasadas. |  | `sgi.process` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:108` |
 | `health_indicator_ids` | Many2many | Salud del SGI | Los indicadores de salud del SGI activos (auditoría 2026-10, sección 8). |  | `sgi.indicator` | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:589` |
@@ -20,7 +21,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibon
 | `indicator_count` | Integer |  |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:111` |
 | `indicator_ids` | Many2many | Indicadores de dirección | Indicadores que sigue la Dirección. |  | `sgi.indicator` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:100` |
 | `indicator_note` | Char | Nota de indicadores |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:112` |
+| `indicator_total` | Integer | Indicadores activos |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:117` |
+| `nc_overdue_count` | Integer | NC con plazo vencido |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:122` |
+| `nc_overdue_ids` | Many2many | NC con plazo vencido | No conformidades abiertas con algún plazo vencido (contención, causa raíz o plan). |  | `quality.alert` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:119` |
 | `objective_ids` | Many2many | Objetivos integrales | Objetivos integrales del año. |  | `sgi.objective` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:98` |
+| `official_count` | Integer | Indicadores oficiales |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:116` |
 | `overdue_agreement_ids` | Many2many | Acuerdos de la RxD vencidos | Acuerdos de la revisión por la dirección que ya vencieron. |  | `sgi.action.line` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:105` |
 | `red_count` | Integer |  |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:113` |
 | `red_no_plan_measure_ids` | Many2many | Rojos sin causa ni plan | Mediciones en rojo que todavía no tienen causa ni plan de acción. |  | `sgi.indicator.measure` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:102` |
