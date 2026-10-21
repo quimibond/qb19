@@ -13,6 +13,66 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.181.0 — 2026-10-21
+
+Tablero de dirección: lo que pide decisión, arriba y con nombre.
+
+**Cambiado**
+- Arriba, una línea: cuántos indicadores son oficiales de cuántos (sin los de
+  salud), y en rojo las NC con plazo vencido, los acuerdos de la RxD vencidos
+  y los rojos sin causa ni plan; «nada vencido» si no hay.
+- Página nueva **NC vencidas**: folio, proceso, responsables, qué sigue y
+  desde cuándo venció (`nc_overdue_ids`, con el «Qué sigue» de 57.179.0).
+
+## 19.0.57.180.0 — 2026-10-21
+
+Mi equipo: el jefe ve por qué va atrasada cada persona sin abrir su lista.
+
+**Cambiado**
+- Columna y renglón en el organigrama **Qué tiene atrasado**
+  (`hr.employee.public.sgi_mp_late_reason`): los pendientes atrasados por
+  tipo, el más común primero («3 Actividad atrasada, 1 Acuse de lectura»).
+  Sale de los mismos renglones que el semáforo, en vivo.
+
+## 19.0.57.179.0 — 2026-10-21
+
+Ficha de la NC. En producción las 16 NC abiertas tienen la contención
+vencida, y las 4 reclamaciones no tienen responsables (nadie recibe sus
+plazos).
+
+**Cambiado**
+- Arriba de la ficha, **Qué sigue**: el primer paso sin cumplir (contención,
+  causa raíz, plan, eficacia), dónde se hace y cuándo vence; en rojo si ya
+  venció (`sgi_next_step`, `sgi_next_due`, `sgi_next_late`).
+- Aviso **Sin responsables** en una NC abierta sin responsables.
+- **Plazos**: cada paso en su renglón con su estado y su fecha juntos (antes
+  las fechas en una columna y los estados en otra).
+
+## 19.0.57.178.0 — 2026-10-21
+
+Jose (2026-10-21): «quiero seguir mejorando vistas» → la ficha del indicador
+primero. En producción los 105 indicadores siguen **en prueba** (90 con
+medición, 51 en rojo) y el botón «Pasar a oficial» solo lo veía el Jefe
+MAST, aunque el manual dice que lo pasa su dueño.
+
+**Cambiado**
+- **Pasar a oficial** lo puede pulsar el responsable del indicador o el dueño
+  de su proceso (y el Jefe MAST). Para ellos exige la lista completa
+  (`_sgi_official_missing`): responsable y proceso, meta (más alto es mejor:
+  objetivo mayor que cero; rango: máximo mayor que mínimo) y una medición con
+  valor cuyo último cálculo no sea error ni «sin fórmula». MAST puede pasarlo
+  sin la lista. Deja una nota «Pasado a oficial por …» en el chatter.
+- La ficha dice arriba el **último valor**, su semáforo y la **meta** en una
+  línea, y en prueba un recuadro con la lista (palomita o tache) y **Ver
+  registros** de la última medición.
+- **Mediciones** es la primera pestaña. La configuración del cálculo (modo,
+  ventana, fórmula en palabras, fuente, línea base) pasa a la pestaña
+  **Cálculo**; arriba quedan Clasificación y Meta.
+
+**Corregido**
+- `test_vistas_pulido_45.test_06` buscaba `measure_ids` en la ficha; desde
+  57.169.0 la lista es `measure_shown_ids`.
+
 ## 19.0.57.177.0 — 2026-10-21
 
 Jose (2026-10-21): «¿cómo podemos mejorar la vista de Mi procedimiento?».

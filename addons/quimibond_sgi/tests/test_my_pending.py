@@ -72,6 +72,8 @@ class TestMyPending(TransactionCase):
         row = Public.browse(self.emp.id)
         self.assertEqual(row.sgi_mp_pending_state, 'atrasada')
         self.assertGreaterEqual(row.sgi_mp_pending_late, 1)
+        # 57.180.0: por qué va atrasada, por tipo.
+        self.assertIn("Acción", row.sgi_mp_late_reason)
         # 57.95.0 (K-08): los filtros de Mi equipo leen el resumen guardado
         # (cron nocturno o al abrir una lista de pendientes).
         self.env['hr.employee']._sgi_refresh_pending_summary(self.emp)

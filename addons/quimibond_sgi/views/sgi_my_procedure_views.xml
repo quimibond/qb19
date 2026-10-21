@@ -498,6 +498,8 @@
                      la página y no hay subtotales al agrupar. -->
                 <field name="sgi_mp_pending_total" sum="Total de la página"/>
                 <field name="sgi_mp_pending_late" sum="Total de la página" optional="hide"/>
+                <!-- 57.180.0: por qué va atrasada, sin abrir su lista. -->
+                <field name="sgi_mp_late_reason" class="text-danger"/>
                 <field name="sgi_mp_total" optional="hide"/>
                 <field name="sgi_mp_acks_pending" sum="Total de la página" optional="hide"/>
                 <field name="sgi_mp_ack_state" widget="badge"
@@ -527,6 +529,7 @@
                 <field name="sgi_mp_pending_state"/>
                 <field name="sgi_mp_acks_pending"/>
                 <field name="sgi_mp_ack_state"/>
+                <field name="sgi_mp_late_reason"/>
                 <templates>
                     <t t-name="hierarchy-box">
                         <div class="d-flex align-items-center gap-2 pb-1">
@@ -556,6 +559,10 @@
                                   title="Mi procedimiento sin firmar">sin firmar</span>
                             <span t-if="record.sgi_mp_ack_state.raw_value == 'sin_publicar'" class="badge text-bg-light"
                                   title="Mi procedimiento sin publicar">sin publicar</span>
+                        </div>
+                        <!-- 57.180.0: qué tiene atrasado. -->
+                        <div t-if="record.sgi_mp_late_reason.raw_value" class="small text-danger text-truncate mt-1">
+                            <field name="sgi_mp_late_reason"/>
                         </div>
                     </t>
                 </templates>

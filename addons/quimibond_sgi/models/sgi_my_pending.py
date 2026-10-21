@@ -2256,6 +2256,12 @@ class HrEmployeePublicPending(models.Model):
         help="El peor estado de sus pendientes: atrasada, por vencer o al día. En los filtros "
              "se usa el resumen guardado (de la noche o de la última vez que se abrió su lista).")
 
+    # 57.180.0: el jefe ve por qué va atrasada la persona sin abrir su lista.
+    sgi_mp_late_reason = fields.Char(
+        string="Qué tiene atrasado", compute='_compute_sgi_mp_pending',
+        help="Los pendientes atrasados de la persona por tipo, el más común primero "
+             "(«3 Actividad atrasada, 1 Acuse de lectura»).")
+
     @api.model
     def _sgi_pending_by_employee(self, employees):
         """56.36.0 (I-021): el semáforo sale de la persona; sin usuario, de
@@ -2263,13 +2269,26 @@ class HrEmployeePublicPending(models.Model):
         summary = self.env['sgi.my.pending']._sgi_summary_employees(employees.sudo())
         return {emp.id: summary.get(emp.id, (0, 0, False)) for emp in employees}
 
+    @staticmethod
+    def _sgi_late_reason(rows):
+        labels = dict(PENDING_KINDS)
+        counts = {}
+        for row in rows:
+            if row['state'] == 'atrasada':
+                counts[row['kind']] = counts.get(row['kind'], 0) + 1
+        ordered = sorted(counts.items(), key=lambda kv: (-kv[1], labels.get(kv[0], kv[0])))
+        return ", ".join("%d %s" % (n, labels.get(kind, kind)) for kind, n in ordered)
+
     def _compute_sgi_mp_pending(self):
-        values = self._sgi_pending_by_employee(self.env['hr.employee'].sudo().browse(self.ids))
+        Pending = self.env['sgi.my.pending']
+        rows_by = Pending._sgi_pending_values_employees(self.env['hr.employee'].sudo().browse(self.ids))
         for rec in self:
-            total, late, worst = values.get(rec.id, (0, 0, False))
+            rows = rows_by.get(rec.id, [])
+            total, late, worst = Pending._sgi_count(rows)
             rec.sgi_mp_pending_total = total
             rec.sgi_mp_pending_late = late
             rec.sgi_mp_pending_state = worst or ('al_dia' if total else False)
+            rec.sgi_mp_late_reason = self._sgi_late_reason(rows)
 
     def _sgi_saved_ids_where(self, predicate):
         """57.95.0 (K-08): los filtros leen el resumen guardado en hr.employee

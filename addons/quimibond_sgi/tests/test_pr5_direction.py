@@ -123,6 +123,11 @@ class TestPr5Direction(TransactionCase):
         self.assertNotIn(Indicator.search([('code', '=', 'TST-PROC')]), board.indicator_ids)
         self.assertEqual(board.indicator_count, len(board.indicator_ids))
         self.assertTrue(board.action_open_spreadsheet()['tag'])
+        # 57.181.0: la línea de arriba y las NC vencidas.
+        self.assertGreaterEqual(board.official_count, 2)
+        self.assertGreaterEqual(board.indicator_total, board.official_count)
+        self.assertEqual(board.nc_overdue_count, len(board.nc_overdue_ids))
+        self.assertEqual(board.agreement_count, len(board.overdue_agreement_ids))
 
     def test_04_per3_matriz_de_competencias(self):
         dept = self.env['hr.department'].create({'name': 'Área PR5'})
