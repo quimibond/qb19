@@ -13,6 +13,24 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.175.0 — 2026-10-21
+
+Jose (2026-10-21), opción 1: «un indicador en prueba no pide validación». En
+producción había 459 renglones «Validar medición» en Mis pendientes (443
+atrasados, algunos de junio), todos de los 106 indicadores en prueba: validar
+un número que todavía no es oficial no sirve y tapaba las actividades y los
+acuses.
+
+**Cambiado**
+- Mis pendientes: «Validar medición» solo para indicadores **oficiales**. Al
+  pasar un indicador a oficial aparecen sus mediciones capturadas por validar.
+  La medición se sigue pudiendo validar a mano desde su ficha.
+- SG-05 «Mediciones validadas a tiempo», la columna de validaciones atrasadas
+  por dueño de proceso del Tablero y el aviso del Diagnóstico («capturadas y
+  ninguna validada») dejan fuera las de indicadores en prueba: no se culpa a
+  nadie por lo que ya no se le pide.
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.19).
+
 ## 19.0.57.174.1 — 2026-10-21
 
 **Cambiado**

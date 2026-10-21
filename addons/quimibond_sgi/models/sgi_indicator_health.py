@@ -259,6 +259,8 @@ class SgiIndicatorHealth(models.Model):
             ('state', 'in', ('capturado', 'validado')),
             ('indicator_id.active', '=', True),
             ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
+            # 57.175.0: en prueba no se pide validar; no cuenta como atraso.
+            ('indicator_id.status', '!=', 'prueba'),
             '|', ('captured_date', '>=', since),
             '&', ('captured_date', '=', False),
             ('create_date', '>=', sgi_local_datetime_utc(self.env, since, 0))])
@@ -557,7 +559,8 @@ class SgiProcessHealth(models.Model):
                 ('state', '=', 'capturado'), ('indicator_id.active', '=', True),
                 ('period_date', '>=', today - timedelta(days=LATE_WINDOW_DAYS)),
                 ('indicator_id.responsible_id', 'in', users.ids),
-                ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
+                ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
+                ('indicator_id.status', '!=', 'prueba')])
             for measure in measures:
                 if measure._sgi_validate_due() < today:
                     late[measure.indicator_id.responsible_id.id] += 1

@@ -445,8 +445,11 @@ class SgiMyPending(models.Model):
             'medicion': measures.filtered(lambda m: m.state == 'pendiente' and m._sgi_needs_capture()),
             # I-006: lo ya calculado lo valida el dueño. 57.99.0: los de salud
             # del SGI no se validan (su respuesta es la revisión semanal).
+            # 57.175.0 (Jose): un indicador en prueba no pide validación; su
+            # número empieza a contar (y a validarse) cuando pasa a oficial.
             'validacion': measures.filtered(
-                lambda m: m.state == 'capturado' and m.indicator_id.calc_mode not in HEALTH_MODES),
+                lambda m: m.state == 'capturado' and m.indicator_id.calc_mode not in HEALTH_MODES
+                and m.indicator_id.status != 'prueba'),
             'legal': env['sgi.legal.requirement'].sudo().search(domains['legal'][1], order='next_eval_date, id'),
             'documento': env['documents.document'].sudo().search(
                 domains['documento'][1], order='sgi_next_review_date, sgi_code'),
