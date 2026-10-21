@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Crudo, operaciones y acabado en proceso de la ficha de acabado (2.9.0 y 2.12.0, Dirección General 2026-10-19).
 
-Toda la producción va **en kg hasta Inspección** (decisión 2026-10-19, corrige la de un solo producto en kg:
+Toda la producción va **en kg hasta la Clasificación final** (decisión 2026-10-19, corrige la de un solo producto en kg:
 la tela acabada se vende en metros). Cada artículo tiene dos productos, ligados en la ficha y no por el código:
 
 - **Acabado en proceso (kg)** (``product_proceso_id``): lo que sale de rama, termofijado y estiramiento.
-- **Tela acabada (m)** (``product_acabado_id``): la que entrega Inspección con los metros medidos en el rollo, y
+- **Tela acabada (m)** (``product_acabado_id``): la que entrega la Clasificación final con los metros medidos, y
   la que se vende.
 
 La ficha muestra además:
@@ -50,10 +50,10 @@ class FichaTecnicaAcabadoRuta(models.Model):
     operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Acabado en proceso (kg)', index=True,
-        help='La tela en kg que sale de rama, termofijado y estiramiento y entra a Inspección: el código de la tela '
-             'acabada con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). Inspección la pasa a metros '
-             'medidos en el rollo y entrega el Producto — Tela acabada; la que se vende en kg sale del mismo '
-             'producto desde Producto terminado.')
+        help='La tela en kg que sale de la orden de acabado (devanado, tintorería, abridora, rama e Inspección): el '
+             'código de la tela acabada con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). La '
+             'Clasificación final la pasa a metros medidos y entrega el Producto — Tela acabada; la que se vende '
+             'en kg sale del mismo producto desde Producto terminado.')
     product_proceso_sugerido_id = fields.Many2one('product.product', string='Acabado en proceso sugerido',
                                                   compute='_compute_proceso_aviso')
     proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso')
@@ -137,9 +137,9 @@ class FichaTecnicaAcabadoRuta(models.Model):
                     ': %s no existe todavía (Tela → Acabados en proceso faltantes)' % code if code else ''))
             elif proceso == ficha.product_acabado_id:
                 aviso = ('El acabado en proceso y la tela acabada son el mismo producto: el primero va en kg y '
-                         'el segundo en metros, después de Inspección.')
+                         'el segundo en metros, después de la Clasificación final.')
             elif kg and proceso.uom_id != kg:
-                aviso = 'El acabado en proceso %s está en %s: hasta Inspección todo va en kg.' % (
+                aviso = 'El acabado en proceso %s está en %s: hasta la Clasificación final todo va en kg.' % (
                     proceso.default_code or proceso.name, proceso.uom_id.name)
             else:
                 otra = self.search([('product_proceso_id', '=', proceso.id), ('id', '!=', ficha._origin.id)],
@@ -149,7 +149,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
                     aviso = 'El acabado en proceso %s también es de la ficha %s.' % (
                         proceso.default_code or proceso.name, otra.display_name)
                 elif bom and proceso not in bom.bom_line_ids.product_id:
-                    aviso = ('La lista de materiales de la tela acabada no consume %s: Inspección pasa el acabado '
+                    aviso = ('La lista de materiales de la tela acabada no consume %s: la Clasificación final pasa el acabado '
                              'en proceso (kg) a metros.' % (proceso.default_code or proceso.name))
             ficha.proceso_aviso = aviso
 

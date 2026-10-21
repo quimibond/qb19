@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """57.160.0 (Dirección General 2026-10-19): el acabado en kg en C1.
 
-Toda la producción va **en kg hasta Inspección**: la orden de acabado (abridora → tintorería → rama) se cierra
-con los rollos pesados y produce el **acabado en kg**; Inspección, una orden por orden de acabado, lo pasa a metros
-y entrega el **acabado (J)** que se vende en metros. El teñido (I en la operación) desaparece cuando la ruta del
+Toda la producción va **en kg hasta la Clasificación final** (57.170.1): la orden de acabado (devanado → tintorería
+→ abridora → rama → Inspección) se cierra con los rollos pesados e inspeccionados y produce el **acabado en kg**; la
+Clasificación final (empaque) lo pasa a metros y entrega el **acabado (J)** que se vende en metros. El teñido (I en la operación) desaparece cuando la ruta del
 acabado en kg lleva todas sus operaciones.
 
 El código del acabado en kg es el del acabado con la **«I» al frente**: la DAT P-D02-01 rev. 05 (regla de
@@ -11,7 +11,7 @@ codificación) define la posición 1 como unidad, I = kilogramos. El mismo artí
 ya inspeccionado se distingue por ubicación, no por código.
 
 - **Generar artículos** (por claves o desde el artículo base) crea o liga también el acabado en kg: kg, la categoría
-  y el seguimiento del acabado, sin venta. Sus listas de materiales (la del acabado en kg y la de Inspección, que lo
+  y el seguimiento del acabado, sin venta. Sus listas de materiales (la del acabado en kg y la de la Clasificación final, que lo
   consume y produce el J) se capturan a mano.
 - El artículo sigue el estado del desarrollo como los demás; la venta en kg la habilita Ventas.
 - **Validar corrida** (C1.10): la orden del acabado en kg es de la etapa de acabado y se valida contra la
@@ -39,7 +39,7 @@ class ProjectProjectDevProceso(models.Model):
                                                  "frente (DAT P-D02-01, posición 1 = kilogramos).")
     sgi_dev_product_proceso_id = fields.Many2one('product.product', string="Artículo acabado en kg", copy=False,
                                                  help="Acabado en kg del desarrollo: sale de rama pesado y entra a "
-                                                      "Inspección, que lo pasa a metros; también es el que se vende "
+                                                      "la Clasificación final, que lo pasa a metros; también es el que se vende "
                                                       "en kg.")
 
     @api.depends('sgi_dev_code_acabado_code', 'sgi_dev_product_id.default_code')
@@ -72,7 +72,7 @@ class ProjectProjectDevProceso(models.Model):
                     'sgi_dev_state': 'desarrollo', 'sgi_dev_project_id': project.id, 'sgi_dev_role': 'proceso',
                 })
                 body = ("Acabado en kg <b>%s</b> creado. Capture su lista de materiales (abridora, tintorería, "
-                        "rama) y la de Inspección del acabado (consume %s y produce %s en metros)."
+                        "rama, Inspección) y la de la Clasificación final del acabado (consume %s y produce %s en metros)."
                         % (code, code, acabado.default_code))
             project.write({'sgi_dev_product_proceso_id': product.id})
             project.message_post(body=body)
@@ -94,7 +94,7 @@ class ProjectProjectDevProceso(models.Model):
         return super()._sgi_dev_bom_templates() | self.sgi_dev_product_proceso_id.product_tmpl_id
 
     def _sgi_dev_route_operations(self):
-        """Las operaciones del acabado en kg van antes que las del acabado (Inspección)."""
+        """Las operaciones del acabado en kg van antes que las del acabado (Clasificación final)."""
         ops = super()._sgi_dev_route_operations()
         proceso = self.sgi_dev_product_proceso_id
         if not proceso or proceso in (self.sgi_dev_product_crudo_id | self.sgi_dev_product_tenido_id
