@@ -197,3 +197,4 @@ from . import test_ui_entrega2  # 57.171.0
 from . import test_ui_entrega3  # 57.172.0
 from . import test_ui_entrega4  # 57.173.0
 from . import test_ui_entrega5  # 57.174.0
+from . import test_autovalidacion  # 57.176.0

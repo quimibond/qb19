@@ -70,7 +70,12 @@
         <field name="formula">(Acuses leídos + pendientes dentro del plazo del aviso) ÷ acuses de documentos vigentes × 100</field>
         <field name="source">Documentos → acuses de lectura de los documentos controlados</field>
     </record>
+    <!-- 57.176.0 (Jose): SG-05 se retira. Las mediciones sin nada que mirar se
+         validan solas (models/sgi_indicator_autovalidate.py) y lo que importa,
+         los rojos con respuesta, lo mide SG-06. Nace archivado; en una base
+         existente lo archiva migrations/19.0.57.176.0/post-migrate.py. -->
     <record id="sgi_ind_salud_validacion" model="sgi.indicator">
+        <field name="active" eval="False"/>
         <field name="code">SG-05</field>
         <field name="name">Mediciones validadas a tiempo</field>
         <field name="level">direccion</field>

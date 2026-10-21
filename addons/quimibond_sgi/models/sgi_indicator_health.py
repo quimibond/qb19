@@ -582,13 +582,13 @@ class SgiProcessHealth(models.Model):
 
 
 class SgiDirectionBoardHealth(models.TransientModel):
-    """Página «Salud del SGI» del Tablero: los diez indicadores (sección 8)
+    """Página «Salud del SGI» del Tablero: los indicadores de salud (sección 8)
     y la tabla por dueño de proceso (hallazgo D-01)."""
     _inherit = 'sgi.direction.board'
 
     health_indicator_ids = fields.Many2many(
         'sgi.indicator', string="Salud del SGI", compute='_compute_health',
-        help="Los diez indicadores de salud del SGI (auditoría 2026-10, sección 8).")
+        help="Los indicadores de salud del SGI activos (auditoría 2026-10, sección 8).")
     health_process_ids = fields.Many2many(
         'sgi.process', string="Por dueño de proceso", compute='_compute_health',
         help="Avisos vencidos, validaciones atrasadas y días sin movimiento del dueño de cada "
@@ -607,7 +607,7 @@ class SgiDirectionBoardHealth(models.TransientModel):
             board.health_process_ids = processes.ids
             board.health_note = False if indicators else (
                 "No hay indicadores de salud del SGI activos. Revise %s "
-                "(claves SG-01 a SG-10)." % sgi_menu_path('indicadores'))
+                "(claves SG-01 a SG-10; SG-05 se retiró)." % sgi_menu_path('indicadores'))
 
 
 class SgiCronHealth(models.AbstractModel):
