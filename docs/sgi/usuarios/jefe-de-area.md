@@ -85,10 +85,13 @@ y la cláusula que se incumplió.
 ### 2.3 Validar las mediciones de sus indicadores
 
 1. En **Mis pendientes**, los renglones **Validar medición** son mediciones
-   capturadas o calculadas de sus indicadores. Tiene **3 días hábiles**.
-   Desde 57.168.0 las de un mismo indicador van juntas en un renglón
-   («Validar CO-01 Entregas a tiempo — 8 mediciones»): **Validar** valida
-   todas e **Ir** abre la lista para revisarlas una por una.
+   capturadas o calculadas de sus indicadores **oficiales**. Tiene **3 días
+   hábiles**. Un indicador **en prueba** no pide validación (desde 57.175.0):
+   su número empieza a contar cuando pasa a oficial, y entonces aparecen sus
+   mediciones por validar. Desde 57.168.0 las de un mismo indicador van juntas
+   en un renglón («Validar CO-01 Entregas a tiempo — 8 mediciones»):
+   **Validar** valida todas y **Abrir** abre la lista para revisarlas una por
+   una.
 2. Revise el valor y la evidencia (**Registros** en la medición) y pulse
    **Validar**, desde el renglón o desde la medición.
 3. Si el valor está mal, corríjalo antes de validar. Un rojo necesita causa y

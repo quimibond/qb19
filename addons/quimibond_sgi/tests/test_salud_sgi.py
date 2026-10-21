@@ -231,7 +231,7 @@ class TestSaludSgi(TransactionCase):
 
     def test_06_validadas_a_tiempo_y_fecha_de_validacion(self):
         mast = sgi_set_mast(self.env, login='zsa_mast_06')
-        indicator = self._indicator('TST-SA06', responsible_id=mast.id)
+        indicator = self._indicator('TST-SA06', responsible_id=mast.id, status='oficial')
         captured = self.today - timedelta(days=10)
         num_before, den_before, _out = self._detail('SG-05')
         late, on_time, waiting = [self.Measure.create({
@@ -415,7 +415,7 @@ class TestSaludSgi(TransactionCase):
                                       'state': 'capturado', 'value': 0})
         self.assertEqual(health.semaphore, 'rojo')
         self.assertFalse(health.plan_required, "Un rojo de salud no pide causa y plan.")
-        other = self._indicator('TST-SA12', responsible_id=user.id)
+        other = self._indicator('TST-SA12', responsible_id=user.id, status='oficial')
         normal = self.Measure.create({'indicator_id': other.id, 'period_date': date(2020, 1, 1),
                                       'state': 'capturado', 'value': 10})
         self.assertTrue(normal.plan_required, "Un rojo de otro indicador sí lo pide.")

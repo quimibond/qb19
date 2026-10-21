@@ -239,8 +239,10 @@ class SgiDiagnostic(models.TransientModel):
         Measure = env['sgi.indicator.measure']
         pend = Measure.search_count([('state', '=', 'pendiente')])
         # 57.99.0: las de salud del SGI se quedan capturadas a propósito.
+        # 57.175.0: las de indicadores en prueba no se validan todavía.
         capt = Measure.search_count([('state', '=', 'capturado'),
-                                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
+                                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
+                                     ('indicator_id.status', '!=', 'prueba')])
         valid = Measure.search_count([('state', '=', 'validado')])
         if capt and not valid:
             lines.append(self._sgi_line(
