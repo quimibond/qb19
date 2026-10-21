@@ -83,6 +83,11 @@ proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
 Antes de mover una NC de su proceso a Seguimiento, capture su clasificación
 y la cláusula que se incumplió.
 
+Desde 57.179.0 la ficha de la NC dice arriba **Qué sigue** (contención,
+causa raíz, plan o eficacia), dónde se hace y cuándo vence; en rojo si ya
+venció. Si la NC no tiene responsables, un aviso lo dice: nadie recibe sus
+plazos hasta que los asigne en «Responsabilidades».
+
 ### 2.3 Pasar sus indicadores a oficial
 
 Un indicador nace **en prueba**: sus rojos no le piden plan ni abren NC.

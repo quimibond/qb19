@@ -13,6 +13,20 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.179.0 — 2026-10-21
+
+Ficha de la NC. En producción las 16 NC abiertas tienen la contención
+vencida, y las 4 reclamaciones no tienen responsables (nadie recibe sus
+plazos).
+
+**Cambiado**
+- Arriba de la ficha, **Qué sigue**: el primer paso sin cumplir (contención,
+  causa raíz, plan, eficacia), dónde se hace y cuándo vence; en rojo si ya
+  venció (`sgi_next_step`, `sgi_next_due`, `sgi_next_late`).
+- Aviso **Sin responsables** en una NC abierta sin responsables.
+- **Plazos**: cada paso en su renglón con su estado y su fecha juntos (antes
+  las fechas en una columna y los estados en otra).
+
 ## 19.0.57.178.0 — 2026-10-21
 
 Jose (2026-10-21): «quiero seguir mejorando vistas» → la ficha del indicador
