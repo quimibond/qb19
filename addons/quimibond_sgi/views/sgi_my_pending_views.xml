@@ -273,11 +273,13 @@
                 <separator/>
                 <filter name="kind_activity" string="Actividades" domain="[('kind', '=', 'actividad')]"/>
                 <filter name="kind_escalation" string="Escalamientos" domain="[('kind', '=', 'escalamiento')]"/>
-                <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
                 <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
                 <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>
                 <filter name="kind_flow" string="Flujos atrasados" domain="[('kind', '=', 'flujo')]"/>
+                <!-- 57.170.0: aparte de los tipos (se unía con «o»). -->
+                <separator/>
+                <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <group>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

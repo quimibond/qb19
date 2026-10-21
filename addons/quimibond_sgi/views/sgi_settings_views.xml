@@ -145,8 +145,11 @@
                         <setting string="Proveedor de energía"
                                  help="Indicador Consumo de energía (TR-03): proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
-                            <field name="sgi_satisfaction_survey_id"
-                                   context="{'active_test': False}"/>
+                        </setting>
+                        <!-- 57.170.0: tenía su propio ajuste metido en «Proveedor de energía». -->
+                        <setting string="Encuesta de satisfacción del cliente"
+                                 help="Indicador Satisfacción del cliente (CA-02): sus respuestas forman la medición.">
+                            <field name="sgi_satisfaction_survey_id" context="{'active_test': False}"/>
                         </setting>
                         <!-- 57.11.0 (A-016): los ajustes del presupuesto y del
                              pronóstico de ventas los agrega quimibond_ventas_presupuesto

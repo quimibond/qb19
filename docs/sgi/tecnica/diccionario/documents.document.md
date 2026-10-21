@@ -75,7 +75,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:146` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:86` |
 
-## Métodos públicos (18)
+## Métodos públicos (19)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -90,6 +90,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `action_sgi_open_migration_point` | Del formato a su worksheet en un clic (y desde ahí, a sus checks). |
 | `action_sgi_open_odoo_form` | «Abrir en Odoo» (57.0.0: lo usa todo Usuario SGI desde «Formatos y documentos anteriores»). Abre lo que sustituye al documento: el menú ligado (su acción; si no es una ventana, el menú mismo), si no … |
 | `action_sgi_open_routines` | — |
+| `action_sgi_procedure_still_valid` | 57.170.0: «El PDF sigue vigente»: el Jefe MAST revisó el cambio del procedimiento vivo y no amerita revisión nueva. Quita la marca y lo deja en el historial. Antes el aviso pedía «confírmelo» sin bot… |
 | `action_sgi_resolve_odoo_menu` | Resuelve el «Menú de Odoo» desde el texto de «Destino en Odoo»: convierte «SGI > No Conformidades» en el menú real, igual que las actividades del procedimiento (los ir.* no se exponen por MCP, así qu… |
 | `action_sgi_send_sign_requests` | Crea una solicitud de firma por cada acuse pendiente sin solicitud viva. Idempotente: re-ejecutar solo cubre a los que faltan. La creación corre con sudo (el candado real es el grupo del botón). |
 | `action_sgi_view_file` | Abre el archivo del documento para previsualizarlo en el navegador. |

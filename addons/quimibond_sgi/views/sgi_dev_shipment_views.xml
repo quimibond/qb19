@@ -35,10 +35,15 @@
                             invisible="state != 'borrador' or picking_id"/>
                     <button name="action_open_picking" type="object" string="Ver la baja" class="btn-secondary"
                             invisible="not picking_id"/>
+                    <!-- 57.170.0: un primario por estado. Sin baja, el paso es crearla;
+                         «Registrar envío» es primario cuando la baja ya está hecha. -->
                     <button name="action_ship" type="object" string="Registrar envío" class="btn-primary"
-                            invisible="state != 'borrador' or (picking_id and picking_state not in ('done', 'cancel'))"
+                            invisible="state != 'borrador' or not picking_id or picking_state not in ('done', 'cancel')"
                             confirm="Registra el envío de la muestra con su usuario y la fecha indicada. ¿Continuar?"/>
-                    <button name="action_open_mail" type="object" string="Correo al cliente" class="btn-primary" icon="fa-envelope-o"
+                    <button name="action_ship" type="object" string="Registrar envío" class="btn-secondary"
+                            invisible="state != 'borrador' or picking_id"
+                            confirm="Registra el envío de la muestra con su usuario y la fecha indicada. ¿Continuar?"/>
+                    <button name="action_open_mail" type="object" string="Correo al cliente" class="btn-secondary" icon="fa-envelope-o"
                             invisible="state == 'borrador' or notified_date"/>
                     <button name="action_open_mail" type="object" string="Reenviar correo" class="btn-secondary" icon="fa-envelope-o"
                             invisible="state == 'borrador' or not notified_date"/>

@@ -58,11 +58,14 @@
                     </list>
                 </field>
                 <footer>
+                    <!-- 57.170.0: el primario es el paso que sigue. -->
                     <button name="action_test" type="object" string="Probar (modo de prueba)"
-                            class="btn-primary" invisible="state == 'loaded'"/>
+                            class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_load" type="object" string="Cargar"
-                            class="btn-secondary" invisible="state != 'tested' or not confirm or not dry_run_ok"
+                            class="btn-primary" invisible="state != 'tested' or not confirm or not dry_run_ok"
                             confirm="Se escribirán las rutinas en la base. ¿Continuar?"/>
+                    <button name="action_test" type="object" string="Probar de nuevo"
+                            class="btn-secondary" invisible="state != 'tested'"/>
                     <button string="Cerrar" special="cancel" class="btn-link"/>
                 </footer>
             </form>
@@ -122,7 +125,9 @@
                             icon="fa-external-link" class="btn-primary" invisible="not activity_ids"/>
                     <button name="action_open_procedure" type="object" string="Ver el procedimiento anterior"
                             icon="fa-file-pdf-o"/>
-                    <field name="state" widget="statusbar"/>
+                    <!-- 57.170.0: sin barra de estado: los estados no son un flujo y
+                         la barra ponía «Pendiente» al final como si fuera la meta. El
+                         estado se elige en «En Odoo». -->
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger"
@@ -437,7 +442,7 @@
                                 <list>
                                     <field name="sgi_previous_code" string="Clave anterior"/>
                                     <field name="sgi_title"/>
-                                    <field name="sgi_doc_type"/>
+                                    <field name="sgi_doc_type_id" string="Tipo"/>
                                     <field name="sgi_state"/>
                                     <field name="sgi_migration_state"/>
                                 </list>

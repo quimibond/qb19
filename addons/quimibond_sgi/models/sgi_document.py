@@ -1303,6 +1303,22 @@ class DocumentsDocument(models.Model):
                 })
         return res
 
+    def action_sgi_procedure_still_valid(self):
+        """57.170.0: «El PDF sigue vigente»: el Jefe MAST revisó el cambio del
+        procedimiento vivo y no amerita revisión nueva. Quita la marca y lo deja
+        en el historial. Antes el aviso pedía «confírmelo» sin botón."""
+        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el Jefe MAST confirma que el PDF sigue vigente.")
+        for doc in self.filtered('sgi_procedure_dirty'):
+            since = doc.sgi_procedure_dirty_since
+            doc.write({'sgi_procedure_dirty': False, 'sgi_procedure_dirty_since': False,
+                       'sgi_procedure_dirty_by': False})
+            doc.message_post(body="El procedimiento vivo cambió%s; %s confirmó que el PDF vigente sigue "
+                                  "valiendo (sin revisión nueva)." % (
+                                      " el %s" % since.strftime('%d/%m/%Y') if since else '',
+                                      self.env.user.name))
+        return True
+
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""
         Ack = self.env['sgi.document.ack']

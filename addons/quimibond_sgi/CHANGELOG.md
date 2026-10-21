@@ -13,6 +13,63 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.170.0 — 2026-10-20
+
+Interfaz, entrega 1 de 5: lo de prioridad alta. Jose (2026-10-20): «no quiero
+limpiar, quiero mejorar y usar las mejores prácticas de UI en Odoo; revisa cada
+vista, pestaña y botón». Seis revisores recorrieron las 432 vistas: 398
+hallazgos (49 altos, 158 medios, 191 bajos) en `docs/audit/ui-sgi-2026-10-20.md`.
+Entregas: (1) errores y flujo; (2) avatares, fechas relativas, nombres de
+pestañas y textos de botones; (3) navegación a botones inteligentes; (4)
+instrucciones de la ficha a la ayuda de los campos; (5) Mis pendientes con dos
+botones por renglón y paneles de búsqueda.
+
+**Corregido**
+- Resultado de la calibración, Severidad del incidente, Resultado del
+  simulacro y Veredicto del MSA no se podían capturar: el widget `badge` solo
+  muestra el valor en una ficha. Ahora `selection_badge` (se elige).
+- Filtros que se unían con «o»: «Mías» de Acciones, «En proceso» de Mis
+  pendientes. «Vigentes» + «Obsoletos» de planes de control daban lista vacía.
+- Un PPAP interino no ofrecía «Aprobar».
+- El hallazgo de una auditoría cerrada se dejaba editar y fallaba al guardar:
+  ahora se ve en solo lectura (`sgi_is_locked`; el Jefe MAST sí lo edita). Las
+  líneas de un programa cerrado tampoco se editan.
+- El aviso «Procedimiento vivo modificado» pedía «confírmelo» sin botón: nuevo
+  «El PDF sigue vigente» (Jefe MAST, queda en el chatter).
+- «Medido por Laboratorio» de las fichas técnicas se podía volver a firmar con
+  la ficha validada; pide confirmación.
+- La columna «Tipo» de las listas de documentos usa el tipo configurable
+  (`sgi_doc_type_id`), no el código de compatibilidad.
+
+**Cambiado**
+- Un solo botón primario por estado: incidente, envío de muestra, permiso de
+  trabajo, proyecto de desarrollo (encabezado y pestañas), asistentes de carga
+  (el primario es el paso que sigue).
+- Navegación a botones inteligentes: actividad (Evidencia con su conteo,
+  Instructivo, Siguiente paso, Viene de), indicador (Tendencia; la ficha en PDF
+  queda en Imprimir), medición (Registros, Evidencia).
+- Requisito legal: sin los cuatro botones de colores que abrían el mismo
+  asistente que «Registrar evaluación»; el cumplimiento es una pastilla bajo el
+  título, no una barra de flujo. Rutina del Dropbox: sin barra de estado.
+- Medición: la barra no muestra «Sin dato» como paso (cinta «Sin dato»); los
+  cinco avisos pasan a campos (origen, fuente, por qué no hay dato) y la regla
+  del 0 al `placeholder` de la nota.
+- Indicador: la pestaña Fórmula solo con fórmula configurable; la lista sin
+  el «Nuevo» nativo (se crea con «Nuevo indicador»); aviso de configuración
+  incompleta en una línea.
+- Aprobaciones: las pestañas del SGI (MOC, cambio documental) van en el
+  cuaderno de Aprobaciones; «Crear documento» y «Completar antes de aprobar» en
+  el encabezado; «Reenviar a firma» secundario.
+- Lista de procesos con su estado; búsqueda de NC por título; encuesta de
+  satisfacción con su propio ajuste; aspecto ambiental con cinta de archivado
+  y lista con columnas opcionales; «Cancelar simulacro»; revisión de medición
+  sin el modelo y el dominio para el dueño (solo Jefe MAST).
+- Quedan para su entrega: Mis pendientes (5) y el orden de botones de la
+  revisión por la dirección, que decidió 57.42.0 (V-M06).
+
+**Pruebas**
+- `test_ui_entrega1`.
+
 ## 19.0.57.169.0 — 2026-10-20
 
 «Sin dato» dice por qué. Producción el 2026-10-20: 223 mediciones «Sin dato»

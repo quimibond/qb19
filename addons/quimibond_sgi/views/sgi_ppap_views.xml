@@ -11,8 +11,9 @@
                     <!-- D-009 (57.41.0): aprobar, interino, rechazar y regresar desde
                          una decisión son del Jefe MAST y del dueño del proceso de sus
                          AMEF (el write() lo exige también por RPC). -->
+                    <!-- 57.170.0: un PPAP interino también se aprueba. -->
                     <button name="action_approve" type="object" string="Aprobar"
-                            class="btn-primary" invisible="state != 'enviado'"
+                            class="btn-primary" invisible="state not in ('enviado', 'interino')"
                             groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <button name="action_set_interino" type="object" string="Interino"
                             invisible="state != 'enviado'"

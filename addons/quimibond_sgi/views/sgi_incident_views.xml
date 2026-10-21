@@ -14,8 +14,13 @@
                     <button name="action_set_acciones" type="object" string="Definir acciones"
                             class="btn-primary" invisible="state != 'investigacion'"
                             groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
+                    <!-- 57.170.0: un solo primario por estado; en investigación el
+                         siguiente paso es definir acciones y cerrar queda secundario. -->
                     <button name="action_set_cerrado" confirm="Se cerrará el incidente; quien lo reportó verá la causa y las acciones. ¿Desea continuar?" type="object" string="Cerrar"
-                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"
+                            class="btn-primary" invisible="state != 'acciones'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
+                    <button name="action_set_cerrado" confirm="Se cerrará el incidente; quien lo reportó verá la causa y las acciones. ¿Desea continuar?" type="object" string="Cerrar"
+                            invisible="state != 'investigacion'"
                             groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <button name="action_set_reportado" confirm="El incidente se reabre y regresa a «reportado». ¿Desea continuar?" type="object" string="Reabrir"
                             invisible="state != 'cerrado'"
@@ -36,7 +41,7 @@
                         <group>
                             <field name="date" readonly="sgi_is_locked"/>
                             <field name="incident_type" readonly="sgi_is_locked"/>
-                            <field name="severity" readonly="sgi_is_locked" widget="badge"
+                            <field name="severity" readonly="sgi_is_locked" widget="selection_badge"
                                    decoration-danger="severity in ('grave', 'fatal')"
                                    decoration-warning="severity == 'moderado'"/>
                             <field name="reporter_id" readonly="sgi_is_locked"/>

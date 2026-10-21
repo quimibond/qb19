@@ -80,16 +80,9 @@
                 <header>
                     <button name="action_evaluate" type="object" string="Registrar evaluación"
                             class="btn-primary" icon="fa-check-square-o"/>
-                    <button name="action_mark_cumple" type="object" string="Cumple"
-                            class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
-                    <!-- 57.96.0 (N-07): los cuatro abren el asistente con la evidencia
-                         (o el motivo); la confirmación es el asistente. -->
-                    <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
-                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_mark_no_cumple" type="object" string="No cumple"
-                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
-                    <field name="compliance_state" widget="statusbar"/>
+                    <!-- 57.170.0: «Cumple / Parcial / No cumple / No aplica» abrían el
+                         mismo asistente que «Registrar evaluación» (el resultado se
+                         elige ahí). El cumplimiento no es un flujo: va bajo el título. -->
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -104,6 +97,11 @@
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Obligación concreta…"/></h1>
+                        <field name="compliance_state" widget="badge"
+                               decoration-success="compliance_state == 'cumple'"
+                               decoration-warning="compliance_state in ('parcial', 'pendiente')"
+                               decoration-danger="compliance_state == 'no_cumple'"
+                               decoration-muted="compliance_state == 'no_aplica'"/>
                     </div>
                     <group>
                         <group string="Requisito">
