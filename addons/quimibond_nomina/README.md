@@ -469,8 +469,23 @@ aviso del 22-sep-2026 por 2,668.35 → 3,514.48 entre las quincenas 19, 20 y 21
   # quincenas; el primer bimestre de un credito que empieza a la mitad, solo
   # por los dias desde «Inicio del descuento» (quimibond_nomina 1.12.0,
   # models/infonavit.py).
-  result = -payslip._qb_infonavit_retencion()
+  # Mas la entrada AJ_INFONAVIT («Ajuste de Infonavit», importe): el ajuste que NOI
+  # hace en la ultima nomina del bimestre para cuadrar con la liquidacion del SUA
+  # (positivo = retener mas).
+  ajuste = sum(l.amount for l in payslip.input_line_ids if l.input_type_id.code == 'AJ_INFONAVIT')
+  result = -(payslip._qb_infonavit_retencion() + ajuste)
   ```
+
+  Aplicada en producción el 2026-10-21 junto con el tipo de entrada
+  «Ajuste de Infonavit (importe)» (`AJ_INFONAVIT`, «Paga regular»). NOI cierra
+  cada bimestre contra la liquidación del SUA y retiene la diferencia en la
+  última nómina (Reyes Sánchez, Q21 2026: liquidación 3,581.19 − 2,342.98 ya
+  retenidos = 1,238.21; Odoo da 1,171.49, así que el ajuste es 66.72). La regla
+  quedó bajo el centinela.
+- Regla `PRESTAMO` (2026-10-21): si el recibo trae la entrada «Préstamo personal
+  (importe)», manda esa **aunque sea 0**; así se omite el descuento de un periodo
+  sin tocar la ficha (Miguel Medina, Q21 2026). Antes una entrada en 0 caía a la
+  propiedad del contrato.
 
 - Un cambio de cuota a partir del siguiente bimestre (aviso de modificación)
   sigue siendo a mano: se cambia la cuota de la ficha después de calcular la
