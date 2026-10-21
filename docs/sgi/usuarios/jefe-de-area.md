@@ -62,8 +62,9 @@ Cuando una actividad de su gente se atrasa, le escala a usted.
    periodo; ahí, o desde el renglón, puede marcarlo **Hecho** con evidencia o
    **No aplica este periodo** con motivo. Al guardar desaparece de Mis
    pendientes para usted, para la persona y para su jefe (desde 57.149.0).
-2. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
-   actividades que le escalan; **Ver atrasados** abre las que ya vencieron.
+2. En **Mi procedimiento**, la pestaña **Otras actividades** lista las
+   actividades que le escalan (**Le escalan si se atrasan**); **Ver
+   atrasados** abre las que ya vencieron.
 3. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
 4. Marcan el avance de un periodo: la persona, cualquiera de sus jefes, quien
    tiene el rol «Escala» de la actividad, el Jefe MAST, el Administrador SGI

@@ -111,7 +111,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `value_class` | Selection | Clase de valor | Si la actividad agrega valor al cliente, es necesaria sin agregarlo o es desperdicio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:535` |
 | `workcenter_id` | Many2one | Centro de trabajo | Centro de trabajo donde se hace la actividad. |  | `mrp.workcenter` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:222` |
 
-## Métodos públicos (12)
+## Métodos públicos (13)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -119,6 +119,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `action_open_next` | Navega al siguiente paso de la cadena (o a la lista si hay varios). |
 | `action_open_odoo` | Abre el menú real de Odoo donde se ejecuta la actividad, respetando el dominio/contexto/vistas de su acción original. Sin menú ligado intenta resolverlo del texto y, si tampoco, abre la evidencia — e… |
 | `action_publish_instruction` | — |
+| `action_sgi_propose_change` | 57.177.0: «Proponer cambio» en la ficha de la actividad (salió de cada renglón de Mi procedimiento). |
 | `action_sgi_register_finding` | «Registrar hallazgo» desde la actividad: NC ligada al proceso con la actividad en el título. |
 | `action_sgi_view_legacy_routines` | — |
 | `action_view_measure_records` | Abre los registros reales que son la evidencia de la actividad. |

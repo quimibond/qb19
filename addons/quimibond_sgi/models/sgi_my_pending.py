@@ -982,7 +982,7 @@ class SgiMyPending(models.Model):
     def _sgi_flow_late(self, activities):
         """57.168.0: {actividad.id: semana medida} de las actividades cuya
         última semana medida tiene entradas con plazo vencido sin salida (lo
-        mismo que pone «Atrasada» en ``hr.job._sgi_mp_status_map``)."""
+        mismo que pone «Atrasada en la planta» en ``hr.job._sgi_mp_status_map``)."""
         if not activities:
             return {}
         latest = {}
