@@ -271,8 +271,13 @@
                         domain="[('calc_mode','!=','manual')]"/>
                 <filter name="nc_active" string="NC automática activa"
                         domain="[('nc_on_red','=',True)]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                    <filter name="group_responsible" string="Responsable" context="{'group_by': 'responsible_id'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_status" string="Estado" context="{'group_by': 'status'}"/>
                     <filter name="group_objective" string="Objetivo" context="{'group_by': 'objective_id'}"/>
                     <filter name="group_calc" string="Modo de cálculo" context="{'group_by': 'calc_mode'}"/>
                 </group>

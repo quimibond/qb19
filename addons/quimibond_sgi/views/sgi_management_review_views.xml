@@ -170,7 +170,7 @@
         <field name="model">sgi.management.review</field>
         <field name="arch" type="xml">
             <search string="Revisiones por la dirección">
-                <field name="name"/>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('folio', 'ilike', self)]"/>
                 <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
                 <filter name="state_realizada" string="Realizada" domain="[('state', '=', 'realizada')]"/>
                 <filter name="state_cerrada" string="Cerrada" domain="[('state', '=', 'cerrada')]"/>

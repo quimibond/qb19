@@ -10,7 +10,7 @@ Orden: `state_rank, date_due, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`.
 
-## Campos (30)
+## Campos (31)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -29,14 +29,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 | `is_mine` | Boolean |  | El renglón es de quien abre la lista. |  |  | compute `_compute_is_mine`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:292` |
 | `kind` | Selection | Tipo | Qué hay que hacer: acción, NC, medición, validación, acuse, firma, aprobación, actividad, escalamiento, aviso… | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:272` |
 | `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:275` |
-| `nc_containment_state` | Selection | Contención |  |  |  | related `nc_id.sgi_containment_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:326` |
-| `nc_due_containment` | Date | Contención vence |  |  |  | related `nc_id.sgi_due_containment`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:325` |
-| `nc_due_plan` | Date | Plan de acción vence |  |  |  | related `nc_id.sgi_due_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:329` |
-| `nc_due_root_cause` | Date | Causa raíz vence |  |  |  | related `nc_id.sgi_due_root_cause`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:327` |
-| `nc_effectiveness_due` | Date | Eficacia vence |  |  |  | related `nc_id.sgi_effectiveness_due`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:331` |
-| `nc_id` | Many2one | NC |  |  | `quality.alert` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:324` |
-| `nc_plan_state` | Selection | Plan de acción |  |  |  | related `nc_id.sgi_plan_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:330` |
-| `nc_root_cause_state` | Selection | Causa raíz |  |  |  | related `nc_id.sgi_root_cause_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:328` |
+| `nc_containment_state` | Selection | Contención |  |  |  | related `nc_id.sgi_containment_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:330` |
+| `nc_due_containment` | Date | Contención vence |  |  |  | related `nc_id.sgi_due_containment`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:329` |
+| `nc_due_plan` | Date | Plan de acción vence |  |  |  | related `nc_id.sgi_due_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:333` |
+| `nc_due_root_cause` | Date | Causa raíz vence |  |  |  | related `nc_id.sgi_due_root_cause`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:331` |
+| `nc_effectiveness_due` | Date | Eficacia vence |  |  |  | related `nc_id.sgi_effectiveness_due`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:335` |
+| `nc_id` | Many2one | NC |  |  | `quality.alert` | compute `_compute_links`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:328` |
+| `nc_plan_state` | Selection | Plan de acción |  |  |  | related `nc_id.sgi_plan_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:334` |
+| `nc_root_cause_state` | Selection | Causa raíz |  |  |  | related `nc_id.sgi_root_cause_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:332` |
+| `next_step` | Char | Qué sigue | Lo que toca hacer con este pendiente. |  |  | compute `_compute_next_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:324` |
 | `process_id` | Many2one | Proceso | Proceso del pendiente. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:276` |
 | `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:283` |
 | `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:282` |

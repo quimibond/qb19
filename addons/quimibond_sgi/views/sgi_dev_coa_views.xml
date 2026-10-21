@@ -82,11 +82,16 @@
         <field name="model">sgi.dev.coa</field>
         <field name="arch" type="xml">
             <search string="Reportes de conformidad">
+                <field name="name"/>
                 <field name="project_id"/>
                 <field name="partner_id"/>
                 <field name="lot_id"/>
                 <filter name="draft" string="Por emitir" domain="[('state', '=', 'borrador')]"/>
+                <filter name="emitted" string="Emitidos" domain="[('state', '=', 'emitido')]"/>
+                <separator/>
                 <filter name="nonconforming" string="Con no conformes" domain="[('nonconforming_count', '>', 0)]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
                     <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

@@ -13,6 +13,45 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.174.0 — 2026-10-21
+
+Interfaz, entrega 5 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): Mis
+pendientes con dos botones por renglón y búsquedas completas en las listas.
+
+**Cambiado**
+- Mis pendientes, lista y tarjetas: cada renglón lleva dos botones, el de su
+  tipo (Hecho, Registrar paso, Evaluar, Revisar, Aprobar, Validar o Leído y
+  entendido; a lo más uno) y uno para abrir (Ir a hacerlo, Leer el documento,
+  Firmar, Capturar o Abrir; siempre uno). Antes había 19 botones en la lista y
+  un renglón mostraba hasta cuatro, con «Ir a hacerlo» e «Ir» juntos en los
+  agrupados. Rechazar, No corresponde, En proceso y Posponer una semana pasan a
+  la ficha del pendiente. En las tarjetas, el del tipo es el primario.
+- Columna nueva «Qué sigue» (`next_step`): lo que toca, con palabras («Registrar
+  la causa raíz», «Abrir la lista de 4 y atenderlos», «Hacerla: se marca sola
+  al registrarla en Odoo»…). En la ficha sustituye el aviso del escalamiento.
+- Ficha del pendiente: abrir el registro es un botón inteligente; la barra
+  queda para actuar.
+- Búsqueda de Mis pendientes: los 15 tipos en el panel de la izquierda, con su
+  número (antes 6 filtros sueltos).
+- Filtros y agrupaciones que faltaban: NC por proceso; indicadores archivados
+  y agrupados por responsable, proceso y estado; riesgos abiertos, con
+  revisión vencida y archivados; procesos por estado; auditorías buscadas por
+  folio, nombre o cliente, «Mías» y agrupadas por auditor líder y mes;
+  revisión por la dirección y política buscadas por folio; documentos
+  borradores y obsoletos (los estados se unen con «o», lo demás aparte);
+  acuses por fecha; LOTO por fecha; solicitudes de modificación «Mías», por
+  fecha y abriendo con lo pendiente; brechas de 50 % o más con panel por
+  departamento; PPAP rechazados y por fecha de envío; envíos de muestra por
+  fecha; planes de emergencia con simulacro vencido y abriendo en vigentes;
+  reportes de conformidad por folio, emitidos y fecha; partes interesadas
+  buscadas por necesidad; MSA marginales y por fecha; laboratorio «Mías»;
+  avisos por tiempo «Míos» y por fecha; cumplimiento por semana; puntos de
+  norma y características con sus bloques separados; roles «Escala». El
+  Pareto de alertas usa la búsqueda de NC del SGI. Actividades y auditorías
+  dicen «Mías».
+- Manuales del operador y del jefe de área al día (`quimibond_sgi_knowledge`
+  19.0.1.2.18).
+
 ## 19.0.57.173.0 — 2026-10-21
 
 Interfaz, entrega 4 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): las

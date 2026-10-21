@@ -347,6 +347,7 @@
                         domain="[('sgi_folio','!=',False)]"
                         context="{'group_by': 'stage_id'}"/>
                 <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
                     <filter name="group_type" string="Tipo de NC" context="{'group_by': 'sgi_nc_type'}"/>
                     <filter name="group_origin" string="Origen"
                             context="{'group_by': 'sgi_origin_type'}"/>

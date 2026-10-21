@@ -113,6 +113,9 @@
                 <filter name="aprobado" string="Aprobados" domain="[('state','=','aprobado')]"/>
                 <filter name="en_proceso" string="En proceso"
                         domain="[('state','in',('preparacion','enviado','interino'))]"/>
+                <filter name="rechazado" string="Rechazados" domain="[('state','=','rechazado')]"/>
+                <separator/>
+                <filter name="date_submitted" string="Enviado" date="date_submitted"/>
                 <group>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

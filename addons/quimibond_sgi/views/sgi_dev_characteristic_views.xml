@@ -36,6 +36,7 @@
                 <filter name="entretelas" string="Entretelas V10" domain="[('dev_type', '=', 'entretelas_v10')]"/>
                 <filter name="carda" string="Carda" domain="[('dev_type', '=', 'carda')]"/>
                 <filter name="tramado" string="Tramado" domain="[('dev_type', '=', 'tramado')]"/>
+                <separator/>
                 <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_dev_type" string="Tipo de desarrollo" context="{'group_by': 'dev_type'}"/>
