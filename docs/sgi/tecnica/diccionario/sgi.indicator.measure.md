@@ -28,15 +28,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `no_data_reason` | Selection | Por qué no hay dato | Foto: el indicador mide el estado de hoy y un mes pasado no se puede reconstruir (es normal). Antes de «Medir desde»: no cuenta. Falta configurar: el cálculo necesita un dato de Ajustes o del catálogo. La fuente no tiene registros: no se ha capturado nada en Odoo. Sin casos: no hubo registros que c… |  |  | compute `_compute_no_data_reason`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:509` |
 | `note` | Text | Nota |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1074` |
 | `numerator` | Float | Numerador | Numerador del cálculo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:523` |
-| `parallel_denominator` | Float | Denominador (fórmula) | Denominador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:755` |
-| `parallel_numerator` | Float | Numerador (fórmula) | Numerador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:752` |
-| `parallel_value` | Float | Valor de la fórmula | Lo que daría la fórmula configurada del indicador en este periodo, mientras el indicador sigue en su modo de código. Cuando coincidan un mes, se migra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:747` |
+| `parallel_denominator` | Float | Denominador (fórmula) | Denominador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:763` |
+| `parallel_numerator` | Float | Numerador (fórmula) | Numerador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:760` |
+| `parallel_value` | Float | Valor de la fórmula | Lo que daría la fórmula configurada del indicador en este periodo, mientras el indicador sigue en su modo de código. Cuando coincidan un mes, se migra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:755` |
 | `period_date` | Date | Periodo | Día 1 del mes medido. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1057` |
 | `plan_done` | Boolean | Plan capturado | Indica que la medición en rojo ya tiene causa y plan. |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:133` |
 | `plan_due` | Date | Plan antes del | Día 10 del mes siguiente al periodo (si es inhábil, el hábil anterior). |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:130` |
 | `plan_required` | Boolean | Requiere plan | Indica que la medición está en rojo y pide causa y plan de acción. |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:128` |
-| `range_max` | Float |  | Límite superior del rango del indicador. |  |  | related `indicator_id.range_max`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:240` |
-| `range_min` | Float |  | Límite inferior del rango del indicador. |  |  | related `indicator_id.range_min`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:238` |
+| `range_max` | Float |  | Límite superior del rango del indicador. |  |  | related `indicator_id.range_max`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:244` |
+| `range_min` | Float |  | Límite inferior del rango del indicador. |  |  | related `indicator_id.range_min`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:242` |
 | `sample_size` | Integer | Casos | Registros que forman la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:526` |
 | `semaphore` | Selection | Semáforo | Verde, amarillo o rojo según el valor y las metas. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:1068` |
 | `sgi_can_validate` | Boolean | Puede validar |  |  |  | compute `_compute_sgi_can_validate`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1084` |
@@ -56,8 +56,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `source_type` | Selection | Origen del dato | Si el dato es automático o se captura. |  |  | related `indicator_id.source_type`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1052` |
 | `split_ids` | One2many | Desglose |  |  | `sgi.indicator.measure.split` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:420` |
 | `state` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:507` |
-| `target_acceptable` | Float | Aceptable | Aceptable vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:235` |
-| `target_objective` | Float | Objetivo | Objetivo vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:233` |
+| `target_acceptable` | Float | Aceptable | Aceptable vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:239` |
+| `target_objective` | Float | Objetivo | Objetivo vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:237` |
 | `uom` | Char | Unidad |  |  |  | related `indicator_id.uom`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1067` |
 | `value` | Float | Valor | Valor medido en el periodo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1062` |
 | `value_is_pct` | Boolean |  |  |  |  | compute `_compute_value_is_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:534` |

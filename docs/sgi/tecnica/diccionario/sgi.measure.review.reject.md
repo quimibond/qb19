@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_measure_review.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `note` | Text | Qué no corresponde | El filtro, el modelo, la fecha o quién aparece. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:249` |
-| `review_id` | Many2one |  |  | sí | `sgi.measure.review` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:248` |
+| `note` | Text | Qué no corresponde | El filtro, el modelo, la fecha o quién aparece. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:253` |
+| `review_id` | Many2one |  |  | sí | `sgi.measure.review` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:252` |
 
 ## Métodos públicos (1)
 

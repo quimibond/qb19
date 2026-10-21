@@ -14,7 +14,6 @@
                     <field name="peso"/>
                     <field name="ancho"/>
                 </group>
-                <p class="text-muted">Ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos del código). «Dentro de tolerancia» puede ser producto de línea; con una sola diferencia es producto nuevo. Diseño de Producto confirma con «Usar como base».</p>
                 <field name="line_ids">
                     <list create="0" delete="0" decoration-success="within_tolerance">
                         <field name="product_id"/>
@@ -88,7 +87,6 @@
                             <field name="hours_total"/>
                         </group>
                     </group>
-                    <p class="text-muted">El laboratorio captura el valor en el renglón (abra la fila); el dictamen es de Diseño de Producto. La solicitud se cierra sola cuando todos los renglones tienen valor.</p>
                     <field name="line_ids" readonly="state in ('medida', 'cancelada')" domain="[('project_id', '=', project_id)]">
                         <list editable="bottom" create="0" open_form_view="1">
                             <field name="kind" column_invisible="1"/>

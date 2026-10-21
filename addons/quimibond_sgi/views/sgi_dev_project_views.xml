@@ -650,7 +650,7 @@
                                 <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-secondary" icon="fa-exchange"
                                         invisible="sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto', 'liberado')"/>
                             </div>
-                            <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado se registra como solicitud de modificación (causa, 5 porqués, solución y fases afectadas); al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra. Los cambios a la especificación quedan en la bitácora.</p>
+                            <p class="text-muted">Al firmar una solicitud, Dirección de Operaciones abre la revisión siguiente y el proyecto vuelve a la muestra.</p>
                             <separator string="Solicitudes de modificación"/>
                             <field name="sgi_dev_change_request_ids" readonly="1">
                                 <list create="0" delete="0" decoration-info="state == 'borrador'" decoration-muted="state == 'aplicada'">
@@ -784,7 +784,7 @@
                                 <button name="action_sgi_dev_print_dossier" type="object" string="Imprimir expediente" class="btn-secondary" icon="fa-print"/>
                                 <span class="align-self-center">Requisitos cubiertos: <field name="sgi_dev_dossier_done" class="oe_inline"/> de <field name="sgi_dev_dossier_total" class="oe_inline"/></span>
                             </div>
-                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí. Las fases del APQP se cubren con las pestañas: 1 planeación (análisis de mercado y de proyecto), 2 diseño del producto (cotización, aprobación del cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y fichas), 4 validación (muestra, envío, retroalimentación, pilotaje), 5 retroalimentación y mejora (cambios, liberación, tarifa).</p>
+                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí.</p>
                             <field name="sgi_dev_dossier_html" nolabel="1" readonly="1"/>
                         </page>
                     </notebook>

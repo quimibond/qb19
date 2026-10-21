@@ -26,7 +26,8 @@ class DocumentsDocumentExternal(models.Model):
                                         help="Fecha en que se recibió el documento externo.")
     sgi_ext_deadline = fields.Date(
         string="Implantar a más tardar", compute='_compute_sgi_ext_deadline', store=True,
-        help="Recepción + 10 días hábiles (parámetro quimibond_sgi.external_doc_days).")
+        help="Recepción + 10 días hábiles (parámetro quimibond_sgi.external_doc_days)."
+             " Lo implanta el responsable del Proceso SGI dueño, que recibe el aviso.")
     sgi_ext_implemented_date = fields.Date(
         string="Implantado el",
         help="Fecha en que el proceso dueño ya lo aplica (y difundió lo que cambia).")

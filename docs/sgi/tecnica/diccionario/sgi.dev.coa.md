@@ -12,18 +12,18 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_coa.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `attachment_id` | Many2one | PDF emitido |  |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:64` |
+| `attachment_id` | Many2one | PDF emitido |  |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:66` |
 | `company_id` | Many2one |  |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:38` |
 | `date` | Date | Fecha |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:49` |
-| `issued_at` | Datetime | Emitido el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:63` |
-| `issued_by_id` | Many2one | Emitió (Calidad) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:62` |
-| `line_count` | Integer |  |  |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:58` |
-| `line_ids` | One2many | Renglones |  |  | `sgi.dev.coa.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:55` |
+| `issued_at` | Datetime | Emitido el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:65` |
+| `issued_by_id` | Many2one | Emitió (Calidad) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:64` |
+| `line_count` | Integer |  |  |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:60` |
+| `line_ids` | One2many | Renglones | Salen de la tabla del proyecto marcados «En certificado» y se comparan contra la especificación del cliente. El control interno no se imprime. |  | `sgi.dev.coa.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:55` |
 | `lot_id` | Many2one | Lote | Lote certificado. Vacío si los rollos del envío no llevan lote. |  | `stock.lot` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:44` |
 | `name` | Char | Certificado |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:33` |
-| `nonconforming_count` | Integer | No conformes |  |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:61` |
+| `nonconforming_count` | Integer | No conformes |  |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:63` |
 | `partner_id` | Many2one | Cliente |  |  |  | related `project_id.partner_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:37` |
-| `pending_count` | Integer | Sin resultado | Renglones del certificado sin valor obtenido. |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:59` |
+| `pending_count` | Integer | Sin resultado | Renglones del certificado sin valor obtenido. |  |  | compute `_compute_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:61` |
 | `product_id` | Many2one | Artículo |  |  | `product.product` | compute `_compute_product_id`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:47` |
 | `production_id` | Many2one | Orden de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:42` |
 | `project_id` | Many2one | Desarrollo | Proyecto cuya tabla de características alimenta el certificado. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:34` |

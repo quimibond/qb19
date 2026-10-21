@@ -13,6 +13,45 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.173.0 — 2026-10-21
+
+Interfaz, entrega 4 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): las
+instrucciones salen de la ficha y van a la ayuda del campo (el «?» junto a la
+etiqueta), como en las apps de Odoo. En la ficha queda a lo más una línea, o un
+aviso que depende del estado.
+
+**Cambiado**
+- Al `help` del campo, sin texto en la ficha: checklist y actas de la
+  auditoría; resultado y próxima fecha de la calibración; puestos de la familia;
+  renglones del CoA de desarrollo, de la solicitud a laboratorio y de artículos
+  parecidos; documento externo, «dónde vive en Odoo» y clase de migración del
+  documento; equipo de investigación del incidente; EPP del puesto; flujo y
+  conclusiones, acuerdos y acuerdos arrastrados de la revisión por la
+  dirección; textos, renglones y notas de la sección del MIID (el texto ahora
+  es el `placeholder`); escalamientos de Mi procedimiento; plan de acción del
+  objetivo; nivel y elementos del PPAP; ligas y método de medición de la
+  actividad; qué es un flujo; procedimientos que sustituye el proceso; cuenta
+  de la tableta; escalas de riesgo por instrumento y aviso de la próxima
+  revisión; NC de la fuente desactivada; eficacia de la capacitación; reglas
+  del mapa de formatos; datos del PDF del MIID en el cambio documental;
+  solicitudes de modificación y fases APQP del proyecto de desarrollo.
+- A una línea, con el detalle en el `help`: AMEF («NPR = S × O × D, en rojo
+  NPR ≥ 100»), trayectoria y fórmula del indicador (las fechas relativas del
+  filtro van en el `help` del filtro del término), revisión de medición,
+  ejecución de actividad (manual o automática), firmas del cambio documental,
+  candados del MIID, contratista sin evaluación SST, cobertura del programa de
+  auditorías.
+- Documento: el aviso fijo «La difusión depende de esto» pasa a un aviso solo
+  cuando hace falta: «Vigente sin puestos: no se difunde a nadie».
+- La IA de la NC explica sus reglas en el globo del botón «Pedir sugerencia a
+  la IA».
+- Pilotaje: sin la nota interna «El brief deja por definir…».
+
+**Se quedan en la ficha (a propósito)**
+- Avisos que dependen del estado (vencido, falta el plan, borrador del MIID),
+  el texto de la responsiva de EPP (es lo que se firma), las introducciones de
+  los asistentes y la leyenda de criterios de eficiencias.
+
 ## 19.0.57.172.0 — 2026-10-21
 
 Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la

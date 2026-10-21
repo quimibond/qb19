@@ -34,12 +34,6 @@
                             invisible="deliverable_id"/>
                     <widget name="web_ribbon" title="Apagado" bg_color="text-bg-danger"
                             invisible="active"/>
-                    <div class="alert alert-info mb-3" role="status">
-                        <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
-                        Se calcula solo del <b>entregable</b>: sale de las actividades
-                        que lo entregan y llega a las que lo reciben. Para cambiarlo,
-                        cambie el entregable o las actividades.
-                    </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
                         <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal de producción)"/></h1>
@@ -380,10 +374,6 @@
                                             <field name="sgi_migration_state"/>
                                         </list>
                                     </field>
-                                    <div class="text-muted" colspan="2">
-                                        Se captura en la ficha de cada procedimiento
-                                        («Lo sustituye el proceso»).
-                                    </div>
                                     <field name="channel_odoo_pct" widget="progressbar"/>
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>

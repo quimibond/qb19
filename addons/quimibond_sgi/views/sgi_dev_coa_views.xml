@@ -56,8 +56,6 @@
                             <field name="attachment_id" invisible="not attachment_id"/>
                         </group>
                     </group>
-                    <p class="text-muted">Los renglones salen de la tabla del proyecto marcados «En certificado» y se comparan
-                        contra la especificación del cliente. El control interno no se imprime.</p>
                     <field name="line_ids" readonly="state != 'borrador'">
                         <list editable="bottom">
                             <field name="sequence" widget="handle"/>

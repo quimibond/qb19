@@ -583,9 +583,13 @@ class SgiProcessActivity(models.Model):
 
     # --- Encadenamiento: de qué actividad viene y a cuál sigue ---
     out_link_ids = fields.One2many(
-        'sgi.activity.link', 'from_activity_id', string="Entrega a")
+        'sgi.activity.link', 'from_activity_id', string="Entrega a",
+        help="Se calculan solas de «Recibe» y «Entrega»; no se editan a mano. Si una no aplica, apáguela y "
+             "escriba el motivo.")
     in_link_ids = fields.One2many(
-        'sgi.activity.link', 'to_activity_id', string="Recibe de")
+        'sgi.activity.link', 'to_activity_id', string="Recibe de",
+        help="Se calculan solas de «Recibe» y «Entrega»; no se editan a mano. Si una no aplica, apáguela y "
+             "escriba el motivo.")
     next_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Siguientes pasos",
         compute='_compute_chain',
@@ -921,7 +925,8 @@ class SgiProcessActivity(models.Model):
              "Manual: registro de un toque (fase 2). Muestreo: se verifica de "
              "vez en cuando. No aplica: su resultado se mide en otra parte "
              "(exige justificación). Vacío = sin medir, solo con el "
-             "procedimiento en borrador.")
+             "procedimiento en borrador."
+             " Correo, manual y muestreo no tienen fuente automática: salen en gris.")
     measure_proxy_activity_id = fields.Many2one(
         'sgi.process.activity', string="Se prueba con", ondelete='restrict',
         index=True,

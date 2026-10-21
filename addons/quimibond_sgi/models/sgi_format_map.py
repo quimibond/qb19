@@ -141,12 +141,15 @@ class SgiFormatMap(models.Model):
     sgi_code = fields.Char(string="Clave al ligar",
                            help="Clave con la que se sembró el mapeo (ej. F-P-A28-04). Solo "
                                 "sirve mientras no hay documento ligado; lo impreso sale "
-                                "del documento.")
+                                "del documento."
+                                " Solo se usa mientras no hay documento ligado.")
     sgi_code_alt = fields.Char(
         string="Clave alternativa al ligar",
         help="Clave que aplica cuando el registro está confirmado (solo ventas: "
              "cotización vs pedido). Vacío = siempre la clave principal.")
-    live_label = fields.Char(string="Clave y revisión vigentes", compute='_compute_live_label')
+    live_label = fields.Char(string="Clave y revisión vigentes", compute='_compute_live_label',
+        help="No se capturan: se leen de la revisión vigente del documento ligado, en el formulario y en el "
+             "PDF impreso. Si el documento cambia de clave o de revisión, el pie cambia solo.")
     live_alt_label = fields.Char(string="Alternativa vigente", compute='_compute_live_label')
     active = fields.Boolean(default=True)
     note = fields.Char(string="Nota")
@@ -158,7 +161,10 @@ class SgiFormatMap(models.Model):
         string="Prioridad", default=10,
         help="Si un registro cumple el criterio de más de un mapeo del mismo "
              "modelo, se usa el de número más bajo. El mapeo general (sin "
-             "criterio) se usa solo cuando ningún otro aplica.")
+             "criterio) se usa solo cuando ningún otro aplica."
+             " Sin criterio, el mapeo es el general del modelo (uno por modelo). Con criterio aplica solo a los "
+             "registros que lo cumplen; si un registro cumple varios, gana la prioridad más baja, y si no cumple "
+             "ninguno lleva el general.")
     # 57.67.0: los criterios leen también los archivados (``active_test``).
     # Sin eso, un mapeo con un tipo de operación o centro archivado (en
     # producción «Traslados internos» de Toluca, id 5) se leía sin criterio,

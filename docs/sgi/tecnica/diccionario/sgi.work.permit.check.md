@@ -12,12 +12,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_work_permit.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `answer` | Selection | Respuesta |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:367` |
-| `category` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:362` |
-| `name` | Char | Punto a verificar |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:366` |
-| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:372` |
-| `permit_id` | Many2one | Permiso |  | sí | `sgi.work.permit` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:359` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:361` |
+| `answer` | Selection | Respuesta |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:368` |
+| `category` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:363` |
+| `name` | Char | Punto a verificar |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:367` |
+| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:373` |
+| `permit_id` | Many2one | Permiso |  | sí | `sgi.work.permit` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:360` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:362` |
 
 ## Métodos públicos (3)
 

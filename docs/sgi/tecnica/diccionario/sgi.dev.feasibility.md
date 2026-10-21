@@ -14,13 +14,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `answer` | Selection | Respuesta | Sí, no o no aplica. Pendiente mientras nadie conteste. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:303` |
-| `answered_by_id` | Many2one | Contestó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:306` |
-| `auto` | Selection | Lo contesta Odoo |  |  |  | related `item_id.auto`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:302` |
-| `item_id` | Many2one | Recurso | Recurso del catálogo que se verifica. | sí | `sgi.dev.feasibility.item` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:299` |
-| `observation` | Char | Observación | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:305` |
-| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:298` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:301` |
+| `answer` | Selection | Respuesta | Sí, no o no aplica. Pendiente mientras nadie conteste. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:309` |
+| `answered_by_id` | Many2one | Contestó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:312` |
+| `auto` | Selection | Lo contesta Odoo |  |  |  | related `item_id.auto`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:308` |
+| `item_id` | Many2one | Recurso | Recurso del catálogo que se verifica. | sí | `sgi.dev.feasibility.item` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:305` |
+| `observation` | Char | Observación | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:311` |
+| `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:304` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:307` |
 
 ## Métodos públicos (1)
 

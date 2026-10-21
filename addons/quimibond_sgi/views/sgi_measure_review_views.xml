@@ -19,11 +19,8 @@
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
-                    <div class="alert alert-info" role="status" invisible="state != 'pendiente'">
-                        Estos son tres registros tomados al azar de lo que la medición cuenta como evidencia de la
-                        actividad. Ábralos: si cada uno <b>es</b> la actividad hecha (y la fecha y la persona son las
-                        correctas), conteste «Sí, esto es lo que hago». Si alguno no lo es, conteste «No corresponde» y
-                        diga qué está mal.
+                    <div class="text-muted mb-2" invisible="state != 'pendiente'">
+                        Abra los tres registros y conteste si cada uno es la actividad hecha.
                     </div>
                     <group>
                         <group>

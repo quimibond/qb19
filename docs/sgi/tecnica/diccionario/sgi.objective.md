@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_objective.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action_line_ids` | One2many | Plan de acción (6.2.2) |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_objective.py:38` |
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:48` |
+| `action_line_ids` | One2many | Plan de acción (6.2.2) | ISO 6.2.2: qué se hará para lograr el objetivo, quién y para cuándo. Cada acción genera su actividad espejo al responsable; la evaluación del resultado la dan los indicadores ligados. |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_objective.py:38` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:51` |
 | `description` | Text | Descripción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:27` |
-| `health` | Selection | Salud agregada | Peor color entre los procesos de sus indicadores Y el último semáforo de cada indicador. |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_objective.py:40` |
+| `health` | Selection | Salud agregada | Peor color entre los procesos de sus indicadores Y el último semáforo de cada indicador. |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_objective.py:43` |
 | `indicator_count` | Integer | # Indicadores |  |  |  | compute `_compute_indicator_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_objective.py:35` |
 | `indicator_ids` | One2many | Indicadores |  |  | `sgi.indicator` |  |  | `addons/quimibond_sgi/models/sgi_objective.py:34` |
 | `name` | Char | Objetivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:26` |

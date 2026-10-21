@@ -279,8 +279,6 @@
                             </field>
                         </page>
                         <page string="Escalamientos" name="escalamientos" invisible="not received_role_ids">
-                            <p class="text-muted">Actividades de otros puestos que escalan a este puesto si se atoran.
-                                Las atrasadas van primero; cuando el atraso pasa de sus días hábiles, llegan a Mis pendientes.</p>
                             <div class="d-flex justify-content-end align-items-center gap-2" invisible="received_late_count == 0">
                                 <span class="text-danger"><field name="received_late_count" class="oe_inline"/> atrasados</span>
                                 <button name="action_show_received" type="object" string="Ver atrasados"

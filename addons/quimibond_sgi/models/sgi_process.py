@@ -552,7 +552,9 @@ class SgiProcessFlow(models.Model):
     _description = "Flujo entre procesos SGI"
     _order = 'from_process_id, name'
 
-    name = fields.Char(string="Entregable", required=True)
+    name = fields.Char(string="Entregable", required=True,
+        help="Una entrega entre dos procesos. Se calcula sola del entregable: sale de las actividades que lo "
+             "entregan y llega a las que lo reciben. Para cambiarlo, cambie el entregable o las actividades.")
     from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade',
                                       help="Proceso que entrega.")
     to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade',
