@@ -456,6 +456,10 @@
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
                 <separator/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_piloto" string="Piloto" domain="[('state', '=', 'piloto')]"/>
+                <filter name="state_vigente" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <separator/>
                 <filter name="rojo" string="Con actividades en rojo"
                         domain="[('measure_status', '=', 'rojo')]"/>
                 <filter name="dueno_invalido" string="Dueño no válido"
@@ -465,6 +469,7 @@
                 <group>
                     <filter name="group_parent" string="Macroproceso" context="{'group_by': 'parent_id'}"/>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'process_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_owner" string="Dueño" context="{'group_by': 'owner_id'}"/>
                     <filter name="group_measure" string="Estado de medición"
                             context="{'group_by': 'measure_status'}"/>

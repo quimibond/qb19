@@ -147,6 +147,8 @@
                 <filter name="to_ship" string="Por enviar" domain="[('state', '=', 'borrador')]"/>
                 <filter name="waiting" string="Esperando respuesta" domain="[('state', '=', 'enviada')]"/>
                 <filter name="not_notified" string="Sin aviso al cliente" domain="[('state', '=', 'enviada'), ('notified_date', '=', False)]"/>
+                <separator/>
+                <filter name="filter_shipped" string="Fecha de envío" date="shipped_at"/>
                 <group>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>

@@ -123,7 +123,10 @@
                 <field name="lock_ids" string="Trabajador" filter_domain="[('lock_ids.employee_id', 'ilike', self)]"/>
                 <filter name="locked" string="Equipos bloqueados" domain="[('state', '=', 'bloqueado')]"/>
                 <filter name="draft" string="En preparación" domain="[('state', '=', 'borrador')]"/>
+                <separator/>
                 <filter name="mine" string="Míos" domain="[('responsible_id', '=', uid)]"/>
+                <separator/>
+                <filter name="filter_applied" string="Bloqueado desde" date="date_applied"/>
                 <group>
                     <filter name="group_equipment" string="Equipo" context="{'group_by': 'equipment_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

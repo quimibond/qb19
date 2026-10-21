@@ -294,9 +294,13 @@
                 <field name="sgi_area_id"/>
                 <field name="sgi_process_id"/>
                 <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
+                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
+                <filter name="sgi_borrador" string="Borradores" domain="[('sgi_state','=','borrador')]"/>
+                <filter name="sgi_obsoleto" string="Obsoletos" domain="[('sgi_state','=','obsoleto')]"/>
+                <!-- 57.174.0: los estados se unen con «o»; lo demás va aparte. -->
+                <separator/>
                 <filter name="sgi_no_retention" string="Sin retención definida"
                         domain="[('sgi_is_controlled','=',True),('sgi_retention_years','=',0)]"/>
-                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
                 <filter name="sgi_formularios" string="Formularios de Odoo (vistas)"
                         domain="[('sgi_doc_type','=','formulario_odoo')]"/>
                 <filter name="sgi_por_revisar" string="Por revisar"
@@ -392,10 +396,13 @@
                 <field name="sgi_code"/>
                 <filter name="mine" string="Míos"
                         domain="[('user_id', '=', uid)]"/>
+                <separator/>
                 <filter name="pending" string="Pendientes"
                         domain="[('state', '=', 'pendiente')]"/>
                 <filter name="read" string="Leídos"
                         domain="[('state', '=', 'leido')]"/>
+                <separator/>
+                <filter name="filter_ack_date" string="Fecha de acuse" date="ack_date"/>
                 <group>
                     <filter name="group_document" string="Documento"
                             context="{'group_by': 'document_id'}"/>

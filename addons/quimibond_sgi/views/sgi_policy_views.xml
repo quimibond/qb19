@@ -30,7 +30,7 @@
         <field name="model">sgi.policy</field>
         <field name="arch" type="xml">
             <search string="Políticas">
-                <field name="name"/>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('folio', 'ilike', self)]"/>
                 <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
                 <filter name="state_vigente" string="Vigente" domain="[('state', '=', 'vigente')]"/>
                 <filter name="state_obsoleta" string="Obsoleta" domain="[('state', '=', 'obsoleta')]"/>

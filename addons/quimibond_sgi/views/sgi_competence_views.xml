@@ -39,6 +39,7 @@
                 <field name="employee_id"/>
                 <field name="department_id"/>
                 <field name="skill_id"/>
+                <filter name="big_gap" string="Brecha de 50 % o más" domain="[('gap', '&gt;=', 50)]"/>
                 <group>
                     <filter name="group_department" string="Departamento"
                             context="{'group_by': 'department_id'}"/>
@@ -48,6 +49,9 @@
                     <filter name="group_employee" string="Empleado"
                             context="{'group_by': 'employee_id'}"/>
                 </group>
+                <searchpanel>
+                    <field name="department_id" icon="fa-building" enable_counters="1"/>
+                </searchpanel>
             </search>
         </field>
     </record>

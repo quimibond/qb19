@@ -477,7 +477,7 @@
                 <separator/>
                 <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
                      familia), no solo «ejecuta» (antes herencia propia; A-008). -->
-                <filter name="mine" string="Míos"
+                <filter name="mine" string="Mías"
                         domain="['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]"/>
                 <filter name="no_responsible" string="Sin responsable"
                         domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
@@ -568,7 +568,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin actividades</p>
             <p>Se capturan desde el botón Actividades de cada proceso; «Ir a hacerlo» abre el menú de Odoo donde se ejecuta.</p>
-            <p>Se abre con «Míos»: las actividades de su puesto. Quite el filtro para ver todas.</p>
+            <p>Se abre con «Mías»: las actividades de su puesto. Quite el filtro para ver todas.</p>
         </field>
     </record>
 

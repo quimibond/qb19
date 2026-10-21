@@ -186,6 +186,7 @@
                 <field name="activity_ids"/>
                 <filter name="uncovered" string="Sin cobertura" domain="[('covered', '=', False)]"/>
                 <filter name="covered" string="Cubiertos" domain="[('covered', '=', True)]"/>
+                <separator/>
                 <filter name="with_activity" string="Con actividad" domain="[('activity_ids.active', '=', True)]"/>
                 <filter name="by_rule" string="Lo cumple el sistema" domain="[('system_rule_ids', '!=', False)]"/>
                 <filter name="exclusion" string="No aplica" domain="[('exclusion', '=', True)]"/>

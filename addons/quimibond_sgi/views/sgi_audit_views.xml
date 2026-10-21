@@ -268,19 +268,22 @@
         <field name="model">sgi.audit</field>
         <field name="arch" type="xml">
             <search string="Auditorías">
-                <field name="folio"/>
+                <field name="folio" string="Auditoría"
+                       filter_domain="['|', '|', ('folio', 'ilike', self), ('name', 'ilike', self), ('partner_id', 'ilike', self)]"/>
                 <field name="lead_auditor_id"/>
                 <field name="process_ids"/>
                 <filter name="open" string="En curso"
                         domain="[('state','not in',('cerrada',))]"/>
                 <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
                 <separator/>
-                <filter name="mine" string="Míos"
+                <filter name="mine" string="Mías"
                         domain="['|', '|', ('lead_auditor_id', '=', uid), ('auditor_ids', 'in', uid), ('auditee_ids', 'in', uid)]"/>
                 <filter name="filter_date_planned" string="Fecha planificada" date="date_planned"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'audit_type'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_lead" string="Auditor líder" context="{'group_by': 'lead_auditor_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date_planned:month'}"/>
                 </group>
             </search>
         </field>

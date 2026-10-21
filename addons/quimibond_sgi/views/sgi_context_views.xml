@@ -65,7 +65,7 @@
         <field name="model">sgi.interested.party</field>
         <field name="arch" type="xml">
             <search string="Partes interesadas">
-                <field name="name"/>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('needs', 'ilike', self)]"/>
                 <filter name="requisito" string="Adoptadas como requisito"
                         domain="[('becomes_requirement', '=', True)]"/>
                 <filter name="revision_vencida" string="Revisión vencida"

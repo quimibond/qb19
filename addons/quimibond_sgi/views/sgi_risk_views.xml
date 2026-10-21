@@ -272,6 +272,10 @@
                         domain="[('attention_level','in',('inmediata','alto'))]"/>
                 <!-- V-M03 (57.43.0): «Míos». -->
                 <separator/>
+                <filter name="open" string="Abiertos" domain="[('state', '!=', 'cerrado')]"/>
+                <filter name="review_due" string="Revisión vencida" domain="[('next_review_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <separator/>
                 <filter name="my_processes" string="De mis procesos" domain="['|', ('process_id.owner_id.user_id', '=', uid), ('create_uid', '=', uid)]"/>
                 <group>
                     <filter name="group_instrument" string="Instrumento" context="{'group_by': 'instrument'}"/>
