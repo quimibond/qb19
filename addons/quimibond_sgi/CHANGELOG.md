@@ -13,6 +13,34 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.177.0 — 2026-10-21
+
+Jose (2026-10-21): «¿cómo podemos mejorar la vista de Mi procedimiento?».
+En producción, 184 de 438 actividades de los puestos salían «Atrasada»; en
+los 11 puestos de tejido, la única actividad (C4.05) salía en rojo por las
+231 entradas sin salida de toda la planta.
+
+**Cambiado**
+- El flujo atrasado (entradas con plazo vencido sin salida) sale **«Atrasada
+  en la planta»**, en gris, y no suma a las atrasadas de la persona ni de Mi
+  equipo. Desde 57.168.0 le llega al dueño del proceso en Mis pendientes.
+  «Sin evidencia en su periodo» sigue en rojo: eso sí es de quien la ejecuta.
+- Una línea de resumen arriba: actividades, periódicas y «cuando pasa algo»,
+  atrasadas, al día y atrasadas en la planta.
+- La pestaña **Actividades** muestra tarjetas (el cómo y el dónde a la vista)
+  en dos bloques, **Periódicas** y **Cuando pasa algo**, con lo atrasado
+  primero. La de evento dice cuándo toca («Cuando llega: …»); el PDF y la
+  huella no cambian (no pide firmar de nuevo).
+- Cada actividad tiene dos botones, **Ir a hacerlo** y **Abrir** (tarjeta y
+  listas). **Instructivo** y **Proponer cambio** están en la ficha de la
+  actividad (`action_sgi_propose_change`, botón nuevo en su encabezado).
+- Pestañas: «Escalamientos» y «Participa o se entera» se juntan en **Otras
+  actividades**; «Firmas de lectura» pasa al final de **Documentos**.
+
+**Migración**
+- `post-migrate`: las cifras de Mi procedimiento de cada puesto quedan por
+  recalcular (`sgi_mp_stats_at` vacío).
+
 ## 19.0.57.176.1 — 2026-10-21
 
 Avisos del build de `main` (40323233), sin cambio para el usuario.

@@ -1465,6 +1465,12 @@ class SgiProcessActivity(models.Model):
         if self.odoo_menu_id and not self.odoo_ref:
             self.odoo_ref = self.odoo_menu_id.complete_name
 
+    def action_sgi_propose_change(self):
+        """57.177.0: «Proponer cambio» en la ficha de la actividad (salió de
+        cada renglón de Mi procedimiento)."""
+        self.ensure_one()
+        return self.env['sgi.activity.change']._sgi_open(activity=self)
+
     def action_open_odoo(self):
         """Abre el menú real de Odoo donde se ejecuta la actividad, respetando
         el dominio/contexto/vistas de su acción original. Sin menú ligado

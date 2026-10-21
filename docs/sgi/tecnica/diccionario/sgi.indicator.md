@@ -40,7 +40,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `level` | Selection | Nivel | Dirección: va al Tablero de dirección. Proceso: lo sigue el dueño del proceso. Actividad: medición de un paso del procedimiento. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_direction_board.py:25` |
 | `measure_from` | Date | Medir desde | Fecha desde la que hay dato confiable (el proceso entra a piloto o existe el campo que lo alimenta). Antes de ella no se crea medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:93` |
 | `measure_ids` | One2many | Mediciones |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:223` |
-| `measure_shown_ids` | One2many | Mediciones |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:175` |
+| `measure_shown_ids` | One2many | Mediciones en la ficha |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:175` |
 | `measure_split` | Selection | Desglose | Además del total, una medición por equipo de ventas o por mercado (país del cliente contra el de la compañía). Solo con fórmula configurable y registros que lleguen al equipo o al cliente. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:266` |
 | `measure_team_ids` | Many2many | Equipos a desglosar | Vacío = los equipos de venta de la compañía del indicador. |  | `crm.team` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:275` |
 | `monthly_budget` | Float | Presupuesto mensual | Meta mensual para el cálculo de presupuesto de ventas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:213` |

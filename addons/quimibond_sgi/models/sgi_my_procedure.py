@@ -88,11 +88,19 @@ class SgiActivityRoleCadence(models.Model):
     activity_when = fields.Char(string="Cuándo", compute='_compute_activity_when')
 
     @api.depends('activity_id.measure_cadence', 'activity_id.due_weekday',
-                 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day')
+                 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day',
+                 'activity_id.input_ids')
     def _compute_activity_when(self):
+        # 57.177.0: la pantalla dice cuándo toca la de evento (lo que la
+        # dispara); el PDF y la huella siguen con ``_sgi_mp_when``.
         Job = self.env['hr.job']
         for role in self:
-            role.activity_when = Job._sgi_mp_when(role.activity_id)[1] if role.activity_id else ''
+            activity = role.activity_id
+            when = Job._sgi_mp_when(activity)[1] if activity else ''
+            if activity and not when and (activity.measure_cadence or 'evento') == 'evento':
+                inputs = activity.sudo().input_ids.deliverable_id.mapped('name')
+                when = "Cuando llega: %s" % ", ".join(inputs) if inputs else "Cuando se necesita"
+            role.activity_when = when
 
     def action_open_activity(self):
         self.ensure_one()
@@ -167,7 +175,8 @@ class HrJobMyProcedure(models.Model):
         """Huella y cifras del puesto, calculadas (sin guardar)."""
         self.ensure_one()
         data = self.sudo().with_context(sgi_mp_employee_id=False)._sgi_my_procedure_data()
-        counts = {'atrasada': 0, 'al_dia': 0, 'sin_medir': 0}
+        # 57.177.0: «planta» (flujo atrasado) suma al total, no a atrasadas.
+        counts = {'atrasada': 0, 'al_dia': 0, 'sin_medir': 0, 'planta': 0}
         for section in data['sections']:
             for entry in section['entries']:
                 counts[entry['status']] += 1
@@ -412,8 +421,12 @@ class HrJobMyProcedure(models.Model):
             last_txt = fields.Date.to_string(fields.Datetime.context_timestamp(
                 self, last).date()) if last else ''
             if late:
-                result[activity] = ('atrasada', "Atrasada",
-                                    "%d entrada(s) con plazo vencido sin salida" % late)
+                # 57.177.0: el flujo atrasado es de la planta, no de quien lo
+                # ve (desde 57.168.0 le llega al dueño del proceso en Mis
+                # pendientes): no se pinta en rojo en su procedimiento.
+                result[activity] = ('planta', "Atrasada en la planta",
+                                    "En la planta: %d entrada(s) con plazo vencido sin salida; "
+                                    "le da seguimiento el dueño del proceso" % late)
             elif activity.measure_state == 'rojo':
                 result[activity] = ('atrasada', "Atrasada", "Sin evidencia en su periodo")
             elif activity.measure_state == 'verde':
