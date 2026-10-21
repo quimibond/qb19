@@ -51,6 +51,17 @@ aviso que depende del estado.
 - Avisos que dependen del estado (vencido, falta el plan, borrador del MIID),
   el texto de la responsiva de EPP (es lo que se firma), las introducciones de
   los asistentes y la leyenda de criterios de eficiencias.
+## 19.0.57.172.1 — 2026-10-21
+
+Solo textos, sin cambios de comportamiento. Revisión de José Sacramento (v5
+de su diseño): Inspección es una operación de la orden en kg (devanado →
+tintorería → abridora → rama → Inspección) y la orden en metros es la
+Clasificación final (empaque).
+
+### Cambiado
+- README, ayuda de «Artículo acabado en kg» y mensaje del chatter de «Generar
+  artículos»: dicen «Clasificación final» donde decían «Inspección» para el
+  paso que pasa el acabado en kg a metros.
 
 ## 19.0.57.172.0 — 2026-10-21
 
