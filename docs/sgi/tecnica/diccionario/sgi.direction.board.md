@@ -22,7 +22,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibon
 | `indicator_ids` | Many2many | Indicadores de dirección | Indicadores que sigue la Dirección. |  | `sgi.indicator` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:100` |
 | `indicator_note` | Char | Nota de indicadores |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:112` |
 | `indicator_total` | Integer | Indicadores activos |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:117` |
-| `nc_overdue_count` | Integer | NC con plazo vencido |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:122` |
+| `nc_overdue_count` | Integer | Núm. de NC con plazo vencido |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:122` |
 | `nc_overdue_ids` | Many2many | NC con plazo vencido | No conformidades abiertas con algún plazo vencido (contención, causa raíz o plan). |  | `quality.alert` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:119` |
 | `objective_ids` | Many2many | Objetivos integrales | Objetivos integrales del año. |  | `sgi.objective` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:98` |
 | `official_count` | Integer | Indicadores oficiales |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:116` |

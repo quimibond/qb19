@@ -251,7 +251,7 @@ class QualityAlert(models.Model):
     # 57.179.0: qué sigue en la NC, en una línea arriba de la ficha.
     sgi_next_step = fields.Char(string="Qué sigue", compute='_compute_sgi_deadline_states',
                                 help="El siguiente paso de la NC y dónde se hace.")
-    sgi_next_due = fields.Date(string="Vence", compute='_compute_sgi_deadline_states',
+    sgi_next_due = fields.Date(string="Vence el siguiente paso", compute='_compute_sgi_deadline_states',
                                help="Fecha límite del siguiente paso.")
     sgi_next_late = fields.Boolean(string="Siguiente paso vencido", compute='_compute_sgi_deadline_states')
     # 57.40.0 (V-A02): semáforo de la lista de NC y filtro «Plazo vencido».

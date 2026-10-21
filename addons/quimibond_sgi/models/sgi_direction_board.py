@@ -119,7 +119,7 @@ class SgiDirectionBoard(models.TransientModel):
     nc_overdue_ids = fields.Many2many(
         'quality.alert', string="NC con plazo vencido", compute='_compute_board',
         help="No conformidades abiertas con algún plazo vencido (contención, causa raíz o plan).")
-    nc_overdue_count = fields.Integer(string="NC con plazo vencido", compute='_compute_board')
+    nc_overdue_count = fields.Integer(string="Núm. de NC con plazo vencido", compute='_compute_board')
 
     def _sgi_board_indicators(self, Indicator):
         """Indicadores del tablero (máximo _BOARD_LIMIT) y nota para Dirección.

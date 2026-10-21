@@ -13,6 +13,14 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.181.1 — 2026-10-21
+
+**Corregido**
+- Aviso del build de main (40329343): `sgi.direction.board` tenía dos campos
+  con la etiqueta «NC con plazo vencido»; el conteo es «Núm. de NC con plazo
+  vencido». `quality.alert.sgi_next_due` pasa de «Vence» a «Vence el
+  siguiente paso» (más claro y sin riesgo de chocar con Calidad).
+
 ## 19.0.57.181.0 — 2026-10-21
 
 Tablero de dirección: lo que pide decisión, arriba y con nombre.
