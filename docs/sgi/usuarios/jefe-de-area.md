@@ -32,7 +32,9 @@ muestra los de los procesos de los que usted es dueño.
 ### 2.1 Revisar a su equipo
 
 1. **SGI → Inicio → Mi equipo**. Cada tarjeta dice cuántos pendientes y
-   atrasos tiene la persona y si ya firmó su procedimiento.
+   atrasos tiene la persona y si ya firmó su procedimiento. Desde 57.180.0,
+   en rojo, **qué tiene atrasado** por tipo («3 Actividad atrasada, 1 Acuse
+   de lectura»); en la lista es la columna del mismo nombre.
 2. **Pendientes del equipo** abre los pendientes de todos juntos.
 3. **Ver su procedimiento** abre el Mi procedimiento de una persona como ella
    lo ve.

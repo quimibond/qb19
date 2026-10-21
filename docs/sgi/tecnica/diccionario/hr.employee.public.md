@@ -8,13 +8,14 @@ Mi equipo: el mismo semáforo por persona.
 
 Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
 
-## Campos (9)
+## Campos (10)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_mp_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:976` |
 | `sgi_mp_acks_pending` | Integer | Firmas pendientes | Acuses de lectura pendientes de la persona (Mi procedimiento y demás documentos). |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:972` |
 | `sgi_mp_late` | Integer | Atrasadas | Actividades del puesto (ejecuta o aprueba) que hoy están atrasadas. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:965` |
+| `sgi_mp_late_reason` | Char | Qué tiene atrasado | Los pendientes atrasados de la persona por tipo, el más común primero («3 Actividad atrasada, 1 Acuse de lectura»). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2260` |
 | `sgi_mp_ok` | Integer | Al día |  |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:968` |
 | `sgi_mp_pending_late` | Integer | Pendientes atrasados | Pendientes atrasados de la persona en Mis pendientes. En los filtros se usa el resumen guardado (de la noche o de la última vez que se abrió su lista). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2248` |
 | `sgi_mp_pending_state` | Selection | Semáforo | El peor estado de sus pendientes: atrasada, por vencer o al día. En los filtros se usa el resumen guardado (de la noche o de la última vez que se abrió su lista). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2253` |

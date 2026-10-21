@@ -13,6 +13,16 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.180.0 — 2026-10-21
+
+Mi equipo: el jefe ve por qué va atrasada cada persona sin abrir su lista.
+
+**Cambiado**
+- Columna y renglón en el organigrama **Qué tiene atrasado**
+  (`hr.employee.public.sgi_mp_late_reason`): los pendientes atrasados por
+  tipo, el más común primero («3 Actividad atrasada, 1 Acuse de lectura»).
+  Sale de los mismos renglones que el semáforo, en vivo.
+
 ## 19.0.57.179.0 — 2026-10-21
 
 Ficha de la NC. En producción las 16 NC abiertas tienen la contención
