@@ -442,6 +442,44 @@ octubre de 2026 quedaron sin ella. La vista `payroll_hr_employee_view_form_refer
 la deja visible para los usuarios de RH, con un ejemplo de formato. No es el
 «Número de identificación» de la pestaña Personal.
 
+### 12. Infonavit: el primer bimestre, como NOI (1.12.0)
+
+La regla `INFONAVIT` reparte la **cuota bimestral** de la ficha del crédito
+(cuota mensual × 2 + 15 de seguro de vivienda) entre 9 semanas o 4 quincenas.
+Eso cuadra en un bimestre completo, pero no cuando el crédito empieza a la
+mitad (alta, reingreso o aviso nuevo). NOI cobra solo los días desde el inicio
+del descuento, con la fórmula de cuota fija del Infonavit (cuota mensual × 2 ÷
+días del bimestre × días + seguro), y reparte ese monto en partes iguales
+entre los periodos del bimestre desde el inicio. Caso real: Reyes Sánchez,
+aviso del 22-sep-2026 por 2,668.35 → 3,514.48 entre las quincenas 19, 20 y 21
+= **1,171.49** (Odoo retenía 1,337.93).
+
+- Campo nuevo **«Inicio del descuento»** (`l10n.mx.hr.infonavit.qb_fecha_inicio`),
+  en la ficha del crédito y en la lista de créditos del empleado: la fecha del
+  aviso de retención. Vacío = bimestre completo, como antes. Si el contrato
+  empezó después, cuenta el contrato.
+- `payslip._qb_infonavit_retencion()` (`models/infonavit.py`) hace el cálculo;
+  pruebas en `tests/test_infonavit.py`. Los bimestres son los del Infonavit y
+  la nómina es del bimestre de su fecha de pago.
+- **Después de desplegar**, la regla `INFONAVIT` de «Paga regular» se cambia en
+  la base para llamar al método (el centinela avisará del cambio; aceptarlo):
+
+  ```python
+  # Retencion de Infonavit: cuota bimestral de la ficha entre 9 semanas o 4
+  # quincenas; el primer bimestre de un credito que empieza a la mitad, solo
+  # por los dias desde «Inicio del descuento» (quimibond_nomina 1.12.0,
+  # models/infonavit.py).
+  result = -payslip._qb_infonavit_retencion()
+  ```
+
+- Un cambio de cuota a partir del siguiente bimestre (aviso de modificación)
+  sigue siendo a mano: se cambia la cuota de la ficha después de calcular la
+  última nómina del bimestre anterior.
+- Matías Salinas (aviso desconocido, alta del 23-sep-2026): NOI reparte su
+  primer bimestre en 5 semanas (40 a 44, 467.83) porque entró a la nómina en la
+  semana 40; con el inicio en la fecha del contrato Odoo daría 6 semanas
+  (389.86). Su ficha queda sin fecha hasta aclarar su NSS.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
