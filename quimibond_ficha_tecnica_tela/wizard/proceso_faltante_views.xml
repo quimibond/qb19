@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.13.0 (Dirección General 2026-10-19): producción en kg hasta Inspección; los artículos en kg («I…», DAT
+    <!-- 2.13.0 (Dirección General 2026-10-19): producción en kg hasta la Clasificación final; los artículos en kg («I…», DAT
          P-D02-01) que faltan para las telas acabadas en metros (J) que ya existen. -->
     <record id="view_ficha_tecnica_proceso_faltante_list" model="ir.ui.view">
         <field name="name">ficha.tecnica.proceso.faltante.list</field>

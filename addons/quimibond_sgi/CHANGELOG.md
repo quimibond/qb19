@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.172.1 — 2026-10-21
+
+Solo textos, sin cambios de comportamiento. Revisión de José Sacramento (v5
+de su diseño): Inspección es una operación de la orden en kg (devanado →
+tintorería → abridora → rama → Inspección) y la orden en metros es la
+Clasificación final (empaque).
+
+### Cambiado
+- README, ayuda de «Artículo acabado en kg» y mensaje del chatter de «Generar
+  artículos»: dicen «Clasificación final» donde decían «Inspección» para el
+  paso que pasa el acabado en kg a metros.
+
 ## 19.0.57.172.0 — 2026-10-21
 
 Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la
