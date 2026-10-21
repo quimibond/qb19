@@ -19,10 +19,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimib
 | `company_id` | Many2one | Empresa |  |  |  | related `from_activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1561` |
 | `from_activity_id` | Many2one | Actividad origen | Actividad que entrega. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1541` |
 | `from_process_id` | Many2one | Proceso origen | Proceso de la actividad que entrega. |  |  | related `from_activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1553` |
-| `input_id` | Many2one | Renglón «recibe» |  |  | `sgi.activity.input` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:530` |
+| `input_id` | Many2one | Renglón «recibe» |  |  | `sgi.activity.input` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:538` |
 | `is_cross_process` | Boolean | Cruza procesos | Se marca sola cuando el entregable pasa de un proceso a otro. |  |  | compute `_compute_cross`, guardado |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1564` |
 | `lag_days` | Float | Rezago (días) | Días que la última evidencia del paso destino va detrás de la del paso origen. 0 = el eslabón está al día. Si el «recibe» tiene plazo, son días hábiles desde que se entregó. |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1576` |
-| `max_days` | Integer | Plazo (días hábiles) | Días hábiles que tiene el entregable para llegar a la actividad que lo recibe. Pasado ese plazo, el eslabón se ve atorado. |  |  | related `input_id.max_days`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:533` |
+| `max_days` | Integer | Plazo (días hábiles) | Días hábiles que tiene el entregable para llegar a la actividad que lo recibe. Pasado ese plazo, el eslabón se ve atorado. |  |  | related `input_id.max_days`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:541` |
 | `name` | Char | Entregable / condición | Qué pasa de un paso al otro: el pedido confirmado, el programa semanal, el lote liberado… | sí |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1549` |
 | `nc_alert_id` | Many2one | NC generada | No conformidad que se levantó por este eslabón atorado. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1582` |
 | `to_activity_id` | Many2one | Actividad destino | Actividad que recibe. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:1545` |

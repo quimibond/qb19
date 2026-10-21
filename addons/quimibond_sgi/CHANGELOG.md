@@ -13,6 +13,39 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.172.0 — 2026-10-21
+
+Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la
+navegación va en botones inteligentes, con su número cuando lo hay, y la barra
+queda para los pasos del flujo, como en las apps de Odoo.
+
+**Cambiado**
+- De la barra a botones inteligentes: «Origen» de la acción (con el nombre del
+  registro), «Informe» de la auditoría, «Baja de muestras» del envío (con el
+  estado de la baja), «Firma (Sign)» de la responsiva de EPP (con el estado de
+  la firma), «Solicitud en curso» y «PDF vigente» del MIID, «Sin cobertura»
+  de la norma (con el número de puntos), «Registros» del flujo y «Hoja de
+  cálculo» del tablero de Dirección.
+- Con número: «Textos» y «Solicitudes» del MIID, «Ligas» del entregable,
+  «Listas por capturar» del proyecto de desarrollo (antes un enlace dentro del
+  aviso). El proceso separa «Faltantes» (bloquean, en rojo) de «Advertencias»;
+  antes decía «0 Faltantes» cuando solo había advertencias. Cada uno abre la
+  lista ya filtrada.
+- «Registrar respuesta del cliente» del proyecto abre directo el envío que
+  espera respuesta (antes la lista de envíos, igual que el botón inteligente).
+- Riesgo ambiental: botón «Aspecto ambiental» a la matriz y aviso de una
+  línea. Un solo listón: «Archivado» gana sobre «Cerrado».
+- Empleado: «Procedimientos» (antes «Mis procedimientos», en la ficha de otro)
+  y «Acuses pendientes» se ocultan en cero. Puesto: sin «Ver sus actividades»,
+  que repetía el botón «Actividades SGI». Producto: «Especificación» como
+  botón inteligente (antes un botón suelto en la pestaña SGI).
+- Transferencia de inventario: «Firmar» es una acción y pasa a la barra (en
+  producto se queda en los botones: la ficha no tiene barra).
+- Mi procedimiento: los botones inteligentes van primero y el aviso «sin
+  empleado» después.
+- «Ver NC» en la solicitud de mantenimiento se queda en la barra: la ficha de
+  Odoo no tiene zona de botones inteligentes (revisado en producción).
+
 ## 19.0.57.171.0 — 2026-10-21
 
 Interfaz, entrega 2 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`):

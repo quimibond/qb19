@@ -33,8 +33,6 @@
                 <header>
                     <button name="action_create_picking" type="object" string="Crear baja de muestras" class="btn-primary"
                             invisible="state != 'borrador' or picking_id"/>
-                    <button name="action_open_picking" type="object" string="Ver la baja" class="btn-secondary"
-                            invisible="not picking_id"/>
                     <!-- 57.170.0: un primario por estado. Sin baja, el paso es crearla;
                          «Registrar envío» es primario cuando la baja ya está hecha. -->
                     <button name="action_ship" type="object" string="Registrar envío" class="btn-primary"
@@ -56,6 +54,15 @@
                     <field name="state" widget="statusbar" statusbar_visible="borrador,enviada,respondida"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_picking" type="object" class="oe_stat_button"
+                                icon="fa-truck" invisible="not picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="picking_state"/></span>
+                                <span class="o_stat_text">Baja de muestras</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>
                         <group string="Qué se envía">

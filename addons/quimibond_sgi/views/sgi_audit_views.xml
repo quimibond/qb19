@@ -134,9 +134,6 @@
                             string="Regenerar checklist" icon="fa-refresh"
                             invisible="state not in ('planificada', 'en_ejecucion')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
                             help="Trae al checklist las actividades de los procesos auditados que falten (no borra respuestas)."/>
-                    <button name="action_open_report_document" type="object"
-                            string="Ver informe" icon="fa-file-pdf-o"
-                            invisible="not report_document_id"/>
                     <button name="action_evaluate_auditors" type="object"
                             string="Evaluar al auditor" icon="fa-star-o"
                             invisible="state not in ('informe', 'cerrada')"
@@ -151,6 +148,8 @@
                             invisible="state != 'cerrada'"/>
                     <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_open_report_document" type="object" class="oe_stat_button"
+                                icon="fa-file-pdf-o" string="Informe" invisible="not report_document_id"/>
                         <button name="action_open_findings" type="object"
                                 class="oe_stat_button" icon="fa-search">
                             <field name="finding_count" widget="statinfo" string="Hallazgos"/>

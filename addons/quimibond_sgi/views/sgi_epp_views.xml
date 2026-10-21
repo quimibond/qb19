@@ -16,10 +16,18 @@
                     <button name="action_sign" type="object" string="Firmar: recibí el EPP"
                             icon="fa-pencil" invisible="not can_sign"
                             confirm="Confirmo que recibí el equipo de protección personal listado y me comprometo a usarlo y cuidarlo. La firma queda registrada con fecha y hora."/>
-                    <button name="action_open_sign_request" type="object" string="Ver solicitud de firma" invisible="not sign_request_id"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sign_request" type="object" class="oe_stat_button"
+                                icon="fa-pencil-square-o" invisible="not sign_request_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="sign_state"/></span>
+                                <span class="o_stat_text">Firma (Sign)</span>
+                            </div>
+                        </button>
+                    </div>
                     <widget name="web_ribbon" title="Firmada" invisible="state != 'firmada'"/>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>

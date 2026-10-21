@@ -65,10 +65,16 @@
                 </header>
                 <sheet>
                     <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <!-- 57.172.0: un solo listón; «Archivado» gana sobre «Cerrado». -->
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <widget name="web_ribbon" title="Cerrado" bg_color="text-bg-secondary"
-                            invisible="state != 'cerrado'"/>
+                            invisible="state != 'cerrado' or not active"/>
                     <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_view_env_aspect" type="object" class="oe_stat_button"
+                                icon="fa-leaf" string="Aspecto ambiental"
+                                invisible="instrument != 'ambiental' or not sgi_env_aspect_ids"/>
                         <button name="action_view_sgi_ncs" type="object"
                                 class="oe_stat_button" icon="fa-exclamation-triangle"
                                 invisible="sgi_nc_count == 0">
@@ -76,17 +82,14 @@
                                    string="NC ligadas"/>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
-                            invisible="active"/>
                     <div class="oe_title">
                         <h1><field name="name" readonly="sgi_is_locked" placeholder="Aspecto / peligro / situación"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <!-- 57.96.0 (N-07): el aspecto ambiental vive en la matriz. -->
                     <div class="alert alert-info mb-2" role="status" invisible="instrument != 'ambiental'">
-                        La evaluación de este aspecto vive en SGI → Planeación → Aspectos
-                        ambientales. Este riesgo guarda sus acciones de tratamiento. Los aspectos nuevos
-                        se registran en la matriz, no aquí.
+                        La evaluación vive en la matriz de aspectos ambientales (botón «Aspecto ambiental»);
+                        este riesgo guarda sus acciones de tratamiento.
                     </div>
                     <group>
                         <group string="Clasificación">
