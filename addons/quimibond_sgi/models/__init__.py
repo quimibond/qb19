@@ -182,3 +182,4 @@ from . import sgi_approval_subject
 from . import sgi_nav_links
 # 57.160.0: acabado en proceso (K) en C1; extiende project.project y mrp.production de varios archivos (va al final).
 from . import sgi_dev_product_proceso
+from . import sgi_indicator_autovalidate  # 57.176.0: va al final, después de las demás extensiones de la medición

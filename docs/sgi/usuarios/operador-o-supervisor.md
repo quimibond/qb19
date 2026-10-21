@@ -95,12 +95,21 @@ rechazado, verde = cerrado, vigente o validado.
 
 ### 2.2 Hacer una actividad de su procedimiento
 
-1. Abra **SGI → Inicio → Mi procedimiento**. En la pestaña **Actividades**
-   están las que usted ejecuta o aprueba, con su estado (al día, atrasada o
-   sin medición automática).
+1. Abra **SGI → Inicio → Mi procedimiento**. Arriba, una línea dice cuántas
+   actividades tiene y cuántas van atrasadas. En la pestaña **Actividades**
+   están las que usted ejecuta o aprueba, como tarjetas con el **cómo** y el
+   **dónde**, en dos bloques: **Periódicas** (cada día, semana, mes…) y
+   **Cuando pasa algo** (al llegar un pedido, una orden, una queja). Lo
+   atrasado va primero.
+   - **Atrasada** (rojo): le toca a usted.
+   - **Atrasada en la planta** (gris): hay trabajo sin terminar en toda la
+     planta (por ejemplo, órdenes sin cerrar). No es solo suyo: le da
+     seguimiento el dueño del proceso.
+   - **Al día** o **Sin medición automática**: nada pendiente que el sistema vea.
 2. Pulse **Ir a hacerlo**: lo lleva al menú de Odoo donde se hace
    (una orden de producción, una recepción, una solicitud…).
-3. Si hay instructivo, **Instructivo** lo abre.
+3. **Abrir** muestra la actividad completa; ahí están el **Instructivo** y
+   **Proponer cambio**.
 4. Haga el trabajo en Odoo como siempre. El sistema mide solo que se hizo:
    no hay que marcar nada aparte.
 
@@ -149,8 +158,8 @@ Formatos. Mi procedimiento no sale aquí: tiene su propia entrada en Inicio.
 
 Si una actividad ya no se hace así, o falta una:
 
-1. En **Mi procedimiento**, en la actividad, pulse **Proponer cambio** (o
-   **Proponer actividad** arriba, para una nueva).
+1. En **Mi procedimiento**, en la actividad, pulse **Abrir** y luego
+   **Proponer cambio** (o **Proponer actividad** arriba, para una nueva).
 2. Conteste las seis preguntas con sus palabras: **qué se hace**, **cada
    cuándo**, **quién la hace**, **dónde se hace**, **cómo sabe que quedó
    bien** y **por qué** la propone. Abajo ve cómo quedará escrita en su

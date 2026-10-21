@@ -58,7 +58,9 @@ class TestKbLigas(KbCase):
                             ('quimibond_sgi.sgi_activity_role_view_list_my_procedure', 'list')):
             arch = Role.get_views([(self.env.ref(xmlid).id, kind)])['views'][kind]['arch']
             self.assertIn('action_mp_article', arch, xmlid)
-            self.assertIn('action_mp_instruction', arch, "«Instructivo» sigue abriendo el PDF.")
+            # 1.2.22: «Instructivo» (PDF) está en la ficha de la actividad («Abrir»).
+            self.assertIn('action_open_activity', arch, xmlid)
+            self.assertLess(arch.index('action_mp_article'), arch.index('action_open_activity'), xmlid)
         doc_view = self.env.ref('quimibond_sgi.sgi_document_view_form')
         arch = self.Doc.with_user(self.mast).get_views([(doc_view.id, 'form')])['views']['form']['arch']
         self.assertIn('sgi_article_id', arch)

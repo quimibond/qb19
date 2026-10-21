@@ -24,8 +24,13 @@ class TestMyProcedureUi(TransactionCase):
                        'action_show_nc', 'action_show_measures', 'action_show_legal', 'action_show_doc_reviews',
                        'action_publish', 'action_publish_all', 'action_precheck'):
             self.assertNotIn('name="%s"' % button, arch, button)
-        for page in ('actividades', 'escalamientos', 'participa', 'documentos', 'epp', 'firmas', 'personas'):
+        # 57.177.0: escalamientos y participa en «otras»; firmas dentro de documentos.
+        for page in ('actividades', 'otras', 'documentos', 'epp', 'personas'):
             self.assertIn('name="%s"' % page, arch, page)
+        for page in ('escalamientos', 'participa', 'firmas'):
+            self.assertNotIn('name="%s"' % page, arch, page)
+        self.assertIn('name="role_periodic_ids"', arch)
+        self.assertIn('name="role_event_ids"', arch)
         self.assertLess(arch.index('name="actividades"'), arch.index('name="documentos"'),
                         "Mis actividades es la primera pestaña.")
         self.assertIn('name="employee_avatar"', arch)

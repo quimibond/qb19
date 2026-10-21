@@ -82,11 +82,12 @@ class TestBandeja(TransactionCase):
         self.activity.sudo().write({'measure_state': 'rojo'})
         self.activity.invalidate_recordset()
 
-    def _indicator(self, code, calc_mode='manual', frequency='monthly'):
+    def _indicator(self, code, calc_mode='manual', frequency='monthly', status='prueba'):
+        # 57.175.0: solo los oficiales piden validación en Mis pendientes.
         return self.env['sgi.indicator'].create({
             'code': code, 'name': 'KPI %s' % code, 'calc_mode': calc_mode,
             'frequency': frequency, 'responsible_id': self.user.id,
-            'process_id': self.process.id})
+            'process_id': self.process.id, 'status': status})
 
     # ---- accion -------------------------------------------------------------
     def test_01_accion(self):
@@ -158,9 +159,9 @@ class TestBandeja(TransactionCase):
 
     # ---- validacion: «Validar» en 3 días hábiles (I-006, I-007) --------------
     def test_04_validar_dueño_tres_dias_habiles(self):
-        indicator = self._indicator('Z8A-W', calc_mode='otif_ventas', frequency='weekly')
+        indicator = self._indicator('Z8A-W', calc_mode='otif_ventas', frequency='weekly', status='oficial')
         monday = self.today - timedelta(days=self.today.weekday() + 7)
-        measure = self.env['sgi.indicator.measure'].create({
+        measure = self.env['sgi.indicator.measure'].with_context(sgi_no_auto_validate=True).create({
             'indicator_id': indicator.id, 'period_date': monday, 'state': 'capturado', 'value': 95.0})
         self.assertEqual(measure.captured_date, self.today)
         row = self._row('validacion', measure.id)
@@ -382,9 +383,9 @@ class TestBandeja(TransactionCase):
 
     # ---- 57.92.0 (U-02): validar en lote ------------------------------------
     def test_20_validar_seleccionadas(self):
-        indicator = self._indicator('Z8A-L', calc_mode='otif_ventas', frequency='weekly')
+        indicator = self._indicator('Z8A-L', calc_mode='otif_ventas', frequency='weekly', status='oficial')
         mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
-        measures = self.env['sgi.indicator.measure'].create([
+        measures = self.env['sgi.indicator.measure'].with_context(sgi_no_auto_validate=True).create([
             {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
             for d in mondays])
         objective = self.env['sgi.objective'].create({'name': 'Objetivo lote 8A'})
@@ -409,9 +410,9 @@ class TestBandeja(TransactionCase):
     def test_22_validar_mezcla(self):
         """Quien no es dueño del indicador ni Jefe MAST no valida nada en lote:
         aviso claro y las mediciones siguen capturadas."""
-        indicator = self._indicator('Z8A-M', calc_mode='otif_ventas', frequency='weekly')
+        indicator = self._indicator('Z8A-M', calc_mode='otif_ventas', frequency='weekly', status='oficial')
         mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
-        measures = self.env['sgi.indicator.measure'].create([
+        measures = self.env['sgi.indicator.measure'].with_context(sgi_no_auto_validate=True).create([
             {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
             for d in mondays])
         rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp)
@@ -425,13 +426,13 @@ class TestBandeja(TransactionCase):
 
     def test_23_validar_mezcla_avisa(self):
         """Selección mezclada: valida lo propio, deja lo ajeno y avisa."""
-        indicator = self._indicator('Z8A-N', calc_mode='otif_ventas', frequency='weekly')
+        indicator = self._indicator('Z8A-N', calc_mode='otif_ventas', frequency='weekly', status='oficial')
         boss_indicator = self.env['sgi.indicator'].create({
             'code': 'Z8A-J', 'name': 'KPI Z8A-J', 'calc_mode': 'otif_ventas',
             'frequency': 'weekly', 'responsible_id': self.boss_user.id,
-            'process_id': self.process.id})
+            'process_id': self.process.id, 'status': 'oficial'})
         monday = self.today - timedelta(days=self.today.weekday() + 7)
-        Measure = self.env['sgi.indicator.measure']
+        Measure = self.env['sgi.indicator.measure'].with_context(sgi_no_auto_validate=True)
         theirs = Measure.create([
             {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
             for d in (monday, monday - timedelta(days=7))])
@@ -718,11 +719,30 @@ class TestBandeja(TransactionCase):
         self.assertTrue(Cron._sgi_schedule(req, 'Evaluar campana jefe 8A', '', self.boss_user.id,
                                            key='campana_jefe_8a:%d' % req.id))
 
-    # ---- 57.168.0: lo repetido junto y el flujo al dueño ------------------------
+    def test_40_en_prueba_no_pide_validacion(self):
+        """57.175.0: en prueba no pide validar. 57.176.0: oficial y sin rojo se
+        valida sola; un rojo sí se queda para el dueño."""
+        indicator = self._indicator('Z8A-P', calc_mode='otif_ventas', frequency='weekly')
+        indicator.sudo().write({'direction': 'higher_better', 'target_objective': 90.0,
+                                'target_acceptable': 80.0})
+        monday = self.today - timedelta(days=self.today.weekday() + 7)
+        Measure = self.env['sgi.indicator.measure']
+        green, red = Measure.create([
+            {'indicator_id': indicator.id, 'period_date': monday, 'state': 'capturado', 'value': 95.0},
+            {'indicator_id': indicator.id, 'period_date': monday - timedelta(days=7),
+             'state': 'capturado', 'value': 10.0}])
+        self.assertFalse(self._row('validacion', green.id), "En prueba no se valida.")
+        self.assertEqual(green.state, 'capturado')
+        indicator.sudo().write({'status': 'oficial'})
+        self.assertEqual(green.state, 'validado', "Al pasar a oficial, lo verde se valida solo.")
+        self.assertEqual(red.state, 'capturado', "El rojo se queda para el dueño.")
+        self.assertTrue(self._row('validacion', red.id))
+        self.assertFalse(self._row('validacion', green.id))
+
     def test_36_validaciones_de_un_indicador_juntas(self):
-        indicator = self._indicator('Z8A-G', calc_mode='otif_ventas', frequency='weekly')
+        indicator = self._indicator('Z8A-G', calc_mode='otif_ventas', frequency='weekly', status='oficial')
         mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2, 3)]
-        measures = self.env['sgi.indicator.measure'].create([
+        measures = self.env['sgi.indicator.measure'].with_context(sgi_no_auto_validate=True).create([
             {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
             for d in mondays])
         self.assertEqual(len([r for r in self._rows(kind='validacion') if r['res_id'] in measures.ids]), 3,

@@ -785,7 +785,7 @@ class SgiMiid(models.Model):
                             compute_sudo=True, sanitize=False)
     blocker_html = fields.Html(string="Lo que impide aprobar una revisión", compute='_compute_blockers',
                                compute_sudo=True, sanitize=False)
-    to_confirm_count = fields.Integer(string="Secciones por confirmar", compute='_compute_blockers',
+    to_confirm_count = fields.Integer(string="Núm. de secciones por confirmar", compute='_compute_blockers',
                                       compute_sudo=True)
     # 57.172.0: los botones inteligentes dicen cuántos hay.
     section_count = fields.Integer(string="Textos", compute='_compute_stat_counts', compute_sudo=True)
@@ -808,8 +808,9 @@ class SgiMiid(models.Model):
                                      compute_sudo=True)
     process_ids = fields.Many2many('sgi.process', relation='sgi_miid_screen_process_rel', string="Procesos",
                                    compute='_compute_screen_records', compute_sudo=True)
+    # 57.176.1: buscable; policy_text depende de él y Odoo lo pedía en el build.
     policy_id = fields.Many2one('sgi.policy', string="Política vigente", compute='_compute_screen_records',
-                                compute_sudo=True)
+                                compute_sudo=True, search='_search_policy_id')
     policy_text = fields.Html(related='policy_id.policy_text', string="Texto de la política")
     objective_ids = fields.Many2many('sgi.objective', relation='sgi_miid_screen_objective_rel',
                                      string="Objetivos integrales", compute='_compute_screen_records',
@@ -1025,6 +1026,14 @@ class SgiMiid(models.Model):
             miid.routine_ids = env['sgi.process.activity'].search(
                 [('related_procedure_id', 'in', miid._sgi_documents().ids)], order='process_id, step, id') \
                 if miid.kind == 'pg01' else False
+
+    def _search_policy_id(self, operator, value):
+        if operator in ('any', 'any!'):
+            value = self.env['sgi.policy'].sudo().with_context(active_test=False).search(value).ids
+        elif operator != 'in':
+            return NotImplemented
+        miids = self.sudo().with_context(active_test=False).search([])
+        return [('id', 'in', miids.filtered(lambda m: m.policy_id.id in value).ids)]
 
     @api.model
     def _sgi_screen_fields(self):

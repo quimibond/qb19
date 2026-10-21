@@ -13,6 +13,97 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.177.0 — 2026-10-21
+
+Jose (2026-10-21): «¿cómo podemos mejorar la vista de Mi procedimiento?».
+En producción, 184 de 438 actividades de los puestos salían «Atrasada»; en
+los 11 puestos de tejido, la única actividad (C4.05) salía en rojo por las
+231 entradas sin salida de toda la planta.
+
+**Cambiado**
+- El flujo atrasado (entradas con plazo vencido sin salida) sale **«Atrasada
+  en la planta»**, en gris, y no suma a las atrasadas de la persona ni de Mi
+  equipo. Desde 57.168.0 le llega al dueño del proceso en Mis pendientes.
+  «Sin evidencia en su periodo» sigue en rojo: eso sí es de quien la ejecuta.
+- Una línea de resumen arriba: actividades, periódicas y «cuando pasa algo»,
+  atrasadas, al día y atrasadas en la planta.
+- La pestaña **Actividades** muestra tarjetas (el cómo y el dónde a la vista)
+  en dos bloques, **Periódicas** y **Cuando pasa algo**, con lo atrasado
+  primero. La de evento dice cuándo toca («Cuando llega: …»); el PDF y la
+  huella no cambian (no pide firmar de nuevo).
+- Cada actividad tiene dos botones, **Ir a hacerlo** y **Abrir** (tarjeta y
+  listas). **Instructivo** y **Proponer cambio** están en la ficha de la
+  actividad (`action_sgi_propose_change`, botón nuevo en su encabezado).
+- Pestañas: «Escalamientos» y «Participa o se entera» se juntan en **Otras
+  actividades**; «Firmas de lectura» pasa al final de **Documentos**.
+
+**Migración**
+- `post-migrate`: las cifras de Mi procedimiento de cada puesto quedan por
+  recalcular (`sgi_mp_stats_at` vacío).
+
+## 19.0.57.176.1 — 2026-10-21
+
+Avisos del build de `main` (40323233), sin cambio para el usuario.
+
+**Corregido**
+- `sgi.my.pending.nc_id` y `sgi.miid.policy_id` se pueden buscar
+  (`_search_nc_id`, `_search_policy_id`): los campos `nc_*` y `policy_text`
+  dependen de ellos y Odoo avisaba «should be searchable».
+- Etiquetas repetidas: `sgi.indicator.measure_shown_ids` es «Mediciones en la
+  ficha» y `sgi.miid.to_confirm_count` es «Núm. de secciones por confirmar».
+
+## 19.0.57.176.0 — 2026-10-21
+
+Jose (2026-10-21): «¿validar cada indicador es la mejor forma? va a hacer mucho
+ruido». Validar cada medición, una por periodo, llenaba Mis pendientes para
+confirmar que el número que calculó Odoo es el que calculó Odoo. Lo que sí
+necesita a una persona ya tiene su lugar: la revisión del cálculo al pasar de
+prueba a oficial, la causa y el plan de un rojo, y la confirmación de lo que
+capturó otra persona.
+
+**Cambiado**
+- La medición se valida sola (`models/sgi_indicator_autovalidate.py`) cuando
+  es de un indicador **oficial**, no es de salud del SGI, no sale en **rojo**
+  ni con **muestra chica** y, si el indicador es manual, la capturó su
+  **responsable**. Lo demás se queda para el dueño en Mis pendientes, como
+  antes. Las NC automáticas, los rojos de la salud y la entrada de la revisión
+  por la dirección siguen igual: dependen de la medición validada.
+- Al pasar un indicador a oficial, sus mediciones capturadas siguen la misma
+  regla (las manuales capturadas en prueba se quedan para el dueño: no se sabe
+  quién las capturó).
+- El botón «Validar» de la medición y «Validar mediciones» de la revisión por
+  la dirección siguen para corregir o validar a mano.
+
+**Retirado**
+- **SG-05 «Mediciones validadas a tiempo»**: se archiva con su historia (no se
+  borra) y sale del Tablero y del correo semanal. Lo que importa lo mide SG-06
+  «Rojos con respuesta». Nace archivado en una base nueva.
+
+**Migración**
+- `post-migrate`: archiva SG-05 con nota en su chatter y aplica la regla a las
+  mediciones capturadas de indicadores oficiales (hoy ninguno es oficial).
+
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.20) y
+  decisión en `docs/audit/decisiones.md`.
+
+## 19.0.57.175.0 — 2026-10-21
+
+Jose (2026-10-21), opción 1: «un indicador en prueba no pide validación». En
+producción había 459 renglones «Validar medición» en Mis pendientes (443
+atrasados, algunos de junio), todos de los 106 indicadores en prueba: validar
+un número que todavía no es oficial no sirve y tapaba las actividades y los
+acuses.
+
+**Cambiado**
+- Mis pendientes: «Validar medición» solo para indicadores **oficiales**. Al
+  pasar un indicador a oficial aparecen sus mediciones capturadas por validar.
+  La medición se sigue pudiendo validar a mano desde su ficha.
+- SG-05 «Mediciones validadas a tiempo», la columna de validaciones atrasadas
+  por dueño de proceso del Tablero y el aviso del Diagnóstico («capturadas y
+  ninguna validada») dejan fuera las de indicadores en prueba: no se culpa a
+  nadie por lo que ya no se le pide.
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.19).
+
 ## 19.0.57.174.1 — 2026-10-21
 
 **Cambiado**

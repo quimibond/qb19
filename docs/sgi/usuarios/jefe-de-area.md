@@ -62,8 +62,9 @@ Cuando una actividad de su gente se atrasa, le escala a usted.
    periodo; ahí, o desde el renglón, puede marcarlo **Hecho** con evidencia o
    **No aplica este periodo** con motivo. Al guardar desaparece de Mis
    pendientes para usted, para la persona y para su jefe (desde 57.149.0).
-2. En **Mi procedimiento**, la pestaña **Escalamientos** lista las
-   actividades que le escalan; **Ver atrasados** abre las que ya vencieron.
+2. En **Mi procedimiento**, la pestaña **Otras actividades** lista las
+   actividades que le escalan (**Le escalan si se atrasan**); **Ver
+   atrasados** abre las que ya vencieron.
 3. Hable con quien la ejecuta o reasígnela con una propuesta de cambio.
 4. Marcan el avance de un periodo: la persona, cualquiera de sus jefes, quien
    tiene el rol «Escala» de la actividad, el Jefe MAST, el Administrador SGI
@@ -84,11 +85,18 @@ y la cláusula que se incumplió.
 
 ### 2.3 Validar las mediciones de sus indicadores
 
-1. En **Mis pendientes**, los renglones **Validar medición** son mediciones
-   capturadas o calculadas de sus indicadores. Tiene **3 días hábiles**.
-   Desde 57.168.0 las de un mismo indicador van juntas en un renglón
-   («Validar CO-01 Entregas a tiempo — 8 mediciones»): **Validar** valida
-   todas e **Ir** abre la lista para revisarlas una por una.
+1. Desde 57.176.0 casi todas las mediciones se **validan solas**: las de un
+   indicador **oficial** que no salen en rojo ni con muestra chica, y las
+   manuales que usted mismo captura. La revisión del cálculo se hace una vez,
+   al pasar el indicador de prueba a oficial. Un indicador **en prueba** no
+   pide validación (desde 57.175.0).
+   En **Mis pendientes** quedan como **Validar medición** solo las que sí
+   necesitan que usted las mire: las **rojas** (causa, plan y, si aplica, la
+   NC), las de **muestra chica** y las manuales que **capturó otra persona**.
+   Tiene **3 días hábiles**. Desde 57.168.0 las de un mismo indicador van juntas
+   en un renglón («Validar CO-01 Entregas a tiempo — 8 mediciones»):
+   **Validar** valida todas y **Abrir** abre la lista para revisarlas una por
+   una.
 2. Revise el valor y la evidencia (**Registros** en la medición) y pulse
    **Validar**, desde el renglón o desde la medición.
 3. Si el valor está mal, corríjalo antes de validar. Un rojo necesita causa y

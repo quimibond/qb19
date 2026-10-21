@@ -173,7 +173,7 @@ class SgiIndicatorDetail(models.Model):
     # 57.169.0 (Jose 2026-10-20): la ficha no lista las mediciones de foto de
     # meses pasados (no son un dato faltante: no se pueden medir).
     measure_shown_ids = fields.One2many(
-        'sgi.indicator.measure', 'indicator_id', string="Mediciones",
+        'sgi.indicator.measure', 'indicator_id', string="Mediciones en la ficha",
         domain=[('no_data_reason', '!=', 'foto')])
     calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False,
                                    help="Última vez que se revisó el cálculo automático.")

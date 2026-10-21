@@ -14,6 +14,10 @@
                             string="Ir a hacerlo" icon="fa-play"
                             invisible="not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref"
                             class="btn-primary"/>
+                    <!-- 57.177.0: «Proponer cambio» vive aquí (antes, en cada renglón
+                         de Mi procedimiento). -->
+                    <button name="action_sgi_propose_change" type="object"
+                            string="Proponer cambio" icon="fa-lightbulb-o"/>
                     <button name="action_sgi_register_finding" type="object"
                             string="Registrar hallazgo" icon="fa-flag"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>

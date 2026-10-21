@@ -175,6 +175,8 @@
         </field>
     </record>
 
+    <!-- 1.2.22: el ancla es «Abrir» (quimibond_sgi 57.177.0 quitó «Instructivo»
+         de la tarjeta y las listas; el PDF vive en la ficha de la actividad). -->
     <record id="sgi_activity_role_view_kanban_mp_knowledge" model="ir.ui.view">
         <field name="name">sgi.activity.role.kanban.mp.knowledge</field>
         <field name="model">sgi.activity.role</field>
@@ -183,7 +185,7 @@
             <field name="mp_instruction_id" position="after">
                 <field name="mp_article_id"/>
             </field>
-            <button name="action_mp_instruction" position="after">
+            <button name="action_open_activity" position="before">
                 <button t-if="record.mp_article_id.raw_value" type="object" name="action_mp_article"
                         class="btn btn-outline-secondary btn-sm" title="Leer en Conocimiento">
                     <i class="fa fa-book me-1" title="Conocimiento"/>Leer en Conocimiento
@@ -197,7 +199,7 @@
         <field name="model">sgi.activity.role</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_list_mp_embedded"/>
         <field name="arch" type="xml">
-            <button name="action_mp_instruction" position="after">
+            <button name="action_open_activity" position="before">
                 <field name="mp_article_id" column_invisible="1"/>
                 <button name="action_mp_article" type="object" string="Leer en Conocimiento"
                         icon="fa-book" class="btn-link" invisible="not mp_article_id"/>
@@ -210,7 +212,7 @@
         <field name="model">sgi.activity.role</field>
         <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_list_my_procedure"/>
         <field name="arch" type="xml">
-            <button name="action_mp_instruction" position="after">
+            <button name="action_open_activity" position="before">
                 <field name="mp_article_id" column_invisible="1"/>
                 <button name="action_mp_article" type="object" string="Leer en Conocimiento"
                         icon="fa-book" class="btn-link" invisible="not mp_article_id"/>

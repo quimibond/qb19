@@ -19,14 +19,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibo
 | `sgi_family_id` | Many2one | Familia SGI | Familia de puestos del SGI (se define en la familia). El puesto hereda las actividades de su familia. |  | `sgi.job.family` | compute `_compute_sgi_family_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:362` |
 | `sgi_family_ids` | Many2many | Familias SGI |  |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:359` |
 | `sgi_inform_count` | Integer | Se entera |  |  |  | compute `_compute_sgi_role_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:445` |
-| `sgi_mp_hash_current` | Char | Huella actual de Mi procedimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:125` |
-| `sgi_mp_job_late` | Integer | Actividades atrasadas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:127` |
-| `sgi_mp_job_ok` | Integer | Actividades al día |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:128` |
-| `sgi_mp_job_total` | Integer | Actividades del puesto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:131` |
-| `sgi_mp_job_unmeasured` | Integer | Actividades sin medición automática |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:129` |
-| `sgi_mp_stats_at` | Datetime | Cifras de Mi procedimiento al | Vacío: el puesto cambió y sus cifras se recalculan en la siguiente corrida. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:132` |
-| `sgi_my_procedure_doc_id` | Many2one | Mi procedimiento (vigente) | Revisión vigente del Mi procedimiento del puesto, publicada por el Jefe MAST y SGI. |  | `documents.document` | compute `_compute_sgi_my_procedure_doc`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:109` |
-| `sgi_my_procedure_stale` | Boolean | Mi procedimiento desactualizado | Las actividades del puesto cambiaron desde la última revisión publicada de «Mi procedimiento». |  |  | compute `_compute_sgi_my_procedure_doc`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:113` |
+| `sgi_mp_hash_current` | Char | Huella actual de Mi procedimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:133` |
+| `sgi_mp_job_late` | Integer | Actividades atrasadas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:135` |
+| `sgi_mp_job_ok` | Integer | Actividades al día |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:136` |
+| `sgi_mp_job_total` | Integer | Actividades del puesto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:139` |
+| `sgi_mp_job_unmeasured` | Integer | Actividades sin medición automática |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:137` |
+| `sgi_mp_stats_at` | Datetime | Cifras de Mi procedimiento al | Vacío: el puesto cambió y sus cifras se recalculan en la siguiente corrida. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:140` |
+| `sgi_my_procedure_doc_id` | Many2one | Mi procedimiento (vigente) | Revisión vigente del Mi procedimiento del puesto, publicada por el Jefe MAST y SGI. |  | `documents.document` | compute `_compute_sgi_my_procedure_doc`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:117` |
+| `sgi_my_procedure_stale` | Boolean | Mi procedimiento desactualizado | Las actividades del puesto cambiaron desde la última revisión publicada de «Mi procedimiento». |  |  | compute `_compute_sgi_my_procedure_doc`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:121` |
 | `sgi_participate_count` | Integer | Participa |  |  |  | compute `_compute_sgi_role_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:443` |
 | `sgi_role_count` | Integer | Actividades SGI |  |  |  | compute `_compute_sgi_role_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:447` |
 | `sgi_team_ids` | Many2many | Equipos de venta de sus personas | Equipos de venta de los que son miembros o líderes las personas del puesto. Si todas están en alguno, «Mi procedimiento» del puesto muestra solo lo general y lo de esos equipos. |  | `crm.team` | compute `_compute_sgi_team_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:147` |

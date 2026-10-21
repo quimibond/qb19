@@ -560,6 +560,44 @@ def check_stale_self_inherits(module_dir, base_ref):
     return errors
 
 
+def _read_tree(rel):
+    path = os.path.join(ROOT, rel)
+    return open(path, encoding='utf-8').read() if os.path.exists(path) else None
+
+
+def check_cross_module_anchors(module_dirs):
+    """Herencias de un módulo del repo sobre vistas de OTRO módulo del repo:
+    cada ancla debe existir en la vista padre tal como queda en el código.
+    57.177.0 quitó el botón «Instructivo» de la tarjeta de Mi procedimiento
+    y `quimibond_sgi_knowledge` se anclaba en él: el build de main reventó
+    con «no puede ser localizado en la vista padre» (2026-10-21)."""
+    by_module = {os.path.basename(d): _module_views(d, _read_tree) for d in module_dirs}
+    errors = []
+    for module, views in sorted(by_module.items()):
+        for xmlid, info in sorted(views.items()):
+            parent = info['inherit']
+            if not parent or info['arch'] is None or parent.startswith(module + '.'):
+                continue
+            parent_module = parent.split('.', 1)[0]
+            parent_views = by_module.get(parent_module)
+            if not parent_views or parent not in parent_views:
+                continue
+            root = _root_of(parent_views, parent, parent_module)
+            if not root:
+                continue
+            chain_archs = [v['arch'] for k, v in parent_views.items()
+                           if v['arch'] is not None and _root_of(parent_views, k, parent_module) == root]
+            missing = [expr for expr in _anchors(info['arch']) if not _found(expr, chain_archs)]
+            if missing:
+                errors.append(
+                    "%s: la herencia %s no encuentra en %s (de %s): %s. Odoo revienta al cargarla con «no "
+                    "puede ser localizado en la vista padre». Cambia el ancla al quitar algo de la vista padre." % (
+                        os.path.relpath(os.path.join(ROOT, 'addons', module, info['file']), ROOT)
+                        if os.path.isdir(os.path.join(ROOT, 'addons', module)) else info['file'],
+                        xmlid.split('.', 1)[1], parent, parent_module, ", ".join(missing)))
+    return errors
+
+
 _MODEL_KINDS = ('Model', 'TransientModel', 'AbstractModel')
 
 
@@ -658,6 +696,7 @@ def main(argv):
     seen = set()
     module_dirs = [d for d in _module_dirs(paths) if '/.git/' not in d]
     errors += check_model_kinds(sorted(set(module_dirs)))
+    errors += check_cross_module_anchors(sorted(set(module_dirs)))
     for module_dir in _module_dirs(paths):
         if module_dir in seen or '/.git/' in module_dir:
             continue
@@ -673,7 +712,7 @@ def main(argv):
         print("ERROR:", err)
     against = " y herencias propias contra %s" % base_ref if base_ref else ""
     print("%d error(es) en vistas RNG, imports de modelos, tipo de modelo en extensiones, registro de tests, "
-          "orden de herencia de vistas, referencias hacia adelante%s." % (len(errors), against))
+          "orden de herencia de vistas, anclas entre módulos, referencias hacia adelante%s." % (len(errors), against))
     return 1 if errors else 0
 
 
