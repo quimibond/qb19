@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tintoreria_formula_user,tintoreria.formula user,model_tintoreria_formula,mrp.group_mrp_user,1,0,0,0
+access_tintoreria_formula_manager,tintoreria.formula manager,model_tintoreria_formula,mrp.group_mrp_manager,1,1,1,1
+access_tintoreria_formula_line_user,tintoreria.formula.line user,model_tintoreria_formula_line,mrp.group_mrp_user,1,0,0,0
+access_tintoreria_formula_line_manager,tintoreria.formula.line manager,model_tintoreria_formula_line,mrp.group_mrp_manager,1,1,1,1
