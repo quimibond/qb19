@@ -102,7 +102,7 @@ class TestListasYAnalisis(TransactionCase):
     def test_06_mediciones_de_12_en_12(self):
         """V-B11: la ficha del indicador muestra las mediciones de 12 en 12."""
         arch = _arch(self.env, 'sgi.indicator', 'form', 'quimibond_sgi.sgi_indicator_view_form')
-        lists = arch.xpath("//field[@name='measure_ids']/list")
+        lists = arch.xpath("//field[@name='measure_shown_ids']/list")
         self.assertEqual(lists[0].get('limit'), '12')
 
     def test_07_vistas_nuevas_en_su_accion(self):

@@ -13,6 +13,31 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.178.0 — 2026-10-21
+
+Jose (2026-10-21): «quiero seguir mejorando vistas» → la ficha del indicador
+primero. En producción los 105 indicadores siguen **en prueba** (90 con
+medición, 51 en rojo) y el botón «Pasar a oficial» solo lo veía el Jefe
+MAST, aunque el manual dice que lo pasa su dueño.
+
+**Cambiado**
+- **Pasar a oficial** lo puede pulsar el responsable del indicador o el dueño
+  de su proceso (y el Jefe MAST). Para ellos exige la lista completa
+  (`_sgi_official_missing`): responsable y proceso, meta (más alto es mejor:
+  objetivo mayor que cero; rango: máximo mayor que mínimo) y una medición con
+  valor cuyo último cálculo no sea error ni «sin fórmula». MAST puede pasarlo
+  sin la lista. Deja una nota «Pasado a oficial por …» en el chatter.
+- La ficha dice arriba el **último valor**, su semáforo y la **meta** en una
+  línea, y en prueba un recuadro con la lista (palomita o tache) y **Ver
+  registros** de la última medición.
+- **Mediciones** es la primera pestaña. La configuración del cálculo (modo,
+  ventana, fórmula en palabras, fuente, línea base) pasa a la pestaña
+  **Cálculo**; arriba quedan Clasificación y Meta.
+
+**Corregido**
+- `test_vistas_pulido_45.test_06` buscaba `measure_ids` en la ficha; desde
+  57.169.0 la lista es `measure_shown_ids`.
+
 ## 19.0.57.177.0 — 2026-10-21
 
 Jose (2026-10-21): «¿cómo podemos mejorar la vista de Mi procedimiento?».

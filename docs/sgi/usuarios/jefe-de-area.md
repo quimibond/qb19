@@ -83,7 +83,24 @@ proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
 Antes de mover una NC de su proceso a Seguimiento, capture su clasificación
 y la cláusula que se incumplió.
 
-### 2.3 Validar las mediciones de sus indicadores
+### 2.3 Pasar sus indicadores a oficial
+
+Un indicador nace **en prueba**: sus rojos no le piden plan ni abren NC.
+Desde 57.178.0 lo pasa a oficial **su responsable o el dueño del proceso**
+(antes, solo el Jefe MAST).
+
+1. Abra el indicador (**SGI → Desempeño → Indicadores**). Arriba ve su
+   último valor, el semáforo y la meta.
+2. El recuadro **En prueba** dice qué falta: responsable y proceso, meta y
+   una medición con valor (palomita verde = listo, tache rojo = falta).
+3. Pulse **Ver registros** y revise que lo que cuenta la medición es real.
+4. Pulse **Pasar a oficial**. Desde ese momento sus mediciones se validan
+   solas y un rojo le pide causa y plan (y puede abrir NC).
+
+La configuración del cálculo quedó en la pestaña **Cálculo**; las
+**Mediciones** son la primera pestaña.
+
+### 2.4 Validar las mediciones de sus indicadores
 
 1. Desde 57.176.0 casi todas las mediciones se **validan solas**: las de un
    indicador **oficial** que no salen en rojo ni con muestra chica, y las
@@ -138,7 +155,7 @@ sin numerador ni denominador no se marca capturada ni se valida. Si corrige
 a mano el valor de un indicador automático, la medición queda «Valor
 corregido a mano» y el recálculo diario ya no la toca.
 
-### 2.4 Aprobar propuestas de cambio de su proceso
+### 2.5 Aprobar propuestas de cambio de su proceso
 
 Las propuestas que hace su gente con **Proponer cambio** llegan a la app
 **Aprobaciones** como «Proponer cambio a mi procedimiento (SGI)». Las aprueba
@@ -149,7 +166,7 @@ el jefe directo de quien propone y el dueño del proceso.
    estaba. Si quien aprueba también ejecuta o pidió, la aprobación sube a
    su jefe.
 
-### 2.5 Capturar las eficiencias del mes (grupo Captura de eficiencias)
+### 2.6 Capturar las eficiencias del mes (grupo Captura de eficiencias)
 
 1. **SGI → Inicio → Eficiencias de mi área → Nuevo**, con el mes y el área.
 2. **Cargar empleados del área** y, si aplica, **Calcular eficiencia desde
@@ -158,7 +175,7 @@ el jefe directo de quien propone y el dueño del proceso.
 4. **Cerrar** la hoja. RH la recibe con **Recibir (RH)**. Los importes solo
    los ven RH y Nóminas.
 
-### 2.6 Revisar los riesgos de su proceso
+### 2.7 Revisar los riesgos de su proceso
 
 1. **SGI → Planeación → Riesgos y oportunidades**, filtre por su proceso.
 2. Cuando llega el aviso de revisión (enero y julio), actualice probabilidad e
@@ -173,14 +190,14 @@ Si usted autoriza permisos de trabajo: cuando uno vence y sigue autorizado,
 le llega un aviso cada hora hasta que se cierre o se renueve. El permiso no
 se cierra ni se cancela mientras un bloqueo (LOTO) ligado siga aplicado.
 
-### 2.7 Decidir las rutinas pendientes del Dropbox
+### 2.8 Decidir las rutinas pendientes del Dropbox
 
 En **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**, en el
 renglón de su proceso pulse **Pendientes**. Cada rutina que nadie cubre necesita su decisión: crear una
 actividad, volverla regla o automatización, o eliminarla con motivo. La fecha límite la fija el
 parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 
-### 2.8 Instructivos en Conocimiento
+### 2.9 Instructivos en Conocimiento
 
 Los instructivos, controles operacionales y protocolos de su proceso se pasan
 a **Conocimiento → SGI → <su proceso>** como borradores que solo ven usted y
