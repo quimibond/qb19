@@ -22,7 +22,9 @@ class TestUiEntrega4(TransactionCase):
                 ('quimibond_sgi.sgi_management_review_view_form', 'Flujo: defina el periodo'),
                 ('quimibond_sgi.sgi_risk_view_form', 'IPER usa escala'),
                 ('quimibond_sgi.sgi_fmea_view_form', 'acción TERMINADA'),
-                ('quimibond_sgi.sgi_audit_view_form', 'Una pregunta por actividad')):
+                ('quimibond_sgi.sgi_audit_view_form', 'Una pregunta por actividad'),
+                ('quimibond_sgi.sgi_document_view_form', 'Clave nueva: PR-'),
+                ('quimibond_sgi.sgi_document_view_form', 'Ya migrado: cambia')):
             self.assertNotIn(phrase, self._text(xmlid), xmlid)
 
     def test_02_la_regla_queda_en_el_help(self):

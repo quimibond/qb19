@@ -68,11 +68,6 @@
                         <div class="text-muted" invisible="not sgi_previous_code">
                             Clave anterior: <field name="sgi_previous_code" readonly="1" class="oe_inline"/>
                         </div>
-                        <div class="text-muted" invisible="not sgi_is_controlled">
-                            Clave nueva: PR-{proceso} para procedimientos,
-                            F-{proceso}-nn, IT-{proceso}-nn y DA-{proceso}-nn. Solo
-                            puede haber UNA revisión vigente por clave.
-                        </div>
                     </div>
                     <group>
                         <group>
@@ -226,11 +221,6 @@
                                             invisible="not sgi_migration_point_id"/>
                                 </group>
                             </group>
-                            <div class="text-muted" invisible="sgi_migration_state != 'migrado'">
-                                Ya migrado: cambia el <b>Tipo de documento</b> a
-                                «Formulario de Odoo (vista)» para que deje de pedir
-                                archivo y el botón principal abra la vista real.
-                            </div>
                         </page>
                     </notebook>
                     <field name="attachment_id" invisible="1"/>
