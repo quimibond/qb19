@@ -13,6 +13,40 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.176.0 — 2026-10-21
+
+Jose (2026-10-21): «¿validar cada indicador es la mejor forma? va a hacer mucho
+ruido». Validar cada medición, una por periodo, llenaba Mis pendientes para
+confirmar que el número que calculó Odoo es el que calculó Odoo. Lo que sí
+necesita a una persona ya tiene su lugar: la revisión del cálculo al pasar de
+prueba a oficial, la causa y el plan de un rojo, y la confirmación de lo que
+capturó otra persona.
+
+**Cambiado**
+- La medición se valida sola (`models/sgi_indicator_autovalidate.py`) cuando
+  es de un indicador **oficial**, no es de salud del SGI, no sale en **rojo**
+  ni con **muestra chica** y, si el indicador es manual, la capturó su
+  **responsable**. Lo demás se queda para el dueño en Mis pendientes, como
+  antes. Las NC automáticas, los rojos de la salud y la entrada de la revisión
+  por la dirección siguen igual: dependen de la medición validada.
+- Al pasar un indicador a oficial, sus mediciones capturadas siguen la misma
+  regla (las manuales capturadas en prueba se quedan para el dueño: no se sabe
+  quién las capturó).
+- El botón «Validar» de la medición y «Validar mediciones» de la revisión por
+  la dirección siguen para corregir o validar a mano.
+
+**Retirado**
+- **SG-05 «Mediciones validadas a tiempo»**: se archiva con su historia (no se
+  borra) y sale del Tablero y del correo semanal. Lo que importa lo mide SG-06
+  «Rojos con respuesta». Nace archivado en una base nueva.
+
+**Migración**
+- `post-migrate`: archiva SG-05 con nota en su chatter y aplica la regla a las
+  mediciones capturadas de indicadores oficiales (hoy ninguno es oficial).
+
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.20) y
+  decisión en `docs/audit/decisiones.md`.
+
 ## 19.0.57.175.0 — 2026-10-21
 
 Jose (2026-10-21), opción 1: «un indicador en prueba no pide validación». En

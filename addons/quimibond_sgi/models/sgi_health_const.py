@@ -13,8 +13,10 @@ HEALTH_MODES = (
 HEALTH_DATED_MODES = ('salud_validacion', 'salud_nc')
 HEALTH_SNAPSHOT_MODES = tuple(m for m in HEALTH_MODES if m not in HEALTH_DATED_MODES)
 HEALTH_XMLIDS = tuple('quimibond_sgi.sgi_ind_salud_%s' % key for key in (
-    'procesos', 'personas', 'planta', 'acuses', 'validacion', 'rojos', 'nc',
+    'procesos', 'personas', 'planta', 'acuses', 'rojos', 'nc',
     'avisos', 'auditoria', 'formatos'))
+# 57.176.0: SG-05 «Mediciones validadas a tiempo» se retiró (archivado). Su
+# modo 'salud_validacion' se queda en HEALTH_MODES para sus mediciones viejas.
 
 # Modelos cuyas altas o escrituras cuentan como «usar el SGI» (SG-02 y los
 # días sin movimiento del dueño de proceso). Cada uno solo si existe en el

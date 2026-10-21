@@ -33,7 +33,6 @@ XMLIDS = {
     'SG-02': MODULE + 'sgi_ind_salud_personas',
     'SG-03': MODULE + 'sgi_ind_salud_planta',
     'SG-04': MODULE + 'sgi_ind_salud_acuses',
-    'SG-05': MODULE + 'sgi_ind_salud_validacion',
     'SG-06': MODULE + 'sgi_ind_salud_rojos',
     'SG-07': MODULE + 'sgi_ind_salud_nc',
     'SG-08': MODULE + 'sgi_ind_salud_avisos',
@@ -119,10 +118,10 @@ class TestSaludSgi(TransactionCase):
         from ..models.sgi_health_const import HEALTH_MODES
         generic = "Cálculo automático desde datos de Odoo."
         modes = set()
-        for number, code in enumerate(sorted(XMLIDS), 1):
+        for code in sorted(XMLIDS):
             indicator = self.ind[code]
             self.assertTrue(indicator.active, code)
-            self.assertEqual(indicator.code, 'SG-%02d' % number)
+            self.assertEqual(indicator.code, code)
             self.assertEqual(indicator.level, 'direccion', code)
             self.assertEqual(indicator.frequency, 'weekly', code)
             self.assertIn(indicator.calc_mode, HEALTH_MODES, code)
@@ -133,12 +132,12 @@ class TestSaludSgi(TransactionCase):
             self.assertTrue(indicator.target_objective, code)
             self.assertTrue((indicator.formula or '').strip(), code)
             self.assertTrue((indicator.source or '').strip(), code)
-            self.assertEqual(indicator.snapshot, code not in ('SG-05', 'SG-07'), code)
+            self.assertEqual(indicator.snapshot, code != 'SG-07', code)
             self.assertEqual(indicator.direction,
                              'lower_better' if code == 'SG-08' else 'higher_better', code)
             expected_uom = {'SG-02': 'personas', 'SG-08': 'avisos'}.get(code, '%')
             self.assertEqual(indicator.uom, expected_uom, code)
-        self.assertEqual(len(modes), 10, "Un modo distinto por indicador.")
+        self.assertEqual(len(modes), 9, "Un modo distinto por indicador (SG-05 se retiró en 57.176.0).")
         # Nacen en prueba (puede que MAST ya haya pasado alguno a oficial en
         # la copia de producción: solo se revisa que el campo exista).
         self.assertIn(self.ind['SG-01'].status, ('prueba', 'oficial'))
@@ -229,32 +228,22 @@ class TestSaludSgi(TransactionCase):
         self.assertEqual(_note_count(out['note'], "Vencidos") - late_before, 1,
                          "La nota separa los vencidos.")
 
-    def test_06_validadas_a_tiempo_y_fecha_de_validacion(self):
+    def test_06_sg05_retirado_y_fecha_de_validacion(self):
+        """57.176.0: SG-05 se retiró (archivado, fuera del Tablero). La fecha de
+        validación se sigue guardando al validar."""
+        sg05 = self.env.ref(MODULE + 'sgi_ind_salud_validacion')
+        self.assertFalse(sg05.active, "SG-05 archivado.")
+        board = self.env['sgi.direction.board'].create({})
+        self.assertNotIn(sg05, board.health_indicator_ids)
         mast = sgi_set_mast(self.env, login='zsa_mast_06')
-        indicator = self._indicator('TST-SA06', responsible_id=mast.id, status='oficial')
-        captured = self.today - timedelta(days=10)
-        num_before, den_before, _out = self._detail('SG-05')
-        late, on_time, waiting = [self.Measure.create({
-            'indicator_id': indicator.id, 'period_date': date(2020, month, 1),
-            'state': 'capturado', 'captured_date': captured, 'value': 95})
-            for month in (1, 2, 3)]
-        # Una medición de salud capturada no cuenta (no se valida).
-        self.Measure.create({'indicator_id': self.ind['SG-01'].id, 'period_date': date(2020, 1, 6),
-                             'state': 'capturado', 'captured_date': captured, 'value': 10})
-        late.with_user(mast).action_validate()
-        self.assertEqual(late.sgi_validated_date, self.today)
-        self.assertGreater(self.today, late._sgi_validate_due(), "Validada después del plazo.")
-        on_time.action_validate()
-        on_time.sudo().write({'sgi_validated_date': on_time._sgi_validate_due()})
-        self.assertEqual(waiting.state, 'capturado')
-        num_after, den_after, out = self._detail('SG-05')
-        self.assertEqual(num_after - num_before, 1)
-        self.assertEqual(den_after - den_before, 3)
-        self.assertEqual(out['model'], 'sgi.indicator.measure')
+        indicator = self._indicator('TST-SA06', responsible_id=mast.id)
+        measure = self.Measure.create({'indicator_id': indicator.id, 'period_date': date(2020, 1, 1),
+                                       'state': 'capturado', 'value': 95})
+        measure.with_user(mast).action_validate()
+        self.assertEqual(measure.sgi_validated_date, self.today)
         # Re-validar una validada no mueve su fecha.
-        due = on_time.sgi_validated_date
-        on_time.write({'state': 'validado'})
-        self.assertEqual(on_time.sgi_validated_date, due)
+        measure.write({'state': 'validado'})
+        self.assertEqual(measure.sgi_validated_date, self.today)
 
     def test_07_rojos_con_respuesta(self):
         owner = new_test_user(self.env, login='zsa_rojos', groups=USER)
