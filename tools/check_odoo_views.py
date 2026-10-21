@@ -598,6 +598,63 @@ def check_cross_module_anchors(module_dirs):
     return errors
 
 
+def _field_labels(path):
+    """[(modelo, campo, etiqueta)] de los campos con `string="…"` literal de
+    cada clase con `_name` o un solo `_inherit` de texto."""
+    try:
+        tree = ast.parse(open(path, encoding='utf-8').read())
+    except (OSError, SyntaxError):
+        return []
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        model = None
+        for stmt in node.body:
+            if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 \
+                    and isinstance(stmt.targets[0], ast.Name) and isinstance(stmt.value, ast.Constant) \
+                    and isinstance(stmt.value.value, str):
+                if stmt.targets[0].id == '_name':
+                    model = stmt.value.value
+                elif stmt.targets[0].id == '_inherit' and not model:
+                    model = stmt.value.value
+        if not model:
+            continue
+        for stmt in node.body:
+            if not (isinstance(stmt, ast.Assign) and len(stmt.targets) == 1
+                    and isinstance(stmt.targets[0], ast.Name) and isinstance(stmt.value, ast.Call)):
+                continue
+            func = stmt.value.func
+            if not (isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name)
+                    and func.value.id == 'fields'):
+                continue
+            for kw in stmt.value.keywords:
+                if kw.arg == 'string' and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                    out.append((model, stmt.targets[0].id, kw.value.value))
+    return out
+
+
+def check_duplicate_labels(module_dirs):
+    """Dos campos de un mismo modelo con la misma etiqueta: Odoo 19 lo deja
+    como WARNING en el build («Two fields … have the same label»). Pasó en
+    57.176.1 y 57.181.0 (2026-10-21). Solo cuenta las etiquetas escritas en
+    el repo."""
+    labels = {}
+    for module_dir in module_dirs:
+        for root, _dirs, files in os.walk(os.path.join(module_dir, 'models')):
+            for name in files:
+                if name.endswith('.py'):
+                    path = os.path.join(root, name)
+                    for model, field, label in _field_labels(path):
+                        labels.setdefault((model, label), {}).setdefault(field, path)
+    errors = []
+    for (model, label), fields_ in sorted(labels.items()):
+        if len(fields_) > 1:
+            errors.append("%s: los campos %s tienen la misma etiqueta «%s». Odoo lo avisa en el build; "
+                          "dale a cada uno la suya." % (model, ", ".join(sorted(fields_)), label))
+    return errors
+
+
 _MODEL_KINDS = ('Model', 'TransientModel', 'AbstractModel')
 
 
@@ -697,6 +754,7 @@ def main(argv):
     module_dirs = [d for d in _module_dirs(paths) if '/.git/' not in d]
     errors += check_model_kinds(sorted(set(module_dirs)))
     errors += check_cross_module_anchors(sorted(set(module_dirs)))
+    errors += check_duplicate_labels(sorted(set(module_dirs)))
     for module_dir in _module_dirs(paths):
         if module_dir in seen or '/.git/' in module_dir:
             continue
@@ -712,7 +770,7 @@ def main(argv):
         print("ERROR:", err)
     against = " y herencias propias contra %s" % base_ref if base_ref else ""
     print("%d error(es) en vistas RNG, imports de modelos, tipo de modelo en extensiones, registro de tests, "
-          "orden de herencia de vistas, anclas entre módulos, referencias hacia adelante%s." % (len(errors), against))
+          "orden de herencia de vistas, anclas entre módulos, etiquetas repetidas, referencias hacia adelante%s." % (len(errors), against))
     return 1 if errors else 0
 
 
