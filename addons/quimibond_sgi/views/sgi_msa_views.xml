@@ -65,6 +65,9 @@
                 <field name="equipment_id"/>
                 <filter name="inaceptables" string="Inaceptables"
                         domain="[('verdict','=','inaceptable')]"/>
+                <filter name="marginales" string="Marginales" domain="[('verdict','=','marginal')]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
                     <filter name="group_equipment" string="Equipo"
                             context="{'group_by': 'equipment_id'}"/>

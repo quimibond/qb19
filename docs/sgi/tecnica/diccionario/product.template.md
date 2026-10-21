@@ -15,9 +15,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sg
 | `sgi_dev_role` | Selection | Papel en la ruta | Crudo, teñido, acabado en kg o acabado dentro de la ruta del desarrollo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:63` |
 | `sgi_dev_state` | Selection | Estado de desarrollo | Solo en artículos nacidos de un desarrollo. En desarrollo: no se vende. En pilotaje: se vende con aviso. Liberado: de línea. Archivado: el desarrollo se perdió o canceló. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:56` |
 | `sgi_first_sale_date` | Date | Primer pedido confirmado | Fecha del primer pedido de venta confirmado con este producto (C1-04). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:28` |
-| `sgi_packaging_notes` | Text | Manejo y empaque (C14-02) | Indicaciones de manejo y empaque del producto (sustituye F-P-C14-02). Visible para inspección y almacén. |  |  |  |  | `addons/quimibond_sgi/models/sgi_integration.py:234` |
-| `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:241` |
-| `sgi_spec_document_id` | Many2one | Especificación (C04-06) | Documento controlado con la especificación del material (sustituye F-P-C04-06). La inspección de recepción valida contra esta spec. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:228` |
+| `sgi_packaging_notes` | Text | Manejo y empaque (C14-02) | Indicaciones de manejo y empaque del producto (sustituye F-P-C14-02). Visible para inspección y almacén. |  |  |  |  | `addons/quimibond_sgi/models/sgi_integration.py:235` |
+| `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:244` |
+| `sgi_spec_document_id` | Many2one | Especificación (C04-06) | Documento controlado con la especificación del material (sustituye F-P-C04-06). La inspección de recepción valida contra esta spec. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:229` |
 
 ## Métodos públicos (2)
 

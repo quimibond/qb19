@@ -168,7 +168,10 @@ class SgiDevChangeRequest(models.Model):
 class ProjectProjectDevChange(models.Model):
     _inherit = 'project.project'
 
-    sgi_dev_change_request_ids = fields.One2many('sgi.dev.change.request', 'project_id', string="Solicitudes de modificación")
+    sgi_dev_change_request_ids = fields.One2many('sgi.dev.change.request', 'project_id', string="Solicitudes de modificación",
+        help="Cada cambio que pide el cliente o que no dio el resultado esperado: causa, 5 porqués, solución y "
+             "fases afectadas. Al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve "
+             "a la muestra; los cambios a la especificación quedan en la bitácora.")
     sgi_dev_change_request_count = fields.Integer(compute='_compute_sgi_dev_change_request_count')
 
     @api.depends('sgi_dev_change_request_ids')

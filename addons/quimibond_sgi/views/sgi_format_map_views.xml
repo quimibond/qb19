@@ -84,19 +84,6 @@
                                    options="{'model': 'model_name'}"/>
                         </group>
                     </group>
-                    <div class="text-muted mb-2" invisible="not model_id">
-                        Sin criterio, el mapeo es el <b>general</b> del modelo (uno
-                        por modelo). Con criterio aplica solo a los registros que lo
-                        cumplen; si un registro cumple varios, gana la prioridad más
-                        baja, y si no cumple ninguno lleva el general.
-                    </div>
-                    <div class="text-muted">
-                        La clave y la revisión no se capturan: se leen de la
-                        revisión <b>vigente</b> del documento ligado, tanto en el
-                        formulario como en el PDF impreso. Si el documento cambia
-                        de clave o de revisión, el pie cambia solo. La «clave al
-                        ligar» solo se usa mientras no hay documento.
-                    </div>
                 </sheet>
             </form>
         </field>

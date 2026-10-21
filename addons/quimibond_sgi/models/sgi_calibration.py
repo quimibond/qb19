@@ -206,12 +206,15 @@ class SgiCalibration(models.Model):
         ('conforme', "Conforme"),
         ('fuera_tolerancia', "Fuera de tolerancia"),
     ], string="Resultado", required=True, default='conforme', tracking=True,
-        help="Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC.")
+        help="Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC."
+             " Marca el equipo como NO USAR y la NC es la evaluación de impacto: qué producto se midió con él.")
     notes = fields.Text(string="Notas")
     next_date = fields.Date(string="Próxima calibración", compute='_compute_next_date',
                             store=True, readonly=False,
                             help="Fecha de la siguiente calibración. Se calcula con el intervalo del equipo; "
-                                 "se puede cambiar.")
+                                 "se puede cambiar."
+                                 " Mueve el semáforo del equipo: avisa 30 días antes y, al vencer, también lo "
+                                 "bloquea.")
     sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True,
                                    help="NC que se levantó por una calibración fuera de tolerancia.")
 

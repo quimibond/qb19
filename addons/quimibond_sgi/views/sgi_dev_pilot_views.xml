@@ -54,7 +54,7 @@
                         </group>
                     </group>
                     <p class="text-muted" invisible="critical_count">Ningún renglón de la tabla del proyecto está marcado «Crítica (estudio de habilidad)»:
-                        márquelos en la tabla para capturar lecturas. El brief deja por definir cuáles entran.</p>
+                        márquelos en la tabla para capturar lecturas.</p>
                     <notebook>
                         <page string="Lotes" name="lots">
                             <field name="lot_ids" readonly="state != 'abierto'">

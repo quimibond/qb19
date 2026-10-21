@@ -319,6 +319,10 @@ class SgiMyPending(models.Model):
                                  help="Cuántos registros junta este renglón (vacío: uno solo).")
     group_res_ids = fields.Char(readonly=True,
                                 help="Ids de los registros que junta, «,4,34,64,» (para buscarlos).")
+    # 57.174.0 (interfaz, entrega 5): el renglón dice qué sigue, con palabras;
+    # la lista deja dos botones (el del tipo y «Abrir»).
+    next_step = fields.Char(string="Qué sigue", compute='_compute_next_step',
+                            help="Lo que toca hacer con este pendiente.")
     # 57.165.0: los pasos de la NC, campos con su estado (no un párrafo).
     # 57.166.0: «Dónde se hace» es «Ir a hacerlo» (action_open), un solo botón.
     nc_id = fields.Many2one('quality.alert', string="NC", compute='_compute_links', compute_sudo=True)
@@ -329,6 +333,43 @@ class SgiMyPending(models.Model):
     nc_due_plan = fields.Date(related='nc_id.sgi_due_plan', string="Plan de acción vence")
     nc_plan_state = fields.Selection(related='nc_id.sgi_plan_state', string="Plan de acción")
     nc_effectiveness_due = fields.Date(related='nc_id.sgi_effectiveness_due', string="Eficacia vence")
+
+    @api.depends('kind', 'group_count', 'exec_state', 'exec_manual', 'res_model', 'res_id')
+    @api.depends_context('uid')
+    def _compute_next_step(self):
+        steps = {
+            'accion': "Terminar la acción",
+            'medicion': "Capturar el dato del periodo",
+            'validacion': "Revisar el dato y validarlo",
+            'legal': "Evaluar el cumplimiento",
+            'documento': "Revisar si sigue vigente o cambia",
+            'aprobacion': "Aprobar o rechazar",
+            'solicitud': "Aprobar o rechazar",
+            'escalamiento': "Dar seguimiento: la marca hecha quien la ejecuta",
+            'acuse': "Leer el documento y firmar «Leído y entendido»",
+            'firma': "Firmar en Firma electrónica",
+            'aviso': "Atenderlo o posponerlo una semana",
+            'revision': "Abrir los tres registros y contestar",
+            'flujo': "Que llegue la entrega atrasada",
+        }
+        nc_steps = (('nc_containment_state', "Registrar la contención"),
+                    ('nc_root_cause_state', "Registrar la causa raíz"),
+                    ('nc_plan_state', "Registrar el plan de acción"))
+        for row in self:
+            if row.group_count > 1:
+                row.next_step = "Abrir la lista de %d y atenderlos" % row.group_count
+            elif row.kind == 'actividad':
+                if row.exec_state == 'en_proceso':
+                    row.next_step = "Terminarla (va en proceso)"
+                elif row.exec_manual or row.can_done:
+                    row.next_step = "Hacerla y marcarla hecha con su evidencia"
+                else:
+                    row.next_step = "Hacerla: se marca sola al registrarla en Odoo"
+            elif row.kind == 'nc':
+                todo = [label for fname, label in nc_steps if row.nc_id and row[fname] not in ('hecha', False)]
+                row.next_step = todo[0] if todo else "Seguir la NC hasta su eficacia"
+            else:
+                row.next_step = steps.get(row.kind, "")
 
     @api.depends('res_model', 'res_id')
     def _compute_links(self):

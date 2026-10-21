@@ -85,6 +85,8 @@
                 <field name="folio"/>
                 <field name="name"/>
                 <filter name="vigentes" string="Vigentes" domain="[('state','=','vigente')]"/>
+                <separator/>
+                <filter name="drill_due" string="Simulacro vencido" domain="[('next_drill_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'plan_type'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
@@ -112,6 +114,7 @@
         <field name="res_model">sgi.emergency.plan</field>
         <field name="view_mode">list,sgi_diagram,form,activity</field>
         <field name="search_view_id" ref="sgi_emergency_plan_view_search"/>
+        <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Dé de alta un plan de emergencia</p>
             <p>ISO 14001/45001 8.2: cada escenario con su brigada, frecuencia de simulacro y riesgos ligados. El cron diario avisa cuando el simulacro vence.</p>

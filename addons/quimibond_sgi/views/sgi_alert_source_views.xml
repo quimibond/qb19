@@ -69,12 +69,6 @@
                     <group string="Qué la dispara">
                         <field name="trigger_note" nolabel="1" readonly="1"/>
                     </group>
-                    <div class="text-muted" invisible="enabled">
-                        Mientras esté desactivada no se abrirá expediente de NC por
-                        este motivo. El evento operativo de fondo (bloqueo de equipo,
-                        aviso al operador, semáforo del indicador) NO cambia: sólo se
-                        deja de registrar la no conformidad.
-                    </div>
                 </sheet>
                 <chatter/>
             </form>

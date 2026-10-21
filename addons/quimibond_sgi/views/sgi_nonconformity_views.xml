@@ -156,13 +156,8 @@
                     <field name="sgi_ai_available" invisible="1"/>
                     <group string="Sugerencia de IA (borrador)" name="sgi_ai"
                            invisible="not sgi_ai_available and not sgi_ai_date">
-                        <div class="alert alert-info" role="status" colspan="2">
-                            La IA propone y usted decide. La sugerencia no cambia la NC: use los
-                            botones para copiarla. La causa raíz la escribe el responsable; la IA
-                            nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo
-                            crítico a Dirección.
-                        </div>
                         <button name="action_sgi_ai_suggest" type="object" string="Pedir sugerencia a la IA"
+                                help="La IA propone y usted decide: la sugerencia no cambia la NC (use los botones para copiarla). La causa raíz la escribe el responsable; la IA nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo crítico a Dirección."
                                 class="btn-secondary" colspan="2" groups="quimibond_sgi.group_sgi_user"
                                 invisible="not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
                         <field name="sgi_ai_clause_id" invisible="not sgi_ai_date"/>
@@ -352,6 +347,7 @@
                         domain="[('sgi_folio','!=',False)]"
                         context="{'group_by': 'stage_id'}"/>
                 <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
                     <filter name="group_type" string="Tipo de NC" context="{'group_by': 'sgi_nc_type'}"/>
                     <filter name="group_origin" string="Origen"
                             context="{'group_by': 'sgi_origin_type'}"/>

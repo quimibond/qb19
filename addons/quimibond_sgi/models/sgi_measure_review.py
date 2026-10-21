@@ -63,7 +63,11 @@ class SgiMeasureReview(models.Model):
                                  help="El filtro con el que se tomaron las muestras.")
     measure_user_field = fields.Char(string="Campo de usuario", readonly=True)
     line_ids = fields.One2many('sgi.measure.review.line', 'review_id', string="Muestras",
-                               readonly=True)
+                               readonly=True,
+                               help="Tres registros tomados al azar de lo que la medición cuenta como "
+                                    "evidencia. Si cada uno es la actividad hecha (con la fecha y la persona "
+                                    "correctas), conteste «Sí, esto es lo que hago»; si alguno no lo es, «No "
+                                    "corresponde» y diga qué está mal.")
     state = fields.Selection(REVIEW_STATES, string="Estado", default='pendiente',
                              required=True, readonly=True, index=True, tracking=True)
     note = fields.Text(string="Qué no corresponde", readonly=True,

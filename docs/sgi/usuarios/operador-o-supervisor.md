@@ -47,19 +47,25 @@ rechazado, verde = cerrado, vigente o validado.
 3. Toque el renglón para abrir su **ficha**: qué hay que hacer (criterio de
    terminado, pasos, instructivo, nota del aviso, plazos de la NC…), sobre
    qué registro, cuándo vence y los botones para actuar.
+   Desde 57.174.0 cada renglón trae **dos botones**: el de su tipo (Hecho,
+   Registrar paso, Evaluar, Revisar, Aprobar, Validar o Leído y entendido) y
+   uno para abrir (Ir a hacerlo, Leer el documento, Firmar, Capturar o
+   Abrir). La columna **Qué sigue** dice con palabras lo que toca. Lo demás
+   (Rechazar, No corresponde, En proceso, No aplica este periodo, Posponer
+   una semana) está en la ficha. El panel de la izquierda filtra por tipo.
 4. **Hecho** aparece solo donde aplica, y sabe qué hacer según el tipo
    (desde 57.145.0):
    - **Actividad atrasada** de su procedimiento: abre el asistente de
      «Hecha» (si es de registro manual pide una nota o un archivo de
      evidencia). Si la actividad todavía no tiene su registro del periodo,
-     Hecho lo crea en ese momento. También tiene **En proceso** (nota de
-     avance, no quita el atraso) y, en la ficha, **No aplica este periodo**.
+     Hecho lo crea en ese momento. En la ficha también tiene **En proceso**
+     (nota de avance, no quita el atraso) y **No aplica este periodo**.
    - **Aviso** automático del SGI (en no conformidades, documentos,
      mantenimiento, mesa de ayuda o proyectos): Hecho lo cierra en Odoo. En
      la ficha, **Posponer una semana** mueve su fecha límite 5 días hábiles.
    - **Acción** de una NC, riesgo o incidente: Hecho la termina (fecha de hoy
      y 100 %).
-   - **Acuse de lectura**: **Leer** abre el documento y **Leído y entendido**
+   - **Acuse de lectura**: **Leer el documento** lo abre y **Leído y entendido**
      lo firma desde el renglón. Para firmar varios, selecciónelos en la lista
      y pulse **Leído y entendido (seleccionados)** (también en **Documentos
      vigentes**). **Validar medición**: **Validar**.
@@ -73,16 +79,17 @@ rechazado, verde = cerrado, vigente o validado.
        cambios (nueva revisión a dos años, con nota en su historial) o si
        necesita cambio (abre la solicitud de cambio ya ligada al documento).
      - **Solicitud** de Aprobaciones y **aprobación** de un documento:
-       **Aprobar** o **Rechazar** desde el renglón.
-     - **Revisión de medición**: **Sí, es lo que hago** o **No corresponde**.
+       **Aprobar** desde el renglón; **Rechazar**, en la ficha.
+     - **Revisión de medición**: **Abrir** los tres registros y, en la ficha,
+       **Sí, es lo que hago** o **No corresponde**.
      - **Firma** y **Capturar medición**: sus botones de siempre.
      El renglón se quita en ese momento, para usted y para los demás.
    Al marcar algo, Odoo muestra «Hecha: …» y el renglón desaparece de la
    lista en ese momento. Un **Escalamiento** (periodo de otra persona que
-   pasó sus días de atraso) dice de quién es: **Ir** abre ese periodo y, si lo
+   pasó sus días de atraso) dice de quién es: **Ir a hacerlo** abre ese periodo y, si lo
    resolvió con la persona, puede marcarlo **Hecho** (con evidencia) o **No
    aplica este periodo** (con motivo); desaparece en ese momento para todos.
-   Si la actividad todavía no lleva registro de cumplimiento, solo tiene Ir.
+   Si la actividad todavía no lleva registro de cumplimiento, solo tiene Ir a hacerlo.
 5. **Vence** se lee como «Hace 3 días», «Hoy» o «En 5 días». Los filtros
    **Avisos**, **Actividades** y **Escalamientos** los muestran solos.
 

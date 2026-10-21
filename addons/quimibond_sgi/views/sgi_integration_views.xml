@@ -170,12 +170,6 @@
                     </field>
                 </page>
                 <page string="EPP requerido" name="sgi_epp">
-                    <div class="text-muted mb-2">
-                        El EPP que exige este puesto — fuente única de la
-                        matriz de EPP. El cron de EPP vigila reposiciones; la
-                        responsiva de entrega se firma en la ficha del
-                        empleado.
-                    </div>
                     <field name="sgi_epp_required" nolabel="1"
                            placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
                 </page>

@@ -122,7 +122,9 @@ class DocumentsDocument(models.Model):
     sgi_odoo_menu_id = fields.Many2one(
         'ir.ui.menu', string="Menú de Odoo",
         help="Menú donde vive el formulario que sustituye a este documento. "
-             "El botón «Abrir en Odoo» salta directo a él.")
+             "El botón «Abrir en Odoo» salta directo a él."
+             " El formato ya no se llena en papel ni en PDF; la clave, la revisión y la difusión se siguen "
+             "controlando en el documento.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
                                   help="Área del SGI a la que pertenece el documento.")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict',
@@ -157,7 +159,9 @@ class DocumentsDocument(models.Model):
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
                                    string="Puestos a los que aplica",
                                    help="Puestos que deben conocer el documento. Al publicarlo, a sus "
-                                        "personas les llega el acuse de lectura.")
+                                        "personas les llega el acuse de lectura."
+                                        " La difusión depende de esto: «Generar acuses» crea un acuse por cada "
+                                        "empleado de estos puestos y «Mi procedimiento» filtra por puesto.")
     sgi_next_review_date = fields.Date(string="Próxima revisión",
                                        help="Fecha de la próxima revisión del documento. Antes de esa fecha "
                                             "llegan dos avisos al responsable.")

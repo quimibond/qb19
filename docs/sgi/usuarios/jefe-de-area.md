@@ -58,7 +58,7 @@ muestra los de los procesos de los que usted es dueño.
 Cuando una actividad de su gente se atrasa, le escala a usted.
 
 1. En **Mis pendientes**, cada **Escalamiento** es un periodo atrasado de
-   una persona (el renglón dice de quién y desde cuándo). **Ir** abre ese
+   una persona (el renglón dice de quién y desde cuándo). **Ir a hacerlo** abre ese
    periodo; ahí, o desde el renglón, puede marcarlo **Hecho** con evidencia o
    **No aplica este periodo** con motivo. Al guardar desaparece de Mis
    pendientes para usted, para la persona y para su jefe (desde 57.149.0).

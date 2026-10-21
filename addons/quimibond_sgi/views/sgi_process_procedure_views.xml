@@ -274,10 +274,6 @@
                                     <field name="measure_count_30d"/>
                                 </group>
                             </group>
-                            <div class="text-muted"
-                                 invisible="measure_method not in ('correo', 'manual', 'muestreo')">
-                                Sin fuente automática: sale en gris.
-                            </div>
                         </page>
                         <page string="Quién la ejecutó" name="ejecuciones"
                               invisible="not measure_user_field">
@@ -310,10 +306,6 @@
                             </field>
                         </page>
                         <page string="Cadena" name="cadena">
-                            <div class="text-muted mb-2">
-                                Las ligas se calculan solas de «Recibe» y «Entrega» y no se
-                                editan a mano. Si una no aplica, apáguela y escriba el motivo.
-                            </div>
                             <separator string="Recibe de"/>
                             <field name="in_link_ids" context="{'active_test': False}">
                                 <list editable="bottom" create="0" delete="0"
@@ -485,7 +477,7 @@
                 <separator/>
                 <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
                      familia), no solo «ejecuta» (antes herencia propia; A-008). -->
-                <filter name="mine" string="Míos"
+                <filter name="mine" string="Mías"
                         domain="['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]"/>
                 <filter name="no_responsible" string="Sin responsable"
                         domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
@@ -576,7 +568,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin actividades</p>
             <p>Se capturan desde el botón Actividades de cada proceso; «Ir a hacerlo» abre el menú de Odoo donde se ejecuta.</p>
-            <p>Se abre con «Míos»: las actividades de su puesto. Quite el filtro para ver todas.</p>
+            <p>Se abre con «Mías»: las actividades de su puesto. Quite el filtro para ver todas.</p>
         </field>
     </record>
 

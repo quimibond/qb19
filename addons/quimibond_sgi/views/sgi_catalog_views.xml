@@ -43,6 +43,7 @@
                 <filter name="approves" string="Aprueba" domain="[('role', '=', 'aprueba')]"/>
                 <filter name="participates" string="Participa" domain="[('role', '=', 'participa')]"/>
                 <filter name="informs" string="Se entera" domain="[('role', '=', 'informa')]"/>
+                <filter name="escalates" string="Escala" domain="[('role', '=', 'escala')]"/>
                 <group>
                     <filter name="group_role" string="Rol" context="{'group_by': 'role'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
@@ -253,11 +254,6 @@
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
-                    <div class="text-muted">
-                        Puestos que solo cambian por nivel o letra. Las
-                        actividades se asignan a la familia; el nivel se queda
-                        en el puesto. Un puesto solo puede estar en una familia.
-                    </div>
                     <field name="job_ids" options="{'no_create': True}">
                         <list>
                             <field name="name"/>

@@ -38,6 +38,8 @@
             (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_quality_alert_view_pivot')}),
             (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_quality_alert_view_graph')}),
             (0, 0, {'view_mode': 'list'})]"/>
+        <!-- 57.174.0: los filtros de tipo y fecha de las NC del SGI. -->
+        <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin datos para el pareto</p>
             <p>Se alimenta de las alertas de calidad (no conformidades y alertas del piso), agrupadas por equipo y etiqueta de defecto.</p>

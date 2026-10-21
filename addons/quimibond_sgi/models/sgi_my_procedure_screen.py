@@ -477,7 +477,9 @@ class SgiMyProcedure(models.TransientModel):
         help="Actividades que la persona ejecuta o aprueba.")
     received_role_ids = fields.Many2many(
         'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_lists',
-        help="Actividades cuyo atraso le escala a la persona.")
+        help="Actividades cuyo atraso le escala a la persona."
+             " Las de otros puestos que escalan a este si se atoran; las atrasadas van primero y, cuando el atraso "
+             "pasa de sus días hábiles, llegan a Mis pendientes.")
     received_late_count = fields.Integer(
         string="Escalamientos atrasados", compute='_compute_lists',
         help="Actividades que escalan a este puesto y hoy van atrasadas (I-012).")

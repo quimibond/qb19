@@ -119,10 +119,6 @@
                                    decoration-warning="sgi_ext_state == 'por_implantar'"
                                    decoration-danger="sgi_ext_state == 'vencido'"/>
                         </group>
-                        <div class="text-muted" colspan="2">
-                            El <b>Proceso SGI</b> de arriba es el proceso dueño: su responsable
-                            recibe el aviso para implantarlo en 10 días hábiles desde la recepción.
-                        </div>
                     </group>
                     <group string="Archivo" invisible="sgi_doc_type == 'formulario_odoo'">
                         <field name="type" widget="radio" options="{'horizontal': true}"
@@ -138,12 +134,6 @@
                                readonly="not sgi_can_edit_transition"/>
                         <field name="sgi_migration_point_id" string="…o el worksheet de Calidad"
                                readonly="not sgi_can_edit_transition"/>
-                        <div class="text-muted" colspan="2">
-                            El formato ya no se llena en papel ni en PDF: se captura
-                            directo en Odoo. Ligue aquí su menú (o su worksheet) y el
-                            botón <b>Abrir en Odoo</b> lleva a la vista real; la
-                            clave, revisión y difusión se siguen controlando aquí.
-                        </div>
                     </group>
                     <notebook>
                         <page string="Documentos relacionados" name="relacionados" invisible="not sgi_is_controlled">
@@ -176,12 +166,10 @@
                             </group>
                         </page>
                         <page string="Puestos que aplican" name="puestos">
-                            <div class="alert alert-info mb-3" role="status">
-                                <b>La difusión depende de esto:</b> el botón
-                                «Generar acuses» crea un acuse por cada empleado
-                                de estos puestos, y «Mi procedimiento» filtra
-                                por puesto. Un documento vigente sin puestos no
-                                se difunde a nadie.
+                            <!-- 57.173.0: la regla va en el help de sgi_job_ids; aquí solo el aviso. -->
+                            <div class="alert alert-warning mb-3" role="alert"
+                                 invisible="sgi_job_ids or sgi_state != 'vigente'">
+                                Vigente sin puestos: no se difunde a nadie.
                             </div>
                             <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
@@ -306,9 +294,13 @@
                 <field name="sgi_area_id"/>
                 <field name="sgi_process_id"/>
                 <filter name="sgi_vigente" string="Vigentes" domain="[('sgi_state','=','vigente')]"/>
+                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
+                <filter name="sgi_borrador" string="Borradores" domain="[('sgi_state','=','borrador')]"/>
+                <filter name="sgi_obsoleto" string="Obsoletos" domain="[('sgi_state','=','obsoleto')]"/>
+                <!-- 57.174.0: los estados se unen con «o»; lo demás va aparte. -->
+                <separator/>
                 <filter name="sgi_no_retention" string="Sin retención definida"
                         domain="[('sgi_is_controlled','=',True),('sgi_retention_years','=',0)]"/>
-                <filter name="sgi_piloto" string="En piloto" domain="[('sgi_state','=','piloto')]"/>
                 <filter name="sgi_formularios" string="Formularios de Odoo (vistas)"
                         domain="[('sgi_doc_type','=','formulario_odoo')]"/>
                 <filter name="sgi_por_revisar" string="Por revisar"
@@ -404,10 +396,13 @@
                 <field name="sgi_code"/>
                 <filter name="mine" string="Míos"
                         domain="[('user_id', '=', uid)]"/>
+                <separator/>
                 <filter name="pending" string="Pendientes"
                         domain="[('state', '=', 'pendiente')]"/>
                 <filter name="read" string="Leídos"
                         domain="[('state', '=', 'leido')]"/>
+                <separator/>
+                <filter name="filter_ack_date" string="Fecha de acuse" date="ack_date"/>
                 <group>
                     <filter name="group_document" string="Documento"
                             context="{'group_by': 'document_id'}"/>
@@ -588,12 +583,6 @@
                                    readonly="not sgi_can_edit_transition"/>
                         </group>
                     </group>
-                    <div class="text-muted">
-                        Clase A: una transacción de Odoo lo sustituye. B: un punto de
-                        control con hoja de trabajo. C: Odoo lo imprime como reporte.
-                        D: sigue como documento controlado («No aplica (se queda)»).
-                        Solo el Jefe MAST cambia estos datos.
-                    </div>
                 </sheet>
             </form>
         </field>

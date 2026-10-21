@@ -34,6 +34,10 @@
                 <field name="step_code"/>
                 <filter name="open" string="Abiertos" domain="[('state', '=', 'abierto')]"/>
                 <filter name="escalated" string="Escalados (dueño o Dirección)" domain="[('level', '!=', 'ejecutor')]"/>
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="sent" string="Avisado el" date="sent_at"/>
                 <group>
                     <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
                     <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>

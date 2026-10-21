@@ -14,21 +14,21 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `authorized_by_id` | Many2one | Autorizó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:152` |
-| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:160` |
-| `date_authorized` | Datetime | Autorizada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:153` |
-| `date_measured` | Datetime | Medida el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:154` |
-| `date_requested` | Datetime | Solicitada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:151` |
+| `authorized_by_id` | Many2one | Autorizó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:158` |
+| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:166` |
+| `date_authorized` | Datetime | Autorizada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:159` |
+| `date_measured` | Datetime | Medida el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:160` |
+| `date_requested` | Datetime | Solicitada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:157` |
 | `date_verdict` | Datetime | Dictaminada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:230` |
-| `hours_total` | Float | Horas del laboratorio | Horas calendario de la solicitud a la última medición. |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:157` |
-| `kind` | Selection | Qué se mide | La muestra que mandó el cliente (análisis) o la corrida propia (paso 12). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:142` |
-| `line_ids` | Many2many | Renglones a medir | Renglones de la tabla del proyecto que mide el laboratorio. |  | `sgi.dev.characteristic` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:148` |
-| `name` | Char | Solicitud |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:139` |
-| `note` | Text | Observaciones | Instrucciones para el laboratorio; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:159` |
-| `pending_count` | Integer | Sin resultado | Renglones que aún no tienen valor medido. |  |  | compute `_compute_pending`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:155` |
-| `project_id` | Many2one | Proyecto | Proyecto de desarrollo cuyos renglones se miden. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:140` |
-| `requested_by_id` | Many2one | Solicitó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:150` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:145` |
+| `hours_total` | Float | Horas del laboratorio | Horas calendario de la solicitud a la última medición. |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:163` |
+| `kind` | Selection | Qué se mide | La muestra que mandó el cliente (análisis) o la corrida propia (paso 12). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:145` |
+| `line_ids` | Many2many | Renglones a medir | Renglones de la tabla del proyecto que mide el laboratorio. El laboratorio captura el valor en el renglón (abra la fila); el dictamen es de Diseño de Producto. La solicitud se cierra sola cuando todos los renglones tienen valor. |  | `sgi.dev.characteristic` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:151` |
+| `name` | Char | Solicitud |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:142` |
+| `note` | Text | Observaciones | Instrucciones para el laboratorio; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:165` |
+| `pending_count` | Integer | Sin resultado | Renglones que aún no tienen valor medido. |  |  | compute `_compute_pending`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:161` |
+| `project_id` | Many2one | Proyecto | Proyecto de desarrollo cuyos renglones se miden. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:143` |
+| `requested_by_id` | Many2one | Solicitó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:156` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:148` |
 | `verdict_by_id` | Many2one | Dictaminó (Diseño de Producto) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:229` |
 
 ## Métodos públicos (4)

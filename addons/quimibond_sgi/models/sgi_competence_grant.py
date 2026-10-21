@@ -313,7 +313,8 @@ class SgiTrainingEffectiveness(models.Model):
         help="Pendiente hasta que quien evalúa dice si la capacitación fue eficaz.")
     result_note = fields.Text(
         string="Comentario", tracking=True,
-        help="Qué se observó en el trabajo de la persona. Obligatorio si no fue eficaz.")
+        help="Qué se observó en el trabajo de la persona. Obligatorio si no fue eficaz."
+             " Con «No eficaz», RH reprograma la capacitación; la competencia no se quita.")
     evaluated_date = fields.Date(string="Evaluada el", readonly=True)
     evaluated_by = fields.Many2one('res.users', string="Evaluada por", readonly=True)
     survey_input_id = fields.Many2one(
