@@ -38,6 +38,30 @@
         </field>
     </record>
 
+    <!-- Inicio del descuento del crédito Infonavit (models/infonavit.py): con él,
+         el primer bimestre se cobra solo por los días desde el aviso, como NOI. -->
+    <record id="l10n_mx_hr_infonavit_form_quimibond_nomina" model="ir.ui.view">
+        <field name="name">l10n.mx.hr.infonavit.form.quimibond.nomina</field>
+        <field name="model">l10n.mx.hr.infonavit</field>
+        <field name="inherit_id" ref="l10n_mx_hr_payroll.l10n_mx_hr_infonavit_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='infonavit_type']" position="after">
+                <field name="qb_fecha_inicio"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_employee_view_form_infonavit_inicio" model="ir.ui.view">
+        <field name="name">hr.employee.form.quimibond.nomina.infonavit.inicio</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="l10n_mx_hr_payroll.hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_mx_infonavit']/list/field[@name='status']" position="after">
+                <field name="qb_fecha_inicio" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Plantillas de contrato (hr.version sin empleado). -->
     <record id="hr_contract_template_form_view_quimibond_nomina" model="ir.ui.view">
         <field name="name">hr.contract.template.form.quimibond.nomina</field>
