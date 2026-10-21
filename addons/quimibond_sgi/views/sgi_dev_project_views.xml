@@ -329,7 +329,7 @@
                                         <field name="auto" optional="show"/>
                                         <field name="answer" widget="selection_badge"/>
                                         <field name="observation"/>
-                                        <field name="answered_by_id" optional="show"/>
+                                        <field name="answered_by_id" widget="many2one_avatar_user" optional="show"/>
                                     </list>
                                 </field>
                             <p class="text-muted" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">Sin checklist cargado.</p>
@@ -612,7 +612,7 @@
                                     <field name="response_ref" optional="show"/>
                                     <field name="response_filename" string="Evidencia" optional="show"/>
                                     <field name="reject_reason_id" optional="show"/>
-                                    <field name="response_registered_by_id" optional="hide"/>
+                                    <field name="response_registered_by_id" widget="many2one_avatar_user" optional="hide"/>
                                 </list>
                             </field>
                             <separator string="Características aprobadas por el cliente"/>
@@ -672,7 +672,7 @@
                                         <field name="old_value"/>
                                         <field name="new_value"/>
                                         <field name="quotation_ref"/>
-                                        <field name="user_id" optional="show"/>
+                                        <field name="user_id" widget="many2one_avatar_user" optional="show"/>
                                         <field name="note" optional="show"/>
                                     </list>
                                 </field>

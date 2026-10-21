@@ -48,7 +48,7 @@
                             <field name="readings_required" readonly="state != 'abierto'"/>
                             <field name="cpk_min"/>
                             <field name="conforming_count"/>
-                            <field name="closed_by_id" invisible="not closed_at"/>
+                            <field name="closed_by_id" widget="many2one_avatar_user" invisible="not closed_at"/>
                             <field name="closed_at" invisible="not closed_at"/>
                             <field name="attachment_id" invisible="not attachment_id"/>
                         </group>

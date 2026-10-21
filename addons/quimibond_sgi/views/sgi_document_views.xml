@@ -201,7 +201,7 @@
                             <field name="sgi_ack_ids">
                                 <list limit="40" decoration-warning="state == 'pendiente'"
                                       decoration-success="state == 'leido'">
-                                    <field name="employee_id"/>
+                                    <field name="employee_id" widget="many2one_avatar_employee"/>
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'leido'"
                                            decoration-warning="state == 'pendiente'"/>
@@ -351,7 +351,7 @@
             <list string="Acuses de lectura" decoration-warning="state == 'pendiente'" decoration-success="state == 'leido'">
                 <field name="sgi_code"/>
                 <field name="document_id"/>
-                <field name="employee_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pendiente'"
@@ -385,7 +385,7 @@
                         <h1><field name="document_id"/></h1>
                     </div>
                     <group>
-                        <field name="employee_id"/>
+                        <field name="employee_id" widget="many2one_avatar_employee"/>
                         <field name="ack_date"/>
                         <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                     </group>

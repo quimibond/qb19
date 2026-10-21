@@ -395,7 +395,7 @@
                                 <list>
                                     <field name="code"/>
                                     <field name="name"/>
-                                    <field name="owner_id"/>
+                                    <field name="owner_id" widget="many2one_avatar_employee"/>
                                 </list>
                             </field>
                         </page>
@@ -431,11 +431,11 @@
                             </field>
                             <group string="Firmas">
                                 <group>
-                                    <field name="doc_owner_id"/>
-                                    <field name="doc_approver_id"/>
+                                    <field name="doc_owner_id" widget="many2one_avatar_user"/>
+                                    <field name="doc_approver_id" widget="many2one_avatar_user"/>
                                 </group>
                                 <group>
-                                    <field name="doc_vobo_id"/>
+                                    <field name="doc_vobo_id" widget="many2one_avatar_user"/>
                                 </group>
                             </group>
                         </page>

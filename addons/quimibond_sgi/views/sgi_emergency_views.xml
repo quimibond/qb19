@@ -38,13 +38,14 @@
                         <group string="Escenario">
                             <field name="plan_type"/>
                             <field name="location"/>
-                            <field name="responsible_id"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="document_id"/>
                         </group>
                         <group string="Simulacros">
                             <field name="drill_frequency_months"/>
                             <field name="last_drill_date"/>
-                            <field name="next_drill_date"/>
+                            <field name="next_drill_date" widget="remaining_days" invisible="state == 'obsoleto'"/>
+                            <field name="next_drill_date" invisible="state != 'obsoleto'"/>
                         </group>
                     </group>
                     <group string="Riesgos ligados (IPER / ambiental)">
@@ -66,9 +67,9 @@
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="plan_type"/>
-                <field name="responsible_id"/>
+                <field name="responsible_id" widget="many2one_avatar_user"/>
                 <field name="last_drill_date"/>
-                <field name="next_drill_date"/>
+                <field name="next_drill_date" widget="remaining_days" invisible="state == 'obsoleto'"/>
                 <field name="drill_count"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'vigente'"/>
@@ -162,7 +163,7 @@
                                placeholder="Observaciones del simulacro: tiempos, rutas, fallas detectadas…"/>
                     </group>
                     <notebook>
-                        <page string="Acciones">
+                        <page string="Acciones" name="actions">
                             <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_drill_id': id}">
                                 <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
                                 <list editable="bottom" decoration-danger="state == 'vencida'"

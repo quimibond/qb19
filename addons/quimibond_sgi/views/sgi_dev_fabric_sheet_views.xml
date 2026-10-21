@@ -18,11 +18,11 @@
                                    domain="[('sgi_dev_project_id', '=', project_id)]"/>
                         </group>
                         <group>
-                            <field name="sgi_proposed_by_id"/>
+                            <field name="sgi_proposed_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_proposed_date"/>
-                            <field name="sgi_measured_by_id"/>
+                            <field name="sgi_measured_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_measured_date"/>
-                            <field name="sgi_validated_by_id"/>
+                            <field name="sgi_validated_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_validated_date"/>
                         </group>
                     </group>
@@ -74,11 +74,11 @@
                                    domain="[('sgi_dev_project_id', '=', project_id)]"/>
                         </group>
                         <group>
-                            <field name="sgi_proposed_by_id"/>
+                            <field name="sgi_proposed_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_proposed_date"/>
-                            <field name="sgi_measured_by_id"/>
+                            <field name="sgi_measured_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_measured_date"/>
-                            <field name="sgi_validated_by_id"/>
+                            <field name="sgi_validated_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_validated_date"/>
                         </group>
                     </group>

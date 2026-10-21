@@ -76,9 +76,9 @@
                             <field name="picking_id" invisible="not picking_id"/>
                             <field name="picking_state" invisible="not picking_id"/>
                             <field name="shipped_at" invisible="not shipped_at"/>
-                            <field name="shipped_by_id" invisible="not shipped_at"/>
+                            <field name="shipped_by_id" widget="many2one_avatar_user" invisible="not shipped_at"/>
                             <field name="notified_date" invisible="not notified_date"/>
-                            <field name="notified_by_id" invisible="not notified_date"/>
+                            <field name="notified_by_id" widget="many2one_avatar_user" invisible="not notified_date"/>
                         </group>
                     </group>
                     <notebook>
@@ -115,7 +115,7 @@
                                     <field name="reject_reason_id" invisible="response != 'rechaza'" required="response == 'rechaza'"
                                            readonly="state == 'respondida'"/>
                                     <field name="response_registered_at" invisible="not response_registered_at"/>
-                                    <field name="response_registered_by_id" invisible="not response_registered_at"/>
+                                    <field name="response_registered_by_id" widget="many2one_avatar_user" invisible="not response_registered_at"/>
                                     <field name="followup_date" invisible="not followup_date"/>
                                 </group>
                             </group>

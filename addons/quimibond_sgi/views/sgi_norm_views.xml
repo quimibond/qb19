@@ -24,7 +24,7 @@
                         <field name="scope" placeholder="Alcance del certificado, como lo imprime el Manual del SGI"/>
                     </group>
                     <notebook>
-                        <page string="Cláusulas">
+                        <page string="Cláusulas" name="clauses">
                             <field name="clause_ids">
                                 <list editable="bottom" decoration-danger="not covered">
                                     <field name="code"/>

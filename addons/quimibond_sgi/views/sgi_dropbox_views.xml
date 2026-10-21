@@ -66,7 +66,8 @@
                             confirm="Se escribirán las rutinas en la base. ¿Continuar?"/>
                     <button name="action_test" type="object" string="Probar de nuevo"
                             class="btn-secondary" invisible="state != 'tested'"/>
-                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary" invisible="state == 'loaded'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary" invisible="state != 'loaded'"/>
                 </footer>
             </form>
         </field>
@@ -106,8 +107,8 @@
                 <field name="activity_numbers"/>
                 <field name="reason" optional="hide"/>
                 <field name="decision" optional="show"/>
-                <field name="decision_owner_id" optional="show"/>
-                <field name="decision_deadline" optional="show"
+                <field name="decision_owner_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="decision_deadline" widget="remaining_days" invisible="state != 'pendiente'" optional="show"
                        decoration-danger="state == 'pendiente'"/>
                 <field name="review_state" optional="hide"/>
                 <field name="process_id" optional="hide"/>
@@ -158,8 +159,9 @@
                     <group invisible="state != 'pendiente'">
                         <group string="Pendiente: qué se decide">
                             <field name="decision"/>
-                            <field name="decision_owner_id" options="{'no_create': True}"/>
-                            <field name="decision_deadline"/>
+                            <field name="decision_owner_id" widget="many2one_avatar_user" options="{'no_create': True}"/>
+                            <field name="decision_deadline" widget="remaining_days" invisible="state != 'pendiente'"/>
+                            <field name="decision_deadline" invisible="state == 'pendiente'"/>
                         </group>
                     </group>
                     <group>
@@ -169,7 +171,7 @@
                         </group>
                         <group string="Resolución" invisible="not resolved_date">
                             <field name="resolved_date"/>
-                            <field name="resolved_uid"/>
+                            <field name="resolved_uid" widget="many2one_avatar_user"/>
                         </group>
                     </group>
                 </sheet>

@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <form string="Calibración">
                 <!-- 57.62.0: formato controlado (verificación de laboratorio). -->
-                <div class="alert alert-info mb-0" role="alert"
+                <div class="alert alert-info mb-0" role="status"
                      invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
@@ -30,7 +30,7 @@
                             <field name="result" widget="selection_badge"
                                    decoration-success="result == 'conforme'"
                                    decoration-danger="result == 'fuera_tolerancia'"/>
-                            <field name="next_date"/>
+                            <field name="next_date" widget="remaining_days"/>
                             <field name="sgi_alert_id" readonly="1"
                                    invisible="not sgi_alert_id"/>
                         </group>
@@ -167,7 +167,7 @@
         <field name="inherit_id" ref="maintenance.hr_equipment_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="alert"
+                <div class="alert alert-info mb-0" role="status"
                      invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>

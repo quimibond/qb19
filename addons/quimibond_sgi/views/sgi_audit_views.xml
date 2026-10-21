@@ -45,7 +45,7 @@
                             <field name="planned_month"/>
                             <field name="audit_type"/>
                             <field name="norm_ids" widget="many2many_tags"/>
-                            <field name="lead_auditor_id"/>
+                            <field name="lead_auditor_id" widget="many2one_avatar_user"/>
                             <field name="state" widget="badge"
                                    decoration-success="state == 'cerrada'"
                                    decoration-info="state == 'creada'"/>
@@ -177,9 +177,9 @@
                             <field name="program_line_id" readonly="1"/>
                         </group>
                         <group string="Equipo y fechas">
-                            <field name="lead_auditor_id" readonly="sgi_is_locked"/>
-                            <field name="auditor_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
-                            <field name="auditee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="lead_auditor_id" widget="many2one_avatar_user" readonly="sgi_is_locked"/>
+                            <field name="auditor_ids" readonly="sgi_is_locked" widget="many2many_avatar_user"/>
+                            <field name="auditee_ids" readonly="sgi_is_locked" widget="many2many_avatar_user"/>
                             <field name="date_planned" readonly="sgi_is_locked"/>
                             <field name="date_start" readonly="sgi_is_locked"/>
                             <field name="date_end" readonly="sgi_is_locked"/>
@@ -214,7 +214,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Hallazgos">
+                        <page string="Hallazgos" name="findings">
                             <field name="finding_ids" readonly="sgi_is_locked" context="{'default_audit_id': id}">
                                 <list editable="bottom">
                                     <field name="finding_type"/>
@@ -231,7 +231,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Reuniones">
+                        <page string="Reuniones" name="meetings">
                             <div class="text-muted mb-2">
                                 Los asistentes son los de «Equipo y fechas»;
                                 aquí quedan las actas de apertura y de cierre. Sustituyen
@@ -244,7 +244,7 @@
                                        placeholder="Cierre: hallazgos presentados, conclusión, plazos de respuesta..."/>
                             </group>
                         </page>
-                        <page string="Conclusión">
+                        <page string="Conclusión" name="conclusion">
                             <field name="conclusion" readonly="sgi_is_locked" nolabel="1"/>
                         </page>
                     </notebook>
@@ -308,7 +308,7 @@
             <calendar string="Auditorías" date_start="date_planned" color="state"
                       mode="month" quick_create="0" event_open_popup="0">
                 <field name="audit_type"/>
-                <field name="lead_auditor_id"/>
+                <field name="lead_auditor_id" widget="many2one_avatar_user"/>
                 <field name="process_ids" widget="many2many_tags"/>
                 <field name="state"/>
             </calendar>

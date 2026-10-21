@@ -16,7 +16,7 @@
                 <field name="skill_level_id" optional="hide"/>
                 <field name="origin"/>
                 <field name="granted_date"/>
-                <field name="due_date"/>
+                <field name="due_date" widget="remaining_days" invisible="state != 'pendiente'"/>
                 <field name="evaluator_id" widget="many2one_avatar_user"/>
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pendiente'"
@@ -61,13 +61,14 @@
                             <field name="granted_date"/>
                         </group>
                         <group string="Evaluación">
-                            <field name="evaluator_id"/>
-                            <field name="due_date"/>
+                            <field name="evaluator_id" widget="many2one_avatar_user"/>
+                            <field name="due_date" widget="remaining_days" invisible="state != 'pendiente'"/>
+                            <field name="due_date" invisible="state == 'pendiente'"/>
                             <field name="evaluated_date" invisible="state == 'pendiente'"/>
-                            <field name="evaluated_by" invisible="state == 'pendiente'"/>
+                            <field name="evaluated_by" widget="many2one_avatar_user" invisible="state == 'pendiente'"/>
                             <field name="survey_input_id" invisible="not survey_input_id"
                                    groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager"/>
-                            <field name="employee_id" groups="hr.group_hr_user"/>
+                            <field name="employee_id" widget="many2one_avatar_employee" groups="hr.group_hr_user"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>

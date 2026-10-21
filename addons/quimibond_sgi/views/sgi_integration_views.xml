@@ -170,7 +170,7 @@
                         </list>
                     </field>
                 </page>
-                <page string="EPP requerido">
+                <page string="EPP requerido" name="sgi_epp">
                     <div class="text-muted mb-2">
                         El EPP que exige este puesto — fuente única de la
                         matriz de EPP. El cron de EPP vigila reposiciones; la
@@ -205,7 +205,7 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="SGI">
+                <page string="SGI" name="sgi">
                     <group>
                         <group string="Especificación del material">
                             <field name="sgi_spec_document_id"/>

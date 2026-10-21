@@ -80,7 +80,7 @@
                             <list decoration-success="not spec_error_count" decoration-danger="spec_error_count">
                                 <field name="code"/>
                                 <field name="name"/>
-                                <field name="owner_id"/>
+                                <field name="owner_id" widget="many2one_avatar_employee"/>
                                 <field name="state" widget="badge" decoration-warning="state == 'piloto'"
                                        decoration-info="state == 'borrador'"/>
                                 <field name="spec_error_count" string="Le faltan"/>
@@ -169,7 +169,7 @@
                                     <field name="code"/>
                                     <field name="name"/>
                                     <field name="process_type"/>
-                                    <field name="owner_id"/>
+                                    <field name="owner_id" widget="many2one_avatar_employee"/>
                                     <field name="activity_count"/>
                                     <field name="state" widget="badge" decoration-success="state == 'vigente'"
                                            decoration-warning="state == 'piloto'" decoration-info="state == 'borrador'"/>

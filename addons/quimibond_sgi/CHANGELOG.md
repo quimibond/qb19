@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.171.0 — 2026-10-21
+
+Interfaz, entrega 2 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`):
+personas, fechas, pestañas y textos de botones, como en las apps de Odoo.
+
+**Cambiado**
+- Personas con avatar: 116 campos a `res.users` y `hr.employee` en fichas y
+  listas de 38 archivos usan `many2one_avatar_user` / `many2one_avatar_employee`
+  (y `many2many_avatar_*` en equipos, auditores, participantes, ejecutores).
+  Sin cambio en kanban, búsqueda, pivote ni gráfica.
+- Vencimientos con `remaining_days` («Faltan 3 días», «Hace 2 días», en rojo
+  si ya pasó): compromiso de la acción, ejecución de actividad, revisión de
+  medición, eficacia de la capacitación, acuerdos de la revisión por la
+  dirección, próximo simulacro, revisión de aspectos y riesgos, fin del
+  permiso de trabajo, decisión de rutina heredada, vencimiento y próxima
+  evaluación legal, próxima calibración, próximo examen médico, revisión de
+  partes interesadas y plazo del plan en el tablero. En lo cerrado (acción
+  terminada, ejecución hecha, aspecto obsoleto…) la lista deja la celda vacía
+  y la ficha muestra la fecha normal.
+- 21 pestañas sin `name` lo tienen (revisión por la dirección, plan de
+  control, política, norma, auditoría, incidente, indicador, PPAP, plan de
+  emergencia, AMEF, riesgo y las pestañas del SGI en empleado y producto).
+- 15 avisos informativos (`alert-info`, «Formato controlado» y los de
+  configuración del indicador) pasan de `role="alert"` a `role="status"`: no
+  se anuncian como urgentes.
+- Salir de un asistente sin hacer nada dice «Descartar» en todos (antes
+  «Cancelar», «Cerrar» o «Descartar»), como botón secundario. «Cerrar» queda
+  solo donde no hay nada que descartar: los asistentes de consulta (artículos
+  parecidos, hojas de tela) y la carga de catálogo o rutinas ya cargada.
+- Los botones de estado «Cancelar» dicen qué cancelan: «Cancelar permiso»,
+  «Cancelar bloqueo», «Cancelar solicitud» (esta además pide confirmación).
+- Lista de permisos de trabajo: los vencidos en rojo (sin la columna
+  «Vencido»), y la pastilla de estado colorea cerrado y cancelado. Salud de
+  los objetivos en el tablero de Dirección con los colores del MIID.
+- «Objetivos integrales» con la misma mayúscula en la lista.
+
 ## 19.0.57.170.0 — 2026-10-20
 
 Interfaz, entrega 1 de 5: lo de prioridad alta. Jose (2026-10-20): «no quiero

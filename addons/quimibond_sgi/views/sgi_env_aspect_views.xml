@@ -20,7 +20,7 @@
                             invisible="state == 'obsoleto'"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,evaluado"/>
                 </header>
-                <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
+                <div class="alert alert-info mb-0" role="status" invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
@@ -39,7 +39,7 @@
                             <field name="process_id"/>
                             <field name="sgi_area_id"/>
                             <field name="activity"/>
-                            <field name="responsible_id"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
                         </group>
                         <group string="Aspecto e impacto">
                             <field name="aspect_type"/>
@@ -70,7 +70,8 @@
                         <group string="Revisión periódica">
                             <field name="review_frequency_months"/>
                             <field name="last_review_date"/>
-                            <field name="next_review_date"/>
+                            <field name="next_review_date" widget="remaining_days" invisible="state == 'obsoleto'"/>
+                            <field name="next_review_date" invisible="state != 'obsoleto'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active" invisible="1"/>
                         </group>
@@ -106,7 +107,7 @@
                        decoration-warning="level == 'moderado'"
                        decoration-success="level == 'bajo'"/>
                 <field name="significant" optional="hide"/>
-                <field name="next_review_date" optional="show"/>
+                <field name="next_review_date" widget="remaining_days" invisible="state == 'obsoleto'" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'evaluado'"/>
             </list>
         </field>

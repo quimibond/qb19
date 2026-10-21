@@ -26,7 +26,7 @@
                 </header>
                 <!-- Banner «formato controlado» (antes herencia propia en
                      sgi_format_map_views.xml; A-008, 57.26.0). -->
-                <div class="alert alert-info mb-0" role="alert"
+                <div class="alert alert-info mb-0" role="status"
                      invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
@@ -57,11 +57,11 @@
                             <field name="period_to" readonly="sgi_is_locked"/>
                         </group>
                         <group>
-                            <field name="attendee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="attendee_ids" readonly="sgi_is_locked" widget="many2many_avatar_employee"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Entradas (9.3.2)">
+                        <page string="Entradas (9.3.2)" name="inputs">
                             <group>
                                 <field name="prev_agreements_summary" readonly="sgi_is_locked"/>
                                 <field name="nc_summary" readonly="sgi_is_locked"/>
@@ -108,7 +108,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Objetivos y satisfacción (13-14)">
+                        <page string="Objetivos y satisfacción (13-14)" name="objectives">
                             <group>
                                 <field name="objectives_summary" nolabel="1" readonly="1"/>
                                 <field name="satisfaction_summary" nolabel="1" readonly="1"/>
@@ -132,7 +132,7 @@
                                        placeholder="Oportunidades de mejora, cambios al SGI y recursos"/>
                             </group>
                         </page>
-                        <page string="Acuerdos (salidas)">
+                        <page string="Acuerdos (salidas)" name="agreements">
                             <div class="text-muted mb-2">
                                 Cada acuerdo se vuelve una acción del SGI con responsable y compromiso al marcar
                                 la revisión como Realizada: actividad al responsable, escalamiento si vence y
@@ -142,8 +142,8 @@
                                 <list editable="bottom" decoration-danger="action_state == 'vencida'"
                                       decoration-success="action_state == 'terminada'">
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="deadline"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="deadline" widget="remaining_days" invisible="action_state == 'terminada'"/>
                                     <field name="action_state" string="Acción" widget="badge"/>
                                     <field name="action_line_id" readonly="1" optional="hide"/>
                                     <field name="task_id" readonly="1" optional="hide"/>
@@ -158,8 +158,8 @@
                                 <list decoration-danger="action_state == 'vencida'">
                                     <field name="review_id"/>
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="deadline"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="deadline" widget="remaining_days" invisible="action_state == 'terminada'"/>
                                     <field name="action_state" string="Acción" widget="badge"/>
                                 </list>
                             </field>

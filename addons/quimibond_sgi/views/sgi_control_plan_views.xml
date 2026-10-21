@@ -55,7 +55,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Puntos de control">
+                        <page string="Puntos de control" name="points">
                             <field name="point_ids" context="{'default_sgi_control_plan_id': id}">
                                 <list editable="bottom">
                                     <field name="title"/>
@@ -68,7 +68,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Notas">
+                        <page string="Notas" name="notes">
                             <field name="notes"/>
                         </page>
                     </notebook>

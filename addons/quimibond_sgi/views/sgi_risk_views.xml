@@ -104,7 +104,8 @@
                             <field name="process_id" readonly="sgi_is_locked"/>
                             <field name="sgi_area_id" readonly="sgi_is_locked"/>
                             <field name="job_id" readonly="sgi_is_locked"/>
-                            <field name="next_review_date" readonly="sgi_is_locked"/>
+                            <field name="next_review_date" widget="remaining_days" invisible="state == 'cerrado'" readonly="sgi_is_locked"/>
+                            <field name="next_review_date" invisible="state != 'cerrado'" readonly="sgi_is_locked"/>
                             <field name="operational_control_id" readonly="sgi_is_locked"
                                    invisible="instrument != 'ambiental'"/>
                             <field name="sgi_env_aspect_ids" widget="many2many_tags" readonly="1"
@@ -170,7 +171,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Acciones">
+                        <page string="Acciones" name="actions">
                             <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_risk_id': id}">
                                 <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
                                 <list editable="bottom" decoration-danger="state == 'vencida'"
