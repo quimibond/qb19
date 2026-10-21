@@ -334,6 +334,17 @@ class SgiRisk(models.Model):
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
         }
 
+    def action_view_env_aspect(self):
+        """57.172.0: el aspecto de la matriz que trata este riesgo."""
+        self.ensure_one()
+        aspects = self.sgi_env_aspect_ids
+        action = {'type': 'ir.actions.act_window', 'name': "Aspecto ambiental",
+                  'res_model': 'sgi.env.aspect', 'domain': [('id', 'in', aspects.ids)],
+                  'view_mode': 'list,form'}
+        if len(aspects) == 1:
+            action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': aspects.id})
+        return action
+
     # ------------------------------------------------------------------
     # Candado de riesgo alto (H11)
     # ------------------------------------------------------------------

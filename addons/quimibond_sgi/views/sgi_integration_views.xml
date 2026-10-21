@@ -27,10 +27,11 @@
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
                 <field name="sgi_can_sign" invisible="1"/>
-                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
-                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
-                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
-                </button>
+            </xpath>
+            <!-- 57.172.0: firmar es una acción, no navegación: va en la barra. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_sign" type="object" string="Firmar" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign"/>
             </xpath>
             <!-- Acuses (antes herencia propia en sgi_links_views.xml; A-008, 57.29.0) -->
             <xpath expr="//div[@name='button_box']" position="inside">
@@ -71,12 +72,12 @@
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_sgi_my_procedures" type="object" class="oe_stat_button"
                         icon="fa-book"
-                        groups="quimibond_sgi.group_sgi_user">
-                    <field name="sgi_procedure_count" widget="statinfo" string="Mis procedimientos"/>
+                        groups="quimibond_sgi.group_sgi_user" invisible="sgi_procedure_count == 0">
+                    <field name="sgi_procedure_count" widget="statinfo" string="Procedimientos"/>
                 </button>
                 <button name="action_sgi_pending_acks" type="object" class="oe_stat_button"
                         icon="fa-check-square-o"
-                        groups="quimibond_sgi.group_sgi_user">
+                        groups="quimibond_sgi.group_sgi_user" invisible="sgi_pending_ack_count == 0">
                     <field name="sgi_pending_ack_count" widget="statinfo" string="Acuses pendientes"/>
                 </button>
             </xpath>
@@ -146,8 +147,6 @@
                             <i class="fa fa-exclamation-triangle"/> Las actividades cambiaron desde la última revisión publicada.
                         </span>
                     </div>
-                    <button name="action_sgi_view_roles" type="object"
-                            string="Ver sus actividades" icon="fa-list" class="btn-link"/>
                     <field name="sgi_all_role_ids" readonly="1">
                         <list default_order="process_id, role">
                             <field name="process_id"/>
@@ -170,7 +169,7 @@
                         </list>
                     </field>
                 </page>
-                <page string="EPP requerido">
+                <page string="EPP requerido" name="sgi_epp">
                     <div class="text-muted mb-2">
                         El EPP que exige este puesto — fuente única de la
                         matriz de EPP. El cron de EPP vigila reposiciones; la
@@ -205,17 +204,11 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="SGI">
+                <page string="SGI" name="sgi">
                     <group>
                         <group string="Especificación del material">
                             <field name="sgi_spec_document_id"/>
                             <field name="sgi_control_plan_id"/>
-                        </group>
-                        <group>
-                            <button name="action_sgi_open_spec" type="object"
-                                    string="Ver especificación" icon="fa-file-pdf-o"
-                                    class="btn-secondary"
-                                    invisible="not sgi_spec_document_id"/>
                         </group>
                     </group>
                     <group string="Manejo y empaque (C14-02)">
@@ -230,6 +223,8 @@
                         icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
+                <button name="action_sgi_open_spec" type="object" class="oe_stat_button"
+                        icon="fa-file-pdf-o" string="Especificación" invisible="not sgi_spec_document_id"/>
                 <field name="sgi_can_sign" invisible="1"/>
                 <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
                         groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">

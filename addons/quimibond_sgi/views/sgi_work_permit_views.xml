@@ -24,7 +24,7 @@
                             confirm="El permiso se cierra y queda como evidencia. ¿Desea continuar?"/>
                     <button name="action_load_checks" type="object" string="Cargar verificaciones del tipo"
                             invisible="state != 'borrador'"/>
-                    <button name="action_cancel" type="object" string="Cancelar"
+                    <button name="action_cancel" type="object" string="Cancelar permiso"
                             confirm="Se cancelará el permiso de trabajo. ¿Desea continuar?"
                             invisible="state in ('cerrado', 'cancelado')"/>
                     <button name="action_reset" type="object" string="Regresar a borrador"
@@ -32,7 +32,7 @@
                             invisible="state == 'borrador'"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,solicitado,autorizado,cerrado"/>
                 </header>
-                <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
+                <div class="alert alert-info mb-0" role="status" invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
@@ -54,7 +54,7 @@
                     <group>
                         <group string="Trabajo">
                             <field name="work_type" readonly="state != 'borrador'"/>
-                            <field name="requester_id" readonly="state != 'borrador'"/>
+                            <field name="requester_id" widget="many2one_avatar_user" readonly="state != 'borrador'"/>
                             <field name="sgi_area_id" readonly="state != 'borrador'"/>
                             <field name="location" readonly="state != 'borrador'"/>
                             <field name="equipment_id" readonly="state != 'borrador'"/>
@@ -70,14 +70,14 @@
                     </group>
                     <group>
                         <group string="Quién lo hace">
-                            <field name="executor_ids" widget="many2many_tags" readonly="state != 'borrador'"/>
+                            <field name="executor_ids" widget="many2many_avatar_employee" readonly="state != 'borrador'"/>
                             <field name="contractor_id" readonly="state != 'borrador'"/>
                         </group>
                         <group string="Autorizaciones">
-                            <field name="area_manager_id" readonly="state != 'borrador'"/>
-                            <field name="area_approved_by_id"/>
+                            <field name="area_manager_id" widget="many2one_avatar_user" readonly="state != 'borrador'"/>
+                            <field name="area_approved_by_id" widget="many2one_avatar_user"/>
                             <field name="area_approved_date"/>
-                            <field name="sst_approved_by_id"/>
+                            <field name="sst_approved_by_id" widget="many2one_avatar_user"/>
                             <field name="sst_approved_date"/>
                         </group>
                     </group>
@@ -111,7 +111,7 @@
                         <page string="Cierre" name="closing">
                             <group>
                                 <field name="close_note" readonly="state != 'autorizado'"/>
-                                <field name="closed_by_id"/>
+                                <field name="closed_by_id" widget="many2one_avatar_user"/>
                                 <field name="closed_date"/>
                             </group>
                         </page>
@@ -129,20 +129,22 @@
             <list string="Permisos de trabajo de alto riesgo"
                   decoration-info="state == 'solicitado'"
                   decoration-success="state == 'cerrado'"
-                  decoration-muted="state == 'cancelado'">
+                  decoration-muted="state == 'cancelado'"
+                  decoration-danger="expired">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="work_type"/>
                 <field name="location"/>
-                <field name="requester_id" optional="show"/>
+                <field name="requester_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="date_start"/>
-                <field name="date_end"/>
-                <field name="expired" optional="show" widget="boolean"/>
-                <field name="area_approved_by_id" optional="hide"/>
-                <field name="sst_approved_by_id" optional="hide"/>
+                <field name="date_end" widget="remaining_days" invisible="state in ('cerrado', 'cancelado')"/>
+                <field name="expired" column_invisible="1"/>
+                <field name="area_approved_by_id" widget="many2one_avatar_user" optional="hide"/>
+                <field name="sst_approved_by_id" widget="many2one_avatar_user" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'solicitado'"
-                       decoration-success="state == 'autorizado'"/>
+                       decoration-success="state in ('autorizado', 'cerrado')"
+                       decoration-muted="state == 'cancelado'"/>
             </list>
         </field>
     </record>

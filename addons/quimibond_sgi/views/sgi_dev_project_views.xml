@@ -49,7 +49,7 @@
                         invisible="not sgi_is_ft or not (sgi_dev_stage_key == 'respuesta_cliente' or (sgi_dev_stage_key == 'muestra' and not sgi_dev_approved_by_id)) or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
                 <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-secondary" icon="fa-truck"
                         invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente')"/>
-                <button name="action_sgi_dev_shipments" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
+                <button name="action_sgi_dev_pending_shipment" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
                         invisible="not sgi_is_ft or sgi_dev_stage_key != 'respuesta_cliente' or not sgi_dev_shipment_count"/>
                 <button name="action_sgi_dev_new_revision" type="object" string="Subir revisión" class="btn-secondary" icon="fa-level-up"
                         invisible="not sgi_is_ft or sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto')"
@@ -84,6 +84,10 @@
                         <span class="o_stat_value"><field name="sgi_dev_mo_count"/></span>
                         <span class="o_stat_text">Órdenes de muestra</span>
                     </div>
+                </button>
+                <button name="action_sgi_dev_bom_pending" type="object" class="oe_stat_button text-warning" icon="fa-list"
+                        invisible="not sgi_is_ft or not sgi_dev_bom_pending_count">
+                    <field name="sgi_dev_bom_pending_count" widget="statinfo" string="Listas por capturar"/>
                 </button>
                 <button name="action_sgi_dev_shipments" type="object" class="oe_stat_button" icon="fa-truck"
                         invisible="not sgi_is_ft or not sgi_dev_shipment_count">
@@ -329,7 +333,7 @@
                                         <field name="auto" optional="show"/>
                                         <field name="answer" widget="selection_badge"/>
                                         <field name="observation"/>
-                                        <field name="answered_by_id" optional="show"/>
+                                        <field name="answered_by_id" widget="many2one_avatar_user" optional="show"/>
                                     </list>
                                 </field>
                             <p class="text-muted" invisible="sgi_dev_feasibility_ids or sgi_dev_analysis_result in ('linea', 'no_factible')">Sin checklist cargado.</p>
@@ -367,8 +371,7 @@
                                         </div>
                                         <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
                                         <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
-                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos.
-                                            <button name="action_sgi_dev_bom_pending" type="object" string="Ver listas" class="btn-link p-0 ms-1"/>
+                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos (botón «Listas por capturar» arriba).
                                         </div>
                                         <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
@@ -612,7 +615,7 @@
                                     <field name="response_ref" optional="show"/>
                                     <field name="response_filename" string="Evidencia" optional="show"/>
                                     <field name="reject_reason_id" optional="show"/>
-                                    <field name="response_registered_by_id" optional="hide"/>
+                                    <field name="response_registered_by_id" widget="many2one_avatar_user" optional="hide"/>
                                 </list>
                             </field>
                             <separator string="Características aprobadas por el cliente"/>
@@ -672,7 +675,7 @@
                                         <field name="old_value"/>
                                         <field name="new_value"/>
                                         <field name="quotation_ref"/>
-                                        <field name="user_id" optional="show"/>
+                                        <field name="user_id" widget="many2one_avatar_user" optional="show"/>
                                         <field name="note" optional="show"/>
                                     </list>
                                 </field>

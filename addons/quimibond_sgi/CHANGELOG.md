@@ -13,7 +13,7 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
-## 19.0.57.170.1 — 2026-10-21
+## 19.0.57.172.1 — 2026-10-21
 
 Solo textos, sin cambios de comportamiento. Revisión de José Sacramento (v5
 de su diseño): Inspección es una operación de la orden en kg (devanado →
@@ -24,6 +24,75 @@ Clasificación final (empaque).
 - README, ayuda de «Artículo acabado en kg» y mensaje del chatter de «Generar
   artículos»: dicen «Clasificación final» donde decían «Inspección» para el
   paso que pasa el acabado en kg a metros.
+
+## 19.0.57.172.0 — 2026-10-21
+
+Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la
+navegación va en botones inteligentes, con su número cuando lo hay, y la barra
+queda para los pasos del flujo, como en las apps de Odoo.
+
+**Cambiado**
+- De la barra a botones inteligentes: «Origen» de la acción (con el nombre del
+  registro), «Informe» de la auditoría, «Baja de muestras» del envío (con el
+  estado de la baja), «Firma (Sign)» de la responsiva de EPP (con el estado de
+  la firma), «Solicitud en curso» y «PDF vigente» del MIID, «Sin cobertura»
+  de la norma (con el número de puntos), «Registros» del flujo y «Hoja de
+  cálculo» del tablero de Dirección.
+- Con número: «Textos» y «Solicitudes» del MIID, «Ligas» del entregable,
+  «Listas por capturar» del proyecto de desarrollo (antes un enlace dentro del
+  aviso). El proceso separa «Faltantes» (bloquean, en rojo) de «Advertencias»;
+  antes decía «0 Faltantes» cuando solo había advertencias. Cada uno abre la
+  lista ya filtrada.
+- «Registrar respuesta del cliente» del proyecto abre directo el envío que
+  espera respuesta (antes la lista de envíos, igual que el botón inteligente).
+- Riesgo ambiental: botón «Aspecto ambiental» a la matriz y aviso de una
+  línea. Un solo listón: «Archivado» gana sobre «Cerrado».
+- Empleado: «Procedimientos» (antes «Mis procedimientos», en la ficha de otro)
+  y «Acuses pendientes» se ocultan en cero. Puesto: sin «Ver sus actividades»,
+  que repetía el botón «Actividades SGI». Producto: «Especificación» como
+  botón inteligente (antes un botón suelto en la pestaña SGI).
+- Transferencia de inventario: «Firmar» es una acción y pasa a la barra (en
+  producto se queda en los botones: la ficha no tiene barra).
+- Mi procedimiento: los botones inteligentes van primero y el aviso «sin
+  empleado» después.
+- «Ver NC» en la solicitud de mantenimiento se queda en la barra: la ficha de
+  Odoo no tiene zona de botones inteligentes (revisado en producción).
+
+## 19.0.57.171.0 — 2026-10-21
+
+Interfaz, entrega 2 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`):
+personas, fechas, pestañas y textos de botones, como en las apps de Odoo.
+
+**Cambiado**
+- Personas con avatar: 116 campos a `res.users` y `hr.employee` en fichas y
+  listas de 38 archivos usan `many2one_avatar_user` / `many2one_avatar_employee`
+  (y `many2many_avatar_*` en equipos, auditores, participantes, ejecutores).
+  Sin cambio en kanban, búsqueda, pivote ni gráfica.
+- Vencimientos con `remaining_days` («Faltan 3 días», «Hace 2 días», en rojo
+  si ya pasó): compromiso de la acción, ejecución de actividad, revisión de
+  medición, eficacia de la capacitación, acuerdos de la revisión por la
+  dirección, próximo simulacro, revisión de aspectos y riesgos, fin del
+  permiso de trabajo, decisión de rutina heredada, vencimiento y próxima
+  evaluación legal, próxima calibración, próximo examen médico, revisión de
+  partes interesadas y plazo del plan en el tablero. En lo cerrado (acción
+  terminada, ejecución hecha, aspecto obsoleto…) la lista deja la celda vacía
+  y la ficha muestra la fecha normal.
+- 21 pestañas sin `name` lo tienen (revisión por la dirección, plan de
+  control, política, norma, auditoría, incidente, indicador, PPAP, plan de
+  emergencia, AMEF, riesgo y las pestañas del SGI en empleado y producto).
+- 15 avisos informativos (`alert-info`, «Formato controlado» y los de
+  configuración del indicador) pasan de `role="alert"` a `role="status"`: no
+  se anuncian como urgentes.
+- Salir de un asistente sin hacer nada dice «Descartar» en todos (antes
+  «Cancelar», «Cerrar» o «Descartar»), como botón secundario. «Cerrar» queda
+  solo donde no hay nada que descartar: los asistentes de consulta (artículos
+  parecidos, hojas de tela) y la carga de catálogo o rutinas ya cargada.
+- Los botones de estado «Cancelar» dicen qué cancelan: «Cancelar permiso»,
+  «Cancelar bloqueo», «Cancelar solicitud» (esta además pide confirmación).
+- Lista de permisos de trabajo: los vencidos en rojo (sin la columna
+  «Vencido»), y la pastilla de estado colorea cerrado y cancelado. Salud de
+  los objetivos en el tablero de Dirección con los colores del MIID.
+- «Objetivos integrales» con la misma mayúscula en la lista.
 
 ## 19.0.57.170.0 — 2026-10-20
 

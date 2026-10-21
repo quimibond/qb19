@@ -15,7 +15,7 @@
                 <field name="quantity_m" optional="show"/>
                 <field name="pending_count"/>
                 <field name="nonconforming_count" decoration-danger="nonconforming_count"/>
-                <field name="issued_by_id" optional="show"/>
+                <field name="issued_by_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'emitido'"/>
             </list>
         </field>
@@ -51,7 +51,7 @@
                             <field name="roll_count" readonly="state != 'borrador'"/>
                             <field name="pending_count"/>
                             <field name="nonconforming_count"/>
-                            <field name="issued_by_id" invisible="not issued_at"/>
+                            <field name="issued_by_id" widget="many2one_avatar_user" invisible="not issued_at"/>
                             <field name="issued_at" invisible="not issued_at"/>
                             <field name="attachment_id" invisible="not attachment_id"/>
                         </group>

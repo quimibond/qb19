@@ -45,7 +45,7 @@
                 <field name="name"/>
                 <field name="project_id"/>
                 <field name="kind"/>
-                <field name="requested_by_id"/>
+                <field name="requested_by_id" widget="many2one_avatar_user"/>
                 <field name="date_requested"/>
                 <field name="pending_count"/>
                 <field name="hours_total"/>
@@ -66,7 +66,7 @@
                     <button name="action_verdict" type="object" string="Dictamen de Diseño" class="btn-primary"
                             invisible="state != 'medida' or verdict_by_id"
                             confirm="Diseño de Producto dictamina los resultados de laboratorio de esta solicitud. ¿Continuar?"/>
-                    <button name="action_cancel" type="object" string="Cancelar" invisible="state in ('medida', 'cancelada')"/>
+                    <button name="action_cancel" type="object" string="Cancelar solicitud" confirm="Se cancelará la solicitud de pruebas. ¿Desea continuar?" invisible="state in ('medida', 'cancelada')"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,solicitada,autorizada,medida"/>
                 </header>
                 <sheet>
@@ -75,14 +75,14 @@
                         <group>
                             <field name="project_id" readonly="state != 'borrador'"/>
                             <field name="kind" readonly="state != 'borrador'"/>
-                            <field name="requested_by_id"/>
+                            <field name="requested_by_id" widget="many2one_avatar_user"/>
                             <field name="date_requested"/>
                         </group>
                         <group>
-                            <field name="authorized_by_id"/>
+                            <field name="authorized_by_id" widget="many2one_avatar_user"/>
                             <field name="date_authorized"/>
                             <field name="date_measured"/>
-                            <field name="verdict_by_id"/>
+                            <field name="verdict_by_id" widget="many2one_avatar_user"/>
                             <field name="date_verdict"/>
                             <field name="pending_count"/>
                             <field name="hours_total"/>

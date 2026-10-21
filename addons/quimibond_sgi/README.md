@@ -451,7 +451,7 @@ la «I» al frente, desde 57.160.0) y acabado (J) con el código del DAT
 P-D02-01 en estado «En desarrollo» (no se vende). Producción va en kg hasta
 la Clasificación final: la orden en kg (devanado, tintorería, abridora, rama e
 Inspección) entrega el acabado en kg inspeccionado y la Clasificación final lo
-pasa a metros (desde 57.170.1); sus listas de materiales se capturan a mano. Modelo completo:
+pasa a metros (desde 57.172.1); sus listas de materiales se capturan a mano. Modelo completo:
 `quimibond_ficha_tecnica_tela/README.md`, «Modelo de producción vigente». Al entrar a Pilotaje el
 artículo se vende con aviso; en Liberado queda de línea; si el proyecto
 cierra sin producto, el artículo y sus listas de materiales se archivan. El

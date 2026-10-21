@@ -152,7 +152,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_is_ft` | Boolean | Desarrollo de producto | El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de Diseño y Desarrollo ya lo traen marcado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:29` |
 | `sgi_is_improvement` | Boolean | Proyecto de mejora SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:9` |
 
-## Métodos públicos (52)
+## Métodos públicos (53)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -183,6 +183,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_new_tech_sheet` | — |
 | `action_sgi_dev_open_lab_requests` | — |
 | `action_sgi_dev_open_route` | Abre la lista de materiales del artículo acabado (o del primero que exista) para capturar la ruta: operaciones y centros de trabajo. |
+| `action_sgi_dev_pending_shipment` | 57.172.0: «Registrar respuesta del cliente» abre el envío que espera respuesta (el más reciente enviado), donde está el botón; sin ninguno, la lista de envíos del proyecto. |
 | `action_sgi_dev_pilots` | — |
 | `action_sgi_dev_print` | — |
 | `action_sgi_dev_print_dossier` | — |

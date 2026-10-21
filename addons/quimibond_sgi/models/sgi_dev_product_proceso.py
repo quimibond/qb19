@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """57.160.0 (Dirección General 2026-10-19): el acabado en kg en C1.
 
-Toda la producción va **en kg hasta la Clasificación final** (57.170.1): la orden de acabado (devanado → tintorería
+Toda la producción va **en kg hasta la Clasificación final** (57.172.1): la orden de acabado (devanado → tintorería
 → abridora → rama → Inspección) se cierra con los rollos pesados e inspeccionados y produce el **acabado en kg**; la
 Clasificación final (empaque) lo pasa a metros y entrega el **acabado (J)** que se vende en metros. El teñido (I en la operación) desaparece cuando la ruta del
 acabado en kg lleva todas sus operaciones.

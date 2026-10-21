@@ -45,15 +45,16 @@
                         <group string="Periodo">
                             <field name="activity_id"/>
                             <field name="process_id"/>
-                            <field name="employee_id"/>
+                            <field name="employee_id" widget="many2one_avatar_employee"/>
                             <field name="period_label"/>
-                            <field name="date_due"/>
+                            <field name="date_due" widget="remaining_days" invisible="state not in ('pendiente', 'en_proceso')"/>
+                            <field name="date_due" invisible="state in ('pendiente', 'en_proceso')"/>
                         </group>
                         <group string="Avance">
                             <field name="progress_note" invisible="not progress_note"/>
                             <field name="date_estimated" invisible="not date_estimated"/>
                             <field name="date_done" invisible="not date_done"/>
-                            <field name="done_by_id" invisible="not done_by_id"/>
+                            <field name="done_by_id" widget="many2one_avatar_user" invisible="not done_by_id"/>
                             <field name="done_auto" invisible="not done_auto"/>
                             <field name="on_time" invisible="state != 'hecha'"/>
                             <field name="na_reason" invisible="state != 'no_aplica'"/>
@@ -103,9 +104,9 @@
                 </header>
                 <field name="process_id"/>
                 <field name="activity_id"/>
-                <field name="employee_id"/>
+                <field name="employee_id" widget="many2one_avatar_employee"/>
                 <field name="period_label"/>
-                <field name="date_due"/>
+                <field name="date_due" widget="remaining_days" invisible="state not in ('pendiente', 'en_proceso')"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'hecha'"
                        decoration-info="state == 'en_proceso'"
@@ -243,7 +244,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

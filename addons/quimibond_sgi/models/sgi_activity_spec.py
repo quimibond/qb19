@@ -967,6 +967,10 @@ class SgiProcessSpec(models.Model):
             'res_model': 'sgi.activity.spec.gap',
             'view_mode': 'list,pivot',
             'domain': [('process_id', '=', self.id)],
+            # 57.172.0: «Faltantes» y «Advertencias» abren la misma lista ya filtrada.
+            'search_view_id': [self.env.ref('quimibond_sgi.sgi_activity_spec_gap_view_search').id],
+            'context': {k: v for k, v in self.env.context.items() if k in ('search_default_errors',
+                                                                         'search_default_warnings')},
         }
 
 

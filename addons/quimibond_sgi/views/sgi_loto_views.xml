@@ -13,7 +13,7 @@
                     <button name="action_remove" type="object" string="Retirar bloqueo"
                             class="btn-primary" invisible="state != 'bloqueado'"
                             confirm="El equipo queda liberado y el bloqueo como evidencia. ¿Desea continuar?"/>
-                    <button name="action_cancel" type="object" string="Cancelar"
+                    <button name="action_cancel" type="object" string="Cancelar bloqueo"
                             confirm="Se cancelará el bloqueo. ¿Desea continuar?"
                             invisible="state != 'borrador'"/>
                     <button name="action_reset" type="object" string="Reabrir"
@@ -22,7 +22,7 @@
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,bloqueado,retirado"/>
                 </header>
-                <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
+                <div class="alert alert-info mb-0" role="status" invisible="not sgi_format_banner">
                     <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
@@ -38,7 +38,7 @@
                     <group>
                         <group string="Trabajo">
                             <field name="name" readonly="state != 'borrador'"/>
-                            <field name="responsible_id" readonly="state != 'borrador'"/>
+                            <field name="responsible_id" widget="many2one_avatar_user" readonly="state != 'borrador'"/>
                             <field name="maintenance_request_id" readonly="state != 'borrador'"/>
                             <field name="work_permit_id" readonly="state != 'borrador'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
@@ -47,7 +47,7 @@
                             <field name="affected_notified" readonly="state != 'borrador'"/>
                             <field name="zero_energy_verified" readonly="state != 'borrador'"/>
                             <field name="zero_energy_method" readonly="state != 'borrador'"/>
-                            <field name="verified_by_id"/>
+                            <field name="verified_by_id" widget="many2one_avatar_user"/>
                             <field name="date_applied"/>
                         </group>
                     </group>
@@ -65,12 +65,12 @@
                         <page string="Candados y tarjetas" name="locks">
                             <field name="lock_ids" readonly="state != 'borrador'">
                                 <list editable="bottom" decoration-muted="date_removed">
-                                    <field name="employee_id"/>
+                                    <field name="employee_id" widget="many2one_avatar_employee"/>
                                     <field name="lock_number"/>
                                     <field name="tag_number"/>
                                     <field name="date_placed"/>
                                     <field name="date_removed"/>
-                                    <field name="removed_by_id"/>
+                                    <field name="removed_by_id" widget="many2one_avatar_user"/>
                                     <field name="state" column_invisible="1"/>
                                     <button name="action_remove_lock" type="object" string="Retirar mi candado"
                                             icon="fa-unlock" invisible="state != 'bloqueado' or date_removed"/>
@@ -101,7 +101,7 @@
                 <field name="folio"/>
                 <field name="equipment_id"/>
                 <field name="name"/>
-                <field name="responsible_id" optional="show"/>
+                <field name="responsible_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="date_applied"/>
                 <field name="date_removed" optional="show"/>
                 <field name="active_locks"/>

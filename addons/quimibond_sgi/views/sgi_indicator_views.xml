@@ -21,7 +21,7 @@
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="process_id" optional="show"/>
-                <field name="responsible_id"/>
+                <field name="responsible_id" widget="many2one_avatar_user"/>
                 <field name="uom" optional="hide"/>
                 <field name="target_objective"/>
                 <field name="target_acceptable"/>
@@ -112,7 +112,7 @@
                             <field name="objective_id"/>
                             <field name="process_id"/>
                             <field name="sgi_area_id"/>
-                            <field name="responsible_id"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="level"/>
                             <field name="frequency"/>
                             <field name="measure_from"/>
@@ -173,7 +173,7 @@
                         <!-- Trayectoria (antes herencia propia en
                              sgi_indicator_trajectory_views.xml; A-008, 57.24.0). -->
                         <page string="Trayectoria" name="trajectory" invisible="direction == 'range'">
-                            <div class="alert alert-info mb-2" role="alert">
+                            <div class="alert alert-info mb-2" role="status">
                                 Los escalones trimestrales se interpolan entre el arranque
                                 («Arranque desde» y «Valor de arranque») y la meta final
                                 («Llegar a la meta el»). El aceptable de cada escalón guarda la
@@ -200,7 +200,7 @@
                              sgi_indicator_formula_views.xml; A-008, 57.23.0). -->
                         <!-- 57.170.0: solo en el modo «fórmula configurable». -->
                         <page string="Fórmula" name="formula" invisible="calc_mode != 'configurable' and not term_ids">
-                            <div class="alert alert-info mb-2" role="alert">
+                            <div class="alert alert-info mb-2" role="status">
                                 Numerador y denominador salen de los registros de Odoo que
                                 indique cada término; varios términos con el mismo papel se
                                 suman (factor −1 resta) y sin denominador el indicador vale
@@ -219,7 +219,7 @@
                                    readonly="not can_edit_formula"/>
                             <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
                         </page>
-                        <page string="Mediciones">
+                        <page string="Mediciones" name="measures">
                             <!-- V-B11 (57.80.0): de 12 en 12, la más reciente arriba. -->
                             <!-- 57.169.0: sin las de foto de meses pasados. -->
                             <field name="measure_shown_ids" context="{'default_indicator_id': id}">

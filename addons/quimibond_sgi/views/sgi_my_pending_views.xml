@@ -319,12 +319,12 @@
                            placeholder="Por qué pasó (5 porqués, Ishikawa)"/>
                     <field name="name" invisible="step == 'causa'" required="step != 'causa'"
                            placeholder="Qué se hace"/>
-                    <field name="responsible_id" invisible="step == 'causa'" required="step != 'causa'"/>
+                    <field name="responsible_id" widget="many2one_avatar_user" invisible="step == 'causa'" required="step != 'causa'"/>
                     <field name="date_commit" invisible="step == 'causa'" required="step != 'causa'"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>
@@ -347,7 +347,7 @@
                 </div>
                 <footer>
                     <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

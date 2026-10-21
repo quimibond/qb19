@@ -8,10 +8,14 @@
                 <header>
                     <button name="%(quimibond_sgi.action_report_compliance_matrix)d" type="action"
                             string="Matriz de cumplimiento" icon="fa-th" class="btn-primary"/>
-                    <button name="action_view_uncovered_clauses" type="object"
-                            string="Puntos sin cobertura" icon="fa-exclamation-triangle"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_uncovered_clauses" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle">
+                            <field name="uncovered_clause_count" widget="statinfo" string="Sin cobertura"/>
+                        </button>
+                    </div>
                     <!-- V-B10 (57.81.0): el nombre como título. -->
                     <div class="oe_title">
                         <label for="name" string="Norma"/>
@@ -24,7 +28,7 @@
                         <field name="scope" placeholder="Alcance del certificado, como lo imprime el Manual del SGI"/>
                     </group>
                     <notebook>
-                        <page string="Cláusulas">
+                        <page string="Cláusulas" name="clauses">
                             <field name="clause_ids">
                                 <list editable="bottom" decoration-danger="not covered">
                                     <field name="code"/>

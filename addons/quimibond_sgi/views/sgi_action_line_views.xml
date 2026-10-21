@@ -101,12 +101,20 @@
                             string="Terminar" class="btn-primary"
                             invisible="date_done"
                             confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
-                    <button name="action_open_origin" type="object"
-                            string="Abrir origen" icon="fa-external-link"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="abierta,terminada"/>
                 </header>
                 <sheet>
+                    <!-- 57.172.0: la navegación va en botones inteligentes, no en la barra. -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_origin" type="object" class="oe_stat_button"
+                                icon="fa-external-link" invisible="not origin_display">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="origin_display"/></span>
+                                <span class="o_stat_text">Origen</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="Acción"/>
                         <h1><field name="name" placeholder="¿Qué hay que hacer?"/></h1>
@@ -119,7 +127,8 @@
                             <field name="action_type"/>
                             <field name="control_hierarchy" invisible="not risk_id and not incident_id"/>
                             <field name="responsible_id" widget="many2one_avatar_user"/>
-                            <field name="date_commit"/>
+                            <field name="date_commit" widget="remaining_days" invisible="state == 'terminada'"/>
+                            <field name="date_commit" invisible="state != 'terminada'"/>
                         </group>
                         <group string="Ejecución">
                             <field name="progress" widget="selection_badge"/>

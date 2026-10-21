@@ -785,6 +785,9 @@ class SgiMiid(models.Model):
                                compute_sudo=True, sanitize=False)
     to_confirm_count = fields.Integer(string="Secciones por confirmar", compute='_compute_blockers',
                                       compute_sudo=True)
+    # 57.172.0: los botones inteligentes dicen cuántos hay.
+    section_count = fields.Integer(string="Textos", compute='_compute_stat_counts', compute_sudo=True)
+    request_count = fields.Integer(string="Solicitudes", compute='_compute_stat_counts', compute_sudo=True)
     outdated_since = fields.Datetime(string="Desactualizado desde", readonly=True, copy=False)
     last_check = fields.Datetime(string="Última comparación", readonly=True, copy=False)
     live_html = fields.Html(string="Vista del sistema", compute='_compute_live_html',
@@ -954,6 +957,16 @@ class SgiMiid(models.Model):
                  ('to_confirm', '=', True)])
             miid.blocker_html = Markup("<ul class='mb-0'>%s</ul>") % Markup('').join(
                 Markup("<li>%s</li>") % b for b in blockers) if blockers else False
+
+    @api.depends('company_id')
+    def _compute_stat_counts(self):
+        Section = self.env['sgi.miid.section']
+        Request = self.env['approval.request']
+        for miid in self:
+            miid.section_count = Section.search_count(
+                [('company_id', '=', miid.company_id.id), ('kind', '=', miid.kind)])
+            miid.request_count = Request.search_count(
+                [('sgi_miid_hash', '!=', False), ('sgi_document_id.sgi_code', '=', miid._sgi_kind()['code'])])
 
     @api.depends('company_id')
     def _compute_history_html(self):

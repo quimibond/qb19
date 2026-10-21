@@ -35,7 +35,7 @@
                                    decoration-success="sgi_supplier_status == 'aprobado'"
                                    decoration-danger="sgi_supplier_status == 'bloqueado'"
                                    decoration-info="sgi_supplier_status == 'nuevo'"/>
-                            <field name="sgi_supplier_approved_by"
+                            <field name="sgi_supplier_approved_by" widget="many2one_avatar_user"
                                    invisible="sgi_supplier_status != 'aprobado'"/>
                             <field name="sgi_supplier_approved_date"
                                    invisible="sgi_supplier_status != 'aprobado'"/>

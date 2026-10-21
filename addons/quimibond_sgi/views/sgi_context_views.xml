@@ -10,7 +10,7 @@
                 <field name="category"/>
                 <field name="needs"/>
                 <field name="becomes_requirement" optional="show"/>
-                <field name="next_review_date" optional="show"/>
+                <field name="next_review_date" widget="remaining_days" optional="show"/>
             </list>
         </field>
     </record>
@@ -37,7 +37,7 @@
                         <group string="Revisión periódica (4.1)">
                             <field name="review_frequency_months"/>
                             <field name="last_review_date" readonly="1"/>
-                            <field name="next_review_date"/>
+                            <field name="next_review_date" widget="remaining_days"/>
                         </group>
                     </group>
                     <group>

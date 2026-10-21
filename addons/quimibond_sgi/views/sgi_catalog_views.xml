@@ -84,8 +84,9 @@
             <form string="Entregable">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_links" type="object" class="oe_stat_button"
-                                icon="fa-link" string="Ligas"/>
+                        <button name="action_view_links" type="object" class="oe_stat_button" icon="fa-link">
+                            <field name="link_count" widget="statinfo" string="Ligas"/>
+                        </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
@@ -295,7 +296,7 @@
                 <field name="process_id" optional="show"/>
                 <field name="activity_id"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
-                <field name="employee_id" optional="hide"/>
+                <field name="employee_id" widget="many2one_avatar_employee" optional="hide"/>
                 <field name="job_id" optional="show"/>
                 <field name="department_id" optional="show"/>
                 <field name="sale_team_ids" widget="many2many_tags" optional="hide"/>
@@ -452,7 +453,8 @@
                             confirm="Se escribirá el catálogo en la base. ¿Continuar?"/>
                     <button name="action_test" type="object" string="Probar de nuevo" class="btn-secondary"
                             invisible="state != 'tested'"/>
-                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary" invisible="state == 'loaded'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary" invisible="state != 'loaded'"/>
                 </footer>
             </form>
         </field>

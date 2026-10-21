@@ -17,7 +17,7 @@
                 <field name="last_eval_date" optional="show"/>
                 <field name="next_eval_date" widget="remaining_days"
                        invisible="compliance_state == 'no_aplica'"/>
-                <field name="expiry_date" optional="hide"/>
+                <field name="expiry_date" widget="remaining_days" optional="hide"/>
                 <field name="compliance_state" widget="badge"
                        decoration-success="compliance_state == 'cumple'"
                        decoration-warning="compliance_state in ('parcial', 'pendiente')"
@@ -47,7 +47,7 @@
                     <label for="evidence" string="Evidencia revisada" invisible="result == 'no_aplica'"/>
                     <field name="evidence" nolabel="1"
                            placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró, o por qué no aplica"/>
-                    <field name="next_date"/>
+                    <field name="next_date" widget="remaining_days"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Registrar" class="btn-primary"/>
@@ -66,7 +66,7 @@
                 <field name="requirement_id"/>
                 <field name="result" widget="badge"/>
                 <field name="evidence"/>
-                <field name="next_date"/>
+                <field name="next_date" widget="remaining_days"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
             </list>
         </field>
@@ -109,13 +109,13 @@
                             <field name="kind"/>
                             <field name="system"/>
                             <field name="authority"/>
-                            <field name="expiry_date"/>
+                            <field name="expiry_date" widget="remaining_days"/>
                         </group>
                         <group string="Evaluación del cumplimiento (9.1.2)">
                             <field name="responsible_id" widget="many2one_avatar_user" required="1"/>
                             <field name="eval_frequency_months"/>
                             <field name="last_eval_date" readonly="1"/>
-                            <field name="next_eval_date"/>
+                            <field name="next_eval_date" widget="remaining_days"/>
                             <field name="alert_id" invisible="1"/>
                         </group>
                     </group>
@@ -143,7 +143,7 @@
                                     <field name="date"/>
                                     <field name="result" widget="badge"/>
                                     <field name="evidence"/>
-                                    <field name="next_date"/>
+                                    <field name="next_date" widget="remaining_days"/>
                                     <field name="user_id" widget="many2one_avatar_user"/>
                                 </list>
                             </field>
