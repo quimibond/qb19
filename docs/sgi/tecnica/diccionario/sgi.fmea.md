@@ -17,14 +17,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_fmea.py`, `addons/quimibond_sgi/model
 | `control_plan_id` | Many2one | Plan de control | Plan de control que materializa los controles de este AMEF (cadena IATF PFMEA → plan de control). |  | `sgi.control.plan` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:39` |
 | `date` | Date | Fecha | Fecha del AMEF. |  |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:44` |
 | `fmea_type` | Selection | Tipo | De proceso (PFMEA) o de diseño (DFMEA). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:27` |
-| `line_ids` | One2many | Modos de falla |  |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:52` |
-| `max_npr` | Integer | NPR máximo | El NPR más alto de sus modos de falla. Se calcula solo. |  |  | compute `_compute_max_npr`, guardado |  | `addons/quimibond_sgi/models/sgi_fmea.py:53` |
+| `line_ids` | One2many | Modos de falla | Escalas AIAG 1–10: severidad, ocurrencia y detección; NPR = S × O × D. Un NPR ≥ 100 marca la línea en rojo y, para marcar el AMEF vigente, exige acción terminada, re-evaluación capturada (S/O/D post) y un NPR post menor al inicial o la justificación escrita de por qué no baja. |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:52` |
+| `max_npr` | Integer | NPR máximo | El NPR más alto de sus modos de falla. Se calcula solo. |  |  | compute `_compute_max_npr`, guardado |  | `addons/quimibond_sgi/models/sgi_fmea.py:56` |
 | `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:26` |
 | `process_id` | Many2one | Proceso | Proceso que analiza el AMEF. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:34` |
 | `product_tmpl_id` | Many2one | Producto | Producto que analiza el AMEF. |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:32` |
 | `revision` | Char | Revisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:43` |
-| `sgi_nc_count` | Integer | # NC ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_fmea.py:57` |
-| `sgi_nc_ids` | One2many | NC ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:56` |
+| `sgi_nc_count` | Integer | # NC ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_fmea.py:60` |
+| `sgi_nc_ids` | One2many | NC ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:59` |
 | `state` | Selection | Estado | Borrador, vigente u obsoleto. No pasa a vigente con un NPR alto sin acción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:46` |
 | `team_ids` | Many2many | Equipo AMEF | Personas que hicieron el AMEF. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:45` |
 

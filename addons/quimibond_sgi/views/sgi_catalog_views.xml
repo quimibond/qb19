@@ -253,11 +253,6 @@
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
-                    <div class="text-muted">
-                        Puestos que solo cambian por nivel o letra. Las
-                        actividades se asignan a la familia; el nivel se queda
-                        en el puesto. Un puesto solo puede estar en una familia.
-                    </div>
                     <field name="job_ids" options="{'no_create': True}">
                         <list>
                             <field name="name"/>

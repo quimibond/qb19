@@ -14,16 +14,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_alert_source.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_count` | Integer | # NC generadas |  |  |  | compute `_compute_alert_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_alert_source.py:52` |
+| `alert_count` | Integer | # NC generadas |  |  |  | compute `_compute_alert_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_alert_source.py:54` |
 | `code` | Char | Clave técnica | Identificador que usa el código para pedir permiso antes de levantar la NC. No se edita: lo fija el módulo que la dispara. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:28` |
-| `enabled` | Boolean | Activa | Desactívela para dejar de generar no conformidades por este motivo. El cambio queda registrado en el historial con autor y fecha, para poder justificarlo en auditoría. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:34` |
-| `last_suppressed_on` | Datetime | Última omisión | Última vez que esta fuente, apagada, dejó de crear una NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:57` |
+| `enabled` | Boolean | Activa | Desactívela para dejar de generar no conformidades por este motivo. El cambio queda registrado en el historial con autor y fecha, para poder justificarlo en auditoría. El evento operativo de fondo (bloqueo de equipo, aviso al operador, semáforo del indicador) no cambia: solo se deja de registrar la… |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:34` |
+| `last_suppressed_on` | Datetime | Última omisión | Última vez que esta fuente, apagada, dejó de crear una NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:59` |
 | `name` | Char | Fuente |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:32` |
-| `origin_module` | Char | Módulo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:50` |
+| `origin_module` | Char | Módulo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:52` |
 | `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:33` |
-| `suppressed_count` | Integer | # NC omitidas | Cuántas veces se cumplió la condición mientras la fuente estaba apagada. Sirve para dimensionar lo que se dejó de registrar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:53` |
-| `trigger_note` | Text | Qué la dispara | Descripción en lenguaje de piso de la condición que genera la NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:47` |
-| `trigger_type` | Selection | Disparo | Automático: lo levanta el sistema solo; al desactivarlo, la NC simplemente no se crea. Manual: lo levanta una persona con un botón; al desactivarlo, el botón avisa que la fuente está apagada en vez de fallar en silencio. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:39` |
+| `suppressed_count` | Integer | # NC omitidas | Cuántas veces se cumplió la condición mientras la fuente estaba apagada. Sirve para dimensionar lo que se dejó de registrar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:55` |
+| `trigger_note` | Text | Qué la dispara | Descripción en lenguaje de piso de la condición que genera la NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:49` |
+| `trigger_type` | Selection | Disparo | Automático: lo levanta el sistema solo; al desactivarlo, la NC simplemente no se crea. Manual: lo levanta una persona con un botón; al desactivarlo, el botón avisa que la fuente está apagada en vez de fallar en silencio. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:41` |
 
 ## Métodos públicos (1)
 

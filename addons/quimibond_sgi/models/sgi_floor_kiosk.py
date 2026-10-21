@@ -58,7 +58,9 @@ class SgiFloorTablet(models.Model):
         'res.users', string="Cuenta de la tableta", required=True, ondelete='restrict',
         domain="[('share', '=', False)]",
         help="Usuario compartido con el que se abre la tableta (por ejemplo supervisor@). No debe "
-             "estar ligado a un empleado: lo firmado queda a nombre de quien teclea su PIN.")
+             "estar ligado a un empleado: lo firmado queda a nombre de quien teclea su PIN."
+             " Recibe el grupo «Tableta de planta (SGI)» al guardar. Pida a Sistemas que ponga «SGI en planta» como"
+             " su acción de inicio y que le quite los grupos del SGI que no use.")
     department_ids = fields.Many2many(
         'hr.department', 'sgi_floor_tablet_department_rel', 'tablet_id', 'department_id',
         string="Departamentos", required=True,

@@ -12,32 +12,32 @@ Archivos: `addons/quimibond_sgi/models/sgi_work_permit.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `area_approved_by_id` | Many2one | Autorizó el área |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:125` |
-| `area_approved_date` | Datetime | Fecha de autorización del área |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:127` |
-| `area_manager_id` | Many2one | Jefe del área que autoriza | Autoriza por el área. Seguridad (Jefe MAST) autoriza aparte. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:122` |
-| `check_ids` | One2many | Verificaciones y EPP |  |  | `sgi.work.permit.check` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:104` |
-| `close_note` | Text | Condiciones al cierre | Cómo quedó el área: limpia, sin fuentes de ignición, energías restablecidas, guardas colocadas… |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:135` |
-| `closed_by_id` | Many2one | Cerró |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:138` |
-| `closed_date` | Datetime | Fecha de cierre |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:139` |
+| `area_approved_by_id` | Many2one | Autorizó el área |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:126` |
+| `area_approved_date` | Datetime | Fecha de autorización del área |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:128` |
+| `area_manager_id` | Many2one | Jefe del área que autoriza | Autoriza por el área. Seguridad (Jefe MAST) autoriza aparte. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:123` |
+| `check_ids` | One2many | Verificaciones y EPP |  |  | `sgi.work.permit.check` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:105` |
+| `close_note` | Text | Condiciones al cierre | Cómo quedó el área: limpia, sin fuentes de ignición, energías restablecidas, guardas colocadas… |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:136` |
+| `closed_by_id` | Many2one | Cerró |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:139` |
+| `closed_date` | Datetime | Fecha de cierre |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:140` |
 | `company_id` | Many2one | Empresa |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:83` |
-| `contractor_id` | Many2one | Contratista | Si el trabajo lo hace un contratista. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:98` |
-| `date_end` | Datetime | Vigente hasta |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:107` |
-| `date_start` | Datetime | Vigente desde |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:105` |
-| `epp_notes` | Text | EPP adicional |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:103` |
+| `contractor_id` | Many2one | Contratista | Si el trabajo lo hace un contratista. El Jefe MAST registra la evaluación SST en el contacto, pestaña SGI. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:98` |
+| `date_end` | Datetime | Vigente hasta |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:108` |
+| `date_start` | Datetime | Vigente desde |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:106` |
+| `epp_notes` | Text | EPP adicional |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:104` |
 | `equipment_id` | Many2one | Equipo |  |  | `maintenance.equipment` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:93` |
 | `executor_ids` | Many2many | Personal que ejecuta |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:95` |
-| `expired` | Boolean | Vencido | Autorizado y pasada su hora de fin. Se revisa cada hora. |  |  | compute `_compute_expired`, guardado |  | `addons/quimibond_sgi/models/sgi_work_permit.py:111` |
-| `hazards` | Text | Peligros identificados | Qué puede salir mal: caída, atmósfera peligrosa, incendio, choque eléctrico… |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:100` |
+| `expired` | Boolean | Vencido | Autorizado y pasada su hora de fin. Se revisa cada hora. |  |  | compute `_compute_expired`, guardado |  | `addons/quimibond_sgi/models/sgi_work_permit.py:112` |
+| `hazards` | Text | Peligros identificados | Qué puede salir mal: caída, atmósfera peligrosa, incendio, choque eléctrico… |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:101` |
 | `location` | Char | Lugar exacto |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:92` |
-| `loto_ids` | One2many | Bloqueos (LOTO) | Bloqueos de energía ligados al permiso. El permiso no se cierra mientras uno siga aplicado. |  | `sgi.loto` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:113` |
+| `loto_ids` | One2many | Bloqueos (LOTO) | Bloqueos de energía ligados al permiso. El permiso no se cierra mientras uno siga aplicado. |  | `sgi.loto` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:114` |
 | `maintenance_request_id` | Many2one | Orden de mantenimiento |  |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:94` |
 | `name` | Char | Trabajo a realizar |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:86` |
 | `requester_id` | Many2one | Solicitante |  | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:89` |
 | `sgi_area_id` | Many2one | Área SGI |  |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:91` |
-| `sgi_contractor_eval_ok` | Boolean | Contratista con evaluación SST vigente | La evaluación SST del contratista cubre hasta el fin del permiso. |  |  | compute `_compute_sgi_contractor_eval_ok`, sin guardar |  | `addons/quimibond_sgi/models/sgi_work_permit.py:117` |
-| `sst_approved_by_id` | Many2one | Autorizó Seguridad |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:129` |
-| `sst_approved_date` | Datetime | Fecha de autorización de Seguridad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:131` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:140` |
+| `sgi_contractor_eval_ok` | Boolean | Contratista con evaluación SST vigente | La evaluación SST del contratista cubre hasta el fin del permiso. |  |  | compute `_compute_sgi_contractor_eval_ok`, sin guardar |  | `addons/quimibond_sgi/models/sgi_work_permit.py:118` |
+| `sst_approved_by_id` | Many2one | Autorizó Seguridad |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:130` |
+| `sst_approved_date` | Datetime | Fecha de autorización de Seguridad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:132` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:141` |
 | `work_type` | Selection | Tipo de trabajo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_work_permit.py:87` |
 
 ## Métodos públicos (9)

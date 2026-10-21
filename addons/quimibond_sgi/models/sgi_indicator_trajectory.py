@@ -93,7 +93,11 @@ class SgiIndicatorTrajectory(models.Model):
         help="Fuera del rango pero dentro de esta distancia el semáforo es amarillo.")
     baseline_date = fields.Date(string="Arranque desde",
                                 help="Fecha del valor de arranque; inicio de la trayectoria.")
-    step_ids = fields.One2many('sgi.indicator.step', 'indicator_id', string="Escalones")
+    step_ids = fields.One2many('sgi.indicator.step', 'indicator_id', string="Escalones",
+        help="Escalones trimestrales interpolados entre el arranque («Arranque desde» y «Valor de arranque») y "
+             "la meta final («Llegar a la meta el»). El aceptable de cada escalón guarda la misma distancia "
+             "que el de la meta final. Corregir un trimestre a mano exige motivo, queda en el chatter y se "
+             "respeta al regenerar. Cada medición se evalúa contra el escalón de su trimestre.")
     has_trajectory = fields.Boolean(compute='_compute_has_trajectory',
                                     help="Indica si la meta cambia por escalones trimestrales.")
 

@@ -59,7 +59,9 @@ class SgiPpap(models.Model):
         ('4', "Nivel 4"),
         ('5', "Nivel 5"),
     ], string="Nivel", default='3', required=True,
-        help="Nivel de envío que pide el cliente (1 a 5); define qué elementos se entregan.")
+        help="Nivel de envío que pide el cliente (1 a 5); define qué elementos se entregan."
+             " Presentar (S) va al cliente y Retener (R) se queda en planta; solo los elementos S pendientes "
+             "bloquean «Marcar enviado». Cambiarlo en preparación re-aplica la tabla.")
     reason = fields.Selection([
         ('nuevo_producto', "Nuevo producto"),
         ('cambio_ingenieria', "Cambio de ingeniería"),
@@ -80,7 +82,8 @@ class SgiPpap(models.Model):
                                  help="Fecha en que se envió el PPAP al cliente.")
     date_decision = fields.Date(string="Fecha de decisión", readonly=True,
                                 help="Fecha en que el cliente aprobó, rechazó o dio aprobación interina.")
-    element_ids = fields.One2many('sgi.ppap.element', 'ppap_id', string="Elementos")
+    element_ids = fields.One2many('sgi.ppap.element', 'ppap_id', string="Elementos",
+        help="La columna S/R se ajusta por elemento (p. ej. nivel 4, donde el cliente define qué pide).")
     notes = fields.Text(string="Notas")
 
     @api.model_create_multi

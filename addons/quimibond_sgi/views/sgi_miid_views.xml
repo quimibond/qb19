@@ -331,14 +331,9 @@
                     </group>
                     <notebook>
                         <page string="Texto de la sección" name="body">
-                            <p class="text-muted">Texto corto de la sección. Escriba [[datos]] en un párrafo propio
-                                para decidir dónde van los renglones y los datos del sistema; si no, van al final del
-                                texto.</p>
-                            <field name="body" nolabel="1"/>
+                            <field name="body" nolabel="1" placeholder="Texto corto de la sección. [[datos]] en un párrafo propio marca dónde van los datos del sistema."/>
                         </page>
                         <page string="Renglones" name="items">
-                            <p class="text-muted">Una fila por concepto: lo que antes eran viñetas o tablas escritas
-                                en el texto. Cada renglón puede abrir su pantalla en Odoo.</p>
                             <group>
                                 <group>
                                     <field name="item_style" widget="radio" options="{'horizontal': true}"/>
@@ -366,8 +361,6 @@
                             </field>
                         </page>
                         <page string="Notas por renglón" name="row_notes" invisible="not live_block">
-                            <p class="text-muted">Columna fija de un bloque de datos: en los anexos del MIID, la
-                                situación de cada anexo (el renglón es la clave del anexo, p. ej. ANEXO 9).</p>
                             <field name="row_note_ids" nolabel="1">
                                 <list editable="bottom" delete="0">
                                     <field name="sequence" widget="handle"/>

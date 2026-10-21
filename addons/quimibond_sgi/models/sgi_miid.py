@@ -281,7 +281,9 @@ class SgiMiidSection(models.Model):
                               help="Menú donde se consulta en Odoo lo que dice la sección. La pantalla lo "
                                    "abre con un botón; el PDF imprime su ruta.")
     item_ids = fields.One2many('sgi.miid.item', 'section_id', string="Renglones", copy=True,
-                               help="Lista o tabla de la sección: un renglón por concepto.")
+                               help="Lista o tabla de la sección: un renglón por concepto."
+                                    " Lo que antes eran viñetas o tablas escritas en el texto; cada renglón puede "
+                                    "abrir su pantalla en Odoo.")
     item_count = fields.Integer(string="# Renglones", compute='_compute_item_count')
     item_style = fields.Selection([('table', "Tabla"), ('list', "Lista")], string="Los renglones van en",
                                   default='table', required=True,
@@ -1994,7 +1996,10 @@ class ApprovalRequestMiid(models.Model):
     sgi_miid_snapshot = fields.Text(string="Datos del MIID", readonly=True, copy=False,
                                     help="Foto de los datos con que se generó el PDF del MIID.")
     sgi_miid_generated = fields.Datetime(string="MIID generado el", readonly=True, copy=False,
-                                         help="Cuándo se generó el PDF del MIID que lleva esta solicitud.")
+                                         help="Cuándo se generó el PDF del MIID que lleva esta solicitud."
+                                              " El PDF adjunto lo generó Odoo con los datos del sistema; si cambian"
+                                              " antes de enviarla, al enviar se genera otra vez. Lo que se firma es"
+                                              " lo que se publica. «Aprobó» lo firma Dirección.")
     sgi_miid_blocked_note = fields.Text(string="Último aviso de candados del MIID", readonly=True, copy=False,
                                         help="Lo que detiene la aprobación del MIID aunque las firmas estén "
                                              "completas.")

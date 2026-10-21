@@ -14,21 +14,21 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:680` |
-| `approver_text` | Char | Lo aprueba | Quién firma «Aprobó» (P-G01, 4.3). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:707` |
-| `author_text` | Char | Lo elabora | Quién elabora un documento de este tipo (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:703` |
-| `code` | Char | Código | Identificador estable (procedimiento, instructivo, formato…). El campo heredado «Tipo de documento» se calcula desde él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:674` |
-| `code_required` | Boolean | Exige clave | Apáguelo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:690` |
-| `company_id` | Many2one | Empresa | Vacío = tipo compartido por todas las empresas. |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:698` |
-| `control_text` | Char | Cómo queda controlado | Cómo se publica y se controla (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:705` |
-| `legacy_code_regex` | Char | Claves heredadas aceptadas (regex) | Expresión regular de la nomenclatura anterior que se sigue aceptando mientras se migra (ej. ^P-[AGCDEIMPSV]\d{2}$). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:694` |
-| `location_text` | Char | Dónde se elabora | Dónde se escribe o se arma (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:704` |
-| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:678` |
-| `odoo_menu_id` | Many2one | Pantalla en Odoo | Dónde se elabora o se consulta en Odoo. |  | `ir.ui.menu` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:708` |
-| `prefix_pattern` | Char | Patrón de clave | Cómo se arma la clave. Marcadores: {process} = clave del proceso (C6, S2…), {seq} o {seq:02d} = consecutivo. Ej. PR-{process}, IT-{process}-{seq:02d}, CO-{seq:02d}. Vacío = clave libre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:681` |
-| `requires_process` | Boolean | Exige proceso | Un documento controlado de este tipo debe estar ligado a un proceso (salvo que conserve una clave heredada). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:686` |
-| `reviewer_text` | Char | Lo revisa | Quién firma «Revisó» (P-G01, 4.3). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:706` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:679` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:681` |
+| `approver_text` | Char | Lo aprueba | Quién firma «Aprobó» (P-G01, 4.3). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:708` |
+| `author_text` | Char | Lo elabora | Quién elabora un documento de este tipo (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:704` |
+| `code` | Char | Código | Identificador estable (procedimiento, instructivo, formato…). El campo heredado «Tipo de documento» se calcula desde él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:675` |
+| `code_required` | Boolean | Exige clave | Apáguelo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:691` |
+| `company_id` | Many2one | Empresa | Vacío = tipo compartido por todas las empresas. |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:699` |
+| `control_text` | Char | Cómo queda controlado | Cómo se publica y se controla (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:706` |
+| `legacy_code_regex` | Char | Claves heredadas aceptadas (regex) | Expresión regular de la nomenclatura anterior que se sigue aceptando mientras se migra (ej. ^P-[AGCDEIMPSV]\d{2}$). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:695` |
+| `location_text` | Char | Dónde se elabora | Dónde se escribe o se arma (P-G01, 4.2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:705` |
+| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:679` |
+| `odoo_menu_id` | Many2one | Pantalla en Odoo | Dónde se elabora o se consulta en Odoo. |  | `ir.ui.menu` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:709` |
+| `prefix_pattern` | Char | Patrón de clave | Cómo se arma la clave. Marcadores: {process} = clave del proceso (C6, S2…), {seq} o {seq:02d} = consecutivo. Ej. PR-{process}, IT-{process}-{seq:02d}, CO-{seq:02d}. Vacío = clave libre. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:682` |
+| `requires_process` | Boolean | Exige proceso | Un documento controlado de este tipo debe estar ligado a un proceso (salvo que conserve una clave heredada). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:687` |
+| `reviewer_text` | Char | Lo revisa | Quién firma «Revisó» (P-G01, 4.3). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:707` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:680` |
 
 ## Métodos públicos (1)
 

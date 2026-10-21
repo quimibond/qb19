@@ -35,15 +35,6 @@
                                    invisible="not sgi_alert_id"/>
                         </group>
                     </group>
-                    <div class="text-muted mb-2">
-                        Un resultado <b>Fuera de tolerancia</b> marca el equipo
-                        como NO USAR y genera la NC de evaluación de impacto
-                        (qué producto se midió con él). La <b>Próxima fecha</b>
-                        actualiza el semáforo del equipo: avisa 30 días antes
-                        y al vencer también lo bloquea. Una <b>Verificación de
-                        laboratorio</b> (revisión periódica del equipo) no cambia
-                        las fechas; fuera de tolerancia bloquea el equipo igual.
-                    </div>
                     <group string="Notas">
                         <field name="notes" nolabel="1"/>
                     </group>

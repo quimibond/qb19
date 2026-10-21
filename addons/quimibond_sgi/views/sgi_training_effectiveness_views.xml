@@ -41,11 +41,6 @@
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
-                    <div class="alert alert-info" role="status" invisible="state != 'pendiente'">
-                        Diga si la persona aplica en su trabajo lo que aprendió. Si no fue eficaz,
-                        escriba qué observó en «Comentario» antes de pulsar «No eficaz»: RH
-                        reprograma la capacitación. La competencia no se quita.
-                    </div>
                     <div class="oe_title">
                         <label for="employee_name" string="Persona"/>
                         <h1><field name="employee_name" readonly="1"/></h1>

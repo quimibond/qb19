@@ -33,8 +33,7 @@
                     <div class="alert alert-warning" role="alert" invisible="not coverage_gap_count or state != 'borrador'">
                         <b>Cobertura de 3 años:</b>
                         <field name="coverage_gap_count" class="oe_inline"/> subproceso(s) sin
-                        renglón en este programa ni en los dos anteriores registrados en Odoo (ISO 9.2.2). Agréguelos
-                        o deje el motivo en el historial:
+                        renglón en este programa ni en los dos anteriores registrados en Odoo (ISO 9.2.2):
                         <field name="coverage_gap_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
                     </div>
                     <!-- 57.170.0: con el programa cerrado las líneas son evidencia. -->
@@ -187,12 +186,6 @@
                     <field name="report_document_id" invisible="1"/>
                     <notebook>
                         <page string="Checklist" name="checklist">
-                            <div class="text-muted mb-2">
-                                Una pregunta por actividad de cada proceso auditado, con los puntos
-                                de la norma que cumple, y una por cada punto de las normas de la
-                                auditoría sin actividad en el SGI (se genera al planificar). «Ver registros» abre la evidencia real del entregable;
-                                cada respuesta distinta de Conforme crea su hallazgo.
-                            </div>
                             <field name="checklist_line_ids" readonly="(state in ('borrador', 'cerrada')) or sgi_is_locked">
                                 <list editable="bottom" create="0"
                                       decoration-danger="answer in ('nc_mayor', 'nc_menor')"
@@ -231,11 +224,6 @@
                             </field>
                         </page>
                         <page string="Reuniones" name="meetings">
-                            <div class="text-muted mb-2">
-                                Los asistentes son los de «Equipo y fechas»;
-                                aquí quedan las actas de apertura y de cierre. Sustituyen
-                                los formatos anteriores (ver Del Dropbox a Odoo).
-                            </div>
                             <group>
                                 <field name="opening_minutes" readonly="sgi_is_locked"
                                        placeholder="Apertura: alcance confirmado, agenda, criterios, acuerdos..."/>

@@ -52,16 +52,7 @@
                     </group>
                     <notebook>
                         <page string="Modos de falla" name="failure_modes">
-                            <div class="text-muted mb-2">
-                                Escalas AIAG 1–10: <b>S</b>everidad ·
-                                <b>O</b>currencia · <b>D</b>etección.
-                                NPR = S × O × D. Un NPR ≥ 100 marca la línea
-                                en rojo y para marcar el AMEF vigente exige:
-                                acción <b>TERMINADA</b> + re-evaluación
-                                capturada (S/O/D post, dentro de la línea) +
-                                <b>NPR post menor al inicial</b> o
-                                justificación escrita de por qué no baja.
-                            </div>
+                            <div class="text-muted mb-2">NPR = S × O × D (escalas AIAG 1–10). En rojo: NPR ≥ 100.</div>
                             <field name="line_ids">
                                 <list editable="bottom" decoration-danger="requires_action == True">
                                     <field name="sequence" widget="handle"/>

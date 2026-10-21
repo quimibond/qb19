@@ -40,16 +40,6 @@
                         <h1><field name="sgi_heading" readonly="1"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
-                    <div class="text-muted mb-2">
-                        Flujo: defina el periodo → <b>Cargar entradas</b> llena
-                        las 18 entradas de la norma con los datos reales del periodo
-                        (NC, reclamaciones, auditorías, indicadores en rojo, riesgos
-                        altos, incidentes, contexto, aspectos, mejoras…) y trae los
-                        acuerdos abiertos de revisiones anteriores → capture las
-                        <b>Conclusiones</b> y los <b>Acuerdos</b> (cada uno se vuelve
-                        una acción con responsable y fecha) → <b>Marcar realizada</b>
-                        y <b>Cerrar</b>.
-                    </div>
                     <group>
                         <group>
                             <field name="date" readonly="sgi_is_locked"/>
@@ -115,12 +105,6 @@
                             </group>
                         </page>
                         <page string="Conclusiones (9.3.3)" name="conclusions">
-                            <div class="alert alert-info mb-2" role="status">
-                                Para marcar la revisión como Realizada, escriba las conclusiones sobre la
-                                conveniencia, la adecuación y la eficacia del SGI y las decisiones sobre mejora,
-                                cambios y recursos (ISO 9001 9.3.3; ISO 14001 y 45001 9.3). Si no hay cambios,
-                                escríbalo.
-                            </div>
                             <group>
                                 <field name="conclusion_suitability" readonly="sgi_is_locked"
                                        placeholder="¿El SGI sigue siendo conveniente para la empresa y su contexto?"/>
@@ -133,11 +117,6 @@
                             </group>
                         </page>
                         <page string="Acuerdos (salidas)" name="agreements">
-                            <div class="text-muted mb-2">
-                                Cada acuerdo se vuelve una acción del SGI con responsable y compromiso al marcar
-                                la revisión como Realizada: actividad al responsable, escalamiento si vence y
-                                medición de E1-02.
-                            </div>
                             <field name="agreement_ids" readonly="sgi_is_locked">
                                 <list editable="bottom" decoration-danger="action_state == 'vencida'"
                                       decoration-success="action_state == 'terminada'">
@@ -150,10 +129,6 @@
                                 </list>
                             </field>
                             <separator string="Acuerdos abiertos de revisiones anteriores"/>
-                            <div class="text-muted mb-2">
-                                Se cargan con «Cargar entradas». Siguen siendo de su revisión; aquí se revisa
-                                cómo van.
-                            </div>
                             <field name="carried_agreement_ids" readonly="1">
                                 <list decoration-danger="action_state == 'vencida'">
                                     <field name="review_id"/>

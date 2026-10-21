@@ -35,7 +35,9 @@ class SgiAlertSource(models.Model):
         string="Activa", default=True, tracking=True,
         help="Desactívela para dejar de generar no conformidades por este "
              "motivo. El cambio queda registrado en el historial con autor y "
-             "fecha, para poder justificarlo en auditoría.")
+             "fecha, para poder justificarlo en auditoría."
+             " El evento operativo de fondo (bloqueo de equipo, aviso al operador, semáforo del indicador) no "
+             "cambia: solo se deja de registrar la no conformidad.")
     trigger_type = fields.Selection([
         ('automatico', "Automático"),
         ('manual', "Manual (botón)"),

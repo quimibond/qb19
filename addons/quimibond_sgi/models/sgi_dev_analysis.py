@@ -82,7 +82,10 @@ class SgiDevSimilar(models.TransientModel):
                                  help="Proyecto de desarrollo que se compara.")
     peso = fields.Integer(string="Peso pedido (g/m²)", readonly=True, help="Masa nominal que pide el cliente.")
     ancho = fields.Integer(string="Ancho pedido (cm)", readonly=True, help="Ancho nominal que pide el cliente.")
-    line_ids = fields.One2many('sgi.dev.similar.line', 'wizard_id', string="Parecidos")
+    line_ids = fields.One2many('sgi.dev.similar.line', 'wizard_id', string="Parecidos",
+        help="Ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos del código). «Dentro "
+             "de tolerancia» puede ser producto de línea; con una sola diferencia es producto nuevo. Diseño de "
+             "Producto confirma con «Usar como base».")
 
     def action_refresh(self):
         self.ensure_one()
@@ -146,7 +149,10 @@ class SgiDevLabRequest(models.Model):
                               ('medida', "Medida"), ('cancelada', "Cancelada")], string="Estado", default='borrador',
                              required=True, tracking=True)
     line_ids = fields.Many2many('sgi.dev.characteristic', 'sgi_dev_lab_request_line_rel', 'request_id', 'line_id',
-                                string="Renglones a medir", help="Renglones de la tabla del proyecto que mide el laboratorio.")
+                                string="Renglones a medir",
+                                help="Renglones de la tabla del proyecto que mide el laboratorio. El laboratorio captura el "
+                                     "valor en el renglón (abra la fila); el dictamen es de Diseño de Producto. La solicitud se "
+                                     "cierra sola cuando todos los renglones tienen valor.")
     requested_by_id = fields.Many2one('res.users', string="Solicitó", default=lambda self: self.env.user, readonly=True)
     date_requested = fields.Datetime(string="Solicitada el", readonly=True)
     authorized_by_id = fields.Many2one('res.users', string="Autorizó", readonly=True)

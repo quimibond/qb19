@@ -35,7 +35,14 @@ class SgiManagementReview(models.Model):
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True,
                        help="Fecha de la reunión.")
-    period_from = fields.Date(string="Periodo desde", required=True, help="Inicio del periodo que se revisa.")
+    period_from = fields.Date(string="Periodo desde", required=True, help="Inicio del periodo que se revisa."
+                                                                          " Con el periodo definido, «Cargar "
+                                                                          "entradas» llena las 18 entradas de la "
+                                                                          "norma con los datos reales del periodo y"
+                                                                          " trae los acuerdos abiertos de "
+                                                                          "revisiones anteriores; luego se capturan"
+                                                                          " las conclusiones y los acuerdos, se "
+                                                                          "marca realizada y se cierra.")
     period_to = fields.Date(string="Periodo hasta", required=True, help="Fin del periodo que se revisa.")
     attendee_ids = fields.Many2many('hr.employee', 'sgi_review_attendee_rel',
                                     'review_id', 'employee_id', string="Asistentes",
@@ -110,7 +117,10 @@ class SgiManagementReview(models.Model):
 
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
-                                    string="Acuerdos")
+                                    string="Acuerdos",
+                                    help="Cada acuerdo se vuelve una acción del SGI con responsable y "
+                                         "compromiso al marcar la revisión como Realizada: actividad al "
+                                         "responsable, escalamiento si vence y medición de E1-02.")
     # 57.97.0 (N-09): los acuerdos abiertos de revisiones anteriores pasan a
     # esta. Siguen siendo de su revisión (E1-02 los mide en su fecha límite).
     carried_agreement_ids = fields.Many2many(

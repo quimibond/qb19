@@ -14,16 +14,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `control_plan_id` | Many2one | Plan de control |  |  | `sgi.control.plan` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:303` |
-| `document_id` | Many2one | Documento |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:304` |
-| `fmea_id` | Many2one | AMEF |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:302` |
-| `name` | Char | Elemento |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:288` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:305` |
-| `ppap_id` | Many2one | PPAP |  | sí | `sgi.ppap` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:285` |
-| `sequence` | Integer | N° |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:287` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:289` |
-| `submission` | Selection | S/R | Según el nivel AIAG del expediente: S se presenta al cliente y bloquea el envío si está pendiente; R se retiene en planta a disposición. Editable por elemento (p. ej. nivel 4). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:295` |
-| `template_id` | Many2one | Elemento (catálogo) |  |  | `sgi.ppap.element.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:286` |
+| `control_plan_id` | Many2one | Plan de control |  |  | `sgi.control.plan` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:306` |
+| `document_id` | Many2one | Documento |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:307` |
+| `fmea_id` | Many2one | AMEF |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:305` |
+| `name` | Char | Elemento |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:291` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:308` |
+| `ppap_id` | Many2one | PPAP |  | sí | `sgi.ppap` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:288` |
+| `sequence` | Integer | N° |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:290` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:292` |
+| `submission` | Selection | S/R | Según el nivel AIAG del expediente: S se presenta al cliente y bloquea el envío si está pendiente; R se retiene en planta a disposición. Editable por elemento (p. ej. nivel 4). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:298` |
+| `template_id` | Many2one | Elemento (catálogo) |  |  | `sgi.ppap.element.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:289` |
 
 ## Métodos públicos (1)
 

@@ -76,7 +76,8 @@ class SgiJobFamily(models.Model):
     job_ids = fields.Many2many(
         'hr.job', 'sgi_job_family_rel', 'family_id', 'job_id',
         string="Puestos",
-        help="Puestos que forman la familia. Lo asignado a la familia les toca a todos.")
+        help="Puestos que forman la familia. Lo asignado a la familia les toca a todos."
+             " Un puesto solo puede estar en una familia; el nivel se queda en el puesto.")
     company_id = fields.Many2one(
         'res.company', string="Empresa", required=True, index=True,
         default=lambda self: self.env.company)
