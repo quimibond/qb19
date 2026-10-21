@@ -8,3 +8,7 @@ access_qb_nomina_imss_lote_manager,qb.nomina.imss.lote manager,model_qb_nomina_i
 access_qb_nomina_imss_detectar_user,qb.nomina.imss.detectar user,model_qb_nomina_imss_detectar,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_qb_nomina_imss_sdi_bimestre_user,qb.nomina.imss.sdi.bimestre user,model_qb_nomina_imss_sdi_bimestre,hr_payroll.group_hr_payroll_user,1,1,1,1
 access_qb_nomina_imss_sdi_bimestre_linea_user,qb.nomina.imss.sdi.bimestre.linea user,model_qb_nomina_imss_sdi_bimestre_linea,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_incidencias_user,qb.nomina.incidencias user,model_qb_nomina_incidencias,hr_payroll.group_hr_payroll_user,1,1,1,0
+access_qb_nomina_incidencias_manager,qb.nomina.incidencias manager,model_qb_nomina_incidencias,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_nomina_incidencias_linea_user,qb.nomina.incidencias.linea user,model_qb_nomina_incidencias_linea,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_incidencias_linea_manager,qb.nomina.incidencias.linea manager,model_qb_nomina_incidencias_linea,hr_payroll.group_hr_payroll_manager,1,1,1,1

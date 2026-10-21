@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================= Lista de incidencias ================= -->
+    <record id="view_qb_nomina_incidencias_list" model="ir.ui.view">
+        <field name="name">qb.nomina.incidencias.list</field>
+        <field name="model">qb.nomina.incidencias</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'pasada'">
+                <field name="name"/>
+                <field name="fecha_inicio"/>
+                <field name="n_lineas"/>
+                <field name="n_faltas"/>
+                <field name="n_sin_checadas"/>
+                <field name="payslip_run_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'pasada'"
+                       decoration-info="state == 'revisada'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_incidencias_form" model="ir.ui.view">
+        <field name="name">qb.nomina.incidencias.form</field>
+        <field name="model">qb.nomina.incidencias</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_generar" type="object" string="Generar desde el checador" class="btn-primary"
+                            invisible="state != 'borrador'"
+                            help="Lee las checadas, el horario y las ausencias de la semana. Lo que capturó a mano en «HE autorizadas» se conserva."/>
+                    <button name="action_revisada" type="object" string="Marcar revisada"
+                            invisible="state != 'borrador' or not linea_ids"/>
+                    <button name="action_pasar_a_recibos" type="object" string="Pasar a recibos" class="btn-primary"
+                            invisible="state != 'revisada'"
+                            confirm="Se escriben FALTAS, HE_DOBLE, H_SENCILLA, DOM y HE_DIAS en los recibos en borrador de la corrida y se recalculan. No se valida nada. ¿Continuar?"/>
+                    <button name="action_borrador" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Semana">
+                            <field name="fecha_inicio" readonly="state != 'borrador'"/>
+                            <field name="fecha_fin"/>
+                            <field name="payslip_run_id" readonly="state == 'pasada'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'borrador'"/>
+                        </group>
+                        <group string="Resumen">
+                            <field name="n_lineas"/>
+                            <field name="n_faltas"/>
+                            <field name="n_sin_checadas"/>
+                            <field name="generada_en"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info mb-3" role="status" invisible="linea_ids">
+                        Elija el lunes de la semana y use «Generar desde el checador».
+                    </div>
+                    <field name="linea_ids" readonly="state == 'pasada'">
+                        <list editable="bottom" create="false" delete="false"
+                              decoration-danger="faltas &gt; 0" decoration-warning="sin_checadas">
+                            <field name="registro"/>
+                            <field name="employee_id" readonly="1"/>
+                            <field name="department_id" optional="hide"/>
+                            <field name="dia_0" readonly="1"/>
+                            <field name="dia_1" readonly="1"/>
+                            <field name="dia_2" readonly="1"/>
+                            <field name="dia_3" readonly="1"/>
+                            <field name="dia_4" readonly="1"/>
+                            <field name="dia_5" readonly="1"/>
+                            <field name="dia_6" readonly="1"/>
+                            <field name="horas_base" readonly="1" sum="Horas"/>
+                            <field name="faltas" readonly="1" sum="Faltas"/>
+                            <field name="falta_horas" readonly="1" optional="hide"/>
+                            <field name="faltas_dias" optional="show"/>
+                            <field name="incap_dias" readonly="1" optional="show"/>
+                            <field name="horas_sin_goce" readonly="1" optional="hide"/>
+                            <field name="retardos" readonly="1" sum="Retardos"/>
+                            <field name="retardo_min" readonly="1" optional="hide"/>
+                            <field name="salidas_antes" readonly="1" optional="show"/>
+                            <field name="salida_min" readonly="1" optional="hide"/>
+                            <field name="extra_checador" readonly="1" optional="show"/>
+                            <field name="he_propuestas" readonly="1"/>
+                            <field name="he_autorizadas" sum="HE autorizadas"/>
+                            <field name="sencillas_extra" optional="show"/>
+                            <field name="he_dobles" optional="show"/>
+                            <field name="he_sencillas" optional="show"/>
+                            <field name="dias_con_extra" readonly="1" optional="hide"/>
+                            <field name="he_dias" optional="hide"/>
+                            <field name="dom_horas" sum="Prima dominical"/>
+                            <field name="sin_checadas" readonly="1" optional="hide"/>
+                            <field name="proyectado" readonly="1" optional="hide"/>
+                            <field name="observaciones" optional="show"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_incidencias_search" model="ir.ui.view">
+        <field name="name">qb.nomina.incidencias.search</field>
+        <field name="model">qb.nomina.incidencias</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="payslip_run_id"/>
+                <filter name="borrador" string="En borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="revisadas" string="Revisadas" domain="[('state', '=', 'revisada')]"/>
+                <filter name="pasadas" string="Pasadas a recibos" domain="[('state', '=', 'pasada')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_incidencias" model="ir.actions.act_window">
+        <field name="name">Incidencias semanales</field>
+        <field name="res_model">qb.nomina.incidencias</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin listas de incidencias</p>
+            <p>Cree una por semana de nómina (lunes a domingo) y use «Generar desde el checador»: faltas,
+               incapacidades, retardos, tiempo extra según checador y prima dominical salen de las checadas
+               del reloj, el horario del contrato y las ausencias aprobadas. El supervisor autoriza las horas
+               extra y «Pasar a recibos» las escribe en los recibos en borrador de la corrida.</p>
+        </field>
+    </record>
+
+    <!-- Renglones sueltos: para buscar a una persona en varias semanas. -->
+    <record id="view_qb_nomina_incidencias_linea_list" model="ir.ui.view">
+        <field name="name">qb.nomina.incidencias.linea.list</field>
+        <field name="model">qb.nomina.incidencias.linea</field>
+        <field name="arch" type="xml">
+            <list create="false" decoration-danger="faltas &gt; 0">
+                <field name="incidencias_id"/>
+                <field name="registro"/>
+                <field name="employee_id"/>
+                <field name="dia_0"/>
+                <field name="dia_1"/>
+                <field name="dia_2"/>
+                <field name="dia_3"/>
+                <field name="dia_4"/>
+                <field name="dia_5"/>
+                <field name="dia_6"/>
+                <field name="faltas" sum="Faltas"/>
+                <field name="retardos" sum="Retardos"/>
+                <field name="he_autorizadas" sum="HE autorizadas"/>
+                <field name="dom_horas" sum="Prima dominical"/>
+                <field name="observaciones" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_incidencias_linea_search" model="ir.ui.view">
+        <field name="name">qb.nomina.incidencias.linea.search</field>
+        <field name="model">qb.nomina.incidencias.linea</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="registro"/>
+                <field name="incidencias_id"/>
+                <filter name="con_faltas" string="Con faltas" domain="[('faltas', '>', 0)]"/>
+                <filter name="con_retardos" string="Con retardos" domain="[('retardos', '>', 0)]"/>
+                <filter name="sin_checadas" string="Sin checadas" domain="[('sin_checadas', '=', True)]"/>
+                <group>
+                    <filter name="group_employee" string="Persona" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_incidencias" string="Semana" context="{'group_by': 'incidencias_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_incidencias_linea" model="ir.actions.act_window">
+        <field name="name">Incidencias por persona</field>
+        <field name="res_model">qb.nomina.incidencias.linea</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ================= Menús =================
+         Nacen sin padre e inactivos, como «IMSS»: un parent que no resuelve tumba
+         la instalación. qb_nomina_colgar_menu_incidencias() cuelga «Incidencias»
+         de la raíz de la app de Nómina en cada instalación/actualización. -->
+    <record id="menu_qb_nomina_incidencias" model="ir.ui.menu">
+        <field name="name">Incidencias</field>
+        <field name="sequence">55</field>
+        <field name="active" eval="False"/>
+        <field name="group_ids" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+    </record>
+    <menuitem id="menu_qb_nomina_incidencias_semana" name="Listas semanales" parent="menu_qb_nomina_incidencias"
+              action="action_qb_nomina_incidencias" sequence="10"/>
+    <menuitem id="menu_qb_nomina_incidencias_linea" name="Por persona" parent="menu_qb_nomina_incidencias"
+              action="action_qb_nomina_incidencias_linea" sequence="20"/>
+
+    <function model="qb.nomina.incidencias" name="qb_nomina_colgar_menu_incidencias"/>
+
+</odoo>
