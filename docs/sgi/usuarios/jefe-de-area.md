@@ -153,6 +153,11 @@ SGI (órdenes de compra, recibos de entrega), los avisos de una misma clase
 requisitos legales. **Ir** abre la lista de lo que junta; la ficha del
 renglón dice cuáles son. La fecha y el estado son los del más atrasado.
 
+**Revisión de medición** (desde 57.188.0): una actividad que usted ya
+confirmó dos veces seguidas («Sí, esto es lo que hago») se le vuelve a pedir
+a los tres meses, no cada mes. Si contesta «No corresponde» o la deja sin
+respuesta, regresa a mensual.
+
 Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
 indicadores semanales se ven por semana) y abre con el filtro «Con dato»:
 quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""57.107.0: revisión mensual de la medición por el dueño del proceso.
+"""57.107.0: revisión mensual de la medición por el dueño del proceso
+(trimestral desde 57.188.0 cuando ya se confirmó dos veces seguidas).
 
 Cada mes, por cada actividad que se mide sola (Registro en Odoo o Por su
 entregable) y tiene evidencia reciente, el dueño del proceso recibe en Mis
@@ -18,6 +19,8 @@ respuesta». Sin dueño con usuario activo, la recibe el Jefe MAST.
 import random
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -28,7 +31,13 @@ REVIEW_STATES = [
     ('confirmada', "Sí, esto es lo que hago"),
     ('no_corresponde', "No corresponde"),
     ('sin_respuesta', "Sin respuesta"),
+    # 57.188.0: no le tocaba este mes (trimestral, ya confirmada dos veces).
+    ('no_toca', "No tocaba (trimestral)"),
 ]
+# 57.188.0 (Jose 2026-10-22): con las dos últimas revisiones contestadas en «Sí,
+# esto es lo que hago», la actividad se revisa cada tres meses; un «No
+# corresponde» o un «Sin respuesta» la regresan a mensual.
+REVIEW_TRUSTED_MONTHS = 3
 REVIEW_SAMPLE = 3
 # Ventana de la que salen las muestras (días hacia atrás desde hoy).
 REVIEW_WINDOW_DAYS = 60
@@ -158,6 +167,26 @@ class SgiMeasureReview(models.Model):
         return self.env['res.users'].browse(manager_id) if manager_id else owner.browse()
 
     @api.model
+    def _sgi_quarterly_skip(self, activities, month):
+        """57.188.0: ids de las actividades que este mes no se revisan: sus dos
+        últimas revisiones contestadas antes de ``month`` fueron «Sí, esto es lo
+        que hago» y la última fue hace menos de tres meses."""
+        if not activities:
+            return set()
+        history = self.sudo().search([
+            ('activity_id', 'in', activities.ids), ('month', '<', month),
+            ('state', 'in', ('confirmada', 'no_corresponde', 'sin_respuesta'))],
+            order='month desc, id desc')
+        last = {}
+        for review in history:
+            rows = last.setdefault(review.activity_id.id, [])
+            if len(rows) < 2:
+                rows.append(review)
+        return {aid for aid, rows in last.items()
+                if len(rows) == 2 and all(r.state == 'confirmada' for r in rows)
+                and month < rows[0].month + relativedelta(months=REVIEW_TRUSTED_MONTHS)}
+
+    @api.model
     def _sgi_generate_month(self, today=None):
         """Crea las revisiones del mes que falten (una por actividad que se
         mide sola y tiene evidencia en los últimos 60 días) y deja «Sin
@@ -176,8 +205,9 @@ class SgiMeasureReview(models.Model):
         days = int(env['ir.config_parameter'].sudo().get_param(REVIEW_DAYS_PARAM, 5) or 5)
         due = sgi_add_business_days(env, today, days)
         created = Review.browse()
+        trusted = self._sgi_quarterly_skip(activities, month)
         for activity in activities:
-            if activity.id in done:
+            if activity.id in done or activity.id in trusted:
                 continue
             user = self._sgi_review_user(activity)
             if not user:
