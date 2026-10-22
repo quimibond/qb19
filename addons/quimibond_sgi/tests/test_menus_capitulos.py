@@ -67,7 +67,6 @@ ARCHIVED = {
     'menu_sgi_miid_revisions': ('menu_sgi_manual', 'sgi_miid_revisions_action'),
     'menu_sgi_miid_requests': ('menu_sgi_manual', 'sgi_miid_requests_action'),
     'menu_sgi_indicator_wizard': ('menu_sgi_admin_indicators', 'sgi_indicator_wizard_action'),
-    'menu_sgi_floor_tablets': ('menu_sgi_config', 'sgi_floor_tablet_action'),
     'menu_sgi_admin': ('menu_sgi_root', None),  # 57.183.0
 }
 OLD_PATHS = ('SGI → Dirección', 'SGI → Procesos', 'Administración SGI →', 'Mejora → Auditorías',

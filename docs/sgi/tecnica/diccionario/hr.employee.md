@@ -18,7 +18,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 | `sgi_epp_pending_count` | Integer | Responsivas sin firmar |  |  |  | compute `_compute_sgi_epp_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:145` |
 | `sgi_epp_required` | Text | EPP requerido por el puesto |  |  |  | related `job_id.sgi_epp_required`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:142` |
 | `sgi_health_record_ids` | One2many | Estudios y exámenes |  |  | `sgi.health.record` |  | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager | `addons/quimibond_sgi/models/sgi_hse_records.py:119` |
-| `sgi_missing_data` | Char | Le falta | Puesto (sin él no hay Mi procedimiento) o correo de trabajo (sin él no recibe firmas de Firma electrónica). |  |  | compute `_compute_sgi_missing_data`, sin guardar | hr.group_hr_user | `addons/quimibond_sgi/models/sgi_floor_kiosk.py:426` |
+| `sgi_missing_data` | Char | Le falta | Puesto (sin él no hay Mi procedimiento), correo de trabajo (sin él no recibe firmas de Firma electrónica) o, sin usuario de Odoo, PIN (sin él no firma en la tableta de planta). |  |  | compute `_compute_sgi_missing_data`, sin guardar | hr.group_hr_user | `addons/quimibond_sgi/models/sgi_floor_kiosk.py:427` |
 | `sgi_mp_job_id` | Many2one | Puesto (Mi procedimiento) |  |  | `hr.job` | related `current_version_id.job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:233` |
 | `sgi_mp_process_ids` | Many2many | Procesos donde participa | Procesos en los que participa la persona por su puesto o su familia. Se calcula solo. |  | `sgi.process` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:251` |
 | `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe | Actividades cuyo atraso le escala a esta persona. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:243` |
@@ -34,12 +34,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 | `sgi_team_ids` | Many2many | Equipos de venta | Equipos de venta de los que su usuario es miembro o líder (se capturan en Ventas). Filtran su «Mi procedimiento». |  | `crm.team` | compute `_compute_sgi_team_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:192` |
 | `sgi_trial_date_end` | Date | Fin del periodo de prueba | Del contrato vigente; para medir las evaluaciones del periodo de prueba (S4-02). |  |  | related `version_id.trial_date_end`, guardado |  | `addons/quimibond_sgi/models/sgi_kpi_hr.py:56` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_sgi_deliver_epp` | «Entregar EPP»: responsiva nueva con el EPP del puesto propuesto. |
 | `action_sgi_epp_deliveries` | — |
+| `action_sgi_generate_pin` | 57.186.0: un PIN de 4 dígitos para quien no tiene usuario de Odoo ni PIN (firma en la tableta de planta). No toca los que ya tienen PIN. RH se lo da a cada persona; lo ve en la ficha (pestaña de RH). |
 | `action_sgi_my_procedures` | — |
 | `action_sgi_open_my_procedure` | — |
 | `action_sgi_pending_acks` | — |
