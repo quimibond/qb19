@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.184.0 — 2026-10-22
+
+Mis indicadores: pasar a oficial varios a la vez. En producción ~85 de los
+105 indicadores ya tienen la lista completa y ninguno es oficial.
+
+**Agregado**
+- Filtro **Listos para oficial** (`official_ready` buscable).
+- En **Mis indicadores**, columnas **Estado** y **Lista para oficial**, y el
+  botón **Pasar a oficial** sobre la selección
+  (`action_sgi_set_official_many`): pasa los que son suyos y tienen la lista
+  completa; los demás se dejan y el aviso dice cuáles.
+
 ## 19.0.57.183.0 — 2026-10-22
 
 Jose (2026-10-22): «sigue mejorando vistas y elimina obsoletos, por ejemplo

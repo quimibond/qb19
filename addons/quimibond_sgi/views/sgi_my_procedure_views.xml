@@ -612,8 +612,19 @@
         <field name="arch" type="xml">
             <list string="Mis indicadores" create="0" delete="0"
                   decoration-danger="last_semaphore == 'rojo'">
+                <!-- 57.184.0: pasar a oficial varios a la vez (los que tienen la
+                     lista completa); el filtro «Listos para oficial» los junta. -->
+                <header>
+                    <button name="action_sgi_set_official_many" type="object" string="Pasar a oficial"
+                            confirm="Pasan a oficial los seleccionados que tienen la lista completa. Revisó los registros de una medición de cada uno y el dato es confiable. Desde ahora sus mediciones se validan solas y un rojo le pide causa y plan. ¿Continuar?"/>
+                </header>
                 <field name="code" string="Clave"/>
                 <field name="name"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'oficial'"
+                       decoration-muted="status == 'prueba'"/>
+                <field name="official_ready" string="Lista para oficial" optional="show"
+                       invisible="status == 'oficial'"/>
                 <field name="sgi_last_value_label" string="Último valor"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"

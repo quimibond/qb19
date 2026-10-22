@@ -18,16 +18,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `alert_id` | Many2one | No conformidad | No conformidad levantada por esta medición en rojo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1081` |
 | `captured_date` | Date | Capturada el | Día en que la medición pasó a «Capturado» (a mano o por el cálculo automático). El dueño del indicador tiene 3 días hábiles desde aquí para validarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:183` |
 | `cause` | Text | Causa | Por qué salió en rojo (I-4). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:126` |
-| `denominator` | Float | Denominador | Denominador del cálculo (la base contra la que se mide). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:595` |
-| `detail_count` | Integer | Registros |  |  |  | compute `_compute_detail_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:604` |
-| `detail_ids` | Text | Ids de los registros |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:603` |
-| `detail_model` | Char | Modelo de los registros |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:602` |
+| `denominator` | Float | Denominador | Denominador del cálculo (la base contra la que se mide). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:627` |
+| `detail_count` | Integer | Registros |  |  |  | compute `_compute_detail_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:636` |
+| `detail_ids` | Text | Ids de los registros |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:635` |
+| `detail_model` | Char | Modelo de los registros |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:634` |
 | `direction` | Selection |  | Sentido del indicador. |  |  | related `indicator_id.direction`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1064` |
 | `indicator_id` | Many2one | Indicador | Indicador medido. | sí | `sgi.indicator` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1049` |
-| `indicator_status` | Selection | Estado del indicador | Si el indicador es oficial o está a prueba. |  |  | related `indicator_id.status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:606` |
-| `no_data_reason` | Selection | Por qué no hay dato | Foto: el indicador mide el estado de hoy y un mes pasado no se puede reconstruir (es normal). Antes de «Medir desde»: no cuenta. Falta configurar: el cálculo necesita un dato de Ajustes o del catálogo. La fuente no tiene registros: no se ha capturado nada en Odoo. Sin casos: no hubo registros que c… |  |  | compute `_compute_no_data_reason`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:580` |
+| `indicator_status` | Selection | Estado del indicador | Si el indicador es oficial o está a prueba. |  |  | related `indicator_id.status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:638` |
+| `no_data_reason` | Selection | Por qué no hay dato | Foto: el indicador mide el estado de hoy y un mes pasado no se puede reconstruir (es normal). Antes de «Medir desde»: no cuenta. Falta configurar: el cálculo necesita un dato de Ajustes o del catálogo. La fuente no tiene registros: no se ha capturado nada en Odoo. Sin casos: no hubo registros que c… |  |  | compute `_compute_no_data_reason`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:612` |
 | `note` | Text | Nota |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1074` |
-| `numerator` | Float | Numerador | Numerador del cálculo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:594` |
+| `numerator` | Float | Numerador | Numerador del cálculo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:626` |
 | `parallel_denominator` | Float | Denominador (fórmula) | Denominador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:763` |
 | `parallel_numerator` | Float | Numerador (fórmula) | Numerador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:760` |
 | `parallel_value` | Float | Valor de la fórmula | Lo que daría la fórmula configurada del indicador en este periodo, mientras el indicador sigue en su modo de código. Cuando coincidan un mes, se migra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:755` |
@@ -37,7 +37,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `plan_required` | Boolean | Requiere plan | Indica que la medición está en rojo y pide causa y plan de acción. |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:128` |
 | `range_max` | Float |  | Límite superior del rango del indicador. |  |  | related `indicator_id.range_max`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:244` |
 | `range_min` | Float |  | Límite inferior del rango del indicador. |  |  | related `indicator_id.range_min`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:242` |
-| `sample_size` | Integer | Casos | Registros que forman la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:597` |
+| `sample_size` | Integer | Casos | Registros que forman la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:629` |
 | `semaphore` | Selection | Semáforo | Verde, amarillo o rojo según el valor y las metas. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:1068` |
 | `sgi_can_validate` | Boolean | Puede validar |  |  |  | compute `_compute_sgi_can_validate`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1084` |
 | `sgi_frozen_acceptable` | Float | Aceptable al validar | Aceptable del periodo con el que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:62` |
@@ -50,17 +50,17 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `sgi_nc_suppressed` | Boolean | NC omitida (fuente apagada) | La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» estaba desactivada. Se reintenta sola en cuanto se reactive. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1086` |
 | `sgi_targets_frozen` | Boolean | Metas congeladas | La medición está validada y conserva las metas con las que se validó: cambiar la meta del indicador no le cambia el color. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:47` |
 | `sgi_validated_date` | Date | Validada el | Día en que la medición pasó a «Validado». Con él se mide si se validó a tiempo (3 días hábiles desde la captura). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:476` |
-| `sgi_value_by_hand` | Boolean | Valor corregido a mano | Alguien escribió a mano el valor de esta medición automática: el recálculo diario ya no la toca. «Recalcular valor» quita la marca. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:610` |
-| `small_sample` | Boolean | Muestra chica | Menos casos que el mínimo (quimibond_sgi.indicator_min_sample): se mide, pero no abre NC. |  |  | compute `_compute_small_sample`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:598` |
+| `sgi_value_by_hand` | Boolean | Valor corregido a mano | Alguien escribió a mano el valor de esta medición automática: el recálculo diario ya no la toca. «Recalcular valor» quita la marca. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:642` |
+| `small_sample` | Boolean | Muestra chica | Menos casos que el mínimo (quimibond_sgi.indicator_min_sample): se mide, pero no abre NC. |  |  | compute `_compute_small_sample`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:630` |
 | `source_info` | Char | Fuente del dato |  |  |  | related `indicator_id.source_info`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1055` |
 | `source_type` | Selection | Origen del dato | Si el dato es automático o se captura. |  |  | related `indicator_id.source_type`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1052` |
 | `split_ids` | One2many | Desglose |  |  | `sgi.indicator.measure.split` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:420` |
-| `state` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:578` |
+| `state` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:610` |
 | `target_acceptable` | Float | Aceptable | Aceptable vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:239` |
 | `target_objective` | Float | Objetivo | Objetivo vigente en el periodo (con trayectoria, el del escalón). |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:237` |
 | `uom` | Char | Unidad |  |  |  | related `indicator_id.uom`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1067` |
 | `value` | Float | Valor | Valor medido en el periodo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1062` |
-| `value_is_pct` | Boolean |  |  |  |  | compute `_compute_value_is_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:605` |
+| `value_is_pct` | Boolean |  |  |  |  | compute `_compute_value_is_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:637` |
 | `window_label` | Char | Ventana |  |  |  | related `indicator_id.window_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:125` |
 
 ## Métodos públicos (8)

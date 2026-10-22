@@ -184,3 +184,21 @@ class TestIndicatorDetail(TransactionCase):
         mine.action_set_official()
         self.assertEqual(ind.status, 'oficial')
         self.assertIn("Pasado a oficial por", ind.message_ids[0].body)
+
+    def test_13_pasar_varios_a_oficial_desde_la_lista(self):
+        """57.184.0: filtro «Listos para oficial» y «Pasar a oficial» con varios:
+        pasa los que tienen la lista completa y deja los demás."""
+        owner = new_test_user(self.env, login='x_det_many', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        process = self.env['sgi.process'].create({'code': 'XDM', 'name': 'Proceso varios'})
+        ready = self._indicator('X-D13A', responsible_id=owner.id, process_id=process.id)
+        missing = self._indicator('X-D13B', responsible_id=owner.id, process_id=process.id)
+        self._partners(5, 6)
+        self._measure(ready)
+        (ready | missing).invalidate_recordset()
+        mine = self.Indicator.with_user(owner)
+        found = mine.search([('official_ready', '=', True), ('code', 'in', ('X-D13A', 'X-D13B'))])
+        self.assertEqual(found, ready.with_user(owner))
+        result = (ready | missing).with_user(owner).action_sgi_set_official_many()
+        self.assertEqual(ready.status, 'oficial')
+        self.assertEqual(missing.status, 'prueba')
+        self.assertIn("X-D13B", result['params']['message'])
