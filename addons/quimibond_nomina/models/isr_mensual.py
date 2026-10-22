@@ -67,6 +67,22 @@ y las dos pueden salir negativas: un ISR negativo es una devolución (la
 «compensación de ISR» de NOI) y un subsidio negativo recupera el que se
 aplicó en un periodo anterior cuando el mes completo ya rebasa el límite.
 
+**Pagos del art. 174 del Reglamento (1.15.0).** NOI grava la prima
+vacacional con el procedimiento opcional del art. 174 RLISR, no junto con el
+sueldo: ingreso ordinario mensual = gravable del periodo *sin* la prima ÷
+días del periodo × 30.4; la prima se lleva a mes (÷ 365 × 30.4); tasa =
+(tarifa mensual de ordinario + prima mensual − tarifa mensual del ordinario)
+÷ prima mensual; ISR de la prima = prima gravada × tasa. El resto del recibo
+(y el subsidio) se calcula sobre el ordinario. Verificado contra NOI en las
+semanas 43 y 44 de 2026 (siete recibos, a 1–2 centavos: Levario, De la Cruz,
+Ambrocio, Delgadillo, Nava, Aguilar, Lorena Santiago); con un solo método los
+de la misma tarifa daban igual, por eso la quincena 17 parecía «sin 174».
+Qué líneas son de art. 174: parámetro ``quimibond_nomina.isr_art174_codigos``
+(default ``PVAC_TAX``; el aguinaldo gravado se agrega ahí cuando exista su
+regla); vacío lo apaga. En la última nómina del mes el ajuste mensual se hace
+sobre el ordinario acumulado, y el ISR de art. 174 de los recibos previos no
+cuenta como retenido del ordinario.
+
 ``ISR_ADJUSTMENT`` (la entrada manual «Ajuste del ISR», tipo 10) sigue
 existiendo y **se suma** al ISR del periodo como hoy; el ajuste automático no
 la sustituye. En los periodos que no son el último del mes cuenta como
@@ -84,6 +100,8 @@ _logger = logging.getLogger(__name__)
 
 PARAM_INCLUYE_BORRADOR = 'quimibond_nomina.isr_mensual_incluye_borrador'
 PARAM_DIA_PAGO = 'quimibond_nomina.dia_pago_semanal'   # 0 = lunes … 6 = domingo
+PARAM_ART174 = 'quimibond_nomina.isr_art174_codigos'   # líneas gravadas con el art. 174 RLISR
+ART174_DEFAULT = 'PVAC_TAX'
 DIA_PAGO_DEFAULT = 4                                    # viernes
 ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
@@ -246,6 +264,48 @@ class HrPayslip(models.Model):
         # Igual que SUBSIDY_CURRENT_MONTH para la nómina mensual.
         return float_round(uma['monthly'] * pct, precision_digits=2, rounding_method='UP')
 
+    # ------------------------------------------------------------------
+    # 4. Art. 174 del Reglamento (prima vacacional y, después, aguinaldo)
+    # ------------------------------------------------------------------
+    def _qb_art174_codigos(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ART174)
+        if valor is False or valor is None:
+            valor = ART174_DEFAULT
+        return tuple(c.strip() for c in valor.split(',') if c.strip())
+
+    def _qb_art174_monto(self, result_rules=None):
+        """Gravado del recibo que va por el art. 174: de ``result_rules`` mientras
+        se calcula el recibo, o de sus líneas si ya está calculado."""
+        self.ensure_one()
+        codigos = self._qb_art174_codigos()
+        if result_rules is not None:
+            return sum((result_rules.get(c) or {}).get('total', 0.0) or 0.0 for c in codigos)
+        return sum(l.total for l in self.line_ids if l.code in codigos)
+
+    def _qb_dias_periodo(self):
+        periodicidad = self.version_id.schedule_pay
+        if periodicidad == 'weekly':
+            return 7.0
+        if periodicidad == 'bi-weekly':
+            return self.l10n_mx_days_of_year / 24.0
+        return self._rule_parameter('l10n_mx_schedule_table')[periodicidad]
+
+    def _qb_art174(self, gravable_periodo, especial):
+        """``{'ordinario', 'especial', 'tasa', 'isr'}``: el gravable ordinario del
+        periodo y el ISR de lo especial con la tasa del art. 174 RLISR."""
+        self.ensure_one()
+        gravable_periodo = gravable_periodo or 0.0
+        especial = max(especial or 0.0, 0.0)
+        res = {'ordinario': gravable_periodo - especial, 'especial': especial, 'tasa': 0.0, 'isr': 0.0}
+        if not especial:
+            return res
+        tabla = self._rule_parameter('l10n_mx_isr_tables', self.date_to)['monthly']
+        mensual = max(res['ordinario'], 0.0) / self._qb_dias_periodo() * 30.4
+        x = especial / 365.0 * 30.4
+        res['tasa'] = (self._qb_isr_tarifa(mensual + x, tabla) - self._qb_isr_tarifa(mensual, tabla)) / x
+        res['isr'] = float_round(especial * res['tasa'], precision_digits=2)
+        return res
+
     def _qb_isr_mensual(self, gravable_periodo):
         """El ajuste de fin de mes para este recibo, o ``None`` si no aplica
         (no es la última nómina del mes, o el acumulado no está completo).
@@ -265,8 +325,13 @@ class HrPayslip(models.Model):
         def suma(codigos):
             return sum(l.total for l in lineas if l.code in codigos)
 
-        gravable_previo = suma((CODIGO_GRAVABLE,))
-        retenido_previo = -suma(CODIGOS_RETENIDO)      # las deducciones son negativas
+        # Solo el ordinario: lo de art. 174 de los recibos previos no entra al
+        # acumulado, y su ISR no cuenta como retenido del ordinario.
+        especial_previo = sum(r._qb_art174_monto() for r in previos)
+        isr174_previo = sum(r._qb_art174(sum(l.total for l in r.line_ids if l.code == CODIGO_GRAVABLE),
+                                         r._qb_art174_monto())['isr'] for r in previos)
+        gravable_previo = suma((CODIGO_GRAVABLE,)) - especial_previo
+        retenido_previo = -suma(CODIGOS_RETENIDO) - isr174_previo      # las deducciones son negativas
         subsidio_previo = suma((CODIGO_SUBSIDIO,))
         gravable_mes = gravable_previo + (gravable_periodo or 0.0)
         fecha = self.date_to

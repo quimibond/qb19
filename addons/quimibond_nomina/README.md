@@ -557,6 +557,60 @@ Miguel confirma que con uno no baja). Quien tuvo una semana sin checadas se
 queda sin calificar; si falta la lista de alguna semana, el botón avisa y no
 toca nada.
 
+### 14. Prima vacacional con el art. 174 del Reglamento (1.15.0)
+
+NOI grava la prima vacacional con el procedimiento opcional del art. 174 RLISR
+y no junto con el sueldo. Se vio en el paralelo de la semana 44: con el mismo
+gravable (3,399.53) NOI retuvo a Lorena Santiago 163.87 con 123.34 de subsidio
+y Odoo 313.25 sin subsidio. Con el art. 174 salen los siete recibos con prima
+de las semanas 43 y 44 a 1–2 centavos (Levario 351.89, De la Cruz 1,417.84,
+Ambrocio 99.77 con subsidio, Delgadillo, Nava, Aguilar y Lorena Santiago).
+Cuando la prima no cambia de renglón de la tarifa los dos métodos dan lo mismo;
+por eso la quincena 17 parecía calcularse «junto con el sueldo».
+
+El cálculo (`payslip._qb_art174(gravable, prima_gravada)` en
+`models/isr_mensual.py`):
+
+1. Ordinario = gravable del periodo − prima gravada (`PVAC_TAX`).
+2. Ingreso mensual ordinario = ordinario ÷ días del periodo × 30.4.
+3. Prima mensual = prima gravada ÷ 365 × 30.4.
+4. Tasa = (tarifa mensual de 2 + 3 − tarifa mensual de 2) ÷ 3.
+5. ISR de la prima = prima gravada × tasa.
+
+El ordinario sigue con la tarifa del periodo (o el ajuste mensual de la
+sección 8, sobre el ordinario acumulado del mes) y el subsidio se decide sobre
+el ordinario. Qué líneas van por el art. 174: parámetro
+`quimibond_nomina.isr_art174_codigos` (default `PVAC_TAX`; el aguinaldo gravado
+se agrega cuando exista su regla, antes de diciembre); vacío lo apaga.
+
+**Reglas que se cambian en la base después de desplegar 1.15.0** (sin ellas el
+código nuevo no se usa, salvo el ajuste mensual, que ya descuenta la prima de
+los recibos previos):
+
+- `ISR` (id 514), en lugar de `gross` para la tarifa:
+
+  ```python
+  a174 = payslip._qb_art174(gross, payslip._qb_art174_monto(result_rules))
+  ordinario = a174['ordinario']
+  mes = payslip._qb_isr_mensual(ordinario)
+  if mes is not None:
+      result = -(mes['isr'] + a174['isr'])
+  elif ordinario > 0:
+      tablas = payslip._rule_parameter('l10n_mx_isr_tables')
+      low, high, fix, rate = find_rates(ordinario / dias_periodo, tablas['daily'])
+      result = -(((ordinario / dias_periodo - low) * rate + fix) * dias_periodo + a174['isr'])
+  else:
+      result = -a174['isr']
+  ```
+
+- `SUBSIDY_CURRENT_MONTH` (id 524), condición: el límite del subsidio se
+  compara contra el ordinario
+  (`gross = categories['GROSS'] - payslip._qb_art174_monto(result_rules)`).
+- `SUBSIDY` (id 531): `payslip._qb_isr_mensual(...)` recibe el ordinario.
+- `PVAC_TAX` (id 468): solo el comentario, que decía «NO con el art. 174».
+
+Las cuatro quedan bajo el centinela (aceptar el cambio después de editarlas).
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
