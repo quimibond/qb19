@@ -388,6 +388,8 @@ capturarlos uno por uno. Desde 1.9.0 salen de Odoo, menú **Nómina → IMSS**:
 archivos de NOI del 4.º bimestre 2026** (`MOVS MOD 4TO BIM 2026 QTOL 01-SEP-2026.txt`,
 correo de RH 2026-10-12): registro patronal (11) + NSS (11) + tipo (2) +
 fecha `DDMMAAAA` (8) + folio de incapacidad en blanco (8) + días `00` (2) +
+**1.14.6 (2026-10-22):** hasta 1.14.5 el módulo leía `sdi_imss` en 0 en todos los contratos: en Odoo 19 `payroll_properties` es un objeto `Property` (se lee como diccionario) y la lectura solo entendía diccionario o lista. «Detectar» no veía las modificaciones (07) y «SDI del bimestre» no podía aplicar. En producción no había movimientos IMSS registrados, así que no hubo datos que corregir.
+
 SDI con cinco enteros y dos decimales sin punto (7). Ejemplo de NOI:
 `C6759945101160076080250701092026        000088943` = modificación del
 1-sep-2026 a 889.43. CRLF, latin-1, mayúsculas.
