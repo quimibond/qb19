@@ -30,7 +30,18 @@ class TestImss(TransactionCase):
             'wage': 2763.32, 'schedule_pay': 'weekly',
         })
         cls.version = cls.emp.version_id
-        cls.version.write({'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
+        # El SDI vive en la propiedad ``sdi_imss`` del contrato, que define la
+        # estructura («Paga regular» en producción). El contrato de prueba no
+        # trae garantizada esa estructura: sin la definición Odoo descarta la
+        # propiedad y el SDI se lee en 0.0.
+        stype = cls.version.structure_type_id or env['hr.payroll.structure.type'].create({'name': 'QB IMSS prueba'})
+        cls.struct = env['hr.payroll.structure'].create({
+            'name': 'QB IMSS prueba', 'code': 'QB_IMSS', 'type_id': stype.id,
+            'version_properties_definition': [
+                {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}],
+        })
+        cls.version.write({'structure_type_id': stype.id, 'structure_id': cls.struct.id,
+                           'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
         cls.Mov = env['qb.nomina.imss.movimiento']
 
     # --- helpers puros --------------------------------------------------
