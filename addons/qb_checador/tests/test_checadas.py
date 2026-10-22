@@ -154,8 +154,55 @@ class TestChecadas(TransactionCase):
         self._attlog('12\t2026-10-05 12:00:00\t0\t1\t0')   # salió a comer; llegó después
         self.Checada._cron_emparejar()
         tarde = self.Checada.search([('pin', '=', '12'), ('raw', 'like', '12:00:00')])
-        self.assertEqual(tarde.state, 'huerfana')
-        self.assertEqual(len(self._asistencias(self.por_referencia)), 1)
+        atts = self._asistencias(self.por_referencia)
+        self.assertEqual(len(atts), 1)
+        self.assertEqual((tarde.state, tarde.attendance_id), ('emparejada', atts), 'es parte del turno')
+        self.assertEqual(atts.check_out, datetime(2026, 10, 6, 1, 0, 0), 'la asistencia no cambia')
+
+    def test_turno_con_comida_es_una_asistencia(self):
+        self._attlog('12\t2026-10-05 06:58:00\t0\t1\t0', '12\t2026-10-05 13:00:00\t1\t1\t0',
+                     '12\t2026-10-05 13:30:00\t0\t1\t0', '12\t2026-10-05 17:02:00\t1\t1\t0')
+        self.Checada._cron_emparejar()
+        atts = self._asistencias(self.por_referencia)
+        self.assertEqual(len(atts), 1, 'la comida va dentro de la jornada')
+        self.assertEqual(atts.check_in, datetime(2026, 10, 5, 12, 58, 0))
+        self.assertEqual(atts.check_out, datetime(2026, 10, 5, 23, 2, 0))
+        self.assertEqual(atts.qb_checada_out_id.raw.split('\t')[1], '2026-10-05 17:02:00')
+        self.assertEqual(set(self.Checada.search([('pin', '=', '12')]).mapped('state')), {'emparejada'})
+
+    def test_checada_de_menos_no_corre_el_dia_siguiente(self):
+        """Lo que pasó en producción el 20-oct-2026: el reloj empezó a contar a media tarde (faltó la
+        entrada de la mañana). Al alternar entrada/salida, la salida de las 17:35 quedó como entrada de
+        una «asistencia» de 13.5 h hasta las 07:03 del día siguiente."""
+        self._attlog('12\t2026-10-20 15:01:55\t0\t1\t0', '12\t2026-10-20 15:57:48\t1\t1\t0',
+                     '12\t2026-10-20 17:35:44\t1\t1\t0')
+        self.Checada._cron_emparejar()
+        self._attlog('12\t2026-10-21 07:03:50\t0\t1\t0', '12\t2026-10-21 13:55:32\t1\t1\t0',
+                     '12\t2026-10-21 14:55:38\t0\t1\t0', '12\t2026-10-21 17:01:00\t1\t1\t0')
+        self.Checada._cron_emparejar()
+        ayer, hoy = self._asistencias(self.por_referencia)
+        self.assertEqual((ayer.check_in, ayer.check_out), (datetime(2026, 10, 20, 21, 1, 55), datetime(2026, 10, 20, 23, 35, 44)))
+        self.assertEqual((hoy.check_in, hoy.check_out), (datetime(2026, 10, 21, 13, 3, 50), datetime(2026, 10, 21, 23, 1, 0)))
+
+    def test_reconstruir_asistencias(self):
+        """La migración de 1.7.0 rehace lo que armó el checador; lo capturado a mano no se toca."""
+        self._attlog('12\t2026-10-05 06:58:00\t0\t1\t0', '12\t2026-10-05 17:00:00\t1\t1\t0',
+                     '12\t2026-10-06 06:59:00\t0\t1\t0', '12\t2026-10-06 06:59:30\t0\t1\t0')
+        self.Checada._cron_emparejar()
+        a_mano = self.Att.create({'employee_id': self.por_pin.id, 'check_in': datetime(2026, 10, 5, 14, 0, 0),
+                                  'check_out': datetime(2026, 10, 5, 22, 0, 0)})
+        # Simula una asistencia corrida de 1.6.x: la salida de la tarde pegada a la entrada del día siguiente.
+        primera = self._asistencias(self.por_referencia)[0]
+        primera.write({'check_out': datetime(2026, 10, 5, 22, 59, 0)})
+        n = self.Checada._reconstruir_asistencias()
+        self.assertEqual(n, 2)
+        atts = self._asistencias(self.por_referencia)
+        self.assertEqual([(a.check_in, a.check_out) for a in atts],
+                         [(datetime(2026, 10, 5, 12, 58, 0), datetime(2026, 10, 5, 23, 0, 0)),
+                          (datetime(2026, 10, 6, 12, 59, 0), False)])
+        self.assertTrue(a_mano.exists())
+        repetida = self.Checada.search([('pin', '=', '12'), ('raw', 'like', '06:59:30')])
+        self.assertEqual(repetida.state, 'ignorada')
 
     def test_las_de_un_empleado_no_tumban_a_los_demas(self):
         # una asistencia abierta a mano con check_in posterior a la checada provoca un ValidationError

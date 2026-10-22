@@ -17,7 +17,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 | **SGI → Planeación → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
 | **SGI → Planeación → Partes interesadas / Riesgos y oportunidades / Aspectos ambientales / Requisitos legales** | Contexto, riesgos y cumplimiento |
 | **SGI → Sistema** | Mapa de procesos, documentos y el Manual del SGI (MIID) |
-| **SGI → Administración** | Consulta del diagnóstico y de las aprobaciones |
+| **SGI → Desempeño → Diagnóstico** y **SGI → Sistema → Aprobaciones del SGI** | Consulta del diagnóstico y de las aprobaciones |
 | **SGI → Inicio** | Sus propios pendientes y su procedimiento |
 | **SGI → Reportar** | Una no conformidad, un casi accidente o incidente, o una queja o sugerencia (abre la ficha nueva) |
 

@@ -103,6 +103,13 @@ class QbCentro(models.Model):
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)', 'Ya existe un centro con ese código.')
 
+    @api.model
+    def companias_con_costeo(self):
+        """Compañías con al menos un centro directo: las únicas que se
+        costean. Los crons recorren solo estas (1.6.1: con todas, la primera
+        compañía sin centros tumbaba el cálculo de las demás)."""
+        return self.sudo().search([('nature', '=', 'directo')]).company_id
+
     @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo')
     def _check_consistencia(self):
         for rec in self:

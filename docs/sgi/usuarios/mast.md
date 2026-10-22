@@ -11,9 +11,10 @@ Todo el menú **SGI**, ordenado por capítulos de la norma desde 57.113.0:
 y «Del Dropbox a Odoo»), **Planeación** (política, objetivos, partes
 interesadas, riesgos, aspectos ambientales y requisitos legales),
 **Seguridad y ambiente**, **Desempeño** (Tablero, indicadores, satisfacción,
-auditorías y revisión por la dirección), **Mejora** y **Administración**
-(diagnóstico, aprobaciones, Publicar Mi procedimiento, Transición y
-Configuración).
+auditorías, revisión por la dirección y Diagnóstico), **Mejora** y
+**Configuración** (catálogos, Ajustes y Transición). Aprobaciones del SGI y
+Publicar Mi procedimiento están en **Sistema** (desde 57.183.0 ya no hay
+carpeta «Administración»).
 Usted también es Usuario SGI y Auditor: tiene su propio procedimiento y lee
 todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
@@ -59,7 +60,7 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 ### 2.3 Publicar Mi procedimiento
 
-1. **SGI → Administración → Publicar Mi procedimiento**.
+1. **SGI → Sistema → Publicar Mi procedimiento**.
 2. Revise la pestaña de pendientes: puestos duplicados, empleados sin puesto,
    puestos sin roles y puestos con roles pero sin personas.
 3. Publique un puesto o **Publicar todos los puestos**. A cada persona le
@@ -139,7 +140,7 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 ### 2.5 Revisar la salud del SGI
 
-**SGI → Administración → Diagnóstico**: Diagnóstico del SGI, Cumplimiento
+**SGI → Desempeño → Diagnóstico**: Diagnóstico del SGI, Cumplimiento
 de procedimientos (sin el filtro «Medibles» y agrupado por método de
 medición: qué actividades se miden de verdad), Registro de cumplimiento (con
 el botón **Por semana**) y Faltantes de especificación (lo que impide
@@ -148,7 +149,7 @@ leerlos en el manual de administración.
 
 Desde 57.98.0 la sección **Documental** del Diagnóstico lista los reportes del
 SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
-**SGI → Administración → Configuración → Formatos en documentos de Odoo**.
+**SGI → Configuración → Formatos en documentos de Odoo**.
 
 ### 2.5.1 Lo impreso y los colores (desde 57.98.0)
 
@@ -196,7 +197,7 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 
 ### 2.5.2b Registro de cumplimiento: arranque, saneamiento y No aplica masivo (desde 57.149.0)
 
-- **Fecha de arranque** (SGI → Administración → Configuración → Ajustes,
+- **Fecha de arranque** (SGI → Configuración → Ajustes,
   bloque «Registro de cumplimiento»; por omisión 2026-10-05): un periodo que
   venció antes de esa fecha no se crea, no escala en Mis pendientes ni pone la
   actividad en rojo.
@@ -290,7 +291,7 @@ Lo que sigue aplica a los dos:
 - **Lo que es dato se edita en su registro (desde 57.162.0), no en Textos:**
   el alcance en cada **Norma** («Alcance certificado»); lo que no aplica en
   la **Cláusula** («No aplica», el inciso y su justificación); las reglas
-  que el sistema hace cumplir en **Administración → Configuración → Reglas
+  que el sistema hace cumplir en **Configuración → Reglas
   del sistema** (tema, cláusulas, regla y pantalla); y quién elabora,
   dónde, quién revisa y quién aprueba cada tipo en **Tipos de documento**.
   El MIID y el P-G01 los leen, y el aviso diario de «ya no coincide» también
@@ -361,6 +362,22 @@ Lo que sigue aplica a los dos:
   captura a mano como «Aspecto ambiental»; si el aspecto necesita acciones,
   use **Tratar como riesgo** desde el aspecto.
 
+### 2.6.1 Tableta de planta (desde 57.186.0)
+
+La gente de planta sin usuario de Odoo firma sus acuses en una tableta
+compartida con su PIN (decisión de Jose, 22-oct-2026: sin papel). Para
+encenderla:
+
+1. **Sistemas** crea un usuario interno compartido **sin empleado** (por
+   ejemplo `tableta.tejido@`), con «SGI en planta» como acción de inicio.
+2. Usted da de alta la tableta en **SGI → Configuración → Tabletas de
+   planta**: nombre («Tableta Tejido»), la cuenta y los **departamentos**
+   cuya gente firma ahí. Al guardar, la cuenta recibe el grupo «Tableta de
+   planta (SGI)».
+3. **RH** genera los PIN (manual de RH, sección 2).
+4. En la tableta, la persona elige su nombre, teclea su PIN y firma sus
+   acuses pendientes. Queda la tableta y la hora en el acuse.
+
 ### 2.7 La transición
 
 **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**: por proceso,
@@ -375,7 +392,7 @@ protocolos y reglamentos también se leen en **Conocimiento → SGI**. Los
 manuales se actualizan solos con cada versión del sistema, salvo los que
 alguien editó en Conocimiento (a esos les queda un mensaje para comparar).
 
-1. **Importar:** **SGI → Administración → Transición → Importar documentos a
+1. **Importar:** **SGI → Configuración → Transición → Importar documentos a
    Conocimiento**. Empiece con **CO y C4** (los cinco controles operacionales
    y los instructivos de C4); el asistente trabaja por lotes de 10 y dice qué
    importó, qué ya estaba, qué no pudo leer (PDF escaneado) y qué actividades
@@ -422,7 +439,7 @@ procedimiento sin publicar o desactualizado.
   empleado tenga puesto y usuario, que el puesto tenga actividades y que esté
   publicado (pestaña de pendientes de Publicar Mi procedimiento).
 - **«Apagué una fuente de NC automática y quiero saber cuántas se
-  omitieron.»** En Administración → Configuración → Fuentes de NC automáticas, cada fuente
+  omitieron.»** En Configuración → Fuentes de NC automáticas, cada fuente
   cuenta las omisiones y guarda la última.
 - **«Un aviso sigue abierto aunque ya se resolvió.»** Los crons cierran solos
   los avisos cuya causa se resolvió en su siguiente corrida diaria.
@@ -439,7 +456,7 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
 
 ## Asistentes (57.109.0)
 
-- **Configurar una aprobación.** En SGI → Administración → Aprobaciones del
+- **Configurar una aprobación.** En SGI → Sistema → Aprobaciones del
   SGI, pulse **Configurar** en el renglón: diga qué se aprueba (la acción de
   un documento, una decisión que se pide en Aprobaciones o algo que se firma),
   si es siempre o solo a veces, y revise la vista previa antes de

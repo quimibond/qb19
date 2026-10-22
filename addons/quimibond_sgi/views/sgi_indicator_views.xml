@@ -318,6 +318,9 @@
                         domain="[('status', '=', 'oficial')]"/>
                 <filter name="en_prueba" string="En prueba"
                         domain="[('status', '=', 'prueba')]"/>
+                <!-- 57.184.0 -->
+                <filter name="ready_official" string="Listos para oficial"
+                        domain="[('official_ready', '=', True)]"/>
                 <separator/>
                 <filter name="automatic" string="Cálculo automático"
                         domain="[('calc_mode','!=','manual')]"/>

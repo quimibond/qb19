@@ -13,6 +13,130 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.187.0 — 2026-10-22
+
+Eficiencias de personal: el % de asistencia sale del checador.
+
+**Agregado**
+- Botón **Asistencia desde el checador** en la hoja mensual
+  (`action_attendance_from_clock`): toma las faltas y los retardos de las
+  listas de incidencias semanales de Nómina (`quimibond_nomina` 1.14.0,
+  semanas que paga el mes) y propone el % del Contrato Colectivo (5.5 % sin
+  faltas ni retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más; con un
+  solo retardo, el parámetro `quimibond_nomina.premio_asistencia_un_retardo`,
+  4.5 mientras RH no lo confirme). El resumen va en Observaciones; quien
+  tuvo una semana sin checadas se queda sin calificar. Si falta la lista de
+  alguna semana, avisa y no toca nada. Sin `quimibond_nomina` instalado,
+  avisa.
+## 19.0.57.186.0 — 2026-10-22
+
+Jose (2026-10-22): la gente de planta sin usuario firma sus acuses en la
+tableta de planta con PIN, sin papel. En producción 114 de los 146 acuses
+pendientes eran de personas sin usuario, ninguna tenía PIN y no había
+tableta: nadie los podía firmar. SGI en planta (57.94.0) estaba apagado por
+la decisión del 2-oct-2026; se enciende.
+
+**Cambiado**
+- **Tabletas de planta** vuelve al menú (SGI → Configuración); estaba
+  archivado desde 57.167.0.
+- La lista de RH «Empleados sin puesto o sin correo» trae también a quien no
+  tiene usuario de Odoo ni PIN («Le falta: PIN»), con el filtro **Sin PIN
+  (sin usuario)** y el botón **Generar PIN** (`action_sgi_generate_pin`, 4
+  dígitos al azar, solo RH; no toca PIN existentes ni a quien tiene usuario).
+- Manuales: RH (sección 2), MAST (2.6.1, encender la tableta) y operador.
+
+## 19.0.57.185.0 — 2026-10-22
+
+Acuses de lectura de revisiones obsoletas. En producción había 7 acuses
+pendientes de documentos ya obsoletos (revisiones viejas de «Mi
+procedimiento»): Mis pendientes le pedía a la persona firmar la Rev. 00 y la
+Rev. 01 de lo mismo.
+
+**Corregido**
+- `sgi.document.ack` lleva `active`. Cuando un documento queda obsoleto, sus
+  acuses **pendientes** se archivan (`_sgi_sync_pending_acks`): ya no se
+  piden en Mis pendientes, Mi equipo, el kiosco de planta ni la salud del
+  SGI, y quedan como evidencia. Los firmados no se tocan. Si el documento
+  vuelve a vigente o piloto, regresan.
+- `action_generate_acks` cuenta también los archivados (un acuse por persona
+  y documento).
+
+**Migración**
+- `post-migrate`: archiva los pendientes de documentos que ya son obsoletos.
+
+## 19.0.57.184.0 — 2026-10-22
+
+Mis indicadores: pasar a oficial varios a la vez. En producción ~85 de los
+105 indicadores ya tienen la lista completa y ninguno es oficial.
+
+**Agregado**
+- Filtro **Listos para oficial** (`official_ready` buscable).
+- En **Mis indicadores**, columnas **Estado** y **Lista para oficial**, y el
+  botón **Pasar a oficial** sobre la selección
+  (`action_sgi_set_official_many`): pasa los que son suyos y tienen la lista
+  completa; los demás se dejan y el aviso dice cuáles.
+
+## 19.0.57.183.0 — 2026-10-22
+
+Jose (2026-10-22): «sigue mejorando vistas y elimina obsoletos, por ejemplo
+el menú Administración».
+
+**Cambiado**
+- La carpeta **Administración** se archiva en su lugar (`menu_sgi_admin`,
+  `SGI_MENU_ARCHIVED`); nada se borra y nadie pierde una pantalla:
+  - **Diagnóstico** (con sus cuatro entradas) pasa a **Desempeño**.
+  - **Aprobaciones del SGI** y **Publicar Mi procedimiento** pasan a
+    **Sistema**, junto a Matriz de responsabilidades y Puestos y procesos.
+  - **Configuración** cuelga del raíz, al final, como en las demás apps de
+    Odoo (solo Jefe MAST), con **Transición** dentro.
+- Las rutas que se le dicen al usuario (`sgi_menu_paths`), los manuales de
+  MAST, Dirección y Auditor, y los README de Conocimiento, Mapa y Pesaje
+  dicen la ruta nueva. Ninguna actividad apunta a esos menús en producción:
+  ningún «Mi procedimiento» cambia de huella.
+
+**Corregido**
+- `test_entrega4.test_01` esperaba ver `menu_sgi_migration`, archivado desde
+  57.167.0.
+
+## 19.0.57.182.1 — 2026-10-22
+
+**Corregido**
+- «Ya corregí» ya no lo puede usar el jefe directo de Diseño: en producción
+  la jefa directa de Diseño de Producto y de Procesos es la Administradora de
+  Ventas, que es quien revisa. Solo los puestos que ejecutan C1.02 y C1.03 (y
+  el Jefe MAST). `sgi_dev_can_fix` lleva etiqueta («Puede marcar la
+  corrección»).
+
+## 19.0.57.182.0 — 2026-10-22
+
+Avisos entre Diseño de Producto, Diseño de Procesos y Ventas en la revisión
+del análisis (C1, lo reportó Administración de Ventas). Antes aprobar y
+regresar solo dejaban una nota interna que no notifica.
+
+**Agregado**
+- `models/sgi_dev_review_notice.py`: actividades «Por hacer» (campana y
+  correo) al **puesto** que sigue, leído de los roles de C1 en el SGI (por
+  nombre solo si la ficha no está), con fecha límite = plazo de la actividad
+  de C1 (días hábiles de su «recibe»: C1.02 = 3, C1.03 = 5 en producción).
+  La del paso anterior se marca hecha.
+  1. Resultado «nuevo» → «Contestar checklist de factibilidad» a quien
+     ejecuta C1.03 (Diseño de Procesos); «línea» o «no factible» → «Revisar
+     análisis y factibilidad» a quien aprueba C1.02/C1.03 (Ventas).
+  2. Checklist sin renglones pendientes → «Revisar análisis y factibilidad»
+     a Ventas.
+  3. «Regresar a Diseño» → «Corregir lo que pidió Ventas» a quien ejecuta
+     C1.02 y C1.03, con el motivo, y un mensaje con correo a esas personas.
+  4. Botón **«Ya corregí»** (solo con la revisión regresada, para Diseño de
+     Producto o de Procesos o su jefe directo) con comentario opcional «Qué
+     se corrigió»: la revisión vuelve a «Pendiente» y «Revisar corrección» le
+     llega con correo a quien regresó.
+  5. Aprobar marca hechas las actividades abiertas del ciclo; salir de la
+     revisión (cerrar como línea / no factible, cotizar) también las cierra.
+- Prueba `tests/test_dev_review_notice.py`.
+
+No cambia la ficha de C1 en el SGI (roles, plazos, aprobaciones): el
+checker de faltantes queda igual.
+
 ## 19.0.57.181.1 — 2026-10-21
 
 **Corregido**

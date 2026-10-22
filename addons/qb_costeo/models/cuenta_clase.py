@@ -121,13 +121,14 @@ class QbCuentaClase(models.Model):
     def cron_cuentas_nuevas(self):
         """Diario: deja en el log las cuentas de resultados sin clasificar.
         El período no cierra con cuentas sin clasificar que tengan saldo."""
-        for company in self.env['res.company'].search([]):
+        for company in self.env['qb.centro'].companias_con_costeo():
             cuentas = self.cuentas_sin_clasificar(company)
             if cuentas:
+                # Una cuenta compartida puede no tener código en esta compañía.
+                codigos = [c.code or c.name for c in cuentas[:20]]
                 _logger.warning(
                     'qb_costeo: %d cuentas de resultados sin clasificar en '
-                    '%s: %s', len(cuentas), company.name,
-                    ', '.join(cuentas.mapped('code')[:20]))
+                    '%s: %s', len(cuentas), company.name, ', '.join(codigos))
 
     @api.model
     def importar_clasificacion_legada(self):

@@ -10,6 +10,9 @@
                     <button name="action_compute_efficiency" type="object" string="Calcular eficiencia desde órdenes de trabajo"
                             invisible="state != 'borrador'" icon="fa-cogs"
                             help="Tiempo esperado / tiempo real registrado por cada empleado en las órdenes de trabajo del mes. Propone el % (tope 2 %)."/>
+                    <button name="action_attendance_from_clock" type="object" string="Asistencia desde el checador"
+                            invisible="state != 'borrador'" icon="fa-clock-o"
+                            help="Toma las faltas y los retardos de las listas de incidencias semanales de Nómina (semanas que paga el mes) y propone el % de asistencia del Contrato Colectivo: 5.5 % sin faltas ni retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más. Usted puede corregirlo."/>
                     <button name="action_close" confirm="Se cerrará la hoja de eficiencias del mes y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar" class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_receive" type="object" string="Recibir (RH)" class="btn-primary"
                             invisible="state != 'cerrado'" groups="hr.group_hr_user"/>

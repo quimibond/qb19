@@ -3,6 +3,17 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.1 — 2026-10-22
+
+- **Los crons «calcular mes anterior y mes en curso» y «avisar cuentas sin
+  clasificar» fallaban desde que se instaló el módulo** y Odoo los apagó solo
+  el 2026-10-15. Recorrían todas las compañías: la primera sin centros
+  tumbaba el cálculo («No hay centros directos configurados») antes de llegar
+  a Quimibond, y el aviso de cuentas se caía con las cuentas compartidas que
+  no tienen código en otra compañía. Ahora los dos recorren solo las
+  compañías con algún centro directo (`qb.centro.companias_con_costeo`), y el
+  aviso usa el nombre de la cuenta cuando no hay código.
+
 ## 19.0.1.6.0 — 2026-10-16
 
 Lo que todavía hacía el módulo anterior (`qb_capacidad_costeo`), con el costo

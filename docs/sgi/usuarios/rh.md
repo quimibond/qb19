@@ -19,17 +19,20 @@ datos, el lunes siguiente llega otro; cuando el departamento queda completo,
 el aviso se cierra solo. Un empleado sin departamento no genera aviso:
 revise la lista completa de vez en cuando y asígnele su departamento.
 
-## 2. El PIN (por ahora no se pide)
+## 2. El PIN (firma en la tableta de planta)
 
-La firma con PIN en la tableta (SGI en planta) está **apagada por ahora**
-(decisión de Dirección, 2-oct-2026): no hace falta capturar PIN para el SGI.
-Si un día se enciende, el Jefe MAST le avisará y esta sección dice cómo:
+Desde 57.186.0 (decisión de Jose, 22-oct-2026) la gente de planta **sin
+usuario de Odoo** firma «Leído y entendido» de su Mi procedimiento y de sus
+documentos en la tableta de planta (SGI en planta), con su PIN. Sin papel.
 
-1. Abra la ficha del empleado → pestaña de configuración de RH → **NIP**.
-2. Capture un número de 4 a 6 dígitos que la persona conozca (el mismo sirve
-   para el quiosco de Asistencias y para SGI en planta). Entrégueselo en
-   privado.
-3. El PIN no tiene límite de intentos (decisión D-08); si alguien lo conoce,
+1. **Empleados → Empleados sin puesto o sin correo**, filtro **Sin PIN (sin
+   usuario)**. La columna **Le falta** dice «PIN».
+2. Seleccione a todos y pulse **Generar PIN**: cada persona recibe un número
+   de 4 dígitos. No toca a quien ya tiene PIN ni a quien tiene usuario.
+3. El PIN está en la ficha del empleado → pestaña de configuración de RH →
+   **NIP**. Entrégueselo a cada persona en privado; el mismo sirve para el
+   quiosco de Asistencias.
+4. El PIN no tiene límite de intentos (decisión D-08); si alguien lo conoce,
    cámbielo en la ficha.
 
 Cuando todas las personas que llenan checklists tengan PIN, avise al Jefe

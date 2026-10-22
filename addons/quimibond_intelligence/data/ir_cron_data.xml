@@ -2,15 +2,18 @@
 <odoo>
     <data noupdate="1">
 
-        <!-- Push contactos/empresas y usuarios a Supabase cada hora
-             (incremental via write_date; users siempre completo). -->
+        <!-- Push contactos/empresas, usuarios y señales a Supabase una vez al día
+             (incremental via write_date; users y senales siempre completos).
+             Diario por costo (decisión 2026-10-22): cada push dispara al bot de
+             situaciones en Supabase. En producción ya era diario desde antes del
+             2026-09-18 (cambiado a mano; este registro es noupdate). -->
         <record id="cron_push_to_supabase" model="ir.cron">
-            <field name="name">Quimibond Sync - Push to Supabase (every 1h)</field>
+            <field name="name">Quimibond Sync - Push to Supabase (every 1 DIA)</field>
             <field name="model_id" ref="model_quimibond_sync"/>
             <field name="state">code</field>
             <field name="code">model.push_to_supabase()</field>
             <field name="interval_number">1</field>
-            <field name="interval_type">hours</field>
+            <field name="interval_type">days</field>
             <field name="active">True</field>
             <field name="nextcall" eval="(DateTime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
             <field name="priority">5</field>

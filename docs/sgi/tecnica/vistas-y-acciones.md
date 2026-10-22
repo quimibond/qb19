@@ -54,7 +54,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Entregables** — `sgi.deliverable`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Flujos entre procesos** — `sgi.process.flow`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Matriz de responsabilidades** — `sgi.activity.exec.stat`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Aprobaciones del SGI** — `sgi.activity.role`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Puestos y procesos** — `hr.job`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Publicar Mi procedimiento** — `sgi.my.procedure.check`; grupos: quimibond_sgi.group_sgi_manager
     - **Documentos** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
       - **Documentos controlados** — `documents.document`
       - **Lista maestra** — `documents.document`
@@ -106,14 +108,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Todas las auditorías** — `sgi.audit`
       - **Hallazgos** — `sgi.audit.finding`
     - **Revisión por la dirección** — `sgi.management.review`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
-  - **Mejora**
-    - **No conformidades** — `quality.alert`
-    - **Acciones correctivas** — `sgi.action.line`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
-    - **Reclamaciones de clientes** — `helpdesk.ticket`
-    - **Mejora continua** — `project.task`
-    - **Lecciones aprendidas** — `quality.alert`
-    - **Quejas y sugerencias del personal** — `helpdesk.ticket`
-  - **Administración** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Diagnóstico** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
       - **Diagnóstico del SGI** — `sgi.diagnostic`; grupos: -quimibond_sgi.group_sgi_manager
       - **Cobertura de medición** — `sgi.process.activity`
@@ -122,34 +116,40 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Faltantes de especificación** — `sgi.activity.spec.gap`
       - **Cumplimiento semanal** — `sgi.activity.week.stat`
       - **Medición por revisar** — `sgi.activity.spec.gap`
-    - **Aprobaciones del SGI** — `sgi.activity.role`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
-    - **Publicar Mi procedimiento** — `sgi.my.procedure.check`; grupos: quimibond_sgi.group_sgi_manager
+  - **Mejora**
+    - **No conformidades** — `quality.alert`
+    - **Acciones correctivas** — `sgi.action.line`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
+    - **Reclamaciones de clientes** — `helpdesk.ticket`
+    - **Mejora continua** — `project.task`
+    - **Lecciones aprendidas** — `quality.alert`
+    - **Quejas y sugerencias del personal** — `helpdesk.ticket`
+  - **Administración** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Firmas de lectura**
+  - **Configuración** — grupos: quimibond_sgi.group_sgi_manager
+    - **Familias de puesto** — `sgi.job.family`
+    - **Ajustes** — `res.config.settings`; grupos: base.group_system
+    - **Áreas** — `sgi.area`
+    - **Normas** — `sgi.norm`
+    - **Cláusulas** — `sgi.norm.clause`
+    - **Reglas del sistema** — `sgi.system.rule`
+    - **Categorías de riesgo** — `sgi.risk.category`
+    - **Tipos de documento** — `sgi.document.type`; grupos: quimibond_sgi.group_sgi_manager
+    - **Checklists de planta y unidades** — `sgi.checklist.template`
+    - **Tabletas de planta** — `sgi.floor.tablet`
+    - **Formatos en documentos de Odoo** — `sgi.format.map`
+    - **Fuentes de NC automáticas** — `sgi.alert.source`
+    - **Elementos PPAP** — `sgi.ppap.element.template`
+    - **Competencias por tipo de permiso** — `sgi.work.permit.skill`
+    - **Fuentes de indicadores** — `sgi.indicator.source`
+    - **Características por tipo de desarrollo** — `sgi.dev.characteristic.template`
+    - **Listas del desarrollo de producto** — `sgi.dev.option`
+    - **Recursos del checklist de factibilidad** — `sgi.dev.feasibility.item`
     - **Transición** — grupos: quimibond_sgi.group_sgi_manager
       - **Cargar mapa de procesos** — `sgi.mapa.load.wizard`; grupos: quimibond_sgi.group_sgi_admin
       - **Cargar catálogo** — `sgi.catalog.load.wizard`; grupos: quimibond_sgi.group_sgi_admin
       - **Empresa en documentos controlados** — `sgi.company.fix`
       - **Importar documentos a Conocimiento** — `sgi.knowledge.import`; grupos: quimibond_sgi.group_sgi_manager
       - **Traspaso de riesgos ambientales** — `sgi.env.aspect.transfer`
-    - **Configuración** — grupos: quimibond_sgi.group_sgi_manager
-      - **Familias de puesto** — `sgi.job.family`
-      - **Ajustes** — `res.config.settings`; grupos: base.group_system
-      - **Áreas** — `sgi.area`
-      - **Normas** — `sgi.norm`
-      - **Cláusulas** — `sgi.norm.clause`
-      - **Reglas del sistema** — `sgi.system.rule`
-      - **Categorías de riesgo** — `sgi.risk.category`
-      - **Tipos de documento** — `sgi.document.type`; grupos: quimibond_sgi.group_sgi_manager
-      - **Checklists de planta y unidades** — `sgi.checklist.template`
-      - **Tabletas de planta** — `sgi.floor.tablet`
-      - **Formatos en documentos de Odoo** — `sgi.format.map`
-      - **Fuentes de NC automáticas** — `sgi.alert.source`
-      - **Elementos PPAP** — `sgi.ppap.element.template`
-      - **Competencias por tipo de permiso** — `sgi.work.permit.skill`
-      - **Fuentes de indicadores** — `sgi.indicator.source`
-      - **Características por tipo de desarrollo** — `sgi.dev.characteristic.template`
-      - **Listas del desarrollo de producto** — `sgi.dev.option`
-      - **Recursos del checklist de factibilidad** — `sgi.dev.feasibility.item`
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
