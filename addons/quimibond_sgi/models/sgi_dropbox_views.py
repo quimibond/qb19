@@ -180,7 +180,7 @@ class SgiDropboxKey(models.Model):
     @api.model
     def _search(self, *args, **kwargs):
         """Solo lectura sobre SQL: flush antes de leer (la vista no sabe de
-        los writes pendientes) y la caché fuera (como qb.sql.view)."""
+        los writes pendientes) y la caché fuera (como qb.costeo.vista.sql)."""
         self.env.flush_all()
         self.invalidate_model()
         return super()._search(*args, **kwargs)

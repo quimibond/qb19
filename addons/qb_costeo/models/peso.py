@@ -6,7 +6,7 @@ trabajo) > `manual` > `ficha` (ficha técnica de Consolti, si está
 instalada) > `nomenclatura` (peso g/m² × ancho del código DAT P-D02-01; un
 producto vendido en m² pesa solo el gramaje, sin el ancho).
 Un producto vendido en kg pesa 1. (El modelo se llama `qb.producto.kg` porque
-`qb.producto.peso` es del módulo anterior y conviven en la misma base.) La fuente queda en la fila; las que no
+`qb.producto.peso` era del módulo anterior, retirado.) La fuente queda en la fila; las que no
 son medidas (`nomenclatura`) pintan el costo como estimado en ese renglón.
 """
 import re
@@ -193,40 +193,3 @@ class QbProductoPeso(models.Model):
             'res_model': 'qb.producto.kg',
             'view_mode': 'list',
         }
-
-    @api.model
-    def importar_legados(self):
-        """Pesos medidos del módulo anterior (`qb_producto_peso` viejo):
-        solo las fuentes medidas (manual, cvu, op_consumo, bom), nunca las
-        adivinadas (ref_gramaje, odoo_weight). Idempotente."""
-        self.env.cr.execute("""
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = 'qb_producto_peso' AND column_name = 'kg_per_unit'
-        """)
-        if not self.env.cr.fetchone():
-            return 0
-        self.env.cr.execute("""
-            SELECT product_id, kg_per_unit, source, notes FROM qb_producto_peso
-            WHERE COALESCE(kg_per_unit, 0) > 0 AND active
-              AND source IN ('manual', 'cvu', 'op_consumo', 'bom')
-        """)
-        filas = self.env.cr.fetchall()
-        company = self.env.company
-        n = 0
-        for pid, kg, source, notes in filas:
-            rec = self.search([('product_id', '=', pid),
-                               ('company_id', '=', company.id)], limit=1)
-            if rec and rec.fuente in ('pesaje', 'manual'):
-                continue
-            vals = {'kg_por_unidad': kg, 'fuente': 'legado',
-                    'detalle': 'qb_capacidad_costeo: %s%s' % (
-                        source, ' — %s' % notes if notes else '')}
-            if source == 'manual':
-                vals.update(kg_manual=kg, fuente='manual',
-                            manual_motivo=notes or 'maestro de ingeniería (módulo anterior)')
-            if rec:
-                rec.write(vals)
-            else:
-                self.create(dict(vals, product_id=pid, company_id=company.id))
-            n += 1
-        return n

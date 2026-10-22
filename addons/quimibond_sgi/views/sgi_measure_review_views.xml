@@ -65,7 +65,7 @@
         <field name="model">sgi.measure.review</field>
         <field name="arch" type="xml">
             <list string="Revisiones de medición" create="0" edit="0" delete="0"
-                  decoration-danger="state == 'no_corresponde'" decoration-muted="state == 'sin_respuesta'">
+                  decoration-danger="state == 'no_corresponde'" decoration-muted="state in ('sin_respuesta', 'no_toca')">
                 <field name="month"/>
                 <field name="process_id"/>
                 <field name="activity_id"/>
@@ -75,7 +75,7 @@
                        decoration-warning="state == 'pendiente'"
                        decoration-success="state == 'confirmada'"
                        decoration-danger="state == 'no_corresponde'"
-                       decoration-muted="state == 'sin_respuesta'"/>
+                       decoration-muted="state in ('sin_respuesta', 'no_toca')"/>
                 <field name="note" optional="hide"/>
             </list>
         </field>
@@ -116,7 +116,8 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cada mes, el dueño del proceso confirma lo que se mide</p>
             <p>Por cada actividad que se mide sola y tuvo evidencia en los últimos 60 días, el dueño del proceso recibe
-                en Mis pendientes tres registros al azar y contesta si de verdad son la actividad. Un «No corresponde»
+                en Mis pendientes tres registros al azar y contesta si de verdad son la actividad. Con dos «Sí» seguidos
+                pasa a cada tres meses; un «No corresponde» o una sin respuesta la regresan a mensual. Un «No corresponde»
                 aparece en Diagnóstico → Faltantes de especificación, filtro «Medición por revisar», hasta que una
                 revisión posterior la confirme.</p>
         </field>

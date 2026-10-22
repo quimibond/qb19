@@ -48,8 +48,6 @@ C1_COT_DELIVERABLES = {
                              "lista de materiales.",
     },
 }
-# Modelo del cotizador anterior: las fichas que aún se medían con él pasan al entregable.
-LEGACY_MODEL = 'qb.cotizacion'
 
 
 class QbCotizadorCotizacionSgi(models.Model):
@@ -261,16 +259,15 @@ class QbCotizadorCotizacionSgi(models.Model):
             return
         Deliverable = self.env['sgi.deliverable'].sudo()
         ir_model = self.env['ir.model'].sudo()._get(self._name)
-        legacy = self.env['ir.model'].sudo()._get(LEGACY_MODEL) if LEGACY_MODEL in self.env else None
         for code, vals in C1_COT_DELIVERABLES.items():
             for deliverable in Deliverable.with_context(active_test=False).search([('code', '=', code)]):
                 dvals = {k: v for k, v in vals.items() if k in deliverable._fields}
                 deliverable.write(dict(dvals, odoo_model_id=ir_model.id))
-                # Manual o, desde 1.2.0, «Registro en Odoo» sobre el cotizador anterior: al entregable.
+                # Manual o «Registro en Odoo» sin modelo (el del cotizador anterior se borró con
+                # qb_capacidad_costeo y quedó vacío): al entregable.
                 domain = [('output_deliverable_ids', 'in', deliverable.id), ('measure_method', 'in', ('manual', 'odoo'))]
                 activities = self.env['sgi.process.activity'].sudo().search(domain).filtered(
-                    lambda a: a.measure_method == 'manual'
-                    or not a.measure_model_id or (legacy and a.measure_model_id == legacy))
+                    lambda a: a.measure_method == 'manual' or not a.measure_model_id)
                 for activity in activities.filtered(lambda a: a.output_deliverable_ids == deliverable):
                     try:
                         with self.env.cr.savepoint():

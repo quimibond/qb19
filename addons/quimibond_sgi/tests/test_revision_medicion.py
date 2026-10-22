@@ -80,3 +80,23 @@ class TestRevisionMedicion(TransactionCase):
         self.Review._sgi_generate_month(self.today + relativedelta(months=1))
         self.assertEqual(review.state, 'sin_respuesta')
         self.assertEqual(len(self._review()), 2)
+
+    def test_04_trimestral_tras_dos_confirmadas(self):
+        """57.188.0: con dos «Sí» seguidos, la siguiente revisión es a los tres
+        meses de la última; un «No corresponde» la regresa a mensual."""
+        start = self.today.replace(day=1)
+        for n in (0, 1):
+            self.Review._sgi_generate_month(start + relativedelta(months=n))
+            self._review().filtered(lambda r: r.state == 'pendiente').with_user(
+                self.owner_user).action_confirm()
+        for n in (2, 3):
+            self.Review._sgi_generate_month(start + relativedelta(months=n))
+            self.assertFalse(self._review().filtered(lambda r: r.state == 'pendiente'),
+                             "Mes %d: no toca." % n)
+        self.Review._sgi_generate_month(start + relativedelta(months=4))
+        fourth = self._review().filtered(lambda r: r.state == 'pendiente')
+        self.assertEqual(len(fourth), 1, "A los tres meses de la última, vuelve.")
+        fourth.with_user(self.owner_user)._sgi_answer('no_corresponde', 'Cuenta otra cosa')
+        self.Review._sgi_generate_month(start + relativedelta(months=5))
+        self.assertEqual(len(self._review().filtered(lambda r: r.state == 'pendiente')), 1,
+                         "Tras un «No corresponde», mensual otra vez.")

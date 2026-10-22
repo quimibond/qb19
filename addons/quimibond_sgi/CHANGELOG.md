@@ -13,6 +13,35 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.189.0 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22).
+
+**Cambiado**
+- `_SGI_SCREEN_PRODUCES`: el par `('qb.costo.producto', 'account.move')` del
+  costeo anterior pasa a `('qb.periodo', 'account.move')`. La actividad S3.09
+  (recalcular el costeo y registrar la capa de valoración) abre ahora
+  Manufactura → Costos → Períodos (`qb_costeo`) y se mide con el asiento; sin
+  el par, el SGI avisaría que la pantalla no produce la evidencia.
+
+## 19.0.57.188.0 — 2026-10-22
+
+Jose (2026-10-22): menos ruido en la revisión de medición. En producción había
+108 «Revisar medición» atrasadas en Mis pendientes: cada mes, una por cada
+actividad que se mide sola, aunque el dueño ya la hubiera confirmado.
+
+**Cambiado**
+- Una actividad cuyas dos últimas revisiones contestadas fueron «Sí, esto es
+  lo que hago» se revisa **cada tres meses** (a los tres meses de la última;
+  `_sgi_quarterly_skip`). Un «No corresponde» o una «Sin respuesta» la
+  regresan a mensual.
+- Estado nuevo **No tocaba (trimestral)** para lo que ya estaba pendiente y
+  con la regla nueva no tocaba.
+
+**Migración**
+- `post-migrate`: las pendientes que no tocaban pasan a «No tocaba
+  (trimestral)» y su renglón de Mis pendientes se quita.
+
 ## 19.0.57.187.0 — 2026-10-22
 
 Eficiencias de personal: el % de asistencia sale del checador.
