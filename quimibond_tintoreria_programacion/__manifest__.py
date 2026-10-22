@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Programación de Tintorería',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Manufacturing',
     'summary': 'Asignación de HTJ por orden, cálculo del tamaño de baño y división simétrica de la MO de tela acabada en kg',
     'description': """
@@ -22,7 +22,6 @@ Programación de Tintorería
     'license': 'LGPL-3',
     'depends': [
         'mrp',
-        'quimibond_tintoreria_rendimiento',
         'quimibond_tintoreria_dosificacion',
         'quimibond_ficha_tecnica_tela',
     ],

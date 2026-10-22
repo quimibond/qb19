@@ -34,7 +34,7 @@ class MrpProduction(models.Model):
         self.ensure_one()
         orden_trabajo = self.workorder_ids.filtered(lambda wo: wo.operation_id == operacion)[:1]
         centro = orden_trabajo.workcenter_id or operacion.workcenter_id
-        return centro, self._rb_workcenter(centro)
+        return centro, self._rb_workcenter(centro, self.product_id)
 
     def _dosificacion_operacion(self, linea_bom):
         """Operación donde se dosifica la línea: la suya o, si no tiene, la de Tintorería de la BoM."""
