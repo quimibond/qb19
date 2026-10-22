@@ -11,6 +11,8 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
+from .common import liberar_referencias
+
 from odoo.addons.quimibond_nomina.models.imss import (
     anio_de_servicio, bimestre_rango, dias_vacaciones_lft, factor_integracion, linea_totales_idse,
     registro_patronal_plano)
@@ -24,12 +26,33 @@ class TestImss(TransactionCase):
         env = cls.env
         cls.company = env.company
         cls.company.l10n_mx_imss_id = 'C-675994510-1'
+        liberar_referencias(env, 'S-250')
         cls.emp = env['hr.employee'].create({
             'name': 'JORGE MATIAS SALINAS', 'registration_number': 'S-250', 'ssnid': '16998226027',
             'l10n_mx_curp': 'MASJ830911HMCTLR06', 'contract_date_start': date(2026, 9, 23),
             'wage': 2763.32, 'schedule_pay': 'weekly',
         })
         cls.version = cls.emp.version_id
+        # El SDI vive en la propiedad ``sdi_imss`` del contrato, que define la
+        # estructura («Paga regular» en producción). El contrato de prueba no
+        # trae garantizada esa estructura: sin la definición Odoo descarta la
+        # propiedad y el SDI se lee en 0.0. Se agrega la definición a la
+        # estructura que el contrato ya tiene: cambiarle el tipo de estructura
+        # recalcula la periodicidad (semanal → quincenal) y la estructura.
+        # Antes, flush: la estructura del contrato es un campo calculado y sin
+        # él se lee la de antes de calcularse («Paga regular» llega después).
+        env.flush_all()
+        struct = cls.version.structure_id
+        if not struct:
+            struct = env['hr.payroll.structure'].create({
+                'name': 'QB IMSS prueba', 'code': 'QB_IMSS', 'type_id': cls.version.structure_type_id.id})
+            cls.version.structure_id = struct
+        # También la estructura por omisión del tipo, por si se recalcula después.
+        for estructura in struct | cls.version.structure_type_id.default_struct_id:
+            definicion = list(estructura.version_properties_definition or [])
+            if not any(d.get('name') == 'sdi_imss' for d in definicion):
+                estructura.version_properties_definition = definicion + [
+                    {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}]
         cls.version.write({'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
         cls.Mov = env['qb.nomina.imss.movimiento']
 

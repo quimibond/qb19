@@ -48,7 +48,7 @@ Las rutas son relativas a `addons/quimibond_sgi/` salvo donde dice `qb_mcp_polit
 | D-xx | D-18 | El Auditor y Dirección leen el Diagnóstico (carpeta «6.4 Diagnóstico»). | `models/sgi_diagnostic.py:90` (también `views/sgi_menus.xml:251`) |
 | D-xx | D-20 | Menús sin paréntesis («Tableros (SGI)» pasa a «Paretos de calidad»; Empleados: DNC y brechas, hojas de eficiencias). | `views/sgi_menus.xml:320` |
 | D-xx | D-21 | «Documentos vigentes» en Inicio: título y revisión (sin la clave del Dropbox) y el acuse de lectura en el mismo renglón (entrega 4, I-015). | `models/sgi_current_documents.py:2` (también `views/sgi_menus.xml:44`) |
-| D-xx | D-22 | En el SGI no se borra por MCP, se archiva: `delete_record` sobre cualquier modelo `sgi.*` se rechaza (Jose, 2026-09-29). | `qb_mcp_politica/README.md:25` (también `qb_mcp_politica/models/politica.py:110`) |
+| D-xx | D-22 | En el SGI no se borra por MCP, se archiva: `delete_record` sobre cualquier modelo `sgi.*` se rechaza (Jose, 2026-09-29). **Sin efecto desde 2026-10-22:** `qb_mcp_politica` nunca se instaló en producción y se retiró del repo por decisión de Jose. | `qb_mcp_politica/README.md:25` (también `qb_mcp_politica/models/politica.py:110`) |
 | D-xx | D-28 | Normas del SGI y su estado (organismo SIDE Certificaciones, acreditado ante la ema). | `README.md:10` (también `CHANGELOG.md:1337`) |
 | D-xx | D-29 | `help` de campos y ayudas de pantalla vacía en «usted», para quien llena el campo. | `CHANGELOG.md:1272` (también `README.md:141`) |
 | D-xx | D-30 | CHANGELOG del módulo reconstruido desde git y chequeo en `tools/check_addons.py` (K-018): subir la versión exige su sección `## <versión>`. | `CHANGELOG.md:2500` |
