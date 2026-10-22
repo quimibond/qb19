@@ -35,7 +35,8 @@
          watchdog de la memoria avisó "odoo contacts: 39h sin push exitoso".
 
          ir_cron_data.xml es noupdate, así que un `odoo-update` no los toca.
-         Aquí se buscan por nombre SOLO los apagados (active_test=False) y se
+         Aquí se buscan por xmlid (no por nombre: en producción el push se
+         llama «… (every 1 DIA)», renombrado a mano) SOLO los apagados (active_test=False) y se
          escriben active=True con los contadores de fallo en cero. Solo los
          apagados a propósito: ir.cron.write toma un lock del registro y si
          el cron estuviera corriendo en ese momento el update abortaría con
@@ -47,10 +48,8 @@
          un despliegue; el módulo sin sus crons no hace nada. -->
     <function model="ir.cron" name="write">
         <function model="ir.cron" name="search">
-            <value eval="[('name', 'in', [
-                'Quimibond Sync - Push to Supabase (every 1h)',
-                'Quimibond Sync - Pull from Supabase (every 5min)',
-            ]), ('active', '=', False)]"/>
+            <value eval="[('id', 'in', [ref('cron_push_to_supabase'), ref('cron_pull_from_supabase')]),
+                          ('active', '=', False)]"/>
             <value name="context" eval="{'active_test': False}"/>
         </function>
         <value eval="{'active': True, 'failure_count': 0, 'first_failure_date': False}"/>
