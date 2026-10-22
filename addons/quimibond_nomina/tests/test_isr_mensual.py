@@ -11,6 +11,8 @@ from datetime import date, timedelta
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
+from .common import liberar_referencias
+
 LOG = 'odoo.addons.quimibond_nomina.models.isr_mensual'
 
 
@@ -29,10 +31,13 @@ class TestIsrMensual(TransactionCase):
                 'name': code, 'code': code, 'struct_id': cls.struct.id, 'category_id': cat.id,
                 'condition_select': 'none', 'amount_select': 'code', 'amount_python_compute': 'result = 0',
             })
+        liberar_referencias(env, 'Q-1', 'Q-2')
         cls.employee = env['hr.employee'].create({'name': 'Prueba ISR', 'registration_number': 'Q-1'})
         cls.employee.version_id.write({'schedule_pay': 'bi-weekly', 'contract_date_start': date(2018, 9, 13)})
         cls.Param = env['ir.config_parameter'].sudo()
         cls.Param.set_param('quimibond_nomina.isr_mensual_incluye_borrador', '')
+        # En la copia de producción el día de pago viene configurado; la prueba parte sin él.
+        cls.Param.set_param('quimibond_nomina.dia_pago_semanal', False)
 
     def _recibo(self, date_from, date_to, lineas=None, state=None, employee=None):
         slip = self.env['hr.payslip'].create({
