@@ -176,6 +176,11 @@ class HrVersion(models.Model):
         props = self.payroll_properties
         if isinstance(props, dict):
             return dict(props)
+        # Odoo 19 devuelve un objeto ``Property`` que se lee como diccionario
+        # (``get``/``items``), no una lista: antes de 1.14.6 caía a la lista,
+        # salía vacío y el SDI se leía en 0 en todos los contratos.
+        if hasattr(props, 'items'):
+            return dict(props.items())
         return {p.get('name'): p.get('value') for p in (props or []) if isinstance(p, dict) and p.get('name')}
 
     def _qb_imss_sdi(self):
