@@ -104,6 +104,11 @@ Desde 57.178.0 lo pasa a oficial **su responsable o el dueño del proceso**
 4. Pulse **Pasar a oficial**. Desde ese momento sus mediciones se validan
    solas y un rojo le pide causa y plan (y puede abrir NC).
 
+Para varios a la vez (desde 57.184.0): en **SGI → Inicio → Mis
+indicadores**, filtre **Listos para oficial**, seleccione los que ya revisó
+y pulse **Pasar a oficial** arriba de la lista. Pasan los que tienen la
+lista completa; el aviso dice cuáles se dejaron.
+
 La configuración del cálculo quedó en la pestaña **Cálculo**; las
 **Mediciones** son la primera pestaña.
 

@@ -406,7 +406,7 @@ Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyec
 comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
 En el SGI queda qué renglones carga cada tipo de desarrollo (general,
 entretelas V10, carda, tramado, con dirección largo / ancho y posición
-izquierda / centro / derecha): **SGI → Administración → Configuración →
+izquierda / centro / derecha): **SGI → Configuración →
 Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
 solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
 generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
@@ -496,9 +496,10 @@ normas (57.113.0):
   dirección.
 - **Mejora** (10): NC, acciones correctivas, reclamaciones, mejora continua,
   lecciones aprendidas, quejas y sugerencias del personal.
-- **Administración** (antes «Administración SGI»; Auditor, Jefe MAST y
-  Dirección): Diagnóstico (cuatro entradas) y Aprobaciones del SGI;
-  Publicar Mi procedimiento, Transición y Configuración solo Jefe MAST.
+- **Configuración** (solo Jefe MAST; desde 57.183.0 del raíz, al final):
+  catálogos, Ajustes y Transición. La carpeta «Administración» se archivó:
+  Diagnóstico pasó a Desempeño y Aprobaciones del SGI y Publicar Mi
+  procedimiento, a Sistema.
 
 Los xmlids no cambiaron; lo que salió del menú (Firmas de lectura, Cobertura
 de medición, Cumplimiento semanal, Medición por revisar) está archivado en su

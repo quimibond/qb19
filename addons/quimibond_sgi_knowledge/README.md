@@ -79,7 +79,7 @@ las opciones por omisión de las decisiones 1 a 6 y de N1 a N6
   del proceso y «Leer en Conocimiento» en la tarjeta y las listas de Mi
   procedimiento (solo cuando el instructivo ya está publicado; campo de
   pantalla, fuera de la huella y del PDF).
-- **Importador** (`sgi.knowledge.import`, SGI → Administración → Transición
+- **Importador** (`sgi.knowledge.import`, SGI → Configuración → Transición
   → Importar documentos a Conocimiento, y la acción «Importar a Conocimiento
   (SGI)» en la lista de Documentos; solo Jefe MAST): por lotes (10 por
   omisión), idempotente por clave, cada documento en su savepoint. Crea un

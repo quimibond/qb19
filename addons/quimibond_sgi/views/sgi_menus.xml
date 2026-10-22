@@ -351,13 +351,21 @@
          ============================================================ -->
     <menuitem id="menu_sgi_admin" name="Administración" parent="menu_sgi_root" sequence="90"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <!-- 57.183.0 (Jose 2026-10-22: «elimina obsoletos, por ejemplo el menú
+         Administración»): la carpeta se archiva en su lugar. Diagnóstico pasa
+         a Desempeño; Aprobaciones del SGI y Publicar Mi procedimiento, a
+         Sistema; Configuración (con Transición dentro) cuelga del raíz, al
+         final, como en las demás apps de Odoo. -->
+    <record id="menu_sgi_admin" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 
     <!-- 7.1 Diagnóstico (D-18): el Auditor y Dirección la leen. «Diagnóstico
          del SGI» tenía el grupo 318 en producción: el «-» lo quita para que
          herede de la carpeta. 57.113.0 (Q5): de 8 a 4 entradas; las otras se
          archivan en su lugar con su acción viva y se llega a ellas por un
          filtro, una agrupación o un botón. -->
-    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="10"
+    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_performance" sequence="60"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
               action="sgi_diagnostic_run_action" sequence="10"
@@ -395,14 +403,14 @@
 
     <!-- 7.2 Aprobaciones del SGI (quién aprueba cada actividad): lectura
          para Auditor y Dirección; la sincronización es de MAST. -->
-    <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_admin"
-              action="sgi_activity_role_action_approval" sequence="20"
+    <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_processes"
+              action="sgi_activity_role_action_approval" sequence="32"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
 
     <!-- 7.3 Publicar Mi procedimiento (Q3): entrada directa; se usa cada vez
          que cambia un procedimiento. -->
     <menuitem id="menu_sgi_my_procedure_publish" name="Publicar Mi procedimiento"
-              parent="menu_sgi_admin" action="sgi_my_procedure_action_publish" sequence="30"
+              parent="menu_sgi_processes" action="sgi_my_procedure_action_publish" sequence="42"
               groups="quimibond_sgi.group_sgi_manager"/>
     <!-- «Firmas de lectura» quedó vacía en 57.113.0 (Publicar arriba,
          Acuses de lectura en Sistema → Documentos): archivada en su lugar. -->
@@ -411,23 +419,8 @@
         <field name="active" eval="False"/>
     </record>
 
-    <!-- 7.4 Transición (57.113.0, Q2): herramientas de una sola vez del Jefe
-         MAST (lo que heredaba de Configuración). «Cargar mapa de procesos» de
-         quimibond_sgi_mapa cuelga aquí cuando está instalado. -->
-    <menuitem id="menu_sgi_transition" name="Transición" parent="menu_sgi_admin" sequence="40"
-              groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_transition"
-              action="sgi_catalog_load_wizard_action" sequence="10"
-              groups="quimibond_sgi.group_sgi_admin"/>
-    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
-    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
-              parent="menu_sgi_transition" action="sgi_company_fix_action" sequence="20"/>
-    <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
-    <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
-              parent="menu_sgi_transition" action="sgi_env_aspect_transfer_action" sequence="30"/>
-
-    <!-- 7.5 Configuración (solo MAST) -->
-    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_admin" sequence="50"
+    <!-- 7.5 Configuración (solo MAST; del raíz desde 57.183.0) -->
+    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_root" sequence="90"
               groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_job_families" name="Familias de puesto" parent="menu_sgi_config"
               action="sgi_job_family_action" sequence="3"/>
@@ -477,6 +470,22 @@
     <!-- 57.120.0 (C1, bloque 4): recursos del checklist de factibilidad (vacío hasta que Diseño de Procesos lo defina). -->
     <menuitem id="menu_sgi_config_dev_feasibility" name="Recursos del checklist de factibilidad"
               parent="menu_sgi_config" action="sgi_dev_feasibility_item_action" sequence="100"/>
+
+    <!-- 7.4 Transición (57.113.0, Q2; dentro de Configuración desde 57.183.0): herramientas de una sola vez del Jefe
+         MAST (lo que heredaba de Configuración). «Cargar mapa de procesos» de
+         quimibond_sgi_mapa cuelga aquí cuando está instalado. -->
+    <menuitem id="menu_sgi_transition" name="Transición" parent="menu_sgi_config" sequence="200"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_transition"
+              action="sgi_catalog_load_wizard_action" sequence="10"
+              groups="quimibond_sgi.group_sgi_admin"/>
+    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
+              parent="menu_sgi_transition" action="sgi_company_fix_action" sequence="20"/>
+    <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
+              parent="menu_sgi_transition" action="sgi_env_aspect_transfer_action" sequence="30"/>
+
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si

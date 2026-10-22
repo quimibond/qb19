@@ -182,7 +182,8 @@ class SgiIndicatorDetail(models.Model):
     official_ok_owner = fields.Boolean(string="Tiene responsable y proceso", compute='_compute_official')
     official_ok_target = fields.Boolean(string="Tiene meta", compute='_compute_official')
     official_ok_value = fields.Boolean(string="El cálculo da valor", compute='_compute_official')
-    official_ready = fields.Boolean(string="Listo para oficial", compute='_compute_official')
+    official_ready = fields.Boolean(string="Listo para oficial", compute='_compute_official',
+                                    search='_search_official_ready')
     can_set_official = fields.Boolean(
         string="Puede pasarlo a oficial", compute='_compute_official',
         help="Su responsable, el dueño de su proceso o el Jefe MAST.")
@@ -319,6 +320,37 @@ class SgiIndicatorDetail(models.Model):
             else:
                 ind.target_label = "Objetivo %g%s · aceptable %g%s" % (
                     ind.target_objective, unit, ind.target_acceptable, unit)
+
+    def _search_official_ready(self, operator, value):
+        # 57.184.0: filtro «Listos para oficial» (pocos indicadores: en Python).
+        if operator == '=':
+            want = bool(value)
+        elif operator == 'in':
+            want = True in value
+        else:
+            return NotImplemented
+        ids = self.search([('status', '=', 'prueba')]).filtered('official_ready').ids
+        return [('id', 'in' if want else 'not in', ids)]
+
+    def action_sgi_set_official_many(self):
+        """57.184.0: «Pasar a oficial» desde la lista, con varios a la vez.
+        Pasa los que tienen la lista completa y son suyos; los demás se dejan
+        y el aviso dice cuáles."""
+        trial = self.filtered(lambda i: i.status == 'prueba')
+        ready = trial.filtered(lambda i: i.can_set_official and i.official_ready)
+        skipped = trial - ready
+        if ready:
+            ready.action_set_official()
+        message = "Pasaron a oficial: %d." % len(ready)
+        if skipped:
+            message += " Se dejaron %d (les falta algo o no son suyos): %s." % (
+                len(skipped), ", ".join(skipped.mapped('code')))
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'title': "Pasar a oficial", 'message': message,
+                       'type': 'warning' if skipped else 'success', 'sticky': bool(skipped),
+                       'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
+        }
 
     def _sgi_official_missing(self):
         self.ensure_one()

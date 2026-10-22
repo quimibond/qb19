@@ -13,6 +13,49 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.184.0 — 2026-10-22
+
+Mis indicadores: pasar a oficial varios a la vez. En producción ~85 de los
+105 indicadores ya tienen la lista completa y ninguno es oficial.
+
+**Agregado**
+- Filtro **Listos para oficial** (`official_ready` buscable).
+- En **Mis indicadores**, columnas **Estado** y **Lista para oficial**, y el
+  botón **Pasar a oficial** sobre la selección
+  (`action_sgi_set_official_many`): pasa los que son suyos y tienen la lista
+  completa; los demás se dejan y el aviso dice cuáles.
+
+## 19.0.57.183.0 — 2026-10-22
+
+Jose (2026-10-22): «sigue mejorando vistas y elimina obsoletos, por ejemplo
+el menú Administración».
+
+**Cambiado**
+- La carpeta **Administración** se archiva en su lugar (`menu_sgi_admin`,
+  `SGI_MENU_ARCHIVED`); nada se borra y nadie pierde una pantalla:
+  - **Diagnóstico** (con sus cuatro entradas) pasa a **Desempeño**.
+  - **Aprobaciones del SGI** y **Publicar Mi procedimiento** pasan a
+    **Sistema**, junto a Matriz de responsabilidades y Puestos y procesos.
+  - **Configuración** cuelga del raíz, al final, como en las demás apps de
+    Odoo (solo Jefe MAST), con **Transición** dentro.
+- Las rutas que se le dicen al usuario (`sgi_menu_paths`), los manuales de
+  MAST, Dirección y Auditor, y los README de Conocimiento, Mapa y Pesaje
+  dicen la ruta nueva. Ninguna actividad apunta a esos menús en producción:
+  ningún «Mi procedimiento» cambia de huella.
+
+**Corregido**
+- `test_entrega4.test_01` esperaba ver `menu_sgi_migration`, archivado desde
+  57.167.0.
+
+## 19.0.57.182.1 — 2026-10-22
+
+**Corregido**
+- «Ya corregí» ya no lo puede usar el jefe directo de Diseño: en producción
+  la jefa directa de Diseño de Producto y de Procesos es la Administradora de
+  Ventas, que es quien revisa. Solo los puestos que ejecutan C1.02 y C1.03 (y
+  el Jefe MAST). `sgi_dev_can_fix` lleva etiqueta («Puede marcar la
+  corrección»).
+
 ## 19.0.57.182.0 — 2026-10-22
 
 Avisos entre Diseño de Producto, Diseño de Procesos y Ventas en la revisión
