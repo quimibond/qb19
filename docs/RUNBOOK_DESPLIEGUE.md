@@ -230,13 +230,14 @@ su shell, siempre con `-u` (las pruebas corren al actualizar el módulo) y
 las 5 fallas y lo que va después nunca corre):
 
 ```bash
-odoo-bin -u quimibond_nomina,qb_mcp_politica \
-  --test-tags /quimibond_nomina,/qb_mcp_politica \
-  --stop-after-init --no-http 2>&1 | tee ~/pruebas.log | grep -E "FAIL:|ERROR: Test|failures|tests when loading"
+odoo-bin -u quimibond_nomina \
+  --test-tags /quimibond_nomina \
+  --stop-after-init --no-http 2>&1 | tee ~/pruebas.log | grep -E "Module |tests when loading"
 ```
 
 El log de Odoo 19 corta el traceback; el mensaje completo sale con
-`grep -n -A25 "FAIL:\|ERROR:" ~/pruebas.log`.
+`grep -n -A25 "FAIL:\|ERROR:" ~/pruebas.log` (un error en la preparación de
+una clase sale como `ERROR: setUpClass`).
 
 **`mcp_server` no se prueba sobre la copia de producción** (decisión
 2026-10-22). Son las pruebas del proveedor y suponen una base limpia: en la
@@ -245,8 +246,9 @@ API de un usuario sin grupo de administrador dura máximo 1 día (ningún grupo
 tiene `api_key_duration`; Odoo usa 1 día por omisión) y las pruebas piden
 llaves de 30 días, más una que entra como `admin`/`admin`. No es falla del
 código ni se corrige subiendo la duración de las llaves en producción (el
-límite de 1 día es el seguro, auditoría F-001). Nuestra política del MCP se
-prueba con `qb_mcp_politica`.
+límite de 1 día es el seguro, auditoría F-001). El módulo
+`qb_mcp_politica` (candado del MCP en código) se retiró del repo el
+2026-10-22: nunca se instaló en producción.
 
 Las pruebas propias deben pasar también sobre la copia de producción: no
 crear datos que choquen con los reales (referencias de empleado únicas como

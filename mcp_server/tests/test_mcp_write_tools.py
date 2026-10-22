@@ -57,7 +57,7 @@ class TestMcpWriteTools(common.HttpCase):
 
         # Key-owner user: internal user + Contact Creation, so it can fully
         # CRUD res.partner (the bare internal group is read-only on it), but
-        # NOT res.lang which is group_system only for writes.
+        # NOT ir.mail_server which is group_system only.
         self.mcp_user = create_test_user(
             self.env,
             "MCP Write User",
@@ -100,12 +100,10 @@ class TestMcpWriteTools(common.HttpCase):
         )
         # res.country: read-only via MCP -> create is blocked by the per-op gate.
         self._enable_model("base.model_res_country", allow_read=True)
-        # res.lang: MCP create allowed, but admin-only in Odoo -> the
+        # ir.mail_server: MCP create allowed, but admin-only in Odoo -> the
         # low-priv user is blocked by the ORM (AccessError, not the MCP gate).
-        # Quimibond: was ir.mail_server; qb_mcp_politica keeps every ``ir.*``
-        # model read-only for the MCP, so enabling create on it fails setUp.
         self._enable_model(
-            "base.model_res_lang", allow_read=True, allow_create=True
+            "base.model_ir_mail_server", allow_read=True, allow_create=True
         )
 
         # A target record for call_model_method.
@@ -283,7 +281,7 @@ class TestMcpWriteTools(common.HttpCase):
         """A low-priv user creating an admin-only model is blocked by Odoo ACL."""
         result = self._call_tool(
             "create_record",
-            {"model": "res.lang", "values": {"name": "MCP Lang", "code": "xx_MC"}},
+            {"model": "ir.mail_server", "values": {"name": "MCP SMTP"}},
             api_key=self.low_priv_key,
         )
         self.assertTrue(result["isError"])
