@@ -192,6 +192,14 @@ class HrVersion(models.Model):
         props = self._qb_imss_propiedades()
         props['sdi_imss'] = round(sdi, 2)
         self.write({'payroll_properties': props})
+        # Odoo descarta sin aviso una propiedad que la estructura del contrato
+        # no define: el SDI se perdería y el 07 saldría contra 0.
+        if self._qb_imss_sdi() != round(sdi, 2):
+            raise UserError(_(
+                "La estructura salarial «%(estructura)s» del contrato de %(empleado)s no define la "
+                "propiedad «sdi_imss» (SDI declarado ante el IMSS). Agréguela en la estructura "
+                "(Propiedades del contrato) o cambie el contrato a «Paga regular».",
+                estructura=self.structure_id.display_name or '-', empleado=self.employee_id.name))
 
     def _qb_imss_salario_diario(self):
         """Salario diario simple a partir del sueldo del contrato y su periodicidad."""
