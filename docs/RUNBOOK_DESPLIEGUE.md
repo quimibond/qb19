@@ -222,6 +222,37 @@ timestamp y parte los tracebacks.
    quedó con el nombre viejo; en Odoo 19 es `tax_ids`. Y `/jsonrpc` desaparece
    en Odoo 22.
 
+## Pruebas sobre la copia de producción (staging)
+
+Las pruebas de Odoo no corren solas en `main` (staging): se lanzan a mano en
+su shell, siempre con `-u` (las pruebas corren al actualizar el módulo) y
+`--test-tags` de los módulos que interesan (el suite completo se detiene a
+las 5 fallas y lo que va después nunca corre):
+
+```bash
+odoo-bin -u quimibond_nomina,qb_mcp_politica \
+  --test-tags /quimibond_nomina,/qb_mcp_politica \
+  --stop-after-init --no-http 2>&1 | tee ~/pruebas.log | grep -E "FAIL:|ERROR: Test|failures|tests when loading"
+```
+
+El log de Odoo 19 corta el traceback; el mensaje completo sale con
+`grep -n -A25 "FAIL:\|ERROR:" ~/pruebas.log`.
+
+**`mcp_server` no se prueba sobre la copia de producción** (decisión
+2026-10-22). Son las pruebas del proveedor y suponen una base limpia: en la
+de producción 209 de 477 truenan antes de probar nada, porque una llave de
+API de un usuario sin grupo de administrador dura máximo 1 día (ningún grupo
+tiene `api_key_duration`; Odoo usa 1 día por omisión) y las pruebas piden
+llaves de 30 días, más una que entra como `admin`/`admin`. No es falla del
+código ni se corrige subiendo la duración de las llaves en producción (el
+límite de 1 día es el seguro, auditoría F-001). Nuestra política del MCP se
+prueba con `qb_mcp_politica`.
+
+Las pruebas propias deben pasar también sobre la copia de producción: no
+crear datos que choquen con los reales (referencias de empleado únicas como
+`S-1` o `Q-9`; ver `liberar_referencias` en `quimibond_nomina/tests/common.py`)
+ni suponer parámetros de sistema vacíos.
+
 ## SGI (`quimibond_sgi` y satélites)
 
 Además de lo general. El SGI no entra al CI de GitHub (depende de
