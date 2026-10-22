@@ -40,11 +40,16 @@ MOVED = {
     'menu_sgi_satisfaction': 'menu_sgi_performance',
     'menu_sgi_audits': 'menu_sgi_performance',
     'menu_sgi_mgmt_review': 'menu_sgi_performance',
-    'menu_sgi_my_procedure_publish': 'menu_sgi_admin',
+    'menu_sgi_my_procedure_publish': 'menu_sgi_processes',  # 57.183.0: antes en Administración
     'menu_sgi_config_load': 'menu_sgi_transition',
     'menu_sgi_config_company_fix': 'menu_sgi_transition',
     'menu_sgi_config_env_aspect_transfer': 'menu_sgi_transition',
     'menu_sgi_config_doc_types': 'menu_sgi_config',
+    # 57.183.0: «Administración» archivada; su contenido se repartió.
+    'menu_sgi_analysis': 'menu_sgi_performance',
+    'menu_sgi_approvals_native': 'menu_sgi_processes',
+    'menu_sgi_transition': 'menu_sgi_config',
+    'menu_sgi_config': 'menu_sgi_root',
 }
 # Archivados sin cambiar de padre, con la acción que se queda viva.
 ARCHIVED = {
@@ -63,6 +68,7 @@ ARCHIVED = {
     'menu_sgi_miid_requests': ('menu_sgi_manual', 'sgi_miid_requests_action'),
     'menu_sgi_indicator_wizard': ('menu_sgi_admin_indicators', 'sgi_indicator_wizard_action'),
     'menu_sgi_floor_tablets': ('menu_sgi_config', 'sgi_floor_tablet_action'),
+    'menu_sgi_admin': ('menu_sgi_root', None),  # 57.183.0
 }
 OLD_PATHS = ('SGI → Dirección', 'SGI → Procesos', 'Administración SGI →', 'Mejora → Auditorías',
              'Seguridad y ambiente → Aspectos', 'Firmas de lectura →')
@@ -116,11 +122,11 @@ class TestMenusCapitulos(TransactionCase):
         children = self.env['ir.ui.menu'].sudo().with_context(lang='en_US').search(
             [('parent_id', '=', root.id)], order='sequence, id')
         expected = ['menu_sgi_panel', 'menu_sgi_report', 'menu_sgi_processes', 'menu_sgi_direction',
-                    'menu_sgi_safety', 'menu_sgi_performance', 'menu_sgi_improvement_group', 'menu_sgi_admin']
+                    'menu_sgi_safety', 'menu_sgi_performance', 'menu_sgi_improvement_group', 'menu_sgi_config']
         own = [m for m in children if (m.get_external_id().get(m.id) or '').startswith('quimibond_sgi.')]
         self.assertEqual([m.get_external_id()[m.id] for m in own], ['quimibond_sgi.' + x for x in expected])
         self.assertEqual(own.mapped('name'), ['Inicio', 'Reportar', 'Sistema', 'Planeación',
-                                              'Seguridad y ambiente', 'Desempeño', 'Mejora', 'Administración'])
+                                              'Seguridad y ambiente', 'Desempeño', 'Mejora', 'Configuración'])
         self.assertEqual(SGI_MENU_ENTRIES, tuple('quimibond_sgi.' + x for x in expected))
 
     def test_02_padres(self):
@@ -173,7 +179,7 @@ class TestMenusCapitulos(TransactionCase):
                    'menu_sgi_master_list', 'menu_sgi_external_docs', 'menu_sgi_doc_changes',
                    'menu_sgi_config_acks', 'menu_sgi_admin_indicators', 'menu_sgi_indicators',
                    'menu_sgi_measures', 'menu_sgi_measures_split', 'menu_sgi_measure_reviews',
-                   'menu_sgi_admin', 'menu_sgi_analysis', 'menu_sgi_diagnostic', 'menu_sgi_compliance',
+                   'menu_sgi_analysis', 'menu_sgi_diagnostic', 'menu_sgi_compliance',
                    'menu_sgi_activity_executions', 'menu_sgi_spec_gaps', 'menu_sgi_approvals_native',
                    'menu_sgi_nc_all_actions')
         mast_only = ('menu_sgi_config', 'menu_sgi_config_doc_types', 'menu_sgi_transition',
@@ -193,7 +199,7 @@ class TestMenusCapitulos(TransactionCase):
             self.assertNotIn(_ref(self.env, xmlid).id, visible, xmlid)
         visible = self.env['ir.ui.menu'].with_user(self.director)._visible_menu_ids()
         for xmlid in ('menu_sgi_performance', 'menu_sgi_dashboard_health', 'menu_sgi_mgmt_review',
-                      'menu_sgi_documental', 'menu_sgi_admin_indicators', 'menu_sgi_admin',
+                      'menu_sgi_documental', 'menu_sgi_admin_indicators',
                       'menu_sgi_analysis', 'menu_sgi_approvals_native'):
             self.assertIn(_ref(self.env, xmlid).id, visible, xmlid)
         for xmlid in ('menu_sgi_config', 'menu_sgi_transition', 'menu_sgi_my_procedure_publish'):
@@ -250,7 +256,7 @@ class TestMenusCapitulos(TransactionCase):
         sgi_hide_real_documents(self.env)
         self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.mp_sign_required', 'False')
         Menu = self.env['ir.ui.menu'].sudo()
-        admin = _ref(self.env, 'menu_sgi_admin')
+        admin = _ref(self.env, 'menu_sgi_performance')
         folder_a = Menu.create({'name': 'Z57113 Carpeta A', 'parent_id': admin.id})
         folder_b = Menu.create({'name': 'Z57113 Carpeta B', 'parent_id': admin.id})
         screen = Menu.create({
@@ -354,11 +360,11 @@ class TestMenusCapitulos(TransactionCase):
                 ('body', 'ilike', '57.113.0: texto actualizado')]), 1)
 
     def test_10_rutas_que_se_le_dicen(self):
-        self.assertEqual(sgi_menu_path('aprobaciones'), "SGI → Administración → Aprobaciones del SGI")
+        self.assertEqual(sgi_menu_path('aprobaciones'), "SGI → Sistema → Aprobaciones del SGI")
         self.assertEqual(sgi_menu_path('politica'), "SGI → Planeación → Política integral")
         self.assertEqual(sgi_menu_path('indicadores'), "SGI → Desempeño → Indicadores → Todos los indicadores")
         self.assertEqual(sgi_menu_path('publicar_mi_procedimiento'),
-                         "SGI → Administración → Publicar Mi procedimiento")
+                         "SGI → Sistema → Publicar Mi procedimiento")
 
     def test_11_mensaje_de_la_siembra_con_genero_y_numero(self):
         """57.110.0 decía «nota de «Por confirmar» actualizado»."""

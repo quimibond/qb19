@@ -43,9 +43,11 @@ class TestEntrega4Groups(TransactionCase):
         # Los menús que hoy usa Dirección (Revisión, Tablero, Administración)
         # los sigue viendo sin ser MAST.
         visible = self.env['ir.ui.menu'].with_user(self.director)._visible_menu_ids()
-        for xmlid in ('menu_sgi_mgmt_review', 'menu_sgi_dashboard_health', 'menu_sgi_admin',
+        # 57.183.0: sin «Administración» (archivada); menu_sgi_migration se
+        # archivó en 57.167.0.
+        for xmlid in ('menu_sgi_mgmt_review', 'menu_sgi_dashboard_health',
                       'menu_sgi_nc_all_actions', 'menu_sgi_doc_changes', 'menu_sgi_analysis',
-                      'menu_sgi_approvals_native', 'menu_sgi_migration'):
+                      'menu_sgi_approvals_native'):
             self.assertIn(self.env.ref('quimibond_sgi.' + xmlid).id, visible, xmlid)
         self.assertNotIn(self.env.ref('quimibond_sgi.menu_sgi_config').id, visible,
                          "Configuración es solo de MAST.")
