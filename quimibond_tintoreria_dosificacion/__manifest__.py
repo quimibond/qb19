@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Dosificación de Tintorería',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Manufacturing',
     'summary': 'Catálogo de fórmulas de tintorería y cálculo de requerimiento de químicos (g/L) y colorantes (%)',
     'description': """
@@ -18,7 +18,7 @@ Dosificación de Tintorería
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
-    'depends': ['mrp', 'quimibond_tintoreria_rendimiento'],
+    'depends': ['mrp', 'quimibond_ficha_tecnica_tela'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_config_parameter.xml',

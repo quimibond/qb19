@@ -96,6 +96,6 @@ class TintoreriaFormulaLine(models.Model):
                     raise ValidationError(_("El químico %s se dosifica en g/L, no en %%.", nombre))
             else:
                 if linea.porcentaje_colorante <= 0:
-                    raise ValidationError(_("El colorante %s requiere un % mayor a 0.", nombre))
+                    raise ValidationError(_("El colorante %s requiere un %% mayor a 0.", nombre))
                 if linea.gramos_por_litro:
                     raise ValidationError(_("El colorante %s se dosifica en %%, no en g/L.", nombre))

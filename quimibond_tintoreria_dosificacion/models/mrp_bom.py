@@ -83,12 +83,11 @@ class MrpBom(models.Model):
     # Acciones
     # ------------------------------------------------------------------
     def _operacion_tintoreria(self):
-        """Operación de Tintorería de la BoM: la que usa un work center con relación de baño
-        configurada o cuyo nombre/work center contiene 'tintorer'."""
+        """Operación de Tintorería de la BoM: la que usa un work center de tipo Tintorería (ficha de
+        la máquina) o cuyo nombre/work center contiene 'tintorer'."""
         self.ensure_one()
-        centros = self.env['tintoreria.capacidad.rendimiento'].search([]).workcenter_id
         candidatas = self.operation_ids.filtered(
-            lambda op: op.workcenter_id in centros
+            lambda op: 'tintorer' in (op.workcenter_id.ft_tipo_id.name or '').lower()
             or 'tintorer' in (op.name or '').lower()
             or 'tintorer' in (op.workcenter_id.name or '').lower())
         return candidatas.sorted('sequence')[:1]

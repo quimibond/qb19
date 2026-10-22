@@ -4,20 +4,17 @@ import math
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-# Posición 9 del código (DAT P-D02-01) = Operación; "K" = Acabado en Kilos.
-INDICE_OPERACION = 8
-CLAVE_ACABADO_KG = 'K'
-CLAVE_ACABADO_METROS = 'J'
+from odoo.addons.quimibond_ficha_tecnica_tela.models.mrp_aviso_maquina import GRUPOS
 
 
 def banda_rendimiento(rendimiento):
-    """Banda A/B/C según las mismas bandas fijas de tintoreria.capacidad.rendimiento."""
-    if 3 <= rendimiento <= 6:
-        return 'A'
-    if 7 <= rendimiento <= 10:
-        return 'B'
-    if 11 <= rendimiento <= 15:
-        return 'C'
+    """Banda A/B/C del rendimiento de tejido (m/kg), con los mismos grupos que las fichas técnicas
+    (GRUPOS): el límite inferior pertenece a la banda y el superior a la siguiente.
+    Fuera de todas las bandas devuelve False."""
+    rendimiento = rendimiento or 0.0
+    for _codigo, grupo, desde, hasta in GRUPOS:
+        if desde <= rendimiento < hasta:
+            return grupo
     return False
 
 
@@ -33,7 +30,8 @@ class MrpProduction(models.Model):
     requiere_programacion_tintoreria = fields.Boolean(
         'Requiere programación de Tintorería', compute='_compute_requiere_programacion_tintoreria',
         store=True,
-        help="Producto con 'K' en la posición 9 del código y una operación de Tintorería en su BoM.")
+        help="Producto en kg (ligado como «Acabado en proceso» en una ficha técnica de acabado) "
+             "y una operación de Tintorería en su BoM.")
     tintoreria_pendiente = fields.Boolean(
         'Pendiente de programar Tintorería', compute='_compute_tintoreria_pendiente',
         store=True, index=True)
@@ -42,14 +40,19 @@ class MrpProduction(models.Model):
     # Campos calculados
     # ------------------------------------------------------------------
     def _es_producto_acabado_kg(self):
-        """True si el código del producto tiene 'K' en la posición 9 (acabado en kilos)."""
+        """True si el producto es el «Acabado en proceso» (kg) de alguna ficha técnica de acabado.
+        El vínculo kg <-> metros vive en la ficha (product_proceso_id), no en el código del artículo."""
         self.ensure_one()
-        codigo = (self.product_id.default_code or '').strip()
-        return len(codigo) > INDICE_OPERACION and codigo[INDICE_OPERACION].upper() == CLAVE_ACABADO_KG
+        if not self.product_id:
+            return False
+        return bool(self.env['ficha.tecnica.acabado'].search_count(
+            [('product_proceso_id', '=', self.product_id.id)], limit=1))
 
-    @api.depends('product_id.default_code', 'bom_id', 'bom_id.operation_ids.workcenter_id',
+    @api.depends('product_id', 'bom_id', 'bom_id.operation_ids.workcenter_id',
                  'bom_id.operation_ids.name')
     def _compute_requiere_programacion_tintoreria(self):
+        # Nota: se calcula al crear la orden; si la ficha de acabado se liga después, las órdenes ya
+        # creadas no se recalculan solas.
         for orden in self:
             orden.requiere_programacion_tintoreria = bool(
                 orden.product_id and orden._es_producto_acabado_kg()
@@ -71,54 +74,64 @@ class MrpProduction(models.Model):
         operacion = self.bom_id._operacion_tintoreria()
         return self.workorder_ids.filtered(lambda wo: wo.operation_id == operacion)[:1]
 
-    def _producto_acabado_metros(self):
-        """Producto B (metros) que consume esta MO de A: primero por el enlace MTO; si no existe,
-        derivándolo del código (posición 9: K -> J)."""
+    def _rendimiento_tejido(self):
+        """Rendimiento de tejido (m/kg) del producto en kg: el que fija la banda y la carga del jet."""
         self.ensure_one()
-        destinos = self.move_finished_ids.filtered(
-            lambda m: m.product_id == self.product_id
-        ).move_dest_ids.raw_material_production_id.product_id
-        if destinos:
-            return destinos[:1]
-        codigo = (self.product_id.default_code or '').strip()
-        if len(codigo) > INDICE_OPERACION:
-            candidato = codigo[:INDICE_OPERACION] + CLAVE_ACABADO_METROS + codigo[INDICE_OPERACION + 1:]
-            return self.env['product.product'].search([('default_code', '=', candidato)], limit=1)
-        return self.env['product.product']
+        rendimiento, _origen = self.product_id._ft_rendimiento()
+        if not rendimiento:
+            raise UserError(_(
+                "No se encontró el rendimiento de tejido de %s. Revisa que tenga ficha de tejido con peso "
+                "y ancho, o que su ficha de acabado esté ligada a ella como «Acabado en proceso».",
+                self.product_id.display_name))
+        return rendimiento
 
-    def _rendimiento_acabado(self):
-        """Rendimiento teórico (m/kg) de la ficha técnica de acabado del producto B."""
+    def _capacidad_jet(self, workcenter, rendimiento):
+        """(capacidad por baño en kg, banda, aviso) del jet para este producto.
+
+        Fuente única: la configuración vigente del jet en las fichas técnicas.
+        * Si el artículo tiene «kg por carga» en este jet, ese manda.
+        * Jet con bandas capturadas: bloquea si la banda es N/A o el rendimiento cae fuera de las bandas.
+        * Jet sin ninguna banda capturada (p. ej. HTJ5): su capacidad general, con aviso.
+        """
         self.ensure_one()
-        producto = self._producto_acabado_metros()
-        ficha = self.env['ficha.tecnica.acabado'].search(
-            [('product_acabado_id', '=', producto.id)], limit=1) if producto else False
-        if not ficha:
+        banda = banda_rendimiento(rendimiento)
+        cap_articulo, motivo = workcenter._ft_capacidad_carga(rendimiento, product=self.product_id)
+        if cap_articulo and 'artículo' in (motivo or ''):
+            return cap_articulo, banda, False
+        config = workcenter._ft_config_at()
+        if not config:
             raise UserError(_(
-                "No se encontró la ficha técnica de acabado del producto en metros de la orden %s. "
-                "Revisa que exista el producto con 'J' en la posición 9 y su ficha técnica.", self.name))
-        if ficha.rendimiento_tela_acabada <= 0:
+                "El centro de trabajo %s no tiene configuración vigente en las fichas técnicas de máquina.",
+                workcenter.display_name))
+        general = config._ft_value('capacidad') or 0.0
+        capacidades = {grupo: config._ft_value(codigo) or 0.0 for codigo, grupo, _d, _h in GRUPOS}
+        if not any(capacidades.values()):
+            if general <= 0:
+                raise UserError(_(
+                    "%s no tiene capacidad capturada (ni general ni por banda).", workcenter.display_name))
+            aviso = _(
+                "%(wc)s no tiene bandas de rendimiento capturadas: se usó su capacidad general de %(cap)s kg.",
+                wc=workcenter.display_name, cap=general)
+            return general, banda, aviso
+        if not banda:
             raise UserError(_(
-                "La ficha técnica de acabado de %s no tiene rendimiento (m/kg).", producto.display_name))
-        return ficha.rendimiento_tela_acabada
+                "El rendimiento de tejido de %(prod)s (%(r)s m/kg) está fuera de las bandas de rendimiento "
+                "de %(wc)s. Corrige el rendimiento en la ficha técnica.",
+                prod=self.product_id.display_name, r=rendimiento, wc=workcenter.display_name))
+        capacidad = capacidades[banda]
+        if capacidad <= 0:
+            raise UserError(_(
+                "%(wc)s no puede procesar este artículo: la banda %(b)s (rendimiento de %(r)s m/kg) "
+                "es N/A en ese jet.", wc=workcenter.display_name, b=banda, r=rendimiento))
+        if general > 0:
+            capacidad = min(capacidad, general)
+        return capacidad, banda, False
 
     def _calcular_plan_tintoreria(self, workcenter):
         """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado."""
         self.ensure_one()
-        capacidad_cfg = self.env['tintoreria.capacidad.rendimiento'].search(
-            [('workcenter_id', '=', workcenter.id)], limit=1)
-        if not capacidad_cfg:
-            raise UserError(_(
-                "El centro de trabajo %s no está en la Tabla de Rendimientos y RB de Tintorería.",
-                workcenter.display_name))
-        rendimiento = self._rendimiento_acabado()
-        capacidad = capacidad_cfg.capacidad_para_rendimiento(rendimiento)
-        if capacidad_cfg.capacidad_kg > 0:
-            capacidad = min(capacidad, capacidad_cfg.capacidad_kg) if capacidad > 0 else 0.0
-        if capacidad <= 0:
-            raise UserError(_(
-                "%(wc)s no puede procesar este artículo: su rendimiento de %(r)s m/kg no tiene capacidad "
-                "definida (N/A o fuera de las bandas 3-6, 7-10 y 11-15).",
-                wc=workcenter.display_name, r=rendimiento))
+        rendimiento = self._rendimiento_tejido()
+        capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
         kg_total = self.product_qty
         n_banos = max(1, math.ceil(round(kg_total / capacidad, 6)))
         uom = self.product_uom_id
@@ -127,11 +140,12 @@ class MrpProduction(models.Model):
         montos.append(uom.round(kg_total - sum(montos)))  # el redondeo se absorbe en el último baño
         return {
             'rendimiento': rendimiento,
-            'banda': banda_rendimiento(rendimiento),
+            'banda': banda,
             'capacidad_kg': capacidad,
             'n_banos': n_banos,
             'kg_bano': kg_bano,
             'montos': montos,
+            'aviso': aviso,
         }
 
     # ------------------------------------------------------------------
@@ -141,8 +155,9 @@ class MrpProduction(models.Model):
         self.ensure_one()
         if not self.requiere_programacion_tintoreria:
             raise UserError(_(
-                "La orden %s no requiere programación de Tintorería (producto sin 'K' en la posición 9 "
-                "o BoM sin operación de Tintorería).", self.name))
+                "La orden %s no requiere programación de Tintorería (el producto no está ligado como "
+                "«Acabado en proceso» en una ficha de acabado, o la BoM no tiene operación de Tintorería).",
+                self.name))
         if self.tintoreria_programada:
             raise UserError(_("La orden %s ya está programada.", self.name))
         if self.state not in ('draft', 'confirmed'):
@@ -190,6 +205,8 @@ class MrpProduction(models.Model):
             orden.message_post(body=_(
                 "Tintorería programada en %(wc)s: %(n)s baño(s) de %(kg)s kg (orden de origen %(o)s).",
                 wc=workcenter.display_name, n=plan['n_banos'], kg=orden.product_qty, o=nombre_origen))
+            if plan['aviso']:
+                orden.message_post(body=plan['aviso'])
         return programacion
 
     # ------------------------------------------------------------------

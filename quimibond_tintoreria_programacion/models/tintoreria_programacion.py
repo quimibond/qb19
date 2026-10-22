@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 
-BANDAS = [('A', 'A (3-6 m/kg)'), ('B', 'B (7-10 m/kg)'), ('C', 'C (11-15 m/kg)')]
+BANDAS = [('A', 'A (3 a <7 m/kg)'), ('B', 'B (7 a <11 m/kg)'), ('C', 'C (11 a <16 m/kg)')]
 
 
 class TintoreriaProgramacion(models.Model):

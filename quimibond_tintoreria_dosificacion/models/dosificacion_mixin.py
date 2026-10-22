@@ -40,13 +40,13 @@ class TintoreriaDosificacionMixin(models.AbstractModel):
         return self.env.ref('uom.product_uom_kgm')
 
     @api.model
-    def _rb_workcenter(self, workcenter):
-        """Relación de baño (L/kg) del work center según tintoreria.capacidad.rendimiento."""
+    def _rb_workcenter(self, workcenter, producto=None):
+        """Relación de baño (L/kg) para teñir ``producto`` en el work center: la del artículo en el jet
+        y, si no la tiene, la de la máquina (fichas técnicas: ``_ft_relacion_bano``; no leer el texto)."""
         if not workcenter:
             return 0.0
-        registro = self.env['tintoreria.capacidad.rendimiento'].search(
-            [('workcenter_id', '=', workcenter.id)], limit=1)
-        return registro.relacion_bano if registro else 0.0
+        relacion, _motivo = workcenter._ft_relacion_bano(producto)
+        return relacion or 0.0
 
     @api.model
     def _calcular_dosis_kg(self, tipo, gramos_por_litro, porcentaje, kg_orden, relacion_bano):

@@ -64,7 +64,8 @@ class MrpBomLine(models.Model):
         except UserError:
             kg_lote = bom.product_qty
         operacion = self.operation_id or bom._operacion_tintoreria()
-        rb = self._rb_workcenter(operacion.workcenter_id)
+        rb = self._rb_workcenter(
+            operacion.workcenter_id, bom.product_id or bom.product_tmpl_id.product_variant_id)
         dosis_kg = self._calcular_dosis_kg(
             self.tipo_componente, self.gramos_por_litro, self.porcentaje_colorante, kg_lote, rb)
         return kg._compute_quantity(dosis_kg, self.product_uom_id)
