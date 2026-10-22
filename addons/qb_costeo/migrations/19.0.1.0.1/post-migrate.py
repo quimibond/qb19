@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-"""1.0.1: la importación de la clasificación legada no encontraba su fuente
-(leía un `_table_query`). Se vuelve a correr contra las tablas base y se
-habilitan los modelos en MCP si el servidor está instalado."""
+"""1.0.1: habilita los modelos en MCP y ajusta los topes de colorante. (La
+importación de la clasificación de `qb_capacidad_costeo` que corría aquí se
+retiró con ese módulo el 2026-10-22.)"""
 from odoo import api, SUPERUSER_ID
 
 
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
-    env['qb.cuenta.clase'].importar_clasificacion_legada()
     from odoo.addons.qb_costeo import _habilitar_mcp
     _habilitar_mcp(env)
     # El validador 1.0.0 medía colorante puro con 12/25 %; ahora mide la

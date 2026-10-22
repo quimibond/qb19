@@ -13,13 +13,13 @@ pisos, márgenes y semáforo sobre el precio vigente, y lleva el ciclo que pide
 el procedimiento C1: Borrador → Por aprobar (puesto que aprueba, con suplente)
 → Presentada → Ganada / Perdida / Vencida, con motivos de lista, seguimiento
 automático a Ventas, aprobación del cliente con evidencia y el precio en la
-tarifa del cliente al ganar. Importa las cotizaciones de `qb_capacidad_costeo`
-sin tocarlas.
+tarifa del cliente al ganar. Las cotizaciones del cotizador anterior
+(`qb_capacidad_costeo`, retirado) ya están aquí con su `legacy_id`.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.6.1',
+    'version': '19.0.1.6.2',
     'license': 'LGPL-3',
     'application': False,
     'depends': ['qb_costeo', 'sale_management', 'hr', 'mail'],

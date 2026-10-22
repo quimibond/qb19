@@ -19666,7 +19666,7 @@
      ],
      "where": {
       "channel": "odoo",
-      "menu": "qb_capacidad_costeo.menu_qb_recompute"
+      "menu": "qb_costeo.menu_qb_periodo"
      },
      "due": {
       "business_day": 5

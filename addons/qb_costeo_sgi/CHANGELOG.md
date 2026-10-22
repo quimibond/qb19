@@ -1,5 +1,12 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.6.1 — 2026-10-22
+
+- Retiro de `qb_capacidad_costeo`: fuera `LEGACY_MODEL` (`qb.cotizacion`) en
+  `_qb_sgi_apuntar_entregables`. Al desinstalar ese módulo, el modelo de
+  medición de las fichas que lo usaban quedó vacío, y esas ya pasan al
+  entregable por «sin modelo». Sin cambio de comportamiento.
+
 ## 19.0.1.6.0 — 2026-10-13
 
 Dirección General 2026-10-13 (quimibond_sgi 57.152.0): **capacidad a utilizar**

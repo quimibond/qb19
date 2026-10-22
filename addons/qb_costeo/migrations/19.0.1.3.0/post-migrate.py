@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""1.3.0: costo por producto y peso. Habilita los modelos en MCP, importa
-los pesos medidos del módulo anterior y calcula los costos de los períodos
-en borrador que ya tienen tarifas."""
+"""1.3.0: costo por producto y peso. Habilita los modelos en MCP y calcula
+los costos de los períodos en borrador que ya tienen tarifas. (La
+importación de pesos de `qb_capacidad_costeo` se retiró el 2026-10-22.)"""
 import logging
 
 from odoo import api, SUPERUSER_ID
@@ -15,9 +15,7 @@ def migrate(cr, version):
     _habilitar_mcp(env)
     for company in env['res.company'].search([]):
         try:
-            n = env['qb.producto.kg'].with_company(company).importar_legados()
             env['qb.producto.kg'].with_company(company).recalcular()
-            _logger.info('qb_costeo 1.3.0: %d pesos importados en %s', n, company.name)
             for periodo in env['qb.periodo'].search(
                     [('company_id', '=', company.id), ('state', '=', 'borrador'),
                      ('calculado_el', '!=', False)]):

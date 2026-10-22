@@ -2,8 +2,10 @@
 
 Cotizador de la segunda generación del costeo (spec
 `docs/superpowers/specs/2026-10-06-qb-costeo-v2-diseno.md`, §6 y §6.1). Vive
-en **Ventas → Cotizaciones de costo**. No toca `qb_capacidad_costeo`: importa
-sus cotizaciones y convive con él hasta que se retire.
+en **Ventas → Cotizaciones de costo**. Las 75 cotizaciones del cotizador
+anterior (`qb_capacidad_costeo`, desinstalado y retirado del repo el
+2026-10-22) están aquí con su `legacy_id` y fuente de costo «Importado del
+cotizador anterior».
 
 ## Cómo se cotiza
 
