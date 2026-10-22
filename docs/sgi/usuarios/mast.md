@@ -362,6 +362,22 @@ Lo que sigue aplica a los dos:
   captura a mano como «Aspecto ambiental»; si el aspecto necesita acciones,
   use **Tratar como riesgo** desde el aspecto.
 
+### 2.6.1 Tableta de planta (desde 57.186.0)
+
+La gente de planta sin usuario de Odoo firma sus acuses en una tableta
+compartida con su PIN (decisión de Jose, 22-oct-2026: sin papel). Para
+encenderla:
+
+1. **Sistemas** crea un usuario interno compartido **sin empleado** (por
+   ejemplo `tableta.tejido@`), con «SGI en planta» como acción de inicio.
+2. Usted da de alta la tableta en **SGI → Configuración → Tabletas de
+   planta**: nombre («Tableta Tejido»), la cuenta y los **departamentos**
+   cuya gente firma ahí. Al guardar, la cuenta recibe el grupo «Tableta de
+   planta (SGI)».
+3. **RH** genera los PIN (manual de RH, sección 2).
+4. En la tableta, la persona elige su nombre, teclea su PIN y firma sus
+   acuses pendientes. Queda la tableta y la hora en el acuse.
+
 ### 2.7 La transición
 
 **SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**: por proceso,

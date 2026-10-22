@@ -13,6 +13,23 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.186.0 — 2026-10-22
+
+Jose (2026-10-22): la gente de planta sin usuario firma sus acuses en la
+tableta de planta con PIN, sin papel. En producción 114 de los 146 acuses
+pendientes eran de personas sin usuario, ninguna tenía PIN y no había
+tableta: nadie los podía firmar. SGI en planta (57.94.0) estaba apagado por
+la decisión del 2-oct-2026; se enciende.
+
+**Cambiado**
+- **Tabletas de planta** vuelve al menú (SGI → Configuración); estaba
+  archivado desde 57.167.0.
+- La lista de RH «Empleados sin puesto o sin correo» trae también a quien no
+  tiene usuario de Odoo ni PIN («Le falta: PIN»), con el filtro **Sin PIN
+  (sin usuario)** y el botón **Generar PIN** (`action_sgi_generate_pin`, 4
+  dígitos al azar, solo RH; no toca PIN existentes ni a quien tiene usuario).
+- Manuales: RH (sección 2), MAST (2.6.1, encender la tableta) y operador.
+
 ## 19.0.57.185.0 — 2026-10-22
 
 Acuses de lectura de revisiones obsoletas. En producción había 7 acuses

@@ -54,7 +54,6 @@ SGI_MENU_ARCHIVED = (
     'quimibond_sgi.menu_sgi_miid_revisions',
     'quimibond_sgi.menu_sgi_miid_requests',
     'quimibond_sgi.menu_sgi_indicator_wizard',
-    'quimibond_sgi.menu_sgi_floor_tablets',
     # 57.183.0: la carpeta «Administración» (su contenido se repartió).
     'quimibond_sgi.menu_sgi_admin',
 )
