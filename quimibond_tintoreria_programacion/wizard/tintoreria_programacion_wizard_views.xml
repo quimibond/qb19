@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="tintoreria_programacion_wizard_form_view" model="ir.ui.view">
+        <field name="name">tintoreria.programacion.wizard.form</field>
+        <field name="model">tintoreria.programacion.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Programar Tintorería">
+                <p class="text-muted">
+                    Asigna el HTJ de cada orden. Al confirmar se calcula el tamaño de baño con la capacidad
+                    del HTJ y el rendimiento del artículo; si los kg exceden la capacidad, la orden se divide
+                    en baños iguales en el mismo HTJ y se recalcula la dosificación.
+                </p>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="false" delete="false">
+                        <field name="production_id"/>
+                        <field name="product_id" optional="show"/>
+                        <field name="kg_total"/>
+                        <field name="rendimiento"/>
+                        <field name="banda"/>
+                        <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"
+                               domain="[('name', '=ilike', 'Tintoreria%')]" required="1"/>
+                        <field name="capacidad_kg"/>
+                        <field name="n_banos"/>
+                        <field name="kg_bano"/>
+                        <field name="advertencia" decoration-danger="advertencia"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Confirmar programación"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tintoreria_programacion_wizard" model="ir.actions.act_window">
+        <field name="name">Programar Tintorería</field>
+        <field name="res_model">tintoreria.programacion.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>
