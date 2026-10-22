@@ -13,6 +13,25 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.185.0 — 2026-10-22
+
+Acuses de lectura de revisiones obsoletas. En producción había 7 acuses
+pendientes de documentos ya obsoletos (revisiones viejas de «Mi
+procedimiento»): Mis pendientes le pedía a la persona firmar la Rev. 00 y la
+Rev. 01 de lo mismo.
+
+**Corregido**
+- `sgi.document.ack` lleva `active`. Cuando un documento queda obsoleto, sus
+  acuses **pendientes** se archivan (`_sgi_sync_pending_acks`): ya no se
+  piden en Mis pendientes, Mi equipo, el kiosco de planta ni la salud del
+  SGI, y quedan como evidencia. Los firmados no se tocan. Si el documento
+  vuelve a vigente o piloto, regresan.
+- `action_generate_acks` cuenta también los archivados (un acuse por persona
+  y documento).
+
+**Migración**
+- `post-migrate`: archiva los pendientes de documentos que ya son obsoletos.
+
 ## 19.0.57.184.0 — 2026-10-22
 
 Mis indicadores: pasar a oficial varios a la vez. En producción ~85 de los

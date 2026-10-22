@@ -1299,6 +1299,8 @@ class DocumentsDocument(models.Model):
             self._sgi_check_revision_increases(old_revisions)
         if vals.get('sgi_state') == 'vigente':
             self._sgi_reparent_family()
+        if 'sgi_state' in vals:
+            self._sgi_sync_pending_acks()
         # Una nueva revisión aprobada (bump de revisión o entrada en vigor)
         # realinea el documento con el procedimiento vivo: limpia la divergencia.
         if 'sgi_revision' in vals or vals.get('sgi_state') == 'vigente':
@@ -1327,6 +1329,22 @@ class DocumentsDocument(models.Model):
                                       self.env.user.name))
         return True
 
+    def _sgi_sync_pending_acks(self):
+        """57.185.0: un documento obsoleto ya no pide firma. Sus acuses
+        pendientes se archivan (son evidencia de difusión: no se borran) y
+        salen de Mis pendientes, Mi equipo, el kiosco y la salud del SGI; si
+        el documento vuelve a vigente o piloto, regresan. Los firmados no se
+        tocan."""
+        Ack = self.env['sgi.document.ack'].sudo().with_context(active_test=False)
+        obsolete = self.filtered(lambda d: d.sgi_state == 'obsoleto')
+        alive = self.filtered(lambda d: d.sgi_state in ('vigente', 'piloto'))
+        if obsolete:
+            Ack.search([('document_id', 'in', obsolete.ids), ('state', '=', 'pendiente'),
+                        ('active', '=', True)]).write({'active': False})
+        if alive:
+            Ack.search([('document_id', 'in', alive.ids), ('state', '=', 'pendiente'),
+                        ('active', '=', False)]).write({'active': True})
+
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""
         Ack = self.env['sgi.document.ack']
@@ -1334,7 +1352,8 @@ class DocumentsDocument(models.Model):
             if not doc.sgi_job_ids:
                 continue
             employees = self.env['hr.employee'].sudo().search([('job_id', 'in', doc.sgi_job_ids.ids)])
-            existing = doc.sgi_ack_ids.mapped('employee_id')
+            # 57.185.0: también los archivados (documento obsoleto): uno por persona.
+            existing = doc.with_context(active_test=False).sgi_ack_ids.mapped('employee_id')
             to_create = [{
                 'document_id': doc.id,
                 'employee_id': emp.id,
@@ -1423,6 +1442,10 @@ class SgiDocumentAck(models.Model):
              "pendientes.")
     ack_date = fields.Datetime(string="Fecha de acuse", readonly=True,
                                help="Fecha y hora en que la persona firmó de leído.")
+    # 57.185.0: un pendiente de un documento obsoleto se archiva (ya no se pide).
+    active = fields.Boolean(default=True,
+                            help="Se archiva solo cuando su documento queda obsoleto sin que se "
+                                 "firmara: ya no se pide, pero queda como evidencia.")
 
     _doc_employee_uniq = models.Constraint(
         'unique(document_id, employee_id)',
