@@ -633,8 +633,10 @@
     <record id="menu_sgi_indicator_wizard" model="ir.ui.menu">
         <field name="active" eval="False"/>
     </record>
+    <!-- 57.186.0 (Jose 2026-10-22): la planta firma en la tableta con PIN; el
+         menú vuelve para dar de alta las tabletas. -->
     <record id="menu_sgi_floor_tablets" model="ir.ui.menu">
-        <field name="active" eval="False"/>
+        <field name="active" eval="True"/>
     </record>
 
     <!-- Al final: los nombres de menús y acciones del módulo quedan iguales

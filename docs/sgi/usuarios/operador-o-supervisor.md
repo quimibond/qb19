@@ -120,6 +120,8 @@ pendiente de firma.
 
 1. En **Mi procedimiento**, lea las actividades, los documentos y el EPP.
 2. Pulse **Firmar leído y entendido**. Solo usted puede firmar el suyo.
+   Si no tiene usuario de Odoo, firma en la **tableta de planta** de su
+   área: elija su nombre, teclee su PIN (se lo da RH) y firme sus acuses.
 3. Si necesita el papel, **Imprimir** genera el PDF.
 
 Lo mismo con cada documento nuevo que aplique a su puesto: en

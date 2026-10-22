@@ -123,6 +123,29 @@ class TestIncidenciasCalculo(TransactionCase):
         self.assertEqual(calc.repartir_horas_extra(5), (5, 0))
         self.assertEqual(calc.repartir_horas_extra(0, 4), (0, 4))
 
+    def test_noche_sin_checar_a_la_comida_es_un_turno(self):
+        marcas = [dt(2026, 10, 12, 18, 58), dt(2026, 10, 12, 18, 59),     # checó dos veces al entrar
+                  dt(2026, 10, 13, 7, 2),
+                  dt(2026, 10, 13, 18, 57), dt(2026, 10, 14, 7, 0)]
+        turnos = calc.agrupar_turnos(marcas)
+        self.assertEqual([(t[0], t[1]) for t in turnos],
+                         [(dt(2026, 10, 12, 18, 58), dt(2026, 10, 13, 7, 2)),
+                          (dt(2026, 10, 13, 18, 57), dt(2026, 10, 14, 7, 0))])
+
+    def test_salida_olvidada_no_se_pega_al_dia_siguiente(self):
+        marcas = [dt(2026, 10, 12, 7, 0), dt(2026, 10, 12, 13, 0), dt(2026, 10, 12, 13, 30),
+                  dt(2026, 10, 13, 6, 58), dt(2026, 10, 13, 17, 0)]
+        self.assertEqual(len(calc.agrupar_turnos(marcas)), 2)
+
+    def test_premio_de_asistencia(self):
+        self.assertEqual(calc.premio_asistencia(0, 0), 5.5)
+        self.assertEqual(calc.premio_asistencia(0, 2), 4.5)
+        self.assertEqual(calc.premio_asistencia(1, 0), 4.5)
+        self.assertEqual(calc.premio_asistencia(0, 3), 0.0)
+        self.assertEqual(calc.premio_asistencia(2, 0), 0.0)
+        self.assertEqual(calc.premio_asistencia(0, 1), 4.5, 'un retardo: 4.5 mientras RH no diga otra cosa')
+        self.assertEqual(calc.premio_asistencia(0, 1, pct_un_retardo=5.5), 5.5)
+
     def test_entradas_del_parametro(self):
         self.assertEqual(calc.leer_entradas('06:00, 18:00'), (dt(1, 1, 1, 6).time(), dt(1, 1, 1, 18).time()))
         self.assertEqual(calc.leer_entradas('basura'), calc.ENTRADAS_DEFAULT)
@@ -177,3 +200,27 @@ class TestIncidenciasGenerar(TransactionCase):
         lista.action_generar()
         self.assertEqual(linea.he_autorizadas, 4)
         self.assertEqual(linea.he_dobles, 4)
+
+    def test_semanas_que_paga_el_mes(self):
+        Incidencias = self.env['qb.nomina.incidencias']
+        octubre = Incidencias._lunes_del_mes(date(2026, 10, 1))
+        self.assertEqual(octubre, [date(2026, 9, 28), date(2026, 10, 5), date(2026, 10, 12),
+                                   date(2026, 10, 19), date(2026, 10, 26)], 'octubre 2026 paga 5 viernes')
+        self.assertEqual(len(Incidencias._lunes_del_mes(date(2026, 11, 1))), 4)
+
+    def test_premio_de_asistencia_del_mes(self):
+        Incidencias = self.env['qb.nomina.incidencias']
+        otro = self.env['hr.employee'].create({'name': 'Prueba Premio', 'registration_number': 'Q-902'})
+        for lunes, faltas, retardos in ((date(2026, 11, 2), 0, 1), (date(2026, 11, 9), 0, 1),
+                                        (date(2026, 11, 16), 0, 0)):
+            lista = Incidencias.create({'fecha_inicio': lunes})
+            self.env['qb.nomina.incidencias.linea'].create([
+                {'incidencias_id': lista.id, 'employee_id': self.empleado.id, 'faltas': faltas,
+                 'retardos': retardos},
+                {'incidencias_id': lista.id, 'employee_id': otro.id, 'sin_checadas': lunes.day == 9},
+            ])
+        r = Incidencias.qb_premio_asistencia_mes(date(2026, 11, 1))
+        self.assertEqual(r['faltan'], [date(2026, 11, 23)])
+        yo = r['personas'][self.empleado.id]
+        self.assertEqual((yo['retardos'], yo['semanas'], yo['pct']), (2, 3, 4.5))
+        self.assertIsNone(r['personas'][otro.id]['pct'], 'una semana sin checadas: no hay con qué calificar')

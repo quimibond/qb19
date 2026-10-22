@@ -28,10 +28,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_staff_efficiency.py`.
 | `received_date` | Datetime | Recibida por RH el | Fecha y hora en que RH recibió la hoja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:58` |
 | `state` | Selection | Estado | Borrador mientras se captura; cerrado por el jefe de área; recibido por RH. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:60` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_attendance_from_clock` | Propone el % de asistencia desde las listas de incidencias semanales de Nómina (``quimibond_nomina``, armadas con el checador): faltas y retardos de las semanas que paga el mes. Solo toca a quien tie… |
 | `action_close` | El jefe de área cierra su hoja y RH la recibe (C4.25 → S4.35). |
 | `action_compute_efficiency` | Eficiencia = tiempo esperado de las órdenes de trabajo / tiempo real registrado por el empleado en el mes. Propone el % (tope 2 %). |
 | `action_load_employees` | Agrega los empleados activos del área que aún no están en la hoja. |
