@@ -145,6 +145,39 @@ class SgiStaffEfficiency(models.Model):
                 })
         return True
 
+    def action_attendance_from_clock(self):
+        """Propone el % de asistencia desde las listas de incidencias semanales de Nómina
+        (``quimibond_nomina``, armadas con el checador): faltas y retardos de las semanas que paga el
+        mes. Solo toca a quien tiene lista en todas esas semanas y con checadas; el resto se queda
+        como está y se dice por qué en Observaciones."""
+        if 'qb.nomina.incidencias' not in self.env:
+            raise UserError("Las listas de incidencias del checador están en el módulo de Nómina "
+                            "(quimibond_nomina), que no está instalado.")
+        # sudo: el jefe de área no lee Nómina; solo se leen conteos de faltas y retardos, sin importes.
+        Incidencias = self.env['qb.nomina.incidencias'].sudo()
+        for sheet in self:
+            r = Incidencias.qb_premio_asistencia_mes(sheet.period_date, sheet.line_ids.employee_id.ids)
+            if r['faltan']:
+                raise UserError("Faltan las listas de incidencias de las semanas del %s. Nómina las genera "
+                                "en Nómina → Incidencias." % ", ".join(d.strftime('%d/%m') for d in r['faltan']))
+            for line in sheet.line_ids:
+                p = r['personas'].get(line.employee_id.id)
+                if not p:
+                    resumen = "Checador: no está en las listas de incidencias del mes"
+                elif p['pct'] is None:
+                    resumen = "Checador: %d semana(s) sin checadas, sin calificar" % p['sin_checadas']
+                else:
+                    resumen = "Checador: %d falta(s), %d retardo(s) en %d semana(s)" % (
+                        p['faltas'], p['retardos'], p['semanas'])
+                vals = {}
+                if p and p['pct'] is not None:
+                    vals['attendance_pct'] = p['pct']
+                if not line.note or line.note.startswith("Checador:"):
+                    vals['note'] = resumen
+                if vals:
+                    line.write(vals)
+        return True
+
     def action_close(self):
         """El jefe de área cierra su hoja y RH la recibe (C4.25 → S4.35)."""
         rh_id = self.env['sgi.cron']._sgi_rh_user_id()

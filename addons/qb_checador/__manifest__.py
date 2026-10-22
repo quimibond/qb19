@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Checadores ZKTeco y Hikvision',
-    'version': '19.0.1.6.2',
+    'version': '19.0.1.7.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Attendances',
     'summary': 'Recibe las checadas de los relojes ZKTeco de la planta (protocolo ADMS/PUSH o por API) '
@@ -14,8 +14,9 @@ Los relojes checadores de la planta (ZKTeco MB10-VL y UA860, Toluca) empujan
 sus registros a ``/iclock/cdata`` con el protocolo ADMS/PUSH de ZKTeco. El
 módulo guarda cada checada tal cual llega (equipo, usuario, fecha y hora,
 tipo de verificación) y un cron la empareja por persona en asistencias
-(``hr.attendance``) con reglas para turnos de 12 horas que cruzan la
-medianoche.
+(``hr.attendance``): una por turno (entrada, comida y salida juntas, la
+comida dentro de la jornada), con reglas para turnos de 12 horas que cruzan
+la medianoche.
 
 Lo que no se puede emparejar (entrada sin salida, usuario sin empleado,
 registro fuera de orden) queda marcado para que el supervisor lo resuelva;

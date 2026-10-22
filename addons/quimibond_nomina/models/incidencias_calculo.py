@@ -12,7 +12,9 @@ respuestas de RH del 20 y 21 de octubre de 2026:
   trabaja de más es tiempo extra.
 * **Turno**: las checadas de una persona separadas por menos de 8 horas son un
   mismo turno (entrada, salida a comer, regreso, salida). Cuenta la primera y la
-  última; la comida va dentro de la jornada. El turno es del día de su **hora de
+  última; la comida va dentro de la jornada. Una checada sola acepta su salida
+  hasta 16 horas después (el turno de 12 de noche sin checar a la comida), la
+  misma regla que ``qb_checador`` 1.7.0 usa para las asistencias. El turno es del día de su **hora de
   entrada de referencia**, la más cercana entre las entradas de la planta
   (07:00 y 19:00): el turno de 19:00 a 07:00 es del día en que entra.
 * **Falta**: un día con horario, dentro del contrato, sin turno y sin ausencia
@@ -38,6 +40,8 @@ from datetime import datetime, time, timedelta
 from math import floor
 
 SEPARACION_TURNOS = timedelta(hours=8)
+TURNO_MAX = timedelta(hours=16)
+DUPLICADA = timedelta(minutes=2)    # checó dos veces seguidas: es la misma checada
 ENTRADAS_DEFAULT = (time(7, 0), time(19, 0))
 HORAS_CASTIGO_FALTA = 2          # lunes a jueves, como la lista de RH
 DIA_SIN_CASTIGO = 4              # viernes: la falta quita solo las horas del día
@@ -64,15 +68,20 @@ def leer_entradas(texto):
     return tuple(entradas) or ENTRADAS_DEFAULT
 
 
-def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS):
+def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
     """Checadas (datetimes locales) → ``[(primera, última, cuántas)]``."""
     turnos = []
     for marca in sorted(marcas):
-        if turnos and marca - turnos[-1][1] < separacion:
-            turnos[-1][1] = marca
-            turnos[-1][2] += 1
-        else:
-            turnos.append([marca, marca, 1])
+        if turnos:
+            inicio, fin, n = turnos[-1]
+            if marca - fin <= DUPLICADA:
+                turnos[-1][1] = marca
+                continue
+            if marca - inicio <= turno_max and (n == 1 or marca - fin < separacion):
+                turnos[-1][1] = marca
+                turnos[-1][2] += 1
+                continue
+        turnos.append([marca, marca, 1])
     return [tuple(t) for t in turnos]
 
 
@@ -189,6 +198,19 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
     if r['sin_checadas']:
         r['notas'].insert(0, 'Sin checadas en la semana: no se marcan faltas')
     return r
+
+
+def premio_asistencia(faltas, retardos, pct_un_retardo=4.5):
+    """Porcentaje del premio de asistencia del mes (Contrato Colectivo, respuesta de RH del 21-oct-2026):
+    5.5 % con 0 faltas y 0 retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más de 2 retardos o más de 1
+    falta. Con **un** retardo RH no lo dijo: ``pct_un_retardo`` (parámetro, 4.5 mientras no se confirme)."""
+    if faltas > 1 or retardos > 2:
+        return 0.0
+    if faltas == 1 or retardos == 2:
+        return 4.5
+    if retardos == 1:
+        return pct_un_retardo
+    return 5.5
 
 
 def repartir_horas_extra(autorizadas, sencillas_extra=0.0):
