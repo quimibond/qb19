@@ -13,6 +13,15 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.182.1 — 2026-10-22
+
+**Corregido**
+- «Ya corregí» ya no lo puede usar el jefe directo de Diseño: en producción
+  la jefa directa de Diseño de Producto y de Procesos es la Administradora de
+  Ventas, que es quien revisa. Solo los puestos que ejecutan C1.02 y C1.03 (y
+  el Jefe MAST). `sgi_dev_can_fix` lleva etiqueta («Puede marcar la
+  corrección»).
+
 ## 19.0.57.182.0 — 2026-10-22
 
 Avisos entre Diseño de Producto, Diseño de Procesos y Ventas en la revisión

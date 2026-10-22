@@ -14,7 +14,7 @@ class TestDevReviewNotice(TransactionCase):
         super().setUpClass()
         cls.Project = cls.env['project.project']
         groups = 'base.group_user,project.group_project_manager'
-        users = {}
+        users, employees = {}, {}
         # Los puestos salen de la ficha de C1 (si la base la tiene) o, sin ella, por nombre.
         for key, numbers, role in (('producto', ['C1.02'], 'ejecuta'), ('procesos', ['C1.03'], 'ejecuta'),
                                    ('ventas', ['C1.02', 'C1.03'], 'aprueba')):
@@ -22,9 +22,12 @@ class TestDevReviewNotice(TransactionCase):
             if not job:
                 job = cls.env['hr.job'].create({'name': JOB_FALLBACK[key].upper() + ' (prueba avisos)'})
             user = new_test_user(cls.env, login='sgi_rev_%s' % key, groups=groups, name='%s prueba' % key)
-            cls.env['hr.employee'].create({'name': '%s prueba' % key, 'job_id': job.id, 'user_id': user.id})
+            employees[key] = cls.env['hr.employee'].create(
+                {'name': '%s prueba' % key, 'job_id': job.id, 'user_id': user.id})
             users[key] = user
         cls.u_producto, cls.u_procesos, cls.u_ventas = users['producto'], users['procesos'], users['ventas']
+        # Como producción (57.182.1): la jefa directa de Diseño es la de Ventas, y no marca la corrección.
+        (employees['producto'] | employees['procesos']).write({'parent_id': employees['ventas'].id})
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente avisos', 'is_company': True})
         cls.dev = cls.Project.create({'name': 'x', 'sgi_is_ft': True, 'partner_id': cls.partner.id,
                                       'sgi_dev_product_name': 'Jersey avisos'})
