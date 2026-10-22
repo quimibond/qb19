@@ -195,6 +195,13 @@ class HrVersion(models.Model):
         # Odoo descarta sin aviso una propiedad que la estructura del contrato
         # no define: el SDI se perdería y el 07 saldría contra 0.
         if self._qb_imss_sdi() != round(sdi, 2):
+            definicion = self.structure_id.version_properties_definition or []
+            if any(d.get('name') == 'sdi_imss' for d in definicion):
+                raise UserError(_(
+                    "No se pudo guardar el SDI (%(sdi).2f) en la propiedad «sdi_imss» del contrato de "
+                    "%(empleado)s, aunque la estructura «%(estructura)s» sí la define. Se leyó %(leido).2f.",
+                    sdi=sdi, empleado=self.employee_id.name, estructura=self.structure_id.display_name,
+                    leido=self._qb_imss_sdi()))
             raise UserError(_(
                 "La estructura salarial «%(estructura)s» del contrato de %(empleado)s no define la "
                 "propiedad «sdi_imss» (SDI declarado ante el IMSS). Agréguela en la estructura "
