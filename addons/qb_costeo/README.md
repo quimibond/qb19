@@ -1,6 +1,7 @@
 # qb_costeo — Costeo Quimibond (segunda generación)
 
-Motor de costeo que sustituye a `qb_capacidad_costeo`. Diseño completo en
+Motor de costeo que sustituyó a `qb_capacidad_costeo` (desinstalado y retirado
+del repo el 2026-10-22). Diseño completo en
 `docs/superpowers/specs/2026-10-06-qb-costeo-v2-diseno.md`. Esta es la
 **Fase 1**: tarifas por centro, períodos con compuerta y validación de datos.
 El costo por producto, la conciliación y el cotizador llegan en las versiones
@@ -92,8 +93,6 @@ anterior; las señales `cliente_pierde`, `producto_pierde`,
    driver, centros de trabajo de Odoo, departamentos de RH, *Publicar tarifa*.
 2. **Clasificación de cuentas**: cada cuenta de resultados a su bucket; las
    de fábrica con centro y %. *Cuentas sin clasificar* lista lo que falta.
-   Si la base trae `qb_capacidad_costeo`, la instalación importa su
-   clasificación.
 3. **Parámetros**: todos traen ayuda; los defaults sirven.
 4. **Períodos**: crear el mes, *Calcular*, revisar tarifas, *Cerrar*.
 

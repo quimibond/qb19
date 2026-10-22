@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.188.0 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22).
+
+**Cambiado**
+- `_SGI_SCREEN_PRODUCES`: el par `('qb.costo.producto', 'account.move')` del
+  costeo anterior pasa a `('qb.periodo', 'account.move')`. La actividad S3.09
+  (recalcular el costeo y registrar la capa de valoración) abre ahora
+  Manufactura → Costos → Períodos (`qb_costeo`) y se mide con el asiento; sin
+  el par, el SGI avisaría que la pantalla no produce la evidencia.
+
 ## 19.0.57.187.0 — 2026-10-22
 
 Eficiencias de personal: el % de asistencia sale del checador.

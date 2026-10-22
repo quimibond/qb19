@@ -145,14 +145,14 @@ Si falta alguna, tiene duplicados:
 
 ```sql
 -- patrón: agrupar por las columnas de la restricción
-SELECT period, product_id, company_id, count(*)
-FROM qb_costo_producto GROUP BY 1,2,3 HAVING count(*) > 1;
+SELECT periodo_id, product_id, count(*)
+FROM qb_costo_unitario GROUP BY 1,2 HAVING count(*) > 1;
 ```
 
 ### Las tablas existen
 
 ```sql
-SELECT to_regclass('qb_cotizacion_tramo'), to_regclass('qb_producto_ficha');
+SELECT to_regclass('qb_cotizador_tramo'), to_regclass('qb_costo_unitario');
 ```
 
 Ningún `NULL`.

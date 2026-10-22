@@ -3,6 +3,17 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.2 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22):
+
+- Fuera `importar_legadas`, `_vals_desde_legado`, `crear_desde_calculadora`
+  y `LEGACY_STATE`, y la importación del `post_init_hook`. Ya no tienen de
+  dónde leer: el modelo `qb.cotizacion` no existe. Las 75 cotizaciones
+  importadas se quedan con su `legacy_id` y su fuente «legado».
+- Fuera `tests/test_legado.py` y la prueba de la calculadora en `test_flujo`.
+- Sin cambio de comportamiento para quien usa el cotizador.
+
 ## 19.0.1.6.1 — 2026-10-15
 
 Dirección General 2026-10-15: «¿cómo aseguras que las unidades están bien al cien?». La revisión contra los

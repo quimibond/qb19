@@ -24,7 +24,9 @@ propios, sin borrar datos»).
 ## Sin el módulo anterior de costeo (19.0.1.4.0, 2026-10-16)
 
 La sugerencia de producto y la conversión a kilos ya no leen
-`qb.producto.ficha` de `qb_capacidad_costeo` (se retira): gramaje y ancho
+`qb.producto.ficha` de `qb_capacidad_costeo` (desinstalado y retirado del repo
+el 2026-10-22; 19.0.1.4.1 solo corrige el comentario de `release/units.py`):
+gramaje y ancho
 salen del código del artículo y el rendimiento (m/kg) del peso del costeo
 para los productos en metros, o del código (1000 ÷ gramaje × ancho) para los
 que van en kilos. Sin `qb_costeo`, igual que antes sin la ficha: no se
