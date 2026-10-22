@@ -15,6 +15,7 @@ La planta firma en la tableta compartida a su nombre:
   PIN o sin correo» y un aviso semanal por departamento en Mis pendientes.
 """
 import base64
+import secrets
 import textwrap
 from datetime import timedelta
 
@@ -421,20 +422,42 @@ class HrEmployeeSgiGaps(models.Model):
     _inherit = 'hr.employee'
 
     # 57.94.0 (U-08): lo que le falta a la ficha para que la persona use el
-    # SGI. El PIN no se pide: SGI en planta queda apagado por ahora (decisión
-    # de Jose, 2026-10-02); cuando se encienda, se agrega aquí.
+    # SGI. 57.186.0 (Jose 2026-10-22: la planta firma en la tableta con PIN,
+    # sin papel): a quien no tiene usuario de Odoo le falta también el PIN.
     sgi_missing_data = fields.Char(
         string="Le falta", compute='_compute_sgi_missing_data', groups='hr.group_hr_user',
-        help="Puesto (sin él no hay Mi procedimiento) o correo de trabajo (sin él no recibe "
-             "firmas de Firma electrónica).")
+        help="Puesto (sin él no hay Mi procedimiento), correo de trabajo (sin él no recibe "
+             "firmas de Firma electrónica) o, sin usuario de Odoo, PIN (sin él no firma en la "
+             "tableta de planta).")
 
-    @api.depends('job_id', 'work_email')
+    @api.depends('job_id', 'work_email', 'pin', 'user_id')
     def _compute_sgi_missing_data(self):
         for employee in self:
             data = employee.sudo()
             missing = [label for label, value in (("puesto", data.job_id),
                                                   ("correo", data.work_email)) if not value]
+            if not data.user_id and not data.pin:
+                missing.append("PIN")
             employee.sgi_missing_data = ", ".join(missing)
+
+    def action_sgi_generate_pin(self):
+        """57.186.0: un PIN de 4 dígitos para quien no tiene usuario de Odoo
+        ni PIN (firma en la tableta de planta). No toca los que ya tienen PIN.
+        RH se lo da a cada persona; lo ve en la ficha (pestaña de RH)."""
+        if not self.env.user.has_group('hr.group_hr_user'):
+            raise AccessError("Solo RH genera los PIN.")
+        todo = self.sudo().filtered(lambda e: not e.user_id and not e.pin)
+        for employee in todo:
+            employee.pin = "%04d" % (1000 + secrets.randbelow(9000))
+        message = "Se generó el PIN de %d persona(s)." % len(todo)
+        skipped = len(self) - len(todo)
+        if skipped:
+            message += " Se dejaron %d que ya tenían PIN o tienen usuario de Odoo." % skipped
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'title': "PIN de la tableta de planta", 'message': message,
+                       'type': 'success', 'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
+        }
 
     @api.model
     def _sgi_hr_gaps_action(self, department_id=False):

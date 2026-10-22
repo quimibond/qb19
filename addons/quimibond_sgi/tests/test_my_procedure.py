@@ -165,6 +165,13 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(set(new_doc.sgi_ack_ids.mapped('employee_id')), {self.emp1, self.emp2})
         self.assertTrue(all(a.state == 'pendiente' for a in new_doc.sgi_ack_ids))
         self.assertEqual(self._ack_state(), 'pendiente')
+        # 57.185.0: la revisión obsoleta ya no pide firma: su pendiente se
+        # archiva (evidencia) y el firmado se queda como estaba.
+        old_acks = doc.with_context(active_test=False).sgi_ack_ids
+        self.assertEqual(old_acks.filtered(lambda a: a.employee_id == self.emp2).active, False)
+        self.assertEqual(old_acks.filtered(lambda a: a.employee_id == self.emp1).mapped('active'), [True])
+        self.assertFalse(self.env['sgi.document.ack'].search(
+            [('document_id', '=', doc.id), ('state', '=', 'pendiente')]))
 
     def test_05_empleado_y_vista(self):
         # 57.8.0 (B-011): la vista de roles sin botón se retiró; se prueba

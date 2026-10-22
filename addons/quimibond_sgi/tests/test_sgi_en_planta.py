@@ -387,12 +387,18 @@ class TestRhFaltantes(_PlantaCase):
         notice = self._notices(self.dept).filtered('active')
         self.assertEqual(len(notice), 1)
         self.assertEqual(notice.user_id, rh)
-        # worker sin correo de trabajo; no_pin sin puesto y sin correo (el PIN no se pide).
+        # worker sin correo de trabajo; no_pin sin puesto y sin correo (el aviso
+        # semanal sigue contando puesto y correo).
         self.assertIn('ZK Tejido: 2', notice.summary)
         # La lista de RH los trae.
         action = self.env.ref('quimibond_sgi.sgi_hr_employee_gaps_action')
         found = self.env['hr.employee'].with_user(rh).search(safe_eval(action.domain))
         self.assertIn(self.no_pin, found)
+        # 57.186.0: sin usuario de Odoo, también el PIN (firma en la tableta).
+        self.assertEqual(self.no_pin.with_user(rh).sgi_missing_data, 'puesto, correo, PIN')
+        (self.no_pin | self.worker | self.worker2).with_user(rh).action_sgi_generate_pin()
+        self.assertRegex(self.no_pin.sudo().pin, r'^\d{4}$')
+        self.assertEqual(self.worker.sudo().pin, '1357', "No toca un PIN que ya existe.")
         self.assertEqual(self.no_pin.with_user(rh).sgi_missing_data, 'puesto, correo')
         # Mis pendientes: «Ir» abre la lista de RH filtrada por el departamento.
         Pending = self.env['sgi.my.pending'].with_user(rh)

@@ -13,7 +13,7 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
-## 19.0.57.185.0 — 2026-10-22
+## 19.0.57.187.0 — 2026-10-22
 
 Eficiencias de personal: el % de asistencia sale del checador.
 
@@ -28,6 +28,41 @@ Eficiencias de personal: el % de asistencia sale del checador.
   tuvo una semana sin checadas se queda sin calificar. Si falta la lista de
   alguna semana, avisa y no toca nada. Sin `quimibond_nomina` instalado,
   avisa.
+## 19.0.57.186.0 — 2026-10-22
+
+Jose (2026-10-22): la gente de planta sin usuario firma sus acuses en la
+tableta de planta con PIN, sin papel. En producción 114 de los 146 acuses
+pendientes eran de personas sin usuario, ninguna tenía PIN y no había
+tableta: nadie los podía firmar. SGI en planta (57.94.0) estaba apagado por
+la decisión del 2-oct-2026; se enciende.
+
+**Cambiado**
+- **Tabletas de planta** vuelve al menú (SGI → Configuración); estaba
+  archivado desde 57.167.0.
+- La lista de RH «Empleados sin puesto o sin correo» trae también a quien no
+  tiene usuario de Odoo ni PIN («Le falta: PIN»), con el filtro **Sin PIN
+  (sin usuario)** y el botón **Generar PIN** (`action_sgi_generate_pin`, 4
+  dígitos al azar, solo RH; no toca PIN existentes ni a quien tiene usuario).
+- Manuales: RH (sección 2), MAST (2.6.1, encender la tableta) y operador.
+
+## 19.0.57.185.0 — 2026-10-22
+
+Acuses de lectura de revisiones obsoletas. En producción había 7 acuses
+pendientes de documentos ya obsoletos (revisiones viejas de «Mi
+procedimiento»): Mis pendientes le pedía a la persona firmar la Rev. 00 y la
+Rev. 01 de lo mismo.
+
+**Corregido**
+- `sgi.document.ack` lleva `active`. Cuando un documento queda obsoleto, sus
+  acuses **pendientes** se archivan (`_sgi_sync_pending_acks`): ya no se
+  piden en Mis pendientes, Mi equipo, el kiosco de planta ni la salud del
+  SGI, y quedan como evidencia. Los firmados no se tocan. Si el documento
+  vuelve a vigente o piloto, regresan.
+- `action_generate_acks` cuenta también los archivados (un acuse por persona
+  y documento).
+
+**Migración**
+- `post-migrate`: archiva los pendientes de documentos que ya son obsoletos.
 
 ## 19.0.57.184.0 — 2026-10-22
 
