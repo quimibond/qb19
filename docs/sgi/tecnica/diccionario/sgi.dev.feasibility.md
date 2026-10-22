@@ -8,7 +8,7 @@ Renglón del checklist de factibilidad de un proyecto: sí, no o no aplica, con 
 
 Orden: `sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_review_notice.py`.
 
 ## Campos (7)
 
@@ -22,8 +22,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
 | `project_id` | Many2one |  |  | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:304` |
 | `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:307` |
 
-## Métodos públicos (1)
+## Métodos públicos (2)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `create` | — |
 | `write` | — |
