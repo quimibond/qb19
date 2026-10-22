@@ -36,15 +36,19 @@ class TestImss(TransactionCase):
         # El SDI vive en la propiedad ``sdi_imss`` del contrato, que define la
         # estructura («Paga regular» en producción). El contrato de prueba no
         # trae garantizada esa estructura: sin la definición Odoo descarta la
-        # propiedad y el SDI se lee en 0.0.
-        stype = cls.version.structure_type_id or env['hr.payroll.structure.type'].create({'name': 'QB IMSS prueba'})
-        cls.struct = env['hr.payroll.structure'].create({
-            'name': 'QB IMSS prueba', 'code': 'QB_IMSS', 'type_id': stype.id,
-            'version_properties_definition': [
-                {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}],
-        })
-        cls.version.write({'structure_type_id': stype.id, 'structure_id': cls.struct.id,
-                           'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
+        # propiedad y el SDI se lee en 0.0. Se agrega la definición a la
+        # estructura que el contrato ya tiene: cambiarle el tipo de estructura
+        # recalcula la periodicidad (semanal → quincenal) y la estructura.
+        struct = cls.version.structure_id
+        if not struct:
+            struct = env['hr.payroll.structure'].create({
+                'name': 'QB IMSS prueba', 'code': 'QB_IMSS', 'type_id': cls.version.structure_type_id.id})
+            cls.version.structure_id = struct
+        definicion = list(struct.version_properties_definition or [])
+        if not any(d.get('name') == 'sdi_imss' for d in definicion):
+            struct.version_properties_definition = definicion + [
+                {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}]
+        cls.version.write({'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
         cls.Mov = env['qb.nomina.imss.movimiento']
 
     # --- helpers puros --------------------------------------------------
