@@ -13,6 +13,36 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.182.0 — 2026-10-22
+
+Avisos entre Diseño de Producto, Diseño de Procesos y Ventas en la revisión
+del análisis (C1, lo reportó Administración de Ventas). Antes aprobar y
+regresar solo dejaban una nota interna que no notifica.
+
+**Agregado**
+- `models/sgi_dev_review_notice.py`: actividades «Por hacer» (campana y
+  correo) al **puesto** que sigue, leído de los roles de C1 en el SGI (por
+  nombre solo si la ficha no está), con fecha límite = plazo de la actividad
+  de C1 (días hábiles de su «recibe»: C1.02 = 3, C1.03 = 5 en producción).
+  La del paso anterior se marca hecha.
+  1. Resultado «nuevo» → «Contestar checklist de factibilidad» a quien
+     ejecuta C1.03 (Diseño de Procesos); «línea» o «no factible» → «Revisar
+     análisis y factibilidad» a quien aprueba C1.02/C1.03 (Ventas).
+  2. Checklist sin renglones pendientes → «Revisar análisis y factibilidad»
+     a Ventas.
+  3. «Regresar a Diseño» → «Corregir lo que pidió Ventas» a quien ejecuta
+     C1.02 y C1.03, con el motivo, y un mensaje con correo a esas personas.
+  4. Botón **«Ya corregí»** (solo con la revisión regresada, para Diseño de
+     Producto o de Procesos o su jefe directo) con comentario opcional «Qué
+     se corrigió»: la revisión vuelve a «Pendiente» y «Revisar corrección» le
+     llega con correo a quien regresó.
+  5. Aprobar marca hechas las actividades abiertas del ciclo; salir de la
+     revisión (cerrar como línea / no factible, cotizar) también las cierra.
+- Prueba `tests/test_dev_review_notice.py`.
+
+No cambia la ficha de C1 en el SGI (roles, plazos, aprobaciones): el
+checker de faltantes queda igual.
+
 ## 19.0.57.181.1 — 2026-10-21
 
 **Corregido**
