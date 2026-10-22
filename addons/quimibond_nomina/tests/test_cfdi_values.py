@@ -37,8 +37,11 @@ class TestCfdiValues(TransactionCase):
         cls.work = env['res.partner'].create({'name': 'Planta Toluca', 'state_id': cls.mex.id,
                                               'country_id': env.ref('base.mx').id})
         liberar_referencias(env, 'S-1', 'S-2', 'C-32')
+        # Con fecha de inicio de contrato: sin ella, el recálculo de días
+        # trabajados de l10n_mx_hr_payroll truena (``False > date``).
         cls.employee = env['hr.employee'].create({'name': 'Prueba CFDI', 'address_id': cls.work.id,
-                                                  'registration_number': 'S-1'})
+                                                  'registration_number': 'S-1',
+                                                  'contract_date_start': date(2026, 1, 1)})
         cls.company = env.company
 
     def _recibo(self, lineas=None, employee=None):
@@ -78,7 +81,8 @@ class TestCfdiValues(TransactionCase):
 
     def test_clave_ent_fed_cae_a_la_compania_y_al_parametro(self):
         sin_direccion = self.env['hr.employee'].create({'name': 'Sin dirección', 'address_id': False,
-                                                        'registration_number': 'S-2'})
+                                                        'registration_number': 'S-2',
+                                                        'contract_date_start': date(2026, 1, 1)})
         slip = self._recibo(employee=sin_direccion)
         self.company.state_id = self.mex
         self.assertEqual(slip._qb_nomina_cfdi_values()['clave_ent_fed'], 'MEX')
