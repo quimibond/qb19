@@ -71,8 +71,9 @@ class ProjectProjectDevReviewNotice(models.Model):
 
     sgi_dev_fix_note = fields.Char(string="Qué se corrigió", copy=False,
                                    help="Comentario corto (opcional) para Ventas al usar «Ya corregí».")
-    sgi_dev_can_fix = fields.Boolean(compute='_compute_sgi_dev_can_fix',
-                                     help="El usuario es de Diseño de Producto o de Procesos (o su jefe directo).")
+    # 57.182.1: sin jefes directos; en producción la jefa de Diseño es Ventas, que revisa.
+    sgi_dev_can_fix = fields.Boolean(string="Puede marcar la corrección", compute='_compute_sgi_dev_can_fix',
+                                     help="El usuario ocupa el puesto de Diseño de Producto o de Procesos.")
 
     def _compute_sgi_dev_can_fix(self):
         users = self._sgi_dev_fixer_users() if self else self.env['res.users']
@@ -102,10 +103,10 @@ class ProjectProjectDevReviewNotice(models.Model):
 
     @api.model
     def _sgi_dev_fixer_users(self):
-        """Diseño de Producto y de Procesos (quien ejecuta C1.02 y C1.03) y sus jefes directos."""
+        """Diseño de Producto y de Procesos (quien ejecuta C1.02 y C1.03)."""
         jobs = self._sgi_dev_c1_role_jobs(['C1.02'], 'ejecuta', 'producto') \
             | self._sgi_dev_c1_role_jobs(['C1.03'], 'ejecuta', 'procesos')
-        return jobs._sgi_users(with_bosses=True)
+        return jobs._sgi_users()
 
     def _sgi_dev_c1_deadline(self, number):
         """Hoy más los días hábiles del «recibe» de la actividad de C1; hoy si no tiene plazo."""
@@ -241,7 +242,7 @@ class ProjectProjectDevReviewNotice(models.Model):
                 raise UserError("La revisión de Ventas no está regresada.")
             if not (self.env.user in project._sgi_dev_fixer_users()
                     or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
-                raise UserError("Solo Diseño de Producto o Diseño de Procesos (o su jefe directo) marca la "
+                raise UserError("Solo Diseño de Producto o Diseño de Procesos marca la "
                                 "corrección.")
             comment = (project.sgi_dev_fix_note or '').strip()
             project.write({'sgi_dev_review_state': 'pendiente', 'sgi_dev_fix_note': False})
