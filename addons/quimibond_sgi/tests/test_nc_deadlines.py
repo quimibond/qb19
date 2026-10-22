@@ -183,3 +183,23 @@ class TestNcDeadlines(TransactionCase):
         nc_stages = Stage.search([('team_ids', 'in', self.team.ids)])
         self.assertEqual(set(nc_stages.mapped('name')),
                          {'Abierta', 'Seguimiento', 'Cerrada', 'Cancelada'})
+
+    def test_07_que_sigue_en_la_ficha(self):
+        """57.179.0: la ficha dice el primer paso sin cumplir y cuándo vence."""
+        nc = self._nc()
+        self.assertIn("Registrar la contención", nc.sgi_next_step)
+        self.assertEqual(nc.sgi_next_due, nc.sgi_due_containment)
+        self.assertFalse(nc.sgi_next_late)
+        self.env['sgi.action.line'].create({
+            'alert_id': nc.id, 'action_type': 'contencion', 'name': 'Segregar lote',
+            'responsible_id': self.user.id, 'date_commit': date.today()})
+        nc.invalidate_recordset()
+        self.assertIn("causa raíz", nc.sgi_next_step)
+        self.assertEqual(nc.sgi_next_due, nc.sgi_due_root_cause)
+        nc.sgi_root_cause = 'Sin instructivo'
+        nc.invalidate_recordset()
+        self.assertIn("Registrar el plan", nc.sgi_next_step)
+        late = self._nc(days_ago=60)
+        self.assertTrue(late.sgi_next_late, "La contención ya venció.")
+        floor = self.env['quality.alert'].create({'title': 'Alerta de piso'})
+        self.assertFalse(floor.sgi_next_step, "Sin folio no hay pasos.")

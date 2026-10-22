@@ -469,8 +469,23 @@ aviso del 22-sep-2026 por 2,668.35 → 3,514.48 entre las quincenas 19, 20 y 21
   # quincenas; el primer bimestre de un credito que empieza a la mitad, solo
   # por los dias desde «Inicio del descuento» (quimibond_nomina 1.12.0,
   # models/infonavit.py).
-  result = -payslip._qb_infonavit_retencion()
+  # Mas la entrada AJ_INFONAVIT («Ajuste de Infonavit», importe): el ajuste que NOI
+  # hace en la ultima nomina del bimestre para cuadrar con la liquidacion del SUA
+  # (positivo = retener mas).
+  ajuste = sum(l.amount for l in payslip.input_line_ids if l.input_type_id.code == 'AJ_INFONAVIT')
+  result = -(payslip._qb_infonavit_retencion() + ajuste)
   ```
+
+  Aplicada en producción el 2026-10-21 junto con el tipo de entrada
+  «Ajuste de Infonavit (importe)» (`AJ_INFONAVIT`, «Paga regular»). NOI cierra
+  cada bimestre contra la liquidación del SUA y retiene la diferencia en la
+  última nómina (Reyes Sánchez, Q21 2026: liquidación 3,581.19 − 2,342.98 ya
+  retenidos = 1,238.21; Odoo da 1,171.49, así que el ajuste es 66.72). La regla
+  quedó bajo el centinela.
+- Regla `PRESTAMO` (2026-10-21): si el recibo trae la entrada «Préstamo personal
+  (importe)», manda esa **aunque sea 0**; así se omite el descuento de un periodo
+  sin tocar la ficha (Miguel Medina, Q21 2026). Antes una entrada en 0 caía a la
+  propiedad del contrato.
 
 - Un cambio de cuota a partir del siguiente bimestre (aviso de modificación)
   sigue siendo a mano: se cambia la cuota de la ficha después de calcular la
@@ -479,6 +494,54 @@ aviso del 22-sep-2026 por 2,668.35 → 3,514.48 entre las quincenas 19, 20 y 21
   primer bimestre en 5 semanas (40 a 44, 467.83) porque entró a la nómina en la
   semana 40; con el inicio en la fecha del contrato Odoo daría 6 semanas
   (389.86). Su ficha queda sin fecha hasta aclarar su NSS.
+
+### 13. Lista de incidencias semanal desde el checador (1.13.0)
+
+Nómina → Incidencias → Listas semanales. Es la F-P-A01-49 de RH armada en Odoo:
+una lista por semana (lunes a domingo) con un renglón por persona con contrato
+semanal. «Generar desde el checador» lee las checadas del reloj (`qb.checada`
+de `qb_checador`, **no** las asistencias emparejadas, que a veces quedan
+invertidas), el horario del contrato y las ausencias aprobadas. Reglas en
+`models/incidencias_calculo.py` (funciones puras, probadas en
+`tests/test_incidencias.py`), tomadas de la lista de RH y de las respuestas de
+Miguel y Lorena del 20 y 21 de octubre de 2026:
+
+- **Turno**: checadas separadas por menos de 8 horas; cuenta la primera y la
+  última. Es del día de su entrada de referencia, la más cercana entre las de
+  la planta (parámetro `quimibond_nomina.incidencias_entradas`, default
+  `07:00,19:00`): el turno de 19:00 a 07:00 es del día en que entra.
+- **Base = horario** (lunes a jueves 10, viernes 8). Lo de más es tiempo extra.
+- **Falta**: día con horario, dentro del contrato, sin turno y sin ausencia.
+  Quita el día más 2 horas de lunes a jueves (12; el viernes 8). Va al recibo
+  como `FALTAS` = horas / 8 (como NOI); `DESC_FALTAS` le suma el séptimo día.
+- **Ausencias de Odoo**: incapacidad «I», vacaciones «V», permiso con goce «P»,
+  sin goce (horas quitadas). Se ven en la lista pero **no van al recibo como
+  incidencia**: el recibo ya las descuenta por la entrada de trabajo
+  (`IMSS_DISABLE`, `DIS_ABSENCE`). Por eso «Pasar a recibos» no escribe ni
+  borra `INCAP`; una incapacidad que no esté en Ausencias se sigue capturando
+  a mano en el recibo.
+- **Retardo** desde el minuto 1 después de la entrada de referencia. **Salidas
+  antes**: se anotan, no se descuentan (se reponen).
+- **Tiempo extra según checador**: lo que el turno pasa de las horas del día
+  (sábado y domingo, todo el turno), desde la entrada de referencia. Odoo
+  propone las horas completas en «HE autorizadas»; el supervisor las corrige
+  (nadie trabaja extra sin solicitud) y volver a generar no pisa lo que
+  capturó. Las primeras 9 de la semana son dobles y el resto sencillas;
+  «Sencillas a mano» suma bono rama y pendientes.
+- **Prima dominical**: horas redondeadas del turno que toca el domingo (el que
+  entra el sábado en la noche y el que entra el domingo).
+- **Sin ninguna checada** en la semana: «?» y no se marcan faltas (aún no
+  registra su huella). Días posteriores a hoy: se proyectan con el horario.
+
+«Marcar revisada» y «Pasar a recibos» (elegir la corrida) escriben `FALTAS`,
+`HE_DOBLE`, `H_SENCILLA`, `DOM` y `HE_DIAS` en los recibos en borrador o por
+verificar de esa persona (borra antes las suyas de esos tipos) y los
+recalculan. **Nunca valida ni timbra.** Mientras la nómina salga del Excel de
+RH, sirve para comparar persona por persona.
+
+Pendiente: premio de asistencia mensual (5.5 % sin faltas ni retardos, 4.5 % con
+1 falta o 2 retardos, 0 con más) a partir de los renglones del mes; falta
+confirmar con Miguel qué toca con un solo retardo.
 
 ## Qué escribe el módulo en la base (inventario completo)
 
@@ -499,7 +562,9 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Modelos `qb.nomina.imss.movimiento` y `qb.nomina.imss.lote` (tablas nuevas) y los asistentes `qb.nomina.imss.detectar` / `qb.nomina.imss.sdi.bimestre` (1.9.0) | al instalar | nacen vacías; «SDI del bimestre» al **aplicar** escribe la propiedad `sdi_imss` del contrato (`hr.version.payroll_properties`) de los trabajadores marcados |
 | Menú «IMSS» en la raíz de la app de Nómina (`qb_nomina_colgar_menu_imss`, 1.9.0) | al instalar y en cada actualización | registro propio del módulo |
 | Parámetro `quimibond_nomina.idse_guia.<registro>` (1.9.0) | al generar un lote | la guía capturada, para proponerla la próxima vez |
-| Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
+| Modelos `qb.nomina.incidencias` y `qb.nomina.incidencias.linea` (tablas nuevas) y menú «Incidencias» en la raíz de Nómina (1.13.0) | al instalar y en cada actualización (menú) | nacen vacías |
+| Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
+| Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)
 de «Paga regular» **se editaron en la base**, no las escribe el módulo: las

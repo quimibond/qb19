@@ -177,6 +177,18 @@ class SgiIndicatorDetail(models.Model):
         domain=[('no_data_reason', '!=', 'foto')])
     calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False,
                                    help="Última vez que se revisó el cálculo automático.")
+    # 57.178.0: la lista de lo que falta para pasarlo a oficial, en la ficha,
+    # y quién puede hacerlo (su responsable o el dueño del proceso, no solo MAST).
+    official_ok_owner = fields.Boolean(string="Tiene responsable y proceso", compute='_compute_official')
+    official_ok_target = fields.Boolean(string="Tiene meta", compute='_compute_official')
+    official_ok_value = fields.Boolean(string="El cálculo da valor", compute='_compute_official')
+    official_ready = fields.Boolean(string="Listo para oficial", compute='_compute_official')
+    can_set_official = fields.Boolean(
+        string="Puede pasarlo a oficial", compute='_compute_official',
+        help="Su responsable, el dueño de su proceso o el Jefe MAST.")
+    target_label = fields.Char(string="Meta", compute='_compute_official',
+                               help="La meta en una línea: objetivo y aceptable, o el rango.")
+    last_detail_count = fields.Integer(related='last_measure_id.detail_count', string="Registros de la última")
 
     @api.depends('calc_mode', 'calc_status')
     def _compute_calc_fix_menu_id(self):
@@ -281,11 +293,70 @@ class SgiIndicatorDetail(models.Model):
             changed |= to_mark
         return changed
 
+    @api.depends('responsible_id', 'process_id', 'direction', 'target_objective', 'target_acceptable',
+                 'range_min', 'range_max', 'last_measure_id', 'calc_status', 'calc_mode', 'uom', 'status')
+    @api.depends_context('uid')
+    def _compute_official(self):
+        user = self.env.user
+        manager = self.env.su or user.has_group('quimibond_sgi.group_sgi_manager')
+        for ind in self:
+            ind.official_ok_owner = bool(ind.responsible_id and ind.process_id)
+            if ind.direction == 'range':
+                ind.official_ok_target = ind.range_max > ind.range_min
+            elif ind.direction == 'higher_better':
+                ind.official_ok_target = ind.target_objective > 0
+            else:
+                # Más bajo es mejor: «0 accidentes» es una meta válida.
+                ind.official_ok_target = True
+            ind.official_ok_value = bool(ind.last_measure_id) and ind.calc_status not in ('error', 'sin_formula')
+            ind.official_ready = ind.official_ok_owner and ind.official_ok_target and ind.official_ok_value
+            owner_user = ind.sudo().process_id.owner_id.user_id
+            ind.can_set_official = ind.status == 'prueba' and (
+                manager or user == ind.responsible_id or (owner_user and user == owner_user))
+            unit = (" %s" % ind.uom) if ind.uom else ""
+            if ind.direction == 'range':
+                ind.target_label = "Entre %g y %g%s" % (ind.range_min, ind.range_max, unit)
+            else:
+                ind.target_label = "Objetivo %g%s · aceptable %g%s" % (
+                    ind.target_objective, unit, ind.target_acceptable, unit)
+
+    def _sgi_official_missing(self):
+        self.ensure_one()
+        missing = []
+        if not self.official_ok_owner:
+            missing.append("responsable y proceso")
+        if not self.official_ok_target:
+            missing.append("la meta")
+        if not self.official_ok_value:
+            missing.append("una medición con valor (el último cálculo no dio valor)")
+        return missing
+
     def action_set_official(self):
-        self.write({'status': 'oficial'})
+        # 57.178.0: lo pasa su responsable o el dueño del proceso, con la
+        # lista completa; MAST puede pasarlo sin ella (salud del SGI, casos raros).
+        manager = self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for ind in self:
+            if manager:
+                continue
+            if not ind.can_set_official:
+                raise UserError("«%s»: solo su responsable, el dueño del proceso o el Jefe MAST lo pasan "
+                                "a oficial." % ind.display_name)
+            missing = ind._sgi_official_missing()
+            if missing:
+                raise UserError("«%s» todavía no puede ser oficial. Falta: %s." % (
+                    ind.display_name, "; ".join(missing)))
+        self.sudo().write({'status': 'oficial'})
+        for ind in self:
+            ind.sudo().message_post(body="Pasado a oficial por %s." % self.env.user.name)
 
     def action_set_trial(self):
         self.write({'status': 'prueba'})
+
+    def action_view_last_records(self):
+        """57.178.0: los registros de la última medición, para revisarlos contra
+        la realidad antes de pasarlo a oficial."""
+        self.ensure_one()
+        return self.last_measure_id.action_view_records()
 
     # ------------------------------------------------------------------
     # I-1: valor con detalle

@@ -248,6 +248,12 @@ class QualityAlert(models.Model):
     sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states',
                                           help="Se marca sola cuando la NC ya tiene al menos una acción de "
                                                "contención registrada.")
+    # 57.179.0: qué sigue en la NC, en una línea arriba de la ficha.
+    sgi_next_step = fields.Char(string="Qué sigue", compute='_compute_sgi_deadline_states',
+                                help="El siguiente paso de la NC y dónde se hace.")
+    sgi_next_due = fields.Date(string="Vence el siguiente paso", compute='_compute_sgi_deadline_states',
+                               help="Fecha límite del siguiente paso.")
+    sgi_next_late = fields.Boolean(string="Siguiente paso vencido", compute='_compute_sgi_deadline_states')
     # 57.40.0 (V-A02): semáforo de la lista de NC y filtro «Plazo vencido».
     sgi_deadline_overdue = fields.Boolean(
         string="Plazo vencido", compute='_compute_sgi_deadline_states',
@@ -433,6 +439,25 @@ class QualityAlert(models.Model):
             alert.sgi_plan_state = state(plan, alert.sgi_due_plan)
             alert.sgi_deadline_overdue = 'vencida' in (
                 alert.sgi_containment_state, alert.sgi_root_cause_state, alert.sgi_plan_state)
+            # 57.179.0: el primer paso sin cumplir, con su fecha.
+            if not alert.sgi_folio or alert.sgi_stage_is_closing or alert.sgi_stage_is_cancel:
+                step, due = False, False
+            elif not containment:
+                step, due = ("Registrar la contención: en «Correcciones y acciones», una acción de tipo "
+                             "Contención", alert.sgi_due_containment)
+            elif not alert.sgi_root_cause:
+                step, due = ("Escribir la causa raíz en «Desviación y análisis» (5 porqués)",
+                             alert.sgi_due_root_cause)
+            elif not plan:
+                step, due = ("Registrar el plan: en «Correcciones y acciones», una acción correctiva o "
+                             "preventiva con responsable y fecha compromiso", alert.sgi_due_plan)
+            elif alert.sgi_effectiveness_due:
+                step, due = ("Verificar la eficacia en «Verificación y cierre»", alert.sgi_effectiveness_due)
+            else:
+                step, due = "Terminar las acciones del plan", False
+            alert.sgi_next_step = step
+            alert.sgi_next_due = due
+            alert.sgi_next_late = bool(step and due and today > due)
 
     @api.depends('sgi_origin_type')
     def _compute_sgi_nc_type(self):

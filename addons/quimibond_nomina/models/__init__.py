@@ -6,3 +6,4 @@ from . import hr_payslip_run
 from . import isr_mensual
 from . import infonavit
 from . import imss
+from . import incidencias

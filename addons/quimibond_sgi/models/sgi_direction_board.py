@@ -111,6 +111,15 @@ class SgiDirectionBoard(models.TransientModel):
     indicator_count = fields.Integer(compute='_compute_board')
     indicator_note = fields.Char(string="Nota de indicadores", compute='_compute_board')
     red_count = fields.Integer(compute='_compute_board')
+    # 57.181.0: lo que pide decisión, en una línea arriba, y las NC vencidas
+    # con su siguiente paso y quién la debe.
+    official_count = fields.Integer(string="Indicadores oficiales", compute='_compute_board')
+    indicator_total = fields.Integer(string="Indicadores activos", compute='_compute_board')
+    agreement_count = fields.Integer(string="Acuerdos vencidos", compute='_compute_board')
+    nc_overdue_ids = fields.Many2many(
+        'quality.alert', string="NC con plazo vencido", compute='_compute_board',
+        help="No conformidades abiertas con algún plazo vencido (contención, causa raíz o plan).")
+    nc_overdue_count = fields.Integer(string="Núm. de NC con plazo vencido", compute='_compute_board')
 
     def _sgi_board_indicators(self, Indicator):
         """Indicadores del tablero (máximo _BOARD_LIMIT) y nota para Dirección.
@@ -152,9 +161,19 @@ class SgiDirectionBoard(models.TransientModel):
             reds = reds.filtered(lambda m: m.plan_required and not m.plan_done)
             board.red_no_plan_measure_ids = reds.ids
             board.red_count = len(reds)
-            board.overdue_agreement_ids = self.env['sgi.action.line'].sudo().search(
+            agreements = self.env['sgi.action.line'].sudo().search(
                 [('review_id', '!=', False), ('date_done', '=', False),
-                 ('date_commit', '<', fields.Date.context_today(board))], order='date_commit').ids
+                 ('date_commit', '<', fields.Date.context_today(board))], order='date_commit')
+            board.overdue_agreement_ids = agreements.ids
+            board.agreement_count = len(agreements)
+            own = [('calc_mode', 'not in', HEALTH_MODES)]
+            board.indicator_total = Indicator.search_count(own)
+            board.official_count = Indicator.search_count(own + [('status', '=', 'oficial')])
+            ncs = self.env['quality.alert'].sudo().search(
+                [('sgi_folio', '!=', False), ('sgi_deadline_overdue', '=', True)], order='create_date')
+            ncs = ncs.filtered(lambda a: not a.sgi_stage_is_closing and not a.sgi_stage_is_cancel)
+            board.nc_overdue_ids = ncs.ids
+            board.nc_overdue_count = len(ncs)
             processes = self.env['sgi.process'].sudo().search([('parent_id', '!=', False)])
             processes = processes.filtered(lambda p: p.activity_red_count > 0).sorted(
                 key=lambda p: -p.activity_red_count)[:10]
