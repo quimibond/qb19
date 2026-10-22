@@ -39,15 +39,20 @@ class TestImss(TransactionCase):
         # propiedad y el SDI se lee en 0.0. Se agrega la definición a la
         # estructura que el contrato ya tiene: cambiarle el tipo de estructura
         # recalcula la periodicidad (semanal → quincenal) y la estructura.
+        # Antes, flush: la estructura del contrato es un campo calculado y sin
+        # él se lee la de antes de calcularse («Paga regular» llega después).
+        env.flush_all()
         struct = cls.version.structure_id
         if not struct:
             struct = env['hr.payroll.structure'].create({
                 'name': 'QB IMSS prueba', 'code': 'QB_IMSS', 'type_id': cls.version.structure_type_id.id})
             cls.version.structure_id = struct
-        definicion = list(struct.version_properties_definition or [])
-        if not any(d.get('name') == 'sdi_imss' for d in definicion):
-            struct.version_properties_definition = definicion + [
-                {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}]
+        # También la estructura por omisión del tipo, por si se recalcula después.
+        for estructura in struct | cls.version.structure_type_id.default_struct_id:
+            definicion = list(estructura.version_properties_definition or [])
+            if not any(d.get('name') == 'sdi_imss' for d in definicion):
+                estructura.version_properties_definition = definicion + [
+                    {'name': 'sdi_imss', 'type': 'float', 'string': 'SDI declarado ante el IMSS', 'default': 0}]
         cls.version.write({'qb_imss_umf': '7', 'qb_imss_tipo_trabajador': '1', 'qb_imss_tipo_salario': '2'})
         cls.Mov = env['qb.nomina.imss.movimiento']
 

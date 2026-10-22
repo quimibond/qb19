@@ -10,7 +10,7 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
-from .common import liberar_referencias
+from .common import liberar_credenciales, liberar_referencias
 from odoo.tools import mute_logger
 
 LOG = 'odoo.addons.quimibond_nomina.models.hr_payslip'
@@ -37,6 +37,7 @@ class TestCfdiValues(TransactionCase):
         cls.work = env['res.partner'].create({'name': 'Planta Toluca', 'state_id': cls.mex.id,
                                               'country_id': env.ref('base.mx').id})
         liberar_referencias(env, 'S-1', 'S-2', 'C-32')
+        liberar_credenciales(env, '041460744711')
         # Con fecha de inicio de contrato: sin ella, el recálculo de días
         # trabajados de l10n_mx_hr_payroll truena (``False > date``).
         cls.employee = env['hr.employee'].create({'name': 'Prueba CFDI', 'address_id': cls.work.id,
