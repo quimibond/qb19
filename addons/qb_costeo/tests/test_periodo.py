@@ -176,3 +176,13 @@ class TestPeriodo(CosteoCase):
         self.periodo.action_cerrar()
         Periodo.create({'period': date(2026, 10, 1)})
         self.assertEqual(Periodo.para_cotizar(), self.periodo)
+
+    def test_crons_solo_companias_con_centros(self):
+        """1.6.1: una compañía sin centros directos no entra a los crons
+        (antes tumbaba el cálculo de las demás con «No hay centros
+        directos configurados»)."""
+        otra = self.env['res.company'].create({'name': 'Sin costeo prueba'})
+        companias = self.env['qb.centro'].companias_con_costeo()
+        self.assertIn(self.company, companias)
+        self.assertNotIn(otra, companias)
+        self.env['qb.cuenta.clase'].cron_cuentas_nuevas()
