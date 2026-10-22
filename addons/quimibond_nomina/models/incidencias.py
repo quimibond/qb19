@@ -33,6 +33,7 @@ from . import incidencias_calculo as calc
 _logger = logging.getLogger(__name__)
 
 PARAM_ENTRADAS = 'quimibond_nomina.incidencias_entradas'
+PARAM_PREMIO_UN_RETARDO = 'quimibond_nomina.premio_asistencia_un_retardo'   # % con un solo retardo
 TZ_DEFAULT = 'America/Mexico_City'
 ESTADOS_CHECADA_FUERA = ('ignorada', 'sin_empleado', 'error')
 CODIGOS_INCAPACIDAD = ('LEAVE1000', 'LEAVE1100', 'LEAVE1200')
@@ -297,6 +298,55 @@ class QbNominaIncidencias(models.Model):
         self.message_post(body=cuerpo)
         self.payslip_run_id.message_post(body=_("Incidencias tomadas de «%s».", self.display_name))
         return True
+
+    # ------------------------------------------------------------------
+    # Premio de asistencia del mes
+    # ------------------------------------------------------------------
+    @api.model
+    def _lunes_del_mes(self, mes):
+        """Los lunes de las semanas que paga el mes: las de viernes (día de pago) dentro del mes, como
+        ``_qb_nomina_periodos_del_mes``."""
+        inicio = mes.replace(day=1)
+        fin = (inicio + timedelta(days=32)).replace(day=1)
+        viernes = inicio + timedelta(days=(4 - inicio.weekday()) % 7)
+        lunes = []
+        while viernes < fin:
+            lunes.append(viernes - timedelta(days=4))
+            viernes += timedelta(days=7)
+        return lunes
+
+    @api.model
+    def qb_premio_asistencia_mes(self, mes, employee_ids=None):
+        """Premio de asistencia de un mes desde las listas semanales: faltas y retardos de las semanas
+        que paga el mes y el porcentaje del Contrato Colectivo. Devuelve ``{'faltan': [lunes sin lista],
+        'personas': {employee_id: {'pct', 'faltas', 'retardos', 'semanas', 'sin_checadas'}}}``; ``pct``
+        es None si alguna semana salió sin checadas (no hay con qué calificar)."""
+        mes = fields.Date.to_date(mes)
+        lunes = self._lunes_del_mes(mes)
+        listas = self.search([('fecha_inicio', 'in', lunes), ('company_id', '=', self.env.company.id)],
+                             order='fecha_inicio, id desc')
+        por_semana = {}
+        for lista in listas:
+            por_semana.setdefault(lista.fecha_inicio, lista)
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_PREMIO_UN_RETARDO)
+        try:
+            un_retardo = float(valor) if valor else 4.5
+        except ValueError:
+            un_retardo = 4.5
+        personas = {}
+        for lista in por_semana.values():
+            for linea in lista.linea_ids:
+                if employee_ids is not None and linea.employee_id.id not in employee_ids:
+                    continue
+                p = personas.setdefault(linea.employee_id.id, {'faltas': 0, 'retardos': 0, 'semanas': 0,
+                                                               'sin_checadas': 0})
+                p['faltas'] += linea.faltas
+                p['retardos'] += linea.retardos
+                p['semanas'] += 1
+                p['sin_checadas'] += 1 if linea.sin_checadas else 0
+        for p in personas.values():
+            p['pct'] = None if p['sin_checadas'] else calc.premio_asistencia(p['faltas'], p['retardos'], un_retardo)
+        return {'faltan': [d for d in lunes if d not in por_semana], 'personas': personas}
 
     # ------------------------------------------------------------------
     # Menú

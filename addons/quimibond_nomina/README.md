@@ -507,7 +507,9 @@ invertidas), el horario del contrato y las ausencias aprobadas. Reglas en
 Miguel y Lorena del 20 y 21 de octubre de 2026:
 
 - **Turno**: checadas separadas por menos de 8 horas; cuenta la primera y la
-  última. Es del día de su entrada de referencia, la más cercana entre las de
+  última. Una checada sola acepta su salida hasta 16 horas después (el turno
+  de 12 de noche sin checar a la comida; antes de 1.14.0 se partía en dos), la
+  misma regla que `qb_checador` 1.7.0 usa para las asistencias. Es del día de su entrada de referencia, la más cercana entre las de
   la planta (parámetro `quimibond_nomina.incidencias_entradas`, default
   `07:00,19:00`): el turno de 19:00 a 07:00 es del día en que entra.
 - **Base = horario** (lunes a jueves 10, viernes 8). Lo de más es tiempo extra.
@@ -539,9 +541,19 @@ verificar de esa persona (borra antes las suyas de esos tipos) y los
 recalculan. **Nunca valida ni timbra.** Mientras la nómina salga del Excel de
 RH, sirve para comparar persona por persona.
 
-Pendiente: premio de asistencia mensual (5.5 % sin faltas ni retardos, 4.5 % con
-1 falta o 2 retardos, 0 con más) a partir de los renglones del mes; falta
-confirmar con Miguel qué toca con un solo retardo.
+**Premio de asistencia mensual (1.14.0).** No se paga desde aquí: vive en la
+hoja mensual de eficiencias del SGI (F-P-A01-32/34, `sgi.staff.efficiency`,
+columna «Asistencia», sobre el salario diario × 30). El botón **Asistencia
+desde el checador** de esa hoja llama a
+`qb.nomina.incidencias.qb_premio_asistencia_mes(mes)`: suma faltas y retardos
+de las listas de las semanas que paga el mes (las de viernes dentro del mes,
+como el ISR y el FONACOT) y aplica el Contrato Colectivo: 5.5 % sin faltas ni
+retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más de 2 retardos o más de
+1 falta. **Un solo retardo** no lo aclaró RH: parámetro
+`quimibond_nomina.premio_asistencia_un_retardo` (default 4.5; poner `5.5` si
+Miguel confirma que con uno no baja). Quien tuvo una semana sin checadas se
+queda sin calificar; si falta la lista de alguna semana, el botón avisa y no
+toca nada.
 
 ## Qué escribe el módulo en la base (inventario completo)
 

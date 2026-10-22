@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.187.0 — 2026-10-22
+
+Eficiencias de personal: el % de asistencia sale del checador.
+
+**Agregado**
+- Botón **Asistencia desde el checador** en la hoja mensual
+  (`action_attendance_from_clock`): toma las faltas y los retardos de las
+  listas de incidencias semanales de Nómina (`quimibond_nomina` 1.14.0,
+  semanas que paga el mes) y propone el % del Contrato Colectivo (5.5 % sin
+  faltas ni retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más; con un
+  solo retardo, el parámetro `quimibond_nomina.premio_asistencia_un_retardo`,
+  4.5 mientras RH no lo confirme). El resumen va en Observaciones; quien
+  tuvo una semana sin checadas se queda sin calificar. Si falta la lista de
+  alguna semana, avisa y no toca nada. Sin `quimibond_nomina` instalado,
+  avisa.
 ## 19.0.57.186.0 — 2026-10-22
 
 Jose (2026-10-22): la gente de planta sin usuario firma sus acuses en la
