@@ -13,6 +13,28 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.183.0 — 2026-10-22
+
+Jose (2026-10-22): «sigue mejorando vistas y elimina obsoletos, por ejemplo
+el menú Administración».
+
+**Cambiado**
+- La carpeta **Administración** se archiva en su lugar (`menu_sgi_admin`,
+  `SGI_MENU_ARCHIVED`); nada se borra y nadie pierde una pantalla:
+  - **Diagnóstico** (con sus cuatro entradas) pasa a **Desempeño**.
+  - **Aprobaciones del SGI** y **Publicar Mi procedimiento** pasan a
+    **Sistema**, junto a Matriz de responsabilidades y Puestos y procesos.
+  - **Configuración** cuelga del raíz, al final, como en las demás apps de
+    Odoo (solo Jefe MAST), con **Transición** dentro.
+- Las rutas que se le dicen al usuario (`sgi_menu_paths`), los manuales de
+  MAST, Dirección y Auditor, y los README de Conocimiento, Mapa y Pesaje
+  dicen la ruta nueva. Ninguna actividad apunta a esos menús en producción:
+  ningún «Mi procedimiento» cambia de huella.
+
+**Corregido**
+- `test_entrega4.test_01` esperaba ver `menu_sgi_migration`, archivado desde
+  57.167.0.
+
 ## 19.0.57.182.1 — 2026-10-22
 
 **Corregido**
