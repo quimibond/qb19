@@ -278,9 +278,15 @@
                                     <field name="sgi_dev_reviewed_by_id"/>
                                     <field name="sgi_dev_review_date"/>
                                     <field name="sgi_dev_review_note" placeholder="Motivo del regreso (obligatorio para regresar)"/>
+                                    <!-- 57.182.0: Diseño avisa a Ventas que ya corrigió (comentario opcional). -->
+                                    <field name="sgi_dev_can_fix" invisible="1"/>
+                                    <field name="sgi_dev_fix_note" placeholder="Qué se corrigió (opcional)"
+                                           invisible="sgi_dev_review_state != 'regresado' or not sgi_dev_can_fix"/>
                                     <div colspan="2">
                                         <button name="action_sgi_dev_review_return" type="object" string="Regresar a Diseño" class="btn-secondary" icon="fa-undo"
                                                 invisible="sgi_dev_review_state == 'regresado'"/>
+                                        <button name="action_sgi_dev_review_fixed" type="object" string="Ya corregí" class="btn-primary" icon="fa-check"
+                                                invisible="sgi_dev_review_state != 'regresado' or not sgi_dev_can_fix"/>
                                         <span class="text-muted ms-2" invisible="sgi_dev_review_state == 'aprobado'">Se aprueba con «Aprobar análisis y factibilidad» en el encabezado.</span>
                                     </div>
                                 </group>
