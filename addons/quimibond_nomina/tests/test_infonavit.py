@@ -9,6 +9,8 @@ from datetime import date
 
 from odoo.tests.common import TransactionCase
 
+from .common import liberar_referencias
+
 
 class TestInfonavit(TransactionCase):
 
@@ -20,6 +22,7 @@ class TestInfonavit(TransactionCase):
         cls.struct = env['hr.payroll.structure'].create({'name': 'QB Infonavit prueba', 'code': 'QB_INFO',
                                                           'type_id': stype.id})
         env['ir.config_parameter'].sudo().set_param('quimibond_nomina.dia_pago_semanal', '4')
+        liberar_referencias(env, 'Q-9')
 
     def _empleado(self, periodicidad, inicio_contrato, cuota, inicio_credito=None):
         empleado = self.env['hr.employee'].create({'name': 'Prueba Infonavit', 'registration_number': 'Q-9'})

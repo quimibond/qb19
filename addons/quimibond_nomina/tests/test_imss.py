@@ -11,6 +11,8 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
+from .common import liberar_referencias
+
 from odoo.addons.quimibond_nomina.models.imss import (
     anio_de_servicio, bimestre_rango, dias_vacaciones_lft, factor_integracion, linea_totales_idse,
     registro_patronal_plano)
@@ -24,6 +26,7 @@ class TestImss(TransactionCase):
         env = cls.env
         cls.company = env.company
         cls.company.l10n_mx_imss_id = 'C-675994510-1'
+        liberar_referencias(env, 'S-250')
         cls.emp = env['hr.employee'].create({
             'name': 'JORGE MATIAS SALINAS', 'registration_number': 'S-250', 'ssnid': '16998226027',
             'l10n_mx_curp': 'MASJ830911HMCTLR06', 'contract_date_start': date(2026, 9, 23),
