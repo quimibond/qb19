@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Claves que aparecen en la operación: A1, V1, V5 (columna «tipo» de F-P-A-16-06) y R1
+             (rectificación, correo 102733). Las demás del Anexo 22 se dan de alta a mano. -->
+        <record id="clave_a1" model="qb.pedimento.clave">
+            <field name="code">A1</field>
+            <field name="name">Definitiva</field>
+            <field name="operacion">ambas</field>
+        </record>
+        <record id="clave_v1" model="qb.pedimento.clave">
+            <field name="code">V1</field>
+            <field name="name">Virtual: transferencia a empresa IMMEX</field>
+            <field name="operacion">exportacion</field>
+            <field name="virtual" eval="True"/>
+        </record>
+        <record id="clave_v5" model="qb.pedimento.clave">
+            <field name="code">V5</field>
+            <field name="name">Virtual: proveedor nacional a empresa con programa</field>
+            <field name="operacion">exportacion</field>
+            <field name="virtual" eval="True"/>
+        </record>
+        <record id="clave_r1" model="qb.pedimento.clave">
+            <field name="code">R1</field>
+            <field name="name">Rectificación</field>
+            <field name="operacion">ambas</field>
+            <field name="rectificacion" eval="True"/>
+        </record>
+
+        <!-- Aduanas de los números de pedimento en los correos 2025-10 a 2026-10, cotejadas con la
+             aduana que nombra la agencia (ver el diseño). Un código nuevo se da de alta solo. -->
+        <record id="aduana_07" model="qb.pedimento.aduana">
+            <field name="code">07</field>
+            <field name="name">Ciudad Juárez</field>
+        </record>
+        <record id="aduana_16" model="qb.pedimento.aduana">
+            <field name="code">16</field>
+            <field name="name">Manzanillo</field>
+        </record>
+        <record id="aduana_24" model="qb.pedimento.aduana">
+            <field name="code">24</field>
+            <field name="name">Nuevo Laredo</field>
+        </record>
+        <record id="aduana_43" model="qb.pedimento.aduana">
+            <field name="code">43</field>
+            <field name="name">Veracruz</field>
+        </record>
+        <record id="aduana_47" model="qb.pedimento.aduana">
+            <field name="code">47</field>
+            <field name="name">Aeropuerto Internacional de la Ciudad de México</field>
+        </record>
+        <record id="aduana_85" model="qb.pedimento.aduana">
+            <field name="code">85</field>
+            <field name="name">Aeropuerto Internacional Felipe Ángeles</field>
+        </record>
+
+        <!-- Checklist del expediente: columnas de F-P-A-16-05 (importación) y F-P-A-16-06
+             (exportación), más C2.28 y S1.14. Obligatorio = marcado «OK» en las filas llenas. -->
+        <record id="doc_pedimento" model="qb.pedimento.documento.tipo">
+            <field name="name">Pedimento pagado</field>
+            <field name="sequence">10</field>
+            <field name="operacion">ambas</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_cuenta_gastos" model="qb.pedimento.documento.tipo">
+            <field name="name">Cuenta de gastos / factura de la agencia</field>
+            <field name="sequence">20</field>
+            <field name="operacion">ambas</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_cove" model="qb.pedimento.documento.tipo">
+            <field name="name">COVE / VUCEM</field>
+            <field name="sequence">30</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_factura_proveedor" model="qb.pedimento.documento.tipo">
+            <field name="name">Factura del proveedor</field>
+            <field name="sequence">40</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_bl" model="qb.pedimento.documento.tipo">
+            <field name="name">Conocimiento de embarque / BL / guía</field>
+            <field name="sequence">50</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_packing_imp" model="qb.pedimento.documento.tipo">
+            <field name="name">Packing list</field>
+            <field name="sequence">60</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_carta_encomienda" model="qb.pedimento.documento.tipo">
+            <field name="name">Carta encomienda</field>
+            <field name="sequence">70</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_carta_318" model="qb.pedimento.documento.tipo">
+            <field name="name">Carta 3.1.8</field>
+            <field name="sequence">80</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_mv" model="qb.pedimento.documento.tipo">
+            <field name="name">Manifestación de valor y hoja de cálculo</field>
+            <field name="sequence">90</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_especificaciones" model="qb.pedimento.documento.tipo">
+            <field name="name">Especificaciones / fichas técnicas</field>
+            <field name="sequence">100</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_declaracion_origen" model="qb.pedimento.documento.tipo">
+            <field name="name">Declaración de origen</field>
+            <field name="sequence">110</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_certificado_origen_imp" model="qb.pedimento.documento.tipo">
+            <field name="name">Certificado de origen</field>
+            <field name="sequence">120</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_doda_imp" model="qb.pedimento.documento.tipo">
+            <field name="name">DODA</field>
+            <field name="sequence">130</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_pago_derechos" model="qb.pedimento.documento.tipo">
+            <field name="name">Pago de derechos aduana</field>
+            <field name="sequence">140</field>
+            <field name="operacion">importacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_factura_cfdi" model="qb.pedimento.documento.tipo">
+            <field name="name">Factura CFDI (complemento de comercio exterior o leyendas fiscales)</field>
+            <field name="sequence">150</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+        </record>
+        <record id="doc_packing_exp" model="qb.pedimento.documento.tipo">
+            <field name="name">Packing list</field>
+            <field name="sequence">160</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_certificado_origen_exp" model="qb.pedimento.documento.tipo">
+            <field name="name">Certificado de origen</field>
+            <field name="sequence">170</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_carta_porte" model="qb.pedimento.documento.tipo">
+            <field name="name">Carta porte</field>
+            <field name="sequence">180</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_doda_exp" model="qb.pedimento.documento.tipo">
+            <field name="name">DODA</field>
+            <field name="sequence">190</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_bl_exp" model="qb.pedimento.documento.tipo">
+            <field name="name">BL / guía</field>
+            <field name="sequence">200</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="False"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_entry" model="qb.pedimento.documento.tipo">
+            <field name="name">Entry (EUA)</field>
+            <field name="sequence">210</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="False"/>
+            <field name="excepto_virtual" eval="True"/>
+        </record>
+        <record id="doc_edocuments" model="qb.pedimento.documento.tipo">
+            <field name="name">Acuse de digitalización / e-documents</field>
+            <field name="sequence">220</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_csf" model="qb.pedimento.documento.tipo">
+            <field name="name">Constancia de situación fiscal</field>
+            <field name="sequence">230</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="False"/>
+        </record>
+        <record id="doc_proforma_v1" model="qb.pedimento.documento.tipo">
+            <field name="name">Proforma autorizada (agente del cliente)</field>
+            <field name="sequence">240</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="True"/>
+            <field name="solo_virtual" eval="True"/>
+        </record>
+        <record id="doc_materialidad" model="qb.pedimento.documento.tipo">
+            <field name="name">Pruebas de materialidad (transporte, entrega, contrato)</field>
+            <field name="sequence">250</field>
+            <field name="operacion">exportacion</field>
+            <field name="required" eval="False"/>
+            <field name="solo_virtual" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
