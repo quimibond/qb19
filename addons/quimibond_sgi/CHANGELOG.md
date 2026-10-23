@@ -13,6 +13,29 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.190.0 — 2026-10-23
+
+Dirección General 2026-10-23 (C1, pestaña Cotización): se eligió mal el
+artículo base (hermano) y, aunque se cambió en Análisis, no había forma de
+volver a generar los códigos: «Generar artículos» se oculta en cuanto hay
+artículos y no toca los niveles ya ligados.
+
+**Nuevo**
+- Botón **«Regenerar artículos»** (`action_sgi_dev_regenerate_products`,
+  `models/sgi_dev_product_regen.py`): suelta crudo, teñido, acabado en kg y
+  acabado. Los que creó el proyecto se borran con sus listas de materiales;
+  los del artículo base o de catálogo solo se desligan. Después corre
+  «Generar artículos» con el base y las claves de hoy. Todo queda en el
+  chatter.
+- Solo en Solicitud, Análisis o Cotización y antes de la aprobación del
+  cliente (después es un cambio de diseño).
+- Si algo más usa un artículo que se iba a borrar (órdenes, movimientos,
+  pedidos, facturas, fichas técnicas, listas de otros artículos,
+  cotizaciones…), no cambia nada y dice qué lo usa. Solo cuentan las
+  referencias que el borrado dejaría vacías o impediría; lo que se borra en
+  cascada con el producto (costeo, proveedores) no detiene.
+- Prueba: `test_dev_product.test_08_regenerar_con_otro_base`.
+
 ## 19.0.57.189.0 — 2026-10-22
 
 Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22).
