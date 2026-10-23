@@ -404,6 +404,14 @@ class QbPedimento(models.Model):
     def action_reabrir(self):
         self._set_state('preparacion', fecha_cierre=False)
 
+    def action_cargar_expediente(self):
+        """Abre el asistente para subir todos los archivos del expediente de una vez."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'res_model': 'qb.pedimento.carga', 'view_mode': 'form',
+            'target': 'new', 'name': _('Cargar expediente'), 'context': {'default_pedimento_id': self.id},
+        }
+
     # ── costo en destino ─────────────────────────────────────────────
     def action_crear_costo_destino(self):
         """Costo en destino en BORRADOR sobre las recepciones ligadas: IGI,
