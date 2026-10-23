@@ -11,3 +11,5 @@ access_qb_pedimento_aduana_user,qb.pedimento.aduana user,model_qb_pedimento_adua
 access_qb_pedimento_aduana_manager,qb.pedimento.aduana manager,model_qb_pedimento_aduana,group_pedimento_manager,1,1,1,1
 access_qb_pedimento_documento_tipo_user,qb.pedimento.documento.tipo user,model_qb_pedimento_documento_tipo,group_pedimento_user,1,0,0,0
 access_qb_pedimento_documento_tipo_manager,qb.pedimento.documento.tipo manager,model_qb_pedimento_documento_tipo,group_pedimento_manager,1,1,1,1
+access_qb_pedimento_carga_user,qb.pedimento.carga user,model_qb_pedimento_carga,group_pedimento_user,1,1,1,1
+access_qb_pedimento_carga_linea_user,qb.pedimento.carga.linea user,model_qb_pedimento_carga_linea,group_pedimento_user,1,1,1,1

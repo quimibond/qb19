@@ -51,6 +51,7 @@
                 <field name="required"/>
                 <field name="solo_virtual"/>
                 <field name="excepto_virtual"/>
+                <field name="patron_archivo" optional="show"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>

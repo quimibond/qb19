@@ -54,6 +54,8 @@
                             string="Cruzó" invisible="state != 'despachado' or operacion != 'exportacion'"/>
                     <button name="action_cerrar" type="object" string="Cerrar expediente" class="btn-primary"
                             invisible="state != 'entregado'"/>
+                    <button name="action_cargar_expediente" type="object" string="Cargar expediente"
+                            invisible="state == 'cancelado'"/>
                     <button name="action_crear_costo_destino" type="object" string="Crear costo en destino"
                             invisible="operacion != 'importacion' or state in ('preparacion', 'cancelado')"
                             groups="stock.group_stock_manager"/>
@@ -122,6 +124,9 @@
                     </group>
                     <notebook>
                         <page string="Documentos" name="documentos">
+                            <button name="action_cargar_expediente" type="object" class="btn-secondary mb-2"
+                                    icon="fa-upload" string="Cargar expediente completo (varios archivos o ZIP)"
+                                    invisible="state == 'cancelado'"/>
                             <field name="documento_ids">
                                 <list editable="bottom" create="false" delete="false"
                                       decoration-success="cumplido" decoration-danger="required and not cumplido">

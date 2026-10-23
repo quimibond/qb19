@@ -16,6 +16,26 @@ El diseño y la evidencia de cada decisión están en
 | Cuenta de gastos y garantías | Total de la cuenta de gastos, anticipo y saldo (negativo = a favor de Quimibond, como en el Excel); garantías navieras, depósitos y cuenta aduanera hasta que se devuelven. |
 | Embarque | Incoterm, BL o guía, booking, contenedores, COVE, DODA y Entry. |
 
+## Cargar el expediente completo
+
+En el expediente, botón **Cargar expediente**. También está arriba de la pestaña Documentos.
+
+1. **Subir los archivos.** Se suben todos de una vez: PDF, XML o un ZIP con todo, como los que mandan las agencias («REF. 82194-51473-MZ.zip», «26-03-26.zip»).
+2. **Revisar la propuesta.** Al dar **Clasificar**, Odoo abre los ZIP y propone a qué documento del checklist va cada archivo según su nombre. Se lo reconoce así:
+
+   | Nombre del archivo | Documento |
+   |---|---|
+   | «17404306000661NORMAL_PAGADO.PDF», «…SIMPDEC_PAGADO», «26-07-1612-6000590.pdf» | Pedimento |
+   | «JJ28104.XML» | Cuenta de gastos |
+   | «Doda5001894.PDF» | DODA |
+   | «CEO TMEC 2026 SHAWMUT.pdf» | Certificado de origen |
+
+   Un archivo puede cubrir varios documentos: «INVOICE AND PL BIANCO.pdf» va como factura y como packing list. Si el nombre trae el número de **otro** pedimento, la línea sale marcada con un aviso.
+3. **Guardar.** Se puede cambiar el documento de cada archivo o marcarlo «No guardar». Los archivos sin documento quedan como adjuntos del expediente.
+4. **Un solo PDF con todo el expediente.** Se marca «Es un solo archivo con todo el expediente» y cubre todos los documentos que pide la operación.
+
+Los patrones se ajustan en Configuración → Documentos del expediente, columna «Patrón del nombre de archivo» (expresión regular). Una actualización del módulo no pisa lo editado.
+
 ## Etapas
 
 `Preparación → En tránsito → En aduana → Despachado → Entregado / Cruzado → Cerrado`.
