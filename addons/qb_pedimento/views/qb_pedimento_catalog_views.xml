@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_pedimento_clave_list" model="ir.ui.view">
+        <field name="name">qb.pedimento.clave.list</field>
+        <field name="model">qb.pedimento.clave</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="operacion"/>
+                <field name="virtual"/>
+                <field name="rectificacion"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento_clave" model="ir.actions.act_window">
+        <field name="name">Claves de pedimento</field>
+        <field name="res_model">qb.pedimento.clave</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_qb_pedimento_aduana_list" model="ir.ui.view">
+        <field name="name">qb.pedimento.aduana.list</field>
+        <field name="model">qb.pedimento.aduana</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento_aduana" model="ir.actions.act_window">
+        <field name="name">Aduanas</field>
+        <field name="res_model">qb.pedimento.aduana</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_qb_pedimento_documento_tipo_list" model="ir.ui.view">
+        <field name="name">qb.pedimento.documento.tipo.list</field>
+        <field name="model">qb.pedimento.documento.tipo</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="operacion"/>
+                <field name="required"/>
+                <field name="solo_virtual"/>
+                <field name="excepto_virtual"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento_documento_tipo" model="ir.actions.act_window">
+        <field name="name">Documentos del expediente</field>
+        <field name="res_model">qb.pedimento.documento.tipo</field>
+        <field name="view_mode">list</field>
+    </record>
+
+</odoo>

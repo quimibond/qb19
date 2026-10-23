@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_qb_pedimento_list" model="ir.ui.view">
+        <field name="name">qb.pedimento.list</field>
+        <field name="model">qb.pedimento</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state in ('cerrado', 'cancelado')"
+                  decoration-warning="state == 'entregado' and documentos_faltantes > 0">
+                <field name="name"/>
+                <field name="operacion"/>
+                <field name="clave_id" optional="show"/>
+                <field name="aduana_id" optional="show"/>
+                <field name="patente" optional="hide"/>
+                <field name="partner_id"/>
+                <field name="agencia_id" optional="show"/>
+                <field name="referencia_agencia" optional="hide"/>
+                <field name="fecha_arribo" optional="hide"/>
+                <field name="fecha_pago" optional="show"/>
+                <field name="fecha_entrega" optional="hide"/>
+                <field name="contenedores" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="valor_aduana" sum="Valor en aduana" optional="hide"/>
+                <field name="igi" sum="IGI" optional="hide"/>
+                <field name="total_contribuciones" sum="Contribuciones" optional="show"/>
+                <field name="cuenta_gastos_total" sum="Cuenta de gastos" optional="hide"/>
+                <field name="saldo" sum="Saldo" optional="hide"/>
+                <field name="documentos_faltantes" optional="show"/>
+                <field name="dias_cierre" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'cerrado'" decoration-info="state in ('despachado', 'entregado')"
+                       decoration-warning="state in ('transito', 'aduana')"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_pedimento_form" model="ir.ui.view">
+        <field name="name">qb.pedimento.form</field>
+        <field name="model">qb.pedimento</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_transito" type="object" string="En tránsito"
+                            invisible="state != 'preparacion' or operacion != 'importacion'"/>
+                    <button name="action_aduana" type="object" string="En aduana"
+                            invisible="state not in ('preparacion', 'transito')"/>
+                    <button name="action_despachado" type="object" string="Despachado" class="btn-primary"
+                            invisible="state not in ('preparacion', 'transito', 'aduana')"/>
+                    <button name="action_entregado" type="object" class="btn-primary"
+                            string="Llegó a planta" invisible="state != 'despachado' or operacion != 'importacion'"/>
+                    <button name="action_entregado" type="object" class="btn-primary"
+                            string="Cruzó" invisible="state != 'despachado' or operacion != 'exportacion'"/>
+                    <button name="action_cerrar" type="object" string="Cerrar expediente" class="btn-primary"
+                            invisible="state != 'entregado'"/>
+                    <button name="action_crear_costo_destino" type="object" string="Crear costo en destino"
+                            invisible="operacion != 'importacion' or state in ('preparacion', 'cancelado')"
+                            groups="stock.group_stock_manager"/>
+                    <button name="action_reabrir" type="object" string="Reabrir"
+                            invisible="state not in ('cerrado', 'cancelado')"
+                            groups="qb_pedimento.group_pedimento_manager"/>
+                    <button name="action_cancelar" type="object" string="Cancelar"
+                            invisible="state in ('cerrado', 'cancelado')"
+                            confirm="¿Cancelar el expediente? Los documentos y la información se conservan."/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="preparacion,transito,aduana,despachado,entregado,cerrado"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_purchases" type="object" class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="purchase_count == 0">
+                            <field name="purchase_count" widget="statinfo" string="Compras"/>
+                        </button>
+                        <button name="action_view_pickings" type="object" class="oe_stat_button" icon="fa-truck"
+                                invisible="picking_count == 0">
+                            <field name="picking_count" widget="statinfo" string="Traslados"/>
+                        </button>
+                        <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-pencil-square-o"
+                                invisible="invoice_count == 0">
+                            <field name="invoice_count" widget="statinfo" string="Facturas"/>
+                        </button>
+                        <button name="action_view_landed_costs" type="object" class="oe_stat_button" icon="fa-plus-square"
+                                invisible="landed_cost_count == 0">
+                            <field name="landed_cost_count" widget="statinfo" string="Costos en destino"/>
+                        </button>
+                    </div>
+                    <div class="alert alert-warning" role="status"
+                         invisible="state != 'entregado' or documentos_faltantes == 0">
+                        Faltan <field name="documentos_faltantes" class="d-inline"/> documentos obligatorios para cerrar el expediente.
+                    </div>
+                    <div class="oe_title">
+                        <label for="numero"/>
+                        <h1><field name="numero" placeholder="26 16 3774 6000206"/></h1>
+                    </div>
+                    <group>
+                        <group string="Operación">
+                            <field name="operacion" widget="radio" options="{'horizontal': true}"/>
+                            <field name="clave_id" options="{'no_create': True}"/>
+                            <field name="rectificacion" invisible="1"/>
+                            <field name="virtual" invisible="1"/>
+                            <field name="rectifica_id" invisible="not rectificacion" required="rectificacion"/>
+                            <field name="aduana_id"/>
+                            <field name="patente"/>
+                            <field name="partner_id" string="Proveedor" invisible="operacion != 'importacion'"/>
+                            <field name="partner_id" string="Cliente" invisible="operacion != 'exportacion'"/>
+                            <field name="agencia_id"/>
+                            <field name="referencia_agencia"/>
+                        </group>
+                        <group string="Fechas">
+                            <field name="fecha_factura"/>
+                            <field name="fecha_arribo" invisible="operacion != 'importacion'"/>
+                            <field name="fecha_pago"/>
+                            <field name="fecha_despacho"/>
+                            <field name="fecha_entrega" string="Entrega en planta" invisible="operacion != 'importacion'"/>
+                            <field name="fecha_entrega" string="Cruce" invisible="operacion != 'exportacion'"/>
+                            <field name="fecha_cierre"/>
+                            <field name="dias_cierre" invisible="not fecha_cierre"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Documentos" name="documentos">
+                            <field name="documento_ids">
+                                <list editable="bottom" create="false" delete="false"
+                                      decoration-success="cumplido" decoration-danger="required and not cumplido">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="tipo_id" readonly="1"/>
+                                    <field name="required"/>
+                                    <field name="attachment_ids" widget="many2many_binary"/>
+                                    <field name="referencia"/>
+                                    <field name="no_aplica"/>
+                                    <field name="cumplido"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Ligado a" name="ligas">
+                            <group>
+                                <group>
+                                    <field name="purchase_ids" widget="many2many_tags" invisible="operacion != 'importacion'"/>
+                                    <field name="sale_ids" widget="many2many_tags" invisible="operacion != 'exportacion'"/>
+                                    <field name="picking_ids" widget="many2many_tags"/>
+                                </group>
+                                <group>
+                                    <field name="invoice_ids" widget="many2many_tags"/>
+                                    <field name="gasto_move_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Contribuciones y partidas" name="contribuciones">
+                            <group>
+                                <group string="Valores">
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="factura_proveedor" string="Factura comercial"/>
+                                    <field name="factura_currency_id"/>
+                                    <field name="valor_factura"/>
+                                    <field name="tipo_cambio"/>
+                                    <field name="valor_comercial"/>
+                                    <field name="valor_aduana"/>
+                                </group>
+                                <group string="Contribuciones (MXN)">
+                                    <field name="dta"/>
+                                    <field name="igi"/>
+                                    <field name="iva"/>
+                                    <field name="prv"/>
+                                    <field name="iva_prv"/>
+                                    <field name="multas"/>
+                                    <field name="total_contribuciones"/>
+                                </group>
+                            </group>
+                            <field name="partida_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="descripcion"/>
+                                    <field name="fraccion"/>
+                                    <field name="cantidad"/>
+                                    <field name="uom_id"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="valor_aduana" sum="Valor en aduana"/>
+                                    <field name="tasa_igi"/>
+                                    <field name="igi" sum="IGI"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Cuenta de gastos y garantías" name="gastos">
+                            <group>
+                                <group string="Cuenta de gastos">
+                                    <field name="cuenta_gastos"/>
+                                    <field name="gastos_sin_iva"/>
+                                    <field name="cuenta_gastos_total"/>
+                                    <field name="anticipo"/>
+                                    <field name="fecha_anticipo"/>
+                                    <field name="saldo" decoration-success="saldo &lt; 0" decoration-danger="saldo &gt; 0"/>
+                                    <field name="saldo_liquidado" invisible="not saldo"/>
+                                </group>
+                                <group string="Garantías">
+                                    <field name="garantia_pendiente"/>
+                                </group>
+                            </group>
+                            <field name="garantia_ids" context="{'default_partner_id': agencia_id}">
+                                <list editable="bottom" decoration-danger="state == 'pendiente'" decoration-muted="state in ('devuelta', 'perdida')">
+                                    <field name="name"/>
+                                    <field name="tipo"/>
+                                    <field name="partner_id"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="importe"/>
+                                    <field name="fecha_pago"/>
+                                    <field name="devuelto"/>
+                                    <field name="fecha_devolucion"/>
+                                    <field name="perdida"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Embarque" name="embarque">
+                            <group>
+                                <group>
+                                    <field name="incoterm_id"/>
+                                    <field name="origen_country_id"/>
+                                    <field name="transportista_id"/>
+                                    <field name="bl"/>
+                                    <field name="booking"/>
+                                    <field name="contenedores"/>
+                                </group>
+                                <group>
+                                    <field name="cove"/>
+                                    <field name="doda"/>
+                                    <field name="entry" invisible="operacion != 'exportacion'"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Observaciones" name="notas">
+                            <field name="notas"/>
+                            <field name="rectificacion_ids" invisible="not rectificacion_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="clave_id"/>
+                                    <field name="fecha_pago"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_pedimento_search" model="ir.ui.view">
+        <field name="name">qb.pedimento.search</field>
+        <field name="model">qb.pedimento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', '|', '|', ('name', 'ilike', self), ('referencia_agencia', 'ilike', self), ('contenedores', 'ilike', self), ('bl', 'ilike', self)]"/>
+                <field name="partner_id"/>
+                <field name="agencia_id"/>
+                <field name="patente"/>
+                <field name="aduana_id"/>
+                <field name="purchase_ids"/>
+                <field name="invoice_ids"/>
+                <filter name="mine" string="Mis expedientes" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="importacion" string="Importación" domain="[('operacion', '=', 'importacion')]"/>
+                <filter name="exportacion" string="Exportación" domain="[('operacion', '=', 'exportacion')]"/>
+                <filter name="virtual" string="Virtuales" domain="[('clave_id.virtual', '=', True)]"/>
+                <separator/>
+                <filter name="abiertos" string="Abiertos" domain="[('state', 'not in', ('cerrado', 'cancelado'))]"/>
+                <filter name="por_cerrar" string="Por cerrar" domain="[('state', '=', 'entregado')]"/>
+                <filter name="faltan_docs" string="Faltan documentos" domain="[('documentos_faltantes', '>', 0), ('state', '!=', 'cancelado')]"/>
+                <filter name="saldo_pendiente" string="Saldo sin liquidar" domain="[('saldo', '!=', 0), ('saldo_liquidado', '=', False)]"/>
+                <separator/>
+                <filter name="fecha_pago_f" string="Fecha de pago" date="fecha_pago"/>
+                <separator/>
+                <filter name="group_state" string="Agrupar por etapa" context="{'group_by': 'state'}"/>
+                <filter name="group_operacion" string="Agrupar por operación" context="{'group_by': 'operacion'}"/>
+                <filter name="group_partner" string="Agrupar por proveedor / cliente" context="{'group_by': 'partner_id'}"/>
+                <filter name="group_agencia" string="Agrupar por agencia" context="{'group_by': 'agencia_id'}"/>
+                <filter name="group_aduana" string="Agrupar por aduana" context="{'group_by': 'aduana_id'}"/>
+                <filter name="group_mes" string="Agrupar por mes de pago" context="{'group_by': 'fecha_pago:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_qb_pedimento_pivot" model="ir.ui.view">
+        <field name="name">qb.pedimento.pivot</field>
+        <field name="model">qb.pedimento</field>
+        <field name="arch" type="xml">
+            <pivot string="Pedimentos">
+                <field name="fecha_pago" interval="month" type="row"/>
+                <field name="operacion" type="col"/>
+                <field name="total_contribuciones" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento" model="ir.actions.act_window">
+        <field name="name">Pedimentos</field>
+        <field name="res_model">qb.pedimento</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="context">{'search_default_abiertos': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre su primer pedimento</p>
+            <p>Un expediente por pedimento: documentos, contribuciones, cuenta de gastos y garantías.
+               También puede crearlo desde la compra, la recepción, la entrega o la factura con el botón «Pedimentos».</p>
+        </field>
+    </record>
+
+    <!-- Partidas: fracción y arancel pagado por periodo (lo que pidió Dirección, correo 342305). -->
+    <record id="view_qb_pedimento_partida_list" model="ir.ui.view">
+        <field name="name">qb.pedimento.partida.list</field>
+        <field name="model">qb.pedimento.partida</field>
+        <field name="arch" type="xml">
+            <list create="false">
+                <field name="pedimento_id"/>
+                <field name="fecha_pago"/>
+                <field name="operacion"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="fraccion"/>
+                <field name="cantidad"/>
+                <field name="uom_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="valor_aduana" sum="Valor en aduana"/>
+                <field name="tasa_igi"/>
+                <field name="igi" sum="IGI"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_pedimento_partida_search" model="ir.ui.view">
+        <field name="name">qb.pedimento.partida.search</field>
+        <field name="model">qb.pedimento.partida</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="fraccion"/>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <field name="pedimento_id"/>
+                <filter name="importacion" string="Importación" domain="[('operacion', '=', 'importacion')]"/>
+                <filter name="exportacion" string="Exportación" domain="[('operacion', '=', 'exportacion')]"/>
+                <separator/>
+                <filter name="fecha_pago_f" string="Fecha de pago" date="fecha_pago"/>
+                <separator/>
+                <filter name="group_fraccion" string="Agrupar por fracción" context="{'group_by': 'fraccion'}"/>
+                <filter name="group_partner" string="Agrupar por proveedor / cliente" context="{'group_by': 'partner_id'}"/>
+                <filter name="group_mes" string="Agrupar por mes" context="{'group_by': 'fecha_pago:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_qb_pedimento_partida_pivot" model="ir.ui.view">
+        <field name="name">qb.pedimento.partida.pivot</field>
+        <field name="model">qb.pedimento.partida</field>
+        <field name="arch" type="xml">
+            <pivot string="Arancel por fracción">
+                <field name="fraccion" type="row"/>
+                <field name="fecha_pago" interval="year" type="col"/>
+                <field name="valor_aduana" type="measure"/>
+                <field name="igi" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento_partida" model="ir.actions.act_window">
+        <field name="name">Arancel por fracción</field>
+        <field name="res_model">qb.pedimento.partida</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="context">{'search_default_importacion': 1}</field>
+    </record>
+
+    <!-- Facturas que deben ampararse con pedimento y no lo tienen (auditoría Edomex, correo 126240). -->
+    <record id="action_qb_facturas_sin_pedimento" model="ir.actions.act_window">
+        <field name="name">Facturas sin pedimento</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="account.view_out_invoice_tree"/>
+        <field name="domain">[('state', '=', 'posted'), ('qb_pedimento_requerido', '=', True), ('qb_pedimento_ids', '=', False)]</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p>Todas las facturas de venta con comercio exterior o a clientes con pedimento virtual tienen pedimento.</p>
+        </field>
+    </record>
+
+</odoo>

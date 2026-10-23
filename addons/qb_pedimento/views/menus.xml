@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_qb_pedimento_root" name="Pedimentos" sequence="45"
+              web_icon="qb_pedimento,static/description/icon.png"
+              groups="qb_pedimento.group_pedimento_user"/>
+
+    <menuitem id="menu_qb_pedimento" name="Pedimentos" parent="menu_qb_pedimento_root" sequence="10"
+              action="action_qb_pedimento"/>
+    <menuitem id="menu_qb_pedimento_garantia" name="Garantías" parent="menu_qb_pedimento_root" sequence="20"
+              action="action_qb_pedimento_garantia"/>
+
+    <menuitem id="menu_qb_pedimento_reportes" name="Reportes" parent="menu_qb_pedimento_root" sequence="30"/>
+    <menuitem id="menu_qb_pedimento_partida" name="Arancel por fracción" parent="menu_qb_pedimento_reportes"
+              sequence="10" action="action_qb_pedimento_partida"/>
+    <menuitem id="menu_qb_facturas_sin_pedimento" name="Facturas sin pedimento" parent="menu_qb_pedimento_reportes"
+              sequence="20" action="action_qb_facturas_sin_pedimento"/>
+
+    <menuitem id="menu_qb_pedimento_config" name="Configuración" parent="menu_qb_pedimento_root" sequence="90"
+              groups="qb_pedimento.group_pedimento_manager"/>
+    <menuitem id="menu_qb_pedimento_settings" name="Ajustes" parent="menu_qb_pedimento_config" sequence="5"
+              action="action_qb_pedimento_settings" groups="base.group_system"/>
+    <menuitem id="menu_qb_pedimento_clave" name="Claves de pedimento" parent="menu_qb_pedimento_config"
+              sequence="10" action="action_qb_pedimento_clave"/>
+    <menuitem id="menu_qb_pedimento_aduana" name="Aduanas" parent="menu_qb_pedimento_config" sequence="20"
+              action="action_qb_pedimento_aduana"/>
+    <menuitem id="menu_qb_pedimento_documento_tipo" name="Documentos del expediente"
+              parent="menu_qb_pedimento_config" sequence="30" action="action_qb_pedimento_documento_tipo"/>
+</odoo>

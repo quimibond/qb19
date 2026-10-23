@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Botón «Pedimentos» en los documentos que ampara un pedimento (S1.14:
+         «adjuntar pedimento y cuenta de gastos a la orden de compra»). Desde el
+         botón se crea el expediente con el documento ya ligado. -->
+
+    <record id="purchase_order_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">purchase.order.form.qb_pedimento</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_qb_pedimentos" type="object" class="oe_stat_button" icon="fa-globe"
+                        groups="qb_pedimento.group_pedimento_user">
+                    <field name="qb_pedimento_count" widget="statinfo" string="Pedimentos"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">sale.order.form.qb_pedimento</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_qb_pedimentos" type="object" class="oe_stat_button" icon="fa-globe"
+                        groups="qb_pedimento.group_pedimento_user">
+                    <field name="qb_pedimento_count" widget="statinfo" string="Pedimentos"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">stock.picking.form.qb_pedimento</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_qb_pedimentos" type="object" class="oe_stat_button" icon="fa-globe"
+                        groups="qb_pedimento.group_pedimento_user">
+                    <field name="qb_pedimento_count" widget="statinfo" string="Pedimentos"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_move_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">account.move.form.qb_pedimento</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_qb_pedimentos" type="object" class="oe_stat_button" icon="fa-globe"
+                        groups="qb_pedimento.group_pedimento_user"
+                        invisible="move_type == 'entry'">
+                    <field name="qb_pedimento_count" widget="statinfo" string="Pedimentos"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_landed_cost_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">stock.landed.cost.form.qb_pedimento</field>
+        <field name="model">stock.landed.cost</field>
+        <field name="inherit_id" ref="stock_landed_costs.view_stock_landed_cost_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vendor_bill_id']" position="after">
+                <field name="qb_pedimento_id" groups="qb_pedimento.group_pedimento_user"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

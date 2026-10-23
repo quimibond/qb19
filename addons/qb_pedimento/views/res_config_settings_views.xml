@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_qb_pedimento" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.qb_pedimento</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Pedimentos" string="Pedimentos" name="qb_pedimento"
+                     groups="qb_pedimento.group_pedimento_manager">
+                    <block title="Avisos" name="qb_pedimento_avisos">
+                        <setting string="Responsable de pedimentos"
+                                 help="Responsable por omisión de los expedientes nuevos y de los avisos de garantías.">
+                            <field name="qb_pedimento_responsable_id"/>
+                        </setting>
+                        <setting string="Días hábiles para cruzar o llegar"
+                                 help="Aviso si un pedimento despachado no cruza o no llega a planta en estos días (C2.31).">
+                            <field name="qb_pedimento_dias_cruce"/>
+                        </setting>
+                        <setting string="Días hábiles para cerrar el expediente"
+                                 help="Aviso si un expediente entregado no se cierra en estos días (C2.32, indicador C2-05).">
+                            <field name="qb_pedimento_dias_cierre"/>
+                        </setting>
+                        <setting string="Días para reclamar una garantía"
+                                 help="Aviso si una garantía sigue sin devolver después de estos días naturales.">
+                            <field name="qb_pedimento_dias_garantia"/>
+                        </setting>
+                    </block>
+                    <block title="Costo en destino" name="qb_pedimento_costo">
+                        <setting string="Productos de costo en destino"
+                                 help="Con ellos «Crear costo en destino» arma las líneas del borrador. El IVA no entra.">
+                            <div class="content-group">
+                                <div class="row"><label for="qb_pedimento_product_igi_id" class="col-lg-4 o_light_label"/><field name="qb_pedimento_product_igi_id"/></div>
+                                <div class="row"><label for="qb_pedimento_product_dta_id" class="col-lg-4 o_light_label"/><field name="qb_pedimento_product_dta_id"/></div>
+                                <div class="row"><label for="qb_pedimento_product_prv_id" class="col-lg-4 o_light_label"/><field name="qb_pedimento_product_prv_id"/></div>
+                                <div class="row"><label for="qb_pedimento_product_gastos_id" class="col-lg-4 o_light_label"/><field name="qb_pedimento_product_gastos_id"/></div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_qb_pedimento_settings" model="ir.actions.act_window">
+        <field name="name">Ajustes</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'qb_pedimento', 'bin_size': False}</field>
+    </record>
+</odoo>

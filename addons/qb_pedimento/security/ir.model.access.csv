@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_pedimento_user,qb.pedimento user,model_qb_pedimento,group_pedimento_user,1,1,1,0
+access_qb_pedimento_manager,qb.pedimento manager,model_qb_pedimento,group_pedimento_manager,1,1,1,1
+access_qb_pedimento_documento_user,qb.pedimento.documento user,model_qb_pedimento_documento,group_pedimento_user,1,1,1,1
+access_qb_pedimento_partida_user,qb.pedimento.partida user,model_qb_pedimento_partida,group_pedimento_user,1,1,1,1
+access_qb_pedimento_garantia_user,qb.pedimento.garantia user,model_qb_pedimento_garantia,group_pedimento_user,1,1,1,0
+access_qb_pedimento_garantia_manager,qb.pedimento.garantia manager,model_qb_pedimento_garantia,group_pedimento_manager,1,1,1,1
+access_qb_pedimento_clave_user,qb.pedimento.clave user,model_qb_pedimento_clave,group_pedimento_user,1,0,0,0
+access_qb_pedimento_clave_manager,qb.pedimento.clave manager,model_qb_pedimento_clave,group_pedimento_manager,1,1,1,1
+access_qb_pedimento_aduana_user,qb.pedimento.aduana user,model_qb_pedimento_aduana,group_pedimento_user,1,0,0,0
+access_qb_pedimento_aduana_manager,qb.pedimento.aduana manager,model_qb_pedimento_aduana,group_pedimento_manager,1,1,1,1
+access_qb_pedimento_documento_tipo_user,qb.pedimento.documento.tipo user,model_qb_pedimento_documento_tipo,group_pedimento_user,1,0,0,0
+access_qb_pedimento_documento_tipo_manager,qb.pedimento.documento.tipo manager,model_qb_pedimento_documento_tipo,group_pedimento_manager,1,1,1,1
