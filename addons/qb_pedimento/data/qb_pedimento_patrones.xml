@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Patrones de nombre de archivo de los tipos de documento. Los tipos son
+         noupdate, así que se siembran aquí en cada instalación o actualización;
+         el método solo llena los vacíos y no pisa lo que se haya editado. -->
+    <function model="qb.pedimento.documento.tipo" name="_qb_sembrar_patrones"/>
+</odoo>

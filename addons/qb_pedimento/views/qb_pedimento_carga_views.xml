@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_pedimento_carga_form" model="ir.ui.view">
+        <field name="name">qb.pedimento.carga.form</field>
+        <field name="model">qb.pedimento.carga</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="estado" invisible="1"/>
+                <field name="pedimento_id" invisible="1"/>
+                <field name="tipo_disponible_ids" invisible="1"/>
+                <div invisible="estado != 'subir'">
+                    <p>Suba todos los archivos del expediente de una vez: PDF, XML o un ZIP con todo.
+                       Odoo propone a qué documento va cada archivo por su nombre; usted lo revisa antes de guardar.</p>
+                    <group>
+                        <field name="archivo_ids" widget="many2many_binary" string="Archivos"/>
+                        <field name="expediente_unico"/>
+                    </group>
+                </div>
+                <div invisible="estado != 'revisar'">
+                    <p>Revise el documento de cada archivo. Un archivo puede cubrir varios documentos;
+                       los que queden sin documento se guardan como adjuntos del expediente.</p>
+                    <field name="linea_ids">
+                        <list editable="bottom" create="false" decoration-warning="aviso" decoration-muted="omitir">
+                            <field name="nombre" readonly="1"/>
+                            <field name="tipo_ids" widget="many2many_tags"
+                                   domain="[('id', 'in', parent.tipo_disponible_ids)]"
+                                   options="{'no_create': True}"/>
+                            <field name="aviso"/>
+                            <field name="omitir"/>
+                        </list>
+                    </field>
+                </div>
+                <footer>
+                    <button name="action_clasificar" type="object" string="Clasificar" class="btn-primary"
+                            invisible="estado != 'subir'"/>
+                    <button name="action_guardar" type="object" string="Guardar en el expediente" class="btn-primary"
+                            invisible="estado != 'revisar'"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Pedimentos',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Inventory/Inventory',
     'summary': 'Expediente de cada pedimento de importación y exportación: documentos, contribuciones, '
@@ -18,6 +18,8 @@ F-P-A-16-05 IMPORTACIONES y F-P-A-16-06 EXPORTACIONES:
 - Etapas con fecha: preparación, en tránsito, en aduana, despachado,
   entregado / cruzado, cerrado.
 - Checklist de documentos por tipo de operación, cada uno con su adjunto.
+  «Cargar expediente» sube todos los archivos (o un ZIP) de una vez y propone
+  a qué documento va cada uno por el nombre del archivo.
 - Contribuciones (DTA, IGI, IVA, PRV), partidas con fracción arancelaria,
   cuenta de gastos contra anticipo, garantías navieras y de cuenta aduanera
   hasta su devolución.
@@ -37,8 +39,10 @@ Diseño y evidencia: docs/superpowers/specs/2026-10-23-pedimentos-design.md
         'security/qb_pedimento_security.xml',
         'security/ir.model.access.csv',
         'data/qb_pedimento_data.xml',
+        'data/qb_pedimento_patrones.xml',
         'data/ir_cron_data.xml',
         'views/qb_pedimento_catalog_views.xml',
+        'views/qb_pedimento_carga_views.xml',
         'views/qb_pedimento_views.xml',
         'views/qb_pedimento_garantia_views.xml',
         'views/res_partner_views.xml',
