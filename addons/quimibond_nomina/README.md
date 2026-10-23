@@ -609,8 +609,7 @@ los recibos previos):
 - `SUBSIDY` (id 531): `payslip._qb_isr_mensual(...)` recibe el ordinario.
 - `PVAC_TAX` (id 468): solo el comentario, que decía «NO con el art. 174».
 
-El centinela vigila `ISR` y `SUBSIDY` (aceptar el cambio después de
-editarlas); `SUBSIDY_CURRENT_MONTH` y `PVAC_TAX` no están bajo el centinela.
+Las cuatro están bajo el centinela: aceptar el cambio después de editarlas.
 
 ### 15. FONACOT e Infonavit: sin sueldo no se retiene y lo que faltó se recupera (1.16.0)
 
@@ -680,7 +679,17 @@ Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
 1.16.0), `INFONAVIT` (1.12.0 y 1.16.0), `SUBSIDY_CURRENT_MONTH` y `PVAC_TAX`
 (1.15.0) de «Paga regular» **se editaron en la base**, no las escribe el
 módulo: las fórmulas vigentes están en las secciones 7, 8, 9, 14 y 15, y el
-centinela avisa si cambian `ISR` o `SUBSIDY`.
+centinela avisa si cambian.
+
+**Reglas bajo el centinela en producción (23 desde el 2026-10-23):** `ISR`,
+`SUBSIDY`, `SUBSIDY_CURRENT_MONTH`, `INT_DAY_WAGE`, `INT_DAY_WAGE_BASE`,
+`DIAS_IMSS`, `FONACOT`, `INFONAVIT`, `PRESTAMO`, `CHILD_SUPPORT`, `CUOTA_SIND`,
+`H_SENC`, `HE_EXEMPT`, `HE_TAX`, `PDOM_EXEMPT`, `PDOM_TAX`, `PVAC_EXEMPT`,
+`PVAC_TAX`, `PA`, `PP`, `MEAL_VOUCHER_PERIOD`, `RETRO_SUELDO` y `DESC_FALTAS`:
+todas las de «Paga regular» con código de Quimibond. Al instalar, el módulo solo
+siembra `SUBSIDY` e `INT_DAY_WAGE`; las demás se agregaron a mano (Nómina →
+Configuración → Centinela de reglas → Nuevo). Una regla nueva o editada en la
+base se agrega ahí.
 
 Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
 campo) y no deja nada cambiado en registros de Odoo.
