@@ -27,7 +27,11 @@ después del periodo no se cobra en ese periodo.
 
 Los bimestres son los del Infonavit (enero–febrero, marzo–abril…) y cada
 nómina es del bimestre de su **fecha de pago** (viernes en la semanal,
-``date_to`` en la quincenal), como en el resto del módulo."""
+``date_to`` en la quincenal), como en el resto del módulo.
+
+Desde 1.16.0 un recibo sin sueldo no retiene, y lo que no retuvieron los
+recibos anteriores del bimestre se reparte entre los que quedan, como NOI
+(``models/retenciones.py``)."""
 from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
@@ -84,10 +88,15 @@ class HrPayslip(models.Model):
             mes += relativedelta(months=1)
         return n
 
-    def _qb_infonavit_retencion(self):
+    def _qb_infonavit_retencion(self, gravable=None):
         """Lo que se retiene de Infonavit en este recibo (positivo). Lo llama
-        la regla ``INFONAVIT`` de «Paga regular»."""
+        la regla ``INFONAVIT`` de «Paga regular» con el gravable del recibo
+        (``categories['GROSS']``): sin gravable no retiene, y lo que no
+        retuvieron los recibos anteriores del bimestre se reparte entre los que
+        quedan (``models/retenciones.py``)."""
         self.ensure_one()
+        if gravable is not None and gravable <= 0:
+            return 0.0
         version = self.version_id
         periodos = PERIODOS_BIMESTRE.get(version.schedule_pay, 4)
         pago = self._qb_nomina_fecha_pago()
@@ -95,10 +104,13 @@ class HrPayslip(models.Model):
             return 0.0
         bim_ini, bim_fin = self._qb_bimestre(pago)
         inicio_contrato = version.contract_date_start or version.date_start
-        total = 0.0
+        n_restantes = self._qb_infonavit_periodos_desde(bim_ini, bim_fin, self.date_from)
+        cuota = esperado = debe = 0.0
+        n_previos = 0
+        desde = bim_fin
         for credito in version.l10n_mx_infonavit.filtered(lambda c: c.status == 'in_progress'):
-            cuota = credito.fixed_monetary_fee + credito.monthly_insurance + credito.extra_fixed_monthly_contribution
-            if not cuota:
+            cuota_bimestral = credito.fixed_monetary_fee + credito.monthly_insurance + credito.extra_fixed_monthly_contribution
+            if not cuota_bimestral:
                 continue
             inicio = credito.qb_fecha_inicio
             if inicio and inicio_contrato and inicio_contrato > inicio:
@@ -106,12 +118,24 @@ class HrPayslip(models.Model):
             if inicio and self.date_to and inicio > self.date_to:
                 continue
             if not inicio or not (bim_ini < inicio <= bim_fin):
-                total += cuota / periodos
+                debe_credito, n_credito, desde_credito = cuota_bimestral, periodos, bim_ini
+            else:
+                seguro = min(SEGURO_VIVIENDA_BIMESTRAL, cuota_bimestral)
+                dias_bimestre = (bim_fin - bim_ini).days + 1
+                dias = (bim_fin - inicio).days + 1
+                debe_credito = (cuota_bimestral - seguro) * dias / dias_bimestre + seguro
+                n_credito = self._qb_infonavit_periodos_desde(bim_ini, bim_fin, inicio)
+                desde_credito = inicio
+            if not n_credito:
                 continue
-            seguro = min(SEGURO_VIVIENDA_BIMESTRAL, cuota)
-            dias_bimestre = (bim_fin - bim_ini).days + 1
-            dias = (bim_fin - inicio).days + 1
-            debe = (cuota - seguro) * dias / dias_bimestre + seguro
-            n = self._qb_infonavit_periodos_desde(bim_ini, bim_fin, inicio)
-            total += debe / n if n else 0.0
-        return total
+            cuota_credito = debe_credito / n_credito
+            previos_credito = max(n_credito - n_restantes, 0)
+            cuota += cuota_credito
+            esperado += cuota_credito * previos_credito
+            debe += debe_credito
+            n_previos = max(n_previos, previos_credito)
+            desde = min(desde, desde_credito)
+        if not cuota:
+            return 0.0
+        return self._qb_retencion_recuperada(
+            'INFONAVIT', bim_ini, desde, cuota, esperado, debe, n_previos, n_restantes)

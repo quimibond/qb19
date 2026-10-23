@@ -1,5 +1,14 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.7.0 — 2026-10-23
+
+- **Regenerar artículos del desarrollo** (quimibond_sgi 57.190.0): antes de que
+  el desarrollo suelte y borre sus artículos, las cotizaciones del proyecto que
+  los usan los dejan (queda en su chatter); al terminar, las cotizaciones en
+  borrador toman del proyecto el artículo y el hermano nuevos y se recalculan.
+  Una cotización «Por aprobar», «Presentada» o «Ganada» con esos artículos lo
+  detiene: hay que regresarla a borrador o hacer una revisión.
+
 ## 19.0.1.6.1 — 2026-10-22
 
 - Retiro de `qb_capacidad_costeo`: fuera `LEGACY_MODEL` (`qb.cotizacion`) en

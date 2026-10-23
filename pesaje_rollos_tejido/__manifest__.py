@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Pesaje de Rollos y Subproductos Tejido',
-    'version': '19.0.1.4.4',
+    'version': '19.0.1.5.0',
     'category': 'Manufacturing',
     'summary': 'Control de pesaje de rollos, subproductos, lotes automáticos y etiquetas ZPL',
     'description': """
@@ -11,6 +11,7 @@
         - Registro único de subproductos con pesaje y lote.
         - Aprobación automática de controles de calidad de tipo 'Registrar Subproductos'.
         - Generación de etiquetas ZPL para ambos procesos.
+        - Reporte de rollos pesados en órdenes abiertas (aún fuera de la existencia).
     """,
     'author': 'Jose Sacramento',
     'depends': [
@@ -39,6 +40,7 @@
         'views/wizard_corregir_view.xml',       # Vista de boton para corregir numero Rollo Circular
         'views/mrp_production_view.xml',        # Pestaña ZPL en la MO
         'views/mrp_workorder_tablet_view.xml',  # Botones PESAR y SUBPRODUCTO en tableta
+        'views/rollos_orden_abierta_view.xml',  # Reporte: rollos pesados de órdenes abiertas
         'views/res_config_settings_view.xml',   # Configuraciones adicionales
         'report/ir_actions_report.xml',
         'report/report_zpl_templates.xml',

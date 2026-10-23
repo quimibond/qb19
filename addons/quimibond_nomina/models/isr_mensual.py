@@ -190,19 +190,21 @@ class HrPayslip(models.Model):
         valor = (self.env['ir.config_parameter'].sudo().get_param(PARAM_INCLUYE_BORRADOR) or '').strip().lower()
         return valor in ('1', 'true', 'si', 'sí', 'yes')
 
-    def _qb_isr_recibos_previos_del_mes(self):
-        """``(recibos, completo)``: los recibos anteriores del mes y si el
-        acumulado se puede usar. ``completo`` es False cuando alguno sigue en
-        borrador (salvo con el parámetro de piloto) o cuando el contrato ya
-        corría antes del mes y no hay ningún recibo previo."""
+    def _qb_recibos_previos_desde(self, inicio):
+        """``(recibos, abiertos)``: los recibos del mismo empleado, misma
+        estructura y compañía, sin nota de crédito ni cancelados, **pagados**
+        (``_qb_nomina_fecha_pago``) desde ``inicio`` y antes que este recibo.
+        ``abiertos`` son los que no están validados ni pagados; con el
+        parámetro de piloto no hay abiertos y queda un recibo por periodo (el
+        más reciente). Lo usan el ajuste mensual del ISR y la recuperación de
+        FONACOT e Infonavit (``models/retenciones.py``)."""
         self.ensure_one()
         fin = self.date_to
         pago = self._qb_nomina_fecha_pago()
-        inicio_mes = pago.replace(day=1)
         Payslip = self.env['hr.payslip'].sudo()
-        # Un recibo pagado en el mes termina en el mes o después (la semana
-        # pagada el día 1 termina el día 3), así que ``date_to >= inicio_mes``
-        # no deja fuera a ninguno; el mes de pago se filtra abajo.
+        # Un recibo pagado desde ``inicio`` termina en ``inicio`` o después (la
+        # semana pagada el día 1 termina el día 3), así que ``date_to >= inicio``
+        # no deja fuera a ninguno; la fecha de pago se filtra abajo.
         recibos = Payslip.search([
             ('employee_id', '=', self.employee_id.id),
             ('struct_id', '=', self.struct_id.id),
@@ -210,28 +212,36 @@ class HrPayslip(models.Model):
             ('credit_note', '=', False),
             ('state', '!=', 'cancel'),
             ('id', '!=', self.id),
-            ('date_to', '>=', inicio_mes),
+            ('date_to', '>=', inicio),
             ('date_to', '<', fin),
         ], order='date_to, id')
         recibos = recibos.filtered(
-            lambda r: (lambda p: p and p < pago and (p.year, p.month) == (pago.year, pago.month))(r._qb_nomina_fecha_pago()))
-        incluye_borrador = self._qb_isr_incluye_borradores()
-        abiertos = recibos.filtered(lambda r: r.state not in ESTADOS_CERRADOS)
-        if abiertos and not incluye_borrador:
+            lambda r: (lambda p: p and inicio <= p < pago)(r._qb_nomina_fecha_pago()))
+        if not self._qb_isr_incluye_borradores():
+            return recibos, recibos.filtered(lambda r: r.state not in ESTADOS_CERRADOS)
+        por_periodo = {}
+        for r in recibos:
+            previo = por_periodo.get((r.date_from, r.date_to))
+            if previo:
+                _logger.warning('quimibond_nomina: recibo %s: dos recibos del periodo %s–%s (%s y %s); '
+                                'para el acumulado se toma el más reciente (%s)',
+                                self.id, r.date_from, r.date_to, previo.id, r.id, r.id)
+            por_periodo[(r.date_from, r.date_to)] = r
+        return Payslip.browse(sorted(r.id for r in por_periodo.values())), Payslip
+
+    def _qb_isr_recibos_previos_del_mes(self):
+        """``(recibos, completo)``: los recibos anteriores del mes y si el
+        acumulado se puede usar. ``completo`` es False cuando alguno sigue en
+        borrador (salvo con el parámetro de piloto) o cuando el contrato ya
+        corría antes del mes y no hay ningún recibo previo."""
+        self.ensure_one()
+        inicio_mes = self._qb_nomina_fecha_pago().replace(day=1)
+        recibos, abiertos = self._qb_recibos_previos_desde(inicio_mes)
+        if abiertos:
             _logger.info('quimibond_nomina: recibo %s: %d recibo(s) del mes en borrador (%s); el ISR '
                          'se calcula por periodo, sin ajuste mensual', self.id, len(abiertos),
                          ', '.join(abiertos.mapped('display_name')))
             return recibos, False
-        if incluye_borrador:
-            por_periodo = {}
-            for r in recibos:
-                previo = por_periodo.get((r.date_from, r.date_to))
-                if previo:
-                    _logger.warning('quimibond_nomina: recibo %s: dos recibos del periodo %s–%s (%s y %s); '
-                                    'para el acumulado del mes se toma el más reciente (%s)',
-                                    self.id, r.date_from, r.date_to, previo.id, r.id, r.id)
-                por_periodo[(r.date_from, r.date_to)] = r
-            recibos = Payslip.browse(sorted(r.id for r in por_periodo.values()))
         if not recibos:
             version = self.version_id
             inicio_contrato = version.contract_date_start or version.date_start

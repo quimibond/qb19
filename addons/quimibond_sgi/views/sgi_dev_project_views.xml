@@ -374,6 +374,10 @@
                                             <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-secondary" icon="fa-cubes"
                                                     invisible="sgi_dev_product_id or sgi_dev_analysis_result == 'linea'"
                                                     confirm="Con artículo base: se recorre su cadena (acabado, teñido, crudo), se ligan los niveles que no cambian y se crean los que cambian copiando su lista de materiales; los componentes que dependen de la clave que cambió quedan «Por capturar». Sin base: se crean crudo, teñido (si lleva) y acabado con el código propuesto. ¿Continuar?"/>
+                                            <!-- 57.190.0: si se eligió mal el artículo base, se sueltan los artículos y se vuelven a generar. -->
+                                            <button name="action_sgi_dev_regenerate_products" type="object" string="Regenerar artículos" class="btn-secondary" icon="fa-refresh"
+                                                    invisible="not (sgi_dev_product_id or sgi_dev_product_crudo_id) or sgi_dev_analysis_result == 'linea' or sgi_dev_customer_approved_at"
+                                                    confirm="Se sueltan los artículos del proyecto: los que creó el proyecto se borran con sus listas de materiales (si nada más los usa) y los del artículo base o de catálogo solo se desligan. Después se generan de nuevo con el artículo base y las claves de hoy. Las listas que ya capturó en los artículos borrados se pierden. ¿Continuar?"/>
                                         </div>
                                         <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
                                         <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
