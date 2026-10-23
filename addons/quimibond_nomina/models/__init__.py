@@ -5,5 +5,6 @@ from . import rule_sentinel
 from . import hr_payslip_run
 from . import isr_mensual
 from . import infonavit
+from . import retenciones
 from . import imss
 from . import incidencias
