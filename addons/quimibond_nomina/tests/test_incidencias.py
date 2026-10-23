@@ -11,6 +11,7 @@ from datetime import date, datetime as dt, timedelta
 from odoo.tests.common import TransactionCase
 
 from ..models import incidencias_calculo as calc
+from .common import liberar_referencias
 
 LUNES = date(2026, 10, 12)
 HORARIO = {0: 10.0, 1: 10.0, 2: 10.0, 3: 10.0, 4: 8.0}
@@ -165,6 +166,7 @@ class TestIncidenciasGenerar(TransactionCase):
                         'hour_to': 17.0 if d < 4 else 15.0, 'day_period': 'morning'})
                 for d in range(5)],
         })
+        liberar_referencias(env, 'Q-901', 'Q-902')
         cls.empleado = env['hr.employee'].create({'name': 'Prueba Incidencias', 'registration_number': 'Q-901'})
         cls.empleado.version_id.write({
             'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),

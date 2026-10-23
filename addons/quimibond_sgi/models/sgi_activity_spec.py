@@ -495,7 +495,7 @@ class SgiActivitySpec(models.Model):
         ('stock.quant', 'stock.move'),                      # aplicar el inventario crea movimientos
         ('account.change.lock.date', 'sgi.lock.date.log'),  # bloquear el periodo deja su bitácora
         ('account.change.lock.date', 'account.lock_exception'),
-        ('qb.costo.producto', 'account.move'),              # recalcular el costeo asienta la valoración
+        ('qb.periodo', 'account.move'),                     # el período del costeo lleva a asentar la valoración
         ('res.users', 'mail.message'),                      # la baja queda en el chatter del usuario
     }
 

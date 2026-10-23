@@ -67,6 +67,22 @@ y las dos pueden salir negativas: un ISR negativo es una devolución (la
 «compensación de ISR» de NOI) y un subsidio negativo recupera el que se
 aplicó en un periodo anterior cuando el mes completo ya rebasa el límite.
 
+**Pagos del art. 174 del Reglamento (1.15.0).** NOI grava la prima
+vacacional con el procedimiento opcional del art. 174 RLISR, no junto con el
+sueldo: ingreso ordinario mensual = gravable del periodo *sin* la prima ÷
+días del periodo × 30.4; la prima se lleva a mes (÷ 365 × 30.4); tasa =
+(tarifa mensual de ordinario + prima mensual − tarifa mensual del ordinario)
+÷ prima mensual; ISR de la prima = prima gravada × tasa. El resto del recibo
+(y el subsidio) se calcula sobre el ordinario. Verificado contra NOI en las
+semanas 43 y 44 de 2026 (siete recibos, a 1–2 centavos: Levario, De la Cruz,
+Ambrocio, Delgadillo, Nava, Aguilar, Lorena Santiago); con un solo método los
+de la misma tarifa daban igual, por eso la quincena 17 parecía «sin 174».
+Qué líneas son de art. 174: parámetro ``quimibond_nomina.isr_art174_codigos``
+(default ``PVAC_TAX``; el aguinaldo gravado se agrega ahí cuando exista su
+regla); vacío lo apaga. En la última nómina del mes el ajuste mensual se hace
+sobre el ordinario acumulado, y el ISR de art. 174 de los recibos previos no
+cuenta como retenido del ordinario.
+
 ``ISR_ADJUSTMENT`` (la entrada manual «Ajuste del ISR», tipo 10) sigue
 existiendo y **se suma** al ISR del periodo como hoy; el ajuste automático no
 la sustituye. En los periodos que no son el último del mes cuenta como
@@ -84,6 +100,8 @@ _logger = logging.getLogger(__name__)
 
 PARAM_INCLUYE_BORRADOR = 'quimibond_nomina.isr_mensual_incluye_borrador'
 PARAM_DIA_PAGO = 'quimibond_nomina.dia_pago_semanal'   # 0 = lunes … 6 = domingo
+PARAM_ART174 = 'quimibond_nomina.isr_art174_codigos'   # líneas gravadas con el art. 174 RLISR
+ART174_DEFAULT = 'PVAC_TAX'
 DIA_PAGO_DEFAULT = 4                                    # viernes
 ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
@@ -172,19 +190,21 @@ class HrPayslip(models.Model):
         valor = (self.env['ir.config_parameter'].sudo().get_param(PARAM_INCLUYE_BORRADOR) or '').strip().lower()
         return valor in ('1', 'true', 'si', 'sí', 'yes')
 
-    def _qb_isr_recibos_previos_del_mes(self):
-        """``(recibos, completo)``: los recibos anteriores del mes y si el
-        acumulado se puede usar. ``completo`` es False cuando alguno sigue en
-        borrador (salvo con el parámetro de piloto) o cuando el contrato ya
-        corría antes del mes y no hay ningún recibo previo."""
+    def _qb_recibos_previos_desde(self, inicio):
+        """``(recibos, abiertos)``: los recibos del mismo empleado, misma
+        estructura y compañía, sin nota de crédito ni cancelados, **pagados**
+        (``_qb_nomina_fecha_pago``) desde ``inicio`` y antes que este recibo.
+        ``abiertos`` son los que no están validados ni pagados; con el
+        parámetro de piloto no hay abiertos y queda un recibo por periodo (el
+        más reciente). Lo usan el ajuste mensual del ISR y la recuperación de
+        FONACOT e Infonavit (``models/retenciones.py``)."""
         self.ensure_one()
         fin = self.date_to
         pago = self._qb_nomina_fecha_pago()
-        inicio_mes = pago.replace(day=1)
         Payslip = self.env['hr.payslip'].sudo()
-        # Un recibo pagado en el mes termina en el mes o después (la semana
-        # pagada el día 1 termina el día 3), así que ``date_to >= inicio_mes``
-        # no deja fuera a ninguno; el mes de pago se filtra abajo.
+        # Un recibo pagado desde ``inicio`` termina en ``inicio`` o después (la
+        # semana pagada el día 1 termina el día 3), así que ``date_to >= inicio``
+        # no deja fuera a ninguno; la fecha de pago se filtra abajo.
         recibos = Payslip.search([
             ('employee_id', '=', self.employee_id.id),
             ('struct_id', '=', self.struct_id.id),
@@ -192,28 +212,36 @@ class HrPayslip(models.Model):
             ('credit_note', '=', False),
             ('state', '!=', 'cancel'),
             ('id', '!=', self.id),
-            ('date_to', '>=', inicio_mes),
+            ('date_to', '>=', inicio),
             ('date_to', '<', fin),
         ], order='date_to, id')
         recibos = recibos.filtered(
-            lambda r: (lambda p: p and p < pago and (p.year, p.month) == (pago.year, pago.month))(r._qb_nomina_fecha_pago()))
-        incluye_borrador = self._qb_isr_incluye_borradores()
-        abiertos = recibos.filtered(lambda r: r.state not in ESTADOS_CERRADOS)
-        if abiertos and not incluye_borrador:
+            lambda r: (lambda p: p and inicio <= p < pago)(r._qb_nomina_fecha_pago()))
+        if not self._qb_isr_incluye_borradores():
+            return recibos, recibos.filtered(lambda r: r.state not in ESTADOS_CERRADOS)
+        por_periodo = {}
+        for r in recibos:
+            previo = por_periodo.get((r.date_from, r.date_to))
+            if previo:
+                _logger.warning('quimibond_nomina: recibo %s: dos recibos del periodo %s–%s (%s y %s); '
+                                'para el acumulado se toma el más reciente (%s)',
+                                self.id, r.date_from, r.date_to, previo.id, r.id, r.id)
+            por_periodo[(r.date_from, r.date_to)] = r
+        return Payslip.browse(sorted(r.id for r in por_periodo.values())), Payslip
+
+    def _qb_isr_recibos_previos_del_mes(self):
+        """``(recibos, completo)``: los recibos anteriores del mes y si el
+        acumulado se puede usar. ``completo`` es False cuando alguno sigue en
+        borrador (salvo con el parámetro de piloto) o cuando el contrato ya
+        corría antes del mes y no hay ningún recibo previo."""
+        self.ensure_one()
+        inicio_mes = self._qb_nomina_fecha_pago().replace(day=1)
+        recibos, abiertos = self._qb_recibos_previos_desde(inicio_mes)
+        if abiertos:
             _logger.info('quimibond_nomina: recibo %s: %d recibo(s) del mes en borrador (%s); el ISR '
                          'se calcula por periodo, sin ajuste mensual', self.id, len(abiertos),
                          ', '.join(abiertos.mapped('display_name')))
             return recibos, False
-        if incluye_borrador:
-            por_periodo = {}
-            for r in recibos:
-                previo = por_periodo.get((r.date_from, r.date_to))
-                if previo:
-                    _logger.warning('quimibond_nomina: recibo %s: dos recibos del periodo %s–%s (%s y %s); '
-                                    'para el acumulado del mes se toma el más reciente (%s)',
-                                    self.id, r.date_from, r.date_to, previo.id, r.id, r.id)
-                por_periodo[(r.date_from, r.date_to)] = r
-            recibos = Payslip.browse(sorted(r.id for r in por_periodo.values()))
         if not recibos:
             version = self.version_id
             inicio_contrato = version.contract_date_start or version.date_start
@@ -246,6 +274,48 @@ class HrPayslip(models.Model):
         # Igual que SUBSIDY_CURRENT_MONTH para la nómina mensual.
         return float_round(uma['monthly'] * pct, precision_digits=2, rounding_method='UP')
 
+    # ------------------------------------------------------------------
+    # 4. Art. 174 del Reglamento (prima vacacional y, después, aguinaldo)
+    # ------------------------------------------------------------------
+    def _qb_art174_codigos(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ART174)
+        if valor is False or valor is None:
+            valor = ART174_DEFAULT
+        return tuple(c.strip() for c in valor.split(',') if c.strip())
+
+    def _qb_art174_monto(self, result_rules=None):
+        """Gravado del recibo que va por el art. 174: de ``result_rules`` mientras
+        se calcula el recibo, o de sus líneas si ya está calculado."""
+        self.ensure_one()
+        codigos = self._qb_art174_codigos()
+        if result_rules is not None:
+            return sum((result_rules.get(c) or {}).get('total', 0.0) or 0.0 for c in codigos)
+        return sum(l.total for l in self.line_ids if l.code in codigos)
+
+    def _qb_dias_periodo(self):
+        periodicidad = self.version_id.schedule_pay
+        if periodicidad == 'weekly':
+            return 7.0
+        if periodicidad == 'bi-weekly':
+            return self.l10n_mx_days_of_year / 24.0
+        return self._rule_parameter('l10n_mx_schedule_table')[periodicidad]
+
+    def _qb_art174(self, gravable_periodo, especial):
+        """``{'ordinario', 'especial', 'tasa', 'isr'}``: el gravable ordinario del
+        periodo y el ISR de lo especial con la tasa del art. 174 RLISR."""
+        self.ensure_one()
+        gravable_periodo = gravable_periodo or 0.0
+        especial = max(especial or 0.0, 0.0)
+        res = {'ordinario': gravable_periodo - especial, 'especial': especial, 'tasa': 0.0, 'isr': 0.0}
+        if not especial:
+            return res
+        tabla = self._rule_parameter('l10n_mx_isr_tables', self.date_to)['monthly']
+        mensual = max(res['ordinario'], 0.0) / self._qb_dias_periodo() * 30.4
+        x = especial / 365.0 * 30.4
+        res['tasa'] = (self._qb_isr_tarifa(mensual + x, tabla) - self._qb_isr_tarifa(mensual, tabla)) / x
+        res['isr'] = float_round(especial * res['tasa'], precision_digits=2)
+        return res
+
     def _qb_isr_mensual(self, gravable_periodo):
         """El ajuste de fin de mes para este recibo, o ``None`` si no aplica
         (no es la última nómina del mes, o el acumulado no está completo).
@@ -265,8 +335,13 @@ class HrPayslip(models.Model):
         def suma(codigos):
             return sum(l.total for l in lineas if l.code in codigos)
 
-        gravable_previo = suma((CODIGO_GRAVABLE,))
-        retenido_previo = -suma(CODIGOS_RETENIDO)      # las deducciones son negativas
+        # Solo el ordinario: lo de art. 174 de los recibos previos no entra al
+        # acumulado, y su ISR no cuenta como retenido del ordinario.
+        especial_previo = sum(r._qb_art174_monto() for r in previos)
+        isr174_previo = sum(r._qb_art174(sum(l.total for l in r.line_ids if l.code == CODIGO_GRAVABLE),
+                                         r._qb_art174_monto())['isr'] for r in previos)
+        gravable_previo = suma((CODIGO_GRAVABLE,)) - especial_previo
+        retenido_previo = -suma(CODIGOS_RETENIDO) - isr174_previo      # las deducciones son negativas
         subsidio_previo = suma((CODIGO_SUBSIDIO,))
         gravable_mes = gravable_previo + (gravable_periodo or 0.0)
         fecha = self.date_to

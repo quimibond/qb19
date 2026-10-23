@@ -13,6 +13,58 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.190.0 — 2026-10-23
+
+Dirección General 2026-10-23 (C1, pestaña Cotización): se eligió mal el
+artículo base (hermano) y, aunque se cambió en Análisis, no había forma de
+volver a generar los códigos: «Generar artículos» se oculta en cuanto hay
+artículos y no toca los niveles ya ligados.
+
+**Nuevo**
+- Botón **«Regenerar artículos»** (`action_sgi_dev_regenerate_products`,
+  `models/sgi_dev_product_regen.py`): suelta crudo, teñido, acabado en kg y
+  acabado. Los que creó el proyecto se borran con sus listas de materiales;
+  los del artículo base o de catálogo solo se desligan. Después corre
+  «Generar artículos» con el base y las claves de hoy. Todo queda en el
+  chatter.
+- Solo en Solicitud, Análisis o Cotización y antes de la aprobación del
+  cliente (después es un cambio de diseño).
+- Si algo más usa un artículo que se iba a borrar (órdenes, movimientos,
+  pedidos, facturas, fichas técnicas, listas de otros artículos,
+  cotizaciones…), no cambia nada y dice qué lo usa. Solo cuentan las
+  referencias que el borrado dejaría vacías o impediría; lo que se borra en
+  cascada con el producto (costeo, proveedores) no detiene.
+- Prueba: `test_dev_product.test_08_regenerar_con_otro_base`.
+
+## 19.0.57.189.0 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22).
+
+**Cambiado**
+- `_SGI_SCREEN_PRODUCES`: el par `('qb.costo.producto', 'account.move')` del
+  costeo anterior pasa a `('qb.periodo', 'account.move')`. La actividad S3.09
+  (recalcular el costeo y registrar la capa de valoración) abre ahora
+  Manufactura → Costos → Períodos (`qb_costeo`) y se mide con el asiento; sin
+  el par, el SGI avisaría que la pantalla no produce la evidencia.
+
+## 19.0.57.188.0 — 2026-10-22
+
+Jose (2026-10-22): menos ruido en la revisión de medición. En producción había
+108 «Revisar medición» atrasadas en Mis pendientes: cada mes, una por cada
+actividad que se mide sola, aunque el dueño ya la hubiera confirmado.
+
+**Cambiado**
+- Una actividad cuyas dos últimas revisiones contestadas fueron «Sí, esto es
+  lo que hago» se revisa **cada tres meses** (a los tres meses de la última;
+  `_sgi_quarterly_skip`). Un «No corresponde» o una «Sin respuesta» la
+  regresan a mensual.
+- Estado nuevo **No tocaba (trimestral)** para lo que ya estaba pendiente y
+  con la regla nueva no tocaba.
+
+**Migración**
+- `post-migrate`: las pendientes que no tocaban pasan a «No tocaba
+  (trimestral)» y su renglón de Mis pendientes se quita.
+
 ## 19.0.57.187.0 — 2026-10-22
 
 Eficiencias de personal: el % de asistencia sale del checador.

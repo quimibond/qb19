@@ -388,6 +388,8 @@ capturarlos uno por uno. Desde 1.9.0 salen de Odoo, menú **Nómina → IMSS**:
 archivos de NOI del 4.º bimestre 2026** (`MOVS MOD 4TO BIM 2026 QTOL 01-SEP-2026.txt`,
 correo de RH 2026-10-12): registro patronal (11) + NSS (11) + tipo (2) +
 fecha `DDMMAAAA` (8) + folio de incapacidad en blanco (8) + días `00` (2) +
+**1.14.6 (2026-10-22):** hasta 1.14.5 el módulo leía `sdi_imss` en 0 en todos los contratos: en Odoo 19 `payroll_properties` es un objeto `Property` (se lee como diccionario) y la lectura solo entendía diccionario o lista. «Detectar» no veía las modificaciones (07) y «SDI del bimestre» no podía aplicar. En producción no había movimientos IMSS registrados, así que no hubo datos que corregir.
+
 SDI con cinco enteros y dos decimales sin punto (7). Ejemplo de NOI:
 `C6759945101160076080250701092026        000088943` = modificación del
 1-sep-2026 a 889.43. CRLF, latin-1, mayúsculas.
@@ -555,6 +557,102 @@ Miguel confirma que con uno no baja). Quien tuvo una semana sin checadas se
 queda sin calificar; si falta la lista de alguna semana, el botón avisa y no
 toca nada.
 
+### 14. Prima vacacional con el art. 174 del Reglamento (1.15.0)
+
+NOI grava la prima vacacional con el procedimiento opcional del art. 174 RLISR
+y no junto con el sueldo. Se vio en el paralelo de la semana 44: con el mismo
+gravable (3,399.53) NOI retuvo a Lorena Santiago 163.87 con 123.34 de subsidio
+y Odoo 313.25 sin subsidio. Con el art. 174 salen los siete recibos con prima
+de las semanas 43 y 44 a 1–2 centavos (Levario 351.89, De la Cruz 1,417.84,
+Ambrocio 99.77 con subsidio, Delgadillo, Nava, Aguilar y Lorena Santiago).
+Cuando la prima no cambia de renglón de la tarifa los dos métodos dan lo mismo;
+por eso la quincena 17 parecía calcularse «junto con el sueldo».
+
+El cálculo (`payslip._qb_art174(gravable, prima_gravada)` en
+`models/isr_mensual.py`):
+
+1. Ordinario = gravable del periodo − prima gravada (`PVAC_TAX`).
+2. Ingreso mensual ordinario = ordinario ÷ días del periodo × 30.4.
+3. Prima mensual = prima gravada ÷ 365 × 30.4.
+4. Tasa = (tarifa mensual de 2 + 3 − tarifa mensual de 2) ÷ 3.
+5. ISR de la prima = prima gravada × tasa.
+
+El ordinario sigue con la tarifa del periodo (o el ajuste mensual de la
+sección 8, sobre el ordinario acumulado del mes) y el subsidio se decide sobre
+el ordinario. Qué líneas van por el art. 174: parámetro
+`quimibond_nomina.isr_art174_codigos` (default `PVAC_TAX`; el aguinaldo gravado
+se agrega cuando exista su regla, antes de diciembre); vacío lo apaga.
+
+**Reglas que se cambian en la base después de desplegar 1.15.0** (sin ellas el
+código nuevo no se usa, salvo el ajuste mensual, que ya descuenta la prima de
+los recibos previos):
+
+- `ISR` (id 514), en lugar de `gross` para la tarifa:
+
+  ```python
+  a174 = payslip._qb_art174(gross, payslip._qb_art174_monto(result_rules))
+  ordinario = a174['ordinario']
+  mes = payslip._qb_isr_mensual(ordinario)
+  if mes is not None:
+      result = -(mes['isr'] + a174['isr'])
+  elif ordinario > 0:
+      tablas = payslip._rule_parameter('l10n_mx_isr_tables')
+      low, high, fix, rate = find_rates(ordinario / dias_periodo, tablas['daily'])
+      result = -(((ordinario / dias_periodo - low) * rate + fix) * dias_periodo + a174['isr'])
+  else:
+      result = -a174['isr']
+  ```
+
+- `SUBSIDY_CURRENT_MONTH` (id 524), condición: el límite del subsidio se
+  compara contra el ordinario
+  (`gross = categories['GROSS'] - payslip._qb_art174_monto(result_rules)`).
+- `SUBSIDY` (id 531): `payslip._qb_isr_mensual(...)` recibe el ordinario.
+- `PVAC_TAX` (id 468): solo el comentario, que decía «NO con el art. 174».
+
+El centinela vigila `ISR` y `SUBSIDY` (aceptar el cambio después de
+editarlas); `SUBSIDY_CURRENT_MONTH` y `PVAC_TAX` no están bajo el centinela.
+
+### 15. FONACOT e Infonavit: sin sueldo no se retiene y lo que faltó se recupera (1.16.0)
+
+Dos cosas que NOI hace y Odoo no (respuestas de RH del 22-oct-2026 al
+paralelo de la semana 44):
+
+1. **Una semana sin sueldo no retiene.** Filiberta Florentino estuvo
+   incapacitada toda la semana 42: NOI no le pagó ni le retuvo; Odoo le
+   retenía la cuota normal de FONACOT (387.91) e Infonavit (239.86).
+2. **Lo que no se retuvo se reparte entre las nóminas que quedan** del mes
+   (FONACOT) o del bimestre (Infonavit): `(lo que se debe − lo ya retenido) ÷
+   nóminas que quedan, contando esta`. Filiberta, semanas 43 y 44: FONACOT
+   (1,939.56 − 387.91 − 0) ÷ 3 = 517.22 (NOI 517.21) e Infonavit (2,158.72 −
+   5 × 239.84 − 0) ÷ 3 = 319.84. Jorge Matías Salinas (alta 23-sep-2026,
+   crédito de 3,650.24 bimestrales): el bimestre septiembre–octubre se cobra
+   por los días desde el alta (sección 12: 2,339.17) y el aviso
+   llegó después de la semana 40, que no retuvo; desde la 41, 2,339.17 ÷ 5 =
+   467.83.
+
+Si las nóminas anteriores retuvieron lo suyo, se retiene la cuota de siempre.
+No se recupera (cuota de siempre) si falta un recibo anterior del mes o del
+bimestre o si alguno sigue en borrador; en las pilotas cuenta el parámetro
+`quimibond_nomina.isr_mensual_incluye_borrador`. Cálculo en
+`models/retenciones.py` (`_qb_fonacot_retencion`, `_qb_retencion_recuperada`)
+y `models/infonavit.py` (`_qb_infonavit_retencion`).
+
+**Reglas que se cambian en la base después de desplegar 1.16.0** (sin ellas
+la recuperación de Infonavit ya funciona, pero FONACOT sigue con la fórmula de
+1.8.0 y ninguna de las dos se salta las semanas sin sueldo):
+
+- `FONACOT` (id 527), fórmula completa:
+
+  ```python
+  # Retencion de Fonacot: la retencion mensual de la cedula repartida entre las nominas que paga
+  # el mes (4 o 5 semanales, 2 quincenales); sin sueldo no se retiene y lo que no se retuvo se
+  # reparte entre las nominas que quedan del mes (quimibond_nomina 1.16.0, models/retenciones.py).
+  result = -payslip._qb_fonacot_retencion(categories['GROSS'])
+  ```
+
+- `INFONAVIT` (id 526), última línea:
+  `result = -(payslip._qb_infonavit_retencion(categories['GROSS']) + ajuste)`.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -578,10 +676,11 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
-Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)
-de «Paga regular» **se editaron en la base**, no las escribe el módulo: las
-fórmulas vigentes están en las secciones 7, 8 y 9 y el centinela avisa si
-cambian.
+Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
+1.16.0), `INFONAVIT` (1.12.0 y 1.16.0), `SUBSIDY_CURRENT_MONTH` y `PVAC_TAX`
+(1.15.0) de «Paga regular» **se editaron en la base**, no las escribe el
+módulo: las fórmulas vigentes están en las secciones 7, 8, 9, 14 y 15, y el
+centinela avisa si cambian `ISR` o `SUBSIDY`.
 
 Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
 campo) y no deja nada cambiado en registros de Odoo.

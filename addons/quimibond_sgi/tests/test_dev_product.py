@@ -174,6 +174,45 @@ class TestDevProduct(TransactionCase):
         dev.invalidate_recordset(['sgi_dev_bom_pending_count'])
         self.assertEqual(dev.sgi_dev_bom_pending_count, 0)
 
+    def test_08_regenerar_con_otro_base(self):
+        """57.190.0: se eligió mal el base (aquí, ninguno): «Regenerar artículos» suelta lo ligado, borra lo
+        que creó el proyecto y vuelve a generar desde el base nuevo."""
+        P = self.env['product.product'].with_context(active_test=False)
+        self.dev.write({'sgi_dev_code_peso': 53, 'sgi_dev_code_galga': 18, 'sgi_dev_code_ancho': 160,
+                        'sgi_dev_code_color_id': self._clave('color', 'NG').id})
+        self.dev.action_sgi_dev_generate_products()
+        viejos = ['WJ053Q21HNT185', 'WJ053Q21ING185', 'WJ053Q21JNG160', 'IWJ053Q21JNG160']
+        self.assertEqual(P.search_count([('default_code', 'in', viejos)]), 4)
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        self.dev.write({'sgi_dev_base_product_id': acabado.id, 'sgi_dev_analysis_result': 'nuevo'})
+        self.dev.action_sgi_dev_regenerate_products()
+        self.assertFalse(P.search_count([('default_code', 'in', viejos)]), "Lo que creó el proyecto se borró")
+        self.assertEqual(self.dev.sgi_dev_product_crudo_id, crudo, "El crudo del base se liga")
+        self.assertEqual((self.dev.sgi_dev_product_tenido_id.default_code, self.dev.sgi_dev_product_id.default_code,
+                          self.dev.sgi_dev_product_proceso_id.default_code),
+                         ('WJ044Q22ING185', 'WJ053Q22JNG160', 'IWJ053Q22JNG160'))
+        self.assertTrue(self.env['mrp.bom']._bom_find(self.dev.sgi_dev_product_id)[self.dev.sgi_dev_product_id],
+                        "La lista del acabado nuevo se copió del base nuevo")
+        self.assertIn('Regenerar artículos', self.dev.message_ids.filtered(
+            lambda m: 'Regenerar' in (m.body or ''))[:1].body)
+        # Otra vez: el crudo del base solo se desliga (no lo creó el proyecto) y no se borra.
+        self.dev.action_sgi_dev_regenerate_products()
+        self.assertTrue(crudo.exists())
+        self.assertEqual(self.dev.sgi_dev_product_crudo_id, crudo)
+        # Si otro artículo ya usa el acabado del proyecto, no se toca nada.
+        nuevo = self.dev.sgi_dev_product_id
+        otro = self.env['product.product'].create({'name': 'Confección', 'type': 'consu'})
+        self.env['mrp.bom'].create({'product_tmpl_id': otro.product_tmpl_id.id, 'product_qty': 1,
+                                    'bom_line_ids': [(0, 0, {'product_id': nuevo.id, 'product_qty': 1.0})]})
+        with self.assertRaises(UserError):
+            self.dev.action_sgi_dev_regenerate_products()
+        self.assertEqual(self.dev.sgi_dev_product_id, nuevo)
+        self.assertTrue(nuevo.exists())
+        # Con la aprobación del cliente ya no se regenera.
+        self.dev.write({'sgi_dev_customer_approved_at': fields.Datetime.now()})
+        with self.assertRaises(UserError):
+            self.dev.action_sgi_dev_regenerate_products()
+
     def test_06_generate_from_base_peso_y_ancho_crudo(self):
         # Cambian peso y ancho crudo: los tres niveles cambian; el peso de crudo y teñido se estima en proporción.
         crudo, tenido, acabado, engomado, formula = self._base_chain()

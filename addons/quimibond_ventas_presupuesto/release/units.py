@@ -3,9 +3,9 @@
 
 Python puro. Los clientes piden en metros (MT, M, MTR, LM), yardas lineales
 (LY, YD), metros cuadrados (M2) o kilos; nosotros vendemos en metros o kilos.
-Entre longitud y peso el puente es el rendimiento m/kg de la ficha del
-producto (``qb.producto.ficha.rendimiento_m_kg``); entre longitud y área, el
-ancho. Si falta el dato, la conversión devuelve None y la línea no se aplica
+Entre longitud y peso el puente es el rendimiento m/kg del producto (peso
+por metro de ``qb_costeo``, o del código del artículo); entre longitud y
+área, el ancho. Si falta el dato, la conversión devuelve None y la línea no se aplica
 (nunca se inventa un factor)."""
 
 YARD_M = 0.9144
