@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_qb_pedimento_root" name="Pedimentos" sequence="45"
-              web_icon="stock,static/description/icon.png"
+              web_icon="qb_pedimento,static/description/icon.png"
               groups="qb_pedimento.group_pedimento_user"/>
 
     <menuitem id="menu_qb_pedimento" name="Pedimentos" parent="menu_qb_pedimento_root" sequence="10"
