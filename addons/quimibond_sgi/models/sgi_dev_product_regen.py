@@ -16,6 +16,8 @@ códigos y las listas de materiales seguían saliendo del base anterior.
    nada y se dice qué los usa.
 4. Vuelve a correr «Generar artículos» con el artículo base y las claves de hoy. Todo queda en el chatter.
 """
+from markupsafe import Markup
+
 from odoo import models
 from odoo.exceptions import UserError
 
@@ -98,11 +100,11 @@ class ProjectProjectDevRegen(models.Model):
             log = []
             for role, product in linked:
                 if product.id in codes:
-                    log.append("<li>%s: <b>%s</b> borrado con su lista de materiales.</li>" % (
+                    log.append(Markup("<li>%s: <b>%s</b> borrado con su lista de materiales.</li>") % (
                         ROLE_LABEL[role].capitalize(), codes[product.id]))
                 else:
-                    log.append("<li>%s: <b>%s</b> desligado (no lo creó el proyecto; no se toca).</li>" % (
+                    log.append(Markup("<li>%s: <b>%s</b> desligado (no lo creó el proyecto; no se toca).</li>") % (
                         ROLE_LABEL[role].capitalize(), product.default_code))
-            project.message_post(body="Regenerar artículos con el artículo base %s:<ul>%s</ul>" % (
-                project.sgi_dev_base_product_id.default_code or "(sin base: por claves)", "".join(log)))
+            project.message_post(body=Markup("Regenerar artículos con el artículo base %s:<ul>%s</ul>") % (
+                project.sgi_dev_base_product_id.default_code or "(sin base: por claves)", Markup("").join(log)))
         return self.action_sgi_dev_generate_products()

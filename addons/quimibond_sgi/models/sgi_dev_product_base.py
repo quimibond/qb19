@@ -32,6 +32,8 @@ proporción) cuando el acabado WJ053Q21JNT178 ya existía y consume el teñido y
   peso (el de peso más cercano al del base) antes de crear uno.
 - Los códigos propuestos de la pestaña Cotización salen del mismo plan que «Generar artículos».
 """
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -349,7 +351,7 @@ class ProjectProjectDevBase(models.Model):
             lower_new = new_by_role.get(lower_role)
             if self[ROLE_FIELD[role]]:
                 product = self[ROLE_FIELD[role]]
-                log.append("<li>%s: ya estaba ligado <b>%s</b>; no se toca.</li>" % (label, product.default_code))
+                log.append(Markup("<li>%s: ya estaba ligado <b>%s</b>; no se toca.</li>") % (label, product.default_code))
                 new_by_role[role] = product
                 continue
             if step['how'] != 'create':
@@ -357,17 +359,17 @@ class ProjectProjectDevBase(models.Model):
                 self.write({ROLE_FIELD[role]: product.id})
                 new_by_role[role] = product
                 if step['how'] == 'base':
-                    text = "se liga el del base, <b>%s</b> (no cambia)" % product.default_code
+                    text = Markup("se liga el del base, <b>%s</b> (no cambia)") % product.default_code
                 elif step['how'] == 'forced':
-                    text = "se liga <b>%s</b>" % product.default_code
+                    text = Markup("se liga <b>%s</b>") % product.default_code
                 else:
-                    text = "<b>%s</b> ya existía, se liga desde %s (cambió %s)" % (
+                    text = Markup("<b>%s</b> ya existía, se liga desde %s (cambió %s)") % (
                         product.default_code, base_product.default_code,
                         ", ".join(KEY_LABEL[k] for k in sorted(step['changed'])) or "el insumo")
                 consumed = self._sgi_dev_input_of(product, lower_role) if lower_new else None
-                warn = (" <b>Atención:</b> su lista de materiales consume %s, no %s; revísela." % (
+                warn = (Markup(" <b>Atención:</b> su lista de materiales consume %s, no %s; revísela.") % (
                     consumed.default_code, lower_new.default_code)) if consumed and consumed != lower_new else ''
-                log.append("<li>%s: %s%s.%s</li>" % (label, text, notes, warn))
+                log.append(Markup("<li>%s: %s%s.%s</li>") % (label, text, notes, warn))
                 continue
             code, bom = step['code'], level['bom']
             product = Product.create({
@@ -400,7 +402,7 @@ class ProjectProjectDevBase(models.Model):
                     if line.sgi_dev_pending:
                         pending_here.append(line.product_id.default_code or line.product_id.name)
                 pending_total += len(pending_here)
-            log.append("<li>%s: <b>%s</b> creado desde %s (cambió %s%s). %s</li>" % (
+            log.append(Markup("<li>%s: <b>%s</b> creado desde %s (cambió %s%s). %s</li>") % (
                 label, code, base_product.default_code,
                 ", ".join(KEY_LABEL[k] for k in sorted(step['changed'])) or "el insumo", notes,
                 ("Lista de materiales copiada de %s%s." % (
@@ -408,12 +410,13 @@ class ProjectProjectDevBase(models.Model):
                 if bom else "Sin lista de materiales que copiar."))
         roles = {level['role'] for level in chain}
         if 'tenido' not in roles and self.sgi_dev_code_tenido and keys['color'] and keys['color'] != NATURAL_COLOR:
-            log.append("<li>Teñido: el artículo base no lleva teñido; el proyecto pide color %s. Capture el teñido y su "
-                       "lista a mano.</li>" % keys['color'])
-        self.message_post(body="Artículos generados desde el base <b>%s</b>:<ul>%s</ul>%s" % (
-            self.sgi_dev_base_product_id.default_code, "".join(log),
-            ("<p><b>%d renglón(es) de lista de materiales por capturar</b>: la cotización no se manda a aprobar "
-             "hasta capturarlos.</p>" % pending_total) if pending_total else ''))
+            log.append(Markup("<li>Teñido: el artículo base no lleva teñido; el proyecto pide color %s. Capture el "
+                              "teñido y su lista a mano.</li>") % keys['color'])
+        # 57.192.1: Markup, si no Odoo 19 escapa el HTML y el chatter muestra las etiquetas.
+        self.message_post(body=Markup("Artículos generados desde el base <b>%s</b>:<ul>%s</ul>%s") % (
+            self.sgi_dev_base_product_id.default_code, Markup("").join(log),
+            (Markup("<p><b>%d renglón(es) de lista de materiales por capturar</b>: la cotización no se manda a "
+                    "aprobar hasta capturarlos.</p>") % pending_total) if pending_total else ''))
         return True
 
     # ------------------------------------------------------------------
