@@ -248,10 +248,9 @@ class TestSatPagos(SatCommon):
         cfdi3 = self._upsert(syntage_invoice(UUID_C, id='c', total=300.0, paymentType='PPD',
                                              issuedAt='2026-04-12 12:00:00'))
         cfdi3.write({'move_id': bill3.id})
-        reversal = self.env['account.move.reversal'].with_context(
-            active_model='account.move', active_ids=bill3.ids).create({
-                'journal_id': bill3.journal_id.id, 'date': bill3.invoice_date})
-        reversal.refund_moves()
+        # Reversión completa (publica la nota de crédito y la concilia); el
+        # asistente de Odoo 19 la deja en borrador.
+        bill3._reverse_moves([{'date': bill3.invoice_date, 'invoice_date': bill3.invoice_date}], cancel=True)
         bill3.invalidate_recordset()
         self.assertEqual(bill3.payment_state, 'reversed')
         self.assertEqual(self._row(cfdi3).issue, 'revertida')
