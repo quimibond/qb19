@@ -693,12 +693,16 @@ Tubular o abierta depende de cómo enrolla la máquina, no del artículo
 - Ni el peso ni el ancho capturados cambian; los rendimientos forzados a mano
   no se tocan. Capturar el dato en la máquina recalcula sus fichas.
 - Datos (por MCP, al desplegar): «Tubular» en las circulares de 30" con
-  fichas (1–4, 7–9, 14–16, 19–23, 25–27, 30) y «Abierta» en las de 32" (17,
-  18, 28, 31–37). Las que no tienen fichas (5, 6, 24, 29, 38, 39, 40) quedan
-  vacías hasta que la planta lo diga.
-- **WJ047Q21HNT112** (circulares 17 y 18, que abren la tela) tiene 102 cm de
-  ancho: con la máquina abierta su rendimiento sale 17.5 m/kg y la producción
-  real da ~9.3. El ancho parece medido doblado; lo revisa la planta.
+  fichas (1–4, 7–9, 14–16, 19–23, 25–27, 30) y en la 17 y la 18 (32",
+  confirmado por Jose); «Abierta» en las demás de 32" (28, 31–37). Las que no
+  tienen fichas (5, 6, 24, 29, 38, 39, 40) quedan vacías hasta que la planta lo
+  diga.
+- Con la 17 y la 18 tubulares, **WJ047Q21HNT112** (102 cm) cuadra: 8.75 m/kg
+  contra ~9.3 real ya acabado. En cambio las fichas de **WJ044Q22HNT235** en
+  esas dos máquinas (218 cm) quedan en 4.23 m/kg y la producción real da ~11
+  ya acabado: su ancho es de tela abierta. El rendimiento del producto no
+  cambia (la ficha de referencia es la de la circular 37, abierta), pero esas
+  dos fichas las revisa la planta.
 - Efecto en tintorería: el grupo de cargas del jet sale bien (WD040 pasa de
   «fuera de los grupos: capacidad general» al grupo C).
 - Pruebas: `tests/test_rendimiento.py` (`test_03_salida_de_la_tela_de_la_maquina`).
