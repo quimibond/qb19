@@ -223,3 +223,34 @@ class TestSatPagos(SatCommon):
         self.assertIn('no coincide', bill2.sat_alerta)
         action = bill2.action_open_sat_cfdi()
         self.assertEqual(action['domain'], [('move_id', '=', bill2.id)])
+
+    def test_paid_fraction_deadline_and_reversed(self):
+        """Lo pagado en Odoo cuenta como fracción del CFDI (pagos a terceros,
+        centavos); un pago reciente tiene plazo para su complemento; una
+        factura revertida no es pago."""
+        # Factura de 2,790 con un CFDI de 1,944 (el resto son pagos a terceros), pagada y con REP
+        bill = self._invoice(self.proveedor, 2790.0, day='2026-04-10')
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=1944.0, paymentType='PPD', issuedAt='2026-04-10 12:00:00'))
+        cfdi.write({'move_id': bill.id})
+        self._pay(bill)
+        self._pago(syntage_payment('p1', UUID_A, 1944.0))
+        row = self._row(cfdi)
+        self.assertAlmostEqual(row.pagado_odoo, 1944.0, places=2)
+        self.assertEqual(row.issue, 'ok')
+        # Pagada hoy, sin complemento todavía: está en plazo
+        bill2 = self._invoice(self.proveedor, 500.0, day=fields.Date.to_string(fields.Date.today()))
+        cfdi2 = self._upsert(syntage_invoice(UUID_B, id='b', total=500.0, paymentType='PPD'))
+        cfdi2.write({'move_id': bill2.id})
+        self._pay(bill2)
+        self.assertEqual(self._row(cfdi2).issue, 'rep_en_plazo')
+        # Revertida con nota de crédito: no es un pago
+        bill3 = self._invoice(self.proveedor, 300.0, day='2026-04-12')
+        cfdi3 = self._upsert(syntage_invoice(UUID_C, id='c', total=300.0, paymentType='PPD',
+                                             issuedAt='2026-04-12 12:00:00'))
+        cfdi3.write({'move_id': bill3.id})
+        # Reversión completa (publica la nota de crédito y la concilia); el
+        # asistente de Odoo 19 la deja en borrador.
+        bill3._reverse_moves([{'date': bill3.invoice_date, 'invoice_date': bill3.invoice_date}], cancel=True)
+        bill3.invalidate_recordset()
+        self.assertEqual(bill3.payment_state, 'reversed')
+        self.assertEqual(self._row(cfdi3).issue, 'revertida')
