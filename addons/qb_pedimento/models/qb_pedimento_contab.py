@@ -3,10 +3,13 @@
 
 Logística captura las contribuciones del pedimento en el expediente y
 contabilidad las vuelve a capturar en su factura de impuestos (líneas con los
-productos IGI, DTA y PRV y el IVA de importación a su cuenta). Aquí se
+productos IGI, DTA y PRV y el IVA de importación como impuesto). Aquí se
 comparan: lo que dice el expediente contra lo publicado en las facturas
-ligadas (de la mercancía y de la agencia). El IVA del pedimento se compara
-junto con el IVA/PRV, que contabilidad registra en la misma línea.
+ligadas (de la mercancía y de la agencia). El IVA del pedimento (más el
+IVA/PRV) se compara contra las líneas de impuesto de la factura de impuestos,
+la que trae algún producto IGI, DTA o PRV, a la cuenta que sea: hasta abril
+2026 el IVA iba en base de flujo a 118.02.02 y el IVA/PRV a 119.01.003; desde
+mayo va directo a 118.02.01 (1.2.1).
 
 No crea ni cambia asientos. Si falta la factura de impuestos o no cuadra, el
 aviso diario va al responsable en contabilidad.
@@ -28,7 +31,7 @@ class QbPedimentoContab(models.Model):
     contab_prv = fields.Monetary('PRV en contabilidad', compute='_compute_contab')
     contab_iva = fields.Monetary(
         'IVA en contabilidad', compute='_compute_contab',
-        help='Saldo de la cuenta de IVA de importación (Ajustes) en las facturas publicadas ligadas. '
+        help='Impuestos de la factura de impuestos publicada ligada (la que trae IGI, DTA o PRV). '
              'Se compara contra IVA + IVA/PRV del pedimento.')
     contab_estado = fields.Selection([
         ('sin_poliza', 'Sin factura de impuestos'),
@@ -47,6 +50,8 @@ class QbPedimentoContab(models.Model):
     def _compute_contab(self):
         for rec in self:
             company = rec.company_id
+            productos = (company.qb_pedimento_product_dta_id | company.qb_pedimento_product_igi_id
+                         | company.qb_pedimento_product_prv_id)
             lines = rec._contab_moves().line_ids
             por_producto = {}
             for line in lines.filtered('product_id'):
@@ -54,9 +59,9 @@ class QbPedimentoContab(models.Model):
             rec.contab_dta = por_producto.get(company.qb_pedimento_product_dta_id, 0.0)
             rec.contab_igi = por_producto.get(company.qb_pedimento_product_igi_id, 0.0)
             rec.contab_prv = por_producto.get(company.qb_pedimento_product_prv_id, 0.0)
-            iva_account = company.qb_pedimento_iva_account_id
-            rec.contab_iva = sum(lines.filtered(lambda l: l.account_id == iva_account).mapped('balance')) \
-                if iva_account else 0.0
+            impuestos = lines.filtered(lambda l: l.move_id.line_ids.product_id & productos) if productos \
+                else lines.browse()
+            rec.contab_iva = sum(impuestos.filtered(lambda l: l.display_type == 'tax').mapped('balance'))
             if rec.operacion != 'importacion' or rec.state not in ESTADOS_CON_PAGO:
                 rec.contab_estado = False
                 rec.contab_detalle = False
@@ -65,9 +70,8 @@ class QbPedimentoContab(models.Model):
                 (_('DTA'), rec.dta, rec.contab_dta),
                 (_('IGI'), rec.igi, rec.contab_igi),
                 (_('PRV'), rec.prv, rec.contab_prv),
+                (_('IVA'), rec.iva + rec.iva_prv, rec.contab_iva),
             ]
-            if iva_account:
-                conceptos.append((_('IVA'), rec.iva + rec.iva_prv, rec.contab_iva))
             if not any(abs(c) > TOLERANCIA for _n, _p, c in conceptos):
                 rec.contab_estado = 'sin_poliza' if any(abs(p) > TOLERANCIA for _n, p, _c in conceptos) \
                     else False
