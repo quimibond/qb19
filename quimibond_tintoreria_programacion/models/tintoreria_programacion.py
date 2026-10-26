@@ -2,6 +2,11 @@
 from odoo import fields, models
 
 BANDAS = [('A', 'A (3 a <7 m/kg)'), ('B', 'B (7 a <11 m/kg)'), ('C', 'C (11 a <16 m/kg)')]
+ORIGENES_TIEMPO = [
+    ('ficha', 'Ficha técnica (artículo en el jet)'),
+    ('formula', 'Fórmula × HTJ'),
+    ('bom', 'Operación de la BoM (sin dato de ficha ni de fórmula)'),
+]
 
 
 class TintoreriaProgramacion(models.Model):
@@ -25,6 +30,8 @@ class TintoreriaProgramacion(models.Model):
     capacidad_kg = fields.Float('Capacidad por baño (kg)', digits=(16, 3), readonly=True)
     n_banos = fields.Integer('No. de baños', readonly=True)
     kg_bano = fields.Float('kg por baño', digits=(16, 3), readonly=True)
+    minutos_bano = fields.Float('Minutos por baño', digits=(12, 2), readonly=True)
+    origen_tiempo = fields.Selection(ORIGENES_TIEMPO, 'Origen del tiempo', readonly=True)
     production_ids = fields.One2many('mrp.production', 'tintoreria_programacion_id', 'Órdenes de fabricación')
     user_id = fields.Many2one('res.users', 'Programó', default=lambda self: self.env.user, readonly=True)
     fecha = fields.Datetime('Fecha de programación', default=fields.Datetime.now, readonly=True)

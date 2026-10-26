@@ -3,3 +3,5 @@ access_tintoreria_programacion_user,tintoreria.programacion user,model_tintoreri
 access_tintoreria_programacion_manager,tintoreria.programacion manager,model_tintoreria_programacion,mrp.group_mrp_manager,1,1,1,1
 access_tintoreria_programacion_wizard_user,tintoreria.programacion.wizard user,model_tintoreria_programacion_wizard,mrp.group_mrp_user,1,1,1,1
 access_tintoreria_programacion_wizard_line_user,tintoreria.programacion.wizard.line user,model_tintoreria_programacion_wizard_line,mrp.group_mrp_user,1,1,1,1
+access_tintoreria_formula_tiempo_user,tintoreria.formula.tiempo user,model_tintoreria_formula_tiempo,mrp.group_mrp_user,1,0,0,0
+access_tintoreria_formula_tiempo_manager,tintoreria.formula.tiempo manager,model_tintoreria_formula_tiempo,mrp.group_mrp_manager,1,1,1,1

@@ -13,6 +13,7 @@
                 <field name="banda"/>
                 <field name="n_banos"/>
                 <field name="kg_bano"/>
+                <field name="minutos_bano"/>
                 <field name="user_id" optional="show"/>
                 <field name="fecha" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'programada'"
@@ -46,6 +47,8 @@
                             <field name="capacidad_kg"/>
                             <field name="n_banos"/>
                             <field name="kg_bano"/>
+                            <field name="minutos_bano"/>
+                            <field name="origen_tiempo"/>
                         </group>
                     </group>
                     <field name="production_ids" readonly="1">

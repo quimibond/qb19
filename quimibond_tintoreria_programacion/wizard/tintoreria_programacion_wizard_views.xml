@@ -18,10 +18,12 @@
                         <field name="rendimiento"/>
                         <field name="banda"/>
                         <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"
-                               domain="[('name', '=ilike', 'Tintoreria%')]" required="1"/>
+                               domain="[('ft_tipo_id.name', '=', 'Tintorería')]" required="1"/>
                         <field name="capacidad_kg"/>
                         <field name="n_banos"/>
                         <field name="kg_bano"/>
+                        <field name="minutos_bano"/>
+                        <field name="origen_tiempo" optional="show"/>
                         <field name="advertencia" decoration-danger="advertencia"/>
                     </list>
                 </field>

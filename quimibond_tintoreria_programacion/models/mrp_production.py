@@ -127,11 +127,54 @@ class MrpProduction(models.Model):
             capacidad = min(capacidad, general)
         return capacidad, banda, False
 
+    def _minutos_tintoreria(self, workcenter):
+        """(minutos por baño, origen, aviso) de la operación de Tintorería en el HTJ dado.
+
+        El tiempo es por ORDEN (un solo ciclo), no por kg. Orden de prioridad (diseño §3.1):
+        1. «Tiempo de ciclo» del artículo en ese jet (proceso del artículo en la ficha técnica; la
+           ficha lo guarda en horas).
+        2. Minutos de la fórmula de la BoM en ese HTJ (``tintoreria.formula.tiempo``).
+        3. Minutos manuales de la operación de Tintorería de la BoM (con aviso).
+        Si no existe ninguno la programación se bloquea (no se asume un valor).
+        """
+        self.ensure_one()
+        productos = self.product_id
+        acabados = self.env['ficha.tecnica.acabado'].search([('product_proceso_id', '=', self.product_id.id)])
+        productos |= acabados.mapped('product_acabado_id')
+        codigos = [c for c in productos.mapped('default_code') if c]
+        valor = self.env['ficha.tecnica.proceso.valor'].search([
+            ('code', '=', 'tiempo_ciclo'),
+            ('workcenter_id', '=', workcenter.id),
+            ('valor', '>', 0),
+            '|', ('proceso_id.product_id', 'in', productos.ids), ('proceso_id.articulo', 'in', codigos),
+        ], limit=1)
+        if valor:
+            minutos = valor.valor * (1.0 if (valor.unit or 'h').lower() in ('min', 'mins', 'minutos') else 60.0)
+            return minutos, 'ficha', False
+        formula = self.bom_id.formula_tintoreria_id
+        if formula:
+            tiempo = self.env['tintoreria.formula.tiempo'].search([
+                ('formula_id', '=', formula.id), ('workcenter_id', '=', workcenter.id)], limit=1)
+            if tiempo:
+                return tiempo.minutos, 'formula', False
+        operacion = self.bom_id._operacion_tintoreria()
+        if operacion and operacion.time_mode == 'manual' and operacion.time_cycle_manual > 0:
+            aviso = _(
+                "No hay tiempo de ciclo del artículo en %(wc)s ni tiempo de la fórmula %(f)s en ese HTJ: "
+                "se usaron los %(m)s min de la operación de Tintorería de la BoM.",
+                wc=workcenter.display_name, f=formula.display_name or '-', m=operacion.time_cycle_manual)
+            return operacion.time_cycle_manual, 'bom', aviso
+        raise UserError(_(
+            "No hay tiempo de Tintorería para %(prod)s en %(wc)s: captura el tiempo de ciclo del artículo "
+            "en el jet (ficha técnica) o el tiempo de su fórmula en ese HTJ.",
+            prod=self.product_id.display_name, wc=workcenter.display_name))
+
     def _calcular_plan_tintoreria(self, workcenter):
         """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado."""
         self.ensure_one()
         rendimiento = self._rendimiento_tejido()
         capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
+        minutos, origen_tiempo, aviso_tiempo = self._minutos_tintoreria(workcenter)
         kg_total = self.product_qty
         n_banos = max(1, math.ceil(round(kg_total / capacidad, 6)))
         uom = self.product_uom_id
@@ -146,6 +189,9 @@ class MrpProduction(models.Model):
             'kg_bano': kg_bano,
             'montos': montos,
             'aviso': aviso,
+            'minutos': minutos,
+            'origen_tiempo': origen_tiempo,
+            'aviso_tiempo': aviso_tiempo,
         }
 
     # ------------------------------------------------------------------
@@ -162,7 +208,8 @@ class MrpProduction(models.Model):
             raise UserError(_("La orden %s ya está programada.", self.name))
         if self.state not in ('draft', 'confirmed'):
             raise UserError(_("La orden %s ya inició o está cerrada; no se puede programar.", self.name))
-        if any(wo.state not in ('pending', 'waiting', 'ready') for wo in self.workorder_ids) \
+        # Odoo 19: estados de la workorder = blocked / ready / progress / done / cancel
+        if any(wo.state not in ('blocked', 'ready') for wo in self.workorder_ids) \
                 or any(self.move_raw_ids.mapped('picked')):
             raise UserError(_("La orden %s ya tiene operaciones iniciadas; no se puede programar.", self.name))
         if not self._workorder_tintoreria():
@@ -194,10 +241,16 @@ class MrpProduction(models.Model):
             'capacidad_kg': plan['capacidad_kg'],
             'n_banos': plan['n_banos'],
             'kg_bano': plan['kg_bano'],
+            'minutos_bano': plan['minutos'],
+            'origen_tiempo': plan['origen_tiempo'],
         })
         for orden in ordenes:
             # Asignar el HTJ dispara el recálculo de la dosificación (quimibond_tintoreria_dosificacion).
-            orden._workorder_tintoreria().workcenter_id = workcenter
+            workorder = orden._workorder_tintoreria()
+            workorder.workcenter_id = workcenter
+            # Tintorería es tiempo por ORDEN: un solo ciclo, sin multiplicar por kg. Se escribe
+            # después de asignar el HTJ para que ese cambio no lo reemplace.
+            workorder.duration_expected = plan['minutos']
             orden.write({
                 'tintoreria_programada': True,
                 'tintoreria_programacion_id': programacion.id,
@@ -207,6 +260,8 @@ class MrpProduction(models.Model):
                 wc=workcenter.display_name, n=plan['n_banos'], kg=orden.product_qty, o=nombre_origen))
             if plan['aviso']:
                 orden.message_post(body=plan['aviso'])
+            if plan['aviso_tiempo']:
+                orden.message_post(body=plan['aviso_tiempo'])
         return programacion
 
     # ------------------------------------------------------------------

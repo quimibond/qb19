@@ -12,4 +12,10 @@
               action="action_tintoreria_programacion"
               groups="mrp.group_mrp_user"
               sequence="40"/>
+    <menuitem id="menu_tintoreria_formula_tiempo"
+              name="Tiempos de Tintorería"
+              parent="mrp.menu_mrp_configuration"
+              action="action_tintoreria_formula_tiempo"
+              groups="mrp.group_mrp_manager"
+              sequence="60"/>
 </odoo>

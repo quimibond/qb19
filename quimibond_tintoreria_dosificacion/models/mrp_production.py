@@ -89,14 +89,19 @@ class MrpProduction(models.Model):
                 origenes = mov.move_orig_ids
                 if any(o.state == 'done' for o in origenes):
                     continue  # la requisición ya se surtió: se conserva lo surtido
-                delta = nuevo - mov.product_uom_qty
                 pendientes = origenes.filtered(lambda o: o.state not in ('done', 'cancel'))
                 anterior = mov.product_uom_qty
+                origen = pendientes[-1] if pendientes else self.env['stock.move']
+                qty_origen_antes = origen.product_uom_qty
                 mov.write({'product_uom_qty': nuevo})
-                if pendientes:
-                    origen = pendientes[-1]
-                    delta_origen = mov.product_uom._compute_quantity(delta, origen.product_uom)
-                    origen.write({'product_uom_qty': max(origen.product_uom_qty + delta_origen, 0.0)})
+                if origen:
+                    # Odoo ya propaga el cambio de cantidad del movimiento a la requisición MTO que lo
+                    # abastece. Solo se ajusta a mano si no lo hizo; si no, la diferencia se aplicaba
+                    # dos veces (y n veces tras dividir la MO en baños).
+                    if float_compare(origen.product_uom_qty, qty_origen_antes,
+                                     precision_rounding=origen.product_uom.rounding) == 0:
+                        delta_origen = mov.product_uom._compute_quantity(nuevo - anterior, origen.product_uom)
+                        origen.write({'product_uom_qty': max(origen.product_uom_qty + delta_origen, 0.0)})
                 cambios.append('%s: %s → %s %s' % (
                     mov.product_id.default_code or mov.product_id.display_name,
                     round(anterior, 6), round(nuevo, 6), mov.product_uom.name))
