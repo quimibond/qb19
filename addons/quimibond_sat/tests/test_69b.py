@@ -69,3 +69,22 @@ class TestSat69b(SatCommon):
         self.assertTrue(mail)
         self.assertIn('69-B', mail.subject)
         self.assertIn('PAPELERA SANDOVAL', mail.body_html)
+
+    def test_definitive_refund_posts(self):
+        """La nota de crédito de un proveedor definitivo sí se publica: reduce lo deducido."""
+        self._upsert(efos(UUID_A, 'definitive'))
+        refund = self._invoice(self.proveedor, 100.0, move_type='in_refund')
+        self.assertEqual(refund.state, 'posted')
+
+    def test_cancelled_cfdi_blocks_posting(self):
+        bill = self._invoice(self.proveedor, 3287.86, post=False)
+        cfdi = self._upsert(syntage_invoice(UUID_B, status='CANCELADO', canceledAt='2026-05-01 10:00:00'))
+        cfdi.write({'move_id': bill.id})
+        with self.assertRaisesRegex(UserError, 'CANCELADO en el SAT'):
+            bill.action_post()
+        self.assertEqual(bill.state, 'draft')
+        # Llega el CFDI que lo sustituye y queda ligado: ya se publica
+        new = self._upsert(syntage_invoice(UUID_C, id='n', relations=[{'type': 4, 'relatedInvoiceUuid': UUID_B}]))
+        self.assertEqual(new.move_id, bill)
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
