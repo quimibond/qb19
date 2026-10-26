@@ -13,6 +13,7 @@ procesos que lo resuelve. Si nadie ocupa el puesto, al Jefe MAST.
 | `sat_diferencia_proveedor` | S1.21 | Monto o moneda distintos, o ligados a una factura en borrador |
 | `sat_rep_proveedor` | S1.25 Revisar que cada pago tenga su complemento del proveedor | Pagos sin complemento o con complementos de más |
 | `sat_rep_emitido` | S2.21 Timbrar y enviar el complemento de pago | Cobros sin complemento, de más o sin pago en Odoo |
+| `sat_iva_mes` | S3.14 Calcular los pagos provisionales de ISR e IVA | Meses recientes (actual y dos anteriores) cuyo IVA del SAT no cuadra con la contabilidad (*IVA del mes*, quimibond_sat 1.25.0) |
 | `sat_cancelar_emitida` | S2.13 Cancelar y refacturar | Facturas emitidas canceladas en un lado y vigentes en el otro |
 
 - Un aviso por tipo, con el número de pendientes en el resumen y los primeros
