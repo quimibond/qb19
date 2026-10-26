@@ -27,7 +27,7 @@ GENERIC_RFCS = ('XAXX010101000', 'XEXX010101000')
 # quimibond_sat.rfc_poliza (RFC separados por coma).
 DEFAULT_RFC_POLIZA = ('SAT970701NN3', 'IMS421231I45', 'INF7205011ZA')
 # Ligados por una persona: el cruce automático por UUID no los toca.
-MANUAL_METHODS = ('manual', 'sugerido', 'conciliado')
+MANUAL_METHODS = ('manual', 'sugerido', 'conciliado', 'sustitucion')
 
 
 def _parse_dt(value):
