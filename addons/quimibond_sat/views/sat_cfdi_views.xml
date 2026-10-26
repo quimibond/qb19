@@ -60,6 +60,9 @@
                             invisible="match_method in ('manual', 'conciliado')"/>
                     <button name="action_unlink_move" type="object" string="Desligar"
                             invisible="not move_id"/>
+                    <button name="action_create_bill" type="object" string="Crear factura desde el XML"
+                            invisible="move_id or match_status != 'solo_sat' or direction != 'received' or estado_sat != 'vigente'"
+                            confirm="Se crea la factura de proveedor en borrador con el XML del SAT. ¿Continuar?"/>
                     <button name="action_ignore" type="object" string="Ignorar (se registra por póliza)"
                             invisible="move_id or match_status == 'ignorado'"/>
                     <button name="action_suggest" type="object" string="Buscar sugerencia"
@@ -114,6 +117,8 @@
                             <field name="issue"/>
                             <field name="ignore_reason" invisible="match_status != 'ignorado' and move_id"/>
                             <field name="note" readonly="1" invisible="not note"/>
+                            <field name="auto_bill_state" readonly="1" invisible="not auto_bill_state"/>
+                            <field name="auto_bill_note" readonly="1" invisible="not auto_bill_note"/>
                         </group>
                         <group string="Sugerencia (RFC + monto + fecha)" invisible="not suggested_move_id and not suggestion_rejected">
                             <field name="suggested_move_id" readonly="1"/>
