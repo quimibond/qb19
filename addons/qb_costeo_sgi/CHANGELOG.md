@@ -1,5 +1,18 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.8.0 — 2026-10-26
+
+Dirección General 2026-10-26 (qb_cotizador 1.7.0, quimibond_sgi 57.194.0):
+
+- Con artículo generado (`sgi_dev_product_id`) la cotización nace (y «Tomar datos del proyecto» la pone) con la
+  fuente **«Receta del desarrollo»**; si el artículo ya tiene costo en el período con que se cotiza, con el
+  período. El artículo base sigue como hermano.
+- **Aviso de lote mínimo contra un baño** (`bano_alerta`): el lote mínimo del PDF («2,000 yd», «5,000 m», «300 kg»)
+  pasado a kg de tela teñida (consumo de la receta o kg por metro de la cotización) contra el mínimo de baño del
+  desarrollo (`project._sgi_dev_min_bath`: jet de la ruta, parámetro general o el menor de los jets). Caso real:
+  COT-2026-0015, 2,000 yd ≈ 119.6 kg contra 150 kg de TINTORERIA 4. Avisa, no bloquea.
+- Prueba `test_bridge.test_08` (Odoo.sh).
+
 ## 19.0.1.7.0 — 2026-10-23
 
 - **Regenerar artículos del desarrollo** (quimibond_sgi 57.190.0): antes de que

@@ -19,7 +19,7 @@ tarifa del cliente al ganar. Las cotizaciones del cotizador anterior
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.6.2',
+    'version': '19.0.1.7.0',
     'license': 'LGPL-3',
     'application': False,
     'depends': ['qb_costeo', 'sale_management', 'hr', 'mail'],

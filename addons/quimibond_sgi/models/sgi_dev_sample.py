@@ -45,6 +45,9 @@ PARAM_MIN_BATH_KG = 'quimibond_sgi.dev_sample_min_bath_kg'
 PARAM_PICKING_TYPE_TENIDO = 'quimibond_sgi.dev_sample_picking_type_tenido_id'
 PARAM_PICKING_TYPE_ACABADO = 'quimibond_sgi.dev_sample_picking_type_acabado_id'
 PICKING_TYPE_NAME = 'Tejido Desarrollo'
+# 57.194.0: el mínimo de baño es un parámetro de la ficha de la máquina de tintorería (por jet).
+BATH_PARAM_CODE = 'minimo_bano'
+TIPO_TINTORERIA = 'tintoreria'
 # 57.154.0: etapas de la cadena de la muestra. Teñido y acabado usan su parámetro si está capturado (para
 # separar desarrollo) y, si no, el tipo de operación de planta con ese nombre.
 SAMPLE_STAGES = [('crudo', "Crudo (tejido)"), ('tenido', "Teñido"), ('acabado', "Acabado")]
@@ -97,6 +100,42 @@ class ProjectProjectDevSample(models.Model):
         rend = lines.filtered(lambda l: l.caracteristica_id.formula == 'rendimiento' and l.spec_nominal)[:1]
         return rend.spec_nominal if rend else 0.0
 
+    def _sgi_dev_min_bath(self):
+        """57.194.0 (Dirección General 2026-10-26): (kg, de dónde sale) del mínimo de baño para teñir el
+        desarrollo. Es un parámetro de la máquina de tintorería (``minimo_bano`` en la ficha de la máquina; el
+        jet TINTORERIA 4 tiene 150 kg). En orden: el menor de los jets de la ruta del artículo teñido; si la ruta
+        no tiene jet con mínimo, el parámetro general del SGI; si tampoco hay, el menor de los jets de la planta
+        (la muestra se corre en el jet más chico). (0, '') sin ninguno."""
+        self.ensure_one()
+        today = fields.Date.context_today(self)
+        company = self.company_id or self.env.company
+
+        def con_minimo(workcenters):
+            filas = []
+            for wc in workcenters:
+                config = wc._ft_config_at(today)
+                kg = config._ft_value(BATH_PARAM_CODE) if config else 0.0
+                if kg and kg > 0:
+                    filas.append((kg, wc))
+            return min(filas, key=lambda f: f[0]) if filas else (0.0, None)
+
+        tenido = self.sgi_dev_product_tenido_id
+        if tenido:
+            bom = self.env['sgi.dev.sample.wizard'].sudo()._sgi_dev_own_bom(tenido, company)
+            jets = bom.sudo().operation_ids.workcenter_id.filtered(lambda w: w.ft_tipo_id.code == TIPO_TINTORERIA)
+            kg, wc = con_minimo(jets)
+            if wc:
+                return kg, '%s, de la ruta de %s' % (wc.name, tenido.display_name)
+        general = _float_param(self.env, PARAM_MIN_BATH_KG)
+        if general:
+            return general, 'parámetro general del SGI'
+        jets = self.env['mrp.workcenter'].sudo().search([('ft_tipo_id.code', '=', TIPO_TINTORERIA),
+                                                         ('company_id', 'in', (company.id, False))])
+        kg, wc = con_minimo(jets)
+        if wc:
+            return kg, '%s, el menor de los jets (la ruta del teñido no tiene jet con mínimo)' % wc.name
+        return 0.0, ''
+
     def _sgi_dev_sample_products(self):
         self.ensure_one()
         return (self.sgi_dev_product_crudo_id | self.sgi_dev_product_tenido_id | self.sgi_dev_product_id)
@@ -122,14 +161,14 @@ class ProjectProjectDevSample(models.Model):
             candidatos.append(('%g m PQ%s' % (pq, (' al %g %% de primera esperado' % esperado) if esperado
                                                else ' (rendimiento de primera esperado sin definir: 100 %)'),
                                pq / factor))
-        bath = _float_param(env, PARAM_MIN_BATH_KG)
         if self.sgi_dev_product_tenido_id:
+            bath, bath_src = self._sgi_dev_min_bath()
             if bath and rend:
-                candidatos.append(('mínimo de baño de tintorería %g kg' % bath, bath * rend))
+                candidatos.append(('mínimo de baño de tintorería %g kg (%s)' % (bath, bath_src), bath * rend))
             elif bath:
                 razones.append('El mínimo de baño (%g kg) no se pudo pasar a metros: faltan masa y ancho.' % bath)
             else:
-                razones.append('Mínimo de baño de tintorería sin definir (parámetro vacío).')
+                razones.append('Mínimo de baño de tintorería sin definir (ni en los jets ni en el parámetro).')
         if not candidatos:
             return 0.0, 'Sin datos para sugerir: capture la cantidad.'
         motivo, metros = max(candidatos, key=lambda c: c[1])

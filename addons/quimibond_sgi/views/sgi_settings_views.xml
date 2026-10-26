@@ -93,7 +93,7 @@
                             <field name="sgi_dev_sample_expected_yield_pct"/>
                         </setting>
                         <setting string="Mínimo de baño de tintorería (kg)"
-                                 help="Solo si el artículo lleva teñido. Vacío: no entra al cálculo.">
+                                 help="Solo si el artículo lleva teñido. El mínimo de cada jet va en la ficha de la máquina y manda sobre este.">
                             <field name="sgi_dev_sample_min_bath_kg"/>
                         </setting>
                         <!-- 57.126.0 (C1, bloque G) -->
