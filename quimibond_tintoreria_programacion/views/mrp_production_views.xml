@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Formulario de la MO: aviso y botón de programación -->
+    <record id="mrp_production_form_view_tintoreria_programacion" model="ir.ui.view">
+        <field name="name">mrp.production.form.tintoreria.programacion</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="tintoreria_pendiente" invisible="1"/>
+                <field name="tintoreria_programada" invisible="1"/>
+                <button name="%(quimibond_tintoreria_programacion.action_tintoreria_programacion_wizard)d"
+                        type="action" string="Programar Tintorería" class="btn-primary"
+                        invisible="not tintoreria_pendiente"/>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert" invisible="not tintoreria_pendiente">
+                    Pendiente de la Programación de Tintorería: no se puede iniciar ninguna operación hasta
+                    que Tintorería asigne el HTJ.
+                </div>
+                <div class="alert alert-success" role="alert" invisible="not tintoreria_programada">
+                    Tintorería programada
+                    <field name="tintoreria_programacion_id" readonly="1" class="oe_inline"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filtro en la búsqueda de MOs -->
+    <record id="mrp_production_search_view_tintoreria_programacion" model="ir.ui.view">
+        <field name="name">mrp.production.search.tintoreria.programacion</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="Pendientes de programar Tintorería" name="tintoreria_pendiente"
+                        domain="[('tintoreria_pendiente', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Lista de MOs pendientes de programar -->
+    <record id="mrp_production_tintoreria_pendiente_list_view" model="ir.ui.view">
+        <field name="name">mrp.production.tintoreria.pendiente.list</field>
+        <field name="model">mrp.production</field>
+        <field name="arch" type="xml">
+            <list string="Pendientes de programar Tintorería" create="0" delete="0">
+                <header>
+                    <button name="%(quimibond_tintoreria_programacion.action_tintoreria_programacion_wizard)d"
+                            type="action" string="Programar Tintorería" class="btn-primary"/>
+                </header>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="product_qty" string="kg"/>
+                <field name="product_uom_id" string="UdM" optional="hide"/>
+                <field name="date_start" optional="show"/>
+                <field name="origin" optional="show"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_tintoreria_pendientes" model="ir.actions.act_window">
+        <field name="name">Pendientes de programar Tintorería</field>
+        <field name="res_model">mrp.production</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('tintoreria_pendiente', '=', True)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('mrp_production_tintoreria_pendiente_list_view')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('mrp.mrp_production_form_view')})]"/>
+    </record>
+</odoo>

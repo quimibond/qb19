@@ -25,3 +25,11 @@ class ResCompany(models.Model):
         'product.product', 'Producto PRV', domain="[('landed_cost_ok', '=', True)]")
     qb_pedimento_product_gastos_id = fields.Many2one(
         'product.product', 'Producto gastos de importación', domain="[('landed_cost_ok', '=', True)]")
+    qb_pedimento_iva_account_id = fields.Many2one(
+        'account.account', 'Cuenta de IVA de importación',
+        help='Cuenta donde contabilidad registra el IVA pagado en el pedimento (118.02.01). Con ella el '
+             'expediente compara su IVA contra la factura de impuestos.')
+    qb_pedimento_contabilidad_user_id = fields.Many2one(
+        'res.users', 'Responsable en contabilidad',
+        help='Recibe el aviso de importaciones sin factura de impuestos o que no cuadran con contabilidad. '
+             'Vacío: el responsable del expediente.')

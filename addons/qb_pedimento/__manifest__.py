@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Pedimentos',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'license': 'LGPL-3',
     'category': 'Inventory/Inventory',
     'summary': 'Expediente de cada pedimento de importación y exportación: documentos, contribuciones, '

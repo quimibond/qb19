@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_tintoreria_dosificacion" model="ir.ui.view">
+        <field name="name">mrp.production.form.tintoreria.dosificacion</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="tiene_dosificacion" invisible="1"/>
+                <button name="action_recalcular_dosificacion" type="object" string="Recalcular dosificación"
+                        invisible="not tiene_dosificacion or state in ('done', 'cancel')"
+                        help="Recalcula los químicos (g/L) y colorantes (%) con la relación de baño del work center de Tintorería, mientras la requisición no se haya surtido."/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

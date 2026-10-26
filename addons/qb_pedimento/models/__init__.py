@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import qb_pedimento_catalog
 from . import qb_pedimento
+from . import qb_pedimento_contab
 from . import qb_pedimento_lines
 from . import qb_pedimento_garantia
 from . import res_company

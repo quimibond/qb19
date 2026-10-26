@@ -174,6 +174,21 @@
                                     <field name="total_contribuciones"/>
                                 </group>
                             </group>
+                            <group string="Contra contabilidad" invisible="operacion != 'importacion'">
+                                <group>
+                                    <field name="contab_estado" widget="badge"
+                                           decoration-success="contab_estado == 'cuadra'"
+                                           decoration-danger="contab_estado == 'diferencia'"
+                                           decoration-warning="contab_estado == 'sin_poliza'"/>
+                                    <field name="contab_detalle" invisible="not contab_detalle"/>
+                                </group>
+                                <group>
+                                    <field name="contab_dta"/>
+                                    <field name="contab_igi"/>
+                                    <field name="contab_prv"/>
+                                    <field name="contab_iva"/>
+                                </group>
+                            </group>
                             <field name="partida_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>

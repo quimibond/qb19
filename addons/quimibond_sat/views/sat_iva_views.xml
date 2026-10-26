@@ -47,6 +47,7 @@
                 <separator/>
                 <filter name="acreditable" string="IVA acreditable" domain="[('concepto', '=', 'acreditable')]"/>
                 <filter name="trasladado" string="IVA trasladado" domain="[('concepto', '=', 'trasladado')]"/>
+                <filter name="importacion" string="IVA de importación" domain="[('concepto', '=', 'importacion')]"/>
                 <separator/>
                 <filter name="mes" string="Mes" date="mes"/>
                 <group>
