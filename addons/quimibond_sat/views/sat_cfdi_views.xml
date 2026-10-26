@@ -58,6 +58,8 @@
                             class="btn-primary" invisible="move_id and issue == 'ok'"/>
                     <button name="action_rematch" type="object" string="Buscar factura otra vez"
                             invisible="match_method in ('manual', 'conciliado')"/>
+                    <button name="action_write_fiscal_folio" type="object" string="Escribir folio fiscal en la factura"
+                            invisible="not move_id or direction != 'received'"/>
                     <button name="action_unlink_move" type="object" string="Desligar"
                             invisible="not move_id"/>
                     <button name="action_create_bill" type="object" string="Crear factura desde el XML"
