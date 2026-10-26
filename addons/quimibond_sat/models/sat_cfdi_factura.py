@@ -101,6 +101,8 @@ class SatCfdiFactura(models.Model):
         self._match_move()
         if self.move_id != move:
             self.write({'move_id': move.id, 'match_method': 'conciliado', 'match_status': 'matched'})
+            # El importador no dejó el documento CFDI: el folio se escribe aparte.
+            self._write_fiscal_folio(move)
         self.write({
             'auto_bill_state': 'created',
             'auto_bill_note': _('Factura creada en borrador desde el XML del SAT'),
