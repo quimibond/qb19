@@ -163,6 +163,9 @@ class TestDevProduct(TransactionCase):
         last = dev.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body
         self.assertIn('WJ044Q22ING185', last)
         self.assertIn('por capturar', last)
+        # 57.192.1: el chatter recibe HTML, no las etiquetas escapadas.
+        self.assertIn('<li>', last)
+        self.assertNotIn('&lt;', last)
         # Volver a generar no duplica ni toca lo ligado.
         dev.action_sgi_dev_generate_products()
         self.assertEqual(self.env['product.product'].search_count([('default_code', '=', 'WJ044Q22ING185')]), 1)

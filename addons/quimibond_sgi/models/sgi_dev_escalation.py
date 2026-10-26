@@ -29,6 +29,8 @@ cierran solos con nota. Nunca cambia etapa ni datos del proyecto.
 import logging
 from datetime import timedelta
 
+from markupsafe import Markup
+
 from odoo import api, fields, models
 
 from .sgi_calendar import sgi_add_business_days
@@ -233,13 +235,13 @@ class SgiDevEscalation(models.Model):
         folio = project.sgi_ft_folio or project.name
         if level == 'ejecutor':
             summary = "Desarrollo %s: %s %s lleva %.0f h pendiente" % (folio, step['code'], step['name'], hours)
-            note = ("El paso <b>%s %s</b> del desarrollo <b>%s</b> está pendiente desde el %s "
-                    "(%.1f horas de desarrollo, sin contar materia prima pendiente)."
+            note = (Markup("El paso <b>%s %s</b> del desarrollo <b>%s</b> está pendiente desde el %s "
+                           "(%.1f horas de desarrollo, sin contar materia prima pendiente).")
                     % (step['code'], step['name'], folio, fields.Datetime.to_string(step['since']), hours))
         else:
             summary = "Escalamiento (%s): %s %s en %s, %.0f h sin avanzar" % (label, step['code'], step['name'], folio, hours)
-            note = ("<b>%s</b>: el paso <b>%s %s</b> del desarrollo <b>%s</b> lleva %.1f horas de desarrollo "
-                    "pendiente desde el %s y no ha avanzado." % (label, step['code'], step['name'], folio, hours,
+            note = (Markup("<b>%s</b>: el paso <b>%s %s</b> del desarrollo <b>%s</b> lleva %.1f horas de desarrollo "
+                           "pendiente desde el %s y no ha avanzado.") % (label, step['code'], step['name'], folio, hours,
                                                                fields.Datetime.to_string(step['since'])))
         key = "dev_esc:%s:%s:%s:%d" % (step['code'], fields.Datetime.to_string(step['since']), level, user.id)
         activity = False

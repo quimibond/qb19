@@ -17,6 +17,8 @@ import logging
 
 from datetime import datetime, timedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api, Command, SUPERUSER_ID
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
@@ -356,10 +358,10 @@ class SgiProcessProcedure(models.Model):
                 'sgi_procedure_dirty_by': self.env.uid,
             })
             doc.message_post(
-                body="⚠ El procedimiento vivo se modificó después de la revisión "
-                     "vigente %s. Queda <b>pendiente de revisión documental</b>: "
-                     "el PDF impreso ya no coincide con la revisión aprobada." % (
-                         doc.sgi_revision_label or ''))
+                body=Markup("⚠ El procedimiento vivo se modificó después de la revisión "
+                            "vigente %s. Queda <b>pendiente de revisión documental</b>: "
+                            "el PDF impreso ya no coincide con la revisión aprobada.") % (
+                                doc.sgi_revision_label or ''))
             Cron = self.env['sgi.cron']
             user_id = doc.sgi_owner_id.id or Cron._sgi_manager_user_id()
             # 6.5: sin duplicados (antes, 3 iguales por documento) y se cierra
