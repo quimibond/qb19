@@ -332,7 +332,8 @@ class SyntageClient(models.AbstractModel):
         'running' sin avanzar en 30 min (worker muerto) se re-encola."""
         Log = self.env['sat.sync.log'].sudo()
         if budget_seconds is None:
-            budget_seconds = int(self._param('quimibond_sat.queue_budget_seconds') or 600)
+            # _param ya antepone 'quimibond_sat.' (con el prefijo doble nunca se leía)
+            budget_seconds = int(self._param('queue_budget_seconds') or 600)
         start = time.time()
         stale_before = fields.Datetime.now() - timedelta(minutes=self.QUEUE_STALE_MINUTES)
         stale = Log.search([('status', '=', 'running'), ('write_date', '<', stale_before)])

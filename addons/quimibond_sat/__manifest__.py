@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.18.0',
+    'version': '19.0.1.19.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -28,6 +28,8 @@ Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema):
   quimibond_sat.api_base        Opcional, default https://api.syntage.com
   quimibond_sat.alert_email     Destinatarios (coma) de la alerta diaria de hallazgos
   quimibond_sat.queue_budget_seconds  Presupuesto por corrida de la cola (default 600)
+  quimibond_sat.rfc_poliza      RFC (coma) que se registran por póliza aunque no
+                                exista su contacto (default SAT, IMSS, Infonavit)
 
 Endpoint del webhook: POST /quimibond_sat/webhook
     """,
@@ -49,6 +51,7 @@ Endpoint del webhook: POST /quimibond_sat/webhook
         'views/sat_reconcile_wizard_views.xml',
         'views/res_company_views.xml',
         'views/res_partner_views.xml',
+        'views/product_template_views.xml',
         'views/sat_pago_views.xml',
         'views/account_move_views.xml',
         'views/menus.xml',

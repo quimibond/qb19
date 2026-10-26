@@ -9,3 +9,4 @@ from . import test_policy
 from . import test_pagos
 from . import test_menu
 from . import test_reconcile
+from . import test_ruido

@@ -2,8 +2,11 @@
 """Comparación SAT vs Odoo: una fila por CFDI del SAT (tipos I y E) y una por
 factura publicada de Odoo que no tiene CFDI en el SAT. Vista SQL, solo lectura.
 
-Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado.
-Hallazgos: ok, monto, cancelado_sat, cancelado_odoo (solo en 'ambos').
+Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado, más
+las que quedan fuera de la conciliación (póliza, sin CFDI esperado, aún no
+extraído, antes de los datos del SAT, cancelado en el SAT sin factura).
+Hallazgos en 'ambos': ok, redondeo, terceros, borrador, moneda, monto,
+cancelado_sat, cancelado_odoo.
 """
 from odoo import fields, models, tools
 from odoo.tools.sql import column_exists, table_exists
@@ -23,10 +26,15 @@ class SatCompareLine(models.Model):
         ('poliza', 'Se registra por póliza'),
         ('sin_cfdi', 'Sin CFDI esperado'),
         ('pendiente_sat', 'Aún no extraído del SAT'),
+        ('antes_sat', 'Antes de los datos del SAT'),
+        ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
         ('ignorado', 'Ignorado'),
     ], string='Cubeta', readonly=True)
     issue = fields.Selection([
         ('ok', 'Cuadra'),
+        ('redondeo', 'Redondeo (menos de $1)'),
+        ('terceros', 'Cuadra sin los pagos a terceros'),
+        ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
@@ -37,6 +45,8 @@ class SatCompareLine(models.Model):
         ('poliza', 'Se registra por póliza'),
         ('sin_cfdi', 'Sin CFDI esperado'),
         ('pendiente_sat', 'Aún no extraído del SAT'),
+        ('antes_sat', 'Antes de los datos del SAT'),
+        ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
         ('ignorado', 'Ignorado'),
     ], string='Hallazgo', readonly=True)
     cfdi_id = fields.Many2one('sat.cfdi', string='CFDI', readonly=True)
@@ -64,6 +74,9 @@ class SatCompareLine(models.Model):
                                   help='Si la factura está en la moneda del CFDI, total × tipo de cambio '
                                        'del CFDI (para que el Δ no cargue diferencias de tipo de cambio); '
                                        'si no, el total en moneda de la compañía según Odoo.')
+    pago_terceros = fields.Float(string='Pagos a terceros', readonly=True, digits=(16, 2),
+                                 help='Líneas de la factura con productos marcados "Pago a terceros": '
+                                      'van en Odoo pero no en el CFDI del proveedor.')
     estado_sat = fields.Char(string='Estado SAT', readonly=True)
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
@@ -92,18 +105,32 @@ class SatCompareLine(models.Model):
             return 'NULL::varchar'
         return 'lower(coalesce(%s))' % ', '.join(parts)
 
+    def _terceros_sql(self):
+        """Por factura, total de las líneas de pagos a terceros (product.template
+        sat_pago_terceros). Sin la columna (aún no creada), ninguna."""
+        if not column_exists(self.env.cr, 'product_template', 'sat_pago_terceros'):
+            return 'SELECT NULL::integer AS move_id, 0::numeric AS total WHERE false'
+        return """SELECT l.move_id, abs(sum(l.price_total)) AS total
+                    FROM account_move_line l
+                    JOIN product_product pp ON pp.id = l.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                   WHERE pt.sat_pago_terceros AND l.display_type = 'product'
+                   GROUP BY l.move_id"""
+
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
         mx_id = self.env.ref('base.mx').id
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS
-            WITH odoo AS (
+            WITH terceros AS (%s),
+            odoo AS (
                 SELECT m.id AS move_id, m.company_id, m.commercial_partner_id AS partner_id,
                        m.move_type, m.state, m.payment_state, m.invoice_date AS fecha,
                        abs(m.amount_total) AS total_odoo,
                        abs(m.amount_total_signed) AS total_odoo_mxn,
                        cur.name AS moneda_odoo, m.name AS move_name,
                        %s AS odoo_uuid,
+                       coalesce(t.total, 0) AS pago_terceros,
                        -- sin CFDI esperado: política del contacto o contacto extranjero
                        (cp.sat_cfdi_policy = 'sin_cfdi'
                         OR (cp.country_id IS NOT NULL AND cp.country_id <> %s)) AS sin_cfdi,
@@ -111,8 +138,10 @@ class SatCompareLine(models.Model):
                   FROM account_move m
                   LEFT JOIN res_currency cur ON cur.id = m.currency_id
                   LEFT JOIN res_partner cp ON cp.id = m.commercial_partner_id
+                  LEFT JOIN terceros t ON t.move_id = m.id
                  WHERE m.move_type IN ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
-                   AND m.state IN ('posted', 'cancel')
+                   -- con borradores: un CFDI ligado a un borrador es 'borrador', no 'monto'
+                   AND m.state IN ('posted', 'cancel', 'draft')
             ),
             -- Hasta qué fecha tenemos datos del SAT por compañía y sentido: el
             -- timbrado más reciente que Syntage ya entregó. Una factura de Odoo
@@ -135,9 +164,12 @@ class SatCompareLine(models.Model):
                        CASE WHEN o.moneda_odoo = coalesce(c.moneda, 'MXN')
                             THEN o.total_odoo * coalesce(nullif(c.tipo_cambio, 0), 1)
                             ELSE o.total_odoo_mxn END AS total_odoo_mxn,
+                       o.pago_terceros,
                        c.estado_sat, o.state AS state_odoo, o.payment_state, o.move_name,
                        CASE WHEN c.match_status = 'ignorado' THEN 'ignorado'
                             WHEN c.move_id IS NOT NULL THEN 'ambos'
+                            -- cancelado y sin factura: SAT y Odoo coinciden, no hay nada que hacer
+                            WHEN c.estado_sat = 'cancelado' THEN 'cancelado_sin_factura'
                             WHEN sp.sat_cfdi_policy = 'poliza' THEN 'poliza'
                             ELSE 'solo_sat' END AS bucket,
                        c.suggested_move_id
@@ -152,9 +184,12 @@ class SatCompareLine(models.Model):
                        CASE WHEN o.move_type IN ('out_refund', 'in_refund') THEN 'E' ELSE 'I' END,
                        o.company_id, o.partner_id, upper(p.vat), p.name, o.fecha,
                        o.moneda_odoo, o.moneda_odoo,
-                       NULL, o.total_odoo, NULL, o.total_odoo_mxn,
+                       NULL, o.total_odoo, NULL, o.total_odoo_mxn, o.pago_terceros,
                        NULL, o.state, o.payment_state, o.move_name,
-                       CASE WHEN o.odoo_uuid IS NOT NULL AND h.hasta IS NOT NULL AND o.fecha >= h.hasta
+                       -- Antes del primer día con datos del SAT no hay contra qué comparar
+                       CASE WHEN co.sat_data_since IS NOT NULL AND o.fecha < co.sat_data_since
+                                 THEN 'antes_sat'
+                            WHEN o.odoo_uuid IS NOT NULL AND h.hasta IS NOT NULL AND o.fecha >= h.hasta
                                  THEN 'pendiente_sat'
                             WHEN o.odoo_uuid IS NOT NULL THEN 'solo_odoo'
                             WHEN o.sin_cfdi THEN 'sin_cfdi'
@@ -180,7 +215,7 @@ class SatCompareLine(models.Model):
             SELECT CASE WHEN r.cfdi_id IS NOT NULL THEN r.cfdi_id * 2 ELSE r.move_id * 2 + 1 END AS id,
                    r.cfdi_id, r.move_id, r.uuid, r.direction, r.tipo, r.company_id, r.partner_id,
                    r.counterparty_rfc, r.counterparty_name, r.fecha, r.moneda, r.moneda_odoo,
-                   r.total_sat, r.total_odoo, r.total_sat_mxn, r.total_odoo_mxn,
+                   r.total_sat, r.total_odoo, r.total_sat_mxn, r.total_odoo_mxn, r.pago_terceros,
                    r.estado_sat, r.state_odoo, r.payment_state, r.move_name, r.bucket, r.suggested_move_id,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
                    date_trunc('month', r.fecha)::date AS mes,
@@ -191,15 +226,23 @@ class SatCompareLine(models.Model):
                    CASE WHEN r.bucket <> 'ambos' THEN r.bucket
                         WHEN r.estado_sat = 'cancelado' AND r.state_odoo = 'posted' THEN 'cancelado_sat'
                         WHEN r.estado_sat <> 'cancelado' AND r.state_odoo = 'cancel' THEN 'cancelado_odoo'
+                        WHEN r.state_odoo = 'draft' THEN 'borrador'
                         WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo THEN 'moneda'
-                        -- al centavo: un centavo de redondeo se tolera, dos ya no
-                        WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0)) > 0.015 THEN 'monto'
-                        ELSE 'ok' END AS issue
+                        -- al centavo: un centavo de redondeo se tolera; de dos centavos a
+                        -- menos de un peso es redondeo de captura, fuera de los hallazgos
+                        WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0)) <= 0.015 THEN 'ok'
+                        WHEN abs(coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0)) < 1 THEN 'redondeo'
+                        -- la diferencia son exactamente las líneas de pagos a terceros
+                        WHEN r.pago_terceros > 0
+                             AND abs(coalesce(r.total_sat, 0) - (coalesce(r.total_odoo, 0) - r.pago_terceros)) <= 0.015
+                             THEN 'terceros'
+                        ELSE 'monto' END AS issue
               FROM (SELECT rows.*,
-                           CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat') THEN 0
+                           CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat',
+                                                     'antes_sat', 'cancelado_sin_factura') THEN 0
                                 WHEN rows.tipo = 'E' THEN -1 ELSE 1 END AS signo
                       FROM rows) r
-        """ % (self._table, self._odoo_uuid_sql(), mx_id))
+        """ % (self._table, self._terceros_sql(), self._odoo_uuid_sql(), mx_id))
 
     def action_accept_suggestion(self):
         self.ensure_one()

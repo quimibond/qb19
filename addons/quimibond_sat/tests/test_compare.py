@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Comparación al centavo: tolerancia de un centavo, moneda distinta y
+"""Comparación al centavo: tolerancia de un centavo, redondeo, moneda distinta y
 columnas en MXN (tipo de cambio del CFDI)."""
 from odoo.tests import tagged
 
@@ -21,7 +21,9 @@ class TestSatCompare(SatCommon):
         self.env.invalidate_all()
         return self.env['sat.compare.line'].search([('uuid', '=', uuid)], limit=1)
 
-    def test_one_cent_tolerated_two_cents_not(self):
+    def test_one_cent_tolerated_two_cents_rounding(self):
+        # Desde 1.19.0, de dos centavos a menos de un peso es 'redondeo' (fuera
+        # de los hallazgos); 'monto' empieza en un peso (test_ruido).
         bill_a = self._invoice(self.proveedor, 1000.00, day='2026-04-10')
         bill_b = self._invoice(self.proveedor, 2000.00, day='2026-04-11')
         a = self._upsert(syntage_invoice(UUID_A, total=1000.01, issuedAt='2026-04-10 12:00:00'))
@@ -30,10 +32,10 @@ class TestSatCompare(SatCommon):
         b.write({'move_id': bill_b.id})
         self.assertEqual(a.issue, 'ok')
         self.assertAlmostEqual(a.amount_diff, 0.01, places=2)
-        self.assertEqual(b.issue, 'monto')
+        self.assertEqual(b.issue, 'redondeo')
         self.assertEqual(self._row(UUID_A).issue, 'ok')
         row_b = self._row(UUID_B)
-        self.assertEqual(row_b.issue, 'monto')
+        self.assertEqual(row_b.issue, 'redondeo')
         self.assertAlmostEqual(row_b.amount_diff, 0.02, places=2)
         self.assertAlmostEqual(row_b.delta, 0.02, places=2)
 
