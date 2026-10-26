@@ -22,6 +22,8 @@ def migrate(cr, version):
                             GROUP BY move_id HAVING count(*) > 1)
     """)
     ids = {row[0] for row in cr.fetchall()}
+    cr.execute("SELECT id FROM sat_cfdi WHERE issue = 'moneda'")
+    ids |= {row[0] for row in cr.fetchall()}
     if column_exists(cr, 'account_move', 'l10n_mx_edi_cfdi_uuid'):
         cr.execute("""
             SELECT c.id FROM sat_cfdi c

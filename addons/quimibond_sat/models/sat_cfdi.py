@@ -133,6 +133,7 @@ class SatCfdi(models.Model):
         ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
+        ('moneda_ok', 'Cuadra en pesos (otra moneda)'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('ignorado', 'Ignorado'),
@@ -209,7 +210,7 @@ class SatCfdi(models.Model):
 
     @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'move_id.currency_id',
                  'move_id.invoice_line_ids.price_total', 'move_id.invoice_line_ids.product_id',
-                 'estado_sat', 'total', 'moneda', 'match_status')
+                 'move_id.amount_total_signed', 'estado_sat', 'total', 'moneda', 'tipo_cambio', 'match_status')
     def _compute_issue(self):
         tol = self.AMOUNT_TOLERANCE + 1e-6
         for rec in self:
@@ -227,7 +228,11 @@ class SatCfdi(models.Model):
             elif move.state == 'draft':
                 rec.issue = 'borrador'
             elif move.currency_id.name != (rec.moneda or 'MXN'):
-                rec.issue = 'moneda'
+                # Compra de divisas: el banco timbra en pesos y la factura va en
+                # dólares. Si en pesos cuadran (al peso), no es hallazgo.
+                sat_mxn = rec.total * (rec.tipo_cambio or 1.0)
+                odoo_mxn = abs(move.amount_total_signed)
+                rec.issue = 'moneda_ok' if abs(sat_mxn - odoo_mxn) <= self.ROUNDING_TOLERANCE else 'moneda'
             elif abs(rec.amount_diff) <= tol:
                 rec.issue = 'ok'
             elif abs(rec.amount_diff) < self.ROUNDING_TOLERANCE:

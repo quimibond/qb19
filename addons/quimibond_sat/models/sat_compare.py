@@ -40,6 +40,7 @@ class SatCompareLine(models.Model):
         ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
+        ('moneda_ok', 'Cuadra en pesos (otra moneda)'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('solo_sat', 'Falta en Odoo'),
@@ -273,6 +274,9 @@ class SatCompareLine(models.Model):
                         WHEN r.estado_sat = 'cancelado' AND r.state_odoo = 'posted' THEN 'cancelado_sat'
                         WHEN r.estado_sat <> 'cancelado' AND r.state_odoo = 'cancel' THEN 'cancelado_odoo'
                         WHEN r.state_odoo = 'draft' THEN 'borrador'
+                        -- otra moneda: si en pesos cuadran (compra de divisas), no es hallazgo
+                        WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo
+                             AND abs(coalesce(r.total_sat_mxn, 0) - coalesce(r.total_odoo_mxn, 0)) <= 1 THEN 'moneda_ok'
                         WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo THEN 'moneda'
                         -- al centavo: un centavo de redondeo se tolera; de dos centavos a
                         -- menos de un peso es redondeo de captura, fuera de los hallazgos

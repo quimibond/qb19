@@ -19,7 +19,7 @@
             <list decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
                   decoration-warning="issue in ('monto', 'moneda', 'borrador')"
                   decoration-info="issue == 'solo_sat'"
-                  decoration-muted="issue in ('ignorado', 'cancelado_sin_factura', 'redondeo', 'terceros')">
+                  decoration-muted="issue in ('ignorado', 'cancelado_sin_factura', 'redondeo', 'terceros', 'moneda_ok')">
                 <field name="fecha_emision"/>
                 <field name="name"/>
                 <field name="tipo"/>

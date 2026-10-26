@@ -48,6 +48,15 @@ class TestSatVarios(SatCommon):
         self.assertIn('XML cruzado', wrong.note)
         self.assertEqual(right.issue, 'ok')
 
+    def test_currency_purchase_matches_in_pesos(self):
+        """Compra de dólares: el banco timbra en pesos, la factura en USD.
+        Al tipo de Odoo (1 USD = 20 MXN) cuadran en pesos: no es hallazgo."""
+        bill = self._invoice(self.proveedor, 105000.0, currency=self.usd)
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=2100000.0))
+        cfdi.write({'move_id': bill.id})
+        self.assertEqual(cfdi.issue, 'moneda_ok')
+        self.assertEqual(self._rows([UUID_A]).issue, 'moneda_ok')
+
     def test_cfdi_split_in_two_bills(self):
         self._require_mx_edi()
         big = self._invoice(self.proveedor, 124634.60, uuid=UUID_C)
