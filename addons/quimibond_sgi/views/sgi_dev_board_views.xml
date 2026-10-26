@@ -65,7 +65,7 @@
         <field name="model">project.project</field>
         <field name="priority">50</field>
         <field name="arch" type="xml">
-            <list string="Desarrollos de producto" editable="bottom" create="0" default_order="sgi_dev_stage_seq, sgi_ft_folio desc, id desc"
+            <list string="Desarrollos de producto" editable="bottom" create="0" default_order="stage_id, sgi_ft_folio desc, id desc"
                   decoration-danger="sgi_dev_missing_partner">
                 <field name="sgi_ft_folio" readonly="1"/>
                 <field name="name" readonly="1"/>

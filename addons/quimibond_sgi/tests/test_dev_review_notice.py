@@ -98,3 +98,23 @@ class TestDevReviewNotice(TransactionCase):
         self.dev.write({'sgi_dev_analysis_result': 'nuevo'})
         self.assertFalse(self._open('revisar'))
         self.assertEqual(len(self._open('checklist', self.u_procesos)), 1)
+
+    def test_03_entering_analysis_notifies_design(self):
+        """57.191.0: al pasar a «Análisis» sin resultado avisa a Diseño de Producto y de Procesos; se marca hecha al
+        registrar el resultado."""
+        solicitud, analisis = self.Project._sgi_dev_stage('solicitud'), self.Project._sgi_dev_stage('analisis')
+        if not (solicitud and analisis):
+            self.skipTest("La base no tiene las etapas de desarrollo.")
+        self.dev.write({'stage_id': solicitud.id})
+        self.assertFalse(self._open('analisis'))
+        self.dev.write({'stage_id': analisis.id})
+        self.assertEqual(len(self._open('analisis', self.u_producto)), 1)
+        self.assertEqual(len(self._open('analisis', self.u_procesos)), 1)
+        self.assertEqual(self._open('analisis', self.u_producto).date_deadline, self.dev._sgi_dev_c1_deadline('C1.02'))
+        self.dev.write({'stage_id': solicitud.id})
+        self.dev.write({'stage_id': analisis.id})
+        self.assertEqual(len(self._open('analisis', self.u_producto)), 1, "No se repite una abierta.")
+        self.dev.with_user(self.u_producto).write({'sgi_dev_analysis_result': 'nuevo'})
+        self.assertFalse(self._open('analisis'))
+        self.assertTrue(self._done('analisis'))
+        self.assertEqual(len(self._open('checklist', self.u_procesos)), 1)

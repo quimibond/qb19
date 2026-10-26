@@ -13,6 +13,81 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.192.0 — 2026-10-26
+
+Dirección General 2026-10-26: «Regenerar artículos» en el proyecto 504
+(base WJ060Q21JNT175, acabado WJ053Q21JNT178) creó los crudos WJ042Q21HNT112
+y WJ042Q21INT112 con el peso estimado en proporción, cuando el acabado
+WJ053Q21JNT178 ya existía y consume el teñido WJ047Q21INT112 y el crudo
+WJ047Q21HNT112. El crudo debe salir de los códigos de crudo que ya existen.
+De paso, las características del desarrollo no pasaban a la ficha técnica.
+
+**Cambiado**
+- Generar desde el artículo base (`models/sgi_dev_product_base.py`): el peso
+  del acabado ya no cambia crudo ni teñido (lo da el acabado: rama y ancho);
+  se quitó el peso «estimado en proporción». Crudo y teñido cambian solo con
+  composición, dibujo, hilo, galga, ancho crudo y, el teñido, con el color.
+- Si el acabado que pide el proyecto ya existe con lista de materiales, se
+  ligan el teñido y el crudo que él consume.
+- Si el crudo tiene que cambiar y su código no existe, se toma el crudo
+  existente con las mismas claves y el peso más cercano al del base (el
+  chatter dice cuáles más hay); solo si no hay ninguno se crea.
+- Al ligar un nivel cuya lista consume otro insumo distinto al ligado abajo,
+  el chatter lo marca «Atención».
+- Los códigos propuestos de la pestaña Cotización salen del mismo plan que
+  «Generar artículos» (antes el crudo salía con el peso del acabado).
+
+**Agregado**
+- «Crudo de tejido» (`sgi_dev_tejido_id`, pestaña Cotización, opcional):
+  Diseño elige un crudo existente; «Generar» y «Regenerar artículos» lo ligan
+  y arman el teñido con su código (la cantidad del insumo queda por capturar
+  si cambia el peso o el ancho). También lo usa el generador por claves.
+- Las características del desarrollo pasan a la ficha de acabado
+  (`models/sgi_dev_release_specs.py`): al pasar el proyecto a Liberado y con
+  «Pasar características a la ficha» (pestaña Muestra), cada renglón con
+  especificación del cliente se copia a `ficha.tecnica.spec` de la ficha de
+  acabado del artículo (especificación, control interno, método, cliente y
+  certificado). Solo agrega lo que la ficha no tiene; nunca pisa. Sin ficha
+  de acabado, el chatter lo dice y la liberación sigue.
+- Pruebas: `test_09_peso_no_inventa_crudo_y_acabado_existente_manda`,
+  `test_10_crudo_de_tejido_elegido_y_crudo_existente`,
+  `test_06_caracteristicas_a_la_ficha_al_liberar`; `test_06` de generación
+  ajustada al peso que ya no baja al crudo.
+
+## 19.0.57.191.0 — 2026-10-26
+
+Dirección General 2026-10-26: al pasar un desarrollo a «Análisis» no le
+llegaba nada a Diseño de Producto ni a Diseño de Procesos (proyecto 630,
+SHAWMUT, scrim 38 g a 1.65 m). El primer aviso del ciclo salía hasta que
+Producto registraba el resultado del análisis, y los recordatorios por horas
+del escalamiento siguen apagados (parámetros vacíos).
+
+**Agregado**
+- Paso 0 del ciclo de avisos (`models/sgi_dev_review_notice.py`): cuando el
+  proyecto entra a «Análisis» sin resultado, actividad «Analizar la solicitud
+  del cliente» a quien ejecuta C1.02 (Diseño de Producto) y C1.03 (Diseño de
+  Procesos), leídos de la ficha de C1 en el SGI, con el plazo de C1.02. No se
+  repite si ya hay una abierta. Se marca hecha al registrar el resultado del
+  análisis; si el resultado es producto nuevo, Procesos recibe enseguida
+  «Contestar checklist de factibilidad», como antes.
+- Prueba `test_03_entering_analysis_notifies_design`.
+
+**Migración**
+- `migrations/19.0.57.191.0/post-migrate.py`: agenda el aviso para los
+  desarrollos que ya están en «Análisis» sin resultado (en producción, el
+  630). No cambia etapa ni datos.
+
+## 19.0.57.190.1 — 2026-10-26
+
+**Corregido**
+- La lista **Desarrollos de producto** (tablero de C1) no abría en producción:
+  «Cannot convert project.project.sgi_dev_stage_seq to SQL because it is not
+  stored». Su `default_order` usaba `sgi_dev_stage_seq`, que es calculado y no
+  se guarda. Ahora ordena por `stage_id`: las etapas de desarrollo tienen
+  secuencia en el mismo orden (110 a 190), así que la lista queda igual.
+  Revisadas las demás vistas del repo: ninguna otra ordena por un campo sin
+  guardar.
+
 ## 19.0.57.190.0 — 2026-10-23
 
 Dirección General 2026-10-23 (C1, pestaña Cotización): se eligió mal el
