@@ -9,6 +9,11 @@
                 <field name="project_id" readonly="state != 'borrador'"/>
                 <field name="project_revision" invisible="not project_id"/>
             </xpath>
+            <xpath expr="//div[field[@name='consumo_alerta']]" position="after">
+                <div class="alert alert-warning" role="alert" invisible="not bano_alerta">
+                    <field name="bano_alerta" readonly="1" class="oe_inline"/>
+                </div>
+            </xpath>
             <xpath expr="//field[@name='solicitada_el']" position="after">
                 <field name="approval_request_id"/>
                 <field name="approval_request_status" invisible="not approval_request_id"/>

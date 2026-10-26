@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+
+## 19.0.57.194.0 — 2026-10-26
+
+Dirección General 2026-10-26: el mínimo de baño es **de cada jet**, no un número general. TINTORERIA 4 (Jet 4) =
+150 kg.
+
+**Agregado**
+- `project._sgi_dev_min_bath()`: (kg, de dónde sale). El parámetro de máquina «Mínimo de baño» (`minimo_bano`, kg)
+  del tipo Tintorería en la ficha de la máquina. Manda el menor de los jets de la ruta del artículo teñido; si la
+  ruta no tiene jet con mínimo, el parámetro general (Ajustes → SGI); si tampoco, el menor de los jets de la planta.
+
+**Cambiado**
+- La cantidad sugerida de la corrida de muestra usa ese mínimo y dice de qué jet sale. La ayuda del parámetro
+  general lo explica. La cotización (qb_costeo_sgi 1.8.0) avisa si el lote mínimo no llena un baño.
+
+**Datos de producción**
+- Parámetro «Mínimo de baño» (kg, de la máquina) dado de alta en el tipo Tintorería y 150 kg en la configuración
+  vigente de TINTORERIA 4 (por MCP, 2026-10-26).
+
+Prueba `test_dev_sample.test_01b` (Odoo.sh).
+
 ## 19.0.57.193.0 — 2026-10-26
 
 Dirección General 2026-10-26: la tintorería es una operación de la lista de

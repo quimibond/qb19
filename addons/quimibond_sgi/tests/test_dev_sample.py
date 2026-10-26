@@ -115,6 +115,34 @@ class TestDevSample(TransactionCase):
         qty, note = dev._sgi_dev_sample_suggestion(self.tela)
         self.assertAlmostEqual(qty, 100.0 * rend, places=3, msg="El mínimo de baño gana si lleva teñido")
 
+    def test_01b_minimo_de_bano_del_jet(self):
+        """57.194.0: el mínimo de baño es del jet (ficha de la máquina); el de la ruta manda sobre el general."""
+        from datetime import date
+        kg = self.env.ref('uom.product_uom_kgm')
+        tipo = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
+        Param = self.env['ficha.tecnica.maquina.parametro']
+        minimo = Param.search([('tipo_id', '=', tipo.id), ('code', '=', 'minimo_bano')], limit=1) or Param.create(
+            {'tipo_id': tipo.id, 'code': 'minimo_bano', 'name': 'Mínimo de baño', 'unit': 'kg', 'kind': 'num',
+             'ambito': 'maquina', 'sequence': 60})
+        jet = self.env['mrp.workcenter'].create({'name': 'JET 4 prueba muestra', 'ft_tipo_id': tipo.id})
+        self.env['ficha.tecnica.maquina.config'].create({
+            'workcenter_id': jet.id, 'date_from': date(2020, 1, 1),
+            'valor_ids': [(0, 0, {'parametro_id': minimo.id, 'valor': 150.0})]})
+        tenido = self.env['product.product'].create({'name': 'teñido muestra', 'default_code': 'WJ150Q28IVH170X',
+                                                     'type': 'consu', 'is_storable': True, 'uom_id': kg.id})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1, 'product_uom_id': kg.id})],
+            'operation_ids': [(0, 0, {'name': 'Teñir', 'workcenter_id': jet.id, 'time_cycle_manual': 60})]})
+        dev = self._dev(sgi_dev_product_tenido_id=tenido.id)
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_MIN_BATH_KG, '100')
+        bath, src = dev._sgi_dev_min_bath()
+        self.assertEqual(bath, 150.0, "El jet de la ruta manda sobre el parámetro general")
+        self.assertIn('JET 4 prueba muestra', src)
+        qty, note = dev._sgi_dev_sample_suggestion(self.tela)
+        self.assertAlmostEqual(qty, 150.0 * dev._sgi_dev_yield_m_per_kg(), places=3)
+        self.assertIn('150 kg (JET 4 prueba muestra', note)
+
     def test_02_cadena_crudo_y_acabado_de_atras_hacia_adelante(self):
         dev = self._dev()
         wiz = self._wizard(dev)

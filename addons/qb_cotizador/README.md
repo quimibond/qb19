@@ -17,8 +17,19 @@ cotizador anterior».
 2. **Calcular costo**: toma la fila de `qb.costo.unitario` del producto (o del
    hermano) en el último período cerrado (si no hay ninguno cerrado, el último
    con costos, marcado provisional) y la guarda como foto, con calidad y
-   fuente. Un desarrollo sin receta se captura a mano (fuente «manual»). Sin
-   costo calculado no hay semáforo ni márgenes.
+   fuente. Un desarrollo sin receta se captura a mano (fuente «manual», que
+   deja la foto en blanco al elegirla). Sin costo calculado no hay semáforo ni
+   márgenes.
+   **Receta del desarrollo** (1.7.0): el artículo nuevo que todavía no tiene
+   costo se costea con su lista de materiales, explotada hasta lo comprado
+   (acabado → teñido → crudo; una fórmula de tintorería → sus químicos). Un
+   componente con costo en el período entra con ese costo; uno comprado, al
+   precio de compra del período o a su costo estándar (dicho en el desglose).
+   La conversión sale de las horas de la ruta × la tarifa del centro; un
+   centro sin horas hereda la conversión por kg de tela del hermano. El
+   rendimiento es el del hermano y la calidad, media. Si el consumo de tela por
+   unidad se aleja más de 10 % del hermano ajustado por ancho y gramaje, la
+   cotización avisa.
    **La foto va en la unidad del volumen** (m o kg): si el costo del producto
    está en la otra unidad, se convierte con los kg por metro del costo o, si no
    los trae, con el gramaje × ancho de la cotización; sin ninguno no calcula.

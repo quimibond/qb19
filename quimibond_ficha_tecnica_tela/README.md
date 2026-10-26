@@ -739,3 +739,10 @@ técnica de tintorería F-P-D01-33 queda así:
   la fórmula y auxiliares, que son los componentes asignados a la operación de tintorería. Mientras el teñido
   siga como artículo aparte (posición 9 = I), la fórmula sale de su lista (sin la tela). Avisa si la lista no
   tiene ni jet ni fórmula, si el jet no tiene componentes o si el artículo no tiene datos en ningún jet.
+
+## Longitud de malla con 3 decimales (2.16.1, 2026-10-26)
+
+`longitud_malla_polea1`, `longitud_malla_polea2` y `longitud_malla_tol` llevan `digits=(16, 3)`. El valor ya se
+guardaba completo, pero la ficha lo mostraba con 2 decimales: NN053Q66HNT098 se veía 0.21 / 0.35 / +/- 0.00 en
+lugar de 0.205 / 0.353 ± 0.002 cm. Sin migración (solo cambia cómo se muestra). Control del desarrollo
+(`sgi.dev.process.reading`) ya daba el texto con `%g` y no cambia. Prueba `tests/test_longitud_malla.py`.
