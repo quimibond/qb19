@@ -706,3 +706,19 @@ Tubular o abierta depende de cómo enrolla la máquina, no del artículo
 - Efecto en tintorería: el grupo de cargas del jet sale bien (WD040 pasa de
   «fuera de los grupos: capacidad general» al grupo C).
 - Pruebas: `tests/test_rendimiento.py` (`test_03_salida_de_la_tela_de_la_maquina`).
+
+## Medición del ancho fijada en la ficha (2.15.0, 2026-10-26)
+
+Revisado contra las órdenes de trabajo del último año: un mismo artículo se teje en circulares tubulares y abiertas,
+y su ancho sigue la especificación del artículo, no la máquina. WJ044Q22HNT235 (2.30 m de tela abierta según el
+listado de Calidad) se tejió ~1,970 veces en abiertas (28, 31–35) y 74 en tubulares (17, 18, 19, 25, 26);
+WC090Q11HNT092 (92 cm, rinde como tubo: ~5.9 m/kg acabado) 341 veces en la 23, marcada abierta; WJ047Q21HNT112
+(112 cm de tubo) también en la 32, 33 y 35.
+
+- **«Fijar medición del ancho»** (`salida_tela_ficha`, Tubo aplanado / Tela abierta) en la ficha de tejido: si
+  se llena, manda; si está vacío, la ficha sigue a la «Salida de la tela» de su máquina.
+- **«Ancho medido como»** (`salida_tela`, calculado y guardado) es el que usa el rendimiento: lo fijado en la
+  ficha o el dato de la máquina. Se separan en dos campos para que el formulario no fije nada por su cuenta al
+  cambiar la máquina.
+- Sin migración: las fichas existentes siguen a su máquina hasta que se fije algo.
+- Pruebas: `tests/test_rendimiento.py` (`test_04_medicion_del_ancho_fijada_en_la_ficha`).

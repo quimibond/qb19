@@ -214,24 +214,98 @@ class TestDevProduct(TransactionCase):
             self.dev.action_sgi_dev_regenerate_products()
 
     def test_06_generate_from_base_peso_y_ancho_crudo(self):
-        # Cambian peso y ancho crudo: los tres niveles cambian; el peso de crudo y teñido se estima en proporción.
+        # 57.192.0: el peso es del acabado; crudo y teñido cambian solo por el ancho crudo y conservan el peso del base.
         crudo, tenido, acabado, engomado, formula = self._base_chain()
         dev = self.Project.create({
             'name': 'base2', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_product_name': 'Jersey 60',
             'sgi_dev_analysis_result': 'nuevo', 'sgi_dev_base_product_id': acabado.id,
             'sgi_dev_code_color_id': self._clave('color', 'NT').id,
             'sgi_dev_code_peso': 60, 'sgi_dev_code_ancho': 160, 'sgi_dev_code_ancho_crudo': 200})
+        self.assertEqual((dev.sgi_dev_code_crudo, dev.sgi_dev_code_acabado_code), ('WJ044Q22HNT200', 'WJ060Q22JNT160'),
+                         "Los códigos propuestos salen del mismo plan que «Generar artículos»")
         dev.action_sgi_dev_generate_products()
-        self.assertEqual(dev.sgi_dev_product_crudo_id.default_code, 'WJ050Q22HNT200', "44 × 60 / 53 ≈ 50, ancho crudo 200")
-        self.assertEqual(dev.sgi_dev_product_tenido_id.default_code, 'WJ050Q22INT200')
+        self.assertEqual(dev.sgi_dev_product_crudo_id.default_code, 'WJ044Q22HNT200', "Peso del base, ancho crudo 200")
+        self.assertEqual(dev.sgi_dev_product_tenido_id.default_code, 'WJ044Q22INT200')
         self.assertEqual(dev.sgi_dev_product_id.default_code, 'WJ060Q22JNT160')
         bom_c = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_crudo_id)[dev.sgi_dev_product_crudo_id]
         self.assertTrue(bom_c.operation_ids, "Las operaciones del crudo se copian")
-        self.assertTrue(all(bom_c.bom_line_ids.mapped('sgi_dev_pending')), "El hilo depende del peso: por capturar")
+        self.assertTrue(all(bom_c.bom_line_ids.mapped('sgi_dev_pending')), "El hilo depende del ancho: por capturar")
         bom_a = self.env['mrp.bom']._bom_find(dev.sgi_dev_product_id)[dev.sgi_dev_product_id]
         self.assertTrue(bom_a.bom_line_ids.filtered(lambda l: l.product_id == dev.sgi_dev_product_tenido_id).sgi_dev_pending,
                         "La cantidad del insumo depende del peso: por capturar")
-        self.assertIn('estimado', dev.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body)
+        self.assertNotIn('estimado', dev.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body)
+
+    def _dev_from_base(self, base, **vals):
+        return self.Project.create(dict({
+            'name': 'base504', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_product_name': 'Jersey 53',
+            'sgi_dev_analysis_result': 'nuevo', 'sgi_dev_base_product_id': base.id,
+            'sgi_dev_code_composicion_id': self._clave('composicion', 'W').id,
+            'sgi_dev_code_dibujo_id': self._clave('dibujo', 'J').id,
+            'sgi_dev_code_hilo_id': self._clave('hilo', 'Q').id,
+            'sgi_dev_code_color_id': self._clave('color', 'NT').id,
+            'sgi_dev_code_galga': 18, 'sgi_dev_code_ancho_crudo': 185}, **vals))
+
+    def test_09_peso_no_inventa_crudo_y_acabado_existente_manda(self):
+        """57.192.0 (proyecto 504): otro peso y otro ancho acabado no inventan crudo; si el acabado ya existe, se
+        ligan el teñido y el crudo que él consume."""
+        P = self.env['product.product'].with_context(active_test=False)
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        dev = self._dev_from_base(acabado, sgi_dev_code_peso=50, sgi_dev_code_ancho=170)
+        dev.action_sgi_dev_generate_products()
+        self.assertEqual((dev.sgi_dev_product_crudo_id, dev.sgi_dev_product_tenido_id), (crudo, tenido),
+                         "El peso del acabado no cambia el tejido: se ligan crudo y teñido del base")
+        self.assertEqual(dev.sgi_dev_product_id.default_code, 'WJ050Q22JNT170')
+        self.assertFalse(P.search_count([('default_code', '=like', 'WJ04_Q22HNT185'), ('id', '!=', crudo.id)]))
+        # El acabado que pide el proyecto ya existe y consume otro teñido (y otro crudo): esos mandan.
+        kg = self.env.ref('uom.product_uom_kgm')
+        otro_c = P.create({'name': 'Crudo 47', 'default_code': 'WJ047Q22HNT185', 'type': 'consu', 'uom_id': kg.id})
+        otro_t = P.create({'name': 'Teñido 47', 'default_code': 'WJ047Q22INT185', 'type': 'consu', 'uom_id': kg.id})
+        existente = P.create({'name': 'Acabado 53', 'default_code': 'WJ053Q22JNT178', 'type': 'consu',
+                              'uom_id': acabado.uom_id.id})
+        Bom = self.env['mrp.bom']
+        Bom.create({'product_tmpl_id': otro_t.product_tmpl_id.id, 'product_qty': 1,
+                    'bom_line_ids': [(0, 0, {'product_id': otro_c.id, 'product_qty': 1.0})]})
+        Bom.create({'product_tmpl_id': existente.product_tmpl_id.id, 'product_qty': 1,
+                    'bom_line_ids': [(0, 0, {'product_id': otro_t.id, 'product_qty': 0.098})]})
+        dev2 = self._dev_from_base(acabado, sgi_dev_code_peso=53, sgi_dev_code_ancho=178)
+        self.assertEqual(dev2.sgi_dev_code_crudo, 'WJ047Q22HNT185')
+        dev2.action_sgi_dev_generate_products()
+        self.assertEqual((dev2.sgi_dev_product_crudo_id, dev2.sgi_dev_product_tenido_id, dev2.sgi_dev_product_id),
+                         (otro_c, otro_t, existente))
+        body = dev2.message_ids.filtered(lambda m: 'Artículos generados' in (m.body or ''))[:1].body
+        self.assertIn('acabado existente WJ053Q22JNT178', body)
+        self.assertNotIn('Atención', body, "La lista del acabado existente consume el teñido ligado")
+
+    def test_10_crudo_de_tejido_elegido_y_crudo_existente(self):
+        """57.192.0: Diseño elige el crudo; el teñido se arma con su código. Si el crudo tiene que cambiar y su código
+        no existe, se toma un crudo existente con las mismas claves."""
+        P = self.env['product.product'].with_context(active_test=False)
+        kg = self.env.ref('uom.product_uom_kgm')
+        crudo, tenido, acabado, engomado, formula = self._base_chain()
+        elegido = P.create({'name': 'Crudo 40', 'default_code': 'WJ040Q22HNT185', 'type': 'consu', 'uom_id': kg.id})
+        dev = self._dev_from_base(acabado, sgi_dev_code_peso=53, sgi_dev_code_ancho=160,
+                                  sgi_dev_code_color_id=self._clave('color', 'NG').id, sgi_dev_tejido_id=elegido.id)
+        self.assertEqual(dev.sgi_dev_code_crudo, 'WJ040Q22HNT185')
+        dev.action_sgi_dev_generate_products()
+        self.assertEqual(dev.sgi_dev_product_crudo_id, elegido)
+        new_t = dev.sgi_dev_product_tenido_id
+        self.assertEqual(new_t.default_code, 'WJ040Q22ING185', "El teñido es el crudo elegido con el color")
+        bom_t = self.env['mrp.bom']._bom_find(new_t)[new_t]
+        line = bom_t.bom_line_ids.filtered(lambda l: l.product_id == elegido)
+        self.assertTrue(line and line.sgi_dev_pending, "Entra el crudo elegido; de otro peso, su cantidad por capturar")
+        # Regenerar conserva la elección.
+        dev.action_sgi_dev_regenerate_products()
+        self.assertEqual(dev.sgi_dev_product_crudo_id, elegido)
+        # Sin elección: el ancho crudo cambia, WJ044Q22HNT200 no existe pero WJ046Q22HNT200 sí → se toma.
+        existente = P.create({'name': 'Crudo 46 a 200', 'default_code': 'WJ046Q22HNT200', 'type': 'consu',
+                              'uom_id': kg.id})
+        dev2 = self._dev_from_base(acabado, sgi_dev_code_peso=53, sgi_dev_code_ancho=160, sgi_dev_code_ancho_crudo=200)
+        dev2.action_sgi_dev_generate_products()
+        self.assertEqual(dev2.sgi_dev_product_crudo_id, existente)
+        self.assertEqual(dev2.sgi_dev_product_tenido_id.default_code, 'WJ046Q22INT200')
+        self.assertFalse(P.search_count([('default_code', '=', 'WJ044Q22HNT200')]), "No se inventa el crudo")
+        self.assertIn('crudo existente WJ046Q22HNT200', dev2.message_ids.filtered(
+            lambda m: 'Artículos generados' in (m.body or ''))[:1].body)
 
     def test_07_linea_no_genera(self):
         crudo, tenido, acabado, engomado, formula = self._base_chain()

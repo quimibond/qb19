@@ -199,6 +199,13 @@ class ProjectProjectDevCode(models.Model):
                                                help="Artículo crudo (H) del desarrollo.")
     sgi_dev_product_tenido_id = fields.Many2one('product.product', string="Artículo teñido", copy=False,
                                                 help="Artículo teñido (I) del desarrollo.")
+    # 57.192.0: el crudo sale de los códigos de crudo que ya existen (posición 9 = H).
+    sgi_dev_tejido_id = fields.Many2one('product.product', string="Crudo de tejido", copy=False,
+                                        domain=[('default_code', '=like', '________H%')],
+                                        help="Opcional: el crudo (tejido) existente que usará el desarrollo. Vacío: el "
+                                             "del artículo base, o el que ya consume el acabado si su código existe. "
+                                             "«Generar» y «Regenerar artículos» lo ligan y arman el teñido con su "
+                                             "código.")
 
     @api.depends('sgi_dev_code_color_id')
     def _compute_sgi_dev_code_tenido(self):
@@ -357,6 +364,11 @@ class ProjectProjectDevCode(models.Model):
                 if role == 'tenido' and not project.sgi_dev_code_tenido:
                     continue
                 if project[field]:
+                    continue
+                if role == 'crudo' and project.sgi_dev_tejido_id:
+                    project.write({field: project.sgi_dev_tejido_id.id})
+                    project.message_post(body="Crudo: se liga el crudo de tejido elegido, %s."
+                                              % project.sgi_dev_tejido_id.default_code)
                     continue
                 code = project._sgi_dev_build_code(role, parts)
                 product = Product.with_context(active_test=False).search([('default_code', '=', code)], limit=1)

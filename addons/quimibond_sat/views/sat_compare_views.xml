@@ -20,9 +20,9 @@
         <field name="arch" type="xml">
             <list create="0" edit="0" delete="0"
                   decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
-                  decoration-warning="issue in ('monto', 'moneda', 'solo_odoo', 'solo_odoo_sin_uuid')"
+                  decoration-warning="issue in ('monto', 'moneda', 'borrador', 'solo_odoo', 'solo_odoo_sin_uuid')"
                   decoration-info="issue == 'solo_sat'"
-                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat')">
+                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat', 'antes_sat', 'cancelado_sin_factura', 'redondeo', 'terceros')">
                 <field name="cfdi_id" column_invisible="1"/>
                 <field name="move_id" column_invisible="1"/>
                 <field name="fecha"/>
@@ -37,7 +37,7 @@
                 <field name="issue"/>
                 <field name="suggested_move_id" optional="show"/>
                 <button name="action_reconcile" type="object" string="Conciliar" icon="fa-link" class="btn-primary"
-                        invisible="issue not in ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda')"/>
+                        invisible="issue not in ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda', 'borrador')"/>
                 <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
                         invisible="not suggested_move_id"/>
                 <button name="action_open_cfdi" type="object" string="CFDI" icon="fa-file-text-o" invisible="not cfdi_id"/>
@@ -51,6 +51,7 @@
                 <field name="payment_state" optional="hide"/>
                 <field name="total_sat_mxn" sum="Total SAT (MXN)" optional="hide"/>
                 <field name="total_odoo_mxn" sum="Total Odoo (MXN)" optional="hide"/>
+                <field name="pago_terceros" optional="hide"/>
                 <field name="sat_vigente" sum="SAT vigente (MXN)" optional="hide"/>
                 <field name="odoo_posted" sum="Odoo publicado (MXN)" optional="hide"/>
                 <field name="delta" sum="Δ (MXN)" optional="hide"/>
@@ -72,7 +73,7 @@
                 <filter name="mi_compania" string="Mi compañía" domain="[('company_id', 'in', allowed_company_ids)]"/>
                 <separator/>
                 <filter name="por_conciliar" string="Por conciliar"
-                        domain="[('issue', 'in', ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
+                        domain="[('issue', 'in', ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda', 'borrador', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="este_anio" string="Este año" domain="[('fecha', '>=', context_today().strftime('%Y-01-01'))]"/>
                 <separator/>
                 <filter name="issued" string="Emitidos" domain="[('direction', '=', 'issued')]"/>
@@ -82,7 +83,8 @@
                 <filter name="solo_sat" string="Solo en el SAT" domain="[('bucket', '=', 'solo_sat')]"/>
                 <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
                 <filter name="pendiente_sat" string="Aún no extraído del SAT" domain="[('bucket', '=', 'pendiente_sat')]"/>
-                <filter name="fuera" string="Fuera de conciliación" domain="[('bucket', 'in', ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat'))]"/>
+                <filter name="fuera" string="Fuera de conciliación" domain="[('bucket', 'in', ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat', 'antes_sat', 'cancelado_sin_factura'))]"/>
+                <filter name="explicadas" string="Diferencias explicadas" domain="[('issue', 'in', ('redondeo', 'terceros'))]"/>
                 <filter name="hallazgos" string="Con hallazgo"
                         domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="usd" string="En dólares" domain="[('moneda', '=', 'USD')]"/>

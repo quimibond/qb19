@@ -11,6 +11,11 @@ class ResCompany(models.Model):
         help='Si está activo, los crons de quimibond_sat descargan los CFDI de esta '
              'compañía (por su RFC) y piden la extracción diaria a Syntage.',
     )
+    sat_data_since = fields.Date(
+        string='Datos del SAT desde',
+        help='Primer día con CFDI del SAT completos (lo que Syntage extrajo). Las facturas de Odoo '
+             'anteriores no se comparan: quedan en "Antes de los datos del SAT", fuera de la '
+             'conciliación. Vacío: se compara toda la historia de Odoo.')
     sat_data_until_issued = fields.Date(
         string='Datos del SAT hasta (emitidos)', compute='_compute_sat_data_until',
         help='Timbrado más reciente de un CFDI emitido que Syntage ya entregó. Las facturas de '

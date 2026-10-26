@@ -185,3 +185,4 @@ from . import sgi_nav_links
 from . import sgi_dev_product_proceso
 from . import sgi_dev_product_regen  # 57.190.0: después de proceso (suelta también el acabado en kg)
 from . import sgi_indicator_autovalidate  # 57.176.0: va al final, después de las demás extensiones de la medición
+from . import sgi_dev_release_specs  # 57.192.0: usa la ficha de acabado de sgi_dev_fabric_sheet y el acabado en kg

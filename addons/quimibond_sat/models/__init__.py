@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from . import res_company
 from . import res_partner
+# Antes de sat_compare: la vista SQL lee la columna sat_pago_terceros.
+from . import product_template
 from . import sat_sync_log
 from . import syntage_client
 from . import sat_cfdi

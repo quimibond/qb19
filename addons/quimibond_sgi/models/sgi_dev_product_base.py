@@ -17,8 +17,22 @@ que consume el crudo WJ044Q22HNT235: 44 g/m² a 235 cm, no 53 g a 160 cm). Con a
    hilo en el crudo) se copian marcados **«Por capturar»** (``mrp.bom.line.sgi_dev_pending``);
    el proyecto los cuenta y la cotización no se manda a aprobar mientras haya pendientes.
 5. Todo queda en el chatter del proyecto. Sin artículo base, el botón sigue como antes.
+
+57.192.0 (Dirección General 2026-10-26, proyecto 504): el crudo sale de los **códigos de crudo que ya existen**, no
+se inventa. Al regenerar con el base WJ060Q21JNT175 y peso 53, Odoo creó el crudo WJ042Q21HNT112 (peso estimado en
+proporción) cuando el acabado WJ053Q21JNT178 ya existía y consume el teñido y el crudo WJ047Q21…112. Ahora:
+
+- El **peso** del acabado ya no baja a crudo ni teñido: el peso final lo da el acabado (rama, ancho); el tejido es
+  el mismo. Crudo y teñido cambian solo con composición, dibujo, hilo, galga, ancho crudo (y el teñido con el color).
+- Si el **acabado que pide el proyecto ya existe** con lista de materiales, se ligan el teñido y el crudo que él
+  consume.
+- **Crudo de tejido** (``sgi_dev_tejido_id``, opcional): Diseño elige un crudo existente y se usa ese; el teñido se
+  arma con su código.
+- Si el crudo tiene que cambiar y su código no existe, se busca un crudo existente con las mismas claves y otro
+  peso (el de peso más cercano al del base) antes de crear uno.
+- Los códigos propuestos de la pestaña Cotización salen del mismo plan que «Generar artículos».
 """
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_dev_product import COLORED_YARN_CODES, NATURAL_COLOR
@@ -41,7 +55,9 @@ ROLE_LABEL = {'crudo': "crudo", 'tenido': "teñido", 'proceso': "acabado en kg",
 ALL_ROLES = frozenset(ROLE_ORDER)
 # Qué niveles cambian con cada clave del proyecto.
 KEY_LEVELS = {
-    'composicion': ALL_ROLES, 'dibujo': ALL_ROLES, 'peso': ALL_ROLES, 'hilo': ALL_ROLES, 'galga': ALL_ROLES,
+    # 57.192.0: el peso es del acabado (lo da la rama); crudo y teñido no cambian con él.
+    'composicion': ALL_ROLES, 'dibujo': ALL_ROLES, 'peso': frozenset({'proceso', 'acabado'}), 'hilo': ALL_ROLES,
+    'galga': ALL_ROLES,
     'color': frozenset({'tenido', 'proceso', 'acabado'}), 'ancho': frozenset({'proceso', 'acabado'}),
     'ancho_crudo': frozenset({'crudo', 'tenido'}), 'acabado': frozenset({'proceso', 'acabado'}),
 }
@@ -54,7 +70,7 @@ FORMULA_KEYS = {
 }
 # Claves de las que depende la cantidad del insumo del nivel inferior.
 INPUT_QTY_KEYS = {
-    'crudo': frozenset(), 'tenido': frozenset({'peso', 'ancho_crudo'}),
+    'crudo': frozenset(), 'tenido': frozenset({'ancho_crudo'}),
     'proceso': frozenset({'peso', 'ancho', 'ancho_crudo'}),
     'acabado': frozenset({'peso', 'ancho', 'ancho_crudo'}),
 }
@@ -141,7 +157,11 @@ class ProjectProjectDevBase(models.Model):
         """[{'role', 'product', 'parts', 'bom', 'input_line'}] del artículo base, de abajo hacia
         arriba (crudo → teñido → acabado). Vacío si el base no sigue la regla de codificación."""
         self.ensure_one()
-        product = self.sgi_dev_base_product_id
+        return self._sgi_dev_chain_from(self.sgi_dev_base_product_id)
+
+    def _sgi_dev_chain_from(self, product):
+        """La cadena de `product` por sus listas de materiales (57.192.0: también la de un acabado existente)."""
+        self.ensure_one()
         parts = parse_code(product.default_code) if product else None
         # 57.160.0: un base en kg («I…») no da cadena (como antes): se genera por claves.
         if not parts or parts['role'] == 'proceso':
@@ -204,6 +224,112 @@ class ProjectProjectDevBase(models.Model):
     # ------------------------------------------------------------------
     # Generar desde el base
     # ------------------------------------------------------------------
+    @staticmethod
+    def _sgi_dev_level_changed(role, changed, colored_yarn):
+        """Claves que cambian el código del nivel."""
+        return {k for k in changed if role in KEY_LEVELS[k] or (k == 'color' and role == 'crudo' and colored_yarn)}
+
+    @staticmethod
+    def _sgi_dev_level_parts(parts, level_changed, keys):
+        """Las partes del código del nivel con las claves del proyecto que lo cambian."""
+        new_parts = dict(parts)
+        for key in level_changed:
+            if key == 'ancho_crudo':
+                new_parts['ancho'] = keys['ancho_crudo']
+            else:
+                new_parts[key] = keys[key]
+        return new_parts
+
+    def _sgi_dev_forced_lower(self, chain, changed, keys, colored_yarn):
+        """({papel: artículo}, por qué) de los niveles bajos que se ligan tal cual: el crudo de tejido que eligió
+        Diseño o, si el acabado que pide el proyecto ya existe, el teñido y el crudo que él consume."""
+        self.ensure_one()
+        if self.sgi_dev_tejido_id:
+            return {'crudo': self.sgi_dev_tejido_id}, "crudo de tejido elegido en el proyecto"
+        top = chain[-1]
+        if top['role'] != 'acabado':
+            return {}, ''
+        code = build_code(self._sgi_dev_level_parts(
+            top['parts'], self._sgi_dev_level_changed('acabado', changed, colored_yarn), keys))
+        if code == (top['product'].default_code or '').strip().upper():
+            return {}, ''
+        existing = self.env['product.product'].with_context(active_test=False).search(
+            [('default_code', '=', code)], limit=1)
+        if not existing:
+            return {}, ''
+        forced = {level['role']: level['product'] for level in self._sgi_dev_chain_from(existing)
+                  if level['role'] in ('crudo', 'tenido')}
+        return forced, "el que ya consume el acabado existente %s" % code
+
+    def _sgi_dev_existing_crudo(self, parts, base_parts):
+        """(crudo, otros) existentes con las mismas claves que `parts` y cualquier peso: el de peso más cercano al
+        del crudo base."""
+        self.ensure_one()
+        pattern = build_code(dict(parts, peso='___'))
+        found = self.env['product.product'].search([('default_code', '=like', pattern)])
+        found = found.filtered(lambda p: (parse_code(p.default_code) or {}).get('role') == 'crudo')
+        if not found:
+            return found, found
+        target = int(base_parts['peso']) if base_parts['peso'].isdigit() else 0
+        found = found.sorted(lambda p: (abs(int(parse_code(p.default_code)['peso'] or 0) - target), p.id))
+        return found[:1], found[1:]
+
+    def _sgi_dev_base_plan(self, chain=None):
+        """Lo que haría «Generar artículos» con el base, sin escribir nada: (pasos, cambiadas, claves). Cada paso,
+        de abajo hacia arriba: {'role', 'level', 'base', 'changed', 'code', 'product', 'how', 'notes'}, con
+        ``how`` = 'base' (se liga el del base), 'forced' (crudo elegido o el del acabado existente), 'existing'
+        (el código ya existe) o 'create'."""
+        self.ensure_one()
+        chain = self._sgi_dev_base_chain() if chain is None else chain
+        if not chain:
+            return [], set(), {}
+        Product = self.env['product.product'].with_context(active_test=False)
+        changed, keys = self._sgi_dev_changed_keys(chain)
+        colored_yarn = (keys['hilo'] or chain[-1]['parts']['hilo']) in COLORED_YARN_CODES
+        forced, why = self._sgi_dev_forced_lower(chain, changed, keys, colored_yarn)
+        base_crudo = next((level['product'] for level in chain if level['role'] == 'crudo'), None)
+        plan, actual = [], {}
+        for level in chain:
+            role, base = level['role'], level['product']
+            step = {'role': role, 'level': level, 'base': base, 'notes': [],
+                    'changed': self._sgi_dev_level_changed(role, changed, colored_yarn)}
+            if role in forced:
+                step.update(product=forced[role], code=forced[role].default_code, how='forced')
+                step['notes'].append(why)
+            else:
+                parts = self._sgi_dev_level_parts(level['parts'], step['changed'], keys)
+                crudo = actual.get('crudo')
+                crudo_parts = parse_code(crudo.default_code) if crudo else None
+                if role == 'tenido' and crudo_parts and crudo != base_crudo:
+                    # El teñido es el crudo que entra, con su color.
+                    for key in ('composicion', 'dibujo', 'peso', 'hilo', 'galga', 'ancho'):
+                        parts[key] = crudo_parts[key]
+                code = build_code(parts)
+                product = Product.browse()
+                if code == (base.default_code or '').strip().upper():
+                    step.update(product=base, code=base.default_code, how='base')
+                else:
+                    product = Product.search([('default_code', '=', code)], limit=1)
+                    if not product and role == 'crudo':
+                        product, others = self._sgi_dev_existing_crudo(parts, level['parts'])
+                        if product:
+                            step['notes'].append("el crudo %s no existe; se toma el crudo existente %s%s (verifíquelo)" % (
+                                code, product.default_code,
+                                (", también hay %s" % ", ".join(others.mapped('default_code'))) if others else ''))
+                            code = product.default_code
+                    step.update(product=product, code=code, how='existing' if product else 'create')
+            actual[role] = step['product'] or None
+            plan.append(step)
+        return plan, changed, keys
+
+    def _sgi_dev_input_of(self, product, lower_role):
+        """El insumo del nivel `lower_role` en la lista de materiales de `product`."""
+        for line in self._sgi_dev_bom_of(product).bom_line_ids:
+            parts = parse_code(line.product_id.default_code)
+            if parts and parts['role'] == lower_role:
+                return line.product_id
+        return self.env['product.product']
+
     def _sgi_dev_generate_from_base(self):
         """Liga o crea los artículos de la ruta a partir del base. Devuelve False si el base no
         tiene cadena que seguir (el que llama cae al generador por claves)."""
@@ -212,79 +338,74 @@ class ProjectProjectDevBase(models.Model):
         if not chain:
             return False
         Product = self.env['product.product']
-        changed, keys = self._sgi_dev_changed_keys(chain)
-        colored_yarn = (keys['hilo'] or chain[-1]['parts']['hilo']) in COLORED_YARN_CODES
-        top_parts = chain[-1]['parts']
-        old_top_peso = int(top_parts['peso'] or 0)
-        new_top_peso = int(keys['peso']) if 'peso' in changed else old_top_peso
+        plan, _changed, keys = self._sgi_dev_base_plan(chain)
         new_by_role, log, pending_total = {}, [], 0
         name = self._sgi_dev_product_name() if 0 < self.sgi_dev_code_peso < 1000 else chain[-1]['product'].name
-        for level in chain:
-            role, base_product, parts, bom = level['role'], level['product'], level['parts'], level['bom']
-            level_changed = {k for k in changed if role in KEY_LEVELS[k] or (k == 'color' and role == 'crudo' and colored_yarn)}
-            if not level_changed:
-                if not self[ROLE_FIELD[role]]:
-                    self.write({ROLE_FIELD[role]: base_product.id})
-                new_by_role[role] = base_product
-                log.append("<li>%s: se liga el del base, <b>%s</b> (no cambia).</li>" % (ROLE_LABEL[role].capitalize(),
-                                                                                           base_product.default_code))
-                continue
-            new_parts = dict(parts)
-            notes = []
-            for key in level_changed:
-                if key == 'peso' and role != 'acabado' and old_top_peso:
-                    scaled = max(1, min(999, round(int(parts['peso']) * new_top_peso / old_top_peso)))
-                    new_parts['peso'] = "%03d" % scaled
-                    notes.append("peso %s estimado en proporción al base (verifíquelo)" % new_parts['peso'])
-                elif key == 'ancho_crudo':
-                    new_parts['ancho'] = keys['ancho_crudo']
-                elif key == 'color' and role == 'crudo':
-                    new_parts['color'] = keys['color']
-                else:
-                    new_parts[key] = keys[key]
-            code = build_code(new_parts)
+        for index, step in enumerate(plan):
+            role, level, base_product = step['role'], step['level'], step['base']
+            label = ROLE_LABEL[role].capitalize()
+            notes = ("; " + "; ".join(step['notes'])) if step['notes'] else ''
+            lower_role = plan[index - 1]['role'] if index else None
+            lower_new = new_by_role.get(lower_role)
             if self[ROLE_FIELD[role]]:
                 product = self[ROLE_FIELD[role]]
-                log.append("<li>%s: ya estaba ligado <b>%s</b>; no se toca.</li>" % (ROLE_LABEL[role].capitalize(), product.default_code))
+                log.append("<li>%s: ya estaba ligado <b>%s</b>; no se toca.</li>" % (label, product.default_code))
                 new_by_role[role] = product
                 continue
-            product = Product.with_context(active_test=False).search([('default_code', '=', code)], limit=1)
-            created = False
-            if not product:
-                product = Product.create({
-                    'name': name, 'default_code': code, 'type': 'consu', 'is_storable': True,
-                    'uom_id': base_product.uom_id.id, 'categ_id': base_product.categ_id.id,
-                    'sale_ok': False, 'purchase_ok': False, 'company_id': self.company_id.id or False,
-                    'sgi_dev_state': 'desarrollo', 'sgi_dev_project_id': self.id, 'sgi_dev_role': role,
-                })
-                created = True
+            if step['how'] != 'create':
+                product = step['product']
+                self.write({ROLE_FIELD[role]: product.id})
+                new_by_role[role] = product
+                if step['how'] == 'base':
+                    text = "se liga el del base, <b>%s</b> (no cambia)" % product.default_code
+                elif step['how'] == 'forced':
+                    text = "se liga <b>%s</b>" % product.default_code
+                else:
+                    text = "<b>%s</b> ya existía, se liga desde %s (cambió %s)" % (
+                        product.default_code, base_product.default_code,
+                        ", ".join(KEY_LABEL[k] for k in sorted(step['changed'])) or "el insumo")
+                consumed = self._sgi_dev_input_of(product, lower_role) if lower_new else None
+                warn = (" <b>Atención:</b> su lista de materiales consume %s, no %s; revísela." % (
+                    consumed.default_code, lower_new.default_code)) if consumed and consumed != lower_new else ''
+                log.append("<li>%s: %s%s.%s</li>" % (label, text, notes, warn))
+                continue
+            code, bom = step['code'], level['bom']
+            product = Product.create({
+                'name': name, 'default_code': code, 'type': 'consu', 'is_storable': True,
+                'uom_id': base_product.uom_id.id, 'categ_id': base_product.categ_id.id,
+                'sale_ok': False, 'purchase_ok': False, 'company_id': self.company_id.id or False,
+                'sgi_dev_state': 'desarrollo', 'sgi_dev_project_id': self.id, 'sgi_dev_role': role,
+            })
             self.write({ROLE_FIELD[role]: product.id})
             new_by_role[role] = product
             pending_here = []
-            if bom and created:
+            if bom:
                 new_bom = bom.copy({'product_tmpl_id': product.product_tmpl_id.id, 'product_id': False})
+                base_input = level['input_line'].product_id if level['input_line'] else None
                 # 57.160.0: el papel real del insumo (un base sin acabado en proceso salta del teñido al acabado).
-                lower_parts = parse_code(level['input_line'].product_id.default_code) if level['input_line'] else None
-                lower_role = lower_parts['role'] if lower_parts else None
+                input_parts = parse_code(base_input.default_code) if base_input else None
+                input_new = new_by_role.get(input_parts['role']) if input_parts else None
                 for line in new_bom.bom_line_ids:
-                    is_input = level['input_line'] and line.product_id == level['input_line'].product_id
-                    if is_input:
-                        lower_new = new_by_role.get(lower_role)
-                        if lower_new and lower_new != line.product_id:
-                            line.product_id = lower_new
-                        line.sgi_dev_pending = bool(level_changed & INPUT_QTY_KEYS[role])
+                    if base_input and line.product_id == base_input:
+                        swapped = bool(input_new and input_new != line.product_id)
+                        if swapped:
+                            line.product_id = input_new
+                        # La cantidad cambia si cambia una clave que la mueve o si entra un insumo de otro peso o ancho.
+                        new_parts = parse_code(input_new.default_code) if swapped else None
+                        other_size = bool(new_parts) and (new_parts['peso'], new_parts['ancho']) != (
+                            input_parts['peso'], input_parts['ancho'])
+                        line.sgi_dev_pending = other_size or bool(step['changed'] & INPUT_QTY_KEYS[role])
                     else:
-                        line.sgi_dev_pending = bool(level_changed & FORMULA_KEYS[role])
+                        line.sgi_dev_pending = bool(step['changed'] & FORMULA_KEYS[role])
                     if line.sgi_dev_pending:
                         pending_here.append(line.product_id.default_code or line.product_id.name)
                 pending_total += len(pending_here)
-            log.append("<li>%s: <b>%s</b> %s desde %s (cambió %s%s). %s</li>" % (
-                ROLE_LABEL[role].capitalize(), code, "creado" if created else "ya existía, se liga",
-                base_product.default_code, ", ".join(KEY_LABEL[k] for k in sorted(level_changed)),
-                ("; " + "; ".join(notes)) if notes else '',
+            log.append("<li>%s: <b>%s</b> creado desde %s (cambió %s%s). %s</li>" % (
+                label, code, base_product.default_code,
+                ", ".join(KEY_LABEL[k] for k in sorted(step['changed'])) or "el insumo", notes,
                 ("Lista de materiales copiada de %s%s." % (
                     bom.display_name, ("; por capturar: %s" % ", ".join(pending_here)) if pending_here else ''))
-                if (bom and created) else ("Sin lista de materiales que copiar." if created else "")))
+                if bom else "Sin lista de materiales que copiar."))
         roles = {level['role'] for level in chain}
         if 'tenido' not in roles and self.sgi_dev_code_tenido and keys['color'] and keys['color'] != NATURAL_COLOR:
             log.append("<li>Teñido: el artículo base no lleva teñido; el proyecto pide color %s. Capture el teñido y su "
@@ -294,6 +415,29 @@ class ProjectProjectDevBase(models.Model):
             ("<p><b>%d renglón(es) de lista de materiales por capturar</b>: la cotización no se manda a aprobar "
              "hasta capturarlos.</p>" % pending_total) if pending_total else ''))
         return True
+
+    # ------------------------------------------------------------------
+    # 57.192.0: los códigos propuestos salen del mismo plan
+    # ------------------------------------------------------------------
+    @api.depends('sgi_dev_code_composicion_id', 'sgi_dev_code_dibujo_id', 'sgi_dev_code_peso', 'sgi_dev_code_hilo_id',
+                 'sgi_dev_code_galga', 'sgi_dev_code_galga_digits', 'sgi_dev_code_color_id', 'sgi_dev_code_ancho',
+                 'sgi_dev_code_ancho_crudo', 'sgi_dev_code_acabado_id', 'sgi_dev_code_tenido',
+                 'sgi_dev_base_product_id', 'sgi_dev_tejido_id')
+    def _compute_sgi_dev_codes(self):
+        super()._compute_sgi_dev_codes()
+        for project in self:
+            if project.sgi_dev_tejido_id:
+                project.sgi_dev_code_crudo = project.sgi_dev_tejido_id.default_code
+            if not (project.sgi_is_ft and project.sgi_dev_base_product_id):
+                continue
+            plan = project._sgi_dev_base_plan()[0]
+            codes = {step['role']: step['code'] for step in plan}
+            if codes.get('crudo'):
+                project.sgi_dev_code_crudo = codes['crudo']
+            if codes.get('tenido') and project.sgi_dev_code_tenido:
+                project.sgi_dev_code_tenido_code = codes['tenido']
+            if codes.get('acabado'):
+                project.sgi_dev_code_acabado_code = codes['acabado']
 
 
 class ProjectProjectDevGenerate(models.Model):
