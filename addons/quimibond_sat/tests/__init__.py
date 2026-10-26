@@ -13,3 +13,4 @@ from . import test_ruido
 from . import test_69b
 from . import test_auto_bill
 from . import test_folio
+from . import test_varios
