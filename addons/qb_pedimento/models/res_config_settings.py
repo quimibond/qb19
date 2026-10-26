@@ -18,3 +18,7 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.qb_pedimento_product_prv_id', readonly=False)
     qb_pedimento_product_gastos_id = fields.Many2one(
         related='company_id.qb_pedimento_product_gastos_id', readonly=False)
+    qb_pedimento_iva_account_id = fields.Many2one(
+        related='company_id.qb_pedimento_iva_account_id', readonly=False)
+    qb_pedimento_contabilidad_user_id = fields.Many2one(
+        related='company_id.qb_pedimento_contabilidad_user_id', readonly=False)

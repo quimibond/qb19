@@ -17,7 +17,10 @@ Syntage (sin IEPS); si falta, el total de impuestos trasladados.
 Del lado de Odoo, la suma del mes (por fecha contable) de las cuentas de los
 parámetros ``quimibond_sat.iva_acreditable_cuentas`` y
 ``quimibond_sat.iva_trasladado_cuentas`` (códigos separados por coma). El IVA
-de importación no va: no tiene CFDI de proveedor (sale del pedimento).
+de importación va aparte (1.26.0, concepto «importación»): el IVA + IVA/PRV
+de los pedimentos de importación pagados en el mes (``qb.pedimento``, por
+fecha de pago, si está instalado) contra la cuenta del parámetro
+``quimibond_sat.iva_importacion_cuentas`` (118.02.01).
 
 Sin los asientos de cierre: la "Provisión de impuestos" de cada mes salda las
 dos cuentas en un mismo asiento (cargo al trasladado, abono al acreditable) y
@@ -30,6 +33,10 @@ from odoo import _, api, fields, models
 
 DEFAULT_ACREDITABLE = '118.01.002,118.01.02,118.01.06,118.01.08'
 DEFAULT_TRASLADADO = '208.01.01'
+DEFAULT_IMPORTACION = '118.02.01'
+DEFAULTS = {'acreditable': DEFAULT_ACREDITABLE, 'trasladado': DEFAULT_TRASLADADO,
+            'importacion': DEFAULT_IMPORTACION}
+CONCEPTOS = ('acreditable', 'trasladado', 'importacion')
 
 
 class SatIvaMonth(models.Model):
@@ -42,6 +49,7 @@ class SatIvaMonth(models.Model):
     concepto = fields.Selection([
         ('acreditable', 'IVA acreditable (pagado a proveedores)'),
         ('trasladado', 'IVA trasladado (cobrado a clientes)'),
+        ('importacion', 'IVA de importación (pedimentos)'),
     ], string='Concepto', required=True)
     sat_iva = fields.Float(string='Según el SAT (MXN)', digits=(16, 2))
     odoo_iva = fields.Float(string='Según la contabilidad (MXN)', digits=(16, 2))
@@ -70,8 +78,7 @@ class SatIvaMonth(models.Model):
     @api.model
     def _accounts(self, company, concepto):
         key = 'quimibond_sat.iva_%s_cuentas' % concepto
-        default = DEFAULT_ACREDITABLE if concepto == 'acreditable' else DEFAULT_TRASLADADO
-        raw = self.env['ir.config_parameter'].sudo().get_param(key) or default
+        raw = self.env['ir.config_parameter'].sudo().get_param(key) or DEFAULTS[concepto]
         codes = [c.strip() for c in raw.split(',') if c.strip()]
         return self.env['account.account'].sudo().with_company(company).search([
             ('code', 'in', codes), ('company_ids', 'in', company.id)])
@@ -123,17 +130,32 @@ class SatIvaMonth(models.Model):
 
     @api.model
     def _closing_move_ids(self, company, date_from, date_to):
-        """Asientos del periodo que tocan cuentas de IVA de los dos conceptos:
-        el cierre mensual (provisión de impuestos)."""
+        """Asientos del periodo que tocan el IVA trasladado y a la vez el
+        acreditable o el de importación: el cierre mensual (provisión de
+        impuestos)."""
         Line = self.env['account.move.line'].sudo()
         base = [('company_id', '=', company.id), ('parent_state', '=', 'posted'),
                 ('date', '>=', date_from), ('date', '<', date_to)]
         moves = {}
-        for concepto in ('acreditable', 'trasladado'):
+        for concepto in CONCEPTOS:
             accounts = self._accounts(company, concepto)
             moves[concepto] = {move.id for move, in Line._read_group(
                 base + [('account_id', 'in', accounts.ids)], groupby=['move_id'])} if accounts else set()
-        return list(moves['acreditable'] & moves['trasladado'])
+        return list((moves['acreditable'] | moves['importacion']) & moves['trasladado'])
+
+    @api.model
+    def _pedimento_amounts(self, company, date_from, date_to):
+        """{mes: (IVA + IVA/PRV, n)} de los pedimentos de importación pagados
+        en el mes. Sin qb_pedimento, nada."""
+        if 'qb.pedimento' not in self.env:
+            return {}
+        groups = self.env['qb.pedimento'].sudo()._read_group(
+            [('company_id', '=', company.id), ('operacion', '=', 'importacion'),
+             ('state', 'in', ('despachado', 'entregado', 'cerrado')),
+             ('fecha_pago', '>=', date_from), ('fecha_pago', '<', date_to)],
+            groupby=['fecha_pago:month'], aggregates=['iva:sum', 'iva_prv:sum', '__count'])
+        return {fields.Date.to_date(month).replace(day=1): ((iva or 0.0) + (iva_prv or 0.0), n)
+                for month, iva, iva_prv, n in groups}
 
     @api.model
     def _odoo_amounts(self, company, concepto, date_from, date_to, exclude_move_ids=None):
@@ -147,7 +169,7 @@ class SatIvaMonth(models.Model):
              ('parent_state', '=', 'posted'), ('date', '>=', date_from), ('date', '<', date_to),
              ('move_id', 'not in', exclude_move_ids or [])],
             groupby=['date:month'], aggregates=['balance:sum'])
-        sign = 1 if concepto == 'acreditable' else -1
+        sign = -1 if concepto == 'trasladado' else 1
         return {fields.Date.to_date(month).replace(day=1): sign * (balance or 0.0) for month, balance in groups}
 
     @api.model
@@ -160,14 +182,20 @@ class SatIvaMonth(models.Model):
         date_to = fields.Date.to_date(date_to) if date_to else today.replace(day=1) + relativedelta(months=1)
         sat = self._sat_amounts(company, date_from, date_to)
         closing = self._closing_move_ids(company, date_from, date_to)
-        odoo = {c: self._odoo_amounts(company, c, date_from, date_to, closing)
-                for c in ('acreditable', 'trasladado')}
+        odoo = {c: self._odoo_amounts(company, c, date_from, date_to, closing) for c in CONCEPTOS}
+        pedimentos = self._pedimento_amounts(company, date_from, date_to)
         now = fields.Datetime.now()
         written = 0
         mes = date_from
         while mes < date_to:
-            for concepto, direction in (('acreditable', 'received'), ('trasladado', 'issued')):
-                sat_iva, n = sat.get((direction, mes), (0.0, 0))
+            for concepto, direction in (('acreditable', 'received'), ('trasladado', 'issued'),
+                                        ('importacion', None)):
+                if direction:
+                    sat_iva, n = sat.get((direction, mes), (0.0, 0))
+                else:
+                    sat_iva, n = pedimentos.get(mes, (0.0, 0))
+                    if not n and not odoo[concepto].get(mes):
+                        continue  # mes sin importaciones: sin fila
                 vals = {'sat_iva': round(sat_iva, 2), 'odoo_iva': round(odoo[concepto].get(mes, 0.0), 2),
                         'n_cfdi': n, 'calculado': now}
                 row = self.sudo().search([('company_id', '=', company.id), ('mes', '=', mes),
@@ -197,10 +225,18 @@ class SatIvaMonth(models.Model):
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_open_cfdi(self):
-        """Los CFDI del mes y sentido de la fila."""
+        """Los CFDI del mes y sentido de la fila (o los pedimentos, en la de
+        importación)."""
         self.ensure_one()
-        direction = 'received' if self.concepto == 'acreditable' else 'issued'
         end = self.mes + relativedelta(months=1)
+        if self.concepto == 'importacion':
+            return {
+                'type': 'ir.actions.act_window', 'name': _('Pedimentos del mes'),
+                'res_model': 'qb.pedimento', 'view_mode': 'list,form',
+                'domain': [('company_id', '=', self.company_id.id), ('operacion', '=', 'importacion'),
+                           ('fecha_pago', '>=', self.mes), ('fecha_pago', '<', end)],
+            } if 'qb.pedimento' in self.env else False
+        direction = 'received' if self.concepto == 'acreditable' else 'issued'
         return {
             'type': 'ir.actions.act_window', 'name': _('CFDI del mes'),
             'res_model': 'sat.cfdi', 'view_mode': 'list,form',

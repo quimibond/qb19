@@ -3,3 +3,4 @@ from . import test_pedimento
 from . import test_avisos
 from . import test_documentos_ligados
 from . import test_carga
+from . import test_contab
