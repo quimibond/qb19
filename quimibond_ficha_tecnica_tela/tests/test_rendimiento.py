@@ -43,3 +43,20 @@ class TestRendimiento(TransactionCase):
         self.assertEqual(self.Ficha._ft_de_producto(product), nueva, "La revisión 10 gana a la 9 (no por texto)")
         nueva.active = False
         self.assertEqual(self.Ficha._ft_de_producto(product), vieja, "Solo cuentan las activas")
+
+    def test_03_tela_tubular(self):
+        """2.14.0: en la circular de 30" el ancho de 98 cm es el tubo aplanado; el rendimiento usa 1.96 m."""
+        ficha = self.Ficha.create({'articulo': 'ZZ040Q46HNT098', 'peso_acondicionado': 40,
+                                   'ancho_acondicionado': 98, 'diametro': 30})
+        self.assertTrue(ficha.tela_tubular, "98 cm < mitad de π × 30 in (119.7 cm)")
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 1.96), places=3)
+        abierta = self.Ficha.create({'articulo': 'ZZ035Q22HNT200', 'peso_acondicionado': 48,
+                                     'ancho_acondicionado': 200, 'diametro': 32})
+        self.assertFalse(abierta.tela_tubular, "200 cm en 32 in es tela abierta")
+        self.assertAlmostEqual(abierta.rendimiento_tela_tejida, 1000 / (48 * 2.0), places=3)
+        sin_diametro = self.Ficha.create({'articulo': 'ZZ041Q46HNT098', 'peso_acondicionado': 40,
+                                          'ancho_acondicionado': 98})
+        self.assertFalse(sin_diametro.tela_tubular, "Sin diámetro no se supone nada")
+        ficha.tela_tubular = False
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 0.98), places=3,
+                               msg="Se puede desmarcar a mano")

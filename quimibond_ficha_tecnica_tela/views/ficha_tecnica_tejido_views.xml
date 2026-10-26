@@ -14,6 +14,7 @@
                 <field name="ficha_acabado_count" string="Fichas de acabado"/>
                 <field name="maquina_config_id" optional="hide"/>
                 <field name="rendimiento_tela_tejida" optional="show"/>
+                <field name="tela_tubular" optional="show"/>
                 <field name="bom_aviso" optional="show"/>
                 <field name="ancho_rollo"/>
                 <field name="peso_promedio_rollo"/>
@@ -73,6 +74,7 @@
                             <field name="product_proceso_id"/>
                             <field name="rendimiento_tela_tejida"/>
                             <field name="rendimiento_manual" widget="boolean_toggle"/>
+                            <field name="tela_tubular" widget="boolean_toggle"/>
                             <field name="product_proceso_tmpl_id" invisible="1"/>
                             <field name="bom_id" options="{'no_create': True}"
                                    placeholder="La principal del crudo"/>
