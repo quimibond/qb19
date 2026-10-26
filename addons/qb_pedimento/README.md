@@ -58,6 +58,12 @@ Los patrones se ajustan en Configuración → Documentos del expediente, columna
   - garantía sin devolver a los 60 días.
 
   Los plazos se cambian en Ajustes. Al cerrar el expediente o devolver la garantía, el aviso se marca hecho.
+- **Revisa el expediente contra contabilidad** (1.2.0, solo importaciones pagadas). En la pestaña Contribuciones,
+  «Contra contabilidad» compara DTA, IGI y PRV con las líneas de esos productos en las facturas publicadas ligadas
+  (de la mercancía y de la agencia), y el IVA + IVA/PRV con el saldo de la cuenta de IVA de importación (Ajustes,
+  118.02.01). Aviso diario al responsable en contabilidad (Ajustes; vacío, al del expediente): «Sin factura de
+  impuestos» a los días de cierre del pago, o «No cuadra con contabilidad» con las diferencias. Se cierra solo al
+  cuadrar. No crea ni cambia asientos.
 - **Facturas sin pedimento** (Reportes): facturas de venta publicadas con complemento de comercio exterior,
   o a un cliente marcado «Venta con pedimento virtual» (ficha del contacto, Ventas y compras), que no
   tienen pedimento ligado. Es el cruce que pidió la auditoría del Edomex.

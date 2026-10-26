@@ -173,11 +173,18 @@ class SatCompareLine(models.Model):
             -- Un CFDI capturado en varias facturas con el mismo UUID (una por
             -- entrada de almacén, p.ej.): se compara contra la suma. Si es el
             -- mismo XML capturado dos veces, la suma lo delata como monto.
+            -- Por compañía y sentido: el arrendador que también es compañía
+            -- de la base timbra su venta con el mismo UUID que la compra de
+            -- Quimibond (2026-10-26: rentas de Jacobo y José Jaime Mizrahi
+            -- salían al doble).
             bills_of_uuid AS (
-                SELECT odoo_uuid, sum(total_odoo) AS s, sum(total_odoo_mxn) AS smxn, count(*) AS n
+                SELECT company_id,
+                       CASE WHEN move_type IN ('out_invoice', 'out_refund') THEN 'issued' ELSE 'received' END
+                           AS direction,
+                       odoo_uuid, sum(total_odoo) AS s, sum(total_odoo_mxn) AS smxn, count(*) AS n
                   FROM odoo
                  WHERE state = 'posted' AND odoo_uuid IS NOT NULL
-                 GROUP BY odoo_uuid
+                 GROUP BY 1, 2, 3
             ),
             adj AS (
                 SELECT c.id AS cfdi_id,
@@ -192,7 +199,8 @@ class SatCompareLine(models.Model):
                   FROM sat_cfdi c
                   JOIN odoo o ON o.move_id = c.move_id
                   LEFT JOIN cfdi_on_move cm ON cm.move_id = c.move_id
-                  LEFT JOIN bills_of_uuid bu ON bu.odoo_uuid = c.uuid
+                  LEFT JOIN bills_of_uuid bu ON bu.odoo_uuid = c.uuid AND bu.company_id = c.company_id
+                                            AND bu.direction = c.direction
             ),
             rows AS (
                 -- Lado SAT: en ambos, solo SAT o ignorado
@@ -255,7 +263,8 @@ class SatCompareLine(models.Model):
                    AND NOT EXISTS (
                        SELECT 1 FROM sat_cfdi c
                         WHERE c.move_id = o.move_id
-                           OR (o.odoo_uuid IS NOT NULL AND c.uuid = o.odoo_uuid))
+                           OR (o.odoo_uuid IS NOT NULL AND c.uuid = o.odoo_uuid
+                               AND c.company_id = o.company_id))
             )
             -- id estable (no row_number): la numeración no se corre al cambiar
             -- los datos, así la caché del ORM y los clics en la lista abren la fila correcta

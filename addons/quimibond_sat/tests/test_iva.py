@@ -91,3 +91,30 @@ class TestSatIva(SatCommon):
         self.assertAlmostEqual(april.odoo_iva, 160.0, places=2)
         self.assertEqual(Iva._closing_move_ids(self.company, fields.Date.to_date('2026-04-01'),
                                                fields.Date.to_date('2026-05-01')), closing.ids)
+
+    def test_importacion_contra_pedimentos(self):
+        if 'qb.pedimento' not in self.env:
+            self.skipTest('qb_pedimento no está instalado')
+        iva_imp = self.env['account.account'].create({'code': '118.02.01', 'name': 'IVA importación pagado',
+                                                      'account_type': 'asset_current'})
+        # sudo: el usuario de las pruebas contables no tiene el grupo de pedimentos
+        self.env['qb.pedimento'].sudo().create({
+            'operacion': 'importacion', 'clave_id': self.env.ref('qb_pedimento.clave_a1').id,
+            'partner_id': self.env['res.partner'].create({'name': 'NINGBO MH INDUSTRY'}).id,
+            'numero': '26 16 3774 6000675', 'state': 'despachado', 'fecha_pago': '2026-05-28',
+            'iva': 287175, 'iva_prv': 53})
+        move = self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': self.journal.id, 'date': '2026-05-28',
+            'line_ids': [
+                Command.create({'account_id': iva_imp.id, 'debit': 287228, 'credit': 0.0, 'name': 'IVA'}),
+                Command.create({'account_id': self.counter.id, 'debit': 0.0, 'credit': 287228, 'name': 'IVA'}),
+            ]})
+        move.action_post()
+        Iva = self.env['sat.iva.month']
+        Iva.action_compute('2026-04-01', '2026-06-01', company_id=self.company.id)
+        may = Iva.search([('mes', '=', '2026-05-01'), ('concepto', '=', 'importacion')])
+        self.assertAlmostEqual(may.sat_iva, 287228, places=2)
+        self.assertAlmostEqual(may.odoo_iva, 287228, places=2)
+        self.assertTrue(may.cuadra)
+        # Abril no tuvo importaciones: sin fila
+        self.assertFalse(Iva.search([('mes', '=', '2026-04-01'), ('concepto', '=', 'importacion')]))
