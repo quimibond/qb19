@@ -67,6 +67,19 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- Facturas de proveedor en borrador desde el XML del SAT (solo en las
+             compañías con diario en "Facturas de proveedor desde el SAT en"). -->
+        <record id="cron_sat_auto_bills" model="ir.cron">
+            <field name="name">SAT (Syntage) - Crear facturas de proveedor desde el SAT</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_auto_bills()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=11, minute=37, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
         <!-- Correo diario con los hallazgos abiertos (cancelados, monto, moneda).
              Destinatarios en el parámetro quimibond_sat.alert_email. -->
         <record id="cron_sat_daily_alert" model="ir.cron">

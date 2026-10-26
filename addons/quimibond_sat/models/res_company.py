@@ -11,6 +11,12 @@ class ResCompany(models.Model):
         help='Si está activo, los crons de quimibond_sat descargan los CFDI de esta '
              'compañía (por su RFC) y piden la extracción diaria a Syntage.',
     )
+    sat_auto_bill_journal_id = fields.Many2one(
+        'account.journal', string='Facturas de proveedor desde el SAT en',
+        domain="[('type', '=', 'purchase'), ('company_id', '=', id)]",
+        help='Con un diario, los CFDI recibidos que no están en Odoo (ni hay una factura del mismo '
+             'proveedor y monto) se vuelven facturas en borrador en este diario, con el XML del SAT. '
+             'Vacío: apagado.')
     sat_data_since = fields.Date(
         string='Datos del SAT desde',
         help='Primer día con CFDI del SAT completos (lo que Syntage extrajo). Las facturas de Odoo '
