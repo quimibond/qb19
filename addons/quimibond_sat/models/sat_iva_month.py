@@ -18,6 +18,11 @@ Del lado de Odoo, la suma del mes (por fecha contable) de las cuentas de los
 parámetros ``quimibond_sat.iva_acreditable_cuentas`` y
 ``quimibond_sat.iva_trasladado_cuentas`` (códigos separados por coma). El IVA
 de importación no va: no tiene CFDI de proveedor (sale del pedimento).
+
+Sin los asientos de cierre: la "Provisión de impuestos" de cada mes salda las
+dos cuentas en un mismo asiento (cargo al trasladado, abono al acreditable) y
+deja el saldo del mes en cero. Se reconocen por eso, porque tocan cuentas de
+los dos conceptos; el diario cambia de un mes a otro.
 """
 from dateutil.relativedelta import relativedelta
 
@@ -117,14 +122,30 @@ class SatIvaMonth(models.Model):
         return {(direction, mes): (float(total or 0.0), n) for direction, mes, total, n in self.env.cr.fetchall()}
 
     @api.model
-    def _odoo_amounts(self, company, concepto, date_from, date_to):
-        """{mes: saldo MXN del mes} de las cuentas de IVA del concepto."""
+    def _closing_move_ids(self, company, date_from, date_to):
+        """Asientos del periodo que tocan cuentas de IVA de los dos conceptos:
+        el cierre mensual (provisión de impuestos)."""
+        Line = self.env['account.move.line'].sudo()
+        base = [('company_id', '=', company.id), ('parent_state', '=', 'posted'),
+                ('date', '>=', date_from), ('date', '<', date_to)]
+        moves = {}
+        for concepto in ('acreditable', 'trasladado'):
+            accounts = self._accounts(company, concepto)
+            moves[concepto] = {move.id for move, in Line._read_group(
+                base + [('account_id', 'in', accounts.ids)], groupby=['move_id'])} if accounts else set()
+        return list(moves['acreditable'] & moves['trasladado'])
+
+    @api.model
+    def _odoo_amounts(self, company, concepto, date_from, date_to, exclude_move_ids=None):
+        """{mes: saldo MXN del mes} de las cuentas de IVA del concepto, sin los
+        asientos de ``exclude_move_ids`` (el cierre)."""
         accounts = self._accounts(company, concepto)
         if not accounts:
             return {}
         groups = self.env['account.move.line'].sudo()._read_group(
             [('account_id', 'in', accounts.ids), ('company_id', '=', company.id),
-             ('parent_state', '=', 'posted'), ('date', '>=', date_from), ('date', '<', date_to)],
+             ('parent_state', '=', 'posted'), ('date', '>=', date_from), ('date', '<', date_to),
+             ('move_id', 'not in', exclude_move_ids or [])],
             groupby=['date:month'], aggregates=['balance:sum'])
         sign = 1 if concepto == 'acreditable' else -1
         return {fields.Date.to_date(month).replace(day=1): sign * (balance or 0.0) for month, balance in groups}
@@ -138,7 +159,9 @@ class SatIvaMonth(models.Model):
         today = fields.Date.context_today(self)
         date_to = fields.Date.to_date(date_to) if date_to else today.replace(day=1) + relativedelta(months=1)
         sat = self._sat_amounts(company, date_from, date_to)
-        odoo = {c: self._odoo_amounts(company, c, date_from, date_to) for c in ('acreditable', 'trasladado')}
+        closing = self._closing_move_ids(company, date_from, date_to)
+        odoo = {c: self._odoo_amounts(company, c, date_from, date_to, closing)
+                for c in ('acreditable', 'trasladado')}
         now = fields.Datetime.now()
         written = 0
         mes = date_from

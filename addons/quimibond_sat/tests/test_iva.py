@@ -69,3 +69,25 @@ class TestSatIva(SatCommon):
         Iva.action_compute('2026-04-01', '2026-06-01', company_id=self.company.id)
         self.assertEqual(Iva.search_count([('mes', '=', '2026-04-01'), ('concepto', '=', 'acreditable')]), 1)
         self.assertEqual(fields.Date.to_string(april.mes), '2026-04-01')
+
+    def test_cierre_mensual_no_cuenta(self):
+        # La provisión de impuestos salda acreditable contra trasladado en un
+        # solo asiento: no es IVA del mes y no debe dejar el saldo en cero.
+        iva_tras = self.env['account.account'].create({'code': '208.01.01', 'name': 'IVA trasladado cobrado',
+                                                       'account_type': 'liability_current'})
+        self._entry('2026-04-10', 160.0)
+        closing = self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': self.journal.id, 'date': '2026-04-30',
+            'line_ids': [
+                Command.create({'account_id': iva_tras.id, 'debit': 100.0, 'credit': 0.0, 'name': 'IVA COBRADO'}),
+                Command.create({'account_id': self.iva_acred.id, 'debit': 0.0, 'credit': 160.0,
+                                'name': 'IVA PAGADO'}),
+                Command.create({'account_id': self.counter.id, 'debit': 60.0, 'credit': 0.0, 'name': 'IVA a favor'}),
+            ]})
+        closing.action_post()
+        Iva = self.env['sat.iva.month']
+        Iva.action_compute('2026-04-01', '2026-05-01', company_id=self.company.id)
+        april = Iva.search([('mes', '=', '2026-04-01'), ('concepto', '=', 'acreditable')])
+        self.assertAlmostEqual(april.odoo_iva, 160.0, places=2)
+        self.assertEqual(Iva._closing_move_ids(self.company, fields.Date.to_date('2026-04-01'),
+                                               fields.Date.to_date('2026-05-01')), closing.ids)
