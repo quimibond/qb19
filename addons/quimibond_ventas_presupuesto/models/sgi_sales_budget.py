@@ -580,7 +580,7 @@ class SgiSalesBudget(models.Model):
                     body=Markup("AVISO de cobertura de precios al enviar a revisión: %d "
                                 "producto(s) sin precio en la lista. Corrígelos ANTES de "
                                 "aprobar (ahí sí bloquea).<br/>- %s") % (
-                             total, Markup("<br/>- ").join(pairs)))
+                        total, Markup("<br/>- ").join(pairs)))
             budget.state = 'revisado'
         return True
 
@@ -627,7 +627,7 @@ class SgiSalesBudget(models.Model):
                 budget.sudo().message_post(
                     body=Markup("Aprobado con EXCEPCIÓN de cobertura de precios: %d "
                                 "producto(s) sin precio en la lista.<br/>- %s") % (
-                             total, Markup("<br/>- ").join(pairs)),
+                        total, Markup("<br/>- ").join(pairs)),
                     author_id=self.env.user.partner_id.id)
             budget.sudo().state = 'aprobado'
         return True
@@ -1347,7 +1347,7 @@ class SgiSalesBudget(models.Model):
         self.message_post(
             body=Markup("Demanda neta enviada al Programa Maestro (%d celdas, total de "
                         "todos los pronósticos y presupuestos vigentes):<br/>%s") % (
-                     len(details), Markup("<br/>").join(details) or "sin demanda"))
+                len(details), Markup("<br/>").join(details) or "sin demanda"))
         return True
 
     def _send_budget_to_mps(self):
@@ -1366,8 +1366,8 @@ class SgiSalesBudget(models.Model):
                         "vigente; omitidos %d producto(s) por pronóstico vigente del "
                         "mismo cliente y mes (los manda el pronóstico con su demanda "
                         "neta): %s.<br/>%s") % (
-                     len(details), len(omitted_products), omitted_txt,
-                     Markup("<br/>").join(details) or "sin demanda propia del presupuesto"))
+                len(details), len(omitted_products), omitted_txt,
+                Markup("<br/>").join(details) or "sin demanda propia del presupuesto"))
         return True
 
     def action_open_import(self):
