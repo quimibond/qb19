@@ -13,6 +13,47 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.192.0 — 2026-10-26
+
+Dirección General 2026-10-26: «Regenerar artículos» en el proyecto 504
+(base WJ060Q21JNT175, acabado WJ053Q21JNT178) creó los crudos WJ042Q21HNT112
+y WJ042Q21INT112 con el peso estimado en proporción, cuando el acabado
+WJ053Q21JNT178 ya existía y consume el teñido WJ047Q21INT112 y el crudo
+WJ047Q21HNT112. El crudo debe salir de los códigos de crudo que ya existen.
+De paso, las características del desarrollo no pasaban a la ficha técnica.
+
+**Cambiado**
+- Generar desde el artículo base (`models/sgi_dev_product_base.py`): el peso
+  del acabado ya no cambia crudo ni teñido (lo da el acabado: rama y ancho);
+  se quitó el peso «estimado en proporción». Crudo y teñido cambian solo con
+  composición, dibujo, hilo, galga, ancho crudo y, el teñido, con el color.
+- Si el acabado que pide el proyecto ya existe con lista de materiales, se
+  ligan el teñido y el crudo que él consume.
+- Si el crudo tiene que cambiar y su código no existe, se toma el crudo
+  existente con las mismas claves y el peso más cercano al del base (el
+  chatter dice cuáles más hay); solo si no hay ninguno se crea.
+- Al ligar un nivel cuya lista consume otro insumo distinto al ligado abajo,
+  el chatter lo marca «Atención».
+- Los códigos propuestos de la pestaña Cotización salen del mismo plan que
+  «Generar artículos» (antes el crudo salía con el peso del acabado).
+
+**Agregado**
+- «Crudo de tejido» (`sgi_dev_tejido_id`, pestaña Cotización, opcional):
+  Diseño elige un crudo existente; «Generar» y «Regenerar artículos» lo ligan
+  y arman el teñido con su código (la cantidad del insumo queda por capturar
+  si cambia el peso o el ancho). También lo usa el generador por claves.
+- Las características del desarrollo pasan a la ficha de acabado
+  (`models/sgi_dev_release_specs.py`): al pasar el proyecto a Liberado y con
+  «Pasar características a la ficha» (pestaña Muestra), cada renglón con
+  especificación del cliente se copia a `ficha.tecnica.spec` de la ficha de
+  acabado del artículo (especificación, control interno, método, cliente y
+  certificado). Solo agrega lo que la ficha no tiene; nunca pisa. Sin ficha
+  de acabado, el chatter lo dice y la liberación sigue.
+- Pruebas: `test_09_peso_no_inventa_crudo_y_acabado_existente_manda`,
+  `test_10_crudo_de_tejido_elegido_y_crudo_existente`,
+  `test_06_caracteristicas_a_la_ficha_al_liberar`; `test_06` de generación
+  ajustada al peso que ya no baja al crudo.
+
 ## 19.0.57.191.0 — 2026-10-26
 
 Dirección General 2026-10-26: al pasar un desarrollo a «Análisis» no le

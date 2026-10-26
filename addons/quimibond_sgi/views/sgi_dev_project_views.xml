@@ -380,6 +380,9 @@
                                                     confirm="Se sueltan los artículos del proyecto: los que creó el proyecto se borran con sus listas de materiales (si nada más los usa) y los del artículo base o de catálogo solo se desligan. Después se generan de nuevo con el artículo base y las claves de hoy. Las listas que ya capturó en los artículos borrados se pierden. ¿Continuar?"/>
                                         </div>
                                         <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
+                                        <!-- 57.192.0: el crudo sale de los códigos de crudo existentes; vacío = el del base o el del acabado existente. -->
+                                        <field name="sgi_dev_tejido_id" options="{'no_create': True}" readonly="sgi_dev_customer_approved_at"
+                                               placeholder="El del artículo base"/>
                                         <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
                                             <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos (botón «Listas por capturar» arriba).
                                         </div>
@@ -539,8 +542,14 @@
                                  tintorería cuando exista). «Validar corrida» se valida contra ella. -->
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Órdenes de muestra</span>
-                                <button name="action_sgi_dev_process_sheets" type="object" string="Fichas de proceso" class="btn-secondary" icon="fa-file-text-o"
-                                        help="Fichas de proceso de los artículos del proyecto (crudo, teñido, acabado): abre la que existe o crea la que falta con el artículo ya puesto."/>
+                                <div class="d-flex gap-1">
+                                    <button name="action_sgi_dev_process_sheets" type="object" string="Fichas de proceso" class="btn-secondary" icon="fa-file-text-o"
+                                            help="Fichas de proceso de los artículos del proyecto (crudo, teñido, acabado): abre la que existe o crea la que falta con el artículo ya puesto."/>
+                                    <!-- 57.192.0: la tabla de características pasa a la ficha de acabado (también sola al liberar). -->
+                                    <button name="action_sgi_dev_specs_to_sheet" type="object" string="Pasar características a la ficha" class="btn-secondary" icon="fa-share"
+                                            invisible="not sgi_dev_product_id"
+                                            help="Copia a la ficha de acabado del artículo los renglones de la tabla de características que tienen especificación y que la ficha no tiene. No pisa lo que ya está en la ficha. Al liberar el proyecto se hace solo."/>
+                                </div>
                             </div>
                             <!-- Solo quien tiene acceso a Fabricación carga la lista; los demás ven el botón inteligente. -->
                             <field name="sgi_dev_mo_ids" readonly="1" groups="mrp.group_mrp_user">

@@ -111,3 +111,38 @@ class TestDevProceso(TransactionCase):
         mo = self.env['mrp.production'].new({'product_id': proceso.id, 'sgi_dev_project_id': dev.id})
         self.assertEqual(mo._sgi_dev_run_sheet(), ('acabado', ficha))
         self.assertIn('no está validada', mo._sgi_dev_run_sheet_problems()[0])
+
+    def test_06_caracteristicas_a_la_ficha_al_liberar(self):
+        """57.192.0: la tabla de características pasa a la ficha de acabado sin pisar lo que ya tiene."""
+        dev = self._dev()
+        dev.action_sgi_dev_generate_products()
+        acabado = dev.sgi_dev_product_id
+        Catalog = self.env['ficha.tecnica.caracteristica']
+        masa, ancho = Catalog._by_code('masa'), Catalog._by_code('ancho')
+        Line = self.env['sgi.dev.characteristic']
+        for car, nominal in ((masa, 53.0), (ancho, 1.6)):
+            line = dev.sgi_dev_line_ids.filtered(lambda l, c=car: l.caracteristica_id == c and l.direction == 'na'
+                                                 and l.position == 'na')[:1]
+            vals = {'spec_nominal': nominal, 'spec_tol_minus': 2.0, 'spec_tol_plus': 2.0, 'spec_tol_pct': True}
+            if line:
+                line.write(vals)
+            else:
+                Line.create(dict(vals, project_id=dev.id, caracteristica_id=car.id))
+        with self.assertRaises(Exception, msg="Sin ficha de acabado, el botón lo dice"):
+            dev.action_sgi_dev_specs_to_sheet()
+        tejido = self.env['ficha.tecnica.tejido'].create({'articulo': dev.sgi_dev_product_crudo_id.default_code,
+                                                         'product_proceso_id': dev.sgi_dev_product_crudo_id.id})
+        ficha = self.env['ficha.tecnica.acabado'].create({'articulo': acabado.default_code, 'tejido_id': tejido.id,
+                                                         'product_acabado_id': acabado.id})
+        self.env['ficha.tecnica.spec'].create({'acabado_id': ficha.id, 'caracteristica_id': ancho.id,
+                                               'spec_nominal': 1.55})
+        dev.write({'stage_id': self.env.ref('quimibond_sgi.sgi_dev_stage_liberado').id})
+        spec = ficha.spec_line_ids
+        self.assertEqual(len(spec.filtered(lambda s: s.caracteristica_id == masa)), 1, "La masa pasó a la ficha")
+        self.assertEqual(spec.filtered(lambda s: s.caracteristica_id == masa).spec_nominal, 53.0)
+        self.assertEqual(spec.filtered(lambda s: s.caracteristica_id == ancho).spec_nominal, 1.55,
+                         "Lo que la ficha ya tenía no se pisa")
+        n = len(spec)
+        dev.action_sgi_dev_specs_to_sheet()
+        self.assertEqual(len(ficha.spec_line_ids), n, "Volver a pasar no duplica")
+        self.assertIn('ya tenía todas', dev.message_ids[:1].body)
