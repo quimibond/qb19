@@ -6,10 +6,13 @@ Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado, más
 las que quedan fuera de la conciliación (póliza, sin CFDI esperado, aún no
 extraído, antes de los datos del SAT, cancelado en el SAT sin factura).
 Hallazgos en 'ambos': ok, redondeo, terceros, borrador, moneda, monto,
-cancelado_sat, cancelado_odoo.
+cancelado_sat, cancelado_odoo. Una factura con varios CFDI se reparte entre
+ellos; un CFDI en varias facturas (mismo UUID) se compara contra la suma.
 """
 from odoo import fields, models, tools
 from odoo.tools.sql import column_exists, table_exists
+
+from .res_partner import LISTA_69B
 
 
 class SatCompareLine(models.Model):
@@ -37,6 +40,7 @@ class SatCompareLine(models.Model):
         ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
+        ('moneda_ok', 'Cuadra en pesos (otra moneda)'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('solo_sat', 'Falta en Odoo'),
@@ -77,6 +81,9 @@ class SatCompareLine(models.Model):
     pago_terceros = fields.Float(string='Pagos a terceros', readonly=True, digits=(16, 2),
                                  help='Líneas de la factura con productos marcados "Pago a terceros": '
                                       'van en Odoo pero no en el CFDI del proveedor.')
+    lista_69b = fields.Selection(LISTA_69B, string='Lista 69-B', readonly=True,
+                                 help='Proveedor en la lista 69-B del SAT: estado actual del contacto '
+                                      'o, si no hay contacto, el que traía el CFDI.')
     estado_sat = fields.Char(string='Estado SAT', readonly=True)
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
@@ -153,18 +160,56 @@ class SatCompareLine(models.Model):
                  WHERE tipo IN ('I', 'E')
                  GROUP BY company_id, direction
             ),
+            -- Una factura con varios CFDI (el proveedor timbró dos y Odoo los
+            -- capturó juntos): a cada CFDI le toca su parte del total de la
+            -- factura, proporcional a su monto.
+            cfdi_on_move AS (
+                SELECT move_id, sum(total) AS s, count(*) AS n
+                  FROM sat_cfdi
+                 WHERE move_id IS NOT NULL AND tipo IN ('I', 'E') AND estado_sat <> 'cancelado'
+                   AND match_status <> 'ignorado'
+                 GROUP BY move_id
+            ),
+            -- Un CFDI capturado en varias facturas con el mismo UUID (una por
+            -- entrada de almacén, p.ej.): se compara contra la suma. Si es el
+            -- mismo XML capturado dos veces, la suma lo delata como monto.
+            bills_of_uuid AS (
+                SELECT odoo_uuid, sum(total_odoo) AS s, sum(total_odoo_mxn) AS smxn, count(*) AS n
+                  FROM odoo
+                 WHERE state = 'posted' AND odoo_uuid IS NOT NULL
+                 GROUP BY odoo_uuid
+            ),
+            adj AS (
+                SELECT c.id AS cfdi_id,
+                       CASE WHEN cm.n > 1 AND c.estado_sat <> 'cancelado' AND cm.s <> 0
+                                 THEN o.total_odoo * c.total / cm.s
+                            WHEN bu.n > 1 AND o.odoo_uuid = c.uuid THEN bu.s
+                            ELSE o.total_odoo END AS total_odoo,
+                       CASE WHEN cm.n > 1 AND c.estado_sat <> 'cancelado' AND cm.s <> 0
+                                 THEN o.total_odoo_mxn * c.total / cm.s
+                            WHEN bu.n > 1 AND o.odoo_uuid = c.uuid THEN bu.smxn
+                            ELSE o.total_odoo_mxn END AS total_odoo_mxn
+                  FROM sat_cfdi c
+                  JOIN odoo o ON o.move_id = c.move_id
+                  LEFT JOIN cfdi_on_move cm ON cm.move_id = c.move_id
+                  LEFT JOIN bills_of_uuid bu ON bu.odoo_uuid = c.uuid
+            ),
             rows AS (
                 -- Lado SAT: en ambos, solo SAT o ignorado
                 SELECT c.id AS cfdi_id, c.move_id, c.uuid, c.direction, c.tipo, c.company_id,
                        c.partner_id, c.counterparty_rfc, c.counterparty_name,
                        c.fecha_emision::date AS fecha,
                        coalesce(c.moneda, 'MXN') AS moneda, o.moneda_odoo,
-                       c.total AS total_sat, o.total_odoo,
+                       c.total AS total_sat, a.total_odoo,
                        c.total * coalesce(nullif(c.tipo_cambio, 0), 1) AS total_sat_mxn,
                        CASE WHEN o.moneda_odoo = coalesce(c.moneda, 'MXN')
-                            THEN o.total_odoo * coalesce(nullif(c.tipo_cambio, 0), 1)
-                            ELSE o.total_odoo_mxn END AS total_odoo_mxn,
+                            THEN a.total_odoo * coalesce(nullif(c.tipo_cambio, 0), 1)
+                            ELSE a.total_odoo_mxn END AS total_odoo_mxn,
                        o.pago_terceros,
+                       CASE WHEN c.direction = 'received' THEN coalesce(
+                                sp.sat_69b_status,
+                                CASE WHEN lower(c.emisor_blacklist) IN ('presumed', 'definitive', 'dismissed', 'favorable')
+                                     THEN lower(c.emisor_blacklist) END) END AS lista_69b,
                        c.estado_sat, o.state AS state_odoo, o.payment_state, o.move_name,
                        CASE WHEN c.match_status = 'ignorado' THEN 'ignorado'
                             WHEN c.move_id IS NOT NULL THEN 'ambos'
@@ -175,6 +220,7 @@ class SatCompareLine(models.Model):
                        c.suggested_move_id
                   FROM sat_cfdi c
                   LEFT JOIN odoo o ON o.move_id = c.move_id
+                  LEFT JOIN adj a ON a.cfdi_id = c.id
                   LEFT JOIN res_partner sp ON sp.id = c.partner_id
                  WHERE c.tipo IN ('I', 'E')
                 UNION ALL
@@ -185,6 +231,7 @@ class SatCompareLine(models.Model):
                        o.company_id, o.partner_id, upper(p.vat), p.name, o.fecha,
                        o.moneda_odoo, o.moneda_odoo,
                        NULL, o.total_odoo, NULL, o.total_odoo_mxn, o.pago_terceros,
+                       CASE WHEN o.move_type IN ('in_invoice', 'in_refund') THEN p.sat_69b_status END,
                        NULL, o.state, o.payment_state, o.move_name,
                        -- Antes del primer día con datos del SAT no hay contra qué comparar
                        CASE WHEN co.sat_data_since IS NOT NULL AND o.fecha < co.sat_data_since
@@ -216,7 +263,7 @@ class SatCompareLine(models.Model):
                    r.cfdi_id, r.move_id, r.uuid, r.direction, r.tipo, r.company_id, r.partner_id,
                    r.counterparty_rfc, r.counterparty_name, r.fecha, r.moneda, r.moneda_odoo,
                    r.total_sat, r.total_odoo, r.total_sat_mxn, r.total_odoo_mxn, r.pago_terceros,
-                   r.estado_sat, r.state_odoo, r.payment_state, r.move_name, r.bucket, r.suggested_move_id,
+                   r.lista_69b, r.estado_sat, r.state_odoo, r.payment_state, r.move_name, r.bucket, r.suggested_move_id,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
                    date_trunc('month', r.fecha)::date AS mes,
                    r.signo * CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat_mxn, 0) ELSE 0 END AS sat_vigente,
@@ -227,6 +274,9 @@ class SatCompareLine(models.Model):
                         WHEN r.estado_sat = 'cancelado' AND r.state_odoo = 'posted' THEN 'cancelado_sat'
                         WHEN r.estado_sat <> 'cancelado' AND r.state_odoo = 'cancel' THEN 'cancelado_odoo'
                         WHEN r.state_odoo = 'draft' THEN 'borrador'
+                        -- otra moneda: si en pesos cuadran (compra de divisas), no es hallazgo
+                        WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo
+                             AND abs(coalesce(r.total_sat_mxn, 0) - coalesce(r.total_odoo_mxn, 0)) <= 1 THEN 'moneda_ok'
                         WHEN r.moneda_odoo IS NOT NULL AND r.moneda <> r.moneda_odoo THEN 'moneda'
                         -- al centavo: un centavo de redondeo se tolera; de dos centavos a
                         -- menos de un peso es redondeo de captura, fuera de los hallazgos

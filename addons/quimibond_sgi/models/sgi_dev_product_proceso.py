@@ -18,6 +18,8 @@ ya inspeccionado se distingue por ubicación, no por código.
   ficha de acabado que lo tiene ligado (``product_proceso_id`` en ``quimibond_ficha_tecnica_tela`` 2.13.0).
 - La ruta del proyecto muestra sus operaciones entre las del teñido y las del acabado.
 """
+from markupsafe import Markup
+
 from odoo import api, fields, models
 
 from .sgi_dev_product_base import UNIT_KG, parse_code
@@ -62,7 +64,7 @@ class ProjectProjectDevProceso(models.Model):
                 continue
             product = Product.with_context(active_test=False).search([('default_code', '=', code)], limit=1)
             if product:
-                body = "Acabado en kg: se liga el existente <b>%s</b>." % code
+                body = Markup("Acabado en kg: se liga el existente <b>%s</b>.") % code
             else:
                 product = Product.create({
                     'name': acabado.name, 'default_code': code, 'type': 'consu', 'is_storable': True,
@@ -71,9 +73,9 @@ class ProjectProjectDevProceso(models.Model):
                     'company_id': project.company_id.id or False,
                     'sgi_dev_state': 'desarrollo', 'sgi_dev_project_id': project.id, 'sgi_dev_role': 'proceso',
                 })
-                body = ("Acabado en kg <b>%s</b> creado. Capture su lista de materiales (abridora, tintorería, "
-                        "rama, Inspección) y la de la Clasificación final del acabado (consume %s y produce %s en metros)."
-                        % (code, code, acabado.default_code))
+                body = Markup("Acabado en kg <b>%s</b> creado. Capture su lista de materiales (abridora, tintorería, "
+                              "rama, Inspección) y la de la Clasificación final del acabado (consume %s y produce %s en "
+                              "metros).") % (code, code, acabado.default_code)
             project.write({'sgi_dev_product_proceso_id': product.id})
             project.message_post(body=body)
         return True

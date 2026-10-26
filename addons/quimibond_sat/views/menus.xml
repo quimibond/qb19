@@ -23,6 +23,11 @@
               parent="menu_sat_root"
               action="action_sat_pago_compare"
               sequence="20"/>
+    <menuitem id="menu_sat_iva_month"
+              name="IVA del mes"
+              parent="menu_sat_root"
+              action="action_sat_iva_month"
+              sequence="30"/>
     <menuitem id="menu_sat_datos"
               name="Datos"
               parent="menu_sat_root"

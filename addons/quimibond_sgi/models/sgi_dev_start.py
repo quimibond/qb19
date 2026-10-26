@@ -22,6 +22,8 @@ La Solicitud de desarrollos ya se imprime con su clave nueva (F-C1-01 / 11 /
 import base64
 import logging
 
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -158,14 +160,14 @@ class ProjectProjectDevStart(models.Model):
                 _logger.warning("SGI desarrollo: no se pudo generar el PDF de la solicitud %s: %s", project.id, exc)
                 attachment = self.env['ir.attachment']
             missing = project.sgi_dev_mp_line_ids.filtered(lambda l: l.qty_missing > 0)
-            body = ("Solicitud de desarrollo <b>%s</b> aprobada por %s. Partes interesadas: %s."
+            body = (Markup("Solicitud de desarrollo <b>%s</b> aprobada por %s. Partes interesadas: %s.")
                     % (project.sgi_ft_folio or project.name, project.sgi_dev_approved_by_id.name,
                        ", ".join(users.mapped('name')) or "ninguna configurada (Ajustes → SGI)"))
             if missing:
-                body += "<br/>Materia prima que falta para la muestra: %s." % ", ".join(
+                body += Markup("<br/>Materia prima que falta para la muestra: %s.") % ", ".join(
                     "%s (%s %s)" % (l.product_id.display_name, round(l.qty_missing, 3), l.uom_id.name) for l in missing)
             elif project.sgi_dev_mp_line_ids:
-                body += "<br/>Hay existencia de toda la materia prima de la muestra."
+                body += Markup("<br/>Hay existencia de toda la materia prima de la muestra.")
             project.message_post(body=body, partner_ids=users.partner_id.ids, attachment_ids=attachment.ids,
                                  subject="Solicitud de desarrollo aprobada: %s" % (project.sgi_ft_folio or project.name),
                                  message_type='comment', subtype_xmlid='mail.mt_comment')

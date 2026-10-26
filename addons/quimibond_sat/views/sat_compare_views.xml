@@ -22,7 +22,7 @@
                   decoration-danger="issue in ('cancelado_sat', 'cancelado_odoo')"
                   decoration-warning="issue in ('monto', 'moneda', 'borrador', 'solo_odoo', 'solo_odoo_sin_uuid')"
                   decoration-info="issue == 'solo_sat'"
-                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat', 'antes_sat', 'cancelado_sin_factura', 'redondeo', 'terceros')">
+                  decoration-muted="issue in ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat', 'antes_sat', 'cancelado_sin_factura', 'redondeo', 'terceros', 'moneda_ok')">
                 <field name="cfdi_id" column_invisible="1"/>
                 <field name="move_id" column_invisible="1"/>
                 <field name="fecha"/>
@@ -52,6 +52,8 @@
                 <field name="total_sat_mxn" sum="Total SAT (MXN)" optional="hide"/>
                 <field name="total_odoo_mxn" sum="Total Odoo (MXN)" optional="hide"/>
                 <field name="pago_terceros" optional="hide"/>
+                <field name="lista_69b" optional="show" decoration-danger="lista_69b == 'definitive'"
+                       decoration-warning="lista_69b == 'presumed'"/>
                 <field name="sat_vigente" sum="SAT vigente (MXN)" optional="hide"/>
                 <field name="odoo_posted" sum="Odoo publicado (MXN)" optional="hide"/>
                 <field name="delta" sum="Δ (MXN)" optional="hide"/>
@@ -84,7 +86,8 @@
                 <filter name="solo_odoo" string="Solo en Odoo" domain="[('bucket', 'in', ('solo_odoo', 'solo_odoo_sin_uuid'))]"/>
                 <filter name="pendiente_sat" string="Aún no extraído del SAT" domain="[('bucket', '=', 'pendiente_sat')]"/>
                 <filter name="fuera" string="Fuera de conciliación" domain="[('bucket', 'in', ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat', 'antes_sat', 'cancelado_sin_factura'))]"/>
-                <filter name="explicadas" string="Diferencias explicadas" domain="[('issue', 'in', ('redondeo', 'terceros'))]"/>
+                <filter name="explicadas" string="Diferencias explicadas" domain="[('issue', 'in', ('redondeo', 'terceros', 'moneda_ok'))]"/>
+                <filter name="lista_69b" string="Proveedor en 69-B" domain="[('lista_69b', 'in', ('presumed', 'definitive'))]"/>
                 <filter name="hallazgos" string="Con hallazgo"
                         domain="[('issue', 'in', ('monto', 'moneda', 'cancelado_sat', 'cancelado_odoo'))]"/>
                 <filter name="usd" string="En dólares" domain="[('moneda', '=', 'USD')]"/>

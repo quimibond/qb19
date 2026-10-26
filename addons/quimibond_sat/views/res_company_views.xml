@@ -10,6 +10,7 @@
                 <field name="sat_sync_enabled"/>
                 <field name="sat_syntage_entity_id" invisible="not sat_sync_enabled"/>
                 <field name="sat_data_since" invisible="not sat_sync_enabled"/>
+                <field name="sat_auto_bill_journal_id" invisible="not sat_sync_enabled"/>
                 <field name="sat_data_until_issued" invisible="not sat_sync_enabled"/>
                 <field name="sat_data_until_received" invisible="not sat_sync_enabled"/>
             </xpath>

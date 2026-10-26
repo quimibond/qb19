@@ -19,6 +19,8 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -428,8 +430,8 @@ class QbPeriodo(models.Model):
                               % (wc.name, antes, wc.costs_hour))
             t.publicada = True
         if lineas:
-            self.message_post(body='Tarifas publicadas a Odoo:<br/>'
-                              + '<br/>'.join(lineas))
+            self.message_post(body=Markup('Tarifas publicadas a Odoo:<br/>')
+                              + Markup('<br/>').join(lineas))
         return lineas
 
     def action_publicar_tarifas(self):

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sat_iva_month_list" model="ir.ui.view">
+        <field name="name">sat.iva.month.list</field>
+        <field name="model">sat.iva.month</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" decoration-danger="not cuadra" decoration-muted="cuadra">
+                <header>
+                    <button name="action_recompute_year" type="object" string="Recalcular el año" display="always"/>
+                </header>
+                <field name="mes" widget="date"/>
+                <field name="concepto"/>
+                <field name="sat_iva" sum="SAT"/>
+                <field name="odoo_iva" sum="Contabilidad"/>
+                <field name="delta" sum="Δ"/>
+                <field name="cuadra"/>
+                <field name="n_cfdi" optional="hide"/>
+                <field name="calculado" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <button name="action_open_cfdi" type="object" string="CFDI" icon="fa-file-text-o"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_iva_month_pivot" model="ir.ui.view">
+        <field name="name">sat.iva.month.pivot</field>
+        <field name="model">sat.iva.month</field>
+        <field name="arch" type="xml">
+            <pivot string="IVA del mes: SAT vs contabilidad">
+                <field name="mes" interval="month" type="row"/>
+                <field name="concepto" type="col"/>
+                <field name="sat_iva" type="measure"/>
+                <field name="odoo_iva" type="measure"/>
+                <field name="delta" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_sat_iva_month_search" model="ir.ui.view">
+        <field name="name">sat.iva.month.search</field>
+        <field name="model">sat.iva.month</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="mes"/>
+                <filter name="no_cuadra" string="No cuadra" domain="[('cuadra', '=', False)]"/>
+                <separator/>
+                <filter name="acreditable" string="IVA acreditable" domain="[('concepto', '=', 'acreditable')]"/>
+                <filter name="trasladado" string="IVA trasladado" domain="[('concepto', '=', 'trasladado')]"/>
+                <separator/>
+                <filter name="mes" string="Mes" date="mes"/>
+                <group>
+                    <filter name="group_concepto" string="Concepto" context="{'group_by': 'concepto'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sat_iva_month" model="ir.actions.act_window">
+        <field name="name">IVA del mes: SAT vs contabilidad</field>
+        <field name="res_model">sat.iva.month</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin meses calculados</p>
+            <p>El IVA acreditable y el trasladado del mes según los CFDI del SAT (en base de flujo: PUE por
+               emisión, PPD por sus complementos de pago) contra las cuentas de IVA de la contabilidad. Se
+               recalcula cada día (últimos tres meses); «Recalcular el año» rehace el año completo.</p>
+        </field>
+    </record>
+
+</odoo>

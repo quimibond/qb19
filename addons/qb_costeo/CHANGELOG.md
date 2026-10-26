@@ -3,6 +3,14 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.3 — 2026-10-26
+
+**Corregido**
+- «Tarifas publicadas a Odoo» (`models/periodo.py`) salía en el chatter con
+  las etiquetas `<br/>` a la vista: Odoo 19 escapa el `body` de
+  `message_post` cuando es `str`. Ahora va como `Markup` y los renglones se
+  escapan.
+
 ## 19.0.1.6.2 — 2026-10-22
 
 Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22):

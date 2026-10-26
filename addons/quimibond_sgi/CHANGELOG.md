@@ -13,6 +13,26 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.192.1 — 2026-10-26
+
+Dirección General 2026-10-26: en el chatter del proyecto 504 los mensajes
+«Artículos generados» y «Regenerar artículos» se veían con las etiquetas
+`<b>`, `<ul>` y `<li>` como texto. Odoo 19 escapa el `body` de
+`message_post` cuando es un `str`; el HTML tiene que ir como `Markup`.
+
+**Corregido**
+- Mensajes con HTML que salían escapados, ahora con `Markup` (los valores
+  que se insertan se siguen escapando): Artículos generados desde el base
+  (`sgi_dev_product_base.py`), Regenerar artículos
+  (`sgi_dev_product_regen.py`), Acabado en kg (`sgi_dev_product_proceso.py`),
+  Solicitud de desarrollo aprobada (`sgi_dev_start.py`), aviso a jefes del
+  escalamiento de C1 (`sgi_dev_escalation.py`) y procedimiento pendiente de
+  revisión documental (`sgi_process_procedure.py`).
+- Los mensajes que ya se escribieron con las etiquetas a la vista se quedan
+  como están (no se reescribe el historial del chatter).
+- Prueba: `test_05_generate_from_base_product` revisa que el mensaje lleve
+  `<li>` y no `&lt;`.
+
 ## 19.0.57.192.0 — 2026-10-26
 
 Dirección General 2026-10-26: «Regenerar artículos» en el proyecto 504
