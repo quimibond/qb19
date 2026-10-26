@@ -76,25 +76,48 @@ class FichaTecnicaTejidoUso(models.Model):
         string='Rendimiento forzado',
         help='El rendimiento se escribió a mano: ya no se recalcula con el peso y el ancho. Desmárquelo para volver '
              'al cálculo.')
+    # 2.14.0 (Dirección General 2026-10-26): las circulares que entregan la tela en tubo dan en la ficha el ancho del
+    # tubo aplanado (dos capas) y el rendimiento salía al doble: WD040Q46HNT098 (40 g/m², 98 cm) daba 25.51 m/kg y
+    # la producción real da ~13.9 m/kg ya acabada (12.76 con el ancho abierto de 1.96 m). Tubular o abierta depende
+    # de cómo enrolla la máquina: es un parámetro de la configuración de la circular, no del artículo.
+    salida_tela = fields.Char(
+        string='Salida de la tela', compute='_compute_salida_tela', store=True,
+        help='Cómo entrega la tela la máquina con la que se elaboró la ficha («Tubular» o «Abierta»), tomado de su '
+             'configuración. Tubular: el ancho de la ficha es el del tubo aplanado y el rendimiento usa el doble. '
+             'Vacío: la máquina no lo tiene capturado y el ancho se toma como abierto.')
 
-    def _ft_rendimiento_calculado(self):
-        """Rendimiento (m/kg) con el peso y el ancho acondicionados; 0 si falta alguno o el ancho no es creíble
-        (fuera de 0.3 a 4 m, p. ej. 1.92 capturado en cm)."""
+    @api.depends('maquina_config_id.valor_ids.valor_texto', 'maquina_config_id.valor_ids.parametro_id')
+    def _compute_salida_tela(self):
+        for ficha in self:
+            config = ficha.maquina_config_id
+            ficha.salida_tela = (config._ft_value('salida_tela') or False) if config else False
+
+    def _ft_ancho_m(self):
+        """Ancho acondicionado en metros (con su unidad); 0 si falta el ancho o la unidad."""
         self.ensure_one()
         # 2.10.0: la unidad del catálogo convierte con su unidad de Inventario; si no, el texto.
         unidad = self.ancho_acondicionado_tol_unit_id
         metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
         factor = unidad._ft_factor_a(metro) if unidad and metro else 0.0
         factor = factor or ANCHO_A_METROS.get((self.ancho_acondicionado_tol_unit or 'cm').strip().lower())
-        if not (self.peso_acondicionado and self.ancho_acondicionado and factor):
+        return self.ancho_acondicionado * factor if self.ancho_acondicionado and factor else 0.0
+
+    def _ft_rendimiento_calculado(self):
+        """Rendimiento (m/kg) con el peso y el ancho acondicionados; 0 si falta alguno o el ancho no es creíble
+        (fuera de 0.3 a 4 m, p. ej. 1.92 capturado en cm). Máquina que entrega tubular: el ancho abierto es el
+        doble."""
+        self.ensure_one()
+        ancho_m = self._ft_ancho_m()
+        if not (self.peso_acondicionado and ancho_m):
             return 0.0
-        ancho_m = self.ancho_acondicionado * factor
         if not 0.3 <= ancho_m <= 4.0:
             return 0.0
+        if self.salida_tela == 'Tubular':
+            ancho_m *= 2
         return 1000.0 / (self.peso_acondicionado * ancho_m)
 
     @api.depends('peso_acondicionado', 'ancho_acondicionado', 'ancho_acondicionado_tol_unit_id',
-                 'ancho_acondicionado_tol_unit', 'rendimiento_manual')
+                 'ancho_acondicionado_tol_unit', 'salida_tela', 'rendimiento_manual')
     def _compute_rendimiento_tela_tejida(self):
         for ficha in self:
             if not ficha.rendimiento_manual:

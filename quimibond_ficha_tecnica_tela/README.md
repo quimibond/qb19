@@ -666,3 +666,43 @@ comportamiento: el README («Modelo de producción vigente», con las reglas de
 relación de baño, tiempo de ciclo, bandas, duración de rama, merma y alertas
 acordadas), la ayuda del acabado en proceso y los avisos de la ficha de
 acabado dicen «Clasificación final» donde decían «Inspección».
+
+## Salida de la tela de la circular: tubular o abierta (2.14.0, 2026-10-26)
+
+Dirección General vio que WD040Q46HNT098 marcaba **25.51 m/kg**. La fórmula
+estaba bien (1000 / (40 g/m² × 0.98 m)), pero los 98 cm de las circulares de
+30" son el **tubo aplanado** (dos capas), no la tela abierta. Contra la
+producción real (metros acabados ÷ kg teñidos que consumió la orden):
+
+| Artículo | Ficha (antes) | Con ancho abierto | Real ya acabado |
+|---|---:|---:|---:|
+| WD040Q46HNT098 (40 g/m², 98 cm, 30") | 25.51 | 12.76 | ~13.9 (WD040Q46JNT159) |
+| WN048Q66HNT098 (50 g/m², 98 cm, 30") | 20.41 | 10.20 | ~10.3 (WN055Q66JNT162) |
+
+Tubular o abierta depende de cómo enrolla la máquina, no del artículo
+(decisión de Jose, 2026-10-26):
+
+- Parámetro nuevo de la circular **«Salida de la tela»** (`salida_tela`,
+  texto con opciones «Tubular, Abierta»), en la configuración por fecha como la
+  galga y el diámetro: si cambia el enrollador, se registra una configuración
+  nueva con su fecha.
+- La ficha de tejido lo toma de la configuración con que se elaboró
+  (`salida_tela`, calculado y guardado). Con «Tubular» el rendimiento usa el
+  **doble** del ancho. Sin dato en la máquina, el ancho se toma como abierto y
+  la ficha lo avisa.
+- Ni el peso ni el ancho capturados cambian; los rendimientos forzados a mano
+  no se tocan. Capturar el dato en la máquina recalcula sus fichas.
+- Datos (por MCP, al desplegar): «Tubular» en las circulares de 30" con
+  fichas (1–4, 7–9, 14–16, 19–23, 25–27, 30) y en la 17 y la 18 (32",
+  confirmado por Jose); «Abierta» en las demás de 32" (28, 31–37). Las que no
+  tienen fichas (5, 6, 24, 29, 38, 39, 40) quedan vacías hasta que la planta lo
+  diga.
+- Con la 17 y la 18 tubulares, **WJ047Q21HNT112** (102 cm) cuadra: 8.75 m/kg
+  contra ~9.3 real ya acabado. En cambio las fichas de **WJ044Q22HNT235** en
+  esas dos máquinas (218 cm) quedan en 4.23 m/kg y la producción real da ~11
+  ya acabado: su ancho es de tela abierta. El rendimiento del producto no
+  cambia (la ficha de referencia es la de la circular 37, abierta), pero esas
+  dos fichas las revisa la planta.
+- Efecto en tintorería: el grupo de cargas del jet sale bien (WD040 pasa de
+  «fuera de los grupos: capacidad general» al grupo C).
+- Pruebas: `tests/test_rendimiento.py` (`test_03_salida_de_la_tela_de_la_maquina`).
