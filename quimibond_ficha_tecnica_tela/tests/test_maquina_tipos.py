@@ -50,7 +50,7 @@ class TestMaquinaTipos(TransactionCase):
         config = self.Config.create({'workcenter_id': wc.id, 'tipo_id': self.circular.id,
                                      'date_from': date(2026, 3, 1), 'galga': 18, 'diametro': 32})
         self.assertEqual(wc.ft_tipo_id, self.circular, "La máquina sin tipo toma el de su primera configuración")
-        self.assertEqual(len(config.valor_ids), 5, "Los cinco parámetros de tejido circular")
+        self.assertEqual(len(config.valor_ids), 6, "Los seis parámetros de tejido circular (2.14.0: salida de la tela)")
         self.assertEqual(config._ft_value('galga'), 18)
         config.valor_ids.filtered(lambda v: v.code == 'no_alimentadores').valor = 96
         self.assertEqual(config.no_alimentadores, 96, "La columna sale del valor")
