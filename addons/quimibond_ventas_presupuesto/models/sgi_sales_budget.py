@@ -450,7 +450,8 @@ class SgiSalesBudget(models.Model):
         def _m(v):
             return "%s%s" % (ccy, '{:,.2f}'.format(v))
         cuadra = abs(d['residual']) < 0.01
-        body = (
+        # 1.4.2: Markup, si no Odoo 19 escapa el HTML y el chatter muestra las etiquetas.
+        body = (Markup(
             "<b>Conciliación facturado vs presupuesto — %s</b>"
             "<table class='table table-sm'>"
             "<tr><td><b>A. Facturado contable del equipo</b></td>"
@@ -468,13 +469,13 @@ class SgiSalesBudget(models.Model):
             "</table>"
             "%s"
             "<i>Informativo (fuera de A): facturas del año SIN equipo de ventas: "
-            "%s.</i>" % (
+            "%s.</i>") % (
                 self.year, _m(d['A']), _m(d['B']), _m(d['unbudgeted']),
                 _m(d['no_product']), _m(d['by_client_others']), _m(d['residual']),
-                ("<span class='text-success'>Cuadra exacto (residuo 0).</span><br/>"
+                (Markup("<span class='text-success'>Cuadra exacto (residuo 0).</span><br/>")
                  if cuadra else
-                 "<span class='text-danger'>No cuadra: revisa el residuo "
-                 "(foto real desactualizada o redondeos).</span><br/>"),
+                 Markup("<span class='text-danger'>No cuadra: revisa el residuo "
+                        "(foto real desactualizada o redondeos).</span><br/>")),
                 _m(d['no_team'])))
         self.message_post(body=body)
         return {
@@ -576,10 +577,10 @@ class SgiSalesBudget(models.Model):
             if budget.kind == 'presupuesto' and budget.no_price_count > 0:
                 pairs, total = budget._sgi_no_price_pairs()
                 budget.message_post(
-                    body="AVISO de cobertura de precios al enviar a revisión: %d "
-                         "producto(s) sin precio en la lista. Corrígelos ANTES de "
-                         "aprobar (ahí sí bloquea).<br/>- %s" % (
-                             total, "<br/>- ".join(pairs)))
+                    body=Markup("AVISO de cobertura de precios al enviar a revisión: %d "
+                                "producto(s) sin precio en la lista. Corrígelos ANTES de "
+                                "aprobar (ahí sí bloquea).<br/>- %s") % (
+                             total, Markup("<br/>- ").join(pairs)))
             budget.state = 'revisado'
         return True
 
@@ -624,9 +625,9 @@ class SgiSalesBudget(models.Model):
                 # sin tener escritura en el presupuesto (ya no implica al Jefe
                 # MAST). El autor del mensaje sigue siendo quien aprueba.
                 budget.sudo().message_post(
-                    body="Aprobado con EXCEPCIÓN de cobertura de precios: %d "
-                         "producto(s) sin precio en la lista.<br/>- %s" % (
-                             total, "<br/>- ".join(pairs)),
+                    body=Markup("Aprobado con EXCEPCIÓN de cobertura de precios: %d "
+                                "producto(s) sin precio en la lista.<br/>- %s") % (
+                             total, Markup("<br/>- ").join(pairs)),
                     author_id=self.env.user.partner_id.id)
             budget.sudo().state = 'aprobado'
         return True
@@ -1344,9 +1345,9 @@ class SgiSalesBudget(models.Model):
         details, _omitted = self._qb_mps_refresh(
             self.line_ids.product_id, self.company_id)
         self.message_post(
-            body="Demanda neta enviada al Programa Maestro (%d celdas, total de "
-                 "todos los pronósticos y presupuestos vigentes):<br/>%s" % (
-                     len(details), "<br/>".join(details) or "sin demanda"))
+            body=Markup("Demanda neta enviada al Programa Maestro (%d celdas, total de "
+                        "todos los pronósticos y presupuestos vigentes):<br/>%s") % (
+                     len(details), Markup("<br/>").join(details) or "sin demanda"))
         return True
 
     def _send_budget_to_mps(self):
@@ -1361,12 +1362,12 @@ class SgiSalesBudget(models.Model):
         omitted_txt = ", ".join(
             p.default_code or p.name for p in omitted_products) or "ninguno"
         self.message_post(
-            body="Presupuesto → Programa Maestro: escritas %d celda(s) con el total "
-                 "vigente; omitidos %d producto(s) por pronóstico vigente del "
-                 "mismo cliente y mes (los manda el pronóstico con su demanda "
-                 "neta): %s.<br/>%s" % (
+            body=Markup("Presupuesto → Programa Maestro: escritas %d celda(s) con el total "
+                        "vigente; omitidos %d producto(s) por pronóstico vigente del "
+                        "mismo cliente y mes (los manda el pronóstico con su demanda "
+                        "neta): %s.<br/>%s") % (
                      len(details), len(omitted_products), omitted_txt,
-                     "<br/>".join(details) or "sin demanda propia del presupuesto"))
+                     Markup("<br/>").join(details) or "sin demanda propia del presupuesto"))
         return True
 
     def action_open_import(self):
