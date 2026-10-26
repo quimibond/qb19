@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Formulario de BoM: cabecera con la fórmula + botones + columnas de dosificación -->
+    <record id="mrp_bom_form_view_tintoreria_dosificacion" model="ir.ui.view">
+        <field name="name">mrp.bom.form.tintoreria.dosificacion</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_cargar_formula" type="object" string="Cargar desde fórmula"
+                            class="btn-primary"
+                            invisible="not id or not formula_tintoreria_id"
+                            confirm="Se reemplazarán los ingredientes dosificados de la BoM por los de la fórmula. ¿Continuar?"/>
+                    <button name="action_validar_formula" type="object" string="Validar contra catálogo"
+                            invisible="not id or not formula_tintoreria_id"/>
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="formula_tintoreria_id" options="{'no_create': True}"/>
+                <field name="formula_estado" widget="badge"
+                       decoration-success="formula_estado == 'sincronizada'"
+                       decoration-warning="formula_estado == 'modificada'"
+                       invisible="not formula_tintoreria_id"/>
+            </xpath>
+            <xpath expr="//field[@name='bom_line_ids']/list/field[@name='product_qty']" position="before">
+                <field name="tipo_componente" optional="show"/>
+                <field name="gramos_por_litro" optional="show" readonly="tipo_componente != 'quimico'"/>
+                <field name="porcentaje_colorante" optional="show" readonly="tipo_componente != 'colorante'"/>
+                <field name="dosificado" column_invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='bom_line_ids']/list/field[@name='product_qty']" position="attributes">
+                <attribute name="readonly">dosificado</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Lista de BoMs -->
+    <record id="mrp_bom_tree_view_tintoreria_dosificacion" model="ir.ui.view">
+        <field name="name">mrp.bom.list.tintoreria.dosificacion</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="formula_tintoreria_id" optional="show"/>
+                <field name="formula_estado" widget="badge" optional="show"
+                       decoration-success="formula_estado == 'sincronizada'"
+                       decoration-warning="formula_estado == 'modificada'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Búsqueda -->
+    <record id="mrp_bom_search_view_tintoreria_dosificacion" model="ir.ui.view">
+        <field name="name">mrp.bom.search.tintoreria.dosificacion</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.view_mrp_bom_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bom_line_ids']" position="after">
+                <field name="formula_tintoreria_id" string="Fórmula de tintorería"/>
+            </xpath>
+            <xpath expr="//filter[@name='phantom']" position="after">
+                <separator/>
+                <filter string="Fórmula difiere del catálogo" name="formula_modificada"
+                        domain="[('formula_estado', '=', 'modificada')]"/>
+                <filter string="Sin fórmula de tintorería" name="formula_ninguna"
+                        domain="[('formula_estado', '=', 'sin_formula')]"/>
+            </xpath>
+            <xpath expr="//filter[@name='group_by_type']" position="after">
+                <filter string="Fórmula de tintorería" name="group_by_formula" domain="[]"
+                        context="{'group_by': 'formula_tintoreria_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
