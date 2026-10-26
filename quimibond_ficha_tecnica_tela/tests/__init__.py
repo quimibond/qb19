@@ -12,3 +12,4 @@ from . import test_acabado_ruta
 from . import test_unidades
 from . import test_rendimiento
 from . import test_acabado_proceso
+from . import test_longitud_malla  # 2.16.1

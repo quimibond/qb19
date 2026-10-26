@@ -9,13 +9,20 @@ fichas C1 de costo y cotización a este modelo y liga las cotizaciones
 importadas del cotizador anterior con su proyecto FT.
 """
 import logging
+import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.qb_cotizador.models.cotizacion import YARDA_M
+
 _logger = logging.getLogger(__name__)
 
 CODE_GAUGE = 'galga'
+# 1.8.0: el lote mínimo es texto libre del PDF («2,000 yd», «5,000 m», «300 kg»).
+LOTE_RE = re.compile(r'([\d][\d,]*(?:\.\d+)?)\s*(yardas|yarda|yds|yd|metros|metro|mts|mt|m|kilos|kgs|kg)\b')
+LOTE_UNIDADES = {'yardas': 'yd', 'yarda': 'yd', 'yds': 'yd', 'yd': 'yd', 'metros': 'm', 'metro': 'm', 'mts': 'm',
+                 'mt': 'm', 'm': 'm', 'kilos': 'kg', 'kgs': 'kg', 'kg': 'kg'}
 # Ligas decididas a mano (Jose, 2026-10-07): cotización vieja → proyecto.
 # 1.2.0 (Jose 2026-10-08, punto 1): la liga nunca cambia valores de origen
 # (la galga «21» que ponía 1.0.0 se regresó a «18» por MCP).
@@ -61,6 +68,46 @@ class QbCotizadorCotizacionSgi(models.Model):
         string='Revisión del desarrollo cotizada', readonly=True, copy=False,
         help='Revisión del proyecto con la que se calculó el costo.')
 
+    # 1.8.0: el lote mínimo contra un baño de tintorería (mínimo de baño del jet, quimibond_sgi 57.194.0).
+    bano_alerta = fields.Char(compute='_compute_bano_alerta')
+
+    @api.depends('lote_minimo', 'project_id', 'consumo_kg', 'pdf_kg_por_m', 'volumen_uom')
+    def _compute_bano_alerta(self):
+        for rec in self:
+            rec.bano_alerta = rec._qb_sgi_bano_alerta()
+
+    def _qb_sgi_bano_alerta(self):
+        """Texto del aviso si el lote mínimo, pasado a kg de tela teñida, no llena un baño; '' si lo llena o si
+        no se puede medir (sin teñido en el desarrollo, sin mínimo de baño o sin kg por metro)."""
+        self.ensure_one()
+        project = self.project_id
+        if not project or not project.sgi_dev_product_tenido_id or not self.lote_minimo:
+            return ''
+        match = LOTE_RE.search(self.lote_minimo.lower())
+        if not match:
+            return ''
+        cantidad = float(match.group(1).replace(',', ''))
+        unidad = LOTE_UNIDADES.get(match.group(2))
+        bath, src = project._sgi_dev_min_bath()
+        if not cantidad or not unidad or not bath:
+            return ''
+        if unidad == 'kg':
+            kg_u = 1.0
+        else:
+            # kg de tela teñida por metro de acabado: el consumo de la receta; si no, el peso del metro.
+            kg_m = self.consumo_kg if self.costo_fuente == 'receta' and self.consumo_kg else self.pdf_kg_por_m
+            if not kg_m:
+                return ''
+            kg_u = kg_m * (YARDA_M if unidad == 'yd' else 1.0)
+        kg = cantidad * kg_u
+        if kg >= bath:
+            return ''
+        sube = bath / kg_u
+        return ('El lote mínimo (%s ≈ %s kg de %s) no llena un baño de tintorería (%s kg: %s): cada pedido mínimo '
+                'paga un baño incompleto. Un baño completo son unos %s %s.' % (
+                    self.lote_minimo, '{:,.1f}'.format(kg), project.sgi_dev_product_tenido_id.default_code or 'teñido',
+                    '{:g}'.format(bath), src, '{:,.0f}'.format(sube), unidad))
+
     # ------------------------------------------------------------------
     @api.model
     def _sgi_pick_line(self, project, code):
@@ -81,6 +128,11 @@ class QbCotizadorCotizacionSgi(models.Model):
             vals['hermano_product_id'] = project.sgi_dev_base_product_id.id
             if not project.sgi_dev_product_id:
                 vals['costo_fuente'] = 'hermano'
+        # 1.8.0 (Dirección General 2026-10-26): con artículo generado, el costo sale de su receta (el artículo
+        # nuevo no tiene costo en el período: antes caía al hermano). Si ya se produjo y tiene costo, el período.
+        if project.sgi_dev_product_id:
+            vals['costo_fuente'] = 'periodo' if self._qb_sgi_tiene_costo(project.sgi_dev_product_id, project) \
+                else 'receta'
         from odoo.addons.quimibond_ficha_tecnica_tela.models.ficha_tecnica_caracteristica import (
             CODE_MASS, CODE_WIDTH)
         mass = self._sgi_pick_line(project, CODE_MASS)
@@ -100,6 +152,20 @@ class QbCotizadorCotizacionSgi(models.Model):
             if project.sgi_dev_currency_id:
                 vals['currency_id'] = project.sgi_dev_currency_id.id
         return vals
+
+    @api.model
+    def _qb_sgi_tiene_costo(self, product, project):
+        company = project.company_id or self.env.company
+        Periodo = self.env['qb.periodo'].sudo()
+        # El mismo período con que cotiza `_periodo_para_cotizar`: el último cerrado o, sin ninguno, el último con
+        # costos calculados.
+        periodo = Periodo.para_cotizar(company) or Periodo.search(
+            [('company_id', '=', company.id), ('costo_ids', '!=', False)], order='period desc', limit=1)
+        if not periodo:
+            return False
+        return bool(self.env['qb.costo.unitario'].sudo().search_count(
+            [('periodo_id', '=', periodo.id), ('product_id', '=', product.id), ('costo_produccion', '>', 0)],
+            limit=1))
 
     @api.onchange('project_id')
     def _onchange_project_id(self):

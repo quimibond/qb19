@@ -119,9 +119,10 @@ class FichaTecnicaTejido(models.Model):
     # Especificaciones de tejido — Tabla 1: por polea/hilo (Polea 1 = Hilo
     # SET, Polea 2 = Hilo Stretch), con tolerancia compartida
     # ------------------------------------------------------------------
-    longitud_malla_polea1 = fields.Float(string='Longitud de malla — Polea 1')
-    longitud_malla_polea2 = fields.Float(string='Longitud de malla — Polea 2')
-    longitud_malla_tol = fields.Float(string='Tolerancia longitud de malla')
+    # 2.16.1: tres decimales (0.205 ± 0.002 cm); sin digits la ficha mostraba 0.21 y la tolerancia +/- 0.00.
+    longitud_malla_polea1 = fields.Float(string='Longitud de malla — Polea 1', digits=(16, 3))
+    longitud_malla_polea2 = fields.Float(string='Longitud de malla — Polea 2', digits=(16, 3))
+    longitud_malla_tol = fields.Float(string='Tolerancia longitud de malla', digits=(16, 3))
     longitud_malla_tol_unit = fields.Char(string='Unidad — Longitud de malla (texto)', default='cm')
 
     consumo_cm_vta_polea1 = fields.Float(string='Consumo cm/vta — Polea 1')

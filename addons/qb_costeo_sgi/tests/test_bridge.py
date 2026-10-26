@@ -249,3 +249,26 @@ class TestBridge(CotizadorCase):
         self.assertEqual(tejido['monthly_pct'], '1.111 %')
         self.assertEqual(cap['missing'], [wc_rama.display_name])
         self.assertIn(wc_rama.display_name, self.project._sgi_dev_start_approval_capacity_warning())
+
+    def test_08_receta_por_omision_y_lote_contra_un_bano(self):
+        # 1.8.0: con artículo generado sin costo en el período, la fuente es «Receta del desarrollo»; si ya tiene
+        # costo, el período.
+        nuevo = self.env['product.product'].create({'name': 'Artículo nuevo receta', 'type': 'consu',
+                                                    'default_code': 'WJ150Q28JVH170', 'uom_id': self.tela.uom_id.id})
+        self.project.write({'sgi_dev_product_id': nuevo.id, 'sgi_dev_base_product_id': self.hermana.id})
+        Cot = self.env['qb.cotizador.cotizacion'].with_user(self.vendedor)
+        cot = Cot.create({'project_id': self.project.id})
+        self.assertEqual(cot.costo_fuente, 'receta')
+        self.assertEqual(cot.hermano_product_id, self.hermana)
+        self.project.write({'sgi_dev_product_id': self.tela.id})
+        self.assertEqual(Cot.create({'project_id': self.project.id}).costo_fuente, 'periodo')
+        # Lote mínimo contra el mínimo de baño (aquí el parámetro general: el teñido no tiene ruta con jet).
+        tenido = self.env['product.product'].create({'name': 'Teñido receta', 'type': 'consu',
+                                                     'default_code': 'WJ150Q28IVH170'})
+        self.project.write({'sgi_dev_product_tenido_id': tenido.id})
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.dev_sample_min_bath_kg', '150')
+        cot.write({'lote_minimo': '500 m', 'volumen_uom': 'm'})  # 500 m × 0.255 kg/m = 127.5 kg
+        self.assertIn('no llena un baño', cot.bano_alerta)
+        self.assertIn('588 m', cot.bano_alerta, '150 kg ÷ 0.255 kg/m')
+        cot.write({'lote_minimo': '2,000 yd'})  # 1,828.8 m × 0.255 = 466 kg: llena el baño
+        self.assertFalse(cot.bano_alerta)

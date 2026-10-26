@@ -59,6 +59,9 @@
                     <div class="alert alert-warning" role="alert" invisible="not peso_alerta or peso_confirmado">
                         <field name="peso_alerta" readonly="1" class="oe_inline"/>
                     </div>
+                    <div class="alert alert-warning" role="alert" invisible="not consumo_alerta">
+                        <field name="consumo_alerta" readonly="1" class="oe_inline"/>
+                    </div>
                     <div class="alert alert-info" role="status" invisible="not sin_costo or costo_fuente == 'legado'">
                         Sin costo calculado: el semáforo y los márgenes salen después de «Calcular costo». Hasta entonces no se puede pedir aprobación.
                     </div>
@@ -112,7 +115,7 @@
                             <group>
                                 <group string="De dónde sale">
                                     <field name="costo_fuente" readonly="state not in ('borrador',)"/>
-                                    <field name="hermano_product_id" invisible="costo_fuente != 'hermano'" required="costo_fuente == 'hermano'" readonly="state not in ('borrador',)"/>
+                                    <field name="hermano_product_id" invisible="costo_fuente not in ('hermano', 'receta')" required="costo_fuente == 'hermano'" readonly="state not in ('borrador',)"/>
                                     <field name="periodo_id"/>
                                     <field name="costo_id" invisible="not costo_id"/>
                                     <field name="calculado_el"/>
@@ -143,6 +146,12 @@
                             <group string="Muestra">
                                 <field name="costo_muestra" readonly="state not in ('borrador', 'por_aprobar')"/>
                                 <field name="costo_muestra_nota" readonly="state not in ('borrador', 'por_aprobar')"/>
+                            </group>
+                            <group string="Receta del desarrollo" invisible="costo_fuente != 'receta'">
+                                <field name="consumo_kg" invisible="not consumo_kg"/>
+                                <field name="consumo_hermano_kg" invisible="not consumo_hermano_kg"/>
+                                <field name="consumo_ajuste" invisible="not consumo_ajuste"/>
+                                <field name="receta_detalle" nolabel="1" colspan="2"/>
                             </group>
                             <field name="supuestos" readonly="1" nolabel="1"/>
                         </page>

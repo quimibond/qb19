@@ -3,6 +3,33 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+
+## 19.0.1.7.0 — 2026-10-26
+
+Dirección General 2026-10-26: **costear un desarrollo con la receta de sus códigos nuevos.** El artículo que genera
+un desarrollo nunca se ha producido y no tiene `qb.costo.unitario`; la cotización caía al hermano y «manual» dejaba
+los números del hermano. Caso real: COT-2026-0015 (proyecto 630, WJ038Q22JVH165 teñido verde) costeada con
+WJ038Q22JNT160 natural (piso lleno $6.22/m).
+
+- **Fuente nueva «Receta del desarrollo»** (`costo_fuente = 'receta'`, `_costo_receta`): explota la lista de
+  materiales del artículo hacia abajo. Un componente con costo en el período (el crudo WJ035Q22HNT200, el engomado)
+  entra con su MP, fabricación y energía; uno sin costo con lista de materiales se explota (una fórmula como VERDE
+  HOJA 001 con `standard_price` 0 da 46.65 $/kg con sus químicos); uno comprado, a la última compra antes del cierre
+  del período (`qb.producto.mp.precios_compra`) o, sin compras, a su `standard_price`, y el desglose dice cuál.
+- Conversión por centro de la ruta: horas de la operación (`_estandar`) × tarifa del período. Un centro que el
+  hermano trae y que ni la ruta ni los componentes con costo cubren hereda la conversión **por kg de tela** del
+  hermano (su costo del centro ÷ sus kg de tela) por los kg de tela de la receta nueva; lo dicen el detalle y los
+  supuestos. Rendimiento del hermano (sin hermano, el de planta), operación del período, calidad **media** con lo
+  heredado en `calidad_detalle` (baja sin hermano, con centros sin conversión o con el período sin cerrar).
+- **Desglose** (`receta_detalle`) en la pestaña Costo y en la hoja interna.
+- **Aviso de consumo** (`consumo_alerta`): kg de tela por unidad de la receta nueva (`consumo_kg`) contra el del
+  hermano ajustado por ancho y gramaje (`consumo_hermano_kg`, `consumo_ajuste`); más de 10 % avisa, no bloquea.
+  Caso real: 0.0654 contra 0.0740 kg/m (0.0718 × 165/160), −11.7 %.
+- **«Manual» deja la foto en blanco** al elegirlo (onchange y `write`): MP, energía, fabricación, rendimiento,
+  operación, precio de mercado, costo usado y calidad. Lo que se captura en el mismo cambio se respeta.
+- Prueba `test_receta.py` con los números del período 2026-10 de producción (proyecto 630): piso lleno esperado
+  ≈ $5.77/m con la operación del período (13.37 %).
+
 ## 19.0.1.6.2 — 2026-10-22
 
 Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22):

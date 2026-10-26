@@ -26,6 +26,7 @@ Ciclo (procedimiento C1):
 import logging
 import math
 from datetime import timedelta
+from types import SimpleNamespace
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -53,6 +54,8 @@ FX_FUENTES = [('odoo', 'Tipo de cambio de Odoo'), ('manual', 'Capturado a mano')
 COSTO_FUENTES = [
     ('periodo', 'Costo del producto en el período cerrado'),
     ('hermano', 'Costo de un producto hermano'),
+    # 1.7.0: el artículo nuevo de un desarrollo, costeado con su lista de materiales (ver _costo_receta).
+    ('receta', 'Receta del desarrollo'),
     ('manual', 'Capturado a mano (desarrollo sin receta)'),
     ('legado', 'Importado del cotizador anterior'),
 ]
@@ -88,6 +91,11 @@ PDF_UNIDADES = (('m', 'imprimir_m', 'm'), ('yd', 'imprimir_yd', 'yd'), ('kg', 'i
 COSTO_CAMPOS_UNIDAD = ('mp_unit', 'energia_unit', 'fabricacion_unit', 'costo_variable', 'costo_produccion',
                        'precio_mercado')
 ESCALERA_MULTIPLOS = (0.5, 1.0, 2.0, 4.0)
+# 1.7.0: lo que «manual» deja en blanco al elegirlo (antes conservaba los números de la fuente anterior).
+CAMPOS_FOTO_MANUAL = ('mp_unit', 'energia_unit', 'fabricacion_unit', 'costo_variable', 'costo_produccion',
+                      'rendimiento', 'op_pct', 'precio_mercado')
+# 1.7.0: diferencia máxima entre el consumo de tela por metro de la receta nueva y el del hermano ajustado.
+CONSUMO_TOLERANCIA = 0.10
 
 
 def _num(valor):
@@ -198,6 +206,17 @@ class QbCotizadorCotizacion(models.Model):
                                      help='Marcar cuando se revisó que el peso del costo es el bueno aunque no '
                                           'cuadre con el código del artículo (por ejemplo, rollos pesados). '
                                           'Quita el bloqueo del aviso de peso.')
+    # 1.7.0: receta del desarrollo. El desglose y el consumo de tela por unidad contra el del hermano ajustado
+    # por ancho y gramaje (aviso si se aleja más de CONSUMO_TOLERANCIA).
+    receta_detalle = fields.Text(string='Desglose de la receta', readonly=True, copy=False)
+    consumo_kg = fields.Float(string='Consumo de tela de la receta (kg/u)', digits=(16, 6), readonly=True,
+                              copy=False, help='kg de tela (componentes con código de la nomenclatura) por unidad '
+                                               'del artículo nuevo, según su lista de materiales.')
+    consumo_hermano_kg = fields.Float(string='Consumo del hermano ajustado (kg/u)', digits=(16, 6), readonly=True,
+                                      copy=False, help='El del hermano por su lista de materiales, ajustado por ancho '
+                                                       'y gramaje al artículo nuevo.')
+    consumo_ajuste = fields.Char(string='Cómo se ajustó el hermano', readonly=True, copy=False)
+    consumo_alerta = fields.Char(compute='_compute_consumo_alerta')
     costo_muestra = fields.Float(string='Costo de la muestra $ MXN', digits=(16, 2),
                                  tracking=True,
                                  help='Lo que cuesta correr la muestra (una muestra con teñido '
@@ -514,6 +533,21 @@ class QbCotizadorCotizacion(models.Model):
                                   motivo, rec.costo_uom))
             rec.peso_alerta = alerta
 
+    @api.depends('consumo_kg', 'consumo_hermano_kg', 'consumo_ajuste', 'costo_fuente', 'hermano_product_id')
+    def _compute_consumo_alerta(self):
+        for rec in self:
+            alerta = ''
+            if rec.costo_fuente == 'receta' and rec.consumo_kg > 0 and rec.consumo_hermano_kg > 0:
+                dif = rec.consumo_kg / rec.consumo_hermano_kg - 1.0
+                if abs(dif) > CONSUMO_TOLERANCIA:
+                    u = rec.product_id.uom_id.name or 'u'
+                    alerta = ('El consumo de tela de la receta nueva (%s kg/%s) se aleja %+.1f %% del hermano %s '
+                              'ajustado por ancho y gramaje (%s kg/%s; %s). Revise la lista de materiales del '
+                              'artículo nuevo antes de aprobar.' % (
+                                  _num(rec.consumo_kg), u, 100 * dif, rec.hermano_product_id.default_code or '',
+                                  _num(rec.consumo_hermano_kg), u, rec.consumo_ajuste or 'sin ajuste'))
+            rec.consumo_alerta = alerta
+
     @api.depends('currency_id', 'company_id', 'fx_rate', 'costo_fuente')
     def _compute_moneda_alerta(self):
         for rec in self:
@@ -693,6 +727,20 @@ class QbCotizadorCotizacion(models.Model):
         if self.product_id:
             self.volumen_uom = 'kg' if self.product_id.uom_id.name.lower().startswith('k') else 'm'
 
+    @api.onchange('costo_fuente')
+    def _onchange_costo_fuente(self):
+        """1.7.0: al elegir «manual» la foto queda en blanco para capturarla (antes se quedaban los números del
+        hermano o del período y parecía un costo capturado)."""
+        if self.costo_fuente == 'manual' and self._origin.costo_fuente != 'manual':
+            self.update(self._vals_foto_en_blanco())
+
+    @api.model
+    def _vals_foto_en_blanco(self):
+        vals = dict.fromkeys(CAMPOS_FOTO_MANUAL, 0.0)
+        vals.update({'costo_id': False, 'calidad': 'ninguna', 'calidad_detalle': False, 'receta_detalle': False,
+                     'consumo_kg': 0.0, 'consumo_hermano_kg': 0.0, 'consumo_ajuste': False})
+        return vals
+
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
         if self.partner_id and self.partner_id.property_product_pricelist.currency_id:
@@ -787,7 +835,8 @@ class QbCotizadorCotizacion(models.Model):
             if rec.state not in ('borrador', 'por_aprobar', 'presentada'):
                 raise UserError('Solo se recalcula una cotización viva (borrador, por aprobar o '
                                 'presentada). Para una vencida usa «Renovar».')
-            vals = {'calculado_el': fields.Datetime.now()}
+            vals = {'calculado_el': fields.Datetime.now(), 'receta_detalle': False, 'consumo_kg': 0.0,
+                    'consumo_hermano_kg': 0.0, 'consumo_ajuste': False}
             if rec.es_divisa and rec.fx_fuente == 'manual':
                 pass  # 1.3.0: el TC capturado a mano se respeta
             else:
@@ -806,7 +855,8 @@ class QbCotizadorCotizacion(models.Model):
                                       ('product_id', '=', producto.id)], limit=1)
                 if not costo:
                     raise UserError('%s no tiene costo calculado en el período %s. Calcula los '
-                                    'costos del período, elige otro producto hermano o captura '
+                                    'costos del período, elige otro producto hermano, «Receta del '
+                                    'desarrollo» si el artículo tiene lista de materiales, o captura '
                                     'el costo a mano.' % (producto.display_name, periodo.period))
                 factor, origen, kg_m, kg_fuente, conversion = rec._costo_conversion(costo)
                 vals.update({
@@ -827,6 +877,8 @@ class QbCotizadorCotizacion(models.Model):
                 if provisional:
                     vals.update({'calidad': 'baja', 'calidad_detalle': 'período %s sin cerrar: costo provisional%s' % (
                         periodo.period, (' (%s)' % costo.calidad_detalle) if costo.calidad_detalle else '')})
+            elif rec.costo_fuente == 'receta':
+                vals.update(rec._costo_receta())
             elif rec.costo_fuente == 'manual':
                 periodo, _provisional = rec._periodo_para_cotizar()
                 vals.update({
@@ -842,6 +894,8 @@ class QbCotizadorCotizacion(models.Model):
             else:
                 raise UserError('Una cotización importada del cotizador anterior no se recalcula: '
                                 'crea una revisión nueva.')
+            if rec.costo_fuente == 'manual':
+                vals.update({'costo_id': False, 'precio_mercado': 0.0})
             rec.write(vals)
             rec._calcular_tramos()
             rec.supuestos = rec._texto_supuestos()
@@ -854,6 +908,225 @@ class QbCotizadorCotizacion(models.Model):
                                       (' del %s' % rec.fx_fecha) if rec.fx_fecha else ''))
         return True
 
+    # ------------------------------------------------------------------
+    # 1.7.0: receta del desarrollo
+    # ------------------------------------------------------------------
+    @api.model
+    def _consumo_tela(self, product, cutoff=None):
+        """(kg de tela por unidad de ``product``, componentes) según su receta vigente: los renglones cuyo
+        componente lleva código de la nomenclatura DAT P-D02-01 (la tela que entra: crudo, teñido…), en kg.
+        (0, vacío) si la receta no lleva tela o no se puede pasar a kg."""
+        from odoo.addons.qb_costeo.models.horas import NOMEN_RE
+        Horas = self.env['qb.producto.horas'].sudo()
+        bom = Horas._bom_vigente(product, cutoff)
+        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        if not bom or not kg:
+            return 0.0, self.env['product.product']
+        total, comps = 0.0, self.env['product.product']
+        for line in bom.bom_line_ids:
+            comp = line.product_id
+            if line._skip_bom_line(product) or not NOMEN_RE.match((comp.default_code or '').replace(' ', '')):
+                continue
+            if not line.product_uom_id._has_common_reference(kg):
+                continue
+            total += line.product_uom_id._compute_quantity(line.product_qty, kg, round=False)
+            comps |= comp
+        return total / Horas._qty_bom_en_uom_producto(bom, product), comps
+
+    def _consumo_hermano_ajustado(self, hermano, cutoff=None):
+        """(consumo del hermano ajustado, texto): kg de tela por unidad del hermano × ancho y gramaje del
+        artículo nuevo (de la cotización o de su código) ÷ los del hermano (de su código)."""
+        self.ensure_one()
+        base, _comps = self._consumo_tela(hermano, cutoff)
+        if not base:
+            return 0.0, ''
+        g_h, a_h = self._codigo_partes(hermano.default_code)
+        g_n, a_n = self._codigo_partes(self.product_id.default_code)
+        g_n = self.spec_gramaje or g_n
+        a_n = self.spec_ancho or a_n
+        factor, partes = 1.0, ['%s kg' % _num(base)]
+        if a_h and a_n:
+            factor *= a_n / a_h
+            partes.append('× %s/%s de ancho' % (_num(a_n * 100), _num(a_h * 100)))
+        if g_h and g_n:
+            factor *= g_n / g_h
+            partes.append('× %s/%s g/m²' % (_num(g_n), _num(g_h)))
+        if len(partes) == 1:
+            partes.append('sin ajuste: no se leen ancho ni gramaje')
+        return base * factor, ' '.join(partes)
+
+    def _costo_receta(self):
+        """Foto del costo del artículo nuevo con su lista de materiales, para el período con que se cotiza
+        (1.7.0, Dirección General 2026-10-26; caso COT-2026-0015, proyecto 630).
+
+        - La receta se explota hacia abajo (acabado → teñido → crudo, y una fórmula como VERDE HOJA 001 → sus
+          químicos). Un componente que ya tiene costo en el período (el crudo que sí se produce, el engomado) entra
+          con ese costo: su MP, su fabricación y su energía. Un componente sin costo con lista de materiales se
+          explota (una fórmula con ``standard_price`` 0 se costea con su lista). Uno comprado, a la última compra
+          antes del cierre del período; sin compras, a su ``standard_price``, y los supuestos lo dicen.
+        - Conversión (fabricación y energía) por cada centro de la ruta con horas × la tarifa del período. Un
+          centro que el hermano sí trae y que ni la ruta ni los componentes con costo cubren hereda la conversión
+          por kg de tela del hermano en ese centro, por los kg de tela de la receta nueva.
+        - Rendimiento del hermano (sin hermano, el de planta); operación del período.
+        - Calidad media, con lo heredado en el detalle (baja sin hermano o con el período sin cerrar)."""
+        self.ensure_one()
+        product = self.product_id
+        if not product:
+            raise UserError('«Receta del desarrollo» costea el artículo nuevo: liga el producto (el artículo que '
+                            'generó el desarrollo) o elige otra fuente.')
+        periodo, provisional = self._periodo_para_cotizar()
+        if not periodo:
+            raise UserError('No hay un período de costeo con costos calculados en %s: calcula y cierra uno en '
+                            'Manufactura → Costos → Períodos.' % self.company_id.name)
+        env = self.env(su=True)
+        Horas = env['qb.producto.horas'].with_company(self.company_id)
+        Mp = env['qb.producto.mp'].with_company(self.company_id)
+        cutoff = periodo.date_to
+        if not Horas._bom_vigente(product, cutoff):
+            raise UserError('%s no tiene lista de materiales: captúrala (C1.04) o elige otra fuente del costo.'
+                            % product.display_name)
+        Costo = env['qb.costo.unitario']
+        costos = {c.product_id.id: c for c in Costo.search([('periodo_id', '=', periodo.id)])}
+        tarifas = {t.centro_id.id: t for t in periodo.sudo().tarifa_ids}
+        centros = env['qb.centro'].search([('company_id', '=', self.company_id.id), ('nature', '=', 'directo')])
+        notas = {'periodo': [], 'compra': [], 'standard': [], 'sin_precio': [], 'ruta': []}
+        precios = {}
+        pila = set()
+
+        def nodo(prod, raiz=False):
+            """(mp, fabricación, energía, centros cubiertos) por unidad de ``prod``."""
+            costo = costos.get(prod.id)
+            if not raiz and costo and costo.costo_produccion > 0:
+                notas['periodo'].append('%s $%s' % (prod.default_code or prod.name, _num(costo.costo_produccion)))
+                cubiertos = {l.centro_id.id for l in costo.linea_ids if l.costo_unit}
+                return costo.mp_unit, costo.fabricacion_unit, costo.energia_unit, cubiertos
+            bom = Horas._bom_vigente(prod, cutoff) if prod.id not in pila else False
+            if bom and bom.bom_line_ids:
+                pila.add(prod.id)
+                qty_bom = Horas._qty_bom_en_uom_producto(bom, prod)
+                mp = fab = energia = 0.0
+                cubiertos = set()
+                for line in bom.bom_line_ids:
+                    comp = line.product_id
+                    if line._skip_bom_line(prod) or comp.type == 'service':
+                        continue
+                    qty = line.product_uom_id._compute_quantity(line.product_qty, comp.uom_id, round=False,
+                                                                raise_if_failure=False) / qty_bom
+                    c_mp, c_fab, c_en, c_cub = nodo(comp)
+                    mp += qty * c_mp
+                    fab += qty * c_fab
+                    energia += qty * c_en
+                    cubiertos |= c_cub
+                for centro in centros:
+                    horas = Horas._estandar(prod, bom, centro)
+                    tarifa = tarifas.get(centro.id)
+                    if horas and tarifa:
+                        fab += horas * tarifa.tarifa
+                        energia += horas * tarifa.tarifa_variable
+                        cubiertos.add(centro.id)
+                        notas['ruta'].append('%s %s h × $%s' % (centro.name, _num(horas), _num(tarifa.tarifa)))
+                pila.discard(prod.id)
+                return mp, fab, energia, cubiertos
+            if prod.id not in precios:
+                precios.update(Mp.precios_compra([prod.id], cutoff))
+            ref = prod.default_code or prod.name
+            if prod.id in precios:
+                precio = precios[prod.id]
+                notas['compra'].append('%s $%s' % (ref, _num(precio)))
+            elif prod.standard_price > 0:
+                precio = prod.standard_price
+                notas['standard'].append('%s $%s' % (ref, _num(precio)))
+            else:
+                precio = 0.0
+                notas['sin_precio'].append(ref)
+            return precio, 0.0, 0.0, set()
+
+        mp, fab, energia, cubiertos = nodo(product, raiz=True)
+        consumo, telas = self._consumo_tela(product, cutoff)
+        hermano = self.hermano_product_id
+        costo_h = costos.get(hermano.id) if hermano else None
+        heredado, centros_heredados = [], []
+        if costo_h:
+            base_h = self._consumo_tela(hermano, cutoff)[0] or costo_h.kg_por_unidad or 1.0
+            base_n = consumo or (1.0 if self._unidad_de(product.uom_id.name) == 'kg' else 0.0)
+            for linea in costo_h.linea_ids.filtered(lambda l: l.costo_unit and l.centro_id.id not in cubiertos):
+                if not base_n:
+                    heredado.append('%s (sin kg de tela en la receta nueva: no se hereda)' % linea.centro_id.name)
+                    continue
+                por_kg = linea.costo_unit / base_h
+                en_kg = linea.horas_unidad * linea.tarifa_variable / base_h
+                fab += por_kg * base_n
+                energia += en_kg * base_n
+                cubiertos.add(linea.centro_id.id)
+                centros_heredados.append(linea.centro_id.name)
+                heredado.append('%s $%s/kg × %s kg' % (linea.centro_id.name, _num(round(por_kg, 4)), _num(base_n)))
+        faltan = [c.name for c in Horas.centros_esperados(product, centros, cutoff) if c.id not in cubiertos]
+        if costo_h:
+            rend, rend_fuente = costo_h.rendimiento or 1.0, 'del hermano %s' % hermano.default_code
+        else:
+            rend, rend_fuente = env['qb.producto.rendimiento'].with_company(self.company_id).planta(cutoff), 'de planta'
+        rend = min(max(rend or 1.0, 0.05), 1.0)
+        consumo_h, ajuste = self._consumo_hermano_ajustado(hermano, cutoff) if hermano else (0.0, '')
+
+        detalle = ['Receta de %s (período %s):' % (product.display_name, periodo.period)]
+        if notas['periodo']:
+            detalle.append('- Con su costo del período: %s.' % ', '.join(notas['periodo']))
+        if notas['compra']:
+            detalle.append('- Comprados, al precio de compra del período: %s.' % ', '.join(notas['compra']))
+        if notas['standard']:
+            detalle.append('- Sin compras, a su costo estándar: %s.' % ', '.join(notas['standard']))
+        if notas['sin_precio']:
+            detalle.append('- Sin compras ni costo estándar ($0): %s.' % ', '.join(notas['sin_precio']))
+        if notas['ruta']:
+            detalle.append('- Conversión de la ruta: %s.' % ', '.join(notas['ruta']))
+        if heredado:
+            detalle.append('- Conversión heredada del hermano %s (la ruta no tiene horas): %s.' % (
+                hermano.default_code, ', '.join(heredado)))
+        if faltan:
+            detalle.append('- Sin conversión (ni horas en la ruta ni hermano): %s.' % ', '.join(faltan))
+        detalle.append('- Rendimiento %.2f %% %s.' % (100 * rend, rend_fuente))
+        if consumo:
+            detalle.append('- Tela: %s kg por %s (%s).' % (_num(consumo), product.uom_id.name,
+                                                          ', '.join(telas.mapped('default_code'))))
+
+        lo_heredado = ['rendimiento'] if costo_h else []
+        if centros_heredados:
+            lo_heredado.append('conversión en %s' % ', '.join(centros_heredados))
+        det = ['receta de %s' % (product.default_code or product.name)]
+        if lo_heredado:
+            det.append('heredado del hermano %s: %s' % (hermano.default_code, ', '.join(lo_heredado)))
+        else:
+            det.append('sin hermano con costo: rendimiento de planta')
+        if notas['standard']:
+            det.append('costo estándar en %d componente(s)' % len(notas['standard']))
+        if notas['sin_precio']:
+            det.append('sin precio: %s' % ', '.join(notas['sin_precio']))
+        if faltan:
+            det.append('sin conversión en %s' % ', '.join(faltan))
+        calidad = 'media' if costo_h and not faltan else 'baja'
+        if provisional:
+            calidad = 'baja'
+            det.insert(0, 'período %s sin cerrar: costo provisional' % periodo.period)
+
+        Peso = env['qb.producto.kg'].with_company(self.company_id)
+        kg_u = Peso.kg_de(product)[0] if self._unidad_de(product.uom_id.name) != 'kg' else 1.0
+        origen = SimpleNamespace(uom_name=product.uom_id.name, product_id=product, kg_por_unidad=kg_u or 0.0)
+        factor, uom_origen, kg_m, kg_fuente, conversion = self._costo_conversion(origen)
+        vals = {
+            'periodo_id': periodo.id, 'costo_id': False,
+            'mp_unit': mp, 'energia_unit': energia, 'fabricacion_unit': fab,
+            'costo_variable': mp + energia, 'costo_produccion': mp + fab,
+            'rendimiento': rend, 'op_pct': periodo.op_pct,
+            'calidad': calidad, 'calidad_detalle': ' · '.join(det), 'precio_mercado': 0.0,
+            'receta_detalle': '\n'.join(detalle),
+            'consumo_kg': consumo, 'consumo_hermano_kg': consumo_h, 'consumo_ajuste': ajuste,
+        }
+        for campo in COSTO_CAMPOS_UNIDAD:
+            vals[campo] = vals[campo] * factor
+        vals.update({'costo_uom': self.volumen_uom or 'm', 'costo_uom_origen': uom_origen, 'costo_kg_por_m': kg_m,
+                     'costo_kg_fuente': kg_fuente, 'costo_conversion': conversion})
+        return vals
+
     def _texto_supuestos(self):
         self.ensure_one()
         partes = []
@@ -861,7 +1134,7 @@ class QbCotizadorCotizacion(models.Model):
             partes.append('Período de costo %s (%s).' % (self.periodo_id.period,
                                                         self.periodo_id.state))
         partes.append('Fuente: %s.' % dict(COSTO_FUENTES).get(self.costo_fuente, ''))
-        if self.costo_fuente == 'hermano' and self.hermano_product_id:
+        if self.costo_fuente in ('hermano', 'receta') and self.hermano_product_id:
             partes.append('Hermano: %s.' % self.hermano_product_id.display_name)
         if self.costo_uom:
             if self.costo_conversion and self.costo_uom_origen and self.costo_uom_origen != self.costo_uom:
@@ -878,7 +1151,13 @@ class QbCotizadorCotizacion(models.Model):
                 (' del %s' % self.fx_fecha) if self.fx_fecha else ''))
         if self.calidad_detalle:
             partes.append('Calidad: %s.' % self.calidad_detalle)
-        return ' '.join(partes)
+        texto = ' '.join(partes)
+        # 1.7.0: el desglose de la receta y el aviso de consumo van a la hoja interna.
+        if self.costo_fuente == 'receta' and self.receta_detalle:
+            texto += '\n' + self.receta_detalle
+            if self.consumo_alerta:
+                texto += '\nAviso: ' + self.consumo_alerta
+        return texto
 
     def _calcular_tramos(self):
         """Escalera de volumen (½×, 1×, 2×, 4×): descuento fijo por cada
@@ -1170,6 +1449,13 @@ class QbCotizadorCotizacion(models.Model):
     # Aprobación del cliente y tarifa
     # ==================================================================
     def write(self, vals):
+        if vals.get('costo_fuente') == 'manual':
+            # 1.7.0: pasar a «manual» deja en blanco lo que no se captura en el mismo cambio.
+            cambian = self.filtered(lambda r: r.costo_fuente != 'manual')
+            if cambian and cambian != self:
+                return (self - cambian).write(vals) and cambian.write(vals)
+            if cambian:
+                vals = dict(self._vals_foto_en_blanco(), **vals)
         res = super().write(vals)
         if vals.get('cliente_aprobo'):
             for rec in self:

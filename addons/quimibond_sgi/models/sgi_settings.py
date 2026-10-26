@@ -65,8 +65,9 @@ class ResConfigSettings(models.TransientModel):
         help="Para saber cuánto fabricar y entregar los metros PQ. Vacío: se asume 100 % (el brief no lo define).")
     sgi_dev_sample_min_bath_kg = fields.Float(
         string="Mínimo de baño de tintorería (kg)", config_parameter='quimibond_sgi.dev_sample_min_bath_kg',
-        help="Si el artículo lleva teñido, la muestra no baja de esta carga. Vacío: no entra al cálculo (el "
-             "brief lo deja por máquina y sin valor).")
+        help="Si el artículo lleva teñido, la muestra no baja de esta carga. 57.194.0: el mínimo de cada jet se "
+             "captura en la ficha de la máquina (parámetro «Mínimo de baño») y el del jet de la ruta manda sobre "
+             "este; este general solo cuenta si la ruta no tiene jet con mínimo.")
 
     # 57.129.0 (C1, Jose 3.3): envío de la muestra y respuesta del cliente.
     sgi_dev_sample_out_picking_type_id = fields.Many2one(
