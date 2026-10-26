@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.190.1 — 2026-10-26
+
+**Corregido**
+- La lista **Desarrollos de producto** (tablero de C1) no abría en producción:
+  «Cannot convert project.project.sgi_dev_stage_seq to SQL because it is not
+  stored». Su `default_order` usaba `sgi_dev_stage_seq`, que es calculado y no
+  se guarda. Ahora ordena por `stage_id`: las etapas de desarrollo tienen
+  secuencia en el mismo orden (110 a 190), así que la lista queda igual.
+  Revisadas las demás vistas del repo: ninguna otra ordena por un campo sin
+  guardar.
+
 ## 19.0.57.190.0 — 2026-10-23
 
 Dirección General 2026-10-23 (C1, pestaña Cotización): se eligió mal el
