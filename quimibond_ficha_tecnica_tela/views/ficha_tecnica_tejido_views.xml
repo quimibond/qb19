@@ -62,7 +62,7 @@
                     <div class="alert alert-info mb-2" role="status"
                          invisible="salida_tela or not maquina_config_id or not ancho_acondicionado">
                         La máquina no tiene capturada la «Salida de la tela» (tubular o abierta) en su configuración:
-                        el rendimiento toma el ancho como tela abierta.
+                        el rendimiento toma el ancho como tela abierta. Puede fijarlo en la ficha («Fijar medición del ancho»).
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -80,6 +80,7 @@
                             <field name="rendimiento_tela_tejida"/>
                             <field name="rendimiento_manual" widget="boolean_toggle"/>
                             <field name="salida_tela"/>
+                            <field name="salida_tela_ficha"/>
                             <field name="product_proceso_tmpl_id" invisible="1"/>
                             <field name="bom_id" options="{'no_create': True}"
                                    placeholder="La principal del crudo"/>

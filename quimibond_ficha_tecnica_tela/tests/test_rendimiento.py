@@ -68,3 +68,20 @@ class TestRendimiento(TransactionCase):
         self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 0.98), places=3)
         with self.assertRaises(ValidationError):
             linea.valor_texto = 'Doble'
+
+    def test_04_medicion_del_ancho_fijada_en_la_ficha(self):
+        """2.15.0: WJ044 (tela abierta) tejida en una circular tubular: la ficha fija «Tela abierta» y el rendimiento
+        usa el ancho tal cual; sin fijar, sigue a la máquina."""
+        Config = self.env['ficha.tecnica.maquina.config']
+        wc = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 98 tubular prueba', 'ft_tipo_id': self.circular.id})
+        config = Config.create({'workcenter_id': wc.id, 'date_from': date(2020, 1, 1), 'diametro': 32})
+        config.valor_ids.filtered(lambda v: v.parametro_id.code == 'salida_tela').valor_texto = 'Tubular'
+        ficha = self.Ficha.create({'articulo': 'ZZ044Q22HNT235', 'peso_acondicionado': 54.26,
+                                   'ancho_acondicionado': 218, 'maquina_tejido': wc.id})
+        self.assertEqual(ficha.salida_tela, 'Tubular', "Sin fijar, sigue a la máquina")
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (54.26 * 4.36), places=3)
+        ficha.salida_tela_ficha = 'Abierta'
+        self.assertEqual(ficha.salida_tela, 'Abierta')
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (54.26 * 2.18), places=3)
+        ficha.salida_tela_ficha = False
+        self.assertEqual(ficha.salida_tela, 'Tubular', "Al quitarlo vuelve al dato de la máquina")

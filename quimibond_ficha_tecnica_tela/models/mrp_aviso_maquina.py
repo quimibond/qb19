@@ -52,6 +52,8 @@ TIPO_TINTORERIA = 'tintoreria'
 GRUPOS = (('capacidad_grupo_a', 'A', 3.0, 7.0), ('capacidad_grupo_b', 'B', 7.0, 11.0),
           ('capacidad_grupo_c', 'C', 11.0, 16.0))
 ANCHO_A_METROS = {'m': 1.0, 'mts': 1.0, 'cm': 0.01, 'mm': 0.001, 'in': 0.0254}
+# 2.15.0: claves = opciones del parámetro «Salida de la tela» de la circular.
+SALIDA_TELA = [('Tubular', 'Tubo aplanado'), ('Abierta', 'Tela abierta')]
 # 2.9.0: «1:10» o «10» (litros por kg).
 RELACION_BANO_RE = re.compile(r'^\s*(?:1\s*:\s*)?(\d+(?:[.,]\d+)?)\s*$')
 
@@ -80,17 +82,28 @@ class FichaTecnicaTejidoUso(models.Model):
     # tubo aplanado (dos capas) y el rendimiento salía al doble: WD040Q46HNT098 (40 g/m², 98 cm) daba 25.51 m/kg y
     # la producción real da ~13.9 m/kg ya acabada (12.76 con el ancho abierto de 1.96 m). Tubular o abierta depende
     # de cómo enrolla la máquina: es un parámetro de la configuración de la circular, no del artículo.
-    salida_tela = fields.Char(
-        string='Salida de la tela', compute='_compute_salida_tela', store=True,
-        help='Cómo entrega la tela la máquina con la que se elaboró la ficha («Tubular» o «Abierta»), tomado de su '
-             'configuración. Tubular: el ancho de la ficha es el del tubo aplanado y el rendimiento usa el doble. '
-             'Vacío: la máquina no lo tiene capturado y el ancho se toma como abierto.')
+    # 2.15.0 (Dirección General 2026-10-26): la máquina no basta. Un mismo artículo se teje en circulares tubulares y
+    # abiertas, y su ancho sigue la especificación del artículo: WJ044 (2.30 m de tela abierta) se teje también en la
+    # 17, 18, 19, 25 y 26 (tubulares); WC090 (92 cm de tubo) sobre todo en la 23 (abierta). La ficha toma el dato de su
+    # máquina y se puede fijar a mano.
+    salida_tela_ficha = fields.Selection(
+        SALIDA_TELA, string='Fijar medición del ancho',
+        help='Solo si el artículo se mide distinto de lo que entrega su máquina (por ejemplo, tela abierta tejida en una '
+             'circular tubular). Vacío: sigue a la «Salida de la tela» de la máquina.')
+    salida_tela = fields.Selection(
+        SALIDA_TELA, string='Ancho medido como', compute='_compute_salida_tela', store=True,
+        help='Cómo está medido el ancho de la ficha: lo fijado en la ficha o, si no, la «Salida de la tela» de la '
+             'máquina con que se elaboró. Tubo aplanado: dos capas, el rendimiento usa el doble del ancho. Vacío: no '
+             'hay dato y el ancho se toma como abierto.')
 
-    @api.depends('maquina_config_id.valor_ids.valor_texto', 'maquina_config_id.valor_ids.parametro_id')
+    @api.depends('salida_tela_ficha', 'maquina_config_id.valor_ids.valor_texto',
+                 'maquina_config_id.valor_ids.parametro_id')
     def _compute_salida_tela(self):
+        opciones = dict(SALIDA_TELA)
         for ficha in self:
             config = ficha.maquina_config_id
-            ficha.salida_tela = (config._ft_value('salida_tela') or False) if config else False
+            valor = ficha.salida_tela_ficha or (config._ft_value('salida_tela') if config else False)
+            ficha.salida_tela = valor if valor in opciones else False
 
     def _ft_ancho_m(self):
         """Ancho acondicionado en metros (con su unidad); 0 si falta el ancho o la unidad."""
