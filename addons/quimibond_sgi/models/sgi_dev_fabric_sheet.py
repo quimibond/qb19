@@ -18,6 +18,14 @@ control:
 
 «Validar corrida» (C1.10) se valida contra la ficha validada del artículo de
 la orden (``mrp.production.action_sgi_dev_validate_run``).
+
+57.193.0 (Dirección General 2026-10-26): **cada área valida lo suyo** (C1.10: «el supervisor de cada área valida su
+corrida; en tejido valida el Jefe de Manufactura»). La ficha de acabado la valida el puesto de
+``dev_validator_job_acabado_id`` y su tintorería el de ``dev_validator_job_tintoreria_id``; vacíos, el Jefe de
+Manufactura de ``dev_validator_job_tejido_id``, como antes. La tintorería no tiene ficha propia: es una operación de
+la lista de materiales del acabado y sus datos están en la pestaña Tintorería de la ficha de acabado
+(``quimibond_ficha_tecnica_tela`` 2.16.0). Si la ficha de acabado tiene tintorería (jet o fórmula), primero la valida
+Tintorería y después el acabado; la corrida de un teñido se valida contra esa misma ficha.
 """
 import re
 
@@ -136,6 +144,21 @@ class SgiDevProcessSheetMixin(models.AbstractModel):
             sheet.write({'sgi_measured_by_id': self.env.uid, 'sgi_measured_date': fields.Datetime.now()})
         return True
 
+    def _sgi_validator_param(self):
+        """57.193.0: el parámetro con el puesto que valida esta ficha."""
+        from .sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_TEJIDO
+        return PARAM_VALIDATOR_JOB_TEJIDO
+
+    def _sgi_user_validates(self, param):
+        """El usuario tiene el puesto de ``param`` (o, si el parámetro está vacío, el del Jefe de Manufactura), es su
+        jefe directo o administra el SGI."""
+        from .sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_TEJIDO
+        if self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            return True
+        raw = self.env['ir.config_parameter'].sudo().get_param(param, '') or ''
+        key = param if raw.strip().isdigit() else PARAM_VALIDATOR_JOB_TEJIDO
+        return self.env['sgi.machine.sheet']._sgi_dev_user_has_job(self.env.user, key)
+
     def _sgi_validation_problems(self):
         self.ensure_one()
         problems = []
@@ -152,15 +175,13 @@ class SgiDevProcessSheetMixin(models.AbstractModel):
         return problems
 
     def action_sgi_validate(self):
-        from .sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_TEJIDO
-        Sheet = self.env['sgi.machine.sheet']
         for sheet in self:
             if sheet.sgi_validated_by_id:
                 raise UserError("%s ya fue validada por %s." % (sheet.display_name, sheet.sgi_validated_by_id.name))
-            if not (self.env.user.has_group('quimibond_sgi.group_sgi_manager')
-                    or Sheet._sgi_dev_user_has_job(self.env.user, PARAM_VALIDATOR_JOB_TEJIDO)):
-                raise UserError("La ficha de proceso la valida el Jefe de Manufactura (Ajustes → SGI → Desarrollo de "
-                                "producto), su jefe directo o un administrador del SGI.")
+            if not sheet._sgi_user_validates(sheet._sgi_validator_param()):
+                raise UserError("La ficha de proceso la valida el supervisor del área: el puesto de Ajustes → SGI → "
+                                "Desarrollo de producto (vacío, el Jefe de Manufactura), su jefe directo o un "
+                                "administrador del SGI.")
             problems = sheet._sgi_validation_problems()
             if problems:
                 raise UserError("%s no se puede validar:\n- %s" % (sheet.display_name, "\n- ".join(problems)))
@@ -197,12 +218,53 @@ class FichaTecnicaAcabadoSgi(models.Model):
     _sgi_params = ACABADO_PARAMS
 
     sgi_reading_ids = fields.One2many('sgi.dev.process.reading', 'acabado_id', string="Valores de la corrida")
+    # 57.193.0: la tintorería (operación de la lista de materiales del acabado) la valida su supervisor.
+    sgi_has_tintoreria = fields.Boolean(string="Lleva tintorería", compute='_compute_sgi_has_tintoreria',
+                                        help="La lista de materiales del acabado tiene operación de tintorería o "
+                                             "fórmula de teñido (pestaña Tintorería).")
+    sgi_tint_validated_by_id = fields.Many2one('res.users', string="Validó la tintorería (Supervisor Tintorería)",
+                                               readonly=True, copy=False)
+    sgi_tint_validated_date = fields.Datetime(string="Tintorería validada el", readonly=True, copy=False)
 
     def _sgi_product(self):
         return self.product_acabado_id
 
     def _sgi_reading_parent_field(self):
         return 'acabado_id'
+
+    @api.depends('product_acabado_id', 'product_proceso_id', 'articulo')
+    def _compute_sgi_has_tintoreria(self):
+        for sheet in self:
+            sheet.sgi_has_tintoreria = bool(sheet.tint_operacion_ids or sheet.tint_linea_ids)
+
+    def _sgi_validator_param(self):
+        from .sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_ACABADO
+        return PARAM_VALIDATOR_JOB_ACABADO
+
+    def _sgi_validation_problems(self):
+        problems = super()._sgi_validation_problems()
+        if self.sgi_has_tintoreria and not self.sgi_tint_validated_by_id:
+            problems.insert(0, "Primero valida la tintorería el Supervisor de Tintorería (pestaña Control del "
+                               "desarrollo, «Validar tintorería»).")
+        return problems
+
+    def action_sgi_validate_tintoreria(self):
+        from .sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_TINTORERIA
+        for sheet in self:
+            if sheet.sgi_tint_validated_by_id:
+                raise UserError("La tintorería de %s ya la validó %s." % (sheet.display_name,
+                                                                          sheet.sgi_tint_validated_by_id.name))
+            if not sheet.sgi_proposed_by_id:
+                raise UserError("Primero propone Diseño y Desarrollo de Procesos.")
+            if not sheet._sgi_user_validates(PARAM_VALIDATOR_JOB_TINTORERIA):
+                raise UserError("La tintorería la valida el Supervisor de Tintorería: el puesto de Ajustes → SGI → "
+                                "Desarrollo de producto (vacío, el Jefe de Manufactura), su jefe directo o un "
+                                "administrador del SGI.")
+            sheet.write({'sgi_tint_validated_by_id': self.env.uid, 'sgi_tint_validated_date': fields.Datetime.now()})
+            if sheet.project_id:
+                sheet.project_id.sudo().message_post(body="Tintorería de la ficha %s validada por %s." % (
+                    sheet.display_name, self.env.user.name), author_id=self.env.user.partner_id.id)
+        return True
 
 
 class SgiDevProcessReading(models.Model):
@@ -285,8 +347,9 @@ class SgiDevProcessReading(models.Model):
 SHEET_STAGES = [('crudo', "Crudo (tejido)"), ('tenido', "Teñido (tintorería)"), ('acabado', "Acabado")]
 SHEET_MODELS = {'crudo': ('ficha.tecnica.tejido', 'product_proceso_id'),
                 'acabado': ('ficha.tecnica.acabado', 'product_acabado_id')}
-TINTORERIA_PENDING = ("La ficha de tintorería todavía no existe (formato F-P-D01-33; la construye Jose Sacramento "
-                      "en quimibond_ficha_tecnica_tela).")
+# 57.193.0: la tintorería no tiene ficha propia; va en la pestaña Tintorería de la ficha de acabado.
+TINTORERIA_PENDING = ("La tintorería va en la ficha de acabado (pestaña Tintorería): cree primero la ficha de acabado "
+                      "desde «Fichas de proceso».")
 
 
 class ProjectProjectDevSheets(models.Model):
@@ -304,6 +367,15 @@ class ProjectProjectDevSheets(models.Model):
         if not sheets and product.default_code:
             sheets = Sheet.search([('articulo', '=', product.default_code)])
         return sheets.sorted(lambda s: (s.project_id == self, s.id), reverse=True)[:1]
+
+    def _sgi_dev_tint_sheet(self):
+        """57.193.0: la ficha de acabado del proyecto, donde va su tintorería."""
+        self.ensure_one()
+        for product in (self.sgi_dev_product_id, self.sgi_dev_product_proceso_id):
+            sheet = self._sgi_dev_find_sheet('acabado', product) if product else None
+            if sheet:
+                return sheet
+        return self.env['ficha.tecnica.acabado']
 
     def action_sgi_dev_process_sheets(self):
         self.ensure_one()
@@ -330,6 +402,9 @@ class SgiDevProcessSheetsWizard(models.TransientModel):
             lines = []
             for index, (stage, product) in enumerate(self.env['sgi.dev.sample.wizard']._sgi_dev_sample_chain(project)):
                 sheet = project._sgi_dev_find_sheet(stage, product)
+                if stage == 'tenido':
+                    # 57.193.0: la tintorería va en la ficha de acabado del proyecto.
+                    sheet = project._sgi_dev_tint_sheet()
                 line = {'sequence': (index + 1) * 10, 'stage': stage, 'product_id': product.id}
                 if sheet:
                     line['tejido_id' if stage == 'crudo' else 'acabado_id'] = sheet.id
@@ -359,7 +434,12 @@ class SgiDevProcessSheetsWizardLine(models.TransientModel):
             sheet = line.tejido_id or line.acabado_id
             line.has_sheet = bool(sheet)
             line.can_create = not sheet and line.stage in SHEET_MODELS
-            if line.stage not in SHEET_MODELS:
+            if line.stage == 'tenido':
+                line.status = (TINTORERIA_PENDING if not sheet
+                               else "En la ficha de acabado; validó %s" % sheet.sgi_tint_validated_by_id.name
+                               if sheet.sgi_tint_validated_by_id
+                               else "En la ficha de acabado (pestaña Tintorería); falta validar")
+            elif line.stage not in SHEET_MODELS:
                 line.status = TINTORERIA_PENDING
             elif not sheet:
                 line.status = "Falta la ficha"
@@ -376,6 +456,9 @@ class SgiDevProcessSheetsWizardLine(models.TransientModel):
         self.ensure_one()
         project = self.wizard_id.project_id
         sheet = self.tejido_id or self.acabado_id
+        if self.stage == 'tenido' and sheet:
+            return {'type': 'ir.actions.act_window', 'res_model': 'ficha.tecnica.acabado', 'view_mode': 'form',
+                    'target': 'current', 'res_id': sheet.id, 'name': "Ficha de acabado (tintorería)"}
         if self.stage not in SHEET_MODELS:
             raise UserError(TINTORERIA_PENDING)
         model, field = SHEET_MODELS[self.stage]
@@ -430,12 +513,18 @@ class MrpProductionDevSheet(models.Model):
         else:
             stage = 'crudo' if self.env['ficha.tecnica.tejido'].search_count(
                 [('product_proceso_id', '=', product.id)], limit=1) else 'acabado'
+        if stage == 'tenido':
+            # 57.193.0: el teñido se valida contra la tintorería de la ficha de acabado del proyecto.
+            return stage, project._sgi_dev_tint_sheet() or None
         return stage, project._sgi_dev_find_sheet(stage, product)
 
     def _sgi_dev_run_sheet_problems(self):
         self.ensure_one()
         stage, sheet = self._sgi_dev_run_sheet()
         if stage == 'tenido':
+            if sheet and sheet.sgi_has_tintoreria and not sheet.sgi_tint_validated_by_id:
+                return ["La tintorería de la ficha de acabado %s no está validada por el Supervisor de Tintorería: "
+                        "la corrida de teñido se valida contra ella." % sheet.display_name]
             return []
         if not sheet:
             return ["%s no tiene ficha de proceso: créela desde el proyecto (pestaña Muestra → «Fichas de "
@@ -455,8 +544,9 @@ class MrpProductionDevSheet(models.Model):
         res = super().action_sgi_dev_validate_run()
         for mo in self.filtered('sgi_dev_project_id'):
             stage, sheet = mo._sgi_dev_run_sheet()
-            if sheet and not sheet.production_id:
+            # 57.193.0: la orden de la corrida de la ficha de acabado es la del acabado, no la del teñido.
+            if sheet and stage != 'tenido' and not sheet.production_id:
                 sheet.write({'production_id': mo.id})
-            if stage == 'tenido':
-                mo.message_post(body="Corrida de teñido validada sin ficha de proceso: %s" % TINTORERIA_PENDING)
+            if stage == 'tenido' and not sheet:
+                mo.message_post(body="Corrida de teñido validada sin ficha de acabado: %s" % TINTORERIA_PENDING)
         return res

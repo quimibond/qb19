@@ -77,10 +77,47 @@ class TestAcabadoRuta(TransactionCase):
         self.assertEqual(self.jet._ft_capacidad_carga(0.0, None, self.acabado)[0], 1000)
         self.assertEqual(self.jet._ft_relacion_bano(self.acabado), (10.0, 'relación de baño de la máquina'))
         proceso = self.Proceso.create({'articulo': 'ZZ035Q22JNT200', 'workcenter_id': self.jet.id})
-        self.assertEqual(set(proceso.valor_ids.mapped('code')), {'tiempo_ciclo', 'kg_carga', 'relacion_bano_articulo'})
+        self.assertTrue({'tiempo_ciclo', 'kg_carga', 'relacion_bano_articulo', 'temperatura', 'gradiente_subida',
+                         'plegador', 'bomba_presion', 'acumulador_cargado'} <= set(proceso.valor_ids.mapped('code')),
+                        "2.16.0: el jet pide también los datos de la ficha de tintorería F-P-D01-33")
         proceso._ft_set_value('kg_carga', 250)
         proceso._ft_set_value('relacion_bano_articulo', 8)
         self.assertEqual(self.jet._ft_capacidad_carga(0.0, None, self.acabado),
                          (250, 'kg por carga del artículo en este jet'))
         self.assertEqual(self.jet._ft_relacion_bano(self.acabado)[0], 8)
         self.assertIn('2 cargas', self.jet._ft_aviso_para(self.acabado, 400))
+
+    def test_03_tintoreria_en_la_ficha_de_acabado(self):
+        """2.16.0: la pestaña Tintorería junta el jet de la lista de materiales, el artículo en el jet (con su volumen de
+        baño) y la fórmula: la asignada a la operación de tintorería o, con el teñido aparte, la de su lista."""
+        Product = self.env['product.product']
+        agua = Product.create({'name': 'AGUA ruta', 'default_code': 'AGUA-RUTA'})
+        colorante = Product.create({'name': 'NATURAL ruta', 'default_code': 'NATURAL-RUTA', 'uom_id': self.kg.id})
+        operacion = self.bom.operation_ids.filtered(lambda o: o.name == 'Teñir')
+        self.bom.write({'bom_line_ids': [(0, 0, {'product_id': colorante.id, 'product_qty': 0.013,
+                                                  'operation_id': operacion.id})]})
+        jet = self.Proceso.create({'articulo': 'ZZ035Q22JNT200', 'workcenter_id': self.jet.id})
+        jet._ft_set_value('kg_carga', 300)
+        jet._ft_set_value('relacion_bano_articulo', 7)
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ035Q22JNT200', 'tejido_id': self.tejido.id, 'product_acabado_id': self.acabado.id})
+        self.assertEqual(ficha.tint_operacion_ids, operacion)
+        self.assertEqual(ficha.tint_linea_ids.product_id, colorante, "La fórmula es lo asignado al jet, no el crudo")
+        self.assertEqual(ficha.tint_proceso_ids, jet)
+        self.assertEqual(jet.ft_volumen_bano, 2100.0, "300 kg × 7 L/kg")
+        self.assertFalse(ficha.tint_aviso)
+        # Teñido aparte (posición 9 = I): la fórmula sale de su lista, sin la tela.
+        tenido = Product.create({'name': 'Teñido ruta', 'default_code': 'ZZ035Q22INT200', 'uom_id': self.kg.id})
+        acabado2 = Product.create({'name': 'Acabado ruta 2', 'default_code': 'ZZ035Q22JNT201', 'uom_id': self.kg.id})
+        Bom = self.env['mrp.bom']
+        Bom.create({'product_tmpl_id': tenido.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+                    'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1}),
+                                     (0, 0, {'product_id': agua.id, 'product_qty': 7.09}),
+                                     (0, 0, {'product_id': colorante.id, 'product_qty': 0.013})]})
+        Bom.create({'product_tmpl_id': acabado2.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+                    'bom_line_ids': [(0, 0, {'product_id': tenido.id, 'product_qty': 1})]})
+        ficha2 = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ035Q22JNT201', 'tejido_id': self.tejido.id, 'product_acabado_id': acabado2.id})
+        self.assertEqual(set(ficha2.tint_linea_ids.product_id.ids), {agua.id, colorante.id})
+        self.assertFalse(ficha2.tint_operacion_ids)
+        self.assertIn('no tiene datos en ningún jet', ficha2.tint_aviso)

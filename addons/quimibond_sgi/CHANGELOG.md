@@ -13,6 +13,36 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.193.0 — 2026-10-26
+
+Dirección General 2026-10-26: la tintorería es una operación de la lista de
+materiales del acabado (orden en kg), no una ficha aparte; y en C1.10 «el
+supervisor de cada área valida su corrida; en tejido valida el Jefe de
+Manufactura». El código validaba todas las fichas con el Jefe de Manufactura y
+el teñido pasaba sin nada que validar.
+
+**Agregado**
+- Ajustes → SGI → Desarrollo de producto: «Quién valida la ficha de proceso de
+  acabado» (`dev_validator_job_acabado_id`) y «Quién valida la tintorería»
+  (`dev_validator_job_tintoreria_id`). Vacíos, valida el puesto de tejido
+  (Jefe de Manufactura), como antes.
+- Ficha de acabado, pestaña Control del desarrollo: «Validar tintorería» y
+  quién la validó, cuando la lista de materiales del acabado lleva tintorería
+  (jet o fórmula, pestaña Tintorería de `quimibond_ficha_tecnica_tela` 2.16.0).
+  Con tintorería, el acabado no se valida hasta que la valide Tintorería.
+
+**Cambiado**
+- «Validar» de la ficha de acabado usa el puesto de acabado; la de tejido, el
+  de tejido (`_sgi_validator_param`).
+- Fichas de proceso: el renglón de teñido abre la ficha de acabado del
+  proyecto (su tintorería) en lugar de «la ficha de tintorería todavía no
+  existe»; el estado dice si Tintorería ya validó.
+- Validar corrida de un teñido: se valida contra la tintorería de la ficha de
+  acabado del proyecto (si la ficha lleva tintorería y no está validada, no
+  pasa). La orden de la corrida de la ficha de acabado sigue siendo la del
+  acabado, no la del teñido.
+- Prueba: `test_05_cada_area_valida_lo_suyo`.
+
 ## 19.0.57.192.1 — 2026-10-26
 
 Dirección General 2026-10-26: en el chatter del proyecto 504 los mensajes

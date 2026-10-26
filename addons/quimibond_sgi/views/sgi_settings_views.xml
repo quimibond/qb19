@@ -100,6 +100,13 @@
                         <setting string="Quién valida la ficha de proceso de tejido" help="Tejido no tiene supervisor: el Jefe de Manufactura.">
                             <field name="sgi_dev_validator_job_tejido_id"/>
                         </setting>
+                        <!-- 57.193.0: cada área valida lo suyo (C1.10) -->
+                        <setting string="Quién valida la ficha de proceso de acabado" help="El supervisor de acabado. Vacío: el puesto que valida tejido.">
+                            <field name="sgi_dev_validator_job_acabado_id"/>
+                        </setting>
+                        <setting string="Quién valida la tintorería" help="El Supervisor de Tintorería; la tintorería va en la ficha de acabado. Vacío: el puesto que valida tejido.">
+                            <field name="sgi_dev_validator_job_tintoreria_id"/>
+                        </setting>
                         <!-- 57.129.0 (C1, Jose 3.3) -->
                         <setting string="Tipo de operación de la baja de muestras"
                                  help="Con el que la muestra sale al cliente desde el envío registrado (producción: Baja de Muestras).">

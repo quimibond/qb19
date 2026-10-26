@@ -348,4 +348,83 @@
         <field name="ambito">articulo</field>
         <field name="notas">Litros de baño por kg del artículo en este jet (depende de su rendimiento). Vacía: la de la máquina.</field>
     </record>
+
+    <!-- 2.16.0 (Dirección General 2026-10-26): el resto de la Ficha técnica de tintorería F-P-D01-33 como datos del
+         artículo en el jet; la tintorería es una operación de la lista de materiales del acabado, no una ficha aparte.
+         Sin unidad las que el formato no da: las pone Tintorería. -->
+    <record id="ft_maquina_param_tintoreria_temperatura" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">140</field>
+        <field name="code">temperatura</field>
+        <field name="name">Temperatura</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Temperatura del proceso de teñido del artículo en este jet. Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_gradiente_subida" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">150</field>
+        <field name="code">gradiente_subida</field>
+        <field name="name">Gradiente de subida</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Gradiente de temperatura de subida. Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_gradiente_bajada" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">160</field>
+        <field name="code">gradiente_bajada</field>
+        <field name="name">Gradiente de bajada</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Gradiente de temperatura de bajada. Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_plegador" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">170</field>
+        <field name="code">plegador</field>
+        <field name="name">Brazo del plegador</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Porcentaje del brazo del plegador. Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_bomba_velocidad" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">180</field>
+        <field name="code">bomba_velocidad</field>
+        <field name="name">Velocidad de la bomba</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_bomba_presion" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">190</field>
+        <field name="code">bomba_presion</field>
+        <field name="name">Presión de la bomba</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_acumulador_inicial" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">200</field>
+        <field name="code">acumulador_inicial</field>
+        <field name="name">Acumulador inicial</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Porcentaje del acumulador al inicio. Del formato F-P-D01-33.</field>
+    </record>
+    <record id="ft_maquina_param_tintoreria_acumulador_cargado" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tintoreria"/>
+        <field name="sequence">210</field>
+        <field name="code">acumulador_cargado</field>
+        <field name="name">Acumulador cargado</field>
+        <field name="unit">%</field>
+        <field name="kind">num</field>
+        <field name="ambito">articulo</field>
+        <field name="notas">Porcentaje del acumulador con la tela cargada. Del formato F-P-D01-33.</field>
+    </record>
 </odoo>
