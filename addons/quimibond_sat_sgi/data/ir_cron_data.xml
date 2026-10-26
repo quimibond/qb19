@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Avisos del SAT en Mis pendientes, a quien ocupa el puesto de cada
+             actividad del mapa de procesos (S1.21, S1.25, S2.21, S2.13). -->
+        <record id="cron_sat_sgi_pendientes" model="ir.cron">
+            <field name="name">SGI: Pendientes del SAT (conciliación y complementos de pago)</field>
+            <field name="model_id" ref="quimibond_sgi.model_sgi_cron"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sat_pendientes()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=13, minute=23, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
+    </data>
+</odoo>
