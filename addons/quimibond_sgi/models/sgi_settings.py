@@ -109,6 +109,15 @@ class ResConfigSettings(models.TransientModel):
     sgi_dev_validator_job_tejido_id = fields.Many2one(
         'hr.job', string="Valida la ficha de proceso de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',
         help="Tejido no tiene supervisor: valida el Jefe de Manufactura.")
+    # 57.193.0: cada área valida lo suyo (C1.10); vacíos, valida el puesto de tejido.
+    sgi_dev_validator_job_acabado_id = fields.Many2one(
+        'hr.job', string="Valida la ficha de proceso de acabado",
+        config_parameter='quimibond_sgi.dev_validator_job_acabado_id',
+        help="El supervisor de acabado. Vacío: el puesto que valida tejido.")
+    sgi_dev_validator_job_tintoreria_id = fields.Many2one(
+        'hr.job', string="Valida la tintorería de la ficha de acabado",
+        config_parameter='quimibond_sgi.dev_validator_job_tintoreria_id',
+        help="El Supervisor de Tintorería. Vacío: el puesto que valida tejido.")
 
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",

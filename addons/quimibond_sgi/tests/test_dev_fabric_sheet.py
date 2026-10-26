@@ -114,3 +114,53 @@ class TestDevFabricSheet(TransactionCase):
         self.assertEqual(mo(self.crudo)._sgi_dev_run_sheet_problems(), [])
         self.assertEqual(mo(self.tenido)._sgi_dev_run_sheet_problems(), [],
                          "Teñido pasa sin ficha mientras no exista la de tintorería")
+
+    def test_05_cada_area_valida_lo_suyo(self):
+        """57.193.0: la ficha de acabado la valida el supervisor de acabado y, si lleva tintorería (operación del jet o
+        fórmula en la lista de materiales), antes la valida el Supervisor de Tintorería; el teñido se valida contra ella."""
+        from ..models.sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_ACABADO, PARAM_VALIDATOR_JOB_TINTORERIA
+        Users = self.env['res.users'].with_context(no_reset_password=True)
+        groups = [self.env.ref('base.group_user').id, self.env.ref('mrp.group_mrp_user').id]
+        users = {}
+        for key, param in (('acabado', PARAM_VALIDATOR_JOB_ACABADO), ('tintoreria', PARAM_VALIDATOR_JOB_TINTORERIA)):
+            users[key] = Users.create({'name': 'Supervisor %s FS' % key, 'login': 'sgi_fs_%s' % key,
+                                       'group_ids': [(6, 0, groups)]})
+            job = self.env['hr.job'].create({'name': 'SUPERVISOR %s (prueba FS)' % key})
+            self.env['hr.employee'].create({'name': 'Sup %s FS' % key, 'job_id': job.id, 'user_id': users[key].id})
+            self.env['ir.config_parameter'].sudo().set_param(param, str(job.id))
+        jet = self.env['mrp.workcenter'].create({
+            'name': 'JET FS prueba', 'ft_tipo_id': self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria').id})
+        colorante = self.env['product.product'].create({'name': 'colorante FS', 'type': 'consu'})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': self.acabado.product_tmpl_id.id, 'product_qty': 1,
+            'operation_ids': [(0, 0, {'name': 'Teñir FS', 'workcenter_id': jet.id})],
+            'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1})]})
+        bom = self.env['mrp.bom']._bom_find(self.acabado)[self.acabado]
+        bom.bom_line_ids = [(0, 0, {'product_id': colorante.id, 'product_qty': 0.01,
+                                    'operation_id': bom.operation_ids.id})]
+        sheet = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'WJFS01JNG170', 'tejido_id': self._tejido().id, 'product_acabado_id': self.acabado.id,
+            'project_id': self.dev.id})
+        self.assertTrue(sheet.sgi_has_tintoreria)
+        sheet.with_user(self.yet).action_sgi_propose()
+        for reading in sheet.sgi_reading_ids:
+            nominal, _up, _down, _unit = reading._sgi_spec()
+            reading.real = float(nominal or 0.0)
+        with self.assertRaises(UserError, msg="Antes del acabado valida Tintorería"):
+            sheet.with_user(users['acabado']).action_sgi_validate()
+        tenido_mo = self.env['mrp.production'].new({'product_id': self.tenido.id, 'sgi_dev_project_id': self.dev.id})
+        self.assertIn('Supervisor de Tintorería', tenido_mo._sgi_dev_run_sheet_problems()[0])
+        with self.assertRaises(UserError, msg="El Jefe de Manufactura ya no valida la tintorería"):
+            sheet.with_user(self.jefe).action_sgi_validate_tintoreria()
+        sheet.with_user(users['tintoreria']).action_sgi_validate_tintoreria()
+        self.assertEqual(sheet.sgi_tint_validated_by_id, users['tintoreria'])
+        self.assertEqual(tenido_mo._sgi_dev_run_sheet_problems(), [], "El teñido se valida contra esa tintorería")
+        with self.assertRaises(UserError, msg="Tintorería no valida el acabado"):
+            sheet.with_user(users['tintoreria']).action_sgi_validate()
+        sheet.with_user(users['acabado']).action_sgi_validate()
+        self.assertEqual(sheet.sgi_validated_by_id, users['acabado'])
+        wiz = self.env['sgi.dev.process.sheets.wizard'].with_context(default_project_id=self.dev.id).create({})
+        tenido = wiz.line_ids.filtered(lambda l: l.stage == 'tenido')
+        self.assertEqual(tenido.acabado_id, sheet)
+        self.assertIn('validó', tenido.status)
+        self.assertEqual(tenido.action_open()['res_id'], sheet.id, "El teñido abre la ficha de acabado")
