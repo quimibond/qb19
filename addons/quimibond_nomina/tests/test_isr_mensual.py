@@ -11,6 +11,8 @@ from datetime import date, timedelta
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
+from .common import liberar_referencias
+
 LOG = 'odoo.addons.quimibond_nomina.models.isr_mensual'
 
 
@@ -24,15 +26,19 @@ class TestIsrMensual(TransactionCase):
         cls.struct = env['hr.payroll.structure'].create({'name': 'QB ISR prueba', 'code': 'QB_ISR', 'type_id': stype.id})
         cat = env.ref('hr_payroll.BASIC')
         cls.rules = {}
-        for code in ('GROSS', 'ISR', 'ISR_ADJUSTMENT', 'SUBSIDY'):
+        for code in ('GROSS', 'ISR', 'ISR_ADJUSTMENT', 'SUBSIDY', 'PVAC_TAX'):
             cls.rules[code] = env['hr.salary.rule'].create({
                 'name': code, 'code': code, 'struct_id': cls.struct.id, 'category_id': cat.id,
                 'condition_select': 'none', 'amount_select': 'code', 'amount_python_compute': 'result = 0',
             })
+        liberar_referencias(env, 'Q-1', 'Q-2')
         cls.employee = env['hr.employee'].create({'name': 'Prueba ISR', 'registration_number': 'Q-1'})
         cls.employee.version_id.write({'schedule_pay': 'bi-weekly', 'contract_date_start': date(2018, 9, 13)})
         cls.Param = env['ir.config_parameter'].sudo()
         cls.Param.set_param('quimibond_nomina.isr_mensual_incluye_borrador', '')
+        # En la copia de producción el día de pago viene configurado; la prueba parte sin él.
+        cls.Param.set_param('quimibond_nomina.dia_pago_semanal', False)
+        cls.Param.set_param('quimibond_nomina.isr_art174_codigos', False)
 
     def _recibo(self, date_from, date_to, lineas=None, state=None, employee=None):
         slip = self.env['hr.payslip'].create({
@@ -225,3 +231,44 @@ class TestIsrMensual(TransactionCase):
         self.assertEqual(res['retenido_previo'], 656.23)
         self.assertEqual(res['isr_mes'], 1293.04)
         self.assertEqual(res['isr'], 636.81)
+
+    # --- 4. Art. 174 del Reglamento (prima vacacional) --------------------
+    def test_art174_semana_44_lorena_santiago(self):
+        """Semana 44 de 2026: gravable 3,399.53 con 1,023.59 de prima gravada.
+        NOI: ISR 163.87 neto de 123.34 de subsidio = 175.85 del sueldo + 111.37
+        de la prima (tasa 10.88 %)."""
+        self.employee.version_id.schedule_pay = 'weekly'
+        s44 = self._recibo(date(2026, 10, 19), date(2026, 10, 25))
+        res = s44._qb_art174(3399.53, 1023.59)
+        self.assertAlmostEqual(res['ordinario'], 2375.94, places=2)
+        self.assertAlmostEqual(res['tasa'], 0.1088, places=6)
+        self.assertEqual(res['isr'], 111.37)
+
+    def test_art174_cambia_de_renglon(self):
+        """Semana 43: Levario (3,644.23 con 295.90 de prima) cae al 16 % y De la
+        Cruz (8,673.48 con 2,154.13) al 21.36 %; NOI 351.89 y 1,417.84."""
+        self.employee.version_id.schedule_pay = 'weekly'
+        s43 = self._recibo(date(2026, 10, 12), date(2026, 10, 18))
+        self.assertEqual(s43._qb_art174(3644.23, 295.90)['isr'], 47.34)
+        self.assertEqual(s43._qb_art174(8673.48, 2154.13)['isr'], 460.12)
+
+    def test_art174_sin_prima_o_apagado(self):
+        self.employee.version_id.schedule_pay = 'weekly'
+        s = self._recibo(date(2026, 10, 19), date(2026, 10, 25), {'GROSS': 3399.53, 'PVAC_TAX': 1023.59})
+        self.assertEqual(s._qb_art174(2500.0, 0.0), {'ordinario': 2500.0, 'especial': 0.0, 'tasa': 0.0, 'isr': 0.0})
+        self.assertEqual(s._qb_art174_monto(), 1023.59)
+        self.assertEqual(s._qb_art174_monto({'PVAC_TAX': {'total': 500.0}}), 500.0)
+        self.Param.set_param('quimibond_nomina.isr_art174_codigos', '')
+        self.assertEqual(s._qb_art174_monto(), 0.0)
+        self.Param.set_param('quimibond_nomina.isr_art174_codigos', False)
+
+    def test_art174_no_entra_al_acumulado_del_mes(self):
+        """La prima de un recibo previo del mes no suma al gravable ordinario del
+        mes, y su ISR de art. 174 no cuenta como retenido del ordinario."""
+        q18 = self._recibo(date(2026, 9, 1), date(2026, 9, 15),
+                           {'GROSS': 7000.00, 'PVAC_TAX': 1000.00, 'ISR': -700.00}, state='validated')
+        isr174_q18 = q18._qb_art174(7000.00, 1000.00)['isr']
+        q19 = self._recibo(date(2026, 9, 16), date(2026, 9, 30))
+        res = q19._qb_isr_mensual(6000.00)
+        self.assertAlmostEqual(res['gravable_mes'], 12000.00, places=2)
+        self.assertAlmostEqual(res['retenido_previo'], 700.00 - isr174_q18, places=2)

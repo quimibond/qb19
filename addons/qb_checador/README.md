@@ -258,17 +258,30 @@ y quede en todos:
 
 Por persona, en orden de tiempo:
 
-- La primera checada abre una asistencia (`in_mode = checador`), la siguiente
-  la cierra. No se usa el estado entrada/salida del reloj: en la planta no se
-  selecciona al checar.
+- **Una asistencia por turno** (desde 1.7.0). La primera checada abre la
+  asistencia (`in_mode = checador`); las siguientes a menos de
+  `qb_checador.horas_entre_turnos` horas (default 8) de la anterior son el
+  mismo turno (salida a comer, regreso, salida) y mueven la salida. La comida
+  queda dentro de la jornada, como en el contrato. Una checada sola acepta su
+  salida hasta `horas_turno_max` horas después (el turno de 12 de noche sin
+  checar a la comida). No se usa el estado entrada/salida del reloj: en la
+  planta no se selecciona al checar.
+- Hasta 1.6.x se alternaba entrada/salida: con una checada de más o de menos
+  todo se corría un lugar (el 20-oct-2026 el reloj empezó a contar a media
+  tarde y la salida de las 17:35 quedó como entrada de una «asistencia» de
+  13.5 h hasta las 07:03 del día siguiente). La migración de 1.7.0 rehízo con
+  la regla nueva las asistencias que había armado el checador
+  (`qb.checada._reconstruir_asistencias()`; las capturadas a mano no se
+  tocan). Lo mismo se puede volver a correr si hiciera falta.
 - Dos checadas en menos de `qb_checador.minutos_duplicado` minutos (default 2)
   son la misma: la segunda queda **ignorada**.
 - Una entrada sin salida en más de `qb_checador.horas_turno_max` horas
   (default 16, para turnos de 12) se cierra **en cero horas** (`out_mode =
   technical`) y su checada queda **huérfana**. Nunca se inventan horas: el
   supervisor corrige la asistencia a mano.
-- Una checada que llega tarde y cae dentro de una asistencia ya cerrada queda
-  huérfana sin tocar la asistencia.
+- Una checada que llega tarde y cae dentro de un turno ya armado (la de la
+  comida) queda emparejada a ese turno sin cambiarlo; si cae dentro de una
+  asistencia capturada a mano, queda huérfana.
 - Un error de validación de Odoo al emparejar a una persona no detiene a las
   demás: sus checadas quedan en **error** con el motivo.
 

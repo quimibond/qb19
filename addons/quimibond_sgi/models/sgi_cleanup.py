@@ -25,7 +25,8 @@ from odoo.exceptions import ValidationError
 _logger = logging.getLogger(__name__)
 
 # Las ocho entradas del SGI, en el orden del menú (57.113.0: por capítulos
-# del MIID). Todo menú bajo el raíz debe descender de una.
+# del MIID; 57.183.0: Configuración en lugar de Administración). Todo menú
+# bajo el raíz debe descender de una.
 SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_panel',              # Inicio
     'quimibond_sgi.menu_sgi_report',             # Reportar (57.98.0, U-07)
@@ -34,7 +35,7 @@ SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_safety',             # Seguridad y ambiente (8; 56.21.0)
     'quimibond_sgi.menu_sgi_performance',        # Desempeño (9; 57.113.0)
     'quimibond_sgi.menu_sgi_improvement_group',  # Mejora (10)
-    'quimibond_sgi.menu_sgi_admin',              # Administración (antes Administración SGI)
+    'quimibond_sgi.menu_sgi_config',             # Configuración (57.183.0; antes dentro de Administración)
 )
 # 57.113.0: archivados en su lugar (active=False, mismo padre, acción viva);
 # no son retirados: no van en SGI_REMOVED_XMLIDS y no se borran.
@@ -53,7 +54,8 @@ SGI_MENU_ARCHIVED = (
     'quimibond_sgi.menu_sgi_miid_revisions',
     'quimibond_sgi.menu_sgi_miid_requests',
     'quimibond_sgi.menu_sgi_indicator_wizard',
-    'quimibond_sgi.menu_sgi_floor_tablets',
+    # 57.183.0: la carpeta «Administración» (su contenido se repartió).
+    'quimibond_sgi.menu_sgi_admin',
 )
 # «Calidad preventiva» y «Paretos de calidad» cuelgan de la app Calidad con
 # padre fijo en views/sgi_menus.xml (E-008, 57.5.0): no están bajo el raíz.

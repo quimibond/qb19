@@ -281,7 +281,9 @@ class SgiMiidSection(models.Model):
                               help="Menú donde se consulta en Odoo lo que dice la sección. La pantalla lo "
                                    "abre con un botón; el PDF imprime su ruta.")
     item_ids = fields.One2many('sgi.miid.item', 'section_id', string="Renglones", copy=True,
-                               help="Lista o tabla de la sección: un renglón por concepto.")
+                               help="Lista o tabla de la sección: un renglón por concepto."
+                                    " Lo que antes eran viñetas o tablas escritas en el texto; cada renglón puede "
+                                    "abrir su pantalla en Odoo.")
     item_count = fields.Integer(string="# Renglones", compute='_compute_item_count')
     item_style = fields.Selection([('table', "Tabla"), ('list', "Lista")], string="Los renglones van en",
                                   default='table', required=True,
@@ -783,8 +785,11 @@ class SgiMiid(models.Model):
                             compute_sudo=True, sanitize=False)
     blocker_html = fields.Html(string="Lo que impide aprobar una revisión", compute='_compute_blockers',
                                compute_sudo=True, sanitize=False)
-    to_confirm_count = fields.Integer(string="Secciones por confirmar", compute='_compute_blockers',
+    to_confirm_count = fields.Integer(string="Núm. de secciones por confirmar", compute='_compute_blockers',
                                       compute_sudo=True)
+    # 57.172.0: los botones inteligentes dicen cuántos hay.
+    section_count = fields.Integer(string="Textos", compute='_compute_stat_counts', compute_sudo=True)
+    request_count = fields.Integer(string="Solicitudes", compute='_compute_stat_counts', compute_sudo=True)
     outdated_since = fields.Datetime(string="Desactualizado desde", readonly=True, copy=False)
     last_check = fields.Datetime(string="Última comparación", readonly=True, copy=False)
     live_html = fields.Html(string="Vista del sistema", compute='_compute_live_html',
@@ -803,8 +808,9 @@ class SgiMiid(models.Model):
                                      compute_sudo=True)
     process_ids = fields.Many2many('sgi.process', relation='sgi_miid_screen_process_rel', string="Procesos",
                                    compute='_compute_screen_records', compute_sudo=True)
+    # 57.176.1: buscable; policy_text depende de él y Odoo lo pedía en el build.
     policy_id = fields.Many2one('sgi.policy', string="Política vigente", compute='_compute_screen_records',
-                                compute_sudo=True)
+                                compute_sudo=True, search='_search_policy_id')
     policy_text = fields.Html(related='policy_id.policy_text', string="Texto de la política")
     objective_ids = fields.Many2many('sgi.objective', relation='sgi_miid_screen_objective_rel',
                                      string="Objetivos integrales", compute='_compute_screen_records',
@@ -956,6 +962,16 @@ class SgiMiid(models.Model):
                 Markup("<li>%s</li>") % b for b in blockers) if blockers else False
 
     @api.depends('company_id')
+    def _compute_stat_counts(self):
+        Section = self.env['sgi.miid.section']
+        Request = self.env['approval.request']
+        for miid in self:
+            miid.section_count = Section.search_count(
+                [('company_id', '=', miid.company_id.id), ('kind', '=', miid.kind)])
+            miid.request_count = Request.search_count(
+                [('sgi_miid_hash', '!=', False), ('sgi_document_id.sgi_code', '=', miid._sgi_kind()['code'])])
+
+    @api.depends('company_id')
     def _compute_history_html(self):
         for miid in self:
             rows = Markup('').join(
@@ -1010,6 +1026,14 @@ class SgiMiid(models.Model):
             miid.routine_ids = env['sgi.process.activity'].search(
                 [('related_procedure_id', 'in', miid._sgi_documents().ids)], order='process_id, step, id') \
                 if miid.kind == 'pg01' else False
+
+    def _search_policy_id(self, operator, value):
+        if operator in ('any', 'any!'):
+            value = self.env['sgi.policy'].sudo().with_context(active_test=False).search(value).ids
+        elif operator != 'in':
+            return NotImplemented
+        miids = self.sudo().with_context(active_test=False).search([])
+        return [('id', 'in', miids.filtered(lambda m: m.policy_id.id in value).ids)]
 
     @api.model
     def _sgi_screen_fields(self):
@@ -1981,7 +2005,10 @@ class ApprovalRequestMiid(models.Model):
     sgi_miid_snapshot = fields.Text(string="Datos del MIID", readonly=True, copy=False,
                                     help="Foto de los datos con que se generó el PDF del MIID.")
     sgi_miid_generated = fields.Datetime(string="MIID generado el", readonly=True, copy=False,
-                                         help="Cuándo se generó el PDF del MIID que lleva esta solicitud.")
+                                         help="Cuándo se generó el PDF del MIID que lleva esta solicitud."
+                                              " El PDF adjunto lo generó Odoo con los datos del sistema; si cambian"
+                                              " antes de enviarla, al enviar se genera otra vez. Lo que se firma es"
+                                              " lo que se publica. «Aprobó» lo firma Dirección.")
     sgi_miid_blocked_note = fields.Text(string="Último aviso de candados del MIID", readonly=True, copy=False,
                                         help="Lo que detiene la aprobación del MIID aunque las firmas estén "
                                              "completas.")

@@ -67,7 +67,9 @@ class DocumentsDocument(models.Model):
     sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True,
                                        help="Marque si es un documento controlado del SGI: lleva clave, "
                                             "revisión, estado y acuses.")
-    sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
+    sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True,
+        help="PR-{proceso} para procedimientos; F-{proceso}-nn, IT-{proceso}-nn y DA-{proceso}-nn. Solo puede "
+             "haber una revisión vigente por clave.")
     # C-004/C-005 (56.32.0): la clave anterior es DEFINITIVA (la del Dropbox,
     # copiada por la migración 56.32.0) y se busca siempre (búsqueda «Clave
     # SGI», «Del Dropbox a Odoo» y _sgi_find_by_code): nadie pierde un formato
@@ -122,7 +124,9 @@ class DocumentsDocument(models.Model):
     sgi_odoo_menu_id = fields.Many2one(
         'ir.ui.menu', string="Menú de Odoo",
         help="Menú donde vive el formulario que sustituye a este documento. "
-             "El botón «Abrir en Odoo» salta directo a él.")
+             "El botón «Abrir en Odoo» salta directo a él."
+             " El formato ya no se llena en papel ni en PDF; la clave, la revisión y la difusión se siguen "
+             "controlando en el documento.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
                                   help="Área del SGI a la que pertenece el documento.")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict',
@@ -157,7 +161,9 @@ class DocumentsDocument(models.Model):
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
                                    string="Puestos a los que aplica",
                                    help="Puestos que deben conocer el documento. Al publicarlo, a sus "
-                                        "personas les llega el acuse de lectura.")
+                                        "personas les llega el acuse de lectura."
+                                        " La difusión depende de esto: «Generar acuses» crea un acuse por cada "
+                                        "empleado de estos puestos y «Mi procedimiento» filtra por puesto.")
     sgi_next_review_date = fields.Date(string="Próxima revisión",
                                        help="Fecha de la próxima revisión del documento. Antes de esa fecha "
                                             "llegan dos avisos al responsable.")
@@ -233,7 +239,9 @@ class DocumentsDocument(models.Model):
         ('na', "No aplica (se queda)"),
     ], string="Estado de migración", default='pendiente', tracking=True,
         help="Avance del paso de este documento del Dropbox a Odoo: pendiente, en curso, migrado, baja "
-             "tramitada o se queda.")
+             "tramitada o se queda."
+             " Ya migrado: cambie el Tipo de documento a «Formulario de Odoo (vista)» para que deje de pedir "
+             "archivo y el botón principal abra la vista real.")
     sgi_migration_target = fields.Char(string="Destino en Odoo",
         help="Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades').")
     # Liga REAL al destino (H-migración): del formato al worksheet con un
@@ -1291,6 +1299,8 @@ class DocumentsDocument(models.Model):
             self._sgi_check_revision_increases(old_revisions)
         if vals.get('sgi_state') == 'vigente':
             self._sgi_reparent_family()
+        if 'sgi_state' in vals:
+            self._sgi_sync_pending_acks()
         # Una nueva revisión aprobada (bump de revisión o entrada en vigor)
         # realinea el documento con el procedimiento vivo: limpia la divergencia.
         if 'sgi_revision' in vals or vals.get('sgi_state') == 'vigente':
@@ -1319,6 +1329,22 @@ class DocumentsDocument(models.Model):
                                       self.env.user.name))
         return True
 
+    def _sgi_sync_pending_acks(self):
+        """57.185.0: un documento obsoleto ya no pide firma. Sus acuses
+        pendientes se archivan (son evidencia de difusión: no se borran) y
+        salen de Mis pendientes, Mi equipo, el kiosco y la salud del SGI; si
+        el documento vuelve a vigente o piloto, regresan. Los firmados no se
+        tocan."""
+        Ack = self.env['sgi.document.ack'].sudo().with_context(active_test=False)
+        obsolete = self.filtered(lambda d: d.sgi_state == 'obsoleto')
+        alive = self.filtered(lambda d: d.sgi_state in ('vigente', 'piloto'))
+        if obsolete:
+            Ack.search([('document_id', 'in', obsolete.ids), ('state', '=', 'pendiente'),
+                        ('active', '=', True)]).write({'active': False})
+        if alive:
+            Ack.search([('document_id', 'in', alive.ids), ('state', '=', 'pendiente'),
+                        ('active', '=', False)]).write({'active': True})
+
     def action_generate_acks(self):
         """Crea acuses pendientes para los empleados de los puestos aplicables (idempotente)."""
         Ack = self.env['sgi.document.ack']
@@ -1326,7 +1352,8 @@ class DocumentsDocument(models.Model):
             if not doc.sgi_job_ids:
                 continue
             employees = self.env['hr.employee'].sudo().search([('job_id', 'in', doc.sgi_job_ids.ids)])
-            existing = doc.sgi_ack_ids.mapped('employee_id')
+            # 57.185.0: también los archivados (documento obsoleto): uno por persona.
+            existing = doc.with_context(active_test=False).sgi_ack_ids.mapped('employee_id')
             to_create = [{
                 'document_id': doc.id,
                 'employee_id': emp.id,
@@ -1415,6 +1442,10 @@ class SgiDocumentAck(models.Model):
              "pendientes.")
     ack_date = fields.Datetime(string="Fecha de acuse", readonly=True,
                                help="Fecha y hora en que la persona firmó de leído.")
+    # 57.185.0: un pendiente de un documento obsoleto se archiva (ya no se pide).
+    active = fields.Boolean(default=True,
+                            help="Se archiva solo cuando su documento queda obsoleto sin que se "
+                                 "firmara: ya no se pide, pero queda como evidencia.")
 
     _doc_employee_uniq = models.Constraint(
         'unique(document_id, employee_id)',

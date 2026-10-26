@@ -49,7 +49,7 @@
                         invisible="not sgi_is_ft or not (sgi_dev_stage_key == 'respuesta_cliente' or (sgi_dev_stage_key == 'muestra' and not sgi_dev_approved_by_id)) or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
                 <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-secondary" icon="fa-truck"
                         invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente')"/>
-                <button name="action_sgi_dev_shipments" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
+                <button name="action_sgi_dev_pending_shipment" type="object" string="Registrar respuesta del cliente" class="btn-primary" icon="fa-reply"
                         invisible="not sgi_is_ft or sgi_dev_stage_key != 'respuesta_cliente' or not sgi_dev_shipment_count"/>
                 <button name="action_sgi_dev_new_revision" type="object" string="Subir revisión" class="btn-secondary" icon="fa-level-up"
                         invisible="not sgi_is_ft or sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto')"
@@ -84,6 +84,10 @@
                         <span class="o_stat_value"><field name="sgi_dev_mo_count"/></span>
                         <span class="o_stat_text">Órdenes de muestra</span>
                     </div>
+                </button>
+                <button name="action_sgi_dev_bom_pending" type="object" class="oe_stat_button text-warning" icon="fa-list"
+                        invisible="not sgi_is_ft or not sgi_dev_bom_pending_count">
+                    <field name="sgi_dev_bom_pending_count" widget="statinfo" string="Listas por capturar"/>
                 </button>
                 <button name="action_sgi_dev_shipments" type="object" class="oe_stat_button" icon="fa-truck"
                         invisible="not sgi_is_ft or not sgi_dev_shipment_count">
@@ -274,9 +278,15 @@
                                     <field name="sgi_dev_reviewed_by_id"/>
                                     <field name="sgi_dev_review_date"/>
                                     <field name="sgi_dev_review_note" placeholder="Motivo del regreso (obligatorio para regresar)"/>
+                                    <!-- 57.182.0: Diseño avisa a Ventas que ya corrigió (comentario opcional). -->
+                                    <field name="sgi_dev_can_fix" invisible="1"/>
+                                    <field name="sgi_dev_fix_note" placeholder="Qué se corrigió (opcional)"
+                                           invisible="sgi_dev_review_state != 'regresado' or not sgi_dev_can_fix"/>
                                     <div colspan="2">
                                         <button name="action_sgi_dev_review_return" type="object" string="Regresar a Diseño" class="btn-secondary" icon="fa-undo"
                                                 invisible="sgi_dev_review_state == 'regresado'"/>
+                                        <button name="action_sgi_dev_review_fixed" type="object" string="Ya corregí" class="btn-primary" icon="fa-check"
+                                                invisible="sgi_dev_review_state != 'regresado' or not sgi_dev_can_fix"/>
                                         <span class="text-muted ms-2" invisible="sgi_dev_review_state == 'aprobado'">Se aprueba con «Aprobar análisis y factibilidad» en el encabezado.</span>
                                     </div>
                                 </group>
@@ -364,11 +374,14 @@
                                             <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-secondary" icon="fa-cubes"
                                                     invisible="sgi_dev_product_id or sgi_dev_analysis_result == 'linea'"
                                                     confirm="Con artículo base: se recorre su cadena (acabado, teñido, crudo), se ligan los niveles que no cambian y se crean los que cambian copiando su lista de materiales; los componentes que dependen de la clave que cambió quedan «Por capturar». Sin base: se crean crudo, teñido (si lleva) y acabado con el código propuesto. ¿Continuar?"/>
+                                            <!-- 57.190.0: si se eligió mal el artículo base, se sueltan los artículos y se vuelven a generar. -->
+                                            <button name="action_sgi_dev_regenerate_products" type="object" string="Regenerar artículos" class="btn-secondary" icon="fa-refresh"
+                                                    invisible="not (sgi_dev_product_id or sgi_dev_product_crudo_id) or sgi_dev_analysis_result == 'linea' or sgi_dev_customer_approved_at"
+                                                    confirm="Se sueltan los artículos del proyecto: los que creó el proyecto se borran con sus listas de materiales (si nada más los usa) y los del artículo base o de catálogo solo se desligan. Después se generan de nuevo con el artículo base y las claves de hoy. Las listas que ya capturó en los artículos borrados se pierden. ¿Continuar?"/>
                                         </div>
                                         <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
                                         <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
-                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos.
-                                            <button name="action_sgi_dev_bom_pending" type="object" string="Ver listas" class="btn-link p-0 ms-1"/>
+                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos (botón «Listas por capturar» arriba).
                                         </div>
                                         <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
@@ -647,7 +660,7 @@
                                 <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-secondary" icon="fa-exchange"
                                         invisible="sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto', 'liberado')"/>
                             </div>
-                            <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado se registra como solicitud de modificación (causa, 5 porqués, solución y fases afectadas); al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra. Los cambios a la especificación quedan en la bitácora.</p>
+                            <p class="text-muted">Al firmar una solicitud, Dirección de Operaciones abre la revisión siguiente y el proyecto vuelve a la muestra.</p>
                             <separator string="Solicitudes de modificación"/>
                             <field name="sgi_dev_change_request_ids" readonly="1">
                                 <list create="0" delete="0" decoration-info="state == 'borrador'" decoration-muted="state == 'aplicada'">
@@ -781,7 +794,7 @@
                                 <button name="action_sgi_dev_print_dossier" type="object" string="Imprimir expediente" class="btn-secondary" icon="fa-print"/>
                                 <span class="align-self-center">Requisitos cubiertos: <field name="sgi_dev_dossier_done" class="oe_inline"/> de <field name="sgi_dev_dossier_total" class="oe_inline"/></span>
                             </div>
-                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí. Las fases del APQP se cubren con las pestañas: 1 planeación (análisis de mercado y de proyecto), 2 diseño del producto (cotización, aprobación del cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y fichas), 4 validación (muestra, envío, retroalimentación, pilotaje), 5 retroalimentación y mejora (cambios, liberación, tarifa).</p>
+                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí.</p>
                             <field name="sgi_dev_dossier_html" nolabel="1" readonly="1"/>
                         </page>
                     </notebook>

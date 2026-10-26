@@ -461,6 +461,17 @@ class ProjectProjectDevShipment(models.Model):
             action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': self.sgi_dev_shipment_ids.id})
         return action
 
+    def action_sgi_dev_pending_shipment(self):
+        """57.172.0: «Registrar respuesta del cliente» abre el envío que espera
+        respuesta (el más reciente enviado), donde está el botón; sin ninguno,
+        la lista de envíos del proyecto."""
+        self.ensure_one()
+        pending = self.sgi_dev_shipment_ids.filtered(lambda s: s.state == 'enviada').sorted('id')[-1:]
+        if not pending:
+            return self.action_sgi_dev_shipments()
+        return {'type': 'ir.actions.act_window', 'res_model': 'sgi.dev.shipment', 'view_mode': 'form',
+                'views': [(False, 'form')], 'res_id': pending.id, 'target': 'current'}
+
     def action_sgi_dev_new_shipment(self):
         self.ensure_one()
         mos = self.sgi_dev_mo_ids.filtered(lambda m: m.state == 'done').sorted('id')

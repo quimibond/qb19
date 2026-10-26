@@ -17,6 +17,8 @@
 # 57.113.0, plan docs/superpowers/plans/2026-10-06-sgi-57-113-0-menus.md).
 # Los menús archivados (active=False) no aparecen aquí; los lista
 # SGI_MENU_ARCHIVED en models/sgi_cleanup.py.
+# 57.183.0: sin «Administración» (archivada): Diagnóstico en Desempeño, Aprobaciones
+# y Publicar en Sistema, Configuración (con Transición) del raíz, al final.
 SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_user
 SGI/Inicio | menu_sgi_panel | -
 SGI/Inicio/Mis pendientes | menu_sgi_my_pending | -
@@ -37,7 +39,9 @@ SGI/Sistema/Actividades | menu_sgi_activities | -
 SGI/Sistema/Entregables | menu_sgi_deliverable_list | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
 SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Documentos/Documentos controlados | menu_sgi_documents | -
 SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -
@@ -81,6 +85,11 @@ SGI/Desempeño/Auditorías/Programa | menu_sgi_audit_programs | -
 SGI/Desempeño/Auditorías/Todas las auditorías | menu_sgi_audit_list | -
 SGI/Desempeño/Auditorías/Hallazgos | menu_sgi_audit_findings | -
 SGI/Desempeño/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Diagnóstico | menu_sgi_analysis | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Diagnóstico/Diagnóstico del SGI | menu_sgi_diagnostic | -
+SGI/Desempeño/Diagnóstico/Cumplimiento de procedimientos | menu_sgi_compliance | -
+SGI/Desempeño/Diagnóstico/Registro de cumplimiento | menu_sgi_activity_executions | -
+SGI/Desempeño/Diagnóstico/Faltantes de especificación | menu_sgi_spec_gaps | -
 SGI/Mejora | menu_sgi_improvement_group | -
 SGI/Mejora/No conformidades | menu_sgi_nc | -
 SGI/Mejora/Acciones correctivas | menu_sgi_nc_all_actions | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
@@ -88,31 +97,24 @@ SGI/Mejora/Reclamaciones de clientes | menu_sgi_complaints | -
 SGI/Mejora/Mejora continua | menu_sgi_improvements | -
 SGI/Mejora/Lecciones aprendidas | menu_sgi_lessons | -
 SGI/Mejora/Quejas y sugerencias del personal | menu_sgi_internal_complaints | -
-SGI/Administración | menu_sgi_admin | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración/Diagnóstico | menu_sgi_analysis | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración/Diagnóstico/Diagnóstico del SGI | menu_sgi_diagnostic | -
-SGI/Administración/Diagnóstico/Cumplimiento de procedimientos | menu_sgi_compliance | -
-SGI/Administración/Diagnóstico/Registro de cumplimiento | menu_sgi_activity_executions | -
-SGI/Administración/Diagnóstico/Faltantes de especificación | menu_sgi_spec_gaps | -
-SGI/Administración/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
-SGI/Administración/Transición | menu_sgi_transition | quimibond_sgi.group_sgi_manager
-SGI/Administración/Transición/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -
-SGI/Administración/Configuración | menu_sgi_config | quimibond_sgi.group_sgi_manager
-SGI/Administración/Configuración/Familias de puesto | menu_sgi_job_families | -
-SGI/Administración/Configuración/Ajustes | menu_sgi_config_settings | base.group_system
-SGI/Administración/Configuración/Áreas | menu_sgi_config_areas | -
-SGI/Administración/Configuración/Normas | menu_sgi_config_norms | -
-SGI/Administración/Configuración/Cláusulas | menu_sgi_config_clauses | -
-SGI/Administración/Configuración/Reglas del sistema | menu_sgi_config_system_rules | -
-SGI/Administración/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
-SGI/Administración/Configuración/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
-SGI/Administración/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
-SGI/Administración/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
-SGI/Administración/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
-SGI/Administración/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -
-SGI/Administración/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
-SGI/Administración/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -
-SGI/Administración/Configuración/Características por tipo de desarrollo | menu_sgi_config_dev_char_templates | -
-SGI/Administración/Configuración/Listas del desarrollo de producto | menu_sgi_config_dev_options | -
-SGI/Administración/Configuración/Recursos del checklist de factibilidad | menu_sgi_config_dev_feasibility | -
+SGI/Configuración | menu_sgi_config | quimibond_sgi.group_sgi_manager
+SGI/Configuración/Familias de puesto | menu_sgi_job_families | -
+SGI/Configuración/Ajustes | menu_sgi_config_settings | base.group_system
+SGI/Configuración/Áreas | menu_sgi_config_areas | -
+SGI/Configuración/Normas | menu_sgi_config_norms | -
+SGI/Configuración/Cláusulas | menu_sgi_config_clauses | -
+SGI/Configuración/Reglas del sistema | menu_sgi_config_system_rules | -
+SGI/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
+SGI/Configuración/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
+SGI/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
+SGI/Configuración/Tabletas de planta | menu_sgi_floor_tablets | -
+SGI/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
+SGI/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
+SGI/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -
+SGI/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
+SGI/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -
+SGI/Configuración/Características por tipo de desarrollo | menu_sgi_config_dev_char_templates | -
+SGI/Configuración/Listas del desarrollo de producto | menu_sgi_config_dev_options | -
+SGI/Configuración/Recursos del checklist de factibilidad | menu_sgi_config_dev_feasibility | -
+SGI/Configuración/Transición | menu_sgi_transition | quimibond_sgi.group_sgi_manager
+SGI/Configuración/Transición/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -

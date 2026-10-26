@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/mode
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `coverage_gap_count` | Integer | Procesos sin programar en 3 años |  |  |  | compute `_compute_coverage_gap`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:66` |
-| `coverage_gap_ids` | Many2many | Sin programar en 3 años | Subprocesos sin renglón en este programa ni en los de los dos años anteriores registrados en Odoo. |  | `sgi.process` | compute `_compute_coverage_gap`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:62` |
+| `coverage_gap_count` | Integer | Procesos sin programar en 3 años |  |  |  | compute `_compute_coverage_gap`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:67` |
+| `coverage_gap_ids` | Many2many | Sin programar en 3 años | Subprocesos sin renglón en este programa ni en los de los dos años anteriores registrados en Odoo. Agréguelos al programa o deje el motivo en el historial. |  | `sgi.process` | compute `_compute_coverage_gap`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:62` |
 | `line_count` | Integer | Auditorías programadas | Renglones del programa. |  |  | compute `_compute_progress`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:55` |
 | `line_done_count` | Integer | Auditorías hechas | Renglones cuya auditoría ya se cerró. |  |  | compute `_compute_progress`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:57` |
 | `line_ids` | One2many | Líneas |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:53` |

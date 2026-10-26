@@ -111,6 +111,8 @@
                 <filter name="late" string="Con vencidas abiertas" domain="[('late_open_count', '&gt;', 0)]"/>
                 <filter name="incomplete" string="Con salidas incompletas"
                         domain="[('done_count', '&gt;', 0), ('completeness_rate', '&lt;', 100)]"/>
+                <separator/>
+                <filter name="period" string="Semana" date="period_start"/>
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_channel" string="Canal" context="{'group_by': 'exec_channel'}"/>

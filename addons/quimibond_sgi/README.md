@@ -406,7 +406,7 @@ Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyec
 comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
 En el SGI queda qué renglones carga cada tipo de desarrollo (general,
 entretelas V10, carda, tramado, con dirección largo / ancho y posición
-izquierda / centro / derecha): **SGI → Administración → Configuración →
+izquierda / centro / derecha): **SGI → Configuración →
 Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
 solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
 generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
@@ -449,8 +449,9 @@ acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
 crea crudo (H), teñido (I, si lleva), acabado en kg (el código del acabado con
 la «I» al frente, desde 57.160.0) y acabado (J) con el código del DAT
 P-D02-01 en estado «En desarrollo» (no se vende). Producción va en kg hasta
-Inspección: el acabado en kg sale de rama pesado e Inspección lo pasa a
-metros; sus listas de materiales se capturan a mano. Modelo completo:
+la Clasificación final: la orden en kg (devanado, tintorería, abridora, rama e
+Inspección) entrega el acabado en kg inspeccionado y la Clasificación final lo
+pasa a metros (desde 57.172.1); sus listas de materiales se capturan a mano. Modelo completo:
 `quimibond_ficha_tecnica_tela/README.md`, «Modelo de producción vigente». Al entrar a Pilotaje el
 artículo se vende con aviso; en Liberado queda de línea; si el proyecto
 cierra sin producto, el artículo y sus listas de materiales se archivan. El
@@ -495,9 +496,10 @@ normas (57.113.0):
   dirección.
 - **Mejora** (10): NC, acciones correctivas, reclamaciones, mejora continua,
   lecciones aprendidas, quejas y sugerencias del personal.
-- **Administración** (antes «Administración SGI»; Auditor, Jefe MAST y
-  Dirección): Diagnóstico (cuatro entradas) y Aprobaciones del SGI;
-  Publicar Mi procedimiento, Transición y Configuración solo Jefe MAST.
+- **Configuración** (solo Jefe MAST; desde 57.183.0 del raíz, al final):
+  catálogos, Ajustes y Transición. La carpeta «Administración» se archivó:
+  Diagnóstico pasó a Desempeño y Aprobaciones del SGI y Publicar Mi
+  procedimiento, a Sistema.
 
 Los xmlids no cambiaron; lo que salió del menú (Firmas de lectura, Cobertura
 de medición, Cumplimiento semanal, Medición por revisar) está archivado en su

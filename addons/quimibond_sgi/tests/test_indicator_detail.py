@@ -4,7 +4,8 @@ sin dato, muestra chica, medir desde)."""
 from datetime import date, timedelta
 
 from odoo import fields
-from odoo.tests import TransactionCase, tagged
+from odoo.exceptions import UserError
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 
 @tagged('post_install', '-at_install')
@@ -159,3 +160,45 @@ class TestIndicatorDetail(TransactionCase):
         ind = self._official('X-P11', critical=True)
         first = self._red(ind, date(2040, 6, 1))
         self.assertTrue(first.alert_id, "Crítico: un rojo basta.")
+
+    def test_12_el_responsable_lo_pasa_a_oficial_con_la_lista(self):
+        """57.178.0: lo pasa su responsable o el dueño del proceso (no solo
+        MAST), y solo con la lista completa; otra persona no."""
+        owner = new_test_user(self.env, login='x_det_owner', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        other = new_test_user(self.env, login='x_det_other', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        process = self.env['sgi.process'].create({'code': 'XDT', 'name': 'Proceso detalle'})
+        ind = self._indicator('X-D12', responsible_id=owner.id, process_id=process.id)
+        mine = ind.with_user(owner)
+        self.assertTrue(mine.can_set_official)
+        self.assertFalse(mine.official_ok_value, "Sin medición con dato todavía.")
+        with self.assertRaises(UserError):
+            mine.action_set_official()
+        self._partners(5, 6)
+        self._measure(ind)
+        ind.invalidate_recordset()
+        self.assertTrue(mine.official_ready)
+        self.assertEqual(mine.target_label, "Objetivo 90 % · aceptable 80 %")
+        self.assertFalse(ind.with_user(other).can_set_official)
+        with self.assertRaises(UserError):
+            ind.with_user(other).action_set_official()
+        mine.action_set_official()
+        self.assertEqual(ind.status, 'oficial')
+        self.assertIn("Pasado a oficial por", ind.message_ids[0].body)
+
+    def test_13_pasar_varios_a_oficial_desde_la_lista(self):
+        """57.184.0: filtro «Listos para oficial» y «Pasar a oficial» con varios:
+        pasa los que tienen la lista completa y deja los demás."""
+        owner = new_test_user(self.env, login='x_det_many', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        process = self.env['sgi.process'].create({'code': 'XDM', 'name': 'Proceso varios'})
+        ready = self._indicator('X-D13A', responsible_id=owner.id, process_id=process.id)
+        missing = self._indicator('X-D13B', responsible_id=owner.id, process_id=process.id)
+        self._partners(5, 6)
+        self._measure(ready)
+        (ready | missing).invalidate_recordset()
+        mine = self.Indicator.with_user(owner)
+        found = mine.search([('official_ready', '=', True), ('code', 'in', ('X-D13A', 'X-D13B'))])
+        self.assertEqual(found, ready.with_user(owner))
+        result = (ready | missing).with_user(owner).action_sgi_set_official_many()
+        self.assertEqual(ready.status, 'oficial')
+        self.assertEqual(missing.status, 'prueba')
+        self.assertIn("X-D13B", result['params']['message'])

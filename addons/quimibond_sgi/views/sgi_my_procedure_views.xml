@@ -30,7 +30,7 @@
                             <field name="mp_status" widget="badge"
                                    decoration-success="mp_status == 'al_dia'"
                                    decoration-danger="mp_status == 'atrasada'"
-                                   decoration-muted="mp_status == 'sin_medir'"/>
+                                   decoration-muted="mp_status in ('sin_medir', 'planta')"/>
                             <field name="role" widget="badge"
                                    decoration-success="role == 'ejecuta'"
                                    decoration-warning="role == 'aprueba'"/>
@@ -71,17 +71,12 @@
                             <a t-elif="record.mp_external.raw_value" role="button" aria-disabled="true" class="btn btn-outline-secondary btn-sm disabled">
                                 <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
                             </a>
-                            <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
-                                    class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
-                                <i class="fa fa-book me-1" title="Instructivo"/>Instructivo
-                            </button>
-                            <button type="object" name="action_mp_propose_change" class="btn btn-link btn-sm"
-                                    title="Proponer cambio a esta actividad">
-                                <i class="fa fa-lightbulb-o me-1" title="Proponer cambio"/>Proponer cambio
-                            </button>
-                            <button type="object" name="action_open_activity" class="btn btn-link btn-sm text-muted"
-                                    title="Ver actividad">
-                                <i class="fa fa-file-text-o" title="Actividad"/>
+                            <!-- 57.177.0: dos botones, como Mis pendientes. El
+                                 instructivo y «Proponer cambio» están en la
+                                 ficha de la actividad («Abrir»). -->
+                            <button type="object" name="action_open_activity" class="btn btn-secondary btn-sm"
+                                    title="Abrir la actividad: instructivo, proponer cambio">
+                                <i class="fa fa-folder-open-o me-1" title="Abrir"/>Abrir
                             </button>
                         </div>
                     </t>
@@ -101,7 +96,7 @@
                 <field name="mp_status" widget="badge"
                        decoration-success="mp_status == 'al_dia'"
                        decoration-danger="mp_status == 'atrasada'"
-                       decoration-muted="mp_status == 'sin_medir'"/>
+                       decoration-muted="mp_status in ('sin_medir', 'planta')"/>
                 <field name="mp_number" string="Núm."/>
                 <field name="mp_name" string="Actividad"/>
                 <field name="process_id"/>
@@ -111,15 +106,12 @@
                        decoration-success="role == 'ejecuta'"
                        decoration-warning="role == 'aprueba'"/>
                 <field name="mp_can_go" column_invisible="1"/>
-                <field name="mp_instruction_id" column_invisible="1"/>
+                <!-- 57.177.0: dos botones; el instructivo y «Proponer cambio»
+                     están en la ficha de la actividad. -->
                 <button name="action_mp_go" type="object" string="Ir a hacerlo"
                         icon="fa-play" class="btn-link" invisible="not mp_can_go"/>
-                <button name="action_mp_instruction" type="object" string="Instructivo"
-                        icon="fa-book" class="btn-link" invisible="not mp_instruction_id"/>
-                <button name="action_mp_propose_change" type="object" string="Proponer cambio"
-                        icon="fa-lightbulb-o" class="btn-link"/>
-                <button name="action_open_activity" type="object" string="Ver actividad"
-                        icon="fa-file-text-o" class="btn-link"/>
+                <button name="action_open_activity" type="object" string="Abrir"
+                        icon="fa-folder-open-o" class="btn-link"/>
             </list>
         </field>
     </record>
@@ -134,7 +126,7 @@
                 <field name="mp_status" widget="badge"
                        decoration-success="mp_status == 'al_dia'"
                        decoration-danger="mp_status == 'atrasada'"
-                       decoration-muted="mp_status == 'sin_medir'"/>
+                       decoration-muted="mp_status in ('sin_medir', 'planta')"/>
                 <field name="process_id"/>
                 <field name="mp_number" string="Núm."/>
                 <field name="mp_name" string="Actividad"/>
@@ -186,11 +178,6 @@
                            invisible="ack_state in ('sin_publicar', 'no_aplica')"/>
                 </header>
                 <sheet>
-                    <div class="alert alert-warning" role="alert" invisible="not no_employee">
-                        <i class="fa fa-user-times me-1" title="Sin empleado"/>
-                        <strong>Su usuario no está ligado a un empleado.</strong>
-                        Pida a RH que lo ligue en su ficha de empleado para ver su procedimiento.
-                    </div>
                     <div class="oe_button_box" name="button_box">
                         <!-- 56.3.0: un solo botón para todos los pendientes,
                              con las atrasadas en rojo. -->
@@ -222,6 +209,11 @@
                             <div class="o_stat_info"><span class="o_stat_text">Revisión vigente</span></div>
                         </button>
                     </div>
+                    <div class="alert alert-warning" role="alert" invisible="not no_employee">
+                        <i class="fa fa-user-times me-1" title="Sin empleado"/>
+                        <strong>Su usuario no está ligado a un empleado.</strong>
+                        Pida a RH que lo ligue en su ficha de empleado para ver su procedimiento.
+                    </div>
                     <field name="employee_avatar" widget="image" class="oe_avatar" readonly="1"
                            invisible="not employee_id"/>
                     <div class="oe_title">
@@ -248,14 +240,35 @@
                             <field name="epp_label" string="EPP" invisible="not epp_label"/>
                         </group>
                     </group>
+                    <!-- 57.177.0: el estado en una línea. Lo «atrasado en la planta»
+                         (flujo sin salida) va aparte y sin rojo: no es de la persona. -->
+                    <div class="mb-2" invisible="not job_id or activity_count == 0">
+                        <strong><field name="activity_count" class="oe_inline"/> actividades</strong>
+                        <span class="text-muted"> (<field name="periodic_count" class="oe_inline"/> periódicas,
+                            <field name="event_count" class="oe_inline"/> cuando pasa algo)</span>
+                        <span class="text-danger fw-bold" invisible="late_count == 0"> ·
+                            <field name="late_count" class="oe_inline"/> atrasadas</span>
+                        <span class="text-success" invisible="ok_count == 0"> ·
+                            <field name="ok_count" class="oe_inline"/> al día</span>
+                        <span class="text-muted" invisible="plant_count == 0"> ·
+                            <field name="plant_count" class="oe_inline"/> atrasadas en la planta</span>
+                    </div>
                     <notebook invisible="not job_id">
+                        <!-- 57.177.0: tarjetas (el cómo y el dónde a la vista), en dos
+                             bloques y con lo atrasado primero. -->
                         <page string="Actividades" name="actividades">
                             <div class="d-flex justify-content-end">
                                 <button name="action_show_all" type="object" string="Abrir en pantalla completa"
                                         icon="fa-expand" class="btn-link"/>
                             </div>
-                            <field name="role_ids" nolabel="1" readonly="1"
-                                   context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_embedded'}"/>
+                            <separator string="Periódicas" invisible="periodic_count == 0"/>
+                            <field name="role_periodic_ids" nolabel="1" readonly="1" mode="kanban"
+                                   invisible="periodic_count == 0"
+                                   context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
+                            <separator string="Cuando pasa algo" invisible="event_count == 0"/>
+                            <field name="role_event_ids" nolabel="1" readonly="1" mode="kanban"
+                                   invisible="event_count == 0"
+                                   context="{'kanban_view_ref': 'quimibond_sgi.sgi_activity_role_view_kanban_mp'}"/>
                         </page>
                         <page string="Indicadores" name="indicadores" invisible="not indicator_ids">
                             <field name="indicator_ids" nolabel="1" readonly="1">
@@ -278,20 +291,21 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Escalamientos" name="escalamientos" invisible="not received_role_ids">
-                            <p class="text-muted">Actividades de otros puestos que escalan a este puesto si se atoran.
-                                Las atrasadas van primero; cuando el atraso pasa de sus días hábiles, llegan a Mis pendientes.</p>
+                        <!-- 57.177.0: escalamientos y «participa o se entera» en una
+                             sola pestaña. -->
+                        <page string="Otras actividades" name="otras" invisible="not received_role_ids and not short_role_ids">
+                            <separator string="Le escalan si se atrasan" invisible="not received_role_ids"/>
                             <div class="d-flex justify-content-end align-items-center gap-2" invisible="received_late_count == 0">
                                 <span class="text-danger"><field name="received_late_count" class="oe_inline"/> atrasados</span>
                                 <button name="action_show_received" type="object" string="Ver atrasados"
                                         icon="fa-exclamation-triangle" class="btn-link text-danger"/>
                             </div>
-                            <field name="received_role_ids" nolabel="1" readonly="1">
+                            <field name="received_role_ids" nolabel="1" readonly="1" invisible="not received_role_ids">
                                 <list create="0" delete="0" decoration-danger="mp_status == 'atrasada'">
                                     <field name="mp_status" widget="badge"
                                            decoration-success="mp_status == 'al_dia'"
                                            decoration-danger="mp_status == 'atrasada'"
-                                           decoration-muted="mp_status == 'sin_medir'"/>
+                                           decoration-muted="mp_status in ('sin_medir', 'planta')"/>
                                     <field name="process_id"/>
                                     <field name="mp_number" string="Núm."/>
                                     <field name="mp_name" string="Actividad"/>
@@ -300,9 +314,8 @@
                                             icon="fa-file-text-o" class="btn-link"/>
                                 </list>
                             </field>
-                        </page>
-                        <page string="Participa o se entera" name="participa" invisible="not short_role_ids">
-                            <field name="short_role_ids" nolabel="1" readonly="1">
+                            <separator string="Participa o se entera" invisible="not short_role_ids"/>
+                            <field name="short_role_ids" nolabel="1" readonly="1" invisible="not short_role_ids">
                                 <list create="0" delete="0">
                                     <field name="role" widget="badge" decoration-info="role == 'participa'"/>
                                     <field name="process_id"/>
@@ -325,6 +338,18 @@
                                             icon="fa-file-o" class="btn-link"/>
                                 </list>
                             </field>
+                            <!-- 57.177.0: las firmas de lectura, aquí (antes, pestaña aparte). -->
+                            <separator string="Firmas de lectura" invisible="not ack_ids"/>
+                            <field name="ack_ids" nolabel="1" readonly="1" invisible="not ack_ids">
+                                <list create="0" delete="0">
+                                    <field name="sgi_code"/>
+                                    <field name="document_id"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'leido'"
+                                           decoration-warning="state == 'pendiente'"/>
+                                    <field name="ack_date"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="EPP" name="epp" invisible="not epp_required and not epp_delivery_ids">
                             <group string="EPP requerido por el puesto" invisible="not epp_required">
@@ -338,18 +363,6 @@
                                     <field name="state" widget="badge"
                                            decoration-success="state == 'firmada'"
                                            decoration-warning="state == 'entregada'"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Firmas de lectura" name="firmas" invisible="not ack_ids">
-                            <field name="ack_ids" nolabel="1" readonly="1">
-                                <list create="0" delete="0">
-                                    <field name="sgi_code"/>
-                                    <field name="document_id"/>
-                                    <field name="state" widget="badge"
-                                           decoration-success="state == 'leido'"
-                                           decoration-warning="state == 'pendiente'"/>
-                                    <field name="ack_date"/>
                                 </list>
                             </field>
                         </page>
@@ -438,7 +451,7 @@
                 <field name="mp_status" widget="badge"
                        decoration-success="mp_status == 'al_dia'"
                        decoration-danger="mp_status == 'atrasada'"
-                       decoration-muted="mp_status == 'sin_medir'"/>
+                       decoration-muted="mp_status in ('sin_medir', 'planta')"/>
                 <field name="mp_number" string="Núm."/>
                 <field name="mp_name" string="Actividad"/>
                 <field name="process_id"/>
@@ -451,15 +464,12 @@
                 <field name="activity_menu_id" string="Dónde en Odoo" optional="hide"/>
                 <field name="condition" optional="hide"/>
                 <field name="mp_can_go" column_invisible="1"/>
-                <field name="mp_instruction_id" column_invisible="1"/>
+                <!-- 57.177.0: dos botones; el instructivo y «Proponer cambio»
+                     están en la ficha de la actividad. -->
                 <button name="action_mp_go" type="object" string="Ir a hacerlo"
                         icon="fa-play" class="btn-link" invisible="not mp_can_go"/>
-                <button name="action_mp_instruction" type="object" string="Instructivo"
-                        icon="fa-book" class="btn-link" invisible="not mp_instruction_id"/>
-                <button name="action_mp_propose_change" type="object" string="Proponer cambio"
-                        icon="fa-lightbulb-o" class="btn-link"/>
-                <button name="action_open_activity" type="object" string="Ver actividad"
-                        icon="fa-file-text-o" class="btn-link"/>
+                <button name="action_open_activity" type="object" string="Abrir"
+                        icon="fa-folder-open-o" class="btn-link"/>
             </list>
         </field>
     </record>
@@ -488,6 +498,8 @@
                      la página y no hay subtotales al agrupar. -->
                 <field name="sgi_mp_pending_total" sum="Total de la página"/>
                 <field name="sgi_mp_pending_late" sum="Total de la página" optional="hide"/>
+                <!-- 57.180.0: por qué va atrasada, sin abrir su lista. -->
+                <field name="sgi_mp_late_reason" class="text-danger"/>
                 <field name="sgi_mp_total" optional="hide"/>
                 <field name="sgi_mp_acks_pending" sum="Total de la página" optional="hide"/>
                 <field name="sgi_mp_ack_state" widget="badge"
@@ -517,6 +529,7 @@
                 <field name="sgi_mp_pending_state"/>
                 <field name="sgi_mp_acks_pending"/>
                 <field name="sgi_mp_ack_state"/>
+                <field name="sgi_mp_late_reason"/>
                 <templates>
                     <t t-name="hierarchy-box">
                         <div class="d-flex align-items-center gap-2 pb-1">
@@ -546,6 +559,10 @@
                                   title="Mi procedimiento sin firmar">sin firmar</span>
                             <span t-if="record.sgi_mp_ack_state.raw_value == 'sin_publicar'" class="badge text-bg-light"
                                   title="Mi procedimiento sin publicar">sin publicar</span>
+                        </div>
+                        <!-- 57.180.0: qué tiene atrasado. -->
+                        <div t-if="record.sgi_mp_late_reason.raw_value" class="small text-danger text-truncate mt-1">
+                            <field name="sgi_mp_late_reason"/>
                         </div>
                     </t>
                 </templates>
@@ -595,8 +612,19 @@
         <field name="arch" type="xml">
             <list string="Mis indicadores" create="0" delete="0"
                   decoration-danger="last_semaphore == 'rojo'">
+                <!-- 57.184.0: pasar a oficial varios a la vez (los que tienen la
+                     lista completa); el filtro «Listos para oficial» los junta. -->
+                <header>
+                    <button name="action_sgi_set_official_many" type="object" string="Pasar a oficial"
+                            confirm="Pasan a oficial los seleccionados que tienen la lista completa. Revisó los registros de una medición de cada uno y el dato es confiable. Desde ahora sus mediciones se validan solas y un rojo le pide causa y plan. ¿Continuar?"/>
+                </header>
                 <field name="code" string="Clave"/>
                 <field name="name"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'oficial'"
+                       decoration-muted="status == 'prueba'"/>
+                <field name="official_ready" string="Lista para oficial" optional="show"
+                       invisible="status == 'oficial'"/>
                 <field name="sgi_last_value_label" string="Último valor"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"

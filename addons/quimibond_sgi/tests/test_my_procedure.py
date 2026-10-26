@@ -165,6 +165,13 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(set(new_doc.sgi_ack_ids.mapped('employee_id')), {self.emp1, self.emp2})
         self.assertTrue(all(a.state == 'pendiente' for a in new_doc.sgi_ack_ids))
         self.assertEqual(self._ack_state(), 'pendiente')
+        # 57.185.0: la revisión obsoleta ya no pide firma: su pendiente se
+        # archiva (evidencia) y el firmado se queda como estaba.
+        old_acks = doc.with_context(active_test=False).sgi_ack_ids
+        self.assertEqual(old_acks.filtered(lambda a: a.employee_id == self.emp2).active, False)
+        self.assertEqual(old_acks.filtered(lambda a: a.employee_id == self.emp1).mapped('active'), [True])
+        self.assertFalse(self.env['sgi.document.ack'].search(
+            [('document_id', '=', doc.id), ('state', '=', 'pendiente')]))
 
     def test_05_empleado_y_vista(self):
         # 57.8.0 (B-011): la vista de roles sin botón se retiró; se prueba
@@ -322,7 +329,8 @@ class TestMyProcedure(TransactionCase):
             'activity_id': self.a_quarterly.id, 'period_start': '2026-09-21', 'late_open_count': 2})
         status = self.env['hr.job']._sgi_mp_status_map(acts)
         self.assertEqual(status[self.a_weekly_fri][0], 'al_dia')
-        self.assertEqual(status[self.a_quarterly][:2], ('atrasada', "Atrasada"))
+        # 57.177.0: el flujo atrasado es de la planta, no rojo de la persona.
+        self.assertEqual(status[self.a_quarterly][:2], ('planta', "Atrasada en la planta"))
         self.assertEqual(status[self.a_monthly][0], 'sin_medir')
 
     def test_11_documentos_aplicables_y_mis_pendientes(self):
@@ -514,3 +522,27 @@ class TestMyProcedure(TransactionCase):
         public.invalidate_recordset()
         self.assertFalse(public.sgi_mp_can_sign)
         self.assertEqual(self.emp1.sgi_my_procedure_ack_state, 'leido')
+
+    def test_40_planta_resumen_y_dos_bloques(self):
+        """57.177.0: el flujo atrasado sale «Atrasada en la planta» (gris, no
+        suma a atrasadas); la primera pestaña parte en periódicas y «cuando
+        pasa algo», con lo atrasado primero, y la de evento dice cuándo toca."""
+        mine = self.Activity.create({
+            'process_id': self.p_a.id, 'name': 'Atender pedido MP', 'measure_cadence': 'evento',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
+        self.a_quarterly.measure_state = 'rojo'
+        self.env['sgi.activity.week.stat'].create({
+            'activity_id': self.a_weekly_fri.id, 'period_start': '2026-09-21', 'late_open_count': 3})
+        wiz = self.env['sgi.my.procedure'].create({'job_id': self.job.id})
+        fri = wiz.role_ids.filtered(lambda r: r.activity_id == self.a_weekly_fri)
+        self.assertEqual(fri.mp_status, 'planta')
+        self.assertIn("En la planta: 3 entrada(s)", fri.mp_status_detail)
+        self.assertEqual((wiz.late_count, wiz.plant_count), (1, 1))
+        self.assertEqual((wiz.periodic_count, wiz.event_count), (4, 1))
+        self.assertEqual([r.activity_id for r in wiz.role_periodic_ids][:2],
+                         [self.a_quarterly, self.a_weekly_fri], "Atrasada, luego la de la planta.")
+        self.assertEqual(wiz.role_event_ids.activity_id, mine)
+        self.assertEqual(wiz.role_event_ids.activity_when, "Cuando se necesita")
+        self.assertEqual(self.job._sgi_mp_stats_compute()['sgi_mp_job_late'], 1,
+                         "Mi equipo tampoco cuenta el flujo de la planta como atrasada.")
+        self.assertEqual(self.a_quarterly.action_sgi_propose_change()['res_model'], 'sgi.activity.change')

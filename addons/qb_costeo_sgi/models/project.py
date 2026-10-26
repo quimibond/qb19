@@ -109,6 +109,50 @@ class ProjectProjectCotizador(models.Model):
         self._qb_sgi_ligar_articulo()
         return res
 
+    def action_sgi_dev_regenerate_products(self):
+        """1.7.0 (quimibond_sgi 57.190.0): al regenerar los artículos del desarrollo, las cotizaciones
+        dejan los artículos que se van a borrar y, al final, toman del proyecto el artículo y el hermano
+        nuevos y se recalculan. Una cotización ya mandada a aprobar, presentada o ganada lo detiene."""
+        borradores = {}
+        for project in self.filtered('sgi_is_ft'):
+            if project._sgi_dev_regen_check():
+                continue  # quimibond_sgi explica por qué no se puede
+            mine = (project.sgi_dev_product_crudo_id | project.sgi_dev_product_tenido_id
+                    | project.sgi_dev_product_proceso_id | project.sgi_dev_product_id).filtered(
+                lambda p: p.sgi_dev_project_id == project)
+            cots = project.with_context(active_test=False).qb_cotizacion_ids
+            usan = cots.filtered(lambda c: c.product_id in mine)
+            detienen = usan.filtered(lambda c: c.state in ('por_aprobar', 'presentada', 'ganada'))
+            if detienen:
+                raise UserError(
+                    'No se pueden regenerar los artículos: la cotización %s ya está «%s» con el artículo %s. '
+                    'Regrésela a borrador o haga una revisión antes de regenerar.' % (
+                        detienen[0].folio, dict(detienen[0]._fields['state'].selection).get(detienen[0].state),
+                        detienen[0].product_id.default_code))
+            for cot in usan:
+                cot.message_post(body='Se quita el artículo %s: el desarrollo %s regenera sus artículos.' % (
+                    cot.product_id.default_code, project.sgi_ft_folio or project.name))
+            usan.write({'product_id': False})
+            borradores[project] = cots.filtered(lambda c: c.state == 'borrador')
+        res = super().action_sgi_dev_regenerate_products()
+        for project, cots in borradores.items():
+            for cot in cots:
+                # Solo artículo y hermano: precio, volumen y cliente de la cotización no se tocan.
+                vals = {k: v for k, v in cot._qb_sgi_vals_from_project(project).items()
+                        if k in ('product_id', 'hermano_product_id', 'costo_fuente')}
+                if not project.sgi_dev_product_id and cot.product_id:
+                    vals['product_id'] = False
+                cot.write(vals)
+                try:
+                    with self.env.cr.savepoint():
+                        cot.action_calcular()
+                    nota = 'Recalculada con el artículo %s y el hermano %s.' % (
+                        cot.product_id.default_code or '(sin artículo)', cot.hermano_product_id.default_code or '-')
+                except UserError as exc:
+                    nota = 'Tomó el artículo y el hermano nuevos del desarrollo; recalcule el costo: %s' % exc
+                cot.message_post(body=nota)
+        return res
+
     def _qb_sgi_ligar_articulo(self):
         """El artículo acabado que generó el proyecto entra a sus cotizaciones vivas que no lo
         tenían; si alguna ya estaba ganada con el cliente aprobando, su precio va a la tarifa."""

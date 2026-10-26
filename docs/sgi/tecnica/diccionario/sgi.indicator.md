@@ -8,31 +8,33 @@ Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y
 
 Orden: `code`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_i3.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`, `addons/quimibond_sgi/models/sgi_indicator_p21.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_sheet.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi/models/sgi_nav_links.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_autovalidate.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_i3.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`, `addons/quimibond_sgi/models/sgi_indicator_p21.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_sheet.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi/models/sgi_nav_links.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
 
-## Campos (62)
+## Campos (69)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:221` |
-| `activity_id` | Many2one | Actividad medida | Para «% a tiempo»: la actividad cuyo cumplimiento semanal se toma. |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:985` |
+| `activity_id` | Many2one | Actividad medida | Para «% a tiempo»: la actividad cuyo cumplimiento semanal se toma. |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:989` |
 | `baseline_date` | Date | Arranque desde | Fecha del valor de arranque; inicio de la trayectoria. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:94` |
-| `baseline_value` | Float | Valor de arranque | El primer mes medido. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:976` |
+| `baseline_value` | Float | Valor de arranque | El primer mes medido. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:980` |
 | `calc_checked` | Datetime | Revisado el | Última vez que se revisó el cálculo automático. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:178` |
 | `calc_fix_menu_id` | Many2one | Dónde se arregla |  |  | `ir.ui.menu` | compute `_compute_calc_fix_menu_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:171` |
 | `calc_message` | Char | Motivo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:169` |
 | `calc_mode` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py:26` |
 | `calc_status` | Selection | Último cálculo | Resultado del último cálculo automático y, si no dio valor, por qué. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:160` |
-| `can_edit_formula` | Boolean |  | Indica si usted puede editar la fórmula. |  |  | compute `_compute_can_edit_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:391` |
+| `can_edit_formula` | Boolean |  | Indica si usted puede editar la fórmula. |  |  | compute `_compute_can_edit_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:399` |
+| `can_set_official` | Boolean | Puede pasarlo a oficial | Su responsable, el dueño de su proceso o el Jefe MAST. |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:187` |
 | `code` | Char | Clave |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:85` |
 | `critical` | Boolean | Crítico | Un solo periodo en rojo abre la NC (I-5). Sin marcar, hacen falta dos periodos seguidos en rojo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:153` |
-| `deliverable_id` | Many2one | Entregable medido | Para «% completo»: el entregable cuyo filtro «ya está completo» se compara contra lo entregado. Vacío: el entregable con el que se mide la actividad. |  | `sgi.deliverable` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:988` |
+| `deliverable_id` | Many2one | Entregable medido | Para «% completo»: el entregable cuyo filtro «ya está completo» se compara contra lo entregado. Vacío: el entregable con el que se mide la actividad. |  | `sgi.deliverable` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:992` |
 | `direction` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:83` |
 | `formula` | Text | Fórmula | Cómo se calcula, en palabras: «Entregas completas en la fecha compromiso ÷ entregas del mes». Sale en el procedimiento impreso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:122` |
-| `formula_text` | Text | Fórmula configurada |  |  |  | compute `_compute_has_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:388` |
+| `formula_text` | Text | Fórmula configurada |  |  |  | compute `_compute_has_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:396` |
 | `frequency` | Selection | Frecuencia | Cada cuánto se mide: mensual o semanal. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:113` |
-| `has_formula` | Boolean |  | Indica si el indicador tiene términos de fórmula. |  |  | compute `_compute_has_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:386` |
-| `has_trajectory` | Boolean |  | Indica si la meta cambia por escalones trimestrales. |  |  | compute `_compute_has_trajectory`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:97` |
+| `has_formula` | Boolean |  | Indica si el indicador tiene términos de fórmula. |  |  | compute `_compute_has_formula`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:394` |
+| `has_trajectory` | Boolean |  | Indica si la meta cambia por escalones trimestrales. |  |  | compute `_compute_has_trajectory`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:101` |
+| `last_detail_count` | Integer | Registros de la última |  |  |  | related `last_measure_id.detail_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:192` |
 | `last_measure_id` | Many2one | Última medición |  |  | `sgi.indicator.measure` | compute `_compute_last_measure`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:225` |
 | `last_semaphore` | Selection | Último semáforo | Semáforo de la última medición. Se calcula solo. |  |  | compute `_compute_last_measure`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:229` |
 | `last_six` | Char | Últimos 6 periodos | Periodo: valor y semáforo (V verde, A amarillo, R rojo). |  |  | compute `_compute_last_six`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:32` |
@@ -40,7 +42,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `level` | Selection | Nivel | Dirección: va al Tablero de dirección. Proceso: lo sigue el dueño del proceso. Actividad: medición de un paso del procedimiento. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_direction_board.py:25` |
 | `measure_from` | Date | Medir desde | Fecha desde la que hay dato confiable (el proceso entra a piloto o existe el campo que lo alimenta). Antes de ella no se crea medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:93` |
 | `measure_ids` | One2many | Mediciones |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:223` |
-| `measure_shown_ids` | One2many | Mediciones |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:175` |
+| `measure_shown_ids` | One2many | Mediciones en la ficha |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:175` |
 | `measure_split` | Selection | Desglose | Además del total, una medición por equipo de ventas o por mercado (país del cliente contra el de la compañía). Solo con fórmula configurable y registros que lleguen al equipo o al cliente. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:266` |
 | `measure_team_ids` | Many2many | Equipos a desglosar | Vacío = los equipos de venta de la compañía del indicador. |  | `crm.team` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:275` |
 | `monthly_budget` | Float | Presupuesto mensual | Meta mensual para el cálculo de presupuesto de ventas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:213` |
@@ -48,6 +50,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `nc_generated_count` | Integer | NC generadas | No conformidades que levantaron las mediciones en rojo de este indicador. |  |  | compute `_compute_nc_generated_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nav_links.py:150` |
 | `nc_on_red` | Boolean | NC automática | Con el indicador oficial, abre una no conformidad por persistencia (I-5): dos periodos seguidos en rojo, o uno solo si el indicador es crítico. Nunca con muestra chica ni sin dato, y no duplica la NC mientras la anterior siga abierta. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:215` |
 | `objective_id` | Many2one | Objetivo integral | Objetivo integral al que contribuye el indicador. |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:100` |
+| `official_ok_owner` | Boolean | Tiene responsable y proceso |  |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:182` |
+| `official_ok_target` | Boolean | Tiene meta |  |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:183` |
+| `official_ok_value` | Boolean | El cálculo da valor |  |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:184` |
+| `official_ready` | Boolean | Listo para oficial |  |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:185` |
 | `process_id` | Many2one | Proceso | Proceso que mide el indicador. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:87` |
 | `range_max` | Float | Máximo | Límite superior del rango aceptable (cuando el sentido es «dentro de un rango»). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:88` |
 | `range_min` | Float | Mínimo | Límite inferior del rango aceptable (cuando el sentido es «dentro de un rango»). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:85` |
@@ -66,18 +72,19 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `source` | Text | De dónde sale el dato | Qué registros o documentos alimentan la fórmula: «Fecha compromiso del pedido contra fecha de la orden de entrega». |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:126` |
 | `source_info` | Char | Fuente del dato |  |  |  | compute `_compute_source`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:135` |
 | `source_type` | Selection | Origen del dato | Automático si lo calcula el sistema; manual si se captura. Se calcula del modo de cálculo. |  |  | compute `_compute_source`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:130` |
-| `spec_missing` | Char | Le falta |  |  |  | compute `_compute_spec_missing`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:981` |
+| `spec_missing` | Char | Le falta |  |  |  | compute `_compute_spec_missing`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:985` |
 | `split_support` | Char | Desglose posible |  |  |  | compute `_compute_split_support`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:279` |
 | `status` | Selection | Estado del indicador | Nace en prueba. El dueño revisa una vez la lista de registros de una medición contra la realidad y lo pasa a oficial. Solo los oficiales pueden abrir una no conformidad. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:86` |
-| `step_ids` | One2many | Escalones |  |  | `sgi.indicator.step` |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:96` |
+| `step_ids` | One2many | Escalones | Escalones trimestrales interpolados entre el arranque («Arranque desde» y «Valor de arranque») y la meta final («Llegar a la meta el»). El aceptable de cada escalón guarda la misma distancia que el de la meta final. Corregir un trimestre a mano exige motivo, queda en el chatter y se respeta al rege… |  | `sgi.indicator.step` |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:96` |
 | `target_acceptable` | Float | Aceptable | Valor mínimo aceptable (o máximo, si más bajo es mejor). Entre este y el objetivo, el semáforo es amarillo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:110` |
-| `target_date` | Date | Llegar a la meta el | Opcional: sin fecha, la meta es permanente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:978` |
+| `target_date` | Date | Llegar a la meta el | Opcional: sin fecha, la meta es permanente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:982` |
+| `target_label` | Char | Meta | La meta en una línea: objetivo y aceptable, o el rango. |  |  | compute `_compute_official`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:190` |
 | `target_objective` | Float | Objetivo | Valor meta. Alcanzarlo pone el semáforo en verde. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:108` |
-| `term_ids` | One2many | Términos de la fórmula |  |  | `sgi.indicator.term` |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:385` |
+| `term_ids` | One2many | Términos de la fórmula | Numerador y denominador salen de los registros de Odoo de cada término; varios términos con el mismo papel se suman (factor −1 resta) y sin denominador el indicador vale su numerador (sin registros = 0). «Contar donde B − A cumple» y «Promedio de B − A» comparan dos fechas del mismo registro. Solo … |  | `sgi.indicator.term` |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:387` |
 | `uom` | Char | Unidad | % , MXN, unidades, kg, m… |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:102` |
 | `window_label` | Char | Ventana | Qué periodo de datos resume cada medición. |  |  | compute `_compute_window_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:64` |
 
-## Métodos públicos (19)
+## Métodos públicos (21)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -92,6 +99,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `action_sgi_new_indicator` | 57.167.0: «Nuevo indicador» es un botón de la lista (ya no menú). |
 | `action_sgi_open_generated_ncs` | — |
 | `action_sgi_recompute_pending_measures` | D-12 (57.5.0): botón «Recalcular mediciones» de la lista de indicadores, solo para el Administrador SGI. Sin selección, re-mide las pendientes de todos (como el cron diario). 57.104.0 (B3): con indic… |
+| `action_sgi_set_official_many` | 57.184.0: «Pasar a oficial» desde la lista, con varios a la vez. Pasa los que tienen la lista completa y son suyos; los demás se dejan y el aviso dice cuáles. |
+| `action_view_last_records` | 57.178.0: los registros de la última medición, para revisarlos contra la realidad antes de pasarlo a oficial. |
 | `action_view_trend` | La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia? Abre las mediciones con dato del indicador en gráfica de línea: por mes, o por semana si el indicador es semanal (57.101.0, A1). El… |
 | `create` | — |
 | `cron_missing_trajectories` | Paso del cron de indicadores: escalones para los que ya tienen fechas. |

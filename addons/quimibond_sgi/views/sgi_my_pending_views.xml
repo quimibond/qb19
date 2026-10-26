@@ -39,46 +39,41 @@
                 <!-- 57.103.0: avance de las actividades del periodo. -->
                 <field name="exec_state" string="Avance" widget="badge" optional="show"
                        decoration-info="exec_state == 'en_proceso'"/>
-                <!-- 57.145.0: un solo «Hecho» (action_done decide por tipo):
-                     actividad con registro (asistente con evidencia), actividad
-                     atrasada que lo lleva (crea el registro del periodo), aviso
-                     propio y acción propia. Solo donde aplica (can_done). -->
+                <!-- 57.174.0 (interfaz, entrega 5): «Qué sigue» dice con palabras lo
+                     que toca, y cada renglón lleva dos botones: el del tipo (a lo
+                     más uno visible) y uno para abrir. Rechazar, «No corresponde»,
+                     «En proceso» y «Posponer» viven en la ficha del pendiente. -->
+                <field name="next_step" string="Qué sigue" optional="show"/>
                 <button name="action_done" type="object" string="Hecho" icon="fa-check"
                         class="btn-link text-success" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
-                <!-- 57.150.0 (auditoría UX, fase 2): cada tipo con su acción real. -->
-                <button name="action_nc_step" type="object" string="Registrar paso" class="btn-link text-success" invisible="kind != 'nc' or not can_done"/>
-                <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn-link text-success" invisible="kind != 'legal' or not can_done"/>
-                <button name="action_doc_review" type="object" string="Revisar" class="btn-link text-success" invisible="kind != 'documento' or not can_done"/>
-                <button name="action_request_approve" type="object" string="Aprobar" class="btn-link text-success" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
-                <button name="action_request_refuse" type="object" string="Rechazar" class="btn-link" invisible="kind != 'solicitud' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
-                <button name="action_rule_approve" type="object" string="Aprobar" class="btn-link text-success" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
-                <button name="action_rule_refuse" type="object" string="Rechazar" class="btn-link" invisible="kind != 'aprobacion' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
-                <button name="action_review_confirm" type="object" string="Sí, es lo que hago" class="btn-link text-success" invisible="kind != 'revision' or not can_done"/>
-                <button name="action_review_not_matching" type="object" string="No corresponde" class="btn-link" invisible="kind != 'revision' or not can_done"/>
-                <button name="action_exec_progress" type="object" string="En proceso" icon="fa-hourglass-half"
-                        class="btn-link" invisible="not can_mark_exec"/>
-                <!-- 56.36.0 (I-006): el dueño valida desde el renglón. -->
+                <button name="action_nc_step" type="object" string="Registrar paso" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'nc' or not can_done"/>
+                <button name="action_legal_evaluate" type="object" string="Evaluar" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'legal' or not can_done"/>
+                <button name="action_doc_review" type="object" string="Revisar" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'documento' or not can_done"/>
+                <button name="action_request_approve" type="object" string="Aprobar" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'solicitud' or not can_done"
+                        confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                <button name="action_rule_approve" type="object" string="Aprobar" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'aprobacion' or not can_done"
+                        confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
                 <button name="action_validate_measure" type="object" string="Validar" icon="fa-check"
                         class="btn-link text-success" invisible="kind != 'validacion'"/>
-                <!-- 57.92.0 (U-05): «Leer» abre el archivo del documento y «Leído y
-                     entendido» lo firma ahí mismo, solo en los renglones propios. -->
-                <button name="action_sign_ack" type="object" string="Leído y entendido"
-                        icon="fa-check" class="btn-link text-success"
-                        invisible="kind != 'acuse' or not is_mine"
+                <button name="action_sign_ack" type="object" string="Leído y entendido" icon="fa-check"
+                        class="btn-link text-success" invisible="kind != 'acuse' or not is_mine or group_count"
                         confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
-                <!-- «Ir» lleva a donde se hace o al registro; el verbo cambia con el tipo. -->
-                <!-- 57.166.0: la actividad dice «Ir a hacerlo» (abre la pantalla
-                     donde se hace, como Mi procedimiento); lo demás, «Ir». -->
+                <!-- Abrir: el verbo cambia con el tipo; siempre uno solo. -->
                 <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
-                        invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
-                <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                        invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
-                <button name="action_open" type="object" string="Leer" icon="fa-book"
-                        invisible="kind != 'acuse'"/>
+                        invisible="kind not in ('actividad', 'escalamiento', 'flujo') or group_count"/>
+                <button name="action_open" type="object" string="Leer el documento" icon="fa-book"
+                        invisible="kind != 'acuse' or group_count"/>
                 <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
                         invisible="kind != 'firma' or group_count"/>
                 <button name="action_open" type="object" string="Capturar" icon="fa-pencil-square-o"
                         invisible="kind != 'medicion' or group_count"/>
+                <button name="action_open" type="object" string="Abrir" icon="fa-external-link"
+                        invisible="kind in ('actividad', 'escalamiento', 'flujo', 'acuse', 'firma', 'medicion') and not group_count"/>
             </list>
         </field>
     </record>
@@ -100,11 +95,13 @@
                 <field name="exec_state"/>
                 <field name="exec_note"/>
                 <field name="group_count"/>
+                <field name="next_step"/>
                 <templates>
                     <t t-name="card">
                         <field name="name" class="fs-5 fw-bold"/>
                         <div class="text-muted"><field name="kind"/> · <field name="process_id"/></div>
                         <div>Vence: <field name="date_due" widget="remaining_days"/></div>
+                        <div class="text-muted"><field name="next_step"/></div>
                         <div t-if="record.exec_state.raw_value == 'en_proceso'" class="text-info">
                             En proceso<t t-if="record.exec_note.raw_value">: <field name="exec_note"/></t>
                         </div>
@@ -113,38 +110,29 @@
                                    decoration-danger="state == 'atrasada'"
                                    decoration-warning="state == 'por_vencer'"
                                    decoration-success="state == 'al_dia'"/>
+                            <!-- 57.174.0: un botón del tipo (btn-primary) y uno para abrir. -->
                             <button name="action_done" type="object" string="Hecho"
-                                    class="btn btn-success btn-lg" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
-                            <!-- 57.150.0 (auditoría UX, fase 2): cada tipo con su acción real. -->
-                            <button name="action_nc_step" type="object" string="Registrar paso" class="btn btn-success btn-lg" invisible="kind != 'nc' or not can_done"/>
-                            <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn btn-success btn-lg" invisible="kind != 'legal' or not can_done"/>
-                            <button name="action_doc_review" type="object" string="Revisar" class="btn btn-success btn-lg" invisible="kind != 'documento' or not can_done"/>
-                            <button name="action_request_approve" type="object" string="Aprobar" class="btn btn-success btn-lg" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
-                            <button name="action_request_refuse" type="object" string="Rechazar" class="btn btn-secondary btn-lg" invisible="kind != 'solicitud' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
-                            <button name="action_rule_approve" type="object" string="Aprobar" class="btn btn-success btn-lg" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
-                            <button name="action_rule_refuse" type="object" string="Rechazar" class="btn btn-secondary btn-lg" invisible="kind != 'aprobacion' or not can_done" confirm="¿Rechaza esta solicitud? Queda registrado a su nombre."/>
-                            <button name="action_review_confirm" type="object" string="Sí, es lo que hago" class="btn btn-success btn-lg" invisible="kind != 'revision' or not can_done"/>
-                            <button name="action_review_not_matching" type="object" string="No corresponde" class="btn btn-secondary btn-lg" invisible="kind != 'revision' or not can_done"/>
-                            <button name="action_exec_progress" type="object" string="En proceso"
-                                    class="btn btn-secondary btn-lg" invisible="not can_mark_exec"/>
+                                    class="btn btn-primary btn-lg" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
+                            <button name="action_nc_step" type="object" string="Registrar paso" class="btn btn-primary btn-lg" invisible="kind != 'nc' or not can_done"/>
+                            <button name="action_legal_evaluate" type="object" string="Evaluar" class="btn btn-primary btn-lg" invisible="kind != 'legal' or not can_done"/>
+                            <button name="action_doc_review" type="object" string="Revisar" class="btn btn-primary btn-lg" invisible="kind != 'documento' or not can_done"/>
+                            <button name="action_request_approve" type="object" string="Aprobar" class="btn btn-primary btn-lg" invisible="kind != 'solicitud' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
+                            <button name="action_rule_approve" type="object" string="Aprobar" class="btn btn-primary btn-lg" invisible="kind != 'aprobacion' or not can_done" confirm="¿Aprueba esta solicitud? Queda registrado a su nombre."/>
                             <button name="action_validate_measure" type="object" string="Validar"
-                                    class="btn btn-success btn-lg" invisible="kind != 'validacion'"/>
+                                    class="btn btn-primary btn-lg" invisible="kind != 'validacion'"/>
                             <button name="action_sign_ack" type="object" string="Leído y entendido"
-                                    class="btn btn-success btn-lg" invisible="kind != 'acuse' or not is_mine"
+                                    class="btn btn-primary btn-lg" invisible="kind != 'acuse' or not is_mine or group_count"
                                     confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
-                            <button name="action_snooze_notice" type="object" string="Posponer"
-                                    class="btn btn-secondary btn-lg" invisible="not can_snooze"
-                                    confirm="¿Pospone este aviso una semana (5 días hábiles)?"/>
-                            <button name="action_open" type="object" string="Ir a hacerlo" class="btn btn-primary btn-lg"
-                                    invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
-                            <button name="action_open" type="object" string="Ir" class="btn btn-primary btn-lg"
-                                    invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
-                            <button name="action_open" type="object" string="Leer" class="btn btn-primary btn-lg"
-                                    invisible="kind != 'acuse'"/>
-                            <button name="action_open" type="object" string="Firmar" class="btn btn-primary btn-lg"
+                            <button name="action_open" type="object" string="Ir a hacerlo" class="btn btn-secondary btn-lg"
+                                    invisible="kind not in ('actividad', 'escalamiento', 'flujo') or group_count"/>
+                            <button name="action_open" type="object" string="Leer el documento" class="btn btn-secondary btn-lg"
+                                    invisible="kind != 'acuse' or group_count"/>
+                            <button name="action_open" type="object" string="Firmar" class="btn btn-secondary btn-lg"
                                     invisible="kind != 'firma' or group_count"/>
-                            <button name="action_open" type="object" string="Capturar" class="btn btn-primary btn-lg"
+                            <button name="action_open" type="object" string="Capturar" class="btn btn-secondary btn-lg"
                                     invisible="kind != 'medicion' or group_count"/>
+                            <button name="action_open" type="object" string="Abrir" class="btn btn-secondary btn-lg"
+                                    invisible="kind in ('actividad', 'escalamiento', 'flujo', 'acuse', 'firma', 'medicion') and not group_count"/>
                         </footer>
                     </t>
                 </templates>
@@ -185,16 +173,6 @@
                     <button name="action_snooze_notice" type="object" string="Posponer una semana"
                             icon="fa-clock-o" invisible="not can_snooze"
                             confirm="¿Pospone este aviso una semana (5 días hábiles)? La fecha límite del aviso cambia en Odoo."/>
-                    <button name="action_open" type="object" string="Ir a hacerlo" icon="fa-play"
-                            invisible="kind not in ('actividad', 'escalamiento', 'flujo')"/>
-                    <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
-                            invisible="kind in ('acuse', 'firma', 'medicion', 'actividad', 'escalamiento', 'flujo') and not group_count"/>
-                    <button name="action_open" type="object" string="Leer el documento" icon="fa-book"
-                            invisible="kind != 'acuse'"/>
-                    <button name="action_open" type="object" string="Firmar" icon="fa-pencil"
-                            invisible="kind != 'firma' or group_count"/>
-                    <button name="action_open" type="object" string="Capturar" icon="fa-pencil-square-o"
-                            invisible="kind != 'medicion' or group_count"/>
                 </header>
                 <sheet>
                     <field name="is_mine" invisible="1"/>
@@ -203,6 +181,24 @@
                     <field name="can_snooze" invisible="1"/>
                     <field name="res_model" invisible="1"/>
                     <field name="group_count" invisible="1"/>
+                    <!-- 57.174.0: abrir el registro es navegación: botón inteligente. -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open" type="object" class="oe_stat_button" icon="fa-play"
+                                string="Ir a hacerlo" invisible="kind not in ('actividad', 'escalamiento', 'flujo') or group_count"/>
+                        <button name="action_open" type="object" class="oe_stat_button" icon="fa-book"
+                                string="Leer el documento" invisible="kind != 'acuse' or group_count"/>
+                        <button name="action_open" type="object" class="oe_stat_button" icon="fa-pencil"
+                                string="Firmar" invisible="kind != 'firma' or group_count"/>
+                        <button name="action_open" type="object" class="oe_stat_button" icon="fa-pencil-square-o"
+                                string="Capturar" invisible="kind != 'medicion' or group_count"/>
+                        <button name="action_open" type="object" class="oe_stat_button" icon="fa-external-link"
+                                invisible="kind in ('actividad', 'escalamiento', 'flujo', 'acuse', 'firma', 'medicion') and not group_count">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value" invisible="not group_count"><field name="group_count"/></span>
+                                <span class="o_stat_text">Abrir</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
@@ -212,6 +208,7 @@
                             <field name="process_id"/>
                             <field name="employee_id"/>
                             <field name="source_name"/>
+                            <field name="next_step"/>
                         </group>
                         <group string="Plazo">
                             <field name="date_due" widget="remaining_days"/>
@@ -246,10 +243,6 @@
                     <group string="Qué hay que hacer" invisible="not detail">
                         <field name="detail" nolabel="1" colspan="2"/>
                     </group>
-                    <div class="alert alert-info" role="status" invisible="kind != 'escalamiento'">
-                        Este escalamiento le llega porque la actividad pasó sus días hábiles de atraso.
-                        La marca hecha quien la ejecuta; usted puede abrirla con <b>Ir a hacerlo</b> y darle seguimiento.
-                    </div>
                 </sheet>
             </form>
         </field>
@@ -270,14 +263,7 @@
                 <filter name="this_week" string="Vence esta semana"
                         domain="[('date_due', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_due', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter name="ok" string="Al día" domain="[('state', '=', 'al_dia')]"/>
-                <separator/>
-                <filter name="kind_activity" string="Actividades" domain="[('kind', '=', 'actividad')]"/>
-                <filter name="kind_escalation" string="Escalamientos" domain="[('kind', '=', 'escalamiento')]"/>
-                <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
-                <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
-                <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>
-                <filter name="kind_flow" string="Flujos atrasados" domain="[('kind', '=', 'flujo')]"/>
-                <!-- 57.170.0: aparte de los tipos (se unía con «o»). -->
+                <!-- 57.170.0: aparte del estado (se unía con «o»). -->
                 <separator/>
                 <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <group>
@@ -285,6 +271,10 @@
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_employee" string="Persona" context="{'group_by': 'employee_id'}"/>
                 </group>
+                <!-- 57.174.0: los 15 tipos en el panel, con su número (antes 6 filtros sueltos). -->
+                <searchpanel>
+                    <field name="kind" string="Tipo" icon="fa-filter" enable_counters="1"/>
+                </searchpanel>
             </search>
         </field>
     </record>

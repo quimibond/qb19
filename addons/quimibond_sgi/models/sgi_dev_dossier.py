@@ -23,7 +23,13 @@ class ProjectProjectDevDossier(models.Model):
     sgi_dev_route_html = fields.Html(string="Ruta del producto", compute='_compute_sgi_dev_route_html', sanitize=False)
     sgi_dev_route_count = fields.Integer(string="Operaciones de la ruta", compute='_compute_sgi_dev_route_html')
     sgi_dev_dossier_html = fields.Html(string="Expediente ISO 9001 8.3 / APQP", compute='_compute_sgi_dev_dossier_html',
-                                       sanitize=False)
+                                       sanitize=False,
+                                       help="Fases del APQP por pestaña: 1 planeación (análisis de mercado y "
+                                            "de proyecto), 2 diseño del producto (cotización, aprobación del "
+                                            "cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y "
+                                            "fichas), 4 validación (muestra, envío, retroalimentación, "
+                                            "pilotaje), 5 retroalimentación y mejora (cambios, liberación, "
+                                            "tarifa).")
     sgi_dev_dossier_done = fields.Integer(string="Requisitos cubiertos", compute='_compute_sgi_dev_dossier_html')
     sgi_dev_dossier_total = fields.Integer(string="Requisitos del expediente", compute='_compute_sgi_dev_dossier_html')
 

@@ -30,16 +30,11 @@
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
-                    <div class="alert alert-info" role="status"
-                         invisible="state not in ('pendiente', 'en_proceso') or not needs_evidence">
-                        Esta actividad es de <b>registro manual</b>: al terminarla pulse
-                        <b>Hecha</b> y deje la evidencia (una nota con el folio, documento o
-                        registro, o un archivo). «En proceso» guarda su avance pero no quita el atraso.
+                    <div class="text-muted mb-2" invisible="state not in ('pendiente', 'en_proceso') or not needs_evidence">
+                        Registro manual: «Hecha» pide la evidencia (nota con el folio o un archivo).
                     </div>
-                    <div class="alert alert-info" role="status"
-                         invisible="state not in ('pendiente', 'en_proceso') or needs_evidence">
-                        Esta actividad se marca <b>hecha sola</b> cuando aparece su registro en Odoo
-                        dentro del periodo. Use «Abrir pantalla relacionada» para hacerla.
+                    <div class="text-muted mb-2" invisible="state not in ('pendiente', 'en_proceso') or needs_evidence">
+                        Se marca hecha sola cuando aparece su registro en Odoo dentro del periodo.
                     </div>
                     <group>
                         <group string="Periodo">

@@ -23,7 +23,7 @@ ser dueño de un proceso auditado.
 | **SGI → Desempeño → Auditorías → Todas las auditorías** | Cada auditoría con su checklist, hallazgos e informe |
 | **SGI → Desempeño → Tablero / Indicadores / Revisión por la dirección** | Mediciones, evidencia y la revisión por la dirección (9) |
 | **SGI → Mejora → No conformidades / Acciones correctivas** | Las NC y sus acciones, para seguir los hallazgos (10) |
-| **SGI → Administración → Diagnóstico / Aprobaciones del SGI** | Salud del sistema (evidencia de 9.1) y quién aprueba cada actividad |
+| **SGI → Desempeño → Diagnóstico** y **SGI → Sistema → Aprobaciones del SGI** | Salud del sistema (evidencia de 9.1) y quién aprueba cada actividad |
 
 ## 2. Su trabajo
 
@@ -68,7 +68,7 @@ También puede registrar un hallazgo desde la ficha de un proceso con
 - **Documentos:** Lista maestra (clave, revisión, estado) y, por documento,
   sus acuses de lectura y el porcentaje de difusión.
 - **Actividades:** cada actividad dice cómo se mide y su cumplimiento;
-  **Administración → Diagnóstico → Cumplimiento de procedimientos** lo
+  **Desempeño → Diagnóstico → Cumplimiento de procedimientos** lo
   muestra por proceso.
 - **Indicadores:** cada medición trae **Registros** con los documentos de
   Odoo que dieron el número.

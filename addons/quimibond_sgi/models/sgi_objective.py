@@ -36,7 +36,10 @@ class SgiObjective(models.Model):
     # Plan de acción del objetivo (ISO 6.2.2: qué se hará, responsable y
     # plazo). Reutiliza el modelo CAPA transversal: sexta fuente del XOR.
     action_line_ids = fields.One2many('sgi.action.line', 'objective_id',
-                                      string="Plan de acción (6.2.2)")
+                                      string="Plan de acción (6.2.2)",
+                                      help="ISO 6.2.2: qué se hará para lograr el objetivo, quién y para "
+                                           "cuándo. Cada acción genera su actividad espejo al responsable; la "
+                                           "evaluación del resultado la dan los indicadores ligados.")
     health = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),

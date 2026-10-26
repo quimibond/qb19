@@ -15,10 +15,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `activity_active` | Boolean | Actividad activa |  |  |  | related `activity_id.active`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:83` |
-| `activity_id` | Many2one | Actividad | Actividad a la que se asigna el rol. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:137` |
+| `activity_id` | Many2one | Actividad | Actividad a la que se asigna el rol. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:138` |
 | `activity_menu_id` | Many2one | Menú de Odoo | Menú de Odoo donde se hace la actividad. |  |  | related `activity_id.odoo_menu_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:85` |
 | `activity_when` | Char | Cuándo |  |  |  | compute `_compute_activity_when`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:88` |
-| `after_days` | Integer | Escala a los (días hábiles) | Solo para «Escala»: días hábiles después del plazo de la actividad en que se avisa a este destino. Puede haber varios niveles. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:165` |
+| `after_days` | Integer | Escala a los (días hábiles) | Solo para «Escala»: días hábiles después del plazo de la actividad en que se avisa a este destino. Puede haber varios niveles. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:166` |
 | `approval_category_id` | Many2one | Categoría de Aprobaciones | Vacía: «Sincronizar» crea una categoría propia con las personas del puesto. |  | `approval.category` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:173` |
 | `approval_conflict_rule_ids` | Many2many | Otras reglas en el botón | Reglas de aprobación activas en el mismo botón que no mantiene este rol: el documento pediría dos aprobaciones. Adóptala o quítala antes de sincronizar. |  | `studio.approval.rule` | compute `_compute_approval_conflicts`, sin guardar |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:100` |
 | `approval_domain` | Char | Condición en Odoo |  |  |  | compute `_compute_approval_domain`, guardado |  | `addons/quimibond_sgi/models/sgi_approval_native.py:197` |
@@ -35,37 +35,37 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `approval_suggestion` | Char | Sugerencia | Cómo se sugiere aprobar: con el botón del documento que materializa la actividad, si tiene uno conocido; si no, con una solicitud en Aprobaciones. |  |  | compute `_compute_approval_suggestion`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:53` |
 | `approval_user_ids` | Many2many | Personas que aprueban | Personas que hoy aprueban: las del puesto o la familia y las del suplente nombrado, sin quien también ejecuta la actividad. Al aprobar un registro, quien lo pidió tampoco. |  | `res.users` | compute `_compute_approval_users`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:198` |
 | `cadence` | Selection | Cadencia | Cada cuánto se espera la actividad. |  |  | related `activity_id.measure_cadence`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:80` |
-| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:188` |
-| `condition` | Char | Condición | Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba del monto que se fije». Vacío = siempre. Si según el caso la ejecuta otro puesto, son dos actividades. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:169` |
+| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:189` |
+| `condition` | Char | Condición | Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba del monto que se fije». Vacío = siempre. Si según el caso la ejecuta otro puesto, son dos actividades. |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:170` |
 | `condition_field_id` | Many2one | Campo de la condición | Solo cuando la aprobación aplica bajo una condición (ej. total de la orden). |  | `ir.model.fields` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:188` |
 | `condition_operator` | Selection | Operador | Cómo se compara el campo con el valor para que la aprobación aplique. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
 | `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:196` |
-| `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:153` |
-| `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:150` |
+| `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:154` |
+| `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:151` |
 | `mp_article_id` | Many2one | Instructivo en Conocimiento | El instructivo de la actividad para leerlo en Conocimiento, cuando ya está publicado. |  | `knowledge.article` | compute `_compute_mp_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py:31` |
-| `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:366` |
-| `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:354` |
-| `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:355` |
-| `mp_escalates` | Char | Si se atora, escala a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:360` |
-| `mp_external` | Char | Se hace en |  |  |  | related `activity_id.external_system`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:362` |
-| `mp_how` | Text | Cómo |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:352` |
-| `mp_inputs` | Char | Recibe |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:357` |
-| `mp_instruction_id` | Many2one | Instructivo | Instructivo de la actividad. |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:363` |
-| `mp_name` | Char | Nombre de la actividad |  |  |  | related `activity_id.name`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:351` |
-| `mp_norms` | Char | Cumple con |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:361` |
-| `mp_number` | Char | Numeral |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:350` |
-| `mp_on_fail` | Text | Si no se puede |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:356` |
-| `mp_outputs` | Char | Entrega |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:358` |
-| `mp_related` | Char | Conforme a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:359` |
-| `mp_status` | Selection | Estado | Al día, atrasada o sin medición automática. Se calcula al mostrarlo. |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:347` |
-| `mp_status_detail` | Char | Detalle del estado |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:349` |
-| `mp_where` | Char | Dónde |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:353` |
-| `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:184` |
-| `relative_role` | Selection | Rol relativo | Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del proceso del registro (o, si no tiene, el de la actividad). Solicitante, jefe del que pide, quien detecta y área responsable se resuelven con cada registro (quien lo pide o crea, su jefe, el responsable del departamento). Quien aprue… |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:157` |
-| `role` | Selection | Rol | Ejecuta (la hace), aprueba, participa, se entera o escala (recibe el atraso). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:141` |
-| `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:183` |
-| `substitute_job_id` | Many2one | Suplente (puesto) | Solo para «Aprueba»: puesto que también aprueba, nombrado por Dirección. Vacío = sin suplente. Si el titular es quien pide o ejecuta, aprueba el suplente; sin suplente nadie aprueba y el SGI avisa. La aprobación nunca sube sola al jefe. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:177` |
-| `target_type` | Selection | Asignado a | A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien detecta, el dueño del proceso…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:146` |
+| `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:368` |
+| `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:356` |
+| `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:357` |
+| `mp_escalates` | Char | Si se atora, escala a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:362` |
+| `mp_external` | Char | Se hace en |  |  |  | related `activity_id.external_system`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:364` |
+| `mp_how` | Text | Cómo |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:354` |
+| `mp_inputs` | Char | Recibe |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:359` |
+| `mp_instruction_id` | Many2one | Instructivo | Instructivo de la actividad. |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:365` |
+| `mp_name` | Char | Nombre de la actividad |  |  |  | related `activity_id.name`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:353` |
+| `mp_norms` | Char | Cumple con |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:363` |
+| `mp_number` | Char | Numeral |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:352` |
+| `mp_on_fail` | Text | Si no se puede |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:358` |
+| `mp_outputs` | Char | Entrega |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:360` |
+| `mp_related` | Char | Conforme a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:361` |
+| `mp_status` | Selection | Estado | Al día, atrasada o sin medición automática. Se calcula al mostrarlo. |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:349` |
+| `mp_status_detail` | Char | Detalle del estado |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:351` |
+| `mp_where` | Char | Dónde |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:355` |
+| `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:185` |
+| `relative_role` | Selection | Rol relativo | Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del proceso del registro (o, si no tiene, el de la actividad). Solicitante, jefe del que pide, quien detecta y área responsable se resuelven con cada registro (quien lo pide o crea, su jefe, el responsable del departamento). Quien aprue… |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:158` |
+| `role` | Selection | Rol | Ejecuta (la hace), aprueba, participa, se entera o escala (recibe el atraso). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:142` |
+| `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:184` |
+| `substitute_job_id` | Many2one | Suplente (puesto) | Solo para «Aprueba»: puesto que también aprueba, nombrado por Dirección. Vacío = sin suplente. Si el titular es quien pide o ejecuta, aprueba el suplente; sin suplente nadie aprueba y el SGI avisa. La aprobación nunca sube sola al jefe. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:178` |
+| `target_type` | Selection | Asignado a | A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien detecta, el dueño del proceso…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:147` |
 
 ## Métodos públicos (17)
 

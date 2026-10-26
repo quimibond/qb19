@@ -13,6 +13,472 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.190.0 — 2026-10-23
+
+Dirección General 2026-10-23 (C1, pestaña Cotización): se eligió mal el
+artículo base (hermano) y, aunque se cambió en Análisis, no había forma de
+volver a generar los códigos: «Generar artículos» se oculta en cuanto hay
+artículos y no toca los niveles ya ligados.
+
+**Nuevo**
+- Botón **«Regenerar artículos»** (`action_sgi_dev_regenerate_products`,
+  `models/sgi_dev_product_regen.py`): suelta crudo, teñido, acabado en kg y
+  acabado. Los que creó el proyecto se borran con sus listas de materiales;
+  los del artículo base o de catálogo solo se desligan. Después corre
+  «Generar artículos» con el base y las claves de hoy. Todo queda en el
+  chatter.
+- Solo en Solicitud, Análisis o Cotización y antes de la aprobación del
+  cliente (después es un cambio de diseño).
+- Si algo más usa un artículo que se iba a borrar (órdenes, movimientos,
+  pedidos, facturas, fichas técnicas, listas de otros artículos,
+  cotizaciones…), no cambia nada y dice qué lo usa. Solo cuentan las
+  referencias que el borrado dejaría vacías o impediría; lo que se borra en
+  cascada con el producto (costeo, proveedores) no detiene.
+- Prueba: `test_dev_product.test_08_regenerar_con_otro_base`.
+
+## 19.0.57.189.0 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22).
+
+**Cambiado**
+- `_SGI_SCREEN_PRODUCES`: el par `('qb.costo.producto', 'account.move')` del
+  costeo anterior pasa a `('qb.periodo', 'account.move')`. La actividad S3.09
+  (recalcular el costeo y registrar la capa de valoración) abre ahora
+  Manufactura → Costos → Períodos (`qb_costeo`) y se mide con el asiento; sin
+  el par, el SGI avisaría que la pantalla no produce la evidencia.
+
+## 19.0.57.188.0 — 2026-10-22
+
+Jose (2026-10-22): menos ruido en la revisión de medición. En producción había
+108 «Revisar medición» atrasadas en Mis pendientes: cada mes, una por cada
+actividad que se mide sola, aunque el dueño ya la hubiera confirmado.
+
+**Cambiado**
+- Una actividad cuyas dos últimas revisiones contestadas fueron «Sí, esto es
+  lo que hago» se revisa **cada tres meses** (a los tres meses de la última;
+  `_sgi_quarterly_skip`). Un «No corresponde» o una «Sin respuesta» la
+  regresan a mensual.
+- Estado nuevo **No tocaba (trimestral)** para lo que ya estaba pendiente y
+  con la regla nueva no tocaba.
+
+**Migración**
+- `post-migrate`: las pendientes que no tocaban pasan a «No tocaba
+  (trimestral)» y su renglón de Mis pendientes se quita.
+
+## 19.0.57.187.0 — 2026-10-22
+
+Eficiencias de personal: el % de asistencia sale del checador.
+
+**Agregado**
+- Botón **Asistencia desde el checador** en la hoja mensual
+  (`action_attendance_from_clock`): toma las faltas y los retardos de las
+  listas de incidencias semanales de Nómina (`quimibond_nomina` 1.14.0,
+  semanas que paga el mes) y propone el % del Contrato Colectivo (5.5 % sin
+  faltas ni retardos, 4.5 % con 2 retardos o 1 falta, 0 % con más; con un
+  solo retardo, el parámetro `quimibond_nomina.premio_asistencia_un_retardo`,
+  4.5 mientras RH no lo confirme). El resumen va en Observaciones; quien
+  tuvo una semana sin checadas se queda sin calificar. Si falta la lista de
+  alguna semana, avisa y no toca nada. Sin `quimibond_nomina` instalado,
+  avisa.
+## 19.0.57.186.0 — 2026-10-22
+
+Jose (2026-10-22): la gente de planta sin usuario firma sus acuses en la
+tableta de planta con PIN, sin papel. En producción 114 de los 146 acuses
+pendientes eran de personas sin usuario, ninguna tenía PIN y no había
+tableta: nadie los podía firmar. SGI en planta (57.94.0) estaba apagado por
+la decisión del 2-oct-2026; se enciende.
+
+**Cambiado**
+- **Tabletas de planta** vuelve al menú (SGI → Configuración); estaba
+  archivado desde 57.167.0.
+- La lista de RH «Empleados sin puesto o sin correo» trae también a quien no
+  tiene usuario de Odoo ni PIN («Le falta: PIN»), con el filtro **Sin PIN
+  (sin usuario)** y el botón **Generar PIN** (`action_sgi_generate_pin`, 4
+  dígitos al azar, solo RH; no toca PIN existentes ni a quien tiene usuario).
+- Manuales: RH (sección 2), MAST (2.6.1, encender la tableta) y operador.
+
+## 19.0.57.185.0 — 2026-10-22
+
+Acuses de lectura de revisiones obsoletas. En producción había 7 acuses
+pendientes de documentos ya obsoletos (revisiones viejas de «Mi
+procedimiento»): Mis pendientes le pedía a la persona firmar la Rev. 00 y la
+Rev. 01 de lo mismo.
+
+**Corregido**
+- `sgi.document.ack` lleva `active`. Cuando un documento queda obsoleto, sus
+  acuses **pendientes** se archivan (`_sgi_sync_pending_acks`): ya no se
+  piden en Mis pendientes, Mi equipo, el kiosco de planta ni la salud del
+  SGI, y quedan como evidencia. Los firmados no se tocan. Si el documento
+  vuelve a vigente o piloto, regresan.
+- `action_generate_acks` cuenta también los archivados (un acuse por persona
+  y documento).
+
+**Migración**
+- `post-migrate`: archiva los pendientes de documentos que ya son obsoletos.
+
+## 19.0.57.184.0 — 2026-10-22
+
+Mis indicadores: pasar a oficial varios a la vez. En producción ~85 de los
+105 indicadores ya tienen la lista completa y ninguno es oficial.
+
+**Agregado**
+- Filtro **Listos para oficial** (`official_ready` buscable).
+- En **Mis indicadores**, columnas **Estado** y **Lista para oficial**, y el
+  botón **Pasar a oficial** sobre la selección
+  (`action_sgi_set_official_many`): pasa los que son suyos y tienen la lista
+  completa; los demás se dejan y el aviso dice cuáles.
+
+## 19.0.57.183.0 — 2026-10-22
+
+Jose (2026-10-22): «sigue mejorando vistas y elimina obsoletos, por ejemplo
+el menú Administración».
+
+**Cambiado**
+- La carpeta **Administración** se archiva en su lugar (`menu_sgi_admin`,
+  `SGI_MENU_ARCHIVED`); nada se borra y nadie pierde una pantalla:
+  - **Diagnóstico** (con sus cuatro entradas) pasa a **Desempeño**.
+  - **Aprobaciones del SGI** y **Publicar Mi procedimiento** pasan a
+    **Sistema**, junto a Matriz de responsabilidades y Puestos y procesos.
+  - **Configuración** cuelga del raíz, al final, como en las demás apps de
+    Odoo (solo Jefe MAST), con **Transición** dentro.
+- Las rutas que se le dicen al usuario (`sgi_menu_paths`), los manuales de
+  MAST, Dirección y Auditor, y los README de Conocimiento, Mapa y Pesaje
+  dicen la ruta nueva. Ninguna actividad apunta a esos menús en producción:
+  ningún «Mi procedimiento» cambia de huella.
+
+**Corregido**
+- `test_entrega4.test_01` esperaba ver `menu_sgi_migration`, archivado desde
+  57.167.0.
+
+## 19.0.57.182.1 — 2026-10-22
+
+**Corregido**
+- «Ya corregí» ya no lo puede usar el jefe directo de Diseño: en producción
+  la jefa directa de Diseño de Producto y de Procesos es la Administradora de
+  Ventas, que es quien revisa. Solo los puestos que ejecutan C1.02 y C1.03 (y
+  el Jefe MAST). `sgi_dev_can_fix` lleva etiqueta («Puede marcar la
+  corrección»).
+
+## 19.0.57.182.0 — 2026-10-22
+
+Avisos entre Diseño de Producto, Diseño de Procesos y Ventas en la revisión
+del análisis (C1, lo reportó Administración de Ventas). Antes aprobar y
+regresar solo dejaban una nota interna que no notifica.
+
+**Agregado**
+- `models/sgi_dev_review_notice.py`: actividades «Por hacer» (campana y
+  correo) al **puesto** que sigue, leído de los roles de C1 en el SGI (por
+  nombre solo si la ficha no está), con fecha límite = plazo de la actividad
+  de C1 (días hábiles de su «recibe»: C1.02 = 3, C1.03 = 5 en producción).
+  La del paso anterior se marca hecha.
+  1. Resultado «nuevo» → «Contestar checklist de factibilidad» a quien
+     ejecuta C1.03 (Diseño de Procesos); «línea» o «no factible» → «Revisar
+     análisis y factibilidad» a quien aprueba C1.02/C1.03 (Ventas).
+  2. Checklist sin renglones pendientes → «Revisar análisis y factibilidad»
+     a Ventas.
+  3. «Regresar a Diseño» → «Corregir lo que pidió Ventas» a quien ejecuta
+     C1.02 y C1.03, con el motivo, y un mensaje con correo a esas personas.
+  4. Botón **«Ya corregí»** (solo con la revisión regresada, para Diseño de
+     Producto o de Procesos o su jefe directo) con comentario opcional «Qué
+     se corrigió»: la revisión vuelve a «Pendiente» y «Revisar corrección» le
+     llega con correo a quien regresó.
+  5. Aprobar marca hechas las actividades abiertas del ciclo; salir de la
+     revisión (cerrar como línea / no factible, cotizar) también las cierra.
+- Prueba `tests/test_dev_review_notice.py`.
+
+No cambia la ficha de C1 en el SGI (roles, plazos, aprobaciones): el
+checker de faltantes queda igual.
+
+## 19.0.57.181.1 — 2026-10-21
+
+**Corregido**
+- Aviso del build de main (40329343): `sgi.direction.board` tenía dos campos
+  con la etiqueta «NC con plazo vencido»; el conteo es «Núm. de NC con plazo
+  vencido». `quality.alert.sgi_next_due` pasa de «Vence» a «Vence el
+  siguiente paso» (más claro y sin riesgo de chocar con Calidad).
+
+## 19.0.57.181.0 — 2026-10-21
+
+Tablero de dirección: lo que pide decisión, arriba y con nombre.
+
+**Cambiado**
+- Arriba, una línea: cuántos indicadores son oficiales de cuántos (sin los de
+  salud), y en rojo las NC con plazo vencido, los acuerdos de la RxD vencidos
+  y los rojos sin causa ni plan; «nada vencido» si no hay.
+- Página nueva **NC vencidas**: folio, proceso, responsables, qué sigue y
+  desde cuándo venció (`nc_overdue_ids`, con el «Qué sigue» de 57.179.0).
+
+## 19.0.57.180.0 — 2026-10-21
+
+Mi equipo: el jefe ve por qué va atrasada cada persona sin abrir su lista.
+
+**Cambiado**
+- Columna y renglón en el organigrama **Qué tiene atrasado**
+  (`hr.employee.public.sgi_mp_late_reason`): los pendientes atrasados por
+  tipo, el más común primero («3 Actividad atrasada, 1 Acuse de lectura»).
+  Sale de los mismos renglones que el semáforo, en vivo.
+
+## 19.0.57.179.0 — 2026-10-21
+
+Ficha de la NC. En producción las 16 NC abiertas tienen la contención
+vencida, y las 4 reclamaciones no tienen responsables (nadie recibe sus
+plazos).
+
+**Cambiado**
+- Arriba de la ficha, **Qué sigue**: el primer paso sin cumplir (contención,
+  causa raíz, plan, eficacia), dónde se hace y cuándo vence; en rojo si ya
+  venció (`sgi_next_step`, `sgi_next_due`, `sgi_next_late`).
+- Aviso **Sin responsables** en una NC abierta sin responsables.
+- **Plazos**: cada paso en su renglón con su estado y su fecha juntos (antes
+  las fechas en una columna y los estados en otra).
+
+## 19.0.57.178.0 — 2026-10-21
+
+Jose (2026-10-21): «quiero seguir mejorando vistas» → la ficha del indicador
+primero. En producción los 105 indicadores siguen **en prueba** (90 con
+medición, 51 en rojo) y el botón «Pasar a oficial» solo lo veía el Jefe
+MAST, aunque el manual dice que lo pasa su dueño.
+
+**Cambiado**
+- **Pasar a oficial** lo puede pulsar el responsable del indicador o el dueño
+  de su proceso (y el Jefe MAST). Para ellos exige la lista completa
+  (`_sgi_official_missing`): responsable y proceso, meta (más alto es mejor:
+  objetivo mayor que cero; rango: máximo mayor que mínimo) y una medición con
+  valor cuyo último cálculo no sea error ni «sin fórmula». MAST puede pasarlo
+  sin la lista. Deja una nota «Pasado a oficial por …» en el chatter.
+- La ficha dice arriba el **último valor**, su semáforo y la **meta** en una
+  línea, y en prueba un recuadro con la lista (palomita o tache) y **Ver
+  registros** de la última medición.
+- **Mediciones** es la primera pestaña. La configuración del cálculo (modo,
+  ventana, fórmula en palabras, fuente, línea base) pasa a la pestaña
+  **Cálculo**; arriba quedan Clasificación y Meta.
+
+**Corregido**
+- `test_vistas_pulido_45.test_06` buscaba `measure_ids` en la ficha; desde
+  57.169.0 la lista es `measure_shown_ids`.
+
+## 19.0.57.177.0 — 2026-10-21
+
+Jose (2026-10-21): «¿cómo podemos mejorar la vista de Mi procedimiento?».
+En producción, 184 de 438 actividades de los puestos salían «Atrasada»; en
+los 11 puestos de tejido, la única actividad (C4.05) salía en rojo por las
+231 entradas sin salida de toda la planta.
+
+**Cambiado**
+- El flujo atrasado (entradas con plazo vencido sin salida) sale **«Atrasada
+  en la planta»**, en gris, y no suma a las atrasadas de la persona ni de Mi
+  equipo. Desde 57.168.0 le llega al dueño del proceso en Mis pendientes.
+  «Sin evidencia en su periodo» sigue en rojo: eso sí es de quien la ejecuta.
+- Una línea de resumen arriba: actividades, periódicas y «cuando pasa algo»,
+  atrasadas, al día y atrasadas en la planta.
+- La pestaña **Actividades** muestra tarjetas (el cómo y el dónde a la vista)
+  en dos bloques, **Periódicas** y **Cuando pasa algo**, con lo atrasado
+  primero. La de evento dice cuándo toca («Cuando llega: …»); el PDF y la
+  huella no cambian (no pide firmar de nuevo).
+- Cada actividad tiene dos botones, **Ir a hacerlo** y **Abrir** (tarjeta y
+  listas). **Instructivo** y **Proponer cambio** están en la ficha de la
+  actividad (`action_sgi_propose_change`, botón nuevo en su encabezado).
+- Pestañas: «Escalamientos» y «Participa o se entera» se juntan en **Otras
+  actividades**; «Firmas de lectura» pasa al final de **Documentos**.
+
+**Migración**
+- `post-migrate`: las cifras de Mi procedimiento de cada puesto quedan por
+  recalcular (`sgi_mp_stats_at` vacío).
+
+## 19.0.57.176.1 — 2026-10-21
+
+Avisos del build de `main` (40323233), sin cambio para el usuario.
+
+**Corregido**
+- `sgi.my.pending.nc_id` y `sgi.miid.policy_id` se pueden buscar
+  (`_search_nc_id`, `_search_policy_id`): los campos `nc_*` y `policy_text`
+  dependen de ellos y Odoo avisaba «should be searchable».
+- Etiquetas repetidas: `sgi.indicator.measure_shown_ids` es «Mediciones en la
+  ficha» y `sgi.miid.to_confirm_count` es «Núm. de secciones por confirmar».
+
+## 19.0.57.176.0 — 2026-10-21
+
+Jose (2026-10-21): «¿validar cada indicador es la mejor forma? va a hacer mucho
+ruido». Validar cada medición, una por periodo, llenaba Mis pendientes para
+confirmar que el número que calculó Odoo es el que calculó Odoo. Lo que sí
+necesita a una persona ya tiene su lugar: la revisión del cálculo al pasar de
+prueba a oficial, la causa y el plan de un rojo, y la confirmación de lo que
+capturó otra persona.
+
+**Cambiado**
+- La medición se valida sola (`models/sgi_indicator_autovalidate.py`) cuando
+  es de un indicador **oficial**, no es de salud del SGI, no sale en **rojo**
+  ni con **muestra chica** y, si el indicador es manual, la capturó su
+  **responsable**. Lo demás se queda para el dueño en Mis pendientes, como
+  antes. Las NC automáticas, los rojos de la salud y la entrada de la revisión
+  por la dirección siguen igual: dependen de la medición validada.
+- Al pasar un indicador a oficial, sus mediciones capturadas siguen la misma
+  regla (las manuales capturadas en prueba se quedan para el dueño: no se sabe
+  quién las capturó).
+- El botón «Validar» de la medición y «Validar mediciones» de la revisión por
+  la dirección siguen para corregir o validar a mano.
+
+**Retirado**
+- **SG-05 «Mediciones validadas a tiempo»**: se archiva con su historia (no se
+  borra) y sale del Tablero y del correo semanal. Lo que importa lo mide SG-06
+  «Rojos con respuesta». Nace archivado en una base nueva.
+
+**Migración**
+- `post-migrate`: archiva SG-05 con nota en su chatter y aplica la regla a las
+  mediciones capturadas de indicadores oficiales (hoy ninguno es oficial).
+
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.20) y
+  decisión en `docs/audit/decisiones.md`.
+
+## 19.0.57.175.0 — 2026-10-21
+
+Jose (2026-10-21), opción 1: «un indicador en prueba no pide validación». En
+producción había 459 renglones «Validar medición» en Mis pendientes (443
+atrasados, algunos de junio), todos de los 106 indicadores en prueba: validar
+un número que todavía no es oficial no sirve y tapaba las actividades y los
+acuses.
+
+**Cambiado**
+- Mis pendientes: «Validar medición» solo para indicadores **oficiales**. Al
+  pasar un indicador a oficial aparecen sus mediciones capturadas por validar.
+  La medición se sigue pudiendo validar a mano desde su ficha.
+- SG-05 «Mediciones validadas a tiempo», la columna de validaciones atrasadas
+  por dueño de proceso del Tablero y el aviso del Diagnóstico («capturadas y
+  ninguna validada») dejan fuera las de indicadores en prueba: no se culpa a
+  nadie por lo que ya no se le pide.
+- Manual del jefe de área al día (`quimibond_sgi_knowledge` 19.0.1.2.19).
+
+## 19.0.57.174.1 — 2026-10-21
+
+**Cambiado**
+- Documento: los dos párrafos de instrucciones que se le pasaron a la
+  entrega 4 van a la ayuda de su campo. La regla de la clave («PR-{proceso}…,
+  una revisión vigente por clave») va a `sgi_code`, donde el `placeholder` ya
+  da el ejemplo. «Ya migrado: cambie el Tipo de documento…» va a
+  `sgi_migration_state`, ahora en «usted».
+
+## 19.0.57.174.0 — 2026-10-21
+
+Interfaz, entrega 5 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): Mis
+pendientes con dos botones por renglón y búsquedas completas en las listas.
+
+**Cambiado**
+- Mis pendientes, lista y tarjetas: cada renglón lleva dos botones, el de su
+  tipo (Hecho, Registrar paso, Evaluar, Revisar, Aprobar, Validar o Leído y
+  entendido; a lo más uno) y uno para abrir (Ir a hacerlo, Leer el documento,
+  Firmar, Capturar o Abrir; siempre uno). Antes había 19 botones en la lista y
+  un renglón mostraba hasta cuatro, con «Ir a hacerlo» e «Ir» juntos en los
+  agrupados. Rechazar, No corresponde, En proceso y Posponer una semana pasan a
+  la ficha del pendiente. En las tarjetas, el del tipo es el primario.
+- Columna nueva «Qué sigue» (`next_step`): lo que toca, con palabras («Registrar
+  la causa raíz», «Abrir la lista de 4 y atenderlos», «Hacerla: se marca sola
+  al registrarla en Odoo»…). En la ficha sustituye el aviso del escalamiento.
+- Ficha del pendiente: abrir el registro es un botón inteligente; la barra
+  queda para actuar.
+- Búsqueda de Mis pendientes: los 15 tipos en el panel de la izquierda, con su
+  número (antes 6 filtros sueltos).
+- Filtros y agrupaciones que faltaban: NC por proceso; indicadores archivados
+  y agrupados por responsable, proceso y estado; riesgos abiertos, con
+  revisión vencida y archivados; procesos por estado; auditorías buscadas por
+  folio, nombre o cliente, «Mías» y agrupadas por auditor líder y mes;
+  revisión por la dirección y política buscadas por folio; documentos
+  borradores y obsoletos (los estados se unen con «o», lo demás aparte);
+  acuses por fecha; LOTO por fecha; solicitudes de modificación «Mías», por
+  fecha y abriendo con lo pendiente; brechas de 50 % o más con panel por
+  departamento; PPAP rechazados y por fecha de envío; envíos de muestra por
+  fecha; planes de emergencia con simulacro vencido y abriendo en vigentes;
+  reportes de conformidad por folio, emitidos y fecha; partes interesadas
+  buscadas por necesidad; MSA marginales y por fecha; laboratorio «Mías»;
+  avisos por tiempo «Míos» y por fecha; cumplimiento por semana; puntos de
+  norma y características con sus bloques separados; roles «Escala». El
+  Pareto de alertas usa la búsqueda de NC del SGI. Actividades y auditorías
+  dicen «Mías».
+- Manuales del operador y del jefe de área al día (`quimibond_sgi_knowledge`
+  19.0.1.2.18).
+
+## 19.0.57.173.0 — 2026-10-21
+
+Interfaz, entrega 4 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): las
+instrucciones salen de la ficha y van a la ayuda del campo (el «?» junto a la
+etiqueta), como en las apps de Odoo. En la ficha queda a lo más una línea, o un
+aviso que depende del estado.
+
+**Cambiado**
+- Al `help` del campo, sin texto en la ficha: checklist y actas de la
+  auditoría; resultado y próxima fecha de la calibración; puestos de la familia;
+  renglones del CoA de desarrollo, de la solicitud a laboratorio y de artículos
+  parecidos; documento externo, «dónde vive en Odoo» y clase de migración del
+  documento; equipo de investigación del incidente; EPP del puesto; flujo y
+  conclusiones, acuerdos y acuerdos arrastrados de la revisión por la
+  dirección; textos, renglones y notas de la sección del MIID (el texto ahora
+  es el `placeholder`); escalamientos de Mi procedimiento; plan de acción del
+  objetivo; nivel y elementos del PPAP; ligas y método de medición de la
+  actividad; qué es un flujo; procedimientos que sustituye el proceso; cuenta
+  de la tableta; escalas de riesgo por instrumento y aviso de la próxima
+  revisión; NC de la fuente desactivada; eficacia de la capacitación; reglas
+  del mapa de formatos; datos del PDF del MIID en el cambio documental;
+  solicitudes de modificación y fases APQP del proyecto de desarrollo.
+- A una línea, con el detalle en el `help`: AMEF («NPR = S × O × D, en rojo
+  NPR ≥ 100»), trayectoria y fórmula del indicador (las fechas relativas del
+  filtro van en el `help` del filtro del término), revisión de medición,
+  ejecución de actividad (manual o automática), firmas del cambio documental,
+  candados del MIID, contratista sin evaluación SST, cobertura del programa de
+  auditorías.
+- Documento: el aviso fijo «La difusión depende de esto» pasa a un aviso solo
+  cuando hace falta: «Vigente sin puestos: no se difunde a nadie».
+- La IA de la NC explica sus reglas en el globo del botón «Pedir sugerencia a
+  la IA».
+- Pilotaje: sin la nota interna «El brief deja por definir…».
+
+**Se quedan en la ficha (a propósito)**
+- Avisos que dependen del estado (vencido, falta el plan, borrador del MIID),
+  el texto de la responsiva de EPP (es lo que se firma), las introducciones de
+  los asistentes y la leyenda de criterios de eficiencias.
+## 19.0.57.172.1 — 2026-10-21
+
+Solo textos, sin cambios de comportamiento. Revisión de José Sacramento (v5
+de su diseño): Inspección es una operación de la orden en kg (devanado →
+tintorería → abridora → rama → Inspección) y la orden en metros es la
+Clasificación final (empaque).
+
+### Cambiado
+- README, ayuda de «Artículo acabado en kg» y mensaje del chatter de «Generar
+  artículos»: dicen «Clasificación final» donde decían «Inspección» para el
+  paso que pasa el acabado en kg a metros.
+
+## 19.0.57.172.0 — 2026-10-21
+
+Interfaz, entrega 3 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`): la
+navegación va en botones inteligentes, con su número cuando lo hay, y la barra
+queda para los pasos del flujo, como en las apps de Odoo.
+
+**Cambiado**
+- De la barra a botones inteligentes: «Origen» de la acción (con el nombre del
+  registro), «Informe» de la auditoría, «Baja de muestras» del envío (con el
+  estado de la baja), «Firma (Sign)» de la responsiva de EPP (con el estado de
+  la firma), «Solicitud en curso» y «PDF vigente» del MIID, «Sin cobertura»
+  de la norma (con el número de puntos), «Registros» del flujo y «Hoja de
+  cálculo» del tablero de Dirección.
+- Con número: «Textos» y «Solicitudes» del MIID, «Ligas» del entregable,
+  «Listas por capturar» del proyecto de desarrollo (antes un enlace dentro del
+  aviso). El proceso separa «Faltantes» (bloquean, en rojo) de «Advertencias»;
+  antes decía «0 Faltantes» cuando solo había advertencias. Cada uno abre la
+  lista ya filtrada.
+- «Registrar respuesta del cliente» del proyecto abre directo el envío que
+  espera respuesta (antes la lista de envíos, igual que el botón inteligente).
+- Riesgo ambiental: botón «Aspecto ambiental» a la matriz y aviso de una
+  línea. Un solo listón: «Archivado» gana sobre «Cerrado».
+- Empleado: «Procedimientos» (antes «Mis procedimientos», en la ficha de otro)
+  y «Acuses pendientes» se ocultan en cero. Puesto: sin «Ver sus actividades»,
+  que repetía el botón «Actividades SGI». Producto: «Especificación» como
+  botón inteligente (antes un botón suelto en la pestaña SGI).
+- Transferencia de inventario: «Firmar» es una acción y pasa a la barra (en
+  producto se queda en los botones: la ficha no tiene barra).
+- Mi procedimiento: los botones inteligentes van primero y el aviso «sin
+  empleado» después.
+- «Ver NC» en la solicitud de mantenimiento se queda en la barra: la ficha de
+  Odoo no tiene zona de botones inteligentes (revisado en producción).
+
 ## 19.0.57.171.0 — 2026-10-21
 
 Interfaz, entrega 2 de 5 (auditoría `docs/audit/ui-sgi-2026-10-20.md`):

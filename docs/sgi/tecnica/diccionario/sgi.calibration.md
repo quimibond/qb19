@@ -20,11 +20,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sg
 | `certificate_ref` | Char | N° de certificado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:200` |
 | `date` | Date | Fecha | Fecha en que se hizo la calibración. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:186` |
 | `equipment_id` | Many2one | Equipo | Equipo de medición calibrado. | sí | `maintenance.equipment` |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:183` |
-| `next_date` | Date | Próxima calibración | Fecha de la siguiente calibración. Se calcula con el intervalo del equipo; se puede cambiar. |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_calibration.py:211` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:210` |
+| `next_date` | Date | Próxima calibración | Fecha de la siguiente calibración. Se calcula con el intervalo del equipo; se puede cambiar. Mueve el semáforo del equipo: avisa 30 días antes y, al vencer, también lo bloquea. |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_calibration.py:212` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:211` |
 | `provider_id` | Many2one | Laboratorio / Proveedor | Laboratorio o proveedor que calibró. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:198` |
-| `result` | Selection | Resultado | Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:205` |
-| `sgi_alert_id` | Many2one | NC generada | NC que se levantó por una calibración fuera de tolerancia. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:215` |
+| `result` | Selection | Resultado | Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC. Marca el equipo como NO USAR y la NC es la evaluación de impacto: qué producto se midió con él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:205` |
+| `sgi_alert_id` | Many2one | NC generada | NC que se levantó por una calibración fuera de tolerancia. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:218` |
 
 ## Métodos públicos (1)
 

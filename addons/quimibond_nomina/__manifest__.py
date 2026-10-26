@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.11.0',
+    'version': '19.0.1.16.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -44,6 +44,11 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
   salario variable calculada de los recibos; se agrupan en lotes por registro
   patronal que generan el ``MOVT.TXT`` que importa el SUA (igual al de NOI) y
   los ``.dat`` que se suben al IDSE.
+* **Lista de incidencias semanal.** La F-P-A01-49 de RH armada desde las
+  checadas del reloj (``qb_checador``), el horario del contrato y las
+  ausencias: faltas, incapacidades, retardos, tiempo extra según checador y
+  prima dominical. El supervisor autoriza las horas extra y «Pasar a recibos»
+  las escribe en los recibos en borrador de la corrida.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
@@ -51,6 +56,8 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
         'hr_payroll',
         'l10n_mx_hr_payroll',
         'l10n_mx_hr_payroll_account_edi',
+        'hr_holidays',
+        'qb_checador',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -62,6 +69,7 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
         'views/rule_sentinel_views.xml',
         'views/hr_payslip_run_views.xml',
         'views/imss_views.xml',
+        'views/incidencias_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

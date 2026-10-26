@@ -149,7 +149,8 @@ class SgiRisk(models.Model):
                                   compute='_compute_sgi_nc_count')
     next_review_date = fields.Date(string="Próxima revisión",
                                    help="Fecha de la próxima reevaluación. Al vencer, llega un aviso al "
-                                        "dueño del proceso.")
+                                        "dueño del proceso."
+                                        " Al vencer se avisa al dueño del proceso.")
     state = fields.Selection([
         ('identificado', "Identificado"),
         ('en_tratamiento', "En tratamiento"),
@@ -169,7 +170,14 @@ class SgiRisk(models.Model):
     attention_level = fields.Selection(ATTENTION_LEVELS, string="Nivel de atención",
                                        compute='_compute_score', store=True,
                                        help="Nivel de atención según el puntaje y el instrumento. Se calcula "
-                                            "solo.")
+                                            "solo."
+                                            " RyO y aspectos: escala 1–5 × 1–5; ≥16 Inmediata, ≥9 Media, ≥4 "
+                                            "Intermedia, resto Baja; Inmediata solo se controla o cierra con una "
+                                            "acción terminada y el residual a la baja (o justificado). IPER: escala"
+                                            " 1–3 × 1–3; ≥6 Alto, ≥3 Medio, resto Bajo; Alto exige acción terminada"
+                                            " y residual a la baja, y no se controla con EPP como único control "
+                                            "(declare la jerarquía). Patrimonial: 1–5 × 1–5; ≥15 Alto, ≥6 Medio, "
+                                            "resto Bajo.")
 
     # Evaluación residual
     residual_probability = fields.Selection(SCALE_1_5, string="Probabilidad residual",
@@ -333,6 +341,17 @@ class SgiRisk(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
         }
+
+    def action_view_env_aspect(self):
+        """57.172.0: el aspecto de la matriz que trata este riesgo."""
+        self.ensure_one()
+        aspects = self.sgi_env_aspect_ids
+        action = {'type': 'ir.actions.act_window', 'name': "Aspecto ambiental",
+                  'res_model': 'sgi.env.aspect', 'domain': [('id', 'in', aspects.ids)],
+                  'view_mode': 'list,form'}
+        if len(aspects) == 1:
+            action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': aspects.id})
+        return action
 
     # ------------------------------------------------------------------
     # Candado de riesgo alto (H11)

@@ -79,6 +79,21 @@
                         <field name="sgi_cancel_requested_by" class="oe_inline" readonly="1"/></span>
                     <span invisible="sgi_stage_is_cancel"> (pendiente de aprobación del Jefe MAST)</span>
                 </div>
+                <!-- 57.179.0: qué sigue, cuándo vence y quién, arriba de todo. -->
+                <field name="sgi_next_late" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="not sgi_next_step or sgi_next_late">
+                    <b>Qué sigue:</b> <field name="sgi_next_step" class="oe_inline" readonly="1"/>
+                    <span invisible="not sgi_next_due"> · vence <field name="sgi_next_due" class="oe_inline" readonly="1"/></span>
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="not sgi_next_step or not sgi_next_late">
+                    <b>Vencido:</b> <field name="sgi_next_step" class="oe_inline" readonly="1"/>
+                    <span invisible="not sgi_next_due"> · venció <field name="sgi_next_due" class="oe_inline" readonly="1"/></span>
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not sgi_folio or sgi_responsible_ids or sgi_stage_is_closing or sgi_stage_is_cancel">
+                    <b>Sin responsables:</b> nadie recibe los plazos de esta NC en Mis pendientes.
+                    Asígnelos en «Responsabilidades».
+                </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="not sgi_is_recurrent">
                     <strong><i class="fa fa-exclamation-triangle" title="Reincidente"/> Reincidente:</strong>
@@ -109,27 +124,42 @@
                 <!-- NC-1: plazos por etapa. Cada uno se cumple con un hecho
                      (contención registrada, causa raíz capturada, plan con
                      responsable y compromiso), no con una fecha capturada. -->
+                <!-- 57.179.0: cada paso en su renglón, estado y fecha juntos (antes,
+                     las fechas en una columna y los estados en otra). -->
                 <group string="Plazos" invisible="not sgi_folio">
                     <group>
-                        <field name="sgi_due_containment"/>
-                        <field name="sgi_due_root_cause"/>
-                        <field name="sgi_due_plan"/>
-                        <field name="sgi_effectiveness_due" invisible="not sgi_effectiveness_due"/>
+                        <label for="sgi_containment_state" string="1. Contención"/>
+                        <div class="o_row">
+                            <field name="sgi_containment_state" widget="badge"
+                                   decoration-success="sgi_containment_state == 'hecha'"
+                                   decoration-danger="sgi_containment_state == 'vencida'"
+                                   decoration-warning="sgi_containment_state == 'pendiente'"/>
+                            <span class="text-muted">vence</span>
+                            <field name="sgi_due_containment"/>
+                        </div>
+                        <label for="sgi_root_cause_state" string="2. Causa raíz"/>
+                        <div class="o_row">
+                            <field name="sgi_root_cause_state" widget="badge"
+                                   decoration-success="sgi_root_cause_state == 'hecha'"
+                                   decoration-danger="sgi_root_cause_state == 'vencida'"
+                                   decoration-warning="sgi_root_cause_state == 'pendiente'"/>
+                            <span class="text-muted">vence</span>
+                            <field name="sgi_due_root_cause"/>
+                        </div>
+                        <label for="sgi_plan_state" string="3. Plan de acción"/>
+                        <div class="o_row">
+                            <field name="sgi_plan_state" widget="badge"
+                                   decoration-success="sgi_plan_state == 'hecha'"
+                                   decoration-danger="sgi_plan_state == 'vencida'"
+                                   decoration-warning="sgi_plan_state == 'pendiente'"/>
+                            <span class="text-muted">vence</span>
+                            <field name="sgi_due_plan"/>
+                        </div>
+                        <field name="sgi_containment_done" invisible="1"/>
                     </group>
                     <group>
-                        <field name="sgi_containment_state" widget="badge"
-                               decoration-success="sgi_containment_state == 'hecha'"
-                               decoration-danger="sgi_containment_state == 'vencida'"
-                               decoration-warning="sgi_containment_state == 'pendiente'"/>
-                        <field name="sgi_root_cause_state" widget="badge"
-                               decoration-success="sgi_root_cause_state == 'hecha'"
-                               decoration-danger="sgi_root_cause_state == 'vencida'"
-                               decoration-warning="sgi_root_cause_state == 'pendiente'"/>
-                        <field name="sgi_plan_state" widget="badge"
-                               decoration-success="sgi_plan_state == 'hecha'"
-                               decoration-danger="sgi_plan_state == 'vencida'"
-                               decoration-warning="sgi_plan_state == 'pendiente'"/>
-                        <field name="sgi_containment_done" invisible="1"/>
+                        <field name="sgi_effectiveness_due" string="4. Verificar eficacia el"
+                               invisible="not sgi_effectiveness_due"/>
                     </group>
                 </group>
             </xpath>
@@ -156,13 +186,8 @@
                     <field name="sgi_ai_available" invisible="1"/>
                     <group string="Sugerencia de IA (borrador)" name="sgi_ai"
                            invisible="not sgi_ai_available and not sgi_ai_date">
-                        <div class="alert alert-info" role="status" colspan="2">
-                            La IA propone y usted decide. La sugerencia no cambia la NC: use los
-                            botones para copiarla. La causa raíz la escribe el responsable; la IA
-                            nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo
-                            crítico a Dirección.
-                        </div>
                         <button name="action_sgi_ai_suggest" type="object" string="Pedir sugerencia a la IA"
+                                help="La IA propone y usted decide: la sugerencia no cambia la NC (use los botones para copiarla). La causa raíz la escribe el responsable; la IA nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo crítico a Dirección."
                                 class="btn-secondary" colspan="2" groups="quimibond_sgi.group_sgi_user"
                                 invisible="not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
                         <field name="sgi_ai_clause_id" invisible="not sgi_ai_date"/>
@@ -352,6 +377,7 @@
                         domain="[('sgi_folio','!=',False)]"
                         context="{'group_by': 'stage_id'}"/>
                 <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
                     <filter name="group_type" string="Tipo de NC" context="{'group_by': 'sgi_nc_type'}"/>
                     <filter name="group_origin" string="Origen"
                             context="{'group_by': 'sgi_origin_type'}"/>

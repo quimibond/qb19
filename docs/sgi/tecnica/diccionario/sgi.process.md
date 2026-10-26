@@ -47,7 +47,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `inbound_reference_ids` | Many2many | Actividades que me referencian |  |  | `sgi.process.activity` | compute `_compute_inbound_references`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:141` |
 | `indicator_count` | Integer | # Indicadores |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:121` |
 | `indicator_ids` | One2many | Indicadores |  |  | `sgi.indicator` |  |  | `addons/quimibond_sgi/models/sgi_process.py:101` |
-| `input_deliverable_ids` | Many2many | Inicia con | Inicio del proceso: lo que sus actividades reciben y ninguna actividad del proceso produce. |  | `sgi.deliverable` | compute `_compute_io_deliverables`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:405` |
+| `input_deliverable_ids` | Many2many | Inicia con | Inicio del proceso: lo que sus actividades reciben y ninguna actividad del proceso produce. |  | `sgi.deliverable` | compute `_compute_io_deliverables`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:413` |
 | `inputs` | Text | Entradas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:62` |
 | `job_ids` | Many2many | Puestos | Puestos que participan en el proceso. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_process.py:48` |
 | `job_responsibility_ids` | One2many | Responsabilidades de las áreas |  |  | `sgi.process.responsibility` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:54` |
@@ -66,7 +66,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `odoo_model_ids` | Many2many | Módulos de Odoo conectados | Modelos donde viven los registros reales de las entradas/salidas. |  | `ir.model` | compute `_compute_odoo_models`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:103` |
 | `open_high_risk_count` | Integer | Riesgos altos abiertos |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:111` |
 | `out_flow_ids` | One2many | Flujos de salida |  |  | `sgi.process.flow` |  |  | `addons/quimibond_sgi/models/sgi_process.py:92` |
-| `output_deliverable_ids` | Many2many | Termina con | Fin del proceso: lo que sus actividades entregan y ninguna actividad del proceso recibe (sale hacia otros procesos o al cliente). |  | `sgi.deliverable` | compute `_compute_io_deliverables`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:409` |
+| `output_deliverable_ids` | Many2many | Termina con | Fin del proceso: lo que sus actividades entregan y ninguna actividad del proceso recibe (sale hacia otros procesos o al cliente). |  | `sgi.deliverable` | compute `_compute_io_deliverables`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:417` |
 | `outputs` | Text | Salidas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:63` |
 | `overdue_action_count` | Integer | Acciones vencidas |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:109` |
 | `owner_id` | Many2one | Dueño del proceso | Empleado dueño del proceso: recibe los escalamientos y aprueba los cambios a sus actividades. |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_process.py:43` |
@@ -85,13 +85,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `risk_ids` | One2many | Riesgos y oportunidades |  |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_process.py:102` |
 | `scope` | Text | Alcance | A qué áreas/actividades aplica el procedimiento (sección 2). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:44` |
 | `sgi_article_id` | Many2one | Artículo en Conocimiento | Artículo del proceso en Conocimiento → SGI, con sus instructivos, controles operacionales y protocolos. |  | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py:15` |
-| `sgi_health_idle_days` | Integer | Días sin movimiento | Días desde la última vez que el dueño creó, modificó o comentó algo del SGI. 91 significa más de 90. Vacío si el dueño no tiene usuario. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:538` |
-| `sgi_health_late_validation_count` | Integer | Validaciones atrasadas | Mediciones que el dueño debía validar y cuyo plazo ya pasó. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:535` |
-| `sgi_health_overdue_count` | Integer | Avisos vencidos | Avisos del SGI vencidos que tiene el dueño del proceso. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:532` |
-| `sgi_health_owner_user_id` | Many2one | Usuario del dueño | Usuario activo del dueño del proceso. Vacío si el dueño no tiene usuario. |  | `res.users` | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:529` |
+| `sgi_health_idle_days` | Integer | Días sin movimiento | Días desde la última vez que el dueño creó, modificó o comentó algo del SGI. 91 significa más de 90. Vacío si el dueño no tiene usuario. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:540` |
+| `sgi_health_late_validation_count` | Integer | Validaciones atrasadas | Mediciones que el dueño debía validar y cuyo plazo ya pasó. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:537` |
+| `sgi_health_overdue_count` | Integer | Avisos vencidos | Avisos del SGI vencidos que tiene el dueño del proceso. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:534` |
+| `sgi_health_owner_user_id` | Many2one | Usuario del dueño | Usuario activo del dueño del proceso. Vacío si el dueño no tiene usuario. |  | `res.users` | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:531` |
 | `spec_error_count` | Integer | Faltantes que bloquean |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:882` |
 | `spec_warning_count` | Integer | Advertencias |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:884` |
-| `stage_ids` | One2many | Etapas |  |  | `sgi.process.stage` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:404` |
+| `stage_ids` | One2many | Etapas |  |  | `sgi.process.stage` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:412` |
 | `start_trigger` | Text | Disparador de inicio | Qué hace que el proceso arranque (ej. llega un pedido). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:56` |
 | `state` | Selection | Estado | Borrador y piloto se pueden cargar incompletos (los faltantes se ven). Vigente exige la especificación completa de actividades e indicadores. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:875` |
 | `structure_status` | Char | Estado del proceso | Una línea: dueño, estado, semáforo, actividades atrasadas, KPIs en rojo y NC abiertas. |  |  | compute `_compute_structure_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_structure.py:24` |

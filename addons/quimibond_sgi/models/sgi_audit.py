@@ -62,7 +62,8 @@ class SgiAuditProgram(models.Model):
     coverage_gap_ids = fields.Many2many(
         'sgi.process', string="Sin programar en 3 años", compute='_compute_coverage_gap',
         help="Subprocesos sin renglón en este programa ni en los de los dos años anteriores "
-             "registrados en Odoo.")
+             "registrados en Odoo."
+             " Agréguelos al programa o deje el motivo en el historial.")
     coverage_gap_count = fields.Integer(string="Procesos sin programar en 3 años",
                                         compute='_compute_coverage_gap')
 
@@ -269,7 +270,8 @@ class SgiAudit(models.Model):
     opening_minutes = fields.Text(
         string="Minuta de apertura",
         help="Acuerdos de la reunión de apertura: alcance confirmado, agenda, "
-             "criterios. Sustituye el formato F-P-G03-05.")
+             "criterios. Sustituye el formato F-P-G03-05."
+             " Los asistentes son los de «Equipo y fechas».")
     closing_minutes = fields.Text(
         string="Minuta de cierre",
         help="Resumen presentado al auditado: hallazgos, conclusión, plazos. "
@@ -286,7 +288,11 @@ class SgiAudit(models.Model):
     finding_count = fields.Integer(string="# Hallazgos", compute='_compute_finding_count')
     # AU-1 (50.0.0): checklist generado del proceso, una línea por actividad.
     checklist_line_ids = fields.One2many(
-        'sgi.audit.checklist.line', 'audit_id', string="Checklist")
+        'sgi.audit.checklist.line', 'audit_id', string="Checklist",
+        help="Se genera al planificar: una pregunta por actividad de cada proceso auditado, con los puntos de "
+             "la norma que cumple, y una por cada punto de las normas de la auditoría sin actividad en el SGI. "
+             "«Ver registros» abre la evidencia real del entregable; cada respuesta distinta de Conforme crea "
+             "su hallazgo.")
     checklist_count = fields.Integer(compute='_compute_checklist_counts')
     checklist_answered_count = fields.Integer(compute='_compute_checklist_counts')
     checklist_nonconforming_count = fields.Integer(compute='_compute_checklist_counts')

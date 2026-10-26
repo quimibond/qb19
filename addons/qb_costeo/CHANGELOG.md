@@ -3,6 +3,31 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.2 — 2026-10-22
+
+Retiro de `qb_capacidad_costeo` (desinstalado en producción el 2026-10-22):
+
+- Fuera los importadores del módulo anterior: `importar_clasificacion_legada`
+  (y su mapa `_LEGADO`), `qb.producto.kg.importar_legados` y
+  `qb.producto.rendimiento.importar_manuales_legados`, y sus llamadas en el
+  `post_init_hook` y en las migraciones 1.0.1, 1.2.0 y 1.3.0 (ya corridas en
+  producción; el resto de lo que hacen se queda). Leían tablas que ya no
+  existen.
+- Lo importado se queda: cuentas con nota «importada de qb_capacidad_costeo»,
+  pesos con fuente «legado» y rendimientos manuales.
+- Sin cambio de comportamiento.
+
+## 19.0.1.6.1 — 2026-10-22
+
+- **Los crons «calcular mes anterior y mes en curso» y «avisar cuentas sin
+  clasificar» fallaban desde que se instaló el módulo** y Odoo los apagó solo
+  el 2026-10-15. Recorrían todas las compañías: la primera sin centros
+  tumbaba el cálculo («No hay centros directos configurados») antes de llegar
+  a Quimibond, y el aviso de cuentas se caía con las cuentas compartidas que
+  no tienen código en otra compañía. Ahora los dos recorren solo las
+  compañías con algún centro directo (`qb.centro.companias_con_costeo`), y el
+  aviso usa el nombre de la cuenta cuando no hay código.
+
 ## 19.0.1.6.0 — 2026-10-16
 
 Lo que todavía hacía el módulo anterior (`qb_capacidad_costeo`), con el costo

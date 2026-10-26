@@ -52,7 +52,9 @@ class SgiDevCoa(models.Model):
     roll_count = fields.Integer(string="Rollos")
     state = fields.Selection([('borrador', "Borrador"), ('emitido', "Emitido")], string="Estado", default='borrador',
                              required=True, tracking=True, copy=False)
-    line_ids = fields.One2many('sgi.dev.coa.line', 'coa_id', string="Renglones")
+    line_ids = fields.One2many('sgi.dev.coa.line', 'coa_id', string="Renglones",
+        help="Salen de la tabla del proyecto marcados «En certificado» y se comparan contra la especificación "
+             "del cliente. El control interno no se imprime.")
     # 57.131.1: almacenados, para filtrar y ordenar por ellos en la lista (el
     # filtro «Con no conformes» tumbó el build de main, 2026-10-08 07:17 UTC).
     line_count = fields.Integer(compute='_compute_counts', store=True)

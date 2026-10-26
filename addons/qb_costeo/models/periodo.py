@@ -454,7 +454,7 @@ class QbPeriodo(models.Model):
         """Diario: recalcula el mes anterior si sigue en borrador y el mes
         en curso (solo informa; se cotiza con el último cerrado)."""
         hoy = fields.Date.today()
-        for company in self.env['res.company'].search([]):
+        for company in self.env['qb.centro'].companias_con_costeo():
             for meses in (1, 0):
                 p = date(hoy.year, hoy.month, 1) - relativedelta(months=meses)
                 rec = self.search([('period', '=', p),

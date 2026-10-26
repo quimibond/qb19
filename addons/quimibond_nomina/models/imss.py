@@ -176,6 +176,11 @@ class HrVersion(models.Model):
         props = self.payroll_properties
         if isinstance(props, dict):
             return dict(props)
+        # Odoo 19 devuelve un objeto ``Property`` que se lee como diccionario
+        # (``get``/``items``), no una lista: antes de 1.14.6 caía a la lista,
+        # salía vacío y el SDI se leía en 0 en todos los contratos.
+        if hasattr(props, 'items'):
+            return dict(props.items())
         return {p.get('name'): p.get('value') for p in (props or []) if isinstance(p, dict) and p.get('name')}
 
     def _qb_imss_sdi(self):
@@ -192,6 +197,21 @@ class HrVersion(models.Model):
         props = self._qb_imss_propiedades()
         props['sdi_imss'] = round(sdi, 2)
         self.write({'payroll_properties': props})
+        # Odoo descarta sin aviso una propiedad que la estructura del contrato
+        # no define: el SDI se perdería y el 07 saldría contra 0.
+        if self._qb_imss_sdi() != round(sdi, 2):
+            definicion = self.structure_id.version_properties_definition or []
+            if any(d.get('name') == 'sdi_imss' for d in definicion):
+                raise UserError(_(
+                    "No se pudo guardar el SDI (%(sdi).2f) en la propiedad «sdi_imss» del contrato de "
+                    "%(empleado)s, aunque la estructura «%(estructura)s» sí la define. Se leyó %(leido).2f.",
+                    sdi=sdi, empleado=self.employee_id.name, estructura=self.structure_id.display_name,
+                    leido=self._qb_imss_sdi()))
+            raise UserError(_(
+                "La estructura salarial «%(estructura)s» del contrato de %(empleado)s no define la "
+                "propiedad «sdi_imss» (SDI declarado ante el IMSS). Agréguela en la estructura "
+                "(Propiedades del contrato) o cambie el contrato a «Paga regular».",
+                estructura=self.structure_id.display_name or '-', empleado=self.employee_id.name))
 
     def _qb_imss_salario_diario(self):
         """Salario diario simple a partir del sueldo del contrato y su periodicidad."""

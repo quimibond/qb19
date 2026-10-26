@@ -28,7 +28,7 @@ No cambia la huella de Mi procedimiento ni la del MIID.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.2.17',
+    'version': '19.0.1.2.30',
     'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',

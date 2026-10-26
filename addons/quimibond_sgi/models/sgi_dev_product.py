@@ -31,7 +31,7 @@ DEV_PRODUCT_STATES = [
     ('archivado', "Archivado"),
 ]
 # 57.160.0: el acabado en kg («I» al frente, DAT P-D02-01: posición 1 = kilogramos) va entre el teñido y el acabado
-# (J, m): producción en kg hasta Inspección.
+# (J, m): producción en kg hasta la Clasificación final.
 DEV_PRODUCT_ROLES = [('crudo', "Crudo (H)"), ('tenido', "Teñido (I)"), ('proceso', "Acabado en kg (I…J)"),
                      ('acabado', "Acabado (J)")]
 OPERATION_CODES = {'crudo': 'H', 'tenido': 'I', 'acabado': 'J'}

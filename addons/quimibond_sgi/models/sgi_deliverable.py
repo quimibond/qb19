@@ -90,6 +90,7 @@ class SgiDeliverable(models.Model):
     code = fields.Char(
         string="Código", index=True,
         help="Clave corta para la carga por API (C2-PEDIDO, C3-PROGRAMA…).")
+    link_count = fields.Integer(string="Ligas", compute='_compute_link_count')
     name = fields.Char(string="Entregable", required=True,
                        help="Qué pasa de un paso al otro: «Pedido confirmado».")
     document_id = fields.Many2one(
@@ -321,6 +322,13 @@ class SgiDeliverable(models.Model):
         self.env['sgi.process.flow'].sudo().with_context(**ctx).search(
             [('deliverable_id', 'in', self.ids)]).unlink()
         return super().unlink()
+
+    def _compute_link_count(self):
+        # 57.172.0: el botón «Ligas» dice cuántas hay (archivadas incluidas, como la lista).
+        counts = dict(self.env['sgi.activity.link'].with_context(active_test=False)._read_group(
+            [('deliverable_id', 'in', self.ids)], ['deliverable_id'], ['__count']))
+        for rec in self:
+            rec.link_count = counts.get(rec, 0)
 
     def action_view_links(self):
         self.ensure_one()

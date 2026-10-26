@@ -215,7 +215,8 @@ class HrJob(models.Model):
     sgi_epp_required = fields.Text(
         string="EPP requerido (S03-01)",
         help="Equipo de protección personal que exige este puesto. "
-             "Sustituye el formato F-P-S03-01; fuente única para RH y SST.")
+             "Sustituye el formato F-P-S03-01; fuente única para RH y SST."
+             " El cron de EPP vigila reposiciones; la responsiva de entrega se firma en la ficha del empleado.")
 
 
 class ProductTemplateSgiSpec(models.Model):

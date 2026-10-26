@@ -4,12 +4,12 @@ from . import wizard
 
 
 def post_init_hook(env):
-    """Al instalar: puestos por omisión (si existen con ese nombre), modelos
-    en MCP e importación de las cotizaciones del módulo anterior (solo lectura
-    de `qb.cotizacion`; nunca se modifica)."""
+    """Al instalar: puestos por omisión (si existen con ese nombre) y modelos
+    en MCP. (Hasta 1.6.1 también importaba las cotizaciones de
+    `qb_capacidad_costeo`, retirado el 2026-10-22; las 75 ya están aquí con
+    `legacy_id`.)"""
     env['qb.cotizador.cotizacion']._configurar_puestos_por_omision()
     _habilitar_mcp(env)
-    env['qb.cotizador.cotizacion'].importar_legadas()
 
 
 def _habilitar_mcp(env):

@@ -33,8 +33,6 @@
                 <header>
                     <button name="action_create_picking" type="object" string="Crear baja de muestras" class="btn-primary"
                             invisible="state != 'borrador' or picking_id"/>
-                    <button name="action_open_picking" type="object" string="Ver la baja" class="btn-secondary"
-                            invisible="not picking_id"/>
                     <!-- 57.170.0: un primario por estado. Sin baja, el paso es crearla;
                          «Registrar envío» es primario cuando la baja ya está hecha. -->
                     <button name="action_ship" type="object" string="Registrar envío" class="btn-primary"
@@ -56,6 +54,15 @@
                     <field name="state" widget="statusbar" statusbar_visible="borrador,enviada,respondida"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_picking" type="object" class="oe_stat_button"
+                                icon="fa-truck" invisible="not picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="picking_state"/></span>
+                                <span class="o_stat_text">Baja de muestras</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>
                         <group string="Qué se envía">
@@ -140,6 +147,8 @@
                 <filter name="to_ship" string="Por enviar" domain="[('state', '=', 'borrador')]"/>
                 <filter name="waiting" string="Esperando respuesta" domain="[('state', '=', 'enviada')]"/>
                 <filter name="not_notified" string="Sin aviso al cliente" domain="[('state', '=', 'enviada'), ('notified_date', '=', False)]"/>
+                <separator/>
+                <filter name="filter_shipped" string="Fecha de envío" date="shipped_at"/>
                 <group>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>

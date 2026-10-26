@@ -495,7 +495,7 @@ class SgiActivitySpec(models.Model):
         ('stock.quant', 'stock.move'),                      # aplicar el inventario crea movimientos
         ('account.change.lock.date', 'sgi.lock.date.log'),  # bloquear el periodo deja su bitácora
         ('account.change.lock.date', 'account.lock_exception'),
-        ('qb.costo.producto', 'account.move'),              # recalcular el costeo asienta la valoración
+        ('qb.periodo', 'account.move'),                     # el período del costeo lleva a asentar la valoración
         ('res.users', 'mail.message'),                      # la baja queda en el chatter del usuario
     }
 
@@ -967,6 +967,10 @@ class SgiProcessSpec(models.Model):
             'res_model': 'sgi.activity.spec.gap',
             'view_mode': 'list,pivot',
             'domain': [('process_id', '=', self.id)],
+            # 57.172.0: «Faltantes» y «Advertencias» abren la misma lista ya filtrada.
+            'search_view_id': [self.env.ref('quimibond_sgi.sgi_activity_spec_gap_view_search').id],
+            'context': {k: v for k, v in self.env.context.items() if k in ('search_default_errors',
+                                                                         'search_default_warnings')},
         }
 
 

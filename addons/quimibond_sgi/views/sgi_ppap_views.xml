@@ -52,15 +52,6 @@
                     </group>
                     <notebook>
                         <page string="Elementos (18)" name="elements">
-                            <div class="text-muted mb-2">
-                                El <b>nivel AIAG</b> define qué se presenta al
-                                cliente (<b>S</b>) y qué se retiene en planta
-                                (<b>R</b>): solo los elementos S pendientes
-                                bloquean «Marcar enviado». Cambiar el nivel en
-                                preparación re-aplica la tabla; la columna S/R
-                                se puede ajustar por elemento (p. ej. nivel 4,
-                                donde el cliente define qué pide).
-                            </div>
                             <field name="element_ids" readonly="sgi_is_locked">
                                 <list editable="bottom" default_order="sequence">
                                     <field name="sequence"/>
@@ -122,6 +113,9 @@
                 <filter name="aprobado" string="Aprobados" domain="[('state','=','aprobado')]"/>
                 <filter name="en_proceso" string="En proceso"
                         domain="[('state','in',('preparacion','enviado','interino'))]"/>
+                <filter name="rechazado" string="Rechazados" domain="[('state','=','rechazado')]"/>
+                <separator/>
+                <filter name="date_submitted" string="Enviado" date="date_submitted"/>
                 <group>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

@@ -102,6 +102,10 @@
                 <field name="partner_id"/>
                 <filter name="draft" string="Por firmar" domain="[('state', '=', 'borrador')]"/>
                 <filter name="signed" string="Firmadas, por aplicar" domain="[('state', '=', 'firmada')]"/>
+                <separator/>
+                <filter name="mine" string="Mías" domain="[('requested_by_id', '=', uid)]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
                     <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
                     <filter name="group_origin" string="Motivo" context="{'group_by': 'origin'}"/>
@@ -116,6 +120,8 @@
         <field name="res_model">sgi.dev.change.request</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_dev_change_request_view_search"/>
+        <!-- 57.174.0: abre con lo que falta firmar o aplicar. -->
+        <field name="context">{'search_default_draft': 1, 'search_default_signed': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Ninguna solicitud de modificación</p>
             <p>Cuando la muestra no dio el resultado o el cliente pide cambios, Diseño de Producto llena aquí qué cambia,

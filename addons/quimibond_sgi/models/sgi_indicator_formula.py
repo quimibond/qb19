@@ -96,7 +96,9 @@ class SgiIndicatorTerm(models.Model):
                                help="Modelo de Odoo del que se leen los registros.")
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,
-                         help="Dominio de Odoo, p. ej. [('state', '=', 'done')].")
+                         help="Dominio de Odoo, p. ej. [('state', '=', 'done')]."
+                              " Valen fechas relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días hábiles), "
+                              "'{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}' (bloqueo contable).")
     date_field = fields.Char(string="Campo de fecha", default='create_date',
                              help="Campo de fecha o fecha-hora del modelo sobre el que se "
                                   "recorta la ventana. Vacío solo con ventana «Acumulado al "
@@ -382,7 +384,13 @@ class SgiIndicatorTerm(models.Model):
 class SgiIndicatorFormula(models.Model):
     _inherit = 'sgi.indicator'
 
-    term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula")
+    term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula",
+        help="Numerador y denominador salen de los registros de Odoo de cada término; varios términos con el "
+             "mismo papel se suman (factor −1 resta) y sin denominador el indicador vale su numerador (sin "
+             "registros = 0). «Contar donde B − A cumple» y «Promedio de B − A» comparan dos fechas del mismo "
+             "registro. Solo el administrador del SGI edita los términos; cualquier cambio regresa el "
+             "indicador a «prueba» y queda en el chatter. «Recalcular ahora» prueba la fórmula sin esperar al "
+             "cron.")
     has_formula = fields.Boolean(compute='_compute_has_formula',
                                  help="Indica si el indicador tiene términos de fórmula.")
     formula_text = fields.Text(string="Fórmula configurada", compute='_compute_has_formula')

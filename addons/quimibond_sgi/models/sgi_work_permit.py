@@ -96,7 +96,8 @@ class SgiWorkPermit(models.Model):
         'hr.employee', 'sgi_work_permit_employee_rel', 'permit_id', 'employee_id',
         string="Personal que ejecuta")
     contractor_id = fields.Many2one('res.partner', string="Contratista",
-                                    help="Si el trabajo lo hace un contratista.")
+                                    help="Si el trabajo lo hace un contratista."
+                                         " El Jefe MAST registra la evaluación SST en el contacto, pestaña SGI.")
     hazards = fields.Text(string="Peligros identificados",
                           help="Qué puede salir mal: caída, atmósfera peligrosa, incendio, "
                                "choque eléctrico…")

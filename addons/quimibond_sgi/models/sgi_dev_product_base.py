@@ -29,7 +29,7 @@ CODE_SLICES = {
     'composicion': (0, 1), 'dibujo': (1, 2), 'peso': (2, 5), 'hilo': (5, 6), 'galga': (6, 8),
     'op': (8, 9), 'color': (9, 11), 'ancho': (11, 14), 'acabado': (14, 16),
 }
-# 57.160.0: el acabado en kg (rol 'proceso', sale de rama y entra a Inspección) va entre el teñido y el acabado (J, m).
+# 57.160.0: el acabado en kg (rol 'proceso', sale inspeccionado de la orden de acabado) va entre el teñido y el acabado (J, m).
 # Su código es el del acabado con la «I» al frente (DAT P-D02-01: posición 1 = unidad, I = kilogramos), así que
 # lleva las claves del acabado (color, ancho, acabado especial).
 UNIT_KG = 'I'

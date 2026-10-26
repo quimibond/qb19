@@ -25,22 +25,15 @@
         <field name="model">sgi.process.flow</field>
         <field name="arch" type="xml">
             <form string="Flujo" create="0" edit="0">
-                <header>
-                    <button name="action_view_records" type="object"
-                            string="Ver registros" class="btn-primary"
-                            invisible="not odoo_model_id"/>
-                </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_records" type="object" class="oe_stat_button"
+                                icon="fa-database" string="Registros" invisible="not odoo_model_id"/>
+                    </div>
                     <widget name="web_ribbon" title="Anterior" bg_color="text-bg-secondary"
                             invisible="deliverable_id"/>
                     <widget name="web_ribbon" title="Apagado" bg_color="text-bg-danger"
                             invisible="active"/>
-                    <div class="alert alert-info mb-3" role="status">
-                        <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
-                        Se calcula solo del <b>entregable</b>: sale de las actividades
-                        que lo entregan y llega a las que lo reciben. Para cambiarlo,
-                        cambie el entregable o las actividades.
-                    </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
                         <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal de producción)"/></h1>
@@ -269,9 +262,15 @@
                                 icon="fa-clock-o" invisible="overdue_action_count == 0">
                             <field name="overdue_action_count" widget="statinfo" string="Acciones vencidas"/>
                         </button>
-                        <button name="action_view_spec_gaps" type="object" class="oe_stat_button"
-                                icon="fa-wrench" invisible="spec_error_count == 0 and spec_warning_count == 0">
+                        <button name="action_view_spec_gaps" type="object" class="oe_stat_button text-danger"
+                                icon="fa-wrench" invisible="spec_error_count == 0"
+                                context="{'search_default_errors': 1}">
                             <field name="spec_error_count" widget="statinfo" string="Faltantes"/>
+                        </button>
+                        <button name="action_view_spec_gaps" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-circle" invisible="spec_warning_count == 0"
+                                context="{'search_default_warnings': 1}">
+                            <field name="spec_warning_count" widget="statinfo" string="Advertencias"/>
                         </button>
                         <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
                                 icon="fa-sitemap" invisible="not id">
@@ -375,10 +374,6 @@
                                             <field name="sgi_migration_state"/>
                                         </list>
                                     </field>
-                                    <div class="text-muted" colspan="2">
-                                        Se captura en la ficha de cada procedimiento
-                                        («Lo sustituye el proceso»).
-                                    </div>
                                     <field name="channel_odoo_pct" widget="progressbar"/>
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>
@@ -461,6 +456,10 @@
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
                 <separator/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_piloto" string="Piloto" domain="[('state', '=', 'piloto')]"/>
+                <filter name="state_vigente" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <separator/>
                 <filter name="rojo" string="Con actividades en rojo"
                         domain="[('measure_status', '=', 'rojo')]"/>
                 <filter name="dueno_invalido" string="Dueño no válido"
@@ -470,6 +469,7 @@
                 <group>
                     <filter name="group_parent" string="Macroproceso" context="{'group_by': 'parent_id'}"/>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'process_type'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                     <filter name="group_owner" string="Dueño" context="{'group_by': 'owner_id'}"/>
                     <filter name="group_measure" string="Estado de medición"
                             context="{'group_by': 'measure_status'}"/>

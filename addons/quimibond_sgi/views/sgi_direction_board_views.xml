@@ -6,20 +6,27 @@
         <field name="model">sgi.direction.board</field>
         <field name="arch" type="xml">
             <form string="Tablero de dirección" create="0" delete="0">
-                <header>
-                    <button name="action_open_spreadsheet" type="object" string="Hoja de cálculo"
-                            icon="fa-table" class="btn-secondary"/>
-                </header>
                 <sheet>
-                    <group>
-                        <group>
-                            <field name="date"/>
-                            <field name="indicator_count" string="Indicadores en el tablero"/>
-                        </group>
-                        <group>
-                            <field name="red_count" string="Rojos sin causa ni plan" decoration-danger="red_count > 0"/>
-                        </group>
-                    </group>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_spreadsheet" type="object" class="oe_stat_button"
+                                icon="fa-table" string="Hoja de cálculo"/>
+                    </div>
+                    <!-- 57.181.0: lo que pide decisión, en una línea (antes, fecha y dos
+                         conteos en un grupo). -->
+                    <h2 class="mb-1">Tablero de dirección · <field name="date" class="oe_inline" readonly="1"/></h2>
+                    <div class="mb-3">
+                        <field name="indicator_count" invisible="1"/>
+                        <span><field name="official_count" class="oe_inline"/> de
+                            <field name="indicator_total" class="oe_inline"/> indicadores oficiales</span>
+                        <span invisible="nc_overdue_count == 0" class="text-danger fw-bold"> ·
+                            <field name="nc_overdue_count" class="oe_inline"/> NC con plazo vencido</span>
+                        <span invisible="agreement_count == 0" class="text-danger fw-bold"> ·
+                            <field name="agreement_count" class="oe_inline"/> acuerdos de la RxD vencidos</span>
+                        <span invisible="red_count == 0" class="text-danger fw-bold"> ·
+                            <field name="red_count" class="oe_inline"/> rojos sin causa ni plan</span>
+                        <span invisible="nc_overdue_count or agreement_count or red_count" class="text-success"> ·
+                            nada vencido</span>
+                    </div>
                     <notebook>
                         <page string="Indicadores de dirección" name="indicadores">
                             <div class="alert alert-warning" role="alert" invisible="not indicator_note">
@@ -113,6 +120,20 @@
                                 </list>
                             </field>
                             <p class="text-muted" invisible="red_no_plan_measure_ids">Sin rojos pendientes de causa y plan.</p>
+                        </page>
+                        <!-- 57.181.0: las NC vencidas, con su siguiente paso y quién la debe. -->
+                        <page string="NC vencidas" name="nc">
+                            <field name="nc_overdue_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="sgi_folio"/>
+                                    <field name="title" optional="show"/>
+                                    <field name="sgi_process_id"/>
+                                    <field name="sgi_responsible_ids" widget="many2many_tags"/>
+                                    <field name="sgi_next_step" string="Qué sigue"/>
+                                    <field name="sgi_next_due" string="Venció" widget="remaining_days"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="nc_overdue_ids">Sin NC con plazo vencido.</p>
                         </page>
                         <page string="Acuerdos vencidos" name="acuerdos">
                             <field name="overdue_agreement_ids" nolabel="1" readonly="1">

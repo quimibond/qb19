@@ -64,11 +64,6 @@
                     </group>
                     <notebook>
                         <page string="Plan de acción (6.2.2)" name="action_plan">
-                            <p class="text-muted">ISO 6.2.2: qué se hará para
-                            lograr el objetivo, quién y para cuándo. Cada
-                            acción genera su actividad espejo al responsable;
-                            la evaluación del resultado la dan los indicadores
-                            ligados.</p>
                             <field name="action_line_ids" context="{'default_objective_id': id}">
                                 <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
                                 <list editable="bottom" decoration-danger="state == 'vencida'"

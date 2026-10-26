@@ -14,12 +14,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_measure_review.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `name` | Char | Registro de evidencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:227` |
-| `record_date` | Date | Fecha que cuenta la medición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:228` |
-| `record_user_id` | Many2one | A quién se le atribuye |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:229` |
-| `res_id` | Integer | Registro |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:226` |
-| `res_model` | Char | Modelo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:225` |
-| `review_id` | Many2one | Revisión |  | sí | `sgi.measure.review` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:223` |
+| `name` | Char | Registro de evidencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:261` |
+| `record_date` | Date | Fecha que cuenta la medición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:262` |
+| `record_user_id` | Many2one | A quién se le atribuye |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:263` |
+| `res_id` | Integer | Registro |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:260` |
+| `res_model` | Char | Modelo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:259` |
+| `review_id` | Many2one | Revisión |  | sí | `sgi.measure.review` |  |  | `addons/quimibond_sgi/models/sgi_measure_review.py:257` |
 
 ## Métodos públicos (1)
 

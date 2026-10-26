@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:83` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:84` |
 | `code` | Char | Código |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:74` |
-| `company_id` | Many2one | Empresa |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:80` |
-| `employee_count` | Integer | Empleados activos |  |  |  | compute `_compute_employee_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:84` |
-| `job_ids` | Many2many | Puestos | Puestos que forman la familia. Lo asignado a la familia les toca a todos. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:76` |
+| `company_id` | Many2one | Empresa |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:81` |
+| `employee_count` | Integer | Empleados activos |  |  |  | compute `_compute_employee_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:85` |
+| `job_ids` | Many2many | Puestos | Puestos que forman la familia. Lo asignado a la familia les toca a todos. Un puesto solo puede estar en una familia; el nivel se queda en el puesto. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:76` |
 | `name` | Char | Familia |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:75` |
 

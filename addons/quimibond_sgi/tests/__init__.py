@@ -193,4 +193,9 @@ from . import test_dev_machine_sheet
 from . import test_nc_tipos
 from . import test_escalamientos_pausa  # 57.159.0
 from . import test_dev_proceso  # 57.160.0
+from . import test_dev_review_notice  # 57.182.0
 from . import test_ui_entrega2  # 57.171.0
+from . import test_ui_entrega3  # 57.172.0
+from . import test_ui_entrega4  # 57.173.0
+from . import test_ui_entrega5  # 57.174.0
+from . import test_autovalidacion  # 57.176.0

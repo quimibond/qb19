@@ -49,7 +49,10 @@ class SgiFmea(models.Model):
         ('obsoleto', "Obsoleto"),
     ], string="Estado", default='borrador', required=True, tracking=True,
         help="Borrador, vigente u obsoleto. No pasa a vigente con un NPR alto sin acción.")
-    line_ids = fields.One2many('sgi.fmea.line', 'fmea_id', string="Modos de falla")
+    line_ids = fields.One2many('sgi.fmea.line', 'fmea_id', string="Modos de falla",
+        help="Escalas AIAG 1–10: severidad, ocurrencia y detección; NPR = S × O × D. Un NPR ≥ 100 marca la "
+             "línea en rojo y, para marcar el AMEF vigente, exige acción terminada, re-evaluación capturada "
+             "(S/O/D post) y un NPR post menor al inicial o la justificación escrita de por qué no baja.")
     max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True,
                              help="El NPR más alto de sus modos de falla. Se calcula solo.")
     # Ligas inversas (H7): NCs del SGI que apuntan a este AMEF.
@@ -171,7 +174,9 @@ class SgiFmeaLine(models.Model):
     occurrence = fields.Selection(SCALE_1_10, string="Ocurrencia (O)")
     current_controls = fields.Char(string="Controles actuales")
     detection = fields.Selection(SCALE_1_10, string="Detección (D)")
-    npr = fields.Integer(string="NPR", compute='_compute_npr', store=True)
+    npr = fields.Integer(string="NPR", compute='_compute_npr', store=True,
+        help="Severidad × ocurrencia × detección. Con 100 o más la línea pide acción terminada y re-evaluación "
+             "antes de marcar el AMEF vigente.")
     requires_action = fields.Boolean(string="Requiere acción", compute='_compute_npr', store=True)
     action_line_ids = fields.One2many('sgi.action.line', 'fmea_line_id', string="Acciones")
 

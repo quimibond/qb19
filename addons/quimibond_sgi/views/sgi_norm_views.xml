@@ -8,10 +8,14 @@
                 <header>
                     <button name="%(quimibond_sgi.action_report_compliance_matrix)d" type="action"
                             string="Matriz de cumplimiento" icon="fa-th" class="btn-primary"/>
-                    <button name="action_view_uncovered_clauses" type="object"
-                            string="Puntos sin cobertura" icon="fa-exclamation-triangle"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_uncovered_clauses" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle">
+                            <field name="uncovered_clause_count" widget="statinfo" string="Sin cobertura"/>
+                        </button>
+                    </div>
                     <!-- V-B10 (57.81.0): el nombre como título. -->
                     <div class="oe_title">
                         <label for="name" string="Norma"/>
@@ -182,6 +186,7 @@
                 <field name="activity_ids"/>
                 <filter name="uncovered" string="Sin cobertura" domain="[('covered', '=', False)]"/>
                 <filter name="covered" string="Cubiertos" domain="[('covered', '=', True)]"/>
+                <separator/>
                 <filter name="with_activity" string="Con actividad" domain="[('activity_ids.active', '=', True)]"/>
                 <filter name="by_rule" string="Lo cumple el sistema" domain="[('system_rule_ids', '!=', False)]"/>
                 <filter name="exclusion" string="No aplica" domain="[('exclusion', '=', True)]"/>

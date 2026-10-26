@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_s
 |---|---|---|---|---|---|---|---|---|
 | `attachment_ids` | Many2many | Documentos que acompañan | CoA del lote y lo demás que viaja con la muestra; se adjuntan al correo. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:105` |
 | `carrier_id` | Many2one | Paquetería | De la lista «Paquetería» (Ajustes → SGI → Listas del desarrollo de producto). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:94` |
-| `coa_count` | Integer |  |  |  |  | compute `_compute_coa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:251` |
-| `coa_ids` | One2many | Reportes de conformidad |  |  | `sgi.dev.coa` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:250` |
+| `coa_count` | Integer |  |  |  |  | compute `_compute_coa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:253` |
+| `coa_ids` | One2many | Reportes de conformidad |  |  | `sgi.dev.coa` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:252` |
 | `company_id` | Many2one |  |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:82` |
 | `date_shipped` | Date | Fecha de envío |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:97` |
 | `followup_date` | Datetime | Último seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:112` |

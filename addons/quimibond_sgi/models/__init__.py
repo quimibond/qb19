@@ -90,6 +90,7 @@ from . import sgi_dev_coa  # 57.130.0 (Jose 3.4): reporte de conformidad desde l
 from . import sgi_dev_tech_sheet  # 57.132.0 (Jose 5.3): ficha técnica interna y especificaciones del producto
 from . import sgi_dev_pilot  # 57.133.0 (Jose 5.4): pilotaje y estudio de habilidad
 from . import sgi_dev_escalation  # 57.135.0 (Jose 5.5): escalamiento por tiempo del paso pendiente
+from . import sgi_dev_review_notice  # 57.182.0 (Administración de Ventas): avisos de la revisión del análisis
 from . import sgi_dev_start_approval  # 57.137.0 (Jessica 4): aprobación para iniciar el proyecto con folio FT
 from . import sgi_dev_change  # 57.137.0 (Jessica 9): solicitud de modificación del proyecto (5 porqués)
 from . import sgi_dev_dossier  # 57.137.0 (Jessica 3 y 8.3): ruta a la vista y expediente ISO 9001 8.3 / APQP
@@ -182,3 +183,5 @@ from . import sgi_approval_subject
 from . import sgi_nav_links
 # 57.160.0: acabado en proceso (K) en C1; extiende project.project y mrp.production de varios archivos (va al final).
 from . import sgi_dev_product_proceso
+from . import sgi_dev_product_regen  # 57.190.0: después de proceso (suelta también el acabado en kg)
+from . import sgi_indicator_autovalidate  # 57.176.0: va al final, después de las demás extensiones de la medición

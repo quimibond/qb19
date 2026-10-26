@@ -31,8 +31,10 @@ _MP_STATUS = [
     ('al_dia', "Al día"),
     ('atrasada', "Atrasada"),
     ('sin_medir', "Sin medición automática"),
+    # 57.177.0: flujo atrasado de la planta (no es de la persona).
+    ('planta', "Atrasada en la planta"),
 ]
-
+_MP_STATUS_RANK = {'atrasada': 0, 'planta': 1, 'al_dia': 2, 'sin_medir': 3}
 
 
 def _sgi_as_list(value):
@@ -468,6 +470,16 @@ class SgiMyProcedure(models.TransientModel):
     late_count = fields.Integer(string="Atrasadas", compute='_compute_lists')
     ok_count = fields.Integer(string="Al día", compute='_compute_lists')
     unmeasured_count = fields.Integer(string="Sin medición automática", compute='_compute_lists')
+    # 57.177.0: la línea de resumen y las dos listas de la primera pestaña.
+    plant_count = fields.Integer(string="Atrasadas en la planta", compute='_compute_lists')
+    periodic_count = fields.Integer(string="Periódicas", compute='_compute_lists')
+    event_count = fields.Integer(string="Cuando pasa algo", compute='_compute_lists')
+    role_periodic_ids = fields.Many2many(
+        'sgi.activity.role', string="Actividades periódicas", compute='_compute_lists',
+        help="Las que tocan cada día, semana, mes…; las atrasadas primero.")
+    role_event_ids = fields.Many2many(
+        'sgi.activity.role', string="Actividades cuando pasa algo", compute='_compute_lists',
+        help="Las que se hacen cuando llega algo (un pedido, una orden, una queja); las atrasadas primero.")
     pending_ack_count = fields.Integer(string="Firmas pendientes", compute='_compute_lists')
     activity_count = fields.Integer(string="Actividades", compute='_compute_counts')
 
@@ -477,7 +489,9 @@ class SgiMyProcedure(models.TransientModel):
         help="Actividades que la persona ejecuta o aprueba.")
     received_role_ids = fields.Many2many(
         'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_lists',
-        help="Actividades cuyo atraso le escala a la persona.")
+        help="Actividades cuyo atraso le escala a la persona."
+             " Las de otros puestos que escalan a este si se atoran; las atrasadas van primero y, cuando el atraso "
+             "pasa de sus días hábiles, llegan a Mis pendientes.")
     received_late_count = fields.Integer(
         string="Escalamientos atrasados", compute='_compute_lists',
         help="Actividades que escalan a este puesto y hoy van atrasadas (I-012).")
@@ -656,12 +670,21 @@ class SgiMyProcedure(models.TransientModel):
             wiz.received_role_ids = (late_received | (received - late_received)).ids
             wiz.received_late_count = len(late_received)
             wiz.short_role_ids = lists['short'].ids
-            counts = {'al_dia': 0, 'atrasada': 0, 'sin_medir': 0}
+            counts = {'al_dia': 0, 'atrasada': 0, 'sin_medir': 0, 'planta': 0}
             for role in detail:
                 counts[role.mp_status or 'sin_medir'] += 1
             wiz.late_count = counts['atrasada']
             wiz.ok_count = counts['al_dia']
             wiz.unmeasured_count = counts['sin_medir']
+            wiz.plant_count = counts['planta']
+            # 57.177.0: primero lo atrasado (sorted es estable: lo demás
+            # sigue en orden de cadencia y cuándo).
+            first = detail.sorted(key=lambda r: _MP_STATUS_RANK.get(r.mp_status, 9))
+            event = first.filtered(lambda r: (r.cadence or 'evento') == 'evento')
+            wiz.role_periodic_ids = (first - event).ids
+            wiz.role_event_ids = event.ids
+            wiz.periodic_count = len(first) - len(event)
+            wiz.event_count = len(event)
             # --- Acuses y documentos del puesto
             acks = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code') if emp else Ack
             wiz.ack_ids = acks.ids
