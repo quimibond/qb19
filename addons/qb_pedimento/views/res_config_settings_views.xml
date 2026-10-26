@@ -27,10 +27,6 @@
                         </setting>
                     </block>
                     <block title="Contabilidad" name="qb_pedimento_contab">
-                        <setting string="Cuenta de IVA de importación"
-                                 help="El expediente compara su IVA (más IVA/PRV) contra el saldo de esta cuenta en las facturas publicadas ligadas.">
-                            <field name="qb_pedimento_iva_account_id"/>
-                        </setting>
                         <setting string="Responsable en contabilidad"
                                  help="Recibe el aviso de importaciones sin factura de impuestos o que no cuadran. Vacío: el responsable del expediente.">
                             <field name="qb_pedimento_contabilidad_user_id"/>

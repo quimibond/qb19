@@ -18,11 +18,15 @@ class TestContab(PedimentoCommon):
         company.qb_pedimento_product_igi_id = Product.create({'name': 'IGI', 'type': 'service'})
         company.qb_pedimento_product_dta_id = Product.create({'name': 'DTA', 'type': 'service'})
         company.qb_pedimento_product_prv_id = Product.create({'name': 'PRV', 'type': 'service'})
-        company.qb_pedimento_iva_account_id = cls.env['account.account'].create({
-            'code': '118.02.01', 'name': 'IVA acreditable de importación pagado', 'account_type': 'asset_current'})
+        cls.iva_importacion = cls.env['account.tax'].create({
+            'name': 'IVA(16%) Importacion', 'amount': 16, 'amount_type': 'percent', 'type_tax_use': 'purchase'})
 
     def _factura_impuestos(self, igi, dta, iva):
+        """Como la captura de contabilidad: IGI y DTA sin impuesto, y el IVA
+        de importación como impuesto sobre el valor aduanal, que se anula con
+        una línea igual en negativo sin impuesto."""
         company = self.env.company
+        base = iva / 0.16
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice', 'partner_id': self.proveedor.id, 'invoice_date': '2026-05-28',
             'invoice_line_ids': [
@@ -30,8 +34,9 @@ class TestContab(PedimentoCommon):
                                 'tax_ids': []}),
                 Command.create({'product_id': company.qb_pedimento_product_dta_id.id, 'price_unit': dta,
                                 'tax_ids': []}),
-                Command.create({'name': 'IVA(16%) Importacion', 'price_unit': iva, 'tax_ids': [],
-                                'account_id': company.qb_pedimento_iva_account_id.id}),
+                Command.create({'name': 'Valor aduanal', 'price_unit': base,
+                                'tax_ids': [Command.set(self.iva_importacion.ids)]}),
+                Command.create({'name': 'Valor aduanal', 'price_unit': -base, 'tax_ids': []}),
             ]})
         bill.action_post()
         return bill
