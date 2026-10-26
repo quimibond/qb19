@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.24.1',
+    'version': '19.0.1.25.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -30,6 +30,9 @@ Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema):
   quimibond_sat.queue_budget_seconds  Presupuesto por corrida de la cola (default 600)
   quimibond_sat.rfc_poliza      RFC (coma) que se registran por póliza aunque no
                                 exista su contacto (default SAT, IMSS, Infonavit)
+  quimibond_sat.iva_acreditable_cuentas / iva_trasladado_cuentas / iva_tolerancia
+                                Cuentas de IVA (códigos, coma) y tolerancia ($1,000)
+                                del cuadre «IVA del mes»
   quimibond_sat.auto_bill_min_days / auto_bill_max_days / auto_bill_limit
                                 Ventana (3 a 45 días) y tope por corrida (50) de
                                 las facturas de proveedor creadas desde el SAT
@@ -56,6 +59,7 @@ Endpoint del webhook: POST /quimibond_sat/webhook
         'views/res_partner_views.xml',
         'views/product_template_views.xml',
         'views/sat_pago_views.xml',
+        'views/sat_iva_views.xml',
         'views/account_move_views.xml',
         'views/menus.xml',
     ],

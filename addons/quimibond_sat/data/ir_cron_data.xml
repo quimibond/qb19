@@ -80,6 +80,18 @@
             <field name="nextcall" eval="(DateTime.now().replace(hour=11, minute=37, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- IVA del mes (SAT vs contabilidad): últimos tres meses, cada día. -->
+        <record id="cron_sat_iva_month" model="ir.cron">
+            <field name="name">SAT (Syntage) - IVA del mes: SAT vs contabilidad</field>
+            <field name="model_id" ref="model_sat_iva_month"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_compute()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=12, minute=47, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
         <!-- Correo diario con los hallazgos abiertos (cancelados, monto, moneda).
              Destinatarios en el parámetro quimibond_sat.alert_email. -->
         <record id="cron_sat_daily_alert" model="ir.cron">

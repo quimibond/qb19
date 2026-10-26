@@ -10,6 +10,8 @@ duplicarse y la corrida cierra los que ya no aplican (``_sgi_sweep``).
 import logging
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 
 from odoo.addons.quimibond_sgi.models.sgi_guard import sgi_require_system
@@ -74,6 +76,19 @@ SAT_PENDINGS = [
         'days': 3,
     },
     {
+        # 1.1.0: el IVA del mes según el SAT no cuadra con la contabilidad
+        # (meses recientes, antes de la declaración).
+        'key': 'sat_iva_mes', 'number': 'S3.14', 'model': 'sat.iva.month',
+        'domain': [('cuadra', '=', False)], 'recent_months': 2, 'order': 'mes desc',
+        'title': "meses con el IVA del SAT distinto al de la contabilidad",
+        'todo': "Revise la diferencia antes de calcular la declaración: CFDI sin registrar, pagos sin "
+                "complemento o pólizas de IVA de más.",
+        'row': lambda rec: '%s · %s · SAT %s · contabilidad %s · Δ %s' % (
+            rec.mes.strftime('%Y-%m'), dict(rec._fields['concepto']._description_selection(rec.env))[rec.concepto],
+            '{:,.2f}'.format(rec.sat_iva), '{:,.2f}'.format(rec.odoo_iva), '{:,.2f}'.format(rec.delta)),
+        'days': 2,
+    },
+    {
         'key': 'sat_cancelar_emitida', 'number': 'S2.13', 'model': 'sat.compare.line',
         'domain': [('direction', '=', 'issued'), ('issue', 'in', ('cancelado_odoo', 'cancelado_sat'))],
         'title': "facturas emitidas canceladas en Odoo y vigentes en el SAT (o al revés)",
@@ -94,9 +109,11 @@ class SgiCronSat(models.AbstractModel):
     @api.model
     def _sat_pending_domain(self, spec, company):
         domain = list(spec['domain']) + [('company_id', '=', company.id)]
+        today = fields.Date.context_today(self)
         if spec.get('grace'):
-            limit = fields.Date.context_today(self) - timedelta(days=FALTA_ODOO_GRACE_DAYS)
-            domain.append(('fecha', '<=', limit))
+            domain.append(('fecha', '<=', today - timedelta(days=FALTA_ODOO_GRACE_DAYS)))
+        if spec.get('recent_months'):
+            domain.append(('mes', '>=', today.replace(day=1) - relativedelta(months=spec['recent_months'])))
         return domain
 
     @api.model
@@ -118,6 +135,9 @@ class SgiCronSat(models.AbstractModel):
     def _sat_pending_note(self, spec, records):
         rows = []
         for rec in records[:NOTE_ROWS]:
+            if spec.get('row'):
+                rows.append(spec['row'](rec))
+                continue
             amount = getattr(rec, 'total_sat', None)
             if amount is None:
                 amount = rec.total
@@ -145,7 +165,7 @@ class SgiCronSat(models.AbstractModel):
             if not activity:
                 return
             records = self.env[spec['model']].sudo().search(
-                self._sat_pending_domain(spec, company), order='fecha')
+                self._sat_pending_domain(spec, company), order=spec.get('order', 'fecha'))
             if not records:
                 return
             user_id = self._sat_activity_user_id(activity)

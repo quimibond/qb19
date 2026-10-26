@@ -16,3 +16,5 @@ access_sat_reconcile_wizard_user,sat.reconcile.wizard user,model_sat_reconcile_w
 access_sat_reconcile_wizard_line_user,sat.reconcile.wizard.line user,model_sat_reconcile_wizard_line,account.group_account_user,1,1,1,1
 access_sat_syntage_file_user,sat.syntage.file user,model_sat_syntage_file,account.group_account_user,1,1,1,1
 access_sat_syntage_file_readonly,sat.syntage.file readonly,model_sat_syntage_file,account.group_account_readonly,1,0,0,0
+access_sat_iva_month_user,sat.iva.month user,model_sat_iva_month,account.group_account_user,1,1,1,0
+access_sat_iva_month_readonly,sat.iva.month readonly,model_sat_iva_month,account.group_account_readonly,1,0,0,0
