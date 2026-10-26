@@ -19,6 +19,11 @@ _logger = logging.getLogger(__name__)
 
 INVOICE_TYPES = ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
 GENERIC_RFCS = ('XAXX010101000', 'XEXX010101000')
+# Contrapartes que Odoo registra por póliza aunque no exista su contacto: SAT,
+# IMSS e Infonavit (2026-10-26: 145 CFDI por $13.4M quedaban "solo en el SAT"
+# porque ningún contacto trae su RFC). Se reemplaza con el parámetro
+# quimibond_sat.rfc_poliza (RFC separados por coma).
+DEFAULT_RFC_POLIZA = ('SAT970701NN3', 'IMS421231I45', 'INF7205011ZA')
 # Ligados por una persona: el cruce automático por UUID no los toca.
 MANUAL_METHODS = ('manual', 'sugerido', 'conciliado')
 
@@ -119,7 +124,11 @@ class SatCfdi(models.Model):
     amount_diff = fields.Float(string='Diferencia', compute='_compute_issue', store=True, digits=(16, 2))
     issue = fields.Selection([
         ('ok', 'Cuadra'),
+        ('redondeo', 'Redondeo (menos de $1)'),
+        ('terceros', 'Cuadra sin los pagos a terceros'),
         ('solo_sat', 'Solo en el SAT'),
+        ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
+        ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
@@ -161,31 +170,48 @@ class SatCfdi(models.Model):
         top = partners.filtered(lambda p: not p.parent_id) or partners
         return top[0].commercial_partner_id
 
-    # Al centavo: se tolera un centavo (redondeo de impuestos por línea); a partir
-    # de dos centavos es 'monto'. Si la factura de Odoo está en otra moneda que
-    # el CFDI, los totales no son comparables: 'moneda'.
+    # Al centavo: se tolera un centavo (redondeo de impuestos por línea). De
+    # dos centavos a menos de un peso es 'redondeo' (factura capturada a mano,
+    # fuera de los hallazgos); desde un peso es 'monto', salvo que la diferencia
+    # sean exactamente las líneas de pagos a terceros ('terceros'). Si la
+    # factura de Odoo está en otra moneda que el CFDI: 'moneda'.
     AMOUNT_TOLERANCE = 0.01
+    ROUNDING_TOLERANCE = 1.0
+
+    @api.model
+    def _pago_terceros(self, move):
+        """Total de las líneas de la factura que son pagos a terceros (no van en el CFDI)."""
+        lines = move.invoice_line_ids.filtered(lambda l: l.product_id.product_tmpl_id.sat_pago_terceros)
+        return abs(sum(lines.mapped('price_total')))
 
     @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'move_id.currency_id',
+                 'move_id.invoice_line_ids.price_total', 'move_id.invoice_line_ids.product_id',
                  'estado_sat', 'total', 'moneda', 'match_status')
     def _compute_issue(self):
+        tol = self.AMOUNT_TOLERANCE + 1e-6
         for rec in self:
             move = rec.move_id
             rec.amount_diff = (rec.total - move.amount_total) if move else 0.0
             if rec.match_status == 'ignorado':
                 rec.issue = 'ignorado'
             elif not move:
-                rec.issue = 'solo_sat'
+                rec.issue = 'cancelado_sin_factura' if rec.estado_sat == 'cancelado' else 'solo_sat'
             elif rec.estado_sat == 'cancelado' and move.state == 'posted':
                 rec.issue = 'cancelado_sat'
             elif rec.estado_sat != 'cancelado' and move.state == 'cancel':
                 rec.issue = 'cancelado_odoo'
+            elif move.state == 'draft':
+                rec.issue = 'borrador'
             elif move.currency_id.name != (rec.moneda or 'MXN'):
                 rec.issue = 'moneda'
-            elif abs(rec.amount_diff) > self.AMOUNT_TOLERANCE + 1e-6:
-                rec.issue = 'monto'
-            else:
+            elif abs(rec.amount_diff) <= tol:
                 rec.issue = 'ok'
+            elif abs(rec.amount_diff) < self.ROUNDING_TOLERANCE:
+                rec.issue = 'redondeo'
+            else:
+                terceros = self._pago_terceros(move)
+                explained = terceros and abs(rec.total - (move.amount_total - terceros)) <= tol
+                rec.issue = 'terceros' if explained else 'monto'
 
     # ── ingesta ────────────────────────────────────────────────────────
 
@@ -340,7 +366,7 @@ class SatCfdi(models.Model):
                            'note': _('La factura %s con este UUID quedó ligada al CFDI %s')
                            % (taken.move_id.name, taken.uuid)})
             elif not rec.move_id:
-                if rec.partner_id.commercial_partner_id.sat_cfdi_policy == 'poliza':
+                if rec._is_poliza():
                     # Banco / impuestos: Odoo lo registra por póliza, no como factura.
                     rec.write({'match_status': 'ignorado', 'match_method': False,
                                'ignore_reason': _('Política del contacto: se registra por póliza')})
@@ -348,6 +374,20 @@ class SatCfdi(models.Model):
                     # Sin cambio no se escribe: el cron repasa cientos de
                     # pendientes que siguen igual.
                     rec.write({'match_status': 'solo_sat', 'match_method': False})
+
+    @api.model
+    def _rfc_poliza(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.rfc_poliza')
+        if not raw:
+            return set(DEFAULT_RFC_POLIZA)
+        return {r.strip().upper() for r in raw.replace(';', ',').split(',') if r.strip()}
+
+    def _is_poliza(self):
+        """Odoo registra a esta contraparte por póliza: por la política de su
+        contacto o porque su RFC está en quimibond_sat.rfc_poliza."""
+        self.ensure_one()
+        return (self.partner_id.commercial_partner_id.sat_cfdi_policy == 'poliza'
+                or (self.counterparty_rfc or '').upper() in self._rfc_poliza())
 
     # ── segunda pasada: sugerencias por RFC + monto + fecha ────────────
 
