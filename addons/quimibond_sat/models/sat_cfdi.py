@@ -15,6 +15,8 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from .res_partner import LISTA_69B
+
 _logger = logging.getLogger(__name__)
 
 INVOICE_TYPES = ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
@@ -283,7 +285,26 @@ class SatCfdi(models.Model):
                 self.env['sat.cfdi.pago'].sudo().search([
                     ('invoice_uuid', '=ilike', rec.uuid), ('invoice_cfdi_id', '=', False)])._relink()
         rec._match_move()
+        rec._update_partner_69b()
         return rec
+
+    def _update_partner_69b(self):
+        """Copia al proveedor el estado 69-B de su CFDI más reciente (vacío si
+        ya no está en la lista). Un CFDI más viejo que el último visto no lo
+        cambia: la descarga histórica no regresa un estado ya superado."""
+        known = dict(LISTA_69B)
+        for rec in self:
+            partner = rec.partner_id.commercial_partner_id
+            if rec.direction != 'received' or not partner or not rec.fecha_emision:
+                continue
+            if partner.sat_69b_seen and rec.fecha_emision < partner.sat_69b_seen:
+                continue
+            status = (rec.emisor_blacklist or '').strip().lower()
+            vals = {'sat_69b_seen': rec.fecha_emision}
+            if status in known or not status:
+                vals['sat_69b_status'] = status or False
+            if any(partner[k] != v for k, v in vals.items()):
+                partner.sudo().write(vals)
 
     # ── cruce ──────────────────────────────────────────────────────────
 
@@ -779,8 +800,30 @@ class SatCfdi(models.Model):
                 coverage.append('%s %s: %s' % (company.name, label, until or '—'))
                 if not until or (today - until).days > self.STALE_DAYS:
                     stale.append('%s %s (%s)' % (company.name, label, until or 'sin datos'))
-        if not lines and not stale:
+        # Facturas publicadas de proveedores en la 69-B (presunto o definitivo):
+        # riesgo fiscal aunque cuadren al centavo.
+        efos = Line.search([('company_id', 'in', companies.ids), ('lista_69b', 'in', ('presumed', 'definitive')),
+                            ('bucket', '=', 'ambos'), ('estado_sat', '=', 'vigente'), ('state_odoo', '=', 'posted')])
+        if not lines and not stale and not efos:
             return False
+        efos_by = {}
+        for line in efos:
+            item = efos_by.setdefault((line.counterparty_name or '', line.counterparty_rfc or '', line.lista_69b),
+                                      [0, 0.0])
+            item[0] += 1
+            item[1] += line.total_sat_mxn or 0.0
+        status_labels = dict(Line._fields['lista_69b']._description_selection(self.env))
+        efos_html = ''
+        if efos_by:
+            efos_html = (
+                '<p><b>Proveedores en la lista 69-B del SAT (operaciones simuladas) con facturas publicadas:</b> '
+                'sus CFDI no son deducibles salvo que se acredite la operación.</p>'
+                '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Proveedor</th><th>RFC</th>'
+                '<th>Estado</th><th>CFDI</th><th>Total MXN</th></tr>%s</table>') % ''.join(
+                '<tr><td>%s</td><td>%s</td><td>%s</td><td style="text-align:right">%s</td>'
+                '<td style="text-align:right">%s</td></tr>' % (
+                    name, rfc, status_labels.get(status, status), n, '{:,.2f}'.format(total))
+                for (name, rfc, status), (n, total) in sorted(efos_by.items(), key=lambda kv: -kv[1][1]))
         since = fields.Date.today() - timedelta(days=new_days)
         new = lines.filtered(lambda l: l.fecha and l.fecha >= since)
         labels = dict(Line._fields['issue']._description_selection(self.env))
@@ -802,7 +845,7 @@ class SatCfdi(models.Model):
                 '{:,.2f}'.format(line.total_sat or 0.0), '{:,.2f}'.format(line.delta or 0.0))
             for line in new[:200])
         body = (
-            '<p>Datos del SAT hasta: %s.</p>%s'
+            '<p>Datos del SAT hasta: %s.</p>%s%s'
             '<p>Hallazgos abiertos en la comparación SAT vs Odoo (Δ en MXN):</p>'
             '<table border="1" cellpadding="4" cellspacing="0"><tr><th>Hallazgo</th><th>Docs</th><th>Δ</th></tr>'
             '%s</table>'
@@ -813,9 +856,11 @@ class SatCfdi(models.Model):
         ) % ('; '.join(coverage),
              ('<p><b>Sin datos nuevos del SAT desde hace más de %s días: %s.</b> Revisa la extracción '
               'diaria (Datos → Bitácora Syntage).</p>' % (self.STALE_DAYS, ', '.join(stale))) if stale else '',
-             rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
+             efos_html, rows, new_days, len(new), detail or '<tr><td colspan="7">Ninguno</td></tr>')
         subject = _('SAT vs Odoo: %(open)s hallazgos abiertos, %(new)s nuevos') % {
             'open': len(lines), 'new': len(new)}
+        if efos_by:
+            subject = _('%s proveedor(es) en la lista 69-B') % len({k[1] for k in efos_by}) + ' · ' + subject
         if stale:
             subject = _('SAT sin datos nuevos: %s') % ', '.join(stale) + ' · ' + subject
         mail = self.env['mail.mail'].sudo().create({
