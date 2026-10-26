@@ -17,6 +17,10 @@ class TestDosificacionTintoreria(TransactionCase):
         # Categoría propia: en bases reales puede no existir el xmlid product.product_category_all.
         cls.cat_general = Categ.create({'name': 'General (prueba)'})
         cls.kg = cls.env.ref('uom.product_uom_kgm')
+        # Precisión de producción (kg a 0.0001 y «Product Unit» a 4 decimales): una base nueva redondea el kg a
+        # 0.01 y las dosis chicas (34 g de colorante) salían redondeadas hacia arriba.
+        cls.kg.rounding = 0.0001
+        cls.env['decimal.precision'].search([('name', 'in', ('Product Unit', 'Product Unit of Measure'))]).digits = 4
 
         def producto(nombre, categ=None, codigo=None):
             return cls.env['product.product'].create({
