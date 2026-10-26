@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """2.11.0: rendimiento de tela tejida guardado (editable para forzarlo) y ficha de referencia por revisión."""
+from datetime import date
+
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -44,19 +47,24 @@ class TestRendimiento(TransactionCase):
         nueva.active = False
         self.assertEqual(self.Ficha._ft_de_producto(product), vieja, "Solo cuentan las activas")
 
-    def test_03_tela_tubular(self):
-        """2.14.0: en la circular de 30" el ancho de 98 cm es el tubo aplanado; el rendimiento usa 1.96 m."""
+    def test_03_salida_de_la_tela_de_la_maquina(self):
+        """2.14.0: la circular dice si entrega la tela en tubo; con tubular el rendimiento usa el doble del ancho."""
+        Config = self.env['ficha.tecnica.maquina.config']
+        tubular = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 97 tubular prueba', 'ft_tipo_id': self.circular.id})
+        config = Config.create({'workcenter_id': tubular.id, 'date_from': date(2020, 1, 1), 'diametro': 30})
         ficha = self.Ficha.create({'articulo': 'ZZ040Q46HNT098', 'peso_acondicionado': 40,
-                                   'ancho_acondicionado': 98, 'diametro': 30})
-        self.assertTrue(ficha.tela_tubular, "98 cm < mitad de π × 30 in (119.7 cm)")
-        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 1.96), places=3)
-        abierta = self.Ficha.create({'articulo': 'ZZ035Q22HNT200', 'peso_acondicionado': 48,
-                                     'ancho_acondicionado': 200, 'diametro': 32})
-        self.assertFalse(abierta.tela_tubular, "200 cm en 32 in es tela abierta")
-        self.assertAlmostEqual(abierta.rendimiento_tela_tejida, 1000 / (48 * 2.0), places=3)
-        sin_diametro = self.Ficha.create({'articulo': 'ZZ041Q46HNT098', 'peso_acondicionado': 40,
-                                          'ancho_acondicionado': 98})
-        self.assertFalse(sin_diametro.tela_tubular, "Sin diámetro no se supone nada")
-        ficha.tela_tubular = False
+                                   'ancho_acondicionado': 98, 'maquina_tejido': tubular.id})
+        self.assertEqual(ficha.maquina_config_id, config)
+        self.assertFalse(ficha.salida_tela, "Sin capturar en la máquina")
         self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 0.98), places=3,
-                               msg="Se puede desmarcar a mano")
+                               msg="Sin dato de la máquina el ancho se toma como abierto")
+        linea = config.valor_ids.filtered(lambda v: v.parametro_id.code == 'salida_tela')
+        self.assertTrue(linea, "La configuración trae el renglón del parámetro nuevo")
+        linea.valor_texto = 'tubular'
+        self.assertEqual(ficha.salida_tela, 'Tubular', "La opción se normaliza y la ficha la toma de su máquina")
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 1.96), places=3,
+                               msg="98 cm de tubo aplanado = 1.96 m de tela abierta")
+        linea.valor_texto = 'Abierta'
+        self.assertAlmostEqual(ficha.rendimiento_tela_tejida, 1000 / (40 * 0.98), places=3)
+        with self.assertRaises(ValidationError):
+            linea.valor_texto = 'Doble'

@@ -667,7 +667,7 @@ relación de baño, tiempo de ciclo, bandas, duración de rama, merma y alertas
 acordadas), la ayuda del acabado en proceso y los avisos de la ficha de
 acabado dicen «Clasificación final» donde decían «Inspección».
 
-## Tela tubular: el rendimiento usa el ancho abierto (2.14.0, 2026-10-26)
+## Salida de la tela de la circular: tubular o abierta (2.14.0, 2026-10-26)
 
 Dirección General vio que WD040Q46HNT098 marcaba **25.51 m/kg**. La fórmula
 estaba bien (1000 / (40 g/m² × 0.98 m)), pero los 98 cm de las circulares de
@@ -678,18 +678,27 @@ producción real (metros acabados ÷ kg teñidos que consumió la orden):
 |---|---:|---:|---:|
 | WD040Q46HNT098 (40 g/m², 98 cm, 30") | 25.51 | 12.76 | ~13.9 (WD040Q46JNT159) |
 | WN048Q66HNT098 (50 g/m², 98 cm, 30") | 20.41 | 10.20 | ~10.3 (WN055Q66JNT162) |
-| WJ047Q21HNT112 (56 g/m², 102 cm, 32") | 17.51 | 8.75 | ~9.3 (WJ060Q21JNT157) |
 
-Las telas de 200 y 218 cm de las circulares de 32" sí son abiertas.
+Tubular o abierta depende de cómo enrolla la máquina, no del artículo
+(decisión de Jose, 2026-10-26):
 
-- **`tela_tubular`** («Ancho de tela tubular») en la ficha de tejido: el
-  rendimiento usa el **doble** del ancho. Se propone solo cuando el ancho es
-  menor que la mitad de la circunferencia de la máquina (π × diámetro): una
-  tela abierta no puede ser tan angosta (30" → 119.7 cm; 32" → 127.7 cm). Sin
-  diámetro no se marca. Se puede cambiar a mano; se vuelve a proponer si
-  cambian el ancho o el diámetro.
-- Ni el peso ni el ancho capturados cambian; solo el rendimiento calculado.
-  Los rendimientos forzados a mano no se tocan.
-- Efecto en tintorería: el grupo de cargas del jet ahora sale bien (WD040
-  pasa de «fuera de los grupos: capacidad general» al grupo C).
-- Pruebas: `tests/test_rendimiento.py` (`test_03_tela_tubular`).
+- Parámetro nuevo de la circular **«Salida de la tela»** (`salida_tela`,
+  texto con opciones «Tubular, Abierta»), en la configuración por fecha como la
+  galga y el diámetro: si cambia el enrollador, se registra una configuración
+  nueva con su fecha.
+- La ficha de tejido lo toma de la configuración con que se elaboró
+  (`salida_tela`, calculado y guardado). Con «Tubular» el rendimiento usa el
+  **doble** del ancho. Sin dato en la máquina, el ancho se toma como abierto y
+  la ficha lo avisa.
+- Ni el peso ni el ancho capturados cambian; los rendimientos forzados a mano
+  no se tocan. Capturar el dato en la máquina recalcula sus fichas.
+- Datos (por MCP, al desplegar): «Tubular» en las circulares de 30" con
+  fichas (1–4, 7–9, 14–16, 19–23, 25–27, 30) y «Abierta» en las de 32" (17,
+  18, 28, 31–37). Las que no tienen fichas (5, 6, 24, 29, 38, 39, 40) quedan
+  vacías hasta que la planta lo diga.
+- **WJ047Q21HNT112** (circulares 17 y 18, que abren la tela) tiene 102 cm de
+  ancho: con la máquina abierta su rendimiento sale 17.5 m/kg y la producción
+  real da ~9.3. El ancho parece medido doblado; lo revisa la planta.
+- Efecto en tintorería: el grupo de cargas del jet sale bien (WD040 pasa de
+  «fuera de los grupos: capacidad general» al grupo C).
+- Pruebas: `tests/test_rendimiento.py` (`test_03_salida_de_la_tela_de_la_maquina`).

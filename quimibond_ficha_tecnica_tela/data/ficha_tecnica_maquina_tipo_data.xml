@@ -76,4 +76,15 @@
         <field name="unit">rpm</field>
         <field name="kind">num</field>
     </record>
+    <!-- 2.14.0: cómo entrega la tela la circular. Tubular: el ancho de sus fichas es el del tubo aplanado y el
+         rendimiento usa el doble. Registro nuevo en archivo noupdate: el update lo crea si no existe. -->
+    <record id="ft_maquina_param_circular_salida_tela" model="ficha.tecnica.maquina.parametro">
+        <field name="tipo_id" ref="ft_maquina_tipo_tejido_circular"/>
+        <field name="sequence">60</field>
+        <field name="code">salida_tela</field>
+        <field name="name">Salida de la tela</field>
+        <field name="kind">text</field>
+        <field name="opciones">Tubular, Abierta</field>
+        <field name="notas">Tubular: la tela sale en tubo y el ancho de las fichas es el del tubo aplanado (dos capas). Abierta: la máquina abre la tela.</field>
+    </record>
 </odoo>
