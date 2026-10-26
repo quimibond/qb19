@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_tintoreria_pendientes"
+              name="Programar Tintorería"
+              parent="mrp.menu_mrp_manufacturing"
+              action="action_tintoreria_pendientes"
+              groups="mrp.group_mrp_user"
+              sequence="25"/>
+    <menuitem id="menu_tintoreria_programaciones"
+              name="Programaciones de Tintorería"
+              parent="mrp.menu_mrp_reporting"
+              action="action_tintoreria_programacion"
+              groups="mrp.group_mrp_user"
+              sequence="40"/>
+    <menuitem id="menu_tintoreria_formula_tiempo"
+              name="Tiempos de Tintorería"
+              parent="mrp.menu_mrp_configuration"
+              action="action_tintoreria_formula_tiempo"
+              groups="mrp.group_mrp_manager"
+              sequence="60"/>
+</odoo>

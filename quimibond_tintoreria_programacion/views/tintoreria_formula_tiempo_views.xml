@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="tintoreria_formula_tiempo_list_view" model="ir.ui.view">
+        <field name="name">tintoreria.formula.tiempo.list</field>
+        <field name="model">tintoreria.formula.tiempo</field>
+        <field name="arch" type="xml">
+            <list string="Tiempos de Tintorería" editable="bottom">
+                <field name="formula_id"/>
+                <field name="workcenter_id" options="{'no_create': True}"/>
+                <field name="minutos"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="tintoreria_formula_tiempo_search_view" model="ir.ui.view">
+        <field name="name">tintoreria.formula.tiempo.search</field>
+        <field name="model">tintoreria.formula.tiempo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="formula_id"/>
+                <field name="workcenter_id"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Fórmula" name="group_formula" context="{'group_by': 'formula_id'}"/>
+                    <filter string="HTJ" name="group_htj" context="{'group_by': 'workcenter_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tintoreria_formula_tiempo" model="ir.actions.act_window">
+        <field name="name">Tiempos de Tintorería (fórmula × HTJ)</field>
+        <field name="res_model">tintoreria.formula.tiempo</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>
