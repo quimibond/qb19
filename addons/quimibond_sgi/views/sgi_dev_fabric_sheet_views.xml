@@ -78,6 +78,9 @@
                             <field name="sgi_proposed_date"/>
                             <field name="sgi_measured_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_measured_date"/>
+                            <field name="sgi_has_tintoreria" invisible="1"/>
+                            <field name="sgi_tint_validated_by_id" widget="many2one_avatar_user" invisible="not sgi_has_tintoreria"/>
+                            <field name="sgi_tint_validated_date" invisible="not sgi_has_tintoreria"/>
                             <field name="sgi_validated_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_validated_date"/>
                         </group>
@@ -92,6 +95,10 @@
                         <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"
                                 invisible="sgi_validated_by_id or sgi_measured_by_id"
                                 confirm="Firma la medición con su usuario y la fecha de hoy. ¿Continuar?"/>
+                        <!-- 57.193.0: la tintorería la valida su supervisor antes que el acabado. -->
+                        <button name="action_sgi_validate_tintoreria" type="object" string="Validar tintorería" class="btn-secondary" icon="fa-tint"
+                                invisible="not sgi_has_tintoreria or sgi_tint_validated_by_id or not sgi_proposed_by_id"
+                                confirm="Firma la validación de la tintorería con su usuario y la fecha de hoy. ¿Continuar?"/>
                         <button name="action_sgi_validate" type="object" string="Validar" class="btn-primary" icon="fa-check"
                                 invisible="sgi_validated_by_id or not sgi_proposed_by_id"
                                 confirm="Firma la validación de la ficha con su usuario y la fecha de hoy. ¿Continuar?"/>

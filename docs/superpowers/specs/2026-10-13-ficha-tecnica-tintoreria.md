@@ -1,5 +1,10 @@
 # Ficha técnica de tintorería: lo que falta para cerrar «una sola ficha por proceso»
 
+> **Sustituido el 2026-10-26** (Dirección General): la tintorería es una operación de la lista de materiales del
+> acabado (orden en kg), no una ficha ni un artículo teñido. Ya no se construye `ficha.tecnica.tintoreria`: los datos
+> del formato son datos del artículo en el jet y la ficha de acabado los junta en su pestaña Tintorería
+> (`quimibond_ficha_tecnica_tela` 2.16.0); la validación por área está en `quimibond_sgi` 57.193.0.
+
 Para Jose Sacramento (Consolti). Pedido de Dirección General, 2026-10-13.
 
 ## Contexto

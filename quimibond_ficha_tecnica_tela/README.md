@@ -722,3 +722,20 @@ WC090Q11HNT092 (92 cm, rinde como tubo: ~5.9 m/kg acabado) 341 veces en la 23, m
   cambiar la máquina.
 - Sin migración: las fichas existentes siguen a su máquina hasta que se fije algo.
 - Pruebas: `tests/test_rendimiento.py` (`test_04_medicion_del_ancho_fijada_en_la_ficha`).
+
+## Tintorería en la ficha de acabado (2.16.0, 2026-10-26)
+
+Dirección General: la tintorería es una **operación de la lista de materiales del acabado** (la orden en kg
+lleva devanado, tintorería, abridora, rama e Inspección), no una ficha aparte ni un artículo teñido. La Ficha
+técnica de tintorería F-P-D01-33 queda así:
+
+- **Datos del artículo en el jet** (Máquinas → Procesos por artículo, tipo Tintorería): a tiempo de ciclo, kg por
+  carga y relación de baño se agregan temperatura, gradiente de subida y de bajada, brazo del plegador (%),
+  velocidad y presión de la bomba y acumulador inicial y cargado (%). Sin unidad las que el formato no da:
+  las pone Tintorería en Configuración → Tipos de máquina.
+- **Volumen de baño** del artículo en el jet: kg por carga × relación de baño (la del artículo o la de la
+  máquina). Se calcula.
+- **Pestaña «Tintorería»** de la ficha de acabado: el jet de la lista de materiales, el artículo en cada jet y
+  la fórmula y auxiliares, que son los componentes asignados a la operación de tintorería. Mientras el teñido
+  siga como artículo aparte (posición 9 = I), la fórmula sale de su lista (sin la tela). Avisa si la lista no
+  tiene ni jet ni fórmula, si el jet no tiene componentes o si el artículo no tiene datos en ningún jet.
