@@ -27,7 +27,7 @@ GENERIC_RFCS = ('XAXX010101000', 'XEXX010101000')
 # quimibond_sat.rfc_poliza (RFC separados por coma).
 DEFAULT_RFC_POLIZA = ('SAT970701NN3', 'IMS421231I45', 'INF7205011ZA')
 # Ligados por una persona: el cruce automático por UUID no los toca.
-MANUAL_METHODS = ('manual', 'sugerido', 'conciliado')
+MANUAL_METHODS = ('manual', 'sugerido', 'conciliado', 'sustitucion')
 
 
 def _parse_dt(value):
@@ -133,6 +133,7 @@ class SatCfdi(models.Model):
         ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
         ('moneda', 'Moneda distinta'),
+        ('moneda_ok', 'Cuadra en pesos (otra moneda)'),
         ('cancelado_sat', 'Cancelado en el SAT, publicado en Odoo'),
         ('cancelado_odoo', 'Cancelado en Odoo, vigente en el SAT'),
         ('ignorado', 'Ignorado'),
@@ -186,14 +187,36 @@ class SatCfdi(models.Model):
         lines = move.invoice_line_ids.filtered(lambda l: l.product_id.product_tmpl_id.sat_pago_terceros)
         return abs(sum(lines.mapped('price_total')))
 
+    def _odoo_amount(self):
+        """Total de Odoo contra el que se compara este CFDI. Una factura con
+        varios CFDI se reparte entre ellos según su monto; un CFDI capturado
+        en varias facturas publicadas (mismo UUID) se compara contra la suma."""
+        self.ensure_one()
+        move = self.move_id
+        if not move:
+            return 0.0
+        if self.estado_sat != 'cancelado' and self.id:
+            siblings = self.sudo().search([
+                ('move_id', '=', move.id), ('tipo', 'in', ('I', 'E')),
+                ('estado_sat', '!=', 'cancelado'), ('match_status', '!=', 'ignorado')])
+            total = sum(siblings.mapped('total'))
+            if len(siblings) > 1 and total:
+                return move.amount_total * self.total / total
+        bills, _method = self._candidate_moves()
+        posted = bills.filtered(lambda m: m.state == 'posted' and m.currency_id == move.currency_id)
+        if move in posted and len(posted) > 1:
+            return sum(posted.mapped('amount_total'))
+        return move.amount_total
+
     @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'move_id.currency_id',
                  'move_id.invoice_line_ids.price_total', 'move_id.invoice_line_ids.product_id',
-                 'estado_sat', 'total', 'moneda', 'match_status')
+                 'move_id.amount_total_signed', 'estado_sat', 'total', 'moneda', 'tipo_cambio', 'match_status')
     def _compute_issue(self):
         tol = self.AMOUNT_TOLERANCE + 1e-6
         for rec in self:
             move = rec.move_id
-            rec.amount_diff = (rec.total - move.amount_total) if move else 0.0
+            odoo_amount = rec._odoo_amount()
+            rec.amount_diff = (rec.total - odoo_amount) if move else 0.0
             if rec.match_status == 'ignorado':
                 rec.issue = 'ignorado'
             elif not move:
@@ -205,14 +228,18 @@ class SatCfdi(models.Model):
             elif move.state == 'draft':
                 rec.issue = 'borrador'
             elif move.currency_id.name != (rec.moneda or 'MXN'):
-                rec.issue = 'moneda'
+                # Compra de divisas: el banco timbra en pesos y la factura va en
+                # dólares. Si en pesos cuadran (al peso), no es hallazgo.
+                sat_mxn = rec.total * (rec.tipo_cambio or 1.0)
+                odoo_mxn = abs(move.amount_total_signed)
+                rec.issue = 'moneda_ok' if abs(sat_mxn - odoo_mxn) <= self.ROUNDING_TOLERANCE else 'moneda'
             elif abs(rec.amount_diff) <= tol:
                 rec.issue = 'ok'
             elif abs(rec.amount_diff) < self.ROUNDING_TOLERANCE:
                 rec.issue = 'redondeo'
             else:
                 terceros = self._pago_terceros(move)
-                explained = terceros and abs(rec.total - (move.amount_total - terceros)) <= tol
+                explained = terceros and abs(rec.total - (odoo_amount - terceros)) <= tol
                 rec.issue = 'terceros' if explained else 'monto'
 
     # ── ingesta ────────────────────────────────────────────────────────
@@ -479,12 +506,23 @@ class SatCfdi(models.Model):
                 rec.write({'suggested_move_id': move.id or False, 'suggestion_reason': reason or False})
         return found
 
+    def _crossed_on(self, move):
+        """Los otros CFDI ligados a `move` que este desplaza (XML cruzado). Si
+        junto con este suman el total de la factura, no estaban cruzados: la
+        factura trae varios CFDI y se quedan."""
+        self.ensure_one()
+        others = self.sudo().search([('move_id', '=', move.id), ('id', '!=', self.id)])
+        vigentes = others.filtered(lambda c: c.estado_sat != 'cancelado' and c.tipo in ('I', 'E'))
+        if vigentes and abs(sum(vigentes.mapped('total')) + self.total - move.amount_total) < self.ROUNDING_TOLERANCE:
+            return others.browse()
+        return others
+
     def action_accept_suggestion(self):
         for rec in self:
             move = rec.suggested_move_id
             if not move:
                 continue
-            others = self.sudo().search([('move_id', '=', move.id), ('id', '!=', rec.id)])
+            others = rec._crossed_on(move)
             others.write({
                 'move_id': False, 'match_method': False, 'match_status': 'solo_sat',
                 'note': _('XML cruzado: la factura %(move)s se ligó al CFDI %(uuid)s') % {
@@ -535,16 +573,27 @@ class SatCfdi(models.Model):
         else:
             return Move
         tol = max(1.0, tol_pct * abs(self.total)) if tol_pct else self.AMOUNT_TOLERANCE
-        domain += [('amount_total', '>=', abs(self.total) - tol), ('amount_total', '<=', abs(self.total) + tol)]
         date = fields.Date.to_date(self.fecha_emision) if self.fecha_emision else None
         if date and days:
             domain += [('invoice_date', '>=', date - timedelta(days=days)),
                        ('invoice_date', '<=', date + timedelta(days=days))]
+        moves = Move.search(domain + [('amount_total', '>=', abs(self.total) - tol),
+                                      ('amount_total', '<=', abs(self.total) + tol)])
+
+        def linked(move):
+            return sum(move.sat_cfdi_ids.filtered(
+                lambda c: c != self and c.estado_sat != 'cancelado' and c.tipo in ('I', 'E')).mapped('total'))
+
+        # Factura con varios CFDI: ya tiene otro ligado y lo que le falta es este.
+        bigger = Move.search(domain + [('amount_total', '>', abs(self.total) + tol), ('sat_cfdi_ids', '!=', False)],
+                             limit=200)
+        moves |= bigger.filtered(lambda m: abs(m.amount_total - linked(m) - abs(self.total)) <= tol)
 
         def key(move):
             dd = abs((move.invoice_date - date).days) if (date and move.invoice_date) else 999
-            return (round(abs(move.amount_total - abs(self.total)), 2), dd, -move.id)
-        return Move.search(domain).sorted(key=key)
+            saldo = move.amount_total - linked(move) if move in bigger else move.amount_total
+            return (round(abs(saldo - abs(self.total)), 2), dd, -move.id)
+        return moves.sorted(key=key)
 
     def _reconcile_with(self, move, attach_xml=True):
         """Liga este CFDI a `move` (una persona lo decidió). Si la factura
@@ -555,7 +604,7 @@ class SatCfdi(models.Model):
             raise UserError(_('La factura debe ser de la misma compañía que el CFDI.'))
         if move.move_type not in INVOICE_TYPES:
             raise UserError(_('Solo se concilia contra facturas o notas de crédito.'))
-        others = self.sudo().search([('move_id', '=', move.id), ('id', '!=', self.id)])
+        others = self._crossed_on(move)
         if others:
             others.write({
                 'move_id': False, 'match_method': False, 'match_status': 'solo_sat',
@@ -877,7 +926,15 @@ class SatCfdi(models.Model):
         if 'move_id' in vals and 'match_method' not in vals:
             vals = dict(vals, match_method='manual' if vals['move_id'] else False,
                         match_status='matched' if vals['move_id'] else 'solo_sat')
-        return super().write(vals)
+        moves_before = self.mapped('move_id') if 'move_id' in vals else None
+        res = super().write(vals)
+        if moves_before is not None:
+            # Los demás CFDI de esas facturas cambian de parte (factura con varios CFDI).
+            moves = moves_before | self.mapped('move_id')
+            siblings = self.sudo().search([('move_id', 'in', moves.ids), ('id', 'not in', self.ids)])
+            if siblings:
+                self.env.add_to_compute(self._fields['issue'], siblings)
+        return res
 
     # Ventana del cruce de cada hora (días de emisión o de alta del CFDI). Lo
     # más viejo se repasa en la pasada completa de la noche.

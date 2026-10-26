@@ -54,6 +54,10 @@ class SatCfdiFolio(models.Model):
         mine = docs.filtered(lambda d: (d.attachment_uuid or '').lower() == (self.uuid or '').lower())
         if mine:
             return _('la factura ya tenía este folio fiscal')
+        # Los documentos de otros CFDI ligados a la misma factura (factura con
+        # varios CFDI) se quedan; solo se quita el de un CFDI que no es de ella.
+        linked = {(u or '').lower() for u in self.sudo().search([('move_id', '=', move.id)]).mapped('uuid')}
+        docs = docs.filtered(lambda d: (d.attachment_uuid or '').lower() not in linked)
         try:
             attachment = self._xml_attachment_on(move)
             if not attachment:
