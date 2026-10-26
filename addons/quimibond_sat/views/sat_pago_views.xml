@@ -109,7 +109,7 @@
             <list create="0" edit="0" delete="0"
                   decoration-danger="issue in ('complemento_sin_pago', 'complemento_duplicado')"
                   decoration-warning="issue == 'sin_complemento'"
-                  decoration-muted="issue in ('pue', 'cancelado', 'sin_factura')">
+                  decoration-muted="issue in ('pue', 'cancelado', 'sin_factura', 'rep_en_plazo', 'revertida')">
                 <field name="cfdi_id" column_invisible="1"/>
                 <field name="move_id" column_invisible="1"/>
                 <field name="fecha"/>
@@ -123,6 +123,7 @@
                 <field name="pagado_sat"/>
                 <field name="pagado_odoo"/>
                 <field name="delta"/>
+                <field name="fecha_pago_odoo" optional="hide"/>
                 <field name="saldo_sat" optional="hide"/>
                 <field name="saldo_odoo" optional="hide"/>
                 <field name="n_pagos"/>
