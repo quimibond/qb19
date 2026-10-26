@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Estado del SAT visible en la factura: qué CFDI del SAT están ligados a
 ella y un aviso cuando el SAT y Odoo no coinciden (cancelada en uno y no en
-el otro, o totales distintos)."""
+el otro, o totales distintos) o cuando el proveedor está en la lista 69-B.
+Las facturas de un proveedor 69-B definitivo no se publican."""
 from datetime import timedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+from .res_partner import RIESGO_69B
 
 
 class AccountMove(models.Model):
@@ -28,11 +32,31 @@ class AccountMove(models.Model):
             vigentes = cfdis.filtered(lambda c: c.estado_sat != 'cancelado') or cfdis
             move.sat_uuid = (vigentes[:1].uuid or '').upper() if vigentes else False
 
-    @api.depends('sat_cfdi_ids.estado_sat', 'sat_cfdi_ids.issue', 'sat_cfdi_ids.total', 'state', 'amount_total')
+    def _sat_69b_alerta(self):
+        """Aviso 69-B de una factura de proveedor, o False."""
+        self.ensure_one()
+        partner = self.commercial_partner_id
+        if not self.is_purchase_document(include_receipts=False) or partner.sat_69b_status not in RIESGO_69B:
+            return False
+        if partner.sat_69b_status == 'definitive':
+            return _('%s está en la lista 69-B DEFINITIVA del SAT (operaciones simuladas): sus CFDI no '
+                     'son deducibles salvo que se acredite que las operaciones fueron reales.') % partner.name
+        return _('%s está en la lista 69-B del SAT como PRESUNTO (operaciones simuladas): revise con '
+                 'Contabilidad antes de pagar.') % partner.name
+
+    @api.depends('sat_cfdi_ids.estado_sat', 'sat_cfdi_ids.issue', 'sat_cfdi_ids.total', 'state', 'amount_total',
+                 'commercial_partner_id.sat_69b_status')
     def _compute_sat(self):
         for move in self:
             cfdis = move.sat_cfdi_ids.filtered(lambda c: c.tipo in ('I', 'E'))
             move.sat_cfdi_count = len(move.sat_cfdi_ids)
+            alerta_69b = move._sat_69b_alerta()
+            if alerta_69b:
+                # Lo más grave va primero: el aviso 69-B tapa los demás.
+                move.sat_estado = ('vigente' if cfdis.filtered(lambda c: c.estado_sat != 'cancelado')
+                                   else 'cancelado') if cfdis else 'sin_cfdi'
+                move.sat_alerta = alerta_69b
+                continue
             if not cfdis:
                 move.sat_estado = 'sin_cfdi'
                 move.sat_alerta = False
@@ -51,6 +75,20 @@ class AccountMove(models.Model):
                     'sat': c.total, 'odoo': move.amount_total}
             else:
                 move.sat_alerta = False
+
+    def _post(self, soft=True):
+        """No se publican facturas de un proveedor 69-B definitivo, salvo que
+        Contabilidad haya documentado sus operaciones en el contacto."""
+        blocked = self.filtered(lambda m: m.is_purchase_document(include_receipts=False)
+                                and m.commercial_partner_id.sat_69b_status == 'definitive'
+                                and not m.commercial_partner_id.sat_69b_autorizado)
+        if blocked:
+            raise UserError(_(
+                'No se puede publicar: %(partners)s está en la lista 69-B DEFINITIVA del SAT '
+                '(operaciones simuladas) y sus CFDI no son deducibles. Si Contabilidad acreditó que '
+                'las operaciones son reales, marque "69-B: operaciones documentadas" en el contacto.')
+                % {'partners': ', '.join(sorted(set(blocked.mapped('commercial_partner_id.name'))))})
+        return super()._post(soft=soft)
 
     def action_sat_reconcile(self):
         self.ensure_one()

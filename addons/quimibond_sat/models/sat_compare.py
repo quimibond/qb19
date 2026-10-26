@@ -11,6 +11,8 @@ cancelado_sat, cancelado_odoo.
 from odoo import fields, models, tools
 from odoo.tools.sql import column_exists, table_exists
 
+from .res_partner import LISTA_69B
+
 
 class SatCompareLine(models.Model):
     _name = 'sat.compare.line'
@@ -77,6 +79,9 @@ class SatCompareLine(models.Model):
     pago_terceros = fields.Float(string='Pagos a terceros', readonly=True, digits=(16, 2),
                                  help='Líneas de la factura con productos marcados "Pago a terceros": '
                                       'van en Odoo pero no en el CFDI del proveedor.')
+    lista_69b = fields.Selection(LISTA_69B, string='Lista 69-B', readonly=True,
+                                 help='Proveedor en la lista 69-B del SAT: estado actual del contacto '
+                                      'o, si no hay contacto, el que traía el CFDI.')
     estado_sat = fields.Char(string='Estado SAT', readonly=True)
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
@@ -165,6 +170,10 @@ class SatCompareLine(models.Model):
                             THEN o.total_odoo * coalesce(nullif(c.tipo_cambio, 0), 1)
                             ELSE o.total_odoo_mxn END AS total_odoo_mxn,
                        o.pago_terceros,
+                       CASE WHEN c.direction = 'received' THEN coalesce(
+                                sp.sat_69b_status,
+                                CASE WHEN lower(c.emisor_blacklist) IN ('presumed', 'definitive', 'dismissed', 'favorable')
+                                     THEN lower(c.emisor_blacklist) END) END AS lista_69b,
                        c.estado_sat, o.state AS state_odoo, o.payment_state, o.move_name,
                        CASE WHEN c.match_status = 'ignorado' THEN 'ignorado'
                             WHEN c.move_id IS NOT NULL THEN 'ambos'
@@ -185,6 +194,7 @@ class SatCompareLine(models.Model):
                        o.company_id, o.partner_id, upper(p.vat), p.name, o.fecha,
                        o.moneda_odoo, o.moneda_odoo,
                        NULL, o.total_odoo, NULL, o.total_odoo_mxn, o.pago_terceros,
+                       CASE WHEN o.move_type IN ('in_invoice', 'in_refund') THEN p.sat_69b_status END,
                        NULL, o.state, o.payment_state, o.move_name,
                        -- Antes del primer día con datos del SAT no hay contra qué comparar
                        CASE WHEN co.sat_data_since IS NOT NULL AND o.fecha < co.sat_data_since
@@ -216,7 +226,7 @@ class SatCompareLine(models.Model):
                    r.cfdi_id, r.move_id, r.uuid, r.direction, r.tipo, r.company_id, r.partner_id,
                    r.counterparty_rfc, r.counterparty_name, r.fecha, r.moneda, r.moneda_odoo,
                    r.total_sat, r.total_odoo, r.total_sat_mxn, r.total_odoo_mxn, r.pago_terceros,
-                   r.estado_sat, r.state_odoo, r.payment_state, r.move_name, r.bucket, r.suggested_move_id,
+                   r.lista_69b, r.estado_sat, r.state_odoo, r.payment_state, r.move_name, r.bucket, r.suggested_move_id,
                    coalesce(r.total_sat, 0) - coalesce(r.total_odoo, 0) AS amount_diff,
                    date_trunc('month', r.fecha)::date AS mes,
                    r.signo * CASE WHEN r.estado_sat = 'vigente' THEN coalesce(r.total_sat_mxn, 0) ELSE 0 END AS sat_vigente,
