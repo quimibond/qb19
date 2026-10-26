@@ -12,7 +12,7 @@
                 </p>
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom" create="false" delete="false">
-                        <field name="production_id"/>
+                        <field name="production_id" force_save="1"/>
                         <field name="product_id" optional="show"/>
                         <field name="kg_total"/>
                         <field name="rendimiento"/>
