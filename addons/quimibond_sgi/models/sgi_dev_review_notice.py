@@ -22,6 +22,9 @@ cierra como hecha la del paso anterior:
    regresada) → la revisión vuelve a «Pendiente», se marca hecha la
    corrección y «Revisar corrección» le llega a quien regresó, con correo.
 5. Aprobar → se marcan hechas las actividades abiertas del ciclo.
+0. (57.191.0) El proyecto **entra a «Análisis»** sin resultado → «Analizar la solicitud del cliente» a quien
+   ejecuta C1.02 (Diseño de Producto) y C1.03 (Diseño de Procesos), con el plazo de C1.02. Se marca hecha al
+   registrar el resultado del análisis. Antes nadie se enteraba hasta que Producto registraba el resultado.
 
 Las actividades del ciclo llevan la clave ``dev_c1_revision:<paso>`` del SGI
 (``mail.activity.sgi_cron_key``); ningún barrido de cron usa esa clase. No
@@ -36,6 +39,7 @@ from .sgi_calendar import sgi_add_business_days, sgi_today
 
 NOTICE_KIND = 'dev_c1_revision'
 NOTICE_SUMMARIES = {
+    'analisis': "Analizar la solicitud del cliente",
     'checklist': "Contestar checklist de factibilidad",
     'revisar': "Revisar análisis y factibilidad",
     'corregir': "Corregir lo que pidió Ventas",
@@ -171,8 +175,26 @@ class ProjectProjectDevReviewNotice(models.Model):
         return (self.sgi_is_ft and not self.is_template and self.sgi_dev_review_state == 'pendiente'
                 and self.sgi_dev_stage_key in REVIEW_STAGE_KEYS)
 
+    def _sgi_dev_notice_analysis_start(self):
+        """Paso 0 (57.191.0): el desarrollo entró a «Análisis» sin resultado; avisa a Diseño de Producto y de
+        Procesos."""
+        for project in self.filtered(lambda p: p.sgi_is_ft and not p.is_template and p.sgi_dev_stage_key == 'analisis'
+                                     and not p.sgi_dev_analysis_result):
+            users = self.env['res.users']
+            for number, fallback in (('C1.02', 'producto'), ('C1.03', 'procesos')):
+                users |= project._sgi_dev_job_users(project._sgi_dev_c1_role_jobs([number], 'ejecuta', fallback))
+            cliente = project.partner_id.display_name or "desarrollo interno"
+            project._sgi_dev_notice(
+                'analisis', users, 'C1.02',
+                "El desarrollo <b>%s</b> (%s) pasó a Análisis.<br/>Diseño de Producto: analice la muestra o la "
+                "especificación y registre el resultado en la pestaña «Análisis de proyecto».<br/>Diseño de "
+                "Procesos: revise la ruta y los centros de trabajo para el checklist de factibilidad."
+                % (escape(project.sgi_ft_folio or project.name), escape(cliente)))
+
     def _sgi_dev_notice_result(self):
         """Paso 1: Diseño de Producto registró el resultado del análisis."""
+        for project in self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_analysis_result):
+            project._sgi_dev_notice_close(['analisis'], "se registró el resultado del análisis")
         for project in self.filtered(lambda p: p._sgi_dev_notice_applies() and p.sgi_dev_analysis_result):
             if project.sgi_dev_analysis_result != 'nuevo':
                 project._sgi_dev_notice_review()
@@ -205,6 +227,7 @@ class ProjectProjectDevReviewNotice(models.Model):
             for project in self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_stage_key not in REVIEW_STAGE_KEYS
                                          and p.sgi_dev_review_state != 'regresado'):
                 project._sgi_dev_notice_close(None, "el desarrollo salió de la revisión del análisis")
+            self._sgi_dev_notice_analysis_start()
         return res
 
     # ------------------------------------------------------------------

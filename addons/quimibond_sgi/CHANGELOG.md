@@ -13,6 +13,29 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.191.0 — 2026-10-26
+
+Dirección General 2026-10-26: al pasar un desarrollo a «Análisis» no le
+llegaba nada a Diseño de Producto ni a Diseño de Procesos (proyecto 630,
+SHAWMUT, scrim 38 g a 1.65 m). El primer aviso del ciclo salía hasta que
+Producto registraba el resultado del análisis, y los recordatorios por horas
+del escalamiento siguen apagados (parámetros vacíos).
+
+**Agregado**
+- Paso 0 del ciclo de avisos (`models/sgi_dev_review_notice.py`): cuando el
+  proyecto entra a «Análisis» sin resultado, actividad «Analizar la solicitud
+  del cliente» a quien ejecuta C1.02 (Diseño de Producto) y C1.03 (Diseño de
+  Procesos), leídos de la ficha de C1 en el SGI, con el plazo de C1.02. No se
+  repite si ya hay una abierta. Se marca hecha al registrar el resultado del
+  análisis; si el resultado es producto nuevo, Procesos recibe enseguida
+  «Contestar checklist de factibilidad», como antes.
+- Prueba `test_03_entering_analysis_notifies_design`.
+
+**Migración**
+- `migrations/19.0.57.191.0/post-migrate.py`: agenda el aviso para los
+  desarrollos que ya están en «Análisis» sin resultado (en producción, el
+  630). No cambia etapa ni datos.
+
 ## 19.0.57.190.1 — 2026-10-26
 
 **Corregido**
