@@ -80,7 +80,8 @@ class MrpProduction(models.Model):
                     if estricto:
                         raise UserError(_(
                             "No hay relación de baño configurada para el work center %(wc)s. "
-                            "Configúrala en Tintorería > Rendimiento antes de continuar.",
+                            "Configúrala en Fichas técnicas: la del artículo en Tintorería → Artículos en los jets "
+                            "o la del jet en Máquinas → Configuraciones por fecha.",
                             wc=centro.display_name or _("(sin work center)")))
                     continue
                 nuevo = orden._dosificacion_qty(linea, mov.product_uom)

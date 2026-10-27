@@ -753,3 +753,35 @@ El espesor de la ficha de tejido (`espesor_acondicionado`, `espesor_acondicionad
 (`espesor_acabado`, `espesor_acabado_tol`) llevan `digits=(16, 3)`, igual que la longitud de malla en 2.16.1:
 XJ145Q21HNT098 guarda 0.022 ± 0.002 in y se veía 0.02 ± 0.00. Sin migración. Prueba
 `tests/test_longitud_malla.py::test_espesor_tres_decimales`.
+
+## Árbol nuevo del menú (2.17.0, 2026-10-27)
+
+Dirección General aprobó el árbol propuesto el 26-oct. Solo cambian menús y nombres; ningún modelo, campo ni vista de
+ficha cambia, y los xmlid se conservan.
+
+```
+Fichas técnicas
+├─ Tela: Tejido · Acabado
+├─ Tintorería: Fórmulas · Tiempos por fórmula y jet · Artículos en los jets
+├─ Máquinas: Máquinas · Configuraciones por fecha · Procesos por artículo · Comparativo
+├─ Materias primas: Fichas · Propiedades · Hilos por tela y máquina
+└─ Configuración (jefes de Fabricación): Tipos de máquina · Tipos de materia prima · Fibras · Unidades ·
+   Características · Claves de codificación de artículos · Herramientas (importar tejido, acabado y
+   procesos desde Excel, acabados en proceso faltantes, ligado de hilos)
+```
+
+- **Herramientas**: las cargas de una sola vez dejan el menú principal. «Importar» (`menu_ft_importar`) es ahora
+  Herramientas dentro de Configuración, que ya era solo para `mrp.group_mrp_manager`; ahí pasan también «Acabados en
+  proceso faltantes» (antes en Tela) y «Ligado de hilos» (antes en Materias primas).
+- **Tintorería**: «Artículos en los jets» (`action_ficha_tecnica_proceso_jet`) es la lista de procesos por artículo
+  filtrada al tipo Tintorería y agrupada por jet: relación de baño, kg por carga, tiempo de ciclo y los parámetros de
+  la F-P-D01-33. Fórmulas (`quimibond_tintoreria_dosificacion` 1.2.0) y Tiempos por fórmula y jet
+  (`quimibond_tintoreria_programacion` 1.3.0) cuelgan de este menú desde sus módulos; antes estaban en Fabricación →
+  Configuración, solo para jefes. Ahora los ven los usuarios de Fabricación en solo lectura (los permisos no cambian:
+  editar sigue siendo de jefes). Programar Tintorería y Programaciones de Tintorería siguen en Fabricación.
+- **Procesos por artículo**: filtros por área (Tintorería, Devanadoras, Abridoras, Ramas, Inspección). «Tabla por
+  artículo y máquina» se llama «Comparativo» (acción: «Comparativo por artículo y máquina»).
+- **Materias primas**: «Fichas de materia prima» y «Propiedades por material» se acortan a «Fichas» y «Propiedades».
+- La dosificación avisa dónde se captura la relación de baño que falta (antes decía «Tintorería > Rendimiento», un
+  menú del módulo `quimibond_tintoreria_rendimiento`, que está desinstalado en producción).
+
