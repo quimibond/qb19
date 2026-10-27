@@ -17,7 +17,7 @@ versiones siguientes.
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Manufacturing',
-    'version': '19.0.1.6.3',
+    'version': '19.0.1.6.4',
     'license': 'LGPL-3',
     'application': True,
     'depends': ['mrp', 'stock_account', 'account', 'hr', 'purchase', 'uom',

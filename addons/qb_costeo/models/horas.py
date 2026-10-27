@@ -76,6 +76,17 @@ def raiz_hermano(ref):
     return ''.join(m.groups()[:6])
 
 
+def codigo_metros(articulo):
+    """1.6.4: el código en metros de un proceso con código en kg: «I» +
+    tela acabada (DAT P-D02-01; IWJ053Q22JNT160 → WJ053Q22JNT160). Vacío
+    si el código no es de esa forma (14 o 16 posiciones con J en la 9)."""
+    code = (articulo or '').strip()
+    base = code[1:]
+    if code[:1] == 'I' and len(base) in (14, 16) and base[8:9] == 'J':
+        return base
+    return ''
+
+
 def galga_de(ref):
     m = NOMEN_RE.match((ref or '').replace(' ', ''))
     if not m:
@@ -257,7 +268,8 @@ class QbProductoHoras(models.Model):
     def _ficha_procesos(self, centros):
         """1.5.0: velocidades por artículo de la ficha técnica en las
         máquinas de `centros` → {(clave, centro_id): [(máquina, m/h)]}, con
-        clave = id del producto ligado o código del artículo. m/h con merma
+        clave = id del producto ligado o código del artículo (y, si el
+        código es en kg, el de la tela acabada en metros). m/h con merma
         (`metros_hora_neto`: velocidad m/min × 60 × (1 − merma %)), porque
         lo que sale de la máquina es el metro que se vende. Un proceso sin
         velocidad no cuenta (dato que la planta no ha dado). Vacío si la
@@ -280,6 +292,11 @@ class QbProductoHoras(models.Model):
             claves = {pr.articulo}
             if pr.product_id:
                 claves.add(pr.product_id.id)
+            # 1.6.4: los procesos van con el código en kg («I…») desde que
+            # la producción va en kg hasta la Clasificación final; la
+            # velocidad vale igual para la tela acabada en metros.
+            if codigo_metros(pr.articulo):
+                claves.add(codigo_metros(pr.articulo))
             for cid in por_wc[pr.workcenter_id.id]:
                 for k in claves:
                     out.setdefault((k, cid), []).append((pr.workcenter_id.name, mh))

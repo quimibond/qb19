@@ -75,8 +75,9 @@
         <field name="name">ficha.tecnica.material.list</field>
         <field name="model">ficha.tecnica.material</field>
         <field name="arch" type="xml">
-            <list string="Fichas de materia prima">
+            <list string="Fichas de materia prima" decoration-muted="not active">
                 <field name="product_id"/>
+                <field name="default_code" optional="show"/>
                 <field name="tipo_id"/>
                 <field name="categ_id" optional="hide"/>
                 <field name="composicion"/>

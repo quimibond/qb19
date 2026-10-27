@@ -87,6 +87,7 @@ class TestDosificacionTintoreria(TransactionCase):
 
     def test_carga_formula_y_estado(self):
         self.assertEqual(len(self.bom.bom_line_ids.filtered('dosificado')), 3)
+        self.assertEqual(self.bom.formula_tintoreria_id.line_count, 3, "1.3.0: ingredientes en la lista de fórmulas")
         self.assertEqual(self.bom.formula_estado, 'sincronizada')
         self.bom.bom_line_ids.filtered(lambda l: l.product_id == self.detergente).gramos_por_litro = 2.0
         self.assertEqual(self.bom.formula_estado, 'modificada')

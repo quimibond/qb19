@@ -5,16 +5,22 @@
         <field name="name">ficha.tecnica.acabado.list</field>
         <field name="model">ficha.tecnica.acabado</field>
         <field name="arch" type="xml">
-            <list string="Fichas Técnicas de Acabado">
+            <!-- 2.19.0: la ruta (tejido → kg → metros) y los datos de la tela acabada; en rojo si el encogimiento
+                 está fuera de norma. La norma ya no se cambia con un clic en la lista (era un interruptor). -->
+            <list string="Fichas Técnicas de Acabado" default_order="articulo, revision desc"
+                  decoration-danger="not encogimiento_largo_dentro_norma or not encogimiento_ancho_dentro_norma"
+                  decoration-muted="not active">
                 <field name="articulo"/>
                 <field name="revision"/>
-                <field name="tejido_id"/>
-                <field name="product_proceso_id" optional="show"/>
-                <field name="product_acabado_id"/>
-                <field name="rendimiento_tela_acabada"/>
-                <field name="ancho_acabado"/>
-                <field name="encogimiento_largo_dentro_norma" widget="boolean_toggle"/>
-                <field name="encogimiento_ancho_dentro_norma" widget="boolean_toggle"/>
+                <field name="tejido_id" string="Ficha de tejido"/>
+                <field name="product_proceso_id" string="Acabado en proceso (kg)" optional="show"/>
+                <field name="product_acabado_id" string="Tela acabada (m)"/>
+                <field name="peso_acabado" optional="show"/>
+                <field name="ancho_acabado" optional="show"/>
+                <field name="rendimiento_tela_acabada" optional="show"/>
+                <field name="encogimiento_largo_dentro_norma" optional="show"/>
+                <field name="encogimiento_ancho_dentro_norma" optional="show"/>
+                <field name="fecha_elaboracion" optional="hide"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -26,10 +32,22 @@
         <field name="arch" type="xml">
             <form string="Ficha Técnica de Acabado">
                 <sheet>
+                    <!-- 2.19.0: la ficha sigue la ruta en kg hasta la Clasificación final: tejido → acabado en
+                         proceso (kg) → tela acabada (m). Botones a las listas de materiales de los dos productos. -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
-                                string="Lista de materiales" invisible="not bom_id"/>
+                                string="Lista vigente" invisible="not bom_id"
+                                help="La lista de materiales que hoy usa la tela acabada (de ahí salen el crudo y las operaciones)."/>
+                        <button name="action_ft_boms_proceso" type="object" class="oe_stat_button" icon="fa-balance-scale"
+                                invisible="not product_proceso_id">
+                            <field name="bom_proceso_count" widget="statinfo" string="Listas en kg"/>
+                        </button>
+                        <button name="action_ft_boms_acabado" type="object" class="oe_stat_button" icon="fa-arrows-h"
+                                invisible="not product_acabado_id">
+                            <field name="bom_acabado_count" widget="statinfo" string="Listas en metros"/>
+                        </button>
                     </div>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not unidades_aviso">
                         <field name="unidades_aviso" readonly="1" nolabel="1"/>
                     </div>
@@ -43,29 +61,32 @@
                         <field name="product_proceso_sugerido_id" invisible="1"/>
                     </div>
                     <div class="oe_title">
+                        <span class="text-muted">Ficha de acabado</span>
                         <h1>
                             <field name="articulo" placeholder="Ej. WJ044Q22HNT235-NEGRO"/>
                         </h1>
                     </div>
                     <group>
-                        <group>
+                        <group string="Ficha">
                             <field name="revision"/>
                             <field name="fecha_elaboracion"/>
-                            <field name="active"/>
-                        </group>
-                        <group>
-                            <field name="tejido_id"/>
-                            <field name="product_proceso_id"/>
-                            <field name="product_acabado_id"/>
-                            <field name="crudo_id"/>
-                            <field name="bom_id" invisible="1"/>
                             <field name="rendimiento_tela_acabada"/>
+                            <field name="active" invisible="1"/>
+                            <field name="bom_id" invisible="1"/>
+                        </group>
+                        <group string="Ruta del artículo">
+                            <field name="tejido_id" string="1. Ficha de tejido"/>
+                            <field name="crudo_id" string="2. Crudo"/>
+                            <field name="product_proceso_id" string="3. Acabado en proceso (kg)"/>
+                            <field name="product_acabado_id" string="4. Tela acabada (m)"/>
+                            <div colspan="2" class="text-muted small">
+                                Todo va en kg hasta la Clasificación final, que entrega la tela acabada en metros medidos.
+                            </div>
                         </group>
                     </group>
 
                     <notebook>
-                        <page string="Tela Acondicionada">
-                            <h4>Datos de tela acabada</h4>
+                        <page string="Tela acabada" name="tela_acabada">
                             <table class="table table-bordered o_list_view" style="width:100%">
                                 <thead>
                                     <tr class="text-center">
@@ -127,55 +148,43 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Características" name="caracteristicas">
-                            <p class="text-muted">Especificación del cliente y control interno por característica. El control interno nunca se imprime al cliente.</p>
-                            <field name="spec_line_ids" context="{'default_acabado_id': id}">
-                                <list editable="bottom" open_form_view="1">
-                                    <field name="sequence" widget="handle"/>
-                                    <field name="caracteristica_id" optional="hide"/>
-                                    <field name="kind" column_invisible="1"/>
-                                    <field name="name"/>
-                                    <field name="direction"/>
-                                    <field name="position" optional="show"/>
-                                    <field name="unit"/>
-                                    <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
-                                    <field name="spec_nominal" readonly="kind != 'num'"/>
-                                    <field name="spec_tol_minus" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                    <field name="spec_tol_plus" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                    <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                    <field name="spec_text" optional="show" readonly="kind != 'text'"/>
-                                    <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
-                                    <field name="spec_label" optional="hide"/>
-                                    <field name="ctrl_tol_minus" optional="show" readonly="kind != 'num'"/>
-                                    <field name="ctrl_tol_plus" optional="show" readonly="kind != 'num'"/>
-                                    <field name="method" optional="hide"/>
-                                    <field name="in_customer_spec" optional="show"/>
-                                    <field name="in_coa" optional="show"/>
-                                    <field name="note" optional="show"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Operaciones" name="operaciones">
-                            <p class="text-muted">Las operaciones de la lista de materiales del acabado y de sus intermedios (no las del crudo), con el proceso del artículo en cada máquina (2.9.0). Se editan en la lista de materiales.</p>
+                        <page string="Ruta y máquinas" name="operaciones">
+                            <p class="text-muted">Las operaciones de la lista de materiales vigente y de sus intermedios (no las
+                                del crudo), con los datos del artículo en cada máquina. Las operaciones se editan en la lista
+                                de materiales y los datos en Máquinas → Procesos por artículo.</p>
                             <div class="alert alert-warning mb-2" role="alert" invisible="not operacion_aviso">
                                 <field name="operacion_aviso" readonly="1" nolabel="1"/>
                             </div>
+                            <separator string="Operaciones"/>
                             <field name="operacion_ids" readonly="1">
-                                <list>
+                                <list decoration-warning="ft_aviso">
                                     <field name="bom_id" optional="show"/>
                                     <field name="sequence" optional="hide"/>
                                     <field name="name"/>
                                     <field name="workcenter_id"/>
-                                    <field name="ft_tipo_id"/>
+                                    <field name="ft_tipo_id" optional="show"/>
                                     <field name="ft_proceso_resumen"/>
                                     <field name="time_cycle_manual" optional="show"/>
                                     <field name="ft_aviso" optional="show"/>
                                 </list>
                             </field>
+                            <separator string="Todas las máquinas en que corre el artículo"/>
+                            <field name="proceso_ids" readonly="1">
+                                <list>
+                                    <field name="articulo" optional="show"/>
+                                    <field name="tipo_id"/>
+                                    <field name="workcenter_id"/>
+                                    <field name="resumen"/>
+                                    <field name="metros_hora" optional="show"/>
+                                    <field name="fecha" optional="show"/>
+                                </list>
+                            </field>
                         </page>
                         <!-- 2.16.0: la tintorería es una operación de la lista de materiales del acabado (F-P-D01-33 sin ficha aparte). -->
                         <page string="Tintorería" name="tintoreria">
-                            <p class="text-muted">La tintorería es una operación de la lista de materiales del acabado. Aquí se juntan el jet, los datos del artículo en cada jet (temperatura, tiempo de ciclo, kg por carga, relación y volumen de baño…) y la fórmula, sin recaptura: los datos se capturan en Máquinas → Procesos por artículo y la fórmula en la lista de materiales.</p>
+                            <p class="text-muted">El jet, los datos del artículo en cada jet (temperatura, tiempo de ciclo, kg por
+                                carga, relación y volumen de baño…) y la fórmula, sin recaptura: los datos se capturan en
+                                Tintorería → Artículos en los jets y la fórmula en la lista de materiales.</p>
                             <div class="alert alert-warning mb-2" role="alert" invisible="not tint_aviso">
                                 <field name="tint_aviso" readonly="1" nolabel="1"/>
                             </div>
@@ -208,22 +217,38 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Procesos por máquina" name="procesos">
-                            <p class="text-muted">Las máquinas en que corre el artículo y sus datos en cada una (2.8.0). Se capturan en Máquinas → Procesos por artículo.</p>
-                            <field name="proceso_ids" readonly="1">
-                                <list>
-                                    <field name="workcenter_id"/>
-                                    <field name="resumen"/>
-                                    <field name="metros_hora" optional="show"/>
-                                    <field name="fecha" optional="show"/>
+                        <page string="Características" name="caracteristicas">
+                            <p class="text-muted">Especificación del cliente y control interno por característica. El control interno nunca se imprime al cliente.</p>
+                            <field name="spec_line_ids" context="{'default_acabado_id': id}">
+                                <list editable="bottom" open_form_view="1">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="caracteristica_id" optional="hide"/>
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="direction"/>
+                                    <field name="position" optional="show"/>
+                                    <field name="unit"/>
+                                    <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
+                                    <field name="spec_nominal" readonly="kind != 'num'"/>
+                                    <field name="spec_tol_minus" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_plus" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_text" optional="show" readonly="kind != 'text'"/>
+                                    <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
+                                    <field name="spec_label" optional="hide"/>
+                                    <field name="ctrl_tol_minus" optional="show" readonly="kind != 'num'"/>
+                                    <field name="ctrl_tol_plus" optional="show" readonly="kind != 'num'"/>
+                                    <field name="method" optional="hide"/>
+                                    <field name="in_customer_spec" optional="show"/>
+                                    <field name="in_coa" optional="show"/>
+                                    <field name="note" optional="show"/>
                                 </list>
                             </field>
                         </page>
+                        <page string="Notas" name="notas">
+                            <field name="notas" placeholder="Notas"/>
+                        </page>
                     </notebook>
-
-                    <group>
-                        <field name="notas" placeholder="Notas"/>
-                    </group>
                 </sheet>
             </form>
         </field>

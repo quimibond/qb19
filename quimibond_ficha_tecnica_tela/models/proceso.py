@@ -42,6 +42,11 @@ class FichaTecnicaProceso(models.Model):
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', required=True, index=True,
                                     ondelete='restrict', domain="[('ft_tipo_id', '!=', False)]")
     tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True)
+    product_uom_id = fields.Many2one(related='product_id.uom_id', string='Unidad del producto')
+    ficha_acabado_id = fields.Many2one('ficha.tecnica.acabado', string='Ficha de acabado',
+                                       compute='_compute_ficha_acabado_id',
+                                       help='2.19.0: la ficha de acabado del artículo (como acabado en proceso en kg o '
+                                            'como tela acabada en metros).')
     valor_ids = fields.One2many('ficha.tecnica.proceso.valor', 'proceso_id', string='Parámetros',
                                 context={'active_test': False})
     resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
@@ -67,6 +72,14 @@ class FichaTecnicaProceso(models.Model):
                 continue
             found = Product.search([('default_code', '=', code)], limit=2) if code else Product
             proceso.product_id = found if len(found) == 1 else False
+
+    @api.depends('product_id')
+    def _compute_ficha_acabado_id(self):
+        Acabado = self.env['ficha.tecnica.acabado']
+        for proceso in self:
+            proceso.ficha_acabado_id = Acabado.search(
+                ['|', ('product_proceso_id', '=', proceso.product_id.id),
+                 ('product_acabado_id', '=', proceso.product_id.id)], limit=1) if proceso.product_id else Acabado
 
     @api.depends('articulo', 'workcenter_id.name')
     def _compute_display_name(self):
@@ -119,13 +132,32 @@ class FichaTecnicaProceso(models.Model):
         return line
 
     @api.model
+    def _ft_codigos(self, articulo):
+        """2.18.0: el código y su par en kg o en metros (DAT P-D02-01: el «I…» es el código de la tela acabada con
+        la «I» al frente). Los procesos van con el código en kg y la tela acabada en metros los sigue encontrando."""
+        from .acabado_ruta import PREFIJO_KG, codigo_proceso
+        code = (articulo or '').strip()
+        par = code[1:] if code[:1] == PREFIJO_KG and codigo_proceso(code[1:]) == code else codigo_proceso(code)
+        return [c for c in (code, par) if c]
+
+    @api.model
     def _ft_buscar(self, articulo, workcenter):
-        """El proceso de un artículo (código o producto) en una máquina; vacío si no corre ahí."""
+        """El proceso de un artículo (código o producto) en una máquina; vacío si no corre ahí. 2.18.0: primero el
+        código exacto y, si no hay, su par en kg o en metros."""
         if isinstance(articulo, models.BaseModel):
             articulo = articulo.default_code
         if not articulo or not workcenter:
             return self.browse()
-        return self.search([('articulo', '=', articulo.strip()), ('workcenter_id', '=', workcenter.id)], limit=1)
+        for code in self._ft_codigos(articulo):
+            proceso = self.search([('articulo', '=', code), ('workcenter_id', '=', workcenter.id)], limit=1)
+            if proceso:
+                return proceso
+        return self.browse()
+
+    def action_ft_ver_ficha_acabado(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': 'Ficha de acabado', 'res_model': 'ficha.tecnica.acabado',
+                'view_mode': 'form', 'res_id': self.ficha_acabado_id.id}
 
     def _ft_sync_valores(self):
         """Un renglón por parámetro del artículo del tipo de la máquina (vacío si no se capturó)."""
@@ -239,7 +271,8 @@ class ProductTemplateProceso(models.Model):
 
     def _ft_proceso_domain(self):
         self.ensure_one()
-        codes = [c for c in self.product_variant_ids.mapped('default_code') if c]
+        Proceso = self.env['ficha.tecnica.proceso']
+        codes = [c for code in self.product_variant_ids.mapped('default_code') for c in Proceso._ft_codigos(code)]
         return ['|', ('product_id', 'in', self.product_variant_ids.ids), ('articulo', 'in', codes)]
 
     def _compute_ft_proceso_count(self):
