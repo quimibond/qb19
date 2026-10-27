@@ -43,3 +43,12 @@ class ResPartner(models.Model):
         help='Contabilidad documentó que las operaciones con este proveedor son reales '
              '(materialidad). Con la casilla, sus facturas se publican aunque esté en la lista '
              'definitiva; el aviso en la factura se mantiene.')
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'sat_terceros_product_ids' in vals:
+            # El hallazgo del CFDI es almacenado y no depende de este campo.
+            Cfdi = self.env['sat.cfdi'].sudo()
+            cfdis = Cfdi.search([('move_id.commercial_partner_id', 'in', self.ids)])
+            self.env.add_to_compute(Cfdi._fields['issue'], cfdis)
+        return res
