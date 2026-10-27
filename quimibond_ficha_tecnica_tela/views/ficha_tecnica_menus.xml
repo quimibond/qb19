@@ -5,7 +5,8 @@
          Máquinas (las máquinas con ficha y sus configuraciones por fecha), Importar y Configuración.
          2.8.0: Máquinas → Procesos por artículo y Tabla por artículo y máquina; Importar → Procesos.
          2.9.0: Materias primas (fichas, propiedades, hilos por tela y máquina, ligado de hilos) y en
-         Configuración, Tipos de materia prima y Fibras. 2.10.0: Configuración → Unidades. -->
+         Configuración, Tipos de materia prima y Fibras. 2.10.0: Configuración → Unidades.
+         2.17.0: árbol nuevo (ver «Árbol» abajo). -->
 
     <!-- ===== Máquinas: los centros de trabajo con tipo de máquina ===== -->
     <record id="view_mrp_workcenter_ft_maquinas_list" model="ir.ui.view">
@@ -60,7 +61,13 @@
         </field>
     </record>
 
-    <!-- ===== Árbol ===== -->
+    <!-- ===== Árbol (2.17.0, Dirección General 2026-10-27) =====
+         Tela · Tintorería · Máquinas · Materias primas · Configuración. Las herramientas de carga (importar
+         desde Excel, acabados en proceso faltantes, ligado de hilos) pasan a Configuración → Herramientas, solo
+         para jefes. Tintorería junta Fórmulas (quimibond_tintoreria_dosificacion), Tiempos por fórmula y jet
+         (quimibond_tintoreria_programacion) y los artículos en los jets; Programar y Programaciones siguen en
+         Fabricación porque son operación del día. Se conservan los xmlid: «menu_ft_importar» es ahora
+         Herramientas. -->
     <menuitem id="menu_ficha_tecnica_tela_root" name="Fichas técnicas" sequence="60"
               web_icon="quimibond_ficha_tecnica_tela,static/description/icon.png"/>
 
@@ -69,8 +76,10 @@
               action="action_ficha_tecnica_tejido" sequence="10"/>
     <menuitem id="menu_ficha_tecnica_acabado_list" name="Acabado" parent="menu_ft_tela"
               action="action_ficha_tecnica_acabado" sequence="20"/>
-    <menuitem id="menu_ficha_tecnica_proceso_faltante" name="Acabados en proceso faltantes" parent="menu_ft_tela"
-              action="action_server_ft_proceso_faltante" sequence="30"/>
+
+    <menuitem id="menu_ft_tintoreria" name="Tintorería" parent="menu_ficha_tecnica_tela_root" sequence="15"/>
+    <menuitem id="menu_ficha_tecnica_proceso_jet" name="Artículos en los jets" parent="menu_ft_tintoreria"
+              action="action_ficha_tecnica_proceso_jet" sequence="30"/>
 
     <menuitem id="menu_ft_maquinas" name="Máquinas" parent="menu_ficha_tecnica_tela_root" sequence="20"/>
     <menuitem id="menu_ft_maquinas_list" name="Máquinas" parent="menu_ft_maquinas"
@@ -79,26 +88,16 @@
               action="action_ficha_tecnica_maquina_config" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_proceso" name="Procesos por artículo" parent="menu_ft_maquinas"
               action="action_ficha_tecnica_proceso" sequence="30"/>
-    <menuitem id="menu_ficha_tecnica_proceso_valor" name="Tabla por artículo y máquina" parent="menu_ft_maquinas"
+    <menuitem id="menu_ficha_tecnica_proceso_valor" name="Comparativo" parent="menu_ft_maquinas"
               action="action_ficha_tecnica_proceso_valor" sequence="40"/>
 
     <menuitem id="menu_ft_materias" name="Materias primas" parent="menu_ficha_tecnica_tela_root" sequence="25"/>
-    <menuitem id="menu_ficha_tecnica_material" name="Fichas de materia prima" parent="menu_ft_materias"
+    <menuitem id="menu_ficha_tecnica_material" name="Fichas" parent="menu_ft_materias"
               action="action_ficha_tecnica_material" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_material_valor" name="Propiedades por material" parent="menu_ft_materias"
+    <menuitem id="menu_ficha_tecnica_material_valor" name="Propiedades" parent="menu_ft_materias"
               action="action_ficha_tecnica_material_valor" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_tejido_hilo" name="Hilos por tela y máquina" parent="menu_ft_materias"
               action="action_ficha_tecnica_tejido_hilo" sequence="30"/>
-    <menuitem id="menu_ficha_tecnica_hilo_ligado" name="Ligado de hilos" parent="menu_ft_materias"
-              action="action_server_ft_reporte_ligado_todos" sequence="40"/>
-
-    <menuitem id="menu_ft_importar" name="Importar" parent="menu_ficha_tecnica_tela_root" sequence="30"/>
-    <menuitem id="menu_ficha_tecnica_tejido_import" name="Tejido desde Excel" parent="menu_ft_importar"
-              action="action_ficha_tecnica_tejido_import_wizard" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_acabado_import" name="Acabado desde Excel" parent="menu_ft_importar"
-              action="action_ficha_tecnica_acabado_import_wizard" sequence="20"/>
-    <menuitem id="menu_ficha_tecnica_proceso_import" name="Procesos desde Excel" parent="menu_ft_importar"
-              action="action_ficha_tecnica_proceso_import_wizard" sequence="30"/>
 
     <menuitem id="menu_ficha_tecnica_config" name="Configuración" parent="menu_ficha_tecnica_tela_root"
               sequence="90" groups="mrp.group_mrp_manager"/>
@@ -114,4 +113,16 @@
               action="action_ficha_tecnica_caracteristica" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"
               parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_clave_codigo" sequence="30"/>
+
+    <menuitem id="menu_ft_importar" name="Herramientas" parent="menu_ficha_tecnica_config" sequence="90"/>
+    <menuitem id="menu_ficha_tecnica_tejido_import" name="Importar tejido desde Excel" parent="menu_ft_importar"
+              action="action_ficha_tecnica_tejido_import_wizard" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_acabado_import" name="Importar acabado desde Excel" parent="menu_ft_importar"
+              action="action_ficha_tecnica_acabado_import_wizard" sequence="20"/>
+    <menuitem id="menu_ficha_tecnica_proceso_import" name="Importar procesos desde Excel" parent="menu_ft_importar"
+              action="action_ficha_tecnica_proceso_import_wizard" sequence="30"/>
+    <menuitem id="menu_ficha_tecnica_proceso_faltante" name="Acabados en proceso faltantes" parent="menu_ft_importar"
+              action="action_server_ft_proceso_faltante" sequence="40"/>
+    <menuitem id="menu_ficha_tecnica_hilo_ligado" name="Ligado de hilos" parent="menu_ft_importar"
+              action="action_server_ft_reporte_ligado_todos" sequence="50"/>
 </odoo>

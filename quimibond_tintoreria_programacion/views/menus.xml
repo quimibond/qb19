@@ -12,10 +12,12 @@
               action="action_tintoreria_programacion"
               groups="mrp.group_mrp_user"
               sequence="40"/>
+    <!-- 1.3.0: los tiempos viven en Fichas técnicas → Tintorería, junto a las fórmulas (antes Fabricación →
+         Configuración). Programar y Programaciones siguen en Fabricación: son operación del día. -->
     <menuitem id="menu_tintoreria_formula_tiempo"
-              name="Tiempos de Tintorería"
-              parent="mrp.menu_mrp_configuration"
+              name="Tiempos por fórmula y jet"
+              parent="quimibond_ficha_tecnica_tela.menu_ft_tintoreria"
               action="action_tintoreria_formula_tiempo"
-              groups="mrp.group_mrp_manager"
-              sequence="60"/>
+              groups="mrp.group_mrp_user"
+              sequence="20"/>
 </odoo>

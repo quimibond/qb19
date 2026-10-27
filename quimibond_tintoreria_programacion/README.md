@@ -13,7 +13,7 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
      3. jet sin bandas capturadas (p. ej. HTJ5): capacidad general, con aviso en el chatter.
    - `n = ceil(kg / capacidad)`; reparto **simétrico** `kg / n` (el redondeo cae en el último baño), todos en el mismo HTJ.
    - Si `n > 1` se usa la división nativa `mrp.production._split_productions` (conserva los enlaces MTO hacia la MO en metros).
-   - **Duración de Tintorería (por orden, un solo ciclo):** se fija en la workorder de Tintorería de cada MO con el primer dato disponible: (1) *Tiempo de ciclo* del artículo en ese jet (proceso del artículo en la ficha técnica; la ficha lo guarda en **horas**, se convierte a minutos); (2) minutos de la fórmula de la BoM en ese HTJ (`tintoreria.formula.tiempo`, menú Manufactura → Configuración → Tiempos de Tintorería); (3) minutos manuales de la operación de Tintorería de la BoM, con aviso en el chatter. Si no existe ninguno, la programación se bloquea. El asistente muestra los minutos y su origen antes de confirmar.
+   - **Duración de Tintorería (por orden, un solo ciclo):** se fija en la workorder de Tintorería de cada MO con el primer dato disponible: (1) *Tiempo de ciclo* del artículo en ese jet (proceso del artículo en la ficha técnica; la ficha lo guarda en **horas**, se convierte a minutos); (2) minutos de la fórmula de la BoM en ese HTJ (`tintoreria.formula.tiempo`, menú Fichas técnicas → Tintorería → Tiempos por fórmula y jet); (3) minutos manuales de la operación de Tintorería de la BoM, con aviso en el chatter. Si no existe ninguno, la programación se bloquea. El asistente muestra los minutos y su origen antes de confirmar.
    - Se asigna el HTJ a la workorder de Tintorería de cada MO → `quimibond_tintoreria_dosificacion` recalcula g/L y % con la RB del HTJ.
    - Se crea un registro `tintoreria.programacion` con el detalle.
 4. **Validación:** sin programar, `mrp.workorder.button_start`, `mrp.production.action_start` y `button_mark_done` bloquean la orden.
@@ -27,6 +27,9 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El campo se calcula al **crear** la orden: si la ficha se liga después, las órdenes ya creadas no se recalculan solas.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
+
+## Cambios 19.0.1.3.0
+- El menú de tiempos pasa a **Fichas técnicas → Tintorería → Tiempos por fórmula y jet** (antes Fabricación → Configuración → Tiempos de Tintorería), junto a las fórmulas. Lo ven los usuarios de Fabricación en solo lectura y lo editan los jefes. «Programar Tintorería» y «Programaciones de Tintorería» no se mueven.
 
 ## Cambios 19.0.1.2.0
 - Nuevo modelo `tintoreria.formula.tiempo` (fórmula × HTJ → minutos por baño), con lista editable y menú de configuración. Carga inicial de ejemplo en `data/tintoreria.formula.tiempo.csv` (NATURAL001/004/005 y BLANCO001, de `tiempos tintoreria.xlsx`; importar con Importar registros).
