@@ -14,6 +14,16 @@
         </field>
     </record>
 
+    <!-- 1.27.0: consultar al SAT varias filas a la vez (Acción, en la lista). -->
+    <record id="action_sat_compare_verify" model="ir.actions.server">
+        <field name="name">Consultar estado en el SAT</field>
+        <field name="model_id" ref="model_sat_compare_line"/>
+        <field name="binding_model_id" ref="model_sat_compare_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_verify_sat_status()</field>
+    </record>
+
     <record id="view_sat_compare_list" model="ir.ui.view">
         <field name="name">sat.compare.line.list</field>
         <field name="model">sat.compare.line</field>
@@ -40,6 +50,9 @@
                         invisible="issue not in ('solo_sat', 'solo_odoo', 'solo_odoo_sin_uuid', 'monto', 'moneda', 'borrador')"/>
                 <button name="action_accept_suggestion" type="object" string="Aceptar" icon="fa-check"
                         invisible="not suggested_move_id"/>
+                <button name="action_verify_sat_status" type="object" string="Estado SAT" icon="fa-refresh"
+                        title="Consultar el estado de este CFDI directo en el SAT"
+                        invisible="not cfdi_id or issue not in ('cancelado_odoo', 'cancelado_sat', 'solo_sat', 'monto')"/>
                 <button name="action_open_cfdi" type="object" string="CFDI" icon="fa-file-text-o" invisible="not cfdi_id"/>
                 <button name="action_open_move" type="object" string="Factura" icon="fa-external-link" invisible="not move_id"/>
                 <field name="bucket" optional="hide"/>
