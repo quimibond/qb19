@@ -82,10 +82,12 @@
         </field>
     </record>
 
+    <!-- 1.2.0: el catálogo vive en Fichas técnicas → Tintorería (antes Fabricación → Configuración). Lo ven
+         los usuarios de Fabricación (solo lectura) y lo editan los jefes, como dicen los permisos. -->
     <menuitem id="menu_tintoreria_formula"
-              name="Fórmulas de tintorería"
-              parent="mrp.menu_mrp_configuration"
+              name="Fórmulas"
+              parent="quimibond_ficha_tecnica_tela.menu_ft_tintoreria"
               action="tintoreria_formula_action"
-              sequence="60"
-              groups="mrp.group_mrp_manager"/>
+              sequence="10"
+              groups="mrp.group_mrp_user"/>
 </odoo>

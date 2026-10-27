@@ -76,6 +76,12 @@
                 <filter string="Sin velocidad" name="sin_velocidad"
                         domain="[('valor_ids', 'any', [('parametro_id.code', '=', 'velocidad'), ('valor', '=', 0)])]"/>
                 <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Tintorería" name="area_tintoreria" domain="[('tipo_id.code', '=', 'tintoreria')]"/>
+                <filter string="Devanadoras" name="area_devanadora" domain="[('tipo_id.code', '=', 'devanadora')]"/>
+                <filter string="Abridoras" name="area_abridora" domain="[('tipo_id.code', '=', 'abridora')]"/>
+                <filter string="Ramas (acabado)" name="area_acabado" domain="[('tipo_id.code', '=', 'acabado')]"/>
+                <filter string="Inspección" name="area_inspeccion" domain="[('tipo_id.code', '=', 'inspeccion')]"/>
                 <group>
                     <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
                     <filter string="Tipo de máquina" name="group_tipo" context="{'group_by': 'tipo_id'}"/>
@@ -94,6 +100,22 @@
             <p>Un proceso dice que un artículo corre en una máquina y guarda sus datos en esa máquina (la
                 velocidad en la rama, el tiempo de ciclo en el jet…). Los parámetros se dan de alta por tipo de
                 máquina en Configuración → Tipos de máquina, con ámbito «Del artículo en la máquina».</p>
+        </field>
+    </record>
+
+    <!-- 2.17.0: los artículos en los jets (relación de baño, kg por carga, tiempo de ciclo…), con su propio
+         menú en Fichas técnicas → Tintorería. Es la misma lista de procesos, filtrada por tipo Tintorería. -->
+    <record id="action_ficha_tecnica_proceso_jet" model="ir.actions.act_window">
+        <field name="name">Artículos en los jets</field>
+        <field name="res_model">ficha.tecnica.proceso</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('tipo_id.code', '=', 'tintoreria')]</field>
+        <field name="context">{'search_default_group_workcenter': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin artículos en los jets</p>
+            <p>Los datos de cada artículo en cada jet: relación de baño, kg por carga, tiempo de ciclo y los
+                parámetros de la ficha técnica de tintorería. Si un artículo no tiene relación de baño en el jet,
+                la dosificación usa la de la máquina (Máquinas → Configuraciones por fecha).</p>
         </field>
     </record>
 
@@ -145,7 +167,7 @@
     </record>
 
     <record id="action_ficha_tecnica_proceso_valor" model="ir.actions.act_window">
-        <field name="name">Tabla por artículo y máquina</field>
+        <field name="name">Comparativo por artículo y máquina</field>
         <field name="res_model">ficha.tecnica.proceso.valor</field>
         <field name="view_mode">pivot,list</field>
         <field name="search_view_id" ref="view_ficha_tecnica_proceso_valor_search"/>

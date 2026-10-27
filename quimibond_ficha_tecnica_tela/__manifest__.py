@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.16.2',
+    'version': '19.0.2.17.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -72,6 +72,9 @@ Incluye:
   liga el acabado en kg (el código de la tela acabada con la «I» al frente,
   DAT P-D02-01) junto a la tela acabada en metros, con avisos y el reporte
   «Acabados en proceso faltantes» para crear los que no existen.
+- 2.17.0: árbol nuevo del menú: Tela, Tintorería (fórmulas, tiempos y artículos en
+  los jets), Máquinas, Materias primas y Configuración con Herramientas (importar,
+  acabados faltantes, ligado de hilos) solo para jefes.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
