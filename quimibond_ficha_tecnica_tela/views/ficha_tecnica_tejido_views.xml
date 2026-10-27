@@ -5,19 +5,23 @@
         <field name="name">ficha.tecnica.tejido.list</field>
         <field name="model">ficha.tecnica.tejido</field>
         <field name="arch" type="xml">
-            <list string="Fichas Técnicas de Tejido">
+            <!-- 2.19.0: artículo y máquina, el crudo con su peso, ancho y rendimiento, y los avisos al final. -->
+            <list string="Fichas Técnicas de Tejido" default_order="articulo, revision desc"
+                  decoration-warning="bom_aviso" decoration-muted="not active">
                 <field name="articulo"/>
                 <field name="revision"/>
                 <field name="maquina_tejido"/>
-                <field name="fecha_elaboracion" optional="show"/>
-                <field name="product_proceso_id"/>
-                <field name="ficha_acabado_count" string="Fichas de acabado"/>
-                <field name="maquina_config_id" optional="hide"/>
+                <field name="product_proceso_id" string="Crudo"/>
+                <field name="peso_acondicionado" optional="show"/>
+                <field name="ancho_acondicionado" optional="show"/>
                 <field name="rendimiento_tela_tejida" optional="show"/>
-                <field name="salida_tela" optional="show"/>
+                <field name="salida_tela" optional="hide"/>
+                <field name="ficha_acabado_count" string="Fichas de acabado" optional="show"/>
+                <field name="fecha_elaboracion" optional="show"/>
+                <field name="maquina_config_id" optional="hide"/>
+                <field name="ancho_rollo" optional="hide"/>
+                <field name="peso_promedio_rollo" optional="hide"/>
                 <field name="bom_aviso" optional="show"/>
-                <field name="ancho_rollo"/>
-                <field name="peso_promedio_rollo"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -64,38 +68,40 @@
                         La máquina no tiene capturada la «Salida de la tela» (tubular o abierta) en su configuración:
                         el rendimiento toma el ancho como tela abierta. Puede fijarlo en la ficha («Fijar medición del ancho»).
                     </div>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_title">
+                        <span class="text-muted">Ficha de tejido</span>
                         <h1>
                             <field name="articulo" placeholder="Ej. WJ044Q22HNT235"/>
                         </h1>
                     </div>
+                    <!-- 2.19.0: la ficha (revisión y quién la elaboró) a la izquierda; el crudo que produce, su lista de
+                         materiales y su rendimiento a la derecha. -->
                     <group>
-                        <group>
+                        <group string="Ficha">
                             <field name="revision"/>
                             <field name="fecha_elaboracion"/>
-                            <field name="active"/>
-                        </group>
-                        <group>
-                            <field name="product_proceso_id"/>
-                            <field name="rendimiento_tela_tejida"/>
-                            <field name="rendimiento_manual" widget="boolean_toggle"/>
-                            <field name="salida_tela"/>
-                            <field name="salida_tela_ficha"/>
-                            <field name="product_proceso_tmpl_id" invisible="1"/>
-                            <field name="bom_id" options="{'no_create': True}"
-                                   placeholder="La principal del crudo"/>
-                            <field name="bom_efectiva_id" invisible="bom_id or not bom_efectiva_id"/>
-                        </group>
-                        <group>
                             <field name="jefe_manufactura_id" options="{'no_create': True}"/>
                             <field name="auxiliar_procesos_id" options="{'no_create': True}"/>
                             <field name="jefe_manufactura" readonly="1" invisible="not jefe_manufactura"/>
                             <field name="auxiliar_procesos" readonly="1" invisible="not auxiliar_procesos"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Crudo">
+                            <field name="product_proceso_id"/>
+                            <field name="product_proceso_tmpl_id" invisible="1"/>
+                            <field name="bom_id" options="{'no_create': True}"
+                                   placeholder="La principal del crudo"/>
+                            <field name="bom_efectiva_id" invisible="bom_id or not bom_efectiva_id"/>
+                            <field name="rendimiento_tela_tejida"/>
+                            <field name="rendimiento_manual" widget="boolean_toggle"/>
+                            <field name="salida_tela"/>
+                            <field name="salida_tela_ficha"/>
                         </group>
                     </group>
 
                     <notebook>
-                        <page string="Máquina e Hilos">
+                        <page string="Máquina" name="maquina">
                             <group>
                                 <group string="Datos de máquina">
                                     <!-- 2.3.0: los datos de máquina salen de la configuración de la máquina (cilindro)
@@ -117,6 +123,8 @@
                                     <field name="vueltas_por_rollo"/>
                                 </group>
                             </group>
+                        </page>
+                        <page string="Hilos" name="hilos">
                             <!-- 2.9.0: el hilo es el producto; el texto anterior queda de solo lectura. -->
                             <field name="hilo_line_ids">
                                 <list editable="bottom">
@@ -147,7 +155,7 @@
                             </group>
                         </page>
 
-                        <page string="Especificaciones">
+                        <page string="Ajustes de tejido" name="especificaciones">
                             <h4>Datos por polea</h4>
                             <table class="table table-bordered o_list_view" style="width:100%">
                                 <thead>
@@ -251,7 +259,7 @@
                             </table>
                         </page>
 
-                        <page string="Tela Acondicionada">
+                        <page string="Tela acondicionada" name="tela_acondicionada">
                             <h4>Datos de tela acondicionada</h4>
                             <table class="table table-bordered o_list_view" style="width:100%">
                                 <thead>
@@ -337,7 +345,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Notas">
+                        <page string="Notas" name="notas">
                             <field name="notas"/>
                         </page>
                     </notebook>

@@ -801,3 +801,38 @@ que no tienen «I…» se quedaron como estaban o, en los jets, se archivaron co
 
 Prueba: `tests/test_procesos.py::test_07_par_kg_metros`.
 
+## Formularios ordenados por la ruta (2.19.0, 2026-10-27)
+
+Dirección General pidió que, además del árbol, cada formulario muestre la información en el orden en que se usa.
+Ningún dato se mueve ni se pierde: cada campo que estaba en un formulario sigue en él (lo revisa el diff de los campos).
+
+- **Ficha de acabado**: arriba dos bloques, «Ficha» (revisión, fecha, rendimiento) y «Ruta del artículo» numerada:
+  1. ficha de tejido, 2. crudo, 3. acabado en proceso (kg), 4. tela acabada (m). Botones a la lista vigente, a las
+  **listas en kg** y a las **listas en metros** del artículo, contando las archivadas (las listas en kg nacen
+  archivadas hasta que Ingeniería las revisa). Pestañas: Tela acabada (se llamaba «Tela Acondicionada», que es la del
+  tejido), **Ruta y máquinas** (junta «Operaciones» y «Procesos por máquina»; las operaciones con aviso se marcan),
+  Tintorería, Características, Notas (antes debajo de las pestañas). Archivada lleva listón.
+- **Ficha de tejido**: «Ficha» (revisión, fecha y quién la elaboró) y «Crudo» (producto, lista de materiales,
+  rendimiento y salida de la tela). «Máquina e Hilos» se separa en **Máquina** y **Hilos**; «Especificaciones» se
+  llama **Ajustes de tejido** (poleas, tensión, puntos, bastidor, rollo). Archivada lleva listón.
+- **Proceso del artículo en la máquina** (Procesos por artículo y Tintorería → Artículos en los jets): «Artículo y
+  máquina» con la **unidad del producto** (kg o m) y «Origen del dato» (fecha, fuente). Botón a la **ficha de
+  acabado** del artículo, se busque por el «I…» o por la tela en metros. La lista trae la columna Unidad.
+- **Configuración de máquina**: la máquina como título, listón **Vigente** y bloque «Vigencia».
+- Fórmulas (`quimibond_tintoreria_dosificacion` 1.3.0): el nombre como título, la regla de dosificación a la vista y
+  los colorantes marcados en la lista. `quimibond_tintoreria_programacion` 1.4.0 agrega la pestaña **Tiempos por
+  jet** a la fórmula.
+
+**Listas** (mismo PR):
+
+- Fichas de tejido: artículo, máquina, crudo con su peso, ancho y rendimiento; avisos de hilos en amarillo y las
+  archivadas en gris; orden por artículo y revisión (la más nueva primero).
+- Fichas de acabado: tejido → acabado en proceso (kg) → tela acabada (m), peso, ancho y rendimiento; en rojo si el
+  encogimiento está fuera de norma. La norma ya no se cambia con un clic en la lista (era un interruptor editable).
+- Procesos por artículo y Artículos en los jets: unidad y tipo de máquina a la vista; en gris los que no tienen
+  ningún dato capturado.
+- Configuraciones de máquina: por máquina y la más reciente primero. Fichas de materia prima: la referencia.
+
+Campos nuevos (calculados, sin columna): `ficha.tecnica.acabado.bom_proceso_count` / `bom_acabado_count`,
+`ficha.tecnica.proceso.product_uom_id` / `ficha_acabado_id`. Prueba: `tests/test_procesos.py::test_08_ficha_y_unidad_del_proceso`.
+

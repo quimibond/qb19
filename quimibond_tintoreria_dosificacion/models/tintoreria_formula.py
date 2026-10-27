@@ -24,6 +24,7 @@ class TintoreriaFormula(models.Model):
     line_ids = fields.One2many('tintoreria.formula.line', 'formula_id', 'Ingredientes', copy=True)
     bom_ids = fields.One2many('mrp.bom', 'formula_tintoreria_id', 'BoMs que la usan')
     bom_count = fields.Integer('BoMs', compute='_compute_bom_count')
+    line_count = fields.Integer('Núm. de ingredientes', compute='_compute_line_count')  # 1.3.0: columna de la lista
 
     _name_uniq = models.Constraint(
         'UNIQUE (name, company_id)',
@@ -34,6 +35,11 @@ class TintoreriaFormula(models.Model):
     def _compute_bom_count(self):
         for formula in self:
             formula.bom_count = len(formula.bom_ids)
+
+    @api.depends('line_ids')
+    def _compute_line_count(self):
+        for formula in self:
+            formula.line_count = len(formula.line_ids)
 
     @api.model_create_multi
     def create(self, vals_list):

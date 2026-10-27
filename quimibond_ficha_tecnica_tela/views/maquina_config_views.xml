@@ -93,7 +93,7 @@
         <field name="name">ficha.tecnica.maquina.config.list</field>
         <field name="model">ficha.tecnica.maquina.config</field>
         <field name="arch" type="xml">
-            <list string="Configuraciones de máquina" decoration-bf="is_current">
+            <list string="Configuraciones de máquina" decoration-bf="is_current" default_order="workcenter_id, date_from desc">
                 <field name="workcenter_id"/>
                 <field name="tipo_id"/>
                 <field name="date_from"/>
@@ -112,16 +112,20 @@
         <field name="arch" type="xml">
             <form string="Configuración de máquina">
                 <sheet>
+                    <widget name="web_ribbon" title="Vigente" bg_color="text-bg-success" invisible="not is_current"/>
+                    <div class="oe_title">
+                        <span class="text-muted">Configuración de máquina</span>
+                        <h1><field name="workcenter_id" options="{'no_create': True}" placeholder="Máquina"/></h1>
+                    </div>
                     <group>
                         <group>
-                            <field name="workcenter_id" options="{'no_create': True}"/>
                             <field name="tipo_id" options="{'no_create': True}"/>
                             <field name="motivo"/>
                         </group>
-                        <group>
+                        <group string="Vigencia">
                             <field name="date_from"/>
                             <field name="date_to"/>
-                            <field name="is_current"/>
+                            <field name="is_current" invisible="1"/>
                         </group>
                     </group>
                     <separator string="Parámetros"/>

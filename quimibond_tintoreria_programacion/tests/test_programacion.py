@@ -150,3 +150,13 @@ class TestProgramacionTintoreria(TransactionCase):
         # Regresión: Enterprise llama button_start con argumentos extra (datos demo y Shop Floor).
         with self.assertRaises(UserError):
             orden_trabajo.button_start(True, True)
+
+    def test_tiempos_por_jet_en_la_formula(self):
+        """1.4.0: los minutos por jet se capturan en la propia fórmula."""
+        formula = self.env['tintoreria.formula'].create({
+            'name': 'FORMULA TIEMPOS TEST',
+            'tiempo_ids': [Command.create({'workcenter_id': self.htj1.id, 'minutos': 240.0})]})
+        tiempo = self.env['tintoreria.formula.tiempo'].search([('formula_id', '=', formula.id)])
+        self.assertEqual((tiempo.workcenter_id, tiempo.minutos), (self.htj1, 240.0))
+        self.assertEqual(formula.tiempo_ids, tiempo)
+        self.assertEqual(tiempo.horas, 4.0)

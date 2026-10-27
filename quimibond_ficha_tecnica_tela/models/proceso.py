@@ -42,6 +42,11 @@ class FichaTecnicaProceso(models.Model):
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', required=True, index=True,
                                     ondelete='restrict', domain="[('ft_tipo_id', '!=', False)]")
     tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True)
+    product_uom_id = fields.Many2one(related='product_id.uom_id', string='Unidad del producto')
+    ficha_acabado_id = fields.Many2one('ficha.tecnica.acabado', string='Ficha de acabado',
+                                       compute='_compute_ficha_acabado_id',
+                                       help='2.19.0: la ficha de acabado del artículo (como acabado en proceso en kg o '
+                                            'como tela acabada en metros).')
     valor_ids = fields.One2many('ficha.tecnica.proceso.valor', 'proceso_id', string='Parámetros',
                                 context={'active_test': False})
     resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
@@ -67,6 +72,14 @@ class FichaTecnicaProceso(models.Model):
                 continue
             found = Product.search([('default_code', '=', code)], limit=2) if code else Product
             proceso.product_id = found if len(found) == 1 else False
+
+    @api.depends('product_id')
+    def _compute_ficha_acabado_id(self):
+        Acabado = self.env['ficha.tecnica.acabado']
+        for proceso in self:
+            proceso.ficha_acabado_id = Acabado.search(
+                ['|', ('product_proceso_id', '=', proceso.product_id.id),
+                 ('product_acabado_id', '=', proceso.product_id.id)], limit=1) if proceso.product_id else Acabado
 
     @api.depends('articulo', 'workcenter_id.name')
     def _compute_display_name(self):
@@ -140,6 +153,11 @@ class FichaTecnicaProceso(models.Model):
             if proceso:
                 return proceso
         return self.browse()
+
+    def action_ft_ver_ficha_acabado(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': 'Ficha de acabado', 'res_model': 'ficha.tecnica.acabado',
+                'view_mode': 'form', 'res_id': self.ficha_acabado_id.id}
 
     def _ft_sync_valores(self):
         """Un renglón por parámetro del artículo del tipo de la máquina (vacío si no se capturó)."""

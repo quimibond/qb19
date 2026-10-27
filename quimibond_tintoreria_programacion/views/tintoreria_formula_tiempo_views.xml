@@ -4,10 +4,11 @@
         <field name="name">tintoreria.formula.tiempo.list</field>
         <field name="model">tintoreria.formula.tiempo</field>
         <field name="arch" type="xml">
-            <list string="Tiempos de Tintorería" editable="bottom">
+            <list string="Tiempos de Tintorería" editable="bottom" default_order="formula_id, workcenter_id">
                 <field name="formula_id"/>
                 <field name="workcenter_id" options="{'no_create': True}"/>
                 <field name="minutos"/>
+                <field name="horas" optional="show"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -26,6 +27,27 @@
                     <filter string="HTJ" name="group_htj" context="{'group_by': 'workcenter_id'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- 1.4.0: pestaña «Tiempos por jet» en la fórmula (vista de otro módulo: quimibond_tintoreria_dosificacion). -->
+    <record id="tintoreria_formula_view_form_tiempos" model="ir.ui.view">
+        <field name="name">tintoreria.formula.form.tiempos</field>
+        <field name="model">tintoreria.formula</field>
+        <field name="inherit_id" ref="quimibond_tintoreria_dosificacion.tintoreria_formula_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='ingredientes']" position="after">
+                <page string="Tiempos por jet" name="tiempos">
+                    <p class="text-muted">Minutos por baño de esta fórmula en cada jet. Al programar, manda el tiempo de ciclo
+                        del artículo en el jet (Artículos en los jets); si no lo tiene, se usan estos minutos.</p>
+                    <field name="tiempo_ids" context="{'default_formula_id': id}">
+                        <list editable="bottom">
+                            <field name="workcenter_id" options="{'no_create': True}"/>
+                            <field name="minutos"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 
