@@ -117,12 +117,19 @@ class SatCompareLine(models.Model):
         sat_pago_terceros). Sin la columna (aún no creada), ninguna."""
         if not column_exists(self.env.cr, 'product_template', 'sat_pago_terceros'):
             return 'SELECT NULL::integer AS move_id, 0::numeric AS total WHERE false'
+        # 1.26.1: también los productos de terceros solo con ese proveedor
+        # (res.partner.sat_terceros_product_ids: gasolina y peajes de Edenred).
+        por_proveedor = """ OR EXISTS (SELECT 1 FROM res_partner_sat_terceros_rel r
+                                         WHERE r.partner_id = m.commercial_partner_id
+                                           AND r.product_tmpl_id = pt.id)""" \
+            if table_exists(self.env.cr, 'res_partner_sat_terceros_rel') else ''
         return """SELECT l.move_id, abs(sum(l.price_total)) AS total
                     FROM account_move_line l
+                    JOIN account_move m ON m.id = l.move_id
                     JOIN product_product pp ON pp.id = l.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                   WHERE pt.sat_pago_terceros AND l.display_type = 'product'
-                   GROUP BY l.move_id"""
+                   WHERE l.display_type = 'product' AND (pt.sat_pago_terceros%s)
+                   GROUP BY l.move_id""" % por_proveedor
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)

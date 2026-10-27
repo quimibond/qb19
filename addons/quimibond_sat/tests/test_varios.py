@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Una factura con varios CFDI (el proveedor timbró dos, Odoo los capturó
 juntos) y un CFDI en varias facturas (mismo UUID)."""
+from unittest.mock import patch
+
 from odoo.tests import tagged
 
 from .common import SatCommon, syntage_invoice
@@ -67,3 +69,17 @@ class TestSatVarios(SatCommon):
         row = self._rows([UUID_C])
         self.assertEqual(row.issue, 'ok')
         self.assertAlmostEqual(row.total_odoo, 126578.76, places=2)
+
+    def test_factura_cancelada_y_recapturada(self):
+        """El CFDI quedó ligado por UUID a una factura que se canceló y se
+        volvió a capturar con el mismo UUID: el cruce lo pasa a la publicada."""
+        vieja = self._invoice(self.proveedor, 8584.0)
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=8584.0))
+        cfdi.write({'move_id': vieja.id, 'match_method': 'uuid_document', 'match_status': 'matched'})
+        vieja.button_cancel()
+        nueva = self._invoice(self.proveedor, 8584.0)
+        Cfdi = type(self.env['sat.cfdi'])
+        with patch.object(Cfdi, '_candidate_moves', lambda rec: (vieja | nueva, 'uuid_document')):
+            self.env['sat.cfdi']._cron_match_unmatched(full=True)
+        self.assertEqual(cfdi.move_id, nueva)
+        self.assertEqual(cfdi.match_status, 'matched')
