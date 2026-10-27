@@ -4,6 +4,14 @@ Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
 
+## 19.0.1.7.1 — 2026-10-27
+
+- **Precio al cliente con 4 decimales.** `precio_objetivo` era `Monetary` y Odoo lo redondeaba a los 2 decimales
+  de la moneda; ahora es `Float` con `digits=(16, 4)`, como `precio_mxn` y los pisos. La columna ya era `numeric`:
+  no hay migración. La moneda sigue a un lado en la ficha y en la lista; la tarifa (`fixed_price`, «Product Price»
+  con 6 decimales en producción) recibe los 4.
+
+
 ## 19.0.1.7.0 — 2026-10-26
 
 Dirección General 2026-10-26: **costear un desarrollo con la receta de sus códigos nuevos.** El artículo que genera

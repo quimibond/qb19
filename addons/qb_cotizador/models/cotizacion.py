@@ -226,10 +226,10 @@ class QbCotizadorCotizacion(models.Model):
     # ------------------------------------------------------------------
     # Precio y lo que deja
     # ------------------------------------------------------------------
-    precio_objetivo = fields.Monetary(string='Precio al cliente', currency_field='currency_id',
-                                      tracking=True,
-                                      help='En la moneda de la cotización; se convierte a MXN '
-                                           'con el TC guardado para medirlo contra los pisos.')
+    # Float y no Monetary: Monetary redondea a los 2 decimales de la moneda y el precio se cotiza a 4.
+    precio_objetivo = fields.Float(string='Precio al cliente', digits=(16, 4), tracking=True,
+                                   help='En la moneda de la cotización; se convierte a MXN '
+                                        'con el TC guardado para medirlo contra los pisos.')
     precio_mxn = fields.Float(string='Precio $/u MXN', digits=(16, 4),
                               compute='_compute_margenes', store=True)
     margen_contribucion_pct = fields.Float(string='Contribución %', digits=(6, 2),
