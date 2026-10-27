@@ -746,3 +746,10 @@ técnica de tintorería F-P-D01-33 queda así:
 guardaba completo, pero la ficha lo mostraba con 2 decimales: NN053Q66HNT098 se veía 0.21 / 0.35 / +/- 0.00 en
 lugar de 0.205 / 0.353 ± 0.002 cm. Sin migración (solo cambia cómo se muestra). Control del desarrollo
 (`sgi.dev.process.reading`) ya daba el texto con `%g` y no cambia. Prueba `tests/test_longitud_malla.py`.
+
+## Espesor con 3 decimales (2.16.2, 2026-10-27)
+
+El espesor de la ficha de tejido (`espesor_acondicionado`, `espesor_acondicionado_tol`) y el de la ficha de acabado
+(`espesor_acabado`, `espesor_acabado_tol`) llevan `digits=(16, 3)`, igual que la longitud de malla en 2.16.1:
+XJ145Q21HNT098 guarda 0.022 ± 0.002 in y se veía 0.02 ± 0.00. Sin migración. Prueba
+`tests/test_longitud_malla.py::test_espesor_tres_decimales`.

@@ -23,9 +23,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 PARAM_VALIDATOR_JOB_TEJIDO = 'quimibond_sgi.dev_validator_job_tejido_id'
-# 57.193.0: cada área valida lo suyo (C1.10); vacíos, valida el puesto de tejido (Jefe de Manufactura).
-PARAM_VALIDATOR_JOB_ACABADO = 'quimibond_sgi.dev_validator_job_acabado_id'
-PARAM_VALIDATOR_JOB_TINTORERIA = 'quimibond_sgi.dev_validator_job_tintoreria_id'
+# 57.195.0 (Dirección General 2026-10-27): la ficha de proceso (tejido y acabado, con su tintorería) la valida Diseño y
+# Desarrollo de Producto, que toma en cuenta las especificaciones del cliente y del producto. Vacío: el puesto por nombre.
+PARAM_VALIDATOR_JOB_FICHA = 'quimibond_sgi.dev_validator_job_ficha_id'
+VALIDATOR_JOB_NAME_FICHA = 'DISEÑO Y DESARROLLO DE PRODUCTO'
 VALIDATOR_JOB_NAME_TEJIDO = 'JEFE DE MANUFACTURA'
 
 

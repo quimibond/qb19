@@ -4,7 +4,7 @@ from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_dev_fabric_sheet import TEJIDO_PARAMS
-from ..models.sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_TEJIDO
+from ..models.sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_FICHA
 
 
 @tagged('post_install', '-at_install')
@@ -29,10 +29,11 @@ class TestDevFabricSheet(TransactionCase):
         Users = cls.env['res.users'].with_context(no_reset_password=True)
         groups = [cls.env.ref('base.group_user').id, cls.env.ref('mrp.group_mrp_user').id]
         cls.yet = Users.create({'name': 'Procesos FS', 'login': 'sgi_fs_yet', 'group_ids': [(6, 0, groups)]})
-        cls.jefe = Users.create({'name': 'Jefe de Manufactura FS', 'login': 'sgi_fs_jefe', 'group_ids': [(6, 0, groups)]})
-        job = cls.env['hr.job'].create({'name': 'JEFE DE MANUFACTURA (prueba FS)'})
-        cls.env['hr.employee'].create({'name': 'Jefe FS', 'job_id': job.id, 'user_id': cls.jefe.id})
-        cls.env['ir.config_parameter'].sudo().set_param(PARAM_VALIDATOR_JOB_TEJIDO, str(job.id))
+        # 57.195.0: la ficha la valida Diseño y Desarrollo de Producto (``cls.jefe`` por compatibilidad del nombre).
+        cls.jefe = Users.create({'name': 'Diseño de Producto FS', 'login': 'sgi_fs_jefe', 'group_ids': [(6, 0, groups)]})
+        job = cls.env['hr.job'].create({'name': 'DISEÑO Y DESARROLLO DE PRODUCTO (prueba FS)'})
+        cls.env['hr.employee'].create({'name': 'Producto FS', 'job_id': job.id, 'user_id': cls.jefe.id})
+        cls.env['ir.config_parameter'].sudo().set_param(PARAM_VALIDATOR_JOB_FICHA, str(job.id))
         cls.reason = cls.env['sgi.dev.option'].create({'kind': 'motivo_ajuste', 'name': 'Ajuste FS prueba'})
 
     def _tejido(self, **vals):
@@ -60,7 +61,7 @@ class TestDevFabricSheet(TransactionCase):
         sheet.longitud_malla_polea1 = 31.0
         self.assertEqual(malla.result, 'ok', "El nominal se lee en vivo de la ficha")
 
-    def test_02_proponer_medir_validar(self):
+    def test_02_proponer_y_validar(self):
         sheet = self._tejido()
         with self.assertRaises(UserError, msg="Primero propone Diseño de Procesos"):
             sheet.with_user(self.jefe).action_sgi_validate()
@@ -78,8 +79,7 @@ class TestDevFabricSheet(TransactionCase):
         with self.assertRaises(UserError, msg="Fuera de tolerancia exige motivo"):
             sheet.with_user(self.jefe).action_sgi_validate()
         malla.reason_id = self.reason
-        sheet.with_user(self.yet).action_sgi_measure()
-        self.assertEqual(sheet.sgi_measured_by_id, self.yet)
+        self.assertFalse(hasattr(sheet, 'action_sgi_measure'), "57.195.0: ya no hay «Medido por Laboratorio»")
         sheet.with_user(self.jefe).action_sgi_validate()
         self.assertEqual(sheet.sgi_validated_by_id, self.jefe)
         with self.assertRaises(UserError, msg="Validada no se vuelve a proponer"):
@@ -115,19 +115,9 @@ class TestDevFabricSheet(TransactionCase):
         self.assertEqual(mo(self.tenido)._sgi_dev_run_sheet_problems(), [],
                          "Teñido pasa sin ficha mientras no exista la de tintorería")
 
-    def test_05_cada_area_valida_lo_suyo(self):
-        """57.193.0: la ficha de acabado la valida el supervisor de acabado y, si lleva tintorería (operación del jet o
-        fórmula en la lista de materiales), antes la valida el Supervisor de Tintorería; el teñido se valida contra ella."""
-        from ..models.sgi_dev_process_sheet import PARAM_VALIDATOR_JOB_ACABADO, PARAM_VALIDATOR_JOB_TINTORERIA
-        Users = self.env['res.users'].with_context(no_reset_password=True)
-        groups = [self.env.ref('base.group_user').id, self.env.ref('mrp.group_mrp_user').id]
-        users = {}
-        for key, param in (('acabado', PARAM_VALIDATOR_JOB_ACABADO), ('tintoreria', PARAM_VALIDATOR_JOB_TINTORERIA)):
-            users[key] = Users.create({'name': 'Supervisor %s FS' % key, 'login': 'sgi_fs_%s' % key,
-                                       'group_ids': [(6, 0, groups)]})
-            job = self.env['hr.job'].create({'name': 'SUPERVISOR %s (prueba FS)' % key})
-            self.env['hr.employee'].create({'name': 'Sup %s FS' % key, 'job_id': job.id, 'user_id': users[key].id})
-            self.env['ir.config_parameter'].sudo().set_param(param, str(job.id))
+    def test_05_producto_valida_el_acabado_con_su_tintoreria(self):
+        """57.195.0: la ficha de acabado con tintorería (operación del jet o fórmula en la lista de materiales) la valida
+        Diseño y Desarrollo de Producto de una vez, sin «Validar tintorería»; el teñido se valida contra ella."""
         jet = self.env['mrp.workcenter'].create({
             'name': 'JET FS prueba', 'ft_tipo_id': self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria').id})
         colorante = self.env['product.product'].create({'name': 'colorante FS', 'type': 'consu'})
@@ -142,25 +132,37 @@ class TestDevFabricSheet(TransactionCase):
             'articulo': 'WJFS01JNG170', 'tejido_id': self._tejido().id, 'product_acabado_id': self.acabado.id,
             'project_id': self.dev.id})
         self.assertTrue(sheet.sgi_has_tintoreria)
+        self.assertFalse(hasattr(sheet, 'action_sgi_validate_tintoreria'))
         sheet.with_user(self.yet).action_sgi_propose()
         for reading in sheet.sgi_reading_ids:
             nominal, _up, _down, _unit = reading._sgi_spec()
             reading.real = float(nominal or 0.0)
-        with self.assertRaises(UserError, msg="Antes del acabado valida Tintorería"):
-            sheet.with_user(users['acabado']).action_sgi_validate()
         tenido_mo = self.env['mrp.production'].new({'product_id': self.tenido.id, 'sgi_dev_project_id': self.dev.id})
-        self.assertIn('Supervisor de Tintorería', tenido_mo._sgi_dev_run_sheet_problems()[0])
-        with self.assertRaises(UserError, msg="El Jefe de Manufactura ya no valida la tintorería"):
-            sheet.with_user(self.jefe).action_sgi_validate_tintoreria()
-        sheet.with_user(users['tintoreria']).action_sgi_validate_tintoreria()
-        self.assertEqual(sheet.sgi_tint_validated_by_id, users['tintoreria'])
-        self.assertEqual(tenido_mo._sgi_dev_run_sheet_problems(), [], "El teñido se valida contra esa tintorería")
-        with self.assertRaises(UserError, msg="Tintorería no valida el acabado"):
-            sheet.with_user(users['tintoreria']).action_sgi_validate()
-        sheet.with_user(users['acabado']).action_sgi_validate()
-        self.assertEqual(sheet.sgi_validated_by_id, users['acabado'])
+        self.assertIn('Diseño y Desarrollo de Producto', tenido_mo._sgi_dev_run_sheet_problems()[0])
+        with self.assertRaises(UserError, msg="Diseño y Desarrollo de Procesos propone, no valida"):
+            sheet.with_user(self.yet).action_sgi_validate()
+        sheet.with_user(self.jefe).action_sgi_validate()
+        self.assertEqual(sheet.sgi_validated_by_id, self.jefe)
+        self.assertEqual(tenido_mo._sgi_dev_run_sheet_problems(), [], "El teñido se valida contra la ficha de acabado")
         wiz = self.env['sgi.dev.process.sheets.wizard'].with_context(default_project_id=self.dev.id).create({})
         tenido = wiz.line_ids.filtered(lambda l: l.stage == 'tenido')
         self.assertEqual(tenido.acabado_id, sheet)
         self.assertIn('validó', tenido.status)
         self.assertEqual(tenido.action_open()['res_id'], sheet.id, "El teñido abre la ficha de acabado")
+
+    def test_06_orden_de_la_corrida_sin_proyecto(self):
+        """57.195.0: una corrida de antes de «Pedir corrida de muestra» (sin proyecto) se puede ligar: la orden toma el
+        proyecto de la ficha; una de otro proyecto no se toca."""
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.crudo.product_tmpl_id.id, 'product_qty': 1,
+            'bom_line_ids': [(0, 0, {'product_id': self.tenido.id, 'product_qty': 1})]})
+        vieja = self.env['mrp.production'].create({'product_id': self.crudo.id, 'bom_id': bom.id, 'product_qty': 1})
+        self.assertFalse(vieja.sgi_dev_project_id)
+        sheet = self._tejido()
+        sheet.with_user(self.yet).write({'production_id': vieja.id})
+        self.assertEqual(vieja.sgi_dev_project_id, self.dev, "La orden toma el proyecto de la ficha")
+        otro = self.env['project.project'].create({'name': 'otro FS', 'sgi_is_ft': True})
+        ajena = self.env['mrp.production'].create({'product_id': self.crudo.id, 'bom_id': bom.id, 'product_qty': 1,
+                                                   'sgi_dev_project_id': otro.id})
+        sheet.write({'production_id': ajena.id})
+        self.assertEqual(ajena.sgi_dev_project_id, otro, "Una orden de otro proyecto no se toca")

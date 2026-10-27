@@ -14,6 +14,33 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.195.0 — 2026-10-27
+
+Dirección General 2026-10-27, sobre la ficha de proceso del desarrollo (pestaña «Control del desarrollo» de las fichas
+de tejido y acabado):
+
+**Cambiado**
+- **Valida Diseño y Desarrollo de Producto**, «ya que es quien toma en cuenta las especificaciones del cliente y el
+  producto». Un solo puesto para la ficha de tejido y la de acabado, tintorería incluida: Ajustes → SGI → «Quién
+  valida la ficha de proceso» (`dev_validator_job_ficha_id`; vacío, el puesto DISEÑO Y DESARROLLO DE PRODUCTO), su
+  jefe directo o un administrador del SGI. Sustituye a los puestos por área de 57.193.0 (Jefe de Manufactura en
+  tejido, supervisores de acabado y de tintorería), que salen de Ajustes.
+- **Proponer es de Diseño y Desarrollo de Procesos**, que captura los valores reales, el número de ajuste y el motivo.
+- La corrida de teñido se valida contra la ficha de acabado ya validada. «Validar corrida» de la orden (C1.10) no
+  cambia.
+- **Orden de la corrida**: se elige entre las del proyecto y las del artículo de la ficha (tejido: el crudo; acabado:
+  la tela acabada o el acabado en kg). Las corridas de antes de «Pedir corrida de muestra» no tienen proyecto y no
+  aparecían (caso: FT-039-2025, NN053Q66HNT098, órdenes TL/OP-TEJ/07032 y siguientes); no era de permisos. Al
+  ligar una orden sin proyecto, toma el de la ficha (con sudo, queda en su chatter) para que se pueda «Validar
+  corrida»; una orden de otro proyecto no se toca.
+
+**Retirado**
+- «Medido por Laboratorio»: no hay medición de Laboratorio en este paso. Lo ya firmado se conserva en
+  `sgi_measured_*`, sin mostrarse.
+- «Validar tintorería» (57.193.0): lo ya firmado se conserva en `sgi_tint_validated_*`, sin mostrarse.
+
+Pruebas `test_dev_fabric_sheet.test_02`, `test_05` y `test_06` (Odoo.sh).
+
 ## 19.0.57.194.0 — 2026-10-26
 
 Dirección General 2026-10-26: el mínimo de baño es **de cada jet**, no un número general. TINTORERIA 4 (Jet 4) =
