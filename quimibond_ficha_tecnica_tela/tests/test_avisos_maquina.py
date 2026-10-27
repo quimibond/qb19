@@ -111,6 +111,10 @@ class TestAvisosMaquina(TransactionCase):
         self.assertTrue(production.ft_es_tintoreria, "Una orden con orden de trabajo en jet trae las cargas")
         self.assertEqual(production.ft_jet_wo_id, self.jet)
         self.assertIn('son 2 cargas', production.ft_aviso_maquina)
+        self.assertIn('no tiene proceso del artículo', workorder.ft_aviso_maquina,
+                      "2.20.0: el artículo no tiene proceso en el jet")
+        # 2.20.0: con su proceso en el jet, el único aviso posible es el de carga.
+        self.env['ficha.tecnica.proceso'].create({'articulo': 'WJ042Q22JNT162', 'workcenter_id': self.jet.id})
         _chico, cabe = self._acabado('WJ042Q22JNT162', 800)
         self.assertFalse(cabe.workorder_ids.ft_aviso_maquina, "800 kg caben en una carga")
 
