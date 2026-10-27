@@ -785,3 +785,19 @@ Fichas técnicas
 - La dosificación avisa dónde se captura la relación de baño que falta (antes decía «Tintorería > Rendimiento», un
   menú del módulo `quimibond_tintoreria_rendimiento`, que está desinstalado en producción).
 
+## Procesos con el código en kg (2.18.0, 2026-10-27)
+
+Desde que la producción va en kg hasta la Clasificación final, el proceso de cada artículo en cada máquina (jets,
+devanadoras, abridoras, ramas, inspección) va con el código en kg: el de la tela acabada con la «I» al frente
+(`IWJ053Q22JNT160`, DAT P-D02-01). Los datos de producción se pasaron del código en metros al «I…» el 27-oct (los
+que no tienen «I…» se quedaron como estaban o, en los jets, se archivaron con sus datos).
+
+- `ficha.tecnica.proceso._ft_codigos(code)`: el código y su par en kg o en metros, con la misma regla que
+  `codigo_proceso` (14 o 16 posiciones con J en la 9). Fuera de la regla (entretelas, teñidos) no hay par.
+- `_ft_buscar` busca primero el código exacto y, si no hay, el par: una orden o una lista de materiales de la tela
+  acabada en metros encuentra el proceso del «I…» (relación de baño, kg por carga, avisos de operación), y al revés.
+- El botón «Procesos por máquina» del producto en metros muestra también los procesos de su «I…».
+- `qb_costeo` 1.6.4 lee la velocidad de rama de los procesos en «I…» para la tela acabada en metros.
+
+Prueba: `tests/test_procesos.py::test_07_par_kg_metros`.
+

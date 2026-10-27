@@ -3,6 +3,8 @@ from datetime import date, datetime, timedelta
 
 from odoo.tests import tagged
 
+from odoo.addons.qb_costeo.models.horas import codigo_metros
+
 from .common import CosteoCase
 
 
@@ -273,6 +275,24 @@ class TestHoras(CosteoCase):
         fe = self._fila(entretela, self.c_aca)
         self.assertEqual(fe.fuente, 'ficha')
         self.assertAlmostEqual(fe.horas_propias, 1 / 1320.0, 6)
+        # 1.6.4: el proceso con el código en kg («I…») da la velocidad de
+        # la tela acabada en metros.
+        tela_i = self.env['product.product'].create({
+            'name': 'WJ097Q21JBL160', 'default_code': 'WJ097Q21JBL160',
+            'type': 'consu', 'is_storable': True, 'uom_id': self.m.id})
+        Proceso.create({'articulo': 'IWJ097Q21JBL160', 'workcenter_id': wc2.id})._ft_set_value('velocidad', 30)
+        self.H.recalcular(tela_i)
+        fi = self._fila(tela_i, self.c_aca)
+        self.assertEqual(fi.fuente, 'ficha')
+        self.assertAlmostEqual(fi.horas_propias, 1 / 1800.0, 6)
+
+    def test_codigo_metros(self):
+        """1.6.4: par kg → metros de la DAT P-D02-01."""
+        self.assertEqual(codigo_metros('IWJ053Q22JNT160'), 'WJ053Q22JNT160')
+        self.assertEqual(codigo_metros(' INN060Q66JNT163RE '), 'NN060Q66JNT163RE')
+        self.assertEqual(codigo_metros('WJ053Q22JNT160'), '')
+        self.assertEqual(codigo_metros('IMPRESORA'), '')
+        self.assertEqual(codigo_metros(False), '')
 
     def test_ordenes_fuera_de_rango(self):
         """1.6.0: las órdenes que el costeo descarta por la banda de velocidad se ven para corregirlas."""

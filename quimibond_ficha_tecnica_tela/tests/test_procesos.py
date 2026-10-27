@@ -100,3 +100,19 @@ class TestProcesos(TransactionCase):
         self.assertEqual(accion['res_model'], 'ficha.tecnica.proceso')
         self.assertIn(proceso, self.Proceso.search(accion['domain']))
         self.env.ref('product.product_normal_form_view')._check_xml()
+
+    def test_07_par_kg_metros(self):
+        """2.18.0: el proceso va con el código en kg («I» + tela acabada) y la tela acabada en metros lo encuentra."""
+        kg = self.env['product.product'].create({'name': 'Tela prueba kg', 'default_code': 'IZZ140Q21JNT165'})
+        proceso = self.Proceso.create({'articulo': 'IZZ140Q21JNT165', 'workcenter_id': self.rama1.id})
+        self.assertEqual(proceso.product_id, kg)
+        self.assertEqual(self.Proceso._ft_codigos('ZZ140Q21JNT165'), ['ZZ140Q21JNT165', 'IZZ140Q21JNT165'])
+        self.assertEqual(self.Proceso._ft_codigos('IZZ140Q21JNT165'), ['IZZ140Q21JNT165', 'ZZ140Q21JNT165'])
+        self.assertEqual(self.Proceso._ft_codigos('K40GO155'), ['K40GO155'], "Sin par fuera de la regla")
+        self.assertEqual(self.Proceso._ft_buscar(self.product, self.rama1), proceso, "Metros → su «I…»")
+        self.assertEqual(self.Proceso._ft_buscar(kg, self.rama1), proceso)
+        self.assertFalse(self.Proceso._ft_buscar(self.product, self.rama2))
+        exacto = self.Proceso.create({'articulo': 'ZZ140Q21JNT165', 'workcenter_id': self.rama1.id})
+        self.assertEqual(self.Proceso._ft_buscar(self.product, self.rama1), exacto, "El código exacto manda")
+        self.product.product_tmpl_id.invalidate_recordset(['ft_proceso_count'])
+        self.assertEqual(self.product.product_tmpl_id.ft_proceso_count, 2, "La tela en metros ve también el «I…»")
