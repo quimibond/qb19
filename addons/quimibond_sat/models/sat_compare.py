@@ -217,12 +217,16 @@ class SatCompareLine(models.Model):
                    AND o.partner_id IS NOT NULL
                    AND NOT EXISTS (SELECT 1 FROM sat_cfdi c WHERE c.move_id = o.move_id)
             ),
+            -- Dentro de (compañía, contacto, importe, sentido, rn) hay a lo más
+            -- una factura y una nota: si están las dos, se compensan. Con
+            -- ventana y no con autojoin (1.28.1: el autojoin hacía la vista
+            -- cuatro veces más lenta).
             neto_cero AS (
-                SELECT a.move_id
-                  FROM sin_cfdi_odoo a
-                  JOIN sin_cfdi_odoo b ON b.company_id = a.company_id AND b.partner_id = a.partner_id
-                                      AND b.total = a.total AND b.emitida = a.emitida
-                                      AND b.es_nota <> a.es_nota AND b.rn = a.rn
+                SELECT move_id
+                  FROM (SELECT move_id,
+                               count(*) OVER (PARTITION BY company_id, partner_id, total, emitida, rn) AS n
+                          FROM sin_cfdi_odoo) x
+                 WHERE n = 2
             ),
             adj AS (
                 SELECT c.id AS cfdi_id,
@@ -287,7 +291,7 @@ class SatCompareLine(models.Model):
                             WHEN o.odoo_uuid IS NOT NULL THEN 'solo_odoo'
                             WHEN o.sin_cfdi THEN 'sin_cfdi'
                             WHEN o.por_poliza THEN 'poliza'
-                            WHEN nc.move_id IS NOT NULL THEN 'neto_cero'
+                            WHEN o.move_id IN (SELECT move_id FROM neto_cero) THEN 'neto_cero'
                             ELSE 'solo_odoo_sin_uuid' END,
                        NULL::integer
                   FROM odoo o
@@ -295,7 +299,6 @@ class SatCompareLine(models.Model):
                   -- contra qué comparar y todo saldría "solo Odoo".
                   JOIN res_company co ON co.id = o.company_id AND co.sat_sync_enabled
                   LEFT JOIN res_partner p ON p.id = o.partner_id
-                  LEFT JOIN neto_cero nc ON nc.move_id = o.move_id
                   LEFT JOIN horizon h ON h.company_id = o.company_id
                                      AND h.direction = CASE WHEN o.move_type IN ('out_invoice', 'out_refund')
                                                             THEN 'issued' ELSE 'received' END
