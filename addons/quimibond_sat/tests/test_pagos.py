@@ -254,3 +254,17 @@ class TestSatPagos(SatCommon):
         bill3.invalidate_recordset()
         self.assertEqual(bill3.payment_state, 'reversed')
         self.assertEqual(self._row(cfdi3).issue, 'revertida')
+
+    def test_nota_de_credito_no_es_pago(self):
+        """Factura de 1,000 con nota de crédito de 100 conciliada y 900 pagados
+        con su complemento: cuadra; la nota de crédito no pide complemento."""
+        bill = self._invoice(self.proveedor, 1000.0, day='2026-04-10')
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=1000.0, paymentType='PPD', issuedAt='2026-04-10 12:00:00'))
+        cfdi.write({'move_id': bill.id})
+        nc = self._invoice(self.proveedor, 100.0, move_type='in_refund', day='2026-04-11')
+        (bill | nc).line_ids.filtered(lambda l: l.account_id.account_type == 'liability_payable').reconcile()
+        self._pay(bill)
+        self._pago(syntage_payment('p1', UUID_A, 900.0))
+        row = self._row(cfdi)
+        self.assertAlmostEqual(row.pagado_odoo, 900.0, places=2)
+        self.assertEqual(row.issue, 'ok')

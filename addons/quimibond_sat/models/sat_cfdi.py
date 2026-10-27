@@ -184,7 +184,9 @@ class SatCfdi(models.Model):
     @api.model
     def _pago_terceros(self, move):
         """Total de las líneas de la factura que son pagos a terceros (no van en el CFDI)."""
-        lines = move.invoice_line_ids.filtered(lambda l: l.product_id.product_tmpl_id.sat_pago_terceros)
+        del_proveedor = move.commercial_partner_id.sat_terceros_product_ids
+        lines = move.invoice_line_ids.filtered(
+            lambda l: l.product_id.product_tmpl_id.sat_pago_terceros or l.product_id.product_tmpl_id in del_proveedor)
         return abs(sum(lines.mapped('price_total')))
 
     def _odoo_amount(self):
@@ -408,7 +410,8 @@ class SatCfdi(models.Model):
             moves, method = rec._candidate_moves()
             move, taken = rec._pick_free_move(moves)
             if move:
-                rec.write({'move_id': move.id, 'match_method': method, 'match_status': 'matched'})
+                if move != rec.move_id or rec.match_method != method or rec.match_status != 'matched':
+                    rec.write({'move_id': move.id, 'match_method': method, 'match_status': 'matched'})
             elif taken:
                 rec.write({'match_status': 'solo_sat', 'match_method': False, 'move_id': False,
                            'note': _('La factura %s con este UUID quedó ligada al CFDI %s')
@@ -956,6 +959,12 @@ class SatCfdi(models.Model):
             recent = ['|', ('fecha_emision', '>=', since), ('create_date', '>=', since)]
         cfdis = self.sudo().search([('match_status', '=', 'solo_sat'), ('tipo', 'in', ('I', 'E'))] + recent,
                                    order='fecha_emision desc, id desc', limit=limit)
+        # 1.26.1: ligados por UUID a una factura que después se canceló: si se
+        # recapturó con el mismo UUID, el cruce pasa el CFDI a la publicada
+        # (BIO LUUK, Servicio Tecamachalco, 2026-10-27).
+        cfdis |= self.sudo().search([('match_status', '=', 'matched'), ('move_id.state', '=', 'cancel'),
+                                     ('match_method', 'not in', MANUAL_METHODS), ('tipo', 'in', ('I', 'E'))],
+                                    limit=limit)
         cfdis._match_move()
         matched = len(cfdis.filtered(lambda c: c.match_status == 'matched'))
         _logger.info('sat.cfdi: cruce %s de %s pendientes, %s ligados',

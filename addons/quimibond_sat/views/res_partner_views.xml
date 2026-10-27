@@ -8,6 +8,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="sat_cfdi_policy" invisible="parent_id"/>
+                <field name="sat_terceros_product_ids" widget="many2many_tags"
+                       invisible="parent_id or sat_cfdi_policy != 'factura'"/>
                 <field name="sat_69b_status" invisible="parent_id or not sat_69b_status"
                        decoration-danger="sat_69b_status == 'definitive'"
                        decoration-warning="sat_69b_status == 'presumed'"/>
