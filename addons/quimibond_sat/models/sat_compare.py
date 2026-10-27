@@ -4,8 +4,8 @@ factura publicada de Odoo que no tiene CFDI en el SAT. Vista SQL, solo lectura.
 
 Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado, más
 las que quedan fuera de la conciliación (póliza, sin CFDI esperado, aún no
-extraído, antes de los datos del SAT, cancelado en el SAT sin factura, y
-factura y nota sin CFDI que se compensan en Odoo).
+extraído, antes de los datos del SAT, cancelado en el SAT sin factura, CFDI
+de menos de $1 sin factura, y factura y nota sin CFDI que se compensan en Odoo).
 Hallazgos en 'ambos': ok, redondeo, terceros, borrador, moneda, monto,
 cancelado_sat, cancelado_odoo. Una factura con varios CFDI se reparte entre
 ellos; un CFDI en varias facturas (mismo UUID) se compara contra la suma.
@@ -32,6 +32,7 @@ class SatCompareLine(models.Model):
         ('pendiente_sat', 'Aún no extraído del SAT'),
         ('antes_sat', 'Antes de los datos del SAT'),
         ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
+        ('importe_cero', 'Importe en cero (menos de $1)'),
         ('neto_cero', 'Se compensa en Odoo (sin CFDI)'),
         ('ignorado', 'Ignorado'),
     ], string='Cubeta', readonly=True)
@@ -53,6 +54,7 @@ class SatCompareLine(models.Model):
         ('pendiente_sat', 'Aún no extraído del SAT'),
         ('antes_sat', 'Antes de los datos del SAT'),
         ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
+        ('importe_cero', 'Importe en cero (menos de $1)'),
         ('neto_cero', 'Se compensa en Odoo (sin CFDI)'),
         ('ignorado', 'Ignorado'),
     ], string='Hallazgo', readonly=True)
@@ -266,6 +268,8 @@ class SatCompareLine(models.Model):
                             -- cancelado y sin factura: SAT y Odoo coinciden, no hay nada que hacer
                             WHEN c.estado_sat = 'cancelado' THEN 'cancelado_sin_factura'
                             WHEN sp.sat_cfdi_policy = 'poliza' THEN 'poliza'
+                            -- 1.29.0: menos de $1 sin factura, nada que capturar
+                            WHEN abs(c.total) < 1 THEN 'importe_cero'
                             ELSE 'solo_sat' END AS bucket,
                        c.suggested_move_id
                   FROM sat_cfdi c
@@ -341,7 +345,8 @@ class SatCompareLine(models.Model):
                         ELSE 'monto' END AS issue
               FROM (SELECT rows.*,
                            CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat',
-                                                     'antes_sat', 'cancelado_sin_factura', 'neto_cero') THEN 0
+                                                     'antes_sat', 'cancelado_sin_factura', 'importe_cero',
+                                                     'neto_cero') THEN 0
                                 WHEN rows.tipo = 'E' THEN -1 ELSE 1 END AS signo
                       FROM rows) r
         """ % (self._table, self._terceros_sql(), self._odoo_uuid_sql(), mx_id))

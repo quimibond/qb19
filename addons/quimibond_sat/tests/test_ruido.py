@@ -162,3 +162,18 @@ class TestSatRuido(SatCommon):
         cfdi.write({'move_id': factura.id})
         nota = self._invoice(self.proveedor, 25501.08, move_type='in_refund', day='2026-08-10')
         self.assertEqual(self._row([('move_id', '=', nota.id)]).bucket, 'solo_odoo_sin_uuid')
+
+    def test_cfdi_de_menos_de_un_peso_no_es_pendiente(self):
+        """Edenred y Uline timbran CFDI en $0 y Sonigas notas de centavos: sin
+        factura no hay nada que capturar (1.29.0). Desde $1 sí es pendiente."""
+        cero = self._upsert(syntage_invoice(UUID_A, total=0.0, subtotal=0.0,
+                                            transferredTaxes={'total': 0}))
+        peso = self._upsert(syntage_invoice(UUID_B, id='b', total=1.19, subtotal=1.03,
+                                            transferredTaxes={'total': 0.16}))
+        self.assertEqual(cero.issue, 'importe_cero')
+        self.assertEqual(peso.issue, 'solo_sat')
+        row = self._row([('uuid', '=', UUID_A)])
+        self.assertEqual(row.bucket, 'importe_cero')
+        self.assertEqual(row.issue, 'importe_cero')
+        self.assertAlmostEqual(row.delta, 0.0, places=2)
+        self.assertEqual(self._row([('uuid', '=', UUID_B)]).bucket, 'solo_sat')
