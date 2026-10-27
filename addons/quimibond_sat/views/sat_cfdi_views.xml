@@ -62,6 +62,8 @@
                             invisible="not move_id or direction != 'received'"/>
                     <button name="action_unlink_move" type="object" string="Desligar"
                             invisible="not move_id"/>
+                    <button name="action_verify_sat_status" type="object" string="Consultar estado en el SAT"
+                            invisible="tipo not in ('I', 'E')"/>
                     <button name="action_create_bill" type="object" string="Crear factura desde el XML"
                             invisible="move_id or match_status != 'solo_sat' or direction != 'received' or estado_sat != 'vigente'"
                             confirm="Se crea la factura de proveedor en borrador con el XML del SAT. ¿Continuar?"/>
@@ -88,6 +90,8 @@
                             <field name="fecha_emision" readonly="1"/>
                             <field name="fecha_timbrado" readonly="1"/>
                             <field name="fecha_cancelacion" readonly="1" invisible="not fecha_cancelacion"/>
+                            <field name="sat_estado_verificado" invisible="not sat_verificado"/>
+                            <field name="sat_verificado" invisible="not sat_verificado"/>
                             <field name="total" readonly="1"/>
                             <field name="subtotal" readonly="1"/>
                             <field name="descuento" readonly="1"/>
