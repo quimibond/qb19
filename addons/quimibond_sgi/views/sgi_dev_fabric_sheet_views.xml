@@ -2,7 +2,7 @@
 <odoo>
     <!-- 57.155.0 (Dirección General 2026-10-13): una sola ficha por proceso, la de
          quimibond_ficha_tecnica_tela. El SGI le agrega solo la capa de control del desarrollo
-         (proyecto, orden, propuso / midió / validó y el valor real de cada parámetro). Son
+         (proyecto, orden, propuso / validó y el valor real de cada parámetro). Son
          herencias de vistas de OTRO módulo: el SGI no hereda las suyas. -->
     <record id="ficha_tecnica_tejido_view_form_sgi_dev" model="ir.ui.view">
         <field name="name">ficha.tecnica.tejido.form.sgi.dev</field>
@@ -14,28 +14,25 @@
                     <group>
                         <group>
                             <field name="project_id" options="{'no_create': True}"/>
+                            <!-- 57.195.0: también las órdenes del artículo (las corridas viejas no tienen proyecto). -->
                             <field name="production_id" options="{'no_create': True}"
-                                   domain="[('sgi_dev_project_id', '=', project_id)]"/>
+                                   domain="['|', '&amp;', ('sgi_dev_project_id', '!=', False), ('sgi_dev_project_id', '=', project_id), ('product_id', '=', product_proceso_id)]"/>
                         </group>
                         <group>
                             <field name="sgi_proposed_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_proposed_date"/>
-                            <field name="sgi_measured_by_id" widget="many2one_avatar_user"/>
-                            <field name="sgi_measured_date"/>
                             <field name="sgi_validated_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_validated_date"/>
                         </group>
                     </group>
                     <div class="d-flex gap-2 mb-2">
-                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros ni se
-                             vuelve a firmar la medición (antes cada clic la volvía a sellar). -->
+                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros. 57.195.0: Proponer es de
+                             Diseño y Desarrollo de Procesos (con los valores reales y los ajustes) y Validar de
+                             Diseño y Desarrollo de Producto; sin «Medido por Laboratorio» ni «Validar tintorería». -->
                         <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"
                                 invisible="sgi_validated_by_id"/>
                         <button name="action_sgi_propose" type="object" string="Proponer" class="btn-secondary" icon="fa-pencil"
                                 invisible="sgi_validated_by_id"/>
-                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"
-                                invisible="sgi_validated_by_id or sgi_measured_by_id"
-                                confirm="Firma la medición con su usuario y la fecha de hoy. ¿Continuar?"/>
                         <button name="action_sgi_validate" type="object" string="Validar" class="btn-primary" icon="fa-check"
                                 invisible="sgi_validated_by_id or not sgi_proposed_by_id"
                                 confirm="Firma la validación de la ficha con su usuario y la fecha de hoy. ¿Continuar?"/>
@@ -70,35 +67,26 @@
                     <group>
                         <group>
                             <field name="project_id" options="{'no_create': True}"/>
+                            <!-- 57.195.0: también las órdenes del artículo (las corridas viejas no tienen proyecto). -->
                             <field name="production_id" options="{'no_create': True}"
-                                   domain="[('sgi_dev_project_id', '=', project_id)]"/>
+                                   domain="['|', '&amp;', ('sgi_dev_project_id', '!=', False), ('sgi_dev_project_id', '=', project_id), ('product_id', 'in', [product_acabado_id, product_proceso_id])]"/>
                         </group>
                         <group>
                             <field name="sgi_proposed_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_proposed_date"/>
-                            <field name="sgi_measured_by_id" widget="many2one_avatar_user"/>
-                            <field name="sgi_measured_date"/>
                             <field name="sgi_has_tintoreria" invisible="1"/>
-                            <field name="sgi_tint_validated_by_id" widget="many2one_avatar_user" invisible="not sgi_has_tintoreria"/>
-                            <field name="sgi_tint_validated_date" invisible="not sgi_has_tintoreria"/>
                             <field name="sgi_validated_by_id" widget="many2one_avatar_user"/>
                             <field name="sgi_validated_date"/>
                         </group>
                     </group>
                     <div class="d-flex gap-2 mb-2">
-                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros ni se
-                             vuelve a firmar la medición (antes cada clic la volvía a sellar). -->
+                        <!-- 57.170.0: con la ficha validada ya no se cargan parámetros. 57.195.0: Proponer es de
+                             Diseño y Desarrollo de Procesos (con los valores reales y los ajustes) y Validar de
+                             Diseño y Desarrollo de Producto; sin «Medido por Laboratorio» ni «Validar tintorería». -->
                         <button name="action_sgi_load_readings" type="object" string="Cargar parámetros" class="btn-secondary" icon="fa-list"
                                 invisible="sgi_validated_by_id"/>
                         <button name="action_sgi_propose" type="object" string="Proponer" class="btn-secondary" icon="fa-pencil"
                                 invisible="sgi_validated_by_id"/>
-                        <button name="action_sgi_measure" type="object" string="Medido por Laboratorio" class="btn-secondary" icon="fa-flask"
-                                invisible="sgi_validated_by_id or sgi_measured_by_id"
-                                confirm="Firma la medición con su usuario y la fecha de hoy. ¿Continuar?"/>
-                        <!-- 57.193.0: la tintorería la valida su supervisor antes que el acabado. -->
-                        <button name="action_sgi_validate_tintoreria" type="object" string="Validar tintorería" class="btn-secondary" icon="fa-tint"
-                                invisible="not sgi_has_tintoreria or sgi_tint_validated_by_id or not sgi_proposed_by_id"
-                                confirm="Firma la validación de la tintorería con su usuario y la fecha de hoy. ¿Continuar?"/>
                         <button name="action_sgi_validate" type="object" string="Validar" class="btn-primary" icon="fa-check"
                                 invisible="sgi_validated_by_id or not sgi_proposed_by_id"
                                 confirm="Firma la validación de la ficha con su usuario y la fecha de hoy. ¿Continuar?"/>

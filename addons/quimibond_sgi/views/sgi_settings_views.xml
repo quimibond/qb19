@@ -96,16 +96,10 @@
                                  help="Solo si el artículo lleva teñido. El mínimo de cada jet va en la ficha de la máquina y manda sobre este.">
                             <field name="sgi_dev_sample_min_bath_kg"/>
                         </setting>
-                        <!-- 57.126.0 (C1, bloque G) -->
-                        <setting string="Quién valida la ficha de proceso de tejido" help="Tejido no tiene supervisor: el Jefe de Manufactura.">
-                            <field name="sgi_dev_validator_job_tejido_id"/>
-                        </setting>
-                        <!-- 57.193.0: cada área valida lo suyo (C1.10) -->
-                        <setting string="Quién valida la ficha de proceso de acabado" help="El supervisor de acabado. Vacío: el puesto que valida tejido.">
-                            <field name="sgi_dev_validator_job_acabado_id"/>
-                        </setting>
-                        <setting string="Quién valida la tintorería" help="El Supervisor de Tintorería; la tintorería va en la ficha de acabado. Vacío: el puesto que valida tejido.">
-                            <field name="sgi_dev_validator_job_tintoreria_id"/>
+                        <!-- 57.195.0: una sola validación de la ficha de proceso (tejido y acabado, con su tintorería) -->
+                        <setting string="Quién valida la ficha de proceso"
+                                 help="Tejido y acabado, con su tintorería. Vacío: Diseño y Desarrollo de Producto, que toma en cuenta las especificaciones del cliente y del producto.">
+                            <field name="sgi_dev_validator_job_ficha_id"/>
                         </setting>
                         <!-- 57.129.0 (C1, Jose 3.3) -->
                         <setting string="Tipo de operación de la baja de muestras"

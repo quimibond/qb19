@@ -187,8 +187,9 @@ class FichaTecnicaTejido(models.Model):
     ancho_acondicionado_tol = fields.Float(string='Tolerancia ancho')
     ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado (texto)', default='cm')
 
-    espesor_acondicionado = fields.Float(string='Espesor')
-    espesor_acondicionado_tol = fields.Float(string='Tolerancia espesor')
+    # 2.16.2: tres decimales (XJ145Q21HNT098: 0.022 ± 0.002 in se veía 0.02 ± 0.00).
+    espesor_acondicionado = fields.Float(string='Espesor', digits=(16, 3))
+    espesor_acondicionado_tol = fields.Float(string='Tolerancia espesor', digits=(16, 3))
     espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado (texto)', default='in')
 
     columnas = fields.Integer(string='Columnas')
