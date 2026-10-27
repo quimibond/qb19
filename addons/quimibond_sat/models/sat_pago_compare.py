@@ -92,6 +92,27 @@ class SatPagoCompare(models.Model):
                        ON apr.debit_move_id = aml.id OR apr.credit_move_id = aml.id
                  GROUP BY aml.move_id
             ),
+            -- Lo saldado con notas de crédito (descuento, devolución): Odoo lo
+            -- da por pagado, pero no es un pago y no lleva complemento
+            -- (1.26.1: Blancos Milenium, Pieles Sintéticas salían «sin
+            -- complemento» por la nota de crédito).
+            nc_odoo AS (
+                SELECT aml.move_id,
+                       sum(CASE WHEN apr.debit_move_id = aml.id THEN apr.debit_amount_currency
+                                ELSE apr.credit_amount_currency END) AS nc
+                  FROM account_move_line aml
+                  JOIN account_account aa ON aa.id = aml.account_id
+                       AND aa.account_type IN ('asset_receivable', 'liability_payable')
+                  JOIN account_partial_reconcile apr
+                       ON apr.debit_move_id = aml.id OR apr.credit_move_id = aml.id
+                  JOIN account_move_line otra
+                       ON otra.id = CASE WHEN apr.debit_move_id = aml.id THEN apr.credit_move_id
+                                         ELSE apr.debit_move_id END
+                  JOIN account_move om ON om.id = otra.move_id
+                 WHERE om.move_type IN ('out_refund', 'in_refund')
+                   AND aml.move_id <> om.id
+                 GROUP BY aml.move_id
+            ),
             base AS (
                 SELECT c.id AS cfdi_id, c.move_id, c.company_id, c.direction, c.partner_id,
                        c.counterparty_rfc, c.counterparty_name,
@@ -102,7 +123,8 @@ class SatPagoCompare(models.Model):
                        coalesce(pg.n_pagos, 0) AS n_pagos, pg.ultimo_pago,
                        coalesce(pg.pagado_sat, 0) AS pagado_sat,
                        CASE WHEN m.state = 'posted' AND m.amount_total <> 0
-                            THEN (abs(m.amount_total) - abs(m.amount_residual)) / abs(m.amount_total) * c.total
+                            THEN greatest(abs(m.amount_total) - abs(m.amount_residual) - abs(coalesce(nc.nc, 0)), 0)
+                                 / abs(m.amount_total) * c.total
                             ELSE 0 END AS pagado_odoo,
                        CASE WHEN m.state = 'posted' AND m.amount_total <> 0
                             THEN abs(m.amount_residual) / abs(m.amount_total) * c.total END AS saldo_odoo,
@@ -111,6 +133,7 @@ class SatPagoCompare(models.Model):
                   LEFT JOIN account_move m ON m.id = c.move_id
                   LEFT JOIN pagos pg ON pg.cfdi_id = c.id
                   LEFT JOIN pago_odoo po ON po.move_id = c.move_id
+                  LEFT JOIN nc_odoo nc ON nc.move_id = c.move_id AND m.move_type IN ('out_invoice', 'in_invoice')
                  WHERE c.tipo = 'I' AND c.match_status <> 'ignorado'
             )
             SELECT b.cfdi_id AS id, b.cfdi_id, b.move_id, b.company_id, b.direction, b.partner_id,
