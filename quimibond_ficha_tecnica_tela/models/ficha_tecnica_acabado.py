@@ -59,8 +59,9 @@ class FichaTecnicaAcabado(models.Model):
     encogimiento_ancho_tol = fields.Float(string='Tolerancia encogimiento ancho')
     encogimiento_ancho_tol_unit = fields.Char(string='Unidad — Encogimiento ancho (texto)', default='%')
 
-    espesor_acabado = fields.Float(string='Espesor')
-    espesor_acabado_tol = fields.Float(string='Tolerancia espesor')
+    # 2.16.2: tres decimales, como el espesor de la ficha de tejido.
+    espesor_acabado = fields.Float(string='Espesor', digits=(16, 3))
+    espesor_acabado_tol = fields.Float(string='Tolerancia espesor', digits=(16, 3))
     espesor_acabado_tol_unit = fields.Char(string='Unidad — Espesor (texto)', default='in')
 
     elongacion_largo_acabado = fields.Float(string='Elongación largo')

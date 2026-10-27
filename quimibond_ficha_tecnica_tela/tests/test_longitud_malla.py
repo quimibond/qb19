@@ -18,3 +18,13 @@ class TestLongitudMalla(TransactionCase):
         with Form(ficha) as form:  # el formulario no los redondea al guardar
             form.notas = 'revisión'
         self.assertEqual(ficha.longitud_malla_tol, 0.002)
+
+    def test_espesor_tres_decimales(self):
+        # 2.16.2: XJ145Q21HNT098 guarda 0.022 ± 0.002 in y se veía 0.02 ± 0.00.
+        for model, names in (('ficha.tecnica.tejido', ('espesor_acondicionado', 'espesor_acondicionado_tol')),
+                             ('ficha.tecnica.acabado', ('espesor_acabado', 'espesor_acabado_tol'))):
+            for name in names:
+                self.assertEqual(self.env[model]._fields[name].get_digits(self.env), (16, 3), name)
+        ficha = self.env['ficha.tecnica.tejido'].create({'articulo': 'ZZ145Q21HNT098', 'espesor_acondicionado': 0.022,
+                                                        'espesor_acondicionado_tol': 0.002})
+        self.assertEqual((ficha.espesor_acondicionado, ficha.espesor_acondicionado_tol), (0.022, 0.002))
