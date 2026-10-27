@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.19.0',
+    'version': '19.0.2.20.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -75,6 +75,10 @@ Incluye:
 - 2.17.0: árbol nuevo del menú: Tela, Tintorería (fórmulas, tiempos y artículos en
   los jets), Máquinas, Materias primas y Configuración con Herramientas (importar,
   acabados faltantes, ligado de hilos) solo para jefes.
+- 2.20.0: máquinas alternativas de Odoo y procesos de la ficha juntos: estado de la
+  máquina (operando, en montaje, en pruebas, fuera de servicio), alternativas armadas por
+  tipo («Alternativas entre sí»), máquinas posibles por operación en la ficha de acabado
+  y, al planear, solo las alternativas que operan y tienen proceso del artículo.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',

@@ -37,6 +37,7 @@
                         </group>
                         <group>
                             <field name="workcenter_count" invisible="clase != 'maquina'"/>
+                            <field name="alternativas_por_tipo" invisible="clase != 'maquina'"/>
                             <field name="categ_ids" widget="many2many_tags" invisible="clase != 'material'"
                                    options="{'no_create': True}"/>
                         </group>
@@ -201,11 +202,17 @@
                     <field name="ft_hilo_count" widget="statinfo" string="Hilos"/>
                 </button>
             </xpath>
+            <!-- 2.20.0: en un tipo con «Alternativas entre sí» las alternativas las arma la ficha. -->
+            <xpath expr="//field[@name='alternative_workcenter_ids']" position="attributes">
+                <attribute name="readonly">ft_alternativas_auto</attribute>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Ficha de la máquina" name="ft_ficha_maquina">
                     <group>
                         <group>
                             <field name="ft_tipo_id" options="{'no_create': True}"/>
+                            <field name="ft_estado"/>
+                            <field name="ft_alternativas_auto" invisible="not ft_tipo_id"/>
                             <field name="ft_marca"/>
                             <field name="ft_modelo"/>
                         </group>

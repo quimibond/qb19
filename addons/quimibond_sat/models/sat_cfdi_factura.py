@@ -148,6 +148,7 @@ class SatCfdiFactura(models.Model):
             domain = [
                 ('company_id', '=', company.id), ('direction', '=', 'received'), ('tipo', 'in', ('I', 'E')),
                 ('estado_sat', '=', 'vigente'), ('match_status', '=', 'solo_sat'), ('auto_bill_state', '=', False),
+                ('issue', '!=', 'importe_cero'),
                 ('fecha_emision', '<=', now - timedelta(days=min_days)),
                 ('fecha_emision', '>=', now - timedelta(days=max_days)),
             ]

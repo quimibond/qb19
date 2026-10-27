@@ -836,3 +836,42 @@ Ningún dato se mueve ni se pierde: cada campo que estaba en un formulario sigue
 Campos nuevos (calculados, sin columna): `ficha.tecnica.acabado.bom_proceso_count` / `bom_acabado_count`,
 `ficha.tecnica.proceso.product_uom_id` / `ficha_acabado_id`. Prueba: `tests/test_procesos.py::test_08_ficha_y_unidad_del_proceso`.
 
+
+## Máquinas alternativas de Odoo y procesos de la ficha, juntos (2.20.0, 2026-10-27)
+
+Dirección General pidió que las alternativas nativas de Odoo y los procesos de la ficha estén sincronizados y que se
+use lo nativo lo mejor posible. Antes no se hablaban: Odoo prueba al planear la máquina de la operación y sus
+alternativas (iguales para cualquier artículo), y la ficha sabe en qué máquinas corre cada artículo. En las 80 listas
+en kg, de 54 operaciones de rama solo en una coincidían; en tintorería, en dos de 78.
+
+Cada lado responde una pregunta (`models/alternativas.py`):
+
+- **Estado de la máquina** (`ft_estado`, pestaña «Ficha de la máquina» del centro de trabajo): operando, en montaje,
+  en pruebas o fuera de servicio. Solo una máquina operando se usa al planear.
+- **Alternativas entre sí** (tipo de máquina): las alternativas nativas de cada máquina del tipo son las demás de su
+  tipo que estén operando. Se recalculan solas al cambiar estado o tipo, al crear o archivar una máquina; el campo
+  nativo «Centros de trabajo alternativos» queda de solo lectura en esas máquinas. Un tipo sin la marca deja las
+  alternativas como estén (las circulares, por ejemplo: corren galgas distintas).
+- **Procesos del artículo**: en cuáles de esas máquinas corre el artículo.
+
+**Al planear** (`mrp.workorder._plan_workorder`), de la máquina de la operación y sus alternativas solo cuentan las
+que operan y, si el tipo pide datos del artículo (rama, jet, inspección, abridora, devanadora), tienen proceso del
+artículo. A las demás el módulo les contesta «sin hueco» (`mrp.workcenter._get_first_available_slot`) y Odoo las
+salta; el planificador de Odoo no se reescribe. Si ninguna cumple se planea como siempre: faltar un dato no impide
+planear.
+
+**Avisos**: la orden de trabajo avisa si su máquina no está operando o no tiene proceso del artículo (también al
+cambiarla a mano, y en el filtro «Con aviso de máquina», que ahora cubre todas las máquinas con tipo).
+
+**Ficha de acabado → Ruta y máquinas** (y pestaña Tintorería): columna **Máquinas posibles** por operación, como las
+ve el planificador: ✓ el artículo corre ahí, ✗ Odoo la usaría pero no hay proceso del artículo, ⚠ la máquina no está
+operando, ○ el artículo corre en otra máquina del tipo que no es alternativa.
+
+**Después de instalar** (datos, no código): marcar el estado de las máquinas en montaje o pruebas (hoy Tintorería 5 y
+Devanadora 3 en montaje, Abridora 4 en pruebas, según la hoja CENTROS DE TRABAJO de Producción) y prender
+«Alternativas entre sí» en Tintorería, Acabado, Inspección, Abridora y Devanadora.
+
+Lo que no hace todavía: el tiempo de la operación en una alternativa sigue siendo el de Odoo (el de la operación
+ajustado por capacidad y eficiencia), no la velocidad del proceso en esa máquina.
+
+Prueba: `tests/test_alternativas.py`.
