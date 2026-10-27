@@ -26,10 +26,14 @@
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <!-- 1.3.0: el nombre de la fórmula como título y la regla de dosificación a la vista. -->
+                    <div class="oe_title">
+                        <span class="text-muted">Fórmula de tintorería</span>
+                        <h1><field name="name" placeholder="Ej. NATURAL 005"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="active" invisible="1"/>
-                            <field name="name"/>
                             <field name="product_id" options="{'no_create': True}"/>
                         </group>
                         <group>
@@ -38,8 +42,11 @@
                     </group>
                     <notebook>
                         <page string="Ingredientes" name="ingredientes">
+                            <p class="text-muted">Químicos en g/L de baño (kg = g/L × relación de baño × kg de la orden ÷ 1000) y
+                                colorantes en % sobre los kg de la orden. La relación de baño sale del artículo en el jet o,
+                                si no la tiene, de la configuración del jet.</p>
                             <field name="line_ids">
-                                <list editable="bottom">
+                                <list editable="bottom" decoration-info="tipo_componente == 'colorante'">
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_id"/>
                                     <field name="tipo_componente"/>

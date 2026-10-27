@@ -12,6 +12,7 @@
             <list string="Procesos por artículo">
                 <field name="articulo"/>
                 <field name="product_id" optional="hide"/>
+                <field name="product_uom_id" optional="show"/>
                 <field name="workcenter_id"/>
                 <field name="tipo_id" optional="hide"/>
                 <field name="resumen"/>
@@ -30,17 +31,25 @@
             <form string="Proceso del artículo en la máquina">
                 <sheet>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ft_ver_ficha_acabado" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                                string="Ficha de acabado" invisible="not ficha_acabado_id"/>
+                    </div>
                     <div class="oe_title">
+                        <span class="text-muted">El artículo en la máquina</span>
                         <h1><field name="articulo" placeholder="Código del artículo"/></h1>
                     </div>
+                    <!-- 2.19.0: qué artículo (y en qué unidad) y en qué máquina, separado de quién dio el dato. -->
                     <group>
-                        <group>
+                        <group string="Artículo y máquina">
+                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="product_uom_id" invisible="not product_id"/>
                             <field name="workcenter_id" options="{'no_create': True}"/>
                             <field name="tipo_id"/>
-                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="ficha_acabado_id" invisible="1"/>
                             <field name="active" invisible="1"/>
                         </group>
-                        <group>
+                        <group string="Origen del dato">
                             <field name="fecha"/>
                             <field name="fuente"/>
                             <field name="metros_hora" invisible="not metros_hora"/>

@@ -23,3 +23,11 @@ class TintoreriaFormulaTiempo(models.Model):
         'Ya existe un tiempo para esa fórmula y ese HTJ.')
     _check_minutos = models.Constraint(
         'CHECK(minutos > 0)', 'Los minutos por baño deben ser mayores a cero.')
+
+
+class TintoreriaFormula(models.Model):
+    _inherit = 'tintoreria.formula'
+
+    # 1.4.0: los minutos por jet se ven y se capturan en la propia fórmula.
+    tiempo_ids = fields.One2many('tintoreria.formula.tiempo', 'formula_id', 'Tiempos por jet')
+

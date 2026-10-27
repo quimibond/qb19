@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Dosificación de Tintorería',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'category': 'Manufacturing',
     'summary': 'Catálogo de fórmulas de tintorería y cálculo de requerimiento de químicos (g/L) y colorantes (%)',
     'description': """
@@ -17,6 +17,8 @@ Dosificación de Tintorería
   no se haya surtido.
 * 1.2.0: el catálogo de fórmulas pasa a Fichas técnicas → Tintorería → Fórmulas (antes
   Fabricación → Configuración) y el aviso de relación de baño faltante dice dónde se captura.
+* 1.3.0: el formulario de la fórmula lleva el nombre como título y explica la regla de dosificación
+  (g/L con la relación de baño, % sobre kg); los colorantes se distinguen en la lista.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

@@ -57,6 +57,10 @@ class FichaTecnicaAcabadoRuta(models.Model):
     product_proceso_sugerido_id = fields.Many2one('product.product', string='Acabado en proceso sugerido',
                                                   compute='_compute_proceso_aviso')
     proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso')
+    # 2.19.0: botones de la ficha a las listas de materiales de cada producto (también las archivadas: las
+    # listas en kg nacen archivadas hasta que Ingeniería las revisa).
+    bom_proceso_count = fields.Integer(string='Listas en kg', compute='_compute_bom_counts')
+    bom_acabado_count = fields.Integer(string='Listas en metros', compute='_compute_bom_counts')
 
     def _ft_cadena(self):
         """(listas de materiales del acabado y sus intermedios, crudo): baja por la lista de materiales hasta el
@@ -172,6 +176,33 @@ class FichaTecnicaAcabadoRuta(models.Model):
     def action_ft_usar_proceso_sugerido(self):
         self._ft_ligar_proceso_sugerido()
         return True
+
+    def _ft_boms_de(self, product):
+        """Las listas de materiales del producto (de la variante o de su plantilla), activas y archivadas."""
+        if not product:
+            return self.env['mrp.bom']
+        return self.env['mrp.bom'].with_context(active_test=False).search([
+            '|', ('product_id', '=', product.id),
+            '&', ('product_id', '=', False), ('product_tmpl_id', '=', product.product_tmpl_id.id)])
+
+    @api.depends('product_proceso_id', 'product_acabado_id')
+    def _compute_bom_counts(self):
+        for ficha in self:
+            ficha.bom_proceso_count = len(ficha._ft_boms_de(ficha.product_proceso_id))
+            ficha.bom_acabado_count = len(ficha._ft_boms_de(ficha.product_acabado_id))
+
+    def _ft_accion_boms(self, product, nombre):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': '%s — %s' % (nombre, product.default_code or product.name),
+                'res_model': 'mrp.bom', 'view_mode': 'list,form',
+                'domain': [('id', 'in', self._ft_boms_de(product).ids)],
+                'context': {'active_test': False, 'default_product_tmpl_id': product.product_tmpl_id.id}}
+
+    def action_ft_boms_proceso(self):
+        return self._ft_accion_boms(self.product_proceso_id, 'Listas en kg')
+
+    def action_ft_boms_acabado(self):
+        return self._ft_accion_boms(self.product_acabado_id, 'Listas en metros')
 
     def action_ft_ver_bom(self):
         self.ensure_one()
