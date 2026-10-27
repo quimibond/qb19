@@ -4,10 +4,11 @@
         <field name="name">tintoreria.formula.tiempo.list</field>
         <field name="model">tintoreria.formula.tiempo</field>
         <field name="arch" type="xml">
-            <list string="Tiempos de Tintorería" editable="bottom">
+            <list string="Tiempos de Tintorería" editable="bottom" default_order="formula_id, workcenter_id">
                 <field name="formula_id"/>
                 <field name="workcenter_id" options="{'no_create': True}"/>
                 <field name="minutos"/>
+                <field name="horas" optional="show"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>

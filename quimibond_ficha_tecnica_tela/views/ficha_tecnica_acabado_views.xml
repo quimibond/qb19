@@ -5,16 +5,22 @@
         <field name="name">ficha.tecnica.acabado.list</field>
         <field name="model">ficha.tecnica.acabado</field>
         <field name="arch" type="xml">
-            <list string="Fichas Técnicas de Acabado">
+            <!-- 2.19.0: la ruta (tejido → kg → metros) y los datos de la tela acabada; en rojo si el encogimiento
+                 está fuera de norma. La norma ya no se cambia con un clic en la lista (era un interruptor). -->
+            <list string="Fichas Técnicas de Acabado" default_order="articulo, revision desc"
+                  decoration-danger="not encogimiento_largo_dentro_norma or not encogimiento_ancho_dentro_norma"
+                  decoration-muted="not active">
                 <field name="articulo"/>
                 <field name="revision"/>
-                <field name="tejido_id"/>
-                <field name="product_proceso_id" optional="show"/>
-                <field name="product_acabado_id"/>
-                <field name="rendimiento_tela_acabada"/>
-                <field name="ancho_acabado"/>
-                <field name="encogimiento_largo_dentro_norma" widget="boolean_toggle"/>
-                <field name="encogimiento_ancho_dentro_norma" widget="boolean_toggle"/>
+                <field name="tejido_id" string="Ficha de tejido"/>
+                <field name="product_proceso_id" string="Acabado en proceso (kg)" optional="show"/>
+                <field name="product_acabado_id" string="Tela acabada (m)"/>
+                <field name="peso_acabado" optional="show"/>
+                <field name="ancho_acabado" optional="show"/>
+                <field name="rendimiento_tela_acabada" optional="show"/>
+                <field name="encogimiento_largo_dentro_norma" optional="show"/>
+                <field name="encogimiento_ancho_dentro_norma" optional="show"/>
+                <field name="fecha_elaboracion" optional="hide"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>

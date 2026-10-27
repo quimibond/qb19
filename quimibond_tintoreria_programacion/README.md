@@ -32,7 +32,8 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 
 - La fórmula de tintorería (Fichas técnicas → Tintorería → Fórmulas) trae la pestaña «Tiempos por jet»: los minutos
   por baño de esa fórmula en cada jet se ven y se capturan ahí (`tintoreria.formula.tiempo_ids`). La lista «Tiempos
-  por fórmula y jet» sigue igual.
+  por fórmula y jet» suma la columna de horas por baño.
+- Lista de programaciones: totales de kg y de baños, y las canceladas en gris.
 
 ## Cambios 19.0.1.3.0
 - El menú de tiempos pasa a **Fichas técnicas → Tintorería → Tiempos por fórmula y jet** (antes Fabricación → Configuración → Tiempos de Tintorería), junto a las fórmulas. Lo ven los usuarios de Fabricación en solo lectura y lo editan los jefes. «Programar Tintorería» y «Programaciones de Tintorería» no se mueven.

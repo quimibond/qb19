@@ -4,10 +4,12 @@
         <field name="name">tintoreria.formula.list</field>
         <field name="model">tintoreria.formula</field>
         <field name="arch" type="xml">
-            <list>
+            <list string="Fórmulas de tintorería" decoration-muted="not active">
                 <field name="name"/>
-                <field name="product_id"/>
+                <field name="product_id" optional="show"/>
+                <field name="line_count" optional="show"/>
                 <field name="bom_count"/>
+                <field name="active" column_invisible="1"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </list>
         </field>

@@ -159,3 +159,4 @@ class TestProgramacionTintoreria(TransactionCase):
         tiempo = self.env['tintoreria.formula.tiempo'].search([('formula_id', '=', formula.id)])
         self.assertEqual((tiempo.workcenter_id, tiempo.minutos), (self.htj1, 240.0))
         self.assertEqual(formula.tiempo_ids, tiempo)
+        self.assertEqual(tiempo.horas, 4.0)

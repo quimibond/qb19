@@ -18,7 +18,8 @@ Dosificación de Tintorería
 * 1.2.0: el catálogo de fórmulas pasa a Fichas técnicas → Tintorería → Fórmulas (antes
   Fabricación → Configuración) y el aviso de relación de baño faltante dice dónde se captura.
 * 1.3.0: el formulario de la fórmula lleva el nombre como título y explica la regla de dosificación
-  (g/L con la relación de baño, % sobre kg); los colorantes se distinguen en la lista.
+  (g/L con la relación de baño, % sobre kg); los colorantes se distinguen en la lista, y la
+  lista de fórmulas trae el número de ingredientes.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

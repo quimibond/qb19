@@ -823,6 +823,16 @@ Ningún dato se mueve ni se pierde: cada campo que estaba en un formulario sigue
   los colorantes marcados en la lista. `quimibond_tintoreria_programacion` 1.4.0 agrega la pestaña **Tiempos por
   jet** a la fórmula.
 
+**Listas** (mismo PR):
+
+- Fichas de tejido: artículo, máquina, crudo con su peso, ancho y rendimiento; avisos de hilos en amarillo y las
+  archivadas en gris; orden por artículo y revisión (la más nueva primero).
+- Fichas de acabado: tejido → acabado en proceso (kg) → tela acabada (m), peso, ancho y rendimiento; en rojo si el
+  encogimiento está fuera de norma. La norma ya no se cambia con un clic en la lista (era un interruptor editable).
+- Procesos por artículo y Artículos en los jets: unidad y tipo de máquina a la vista; en gris los que no tienen
+  ningún dato capturado.
+- Configuraciones de máquina: por máquina y la más reciente primero. Fichas de materia prima: la referencia.
+
 Campos nuevos (calculados, sin columna): `ficha.tecnica.acabado.bom_proceso_count` / `bom_acabado_count`,
 `ficha.tecnica.proceso.product_uom_id` / `ficha_acabado_id`. Prueba: `tests/test_procesos.py::test_08_ficha_y_unidad_del_proceso`.
 

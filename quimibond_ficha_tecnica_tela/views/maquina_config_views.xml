@@ -93,7 +93,7 @@
         <field name="name">ficha.tecnica.maquina.config.list</field>
         <field name="model">ficha.tecnica.maquina.config</field>
         <field name="arch" type="xml">
-            <list string="Configuraciones de máquina" decoration-bf="is_current">
+            <list string="Configuraciones de máquina" decoration-bf="is_current" default_order="workcenter_id, date_from desc">
                 <field name="workcenter_id"/>
                 <field name="tipo_id"/>
                 <field name="date_from"/>

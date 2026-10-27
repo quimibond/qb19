@@ -9,12 +9,14 @@
         <field name="name">ficha.tecnica.proceso.list</field>
         <field name="model">ficha.tecnica.proceso</field>
         <field name="arch" type="xml">
-            <list string="Procesos por artículo">
+            <!-- 2.19.0: el artículo con su unidad, la máquina con su tipo y luego sus datos; en gris los que no
+                 tienen ningún dato capturado. -->
+            <list string="Procesos por artículo" decoration-muted="not resumen">
                 <field name="articulo"/>
                 <field name="product_id" optional="hide"/>
                 <field name="product_uom_id" optional="show"/>
+                <field name="tipo_id" optional="show"/>
                 <field name="workcenter_id"/>
-                <field name="tipo_id" optional="hide"/>
                 <field name="resumen"/>
                 <field name="metros_hora" optional="show"/>
                 <field name="metros_hora_neto" optional="hide"/>

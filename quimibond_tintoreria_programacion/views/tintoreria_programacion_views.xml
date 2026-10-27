@@ -4,14 +4,14 @@
         <field name="name">tintoreria.programacion.list</field>
         <field name="model">tintoreria.programacion</field>
         <field name="arch" type="xml">
-            <list string="Programaciones de Tintorería" create="0" delete="0">
+            <list string="Programaciones de Tintorería" create="0" delete="0" decoration-muted="state == 'cancelada'">
                 <field name="name"/>
                 <field name="product_id"/>
                 <field name="workcenter_id"/>
-                <field name="kg_total"/>
-                <field name="rendimiento"/>
+                <field name="kg_total" sum="kg"/>
+                <field name="rendimiento" optional="show"/>
                 <field name="banda"/>
-                <field name="n_banos"/>
+                <field name="n_banos" sum="Baños"/>
                 <field name="kg_bano"/>
                 <field name="minutos_bano"/>
                 <field name="user_id" optional="show"/>
