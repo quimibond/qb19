@@ -3,6 +3,16 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.6.4 — 2026-10-27
+
+**Corregido**
+- Las horas de acabado por ficha técnica (`_ficha_procesos`) también leen
+  los procesos con el código en kg (`I` + código de la tela acabada, DAT
+  P-D02-01): desde que la producción va en kg hasta la Clasificación final,
+  los procesos de rama, abridora y devanadora pasan al «I…» y la tela
+  acabada en metros seguía buscándolos por su propio código. Sin esto,
+  perdía la velocidad del artículo y caía a la del centro.
+
 ## 19.0.1.6.3 — 2026-10-26
 
 **Corregido**
