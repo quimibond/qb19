@@ -80,6 +80,21 @@
             <field name="nextcall" eval="(DateTime.now().replace(hour=11, minute=37, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- 1.27.0: estado de los CFDI consultado directo al SAT. Syntage no
+             vuelve a traer un CFDI que se cancela días después de emitido.
+             Primero los que Odoo ya tiene cancelados; hasta
+             quimibond_sat.verificar_sat_por_dia (300) por corrida. -->
+        <record id="cron_sat_verify_status" model="ir.cron">
+            <field name="name">SAT (Syntage) - Consultar estado de los CFDI en el SAT</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_verify_sat_status()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=8, minute=13, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
         <!-- IVA del mes (SAT vs contabilidad): últimos tres meses, cada día. -->
         <record id="cron_sat_iva_month" model="ir.cron">
             <field name="name">SAT (Syntage) - IVA del mes: SAT vs contabilidad</field>

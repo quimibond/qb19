@@ -322,6 +322,10 @@ class SatCompareLine(models.Model):
             return self.move_id.action_sat_reconcile()
         return False
 
+    def action_verify_sat_status(self):
+        """Consulta al SAT el estado de los CFDI de estas filas (1.27.0)."""
+        return self.cfdi_id.action_verify_sat_status()
+
     def action_open_cfdi(self):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'res_model': 'sat.cfdi',
