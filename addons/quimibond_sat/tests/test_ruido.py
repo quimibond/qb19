@@ -140,3 +140,25 @@ class TestSatRuido(SatCommon):
         other = self._upsert(syntage_invoice(
             UUID_B, id='b', issuer={'rfc': 'SAT970701NN3', 'name': 'SERVICIO DE ADMINISTRACION TRIBUTARIA'}))
         self.assertEqual(other.match_status, 'solo_sat')
+
+    def test_factura_y_nota_sin_cfdi_se_compensan(self):
+        """Anticipo: la factura del anticipo y su reversión, sin CFDI ninguna,
+        no son hallazgo (1.28.0). Una nota sin pareja sí."""
+        anticipo = self._invoice(self.proveedor, 273300.0, day='2026-04-30')
+        aplicacion = self._invoice(self.proveedor, 273300.0, move_type='in_refund', day='2026-05-01')
+        sola = self._invoice(self.proveedor, 500.0, move_type='in_refund', day='2026-05-02')
+        for move in (anticipo, aplicacion):
+            row = self._row([('move_id', '=', move.id)])
+            self.assertEqual(row.bucket, 'neto_cero')
+            self.assertEqual(row.issue, 'neto_cero')
+            self.assertAlmostEqual(row.delta, 0.0, places=2)
+        self.assertEqual(self._row([('move_id', '=', sola.id)]).bucket, 'solo_odoo_sin_uuid')
+
+    def test_nota_que_revierte_factura_con_cfdi_sigue_saliendo(self):
+        """La factura tiene CFDI vigente y la nota sin CFDI la anula en Odoo:
+        no se compensa con nada, sigue como hallazgo."""
+        factura = self._invoice(self.proveedor, 25501.08, day='2026-08-10')
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=25501.08, issuedAt='2026-08-10 12:00:00'))
+        cfdi.write({'move_id': factura.id})
+        nota = self._invoice(self.proveedor, 25501.08, move_type='in_refund', day='2026-08-10')
+        self.assertEqual(self._row([('move_id', '=', nota.id)]).bucket, 'solo_odoo_sin_uuid')

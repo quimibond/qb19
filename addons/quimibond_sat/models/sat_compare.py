@@ -4,7 +4,8 @@ factura publicada de Odoo que no tiene CFDI en el SAT. Vista SQL, solo lectura.
 
 Cubetas: ambos / solo_sat / solo_odoo / solo_odoo_sin_uuid / ignorado, más
 las que quedan fuera de la conciliación (póliza, sin CFDI esperado, aún no
-extraído, antes de los datos del SAT, cancelado en el SAT sin factura).
+extraído, antes de los datos del SAT, cancelado en el SAT sin factura, y
+factura y nota sin CFDI que se compensan en Odoo).
 Hallazgos en 'ambos': ok, redondeo, terceros, borrador, moneda, monto,
 cancelado_sat, cancelado_odoo. Una factura con varios CFDI se reparte entre
 ellos; un CFDI en varias facturas (mismo UUID) se compara contra la suma.
@@ -31,6 +32,7 @@ class SatCompareLine(models.Model):
         ('pendiente_sat', 'Aún no extraído del SAT'),
         ('antes_sat', 'Antes de los datos del SAT'),
         ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
+        ('neto_cero', 'Se compensa en Odoo (sin CFDI)'),
         ('ignorado', 'Ignorado'),
     ], string='Cubeta', readonly=True)
     issue = fields.Selection([
@@ -51,6 +53,7 @@ class SatCompareLine(models.Model):
         ('pendiente_sat', 'Aún no extraído del SAT'),
         ('antes_sat', 'Antes de los datos del SAT'),
         ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
+        ('neto_cero', 'Se compensa en Odoo (sin CFDI)'),
         ('ignorado', 'Ignorado'),
     ], string='Hallazgo', readonly=True)
     cfdi_id = fields.Many2one('sat.cfdi', string='CFDI', readonly=True)
@@ -193,6 +196,34 @@ class SatCompareLine(models.Model):
                  WHERE state = 'posted' AND odoo_uuid IS NOT NULL
                  GROUP BY 1, 2, 3
             ),
+            -- Factura y nota de crédito sin CFDI que se compensan (1.28.0): el
+            -- anticipo (diario ANTICIPOS) deja en Odoo la factura del anticipo y
+            -- su reversión al aplicarlo, ninguna con CFDI propio (el CFDI va en
+            -- la factura final). Mismo contacto, compañía, sentido e importe;
+            -- se emparejan una a una por fecha. Una nota sin CFDI que revierte
+            -- una factura con CFDI vigente no tiene pareja y sigue saliendo.
+            sin_cfdi_odoo AS (
+                SELECT o.move_id, o.company_id, o.partner_id,
+                       round(o.total_odoo::numeric, 2) AS total,
+                       o.move_type IN ('out_refund', 'in_refund') AS es_nota,
+                       o.move_type IN ('out_invoice', 'out_refund') AS emitida,
+                       row_number() OVER (
+                           PARTITION BY o.company_id, o.partner_id, round(o.total_odoo::numeric, 2),
+                                        o.move_type IN ('out_refund', 'in_refund'),
+                                        o.move_type IN ('out_invoice', 'out_refund')
+                           ORDER BY o.fecha, o.move_id) AS rn
+                  FROM odoo o
+                 WHERE o.state = 'posted' AND o.odoo_uuid IS NULL AND o.total_odoo > 0
+                   AND o.partner_id IS NOT NULL
+                   AND NOT EXISTS (SELECT 1 FROM sat_cfdi c WHERE c.move_id = o.move_id)
+            ),
+            neto_cero AS (
+                SELECT a.move_id
+                  FROM sin_cfdi_odoo a
+                  JOIN sin_cfdi_odoo b ON b.company_id = a.company_id AND b.partner_id = a.partner_id
+                                      AND b.total = a.total AND b.emitida = a.emitida
+                                      AND b.es_nota <> a.es_nota AND b.rn = a.rn
+            ),
             adj AS (
                 SELECT c.id AS cfdi_id,
                        CASE WHEN cm.n > 1 AND c.estado_sat <> 'cancelado' AND cm.s <> 0
@@ -256,6 +287,7 @@ class SatCompareLine(models.Model):
                             WHEN o.odoo_uuid IS NOT NULL THEN 'solo_odoo'
                             WHEN o.sin_cfdi THEN 'sin_cfdi'
                             WHEN o.por_poliza THEN 'poliza'
+                            WHEN nc.move_id IS NOT NULL THEN 'neto_cero'
                             ELSE 'solo_odoo_sin_uuid' END,
                        NULL::integer
                   FROM odoo o
@@ -263,6 +295,7 @@ class SatCompareLine(models.Model):
                   -- contra qué comparar y todo saldría "solo Odoo".
                   JOIN res_company co ON co.id = o.company_id AND co.sat_sync_enabled
                   LEFT JOIN res_partner p ON p.id = o.partner_id
+                  LEFT JOIN neto_cero nc ON nc.move_id = o.move_id
                   LEFT JOIN horizon h ON h.company_id = o.company_id
                                      AND h.direction = CASE WHEN o.move_type IN ('out_invoice', 'out_refund')
                                                             THEN 'issued' ELSE 'received' END
@@ -305,7 +338,7 @@ class SatCompareLine(models.Model):
                         ELSE 'monto' END AS issue
               FROM (SELECT rows.*,
                            CASE WHEN rows.bucket IN ('ignorado', 'poliza', 'sin_cfdi', 'pendiente_sat',
-                                                     'antes_sat', 'cancelado_sin_factura') THEN 0
+                                                     'antes_sat', 'cancelado_sin_factura', 'neto_cero') THEN 0
                                 WHEN rows.tipo = 'E' THEN -1 ELSE 1 END AS signo
                       FROM rows) r
         """ % (self._table, self._terceros_sql(), self._odoo_uuid_sql(), mx_id))
