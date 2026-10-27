@@ -96,6 +96,39 @@ class TestSatRuido(SatCommon):
         self.assertEqual(row.issue, 'terceros')
         self.assertAlmostEqual(row.pago_terceros, 846.0, places=2)
 
+    def test_pagos_a_terceros_solo_con_ese_proveedor(self):
+        """Edenred: su CFDI es la comisión; la carga de gasolina de la factura
+        es de terceros con Edenred, pero no con una gasolinera."""
+        account = self.company_data['default_account_expense']
+        gasolina = self.env['product.product'].create({'name': 'COMBUSTIBLES Y LUBRICANTES'})
+
+        def factura(partner, comision, carga):
+            bill = self.env['account.move'].create({
+                'move_type': 'in_invoice', 'partner_id': partner.id, 'currency_id': self.company.currency_id.id,
+                'invoice_date': fields.Date.from_string('2026-04-29'),
+                'invoice_line_ids': [
+                    Command.create({'name': 'Comisión', 'quantity': 1.0, 'price_unit': comision,
+                                    'account_id': account.id, 'tax_ids': [Command.clear()]}),
+                    Command.create({'product_id': gasolina.id, 'name': 'Carga', 'quantity': 1.0,
+                                    'price_unit': carga, 'account_id': account.id, 'tax_ids': [Command.clear()]}),
+                ]})
+            bill.action_post()
+            return bill
+
+        edenred = factura(self.proveedor, 1983.6, 47923.43)
+        cfdi = self._upsert(syntage_invoice(UUID_A, total=1983.6))
+        cfdi.write({'move_id': edenred.id})
+        self.assertEqual(cfdi.issue, 'monto')
+        self.proveedor.sat_terceros_product_ids = gasolina.product_tmpl_id
+        self.env.flush_all()
+        cfdi.invalidate_recordset()
+        self.assertEqual(cfdi.issue, 'terceros')
+        self.assertEqual(self._row([('uuid', '=', UUID_A)]).issue, 'terceros')
+        # Con otro proveedor la gasolina sí va en su CFDI
+        gasolinera = self.env['res.partner'].create({'name': 'GASOLINERA', 'vat': 'GAS010101AAA', 'is_company': True})
+        otra = factura(gasolinera, 0.0, 500.0)
+        self.assertEqual(self.env['sat.cfdi']._pago_terceros(otra), 0.0)
+
     def test_rfc_por_poliza_sin_contacto(self):
         cfdi = self._upsert(syntage_invoice(
             UUID_A, total=5580.0, issuer={'rfc': 'SAT970701NN3', 'name': 'SERVICIO DE ADMINISTRACION TRIBUTARIA'}))

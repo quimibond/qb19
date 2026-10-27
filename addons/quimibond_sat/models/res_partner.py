@@ -23,6 +23,13 @@ class ResPartner(models.Model):
     ], string='CFDI del SAT', default='factura', required=True,
         help='Cómo trata la comparación SAT vs Odoo a este contacto. Los contactos con '
              'país distinto de México cuentan como "no emite CFDI" aunque estén en "factura".')
+    sat_terceros_product_ids = fields.Many2many(
+        'product.template', 'res_partner_sat_terceros_rel', 'partner_id', 'product_tmpl_id',
+        string='Pagos a terceros con este proveedor',
+        help='Productos que, en las facturas de este proveedor, son dinero que pasa a terceros sin '
+             'su CFDI: la carga de gasolina, peajes o vales en las facturas de Edenred o Si Vale, '
+             'cuyo CFDI ampara solo la comisión. No cuentan contra el CFDI (como los productos '
+             'marcados «Pago a terceros», pero solo con este proveedor).')
     sat_69b_status = fields.Selection(
         LISTA_69B, string='Lista 69-B (SAT)', readonly=True, copy=False,
         help='Estado del proveedor en la lista 69-B del SAT (operaciones simuladas, EFOS) según '
