@@ -151,7 +151,10 @@
                         <page string="Ruta y máquinas" name="operaciones">
                             <p class="text-muted">Las operaciones de la lista de materiales vigente y de sus intermedios (no las
                                 del crudo), con los datos del artículo en cada máquina. Las operaciones se editan en la lista
-                                de materiales y los datos en Máquinas → Procesos por artículo.</p>
+                                de materiales y los datos en Máquinas → Procesos por artículo. «Máquinas posibles» son la
+                                máquina de la operación y sus alternativas como las ve el planificador: ✓ el artículo corre
+                                ahí, ✗ no hay proceso del artículo, ⚠ la máquina no está operando, ○ el artículo corre en
+                                otra máquina que no es alternativa.</p>
                             <div class="alert alert-warning mb-2" role="alert" invisible="not operacion_aviso">
                                 <field name="operacion_aviso" readonly="1" nolabel="1"/>
                             </div>
@@ -163,6 +166,7 @@
                                     <field name="name"/>
                                     <field name="workcenter_id"/>
                                     <field name="ft_tipo_id" optional="show"/>
+                                    <field name="ft_maquinas_posibles" optional="show"/>
                                     <field name="ft_proceso_resumen"/>
                                     <field name="time_cycle_manual" optional="show"/>
                                     <field name="ft_aviso" optional="show"/>
@@ -194,6 +198,7 @@
                                     <field name="bom_id" optional="show"/>
                                     <field name="name"/>
                                     <field name="workcenter_id"/>
+                                    <field name="ft_maquinas_posibles" optional="show"/>
                                     <field name="time_cycle_manual" optional="show"/>
                                 </list>
                             </field>

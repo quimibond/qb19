@@ -300,7 +300,8 @@ class MrpWorkorderAviso(models.Model):
     ft_aviso_maquina = fields.Char(
         string='Aviso de máquina', compute='_compute_ft_aviso_maquina', search='_search_ft_aviso_maquina',
         help='La circular corre una galga distinta de la que pide el artículo (según su ficha de tejido o su '
-             'código), o la orden no cabe en una carga del jet. Es aviso: la decisión es de la planta.')
+             'código), la orden no cabe en una carga del jet o (2.20.0) la máquina no está operando o no tiene '
+             'proceso del artículo. Es aviso: la decisión es de la planta.')
 
     def _ft_aviso(self):
         """Aviso de la máquina de la orden de trabajo (galga en circular, carga en jet)."""
@@ -310,16 +311,16 @@ class MrpWorkorderAviso(models.Model):
         qty = self.production_id._ft_qty_kg() if self.production_id else 0.0
         return self.workcenter_id._ft_aviso_para(self.product_id, qty, self.date_start or None)
 
-    @api.depends('workcenter_id', 'product_id', 'date_start', 'production_id.product_qty',
-                 'production_id.product_uom_id')
+    @api.depends('workcenter_id', 'workcenter_id.ft_estado', 'product_id', 'date_start',
+                 'production_id.product_qty', 'production_id.product_uom_id')
     def _compute_ft_aviso_maquina(self):
         for workorder in self:
             workorder.ft_aviso_maquina = workorder._ft_aviso()
 
     def _search_ft_aviso_maquina(self, operator, value):
-        """Solo «con aviso» / «sin aviso» sobre órdenes abiertas en circulares y jets."""
-        open_wo = self.search([('state', 'not in', ('done', 'cancel')),
-                               ('workcenter_id.ft_tipo_id.code', 'in', (TIPO_CIRCULAR, TIPO_TINTORERIA))])
+        """Solo «con aviso» / «sin aviso» sobre órdenes abiertas en máquinas con tipo. 2.20.0: todas las que
+        tienen tipo (antes solo circulares y jets): también avisan máquina sin proceso del artículo o que no opera."""
+        open_wo = self.search([('state', 'not in', ('done', 'cancel')), ('workcenter_id.ft_tipo_id', '!=', False)])
         with_aviso = open_wo.filtered(lambda w: w._ft_aviso())
         # Odoo 19 normaliza «!= False» a «not in [False]» antes de llamar aquí: se aceptan las dos formas.
         # El valor llega como colección (OrderedSet en Odoo 19) o suelto.
