@@ -129,6 +129,7 @@ class SatCfdi(models.Model):
         ('redondeo', 'Redondeo (menos de $1)'),
         ('terceros', 'Cuadra sin los pagos a terceros'),
         ('solo_sat', 'Solo en el SAT'),
+        ('importe_cero', 'Importe en cero (menos de $1)'),
         ('cancelado_sin_factura', 'Cancelado en el SAT, sin factura'),
         ('borrador', 'Ligado a una factura en borrador'),
         ('monto', 'Monto distinto'),
@@ -212,7 +213,7 @@ class SatCfdi(models.Model):
 
     @api.depends('move_id', 'move_id.state', 'move_id.amount_total', 'move_id.currency_id',
                  'move_id.invoice_line_ids.price_total', 'move_id.invoice_line_ids.product_id',
-                 'move_id.amount_total_signed', 'estado_sat', 'total', 'moneda', 'tipo_cambio', 'match_status')
+                 'move_id.amount_total_signed', 'estado_sat', 'total', 'tipo', 'moneda', 'tipo_cambio', 'match_status')
     def _compute_issue(self):
         tol = self.AMOUNT_TOLERANCE + 1e-6
         for rec in self:
@@ -222,7 +223,12 @@ class SatCfdi(models.Model):
             if rec.match_status == 'ignorado':
                 rec.issue = 'ignorado'
             elif not move:
-                rec.issue = 'cancelado_sin_factura' if rec.estado_sat == 'cancelado' else 'solo_sat'
+                # 1.29.0: un ingreso o egreso de menos de $1 sin factura (Edenred,
+                # Uline, AT&T en $0; notas de centavos de Sonigas) no tiene nada
+                # que capturar. Los complementos de pago (P, siempre $0) no.
+                rec.issue = 'cancelado_sin_factura' if rec.estado_sat == 'cancelado' \
+                    else 'importe_cero' if rec.tipo in ('I', 'E') and abs(rec.total or 0.0) < self.ROUNDING_TOLERANCE \
+                    else 'solo_sat'
             elif rec.estado_sat == 'cancelado' and move.state == 'posted':
                 rec.issue = 'cancelado_sat'
             elif rec.estado_sat != 'cancelado' and move.state == 'cancel':
