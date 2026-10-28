@@ -136,9 +136,11 @@ class MrpProduction(models.Model):
         1. «Tiempo de ciclo» del artículo en ese jet (proceso del artículo en la ficha técnica; la
            ficha lo guarda en horas).
         2. Minutos de la fórmula de la BoM en ese HTJ (``tintoreria.formula.tiempo``).
-        3. La operación de Tintorería de la BoM (con aviso). 1.5.0: su tiempo es el de Odoo, por
-           unidad de la BoM (en las listas en kg, minutos por kg), así que se multiplica por los kg
-           del baño (``kg_bano``; si no se da, los de la orden), como lo calcula Odoo.
+        3. La operación de Tintorería de la BoM (con aviso, que la programación deja en el chatter de
+           cada orden). 1.5.0: su tiempo es el de Odoo, por unidad de la BoM (en las listas en kg,
+           minutos por kg), así que se multiplica por los kg del baño (``kg_bano``; si no se da, los de
+           la orden), como lo calcula Odoo. 1.6.0: el tiempo de la operación como lo da Odoo
+           (``time_cycle``), sea manual o calculado por historial.
         Si no existe ninguno la programación se bloquea (no se asume un valor).
         """
         self.ensure_one()
@@ -162,7 +164,7 @@ class MrpProduction(models.Model):
             if tiempo:
                 return tiempo.minutos, 'formula', False
         operacion = self.bom_id._operacion_tintoreria()
-        if operacion and operacion.time_mode == 'manual' and operacion.time_cycle_manual > 0:
+        if operacion and operacion.time_cycle > 0:
             kg = self.product_qty if kg_bano is None else kg_bano
             minutos = self._minutos_operacion_bom(operacion, workcenter, kg)
             aviso = _(
@@ -170,7 +172,7 @@ class MrpProduction(models.Model):
                 "se calcularon %(m)s min por baño con la operación de Tintorería de la BoM (%(t)s min por "
                 "%(q)s %(u)s, %(kg)s kg por baño).",
                 wc=workcenter.display_name, f=formula.display_name or '-', m=round(minutos, 1),
-                t=operacion.time_cycle_manual, q=operacion.bom_id.product_qty or 1,
+                t=round(operacion.time_cycle, 4), q=operacion.bom_id.product_qty or 1,
                 u=operacion.bom_id.product_uom_id.name, kg=kg)
             return minutos, 'bom', aviso
         raise UserError(_(
@@ -189,7 +191,7 @@ class MrpProduction(models.Model):
             self.product_id, bom.product_uom_id, bom.product_qty or 1)
         cantidad = self.product_uom_id._compute_quantity(kg, bom.product_uom_id)
         ciclos = float_round(cantidad / (capacidad or 1), precision_digits=0, rounding_method='UP')
-        return preparacion + limpieza + ciclos * operacion.time_cycle_manual * 100.0 / (
+        return preparacion + limpieza + ciclos * operacion.time_cycle * 100.0 / (
             workcenter.time_efficiency or 100.0)
 
     def _calcular_plan_tintoreria(self, workcenter):

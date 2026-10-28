@@ -21,6 +21,10 @@ con proceso del artículo. A las demás el módulo les contesta «sin hueco» y 
 planificador). Si ninguna cumple, se planea como siempre y la orden de trabajo lo avisa: faltar un dato no impide
 planear. Al cambiar la máquina a mano, el mismo aviso.
 
+2.21.0: una máquina fijada a mano no se mueve. Con la clave de contexto ``ft_maquina_fija`` (o cuando otro módulo lo
+dice en ``mrp.workorder._ft_maquina_fija``, como la Programación de Tintorería con el jet ya programado) solo cuenta la
+máquina de la orden de trabajo, opere o no y tenga o no proceso del artículo; queda solo el aviso.
+
 La ficha de acabado muestra en «Ruta y máquinas», por operación, las máquinas posibles: ✓ corre ahí, ✗ Odoo la
 usaría pero no hay proceso, ⚠ la máquina no está operando, ○ el artículo corre en otra máquina del tipo que no es
 alternativa.
@@ -186,14 +190,25 @@ class MrpRoutingWorkcenterAlternativas(models.Model):
 class MrpWorkorderAlternativas(models.Model):
     _inherit = 'mrp.workorder'
 
+    def _ft_maquina_fija(self):
+        """2.21.0: la máquina de esta orden de trabajo se fijó a mano y el planificador no la cambia. Aquí, con
+        la clave de contexto ``ft_maquina_fija`` (vale para todas las órdenes de trabajo que se planean en esa
+        llamada); otros módulos agregan sus casos (la Programación de Tintorería, el jet ya programado)."""
+        self.ensure_one()
+        return bool(self.env.context.get('ft_maquina_fija'))
+
     def _plan_workorder(self, replan=False):
         # 2.20.0: de la máquina de la operación y sus alternativas, solo cuentan las que están operando y (si el
         # tipo pide datos del artículo) tienen proceso del artículo. Si ninguna cumple, se planea como siempre.
+        # 2.21.0: si la máquina se fijó a mano (``_ft_maquina_fija``), solo cuenta ella, opere o no y tenga o no
+        # proceso del artículo: el planificador no la mueve a una alternativa y queda solo el aviso.
         # La clave de contexto se pone siempre (o se limpia): Odoo planea aquí mismo las órdenes de trabajo
         # anteriores, y cada una lleva su propia lista.
         self.ensure_one()
         permitidas = False
-        if self.workcenter_id:
+        if self.workcenter_id and self._ft_maquina_fija():
+            permitidas = (self.workcenter_id.id,)
+        elif self.workcenter_id:
             validas = self.workcenter_id._ft_alternativas_para(self.product_id)[0]
             if validas and validas != self.workcenter_id | self.workcenter_id.alternative_workcenter_ids:
                 permitidas = tuple(validas.ids)

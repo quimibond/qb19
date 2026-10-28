@@ -108,3 +108,14 @@ class TestAlternativas(TransactionCase):
         production.button_plan()
         self.assertIn(production.workorder_ids.workcenter_id, self.r2 | self.r3,
                       "La máquina de la operación está fuera de servicio: se planea en una que opera")
+
+    def test_07_maquina_fija_no_se_mueve(self):
+        """2.21.0: con la máquina fijada a mano el planificador no la cambia, aunque no tenga proceso ni opere."""
+        self.tipo.alternativas_por_tipo = True
+        self.Proceso.create({'articulo': 'IZZ081Q21JNT165', 'workcenter_id': self.r2.id})
+        self.r1.ft_estado = 'montaje'
+        production = self._orden()
+        workorder = production.workorder_ids
+        production.with_context(ft_maquina_fija=True).button_plan()
+        self.assertEqual(workorder.workcenter_id, self.r1, "Sin la clave se iría a la 82, la única con proceso")
+        self.assertIn('RAMA 81 prueba está en montaje', workorder.ft_aviso_maquina, "Queda el aviso")

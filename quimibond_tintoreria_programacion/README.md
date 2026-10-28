@@ -13,7 +13,7 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
      3. jet sin bandas capturadas (p. ej. HTJ5): capacidad general, con aviso en el chatter.
    - `n = ceil(kg / capacidad)`; reparto **simétrico** `kg / n` (el redondeo cae en el último baño), todos en el mismo HTJ.
    - Si `n > 1` se usa la división nativa `mrp.production._split_productions` (conserva los enlaces MTO hacia la MO en metros).
-   - **Duración de Tintorería (por baño; cada orden es un baño):** se fija en la workorder de Tintorería de cada MO con el primer dato disponible: (1) *Tiempo de ciclo* del artículo en ese jet (proceso del artículo en la ficha técnica; la ficha lo guarda en **horas**, se convierte a minutos); (2) minutos de la fórmula de la BoM en ese HTJ (`tintoreria.formula.tiempo`, menú Fichas técnicas → Tintorería → Tiempos por fórmula y jet); (3) la operación de Tintorería de la BoM, con aviso en el chatter: su tiempo es el de Odoo, por unidad de la BoM (en las listas en kg, minutos por kg), y se multiplica por los kg del baño (1.5.0). Si no existe ninguno, la programación se bloquea. El asistente muestra los minutos y su origen antes de confirmar.
+   - **Duración de Tintorería (por baño; cada orden es un baño):** se fija en la workorder de Tintorería de cada MO con el primer dato disponible: (1) *Tiempo de ciclo* del artículo en ese jet (proceso del artículo en la ficha técnica; la ficha lo guarda en **horas**, se convierte a minutos); (2) minutos de la fórmula de la BoM en ese HTJ (`tintoreria.formula.tiempo`, menú Fichas técnicas → Tintorería → Tiempos por fórmula y jet); (3) la operación de Tintorería de la BoM, con aviso en el chatter de cada orden: su tiempo es el de Odoo (manual o calculado por historial, 1.6.0), por unidad de la BoM (en las listas en kg, minutos por kg), y se multiplica por los kg del baño (1.5.0). Si no existe ninguno, la programación se bloquea. El asistente muestra los minutos y su origen antes de confirmar.
    - Se asigna el HTJ a la workorder de Tintorería de cada MO → `quimibond_tintoreria_dosificacion` recalcula g/L y % con la RB del HTJ.
    - Se crea un registro `tintoreria.programacion` con el detalle.
 4. **Validación:** sin programar, `mrp.workorder.button_start`, `mrp.production.action_start` y `button_mark_done` bloquean la orden.
@@ -27,6 +27,18 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El campo se calcula al **crear** la orden: si la ficha se liga después, las órdenes ya creadas no se recalculan solas.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
+
+## Cambios 19.0.1.6.0 (revisión de Consolti, 2026-10-28)
+
+- **El jet programado no se mueve.** Desde las fichas 2.20.0 el planificador solo usa alternativas que operan y tienen
+  proceso del artículo; si el HTJ asignado aquí estaba en montaje o el artículo no tenía proceso ahí (HTJ5, con aviso),
+  la operación se iba a otro jet al planear. Ahora la orden de trabajo de Tintorería de una orden programada
+  (`tintoreria_programada`) es «máquina fijada a mano» (`mrp.workorder._ft_maquina_fija`, fichas 2.21.0): el
+  planificador la deja en su HTJ y queda solo el aviso. Prueba: `test_jet_programado_no_lo_mueve_el_planificador`.
+- **Respaldo de la operación de la BoM sin bloquear.** El tiempo se toma como lo da Odoo (`time_cycle`): manual o
+  calculado por historial (antes solo manual, y el modo calculado bloqueaba la programación). Sigue por unidad de la
+  BoM y con el aviso en el chatter de cada orden. Solo se bloquea si no hay ningún tiempo (ni ficha, ni fórmula, ni
+  operación). Prueba: `test_respaldo_de_la_bom_en_modo_calculado_avisa_en_el_chatter`.
 
 ## Cambios 19.0.1.5.0
 
