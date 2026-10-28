@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.20.0',
+    'version': '19.0.2.21.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -79,6 +79,8 @@ Incluye:
   máquina (operando, en montaje, en pruebas, fuera de servicio), alternativas armadas por
   tipo («Alternativas entre sí»), máquinas posibles por operación en la ficha de acabado
   y, al planear, solo las alternativas que operan y tienen proceso del artículo.
+- 2.21.0: una máquina fijada a mano (clave de contexto ``ft_maquina_fija``, o el jet que
+  asignó la Programación de Tintorería) no la cambia el planificador; queda solo el aviso.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',

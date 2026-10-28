@@ -45,8 +45,11 @@ def reparent_sat_menu(env):
     root = env.ref('quimibond_sat.menu_sat_root', raise_if_not_found=False)
     accounting = accounting_root_menu(env)
     if not root or not accounting:
-        _logger.warning('quimibond_sat: no hay menú Contabilidad (account_accountant); '
-                        'el menú SAT se queda en Facturación')
+        # 1.29.1: info, no warning. Sin Contabilidad (community, CI, o una base de desarrollo que se construye
+        # desde cero, como consolti) quedarse en Facturación es lo esperado, y un warning pinta el build de
+        # Odoo.sh de naranja.
+        _logger.info('quimibond_sat: no hay menú Contabilidad (account_accountant); '
+                     'el menú SAT se queda en Facturación')
         return False
     if root.parent_id != accounting:
         root.parent_id = accounting
