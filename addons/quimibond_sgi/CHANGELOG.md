@@ -14,6 +14,21 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.196.0 — 2026-10-29
+
+Dirección General 2026-10-29, sobre la Aprobación para iniciar el proyecto (FT-055-2026, WJ038Q22JVH165, crudo
+WJ035Q22HNT200): el crudo solo se teje en circulares de tela abierta; la 17 y la 18 son galga 18 y 32" pero
+tubulares y no pueden tejerlo, y el documento las listaba.
+
+**Corregido**
+- **Circulares del desarrollo por las fichas de tejido del crudo.** `_sgi_dev_circulares` buscaba solo por galga
+  (ficha de la máquina), así que metía todas las circulares de esa galga aunque no pudieran tejer el artículo. Si
+  el crudo del desarrollo (crudo de tejido o artículo crudo) ya tiene fichas técnicas de tejido, las circulares son
+  las de esas fichas que corren hoy la galga; sin fichas, sigue la búsqueda por galga. Lo usan el checklist de
+  factibilidad (máquina circular y capacidad), la fila de circulares de «Capacidad a utilizar» de la Aprobación
+  para iniciar y la máquina por omisión de la ficha de proceso del crudo.
+- La observación del checklist dice de dónde salen: «Galga 18, circulares con ficha de tejido del crudo …».
+
 ## 19.0.57.195.0 — 2026-10-27
 
 Dirección General 2026-10-27, sobre la ficha de proceso del desarrollo (pestaña «Control del desarrollo» de las fichas
