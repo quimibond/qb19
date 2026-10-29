@@ -304,14 +304,18 @@ class ChecadorEquipo(models.Model):
         return [p.strip().upper() for p in (self.prefijos or '').split(',') if p.strip()]
 
     def _empleados_a_sincronizar(self):
-        """Empleados activos de la empresa del reloj cuya Referencia lleva uno de sus prefijos."""
+        """Empleados activos de la empresa del reloj cuya Referencia lleva uno de sus prefijos, salvo los que
+        tienen otros relojes asignados («Relojes donde checa»; vacío = todos)."""
         self.ensure_one()
         Emp = self.env['hr.employee'].sudo()
         if 'registration_number' not in Emp._fields:
-            return Emp.search([('company_id', '=', self.company_id.id), ('qb_checador_pin', '!=', False)])
-        prefijos = self._prefijos_lista()
-        empleados = Emp.search([('company_id', '=', self.company_id.id), ('registration_number', '!=', False)])
-        return empleados.filtered(lambda e: (e.registration_number or '').upper().split('-')[0].strip() in prefijos)
+            empleados = Emp.search([('company_id', '=', self.company_id.id), ('qb_checador_pin', '!=', False)])
+        else:
+            prefijos = self._prefijos_lista()
+            empleados = Emp.search([('company_id', '=', self.company_id.id), ('registration_number', '!=', False)])
+            empleados = empleados.filtered(
+                lambda e: (e.registration_number or '').upper().split('-')[0].strip() in prefijos)
+        return empleados.filtered(lambda e: not e.qb_checador_equipo_ids or self in e.qb_checador_equipo_ids)
 
     def _relojes_que_sincronizan(self, empleado):
         """Los relojes ZKTeco activos y autorizados que sincronizan usuarios y en los que va este empleado."""

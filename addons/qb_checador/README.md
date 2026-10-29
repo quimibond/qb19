@@ -254,6 +254,27 @@ y quede en todos:
   `TransFlag=1101111000` (checadas, bitácora, altas y cambios de usuario y de
   huella; sin fotos). Antes era `1111000000` y no mandaban huellas.
 
+## Relojes donde checa cada persona (1.8.0)
+
+Sin asignación, cada reloj que sincroniza recibe a todos los empleados de sus
+prefijos y la huella registrada en uno pasa a todos. Con el campo **«Relojes
+donde checa»** de la ficha del empleado (junto a «Usuario en el checador»):
+
+- Odoo da de alta a la persona y le manda sus huellas **solo** a esos relojes;
+  en los demás no existe, así que el reloj no la reconoce y no registra nada.
+- Al asignarle relojes se borra de los que ya no le tocan («Borrar usuario …
+  (no checa en este reloj)» en la cola) y se da de alta, con sus huellas, en
+  los nuevos. Al vaciar el campo vuelve a todos.
+- Una huella que registra en uno de sus relojes pasa solo a sus otros relojes
+  asignados. «Sincronizar usuarios» respeta la asignación.
+- Vacío = todos los relojes que sincronizan su nómina (lo de antes de 1.8.0).
+  Así nadie se queda sin checar mientras se llena la lista.
+
+La lista de RH (F «Listado de personal por checador 2026», Miguel Medina,
+29-oct-2026) da un reloj por persona: ACABADO = Rama, ENTRETELAS = Entretelas,
+ADMINISTRACIÓN = el MB10-VL de oficinas. El Hikvision de Ciruelos y el UA860
+no sincronizan y no se ven afectados.
+
 ## Emparejar (cron cada 5 minutos)
 
 Por persona, en orden de tiempo:
