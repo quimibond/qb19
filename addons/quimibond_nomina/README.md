@@ -581,7 +581,8 @@ El ordinario sigue con la tarifa del periodo (o el ajuste mensual de la
 sección 8, sobre el ordinario acumulado del mes) y el subsidio se decide sobre
 el ordinario. Qué líneas van por el art. 174: parámetro
 `quimibond_nomina.isr_art174_codigos` (default `PVAC_TAX`; el aguinaldo gravado
-se agrega cuando exista su regla, antes de diciembre); vacío lo apaga.
+se agrega cuando exista su regla, antes de diciembre); `0` lo apaga (vacío no
+se puede guardar en Odoo y regresa al default).
 
 **Reglas que se cambian en la base después de desplegar 1.15.0** (sin ellas el
 código nuevo no se usa, salvo el ajuste mensual, que ya descuenta la prima de
