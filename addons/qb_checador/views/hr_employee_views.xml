@@ -8,6 +8,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='pin']" position="after">
                 <field name="qb_checador_pin"/>
+                <field name="qb_checador_equipo_ids" widget="many2many_tags" options="{'no_create': True}"
+                       placeholder="Todos los relojes de su nómina"/>
             </xpath>
         </field>
     </record>
