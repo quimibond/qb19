@@ -160,3 +160,51 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertEqual((tiempo.workcenter_id, tiempo.minutos), (self.htj1, 240.0))
         self.assertEqual(formula.tiempo_ids, tiempo)
         self.assertEqual(tiempo.horas, 4.0)
+
+    def test_tiempo_de_la_operacion_de_la_bom_va_por_kg(self):
+        """1.5.0: sin tiempo de la ficha ni de la fórmula, el tiempo de la operación de la BoM es por kg
+        (la BoM es de 1 kg) y se multiplica por los kg del baño, como Odoo; antes se tomaba como minutos
+        por baño (0.5 min por kg daba baños de medio minuto)."""
+        self.bom.operation_ids.write({'time_mode': 'manual', 'time_cycle_manual': 0.5})
+        mo = self._crear_mo(1000.0)
+        plan = mo._calcular_plan_tintoreria(self.htj1)
+        self.assertEqual(plan['n_banos'], 2, "Banda B: 600 kg por baño, 1000 kg son 2 baños de 500")
+        self.assertEqual(plan['origen_tiempo'], 'bom')
+        self.assertAlmostEqual(plan['minutos'], 250.0, msg="0.5 min por kg × 500 kg del baño")
+        self.assertIn('500', plan['aviso_tiempo'])
+        programacion = mo._programar_tintoreria(self.htj1)
+        self.assertAlmostEqual(programacion.minutos_bano, 250.0)
+        for orden in programacion.production_ids:
+            self.assertAlmostEqual(orden._workorder_tintoreria().duration_expected, 250.0)
+
+    def test_respaldo_de_la_bom_en_modo_calculado_avisa_en_el_chatter(self):
+        """1.6.0: la operación de la BoM en modo calculado (sin historial, Odoo usa el tiempo capturado) no
+        bloquea; el tiempo va por kg del baño y el aviso queda en el chatter de cada orden."""
+        self.bom.operation_ids.write({'time_mode': 'auto', 'time_cycle_manual': 0.5})
+        mo = self._crear_mo(1000.0)
+        programacion = mo._programar_tintoreria(self.htj1)
+        self.assertEqual(programacion.origen_tiempo, 'bom')
+        self.assertAlmostEqual(programacion.minutos_bano, 250.0)
+        for orden in programacion.production_ids:
+            self.assertTrue(any('operación de Tintorería de la BoM' in (m.body or '') for m in orden.message_ids),
+                            "El aviso del respaldo queda en el chatter de la orden")
+
+    def test_jet_programado_no_lo_mueve_el_planificador(self):
+        """1.6.0: el HTJ asignado en la programación es a mano; aunque esté en montaje y otro jet sí tenga
+        proceso del artículo, al planear la orden de trabajo se queda en él (queda el aviso)."""
+        tipo = self.env['ficha.tecnica.maquina.tipo'].create({
+            'name': 'Tintorería prueba programación', 'code': 'tint_prog_prueba', 'alternativas_por_tipo': True,
+            'parametro_ids': [Command.create({'code': 'tiempo_ciclo', 'name': 'Tiempo de ciclo', 'unit': 'h',
+                                              'kind': 'num', 'ambito': 'articulo'})]})
+        (self.htj1 | self.htj3).write({'ft_tipo_id': tipo.id})
+        self.htj1.ft_estado = 'montaje'
+        self.env['ficha.tecnica.proceso'].create({'articulo': self.producto_kg.default_code,
+                                                  'workcenter_id': self.htj3.id})
+        self.bom.operation_ids.write({'time_mode': 'manual', 'time_cycle_manual': 0.5})
+        mo = self._crear_mo(500.0)
+        orden = mo._programar_tintoreria(self.htj1).production_ids
+        workorder = orden._workorder_tintoreria()
+        self.assertTrue(workorder._ft_maquina_fija())
+        orden.button_plan()
+        self.assertEqual(workorder.workcenter_id, self.htj1, "Sin 1.6.0 se iría al HTJ3, el único con proceso")
+        self.assertIn('en montaje', workorder.ft_aviso_maquina)

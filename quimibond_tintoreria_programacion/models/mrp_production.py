@@ -3,6 +3,7 @@ import math
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import float_round
 
 from odoo.addons.quimibond_ficha_tecnica_tela.models.mrp_aviso_maquina import GRUPOS
 
@@ -127,14 +128,19 @@ class MrpProduction(models.Model):
             capacidad = min(capacidad, general)
         return capacidad, banda, False
 
-    def _minutos_tintoreria(self, workcenter):
+    def _minutos_tintoreria(self, workcenter, kg_bano=None):
         """(minutos por baño, origen, aviso) de la operación de Tintorería en el HTJ dado.
 
-        El tiempo es por ORDEN (un solo ciclo), no por kg. Orden de prioridad (diseño §3.1):
+        El tiempo de la ficha y el de la fórmula son por ORDEN (un solo ciclo), no por kg. Orden de
+        prioridad (diseño §3.1):
         1. «Tiempo de ciclo» del artículo en ese jet (proceso del artículo en la ficha técnica; la
            ficha lo guarda en horas).
         2. Minutos de la fórmula de la BoM en ese HTJ (``tintoreria.formula.tiempo``).
-        3. Minutos manuales de la operación de Tintorería de la BoM (con aviso).
+        3. La operación de Tintorería de la BoM (con aviso, que la programación deja en el chatter de
+           cada orden). 1.5.0: su tiempo es el de Odoo, por unidad de la BoM (en las listas en kg,
+           minutos por kg), así que se multiplica por los kg del baño (``kg_bano``; si no se da, los de
+           la orden), como lo calcula Odoo. 1.6.0: el tiempo de la operación como lo da Odoo
+           (``time_cycle``), sea manual o calculado por historial.
         Si no existe ninguno la programación se bloquea (no se asume un valor).
         """
         self.ensure_one()
@@ -158,29 +164,49 @@ class MrpProduction(models.Model):
             if tiempo:
                 return tiempo.minutos, 'formula', False
         operacion = self.bom_id._operacion_tintoreria()
-        if operacion and operacion.time_mode == 'manual' and operacion.time_cycle_manual > 0:
+        if operacion and operacion.time_cycle > 0:
+            kg = self.product_qty if kg_bano is None else kg_bano
+            minutos = self._minutos_operacion_bom(operacion, workcenter, kg)
             aviso = _(
                 "No hay tiempo de ciclo del artículo en %(wc)s ni tiempo de la fórmula %(f)s en ese HTJ: "
-                "se usaron los %(m)s min de la operación de Tintorería de la BoM.",
-                wc=workcenter.display_name, f=formula.display_name or '-', m=operacion.time_cycle_manual)
-            return operacion.time_cycle_manual, 'bom', aviso
+                "se calcularon %(m)s min por baño con la operación de Tintorería de la BoM (%(t)s min por "
+                "%(q)s %(u)s, %(kg)s kg por baño).",
+                wc=workcenter.display_name, f=formula.display_name or '-', m=round(minutos, 1),
+                t=round(operacion.time_cycle, 4), q=operacion.bom_id.product_qty or 1,
+                u=operacion.bom_id.product_uom_id.name, kg=kg)
+            return minutos, 'bom', aviso
         raise UserError(_(
             "No hay tiempo de Tintorería para %(prod)s en %(wc)s: captura el tiempo de ciclo del artículo "
             "en el jet (ficha técnica) o el tiempo de su fórmula en ese HTJ.",
             prod=self.product_id.display_name, wc=workcenter.display_name))
+
+    def _minutos_operacion_bom(self, operacion, workcenter, kg):
+        """1.5.0: minutos de la operación de la BoM para ``kg`` en el HTJ, con la misma cuenta que Odoo
+        (``mrp.workorder._get_duration_expected``): preparación + limpieza + ciclos × tiempo del ciclo,
+        entre la eficiencia de la máquina; un ciclo es la cantidad de la BoM (o la capacidad del HTJ
+        para el producto, si está capturada)."""
+        self.ensure_one()
+        bom = operacion.bom_id
+        capacidad, preparacion, limpieza = workcenter._get_capacity(
+            self.product_id, bom.product_uom_id, bom.product_qty or 1)
+        cantidad = self.product_uom_id._compute_quantity(kg, bom.product_uom_id)
+        ciclos = float_round(cantidad / (capacidad or 1), precision_digits=0, rounding_method='UP')
+        return preparacion + limpieza + ciclos * operacion.time_cycle * 100.0 / (
+            workcenter.time_efficiency or 100.0)
 
     def _calcular_plan_tintoreria(self, workcenter):
         """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado."""
         self.ensure_one()
         rendimiento = self._rendimiento_tejido()
         capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
-        minutos, origen_tiempo, aviso_tiempo = self._minutos_tintoreria(workcenter)
         kg_total = self.product_qty
         n_banos = max(1, math.ceil(round(kg_total / capacidad, 6)))
         uom = self.product_uom_id
         kg_bano = uom.round(kg_total / n_banos)
         montos = [kg_bano] * (n_banos - 1)
         montos.append(uom.round(kg_total - sum(montos)))  # el redondeo se absorbe en el último baño
+        # 1.5.0: después de repartir, porque el tiempo de la operación de la BoM va por kg del baño.
+        minutos, origen_tiempo, aviso_tiempo = self._minutos_tintoreria(workcenter, kg_bano=max(montos))
         return {
             'rendimiento': rendimiento,
             'banda': banda,
@@ -248,8 +274,8 @@ class MrpProduction(models.Model):
             # Asignar el HTJ dispara el recálculo de la dosificación (quimibond_tintoreria_dosificacion).
             workorder = orden._workorder_tintoreria()
             workorder.workcenter_id = workcenter
-            # Tintorería es tiempo por ORDEN: un solo ciclo, sin multiplicar por kg. Se escribe
-            # después de asignar el HTJ para que ese cambio no lo reemplace.
+            # Tintorería es tiempo por baño (cada orden es un baño). Se escribe después de asignar el
+            # HTJ para que ese cambio no lo reemplace.
             workorder.duration_expected = plan['minutos']
             orden.write({
                 'tintoreria_programada': True,

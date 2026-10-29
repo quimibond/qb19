@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Programación de Tintorería',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.6.0',
     'category': 'Manufacturing',
     'summary': 'Asignación de HTJ por orden, cálculo del tamaño de baño y división simétrica de la MO de tela acabada en kg',
     'description': """
@@ -27,7 +27,12 @@ Programación de Tintorería
 * Duración de Tintorería: el tiempo es por ORDEN (un solo ciclo, no por kg). Al programar se
   fija en la workorder de Tintorería de cada MO: 1) tiempo de ciclo del artículo en el jet
   (ficha técnica, en horas); 2) minutos de la fórmula en ese HTJ (``tintoreria.formula.tiempo``);
-  3) minutos de la operación de Tintorería de la BoM, con aviso. Sin ninguno, se bloquea.
+  3) la operación de Tintorería de la BoM, con aviso: su tiempo es el de Odoo, por unidad de la
+  BoM (en kg, minutos por kg), y se multiplica por los kg del baño (1.5.0); el aviso queda en el
+  chatter de la orden. Sin ninguno, se bloquea.
+* 1.6.0: el planificador no cambia el jet programado aunque esté en montaje o el artículo no tenga
+  proceso ahí (queda el aviso de la orden de trabajo), y el tiempo de la operación de la BoM se toma
+  como lo da Odoo, manual o calculado por historial.
 * Validación: ninguna operación de una MO que requiere programación puede iniciarse sin haberla
   programado.
 """,

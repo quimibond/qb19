@@ -875,3 +875,17 @@ Lo que no hace todavía: el tiempo de la operación en una alternativa sigue sie
 ajustado por capacidad y eficiencia), no la velocidad del proceso en esa máquina.
 
 Prueba: `tests/test_alternativas.py`.
+
+## Máquina fijada a mano (2.21.0, revisión de Consolti 2026-10-28)
+
+La Programación de Tintorería asigna el jet a mano. Con el filtro de 2.20.0, si ese jet estaba en montaje o el artículo
+no tenía proceso ahí (HTJ5, con aviso), el planificador lo saltaba y movía la operación a otro jet. Ahora una máquina
+fijada a mano no se mueve: `mrp.workorder._ft_maquina_fija()` dice cuándo, y entonces al planear solo cuenta la máquina
+de la orden de trabajo, opere o no y tenga o no proceso del artículo. Queda solo el aviso de la orden de trabajo.
+
+- Aquí: la clave de contexto `ft_maquina_fija` (p. ej. `production.with_context(ft_maquina_fija=True).button_plan()`;
+  vale para todas las órdenes de trabajo que se planean en esa llamada).
+- `quimibond_tintoreria_programacion` 1.6.0: la orden de trabajo de Tintorería de una orden ya programada
+  (`tintoreria_programada`).
+
+Prueba: `tests/test_alternativas.py::test_07_maquina_fija_no_se_mueve`.
