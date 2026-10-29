@@ -173,8 +173,9 @@ class TestSincronizacion(HttpCase):
         Comando = self.env['qb.checador.comando']
 
         def cola(reloj):
-            return Comando.search([('equipo_id', '=', reloj.id), ('comando', 'like', 'PIN=1984')], order='id').mapped(
-                lambda c: c.comando.split('\t')[0])
+            # Sin mapped(): en Odoo 19 llama a la función también con la cola vacía.
+            comandos = Comando.search([('equipo_id', '=', reloj.id), ('comando', 'like', 'PIN=1984')], order='id')
+            return [c.comando.split('\t')[0] for c in comandos]
 
         self.assertEqual(cola(self.rama), ['DATA UPDATE USERINFO PIN=1984'])
         self.assertEqual(cola(self.entretelas), ['DATA UPDATE USERINFO PIN=1984'])

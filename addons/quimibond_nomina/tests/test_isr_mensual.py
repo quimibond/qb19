@@ -258,7 +258,7 @@ class TestIsrMensual(TransactionCase):
         self.assertEqual(s._qb_art174(2500.0, 0.0), {'ordinario': 2500.0, 'especial': 0.0, 'tasa': 0.0, 'isr': 0.0})
         self.assertEqual(s._qb_art174_monto(), 1023.59)
         self.assertEqual(s._qb_art174_monto({'PVAC_TAX': {'total': 500.0}}), 500.0)
-        self.Param.set_param('quimibond_nomina.isr_art174_codigos', '')
+        self.Param.set_param('quimibond_nomina.isr_art174_codigos', '0')
         self.assertEqual(s._qb_art174_monto(), 0.0)
         self.Param.set_param('quimibond_nomina.isr_art174_codigos', False)
 

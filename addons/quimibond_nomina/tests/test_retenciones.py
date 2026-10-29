@@ -7,6 +7,8 @@ No corre en el CI (depende de Enterprise); se corre en el shell de Odoo.sh:
 ``odoo-bin ... --test-tags /quimibond_nomina --stop-after-init``."""
 from datetime import date, timedelta
 
+from odoo import fields
+
 from odoo.tests.common import TransactionCase
 
 from .common import liberar_referencias
@@ -62,7 +64,11 @@ class TestRetenciones(TransactionCase):
                 'slip_id': slip.id, 'salary_rule_id': self.rules[code].id, 'name': code,
                 'amount': total, 'quantity': 1.0, 'rate': 100.0, 'total': total, 'sequence': 5,
             })
-        slip.write({'state': state})
+        vals = {'state': state}
+        if state in ('validated', 'paid'):
+            # hr_payroll compara la versión contra done_date; sin ella revienta al recalcular.
+            vals['done_date'] = fields.Datetime.now()
+        slip.write(vals)
         return slip
 
     # --- Sin sueldo no se retiene --------------------------------------
@@ -93,8 +99,13 @@ class TestRetenciones(TransactionCase):
         # NOI: 517.21 (sobre 1,939.55) y 319.84.
         self.assertAlmostEqual(semana43._qb_fonacot_retencion(2935.98), (1939.56 - 387.91) / 3, places=4)
         self.assertAlmostEqual(semana43._qb_infonavit_retencion(2935.98), 319.84, places=2)
-        semana43.unlink()
-        self._semana(empleado, 43, {'INFONAVIT': -319.84, 'FONACOT': -517.21})
+        # La 43 queda como la cerró NOI y se calcula la 44.
+        for code, total in (('INFONAVIT', -319.84), ('FONACOT', -517.21)):
+            self.env['hr.payslip.line'].create({
+                'slip_id': semana43.id, 'salary_rule_id': self.rules[code].id, 'name': code,
+                'amount': total, 'quantity': 1.0, 'rate': 100.0, 'total': total, 'sequence': 5,
+            })
+        semana43.write({'state': 'validated', 'done_date': fields.Datetime.now()})
         semana44 = self._semana(empleado, 44, state='draft')
         self.assertAlmostEqual(semana44._qb_infonavit_retencion(2385.91), 319.84, places=2)
         self.assertAlmostEqual(semana44._qb_fonacot_retencion(2385.91), (1939.56 - 387.91 - 517.21) / 2, places=4)
