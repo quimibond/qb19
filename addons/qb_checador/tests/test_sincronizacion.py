@@ -206,3 +206,30 @@ class TestSincronizacion(HttpCase):
         self.assertEqual(self.viejo.operlog_stamp, '0')
         r = self.url_open('/iclock/getrequest?SN=UA860VIEJO')
         self.assertIn(':CHECK\n', r.text)
+
+    def test_relojes_asignados(self):
+        """«Relojes donde checa»: Mariano solo en Rama. Se borra de Entretelas, sus huellas ya no pasan ahí
+        y, al quitarle la asignación, vuelve con su alta."""
+        Comando = self.env['qb.checador.comando']
+        Comando.search([]).unlink()
+
+        def cola(reloj):
+            return Comando.search([('equipo_id', '=', reloj.id), ('comando', 'like', 'PIN=2987')], order='id').mapped(
+                lambda c: c.comando.split('\t')[0])
+
+        self.mariano.qb_checador_equipo_ids = self.rama
+        self.assertEqual(cola(self.entretelas), ['DATA DELETE USERINFO PIN=2987'])
+        self.assertFalse(cola(self.rama), 'ya estaba en Rama: no se repite el alta')
+        self.assertNotIn(self.mariano, self.entretelas._empleados_a_sincronizar())
+        self.assertIn(self.mariano, self.rama._empleados_a_sincronizar())
+        # registra una huella en Rama: ya no pasa a Entretelas
+        self._post('UDPRAMA01', 'BIODATA', 'BIODATA Pin=2987\tNo=3\tIndex=0\tValid=1\tDuress=0\tType=1\t'
+                                           'MajorVer=10\tMinorVer=0\tFormat=0\tTmp=%s\n' % PLANTILLA)
+        self.assertEqual(cola(self.entretelas), ['DATA DELETE USERINFO PIN=2987'])
+        # sincronizar Entretelas a mano tampoco lo manda
+        self.entretelas.action_sincronizar_usuarios()
+        self.assertEqual(cola(self.entretelas), ['DATA DELETE USERINFO PIN=2987'])
+        # vuelve a todos los relojes: alta y huella en Entretelas
+        self.mariano.qb_checador_equipo_ids = False
+        self.assertEqual(cola(self.entretelas), ['DATA DELETE USERINFO PIN=2987', 'DATA UPDATE USERINFO PIN=2987',
+                                                 'DATA UPDATE FINGERTMP PIN=2987'])

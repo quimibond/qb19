@@ -16,6 +16,13 @@ class HrEmployee(models.Model):
              "usuarios: un dígito por nómina y el número de nómina a tres cifras (S-4 → 1004, Q-109 → 2109, "
              "C-26 → 3026). Si cambia, Odoo borra el número viejo de los relojes y da de alta el nuevo con sus "
              "huellas.")
+    qb_checador_equipo_ids = fields.Many2many(
+        'qb.checador.equipo', 'qb_checador_equipo_employee_rel', 'employee_id', 'equipo_id',
+        string="Relojes donde checa", groups="hr.group_hr_user", copy=False,
+        domain=[('marca', '=', 'zkteco'), ('sincronizar_usuarios', '=', True)],
+        help="Los relojes en los que esta persona puede checar: Odoo la da de alta y le manda sus huellas solo "
+             "ahí, y la borra de los demás (en otro reloj no la reconoce). Vacío: todos los relojes que "
+             "sincronizan su nómina.")
 
     # ------------------------------------------------------------------
     @api.model
@@ -65,6 +72,10 @@ class HrEmployee(models.Model):
 
     def write(self, vals):
         anteriores = {}
+        relojes_antes = {}
+        if 'qb_checador_equipo_ids' in vals:
+            Equipo = self.env['qb.checador.equipo'].sudo()
+            relojes_antes = {e.id: Equipo._relojes_que_sincronizan(e) for e in self.sudo()}
         if 'qb_checador_pin' in vals or 'active' in vals:
             anteriores = {e.id: (e.sudo().qb_checador_pin, e.active) for e in self}
         res = super().write(vals)
@@ -74,7 +85,23 @@ class HrEmployee(models.Model):
             # Cambió de nómina (S-4 → Q-12) o se le puso Referencia: su número de checador cambia y los
             # relojes se enteran.
             self.sudo().filtered('active')._qb_asignar_numero_checador()
+        if relojes_antes:
+            self._qb_reasignar_relojes(relojes_antes)
         return res
+
+    def _qb_reasignar_relojes(self, relojes_antes):
+        """Cambiaron los relojes donde checa: se borra de los que ya no le tocan y se da de alta, con sus
+        huellas, en los que ahora sí."""
+        Equipo = self.env['qb.checador.equipo'].sudo()
+        for emp in self.sudo():
+            antes = relojes_antes.get(emp.id, Equipo)
+            ahora = Equipo._relojes_que_sincronizan(emp)
+            if emp.qb_checador_pin:
+                for reloj in antes - ahora:
+                    reloj._encolar('DATA DELETE USERINFO PIN=%s' % emp.qb_checador_pin,
+                                   "Borrar usuario %s %s (no checa en este reloj)" % (emp.qb_checador_pin, emp.name),
+                                   emp)
+            (ahora - antes)._enviar_empleados(emp)
 
     def _qb_avisar_relojes(self, anteriores):
         """Si cambió el número de checador, el viejo se borra de los relojes que sincronizan y el nuevo se da
