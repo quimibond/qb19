@@ -82,3 +82,27 @@ class TestDevMachineSheet(TransactionCase):
         self.assertIn(self.wc, circulares)
         real = sum(self.project._sgi_dev_produccion_real(circulares).values())
         self.assertEqual(bool(rows), bool(real), "La fila de circulares sale solo con producción real en kg")
+
+    def test_05_circulares_de_las_fichas_del_crudo(self):
+        """57.196.0: con fichas de tejido del crudo, solo sus circulares; otra de la misma galga sin ficha
+        (una tubular con un crudo que pide tela abierta) no entra."""
+        Config = self.env['ficha.tecnica.maquina.config']
+        tubular = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 96 tubular prueba',
+                                                     'ft_tipo_id': self.circular.id})
+        Config.create({'workcenter_id': tubular.id, 'date_from': date(2020, 1, 1), 'galga': 17, 'diametro': 32})
+        crudo = self.env['product.product'].create({'name': 'Crudo factibilidad', 'default_code': 'WJ035Q17HNT299'})
+        self.project.sgi_dev_tejido_id = crudo
+        with self._patch():
+            galga, circulares = self.project._sgi_dev_circulares()
+        self.assertIn(tubular, circulares, "Sin fichas del crudo: todas las de la galga")
+        self.env['ficha.tecnica.tejido'].create({'articulo': crudo.default_code, 'maquina_tejido': self.wc.id})
+        with self._patch():
+            galga, circulares = self.project._sgi_dev_circulares()
+            answer, obs = self.project._sgi_dev_auto_maquina_circular()
+        self.assertEqual(circulares, self.wc, "Con fichas del crudo: solo sus circulares")
+        self.assertEqual(answer, 'si')
+        self.assertIn('ficha de tejido del crudo WJ035Q17HNT299', obs)
+        self.assertNotIn('CIRCULAR 96', obs)
+        with self._patch(galga=99):
+            self.assertEqual(self.project._sgi_dev_auto_maquina_circular()[0], 'no',
+                             "Ninguna circular de las fichas ni de la planta corre galga 99")

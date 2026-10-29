@@ -488,10 +488,44 @@ class ProjectProjectDevAnalysis(models.Model):
 
     # --- 57.158.0: factibilidad con la ficha de la máquina ----------------------------
     def _sgi_dev_circulares(self):
-        """(galga del artículo, circulares que hoy la corren) según la ficha de la máquina."""
+        """(galga del artículo, circulares que lo pueden tejer).
+
+        57.196.0: si el crudo del desarrollo ya tiene fichas técnicas de tejido, las circulares son las de esas
+        fichas (las que corren hoy la galga del artículo): la galga sola no basta, porque hay circulares de la
+        misma galga y diámetro que no pueden tejer el artículo (tubulares con un crudo que pide tela abierta,
+        p. ej. WJ035Q22HNT200 en las circulares 17 y 18). Sin fichas, las circulares que corren la galga según
+        la ficha de la máquina."""
         self.ensure_one()
         galga = self._sgi_dev_target()['galga'] or 0.0
+        con_ficha = self._sgi_dev_circulares_con_ficha(galga)
+        if con_ficha:
+            return galga, con_ficha
         return galga, self.env['mrp.workcenter']._ft_circulares_con_galga(galga)
+
+    def _sgi_dev_crudo_con_ficha(self):
+        """El crudo del desarrollo (crudo de tejido o artículo crudo) si tiene fichas técnicas de tejido activas
+        con máquina; vacío si no."""
+        self.ensure_one()
+        crudo = self.sgi_dev_tejido_id or self.sgi_dev_product_crudo_id
+        if not crudo.default_code:
+            return crudo.browse()
+        fichas = self.env['ficha.tecnica.tejido'].search([
+            ('articulo', '=', crudo.default_code), ('maquina_tejido', '!=', False)], limit=1)
+        return crudo if fichas else crudo.browse()
+
+    def _sgi_dev_circulares_con_ficha(self, galga=0.0):
+        """Circulares de las fichas técnicas de tejido activas del crudo; con galga, solo las que la corren hoy
+        (ficha de la máquina). Vacío si el crudo no tiene fichas o ninguna de sus circulares corre la galga."""
+        self.ensure_one()
+        crudo = self._sgi_dev_crudo_con_ficha()
+        if not crudo:
+            return self.env['mrp.workcenter']
+        circulares = self.env['ficha.tecnica.tejido'].search([
+            ('articulo', '=', crudo.default_code), ('maquina_tejido', '!=', False)]).mapped('maquina_tejido')
+        circulares = circulares.filtered(lambda wc: wc.ft_tipo_id.code == 'tejido_circular')
+        if galga:
+            circulares = circulares.filtered(lambda wc: (wc._ft_config_at().galga or 0.0) == galga)
+        return circulares.sorted(lambda wc: (len(wc.name or ''), wc.name or ''))
 
     def _sgi_dev_produccion_real(self, workcenters):
         """{centro: kg al mes} producidos en los últimos FEAS_PRODUCCION_DIAS días (órdenes de trabajo
@@ -522,6 +556,10 @@ class ProjectProjectDevAnalysis(models.Model):
             if config.no_alimentadores:
                 partes.append('%s alim.' % config.no_alimentadores)
             detalle.append('%s (%s)' % (wc.name, ', '.join(partes)) if partes else wc.name)
+        crudo = self._sgi_dev_crudo_con_ficha() if self._sgi_dev_circulares_con_ficha(galga) else False
+        if crudo:
+            return 'si', "Galga %s, circulares con ficha de tejido del crudo %s: %s." % (
+                _fmt_num(galga), crudo.default_code, '; '.join(detalle))
         return 'si', "Galga %s: %s." % (_fmt_num(galga), '; '.join(detalle))
 
     def _sgi_dev_auto_capacidad(self):
