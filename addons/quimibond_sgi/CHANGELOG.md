@@ -14,6 +14,20 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.196.0 — 2026-10-29
+
+Jessica Francisco (Diseño y Desarrollo de Producto), proyecto FT-055-2026 WJ038Q22JVH165: la Aprobación para iniciar
+ponía en «Capacidad a utilizar» las circulares 17 y 18, que son galga 18 y 32" pero tubulares; el tejido
+WJ035Q22HNT200 solo se hace en las abiertas.
+
+**Corregido**
+- **Las circulares del desarrollo salen de las fichas de tejido del crudo** (`_sgi_dev_circulares`): si el crudo del
+  proyecto ya tiene fichas de tejido, solo cuentan las circulares de esas fichas que hoy corren la galga; antes
+  bastaba la galga y se juntaban tubulares y abiertas. Lo usan la Aprobación para iniciar (fila de circulares de
+  «Capacidad a utilizar»), el checklist de factibilidad (máquina circular y capacidad) y la ficha de tejido del
+  desarrollo. Si el crudo no tiene ficha (desarrollo nuevo) sigue la regla de la galga. La observación de la
+  factibilidad dice de qué fichas salen las circulares.
+
 ## 19.0.57.195.0 — 2026-10-27
 
 Dirección General 2026-10-27, sobre la ficha de proceso del desarrollo (pestaña «Control del desarrollo» de las fichas

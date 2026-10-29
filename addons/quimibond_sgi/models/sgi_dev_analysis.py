@@ -488,10 +488,26 @@ class ProjectProjectDevAnalysis(models.Model):
 
     # --- 57.158.0: factibilidad con la ficha de la máquina ----------------------------
     def _sgi_dev_circulares(self):
-        """(galga del artículo, circulares que hoy la corren) según la ficha de la máquina."""
+        """(galga del artículo, circulares que hoy la corren) según la ficha de la máquina. 57.196.0: si el crudo
+        del proyecto ya tiene fichas de tejido, solo las circulares de esas fichas; la galga sola junta tubulares
+        y abiertas (WJ035Q22HNT200 va en las abiertas galga 18, no en la 17 ni en la 18, que son tubulares)."""
         self.ensure_one()
         galga = self._sgi_dev_target()['galga'] or 0.0
-        return galga, self.env['mrp.workcenter']._ft_circulares_con_galga(galga)
+        circulares = self.env['mrp.workcenter']._ft_circulares_con_galga(galga)
+        del_crudo = self._sgi_dev_circulares_del_crudo()
+        if del_crudo:
+            circulares = circulares.filtered(lambda wc: wc.id in del_crudo.ids)
+        return galga, circulares
+
+    def _sgi_dev_circulares_del_crudo(self):
+        """57.196.0: circulares de las fichas de tejido del crudo del proyecto (vacío si el crudo no tiene ficha)."""
+        self.ensure_one()
+        crudo = self.sgi_dev_product_crudo_id.default_code
+        if not crudo:
+            return self.env['mrp.workcenter']
+        fichas = self.env['ficha.tecnica.tejido'].sudo().search([('articulo', '=', crudo),
+                                                                ('maquina_tejido', '!=', False)])
+        return self.env['mrp.workcenter'].browse(fichas.mapped('maquina_tejido').ids)
 
     def _sgi_dev_produccion_real(self, workcenters):
         """{centro: kg al mes} producidos en los últimos FEAS_PRODUCCION_DIAS días (órdenes de trabajo
@@ -511,7 +527,11 @@ class ProjectProjectDevAnalysis(models.Model):
         galga, circulares = self._sgi_dev_circulares()
         if not galga:
             return 'pendiente', "Capture la galga (código o tabla de características) para que Odoo la busque."
+        crudo = self.sgi_dev_product_crudo_id.default_code if self._sgi_dev_circulares_del_crudo() else False
         if not circulares:
+            if crudo:
+                return 'no', "Ninguna circular de las fichas de tejido de %s corre hoy galga %s." % (
+                    crudo, _fmt_num(galga))
             return 'no', "Ninguna circular corre hoy galga %s (ficha de la máquina)." % _fmt_num(galga)
         detalle = []
         for wc in circulares:
@@ -522,6 +542,9 @@ class ProjectProjectDevAnalysis(models.Model):
             if config.no_alimentadores:
                 partes.append('%s alim.' % config.no_alimentadores)
             detalle.append('%s (%s)' % (wc.name, ', '.join(partes)) if partes else wc.name)
+        if crudo:
+            return 'si', "Galga %s, circulares de las fichas de tejido de %s: %s." % (
+                _fmt_num(galga), crudo, '; '.join(detalle))
         return 'si', "Galga %s: %s." % (_fmt_num(galga), '; '.join(detalle))
 
     def _sgi_dev_auto_capacidad(self):
