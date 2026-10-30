@@ -57,7 +57,8 @@ class TestDuracionTiempo(TransactionCase):
     # Tiempo de rama
     def test_01_tiempo_de_rama_con_merma(self):
         esperado = 1000.0 / (53 * 1.65) * 0.9 / 35
-        self.assertAlmostEqual(self.op_rama.ft_tiempo_ficha, esperado, places=6)
+        # El campo guarda 4 decimales (digits=(16, 4)), como el tiempo que se pasa a la lista.
+        self.assertAlmostEqual(self.op_rama.ft_tiempo_ficha, round(esperado, 4), places=6)
         self.assertIn('53 g/m²', self.op_rama.ft_tiempo_calculo)
         self.assertIn('%.4f min/kg' % esperado, self.op_rama.ft_tiempo_calculo)
         self.assertTrue(self.op_rama.ft_tiempo_difiere, "0.3 contra 0.2941 es más de 0.5 %")
