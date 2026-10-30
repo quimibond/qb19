@@ -925,3 +925,9 @@ El tiempo no se escribe solo: la planta decide cuándo pasarlo a la lista. Inspe
 defina su fórmula y sus datos.
 
 Prueba: `tests/test_duracion_tiempo.py`.
+
+**Pruebas sobre una copia de producción** (revisión de Consolti, 2026-10-30): cuatro pruebas suponían una base vacía y
+fallaban en staging. Ahora usan códigos que no existen en producción (`test_avisos_maquina`, peso 998/999), un tipo de
+máquina propio para la abridora (`test_acabado_ruta`; la Abridora de producción ya tiene parámetros del artículo) y
+cuentan solo lo que siembra el módulo (`test_caracteristicas`). El duplicado a propósito de `test_procesos.test_03`
+ya no deja un ERROR de la base en el log (`mute_logger`).

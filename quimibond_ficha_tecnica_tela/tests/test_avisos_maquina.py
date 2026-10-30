@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""2.5.0: aviso de galga al programar tejido y cargas por jet en tintorería."""
+"""2.5.0: aviso de galga al programar tejido y cargas por jet en tintorería.
+
+2.22.0: códigos de artículo que no existen en producción (peso 998/999), para que las pruebas pasen también
+sobre una copia de producción (revisión de Consolti 2026-10-30)."""
 from datetime import date
 
 from odoo.tests import TransactionCase, tagged
@@ -31,14 +34,14 @@ class TestAvisosMaquina(TransactionCase):
         Config.create({'workcenter_id': cls.jet.id, 'date_from': date(2020, 1, 1), 'valor_ids': [
             (0, 0, {'parametro_id': params[code].id, 'valor': value}) for code, value in values.items()]})
         cls.component = cls.env['product.product'].create({'name': 'Hilo prueba aviso', 'uom_id': cls.kg.id})
-        cls.crudo = cls.env['product.product'].create({'name': 'Crudo prueba aviso', 'default_code': 'XJ130Q21HNT096',
+        cls.crudo = cls.env['product.product'].create({'name': 'Crudo prueba aviso', 'default_code': 'XJ999Q21HNT096',
                                                       'is_storable': True, 'uom_id': cls.kg.id})
         cls.env['mrp.bom'].create({
             'product_tmpl_id': cls.crudo.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': cls.kg.id,
             'bom_line_ids': [(0, 0, {'product_id': cls.component.id, 'product_qty': 1})],
             'operation_ids': [(0, 0, {'name': 'Tejer', 'workcenter_id': cls.wc.id, 'time_cycle_manual': 1})]})
         cls.en_proceso = cls.env['product.product'].create({
-            'name': 'En proceso prueba aviso', 'default_code': 'WJ035Q22INT200', 'is_storable': True,
+            'name': 'En proceso prueba aviso', 'default_code': 'WJ999Q22INT200', 'is_storable': True,
             'uom_id': cls.kg.id})
         cls.picking_type = cls.env['stock.picking.type'].search(
             [('code', '=', 'mrp_operation'), ('company_id', '=', cls.env.company.id)], limit=1)
@@ -55,12 +58,12 @@ class TestAvisosMaquina(TransactionCase):
         workorder = production.workorder_ids
         self.assertEqual(workorder.workcenter_id, self.wc)
         self.assertIn('galga 24', workorder.ft_aviso_maquina)
-        self.assertIn('pide galga 18', workorder.ft_aviso_maquina, "XJ130Q21: posiciones 7 y 8 = 21 → galga 18")
+        self.assertIn('pide galga 18', workorder.ft_aviso_maquina, "XJ999Q21: posiciones 7 y 8 = 21 → galga 18")
         self.assertIn(workorder, self.env['mrp.workorder'].search([('ft_aviso_maquina', '!=', False)]))
         self.assertIn('galga 18', production.ft_aviso_maquina, "La orden de producción repite el aviso")
 
     def test_02_la_ficha_manda_sobre_el_codigo(self):
-        self.env['ficha.tecnica.tejido'].create({'articulo': 'XJ130Q21HNT096', 'galga_requerida': 24})
+        self.env['ficha.tecnica.tejido'].create({'articulo': 'XJ999Q21HNT096', 'galga_requerida': 24})
         workorder = self._tejido().workorder_ids
         self.assertFalse(workorder.ft_aviso_maquina, "La ficha pide galga 24, la que corre la máquina")
         self.assertNotIn(workorder, self.env['mrp.workorder'].search([('ft_aviso_maquina', '!=', False)]))
@@ -78,7 +81,7 @@ class TestAvisosMaquina(TransactionCase):
         self.assertIn('son 2 cargas', production.ft_aviso_maquina)
 
     def test_04_cargas_por_grupo_de_rendimiento(self):
-        self.env['ficha.tecnica.tejido'].create({'articulo': 'WJ035Q22INT200', 'peso_acondicionado': 42,
+        self.env['ficha.tecnica.tejido'].create({'articulo': 'WJ999Q22INT200', 'peso_acondicionado': 42,
                                                  'ancho_acondicionado': 160, 'ancho_acondicionado_tol_unit': 'cm'})
         production = self.env['mrp.production'].create({
             'product_id': self.en_proceso.id, 'product_qty': 2000, 'product_uom_id': self.kg.id,
@@ -103,7 +106,7 @@ class TestAvisosMaquina(TransactionCase):
         return acabado, production
 
     def test_05_aviso_de_carga_en_la_orden_de_trabajo_del_jet(self):
-        _acabado, production = self._acabado('WJ042Q22JNT160', 2000)
+        _acabado, production = self._acabado('WJ999Q22JNT160', 2000)
         workorder = production.workorder_ids
         self.assertEqual(workorder.workcenter_id, self.jet)
         self.assertIn('son 2 cargas', workorder.ft_aviso_maquina, "2000 kg y 1000 kg de capacidad general")
@@ -114,16 +117,16 @@ class TestAvisosMaquina(TransactionCase):
         self.assertIn('no tiene proceso del artículo', workorder.ft_aviso_maquina,
                       "2.20.0: el artículo no tiene proceso en el jet")
         # 2.20.0: con su proceso en el jet, el único aviso posible es el de carga.
-        self.env['ficha.tecnica.proceso'].create({'articulo': 'WJ042Q22JNT162', 'workcenter_id': self.jet.id})
-        _chico, cabe = self._acabado('WJ042Q22JNT162', 800)
+        self.env['ficha.tecnica.proceso'].create({'articulo': 'WJ999Q22JNT162', 'workcenter_id': self.jet.id})
+        _chico, cabe = self._acabado('WJ999Q22JNT162', 800)
         self.assertFalse(cabe.workorder_ids.ft_aviso_maquina, "800 kg caben en una carga")
 
     def test_06_rendimiento_por_la_ficha_de_acabado(self):
         tejido = self.env['ficha.tecnica.tejido'].create({
-            'articulo': 'WJ035Q22HNT200', 'peso_acondicionado': 42, 'ancho_acondicionado': 160,
+            'articulo': 'WJ998Q22HNT200', 'peso_acondicionado': 42, 'ancho_acondicionado': 160,
             'ancho_acondicionado_tol_unit': 'cm'})
-        acabado, production = self._acabado('WJ042Q22JNT161', 2000)
-        self.env['ficha.tecnica.acabado'].create({'articulo': 'WJ042Q22JNT161', 'tejido_id': tejido.id,
+        acabado, production = self._acabado('WJ999Q22JNT161', 2000)
+        self.env['ficha.tecnica.acabado'].create({'articulo': 'WJ999Q22JNT161', 'tejido_id': tejido.id,
                                                   'product_acabado_id': acabado.id})
         rendimiento, origen = acabado._ft_rendimiento()
         self.assertAlmostEqual(rendimiento, 14.88, places=2)

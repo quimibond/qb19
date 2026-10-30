@@ -169,11 +169,10 @@ class MrpProduction(models.Model):
             minutos = self._minutos_operacion_bom(operacion, workcenter, kg)
             aviso = _(
                 "No hay tiempo de ciclo del artículo en %(wc)s ni tiempo de la fórmula %(f)s en ese HTJ: "
-                "se calcularon %(m)s min por baño con la operación de Tintorería de la BoM (%(t)s min por "
-                "%(q)s %(u)s, %(kg)s kg por baño).",
+                "se usó la operación de Tintorería de la BoM, %(m)s min por baño (cantidad base de la lista: "
+                "%(q)s %(u)s; %(kg)s kg por baño).",
                 wc=workcenter.display_name, f=formula.display_name or '-', m=round(minutos, 1),
-                t=round(operacion.time_cycle, 4), q=operacion.bom_id.product_qty or 1,
-                u=operacion.bom_id.product_uom_id.name, kg=kg)
+                q=operacion.bom_id.product_qty or 1, u=operacion.bom_id.product_uom_id.name, kg=kg)
             return minutos, 'bom', aviso
         raise UserError(_(
             "No hay tiempo de Tintorería para %(prod)s en %(wc)s: captura el tiempo de ciclo del artículo "

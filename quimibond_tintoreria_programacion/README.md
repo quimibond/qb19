@@ -28,6 +28,13 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
 
+## Cambios 19.0.1.6.1 (revisión de Consolti, 2026-10-30)
+
+- Redacción del aviso del chatter cuando se usa la operación de Tintorería de la BoM: decía «150.0 min por 1.0 kg,
+  500.0 kg por baño», que se leía como 150 min por kg aunque el cálculo da 150 min por baño. Ahora dice los minutos
+  por baño y aparte la cantidad base de la lista: «… se usó la operación de Tintorería de la BoM, 150.0 min por baño
+  (cantidad base de la lista: 1.0 kg; 500.0 kg por baño)». Sin cambio en el cálculo.
+
 ## Cambios 19.0.1.6.0 (revisión de Consolti, 2026-10-28)
 
 - **El jet programado no se mueve.** Desde las fichas 2.20.0 el planificador solo usa alternativas que operan y tienen
