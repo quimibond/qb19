@@ -11,5 +11,4 @@ from . import acabado_ruta  # 2.9.0: crudo y operaciones de la ficha de acabado 
 from . import alternativas  # 2.20.0: después de acabado_ruta y mrp_aviso_maquina (extiende operación y orden de trabajo)
 from . import acabado_tintoreria  # 2.16.0: pestaña Tintorería (usa la cadena de acabado_ruta y los procesos)
 from . import unidades  # 2.10.0: al final (extiende tejido, acabado, parámetros y características)
-from . import duracion_lista  # 2.22.0: después de alternativas (usa _ft_maquina_fija)
 from . import tiempo_rama  # 2.22.0: después de acabado_ruta (usa ft_proceso_id) y proceso

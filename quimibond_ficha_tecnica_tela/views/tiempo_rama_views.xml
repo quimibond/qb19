@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.22.0 (Dirección General 2026-10-30): el tiempo de rama sale de la ficha (peso × ancho bajando de rama ×
+         merma ÷ velocidad). Extienden vistas de mrp (otro módulo). -->
+
+    <record id="view_mrp_routing_workcenter_form_ft_tiempo" model="ir.ui.view">
+        <field name="name">mrp.routing.workcenter.form.ft.tiempo</field>
+        <field name="model">mrp.routing.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_routing_workcenter_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='workorder']" position="inside">
+                <field name="ft_tiempo_difiere" invisible="1"/>
+                <label for="ft_tiempo_ficha" invisible="not ft_tiempo_calculo"/>
+                <div invisible="not ft_tiempo_calculo">
+                    <field name="ft_tiempo_ficha" class="oe_inline" readonly="1" invisible="not ft_tiempo_ficha"/>
+                    <span invisible="not ft_tiempo_ficha"> min por ciclo </span>
+                    <button name="action_ft_usar_tiempo_ficha" type="object" string="Usar el tiempo de la ficha"
+                            class="btn-link" icon="fa-calculator" invisible="not ft_tiempo_difiere"/>
+                    <div class="text-muted">
+                        <field name="ft_tiempo_calculo" readonly="1"/>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mrp_routing_workcenter_list_ft_tiempo" model="ir.ui.view">
+        <field name="name">mrp.routing.workcenter.list.ft.tiempo</field>
+        <field name="model">mrp.routing.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_routing_workcenter_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='time_cycle']" position="after">
+                <field name="ft_tiempo_difiere" column_invisible="True"/>
+                <field name="ft_tiempo_ficha" optional="show" decoration-danger="ft_tiempo_difiere"/>
+                <field name="ft_tiempo_calculo" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_mrp_bom_ft_tiempos_rama" model="ir.actions.server">
+        <field name="name">Usar el tiempo de rama de la ficha</field>
+        <field name="model_id" ref="mrp.model_mrp_bom"/>
+        <field name="binding_model_id" ref="mrp.model_mrp_bom"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_ft_tiempos_rama()</field>
+    </record>
+</odoo>

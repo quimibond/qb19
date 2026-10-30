@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
-"""2.22.0: la duración de la orden de trabajo sale de la lista (el Gantt no la cambia) y el tiempo de rama de la ficha."""
-from datetime import timedelta
-
+"""2.22.0: el tiempo de rama sale de la ficha (peso, ancho bajando de rama, merma y velocidad)."""
 from odoo.tests import TransactionCase, tagged
 
 
 @tagged('post_install', '-at_install')
-class TestDuracionTiempo(TransactionCase):
+class TestTiempoRama(TransactionCase):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.kg = cls.env.ref('uom.product_uom_kgm')
         cls.tipo = cls.env['ficha.tecnica.maquina.tipo'].create({
-            'name': 'Rama duración prueba', 'code': 'rama_duracion_prueba',
+            'name': 'Rama tiempo rama prueba', 'code': 'rama_tiempo_rama_prueba',
             'parametro_ids': [
                 (0, 0, {'code': 'velocidad', 'name': 'Velocidad', 'unit': 'm/min', 'kind': 'num',
                         'ambito': 'articulo'}),
@@ -21,17 +19,17 @@ class TestDuracionTiempo(TransactionCase):
                 (0, 0, {'code': 'ancho_rama', 'name': 'Ancho bajando de rama', 'unit': 'm', 'kind': 'num',
                         'ambito': 'articulo'})]})
         cls.otro_tipo = cls.env['ficha.tecnica.maquina.tipo'].create({
-            'name': 'Abridora duración prueba', 'code': 'abridora_duracion_prueba',
+            'name': 'Abridora tiempo rama prueba', 'code': 'abridora_tiempo_rama_prueba',
             'parametro_ids': [(0, 0, {'code': 'velocidad', 'name': 'Velocidad', 'unit': 'm/min', 'kind': 'num',
                                       'ambito': 'articulo'})]})
         Workcenter = cls.env['mrp.workcenter']
         cls.rama = Workcenter.create({'name': 'RAMA 91 prueba', 'code': 'R91', 'ft_tipo_id': cls.tipo.id})
         cls.abridora = Workcenter.create({'name': 'ABRIDORA 91 prueba', 'code': 'A91', 'ft_tipo_id': cls.otro_tipo.id})
         Product = cls.env['product.product']
-        cls.tela = Product.create({'name': 'Tela duración prueba', 'default_code': 'IZZ053Q22JNT165',
+        cls.tela = Product.create({'name': 'Tela tiempo rama prueba', 'default_code': 'IZZ053Q22JNT165',
                                    'is_storable': True, 'uom_id': cls.kg.id})
-        cls.tela_m = Product.create({'name': 'Tela duración prueba (m)', 'default_code': 'ZZ053Q22JNT165'})
-        cls.crudo = Product.create({'name': 'Crudo duración prueba', 'default_code': 'ZZ053Q22HNT200',
+        cls.tela_m = Product.create({'name': 'Tela tiempo rama prueba (m)', 'default_code': 'ZZ053Q22JNT165'})
+        cls.crudo = Product.create({'name': 'Crudo tiempo rama prueba', 'default_code': 'ZZ053Q22HNT200',
                                     'uom_id': cls.kg.id})
         cls.bom = cls.env['mrp.bom'].create({
             'product_tmpl_id': cls.tela.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': cls.kg.id,
@@ -54,7 +52,6 @@ class TestDuracionTiempo(TransactionCase):
         cls.proceso._ft_set_value('merma', 10)
         cls.proceso._ft_set_value('ancho_rama', 1.65)
 
-    # Tiempo de rama
     def test_01_tiempo_de_rama_con_merma(self):
         esperado = 1000.0 / (53 * 1.65) * 0.9 / 35
         # El campo guarda 4 decimales (digits=(16, 4)), como el tiempo que se pasa a la lista.
@@ -83,49 +80,3 @@ class TestDuracionTiempo(TransactionCase):
         self.bom.action_ft_tiempos_rama()
         self.assertAlmostEqual(self.op_rama.time_cycle_manual, round(1000.0 / (53 * 1.65) * 0.9 / 35, 4), places=6)
         self.assertEqual(self.op_abrir.time_cycle_manual, 0.1)
-
-    # Duración de la lista
-    def _fin_con_su_duracion(self, wo):
-        diferencia = abs((wo.date_finished - wo._calculate_date_finished()).total_seconds())
-        self.assertLess(diferencia, 1, "La fecha fin sale de la duración desde la de inicio")
-
-    def _orden_planeada(self):
-        production = self.env['mrp.production'].create({'product_id': self.tela.id, 'product_qty': 100,
-                                                        'product_uom_id': self.kg.id, 'bom_id': self.bom.id})
-        production.action_confirm()
-        production.button_plan()
-        return production.workorder_ids.filtered(lambda wo: wo.workcenter_id == self.rama)
-
-    def test_05_estirar_no_cambia_la_duracion(self):
-        wo = self._orden_planeada()
-        self.assertAlmostEqual(wo.duration_expected, 30.0, places=2, msg="100 kg × 0.3 min/kg")
-        self.assertAlmostEqual(wo.ft_duracion_lista, 30.0, places=2)
-        inicio = wo.date_start
-        wo.write({'date_finished': inicio + timedelta(days=5)})
-        self.assertAlmostEqual(wo.duration_expected, 30.0, places=2, msg="Estirar la barra no cambia la duración")
-        self.assertEqual(wo.date_start, inicio)
-        self._fin_con_su_duracion(wo)
-
-    def test_06_cambiar_el_inicio_mueve_la_orden(self):
-        wo = self._orden_planeada()
-        nuevo = wo.date_start + timedelta(days=7)
-        wo.write({'date_start': nuevo})
-        self.assertEqual(wo.date_start, nuevo)
-        self.assertAlmostEqual(wo.duration_expected, 30.0, places=2)
-        self._fin_con_su_duracion(wo)
-
-    def test_07_usar_la_duracion_de_la_lista(self):
-        wo = self._orden_planeada()
-        wo.write({'duration_expected': 150.0})
-        self.assertAlmostEqual(wo.duration_expected, 150.0, places=2, msg="A propósito sí se cambia")
-        self.assertTrue(wo.ft_duracion_difiere)
-        self.assertIn(wo, self.env['mrp.workorder'].search([('ft_duracion_difiere', '=', True)]))
-        wo.action_ft_duracion_lista()
-        self.assertAlmostEqual(wo.duration_expected, 30.0, places=2)
-        self.assertFalse(wo.ft_duracion_difiere)
-        self._fin_con_su_duracion(wo)
-
-    def test_08_clave_de_contexto_deja_lo_nativo(self):
-        wo = self._orden_planeada()
-        wo.with_context(ft_duracion_libre=True).write({'date_finished': wo.date_start + timedelta(days=5)})
-        self.assertGreater(wo.duration_expected, 30.0, "Con ft_duracion_libre, Odoo recalcula la duración")

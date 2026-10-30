@@ -14,4 +14,4 @@ from . import test_rendimiento
 from . import test_acabado_proceso
 from . import test_longitud_malla  # 2.16.1
 from . import test_alternativas  # 2.20.0
-from . import test_duracion_tiempo  # 2.22.0
+from . import test_tiempo_rama  # 2.22.0
