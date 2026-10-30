@@ -89,7 +89,7 @@
         <field name="name">Días para elegir la receta vigente</field>
         <field name="tipo">float</field>
         <field name="value_float">90</field>
-        <field name="help">La receta vigente de un producto es la que más cantidad produjo en estos días; sin producción, la activa más reciente.</field>
+        <field name="help">Sin uso desde 1.7.0: la receta vigente es la del flujo en dos niveles o la de menor secuencia, como la escoge Odoo (la historia sirve para las horas medidas, no para escoger la receta).</field>
     </record>
     <record id="param_calidad_locs_vendible" model="qb.parametro">
         <field name="key">calidad_locs_vendible</field>
@@ -125,5 +125,40 @@
         <field name="tipo">float</field>
         <field name="value_float">10000</field>
         <field name="help">Un producto con menos unidades clasificadas en la ventana usa la tasa de planta: pocos metros dan porcentajes sin sentido.</field>
+    </record>
+    <record id="param_tipos_flujo_nuevo" model="qb.parametro">
+        <field name="key">tipos_flujo_nuevo</field>
+        <field name="name">Tipos de operación del flujo en dos niveles (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">409,410,411</field>
+        <field name="help">Clasificación final, Fabricación Tela en kg y Fabricación Tela en m. Una lista con uno de estos tipos de operación es la receta vigente del producto aunque la lista vieja tenga más historia.</field>
+    </record>
+    <record id="param_tipos_clasificacion" model="qb.parametro">
+        <field name="key">tipos_clasificacion</field>
+        <field name="name">Tipos de operación de la clasificación final (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">409,411</field>
+        <field name="help">La orden que convierte la tela en kg en metros. Lo que sale de ella a primera, segunda, FE o desperdicio es lo que mide el rendimiento vendible; la tela en metros que sale de aquí solo carga horas de inspección y empaque.</field>
+    </record>
+    <record id="param_tipos_kg" model="qb.parametro">
+        <field name="key">tipos_kg</field>
+        <field name="name">Tipos de operación de la tela en kg (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">410</field>
+        <field name="help">La orden en kg (tintorería, rama, inspección). Lo que sale de ella es semielaborado: no cuenta para el rendimiento vendible.</field>
+    </record>
+    <record id="param_conversion_tolerancia_pct" model="qb.parametro">
+        <field name="key">conversion_tolerancia_pct</field>
+        <field name="name">Tolerancia de la conversión kg/m de la clasificación (%)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">0.5</field>
+        <field name="help">Si la lista de clasificación final consume la tela en kg a un kg/m que se aleja más de este % del de la ficha de acabado (1 ÷ rendimiento), se abre una validación. El costeo usa el de la ficha; Odoo capitaliza con el de la lista.</field>
+    </record>
+    <record id="param_horas_reales_completar" model="qb.parametro">
+        <field name="key">horas_reales_completar</field>
+        <field name="name">Completar las horas reales con el estándar (1 = sí)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">1</field>
+        <field name="help">Las órdenes de fabricación del mes que no tienen órdenes de trabajo en un centro aportan a sus horas reales el estándar de su receta (o las horas del producto) × lo producido. Con 0, un centro con alguna orden de trabajo cuenta solo esas, aunque sean pocas.</field>
     </record>
 </odoo>

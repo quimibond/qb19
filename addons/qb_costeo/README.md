@@ -22,7 +22,7 @@ pool_fijo     = fijo del centro en el mayor (suavizado N meses)
                 + su parte de los centros indirectos (por horas, nómina o partes iguales)
 pool_variable = energía y consumibles del centro (mes real)
 tarifa_fija   = pool_fijo ÷ horas normales        (calendario × eficiencia, o capturada con motivo)
-tarifa_var    = pool_variable ÷ horas reales      (órdenes de trabajo; si no hay, estándar de la receta × producido)
+tarifa_var    = pool_variable ÷ horas reales      (por orden: sus órdenes de trabajo; sin ellas, estándar de la receta × producido)
 tarifa        = tarifa_fija + tarifa_var
 ociosidad     = pool_fijo − tarifa_fija × horas reales       → al resultado del mes (IAS 2)
 op_pct        = administración y ventas ÷ ventas (suavizados)
@@ -77,12 +77,74 @@ acabado, legado, «se vende en kg» y, al final, el código (gramaje × ancho
 por metro lineal, convertido a yardas si el producto va en yardas; solo el
 gramaje si va en m²; sin peso si va en piezas).
 
+## Flujo de tela en dos niveles (1.7.0)
+
+Desde el diseño técnico v5.4 la tela se fabrica en dos órdenes:
+
+```
+pedido en m ─► CLASIFICACIÓN FINAL (lista «B», m; tipo 409 o 411)
+                 consume IWJ053Q22JNT160 a 1 ÷ rendimiento de la ficha (0.0848 kg/m)
+                 operación CLASIFICACION en EMPAQUE
+               └─► por MTO: ORDEN EN KG (lista «A», «I» + código, kg; tipo 410)
+                     crudo × 1.113 (merma de proceso), engomado, químicos dosificados
+                     DEVANADORA → TINTORERÍA (por baño) → ABRIDORA → RAMA → INSPECCIÓN
+```
+
+**Qué receta usa el costeo.** La del flujo nuevo (tipo de operación en
+`tipos_flujo_nuevo`) y, entre las demás, la de menor secuencia, como Odoo.
+La lista vieja en metros con años de historia ya no se escoge por tener más
+órdenes: la historia sirve para las horas medidas.
+
+**Horas.** Cada operación se calcula como Odoo: (preparación + limpieza +
+tiempo) ÷ unidades por ciclo ÷ eficiencia. Devanado, abridora, rama e
+inspección van en min/kg con capacidad 1. La tintorería va **por baño**:
+tiempo de ciclo de la ficha > minutos de la fórmula en ese jet > operación de
+la lista, entre los kg por baño del jet para ese producto
+(`mrp.workcenter.capacity`, p. ej. 600 kg en TINTORERIA 1): 210 min ÷ 600 kg
+= 0.00583 h/kg. Es el costo estándar a baño lleno; un baño a medio llenar
+cuesta más en las órdenes reales (lo dice la conciliación). La tela en kg
+carga tintorería (con devanado), acabado e inspección; la de metros solo su
+clasificación, y hereda lo demás × 0.0848 kg/m. Con operaciones en la receta
+vigente, un centro sin ninguna no le carga horas propias al producto: así la
+rama medida en la ruta vieja no se suma a la que hereda de la tela en kg.
+
+**Qué pérdida va en cada lugar (una sola vez):**
+
+| Pérdida | Dónde va | Quién la captura |
+|---|---|---|
+| Merma de proceso (crudo → tela en kg: devanado, teñido, rama, orillas) | Factor del crudo en la lista A (1.113 kg de crudo por kg) | Ingeniería en la lista |
+| Conversión kg → m de la tela acabada | 1 ÷ rendimiento de la ficha de acabado (1000 ÷ g/m² ÷ ancho m); el costeo usa la ficha aunque la lista B diga otra cosa, y la validación `conversion_clasificacion` avisa si se aleja más de 0.5 % | Ficha técnica de acabado |
+| Segundas, FE y desperdicio de la clasificación | `rendimiento` de la tela en metros: lo que sale de la clasificación a primera ÷ lo que sale a primera + merma (`vendible = producción ÷ rendimiento`) | Movimientos de la clasificación |
+| Tela en kg (semielaborado) | Ninguna: rendimiento 1 («semielaborado») | — |
+
+Lo que sale de la orden en kg (`tipos_kg`) no cuenta para el rendimiento
+vendible aunque caiga en una ubicación de primera.
+
+**Horas reales del período.** Por orden de fabricación: sus órdenes de
+trabajo en el centro; una orden sin ellas aporta el estándar de su receta ×
+producido (o, si su receta no pasa por el centro, las horas del producto ×
+producido). Así la energía de tintorería y acabado entra a la tarifa aunque
+el primer mes casi no haya órdenes de trabajo (`horas_reales_completar`).
+
+**Bandas.** `qb.centro.banda`: una por unidad del producto de la orden
+(kg/h para la tela en kg, m/h para la ruta vieja) o en horas por orden (en
+tintorería cada orden programada es un baño). Sin filas, la velocidad mínima
+y máxima del centro.
+
+**Lo que Odoo capitaliza.** Odoo carga a cada orden la duración real de sus
+órdenes de trabajo × el costo por hora del centro de trabajo, que es la
+tarifa que el período publica al cerrar (*Publicar tarifa* en los cinco
+directos). La orden en kg y la de clasificación tienen órdenes de trabajo
+distintas, así que la mano de obra no se suma dos veces: la de metros recibe
+la de kg dentro del costo del componente. `qb.periodo.conciliacion_mano_de_obra()`
+compara, por centro, lo capitalizado contra horas × tarifa del período.
+
 ## Rentabilidad y órdenes fuera de rango (1.6.0)
 
 Costos → Rentabilidad: **por cliente** y **por producto** (12 meses de
 facturas contra el costo de cada mes; cobertura, costo del mismo mes y
 calidad del costo a la vista) y **órdenes con tiempo fuera de rango** (la
-banda de velocidad del centro). Sustituyen a los reportes del módulo
+banda de velocidad del centro, por unidad desde 1.7.0). Sustituyen a los reportes del módulo
 anterior; las señales `cliente_pierde`, `producto_pierde`,
 `tiempos_excepcion`, `familia_saturada` y `cotizacion_bajo_costo` de
 `quimibond_intelligence` los leen.
@@ -103,6 +165,7 @@ docker run … odoo -i qb_costeo --test-enable --test-tags /qb_costeo
 ```
 
 `tests/test_periodo.py` (reparto, capacidad, estándar sin órdenes, compuerta,
-publicación, reapertura, refs excluidas, para_cotizar) y
+publicación, reapertura, refs excluidas, para_cotizar),
 `tests/test_validacion.py` (colorante, autocierre, aceptar, precio cero y
-banda).
+banda) y `tests/test_flujo_kg.py` (flujo en dos niveles con el piloto
+WJ053Q22JNT160).

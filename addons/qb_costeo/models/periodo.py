@@ -365,6 +365,50 @@ class QbPeriodo(models.Model):
                            + (' …' if len(codes) > 10 else ''))
         return out
 
+    def conciliacion_mano_de_obra(self):
+        """1.7.0: lo que Odoo capitalizó de fabricación en el mes contra lo
+        que costaría a la tarifa del período, por centro directo.
+
+        Odoo capitaliza en cada orden de fabricación Σ duración real de sus
+        órdenes de trabajo × costo por hora (el de la orden de trabajo al
+        terminarla o, si no lo guardó, el del centro de trabajo): es la
+        tarifa publicada. Cada orden de trabajo se cuenta una sola vez
+        aunque su máquina esté en dos centros de costo; la orden en kg y la
+        de clasificación en metros tienen órdenes de trabajo distintas
+        (tintorería, rama e inspección en la de kg; clasificación en la de
+        metros), así que la mano de obra de la tela no se suma dos veces: la
+        de metros recibe la de kg dentro del costo del componente.
+
+        {centro_code: {'horas', 'capitalizado', 'costs_hour_prom',
+        'tarifa', 'a_tarifa', 'diferencia'}}. Una diferencia distinta de 0
+        en un período cerrado y publicado dice que alguien cambió el costo
+        por hora a mano o que la orden se cerró con la tarifa anterior."""
+        self.ensure_one()
+        tarifas = {t.centro_id.id: t.tarifa for t in self.tarifa_ids}
+        self.env.flush_all()
+        self.env.cr.execute("""
+            SELECT DISTINCT ON (wo.id) wo.id, c.id, c.code, wo.duration / 60.0,
+                   COALESCE(NULLIF(wo.costs_hour, 0), wc.costs_hour, 0)
+            FROM mrp_workorder wo
+            JOIN mrp_workcenter wc ON wc.id = wo.workcenter_id
+            JOIN qb_costeo_centro_workcenter_rel rel ON rel.workcenter_id = wo.workcenter_id
+            JOIN qb_centro c ON c.id = rel.centro_id
+            WHERE wo.state = 'done' AND c.nature = 'directo' AND c.company_id = %s
+              AND wo.date_finished >= %s AND wo.date_finished < %s
+            ORDER BY wo.id, c.id
+        """, (self.company_id.id, self.date_from, self.date_to))
+        out = {}
+        for _wo, cid, code, horas, costo_h in self.env.cr.fetchall():
+            d = out.setdefault(code, {'horas': 0.0, 'capitalizado': 0.0,
+                                      'tarifa': tarifas.get(cid, 0.0)})
+            d['horas'] += horas or 0.0
+            d['capitalizado'] += (horas or 0.0) * (costo_h or 0.0)
+        for d in out.values():
+            d['a_tarifa'] = d['horas'] * d['tarifa']
+            d['diferencia'] = d['capitalizado'] - d['a_tarifa']
+            d['costs_hour_prom'] = d['capitalizado'] / d['horas'] if d['horas'] else 0.0
+        return out
+
     def _productos_top(self):
         """Los N productos de mayor venta del mes (parámetro
         `top_productos`), desde el mayor."""
@@ -497,6 +541,8 @@ class QbTarifa(models.Model):
     horas_reales_fuente = fields.Selection([
         ('workorder', 'Órdenes de trabajo'),
         ('operacion', 'Estándar de la receta × producido'),
+        ('mixta', 'Órdenes de trabajo + estándar de las órdenes sin ellas'),
+        ('producto', 'Horas del producto × producido'),
         ('ninguna', 'Sin datos')], readonly=True)
     utilizacion_pct = fields.Float(compute='_compute_utilizacion',
                                    digits=(6, 1))

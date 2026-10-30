@@ -14,6 +14,7 @@ REGLAS = [
     ('precio_cero', 'Componente con precio 0 en receta activa'),
     ('precio_fuera_banda', 'Costo promedio lejos de la última compra'),
     ('receta_implausible', 'Receta fuera de rango (colorante / auxiliares)'),
+    ('conversion_clasificacion', 'Clasificación final con kg/m distinto al de la ficha'),
 ]
 
 ESTADOS = [
@@ -90,7 +91,9 @@ class QbProductoValidacion(models.Model):
                       P.get_list('validacion_categorias_colorante', 'Cocina')]
         max_linea = P.get_float('colorante_max_pct', 30.0)
         max_total = P.get_float('colorante_total_max_pct', 40.0)
+        tol_conv = P.get_float('conversion_tolerancia_pct', 0.5)
         ultimo_precio = self._ultimo_precio_compra()
+        Horas = self.env['qb.producto.horas']
 
         def categoria(prod):
             return (prod.categ_id.complete_name or '').upper()
@@ -101,9 +104,12 @@ class QbProductoValidacion(models.Model):
         for product in products:
             if es(product, cat_excluir) or es(product, cat_tokens):
                 continue
-            bom = Bom._bom_find(product, company_id=company.id).get(product)
+            # 1.7.0: la receta vigente del costeo (la del flujo en dos niveles).
+            bom = Horas._bom_vigente(product)
             if not bom:
                 continue
+            for comp, pct, det in self._conversion_clasificacion(product, bom, tol_conv):
+                hallazgos[(product.id, 'conversion_clasificacion', comp.id)] = (pct, det)
             kg_bom = self._kg(bom.product_qty, bom.product_uom_id)
             total_colorante = 0.0
             for line in bom.bom_line_ids:
@@ -144,6 +150,40 @@ class QbProductoValidacion(models.Model):
                     % (total_colorante, max_total))
 
         return self._aplicar(products, hallazgos)
+
+    @api.model
+    def _conversion_clasificacion(self, product, bom, tol_pct):
+        """1.7.0: [(componente, diferencia %, detalle)] si la lista de
+        clasificación final consume la tela en proceso en kg a otro kg/m que
+        el de la ficha de acabado (1 ÷ rendimiento de la tela acabada) por
+        más de `tol_pct`. El costeo ya usa el de la ficha; Odoo capitaliza
+        con el de la lista, así que hay que corregir la lista."""
+        from .horas import codigo_metros, es_proceso_kg
+        Horas = self.env['qb.producto.horas']
+        code = (product.default_code or '').strip()
+        if not code or not Horas._es_clasificacion(product, bom):
+            return []
+        kg_ficha, ficha = Horas.kg_por_unidad_ficha(product)
+        if not kg_ficha:
+            return []
+        out = []
+        qty_bom = Horas._qty_bom_en_uom_producto(bom, product)
+        for line in bom.bom_line_ids:
+            comp = line.product_id
+            if not (es_proceso_kg(comp) and codigo_metros(comp.default_code) == code):
+                continue
+            kg = self._kg(line.product_qty, line.product_uom_id)
+            if kg is None:
+                continue
+            kg_lista = kg / qty_bom
+            pct = 100.0 * (kg_lista - kg_ficha) / kg_ficha
+            if abs(pct) > tol_pct:
+                out.append((comp, pct, '%s consume %.4f kg de %s por %s; la ficha %s da '
+                            '%.4f (1 ÷ %.4f m/kg): %+.1f %%' % (
+                                bom.display_name, kg_lista, comp.default_code,
+                                product.uom_id.name, ficha.display_name, kg_ficha,
+                                getattr(ficha, 'rendimiento_tela_acabada', 0.0), pct)))
+        return out
 
     def _aplicar(self, products, hallazgos):
         """Concilia los hallazgos con las filas existentes."""

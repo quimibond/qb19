@@ -41,6 +41,20 @@
                             <field name="horas_por_unidad" invisible="driver != 'fijo_unidad'"/>
                         </group>
                     </group>
+                    <group string="Banda de las horas medidas" invisible="nature != 'directo'">
+                        <group>
+                            <field name="velocidad_min"/>
+                            <field name="velocidad_max"/>
+                        </group>
+                    </group>
+                    <field name="banda_ids" invisible="nature != 'directo'">
+                        <list editable="bottom">
+                            <field name="uom_id"/>
+                            <field name="por"/>
+                            <field name="minimo"/>
+                            <field name="maximo"/>
+                        </list>
+                    </field>
                     <group>
                         <field name="workcenter_ids" widget="many2many_tags"/>
                         <field name="department_ids" widget="many2many_tags"/>

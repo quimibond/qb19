@@ -101,7 +101,8 @@ class TestHoras(CosteoCase):
         self.assertAlmostEqual(fj.horas_unidad, 0.1 * 0.1376, 6)
         fja = self._fila(self.terminado, self.c_aca)
         self.assertEqual(fja.fuente, 'estandar')
-        self.assertAlmostEqual(fja.horas_propias, 4 / 60.0 / 100, 6)
+        # 1.7.0: como Odoo, entre la eficiencia de la máquina (Rama 1 al 50 %).
+        self.assertAlmostEqual(fja.horas_propias, 4 / 60.0 / 100 / 0.5, 6)
         fjt = self._fila(self.terminado, self.c_tin)
         self.assertAlmostEqual(fjt.horas_heredadas, 0.5 * 0.1376, 6)
 
@@ -163,10 +164,12 @@ class TestHoras(CosteoCase):
         self.assertEqual(f.fuente, 'medido')
         self.assertAlmostEqual(f.horas_manual, 0.08, 6)
 
-    def test_receta_vigente_es_la_de_mas_cantidad(self):
+    def test_receta_vigente_no_es_la_de_mas_historia(self):
+        """1.7.0: la receta vigente es la de menor secuencia (como la escoge
+        Odoo), no la que más produjo: la historia es para las horas medidas."""
         bom2 = self.env['mrp.bom'].create({
             'product_tmpl_id': self.tenido.product_tmpl_id.id, 'product_qty': 1,
-            'product_uom_id': self.kg.id,
+            'product_uom_id': self.kg.id, 'sequence': 50,
             'operation_ids': [(0, 0, {'name': 'Teñir largo', 'workcenter_id': self.wc_tin.id,
                                       'time_cycle_manual': 120})]})  # 2 h/kg
         for _ in range(3):
@@ -176,10 +179,14 @@ class TestHoras(CosteoCase):
             mo.action_confirm()
             mo.qty_producing = 100
             mo.button_mark_done()
-        self.assertEqual(self.H._bom_vigente(self.tenido), bom2)
+        self.assertEqual(self.H._bom_vigente(self.tenido), self.bom_i)
         self.H.recalcular(self.tenido)
         f = self._fila(self.tenido, self.c_tin)
-        self.assertAlmostEqual(f.horas_propias, 2.0, 6)
+        self.assertAlmostEqual(f.horas_propias, 0.5, 6)
+        bom2.sequence = -10
+        self.assertEqual(self.H._bom_vigente(self.tenido), bom2)
+        self.H.recalcular(self.tenido)
+        self.assertAlmostEqual(self._fila(self.tenido, self.c_tin).horas_propias, 2.0, 6)
 
     def test_driver_del_centro_y_diagnostico(self):
         """Sin órdenes ni receta en el centro, las horas salen de su

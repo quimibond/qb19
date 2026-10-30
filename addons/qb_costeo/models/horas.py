@@ -87,6 +87,25 @@ def codigo_metros(articulo):
     return ''
 
 
+def es_proceso_kg(product):
+    """1.7.0: ¿Es la tela en proceso del flujo en dos niveles? «I» + código
+    de la tela acabada y unidad de peso (IWJ053Q22JNT160 en kg). Con otra
+    unidad, el prefijo «I» es de un importado."""
+    if not product or not codigo_metros(product.default_code):
+        return False
+    kg = product.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+    return bool(kg and product.uom_id and product.uom_id._has_common_reference(kg))
+
+
+def es_tintoreria(op):
+    """La operación de tintorería de una lista (el jet), como la reconoce
+    `quimibond_tintoreria_dosificacion`: tipo de máquina, nombre de la
+    operación o del centro de trabajo con «tintorer»."""
+    wc = op.workcenter_id
+    tipo = wc.ft_tipo_id.name if 'ft_tipo_id' in wc._fields else ''
+    return any('tintorer' in (t or '').lower() for t in (tipo, op.name, wc.name))
+
+
 def galga_de(ref):
     m = NOMEN_RE.match((ref or '').replace(' ', ''))
     if not m:
@@ -168,29 +187,95 @@ class QbProductoHoras(models.Model):
         return hasta - relativedelta(months=meses), hasta
 
     @api.model
+    def _tipos(self, key, default):
+        """Ids de tipos de operación de un parámetro («409,410,411»)."""
+        return {int(x) for x in self.env['qb.parametro'].get_list(key, default)
+                if x.strip().isdigit()}
+
+    @api.model
     def _bom_vigente(self, product, hasta=None):
-        """La receta con más cantidad producida en los últimos
-        `receta_ventana_dias` días; si no hubo producción, la activa más
-        reciente que aplique al producto."""
+        """La receta con la que hoy se fabrica el producto. 1.7.0: la del
+        flujo en dos niveles (tipo de operación en `tipos_flujo_nuevo`:
+        Clasificación final, Tela en kg, Tela en m) y, entre las demás, la de
+        menor secuencia, como la escoge Odoo al crear la orden. Antes era la
+        de más cantidad producida en la ventana, que seguía siendo la vieja
+        en metros: la historia sirve para las horas medidas, no para escoger
+        la receta. `hasta` se conserva por compatibilidad."""
         Bom = self.env['mrp.bom']
-        dias = int(self.env['qb.parametro'].get_float('receta_ventana_dias', 90))
-        hasta = hasta or date.today()
-        self.env.flush_all()
-        self.env.cr.execute("""
-            SELECT mo.bom_id, SUM(mo.product_qty)
-            FROM mrp_production mo
-            WHERE mo.product_id = %s AND mo.state = 'done' AND mo.bom_id IS NOT NULL
-              AND mo.date_finished >= %s AND mo.date_finished < %s
-            GROUP BY mo.bom_id ORDER BY 2 DESC LIMIT 1
-        """, (product.id, hasta - relativedelta(days=dias),
-              hasta + relativedelta(days=1)))
-        row = self.env.cr.fetchone()
-        if row:
-            bom = Bom.browse(row[0])
-            if bom.active:
-                return bom
-        return Bom._bom_find(product, company_id=self.env.company.id).get(
-            product, Bom)
+        if not product or product.type == 'service':
+            return Bom
+        boms = Bom.search(Bom._bom_find_domain(
+            product, company_id=self.env.company.id))
+        if not boms:
+            return Bom
+        nuevos = self._tipos('tipos_flujo_nuevo', '409,410,411')
+        return boms.sorted(lambda b: (b.picking_type_id.id not in nuevos,
+                                      b.sequence, not b.product_id, b.id))[:1]
+
+    @api.model
+    def _es_clasificacion(self, product, bom):
+        """1.7.0: ¿La lista es la clasificación final de la tela en metros?
+        Su tipo de operación es de clasificación (409/411) o consume la tela
+        en proceso en kg del mismo código («I» + código)."""
+        if not bom:
+            return False
+        if bom.picking_type_id.id in self._tipos('tipos_clasificacion', '409,411'):
+            return True
+        code = (product.default_code or '').strip()
+        return bool(code) and any(
+            codigo_metros(l.product_id.default_code) == code and es_proceso_kg(l.product_id)
+            for l in bom.bom_line_ids)
+
+    @api.model
+    def _ficha_acabado(self, product):
+        """La ficha técnica de acabado de la tela en metros (o de su tela en
+        proceso en kg), si `quimibond_ficha_tecnica_tela` está instalado."""
+        if 'ficha.tecnica.acabado' not in self.env or not product:
+            return None
+        code = (product.default_code or '').strip()
+        dom = [('product_acabado_id', '=', product.id)]
+        if es_proceso_kg(product):
+            dom = ['|', ('product_proceso_id', '=', product.id)] + dom
+            code = codigo_metros(code)
+        if code:
+            dom = ['|', ('articulo', '=', code)] + dom
+        return self.env['ficha.tecnica.acabado'].search(dom, order='id desc', limit=1) or None
+
+    @api.model
+    def kg_por_unidad_ficha(self, product):
+        """1.7.0: (kg por unidad del producto, ficha) con la conversión de
+        la ficha de acabado: kg por metro = 1 ÷ rendimiento de la tela
+        acabada (1000 ÷ (g/m² × ancho m)), decisión de Dirección del
+        2026-10-30. Convertido a la unidad del producto (yardas…). (0, None)
+        sin ficha, sin rendimiento o si la unidad no es de longitud."""
+        ficha = self._ficha_acabado(product)
+        rend = getattr(ficha, 'rendimiento_tela_acabada', 0.0) if ficha else 0.0
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        if not rend or not metro or not product.uom_id._has_common_reference(metro):
+            return 0.0, None
+        return product.uom_id._compute_quantity(1.0, metro, round=False) / rend, ficha
+
+    @api.model
+    def _qty_linea(self, bom, line, product):
+        """(cantidad del componente por unidad del producto, en la unidad
+        del componente; nota). 1.7.0: en la clasificación final, la tela en
+        proceso en kg se consume a 1 ÷ rendimiento de la ficha aunque la
+        lista diga otra cosa (la validación `conversion_clasificacion` avisa
+        de la diferencia): la conversión de kg a metros es una sola y es la
+        de la ficha."""
+        comp = line.product_id
+        qty = line.product_uom_id._compute_quantity(
+            line.product_qty, comp.uom_id, round=False,
+            raise_if_failure=False) / self._qty_bom_en_uom_producto(bom, product)
+        if es_proceso_kg(comp) and codigo_metros(comp.default_code) == \
+                (product.default_code or '').strip():
+            kg_u, ficha = self.kg_por_unidad_ficha(product)
+            kg = self.env.ref('uom.product_uom_kgm')
+            if kg_u:
+                return (kg._compute_quantity(kg_u, comp.uom_id, round=False),
+                        'ficha %s: %.4f kg por %s' % (ficha.display_name, kg_u,
+                                                      product.uom_id.name))
+        return qty, ''
 
     @api.model
     def _qty_bom_en_uom_producto(self, bom, product):
@@ -222,7 +307,10 @@ class QbProductoHoras(models.Model):
             # ORM entre execute() y fetchall() dispara su propio SELECT en el
             # mismo cursor y se pierde el resultado (en producción los
             # centros llegan de un search sin caché y nada salía «medido»).
-            vmin, vmax = centro.velocidad_min, centro.velocidad_max
+            # 1.7.0: banda por unidad del producto de la orden (kg/h, m/h
+            # u horas por baño en tintorería).
+            bandas = centro._bandas()
+            fuera = centro.fuera_de_banda
             self.env.cr.execute("""
                 WITH horas AS (
                     SELECT wo.production_id, SUM(wo.duration) / 60.0 AS h
@@ -237,16 +325,17 @@ class QbProductoHoras(models.Model):
                     WHERE sm.state = 'done' AND sm.product_id = mo.product_id
                     GROUP BY sm.production_id
                 )
-                SELECT mo.product_id, h.h, p.qty
+                SELECT mo.product_id, h.h, p.qty, pt.uom_id
                 FROM horas h
                 JOIN mrp_production mo ON mo.id = h.production_id
                 JOIN producido p ON p.production_id = mo.id
+                JOIN product_product pp ON pp.id = mo.product_id
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
                 WHERE mo.state = 'done' AND h.h > 0 AND p.qty > 0
             """, (tuple(wcs), desde, hasta))
             acum = {}
-            for pid, h, qty in self.env.cr.fetchall():
-                v = qty / h
-                if (vmin and v < vmin) or (vmax and v > vmax):
+            for pid, h, qty, uom_id in self.env.cr.fetchall():
+                if fuera(bandas, uom_id, qty, h):
                     continue
                 a = acum.setdefault(pid, [0.0, 0.0, 0])
                 a[0] += h
@@ -341,6 +430,22 @@ class QbProductoHoras(models.Model):
             factor = uom._compute_quantity(1.0, metro, round=False)
             return (factor / centro.velocidad_m_h,
                     'Velocidad del centro: %.0f m/h' % centro.velocidad_m_h)
+        if centro.driver == 'kg_ciclo' and kg and uom._has_common_reference(kg):
+            # 1.7.0: por producto y jet (ficha > fórmula de la lista) entre
+            # los kg por baño; si corre en varios jets, el promedio de sus
+            # horas por kg. La carga del centro, solo como último recurso.
+            bom = self._bom_vigente(product)
+            jets = []
+            for wc in centro.workcenter_ids:
+                bano = self._minutos_bano(product, bom, wc)
+                cap = self._kg_bano(product, wc, kg) if bano else None
+                if bano and cap and cap[0] > 0:
+                    jets.append((wc.name, bano[0], cap[0]))
+            if jets:
+                h_kg = sum(m / 60.0 / c for _n, m, c in jets) / len(jets)
+                factor = uom._compute_quantity(1.0, kg, round=False)
+                return (factor * h_kg, 'Baño por jet: %s' % ', '.join(
+                    '%s %.0f min ÷ %.0f kg' % j for j in jets))
         if centro.driver == 'kg_ciclo' and centro.kg_por_carga > 0 and \
                 centro.horas_por_carga > 0 and kg and uom._has_common_reference(kg):
             factor = uom._compute_quantity(1.0, kg, round=False)
@@ -366,6 +471,7 @@ class QbProductoHoras(models.Model):
                'company_id': self.env.company.id,
                'centros': [{'id': c.id, 'code': c.code, 'maquinas': len(c.workcenter_ids),
                             'banda': [c.velocidad_min, c.velocidad_max],
+                            'bandas': {str(k): list(v) for k, v in c._bandas().items()},
                             'productos_medidos': sum(1 for k in medido if k[1] == c.id)}
                            for c in centros]}
         if product_id:
@@ -392,18 +498,121 @@ class QbProductoHoras(models.Model):
         return out
 
     @api.model
+    def _minutos_bano(self, product, bom, wc):
+        """1.7.0: (minutos por baño, origen) del artículo en el jet, con la
+        prioridad de «Programar Tintorería»: tiempo de ciclo del artículo en
+        ese jet en la ficha técnica (horas) > minutos de la fórmula de la
+        lista en ese jet (`tintoreria.formula.tiempo`). None si no hay."""
+        if 'ficha.tecnica.proceso.valor' in self.env:
+            productos = product
+            ficha = self._ficha_acabado(product)
+            if ficha:
+                productos |= ficha.product_acabado_id | ficha.product_proceso_id
+            codigos = [c for c in productos.mapped('default_code') if c]
+            valor = self.env['ficha.tecnica.proceso.valor'].search([
+                ('code', '=', 'tiempo_ciclo'), ('workcenter_id', '=', wc.id),
+                ('valor', '>', 0),
+                '|', ('proceso_id.product_id', 'in', productos.ids),
+                ('proceso_id.articulo', 'in', codigos)], limit=1)
+            if valor:
+                factor = 1.0 if (valor.unit or 'h').lower() in ('min', 'mins', 'minutos') else 60.0
+                return valor.valor * factor, 'tiempo de ciclo de la ficha'
+        formula = bom.formula_tintoreria_id if bom and 'formula_tintoreria_id' in bom._fields else None
+        if formula and 'tintoreria.formula.tiempo' in self.env:
+            tiempo = self.env['tintoreria.formula.tiempo'].search([
+                ('formula_id', '=', formula.id), ('workcenter_id', '=', wc.id)], limit=1)
+            if tiempo:
+                return tiempo.minutos, 'fórmula %s' % formula.display_name
+        return None
+
+    @api.model
+    def _kg_bano(self, product, wc, uom):
+        """1.7.0: (unidades de `uom` por baño, origen) del artículo en el
+        jet: capacidad capturada en el centro de trabajo para el producto
+        (`mrp.workcenter.capacity`) > kg por carga de la ficha técnica del
+        jet. None si no hay."""
+        caps = wc.capacity_ids.filtered(
+            lambda c: c.product_id == product and c.capacity > 0)
+        if not caps:
+            caps = wc.capacity_ids.filtered(
+                lambda c: not c.product_id and c.capacity > 0
+                and c.product_uom_id in (uom, product.uom_id))
+        if caps:
+            c = caps[0]
+            return (c.product_uom_id._compute_quantity(c.capacity, uom, round=False,
+                                                       raise_if_failure=False),
+                    'capacidad del centro de trabajo')
+        if hasattr(wc, '_ft_capacidad_carga') and hasattr(product, '_ft_rendimiento'):
+            kg, motivo = wc._ft_capacidad_carga(product._ft_rendimiento()[0], product=product)
+            kg_uom = self.env.ref('uom.product_uom_kgm')
+            if kg and uom._has_common_reference(kg_uom):
+                return kg_uom._compute_quantity(kg, uom, round=False), 'ficha: %s' % motivo
+        return None
+
+    @api.model
+    def _minutos_operacion(self, product, bom, op, centro):
+        """1.7.0: (minutos por unidad del producto, detalle) de una operación
+        de la lista, como los calcula Odoo (`_get_duration_expected`):
+        (preparación + limpieza + tiempo del ciclo) ÷ unidades por ciclo
+        (capacidad del centro de trabajo para el producto; sin capacidad, la
+        cantidad de la lista) ÷ eficiencia. Antes: tiempo ÷ cantidad de la
+        lista, y una tintorería de 210 min por baño en una lista de 1 kg
+        salía de 210 min por kg.
+
+        En la tintorería (centro `kg_ciclo`) el tiempo es por baño: tiempo
+        de ciclo de la ficha > fórmula de la lista en ese jet > operación,
+        entre los kg por baño (capacidad del centro de trabajo, ficha del
+        jet o kg por carga del centro de costo, en ese orden)."""
+        wc = op.workcenter_id
+        uom = bom.product_uom_id or product.uom_id
+        qty_bom = bom.product_qty or 1.0
+        cap, inicio, fin = wc._get_capacity(product, uom, qty_bom)
+        minutos, origen = op.time_cycle, 'operación'
+        if centro.driver == 'kg_ciclo' and es_tintoreria(op):
+            bano = self._minutos_bano(product, bom, wc)
+            if bano:
+                (minutos, origen), inicio, fin = bano, 0.0, 0.0
+            kg = self._kg_bano(product, wc, uom)
+            if kg and kg[0] > 0:
+                cap = kg[0]
+            elif centro.kg_por_carga > 0:
+                kg_uom = self.env.ref('uom.product_uom_kgm')
+                if uom._has_common_reference(kg_uom):
+                    cap = kg_uom._compute_quantity(centro.kg_por_carga, uom, round=False)
+        if not minutos and not (inicio or fin):
+            return 0.0, ''
+        cap = cap or 1.0
+        eff = (wc.time_efficiency or 100.0) / 100.0
+        por_u_bom = (inicio + fin + minutos) / cap / eff
+        por_u = por_u_bom * qty_bom / self._qty_bom_en_uom_producto(bom, product)
+        det = '%s %s: %s min (%s) ÷ %s %s por ciclo' % (
+            op.name, wc.name, '{:,.4g}'.format(inicio + fin + minutos), origen,
+            '{:,.4g}'.format(cap), uom.name)
+        if eff != 1.0:
+            det += ' ÷ %.0f %% de eficiencia' % (eff * 100)
+        return por_u, det
+
+    @api.model
+    def _estandar_detalle(self, product, bom, centro):
+        """(horas por unidad, detalle) desde las operaciones de la receta en
+        los centros de trabajo del centro (`_minutos_operacion`)."""
+        if not bom:
+            return 0.0, ''
+        wcs = set(centro.workcenter_ids.ids)
+        minutos, dets = 0.0, []
+        for op in bom.operation_ids:
+            if op.workcenter_id.id in wcs:
+                m, d = self._minutos_operacion(product, bom, op, centro)
+                if m:
+                    minutos += m
+                    dets.append(d)
+        return minutos / 60.0, '; '.join(dets)
+
+    @api.model
     def _estandar(self, product, bom, centro):
         """Horas por unidad desde las operaciones de la receta en los
-        centros de trabajo del centro. `time_cycle_manual` son minutos por
-        la cantidad de la receta."""
-        if not bom:
-            return 0.0
-        wcs = set(centro.workcenter_ids.ids)
-        minutos = sum(op.time_cycle_manual for op in bom.operation_ids
-                      if op.workcenter_id.id in wcs)
-        if not minutos:
-            return 0.0
-        return minutos / 60.0 / self._qty_bom_en_uom_producto(bom, product)
+        centros de trabajo del centro."""
+        return self._estandar_detalle(product, bom, centro)[0]
 
     @api.model
     def _promedios_centro(self, centros, desde, hasta):
@@ -424,7 +633,8 @@ class QbProductoHoras(models.Model):
                     m = re.match(r'GALGA\s*(\d+)', tag.name or '', re.I)
                     if m:
                         galga_de_wc[wc.id] = int(m.group(1))
-            vmin, vmax = centro.velocidad_min, centro.velocidad_max
+            bandas = centro._bandas()
+            fuera = centro.fuera_de_banda
             self.env.cr.execute("""
                 WITH horas AS (
                     SELECT wo.production_id, wo.workcenter_id,
@@ -454,8 +664,7 @@ class QbProductoHoras(models.Model):
             acum = {}
             acum_g = {}
             for wc_id, uom_id, h, qty in self.env.cr.fetchall():
-                v = qty / h
-                if (vmin and v < vmin) or (vmax and v > vmax):
+                if fuera(bandas, uom_id, qty, h):
                     continue
                 a = acum.setdefault(uom_id, [0.0, 0.0])
                 a[0] += h
@@ -539,6 +748,13 @@ class QbProductoHoras(models.Model):
                         rec.horas_manual, 'manual',
                         'Manual: %s' % (rec.manual_motivo or ''), 0)
                     continue
+                # 1.7.0: la operación real de la lista manda. Si la receta
+                # vigente tiene operaciones y ninguna en este centro, el
+                # producto no pasa por aquí aunque la historia (la ruta vieja)
+                # o la ficha digan otra cosa: en el flujo en dos niveles la
+                # rama la carga la tela en proceso en kg, no la de metros.
+                if self._ops_fuera(bom, c):
+                    continue
                 ext = externas.get((p.id, c.id))
                 if ext:
                     propias[(p.id, c.id)] = ext
@@ -551,10 +767,10 @@ class QbProductoHoras(models.Model):
                         % (n, '{:,.0f}'.format(qty), p.uom_id.name,
                            1 / h if h else 0, p.uom_id.name), n)
                     continue
-                e = self._estandar(p, bom, c)
+                e, e_det = self._estandar_detalle(p, bom, c)
                 if e:
                     propias[(p.id, c.id)] = (
-                        e, 'estandar', 'Operación de la receta %s' % bom.display_name, 0)
+                        e, 'estandar', ('Receta %s: %s' % (bom.display_name, e_det))[:250], 0)
                     continue
                 # Que la ficha diga a qué velocidad corre el artículo en una
                 # máquina del centro también dice que pasa por ahí.
@@ -622,14 +838,13 @@ class QbProductoHoras(models.Model):
             rango = RANGO[own[1]] if own else 4
             heredado = 0.0
             if bom:
-                qty_bom = self._qty_bom_en_uom_producto(bom, prod)
                 for line in bom.bom_line_ids:
                     comp = line.product_id
-                    if comp.type == 'service':
+                    if comp.type == 'service' or line._skip_bom_line(prod):
                         continue
                     hc, rc = total(comp.id, cid, pila + (pid,))
                     if hc:
-                        heredado += hc * line.product_qty / qty_bom
+                        heredado += hc * self._qty_linea(bom, line, prod)[0]
                         rango = max(rango, rc) if rango < 4 else rc
             if not h and not heredado:
                 memo[key] = (0.0, 4)
@@ -670,62 +885,92 @@ class QbProductoHoras(models.Model):
         return filas
 
     ETAPA_DRIVER = {'H': 'workorder', 'I': 'kg_ciclo', 'J': 'm_velocidad'}
+    # 1.7.0: flujo en dos niveles. La tela en proceso en kg («I» + código)
+    # pasa por tintorería (con devanado), acabado e inspección; la tela en
+    # metros que sale de la clasificación final, solo por inspección y
+    # empaque (lo demás lo hereda de la de kg).
+    DRIVERS_PROCESO_KG = {'kg_ciclo', 'm_velocidad', 'fijo_unidad'}
+    DRIVERS_CLASIFICACION = {'fijo_unidad'}
+
+    @api.model
+    def _ops_fuera(self, bom, centro):
+        """True si la receta tiene operaciones y ninguna en el centro."""
+        return bool(bom and bom.operation_ids) and not any(
+            op.workcenter_id in centro.workcenter_ids for op in bom.operation_ids)
+
+    @api.model
+    def _drivers_por_codigo(self, product, bom):
+        """Drivers de los centros por los que pasa el producto según su
+        código (DAT P-D02-01) y el tipo de su receta. None si el código no
+        dice la ruta (fuera de la norma o importado con prefijo)."""
+        ref = (product.default_code or '').replace(' ', '')
+        if es_proceso_kg(product):
+            return set(self.DRIVERS_PROCESO_KG)
+        m = NOMEN_RE.match(ref)
+        if not m or ref.startswith('I'):
+            return None
+        etapa = m.group(6)
+        if etapa == 'J' and self._es_clasificacion(product, bom):
+            return set(self.DRIVERS_CLASIFICACION)
+        return {self.ETAPA_DRIVER[etapa]} if etapa in self.ETAPA_DRIVER else set()
 
     @api.model
     def centros_esperados(self, product, centros, hasta=None):
-        """Centros directos por los que pasa el producto según su receta:
-        la etapa de su código (H tejido, I tintorería, J acabado) y las de
-        sus componentes, receta abajo. Un código fuera de la norma o un
-        importado (prefijo de unidad) no aporta etapa: la ruta no se conoce
-        por el código. Un terminado natural cuya receta va directo del crudo
-        no espera tintorería."""
-        etapas = set()
+        """Centros directos por los que pasa el producto según su receta,
+        receta abajo. Con operaciones en la receta vigente, sus centros de
+        trabajo (1.7.0: la operación real manda sobre el código); sin
+        operaciones, la etapa del código (H tejido, I tintorería, J acabado;
+        la tela en proceso en kg: tintorería, acabado e inspección; la tela
+        en metros de la clasificación final: inspección y empaque). Un código
+        fuera de la norma o un importado (prefijo de unidad) no aporta etapa:
+        la ruta no se conoce por el código. Un terminado natural cuya receta
+        va directo del crudo no espera tintorería."""
+        esperados = centros.browse()
         vistos = set()
 
         def recorrer(prod):
+            nonlocal esperados
             if prod.id in vistos:
                 return
             vistos.add(prod.id)
-            ref = (prod.default_code or '').replace(' ', '')
-            m = NOMEN_RE.match(ref)
-            if not m or ref.startswith('I'):
-                return
-            etapas.add(m.group(6))
             bom = self._bom_vigente(prod, hasta)
+            drivers = self._drivers_por_codigo(prod, bom)
+            if drivers is None:
+                return
+            if bom and bom.operation_ids:
+                wcs = bom.operation_ids.workcenter_id
+                esperados |= centros.filtered(lambda c: c.workcenter_ids & wcs)
+            else:
+                esperados |= centros.filtered(lambda c: c.driver in drivers)
             for line in (bom.bom_line_ids if bom else ()):
                 recorrer(line.product_id)
 
         recorrer(product)
-        drivers = {self.ETAPA_DRIVER[e] for e in etapas if e in self.ETAPA_DRIVER}
-        return centros.filtered(lambda c: c.driver in drivers)
+        return esperados
 
     @api.model
     def _centro_aplica(self, product, bom, centro):
-        """¿Este producto pasa por este centro? Sí si la receta vigente tiene
-        una operación en él (aunque sin tiempo) o si su etapa de la
-        nomenclatura corresponde al driver del centro: H (crudo) → tejido,
-        I (teñido) → tintorería, J (terminado) → acabado. Sin nomenclatura ni
-        operación, no."""
-        if bom and any(op.workcenter_id in centro.workcenter_ids
-                       for op in bom.operation_ids):
-            return True
-        m = NOMEN_RE.match((product.default_code or '').replace(' ', ''))
-        if not m:
-            return False
-        etapa = m.group(6)
-        return {'H': 'workorder', 'I': 'kg_ciclo', 'J': 'm_velocidad'}.get(
-            etapa) == centro.driver
+        """¿Este producto pasa por este centro? Con operaciones en la receta
+        vigente, solo si alguna está en el centro (aunque sin tiempo); sin
+        operaciones, si la etapa de su código corresponde al driver del
+        centro (`_drivers_por_codigo`). Sin nomenclatura ni operación, no."""
+        if bom and bom.operation_ids:
+            return not self._ops_fuera(bom, centro)
+        drivers = self._drivers_por_codigo(product, bom)
+        return bool(drivers) and centro.driver in drivers
 
     @api.model
     def _propias_al_vuelo(self, product, bom, centro, medido, hermanos, prom,
                           prom_galga, fichas=None):
+        if self._ops_fuera(bom, centro):
+            return None
         m = medido.get((product.id, centro.id))
         if m:
             h, n, qty = m
             return (h, 'medido', '%d órdenes' % n, n)
-        e = self._estandar(product, bom, centro)
+        e, e_det = self._estandar_detalle(product, bom, centro)
         if e:
-            return (e, 'estandar', 'Operación de la receta', 0)
+            return (e, 'estandar', e_det[:250], 0)
         f = self._ficha(product, centro, fichas)
         if f:
             return (f[0], 'ficha', f[1], 0)

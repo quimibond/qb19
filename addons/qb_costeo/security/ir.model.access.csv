@@ -27,3 +27,5 @@ access_qb_costo_producto_centro_manager,qb.costo.unitario.centro manager,model_q
 access_qb_rentabilidad_cliente_user,qb.rentabilidad.cliente user,model_qb_rentabilidad_cliente,mrp.group_mrp_user,1,0,0,0
 access_qb_rentabilidad_producto_user,qb.rentabilidad.producto user,model_qb_rentabilidad_producto,mrp.group_mrp_user,1,0,0,0
 access_qb_ot_excepcion_user,qb.ot.excepcion user,model_qb_ot_excepcion,mrp.group_mrp_user,1,0,0,0
+access_qb_centro_banda_user,qb.centro.banda user,model_qb_centro_banda,mrp.group_mrp_user,1,0,0,0
+access_qb_centro_banda_manager,qb.centro.banda manager,model_qb_centro_banda,mrp.group_mrp_manager,1,1,1,1
