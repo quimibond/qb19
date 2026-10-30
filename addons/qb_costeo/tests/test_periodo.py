@@ -85,10 +85,15 @@ class TestPeriodo(CosteoCase):
         mo.qty_producing = 1000
         mo.button_mark_done()
         mo.write({'date_finished': '2026-09-12 10:00:00'})
+        # Una orden sin órdenes de trabajo: Odoo 19 las crea y las cierra
+        # solas al terminar la orden; aquí se quitan.
+        self.env.cr.execute('DELETE FROM mrp_workorder WHERE production_id = %s', (mo.id,))
+        self.env.invalidate_all()
         horas, fuente = self.c_aca.horas_reales(date(2026, 9, 1),
                                                  date(2026, 10, 1))
         self.assertEqual(fuente, 'operacion')
-        self.assertAlmostEqual(horas, 5.0, 2)   # 1000 m × 0.5 h / 100 m
+        # 1000 m × 0.5 h / 100 m ÷ 50 % de eficiencia de la Rama 1 (1.7.0, como Odoo).
+        self.assertAlmostEqual(horas, 10.0, 2)
 
     def test_compuerta_de_cierre(self):
         self.gasto(self.acc_renta, 10000)

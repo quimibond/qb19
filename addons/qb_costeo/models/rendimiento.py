@@ -16,6 +16,14 @@ Reglas (heredadas del módulo anterior, memo del 31-ago-2026):
   unidades; abajo del umbral, tasa de planta.
 - Lo capturado a mano manda mientras esté vigente (un lote de desarrollo
   no es la producción normal).
+- 1.7.0, flujo en dos niveles: de las entradas que salen de una orden de
+  fabricación solo cuentan las de la clasificación final (tipos
+  `tipos_clasificacion`, 409/411) y las de la ruta vieja; las de la orden en
+  kg (tipos `tipos_kg`, 410) no, y la tela en proceso en kg («I» + código)
+  nunca, aunque entre a una ubicación de primera o de merma: es un
+  semielaborado. La merma de proceso (crudo → tela en kg) ya está en el
+  factor del crudo de la lista A; aquí solo va lo que la clasificación
+  manda a segunda, FE o desperdicio.
 """
 from datetime import date
 
@@ -23,6 +31,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .horas import es_proceso_kg
 
 FUENTES = [
     ('manual', 'Capturado con motivo'),
@@ -94,6 +104,7 @@ class QbProductoRendimiento(models.Model):
         merma = self._ids_param('calidad_locs_merma', '41,42,43')
         origen = self._ids_param('calidad_locs_origen', '15,36,246')
         excluir = self._ids_param('calidad_picking_excluir', '77,147') or [0]
+        tipos_kg = self._ids_param('tipos_kg', '410') or [0]
         if not (vendible and merma and origen):
             return {}, 1.0
         meses = meses or int(P.get_float('horas_historia_meses', 12)) or 12
@@ -107,17 +118,23 @@ class QbProductoRendimiento(models.Model):
                    SUM(sml.quantity) AS total
               FROM stock_move_line sml
               JOIN stock_move sm ON sm.id = sml.move_id
+              LEFT JOIN mrp_production mo ON mo.id = sm.production_id
              WHERE sml.state = 'done'
                AND sml.date >= %s AND sml.date < %s
                AND sml.location_dest_id IN %s
                AND sml.location_id IN %s
                AND (sm.picking_type_id IS NULL
                     OR sm.picking_type_id NOT IN %s)
+               AND (mo.id IS NULL OR mo.picking_type_id IS NULL
+                    OR mo.picking_type_id NOT IN %s)
                AND sm.company_id = %s
              GROUP BY sml.product_id
         """, (tuple(vendible), desde, hasta, tuple(vendible + merma),
-              tuple(origen), tuple(excluir), self.env.company.id))
-        datos = {pid: (v or 0.0, t or 0.0) for pid, v, t in self.env.cr.fetchall()}
+              tuple(origen), tuple(excluir), tuple(tipos_kg), self.env.company.id))
+        filas = self.env.cr.fetchall()
+        Prod = self.env['product.product']
+        datos = {pid: (v or 0.0, t or 0.0) for pid, v, t in filas
+                 if not es_proceso_kg(Prod.browse(pid))}
         tot_v = sum(v for v, _t in datos.values())
         tot_t = sum(t for _v, t in datos.values())
         return datos, (tot_v / tot_t if tot_t else 1.0)

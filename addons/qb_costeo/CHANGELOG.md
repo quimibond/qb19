@@ -3,6 +3,82 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.7.0 — 2026-10-30
+
+El costeo cuadra con el **flujo de tela en dos niveles** (diseño técnico
+v5.4; fichas 2.22.0, `quimibond_tintoreria_dosificacion` y
+`quimibond_tintoreria_programacion`): pedido en metros → clasificación final
+(lista «B», en m) → por MTO la orden en kg (lista «A», «I» + código: crudo
+× factor, químicos dosificados, devanado → tintorería → abridora → rama →
+inspección). Decisiones de Dirección del 2026-10-30: kg por metro = 1 ÷
+rendimiento de la ficha de acabado; las devanadoras son de tintorería.
+
+**Cambiado**
+- **Receta vigente** (`_bom_vigente`): la del flujo nuevo (tipo de operación
+  en `tipos_flujo_nuevo`, 409/410/411) y, entre las demás, la de menor
+  secuencia, como la escoge Odoo. Antes era la de más cantidad producida en
+  90 días, que seguía siendo la vieja en metros. La usan horas, MP, la
+  validación y el cotizador. `receta_ventana_dias` queda sin uso.
+- **Estándar de una operación como Odoo** (`_minutos_operacion`):
+  (preparación + limpieza + tiempo del ciclo) ÷ unidades por ciclo
+  (`mrp.workcenter.capacity` del producto; sin capacidad, la cantidad de la
+  lista) ÷ eficiencia del centro de trabajo. **Tintorería por baño**: tiempo
+  de ciclo de la ficha (h) > minutos de la fórmula de la lista en ese jet
+  (`tintoreria.formula.tiempo`) > operación, entre los kg por baño
+  (capacidad del centro de trabajo > kg por carga de la ficha del jet > kg
+  por carga del centro de costo). Antes: 210 min por baño en una lista de
+  1 kg = 210 min por kg. Ojo: ahora también divide entre la eficiencia; un
+  centro de trabajo al 50 % duplica sus horas estándar.
+- Driver `kg_ciclo` sin operación en la receta: baño por jet (ficha >
+  fórmula) entre los kg por baño; horas/kg por carga del centro solo al final.
+- **Etapas**: la tela en proceso en kg («I» + código, en kg) pasa por
+  tintorería (con devanado), acabado e inspección; la tela en metros que
+  sale de la clasificación final, solo por inspección y empaque. **La
+  operación real de la lista manda**: con operaciones en la receta vigente,
+  un centro sin ninguna no le carga horas propias al producto (ni medidas,
+  ni de ficha, ni hermano), así la rama medida en la ruta vieja no se suma a
+  la que hereda de la tela en kg. Un «I…» que no va en kg es importado.
+- **Conversión una sola vez**: en la clasificación final la tela en kg se
+  consume a 1 ÷ rendimiento de la ficha (`_qty_linea`, horas heredadas y MP),
+  aunque la lista diga otra cosa; `qb.producto.kg` fuente «ficha» da ese mismo
+  número, en la unidad del producto (antes no convertía yardas). La herencia
+  de horas respeta la unidad de la línea.
+- **Merma una sola vez**: la tela en proceso en kg no se divide entre el
+  rendimiento (fuente «semielaborado»): su merma de proceso ya va en el
+  factor del crudo de la lista A. El rendimiento vendible no cuenta lo que
+  sale de la orden en kg (`tipos_kg`, 410) ni la tela en kg, aunque caiga en
+  una ubicación de primera o de merma.
+- **Horas reales del período** (`qb.centro.horas_reales`): por orden de
+  fabricación, órdenes de trabajo si las tiene; si no, el estándar de su
+  receta × producido y, sin operación en el centro, las horas propias del
+  producto × producido. Fuentes nuevas «mixta» y «producto». Con el primer
+  mes del flujo en kg (pocas órdenes de trabajo) la energía de tintorería y
+  acabado entra a la tarifa. `horas_reales_completar = 0` vuelve a lo
+  anterior.
+
+**Nuevo**
+- `qb.centro.banda`: banda de las horas medidas **por unidad del producto
+  de la orden** (kg/h, m/h) o en **horas por orden** (tintorería: cada orden
+  programada es un baño). Sin filas, la velocidad mínima y máxima del centro
+  como antes. La usan `_medido`, los promedios y «Órdenes con tiempo fuera
+  de rango» (columna «Banda en»). La banda se ve en la ficha del centro.
+- Validación `conversion_clasificacion`: la lista de clasificación consume
+  la tela en kg a un kg/m que se aleja más de `conversion_tolerancia_pct`
+  (0.5 %) del de la ficha. Odoo capitaliza con la lista; el costeo, con la
+  ficha.
+- `qb.periodo.conciliacion_mano_de_obra()`: por centro, horas de órdenes de
+  trabajo × costo por hora con que Odoo capitalizó contra horas × tarifa del
+  período; cada orden de trabajo una vez.
+- Parámetros `tipos_flujo_nuevo`, `tipos_clasificacion`, `tipos_kg`,
+  `conversion_tolerancia_pct`, `horas_reales_completar`.
+
+**Pruebas**: `tests/test_flujo_kg.py` (piloto WJ053Q22JNT160: lista vieja con
+más historia no elegida, tintorería 210 min ÷ 600 kg, metros = 0.0848 kg/m ×
+horas por kg, merma y conversión una vez, rendimiento solo desde la
+clasificación, validación 0.0885 contra 0.0848, horas reales mixtas,
+conciliación, banda por baño). Ajustadas a la eficiencia del centro de
+trabajo: `test_horas`, `test_periodo`, `test_costo`.
+
 ## 19.0.1.6.4 — 2026-10-27
 
 **Corregido**

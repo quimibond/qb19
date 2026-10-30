@@ -65,11 +65,12 @@ class TestCosto(CosteoCase):
         aca = self.periodo.tarifa_ids.filtered(lambda t: t.centro_id == self.c_aca)
         # MP: 10 kg crudo / 100 m × 1 kg hilo × $40 = $4.00/m
         self.assertAlmostEqual(f.mp_unit, 4.0, 4)
-        # Horas: tejido 0.1 h/kg × 0.1 kg/m = 0.01 h/m en TIN; rama 3 min/100 m.
-        fab = 0.01 * tin.tarifa + 0.0005 * aca.tarifa
+        # Horas: tejido 0.1 h/kg × 0.1 kg/m = 0.01 h/m en TIN; rama 3 min/100 m
+        # entre el 50 % de eficiencia de la Rama 1 (1.7.0, como Odoo).
+        fab = 0.01 * tin.tarifa + 0.001 * aca.tarifa
         self.assertAlmostEqual(f.fabricacion_unit, fab, 3)
         self.assertAlmostEqual(f.energia_unit, 0.01 * tin.tarifa_variable
-                               + 0.0005 * aca.tarifa_variable, 3)
+                               + 0.001 * aca.tarifa_variable, 3)
         self.assertEqual(len(f.linea_ids), 2)
         self.assertAlmostEqual(f.costo_produccion, 4.0 + fab, 3)
         # Ventas: 1000 m a $15 (más la venta genérica sin producto).

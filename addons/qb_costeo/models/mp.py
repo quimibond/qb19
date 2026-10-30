@@ -126,7 +126,6 @@ class QbProductoMp(models.Model):
             ctx['memo'][product.id] = (None, {})
             return None, {}
         ctx['pila'].add(product.id)
-        qty_bom = Horas._qty_bom_en_uom_producto(bom, product)
         total = 0.0
         hojas = {}
         for line in bom.bom_line_ids:
@@ -135,9 +134,9 @@ class QbProductoMp(models.Model):
             comp = line.product_id
             if comp.type == 'service':
                 continue
-            qty = line.product_uom_id._compute_quantity(
-                line.product_qty, comp.uom_id, round=False,
-                raise_if_failure=False) / qty_bom
+            # 1.7.0: en la clasificación final, la tela en kg a 1 ÷
+            # rendimiento de la ficha (`_qty_linea`).
+            qty = Horas._qty_linea(bom, line, product)[0]
             sub, sub_hojas = self.explotar(comp, cutoff, ctx)
             if sub is not None:
                 total += qty * sub
