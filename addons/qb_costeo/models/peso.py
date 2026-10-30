@@ -9,11 +9,9 @@ Un producto vendido en kg pesa 1. (El modelo se llama `qb.producto.kg` porque
 `qb.producto.peso` era del módulo anterior, retirado.) La fuente queda en la fila; las que no
 son medidas (`nomenclatura`) pintan el costo como estimado en ese renglón.
 """
-import re
-
 from odoo import api, fields, models
 
-NOMEN_RE = re.compile(r'^I?([A-Z])([A-Z])(\d{3})([QBR])(\d{2})([HIJ])([A-Z]{2})(\d{3})')
+from .horas import NOMEN_RE  # noqa: F401  (una sola nomenclatura, 1.7.0)
 
 FUENTES = [
     ('pesaje', 'Rollos pesados'),
@@ -82,21 +80,24 @@ class QbProductoPeso(models.Model):
 
     @api.model
     def _de_ficha(self, product):
-        """Ficha técnica de acabado de Consolti, si el módulo está."""
-        if 'ficha.tecnica.acabado' not in self.env:
-            return 0.0, ''
-        Ficha = self.env['ficha.tecnica.acabado']
-        ficha = Ficha.search([('product_acabado_id', '=', product.id)],
-                             limit=1, order='id desc')
+        """Ficha técnica de acabado de Consolti, si el módulo está. 1.7.0:
+        exactamente la conversión que usa el costeo en la clasificación
+        final: kg por metro = 1 ÷ rendimiento de la tela acabada, en la
+        unidad del producto (`qb.producto.horas.kg_por_unidad_ficha`). Sin
+        rendimiento, peso × ancho de la ficha."""
+        Horas = self.env['qb.producto.horas']
+        kg, ficha = Horas.kg_por_unidad_ficha(product)
+        if kg:
+            return kg, ficha.display_name
+        ficha = Horas._ficha_acabado(product)
         if not ficha:
             return 0.0, ''
-        rend = getattr(ficha, 'rendimiento_tela_acabada', 0.0) or 0.0
-        if rend:
-            return 1.0 / rend, ficha.display_name
         peso = getattr(ficha, 'peso_acabado', 0.0) or 0.0
         ancho = getattr(ficha, 'ancho_acabado', 0.0) or 0.0
-        if peso and ancho:
-            return peso / 1000.0 * (ancho / 100.0 if ancho > 10 else ancho), \
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        if peso and ancho and metro and product.uom_id._has_common_reference(metro):
+            kg_m = peso / 1000.0 * (ancho / 100.0 if ancho > 10 else ancho)
+            return kg_m * product.uom_id._compute_quantity(1.0, metro, round=False), \
                 ficha.display_name
         return 0.0, ''
 

@@ -203,6 +203,7 @@
                 <field name="rendimiento"/>
                 <field name="velocidad_min" optional="hide"/>
                 <field name="velocidad_max" optional="hide"/>
+                <field name="por" optional="hide"/>
                 <field name="horas_desviadas" sum="Total"/>
                 <field name="tipo"/>
             </list>

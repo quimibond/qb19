@@ -6,7 +6,8 @@
     energia_u      = Σ_centro horas_u × tarifa_variable_centro (la parte variable)
     variable_u     = mp_u + energia_u
     produccion_u   = mp_u + fabricacion_u
-    vendible_u     = produccion_u ÷ rendimiento
+    vendible_u     = produccion_u ÷ rendimiento   (solo la merma de la clasificación
+                                                  final; 1 en la tela en proceso en kg)
     op_u           = op_pct × precio
     total_u        = vendible_u + op_u
     piso_ocioso    = variable_u ÷ rendimiento       (nunca vender abajo)
@@ -21,6 +22,8 @@ Los totales del período son costo unitario × cantidad vendida. La traza por
 lotes de lo que Odoo capitalizó (spec §5.5) llega con la conciliación.
 """
 from odoo import api, fields, models
+
+from .horas import es_proceso_kg
 
 
 QTY_DEDUP_SQL = """
@@ -243,7 +246,13 @@ class QbCostoProducto(models.Model):
                 rango = max(rango, {'alta': 1, 'media': 2, 'baja': 3,
                                     'ninguna': 4}.get(h.calidad, 4))
             rr = rend_rows.get(p.id)
-            if rr and rr.fuente != 'ninguna':
+            if es_proceso_kg(p):
+                # 1.7.0: la tela en proceso en kg es semielaborado. Su merma
+                # de proceso ya está en el factor del crudo de la lista A y la
+                # de clasificación la paga la tela en metros: aquí no se
+                # descuenta nada.
+                rend, rend_fuente = 1.0, 'semielaborado'
+            elif rr and rr.fuente != 'ninguna':
                 rend, rend_fuente = rr.rendimiento or 1.0, rr.fuente
             else:
                 rend, rend_fuente = planta, 'planta'

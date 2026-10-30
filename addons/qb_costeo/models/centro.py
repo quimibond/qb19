@@ -98,6 +98,12 @@ class QbCentro(models.Model):
         string='Horas por unidad', digits=(16, 6),
         help='Driver «fijo_unidad»: horas fijas por unidad (inspección y '
              'empaque de importados).')
+    banda_ids = fields.One2many(
+        'qb.centro.banda', 'centro_id', string='Bandas por unidad',
+        help='1.7.0: una banda por unidad del producto de la orden (kg, m…). '
+             'Con al menos una, mandan sobre la velocidad mínima y máxima de '
+             'arriba. En tintorería, la banda va en horas por orden (cada '
+             'orden programada es un baño).')
     notas = fields.Text()
 
     _code_company_uniq = models.Constraint(
@@ -122,6 +128,27 @@ class QbCentro(models.Model):
                     'El centro %s tiene capacidad capturada: escriba el '
                     'motivo.' % rec.code)
 
+    def _bandas(self):
+        """{uom_id | None: (mínimo, máximo, por)} leídas de una vez (antes de
+        abrir una consulta en el cursor). Sin filas, la banda única de
+        velocidad del centro para cualquier unidad."""
+        self.ensure_one()
+        if not self.banda_ids:
+            return {None: (self.velocidad_min, self.velocidad_max, 'velocidad')}
+        return {b.uom_id.id or None: (b.minimo, b.maximo, b.por) for b in self.banda_ids}
+
+    @staticmethod
+    def fuera_de_banda(bandas, uom_id, qty, horas):
+        """True si una orden (unidades `qty` en `horas`) queda fuera de la
+        banda de su unidad. `por='velocidad'`: unidades por hora; `'orden'`:
+        horas de la orden (el baño). Sin banda para la unidad, dentro."""
+        b = bandas.get(uom_id, bandas.get(None))
+        if not b or not horas:
+            return False
+        vmin, vmax, por = b
+        v = horas if por == 'orden' else qty / horas
+        return bool((vmin and v < vmin) or (vmax and v > vmax))
+
     # ------------------------------------------------------------------
     # Capacidad normal y horas reales
     # ------------------------------------------------------------------
@@ -144,9 +171,19 @@ class QbCentro(models.Model):
         return total, 'calendario'
 
     def horas_reales(self, date_from, date_to):
-        """Horas trabajadas en la ventana: órdenes de trabajo terminadas
-        (`duration`); si el centro no tiene ninguna, el tiempo estándar de las
-        operaciones de la receta de las órdenes de fabricación terminadas."""
+        """Horas trabajadas en la ventana. 1.7.0, por orden de fabricación
+        terminada: las de sus órdenes de trabajo terminadas en el centro
+        (`duration`); una orden sin órdenes de trabajo en el centro aporta el
+        estándar de su receta × lo producido (`_estandar`, como lo calcula
+        Odoo, la tintorería por baño) y, si su receta no tiene operación
+        aquí, las horas propias del producto en el centro (ficha, hermano,
+        configuración del centro…) × lo producido. Así el primer mes del
+        flujo en kg, con pocas órdenes de trabajo, no deja la energía fuera
+        de la tarifa. Parámetro `horas_reales_completar` en 0: solo órdenes
+        de trabajo cuando las hay (como antes de 1.7.0).
+
+        Fuente: «workorder», «operacion» (estándar), «producto» (horas del
+        producto), «mixta» (órdenes de trabajo y estándar) o «ninguna»."""
         self.ensure_one()
         wcs = self.workcenter_ids.ids
         if not wcs:
@@ -158,30 +195,52 @@ class QbCentro(models.Model):
             WHERE wo.workcenter_id IN %s AND wo.state = 'done'
               AND wo.date_finished >= %s AND wo.date_finished < %s
         """, (tuple(wcs), date_from, date_to))
-        horas = self.env.cr.fetchone()[0] or 0.0
-        if horas:
-            return horas, 'workorder'
-        # Sin órdenes de trabajo: estándar de la receta × cantidad producida.
+        horas_wo = self.env.cr.fetchone()[0] or 0.0
+        completar = self.env['qb.parametro'].get_float('horas_reales_completar', 1.0)
+        if horas_wo and not completar:
+            return horas_wo, 'workorder'
+        # Órdenes terminadas sin órdenes de trabajo terminadas en el centro.
         self.env.cr.execute("""
-            WITH producido AS (
-                SELECT sm.production_id, SUM(sm.quantity) AS qty
-                FROM stock_move sm
-                JOIN mrp_production mo ON mo.id = sm.production_id
-                WHERE sm.state = 'done' AND sm.product_id = mo.product_id
-                  AND mo.state = 'done'
-                  AND mo.date_finished >= %s AND mo.date_finished < %s
-                GROUP BY sm.production_id
-            )
-            SELECT COALESCE(SUM(op.time_cycle_manual / 60.0 * p.qty
-                                / NULLIF(bom.product_qty, 0)), 0)
-            FROM producido p
-            JOIN mrp_production mo ON mo.id = p.production_id
-            JOIN mrp_bom bom ON bom.id = mo.bom_id
-            JOIN mrp_routing_workcenter op ON op.bom_id = bom.id
-            WHERE op.workcenter_id IN %s
-        """, (date_from, date_to, tuple(wcs)))
-        horas = self.env.cr.fetchone()[0] or 0.0
-        return horas, ('operacion' if horas else 'ninguna')
+            SELECT mo.product_id, mo.bom_id, SUM(sm.quantity)
+            FROM stock_move sm
+            JOIN mrp_production mo ON mo.id = sm.production_id
+            WHERE sm.state = 'done' AND sm.product_id = mo.product_id
+              AND mo.state = 'done' AND mo.company_id = %s
+              AND mo.date_finished >= %s AND mo.date_finished < %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM mrp_workorder wo
+                  WHERE wo.production_id = mo.id AND wo.state = 'done'
+                    AND wo.workcenter_id IN %s)
+            GROUP BY mo.product_id, mo.bom_id
+        """, (self.company_id.id, date_from, date_to, tuple(wcs)))
+        filas = self.env.cr.fetchall()
+        Horas = self.env['qb.producto.horas'].with_company(self.company_id)
+        Prod = self.env['product.product']
+        Bom = self.env['mrp.bom']
+        propias = {r.product_id.id: r.horas_propias for r in Horas.search([
+            ('centro_id', '=', self.id), ('horas_propias', '>', 0),
+            ('product_id', 'in', list({f[0] for f in filas}))])}
+        h_std = h_prod = 0.0
+        for pid, bom_id, qty in filas:
+            if not qty or qty <= 0:
+                continue
+            prod = Prod.browse(pid)
+            bom = Bom.browse(bom_id) if bom_id else Horas._bom_vigente(prod)
+            e = Horas._estandar(prod, bom, self) if bom else 0.0
+            if e:
+                h_std += e * qty
+            elif pid in propias and not Horas._ops_fuera(bom, self):
+                h_prod += propias[pid] * qty
+        if not completar:
+            h_prod = 0.0
+        total = horas_wo + h_std + h_prod
+        if not total:
+            return 0.0, 'ninguna'
+        if horas_wo:
+            fuente = 'workorder' if not (h_std or h_prod) else 'mixta'
+        else:
+            fuente = 'operacion' if h_std else 'producto'
+        return total, fuente
 
     def nomina_mensual(self):
         """Σ sueldo mensual (hr.version vigente) de los empleados activos de
@@ -219,3 +278,28 @@ def _meses(date_from, date_to):
     d0 = fields.Date.to_date(date_from)
     d1 = fields.Date.to_date(date_to)
     return max((d1.year - d0.year) * 12 + d1.month - d0.month, 1)
+
+
+class QbCentroBanda(models.Model):
+    """1.7.0: banda de las horas medidas por unidad del producto de la orden.
+    Las órdenes de tintorería, acabado e inspección del flujo en dos niveles
+    producen kg y las de la ruta vieja, metros: una sola banda en u/h no
+    sirve para las dos. En tintorería cada orden programada es un baño y su
+    tiempo casi no depende de los kg: la banda va en horas por orden."""
+    _name = 'qb.centro.banda'
+    _description = 'Banda de velocidad por unidad'
+    _order = 'centro_id, uom_id'
+
+    centro_id = fields.Many2one('qb.centro', required=True, ondelete='cascade',
+                                index=True)
+    uom_id = fields.Many2one(
+        'uom.uom', string='Unidad del producto',
+        help='Vacía: para cualquier unidad que no tenga su propia banda.')
+    por = fields.Selection([
+        ('velocidad', 'Unidades por hora'),
+        ('orden', 'Horas por orden (baño)')], required=True, default='velocidad')
+    minimo = fields.Float(digits=(16, 2), help='0 = sin límite.')
+    maximo = fields.Float(digits=(16, 2), help='0 = sin límite.')
+
+    _centro_uom_uniq = models.Constraint(
+        'unique(centro_id, uom_id)', 'Ya hay una banda para esa unidad.')
