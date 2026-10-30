@@ -4,6 +4,7 @@ from datetime import date
 
 from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
@@ -63,7 +64,8 @@ class TestProcesos(TransactionCase):
         self.assertEqual(self.rama2.ft_proceso_count, 3)
         self.assertEqual(self.rama2.ft_proceso_promedios, 'Velocidad: 31 m/min (2)',
                          "El promedio no cuenta los artículos sin dato")
-        with self.assertRaises(Exception):
+        # 2.22.0: el duplicado es a propósito (prueba la restricción); sin mute_logger la base deja un ERROR en el log.
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
             with self.env.cr.savepoint():
                 self.Proceso.create({'articulo': 'ZZ001', 'workcenter_id': self.rama2.id})
 

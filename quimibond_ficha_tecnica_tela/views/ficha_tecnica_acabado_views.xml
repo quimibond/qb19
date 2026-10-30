@@ -169,6 +169,10 @@
                                     <field name="ft_maquinas_posibles" optional="show"/>
                                     <field name="ft_proceso_resumen"/>
                                     <field name="time_cycle_manual" optional="show"/>
+                                    <!-- 2.22.0: tiempo de rama que da la ficha y su cálculo (o el dato que falta). -->
+                                    <field name="ft_tiempo_difiere" column_invisible="True"/>
+                                    <field name="ft_tiempo_ficha" optional="show" decoration-danger="ft_tiempo_difiere"/>
+                                    <field name="ft_tiempo_calculo" optional="hide"/>
                                     <field name="ft_aviso" optional="show"/>
                                 </list>
                             </field>
