@@ -889,3 +889,39 @@ de la orden de trabajo, opere o no y tenga o no proceso del artículo. Queda sol
   (`tintoreria_programada`).
 
 Prueba: `tests/test_alternativas.py::test_07_maquina_fija_no_se_mueve`.
+
+## Duración de la lista y tiempo de rama desde la ficha (2.22.0, Dirección General 2026-10-30)
+
+**Duración de la orden de trabajo.** Odoo 19 cambia la duración esperada cuando se escribe una sola fecha de la orden
+de trabajo (estirar o encoger la barra en el Gantt), y al moverla después conserva esa duración. Caso real, circular
+9 (2026-10-29): TL/OP-TEJ/H14243 traía 22,701 min contra 4,540 de la lista (635 kg × 7.15 min/kg); al ponerla el día 7
+terminaba el 22 de noviembre. Desde 2.22.0, en una orden de trabajo que no ha iniciado:
+
+- Cambiar una sola fecha **mueve** la orden y conserva su duración (la fecha fin sale de la duración desde la de
+  inicio). En el Gantt, estirar o encoger la barra ya no cambia la duración; arrastrarla la mueve, como siempre.
+- La duración se cambia a propósito en **Duración esperada** (o en el formulario cambiando la fecha fin, que la
+  recalcula antes de guardar).
+- Columna y campo **Duración de la lista** (en rojo la duración esperada si difiere más de 1 min y 1 %), filtro
+  «Duración distinta de la lista» y **Usar la duración de la lista** (en el formulario o en Acción sobre varias): la
+  regresa a la de la lista con la máquina en que está la orden (la cuenta de Odoo: preparación + limpieza + ciclos ×
+  tiempo del ciclo entre la eficiencia) y recalcula la fecha fin.
+- No toca las órdenes iniciadas, terminadas o canceladas, ni las de máquina fijada (`_ft_maquina_fija`: el jet de la
+  Programación de Tintorería lleva el tiempo por baño). Clave de contexto `ft_duracion_libre` para el comportamiento
+  nativo.
+
+**Tiempo de rama.** Fórmula de Innovación (28-oct-2026) con merma (Innovación, 29-oct: «Con merma»):
+
+    min/kg = 1000 ÷ (peso g/m² × ancho bajando de rama m) × (1 − merma %) ÷ velocidad m/min
+
+El peso sale de la ficha de acabado; el ancho bajando de rama (`ancho_rama`, tabla de Manufactura F-IT-P-P01-10-06),
+la merma (`merma`) y la velocidad (`velocidad`) del proceso del artículo en la rama. Aplica a operaciones de listas en
+kg cuya máquina es de un tipo con el parámetro `ancho_rama` (hoy las tres ramas). Si falta un dato no hay tiempo y se
+dice cuál falta. La operación muestra **Tiempo de la ficha** y su cálculo (también en la ficha de acabado → Ruta y
+máquinas), en rojo si el de la lista es otro; **Usar el tiempo de la ficha** (en la operación) o **Usar el tiempo de
+rama de la ficha** (Acción sobre una o varias listas, también archivadas) lo pasa a la lista como tiempo fijo. Un
+ciclo es la capacidad de la máquina para el producto (1 kg si no está capturada).
+
+El tiempo no se escribe solo: la planta decide cuándo pasarlo a la lista. Inspección queda fuera hasta que el área
+defina su fórmula y sus datos.
+
+Prueba: `tests/test_duracion_tiempo.py`.

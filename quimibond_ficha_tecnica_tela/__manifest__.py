@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.21.0',
+    'version': '19.0.2.22.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -81,6 +81,10 @@ Incluye:
   y, al planear, solo las alternativas que operan y tienen proceso del artículo.
 - 2.21.0: una máquina fijada a mano (clave de contexto ``ft_maquina_fija``, o el jet que
   asignó la Programación de Tintorería) no la cambia el planificador; queda solo el aviso.
+- 2.22.0: la duración de la orden de trabajo sale de la lista de materiales: cambiar una sola fecha (estirar o encoger
+  la barra en el Gantt) mueve la orden y conserva su duración, y «Usar la duración de la lista» la regresa. El tiempo
+  de rama sale de la ficha: 1000 ÷ (peso × ancho bajando de rama) × (1 − merma) ÷ velocidad, con «Usar el tiempo de
+  rama de la ficha» en la operación o en varias listas a la vez.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
@@ -96,6 +100,7 @@ Incluye:
         'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
         'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
         'views/mrp_aviso_maquina_views.xml',  # 2.5.0
+        'views/duracion_tiempo_views.xml',  # 2.22.0
         'views/proceso_views.xml',  # 2.8.0
         'views/materia_prima_views.xml',  # 2.9.0
         'views/product_template_views.xml',
