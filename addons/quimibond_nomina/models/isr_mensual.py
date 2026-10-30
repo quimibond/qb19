@@ -79,7 +79,7 @@ Ambrocio, Delgadillo, Nava, Aguilar, Lorena Santiago); con un solo método los
 de la misma tarifa daban igual, por eso la quincena 17 parecía «sin 174».
 Qué líneas son de art. 174: parámetro ``quimibond_nomina.isr_art174_codigos``
 (default ``PVAC_TAX``; el aguinaldo gravado se agrega ahí cuando exista su
-regla); vacío lo apaga. En la última nómina del mes el ajuste mensual se hace
+regla); ``0`` lo apaga (Odoo no guarda un parámetro vacío: vacío vuelve al default). En la última nómina del mes el ajuste mensual se hace
 sobre el ordinario acumulado, y el ISR de art. 174 de los recibos previos no
 cuenta como retenido del ordinario.
 
@@ -102,6 +102,7 @@ PARAM_INCLUYE_BORRADOR = 'quimibond_nomina.isr_mensual_incluye_borrador'
 PARAM_DIA_PAGO = 'quimibond_nomina.dia_pago_semanal'   # 0 = lunes … 6 = domingo
 PARAM_ART174 = 'quimibond_nomina.isr_art174_codigos'   # líneas gravadas con el art. 174 RLISR
 ART174_DEFAULT = 'PVAC_TAX'
+ART174_APAGADO = ('0', 'no', 'ninguno')                # valores que apagan el art. 174
 DIA_PAGO_DEFAULT = 4                                    # viernes
 ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
@@ -281,6 +282,8 @@ class HrPayslip(models.Model):
         valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ART174)
         if valor is False or valor is None:
             valor = ART174_DEFAULT
+        if valor.strip().lower() in ART174_APAGADO:
+            return ()
         return tuple(c.strip() for c in valor.split(',') if c.strip())
 
     def _qb_art174_monto(self, result_rules=None):

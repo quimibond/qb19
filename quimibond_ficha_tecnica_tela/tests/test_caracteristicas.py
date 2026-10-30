@@ -18,13 +18,21 @@ class TestCaracteristicas(TransactionCase):
         cls.acabado = cls.env['ficha.tecnica.acabado'].create({
             'articulo': 'WJ053Q22JNT160', 'tejido_id': cls.tejido.id, 'product_acabado_id': product.id})
 
+    def _sembrados(self, model):
+        ids = self.env['ir.model.data'].search([('module', '=', 'quimibond_ficha_tecnica_tela'),
+                                                ('model', '=', model)]).mapped('res_id')
+        return self.env[model].with_context(active_test=False).browse(ids).exists()
+
     def test_01_catalogo_sembrado(self):
         self.assertEqual(self.Car._by_code('masa').unit, "g/m²")
         self.assertEqual(self.Car._by_code('rendimiento').formula, 'rendimiento')
         self.assertEqual(self.Car._by_code('engomado_orillas').kind, 'bool')
-        self.assertEqual(self.Car.search_count([]), 38)
+        # 2.22.0: se cuentan los registros que siembra el módulo (con xmlid), no todos: en producción se dan de alta
+        # más (23 colores contra 20 sembrados) y la prueba debe pasar también sobre una copia de producción.
+        self.assertEqual(len(self._sembrados('ficha.tecnica.caracteristica')), 38)
         Clave = self.env['ficha.tecnica.clave.codigo']
-        counts = {k: Clave.search_count([('kind', '=', k)]) for k in
+        claves = self._sembrados('ficha.tecnica.clave.codigo')
+        counts = {k: len(claves.filtered(lambda c, k=k: c.kind == k)) for k in
                   ('composicion', 'dibujo', 'hilo', 'galga', 'operacion', 'color', 'acabado')}
         self.assertEqual(counts, {'composicion': 11, 'dibujo': 15, 'hilo': 3, 'galga': 9, 'operacion': 3,
                                   'color': 20, 'acabado': 12})

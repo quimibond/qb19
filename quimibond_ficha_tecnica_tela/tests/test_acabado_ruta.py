@@ -17,8 +17,11 @@ class TestAcabadoRuta(TransactionCase):
         Wc = cls.env['mrp.workcenter']
         cls.circular = Wc.create({'name': 'CIRCULAR 99 ruta prueba',
                                   'ft_tipo_id': ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tejido_circular').id})
-        cls.abridora = Wc.create({'name': 'ABRIDORA 99 prueba',
-                                  'ft_tipo_id': ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_abridora').id})
+        # 2.22.0: un tipo propio sin parámetros del artículo; el de la Abridora ya los tiene en producción y la
+        # prueba debe pasar también sobre una copia de producción.
+        abridora_tipo = cls.env['ficha.tecnica.maquina.tipo'].create({'name': 'Abridora ruta prueba',
+                                                                      'code': 'abridora_ruta_prueba'})
+        cls.abridora = Wc.create({'name': 'ABRIDORA 99 prueba', 'ft_tipo_id': abridora_tipo.id})
         cls.tintoreria = ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
         cls.jet = Wc.create({'name': 'JET 99 prueba', 'ft_tipo_id': cls.tintoreria.id})
         cls.rama = Wc.create({'name': 'RAMA 99 prueba',
@@ -58,7 +61,7 @@ class TestAcabadoRuta(TransactionCase):
         self.assertEqual(ramear.ft_proceso_id, rama)
         self.assertIn('18 m/min', ramear.ft_proceso_resumen)
         self.assertIn('JET 99 prueba', ficha.operacion_aviso, "El jet pide datos del artículo y no hay proceso")
-        self.assertNotIn('ABRIDORA', ficha.operacion_aviso, "La abridora aún no tiene parámetros del artículo")
+        self.assertNotIn('ABRIDORA', ficha.operacion_aviso, "Su tipo no pide parámetros del artículo")
         otro = self.env['product.product'].create({'name': 'Otro crudo', 'default_code': 'ZZ099Q22HNT200'})
         ficha.tejido_id = self.env['ficha.tecnica.tejido'].create({'articulo': 'ZZ099Q22HNT200',
                                                                     'product_proceso_id': otro.id})
