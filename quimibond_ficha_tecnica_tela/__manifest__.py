@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.22.0',
+    'version': '19.0.2.23.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -83,6 +83,11 @@ Incluye:
   asignó la Programación de Tintorería) no la cambia el planificador; queda solo el aviso.
 - 2.22.0: el tiempo de rama sale de la ficha: 1000 ÷ (peso × ancho bajando de rama) × (1 − merma) ÷ velocidad,
   con «Usar el tiempo de rama de la ficha» en la operación o en varias listas a la vez.
+- 2.23.0: el tiempo de la ficha también en inspección (rendimiento acabado × 60 ÷ velocidad m/h), devanado y abridora
+  (metros de crudo por kg ÷ velocidad) y tintorería (minutos por baño: tiempo de ciclo del artículo o de la fórmula);
+  capacidad de los jets por producto vigilada contra la ficha (kg por carga o banda de rendimiento, como la
+  Programación) y conversión kg → m de la lista en metros contra 1 ÷ rendimiento de tela acabada, con «Usar los
+  datos de la ficha» en las listas.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
@@ -99,6 +104,7 @@ Incluye:
         'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
         'views/mrp_aviso_maquina_views.xml',  # 2.5.0
         'views/tiempo_rama_views.xml',  # 2.22.0
+        'views/capacidad_conversion_views.xml',  # 2.23.0
         'views/proceso_views.xml',  # 2.8.0
         'views/materia_prima_views.xml',  # 2.9.0
         'views/product_template_views.xml',

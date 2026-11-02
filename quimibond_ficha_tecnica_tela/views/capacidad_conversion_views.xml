@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.23.0 (Dirección General 2026-11-02): capacidad de los jets por producto y conversión kg → m de la lista en
+         metros, vigiladas contra la ficha. Extienden vistas de mrp (otro módulo). -->
+
+    <record id="view_mrp_workcenter_form_ft_capacidad" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.ft.capacidad</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='capacity_ids']/list/field[@name='capacity']" position="after">
+                <field name="ft_capacidad_difiere" column_invisible="True"/>
+                <field name="ft_capacidad_ficha" optional="show" decoration-danger="ft_capacidad_difiere"
+                       invisible="not ft_capacidad_ficha"/>
+                <field name="ft_capacidad_motivo" optional="hide"/>
+                <button name="action_ft_usar_capacidad_ficha" type="object" title="Usar la capacidad de la ficha"
+                        icon="fa-calculator" invisible="not ft_capacidad_difiere"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_mrp_workcenter_ft_capacidades" model="ir.actions.server">
+        <field name="name">Usar las capacidades de la ficha (jets)</field>
+        <field name="model_id" ref="mrp.model_mrp_workcenter"/>
+        <field name="binding_model_id" ref="mrp.model_mrp_workcenter"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_ft_capacidades_ficha()</field>
+    </record>
+
+    <record id="view_mrp_bom_form_ft_conversion" model="ir.ui.view">
+        <field name="name">mrp.bom.form.ft.conversion</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="after">
+                <field name="ft_conversion_difiere" invisible="1"/>
+                <div class="alert alert-warning" role="alert" invisible="not ft_conversion_difiere">
+                    La cantidad del acabado en proceso no es la de la ficha:
+                    <field name="ft_conversion_calculo" class="oe_inline" readonly="1"/>.
+                    <button name="action_ft_usar_conversion_ficha" type="object" string="Usar la conversión de la ficha"
+                            class="btn-link" icon="fa-calculator"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mrp_bom_search_ft_conversion" model="ir.ui.view">
+        <field name="name">mrp.bom.search.ft.conversion</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.view_mrp_bom_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='inactive']" position="after">
+                <filter string="Conversión kg → m distinta de la ficha" name="ft_conversion_difiere"
+                        domain="[('ft_conversion_difiere', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
