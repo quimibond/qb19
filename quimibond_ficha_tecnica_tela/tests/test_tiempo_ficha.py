@@ -5,6 +5,7 @@ copia de producción)."""
 from datetime import date
 
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import float_round
 
 
 @tagged('post_install', '-at_install')
@@ -140,6 +141,11 @@ class TestTiempoFicha(TransactionCase):
         self.tejido.rendimiento_tela_tejida = 20.0
         self.assertEqual(self.jet2._ft_capacidad_jet(self.tela)[0], 0.0, "Fuera de las bandas: no se inventa")
 
+    def _kg_guardables(self, kg):
+        """Los kg como los guarda la línea: con la precisión de su cantidad (2 decimales en una base nueva)."""
+        digits = self.env['mrp.bom.line']._fields['product_qty'].get_digits(self.env)[1]
+        return float_round(kg, precision_digits=digits)
+
     def test_05_conversion_a_metros(self):
         self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 0.125, places=4, msg="1 m ÷ 8 m/kg")
         self.assertTrue(self.bom_m.ft_conversion_difiere)
@@ -147,8 +153,8 @@ class TestTiempoFicha(TransactionCase):
         self.assertFalse(self.bom.ft_conversion_kg, "La lista en kg no es de conversión")
         self.bom_m.action_ft_usar_conversion_ficha()
         self.env.invalidate_all()
-        self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, 0.125, places=4)
-        self.assertFalse(self.bom_m.ft_conversion_difiere)
+        self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)
+        self.assertFalse(self.bom_m.ft_conversion_difiere, "Lo más cerca que la línea puede guardar ya no avisa")
         self.assertNotIn(self.bom_m, self.env['mrp.bom'].search([('ft_conversion_difiere', '=', True)]))
 
     def test_06_usar_los_datos_de_la_ficha_en_listas_archivadas(self):
@@ -158,4 +164,4 @@ class TestTiempoFicha(TransactionCase):
         self.assertAlmostEqual(self.op_abr.time_cycle_manual, 0.44, places=4)
         self.assertAlmostEqual(self.op_insp.time_cycle_manual, 0.8, places=4)
         self.assertEqual(self.op_tint.time_cycle_manual, 240.0, "La capacidad va antes que el tiempo por baño")
-        self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, 0.125, places=4)
+        self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)

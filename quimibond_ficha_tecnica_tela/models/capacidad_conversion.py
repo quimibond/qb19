@@ -19,6 +19,7 @@ kg: por cada metro, 1 ÷ el rendimiento de tela acabada de la ficha de acabado. 
 (más de 0.5 %) y «Usar los datos de la ficha» la corrige.
 """
 from odoo import api, fields, models
+from odoo.tools import float_round
 
 from .maquina_config import _fmt
 from .mrp_aviso_maquina import GRUPOS, TIPO_TINTORERIA
@@ -165,13 +166,13 @@ class MrpBomConversionFicha(models.Model):
         return line, kg_ficha, '%s m ÷ %s m/kg = %s kg de %s' % (
             _fmt(metros), _fmt(rendimiento), '%.4f' % kg_ficha, proceso.default_code or proceso.name)
 
-    def _ft_kg_linea(self, line):
+    def _ft_kg_guardables(self, line, kg_ficha):
+        """Los kg de la ficha como los puede guardar la línea (en su unidad y con la precisión de su cantidad):
+        una línea con 2 decimales no puede tener 0.125, y avisar por eso sería avisar para siempre."""
         kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
-        if line.product_uom_id == kg:
-            return line.product_qty
-        if kg and line.product_uom_id._has_common_reference(kg):
-            return line.product_uom_id._compute_quantity(line.product_qty, kg, round=False)
-        return 0.0
+        qty = kg_ficha if line.product_uom_id == kg else kg._compute_quantity(kg_ficha, line.product_uom_id, round=False)
+        digits = line._fields['product_qty'].get_digits(self.env)
+        return float_round(qty, precision_digits=digits[1]) if digits else round(qty, 4)
 
     @api.depends('product_id', 'product_tmpl_id', 'product_qty', 'product_uom_id', 'bom_line_ids.product_qty',
                  'bom_line_ids.product_id', 'bom_line_ids.product_uom_id')
@@ -180,8 +181,11 @@ class MrpBomConversionFicha(models.Model):
             line, kg_ficha, texto = bom._ft_conversion()
             bom.ft_conversion_kg = kg_ficha
             bom.ft_conversion_calculo = texto
-            bom.ft_conversion_difiere = bool(kg_ficha) and bool(line) and (
-                abs(bom._ft_kg_linea(line) - kg_ficha) > kg_ficha * TOLERANCIA_REL)
+            if kg_ficha and line:
+                esperado = bom._ft_kg_guardables(line, kg_ficha)
+                bom.ft_conversion_difiere = abs(line.product_qty - esperado) > max(esperado * TOLERANCIA_REL, 1e-9)
+            else:
+                bom.ft_conversion_difiere = False
 
     def _search_ft_conversion_difiere(self, operator, value):
         """Solo «distinta» / «igual»: revisa las listas en metros (también las archivadas)."""
@@ -199,12 +203,9 @@ class MrpBomConversionFicha(models.Model):
 
     def action_ft_usar_conversion_ficha(self):
         """Pasa a la línea del acabado en proceso los kg de la ficha (en la unidad de la línea)."""
-        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
         for bom in self.filtered('ft_conversion_difiere'):
             line, kg_ficha, _texto = bom._ft_conversion()
-            qty = kg_ficha if line.product_uom_id == kg else kg._compute_quantity(
-                kg_ficha, line.product_uom_id, round=False)
-            line.product_qty = round(qty, 4)
+            line.product_qty = bom._ft_kg_guardables(line, kg_ficha)
         return True
 
     def action_ft_datos_ficha(self):
