@@ -126,6 +126,27 @@
         <field name="value_float">10000</field>
         <field name="help">Un producto con menos unidades clasificadas en la ventana usa la tasa de planta: pocos metros dan porcentajes sin sentido.</field>
     </record>
+    <record id="param_rendimiento_plan_cobertura" model="qb.parametro">
+        <field name="key">rendimiento_plan_cobertura</field>
+        <field name="name">Cobertura de la primera para planear</field>
+        <field name="tipo">float</field>
+        <field name="value_float">0.90</field>
+        <field name="help">La clasificación final pide los kg con el rendimiento de primera que alcanzan o superan esta fracción de los lotes de la tela (0.90 = 9 de cada 10). Más alto = menos órdenes cortas y más sobrante en existencia.</field>
+    </record>
+    <record id="param_rendimiento_plan_min_lotes" model="qb.parametro">
+        <field name="key">rendimiento_plan_min_lotes</field>
+        <field name="name">Lotes mínimos para la primera para planear propia</field>
+        <field name="tipo">float</field>
+        <field name="value_float">8</field>
+        <field name="help">Con menos lotes medidos, la tela planea con el valor de planta (la misma cobertura sobre todos los lotes).</field>
+    </record>
+    <record id="param_rendimiento_plan_min_lote" model="qb.parametro">
+        <field name="key">rendimiento_plan_min_lote</field>
+        <field name="name">Unidades mínimas de un lote para planear</field>
+        <field name="tipo">float</field>
+        <field name="value_float">500</field>
+        <field name="help">Lotes con menos unidades clasificadas (retazos, reprocesos) no entran al cálculo de la primera para planear.</field>
+    </record>
     <record id="param_tipos_flujo_nuevo" model="qb.parametro">
         <field name="key">tipos_flujo_nuevo</field>
         <field name="name">Tipos de operación del flujo en dos niveles (ids)</field>

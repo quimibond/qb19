@@ -25,7 +25,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
-# 1.9.0: gasto variable mínimo (pesos) para que un centro sin horas bloquee el cierre.
+# 1.10.0: gasto variable mínimo (pesos) para que un centro sin horas bloquee el cierre.
 TOLERANCIA_VARIABLE = 1.0
 
 
@@ -97,7 +97,7 @@ class QbPeriodo(models.Model):
              'compuerta que no se cumple.')
     avisos_cierre = fields.Text(
         string='Avisos al cerrar', readonly=True,
-        help='1.9.0: lo que no impide cerrar pero conviene saber. Un centro '
+        help='1.10.0: lo que no impide cerrar pero conviene saber. Un centro '
              'sin horas en el mes y sin gasto variable: su gasto fijo queda '
              'como ociosidad y los productos que pasan por él salen con costo '
              'incompleto.')
@@ -371,7 +371,7 @@ class QbPeriodo(models.Model):
     # Compuerta de cierre
     # ------------------------------------------------------------------
     def _avisos_cierre(self):
-        """1.9.0: lo que no impide cerrar pero conviene saber."""
+        """1.10.0: lo que no impide cerrar pero conviene saber."""
         self.ensure_one()
         out = []
         if not self.calculado_el:
@@ -409,7 +409,7 @@ class QbPeriodo(models.Model):
                 out.append('El centro %s no tiene horas normales (sin '
                            'calendario ni capacidad capturada).'
                            % t.centro_id.code)
-            # 1.9.0: sin horas reales bloquea solo si el centro tiene gasto
+            # 1.10.0: sin horas reales bloquea solo si el centro tiene gasto
             # variable, que sin horas no se reparte y se pierde. Con solo gasto
             # fijo, ese fijo queda completo como ociosidad: es un aviso.
             if t.horas_reales_fuente == 'ninguna' and t.pool_variable > TOLERANCIA_VARIABLE:

@@ -166,6 +166,10 @@ class QbProductoValidacion(models.Model):
         kg_ficha, ficha = Horas.kg_por_unidad_ficha(product)
         if not kg_ficha:
             return []
+        # 1.9.0: la lista pide los kg con la primera para planear (para que la
+        # venta llegue completa); el costeo sigue con 1 ÷ rendimiento.
+        plan = self.env['qb.producto.rendimiento'].plan_para(product)[0] or 1.0
+        kg_ficha = kg_ficha / plan
         out = []
         qty_bom = Horas._qty_bom_en_uom_producto(bom, product)
         for line in bom.bom_line_ids:
@@ -179,10 +183,10 @@ class QbProductoValidacion(models.Model):
             pct = 100.0 * (kg_lista - kg_ficha) / kg_ficha
             if abs(pct) > tol_pct:
                 out.append((comp, pct, '%s consume %.4f kg de %s por %s; la ficha %s da '
-                            '%.4f (1 ÷ %.4f m/kg): %+.1f %%' % (
+                            '%.4f (1 ÷ %.4f m/kg ÷ %.4f de primera para planear): %+.1f %%' % (
                                 bom.display_name, kg_lista, comp.default_code,
                                 product.uom_id.name, ficha.display_name, kg_ficha,
-                                getattr(ficha, 'rendimiento_tela_acabada', 0.0), pct)))
+                                getattr(ficha, 'rendimiento_tela_acabada', 0.0), plan, pct)))
         return out
 
     def _aplicar(self, products, hallazgos):

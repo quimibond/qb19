@@ -103,7 +103,7 @@ class TestPeriodo(CosteoCase):
             self.periodo.action_cerrar()         # no calculado
         self.periodo.action_calcular()
         self.assertIn('sin clasificar', self.periodo.bloqueos)
-        # 1.9.0: TIN tiene gasto variable sin horas (se perdería): bloquea.
+        # 1.10.0: TIN tiene gasto variable sin horas (se perdería): bloquea.
         # ACA solo tiene fijo: aviso, no bloqueo.
         self.assertIn('TIN no tiene horas reales', self.periodo.bloqueos)
         self.assertNotIn('ACA', self.periodo.bloqueos)
@@ -250,7 +250,7 @@ class TestPeriodo(CosteoCase):
         self.assertFalse([b for b in self.periodo._bloqueos_cierre() if 'ABR' in b])
 
     def test_centro_sin_horas_y_sin_variable_no_bloquea(self):
-        """1.9.0: un centro sin horas en el mes y sin gasto variable (Entretelas,
+        """1.10.0: un centro sin horas en el mes y sin gasto variable (Entretelas,
         Inspección y Empaque mientras no corren en Odoo) no impide cerrar: su
         fijo queda como ociosidad y el cierre lo deja en avisos y en el chatter."""
         self.gasto(self.acc_renta, 10000)        # 6k TIN / 4k ACA, solo fijo
