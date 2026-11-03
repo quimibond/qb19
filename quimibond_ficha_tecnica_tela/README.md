@@ -959,3 +959,25 @@ bandas. La Programación (`_capacidad_jet`) conserva por ahora su propia copia d
 operaciones cuyo tiempo no es el de la ficha, también las de listas archivadas, sin abrir lista por lista.
 
 Pruebas: `tests/test_tiempo_ficha.py`.
+
+## Revisión de listas en kg y pendientes por área (2.24.0, Dirección General 2026-11-03)
+
+Lo que revisó a mano la auditoría de las listas en kg de octubre, dentro de Odoo, para que cada área vea sus pendientes
+y se sepa qué telas pueden entrar en cada ola (Fichas técnicas → Tela):
+
+- **Revisión de listas en kg**: una fila por ficha de acabado, en verde si está lista y en rojo con el número de
+  pendientes y las áreas. Filtros por área, «Con pendientes», «Listas» y «Lista en kg activa». En la tela: «Usar los
+  datos de la ficha» (capacidad de jets, tiempos y conversión, 2.23.0) y «Volver a revisar».
+- **Pendientes por área**: una fila por pendiente, agrupada por área y tipo, con el detalle, la máquina y la lista.
+
+| Pendiente | Área |
+|---|---|
+| Ficha sin acabado en proceso (kg), falta la lista en kg o en metros, crudo distinto de la ficha, conversión kg → m | Ingeniería (Innovación) |
+| Máquina sin proceso del artículo, tiempo en cero, falta un dato para el tiempo, tiempo distinto de la ficha | La del tipo de máquina: Tintorería, Acabado (ramas), Inspección, Manufactura (devanado y abridora) |
+| Falta la capacidad del jet para el producto o es distinta de la ficha | Tintorería |
+
+Es una foto: se rehace cada noche (acción planificada «Fichas técnicas - Revisión de listas en kg») y con
+**Actualizar**; no cambia nada en las listas. Las listas archivadas cuentan (las listas en kg nacen archivadas hasta que
+Ingeniería las revisa).
+
+Pruebas: `tests/test_revision_listas.py` (con los datos de `tests/test_tiempo_ficha.py`).

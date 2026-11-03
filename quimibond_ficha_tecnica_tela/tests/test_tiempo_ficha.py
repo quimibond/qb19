@@ -8,8 +8,9 @@ from odoo.tests import TransactionCase, tagged
 from odoo.tools import float_round
 
 
-@tagged('post_install', '-at_install')
-class TestTiempoFicha(TransactionCase):
+class TiempoFichaCase(TransactionCase):
+    """Datos comunes (2.24.0: también los usa la revisión de listas): una tela ZZ931 con su lista en kg (devanado,
+    tintorería, abridora, inspección), su lista en metros y sus procesos."""
 
     @classmethod
     def _param(cls, tipo, code, unit, ambito, kind='num'):
@@ -87,6 +88,10 @@ class TestTiempoFicha(TransactionCase):
         cls.p_jet = Proceso.create({'articulo': 'IZZ931Q22JNT165', 'workcenter_id': cls.jet.id})
         cls.p_jet._ft_set_value('tiempo_ciclo', 4)
         Proceso.create({'articulo': 'IZZ931Q22JNT165', 'workcenter_id': cls.jet2.id})._ft_set_value('tiempo_ciclo', 3)
+
+
+@tagged('post_install', '-at_install')
+class TestTiempoFicha(TiempoFichaCase):
 
     def test_01_inspeccion(self):
         self.assertAlmostEqual(self.op_insp.ft_tiempo_ficha, 0.8, places=4, msg="8 m/kg × 60 ÷ 600 m/h")

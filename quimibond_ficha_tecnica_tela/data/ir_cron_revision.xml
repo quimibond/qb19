@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- 2.24.0: la revisión de listas en kg se rehace cada noche (no cambia nada en las listas). -->
+        <record id="cron_ft_revision_listas" model="ir.cron">
+            <field name="name">Fichas técnicas - Revisión de listas en kg</field>
+            <field name="model_id" ref="model_ficha_tecnica_revision"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_ft_actualizar()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=8, minute=17, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+    </data>
+</odoo>
