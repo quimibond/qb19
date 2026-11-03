@@ -260,3 +260,28 @@ class FichaTecnicaRevisionPendiente(models.Model):
     operation_id = fields.Many2one('mrp.routing.workcenter', string='Operación', ondelete='set null')
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', ondelete='set null')
     bom_id = fields.Many2one('mrp.bom', string='Lista de materiales', ondelete='set null')
+
+    # 2.24.0 (Dirección General 2026-11-03): cada pendiente abre el lugar donde se corrige, para que nadie tenga que
+    # saber en qué menú se captura cada dato.
+    def _ft_abrir(self, record, name=None, target='current'):
+        return {'type': 'ir.actions.act_window', 'name': name or record.display_name, 'res_model': record._name,
+                'view_mode': 'form', 'res_id': record.id, 'target': target}
+
+    def action_ft_resolver(self):
+        """«Resolver»: abre el formulario donde se corrige el pendiente."""
+        self.ensure_one()
+        op, acabado = self.operation_id, self.revision_id.acabado_id
+        if self.tipo == 'sin_proceso' and op:
+            return op.action_ft_nuevo_proceso()  # los datos de la tela en esa máquina (los crea si no hay)
+        if self.tipo == 'dato' and op.ft_proceso_id:
+            return op.ft_proceso_id.action_ft_editar()
+        if self.tipo in ('tiempo_cero', 'tiempo_distinto', 'dato') and op:
+            return self._ft_abrir(op, 'Operación: %s' % op.name)  # «Usar el tiempo de la ficha» está ahí
+        if self.tipo in ('capacidad_falta', 'capacidad_distinta') and self.workcenter_id:
+            return self._ft_abrir(self.workcenter_id)  # pestaña Capacidades, «Usar la capacidad de la ficha»
+        if self.tipo == 'datos_tejido' and acabado.tejido_id:
+            return self._ft_abrir(acabado.tejido_id, 'Ficha de tejido')
+        if self.tipo in ('crudo', 'conversion') and self.bom_id:
+            return self._ft_abrir(self.bom_id)
+        # Sin acabado en kg, sin listas, ficha sin peso o rendimiento: la ficha de acabado («Generar listas» vive ahí).
+        return self._ft_abrir(acabado, 'Ficha de acabado')

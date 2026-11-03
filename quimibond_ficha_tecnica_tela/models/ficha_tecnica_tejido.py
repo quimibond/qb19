@@ -6,6 +6,9 @@ from odoo.exceptions import ValidationError
 
 # 2.3.0: datos de máquina que la ficha toma de la configuración de la máquina con la que se elaboró.
 MACHINE_CONFIG_FIELDS = ('galga', 'diametro', 'no_agujas', 'no_alimentadores')
+# 2.24.0: lo que no se copia al agregar otra circular (sale de la configuración de la máquina nueva).
+CAMPOS_DE_LA_MAQUINA = ('maquina_tejido', 'maquina_config_id', 'maquina_tejido_texto', 'marca_maquina') + \
+    MACHINE_CONFIG_FIELDS
 # 2.9.0: diferencia máxima (puntos de %) entre el % de un hilo en la ficha y su parte en la lista de materiales.
 BOM_TOLERANCIA_PCT = 1.0
 HILO_TITULO_RE = re.compile(r'(\d+(?:[.,]\d+)?)\s*/\s*(\d+)')
@@ -338,6 +341,30 @@ class FichaTecnicaTejido(models.Model):
         return {'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {'title': 'Configuración de máquina', 'message': mensaje, 'sticky': bool(pendientes),
                            'type': 'warning' if pendientes else 'success'}}
+
+    # ------------------------------------------------------------------
+    # 2.24.0: el mismo crudo en otra circular
+    # ------------------------------------------------------------------
+    def action_ft_agregar_circular(self):
+        """«Agregar circular» (Dirección General 2026-11-03): abre una ficha nueva del mismo crudo con todo lo de
+        esta (hilos, ajustes de tejido, tela acondicionada y características) y sin máquina. Al elegir la circular, los
+        datos de la máquina salen de su configuración vigente. No toca centros de trabajo ni listas de materiales."""
+        self.ensure_one()
+        vals = self.copy_data()[0]
+        for campo in CAMPOS_DE_LA_MAQUINA:
+            vals.pop(campo, None)
+        vals['fecha_elaboracion'] = fields.Date.context_today(self)  # la configuración vigente es la de hoy
+        hilos = [dict(d) for d in self.hilo_line_ids.copy_data()]
+        specs = [dict(d) for d in self.spec_line_ids.copy_data()]
+        for d in hilos:
+            d.pop('ficha_id', None)
+        for d in specs:
+            d.pop('tejido_id', None)
+        vals['hilo_line_ids'] = [(0, 0, d) for d in hilos]
+        vals['spec_line_ids'] = [(0, 0, d) for d in specs]
+        return {'type': 'ir.actions.act_window', 'name': 'Otra circular para %s' % self.articulo,
+                'res_model': self._name, 'view_mode': 'form', 'target': 'current',
+                'context': {'default_%s' % campo: valor for campo, valor in vals.items()}}
 
     # ------------------------------------------------------------------
     # 2.9.0: hilos contra la lista de materiales del crudo

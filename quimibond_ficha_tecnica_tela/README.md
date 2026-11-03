@@ -43,6 +43,26 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 «Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
 
+## Dónde se captura cada dato (2.24.0)
+
+Cada dato tiene **un dueño**: se captura ahí y en las demás pantallas se ve con la leyenda «Dato de: …» (donde se
+puede editar, es el mismo registro, no una copia). **Nada se escribe solo en las listas de materiales ni en los
+centros de trabajo:** todo pasa por «Usar los datos de la ficha» (o su botón en la operación, el jet o la lista), y la
+revisión de la noche avisa lo que no cuadra.
+
+| Dato | Se captura en | Se ve en | Llega a Odoo (listas, centros de trabajo) |
+|---|---|---|---|
+| La tela: peso, ancho de venta, especificación y tolerancias | **Ficha de acabado** | Producto | No llega |
+| El crudo en cada circular: hilos, ajustes de tejido, tela acondicionada | **Ficha de tejido** (una por circular; «Agregar circular» copia una a otra máquina) | Crudo | No llega |
+| Rendimiento de tela acabada | **Nadie: sale de lo fabricado** (metros ÷ kilos) | Ficha de acabado, producto | Conversión kg → m, con botón |
+| La tela en cada máquina: velocidad, merma, tiempo de ciclo, kg por carga | **Máquinas → Procesos por artículo** (también con el lápiz en la operación o en la máquina) | Operación, máquina, ficha de acabado | Tiempos de las operaciones, con botón |
+| La máquina: galga, capacidad, bandas, relación de baño | **Máquinas → Configuraciones por fecha** | Centro de trabajo | Capacidad de los jets por producto, con botón (las circulares no tienen) |
+| La ruta de la familia | **Artículos → Rutas por familia** | Ficha de acabado | Listas nuevas archivadas, con «Generar listas» |
+
+**Para trabajar no hace falta saberse la tabla:** Artículos → **Pendientes por área**, filtrar el área y pulsar
+**«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
+jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
+
 ## Dónde se ve cada cosa
 
 | Pantalla | Qué hay |

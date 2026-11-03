@@ -19,11 +19,19 @@
                     <div class="text-muted">
                         <field name="ft_tiempo_calculo" readonly="1"/>
                     </div>
+                    <div class="text-muted small">
+                        Dato de: la ficha de acabado y los datos de la tela en esta máquina. Pasa a la lista solo con
+                        «Usar el tiempo de la ficha».
+                    </div>
                 </div>
             </xpath>
             <!-- 2.23.0: los datos de la tela en la máquina de la operación y en sus alternativas. -->
             <xpath expr="//sheet" position="inside">
                 <separator string="Parámetros del proceso (la tela en esta máquina y en sus alternativas)"/>
+                <div class="text-muted small mb-2">
+                    Dato de: los datos de la tela en cada máquina (Máquinas → Procesos por artículo). El lápiz edita el
+                    mismo registro; no es una copia.
+                </div>
                 <button name="action_ft_nuevo_proceso" type="object" string="Agregar los datos de la tela en esta máquina"
                         class="btn-link" icon="fa-plus" invisible="ft_proceso_id"/>
                 <field name="ft_proceso_id" invisible="1"/>

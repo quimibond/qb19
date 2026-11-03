@@ -49,6 +49,20 @@ Comentarios de Jessica revisados con Dirección General (2026-11-03):
   órdenes, y peso real al ancho de venta). El rendimiento sale del encabezado de la ficha.
 - README: tabla «Los anchos» y «El rendimiento de tela acabada».
 
+### Dónde se captura cada dato
+
+Dirección General (2026-11-03): que se entienda desde dónde se llena cada dato, sin reordenar menús.
+
+- **«Resolver» en cada pendiente** (Pendientes por área, revisión y pestaña del producto): abre donde se corrige. Sin
+  proceso → crea y abre los datos de la tela en esa máquina; dato que falta → esos datos; tiempo → la operación;
+  capacidad del jet → el jet; crudo o conversión → la lista; lo demás → la ficha de acabado (o la de tejido).
+- **«Agregar circular»** en la ficha de tejido y en el crudo: ficha nueva del mismo crudo con los hilos, ajustes,
+  tela acondicionada y características de la actual, sin máquina; al elegir la circular, los datos de máquina salen de
+  su configuración. No toca centros de trabajo ni listas.
+- **«Dato de: …»** en la operación (tiempo y parámetros), en la máquina («Telas que corren aquí» y capacidades) y en el
+  aviso de conversión de la lista.
+- README: «Dónde se captura cada dato».
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos
