@@ -18,7 +18,7 @@ taras, bitácora, defectos y restricciones de Inspección se respetan tal cual.
 | D4 | Cada rollo que sale es un **rollo final con lote nuevo**; al final cada uno tiene sus kg y sus metros. |
 | D5 | **Segundas y desperdicio se venden en kg**; primera y FE en metros. |
 | D6 | **Solo se juntan rollos del mismo baño.** |
-| D7 | Se puede **entregar antes de que termine el baño** sin entregar lo que no está en inventario. |
+| D7 | **No se entrega nada hasta que se cierre la orden en kg completa** (el baño). No hay cierre parcial. |
 | D8 | **Una sola estación: Inspección pesa, clasifica y etiqueta.** No hay operación de Clasificación final en Empaque. Inspección tiene báscula. |
 
 ## 2. Evidencia
@@ -53,8 +53,7 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
    etiqueta. El ruteo a 15/16/17 está en su lista de pendientes. El costeo mediría todo como primera.
 3. Dos toques por rollo: Inspección (sin pesar, etiqueta preliminar) y Clasificación final en Empaque (pesa,
    consume, etiqueta final). La clasificación exige el rollo en inventario, o sea la orden en kg cerrada.
-4. El cierre iguala la orden a lo pesado y consume todo el crudo (`button_mark_done`): no hay cierre parcial.
-5. Se consume el kg de rama (`_clasif_asegurar_consumo`), no lo que sale.
+4. Se consume el kg de rama (`_clasif_asegurar_consumo`), no lo que sale.
 
 ## 3. Flujo
 
@@ -79,10 +78,9 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
 **3. Cierre del baño → la orden en metros se registra sola**
 
 - **Automático:** cuando el último rollo pesado del baño (el marcado en rama) y todos los anteriores están
-  inspeccionados, la orden en kg se cierra sola y enseguida se registra la orden en metros (§4.5).
-- **«Liberar lo inspeccionado»** (botón en la orden en kg, grupo de supervisores): cierra la orden en kg solo por los
-  rollos de rama ya inspeccionados y registra en la orden en metros sus rollos finales. Lo pesado sin inspeccionar y
-  lo que falta de rama pasan a la orden pendiente.
+  inspeccionados, la orden en kg se cierra completa y enseguida se registra la orden en metros (§4.5).
+- **No hay cierre parcial** (D7): los rollos finales de un baño no existen en inventario ni se entregan hasta que
+  el baño cierra.
 
 ### Orden en metros
 
@@ -131,18 +129,14 @@ en la misma captura.
 
 ### 4.4 Mismo baño
 
-Baño = orden en kg raíz (la orden y sus pendientes de «Liberar lo inspeccionado» son el mismo baño). Al juntar, todos
-los rollos de rama deben ser del mismo baño; si no, error.
+Baño = orden en kg. Al juntar, todos los rollos de rama deben ser de la misma orden en kg; si no, error.
 
-### 4.5 Registro de la orden en metros y «Liberar lo inspeccionado»
+### 4.5 Registro de la orden en metros
 
-- La orden en metros es la que pidió la orden en kg (origen MTO). El registro corre al cerrar la orden en kg (total o
-  parcial), en la misma transacción: si falla, no se cierra nada.
-- Cierre parcial: nativo de Odoo con pendiente (`backorder`), por los kg de rama de los rollos inspeccionados; el
-  crudo y los tiempos se reparten en proporción y al final del baño el total es el mismo. Los rollos pesados no
-  inspeccionados pasan a la pendiente con sus lotes; la pendiente hereda «Último rollo del baño».
-- El cierre actual de José (iguala la orden a lo pesado, consume todo el crudo) se queda para el cierre final del
-  baño; el parcial es otro camino.
+- La orden en metros es la que pidió la orden en kg (origen MTO). El registro corre al cerrar la orden en kg, en la
+  misma transacción: si falla, no se cierra nada.
+- El cierre de José se queda como está: iguala la orden en kg a lo pesado y consume todo el crudo. No hay cierre
+  parcial ni orden pendiente.
 
 ### 4.6 Consumo y merma
 
@@ -158,7 +152,7 @@ los rollos de rama deben ser del mismo baño; si no, error.
 1. «Último rollo del baño» en PESAR ROLLO.
 2. Inspección como estación única: rollos finales (corte y unión, mismo baño), pesaje con tara de Inspección (la que
    hoy es de «Clasificación final»), calidad, lote nuevo y etiqueta final; desaparece la etiqueta preliminar.
-3. Registro automático de la orden en metros al cerrar el baño; botón «Liberar lo inspeccionado».
+3. Cierre automático del baño con el último rollo inspeccionado y registro automático de la orden en metros.
 4. Producto y ubicación por calidad (§4.3); consumo según §4.6.
 5. Sale el botón CLASIFICAR de Empaque.
 6. Pruebas de los casos de §6.
@@ -181,7 +175,7 @@ va una sola vez, en la orden en kg).
 | 4 | Desperdicio en la revisadora | saldo tejido D en kg, en 17 |
 | 5 | Juntar 2 rollos cortos del mismo baño | 1 rollo final; los dos rollos de rama consumidos |
 | 6 | Juntar rollos de baños distintos | error |
-| 7 | Entregar con la rama a medio baño | «Liberar lo inspeccionado» → los rollos finales quedan en existencia y se pueden entregar; la pendiente sigue |
+| 7 | Rollos finales de un baño que no ha cerrado | no están en existencia; no se pueden entregar |
 | 8 | Último rollo inspeccionado | la orden en kg se cierra sola y la orden en metros queda registrada |
 | 9 | Merma arriba del límite | alerta antes de guardar en Inspección |
 | 10 | Pesaje manual sin motivo | error (como hoy) |
