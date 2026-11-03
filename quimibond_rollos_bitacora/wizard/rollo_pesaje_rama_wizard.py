@@ -1,0 +1,142 @@
+# -*- coding: utf-8 -*-
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+
+class RolloPesajeRamaWizard(models.TransientModel):
+    """Pesaje y registro de un rollo en Rama (diseño §8, puntos 8 y 9; §12.1; §13).
+
+    Único pesaje del rollo en la orden en kg: peso bruto (báscula IoT o captura manual con motivo)
+    menos la tara de Rama = kg netos = cantidad del lote de A. Genera el lote-serie, la bitácora,
+    el movimiento de la MO y la etiqueta pequeña con solo el código de barras.
+    """
+    _name = 'rollo.pesaje.rama.wizard'
+    _inherit = ['scale.wizard.mixin']
+    _description = 'Pesaje de rollo en Rama'
+
+    production_id = fields.Many2one('mrp.production', 'Orden (kg)', required=True, readonly=True)
+    workorder_id = fields.Many2one('mrp.workorder', 'Operación de Rama', required=True, readonly=True)
+    workcenter_id = fields.Many2one(related='workorder_id.workcenter_id', string='Rama')
+    product_id = fields.Many2one(related='production_id.product_id', string='Artículo')
+    lote_origen_id = fields.Many2one('stock.lot', 'Lote de tela cruda (opcional)')
+
+    empleado_numero = fields.Char('Número de empleado', required=True)
+    empleado_nombre = fields.Char('Operador', compute='_compute_empleado_nombre')
+
+    secuencia = fields.Integer('No. de rollo', compute='_compute_secuencia')
+    lote_name = fields.Char('Lote a generar', compute='_compute_secuencia')
+
+    kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
+    tara_kg = fields.Float('Tara de Rama (kg)', digits=(12, 4), compute='_compute_pesos')
+    tara_faltante = fields.Boolean(compute='_compute_pesos')
+    kg_neto = fields.Float('Peso neto (kg)', digits=(12, 4), compute='_compute_pesos')
+
+    @api.depends('empleado_numero')
+    def _compute_empleado_nombre(self):
+        Empleado = self.env['hr.employee']
+        campo = 'x_studio_nmero_de_trabajador'
+        for wiz in self:
+            nombre = False
+            if wiz.empleado_numero and campo in Empleado._fields:
+                emp = Empleado.search([(campo, '=', wiz.empleado_numero)], limit=1)
+                nombre = emp.name if emp else _('EMPLEADO NO ENCONTRADO')
+            wiz.empleado_nombre = nombre
+
+    def _siguiente_secuencia(self):
+        self.ensure_one()
+        ultimo = self.env['mrp.rollo.bitacora'].search(
+            [('production_id', '=', self.production_id.id)], order='secuencia desc', limit=1)
+        return (ultimo.secuencia or 0) + 1
+
+    def _nombre_lote(self, secuencia):
+        """Lote-serie = Orden de Fabricación + No. de rollo (§12.4): mismo formato que
+        pesaje_rollos_tejido (último segmento de la MO, para que quepa en la etiqueta pequeña)."""
+        self.ensure_one()
+        return '%s-%04d' % (self.production_id.name.split('/')[-1], secuencia)
+
+    @api.depends('production_id')
+    def _compute_secuencia(self):
+        for wiz in self:
+            if wiz.production_id:
+                wiz.secuencia = wiz._siguiente_secuencia()
+                wiz.lote_name = wiz._nombre_lote(wiz.secuencia)
+            else:
+                wiz.secuencia = 0
+                wiz.lote_name = False
+
+    @api.depends('product_id', 'kg_bruto')
+    def _compute_pesos(self):
+        Tara = self.env['mrp.tara.producto']
+        for wiz in self:
+            tara = Tara._buscar_tara(wiz.product_id, 'rama') if wiz.product_id else Tara
+            wiz.tara_faltante = bool(wiz.product_id) and not tara
+            wiz.tara_kg = tara.tara_kg
+            wiz.kg_neto = wiz.kg_bruto - tara.tara_kg if tara else 0.0
+
+    def action_confirmar(self):
+        self.ensure_one()
+        produccion = self.production_id
+        if self.kg_bruto <= 0:
+            raise UserError(_('Captura el peso bruto del rollo.'))
+        if self.tara_faltante:
+            raise UserError(_(
+                'No hay tara de Rama para el artículo %s. Captúrala en Manufactura → Configuración → Taras '
+                'por producto; el pesaje no asume tara 0.', self.product_id.display_name))
+        if self.kg_neto <= 0:
+            raise UserError(_('El peso bruto (%.4f kg) no supera la tara (%.4f kg).', self.kg_bruto, self.tara_kg))
+        manual = self.weighing_mode == 'manual'
+        if produccion.product_id.tracking != 'lot':
+            raise UserError(_(
+                'El artículo %s debe tener seguimiento por lote para registrar rollos.',
+                produccion.product_id.display_name))
+
+        secuencia = self._siguiente_secuencia()
+        lote_name = self._nombre_lote(secuencia)
+        if self.env['stock.lot'].search_count([
+                ('name', '=', lote_name), ('product_id', '=', produccion.product_id.id),
+                ('company_id', '=', produccion.company_id.id)]):
+            raise UserError(_('Ya existe el lote %s para este artículo.', lote_name))
+
+        kg_neto = produccion.product_id.uom_id.round(self.kg_neto)
+        lote = self.env['stock.lot'].create({
+            'name': lote_name,
+            'product_id': produccion.product_id.id,
+            'company_id': produccion.company_id.id,
+        })
+        ahora = fields.Datetime.now()
+        rollo = self.env['mrp.rollo.bitacora'].create({
+            'production_id': produccion.id,
+            'secuencia': secuencia,
+            'lote_origen_id': self.lote_origen_id.id,
+            'lot_id': lote.id,
+            'workcenter_rama_id': self.workcenter_id.id,
+            'kg_bruto_rama': self.kg_bruto,
+            'tara_rama': self.tara_kg,
+            'kg_rama': kg_neto,
+            'captura_manual_rama': manual,
+            'operador_rama': ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])),
+            'fecha_registro_rama': ahora,
+            'fecha_etiqueta_rama': ahora,
+        })
+        rollo.zpl_etiqueta_rama = self._zpl_etiqueta_rama(lote_name)
+        produccion._rama_registrar_movimiento(lote, kg_neto, self.workorder_id)
+        # Cierra la ventana de pesaje al descargar/imprimir la etiqueta: los rollos salen de Rama
+        # espaciados en el tiempo, cada uno se pesa abriendo de nuevo PESAR ROLLO.
+        accion = rollo.action_imprimir_etiqueta_rama()
+        accion.update({'close_on_report_download': True})
+        return accion
+
+    def _zpl_etiqueta_rama(self, lote_name):
+        """Etiqueta pequeña de Rama: solo el código de barras del lote-serie (§12.1).
+
+        El tamaño sale de Ajustes (puntos ZPL; 406x203 = 5x2.5 cm a 203 dpi, provisional) y el ancho de
+        módulo se elige el mayor que deja el código completo dentro de la etiqueta.
+        """
+        params = self.env['ir.config_parameter'].sudo()
+        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_ancho', 406))
+        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_alto', 203))
+        modulos = (len(lote_name) + 3) * 11 + 2  # Code 128: inicio + datos + control + paro
+        modulo = next((m for m in (3, 2, 1) if modulos * m <= ancho - 20), 1)
+        x = max((ancho - modulos * modulo) // 2, 0)
+        return '^XA^PW%d^LL%d^CI28\n^BY%d,3,%d^FO%d,%d^BCN,%d,N,N,N^FD%s^FS\n^XZ' % (
+            ancho, alto, modulo, alto - 60, x, 30, alto - 60, lote_name)

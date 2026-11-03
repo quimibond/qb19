@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mrp_tara_producto"
+              name="Taras por producto"
+              parent="mrp.menu_mrp_configuration"
+              action="action_mrp_tara_producto"
+              groups="mrp.group_mrp_user"
+              sequence="60"/>
+    <menuitem id="menu_calidad_defecto_tela"
+              name="Defectos de tela"
+              parent="mrp.menu_mrp_configuration"
+              action="action_calidad_defecto_tela"
+              groups="mrp.group_mrp_user"
+              sequence="61"/>
+    <menuitem id="menu_mrp_inspeccion_restriccion"
+              name="Restricciones de Inspección"
+              parent="mrp.menu_mrp_configuration"
+              action="action_mrp_inspeccion_restriccion"
+              groups="mrp.group_mrp_manager"
+              sequence="62"/>
+    <menuitem id="menu_hr_employee_siglas"
+              name="Siglas de operadores"
+              parent="mrp.menu_mrp_configuration"
+              action="action_hr_employee_siglas"
+              groups="mrp.group_mrp_manager"
+              sequence="63"/>
+    <menuitem id="menu_mrp_rollo_bitacora"
+              name="Bitácora de rollos"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_rollo_bitacora"
+              groups="mrp.group_mrp_user"
+              sequence="45"/>
+</odoo>
