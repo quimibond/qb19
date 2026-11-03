@@ -87,8 +87,7 @@
                     <notebook>
                         <page string="Tela acabada" name="tela_acabada">
                             <!-- 2.24.0: formulario nativo (antes tabla HTML); valor ± tolerancia y unidad en un renglón.
-                                 Arriba la especificación; abajo el rendimiento para planear (de lo fabricado) y la
-                                 especificación contra lo real. -->
+                                 Arriba la especificación; abajo lo real (rendimiento de lo fabricado y peso real). -->
                             <separator string="Especificación"/>
                             <group>
                                 <group string="Medidas">
@@ -149,41 +148,16 @@
                                     <field name="encogimiento_ancho_dentro_norma"/>
                                 </group>
                             </group>
-                            <separator string="Rendimiento para planear"/>
+                            <separator string="Real"/>
                             <group>
                                 <group>
-                                    <field name="rendimiento_tela_acabada" string="Rendimiento para planear (m/kg)"
-                                           readonly="rendimiento_origen == 'real'"/>
-                                    <field name="rendimiento_origen"/>
-                                    <div colspan="2" class="text-muted small">
-                                        Uno solo para toda la planeación: conversión kg → m de la lista en metros y
-                                        tiempos de rama e inspección. Con 3 órdenes terminadas o más en 12 meses sale de
-                                        lo fabricado (metros ÷ kilos) y se recalcula cada noche.
+                                    <field name="rendimiento_tela_acabada" string="Rendimiento (m/kg)"/>
+                                    <div colspan="2" class="text-muted small" invisible="not rendimiento_real_ordenes">
+                                        Metros fabricados ÷ kilos consumidos de
+                                        <field name="rendimiento_real_ordenes" class="oe_inline" readonly="1"/>
+                                        órdenes en 12 meses; se recalcula cada noche.
                                     </div>
-                                    <button name="action_ft_rendimiento_real" type="object"
-                                            string="Recalcular con lo fabricado" class="btn-secondary" colspan="2"/>
-                                </group>
-                                <group string="Lo fabricado">
-                                    <field name="rendimiento_real"/>
-                                    <field name="rendimiento_real_m"/>
-                                    <field name="rendimiento_real_kg"/>
-                                    <field name="rendimiento_real_ordenes"/>
-                                    <field name="rendimiento_real_desde"/>
-                                    <field name="rendimiento_real_fecha"/>
-                                </group>
-                            </group>
-                            <separator string="Especificación contra lo real"/>
-                            <group>
-                                <group string="Rendimiento">
-                                    <field name="rendimiento_especificacion" string="Especificación (m/kg)"/>
-                                    <field name="rendimiento_real" string="Real (m/kg)"/>
-                                    <field name="rendimiento_diferencia" string="Diferencia (%)"/>
-                                </group>
-                                <group string="Peso">
-                                    <field name="peso_acabado" string="Especificación (g/m²)" readonly="1"/>
-                                    <field name="peso_real" string="Real (g/m²)"/>
-                                    <field name="peso_real_diferencia" string="Diferencia (%)"/>
-                                    <field name="peso_real_resultado" string="Contra la tolerancia"/>
+                                    <field name="peso_real"/>
                                 </group>
                             </group>
                         </page>
@@ -287,7 +261,7 @@
                             </field>
                         </page>
                         <page string="Características" name="caracteristicas">
-                            <p class="text-muted">Especificación del cliente y control interno por característica. El control interno nunca se imprime al cliente. «Real» trae lo fabricado en los renglones de masa (peso real) y rendimiento.</p>
+                            <p class="text-muted">Especificación del cliente y control interno por característica. El control interno nunca se imprime al cliente.</p>
                             <field name="spec_line_ids" context="{'default_acabado_id': id}">
                                 <list editable="bottom" open_form_view="1">
                                     <field name="sequence" widget="handle"/>
@@ -308,11 +282,6 @@
                                     <field name="ctrl_tol_minus" optional="show" readonly="kind != 'num'"/>
                                     <field name="ctrl_tol_plus" optional="show" readonly="kind != 'num'"/>
                                     <field name="method" optional="hide"/>
-                                    <field name="real_valor" optional="show"/>
-                                    <field name="real_resultado" optional="show" widget="badge"
-                                           decoration-success="real_resultado == 'cumple'"
-                                           decoration-warning="real_resultado == 'desviacion'"
-                                           decoration-danger="real_resultado == 'no_conforme'"/>
                                     <field name="in_customer_spec" optional="show"/>
                                     <field name="in_coa" optional="show"/>
                                     <field name="note" optional="show"/>

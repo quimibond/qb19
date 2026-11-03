@@ -55,16 +55,6 @@
                             <field name="ft_peso"/>
                             <field name="ft_ancho"/>
                             <field name="ft_rendimiento"/>
-                            <field name="ft_rendimiento_origen"/>
-                            <field name="ft_rendimiento_especificacion"/>
-                            <field name="ft_peso_real"/>
-                            <label for="ft_ancho_rama"/>
-                            <div class="o_row">
-                                <field name="ft_ancho_rama"/>
-                                <span class="text-muted" invisible="not ft_ancho_rama_origen">
-                                    (<field name="ft_ancho_rama_origen" class="oe_inline"/>)
-                                </span>
-                            </div>
                             <field name="ft_producto_kg_id"/>
                             <field name="ft_producto_m_id"/>
                         </group>
@@ -98,7 +88,7 @@
                             <field name="ft_tiempo_calculo" string="Cálculo" optional="show"/>
                         </list>
                     </field>
-                    <separator string="Especificación contra lo real (de la ficha de acabado, pestaña «Características»)" invisible="not ft_es_tela"/>
+                    <separator string="Especificación (de la ficha de acabado, pestaña «Características»)" invisible="not ft_es_tela"/>
                     <field name="ft_spec_ids" readonly="1" invisible="not ft_es_tela">
                         <list>
                             <field name="name"/>
@@ -106,11 +96,6 @@
                             <field name="spec_nominal"/>
                             <field name="spec_tol_minus"/>
                             <field name="spec_tol_plus"/>
-                            <field name="real_valor"/>
-                            <field name="real_resultado" widget="badge"
-                                   decoration-success="real_resultado == 'cumple'"
-                                   decoration-warning="real_resultado == 'desviacion'"
-                                   decoration-danger="real_resultado == 'no_conforme'"/>
                             <field name="method" optional="show"/>
                         </list>
                     </field>

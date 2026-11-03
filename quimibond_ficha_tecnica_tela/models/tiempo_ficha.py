@@ -26,15 +26,9 @@ cargaron los tiempos en producción el 30-oct:
   Programación de Tintorería está instalada). Es el mismo orden que usa la Programación. Un ciclo de Odoo es la
   capacidad del jet para el producto, así que solo hay tiempo de la ficha si esa capacidad está capturada.
 
-2.24.0 (Dirección General 2026-11-03): **un solo rendimiento** para planear. La rama ya no usa peso × ancho bajando
-de rama: usa el rendimiento de tela acabada de la ficha, que sale de lo fabricado (metros ÷ kilos de sus órdenes,
-``rendimiento_real.py``) cuando la tela tiene historia:
-
-    min/kg = rendimiento de lo fabricado ÷ velocidad            (ya trae la merma)
-    min/kg = rendimiento capturado × (1 − merma %) ÷ velocidad  (tela sin historia)
-
-Corre en todas las máquinas de tipo «Acabado» (ramas), tengan o no capturado el ancho bajando de rama, que queda
-como dato de la tela (ancho de rollo en rama). Inspección usa el mismo rendimiento.
+2.24.0 (Dirección General 2026-11-03): **un solo rendimiento**. La rama ya no usa peso × ancho bajando de rama ni
+merma: min/kg = rendimiento de tela acabada de la ficha ÷ velocidad. El rendimiento sale de lo fabricado (metros ÷
+kilos, ``rendimiento_real.py``) y ya trae la merma. Corre en todas las máquinas de tipo «Acabado» (ramas).
 
 Si falta un dato, no hay tiempo y se dice cuál falta: un dato vacío es un dato que la planta no ha dado, nunca un cero.
 
@@ -131,9 +125,8 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
         return 0.0, False
 
     def _ft_tiempo_rama(self):
-        """(minutos por ciclo, texto del cálculo o del dato que falta). 2.24.0: el rendimiento de tela acabada de la
-        ficha ÷ la velocidad de la rama, el mismo rendimiento que la conversión a metros y la inspección. Si sale
-        de lo fabricado ya trae la merma; si es el capturado en la ficha, se le quita la merma de la rama."""
+        """(minutos por ciclo, texto del cálculo o del dato que falta). 2.24.0: rendimiento de tela acabada de la
+        ficha (de lo fabricado, ya trae la merma) ÷ velocidad de la rama."""
         self.ensure_one()
         proceso = self.ft_proceso_id
         if not proceso:
@@ -143,28 +136,17 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
         faltan = []
         acabado = proceso.ficha_acabado_id
         rendimiento = acabado.rendimiento_tela_acabada
-        real = acabado.rendimiento_origen == 'real'
-        merma = proceso._ft_value('merma')
         velocidad = proceso._ft_value('velocidad')
         if not acabado:
             faltan.append('la ficha de acabado')
         elif not rendimiento:
             faltan.append('el rendimiento de tela acabada en la ficha de acabado')
-        if not real and not merma:
-            faltan.append('la merma')
         if not velocidad:
             faltan.append('la velocidad')
         if faltan:
             return 0.0, 'Falta %s en %s.' % (', '.join(faltan), proceso.display_name)
-        if real:
-            netos = rendimiento
-            texto = '%s m/kg (lo fabricado, ya con merma)' % _fmt(rendimiento)
-        else:
-            netos = rendimiento * (1.0 - merma / 100.0)
-            texto = '%s m/kg (capturado en la ficha) × (1 − %s %%) = %s m/kg' % (
-                _fmt(rendimiento), _fmt(merma), _fmt(round(netos, 2)))
-        por_kg = netos / velocidad
-        texto += ' ÷ %s m/min = %s min/kg' % (_fmt(velocidad), '%.4f' % por_kg)
+        por_kg = rendimiento / velocidad
+        texto = '%s m/kg ÷ %s m/min = %s min/kg' % (_fmt(rendimiento), _fmt(velocidad), '%.4f' % por_kg)
         return self._ft_por_ciclo(por_kg, texto)
 
     def _ft_tiempo_inspeccion(self):

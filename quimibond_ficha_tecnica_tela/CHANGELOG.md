@@ -34,25 +34,20 @@ Comentarios de Jessica revisados con Dirección General (2026-11-03):
   Mismos campos; no cambia ningún dato.
 - **Producto → «Ficha técnica» de solo lectura:** peso, ancho y rendimiento ya no se editan desde el producto (se quita
   el inverso hacia la ficha de acabado); se editan en el módulo. Cada bloque liga la ficha de la que sale («Sale de la
-  ficha de acabado», «Sale de la ficha de tejido») y la ayuda de cada campo dice la pestaña y el campo de origen.
-  Nuevo: **ancho bajando de rama** con la rama y el artículo de donde sale. En la ruta, las columnas Lista y Cálculo se
-  ven sin abrir el menú de columnas.
+  ficha de acabado», «Sale de la ficha de tejido») y la ayuda de cada campo dice la pestaña y el campo de origen. En la
+  ruta, las columnas Lista y Cálculo se ven sin abrir el menú de columnas.
 - **Nombres de los anchos:** «Ancho» de la ficha de acabado → **Ancho de venta (especificación)**; «Ancho» de la tela
-  acondicionada → **Ancho de crudo relajado**; «Ancho de rollo» de la ficha de tejido → **Ancho de rollo de crudo**; en
-  el producto, el parámetro «Ancho bajando de rama» se muestra como **Ancho de rollo en rama**. Solo etiquetas.
-- **Un solo rendimiento para planear, de lo fabricado:** metros producidos ÷ kilos de tela consumidos en las órdenes
-  terminadas de la tela de los últimos 12 meses (sin químicos). Con 3 órdenes o más es el rendimiento de tela acabada
-  de la ficha (no se edita a mano); con menos se queda el capturado. Se recalcula cada noche antes de la revisión y con
-  «Recalcular con lo fabricado» (`models/rendimiento_real.py`). No cambia ninguna lista: la revisión marca las que ya
-  no cuadran.
-- **Tiempo de rama con el mismo rendimiento:** rendimiento ÷ velocidad (× (1 − merma) solo si es el capturado). Ya no
-  usa peso × ancho bajando de rama, y corre en todas las ramas (tipo «Acabado»), tengan o no el ancho capturado.
-- **Pestaña «Tela acabada»:** Especificación (medidas, encogimiento y elongación), Rendimiento para planear (con lo
-  fabricado: metros, kilos, órdenes, desde) y Especificación contra lo real (rendimiento y peso real contra la
-  tolerancia). El rendimiento sale del encabezado de la ficha. En Características, columnas «Real» y «Real contra
-  especificación» para masa y rendimiento; también en la pestaña del producto.
-- README: tabla «Los anchos» (qué ancho es cada campo, dónde se captura y quién lo usa) y «El rendimiento para
-  planear».
+  acondicionada → **Ancho de crudo relajado**; «Ancho de rollo» de la ficha de tejido → **Ancho de rollo de crudo**.
+  Solo etiquetas.
+- **Un solo rendimiento, de lo fabricado:** el rendimiento de tela acabada de la ficha = metros producidos ÷ kilos de
+  tela consumidos (sin químicos) en las órdenes terminadas de la tela de los últimos 12 meses; sin órdenes se queda el
+  capturado. Se recalcula cada noche antes de la revisión (`models/rendimiento_real.py`). No cambia ninguna lista: la
+  revisión marca las que ya no cuadran.
+- **Tiempo de rama** = rendimiento ÷ velocidad, en todas las ramas (tipo «Acabado»). Ya no usa peso × ancho bajando de
+  rama ni merma: el rendimiento de lo fabricado ya la trae.
+- **Pestaña «Tela acabada»:** Especificación (medidas, encogimiento y elongación) y Real (rendimiento, de cuántas
+  órdenes, y peso real al ancho de venta). El rendimiento sale del encabezado de la ficha.
+- README: tabla «Los anchos» y «El rendimiento de tela acabada».
 
 ## 19.0.2.23.0 — 2026-11-03
 

@@ -49,7 +49,7 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 |---|---|
 | **Fichas técnicas → Artículos → Acabado** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
 | **Artículos → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
-| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho, rendimiento, ancho bajando de rama y de qué rama), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
+| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho de venta y rendimiento), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
 | **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
 | **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
@@ -78,7 +78,7 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 | Operación | Cuenta |
 |---|---|
-| Rama | rendimiento para planear m/kg ÷ velocidad m/min (2.24.0; si el rendimiento es el capturado y no el de lo fabricado, × (1 − merma)) |
+| Rama | rendimiento de tela acabada m/kg ÷ velocidad m/min (2.24.0: el rendimiento de lo fabricado ya trae la merma) |
 | Inspección | rendimiento de tela acabada m/kg × 60 ÷ velocidad de inspección m/h (rollos con 1 empalme) |
 | Devanado | kg de crudo por kg × rendimiento de tejido ÷ velocidad m/min |
 | Abridora | igual, con la velocidad de tela tubular o abierta según sale del tejido (si no, la general) |
@@ -172,33 +172,25 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 | **Ancho de bastidor** (ficha de tejido → Ajustes de tejido) | El bastidor de la circular (ajuste de la máquina) | Ficha de tejido | Ningún cálculo |
 | **Ancho de rollo de crudo** (`ancho_rollo`, ficha de tejido → Ajustes de tejido) | El rollo de crudo que sale de la circular | Ficha de tejido | Ningún cálculo |
 | **Ancho de crudo relajado** (`ancho_acondicionado`, ficha de tejido → Tela acondicionada) | El crudo acondicionado, tubular o abierto según la circular | Ficha de tejido | Rendimiento de tejido → devanado, abridora y banda del jet |
-| **Ancho de rollo en rama** (parámetro `ancho_rama` «Ancho bajando de rama», Procesos de la tela → rama) | El rollo que sale de la rama | Proceso del artículo `I…` en cada rama | Tiempo de la rama; el producto lo muestra con la rama de donde sale |
+| **Ancho de rollo en rama** (parámetro `ancho_rama` «Ancho bajando de rama», Procesos de la tela → rama) | El rollo que sale de la rama | Proceso del artículo `I…` en cada rama | Ningún cálculo desde 2.24.0 |
 | **Ancho de venta (especificación)** (`ancho_acabado`, ficha de acabado → Tela acabada) | El de especificación, el mismo del código (`…160` = 160 cm) | Ficha de acabado | Hoy: rendimiento de tela acabada (kg → m), peso por metro del costeo, especificación |
 
-El ancho de rollo en rama ya no entra a ningún cálculo desde 2.24.0: la rama usa el rendimiento para planear.
+El ancho de rollo en rama ya no entra a ningún cálculo desde 2.24.0: la rama usa el rendimiento de tela acabada.
 
-## El rendimiento para planear (2.24.0)
+## El rendimiento de tela acabada (2.24.0)
 
-**Uno solo para toda la planeación de los procesos de acabado** (Dirección General, 2026-11-03): el
-`rendimiento_tela_acabada` de la ficha de acabado, en la pestaña «Tela acabada» → «Rendimiento para planear».
+**Uno solo** (Dirección General, 2026-11-03): metros de la tela acabada fabricados ÷ kilos de tela consumidos (crudo,
+teñido o acabado en kg; sin engomado ni químicos) en sus órdenes terminadas de los **últimos 12 meses**. Ya trae la
+merma y el peso real. Se recalcula cada noche, antes de la revisión de listas; sin órdenes, se queda el capturado.
 
-- **Sale de lo fabricado:** metros de la tela acabada producidos ÷ kilos de tela consumidos (crudo, teñido o acabado en
-  kg; sin engomado ni químicos) en sus órdenes terminadas de los **últimos 12 meses**. Ya trae la merma y el peso real
-  del rollo.
-- Con **3 órdenes o más** ese número es el rendimiento de la ficha y no se edita a mano (origen «Lo fabricado»). Con
-  menos, se queda el capturado (origen «Capturado en la ficha»). Se recalcula cada noche, antes de la revisión de
-  listas, y con «Recalcular con lo fabricado».
-- Lo usan la conversión kg → m de la lista en metros (× la primera para planear), el tiempo de rama (÷ velocidad) y el
-  de inspección (× 60 ÷ velocidad). **Nunca cambia una lista solo**: la revisión marca las que ya no cuadran y se
+- Lo usan la conversión kg → m de la lista en metros (× la primera para planear) y los tiempos de rama (÷ velocidad) e
+  inspección (× 60 ÷ velocidad). **Nunca cambia una lista solo**: la revisión marca las que ya no cuadran y se
   corrigen con «Usar los datos de la ficha».
-- **Especificación contra lo real** (misma pestaña): el rendimiento de la especificación (1000 ÷ peso × ancho de
-  venta) contra el real, y el **peso real** (1000 ÷ rendimiento real × ancho de venta) contra el peso de la
-  especificación y su tolerancia. En Características, los renglones de masa y rendimiento traen la columna «Real» y si
-  cumplen.
-- Ejemplo (órdenes de agosto a octubre de 2026): WJ053Q22JNT160 rinde 10.70 m/kg contra 11.79 de la especificación
-  (−9 %); su peso real a 160 cm es 58 g/m² contra 53.
-- Las órdenes viejas (antes del flujo en kg) consumen el teñido y producen la tela en metros; las de Clasificación
-  final consumen el acabado en kg (`I…`). Mientras convivan, el rendimiento mezcla las dos.
+- Ficha de acabado → «Tela acabada»: **Especificación** (peso, ancho de venta, espesor, encogimiento y elongación con
+  sus tolerancias) y **Real** (el rendimiento, de cuántas órdenes, y el peso real = 1000 ÷ rendimiento × ancho de
+  venta).
+- Ejemplo (agosto a octubre de 2026): WJ053Q22JNT160 rinde 10.70 m/kg; su peso real a 160 cm es 58 g/m² contra 53
+  de la especificación.
 
 El **rendimiento de tejido** (`rendimiento_tela_tejida`, ficha de tejido) sigue aparte: es el del crudo (otra tela, otro
 ancho) y lo usan devanado, abridora y la banda del jet en Tintorería.

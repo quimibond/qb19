@@ -25,12 +25,11 @@ class TestFichaProducto(TiempoFichaCase):
     def test_02_la_tela_en_el_producto_es_de_solo_lectura_y_dice_de_donde_sale(self):
         """2.24.0: el producto no edita la ficha; cada dato dice de qué ficha sale."""
         tmpl = self.tela_m.product_tmpl_id
-        for name in ('ft_peso', 'ft_ancho', 'ft_rendimiento', 'ft_ancho_rama', 'ft_crudo_peso', 'ft_crudo_ancho'):
+        for name in ('ft_peso', 'ft_ancho', 'ft_rendimiento', 'ft_crudo_peso', 'ft_crudo_ancho'):
             self.assertTrue(tmpl._fields[name].readonly, name)
             self.assertTrue(tmpl._fields[name].help, "%s dice de dónde sale" % name)
         self.assertEqual(tmpl.ft_acabado_ficha_id, self.acabado)
         self.assertEqual(tmpl.ft_tejido_ficha_id, self.tejido)
-        self.assertFalse(tmpl.ft_ancho_rama, "La lista de prueba no tiene rama")
         self.acabado.peso_acabado = 54
         self.env.invalidate_all()
         self.assertEqual(tmpl.ft_peso, 54.0, "Lo que se cambia en la ficha de acabado se ve en el producto")
