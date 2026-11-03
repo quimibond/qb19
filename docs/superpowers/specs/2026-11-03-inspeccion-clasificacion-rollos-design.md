@@ -20,6 +20,7 @@ taras, bitácora, defectos y restricciones de Inspección se respetan tal cual.
 | D6 | **Solo se juntan rollos del mismo baño.** |
 | D7 | **No se entrega nada hasta que se cierre la orden en kg completa** (el baño). No hay cierre parcial. |
 | D8 | **Una sola estación: Inspección pesa, clasifica y etiqueta.** No hay operación de Clasificación final en Empaque. Inspección tiene báscula. |
+| D9 | **El baño se cierra con el cierre nativo de Odoo** en la orden en kg (supervisor); nadie marca nada en rama. |
 
 ## 2. Evidencia
 
@@ -59,8 +60,7 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
 
 ### Orden de acabado en kg
 
-**1. Rama pesa cada rollo** — sin cambio. Lote por rollo `<orden>-NNNN`, etiqueta chica. **Nuevo:** casilla
-«Último rollo del baño» al pesar.
+**1. Rama pesa cada rollo** — sin cambio. Lote por rollo `<orden>-NNNN`, etiqueta chica.
 
 **2. Inspección: la única estación** (orden en kg abierta, en cuanto el rollo sale de rama)
 
@@ -77,8 +77,11 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
 
 **3. Cierre del baño → la orden en metros se registra sola**
 
-- **Automático:** cuando el último rollo pesado del baño (el marcado en rama) y todos los anteriores están
-  inspeccionados, la orden en kg se cierra completa y enseguida se registra la orden en metros (§4.5).
+- **Con el cierre nativo de Odoo** («Marcar como hecho» en la orden en kg), cuando el supervisor sabe que el baño
+  terminó. El bloqueo que ya tiene José se queda: no cierra si queda un rollo sin inspeccionar. Al cerrar, en la
+  misma operación, se registra la orden en metros (§4.5).
+- Filtro en las órdenes en kg: «Rollos inspeccionados, sin cerrar», para que no se queden baños terminados sin
+  cerrar (sus rollos no están en inventario hasta entonces).
 - **No hay cierre parcial** (D7): los rollos finales de un baño no existen en inventario ni se entregan hasta que
   el baño cierra.
 
@@ -149,13 +152,12 @@ Baño = orden en kg. Al juntar, todos los rollos de rama deben ser de la misma o
 
 **`quimibond_rollos_bitacora` (José):**
 
-1. «Último rollo del baño» en PESAR ROLLO.
-2. Inspección como estación única: rollos finales (corte y unión, mismo baño), pesaje con tara de Inspección (la que
+1. Inspección como estación única: rollos finales (corte y unión, mismo baño), pesaje con tara de Inspección (la que
    hoy es de «Clasificación final»), calidad, lote nuevo y etiqueta final; desaparece la etiqueta preliminar.
-3. Cierre automático del baño con el último rollo inspeccionado y registro automático de la orden en metros.
-4. Producto y ubicación por calidad (§4.3); consumo según §4.6.
-5. Sale el botón CLASIFICAR de Empaque.
-6. Pruebas de los casos de §6.
+2. Al cerrar la orden en kg con el botón nativo (bloqueado si falta inspeccionar, como hoy), registro automático de la orden en metros; filtro «Rollos inspeccionados, sin cerrar».
+3. Producto y ubicación por calidad (§4.3); consumo según §4.6.
+4. Sale el botón CLASIFICAR de Empaque.
+5. Pruebas de los casos de §6.
 
 **`quimibond_ficha_tecnica_tela` 2.24.0 (hecho):** la lista en metros que genera «Generar listas desde la ruta» lleva
 los dos subproductos (cantidad 0, sin costo) y **no lleva operación**; la migración quita de las rutas los pasos
@@ -176,7 +178,7 @@ va una sola vez, en la orden en kg).
 | 5 | Juntar 2 rollos cortos del mismo baño | 1 rollo final; los dos rollos de rama consumidos |
 | 6 | Juntar rollos de baños distintos | error |
 | 7 | Rollos finales de un baño que no ha cerrado | no están en existencia; no se pueden entregar |
-| 8 | Último rollo inspeccionado | la orden en kg se cierra sola y la orden en metros queda registrada |
+| 8 | Supervisor cierra la orden en kg con todo inspeccionado | la orden en kg se cierra y la orden en metros queda registrada en la misma operación; con un rollo sin inspeccionar, no cierra |
 | 9 | Merma arriba del límite | alerta antes de guardar en Inspección |
 | 10 | Pesaje manual sin motivo | error (como hoy) |
 | 11 | Falla el registro de la orden en metros | no se cierra la orden en kg; mensaje con el motivo |
