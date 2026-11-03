@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.22.0 (Dirección General 2026-10-30): el tiempo de rama sale de la ficha (peso × ancho bajando de rama ×
-         merma ÷ velocidad). 2.23.0: también inspección, devanado, abridora y tintorería (por baño). Extienden vistas
-         de mrp (otro módulo). -->
+    <!-- Tiempo de las operaciones desde la ficha: 2.22.0 rama, 2.23.0 inspección, devanado, abridora y tintorería por
+         baño; 2.25.0 parámetros del proceso en la operación. Extienden vistas de mrp (otro módulo). -->
 
     <record id="view_mrp_routing_workcenter_form_ft_tiempo" model="ir.ui.view">
         <field name="name">mrp.routing.workcenter.form.ft.tiempo</field>
@@ -21,6 +20,22 @@
                         <field name="ft_tiempo_calculo" readonly="1"/>
                     </div>
                 </div>
+            </xpath>
+            <!-- 2.25.0: los datos de la tela en la máquina de la operación y en sus alternativas. -->
+            <xpath expr="//sheet" position="inside">
+                <separator string="Parámetros del proceso (la tela en esta máquina y en sus alternativas)"/>
+                <button name="action_ft_nuevo_proceso" type="object" string="Agregar los datos de la tela en esta máquina"
+                        class="btn-link" icon="fa-plus" invisible="ft_proceso_id"/>
+                <field name="ft_proceso_id" invisible="1"/>
+                <field name="ft_param_proceso_ids" readonly="1">
+                    <list>
+                        <field name="workcenter_id"/>
+                        <field name="resumen"/>
+                        <field name="fuente" optional="show"/>
+                        <field name="fecha" optional="hide"/>
+                        <button name="action_ft_editar" type="object" icon="fa-pencil" title="Editar los parámetros"/>
+                    </list>
+                </field>
             </xpath>
         </field>
     </record>

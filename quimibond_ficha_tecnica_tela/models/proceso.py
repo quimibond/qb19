@@ -249,11 +249,6 @@ class MrpWorkcenterProceso(models.Model):
                                                     ' %s' % param.unit if param.unit else '', len(valores)))
             wc.ft_proceso_promedios = ' · '.join(parts)
 
-    def action_ft_procesos(self):
-        self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'name': 'Procesos — %s' % self.name,
-                'res_model': 'ficha.tecnica.proceso', 'view_mode': 'list,form',
-                'domain': [('workcenter_id', '=', self.id)], 'context': {'default_workcenter_id': self.id}}
 
 
 class FichaTecnicaAcabadoProceso(models.Model):

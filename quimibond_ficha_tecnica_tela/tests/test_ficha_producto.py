@@ -63,3 +63,37 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertIn(self.p_jet, self.jet.ft_proceso_ids)
         accion = self.p_jet.action_ft_editar()
         self.assertEqual((accion['res_model'], accion['res_id']), ('ficha.tecnica.proceso', self.p_jet.id))
+
+    def test_07_parametros_del_calculo_sin_duplicar(self):
+        """2.26.0: los parámetros que usan los cálculos existen y asegurarlos otra vez no duplica nada."""
+        Tipo = self.env['ficha.tecnica.maquina.tipo']
+        Tipo._ft_asegurar_parametros()
+        self.assertFalse(Tipo._ft_asegurar_parametros(), "La segunda vez no crea nada")
+        acabado = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
+        self.assertEqual(len(acabado.parametro_ids.filtered(lambda p: p.code == 'ancho_rama')), 1)
+        jets = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
+        self.assertTrue(jets.parametro_ids.filtered(lambda p: p.code == 'capacidad_grupo_b'))
+
+    def test_08_agregar_los_datos_de_la_tela_desde_la_operacion(self):
+        self.p_dev.unlink()
+        self.env.invalidate_all()
+        self.assertFalse(self.op_dev.ft_proceso_id)
+        accion = self.op_dev.action_ft_nuevo_proceso()
+        nuevo = self.env['ficha.tecnica.proceso'].browse(accion['res_id'])
+        self.assertEqual((nuevo.articulo, nuevo.workcenter_id), ('IZZ931Q22JNT165', self.dev))
+
+    def test_09_la_ficha_de_acabado_sigue_la_lista_del_flujo(self):
+        """2.26.0: la ruta de la ficha de acabado sale de la lista del flujo aunque esté archivada."""
+        Bom = self.env['mrp.bom']
+        Bom.create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+                    'sequence': 0, 'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1})]})
+        self.bom.action_archive()
+        self.env.invalidate_all()
+        self.assertEqual(self.acabado.crudo_id, self.crudo)
+        ops = self.bom.with_context(active_test=False).operation_ids
+        self.assertTrue(ops)
+        self.assertLessEqual(set(ops.ids), set(self.acabado.operacion_ids.ids),
+                             "Archivadas también: al leer el campo Odoo no las descarta")
+        self.assertLessEqual(set(ops.ids), set(self.tela_m.product_tmpl_id.ft_operacion_ids.ids),
+                             "La ruta en la pestaña del producto, igual")
+        self.assertIn(self.op_tint, self.acabado.tint_operacion_ids)

@@ -54,7 +54,7 @@ class TestMaquinaTipos(TransactionCase):
         self.assertEqual(config._ft_value('galga'), 18)
         config.valor_ids.filtered(lambda v: v.code == 'no_alimentadores').valor = 96
         self.assertEqual(config.no_alimentadores, 96, "La columna sale del valor")
-        self.assertEqual(wc.ft_no_alimentadores, 96)
+        self.assertEqual(wc.ft_config_id.no_alimentadores, 96, "La máquina ve su configuración vigente")
         self.assertIn(wc, self.env['mrp.workcenter'].search([('ft_galga', '=', 18)]))
 
     def test_04_parametro_nuevo_y_borrado(self):

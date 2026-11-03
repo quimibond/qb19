@@ -322,12 +322,6 @@ class FichaTecnicaMaterial(models.Model):
                 'res_model': 'mrp.workcenter', 'view_mode': 'list,form',
                 'domain': [('id', 'in', self.hilo_ids.workcenter_id.ids)]}
 
-    def action_ft_uso(self):
-        self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'name': 'Dónde se usa %s' % self.display_name,
-                'res_model': 'ficha.tecnica.tejido.hilo', 'view_mode': 'list,pivot',
-                'domain': [('product_id', '=', self.product_id.id)]}
-
 
 class FichaTecnicaMaterialValor(models.Model):
     """Valor de una propiedad en la ficha de materia prima."""

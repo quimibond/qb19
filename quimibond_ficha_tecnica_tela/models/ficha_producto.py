@@ -48,7 +48,7 @@ class ProductTemplateFichaNativa(models.Model):
     ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa')
     # La ruta y la revisión.
     ft_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Ruta (operaciones de sus listas)',
-                                        compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa', context={'active_test': False})
     ft_bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg', compute='_compute_ft_ficha_nativa')
     ft_bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros', compute='_compute_ft_ficha_nativa')
     ft_revision_id = fields.Many2one('ficha.tecnica.revision', string='Revisión de la tela',
@@ -210,3 +210,11 @@ class MrpRoutingWorkcenterParametros(models.Model):
                         procesos |= proceso
                         break
             op.ft_param_proceso_ids = procesos
+
+    def action_ft_nuevo_proceso(self):
+        """2.26.0: crea los datos de la tela en la máquina de la operación (con el código de la lista) y los abre."""
+        self.ensure_one()
+        product = self.bom_id.product_id or self.bom_id.product_tmpl_id.product_variant_ids[:1]
+        proceso = self.ft_proceso_id or self.env['ficha.tecnica.proceso'].create({
+            'articulo': product.default_code or product.name, 'workcenter_id': self.workcenter_id.id})
+        return proceso.action_ft_editar()
