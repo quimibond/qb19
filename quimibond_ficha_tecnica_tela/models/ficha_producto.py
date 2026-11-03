@@ -58,25 +58,54 @@ class ProductTemplateFichaNativa(models.Model):
                                 help='Tela acabada (en metros) o su acabado en proceso (kg) con ficha de acabado.')
     ft_es_crudo = fields.Boolean(string='Es crudo con ficha', compute='_compute_ft_ficha_nativa',
                                  search='_search_ft_es_crudo', help='Crudo con ficha de tejido.')
-    # La tela: se editan aquí y se guardan en su ficha de acabado.
-    ft_peso = fields.Float(string='Peso de la tela (g/m²)', compute='_compute_ft_tela_datos',
-                           inverse='_inverse_ft_tela_datos')
-    ft_ancho = fields.Float(string='Ancho de la tela (cm)', compute='_compute_ft_tela_datos',
-                            inverse='_inverse_ft_tela_datos')
-    ft_rendimiento = fields.Float(string='Rendimiento acabado (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
-                                  inverse='_inverse_ft_tela_datos')
+    # La tela. 2.24.0 (Dirección General 2026-11-03): solo lectura en el producto; los datos se editan en el módulo
+    # (ficha de acabado, ficha de tejido, procesos). Cada campo dice en su ayuda de dónde sale.
+    ft_acabado_ficha_id = fields.Many2one(
+        'ficha.tecnica.acabado', string='Ficha de acabado', compute='_compute_ft_ficha_nativa',
+        help='De aquí salen peso, ancho y rendimiento de la tela acabada y la especificación.')
+    ft_peso = fields.Float(
+        string='Peso de la tela acabada (g/m²)', compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → pestaña «Tela acabada» → Peso.')
+    ft_ancho = fields.Float(
+        string='Ancho de la tela acabada (cm)', compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → pestaña «Tela acabada» → Ancho: el ancho de especificación de la tela acabada (el '
+             'mismo del código: …155 = 155 cm). Con él y el peso se calcula el rendimiento. No es el ancho bajando '
+             'de rama ni el ancho del rollo.')
+    ft_rendimiento = fields.Float(
+        string='Rendimiento de tela acabada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → Rendimiento de tela acabada: 1000 ÷ (peso × ancho en m). Se compara contra el '
+             'rendimiento real del pesaje de cada rollo y convierte kg a metros en la lista en metros.')
+    ft_ancho_rama = fields.Float(
+        string='Ancho bajando de rama (m)', digits=(12, 3), compute='_compute_ft_ficha_nativa',
+        help='Procesos de la tela → la rama de su lista en kg → parámetro «Ancho bajando de rama». Lo usa el tiempo '
+             'de la rama. Es el ancho de la tela al salir de la rama, antes de relajarse.')
+    ft_ancho_rama_origen = fields.Char(string='De la rama', compute='_compute_ft_ficha_nativa')
     ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
-                                        compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa',
+                                        help='Ficha de acabado → «3. Acabado en proceso (kg)».')
     ft_producto_m_id = fields.Many2one('product.product', string='Tela acabada (en metros)',
-                                       compute='_compute_ft_ficha_nativa')
-    ft_spec_ids = fields.Many2many('ficha.tecnica.spec', string='Especificación', compute='_compute_ft_ficha_nativa')
+                                       compute='_compute_ft_ficha_nativa',
+                                       help='Ficha de acabado → «4. Tela acabada (m)».')
+    ft_spec_ids = fields.Many2many('ficha.tecnica.spec', string='Especificación', compute='_compute_ft_ficha_nativa',
+                                   help='Ficha de acabado → pestaña «Características».')
     # El crudo de la tela.
+    ft_tejido_ficha_id = fields.Many2one(
+        'ficha.tecnica.tejido', string='Ficha de tejido', compute='_compute_ft_ficha_nativa',
+        help='Ficha de acabado → «1. Ficha de tejido» (artículo, revisión y circular). De aquí salen los datos del '
+             'crudo.')
     ft_crudo_id = fields.Many2one('product.product', string='Crudo de la tela', compute='_compute_ft_ficha_nativa',
-                                  search='_search_ft_crudo_id')
-    ft_crudo_peso = fields.Float(string='Peso del crudo (g/m²)', compute='_compute_ft_ficha_nativa')
-    ft_crudo_ancho = fields.Float(string='Ancho del crudo', compute='_compute_ft_ficha_nativa')
+                                  search='_search_ft_crudo_id', help='Ficha de tejido → Crudo.')
+    ft_crudo_peso = fields.Float(string='Peso del crudo acondicionado (g/m²)', compute='_compute_ft_ficha_nativa',
+                                 help='Ficha de tejido → pestaña «Tela acondicionada» → Peso.')
+    ft_crudo_ancho = fields.Float(string='Ancho del crudo acondicionado', compute='_compute_ft_ficha_nativa',
+                                  help='Ficha de tejido → pestaña «Tela acondicionada» → Ancho (la tela cruda '
+                                       'relajada; tubular o abierta según la circular). No es el ancho de rollo de '
+                                       '«Ajustes de tejido».')
     ft_crudo_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(12, 4),
-                                        compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa',
+                                        help='Ficha de tejido → Rendimiento de tela tejida: 1000 ÷ (peso × ancho) de '
+                                             'la tela acondicionada. Lo usan los tiempos de devanado y abridora y la '
+                                             'banda del jet en Tintorería.')
     ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa')
     # La ruta y la revisión.
     ft_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Ruta (operaciones de sus listas)',
@@ -116,13 +145,6 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_ancho = acabado.ancho_acabado
             tmpl.ft_rendimiento = acabado.rendimiento_tela_acabada
 
-    def _inverse_ft_tela_datos(self):
-        for tmpl in self:
-            acabado = tmpl.ficha_tecnica_acabado_id
-            if acabado:
-                acabado.write({'peso_acabado': tmpl.ft_peso, 'ancho_acabado': tmpl.ft_ancho,
-                               'rendimiento_tela_acabada': tmpl.ft_rendimiento})
-
     def _ft_variantes(self):
         return self.with_context(active_test=False).product_variant_ids
 
@@ -140,6 +162,8 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_es_tela = bool(acabado)
             tmpl.ft_es_crudo = bool(tejidos) and not acabado
             tmpl.ft_tiene_ficha = bool(acabado or tejidos)
+            tmpl.ft_acabado_ficha_id = acabado
+            tmpl.ft_tejido_ficha_id = crudo_ficha
             tmpl.ft_crudo_id = crudo
             tmpl.ft_crudo_peso = crudo_ficha.peso_acondicionado
             tmpl.ft_crudo_ancho = crudo_ficha.ancho_acondicionado
@@ -154,6 +178,10 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_bom_kg_id = bom_kg
             tmpl.ft_bom_m_id = bom_m
             tmpl.ft_operacion_ids = (bom_kg | bom_m).with_context(active_test=False).operation_ids
+            rama = bom_kg.with_context(active_test=False).operation_ids.filtered(
+                lambda op: op.ft_proceso_id.valor_ids.filtered(lambda v: v.code == 'ancho_rama'))[:1]
+            tmpl.ft_ancho_rama = rama.ft_proceso_id._ft_value('ancho_rama') if rama else 0.0
+            tmpl.ft_ancho_rama_origen = rama and '%s · %s' % (rama.workcenter_id.name, rama.ft_proceso_id.articulo)
             revision = Revision.search([('acabado_id', '=', acabado.id)], limit=1) if acabado else Revision
             tmpl.ft_revision_id = revision
             tmpl.ft_revision_listo = revision.listo

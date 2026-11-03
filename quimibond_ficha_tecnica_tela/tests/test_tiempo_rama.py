@@ -63,6 +63,12 @@ class TestTiempoRama(TransactionCase):
         self.assertAlmostEqual(self.op_rama.time_cycle_manual, round(esperado, 4), places=6)
         self.assertFalse(self.op_rama.ft_tiempo_difiere)
 
+    def test_01b_ancho_de_rama_en_el_producto(self):
+        """2.24.0: la pestaña del producto muestra el ancho bajando de rama y de qué rama sale."""
+        tmpl = self.tela_m.product_tmpl_id
+        self.assertAlmostEqual(tmpl.ft_ancho_rama, 1.65, places=3)
+        self.assertEqual(tmpl.ft_ancho_rama_origen, 'RAMA 91 prueba · IZZ053Q22JNT165')
+
     def test_02_falta_un_dato(self):
         self.proceso._ft_set_value('merma', 0)
         self.assertFalse(self.op_rama.ft_tiempo_ficha, "Sin merma no hay tiempo: un vacío no es un cero")

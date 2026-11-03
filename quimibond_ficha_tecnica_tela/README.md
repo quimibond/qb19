@@ -14,9 +14,9 @@ Programación de Tintorería.
 | # | Quién | Dónde | Qué hace |
 |---|---|---|---|
 | 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, pestaña «Ficha técnica» → «Crear la ficha de la tela» o «Crear la ficha de tejido». |
-| 2 | Todos | Fichas técnicas → Tela → **Telas** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica»: peso, ancho y rendimiento (editables), crudo, ruta, especificación y pendientes. |
+| 2 | Todos | Fichas técnicas → Artículos → **Acabado** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica» (solo lectura, cada dato dice de qué ficha sale): peso, ancho y rendimiento, crudo, ruta, especificación y pendientes. |
 | 3 | Cada área | Lista de materiales → operación (o máquina → «Telas que corren aquí») | Los datos de la tela en cada máquina: «Agregar los datos de la tela en esta máquina» (velocidad, merma, ancho de rama, tiempo de ciclo, kg por carga). |
-| 4 | Ingeniería (Innovación) | Tela → Rutas por familia; ficha de acabado | La ruta de la familia (una vez por crudo) y, en la ficha, lo propio de la tela: rama o jet si no son los de la familia, lavado o teñido si no es el del código, consumo de crudo. «Generar listas desde la ruta» arma la lista en kg (`I…`) y la de metros (`J`) archivadas, con tiempos, capacidad y conversión desde la ficha. |
+| 4 | Ingeniería (Innovación) | Artículos → Rutas por familia; ficha de acabado | La ruta de la familia (una vez por crudo) y, en la ficha, lo propio de la tela: rama o jet si no son los de la familia, lavado o teñido si no es el del código, consumo de crudo. «Generar listas desde la ruta» arma la lista en kg (`I…`) y la de metros (`J`) archivadas, con tiempos, capacidad y conversión desde la ficha. |
 | 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Volver a revisar» (o la revisión de la noche) deja la tela en «Lista para activar». |
 | 6 | Ingeniería | Lista de materiales | Visto bueno: activa la lista en kg (y voltea la de metros). El estado pasa a «Activa». Hasta entonces Odoo fabrica con la lista anterior. |
 | 7 | Planeación y planta | Fabricación | Orden en kg (`I…`); la Programación de Tintorería asigna el jet y divide en baños; cada rollo pasa por Inspección al salir de rama y entra a «10 INSPECCIÓN». Venta en kg: el mismo `I…`. Venta en metros: la Clasificación final produce la J medida con el mismo lote. |
@@ -28,7 +28,7 @@ primero que hay que ver); *activa*.
 
 ## Rutas por familia (2.23.0)
 
-Una ruta por crudo (Tela → Rutas por familia) y la ficha de cada tela bastan para que Odoo arme las listas. Reglas de
+Una ruta por crudo (Artículos → Rutas por familia) y la ficha de cada tela bastan para que Odoo arme las listas. Reglas de
 la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 | Paso | Regla |
@@ -47,16 +47,16 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 | Pantalla | Qué hay |
 |---|---|
-| **Fichas técnicas → Tela → Telas** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
-| **Tela → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
-| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | La tela (peso, ancho y rendimiento editables ahí), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
+| **Fichas técnicas → Artículos → Acabado** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
+| **Artículos → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
+| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho, rendimiento, ancho bajando de rama y de qué rama), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
 | **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
 | **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
 | **Centro de trabajo** | Pestaña «Ficha de la máquina» (tipo, estado, configuración por fecha), «Capacidades» con la capacidad de la ficha en los jets, y «Telas que corren aquí». Acción «Usar las capacidades de la ficha (jets)». |
-| **Tela → Rutas por familia** | Una ruta por crudo con sus pasos y máquinas; «Armar rutas desde las listas» y «Generar listas». |
-| **Tela → Pendientes por área** | Cada pendiente de la revisión con su área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura), operación, máquina y lista. La revisión se rehace cada noche y con «Actualizar la revisión» en Telas. |
-| **Tela → Fichas de tejido (por circular) / Fichas de acabado (datos de origen)** | Las fichas donde se guardan los datos; el SGI valida sobre ellas. |
+| **Artículos → Rutas por familia** | Una ruta por crudo con sus pasos y máquinas; «Armar rutas desde las listas» y «Generar listas». |
+| **Artículos → Pendientes por área** | Cada pendiente de la revisión con su área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura), operación, máquina y lista. La revisión se rehace cada noche y con «Actualizar la revisión» en Acabado. |
+| **Artículos → Fichas de tejido (por circular) / Fichas de acabado (datos de origen)** | Las fichas donde se guardan los datos; el SGI valida sobre ellas. |
 | **Tintorería** | Fórmulas y tiempos por fórmula y jet (módulos de José Sacramento) y «Artículos en los jets». |
 | **Máquinas** | Máquinas, configuraciones por fecha, procesos por artículo (edición en masa) y comparativo. |
 | **Materias primas** | Fichas de hilo, propiedades y hilos por tela y máquina. |
@@ -165,6 +165,19 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 - **Configuración de inventario pendiente** (no es código): las rutas para que
   Ventas tome solo de Producto terminado y la operación de Clasificación final.
 
+## Los anchos: cuál es cada campo y de dónde sale (2.24.0)
+
+| Campo | Qué ancho es | Dónde se captura | Quién lo usa |
+|---|---|---|---|
+| Ficha de tejido → Ajustes de tejido → **Ancho de bastidor** | El del bastidor de la circular (ajuste de la máquina) | Ficha de tejido | Ningún cálculo |
+| Ficha de tejido → Ajustes de tejido → **Ancho de rollo** | El del rollo de **crudo** que sale de la circular | Ficha de tejido | Ningún cálculo |
+| Ficha de tejido → Tela acondicionada → **Ancho** (`ancho_acondicionado`) | La tela **cruda** relajada (acondicionada); tubular o abierta según la circular | Ficha de tejido | Rendimiento de tejido → devanado, abridora y banda del jet |
+| Procesos de la tela → rama → **Ancho bajando de rama** (`ancho_rama`, m) | La tela al **salir de la rama**, antes de relajarse | Proceso del artículo `I…` en la rama | Tiempo de la rama; se ve en el producto con la rama de donde sale |
+| Ficha de acabado → Tela acabada → **Ancho** (`ancho_acabado`, cm) | El de **especificación** de la tela acabada, el mismo del código (`…155` = 155 cm) | Ficha de acabado | Rendimiento de tela acabada, kg → m, peso del costeo, especificación |
+
+Hoy no hay campo para el ancho de la tela en Inspección ni para el ancho del rollo en rama o en Inspección.
+Ejemplo `WJ032Q22JNT155`: ancho de la ficha de acabado 155 cm, ancho bajando de RAMA 2 1.62 m.
+
 ## Los dos rendimientos
 
 Hay dos rendimientos en metros por kilogramo y **los dos se conservan como
@@ -247,7 +260,7 @@ al final de la importación — el resto de filas válidas sí se procesan.
 - Al instalar o actualizar se crean los parámetros que usan los cálculos que falten en su tipo de máquina (por clave;
   en producción ya existen). Los demás parámetros los da de alta la planta en Configuración → Tipos de máquina.
 - La acción planificada «Fichas técnicas - Revisión de listas en kg» rehace la revisión cada noche; después de
-  desplegar conviene pulsar «Actualizar la revisión» (Telas) una vez.
+  desplegar conviene pulsar «Actualizar la revisión» (Artículos → Acabado) una vez.
 - La tabla `ficha_tecnica_tela` del primer modelo (retirado en 2.1.1) sigue en la base sin uso.
 
 ## Pruebas

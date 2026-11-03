@@ -24,6 +24,21 @@ final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para 
 - el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
   y la siguiente orden de la tela lo descuenta.
 
+### Menús, formularios nativos y pestaña del producto de solo lectura
+
+Comentarios de Jessica revisados con Dirección General (2026-11-03):
+
+- **Menús:** «Tela» pasa a **Artículos** y el concentrado «Telas» a **Acabado** (mismos xmlid).
+- **Formularios nativos:** las tablas HTML de «Ajustes de tejido» y «Tela acondicionada» (ficha de tejido) y de
+  «Tela acabada» (ficha de acabado) pasan a grupos de Odoo: cada dato en un renglón con valor ± tolerancia y unidad.
+  Mismos campos; no cambia ningún dato.
+- **Producto → «Ficha técnica» de solo lectura:** peso, ancho y rendimiento ya no se editan desde el producto (se quita
+  el inverso hacia la ficha de acabado); se editan en el módulo. Cada bloque liga la ficha de la que sale («Sale de la
+  ficha de acabado», «Sale de la ficha de tejido») y la ayuda de cada campo dice la pestaña y el campo de origen.
+  Nuevo: **ancho bajando de rama** con la rama y el artículo de donde sale. En la ruta, las columnas Lista y Cálculo se
+  ven sin abrir el menú de columnas.
+- README: tabla «Los anchos» (qué ancho es cada campo, dónde se captura y quién lo usa).
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos

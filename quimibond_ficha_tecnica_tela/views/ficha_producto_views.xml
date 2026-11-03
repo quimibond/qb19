@@ -43,15 +43,30 @@
                         <button name="action_view_ficha_tecnica_tejido" type="object" string="Fichas de tejido"
                                 class="btn-secondary" icon="fa-file-text-o"/>
                     </div>
+                    <!-- 2.24.0 (Dirección General 2026-11-03): solo lectura; cada bloque dice de qué ficha sale y la
+                         ayuda de cada campo (pasar el mouse) dice la pestaña y el campo. Se edita en el módulo. -->
+                    <div invisible="not ft_es_tela" class="text-muted small mb-2">
+                        Solo lectura. Los datos se cambian en su ficha (Fichas técnicas → Artículos); pase el mouse
+                        por cada campo para ver de dónde sale.
+                    </div>
                     <group invisible="not ft_es_tela">
                         <group string="La tela">
+                            <field name="ft_acabado_ficha_id" string="Sale de la ficha de acabado"/>
                             <field name="ft_peso"/>
                             <field name="ft_ancho"/>
                             <field name="ft_rendimiento"/>
+                            <label for="ft_ancho_rama"/>
+                            <div class="o_row">
+                                <field name="ft_ancho_rama"/>
+                                <span class="text-muted" invisible="not ft_ancho_rama_origen">
+                                    (<field name="ft_ancho_rama_origen" class="oe_inline"/>)
+                                </span>
+                            </div>
                             <field name="ft_producto_kg_id"/>
                             <field name="ft_producto_m_id"/>
                         </group>
                         <group string="El crudo">
+                            <field name="ft_tejido_ficha_id" string="Sale de la ficha de tejido"/>
                             <field name="ft_crudo_id"/>
                             <field name="ft_crudo_peso"/>
                             <field name="ft_crudo_ancho"/>
@@ -65,18 +80,22 @@
                         <button name="action_ft_crudo" type="object" string="Abrir el crudo" class="btn-link"/>
                     </div>
                     <separator string="La ruta (operaciones de sus listas de materiales)" invisible="not ft_es_tela"/>
+                    <div invisible="not ft_es_tela" class="text-muted small">
+                        «Duración» es la de la lista (con ella planea Odoo); «Tiempo de la ficha» sale de la ficha de
+                        acabado y de los procesos de la tela en esa máquina, con la cuenta en «Cálculo».
+                    </div>
                     <field name="ft_operacion_ids" readonly="1" invisible="not ft_es_tela">
                         <list decoration-warning="ft_tiempo_difiere">
-                            <field name="bom_id" optional="hide"/>
+                            <field name="bom_id" string="Lista" optional="show"/>
                             <field name="name"/>
                             <field name="workcenter_id"/>
                             <field name="time_cycle_manual" string="Duración (min)"/>
                             <field name="ft_tiempo_ficha"/>
                             <field name="ft_tiempo_difiere" column_invisible="True"/>
-                            <field name="ft_tiempo_calculo" optional="hide"/>
+                            <field name="ft_tiempo_calculo" string="Cálculo" optional="show"/>
                         </list>
                     </field>
-                    <separator string="Especificación" invisible="not ft_es_tela"/>
+                    <separator string="Especificación (de la ficha de acabado, pestaña «Características»)" invisible="not ft_es_tela"/>
                     <field name="ft_spec_ids" readonly="1" invisible="not ft_es_tela">
                         <list>
                             <field name="name"/>
@@ -194,7 +213,7 @@
         <field name="model">product.template</field>
         <field name="priority">90</field>
         <field name="arch" type="xml">
-            <list string="Telas" create="0" decoration-success="ft_revision_listo" decoration-danger="ft_revision_n">
+            <list string="Acabado" create="0" decoration-success="ft_revision_listo" decoration-danger="ft_revision_n">
                 <header>
                     <button name="action_ft_actualizar_revision" type="object" string="Actualizar la revisión"
                             display="always" class="btn-secondary"
@@ -221,7 +240,7 @@
         <field name="model">product.template</field>
         <field name="priority">90</field>
         <field name="arch" type="xml">
-            <search string="Telas">
+            <search string="Acabado">
                 <field name="name" string="Tela" filter_domain="['|', ('default_code', 'ilike', self), ('name', 'ilike', self)]"/>
                 <field name="ft_crudo_id" string="Crudo"/>
                 <filter name="ft_pendientes" string="Con pendientes"
@@ -260,7 +279,7 @@
     </record>
 
     <record id="action_ft_telas" model="ir.actions.act_window">
-        <field name="name">Telas</field>
+        <field name="name">Acabado</field>
         <field name="res_model">product.template</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('ft_es_tela', '=', True)]</field>
