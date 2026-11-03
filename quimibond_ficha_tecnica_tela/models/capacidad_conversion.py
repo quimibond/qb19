@@ -3,7 +3,8 @@
 
 **Capacidad del jet por producto.** En las listas en kg la operación de Tintorería se cuenta **por baño**: Odoo divide
 la orden entre la capacidad del jet para el producto (un ciclo) y multiplica por los minutos del ciclo. Esa capacidad
-es la misma que usa la Programación de Tintorería para dividir en baños, y sale de las fichas:
+es la misma que usa la Programación de Tintorería para dividir en baños: la regla única
+``mrp.workcenter._ft_regla_capacidad`` (``mrp_aviso_maquina.py``):
 
 1. «Kg por carga» del artículo en ese jet (proceso del artículo en la máquina), si está.
 2. Si no, la configuración vigente del jet: sin bandas capturadas, su capacidad general; con bandas, la de la banda
@@ -22,7 +23,7 @@ from odoo import api, fields, models
 from odoo.tools import float_round
 
 from .maquina_config import _fmt
-from .mrp_aviso_maquina import GRUPOS, TIPO_TINTORERIA
+from .mrp_aviso_maquina import TIPO_TINTORERIA
 
 TOLERANCIA_REL = 0.005  # 0.5 %
 
@@ -31,34 +32,12 @@ class MrpWorkcenterCapacidadFicha(models.Model):
     _inherit = 'mrp.workcenter'
 
     def _ft_capacidad_jet(self, product, day=None):
-        """(kg por baño, de dónde sale) del jet para ``product`` con la regla de la Programación de Tintorería;
+        """(kg por baño, de dónde sale) del jet para ``product`` con la regla única (la de la Programación);
         (0, motivo) si el jet no puede con el artículo o falta un dato."""
         self.ensure_one()
-        proceso = self._ft_proceso_de(product) if product else False
-        kg_articulo = proceso._ft_value('kg_carga') if proceso else False
-        if kg_articulo:
-            return kg_articulo, 'kg por carga del artículo en %s' % self.name
-        config = self._ft_config_at(day)
-        if not config:
-            return 0.0, '%s no tiene configuración vigente' % self.name
-        general = config._ft_value('capacidad') or 0.0
-        bandas = {grupo: config._ft_value(code) or 0.0 for code, grupo, _desde, _hasta in GRUPOS}
-        if not any(bandas.values()):
-            if general:
-                return general, 'capacidad general de %s (sin bandas de rendimiento)' % self.name
-            return 0.0, '%s no tiene capacidad capturada' % self.name
         rendimiento = product._ft_rendimiento()[0] if product else 0.0
-        if not rendimiento:
-            return 0.0, 'la tela no tiene rendimiento de tejido en su ficha'
-        banda = next((grupo for _code, grupo, desde, hasta in GRUPOS if desde <= rendimiento < hasta), False)
-        if not banda:
-            return 0.0, 'el rendimiento %s m/kg está fuera de las bandas de %s' % (_fmt(rendimiento), self.name)
-        capacidad = bandas[banda]
-        if not capacidad:
-            return 0.0, 'la banda %s (rendimiento %s m/kg) es N/A en %s' % (banda, _fmt(rendimiento), self.name)
-        if general and general < capacidad:
-            return general, 'banda %s de %s, topada a su capacidad general' % (banda, self.name)
-        return capacidad, 'banda %s de %s (rendimiento %s m/kg)' % (banda, self.name, _fmt(rendimiento))
+        regla = self._ft_regla_capacidad(rendimiento, product, day)
+        return regla['capacidad'], regla['motivo']
 
     def _ft_poner_capacidad(self, product):
         """Escribe (o crea) el renglón de capacidad de ``product`` con la de la ficha. True si cambió algo."""

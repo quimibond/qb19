@@ -92,6 +92,11 @@ class TestTiempoFicha(TransactionCase):
         self.assertAlmostEqual(self.op_insp.ft_tiempo_ficha, 0.8, places=4, msg="8 m/kg × 60 ÷ 600 m/h")
         self.assertIn('600 m/h', self.op_insp.ft_tiempo_calculo)
         self.assertTrue(self.op_insp.ft_tiempo_difiere)
+        Op = self.env['mrp.routing.workcenter']
+        self.assertIn(self.op_insp, Op.search([('ft_tiempo_difiere', '=', True)]), "El filtro de Operaciones la encuentra")
+        self.op_insp.action_ft_usar_tiempo_ficha()
+        self.env.invalidate_all()
+        self.assertNotIn(self.op_insp, Op.search([('ft_tiempo_difiere', '=', True)]))
         self.p_insp._ft_set_value('velocidad_inspeccion', 0)
         self.env.invalidate_all()  # el tiempo de la ficha no se guarda: se vuelve a calcular al leer
         self.assertFalse(self.op_insp.ft_tiempo_ficha)
@@ -113,8 +118,9 @@ class TestTiempoFicha(TransactionCase):
     def test_03_tintoreria_por_bano_pide_capacidad(self):
         self.assertFalse(self.op_tint.ft_tiempo_ficha, "Sin capacidad del jet para el producto un ciclo no es un baño")
         self.assertIn('falta la capacidad', self.op_tint.ft_tiempo_calculo)
-        self.assertEqual(self.jet._ft_capacidad_jet(self.tela), (600.0, 'banda B de JET 931 prueba (rendimiento 10 '
-                                                                        'm/kg)'))
+        capacidad, motivo = self.jet._ft_capacidad_jet(self.tela)
+        self.assertEqual(capacidad, 600.0, "Banda B (rendimiento 10 m/kg) del jet")
+        self.assertIn('grupo B', motivo)
         self.op_tint._ft_sincronizar_capacidad()
         self.env.invalidate_all()
         line = self.jet.capacity_ids.filtered(lambda c: c.product_id == self.tela)
@@ -140,6 +146,22 @@ class TestTiempoFicha(TransactionCase):
         self.assertIn('kg por carga', line.ft_capacidad_motivo)
         self.tejido.rendimiento_tela_tejida = 20.0
         self.assertEqual(self.jet2._ft_capacidad_jet(self.tela)[0], 0.0, "Fuera de las bandas: no se inventa")
+        self.assertEqual(self.jet2._ft_capacidad_carga(20.0, product=self.tela)[0], 1000.0,
+                         "Para estimar (avisos, costeo) la misma regla tolera: capacidad general")
+
+    def test_07_regla_unica_topada_y_sin_bandas(self):
+        config = self.jet2._ft_config_at()
+        config.valor_ids.filtered(lambda v: v.parametro_id.code == 'capacidad').valor = 500
+        self.env.invalidate_all()
+        regla = self.jet2._ft_regla_capacidad(10.0, self.tela)
+        self.assertEqual((regla['capacidad'], regla['banda'], regla['origen']), (500.0, 'B', 'banda'),
+                         "La banda B (600) se topa a la capacidad general (500)")
+        self.assertIn('topado', regla['motivo'])
+        config.valor_ids.filtered(lambda v: v.parametro_id.code.startswith('capacidad_grupo')).write({'valor': 0})
+        self.env.invalidate_all()
+        regla = self.jet2._ft_regla_capacidad(10.0, self.tela)
+        self.assertEqual((regla['capacidad'], regla['origen']), (500.0, 'general'), "Sin bandas: la general")
+        self.assertEqual(self.jet2._ft_regla_capacidad(10.0, self.tela, day='2019-01-01')['falla'], 'sin_config')
 
     def _kg_guardables(self, kg):
         """Los kg como los guarda la línea: con la precisión de su cantidad (2 decimales en una base nueva)."""

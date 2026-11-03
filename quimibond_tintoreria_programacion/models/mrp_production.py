@@ -89,44 +89,42 @@ class MrpProduction(models.Model):
     def _capacidad_jet(self, workcenter, rendimiento):
         """(capacidad por baño en kg, banda, aviso) del jet para este producto.
 
-        Fuente única: la configuración vigente del jet en las fichas técnicas.
+        Fuente única: la regla de capacidad de las fichas técnicas (``mrp.workcenter._ft_regla_capacidad``,
+        fichas 2.23.0), la misma que usan la capacidad por producto de los jets, los avisos de carga y el costeo.
+        Aquí se programa, así que lo que no cuadra bloquea:
         * Si el artículo tiene «kg por carga» en este jet, ese manda.
-        * Jet con bandas capturadas: bloquea si la banda es N/A o el rendimiento cae fuera de las bandas.
+        * Jet con bandas capturadas: bloquea si la banda es N/A o el rendimiento cae fuera de las bandas; la
+          capacidad de la banda no pasa de la general.
         * Jet sin ninguna banda capturada (p. ej. HTJ5): su capacidad general, con aviso.
         """
         self.ensure_one()
         banda = banda_rendimiento(rendimiento)
-        cap_articulo, motivo = workcenter._ft_capacidad_carga(rendimiento, product=self.product_id)
-        if cap_articulo and 'artículo' in (motivo or ''):
-            return cap_articulo, banda, False
-        config = workcenter._ft_config_at()
-        if not config:
+        regla = workcenter._ft_regla_capacidad(rendimiento, product=self.product_id)
+        falla = regla['falla']
+        if regla['origen'] == 'articulo':
+            return regla['capacidad'], banda, False
+        if falla == 'sin_config':
             raise UserError(_(
                 "El centro de trabajo %s no tiene configuración vigente en las fichas técnicas de máquina.",
                 workcenter.display_name))
-        general = config._ft_value('capacidad') or 0.0
-        capacidades = {grupo: config._ft_value(codigo) or 0.0 for codigo, grupo, _d, _h in GRUPOS}
-        if not any(capacidades.values()):
-            if general <= 0:
-                raise UserError(_(
-                    "%s no tiene capacidad capturada (ni general ni por banda).", workcenter.display_name))
+        if falla == 'sin_capacidad':
+            raise UserError(_(
+                "%s no tiene capacidad capturada (ni general ni por banda).", workcenter.display_name))
+        if regla['origen'] == 'general':
             aviso = _(
                 "%(wc)s no tiene bandas de rendimiento capturadas: se usó su capacidad general de %(cap)s kg.",
-                wc=workcenter.display_name, cap=general)
-            return general, banda, aviso
-        if not banda:
+                wc=workcenter.display_name, cap=regla['capacidad'])
+            return regla['capacidad'], banda, aviso
+        if falla in ('sin_rendimiento', 'fuera_de_bandas'):
             raise UserError(_(
                 "El rendimiento de tejido de %(prod)s (%(r)s m/kg) está fuera de las bandas de rendimiento "
                 "de %(wc)s. Corrige el rendimiento en la ficha técnica.",
                 prod=self.product_id.display_name, r=rendimiento, wc=workcenter.display_name))
-        capacidad = capacidades[banda]
-        if capacidad <= 0:
+        if falla == 'banda_na':
             raise UserError(_(
                 "%(wc)s no puede procesar este artículo: la banda %(b)s (rendimiento de %(r)s m/kg) "
                 "es N/A en ese jet.", wc=workcenter.display_name, b=banda, r=rendimiento))
-        if general > 0:
-            capacidad = min(capacidad, general)
-        return capacidad, banda, False
+        return regla['capacidad'], banda, False
 
     def _minutos_tintoreria(self, workcenter, kg_bano=None):
         """(minutos por baño, origen, aviso) de la operación de Tintorería en el HTJ dado.

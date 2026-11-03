@@ -54,7 +54,8 @@ class MrpRoutingWorkcenterTiempoRama(models.Model):
         help='Minutos por ciclo de la máquina que dan la ficha y el proceso del artículo: rama, inspección, devanado '
              'y abridora por kg × la capacidad del ciclo; tintorería por baño. Vacío si falta un dato.')
     ft_tiempo_calculo = fields.Char(string='Cálculo del tiempo', compute='_compute_ft_tiempo_ficha')
-    ft_tiempo_difiere = fields.Boolean(string='Tiempo distinto de la ficha', compute='_compute_ft_tiempo_ficha')
+    ft_tiempo_difiere = fields.Boolean(string='Tiempo distinto de la ficha', compute='_compute_ft_tiempo_ficha',
+                                       search='_search_ft_tiempo_difiere')
 
     # ------------------------------------------------------------------
     # Datos comunes
@@ -257,6 +258,20 @@ class MrpRoutingWorkcenterTiempoRama(models.Model):
             op.ft_tiempo_calculo = texto
             op.ft_tiempo_difiere = bool(tiempo) and (
                 op.time_mode != 'manual' or abs(op.time_cycle_manual - tiempo) > tiempo * TOLERANCIA_REL)
+
+    def _search_ft_tiempo_difiere(self, operator, value):
+        """2.23.0: «distinto» / «igual» de la ficha, sobre las operaciones en máquinas con tipo (también las de
+        listas archivadas: las listas en kg nacen archivadas)."""
+        # Odoo 19 normaliza «= True» a «in [True]» antes de llamar aquí: se aceptan las dos formas.
+        values = list(value) if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)) else [value]
+        if operator in ('!=', 'not in'):
+            want = not any(values)
+        elif operator in ('=', 'in'):
+            want = any(values)
+        else:
+            return NotImplemented
+        ops = self.with_context(active_test=False).search([('workcenter_id.ft_tipo_id', '!=', False)])
+        return [('id', 'in' if want else 'not in', ops.filtered('ft_tiempo_difiere').ids)]
 
     def action_ft_usar_tiempo_ficha(self):
         """Pasa el tiempo de la ficha a la lista (tiempo fijo) en las operaciones que lo tienen."""

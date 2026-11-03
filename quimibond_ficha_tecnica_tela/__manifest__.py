@@ -87,7 +87,8 @@ Incluye:
   (metros de crudo por kg ÷ velocidad) y tintorería (minutos por baño: tiempo de ciclo del artículo o de la fórmula);
   capacidad de los jets por producto vigilada contra la ficha (kg por carga o banda de rendimiento, como la
   Programación) y conversión kg → m de la lista en metros contra 1 ÷ rendimiento de tela acabada, con «Usar los
-  datos de la ficha» en las listas.
+  datos de la ficha» en las listas. Una sola regla de capacidad del jet (``_ft_regla_capacidad``) para la Programación,
+  los avisos, el costeo y la capacidad por producto; filtro «Tiempo distinto de la ficha» en Operaciones.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
