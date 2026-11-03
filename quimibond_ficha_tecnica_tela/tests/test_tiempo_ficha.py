@@ -191,7 +191,7 @@ class TestTiempoFicha(TiempoFichaCase):
         ruta = 'odoo.addons.quimibond_ficha_tecnica_tela.models.capacidad_conversion.primera_para_planear'
         with patch(ruta, return_value=(0.9, 'producto')):
             self.env.invalidate_all()
-            self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 1 / (8 * 0.9), places=6)
+            self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 1 / (8 * 0.9), places=4, msg="El campo guarda 4 decimales")
             self.assertIn('0.9000 de primera para planear', self.bom_m.ft_conversion_calculo)
             self.bom_m.action_ft_usar_conversion_ficha()
             self.env.invalidate_all()
