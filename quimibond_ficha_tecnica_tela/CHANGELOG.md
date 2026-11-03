@@ -7,6 +7,13 @@ por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual
 (`tools/check_addons.py --base-ref` lo exige).
 
 
+## 19.0.2.28.2 — 2026-11-03
+
+Corregido (visto al generar las 42 familias en el build de main): si la única lista activa de una tela es la anterior
+(sin operaciones, como NK100Q46JNT155 o XJ140Q21JNT162), «Generar listas» crea la del flujo archivada junto a ella en
+lugar de avisar que hay una lista activa. La anterior no se toca; Ingeniería decide cuándo cambiarla. Lo mismo con la
+lista en metros.
+
 ## 19.0.2.28.1 — 2026-11-03
 
 Agregado: las rutas por familia, sus pasos y la revisión de listas quedan habilitadas por MCP al instalar o actualizar el
