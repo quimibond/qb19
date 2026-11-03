@@ -42,3 +42,7 @@ access_ficha_tecnica_revision_user,ficha.tecnica.revision.user,model_ficha_tecni
 access_ficha_tecnica_revision_manager,ficha.tecnica.revision.manager,model_ficha_tecnica_revision,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_revision_pendiente_user,ficha.tecnica.revision.pendiente.user,model_ficha_tecnica_revision_pendiente,base.group_user,1,0,0,0
 access_ficha_tecnica_revision_pendiente_manager,ficha.tecnica.revision.pendiente.manager,model_ficha_tecnica_revision_pendiente,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_ruta_user,ficha.tecnica.ruta.user,model_ficha_tecnica_ruta,base.group_user,1,0,0,0
+access_ficha_tecnica_ruta_manager,ficha.tecnica.ruta.manager,model_ficha_tecnica_ruta,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_ruta_paso_user,ficha.tecnica.ruta.paso.user,model_ficha_tecnica_ruta_paso,base.group_user,1,0,0,0
+access_ficha_tecnica_ruta_paso_manager,ficha.tecnica.ruta.paso.manager,model_ficha_tecnica_ruta_paso,mrp.group_mrp_manager,1,1,1,1

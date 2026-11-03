@@ -76,6 +76,9 @@
          siguen como datos de origen al final. -->
     <menuitem id="menu_ft_telas" name="Telas" parent="menu_ft_tela" action="action_ft_telas" sequence="5"/>
     <menuitem id="menu_ft_crudos" name="Crudos" parent="menu_ft_tela" action="action_ft_crudos" sequence="6"/>
+    <!-- 2.28.0: rutas por familia (crudo); las listas se generan desde la ruta y la ficha. -->
+    <menuitem id="menu_ficha_tecnica_ruta" name="Rutas por familia" parent="menu_ft_tela"
+              action="action_ficha_tecnica_ruta" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_tejido_list" name="Fichas de tejido (por circular)" parent="menu_ft_tela"
               action="action_ficha_tecnica_tejido" sequence="90"/>
     <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado (datos de origen)" parent="menu_ft_tela"

@@ -7,6 +7,30 @@ por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual
 (`tools/check_addons.py --base-ref` lo exige).
 
 
+## 19.0.2.28.0 — 2026-11-03
+
+**Rutas por familia y listas generadas desde la ficha (tabla de Innovación)**
+
+Dirección General (2026-11-03): Ingeniería mantiene una ruta por familia (las telas del mismo crudo) y la ficha de cada
+tela; Odoo arma la lista en kg y la de metros. Reglas de la tabla «rutas de proceso rev4» de Innovación (2026-07-15,
+105 artículos).
+
+Agregado:
+- **Tela → Rutas por familia** (`ficha.tecnica.ruta` y `.paso`): un crudo, sus pasos (devanado, tintorería, abridora
+  volteado, abridora, rama, inspección y la Clasificación final de la lista en metros) con máquina, cuándo aplica
+  (siempre, solo si se tiñe, solo si se lava) y, si no sale de la ficha, un tiempo fijo. «Armar rutas desde las listas»
+  crea la ruta de cada crudo sin ruta con la máquina más usada por paso en las listas del flujo de sus telas; lo que una
+  tela hace en otra rama u otro jet queda en su ficha, y su consumo de crudo se toma del renglón del crudo.
+- Ficha de acabado, pestaña «Ruta y máquinas»: ruta de la familia, tintorería de lavado o de teñido (por el color del
+  código: NT, NN, OW se lavan; el resto, blanco óptico incluido, se tiñe; se puede cambiar o marcar «sin tintorería»),
+  rama y jet propios de la tela, consumo de crudo por kg y la ruta que se va a generar.
+- «Generar listas desde la ruta» (ficha de acabado, pestaña del producto y ruta de la familia): arma o pone al día la
+  lista en kg y la de metros. Nunca toca una lista activa; lo nuevo nace archivado («Flujo en kg (borrador)»,
+  «Clasificación final (borrador)»). Si la ruta no cambió, no rehace las operaciones; si cambió, los componentes que iban
+  en una operación pasan a la del mismo paso. Los componentes que no son el crudo (fórmula, engomado) se conservan.
+  Después usa los datos de la ficha (tiempos, capacidad de los jets, conversión a metros) y vuelve a revisar la tela.
+  Sin consumo de crudo no crea la lista en kg, y sin rendimiento no crea la de metros: lo avisa.
+
 ## 19.0.2.27.2 — 2026-11-03
 
 **El pendiente de la lista en kg sin operaciones dice lo que pasa**

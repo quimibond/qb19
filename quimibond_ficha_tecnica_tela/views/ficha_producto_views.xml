@@ -24,6 +24,9 @@
                                 class="btn-primary" invisible="ft_revision_listo"
                                 help="Capacidad de los jets, tiempos de las operaciones y conversión a metros desde la ficha; luego vuelve a revisar la tela."/>
                         <button name="action_ft_revisar" type="object" string="Volver a revisar" class="btn-secondary"/>
+                        <button name="action_ft_generar_listas" type="object" string="Generar listas desde la ruta"
+                                class="btn-secondary"
+                                help="Arma o pone al día la lista en kg y la de metros con la ruta de la familia (solo las archivadas)."/>
                         <button name="action_ft_bom_kg" type="object" string="Lista en kg" class="btn-secondary"
                                 icon="fa-sitemap" invisible="not ft_bom_kg_id"/>
                         <button name="action_ft_bom_m" type="object" string="Lista en metros" class="btn-secondary"

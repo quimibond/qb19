@@ -15,3 +15,4 @@ from . import tiempo_ficha  # 2.22.0 (2.26.0: antes tiempo_rama.py): después de
 from . import capacidad_conversion  # 2.23.0: después de tiempo_ficha (usa _ft_producto_bom) y mrp_aviso_maquina
 from . import revision_listas  # 2.24.0: después de tiempo_ficha y capacidad_conversion (usa sus campos)
 from . import ficha_producto  # 2.25.0: al final (usa la revisión, la ficha del producto y los procesos)
+from . import ruta_familia  # 2.28.0: después de la revisión y la ficha del producto (usa _ft_bom_de y action_ft_datos_ficha)

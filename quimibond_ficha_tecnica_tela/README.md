@@ -16,7 +16,7 @@ Programación de Tintorería.
 | 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, pestaña «Ficha técnica» → «Crear la ficha de la tela» o «Crear la ficha de tejido». |
 | 2 | Todos | Fichas técnicas → Tela → **Telas** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica»: peso, ancho y rendimiento (editables), crudo, ruta, especificación y pendientes. |
 | 3 | Cada área | Lista de materiales → operación (o máquina → «Telas que corren aquí») | Los datos de la tela en cada máquina: «Agregar los datos de la tela en esta máquina» (velocidad, merma, ancho de rama, tiempo de ciclo, kg por carga). |
-| 4 | Ingeniería (Innovación) | Listas de materiales | Lista en kg (`I…`, consume el crudo; Devanado → Tintorería → Abridora → Rama → Inspección) y lista en metros (`J`, consume el `I…`; Clasificación final). En el producto, «Usar los datos de la ficha» pone tiempos, conversión kg → m y capacidad de los jets. |
+| 4 | Ingeniería (Innovación) | Tela → Rutas por familia; ficha de acabado | La ruta de la familia (una vez por crudo) y, en la ficha, lo propio de la tela: rama o jet si no son los de la familia, lavado o teñido si no es el del código, consumo de crudo. «Generar listas desde la ruta» arma la lista en kg (`I…`) y la de metros (`J`) archivadas, con tiempos, capacidad y conversión desde la ficha. |
 | 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Volver a revisar» (o la revisión de la noche) deja la tela en «Lista para activar». |
 | 6 | Ingeniería | Lista de materiales | Visto bueno: activa la lista en kg (y voltea la de metros). El estado pasa a «Activa». Hasta entonces Odoo fabrica con la lista anterior. |
 | 7 | Planeación y planta | Fabricación | Orden en kg (`I…`); la Programación de Tintorería asigna el jet y divide en baños; cada rollo pasa por Inspección al salir de rama y entra a «10 INSPECCIÓN». Venta en kg: el mismo `I…`. Venta en metros: la Clasificación final produce la J medida con el mismo lote. |
@@ -25,6 +25,23 @@ Programación de Tintorería.
 **Estados de la tela** (columna del concentrado): *sin revisar*; *con pendientes*; *lista para activar* (las listas
 cuadran y la lista en kg sigue archivada); *activa con pendientes* (Odoo ya fabrica con ella y algo no cuadra: lo
 primero que hay que ver); *activa*.
+
+## Rutas por familia (2.28.0)
+
+Una ruta por crudo (Tela → Rutas por familia) y la ficha de cada tela bastan para que Odoo arme las listas. Reglas de
+la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
+
+| Paso | Regla |
+|---|---|
+| Devanado | Todas (en WJ050, WJ053, WJ055 y WJ060 también puede ser Preparado: alternativa de la máquina) |
+| Tintorería | Lavado si el color del código es NT, NN u OW; teñido en las demás (blanco óptico incluido). Mismo jet; cambian la fórmula y el tiempo. WJ032 sin tintorería (se marca en la ficha) |
+| Abridora volteado | Solo la familia WD038 (paso «solo si se tiñe» o «siempre» en su ruta) |
+| Abridora | Todas, aunque el tejido salga abierto (sale del jet en cuerda); abierto o tubular solo cambia la velocidad |
+| Rama (termofijado) | Todas; la rama es de la familia y la tela puede llevar otra |
+| Inspección | Todas |
+| Clasificación final | En la lista en metros, con tiempo fijo |
+
+«Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
 
 ## Dónde se ve cada cosa
 
@@ -37,6 +54,7 @@ primero que hay que ver); *activa*.
 | **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
 | **Centro de trabajo** | Pestaña «Ficha de la máquina» (tipo, estado, configuración por fecha), «Capacidades» con la capacidad de la ficha en los jets, y «Telas que corren aquí». Acción «Usar las capacidades de la ficha (jets)». |
+| **Tela → Rutas por familia** | Una ruta por crudo con sus pasos y máquinas; «Armar rutas desde las listas» y «Generar listas». |
 | **Tela → Pendientes por área** | Cada pendiente de la revisión con su área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura), operación, máquina y lista. La revisión se rehace cada noche y con «Actualizar la revisión» en Telas. |
 | **Tela → Fichas de tejido (por circular) / Fichas de acabado (datos de origen)** | Las fichas donde se guardan los datos; el SGI valida sobre ellas. |
 | **Tintorería** | Fórmulas y tiempos por fórmula y jet (módulos de José Sacramento) y «Artículos en los jets». |

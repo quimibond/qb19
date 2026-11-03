@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.27.2',
+    'version': '19.0.2.28.0',
     'summary': 'Fichas técnicas de tela en las pantallas nativas: tela, crudo, ruta, máquinas y revisión de listas',
     'description': """
 Fichas técnicas de tela
@@ -37,6 +37,7 @@ Manual: README.md. Historia por versión: CHANGELOG.md.
         'views/capacidad_conversion_views.xml',  # 2.23.0
         'views/revision_listas_views.xml',  # 2.24.0
         'views/ficha_producto_views.xml',  # 2.25.0: después de maquina_config_views (usa ft_tipo_id en el centro)
+        'views/ruta_familia_views.xml',  # 2.28.0
         'data/ir_cron_revision.xml',  # 2.24.0: después del modelo de la revisión
         'views/proceso_views.xml',  # 2.8.0
         'views/materia_prima_views.xml',  # 2.9.0
