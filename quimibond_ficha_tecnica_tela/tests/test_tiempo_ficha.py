@@ -89,6 +89,11 @@ class TiempoFichaCase(TransactionCase):
         cls.p_jet._ft_set_value('tiempo_ciclo', 4)
         Proceso.create({'articulo': 'IZZ931Q22JNT165', 'workcenter_id': cls.jet2.id})._ft_set_value('tiempo_ciclo', 3)
 
+    def _kg_guardables(self, kg):
+        """Los kg como los guarda la línea: con la precisión de su cantidad (2 decimales en una base nueva)."""
+        digits = self.env['mrp.bom.line']._fields['product_qty'].get_digits(self.env)[1]
+        return float_round(kg, precision_digits=digits)
+
 
 @tagged('post_install', '-at_install')
 class TestTiempoFicha(TiempoFichaCase):
@@ -167,11 +172,6 @@ class TestTiempoFicha(TiempoFichaCase):
         regla = self.jet2._ft_regla_capacidad(10.0, self.tela)
         self.assertEqual((regla['capacidad'], regla['origen']), (500.0, 'general'), "Sin bandas: la general")
         self.assertEqual(self.jet2._ft_regla_capacidad(10.0, self.tela, day='2019-01-01')['falla'], 'sin_config')
-
-    def _kg_guardables(self, kg):
-        """Los kg como los guarda la línea: con la precisión de su cantidad (2 decimales en una base nueva)."""
-        digits = self.env['mrp.bom.line']._fields['product_qty'].get_digits(self.env)[1]
-        return float_round(kg, precision_digits=digits)
 
     def test_05_conversion_a_metros(self):
         self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 0.125, places=4, msg="1 m ÷ 8 m/kg")
