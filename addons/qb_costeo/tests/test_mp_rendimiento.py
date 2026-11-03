@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -158,6 +158,76 @@ class TestRendimiento(TransactionCase):
         rend, fuente = self.R.para(otro)
         self.assertEqual(fuente, 'planta')
         self.assertAlmostEqual(rend, 9050 / 10100, 4)
+
+    def _mov_lote(self, product, lote, qty, dest, fecha):
+        lot = self.env['stock.lot'].search(
+            [('name', '=', lote), ('product_id', '=', product.id)]) or \
+            self.env['stock.lot'].create({'name': lote, 'product_id': product.id})
+        move = self.env['stock.move'].create({
+            'product_id': product.id, 'product_uom_qty': qty,
+            'product_uom': product.uom_id.id, 'location_id': self.origen.id,
+            'location_dest_id': dest.id})
+        move._action_confirm()
+        move.quantity = qty
+        move.move_line_ids.lot_id = lot
+        move.picked = True
+        move._action_done()
+        move.move_line_ids.write({'date': fecha})
+        return move
+
+    def test_primera_para_planear_cubre_9_de_10_lotes(self):
+        """1.9.0: la primera para planear es la que alcanzan 9 de cada 10
+        lotes de la tela, no el promedio; los rollos de una orden en kg
+        («<orden>-0001», «-0002») son un solo lote y los retazos no cuentan.
+        Con pocos lotes, el valor de planta; sin fila, 1.0 (no se infla)."""
+        self.assertEqual(self.R._cubre([], 0.9), 0.0)
+        self.assertAlmostEqual(self.R._cubre([0.5, 0.98, 0.9] + [0.98] * 7, 0.9), 0.9, 6)
+        self.assertAlmostEqual(self.R._cubre([0.7, 0.8], 0.9), 0.7, 6)
+        m = self.env.ref('uom.product_uom_meter')
+        tela = self.env['product.product'].create({
+            'name': 'TELA', 'default_code': 'WJ042Q22JNN160', 'type': 'consu',
+            'is_storable': True, 'tracking': 'lot', 'uom_id': m.id})
+        nueva = self.env['product.product'].create({
+            'name': 'NUEVA', 'default_code': 'WT140Q21JNT155', 'type': 'consu',
+            'is_storable': True, 'tracking': 'lot', 'uom_id': m.id})
+        fecha = datetime.now() - timedelta(days=10)
+        # 8 lotes de 98 %, uno de 90 % y uno de 50 % (promedio 93.2 %).
+        for i in range(8):
+            self._mov_lote(tela, 'B%02d' % i, 980, self.pq, fecha)
+            self._mov_lote(tela, 'B%02d' % i, 20, self.fe, fecha)
+        # El de 90 %: dos rollos de la misma orden en kg.
+        self._mov_lote(tela, 'WH/MO/00077-0001', 450, self.pq, fecha)
+        self._mov_lote(tela, 'WH/MO/00077-0002', 450, self.pq, fecha)
+        self._mov_lote(tela, 'WH/MO/00077-0003', 100, self.fe, fecha)
+        self._mov_lote(tela, 'B50', 500, self.pq, fecha)
+        self._mov_lote(tela, 'B50', 500, self.fe, fecha)
+        # Retazo: 100 m todo a merma, debajo del mínimo de 500 por lote.
+        self._mov_lote(tela, 'RETAZO', 100, self.fe, fecha)
+        # Tela con 2 lotes: planea con el valor de planta.
+        self._mov_lote(nueva, 'N1', 1000, self.pq, fecha)
+        self._mov_lote(nueva, 'N2', 600, self.pq, fecha)
+        self._mov_lote(nueva, 'N2', 400, self.fe, fecha)
+        lotes = self.R.medir_lotes()
+        self.assertEqual(len(lotes[tela.id]), 10)
+        self.R.recalcular()
+        fila = self.R.search([('product_id', '=', tela.id)])
+        self.assertEqual(fila.plan_fuente, 'producto')
+        self.assertEqual(fila.plan_lotes, 10)
+        self.assertAlmostEqual(fila.rendimiento_plan, 0.9, 4)
+        self.assertEqual(self.R.plan_para(tela), (fila.rendimiento_plan, 'producto'))
+        # El costeo sigue con el total de metros, no con la primera para planear.
+        self.assertAlmostEqual(fila.rendimiento_calculado, 9240 / 10100, 4)
+        f_nueva = self.R.search([('product_id', '=', nueva.id)])
+        self.assertEqual(f_nueva.plan_fuente, 'planta')
+        todos = sorted(lotes[tela.id] + lotes[nueva.id])
+        self.assertAlmostEqual(f_nueva.rendimiento_plan, todos[1], 4)
+        # Manual vigente manda también para planear.
+        fila.write({'rendimiento_manual': 0.95, 'manual_motivo': 'prueba',
+                    'manual_vigente_hasta': date(2099, 1, 1)})
+        self.R.recalcular()
+        self.assertEqual(self.R.plan_para(tela), (0.95, 'manual'))
+        sin_fila = self.env['product.product'].create({'name': 'SIN', 'type': 'consu'})
+        self.assertEqual(self.R.plan_para(sin_fila), (1.0, 'ninguna'))
 
 
 @tagged('post_install', '-at_install')

@@ -395,10 +395,12 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                 avisos.append('%s: falta el rendimiento de tela acabada para crear la lista en metros.' % nombre)
             else:
                 if not bom_m:
+                    from .capacidad_conversion import primera_para_planear  # local: orden de carga de models/
                     bom_m = Bom.create({
                         'product_tmpl_id': tela_m.product_tmpl_id.id, 'product_qty': 1,
                         'product_uom_id': tela_m.uom_id.id, 'code': CODIGO_M, 'active': False,
-                        'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': 1.0 / self.rendimiento_tela_acabada,
+                        'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': 1.0 / (
+                            self.rendimiento_tela_acabada * primera_para_planear(self.env, tela_m)[0]),
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
                 generadas |= bom_m

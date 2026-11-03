@@ -92,7 +92,7 @@ tela en el jet; si no, la banda de su rendimiento de tejido (A de 3 a menos de 7
 m/kg) topada a la capacidad general; un jet sin bandas usa la general; banda N/A o fuera de bandas, no hay. La
 Programación de Tintorería tiene su copia de la misma regla (propuesta a José de usar esta).
 
-**Conversión kg → m:** la lista en metros consume de su producto en kg metros ÷ rendimiento de tela acabada.
+**Conversión kg → m:** la lista en metros consume de su producto en kg metros ÷ rendimiento de tela acabada ÷ la primera para planear de la tela (la que alcanzan 9 de cada 10 lotes, del costeo; 1 si no hay dato), para que la venta llegue completa (2.24.0).
 
 **Qué lista se toma** (revisión, pestaña del producto, ruta de la ficha de acabado): la que tiene operaciones aunque
 esté archivada (las listas del flujo en kg esperan el visto bueno de Ingeniería); entre iguales, la activa; las que

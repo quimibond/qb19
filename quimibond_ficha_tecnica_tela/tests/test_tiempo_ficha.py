@@ -3,6 +3,7 @@
 kg → m vigiladas contra la ficha. Códigos ZZ931 que no existen en producción (las pruebas corren también sobre una
 copia de producción)."""
 from datetime import date
+from unittest.mock import patch
 
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import float_round
@@ -183,6 +184,22 @@ class TestTiempoFicha(TiempoFichaCase):
         self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)
         self.assertFalse(self.bom_m.ft_conversion_difiere, "Lo más cerca que la línea puede guardar ya no avisa")
         self.assertNotIn(self.bom_m, self.env['mrp.bom'].search([('ft_conversion_difiere', '=', True)]))
+
+    def test_05b_conversion_con_primera_para_planear(self):
+        """2.24.0: con la primera para planear del costeo (0.9 = la que alcanzan 9 de cada 10 lotes), la lista pide
+        1 ÷ (8 m/kg × 0.9) kg por metro; sin dato, 1 ÷ 8 (no se infla)."""
+        ruta = 'odoo.addons.quimibond_ficha_tecnica_tela.models.capacidad_conversion.primera_para_planear'
+        with patch(ruta, return_value=(0.9, 'producto')):
+            self.env.invalidate_all()
+            self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 1 / (8 * 0.9), places=6)
+            self.assertIn('0.9000 de primera para planear', self.bom_m.ft_conversion_calculo)
+            self.bom_m.action_ft_usar_conversion_ficha()
+            self.env.invalidate_all()
+            self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, self._kg_guardables(1 / 7.2), places=6)
+        self.env.invalidate_all()
+        self.assertAlmostEqual(self.bom_m.ft_conversion_kg, 0.125, places=4, msg="Sin dato de la tela: 1 m ÷ 8 m/kg")
+        from odoo.addons.quimibond_ficha_tecnica_tela.models.capacidad_conversion import primera_para_planear
+        self.assertEqual(primera_para_planear(self.env, self.env['product.product']), (1.0, False))
 
     def test_06_usar_los_datos_de_la_ficha_en_listas_archivadas(self):
         (self.bom | self.bom_m).action_archive()

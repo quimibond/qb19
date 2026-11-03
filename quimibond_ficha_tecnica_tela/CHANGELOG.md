@@ -8,6 +8,22 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.24.0 — 2026-11-03
+
+### Primera para planear en la lista en metros
+
+Planeación pide los metros que necesita la venta y deben llegar completos, sin promedios y sin esperar a terminar
+para mandar otra orden en kg (Dirección General, 2026-11-03). La lista en metros de la tela acabada (Clasificación
+final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para planear)** kg del acabado en proceso:
+
+- la primera para planear es la fracción de primera que alcanzan 9 de cada 10 lotes de esa tela en sus lotes de los
+  últimos 12 meses (`qb_costeo` 1.9.0, `qb.producto.rendimiento.plan_para`; con pocos lotes, el valor de planta);
+- sin `qb_costeo` o sin dato de la tela, 1 (no se infla); la conversión de la lista muestra el factor y su fuente;
+- aplica a «Usar los datos de la ficha», al aviso «Conversión kg → m distinta de la ficha» y a las listas en metros
+  que crea «Generar listas desde la ruta»;
+- el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
+  y la siguiente orden de la tela lo descuenta.
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos
