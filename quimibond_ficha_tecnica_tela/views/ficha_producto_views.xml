@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- 2.25.0 (Dirección General 2026-11-03): la ficha técnica en las pantallas nativas de Odoo. Extienden vistas de
-         product y mrp (otros módulos). -->
+         product y mrp (otros módulos). 2.26.0: los parámetros de la operación pasan a tiempo_ficha_views.xml (una
+         sola herencia del formulario de operación); en el centro de trabajo se pueden agregar telas. -->
 
     <!-- ===== Producto: pestaña «Ficha técnica» (primera, solo si el producto tiene ficha) ===== -->
     <record id="view_product_template_form_ft_ficha_nativa" model="ir.ui.view">
@@ -27,8 +28,17 @@
                                 icon="fa-sitemap" invisible="not ft_bom_kg_id"/>
                         <button name="action_ft_bom_m" type="object" string="Lista en metros" class="btn-secondary"
                                 icon="fa-sitemap" invisible="not ft_bom_m_id"/>
+                        <button name="action_view_ficha_tecnica_acabado" type="object" string="Ficha de acabado"
+                                class="btn-secondary" icon="fa-file-text"
+                                help="Los datos de origen de la tela (especificación, tintorería, validaciones del SGI)."/>
+                        <button name="action_ft_procesos" type="object" string="Procesos de la tela" class="btn-secondary"
+                                icon="fa-tachometer"/>
                         <field name="ft_bom_kg_id" invisible="1"/>
                         <field name="ft_bom_m_id" invisible="1"/>
+                    </div>
+                    <div invisible="not ft_es_crudo" class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_view_ficha_tecnica_tejido" type="object" string="Fichas de tejido"
+                                class="btn-secondary" icon="fa-file-text-o"/>
                     </div>
                     <group invisible="not ft_es_tela">
                         <group string="La tela">
@@ -116,27 +126,6 @@
         </field>
     </record>
 
-    <!-- ===== Operación: parámetros del proceso en su máquina y sus alternativas ===== -->
-    <record id="view_mrp_routing_workcenter_form_ft_parametros" model="ir.ui.view">
-        <field name="name">mrp.routing.workcenter.form.ft.parametros</field>
-        <field name="model">mrp.routing.workcenter</field>
-        <field name="inherit_id" ref="mrp.mrp_routing_workcenter_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="inside">
-                <separator string="Parámetros del proceso (la tela en esta máquina y en sus alternativas)"/>
-                <field name="ft_param_proceso_ids" readonly="1">
-                    <list>
-                        <field name="workcenter_id"/>
-                        <field name="resumen"/>
-                        <field name="fuente" optional="show"/>
-                        <field name="fecha" optional="hide"/>
-                        <button name="action_ft_editar" type="object" icon="fa-pencil" title="Editar los parámetros"/>
-                    </list>
-                </field>
-            </xpath>
-        </field>
-    </record>
-
     <!-- ===== Centro de trabajo: telas que corren aquí ===== -->
     <record id="view_mrp_workcenter_form_ft_telas" model="ir.ui.view">
         <field name="name">mrp.workcenter.form.ft.telas</field>
@@ -146,7 +135,7 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Telas que corren aquí" name="ft_telas" invisible="not ft_tipo_id">
                     <field name="ft_tipo_id" invisible="1"/>
-                    <field name="ft_proceso_ids" readonly="1">
+                    <field name="ft_proceso_ids" context="{'default_workcenter_id': id}">
                         <list>
                             <field name="articulo"/>
                             <field name="product_id" optional="show"/>

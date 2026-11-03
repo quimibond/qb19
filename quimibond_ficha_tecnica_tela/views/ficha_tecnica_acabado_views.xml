@@ -36,8 +36,8 @@
                          proceso (kg) → tela acabada (m). Botones a las listas de materiales de los dos productos. -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
-                                string="Lista vigente" invisible="not bom_id"
-                                help="La lista de materiales que hoy usa la tela acabada (de ahí salen el crudo y las operaciones)."/>
+                                string="Lista de la ruta" invisible="not bom_id"
+                                help="La lista en metros del flujo en kg (con operaciones, aunque siga archivada mientras Ingeniería la revisa). De ella salen el crudo, las operaciones y la tintorería de esta ficha."/>
                         <button name="action_ft_boms_proceso" type="object" class="oe_stat_button" icon="fa-balance-scale"
                                 invisible="not product_proceso_id">
                             <field name="bom_proceso_count" widget="statinfo" string="Listas en kg"/>
@@ -149,7 +149,7 @@
                             </group>
                         </page>
                         <page string="Ruta y máquinas" name="operaciones">
-                            <p class="text-muted">Las operaciones de la lista de materiales vigente y de sus intermedios (no las
+                            <p class="text-muted">Las operaciones de la lista de la ruta (flujo en kg) y de sus intermedios (no las
                                 del crudo), con los datos del artículo en cada máquina. Las operaciones se editan en la lista
                                 de materiales y los datos en Máquinas → Procesos por artículo. «Máquinas posibles» son la
                                 máquina de la operación y sus alternativas como las ve el planificador: ✓ el artículo corre

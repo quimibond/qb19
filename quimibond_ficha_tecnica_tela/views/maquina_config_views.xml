@@ -193,10 +193,6 @@
                         invisible="not ft_ficha_tejido_count">
                     <field name="ft_ficha_tejido_count" widget="statinfo" string="Fichas de tejido"/>
                 </button>
-                <button name="action_ft_procesos" type="object" class="oe_stat_button" icon="fa-tachometer"
-                        invisible="not ft_proceso_count">
-                    <field name="ft_proceso_count" widget="statinfo" string="Artículos"/>
-                </button>
                 <button name="action_ft_hilos" type="object" class="oe_stat_button" icon="fa-dot-circle-o"
                         invisible="not ft_hilo_count">
                     <field name="ft_hilo_count" widget="statinfo" string="Hilos"/>

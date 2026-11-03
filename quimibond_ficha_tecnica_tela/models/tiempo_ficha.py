@@ -46,7 +46,7 @@ TIPO_ABRIDORA = 'abridora'
 VELOCIDAD_ABRIDORA = {'Tubular': 'velocidad_tubular', 'Abierta': 'velocidad_abierta'}
 
 
-class MrpRoutingWorkcenterTiempoRama(models.Model):
+class MrpRoutingWorkcenterTiempoFicha(models.Model):
     _inherit = 'mrp.routing.workcenter'
 
     ft_tiempo_ficha = fields.Float(
@@ -281,13 +281,3 @@ class MrpRoutingWorkcenterTiempoRama(models.Model):
                 op.write({'time_mode': 'manual', 'time_cycle_manual': round(tiempo, 4)})
         return True
 
-
-class MrpBomTiempoRama(models.Model):
-    _inherit = 'mrp.bom'
-
-    def action_ft_tiempos_rama(self):
-        """«Usar el tiempo de la ficha» en las operaciones de estas listas (también las archivadas: las listas
-        en kg nacen archivadas hasta que Ingeniería las revisa). 2.23.0: todas las operaciones con cálculo, no solo
-        rama; el nombre se conserva por compatibilidad."""
-        self.with_context(active_test=False).operation_ids.action_ft_usar_tiempo_ficha()
-        return True

@@ -1,17 +1,69 @@
-# Quimibond - Ficha Técnica de Tela
+# Fichas técnicas de tela (`quimibond_ficha_tecnica_tela`)
 
-Módulo Odoo 19 con **2 modelos separados**:
+Las fichas técnicas de Quimibond en Odoo 19: qué es cada tela (tejido, acabado, especificación), cómo se hace
+(máquinas y datos de la tela en cada una) y si sus listas de materiales cuadran con eso. Historia por versión:
+[`CHANGELOG.md`](CHANGELOG.md).
 
-- `ficha.tecnica.tejido` — datos de tejido (máquina, hilos,
-  especificaciones, tela acondicionada). Se vincula 1:1 con el producto
-  "Tela en Proceso" (kg).
-- `ficha.tecnica.acabado` — datos de acabado (rendimiento, peso, ancho,
-  espesor, encogimiento, elongación). **Cada producto de tela acabada**
-  (ej. cada color) tiene su propia ficha, con un `Many2one` obligatorio
-  hacia la `ficha.tecnica.tejido` que le sirve de base. Una ficha de
-  tejido puede ser la base de varias fichas de acabado.
+**Decisión vigente (Dirección General, 2026-11-03):** la ficha se ve en las pantallas nativas de Odoo (producto,
+lista de materiales, operación, centro de trabajo) y la app «Fichas técnicas» es el concentrado. Los datos siguen
+guardados en las fichas de tejido y de acabado y en los procesos por máquina, porque los leen el SGI, el costeo y la
+Programación de Tintorería.
 
-## Modelo de producción vigente (2.13.2, Dirección 2026-10-19/21)
+## Dónde se ve cada cosa
+
+| Pantalla | Qué hay |
+|---|---|
+| **Fichas técnicas → Tela → Telas** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo y pendientes, en verde o rojo. Abre el producto. |
+| **Tela → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
+| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | La tela (peso, ancho y rendimiento editables ahí), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». |
+| **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
+| **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
+| **Operaciones** | Filtro «Tiempo distinto de la ficha». |
+| **Centro de trabajo** | Pestaña «Ficha de la máquina» (tipo, estado, configuración por fecha), «Capacidades» con la capacidad de la ficha en los jets, y «Telas que corren aquí». Acción «Usar las capacidades de la ficha (jets)». |
+| **Tela → Revisión de listas en kg / Pendientes por área** | Lo que revisó la auditoría de octubre, por tela y por área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura). Se rehace cada noche y con «Actualizar». |
+| **Tela → Fichas de tejido (por circular) / Fichas de acabado (datos de origen)** | Las fichas donde se guardan los datos; el SGI valida sobre ellas. |
+| **Tintorería** | Fórmulas y tiempos por fórmula y jet (módulos de José Sacramento) y «Artículos en los jets». |
+| **Máquinas** | Máquinas, configuraciones por fecha, procesos por artículo (edición en masa) y comparativo. |
+| **Materias primas** | Fichas de hilo, propiedades y hilos por tela y máquina. |
+| **Configuración** (jefes de Fabricación) | Tipos de máquina y sus parámetros, tipos de materia prima, fibras, unidades, características, claves de codificación y Herramientas (importar desde Excel, acabados en proceso faltantes, ligado de hilos). |
+
+## Dónde se guarda cada dato
+
+| Dato | Modelo |
+|---|---|
+| Crudo: máquina, hilos, ajustes, tela acondicionada (una ficha por artículo, revisión y circular) | `ficha.tecnica.tejido` |
+| Tela: rendimiento, peso, ancho, encogimiento, elongación, especificación, su producto en kg y en metros | `ficha.tecnica.acabado` (+ `ficha.tecnica.spec`) |
+| La tela en cada máquina (velocidad, merma, ancho bajando de rama, tiempo de ciclo, kg por carga…) | `ficha.tecnica.proceso` (por código de artículo y máquina) |
+| La máquina por fecha (galga, diámetro, capacidad y bandas de los jets, relación de baño…) | `ficha.tecnica.maquina.config` con los parámetros de su tipo |
+| Revisión de las listas | `ficha.tecnica.revision` y `.pendiente` (foto, se rehace) |
+
+## Cálculos
+
+**Tiempo de cada operación desde la ficha** (minutos por ciclo; se pasa a la lista con un botón, nunca solo):
+
+| Operación | Cuenta |
+|---|---|
+| Rama | 1000 ÷ (peso g/m² × ancho bajando de rama m) × (1 − merma) ÷ velocidad m/min |
+| Inspección | rendimiento de tela acabada m/kg × 60 ÷ velocidad de inspección m/h (rollos con 1 empalme) |
+| Devanado | kg de crudo por kg × rendimiento de tejido ÷ velocidad m/min |
+| Abridora | igual, con la velocidad de tela tubular o abierta según sale del tejido (si no, la general) |
+| Tintorería | minutos por baño: tiempo de ciclo de la tela en el jet; si no, el de la fórmula en ese jet |
+
+Rama, inspección, devanado y abridora se multiplican por la capacidad del ciclo (1 kg si no está capturada);
+tintorería no, porque un ciclo es un baño y por eso pide la capacidad del jet para el producto.
+
+**Capacidad del jet por producto** (`mrp.workcenter._ft_regla_capacidad`, regla única de fichas): kg por carga de la
+tela en el jet; si no, la banda de su rendimiento de tejido (A de 3 a menos de 7, B de 7 a menos de 11, C de 11 a 16
+m/kg) topada a la capacidad general; un jet sin bandas usa la general; banda N/A o fuera de bandas, no hay. La
+Programación de Tintorería tiene su copia de la misma regla (propuesta a José de usar esta).
+
+**Conversión kg → m:** la lista en metros consume de su producto en kg metros ÷ rendimiento de tela acabada.
+
+**Qué lista se toma** (revisión, pestaña del producto, ruta de la ficha de acabado): la que tiene operaciones aunque
+esté archivada (las listas del flujo en kg esperan el visto bueno de Ingeniería); entre iguales, la activa; las que
+dicen «no usar» van al final. Odoo fabrica con la activa.
+
+## Modelo de producción vigente
 
 Las secciones de versiones anteriores cuentan cómo se llegó aquí (2.6.0 y
 2.9.0 hablaban de «un solo producto de acabado en kg»; 2.12.0 a 2.13.1 lo
@@ -73,37 +125,34 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 - **En el módulo:** la ficha de acabado liga la tela acabada (`product_acabado_id`)
   y el acabado en kg (`product_proceso_id`, lo liga sola por código); los
   artículos nuevos los crea C1 en el SGI (57.160.0) y los que faltan de los
-  existentes, Tela → Acabados en proceso faltantes. Otros módulos leen el
+  existentes, Configuración → Herramientas → Acabados en proceso faltantes. Otros módulos leen el
   artículo en kg en la ficha, no lo arman por el código.
 - **Configuración de inventario pendiente** (no es código): las rutas para que
   Ventas tome solo de Producto terminado y la operación de Clasificación final.
 
-## Instalación / actualización
+## Los dos rendimientos
 
-1. Copiar la carpeta `quimibond_ficha_tecnica_tela` a la carpeta de addons.
-2. El modelo único `ficha.tecnica.tela` de la primera versión ya no existe
-   en el código (2.1.1 retiró también su importador; Jose Sacramento
-   confirmó que no lo usa). Su tabla `ficha_tecnica_tela` sigue en la base
-   hasta que se borre a mano; no se migra al par tejido/acabado.
-3. Requiere `mrp` y `openpyxl` en el servidor.
+Hay dos rendimientos en metros por kilogramo y **los dos se conservan como
+campo**:
 
-## Uso
+- **Tejido** (`rendimiento_tela_tejida` en `ficha.tecnica.tejido`, rama
+  `consolti`): rendimiento de la tela en proceso. **Es el que alimenta el
+  cálculo de tamaño de orden y split de Tintorería**, junto con
+  `tintoreria.capacidad.rendimiento` (módulo `quimibond_tintoreria_rendimiento`).
+- **Acabado** (`rendimiento_tela_acabada` en `ficha.tecnica.acabado`):
+  rendimiento teórico del producto terminado. **Valida los metros finales**
+  contra el rendimiento real del pesaje de cada rollo. No alimenta a
+  Tintorería.
 
-- **App «Fichas técnicas»** (2.7.0):
-  - **Tela → Tejido** y **Tela → Acabado** — alta/edición manual (la de
-    acabado pide primero la ficha de tejido base y el producto de tela
-    acabada).
-  - **Máquinas → Máquinas** — los centros de trabajo con tipo de máquina y
-    sus parámetros vigentes; **Máquinas → Configuraciones por fecha**.
-  - **Importar → Tejido / Acabado desde Excel** — importación masiva tabular.
-  - **Configuración** (gerentes de Fabricación) — tipos de máquina,
-    características y claves de codificación.
-- Desde la ficha del producto (`product.template`), 2 botones inteligentes
-  separados: "Ficha de Tejido" y "Ficha de Acabado".
-- Desde una ficha de tejido, un botón muestra todas las fichas de acabado
-  que la usan como base.
+## Columnas fijas
 
-## Importación masiva (tabular)
+Las columnas fijas de `ficha.tecnica.tejido` y `ficha.tecnica.acabado`
+(máquina, hilos, poleas, tela acondicionada, peso, ancho, encogimiento,
+elongación, rendimientos…) **no se eliminan ni se renombran**: el código de
+Consolti las lee. Los renglones de características de 2.1.0 conviven con
+ellas.
+
+## Importación masiva desde Excel
 
 Ambos wizards leen la **primera fila como encabezados** y cada fila
 siguiente como un artículo distinto. El match de encabezado es tolerante a
@@ -157,859 +206,17 @@ Si una fila referencia un artículo de tejido o producto que no existe
 todavía en Odoo, esa fila se omite y se reporta en el resumen de avisos
 al final de la importación — el resto de filas válidas sí se procesan.
 
-## Los dos rendimientos (regla de Jose, 2026-10-06)
-
-Hay dos rendimientos en metros por kilogramo y **los dos se conservan como
-campo**:
-
-- **Tejido** (`rendimiento_tela_tejida` en `ficha.tecnica.tejido`, rama
-  `consolti`): rendimiento de la tela en proceso. **Es el que alimenta el
-  cálculo de tamaño de orden y split de Tintorería**, junto con
-  `tintoreria.capacidad.rendimiento` (módulo `quimibond_tintoreria_rendimiento`).
-- **Acabado** (`rendimiento_tela_acabada` en `ficha.tecnica.acabado`):
-  rendimiento teórico del producto terminado. **Valida los metros finales**
-  contra el rendimiento real del pesaje de cada rollo. No alimenta a
-  Tintorería.
-
-## Columnas fijas
-
-Las columnas fijas de `ficha.tecnica.tejido` y `ficha.tecnica.acabado`
-(máquina, hilos, poleas, tela acondicionada, peso, ancho, encogimiento,
-elongación, rendimientos…) **no se eliminan ni se renombran**: el código de
-Consolti las lee. Los renglones de características de 2.1.0 conviven con
-ellas.
-
-## Características con dos juegos de límites (2.1.0)
-
-Desde 2.1.0 el módulo es dueño del **catálogo de características** y de las
-**claves de codificación de artículos**, y cada ficha de tejido y de acabado
-lleva una pestaña «Características» con un renglón por característica:
-
-| Columna | Qué guarda |
-|---|---|
-| Característica | Del catálogo (`ficha.tecnica.caracteristica`: clave estable, nombre en español e inglés, tipo de dato numérico / cualitativo / sí-no, unidad, método o norma); un renglón sin catálogo se escribe libre |
-| Dirección y posición | Largo / ancho; izquierda / centro / derecha |
-| Especificación del cliente | Nominal y límite: nominal ± tolerancia (en unidades o en %), máximo o mínimo. Texto solo en las cualitativas |
-| Control interno | Margen más cerrado sobre el mismo nominal. **Nunca se imprime al cliente**; el certificado y las Especificaciones del producto salen de la especificación del cliente |
-| En especificación del cliente / En certificado | Qué renglones van a cada documento |
-
-Los límites viven en el mixin `ficha.tecnica.caracteristica.mixin`
-(`_result_for(valor)` devuelve `cumple`, `desviacion` o `no_conforme`;
-`_limit_vals()` copia un renglón de un documento a otro). El SGI de
-`quimibond_sgi` (tabla de características del proyecto de desarrollo, C1)
-usa el mismo catálogo y el mismo mixin, de modo que al liberar un artículo
-los renglones del proyecto pasan a su ficha sin recaptura.
-
-Las claves de codificación (`ficha.tecnica.clave.codigo`) transcriben el DAT
-P-D02-01 rev. 05: composición, dibujo, tipo de hilo, galga por rango
-(`gauge_code(18)` → `'21'`, `gauge_from_code('22')` → `18`), operación, color
-y acabado. Catálogo y claves se siembran con `noupdate` y se editan en
-**Fichas técnicas → Configuración** (gerentes de Fabricación).
-Pruebas: `tests/test_caracteristicas.py` (corren en el CI).
-
-## Máquina y tolerancias numéricas (2.2.0, 2026-10-13)
-
-Decisión de Jose: una sola ficha por proceso, la de este módulo. El SGI
-(`quimibond_sgi` 57.155.0) le agrega la capa de control del desarrollo
-(proyecto, orden, quién propuso, validó y midió, y el valor real de cada
-parámetro) y deja de usar su ficha de proceso por máquina.
-
-- **Máquina** (`maquina_tejido`) es el centro de trabajo de Odoo
-  (`mrp.workcenter`). Lo que se capturó como texto antes de 2.2.0 queda en
-  `maquina_tejido_texto` (solo lectura, dato histórico). Al importar del
-  Excel, la columna `Máquina` se liga al centro de trabajo con ese nombre o
-  código; si no hay uno solo, se guarda el texto y la importación lo avisa.
-- **Tolerancias**: las que eran texto ahora son número. La de peso (tela
-  acondicionada y acabada) tiene dos: arriba (`*_tol`) y abajo
-  (`*_tol_minus`); con la de abajo en 0 la tolerancia es ± la de arriba. En
-  el Excel se sigue aceptando «+12 / -6».
-- La migración `19.0.2.2.0/pre-migrate.py` conserva los textos que no se
-  puedan leer como número en una columna `<campo>_texto_2_1` y los reporta
-  en el log.
-
-## Ficha de la máquina: configuraciones por fecha (2.3.0, 2026-10-13)
-
-Decisión de Jose: los datos de una circular son de la máquina, no del
-artículo, y cambian con el cilindro.
-
-- **En el centro de trabajo** (pestaña «Ficha de la máquina»): marca y
-  modelo, y las **configuraciones con fecha** (`ficha.tecnica.maquina.config`):
-  diámetro (in), galga, agujas, alimentadores y velocidad máxima, «vigente
-  desde» y el motivo (alta, cambio de cilindro). La vigente es la de fecha más
-  reciente que ya empezó. También en Ficha técnica → Configuración →
-  Configuraciones de máquina.
-- **La ficha de tejido** guarda la configuración con la que se elaboró: al
-  poner la máquina y la fecha de elaboración se elige sola la vigente a esa
-  fecha, y de ella salen galga, diámetro, agujas, alimentadores y marca (en
-  solo lectura). Un cambio de cilindro posterior no altera las fichas
-  anteriores. La velocidad sigue siendo de la ficha (es del proceso); si
-  supera la máxima de la configuración, la ficha lo avisa.
-- **Galga del artículo**: si se captura, la lista de máquinas solo ofrece las
-  que hoy corren esa galga.
-- Una configuración que ya usa alguna ficha no se borra: se registra otra con
-  su fecha.
-- `diametro` de la ficha de tejido pasa de texto a número
-  (`migrations/19.0.2.3.0/pre-migrate.py`).
-
-## Ficha de la máquina para cualquier tipo de máquina (2.4.0, 2026-10-13)
-
-Decisión de Jose: la ficha de la máquina no es solo de tejido; cambia con el
-tipo de máquina (tejido, tintorería, acabado, inspección, abridora,
-devanadora…).
-
-- **Tipos de máquina** (Configuración → Tipos de máquina,
-  `ficha.tecnica.maquina.tipo`): cada tipo tiene su lista de **parámetros**
-  (`ficha.tecnica.maquina.parametro`: clave, nombre, unidad, numérico o
-  texto, cómo se mide). El módulo trae seis tipos (tejido circular,
-  tintorería, acabado, inspección, abridora, devanadora) y **solo los
-  parámetros de tejido circular** (diámetro, galga, agujas, alimentadores,
-  velocidad máxima). Los de los demás tipos los da de alta la planta: no se
-  inventan. Se pueden agregar tipos (carda, fusionadora, rama…).
-- **Centro de trabajo**: campo «Tipo de máquina» en la pestaña «Ficha de la
-  máquina», junto a marca y modelo. Si una máquina sin tipo recibe su
-  primera configuración, toma el tipo de esa configuración.
-- **Configuración con fecha**: un renglón por parámetro activo de su tipo
-  (`ficha.tecnica.maquina.valor`), con valor numérico o texto. Al cambiar el
-  tipo se rehacen los renglones. Un parámetro nuevo aparece en las
-  configuraciones que se creen después; uno con valores capturados no se
-  borra (se archiva).
-- **Tejido**: galga, diámetro, agujas, alimentadores y velocidad máxima
-  siguen como columnas de la configuración, calculadas desde los valores con
-  las claves `galga`, `diametro`, `no_agujas`, `no_alimentadores` y
-  `velocidad_max` (y se pueden escribir directo: crean o ajustan el valor).
-  La ficha de tejido y la búsqueda de máquinas por galga no cambian.
-- La migración `19.0.2.4.0/post-migrate.py` expone al MCP los cuatro
-  modelos (lectura, alta y edición). No asigna tipos ni crea configuraciones.
-
-## Avisos de máquina en producción (2.5.0, 2026-10-13)
-
-Primeros usos de la ficha de la máquina en la planta. Son **avisos**, no
-bloqueos: la decisión sigue siendo de la planta.
-
-- **Galga al programar tejido** (`mrp.workorder.ft_aviso_maquina`): si la
-  orden de trabajo va a una circular cuya configuración vigente (a la fecha
-  de inicio) corre otra galga que la del artículo, la orden lo avisa en la
-  ficha, en la lista de órdenes de trabajo (renglón amarillo y columna
-  «Aviso de máquina»), al cambiar la máquina (ventana de aviso) y con el
-  filtro «Galga distinta a la máquina». La orden de fabricación repite el
-  aviso. La galga del artículo sale de su ficha de tejido («Galga del
-  artículo», o la galga con la que se elaboró) y, si no hay ficha, de las
-  posiciones 7 y 8 del código con el catálogo de claves de galga
-  (DAT P-D02-01: 21 a 30 = galga 18, 46 a 55 = galga 24, 66 a 75 = galga 28…).
-- **Cargas por jet en tintorería** (`mrp.production`): las órdenes de
-  tintorería no llevan órdenes de trabajo, así que la orden de fabricación
-  trae la pestaña «Cargas por jet»: por cada jet, la capacidad por carga que
-  aplica y cuántas cargas son. La capacidad sale de la configuración vigente
-  del jet: la del grupo de rendimiento de la tela (A de 3 a menos de 7, B de
-  7 a menos de 11, C de 11 a 15 m/kg; hoja «CAP DE CARGAS») y, sin
-  rendimiento, la capacidad general. El rendimiento sale de la ficha de
-  tejido: 1000 / (peso g/m² × ancho m); un ancho fuera de 0.3 a 4 m no se
-  usa. Si se elige el **Jet** de la orden, avisa cuando la orden no cabe en
-  una carga o el jet no tiene capacidad para ese grupo.
-- Qué órdenes son de tintorería lo dice el tipo de operación («Calcular
-  cargas por jet»). La migración `19.0.2.5.0/post-migrate.py` lo prende en
-  los tipos de fabricación cuyo nombre dice «Tintorería».
-
-## Listo para el producto único de acabado en kg (2.6.0, 2026-10-13)
-
-> Afinado en 2.13.x: kg hasta la Clasificación final y la tela acabada en metros (ver «Modelo de producción vigente» arriba).
-
-Decisión de Jose: los productos de tintorería se van a dejar de usar; habrá
-**un producto de acabado en kg** con todas las operaciones en su ruta, desde
-que se recibe de tejido hasta que sale de inspección. Sin cambiar lo que hoy
-funciona con las órdenes TL/OP-TIN:
-
-- **Aviso de carga en la orden de trabajo del jet**: si una orden de trabajo
-  cae en un jet (tipo de máquina «Tintorería») y la orden de fabricación trae
-  más kg de los que caben en una carga (según el grupo de rendimiento o la
-  capacidad general), la orden de trabajo lo avisa como el de galga: banner,
-  renglón amarillo, ventana al cambiar la máquina y el filtro «Con aviso de
-  máquina» (antes «Galga distinta a la máquina»).
-- **Pestaña «Cargas por jet»** también en una orden con orden de trabajo en un
-  jet; el jet resaltado es el de la orden de trabajo y el campo «Jet» manual
-  se oculta.
-- **Rendimiento por la ficha de acabado**: si el producto no tiene ficha de
-  tejido propia (caso del producto de acabado), se toma la de tejido en que
-  se basa su ficha de acabado. El rendimiento de tintorería sigue siendo el
-  de tejido (regla de los dos rendimientos).
-- Pendiente para cuando exista el producto único: la corrida de muestra del
-  SGI (57.154.0) arma crudo → teñido → acabado y tendrá que pasar a crudo →
-  acabado con la ruta completa.
-- Para el SGI (C1, 57.158.0) el centro de trabajo expone dos métodos:
-  `_ft_circulares_con_galga(galga, day)` (circulares cuya configuración
-  vigente corre esa galga) y `_ft_aviso_para(producto, kg, day)` (el texto
-  del aviso de galga o de carga para un producto en esa máquina, sin orden de
-  trabajo). La orden de trabajo usa el mismo método, así que el aviso del
-  checklist, la corrida de muestra y la producción dicen lo mismo.
-
-## Una ficha por máquina y menús (2.7.0, 2026-10-13)
-
-- **Una ficha de tejido por artículo, revisión y máquina.** Los formatos de
-  la planta llevan una hoja por máquina: F-IT-P-P01-08-05 (2017-2018, «Ficha
-  técnica de control de proceso») y F-IT-P-P01-08-04 (julio 2025, «Ficha
-  técnica de proceso tejido circular»). El mismo artículo en la circular 15 y
-  en la 26 lleva otros ajustes (poleas, punto de cilindro, tensión, RPM). La
-  restricción pasa de `unique(articulo, revision)` a
-  `unique(articulo, revision, maquina_tejido)` con el mismo nombre, así que
-  el update la reemplaza. El nombre de la ficha muestra la máquina
-  («WJ044Q22HNT235 · CIRCULAR 31»).
-- El importador de tejido empata por artículo, revisión y máquina; la
-  máquina del Excel se liga por nombre o código (un `31.0` de celda numérica
-  cuenta como `31`; si el código se repite en otro tipo de máquina, gana la
-  circular). El de acabado toma la ficha de tejido más reciente del artículo.
-- **Menús**: todos en `views/ficha_tecnica_menus.xml`, al final del
-  manifest. App «Fichas técnicas» con ícono: Tela, Máquinas (lista de
-  centros de trabajo con tipo, agrupada por tipo), Importar y Configuración.
-  Antes los importadores iban al primer nivel y las configuraciones de
-  máquina estaban dentro de Configuración (solo gerentes).
-- Sin migración.
-
-## Proceso del artículo en la máquina (2.8.0, 2026-10-14)
-
-La configuración por fecha guarda lo que es **de la máquina**. Hay datos que
-son **del artículo en esa máquina**: Producción mide la rama en metros por
-minuto del artículo programado («XJ140Q21JNT165 pasa en rama Unitech a 18
-m/min: 1,080 m en una hora; un baño de 4,800 m en 4:44 h», Guadalupe Ramos,
-2026-10-14). Lo mismo vendrá de tintorería (tiempo de ciclo por jet),
-inspección y las demás áreas. Por eso el modelo es genérico:
-
-- **Ámbito del parámetro** (`ficha.tecnica.maquina.parametro.ambito`): «De
-  la máquina» (default; va en la configuración por fecha, como siempre) o
-  «Del artículo en la máquina». Se da de alta en Configuración → Tipos de
-  máquina. Un parámetro con valores capturados no cambia de ámbito.
-- **Proceso** (`ficha.tecnica.proceso`): un artículo (código; se liga al
-  producto si la referencia existe una sola vez) en una máquina, único por
-  artículo y máquina, con un valor por parámetro del artículo del tipo de la
-  máquina (`ficha.tecnica.proceso.valor`), fecha del dato, fuente y notas.
-  Que exista dice que el artículo **corre en esa máquina**; un valor vacío es
-  un dato que no se ha dado, no un cero. Los dos modelos de valores comparten
-  `ficha.tecnica.valor.mixin`.
-- **Cálculos**: un parámetro `velocidad` en m/min da m/hora (× 60) y, con
-  `merma` (%), m/hora netos. La máquina muestra el **promedio** de cada
-  parámetro numérico entre sus artículos (calculado, no capturado) y un botón
-  «Artículos».
-- **Dónde se ve**: Máquinas → Procesos por artículo; Máquinas → Tabla por
-  artículo y máquina (tabla dinámica artículo × máquina de un parámetro, como
-  las hojas de la planta); pestaña «Procesos por máquina» en la ficha de
-  acabado; botón en el producto.
-- **Importar** (Importar → Procesos desde Excel): una fila por artículo y
-  máquina; columnas «Artículo» y «Máquina» (código o nombre del centro de
-  trabajo) y una por parámetro, por clave o nombre («Velocidad (m/min)»);
-  opcionales «Fecha», «Fuente», «Notas». Una celda vacía no borra.
-- **Para el código que siga** (capacidad, duración esperada de la orden de
-  trabajo): `ficha.tecnica.proceso._ft_buscar(articulo_o_producto, maquina)`
-  y `proceso._ft_value('velocidad')`.
-- Sin migración: la columna `ambito` nace con «De la máquina» en todos los
-  parámetros existentes.
-- **2.8.1** (2026-10-16): el botón «Procesos por máquina» también funciona en
-  la ficha de la variante. `product.product` hereda los campos de la
-  plantilla pero no sus métodos, y Odoo marcaba la vista de variante como
-  inválida al actualizar («action_ft_procesos no es una acción válida en
-  product.product»).
-
-## La cadena completa: materias primas, hilos ligados y acabado con su ruta (2.9.0, 2026-10-19)
-
-Dirección: «Hoy no puedo ligar un hilo a sus propiedades, que están dentro de
-un producto, que está dentro de una máquina.» Desde 2.9.0 la cadena se
-recorre en los dos sentidos: **máquina → configuración vigente → procesos →
-ficha de tejido / acabado → hilos → propiedades**, y desde un hilo, qué telas
-lo usan, en qué máquinas y con qué parámetros.
-
-- **Ficha de materia prima** (`ficha.tecnica.material`, Fichas técnicas →
-  Materias primas): una por producto (hilo, químico, colorante), con el
-  **mismo motor de parámetros que las máquinas**. El tipo
-  (`ficha.tecnica.maquina.tipo`) ahora tiene **clase** (máquina / materia
-  prima) y sus parámetros son de ámbito «De la materia prima»; un material
-  nuevo no necesita código (Configuración → Tipos de materia prima). Un
-  parámetro de texto puede llevar **opciones** (S, Z, Sin torsión): el valor
-  se guarda como la opción y uno fuera de la lista es un error.
-- **Tipos que trae el módulo** (Jose: «usa las mejores prácticas»), con su
-  norma en «Cómo se mide»:
-  - *Hilo de filamento* (75/36): título (den), filamentos, cabos, textura
-    (SET / stretch / semistretch / rígido FDY / aire ATY), sentido y vueltas
-    de torsión, entrelazado, lustre, color, tenacidad (cN/dtex), elongación,
-    contracción de rizo y encogimiento en agua hirviendo.
-  - *Hilo hilado* (22/1): título (Ne), cabos, sistema de hilatura, sentido,
-    vueltas y coeficiente de torsión, color, tenacidad (cN/tex), elongación,
-    CVm, imperfecciones (IPI) y pilosidad.
-  - *Químico* y *Colorante*: sin propiedades; las da de alta la planta.
-  - La **composición** va en renglones de fibra (siglas ISO 2076: PES, CO,
-    PA, EL, CV, PP; Configuración → Fibras) con % y «reciclado»; la ficha
-    avisa si no suma 100.
-- **Proponer desde el nombre**: el botón de la ficha (y la acción «Crear
-  ficha de materia prima» de la lista de productos) llena solo lo que dice el
-  nombre: «HILO POLIÉSTER 75/36 STRETCH TORSIÓN Z» → 75 den, 36 filamentos,
-  texturizado stretch, torsión Z, 100 % PES. Una mezcla sin proporción en el
-  nombre («PES/CO 22/1») queda sin composición. Lo que ya tiene dato no se
-  toca; lo demás queda vacío.
-- **Hilos de la ficha de tejido**: cada renglón es el **producto** del hilo,
-  con su %, polea, alimentadores, secuencia de alimentación, consumo (cm/vta),
-  longitud de malla, proveedor (solo entre los proveedores del producto) y
-  lote de inventario. Tipo, título, torsión y lote en texto quedan como dato
-  anterior, de solo lectura una vez ligado. Las columnas fijas (polea 1 y 2,
-  etc.) no cambian: el SGI y Consolti las leen.
-- **Cotejo con la lista de materiales del crudo**: la ficha elige su lista
-  (el crudo puede tener varias, alternativas por hilo o proveedor; vacía = la
-  principal) y avisa si un hilo no tiene producto, falta o sobra, si su %
-  difiere más de 1 punto del de la lista o si los % no suman 100. Filtro «Con
-  aviso de hilos».
-- **Ligado de hilos** (Materias primas → Ligado de hilos, o el botón «Ligar
-  hilos» de la ficha): reporte de solo lectura con el candidato de cada
-  renglón según la lista de materiales (título, torsión, textura, color y,
-  si hay varios, el %). «Ligar los de candidato único» escribe solo el
-  producto (y el lote si existe en inventario); los que tienen varios
-  candidatos, solo están en otra lista del crudo o fuera de sus listas se
-  deciden en la ficha. Simulado con producción (124 hilos de fichas activas):
-  122 con candidato único; los 2 de WC090Q11HNT092 piden elegir en la ficha
-  la lista «150/48 stretch» (la principal es 100 % 75/36). El importador de
-  tejido liga solo los de candidato único y, al reimportar, actualiza el
-  renglón del mismo número en vez de borrarlo.
-- **Configuración de la máquina**: «Ligar a la configuración vigente» (botón
-  y acción de la lista) liga las fichas sin configuración a la vigente a su
-  fecha de elaboración (hoy si no tiene) cuando sus datos de máquina no la
-  contradicen; un dato vacío de la configuración ya **no borra** el de la
-  ficha. En producción: 70 de 79 se ligan; 8 tienen un dato distinto (agujas
-  1748 contra 1740 en las circulares 19, 21, 22, 25 y 26 de la primera
-  carga; alimentadores 120 contra 90 en la 21 y 22; 96 contra 128 en la 28)
-  y una no tiene máquina. Filtro «Sin configuración de máquina».
-- **Navegación**: hilo (producto) → «Ficha de materia prima» y «Telas que lo
-  usan»; ficha de materia prima → telas, máquinas y pestaña «Dónde se usa»;
-  ficha de tejido → máquina, lista de materiales y fichas de sus hilos;
-  máquina → «Hilos». Tablas dinámicas: Propiedades por material (material ×
-  propiedad) e Hilos por tela y máquina (hilo × máquina).
-- **Personas**: jefe de manufactura y auxiliar de procesos son empleados
-  (`hr.employee`; el módulo depende de `hr`); el texto anterior queda de
-  solo lectura (vacío en producción).
-- **Ficha de acabado lista para el producto único en kg**: muestra su
-  **crudo** (bajando por la lista de materiales hasta el primer componente
-  con ficha de tejido; avisa si la ficha se basa en otro tejido) y la pestaña
-  **Operaciones**: las de su lista de materiales y sus intermedios, con
-  máquina, tipo y el proceso del artículo en esa máquina; avisa las que caen
-  en una máquina cuyo tipo pide datos del artículo y no tienen proceso.
-- **Jets**: datos del artículo en el jet (proceso): tiempo de ciclo (h), kg
-  por carga y relación de baño del artículo (L/kg). Los kg por carga del
-  artículo ganan sobre la capacidad por grupo de rendimiento en el aviso de
-  carga y en «Cargas por jet»; la relación de baño del artículo gana sobre la
-  de la máquina (`mrp.workcenter._ft_relacion_bano(producto)`, que también
-  lee «1:10» de la configuración). `quimibond_tintoreria_rendimiento` sigue
-  igual; su tabla repite capacidades y RB de la configuración del jet y
-  conviene retirarla cuando el cálculo de split lea la ficha.
-- **Limpieza**: etiquetas duplicadas que pintaban de naranja el build
-  («No. de máquinas», «Resumen de parámetros», «No. de fichas de tejido»).
-  Procesos: filtros «Sin producto en Odoo» y «Sin velocidad» (en producción,
-  12 sin producto y 5 sin velocidad).
-- Sin migración: todo son columnas y modelos nuevos; los datos de origen no
-  se tocan. Pruebas: `tests/test_materia_prima.py`,
-  `tests/test_hilos_ligados.py`, `tests/test_acabado_ruta.py`.
-- **Pendiente**: parámetros de abridora y devanadora (los da la planta);
-  marca y modelo de la máquina desde el equipo de mantenimiento. Unidades:
-  2.10.0.
-- **Para `qb_costeo`**: `centros_esperados` decide la ruta por la letra de
-  etapa del código (H, I, J); con el producto único (J con el crudo H) deja
-  fuera la tintorería: debe leer las operaciones de la ruta, como ya hace
-  `_centro_aplica`. `_ficha` y el driver `m_velocidad` solo dan horas de rama
-  a productos en metros: para kg, convertir con el rendimiento de la ficha
-  (`product._ft_rendimiento()`). `kg_ciclo` debería tomar `tiempo_ciclo` y
-  `kg_carga` del proceso del artículo en el jet antes que los del centro.
-- **Para el SGI**: la corrida de muestra (57.154.0) pasa de crudo → teñido →
-  acabado a crudo → acabado; el checklist puede usar el aviso de hilos
-  (`ficha.tecnica.tejido._ft_bom_avisos()`). Lo demás no cambia (las
-  columnas fijas se conservan).
-
-## Unidades del catálogo, no texto (2.10.0, 2026-10-19)
-
-Las unidades de las fichas eran texto: «2.18 cm» que eran metros dejaba sin
-rendimiento a tintorería (WJ044Q22HNT235). Desde 2.10.0 son un catálogo
-(`ficha.tecnica.unidad`, Fichas técnicas → Configuración → Unidades).
-
-- **Por qué no en Inventario**: las unidades de Inventario (`uom.uom`) son las
-  que se ofrecen al elegir la unidad de un producto; crear ahí rpm, Ne, cN/dtex
-  o PTO las pondría al alcance de cualquier producto. El catálogo propio liga
-  cada unidad a su **unidad de Inventario cuando existe** (cm, mm, m, in, kg,
-  g, L, h, min) para convertir; las técnicas (g/m², %, PTO, cN, N/5 cm,
-  /10 cm, /in, °, m/kg, dtex, den, Ne, cN/dtex, cN/tex, vueltas/m, nudos/m,
-  /km, αe, rpm, m/min, L/kg) viven solo aquí.
-- **Dónde**: las 18 unidades de tolerancia de la ficha de tejido, las 7 de la
-  de acabado, la unidad de los parámetros (máquina, artículo y materia prima)
-  y la del catálogo de características. Cada una es un campo `…_id` junto a su
-  texto anterior.
-- **El texto se conserva sincronizado** (lo leen el SGI, Consolti y los
-  importadores): elegir la unidad escribe su símbolo; un texto que llega del
-  Excel o de otro módulo se liga solo por símbolo o por «También se escribe»
-  (los alias que ya hay en producción: gr, g/m2, PTO, /plg…). En columnas y
-  mallas «in» es **por pulgada** (/in). Un texto que no está en el catálogo se
-  queda como está y la ficha lo avisa («Aviso de unidades»); se resuelve dando
-  de alta la unidad o el alias.
-- Los renglones de característica (`ficha.tecnica.spec` y los del SGI) siguen
-  copiando la unidad de su característica del catálogo como texto: no se
-  agregó campo al mixin compartido con el SGI, porque sus tablas solo se
-  actualizan al actualizar el SGI.
-- **Rendimiento**: el ancho se convierte a metros con la unidad del catálogo;
-  sin ella, con el texto, como antes. Corregir la unidad de WJ044Q22HNT235 a
-  «m» le da su rendimiento a tintorería.
-- **Migración** (`19.0.2.10.0/post-migrate.py`): liga a su unidad los textos
-  que ya existen escribiendo solo la columna nueva; **el texto de origen no se
-  toca** («gr» sigue siendo «gr»). Los textos sin unidad se reportan en el log
-  (nivel info, para no pintar el build). En producción todos los textos
-  vistos (cm, g, gr, cN, PTO, kg, g/m2, in, m, mm, % y los del catálogo de
-  características) tienen unidad.
-- Pruebas: `tests/test_unidades.py`.
-- **2.10.1** (2026-10-19): el minuto ya no se liga a `uom.product_uom_minute`.
-  Esa unidad no existe en la base de producción (viene de versiones de Odoo
-  anteriores) y el build de `main` en Odoo.sh se cayó al cargar el catálogo
-  («External ID not found»). El resto de las unidades de Inventario que usa el
-  catálogo (cm, mm, m, in, kg, g, L, h) se verificó por MCP en producción.
-- **2.10.2** (2026-10-19): las fichas de tejido y de acabado no abrían en
-  producción («Can not parse python expression: ({\\'no_create\\': True})»):
-  el cambio de 2.10.0 dejó diagonales sobrantes en el `options` de los 25
-  campos de unidad. Ni el build ni las pruebas lo ven porque la expresión la
-  evalúa el navegador. `tools/check_odoo_views.py` ahora revisa que cada
-  `options`, `context`, `domain`, `invisible`, `readonly`… de las vistas sea
-  una expresión de Python válida.
-
-## Rendimiento de tela tejida guardado y ficha de referencia (2.11.0, 2026-10-19)
-
-Acordado con José Sacramento (implementación de acabado y tintorería):
-
-- **`rendimiento_tela_tejida`** (m/kg) en la ficha de tejido es un campo
-  **calculado y guardado**: 1000 / (peso g/m² × ancho en m) de la tela
-  acondicionada, con el ancho convertido por su unidad del catálogo (0 si falta
-  un dato o el ancho cae fuera de 0.3 a 4 m). Se puede escribir a mano: queda
-  fijo («Rendimiento forzado») hasta que se desmarque. Lleva el mismo nombre
-  que el campo capturado de la rama `consolti`, para que su código lo lea sin
-  cambios. `_ft_rendimiento()` (tintorería, cargas por jet, SGI) lo devuelve.
-  Al actualizar, Odoo lo calcula para todas las fichas existentes.
-- **Ficha de referencia** de un producto (`_ft_de_producto`, que usan el
-  rendimiento, la galga del artículo y la ficha de acabado): con varias
-  máquinas, la de **revisión más alta**; entre máquinas de la misma revisión,
-  la de elaboración más reciente. En producción el peso y el ancho de cada
-  artículo y revisión son iguales en todas sus máquinas, así que el
-  rendimiento no depende de cuál se tome.
-- Pruebas: `tests/test_rendimiento.py`.
-
-## Producción en kg hasta Inspección: acabado en proceso (2.12.0, 2026-10-19)
-
-Decisión de Dirección (2026-10-19): **toda la producción va en kg hasta
-Inspección**. Corrige la idea de 2.9.0 de un solo producto de acabado en kg: la
-tela acabada se vende en metros (476 productos J en metros y $13.9 millones de
-venta en el último año, contra 20 en kg), así que ventas, precios y CFDI no
-cambian. Cada artículo tiene dos productos, ligados en la ficha y no por la
-posición 9 del código:
-
-| Paso | Produce | Unidad |
-|---|---|---|
-| Tejido | Crudo (H) | kg |
-| Tintorería | Teñido (I) | kg |
-| Rama, termofijado, estiramiento | **Acabado en proceso** | kg |
-| Inspección | Tela acabada (J), la que se vende | m medidos en el rollo |
-
-- **`product_proceso_id`** («Producto — Acabado en proceso (kg)») en la ficha
-  de acabado, junto a la tela acabada. Se sugiere por código y se liga con
-  «Usar el sugerido»; el importador de acabado lo liga solo si la ficha no
-  tiene uno. (2.13.0 explica la regla del código: es la de la DAT P-D02-01.)
-- **Aviso** en la ficha si falta, si no está en kg, si es el mismo producto que
-  la tela acabada, si otra ficha ya lo usa o si la lista de materiales de la
-  tela acabada (la de Inspección) no lo consume. Filtro «Sin acabado en proceso
-  (kg)».
-- El crudo y las operaciones se encuentran bajando por el acabado en proceso;
-  el rendimiento (`_ft_rendimiento`), los procesos por máquina y el botón de
-  ficha del producto reconocen también el acabado en proceso.
-- Pendiente de Dirección: Inspección como operación propia (hoy Acabado entrega
-  directo en metros) y quién da de alta productos y listas de materiales.
-- Pruebas: `tests/test_acabado_proceso.py`.
-
-## Artículo en kg según la DAT y alta de los que faltan (2.13.0, 2026-10-19)
-
-Decisiones de Dirección (2026-10-19):
-
-- **Código:** el artículo en kg sigue la regla oficial, la **DAT P-D02-01
-  rev. 05** (documento controlado del SGI): posición 1 = unidad, **«I» =
-  kilogramos**, sin letra = metros. El de `WJ045Q22JNT160` (m) es
-  `IWJ045Q22JNT160` (kg). No se crean letras nuevas (se descartó una K en la
-  operación, que no está en la DAT). La «I» del frente no es la operación
-  «teñido» (esa va en la posición 9 del código sin prefijo).
-- **Sin inspeccionar contra listo:** es el mismo producto; se distingue por
-  **ubicación** («Por inspeccionar» contra Producto terminado), no por código.
-  Los 96 «I…» que ya existen se venden en kg (435 líneas y $5.1 millones en el
-  último año) y siguen igual: la venta en kg sale de Producto terminado. Las
-  rutas para que Ventas no tome de «Por inspeccionar» son configuración de
-  inventario.
-- **Inspección por orden** (una por orden de acabado): para la venta en
-  metros, consume el «I…» en kg y produce la tela acabada en metros medidos,
-  con el mismo lote; para la venta en kg, un traslado con revisión de calidad a
-  Producto terminado.
-- **Alta desde C1** (SGI 57.160.0) para los artículos nuevos.
-
-En el módulo:
-
-- La ficha de acabado **liga sola** el «I…» al crearse si existe; si no, el
-  aviso dice el código que falta.
-- **Tela → Acabados en proceso faltantes**: lista las telas acabadas en metros
-  de la compañía cuyo «I…» no existe; «Crear los seleccionados» los crea en kg
-  con el mismo nombre, la categoría, el seguimiento y las rutas de la tela
-  acabada, sin venta ni compra (Ventas lo habilita si se vende en kg), y los
-  liga a sus fichas de acabado.
-- Pruebas: `tests/test_acabado_proceso.py`.
-
-## Documentación del modelo (2.13.1, 2026-10-20)
-
-Sin cambios de comportamiento. Resumen «Modelo de producción vigente» al
-principio de este README (las secciones 2.6.0 y 2.9.0 quedan como historia), y
-la ayuda del campo «Orden con teñido» ya no dice «producto único de acabado».
-
-## Inspección dentro de la orden en kg (2.13.2, 2026-10-21)
-
-Revisión de José Sacramento (v5 de su diseño): Inspección es una operación de
-la orden en kg (Devanado → Tintorería → Abridora → Rama → Inspección) y la
-orden en metros es la Clasificación final (empaque). Sin cambios de
-comportamiento: el README («Modelo de producción vigente», con las reglas de
-relación de baño, tiempo de ciclo, bandas, duración de rama, merma y alertas
-acordadas), la ayuda del acabado en proceso y los avisos de la ficha de
-acabado dicen «Clasificación final» donde decían «Inspección».
-
-## Salida de la tela de la circular: tubular o abierta (2.14.0, 2026-10-26)
-
-Dirección General vio que WD040Q46HNT098 marcaba **25.51 m/kg**. La fórmula
-estaba bien (1000 / (40 g/m² × 0.98 m)), pero los 98 cm de las circulares de
-30" son el **tubo aplanado** (dos capas), no la tela abierta. Contra la
-producción real (metros acabados ÷ kg teñidos que consumió la orden):
-
-| Artículo | Ficha (antes) | Con ancho abierto | Real ya acabado |
-|---|---:|---:|---:|
-| WD040Q46HNT098 (40 g/m², 98 cm, 30") | 25.51 | 12.76 | ~13.9 (WD040Q46JNT159) |
-| WN048Q66HNT098 (50 g/m², 98 cm, 30") | 20.41 | 10.20 | ~10.3 (WN055Q66JNT162) |
-
-Tubular o abierta depende de cómo enrolla la máquina, no del artículo
-(decisión de Jose, 2026-10-26):
-
-- Parámetro nuevo de la circular **«Salida de la tela»** (`salida_tela`,
-  texto con opciones «Tubular, Abierta»), en la configuración por fecha como la
-  galga y el diámetro: si cambia el enrollador, se registra una configuración
-  nueva con su fecha.
-- La ficha de tejido lo toma de la configuración con que se elaboró
-  (`salida_tela`, calculado y guardado). Con «Tubular» el rendimiento usa el
-  **doble** del ancho. Sin dato en la máquina, el ancho se toma como abierto y
-  la ficha lo avisa.
-- Ni el peso ni el ancho capturados cambian; los rendimientos forzados a mano
-  no se tocan. Capturar el dato en la máquina recalcula sus fichas.
-- Datos (por MCP, al desplegar): «Tubular» en las circulares de 30" con
-  fichas (1–4, 7–9, 14–16, 19–23, 25–27, 30) y en la 17 y la 18 (32",
-  confirmado por Jose); «Abierta» en las demás de 32" (28, 31–37). Las que no
-  tienen fichas (5, 6, 24, 29, 38, 39, 40) quedan vacías hasta que la planta lo
-  diga.
-- Con la 17 y la 18 tubulares, **WJ047Q21HNT112** (102 cm) cuadra: 8.75 m/kg
-  contra ~9.3 real ya acabado. En cambio las fichas de **WJ044Q22HNT235** en
-  esas dos máquinas (218 cm) quedan en 4.23 m/kg y la producción real da ~11
-  ya acabado: su ancho es de tela abierta. El rendimiento del producto no
-  cambia (la ficha de referencia es la de la circular 37, abierta), pero esas
-  dos fichas las revisa la planta.
-- Efecto en tintorería: el grupo de cargas del jet sale bien (WD040 pasa de
-  «fuera de los grupos: capacidad general» al grupo C).
-- Pruebas: `tests/test_rendimiento.py` (`test_03_salida_de_la_tela_de_la_maquina`).
-
-## Medición del ancho fijada en la ficha (2.15.0, 2026-10-26)
-
-Revisado contra las órdenes de trabajo del último año: un mismo artículo se teje en circulares tubulares y abiertas,
-y su ancho sigue la especificación del artículo, no la máquina. WJ044Q22HNT235 (2.30 m de tela abierta según el
-listado de Calidad) se tejió ~1,970 veces en abiertas (28, 31–35) y 74 en tubulares (17, 18, 19, 25, 26);
-WC090Q11HNT092 (92 cm, rinde como tubo: ~5.9 m/kg acabado) 341 veces en la 23, marcada abierta; WJ047Q21HNT112
-(112 cm de tubo) también en la 32, 33 y 35.
-
-- **«Fijar medición del ancho»** (`salida_tela_ficha`, Tubo aplanado / Tela abierta) en la ficha de tejido: si
-  se llena, manda; si está vacío, la ficha sigue a la «Salida de la tela» de su máquina.
-- **«Ancho medido como»** (`salida_tela`, calculado y guardado) es el que usa el rendimiento: lo fijado en la
-  ficha o el dato de la máquina. Se separan en dos campos para que el formulario no fije nada por su cuenta al
-  cambiar la máquina.
-- Sin migración: las fichas existentes siguen a su máquina hasta que se fije algo.
-- Pruebas: `tests/test_rendimiento.py` (`test_04_medicion_del_ancho_fijada_en_la_ficha`).
-
-## Tintorería en la ficha de acabado (2.16.0, 2026-10-26)
-
-Dirección General: la tintorería es una **operación de la lista de materiales del acabado** (la orden en kg
-lleva devanado, tintorería, abridora, rama e Inspección), no una ficha aparte ni un artículo teñido. La Ficha
-técnica de tintorería F-P-D01-33 queda así:
-
-- **Datos del artículo en el jet** (Máquinas → Procesos por artículo, tipo Tintorería): a tiempo de ciclo, kg por
-  carga y relación de baño se agregan temperatura, gradiente de subida y de bajada, brazo del plegador (%),
-  velocidad y presión de la bomba y acumulador inicial y cargado (%). Sin unidad las que el formato no da:
-  las pone Tintorería en Configuración → Tipos de máquina.
-- **Volumen de baño** del artículo en el jet: kg por carga × relación de baño (la del artículo o la de la
-  máquina). Se calcula.
-- **Pestaña «Tintorería»** de la ficha de acabado: el jet de la lista de materiales, el artículo en cada jet y
-  la fórmula y auxiliares, que son los componentes asignados a la operación de tintorería. Mientras el teñido
-  siga como artículo aparte (posición 9 = I), la fórmula sale de su lista (sin la tela). Avisa si la lista no
-  tiene ni jet ni fórmula, si el jet no tiene componentes o si el artículo no tiene datos en ningún jet.
-
-## Longitud de malla con 3 decimales (2.16.1, 2026-10-26)
-
-`longitud_malla_polea1`, `longitud_malla_polea2` y `longitud_malla_tol` llevan `digits=(16, 3)`. El valor ya se
-guardaba completo, pero la ficha lo mostraba con 2 decimales: NN053Q66HNT098 se veía 0.21 / 0.35 / +/- 0.00 en
-lugar de 0.205 / 0.353 ± 0.002 cm. Sin migración (solo cambia cómo se muestra). Control del desarrollo
-(`sgi.dev.process.reading`) ya daba el texto con `%g` y no cambia. Prueba `tests/test_longitud_malla.py`.
-
-## Espesor con 3 decimales (2.16.2, 2026-10-27)
-
-El espesor de la ficha de tejido (`espesor_acondicionado`, `espesor_acondicionado_tol`) y el de la ficha de acabado
-(`espesor_acabado`, `espesor_acabado_tol`) llevan `digits=(16, 3)`, igual que la longitud de malla en 2.16.1:
-XJ145Q21HNT098 guarda 0.022 ± 0.002 in y se veía 0.02 ± 0.00. Sin migración. Prueba
-`tests/test_longitud_malla.py::test_espesor_tres_decimales`.
-
-## Árbol nuevo del menú (2.17.0, 2026-10-27)
-
-Dirección General aprobó el árbol propuesto el 26-oct. Solo cambian menús y nombres; ningún modelo, campo ni vista de
-ficha cambia, y los xmlid se conservan.
-
-```
-Fichas técnicas
-├─ Tela: Tejido · Acabado
-├─ Tintorería: Fórmulas · Tiempos por fórmula y jet · Artículos en los jets
-├─ Máquinas: Máquinas · Configuraciones por fecha · Procesos por artículo · Comparativo
-├─ Materias primas: Fichas · Propiedades · Hilos por tela y máquina
-└─ Configuración (jefes de Fabricación): Tipos de máquina · Tipos de materia prima · Fibras · Unidades ·
-   Características · Claves de codificación de artículos · Herramientas (importar tejido, acabado y
-   procesos desde Excel, acabados en proceso faltantes, ligado de hilos)
-```
-
-- **Herramientas**: las cargas de una sola vez dejan el menú principal. «Importar» (`menu_ft_importar`) es ahora
-  Herramientas dentro de Configuración, que ya era solo para `mrp.group_mrp_manager`; ahí pasan también «Acabados en
-  proceso faltantes» (antes en Tela) y «Ligado de hilos» (antes en Materias primas).
-- **Tintorería**: «Artículos en los jets» (`action_ficha_tecnica_proceso_jet`) es la lista de procesos por artículo
-  filtrada al tipo Tintorería y agrupada por jet: relación de baño, kg por carga, tiempo de ciclo y los parámetros de
-  la F-P-D01-33. Fórmulas (`quimibond_tintoreria_dosificacion` 1.2.0) y Tiempos por fórmula y jet
-  (`quimibond_tintoreria_programacion` 1.3.0) cuelgan de este menú desde sus módulos; antes estaban en Fabricación →
-  Configuración, solo para jefes. Ahora los ven los usuarios de Fabricación en solo lectura (los permisos no cambian:
-  editar sigue siendo de jefes). Programar Tintorería y Programaciones de Tintorería siguen en Fabricación.
-- **Procesos por artículo**: filtros por área (Tintorería, Devanadoras, Abridoras, Ramas, Inspección). «Tabla por
-  artículo y máquina» se llama «Comparativo» (acción: «Comparativo por artículo y máquina»).
-- **Materias primas**: «Fichas de materia prima» y «Propiedades por material» se acortan a «Fichas» y «Propiedades».
-- La dosificación avisa dónde se captura la relación de baño que falta (antes decía «Tintorería > Rendimiento», un
-  menú del módulo `quimibond_tintoreria_rendimiento`, que está desinstalado en producción).
-
-## Procesos con el código en kg (2.18.0, 2026-10-27)
-
-Desde que la producción va en kg hasta la Clasificación final, el proceso de cada artículo en cada máquina (jets,
-devanadoras, abridoras, ramas, inspección) va con el código en kg: el de la tela acabada con la «I» al frente
-(`IWJ053Q22JNT160`, DAT P-D02-01). Los datos de producción se pasaron del código en metros al «I…» el 27-oct (los
-que no tienen «I…» se quedaron como estaban o, en los jets, se archivaron con sus datos).
-
-- `ficha.tecnica.proceso._ft_codigos(code)`: el código y su par en kg o en metros, con la misma regla que
-  `codigo_proceso` (14 o 16 posiciones con J en la 9). Fuera de la regla (entretelas, teñidos) no hay par.
-- `_ft_buscar` busca primero el código exacto y, si no hay, el par: una orden o una lista de materiales de la tela
-  acabada en metros encuentra el proceso del «I…» (relación de baño, kg por carga, avisos de operación), y al revés.
-- El botón «Procesos por máquina» del producto en metros muestra también los procesos de su «I…».
-- `qb_costeo` 1.6.4 lee la velocidad de rama de los procesos en «I…» para la tela acabada en metros.
-
-Prueba: `tests/test_procesos.py::test_07_par_kg_metros`.
-
-## Formularios ordenados por la ruta (2.19.0, 2026-10-27)
-
-Dirección General pidió que, además del árbol, cada formulario muestre la información en el orden en que se usa.
-Ningún dato se mueve ni se pierde: cada campo que estaba en un formulario sigue en él (lo revisa el diff de los campos).
-
-- **Ficha de acabado**: arriba dos bloques, «Ficha» (revisión, fecha, rendimiento) y «Ruta del artículo» numerada:
-  1. ficha de tejido, 2. crudo, 3. acabado en proceso (kg), 4. tela acabada (m). Botones a la lista vigente, a las
-  **listas en kg** y a las **listas en metros** del artículo, contando las archivadas (las listas en kg nacen
-  archivadas hasta que Ingeniería las revisa). Pestañas: Tela acabada (se llamaba «Tela Acondicionada», que es la del
-  tejido), **Ruta y máquinas** (junta «Operaciones» y «Procesos por máquina»; las operaciones con aviso se marcan),
-  Tintorería, Características, Notas (antes debajo de las pestañas). Archivada lleva listón.
-- **Ficha de tejido**: «Ficha» (revisión, fecha y quién la elaboró) y «Crudo» (producto, lista de materiales,
-  rendimiento y salida de la tela). «Máquina e Hilos» se separa en **Máquina** y **Hilos**; «Especificaciones» se
-  llama **Ajustes de tejido** (poleas, tensión, puntos, bastidor, rollo). Archivada lleva listón.
-- **Proceso del artículo en la máquina** (Procesos por artículo y Tintorería → Artículos en los jets): «Artículo y
-  máquina» con la **unidad del producto** (kg o m) y «Origen del dato» (fecha, fuente). Botón a la **ficha de
-  acabado** del artículo, se busque por el «I…» o por la tela en metros. La lista trae la columna Unidad.
-- **Configuración de máquina**: la máquina como título, listón **Vigente** y bloque «Vigencia».
-- Fórmulas (`quimibond_tintoreria_dosificacion` 1.3.0): el nombre como título, la regla de dosificación a la vista y
-  los colorantes marcados en la lista. `quimibond_tintoreria_programacion` 1.4.0 agrega la pestaña **Tiempos por
-  jet** a la fórmula.
-
-**Listas** (mismo PR):
-
-- Fichas de tejido: artículo, máquina, crudo con su peso, ancho y rendimiento; avisos de hilos en amarillo y las
-  archivadas en gris; orden por artículo y revisión (la más nueva primero).
-- Fichas de acabado: tejido → acabado en proceso (kg) → tela acabada (m), peso, ancho y rendimiento; en rojo si el
-  encogimiento está fuera de norma. La norma ya no se cambia con un clic en la lista (era un interruptor editable).
-- Procesos por artículo y Artículos en los jets: unidad y tipo de máquina a la vista; en gris los que no tienen
-  ningún dato capturado.
-- Configuraciones de máquina: por máquina y la más reciente primero. Fichas de materia prima: la referencia.
-
-Campos nuevos (calculados, sin columna): `ficha.tecnica.acabado.bom_proceso_count` / `bom_acabado_count`,
-`ficha.tecnica.proceso.product_uom_id` / `ficha_acabado_id`. Prueba: `tests/test_procesos.py::test_08_ficha_y_unidad_del_proceso`.
-
-
-## Máquinas alternativas de Odoo y procesos de la ficha, juntos (2.20.0, 2026-10-27)
-
-Dirección General pidió que las alternativas nativas de Odoo y los procesos de la ficha estén sincronizados y que se
-use lo nativo lo mejor posible. Antes no se hablaban: Odoo prueba al planear la máquina de la operación y sus
-alternativas (iguales para cualquier artículo), y la ficha sabe en qué máquinas corre cada artículo. En las 80 listas
-en kg, de 54 operaciones de rama solo en una coincidían; en tintorería, en dos de 78.
-
-Cada lado responde una pregunta (`models/alternativas.py`):
-
-- **Estado de la máquina** (`ft_estado`, pestaña «Ficha de la máquina» del centro de trabajo): operando, en montaje,
-  en pruebas o fuera de servicio. Solo una máquina operando se usa al planear.
-- **Alternativas entre sí** (tipo de máquina): las alternativas nativas de cada máquina del tipo son las demás de su
-  tipo que estén operando. Se recalculan solas al cambiar estado o tipo, al crear o archivar una máquina; el campo
-  nativo «Centros de trabajo alternativos» queda de solo lectura en esas máquinas. Un tipo sin la marca deja las
-  alternativas como estén (las circulares, por ejemplo: corren galgas distintas).
-- **Procesos del artículo**: en cuáles de esas máquinas corre el artículo.
-
-**Al planear** (`mrp.workorder._plan_workorder`), de la máquina de la operación y sus alternativas solo cuentan las
-que operan y, si el tipo pide datos del artículo (rama, jet, inspección, abridora, devanadora), tienen proceso del
-artículo. A las demás el módulo les contesta «sin hueco» (`mrp.workcenter._get_first_available_slot`) y Odoo las
-salta; el planificador de Odoo no se reescribe. Si ninguna cumple se planea como siempre: faltar un dato no impide
-planear.
-
-**Avisos**: la orden de trabajo avisa si su máquina no está operando o no tiene proceso del artículo (también al
-cambiarla a mano, y en el filtro «Con aviso de máquina», que ahora cubre todas las máquinas con tipo).
-
-**Ficha de acabado → Ruta y máquinas** (y pestaña Tintorería): columna **Máquinas posibles** por operación, como las
-ve el planificador: ✓ el artículo corre ahí, ✗ Odoo la usaría pero no hay proceso del artículo, ⚠ la máquina no está
-operando, ○ el artículo corre en otra máquina del tipo que no es alternativa.
-
-**Después de instalar** (datos, no código): marcar el estado de las máquinas en montaje o pruebas (hoy Tintorería 5 y
-Devanadora 3 en montaje, Abridora 4 en pruebas, según la hoja CENTROS DE TRABAJO de Producción) y prender
-«Alternativas entre sí» en Tintorería, Acabado, Inspección, Abridora y Devanadora.
-
-Lo que no hace todavía: el tiempo de la operación en una alternativa sigue siendo el de Odoo (el de la operación
-ajustado por capacidad y eficiencia), no la velocidad del proceso en esa máquina.
-
-Prueba: `tests/test_alternativas.py`.
-
-## Máquina fijada a mano (2.21.0, revisión de Consolti 2026-10-28)
-
-La Programación de Tintorería asigna el jet a mano. Con el filtro de 2.20.0, si ese jet estaba en montaje o el artículo
-no tenía proceso ahí (HTJ5, con aviso), el planificador lo saltaba y movía la operación a otro jet. Ahora una máquina
-fijada a mano no se mueve: `mrp.workorder._ft_maquina_fija()` dice cuándo, y entonces al planear solo cuenta la máquina
-de la orden de trabajo, opere o no y tenga o no proceso del artículo. Queda solo el aviso de la orden de trabajo.
-
-- Aquí: la clave de contexto `ft_maquina_fija` (p. ej. `production.with_context(ft_maquina_fija=True).button_plan()`;
-  vale para todas las órdenes de trabajo que se planean en esa llamada).
-- `quimibond_tintoreria_programacion` 1.6.0: la orden de trabajo de Tintorería de una orden ya programada
-  (`tintoreria_programada`).
-
-Prueba: `tests/test_alternativas.py::test_07_maquina_fija_no_se_mueve`.
-
-## Tiempo de rama desde la ficha (2.22.0, Dirección General 2026-10-30)
-
-Fórmula de Innovación (28-oct-2026) con merma (Innovación, 29-oct: «Con merma»):
-
-    min/kg = 1000 ÷ (peso g/m² × ancho bajando de rama m) × (1 − merma %) ÷ velocidad m/min
-
-El peso sale de la ficha de acabado; el ancho bajando de rama (`ancho_rama`, tabla de Manufactura F-IT-P-P01-10-06),
-la merma (`merma`) y la velocidad (`velocidad`) del proceso del artículo en la rama. Aplica a operaciones de listas en
-kg cuya máquina es de un tipo con el parámetro `ancho_rama` (hoy las tres ramas). Si falta un dato no hay tiempo y se
-dice cuál falta. La operación muestra **Tiempo de la ficha** y su cálculo (también en la ficha de acabado → Ruta y
-máquinas), en rojo si el de la lista es otro; **Usar el tiempo de la ficha** (en la operación) o **Usar el tiempo de
-rama de la ficha** (Acción sobre una o varias listas, también archivadas) lo pasa a la lista como tiempo fijo. Un
-ciclo es la capacidad de la máquina para el producto (1 kg si no está capturada).
-
-El tiempo no se escribe solo: la planta decide cuándo pasarlo a la lista. (Inspección, devanado, abridora y
-tintorería entran en 2.23.0.)
-
-Prueba: `tests/test_tiempo_rama.py`.
-
-**Pruebas sobre una copia de producción** (revisión de Consolti, 2026-10-30): cuatro pruebas suponían una base vacía y
-fallaban en staging. Ahora usan códigos que no existen en producción (`test_avisos_maquina`, peso 998/999), un tipo de
-máquina propio para la abridora (`test_acabado_ruta`; la Abridora de producción ya tiene parámetros del artículo) y
-cuentan solo lo que siembra el módulo (`test_caracteristicas`). El duplicado a propósito de `test_procesos.test_03`
-ya no deja un ERROR de la base en el log (`mute_logger`).
-
-## Tiempos, capacidad de jets y conversión a metros desde la ficha (2.23.0, Dirección General 2026-11-02)
-
-El tiempo de la ficha (2.22.0) se extiende a las demás operaciones de la lista en kg, con las mismas cuentas con que
-se cargaron los tiempos en producción el 30-oct:
-
-| Operación | Cuenta | Datos |
-|---|---|---|
-| Rama | 1000 ÷ (peso × ancho bajando de rama) × (1 − merma) ÷ velocidad | ficha de acabado + proceso en la rama |
-| Inspección | rendimiento de tela acabada (m/kg) × 60 ÷ velocidad (m/h) | ficha de acabado + `velocidad_inspeccion` (rollos con 1 empalme) |
-| Devanado | kg de crudo por kg de la lista × rendimiento de tejido ÷ velocidad (m/min) | línea del crudo (la que tiene ficha de tejido) + `velocidad` |
-| Abridora | igual que devanado | `velocidad_tubular` o `velocidad_abierta` según la salida de la tela del tejido; si no, `velocidad` |
-| Tintorería | **minutos por baño** | `tiempo_ciclo` del artículo en el jet (h); si no, los minutos de la fórmula de la lista en ese jet |
-
-Rama, inspección, devanado y abridora se multiplican por la capacidad del ciclo (1 kg si no está capturada).
-Tintorería no: un ciclo de Odoo es un baño, así que solo hay tiempo de la ficha si el jet tiene capturada la capacidad
-para el producto (si no, lo dice). El orden de tintorería (tiempo de ciclo del artículo, luego fórmula) es el de la
-Programación de Tintorería.
-
-**Capacidad de los jets.** Cada renglón de capacidad con producto en un jet (Centro de trabajo → Capacidades) muestra
-la **Capacidad de la ficha** y su origen, en rojo si la capturada es otra. La regla es la de la Programación: «kg por
-carga» del artículo en el jet; si no, la banda de su rendimiento de tejido (A 3–7, B 7–11, C 11–16 m/kg) topada a la
-capacidad general; un jet sin bandas usa la general. Banda N/A o rendimiento fuera de las bandas: no hay capacidad. Se
-corrige en el renglón, con **Usar las capacidades de la ficha (jets)** sobre uno o varios centros de trabajo, o desde
-las listas.
-
-**Conversión kg → m.** La lista en metros de una tela acabada con ficha consume su acabado en proceso: metros ÷
-rendimiento de tela acabada. Si la cantidad difiere más de 0.5 %, la lista lo avisa arriba con el cálculo y un botón;
-el filtro **Conversión kg → m distinta de la ficha** las encuentra todas (también archivadas).
-
-**Usar los datos de la ficha** (Acción sobre una o varias listas, también archivadas; antes «Usar el tiempo de rama
-de la ficha») hace las tres cosas: capacidad del jet de la operación de tintorería (y de sus alternativas con proceso
-del artículo, creando el renglón si falta), tiempos de todas las operaciones y conversión. Nada se escribe solo.
-
-**Una sola regla de capacidad en fichas** (`mrp.workcenter._ft_regla_capacidad`). En fichas había dos copias: la de
-los avisos y el costeo (`_ft_capacidad_carga`, que no topaba la banda a la general) y la de la capacidad por producto.
-Ahora las dos llaman a la misma regla, que es la de la Programación de Tintorería; cambia solo cuánto toleran: los
-avisos y el costeo, que estiman, usan la capacidad general cuando la tela no tiene rendimiento o cae fuera de las
-bandas. La Programación (`_capacidad_jet`) conserva por ahora su propia copia de la misma regla: pasarla a
-`_ft_regla_capacidad` queda para cuando José Sacramento revise su módulo (Dirección General, 2026-11-03).
-
-**Filtro en Operaciones:** «Tiempo distinto de la ficha» (Fabricación → Configuración → Operaciones) junta todas las
-operaciones cuyo tiempo no es el de la ficha, también las de listas archivadas, sin abrir lista por lista.
-
-Pruebas: `tests/test_tiempo_ficha.py`.
-
-## Revisión de listas en kg y pendientes por área (2.24.0, Dirección General 2026-11-03)
-
-Lo que revisó a mano la auditoría de las listas en kg de octubre, dentro de Odoo, para que cada área vea sus pendientes
-y se sepa qué telas pueden entrar en cada ola (Fichas técnicas → Tela):
-
-- **Revisión de listas en kg**: una fila por ficha de acabado, en verde si está lista y en rojo con el número de
-  pendientes y las áreas. Filtros por área, «Con pendientes», «Listas» y «Lista en kg activa». En la tela: «Usar los
-  datos de la ficha» (capacidad de jets, tiempos y conversión, 2.23.0) y «Volver a revisar».
-- **Pendientes por área**: una fila por pendiente, agrupada por área y tipo, con el detalle, la máquina y la lista.
-
-| Pendiente | Área |
-|---|---|
-| Ficha sin acabado en proceso (kg), falta la lista en kg o en metros, crudo distinto de la ficha, conversión kg → m | Ingeniería (Innovación) |
-| Máquina sin proceso del artículo, tiempo en cero, falta un dato para el tiempo, tiempo distinto de la ficha | La del tipo de máquina: Tintorería, Acabado (ramas), Inspección, Manufactura (devanado y abridora) |
-| Falta la capacidad del jet para el producto o es distinta de la ficha | Tintorería |
-
-Es una foto: se rehace cada noche (acción planificada «Fichas técnicas - Revisión de listas en kg») y con
-**Actualizar**; no cambia nada en las listas. Las listas archivadas cuentan (las listas en kg nacen archivadas hasta que
-Ingeniería las revisa).
-
-Pruebas: `tests/test_revision_listas.py` (con los datos de `tests/test_tiempo_ficha.py`).
-
-## La ficha en las pantallas nativas de Odoo (2.25.0, Dirección General 2026-11-03)
-
-Decisión: la gente ve la ficha donde Odoo ya pone las cosas, en lugar de fichas aparte. La app «Fichas técnicas» queda
-como **concentrado**.
-
-- **Producto** (tela acabada, su producto en kg o el crudo): pestaña **Ficha técnica**, la primera cuando el producto
-  tiene ficha.
-  - Tela: peso, ancho y rendimiento, editables ahí mismo (se guardan en su ficha de acabado); su producto en kg y su
-    tela en metros; su crudo con su peso, ancho y rendimiento, y cuántas telas lo comparten (sus datos se editan en el
-    crudo); la ruta, que son las operaciones de sus listas en kg y en metros, con la duración de la lista contra la de
-    sus parámetros; la especificación; los pendientes de la revisión (2.24.0). Botones «Usar los datos de la ficha»,
-    «Volver a revisar», «Lista en kg» y «Lista en metros».
-  - Crudo: las circulares donde se teje y las telas que lo usan.
-- **Operación** de la lista de materiales: «Parámetros del proceso», los de la tela en la máquina de la operación y en
-  sus alternativas, cada uno con su lápiz para editarlo.
-- **Centro de trabajo**: pestaña «Telas que corren aquí».
-- **App Fichas técnicas → Tela**: **Telas** (una fila por tela acabada con peso, ancho, rendimiento, crudo y
-  pendientes, en verde o rojo) y **Crudos**, que abren el producto; Revisión y Pendientes por área; las fichas de tejido
-  y de acabado siguen al final como datos de origen.
-
-Fase 1: los datos siguen guardados donde estaban (fichas de tejido y de acabado, procesos por máquina) porque los leen el
-SGI, el costeo y la Programación de Tintorería. Pasarlos a campos del producto y de la operación es la fase 2.
-
-Pruebas: `tests/test_ficha_producto.py`.
-
-**2.25.1 (2026-11-03): qué lista se toma.** En la transición, 44 de las 111 telas tienen activa la lista en kg vieja (un
-renglón con el teñido, sin operaciones) y archivada la nueva «Flujo en kg (borrador)». La pestaña del producto y la
-revisión toman la lista con operaciones aunque esté archivada; entre iguales, la activa; las que dicen «no usar» en la
-referencia (la piloto de IWJ053Q22JNT160) van al final. Prueba: `test_revision_listas.test_05`. También se corrige el
-botón «Actualizar» de la Revisión de listas en kg, que daba «takes 1 positional argument but 2 were given» (build de
-`main`, 3-nov); prueba `test_06`, que lo llama como la pantalla.
+## Instalación y actualización
+
+- Depende de `mrp`, `product`, `account` y `hr`; las importaciones piden `openpyxl` en el servidor.
+- Al instalar o actualizar se crean los parámetros que usan los cálculos que falten en su tipo de máquina (por clave;
+  en producción ya existen). Los demás parámetros los da de alta la planta en Configuración → Tipos de máquina.
+- La acción planificada «Fichas técnicas - Revisión de listas en kg» rehace la revisión cada noche; después de
+  desplegar conviene pulsar «Actualizar» una vez.
+- La tabla `ficha_tecnica_tela` del primer modelo (retirado en 2.1.1) sigue en la base sin uso.
+
+## Pruebas
+
+`tests/`, registradas en `tests/__init__.py`; las corre el job `odoo-tests` del CI. Las de tiempos, revisión y
+pantallas nativas comparten los datos de `tests/test_tiempo_ficha.py` (`TiempoFichaCase`, códigos ZZ931 que no existen
+en producción).

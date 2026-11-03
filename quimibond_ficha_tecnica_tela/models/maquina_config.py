@@ -94,6 +94,42 @@ class FichaTecnicaMaquinaTipo(models.Model):
         for tipo in self:
             tipo.workcenter_count = len(tipo.workcenter_ids)
 
+    # 2.26.0: los parámetros que usan los cálculos del módulo (tiempos, capacidad de jets). En producción ya existen
+    # (los dio de alta la planta, sin xmlid); una instalación nueva no los tenía. Solo se crean los que falten.
+    PARAMETROS_DEL_CALCULO = [
+        # (tipo, clave, nombre, unidad, clase, ámbito)
+        ('tintoreria', 'capacidad', 'Capacidad', 'kg', 'num', 'maquina'),
+        ('tintoreria', 'capacidad_grupo_a', 'Capacidad grupo A (rendimiento de 3 a menos de 7 m/kg)', 'kg', 'num', 'maquina'),
+        ('tintoreria', 'capacidad_grupo_b', 'Capacidad grupo B (rendimiento de 7 a menos de 11 m/kg)', 'kg', 'num', 'maquina'),
+        ('tintoreria', 'capacidad_grupo_c', 'Capacidad grupo C (rendimiento de 11 a 16 m/kg)', 'kg', 'num', 'maquina'),
+        ('tintoreria', 'relacion_bano', 'Relación de baño', False, 'text', 'maquina'),
+        ('acabado', 'velocidad', 'Velocidad', 'm/min', 'num', 'articulo'),
+        ('acabado', 'merma', 'Merma', '%', 'num', 'articulo'),
+        ('acabado', 'ancho_rama', 'Ancho bajando de rama', 'm', 'num', 'articulo'),
+        ('inspeccion', 'velocidad_inspeccion', 'Velocidad de inspección (rollos con 1 empalme)', 'm/h', 'num', 'articulo'),
+        ('inspeccion', 'velocidad_inspeccion_4e', 'Velocidad de inspección (rollos con 4 empalmes)', 'm/h', 'num',
+         'articulo'),
+        ('abridora', 'velocidad', 'Velocidad', 'm/min', 'num', 'articulo'),
+        ('abridora', 'velocidad_tubular', 'Velocidad con tela tubular', 'm/min', 'num', 'articulo'),
+        ('abridora', 'velocidad_abierta', 'Velocidad con tela abierta', 'm/min', 'num', 'articulo'),
+        ('devanadora', 'velocidad', 'Velocidad', 'm/min', 'num', 'articulo'),
+    ]
+
+    @api.model
+    def _ft_asegurar_parametros(self):
+        """Crea los parámetros del cálculo que falten en su tipo de máquina (por clave); no toca los que existen."""
+        Param = self.env['ficha.tecnica.maquina.parametro']
+        creados = Param
+        for tipo_code, code, name, unit, kind, ambito in self.PARAMETROS_DEL_CALCULO:
+            tipo = self.search([('code', '=', tipo_code)], limit=1)
+            if not tipo or tipo.with_context(active_test=False).parametro_ids.filtered(lambda p: p.code == code):
+                continue
+            vals = {'tipo_id': tipo.id, 'code': code, 'name': name, 'kind': kind, 'ambito': ambito}
+            if unit:
+                vals['unit'] = unit
+            creados |= Param.create(vals)
+        return creados
+
     def _ft_parametros(self, ambito):
         """2.8.0: los parámetros activos del tipo con ese ámbito («maquina», «articulo» o «material»), en su
         orden."""
@@ -420,10 +456,6 @@ class MrpWorkcenterFicha(models.Model):
                                    compute='_compute_ft_current')
     ft_galga = fields.Float(string='Galga vigente', digits=(16, 0), compute='_compute_ft_current',
                             search='_search_ft_galga')
-    ft_diametro = fields.Float(string='Diámetro vigente (in)', digits=(16, 2), compute='_compute_ft_current')
-    ft_no_agujas = fields.Integer(string='Agujas vigentes', compute='_compute_ft_current')
-    ft_no_alimentadores = fields.Integer(string='Alimentadores vigentes', compute='_compute_ft_current')
-    ft_velocidad_max = fields.Float(string='Velocidad máxima vigente (rpm)', compute='_compute_ft_current')
     # 2.5.0: calculados con la vigente (no «related» sobre ft_config_id, que no se puede buscar y dejaba
     # aviso en el build).
     ft_valor_ids = fields.Many2many('ficha.tecnica.maquina.valor', string='Parámetros vigentes',
@@ -439,9 +471,8 @@ class MrpWorkcenterFicha(models.Model):
         configs = self.ft_config_ids.filtered(lambda c: c.date_from and c.date_from <= day)
         return configs.sorted(lambda c: (c.date_from, c.id), reverse=True)[:1]
 
-    @api.depends('ft_config_ids.date_from', 'ft_config_ids.galga', 'ft_config_ids.diametro',
-                 'ft_config_ids.no_agujas', 'ft_config_ids.no_alimentadores', 'ft_config_ids.velocidad_max',
-                 'ft_config_ids.valor_ids', 'ft_config_ids.resumen')
+    @api.depends('ft_config_ids.date_from', 'ft_config_ids.galga', 'ft_config_ids.valor_ids',
+                 'ft_config_ids.resumen')
     def _compute_ft_current(self):
         for wc in self:
             config = wc._ft_config_at()
@@ -449,10 +480,6 @@ class MrpWorkcenterFicha(models.Model):
             wc.ft_valor_ids = config.valor_ids
             wc.ft_resumen = config.resumen
             wc.ft_galga = config.galga
-            wc.ft_diametro = config.diametro
-            wc.ft_no_agujas = config.no_agujas
-            wc.ft_no_alimentadores = config.no_alimentadores
-            wc.ft_velocidad_max = config.velocidad_max
 
     def _search_ft_galga(self, operator, value):
         """Máquinas cuya configuración vigente hoy tiene esa galga (para ofrecer solo las compatibles)."""

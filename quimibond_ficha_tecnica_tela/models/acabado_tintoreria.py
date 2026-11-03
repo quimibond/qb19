@@ -59,7 +59,9 @@ class FichaTecnicaAcabadoTintoreria(models.Model):
         """(operaciones de tintorería, procesos del artículo en jets, renglones de la fórmula) de la cadena."""
         self.ensure_one()
         boms = self._ft_cadena()[0] if self.product_acabado_id else self.env['mrp.bom']
-        operaciones = boms.operation_ids.filtered(lambda o: o.workcenter_id.ft_tipo_id.code == TIPO_TINTORERIA)
+        # 2.26.0: también las operaciones archivadas (al archivar una lista Odoo archiva sus operaciones).
+        operaciones = boms.with_context(active_test=False).operation_ids.filtered(
+            lambda o: o.workcenter_id.ft_tipo_id.code == TIPO_TINTORERIA)
         telas = self._ft_telas(boms)
         lineas = boms.bom_line_ids.filtered(
             lambda l: l.operation_id in operaciones

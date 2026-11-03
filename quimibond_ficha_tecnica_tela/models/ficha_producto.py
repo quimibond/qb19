@@ -210,3 +210,11 @@ class MrpRoutingWorkcenterParametros(models.Model):
                         procesos |= proceso
                         break
             op.ft_param_proceso_ids = procesos
+
+    def action_ft_nuevo_proceso(self):
+        """2.26.0: crea los datos de la tela en la máquina de la operación (con el código de la lista) y los abre."""
+        self.ensure_one()
+        product = self.bom_id.product_id or self.bom_id.product_tmpl_id.product_variant_ids[:1]
+        proceso = self.ft_proceso_id or self.env['ficha.tecnica.proceso'].create({
+            'articulo': product.default_code or product.name, 'workcenter_id': self.workcenter_id.id})
+        return proceso.action_ft_editar()
