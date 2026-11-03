@@ -58,3 +58,16 @@ class TestRevisionListas(TiempoFichaCase):
         revision = self._revision(acabado)
         self.assertEqual(self._tipos(revision), [('lista_m', 'ingenieria'), ('sin_producto_kg', 'ingenieria')])
         self.assertEqual(revision.areas, 'Ingeniería (Innovación)')
+
+    def test_05_la_lista_del_flujo_aunque_este_archivada(self):
+        """2.25.1: la lista vieja activa (sin operaciones) no gana a la del flujo en kg archivada."""
+        Bom = self.env['mrp.bom']
+        vieja = Bom.create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1,
+                            'product_uom_id': self.kg.id, 'sequence': 0,
+                            'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1})]})
+        self.bom.action_archive()
+        self.assertEqual(self.env['ficha.tecnica.revision']._ft_bom_de(self.tela), self.bom)
+        piloto = self.bom.copy({'code': 'PILOTO TINTORERIA (no usar)', 'active': True, 'sequence': 0})
+        self.assertEqual(self.env['ficha.tecnica.revision']._ft_bom_de(self.tela), self.bom,
+                         "La que dice «no usar» va al final aunque esté activa y con operaciones")
+        self.assertTrue(vieja and piloto)
