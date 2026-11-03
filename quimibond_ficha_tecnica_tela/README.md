@@ -78,7 +78,7 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 | Operación | Cuenta |
 |---|---|
-| Rama | 1000 ÷ (peso g/m² × ancho bajando de rama m) × (1 − merma) ÷ velocidad m/min |
+| Rama | rendimiento para planear m/kg ÷ velocidad m/min (2.24.0; si el rendimiento es el capturado y no el de lo fabricado, × (1 − merma)) |
 | Inspección | rendimiento de tela acabada m/kg × 60 ÷ velocidad de inspección m/h (rollos con 1 empalme) |
 | Devanado | kg de crudo por kg × rendimiento de tejido ÷ velocidad m/min |
 | Abridora | igual, con la velocidad de tela tubular o abierta según sale del tejido (si no, la general) |
@@ -175,23 +175,33 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 | **Ancho de rollo en rama** (parámetro `ancho_rama` «Ancho bajando de rama», Procesos de la tela → rama) | El rollo que sale de la rama | Proceso del artículo `I…` en cada rama | Tiempo de la rama; el producto lo muestra con la rama de donde sale |
 | **Ancho de venta (especificación)** (`ancho_acabado`, ficha de acabado → Tela acabada) | El de especificación, el mismo del código (`…160` = 160 cm) | Ficha de acabado | Hoy: rendimiento de tela acabada (kg → m), peso por metro del costeo, especificación |
 
-Faltan (por producto, Dirección General 2026-11-03): ancho de tela relajada en rama y en inspección y ancho de rollo
-en inspección. Pendiente de decidir: el rendimiento de acabado debe salir del peso y el ancho reales de cada etapa, no
-del ancho de venta.
+El ancho de rollo en rama ya no entra a ningún cálculo desde 2.24.0: la rama usa el rendimiento para planear.
 
-## Los dos rendimientos
+## El rendimiento para planear (2.24.0)
 
-Hay dos rendimientos en metros por kilogramo y **los dos se conservan como
-campo**:
+**Uno solo para toda la planeación de los procesos de acabado** (Dirección General, 2026-11-03): el
+`rendimiento_tela_acabada` de la ficha de acabado, en la pestaña «Tela acabada» → «Rendimiento para planear».
 
-- **Tejido** (`rendimiento_tela_tejida` en `ficha.tecnica.tejido`, rama
-  `consolti`): rendimiento de la tela en proceso. **Es el que alimenta el
-  cálculo de tamaño de orden y split de Tintorería**, junto con
-  `tintoreria.capacidad.rendimiento` (módulo `quimibond_tintoreria_rendimiento`).
-- **Acabado** (`rendimiento_tela_acabada` en `ficha.tecnica.acabado`):
-  rendimiento teórico del producto terminado. **Valida los metros finales**
-  contra el rendimiento real del pesaje de cada rollo. No alimenta a
-  Tintorería.
+- **Sale de lo fabricado:** metros de la tela acabada producidos ÷ kilos de tela consumidos (crudo, teñido o acabado en
+  kg; sin engomado ni químicos) en sus órdenes terminadas de los **últimos 12 meses**. Ya trae la merma y el peso real
+  del rollo.
+- Con **3 órdenes o más** ese número es el rendimiento de la ficha y no se edita a mano (origen «Lo fabricado»). Con
+  menos, se queda el capturado (origen «Capturado en la ficha»). Se recalcula cada noche, antes de la revisión de
+  listas, y con «Recalcular con lo fabricado».
+- Lo usan la conversión kg → m de la lista en metros (× la primera para planear), el tiempo de rama (÷ velocidad) y el
+  de inspección (× 60 ÷ velocidad). **Nunca cambia una lista solo**: la revisión marca las que ya no cuadran y se
+  corrigen con «Usar los datos de la ficha».
+- **Especificación contra lo real** (misma pestaña): el rendimiento de la especificación (1000 ÷ peso × ancho de
+  venta) contra el real, y el **peso real** (1000 ÷ rendimiento real × ancho de venta) contra el peso de la
+  especificación y su tolerancia. En Características, los renglones de masa y rendimiento traen la columna «Real» y si
+  cumplen.
+- Ejemplo (órdenes de agosto a octubre de 2026): WJ053Q22JNT160 rinde 10.70 m/kg contra 11.79 de la especificación
+  (−9 %); su peso real a 160 cm es 58 g/m² contra 53.
+- Las órdenes viejas (antes del flujo en kg) consumen el teñido y producen la tela en metros; las de Clasificación
+  final consumen el acabado en kg (`I…`). Mientras convivan, el rendimiento mezcla las dos.
+
+El **rendimiento de tejido** (`rendimiento_tela_tejida`, ficha de tejido) sigue aparte: es el del crudo (otra tela, otro
+ancho) y lo usan devanado, abridora y la banda del jet en Tintorería.
 
 ## Columnas fijas
 

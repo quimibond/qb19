@@ -64,16 +64,26 @@ class ProductTemplateFichaNativa(models.Model):
         'ficha.tecnica.acabado', string='Ficha de acabado', compute='_compute_ft_ficha_nativa',
         help='De aquí salen peso, ancho y rendimiento de la tela acabada y la especificación.')
     ft_peso = fields.Float(
-        string='Peso de la tela acabada (g/m²)', compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → pestaña «Tela acabada» → Peso.')
+        string='Peso de especificación (g/m²)', compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → pestaña «Tela acabada» → Especificación → Peso.')
     ft_ancho = fields.Float(
         string='Ancho de venta (especificación, cm)', compute='_compute_ft_tela_datos',
         help='Ficha de acabado → pestaña «Tela acabada» → Ancho de venta: el de especificación, el mismo del código '
              '(…155 = 155 cm). No es el ancho de tela relajada ni el ancho de rollo.')
     ft_rendimiento = fields.Float(
-        string='Rendimiento de tela acabada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → Rendimiento de tela acabada: 1000 ÷ (peso × ancho en m). Se compara contra el '
-             'rendimiento real del pesaje de cada rollo y convierte kg a metros en la lista en metros.')
+        string='Rendimiento para planear (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → «Tela acabada» → Rendimiento para planear. Con historia sale de lo fabricado (metros ÷ '
+             'kilos de sus órdenes terminadas de 12 meses); sin historia, el capturado en la ficha. Lo usan la '
+             'conversión kg → m de la lista en metros y los tiempos de rama e inspección.')
+    ft_rendimiento_origen = fields.Selection(
+        [('real', 'Lo fabricado'), ('ficha', 'Capturado en la ficha')], string='Origen del rendimiento',
+        compute='_compute_ft_tela_datos')
+    ft_rendimiento_especificacion = fields.Float(
+        string='Rendimiento de la especificación (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+        help='Ficha de acabado: 1000 ÷ (peso × ancho de venta). Para comparar contra lo fabricado.')
+    ft_peso_real = fields.Float(
+        string='Peso real (g/m²)', digits=(12, 1), compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → Especificación contra lo real: 1000 ÷ (rendimiento real × ancho de venta).')
     ft_ancho_rama = fields.Float(
         string='Ancho de rollo en rama (m)', digits=(12, 3), compute='_compute_ft_ficha_nativa',
         help='Procesos de la tela → la rama de su lista en kg → parámetro «Ancho bajando de rama»: el ancho del '
@@ -144,6 +154,9 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_peso = acabado.peso_acabado
             tmpl.ft_ancho = acabado.ancho_acabado
             tmpl.ft_rendimiento = acabado.rendimiento_tela_acabada
+            tmpl.ft_rendimiento_origen = acabado.rendimiento_origen if acabado else False
+            tmpl.ft_rendimiento_especificacion = acabado.rendimiento_especificacion
+            tmpl.ft_peso_real = acabado.peso_real
 
     def _ft_variantes(self):
         return self.with_context(active_test=False).product_variant_ids
