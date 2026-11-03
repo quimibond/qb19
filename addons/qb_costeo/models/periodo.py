@@ -25,6 +25,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
+# 1.9.0: gasto variable mínimo (pesos) para que un centro sin horas bloquee el cierre.
+TOLERANCIA_VARIABLE = 1.0
+
+
 class QbPeriodo(models.Model):
     _name = 'qb.periodo'
     _description = 'Período de costeo'
@@ -91,6 +95,12 @@ class QbPeriodo(models.Model):
         string='Qué impide cerrar', readonly=True,
         help='Vacío = se puede cerrar. Cada línea es una condición de la '
              'compuerta que no se cumple.')
+    avisos_cierre = fields.Text(
+        string='Avisos al cerrar', readonly=True,
+        help='1.9.0: lo que no impide cerrar pero conviene saber. Un centro '
+             'sin horas en el mes y sin gasto variable: su gasto fijo queda '
+             'como ociosidad y los productos que pasan por él salen con costo '
+             'incompleto.')
     notas = fields.Text()
 
     _period_company_uniq = models.Constraint(
@@ -316,7 +326,7 @@ class QbPeriodo(models.Model):
             'sin_clasificar': self._gasto_sin_clasificar(
                 self.date_from, self.date_to),
         })
-        self.bloqueos = '\n'.join(self._bloqueos_cierre()) or False
+        self._refrescar_compuerta()
         return True
 
     def action_calcular_costos(self):
@@ -354,12 +364,33 @@ class QbPeriodo(models.Model):
             'costos_calidad_pct': 100 * alta / ventas if ventas else 0.0,
             'costos_n': len(filas),
         })
-        self.bloqueos = '\n'.join(self._bloqueos_cierre()) or False
+        self._refrescar_compuerta()
         return filas
 
     # ------------------------------------------------------------------
     # Compuerta de cierre
     # ------------------------------------------------------------------
+    def _avisos_cierre(self):
+        """1.9.0: lo que no impide cerrar pero conviene saber."""
+        self.ensure_one()
+        out = []
+        if not self.calculado_el:
+            return out
+        for t in self.tarifa_ids:
+            if t.centro_id.tarifa_de_id:
+                continue
+            if t.horas_reales_fuente == 'ninguna' and t.pool_variable <= TOLERANCIA_VARIABLE:
+                out.append('El centro %s no tiene horas reales ni estándar en el '
+                           'mes: su gasto fijo ($%s) queda como ociosidad y los '
+                           'productos que pasan por él salen con costo incompleto.'
+                           % (t.centro_id.code, '{:,.0f}'.format(t.pool_fijo)))
+        return out
+
+    def _refrescar_compuerta(self):
+        self.ensure_one()
+        self.bloqueos = '\n'.join(self._bloqueos_cierre()) or False
+        self.avisos_cierre = '\n'.join(self._avisos_cierre()) or False
+
     def _bloqueos_cierre(self):
         """Lista de razones por las que el período NO puede cerrar. Vacía =
         cierra. Otros módulos agregan las suyas con super()."""
@@ -378,9 +409,14 @@ class QbPeriodo(models.Model):
                 out.append('El centro %s no tiene horas normales (sin '
                            'calendario ni capacidad capturada).'
                            % t.centro_id.code)
-            if t.horas_reales_fuente == 'ninguna':
+            # 1.9.0: sin horas reales bloquea solo si el centro tiene gasto
+            # variable, que sin horas no se reparte y se pierde. Con solo gasto
+            # fijo, ese fijo queda completo como ociosidad: es un aviso.
+            if t.horas_reales_fuente == 'ninguna' and t.pool_variable > TOLERANCIA_VARIABLE:
                 out.append('El centro %s no tiene horas reales ni estándar '
-                           'en el mes.' % t.centro_id.code)
+                           'en el mes y tiene $%s de gasto variable que no '
+                           'se puede repartir.'
+                           % (t.centro_id.code, '{:,.0f}'.format(t.pool_variable)))
         mal = self.env['qb.cuenta.clase'].cuentas_mal_repartidas(
             self.company_id)
         if mal:
@@ -476,9 +512,15 @@ class QbPeriodo(models.Model):
                 raise UserError(
                     'El período %s no puede cerrar:\n- %s'
                     % (rec.period, '\n- '.join(bloqueos)))
+            avisos = rec._avisos_cierre()
             rec.write({'state': 'cerrado', 'cerrado_el': fields.Datetime.now(),
-                       'cerrado_por': self.env.user.id})
-            rec.message_post(body='Período cerrado: tarifas congeladas.')
+                       'cerrado_por': self.env.user.id,
+                       'avisos_cierre': '\n'.join(avisos) or False})
+            body = Markup('Período cerrado: tarifas congeladas.')
+            if avisos:
+                body += Markup('<br/>Avisos:<ul>%s</ul>') % Markup('').join(
+                    Markup('<li>%s</li>') % a for a in avisos)
+            rec.message_post(body=body)
             rec._publicar_tarifas()
         return True
 

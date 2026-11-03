@@ -97,12 +97,17 @@ class TestPeriodo(CosteoCase):
 
     def test_compuerta_de_cierre(self):
         self.gasto(self.acc_renta, 10000)
+        self.gasto(self.acc_luz, 3000)           # variable de TIN
         self.gasto(self.acc_sin, 5000)           # sin clasificar
         with self.assertRaises(UserError):
             self.periodo.action_cerrar()         # no calculado
         self.periodo.action_calcular()
         self.assertIn('sin clasificar', self.periodo.bloqueos)
-        self.assertIn('no tiene horas reales', self.periodo.bloqueos)
+        # 1.9.0: TIN tiene gasto variable sin horas (se perdería): bloquea.
+        # ACA solo tiene fijo: aviso, no bloqueo.
+        self.assertIn('TIN no tiene horas reales', self.periodo.bloqueos)
+        self.assertNotIn('ACA', self.periodo.bloqueos)
+        self.assertIn('ACA no tiene horas reales', self.periodo.avisos_cierre)
         with self.assertRaises(UserError):
             self.periodo.action_cerrar()
         # Se corrige: clasificar la cuenta y registrar horas.
@@ -243,3 +248,21 @@ class TestPeriodo(CosteoCase):
         self.assertAlmostEqual(abr.ociosidad, 0.0, 2)
         # La compuerta de cierre no le pide nada: no tiene gasto propio.
         self.assertFalse([b for b in self.periodo._bloqueos_cierre() if 'ABR' in b])
+
+    def test_centro_sin_horas_y_sin_variable_no_bloquea(self):
+        """1.9.0: un centro sin horas en el mes y sin gasto variable (Entretelas,
+        Inspección y Empaque mientras no corren en Odoo) no impide cerrar: su
+        fijo queda como ociosidad y el cierre lo deja en avisos y en el chatter."""
+        self.gasto(self.acc_renta, 10000)        # 6k TIN / 4k ACA, solo fijo
+        self.workorder_done(self.wc_tin, 10)     # ACA sin horas
+        self.periodo.action_calcular()
+        self.periodo.action_calcular_costos()
+        self.assertFalse(self.periodo.bloqueos)
+        self.assertIn('ACA no tiene horas reales', self.periodo.avisos_cierre)
+        aca = self._tarifa(self.c_aca)
+        self.assertAlmostEqual(aca.ociosidad, aca.pool_fijo, 2)
+        self.periodo.action_cerrar()
+        self.assertEqual(self.periodo.state, 'cerrado')
+        self.assertIn('ACA no tiene horas reales', self.periodo.avisos_cierre)
+        self.assertTrue(any('Avisos' in (b or '') for b in self.periodo.message_ids.mapped('body')),
+                        "El cierre deja los avisos en el chatter")

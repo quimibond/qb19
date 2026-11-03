@@ -3,6 +3,26 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.9.0 — 2026-11-03
+
+**Cambiado**
+- **Un centro sin horas en el mes ya no bloquea el cierre si no tiene gasto
+  variable** (Dirección General 2026-11-03). Ningún período se podía cerrar:
+  Entretelas e Inspección y Empaque no tienen órdenes de trabajo ni operaciones
+  terminadas en Odoo, y la compuerta pedía horas reales a todos los centros.
+  Sin período cerrado, el cotizador tomaba el mes en curso (noviembre, con tres
+  días) y toda cotización salía con calidad baja. Ahora:
+  - sin horas **y con gasto variable** sigue bloqueando (ese gasto no se reparte
+    y se perdería), y el bloqueo dice cuánto;
+  - sin horas **y solo con gasto fijo** es un aviso: el fijo queda completo como
+    ociosidad y los productos que pasan por el centro ya salen con costo
+    incompleto («sin horas en …»).
+- Campo nuevo `avisos_cierre` («Avisos al cerrar») en el período, en el
+  formulario bajo «Qué impide cerrar»; al cerrar, los avisos quedan en el
+  chatter.
+- Pruebas: `test_compuerta_de_cierre` ajustada (TIN con energía bloquea, ACA
+  solo con fijo avisa) y `test_centro_sin_horas_y_sin_variable_no_bloquea`.
+
 ## 19.0.1.8.0 — 2026-11-03
 
 **Agregado**
