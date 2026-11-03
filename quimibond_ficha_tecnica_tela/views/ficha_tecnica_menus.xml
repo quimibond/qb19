@@ -72,10 +72,14 @@
               web_icon="quimibond_ficha_tecnica_tela,static/description/icon.png"/>
 
     <menuitem id="menu_ft_tela" name="Tela" parent="menu_ficha_tecnica_tela_root" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_tejido_list" name="Tejido" parent="menu_ft_tela"
-              action="action_ficha_tecnica_tejido" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_acabado_list" name="Acabado" parent="menu_ft_tela"
-              action="action_ficha_tecnica_acabado" sequence="20"/>
+    <!-- 2.25.0: el concentrado abre el producto nativo (pestaña «Ficha técnica»); las fichas de tejido y de acabado
+         siguen como datos de origen al final. -->
+    <menuitem id="menu_ft_telas" name="Telas" parent="menu_ft_tela" action="action_ft_telas" sequence="5"/>
+    <menuitem id="menu_ft_crudos" name="Crudos" parent="menu_ft_tela" action="action_ft_crudos" sequence="6"/>
+    <menuitem id="menu_ficha_tecnica_tejido_list" name="Fichas de tejido (por circular)" parent="menu_ft_tela"
+              action="action_ficha_tecnica_tejido" sequence="90"/>
+    <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado (datos de origen)" parent="menu_ft_tela"
+              action="action_ficha_tecnica_acabado" sequence="95"/>
     <!-- 2.24.0: revisión de las listas en kg contra la ficha. -->
     <menuitem id="menu_ficha_tecnica_revision" name="Revisión de listas en kg" parent="menu_ft_tela"
               action="action_ficha_tecnica_revision" sequence="30"/>

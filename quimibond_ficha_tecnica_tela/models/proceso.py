@@ -154,6 +154,12 @@ class FichaTecnicaProceso(models.Model):
                 return proceso
         return self.browse()
 
+    def action_ft_editar(self):
+        """2.25.0: abre el proceso para editarlo desde la operación o el centro de trabajo."""
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': self.display_name, 'res_model': self._name,
+                'view_mode': 'form', 'res_id': self.id, 'target': 'new'}
+
     def action_ft_ver_ficha_acabado(self):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'name': 'Ficha de acabado', 'res_model': 'ficha.tecnica.acabado',

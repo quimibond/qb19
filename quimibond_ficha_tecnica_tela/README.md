@@ -981,3 +981,28 @@ Es una foto: se rehace cada noche (acción planificada «Fichas técnicas - Revi
 Ingeniería las revisa).
 
 Pruebas: `tests/test_revision_listas.py` (con los datos de `tests/test_tiempo_ficha.py`).
+
+## La ficha en las pantallas nativas de Odoo (2.25.0, Dirección General 2026-11-03)
+
+Decisión: la gente ve la ficha donde Odoo ya pone las cosas, en lugar de fichas aparte. La app «Fichas técnicas» queda
+como **concentrado**.
+
+- **Producto** (tela acabada, su producto en kg o el crudo): pestaña **Ficha técnica**, la primera cuando el producto
+  tiene ficha.
+  - Tela: peso, ancho y rendimiento, editables ahí mismo (se guardan en su ficha de acabado); su producto en kg y su
+    tela en metros; su crudo con su peso, ancho y rendimiento, y cuántas telas lo comparten (sus datos se editan en el
+    crudo); la ruta, que son las operaciones de sus listas en kg y en metros, con la duración de la lista contra la de
+    sus parámetros; la especificación; los pendientes de la revisión (2.24.0). Botones «Usar los datos de la ficha»,
+    «Volver a revisar», «Lista en kg» y «Lista en metros».
+  - Crudo: las circulares donde se teje y las telas que lo usan.
+- **Operación** de la lista de materiales: «Parámetros del proceso», los de la tela en la máquina de la operación y en
+  sus alternativas, cada uno con su lápiz para editarlo.
+- **Centro de trabajo**: pestaña «Telas que corren aquí».
+- **App Fichas técnicas → Tela**: **Telas** (una fila por tela acabada con peso, ancho, rendimiento, crudo y
+  pendientes, en verde o rojo) y **Crudos**, que abren el producto; Revisión y Pendientes por área; las fichas de tejido
+  y de acabado siguen al final como datos de origen.
+
+Fase 1: los datos siguen guardados donde estaban (fichas de tejido y de acabado, procesos por máquina) porque los leen el
+SGI, el costeo y la Programación de Tintorería. Pasarlos a campos del producto y de la operación es la fase 2.
+
+Pruebas: `tests/test_ficha_producto.py`.

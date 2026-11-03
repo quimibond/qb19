@@ -14,3 +14,4 @@ from . import unidades  # 2.10.0: al final (extiende tejido, acabado, parámetro
 from . import tiempo_rama  # 2.22.0: después de acabado_ruta (usa ft_proceso_id) y proceso
 from . import capacidad_conversion  # 2.23.0: después de tiempo_rama (usa _ft_producto_bom) y mrp_aviso_maquina
 from . import revision_listas  # 2.24.0: después de tiempo_rama y capacidad_conversion (usa sus campos)
+from . import ficha_producto  # 2.25.0: al final (usa la revisión, la ficha del producto y los procesos)
