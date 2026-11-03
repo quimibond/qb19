@@ -275,6 +275,10 @@ class ProductTemplateFichaNativa(models.Model):
         self.env['ficha.tecnica.revision']._ft_actualizar(self.ficha_tecnica_acabado_id)
         return True
 
+    def action_ft_generar_listas(self):
+        """2.28.0: «Generar listas desde la ruta» desde la pestaña del producto."""
+        return self.ficha_tecnica_acabado_id.action_ft_generar_listas()
+
     def action_ft_actualizar_revision(self):
         """2.27.0: botón «Actualizar la revisión» del concentrado (rehace la de todas las telas, como la de la
         noche). Método de registros: el botón de la cabecera llega con los renglones seleccionados."""
@@ -324,6 +328,9 @@ class ProductProductFichaNativa(models.Model):
 
     def action_ft_crear_ficha(self):
         return self.product_tmpl_id.action_ft_crear_ficha()
+
+    def action_ft_generar_listas(self):
+        return self.product_tmpl_id.action_ft_generar_listas()
 
 
 class MrpRoutingWorkcenterParametros(models.Model):

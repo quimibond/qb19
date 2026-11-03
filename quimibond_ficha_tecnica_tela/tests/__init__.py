@@ -18,3 +18,4 @@ from . import test_tiempo_rama  # 2.22.0
 from . import test_tiempo_ficha  # 2.23.0
 from . import test_revision_listas  # 2.24.0
 from . import test_ficha_producto  # 2.25.0
+from . import test_ruta_familia  # 2.28.0
