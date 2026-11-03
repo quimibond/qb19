@@ -153,6 +153,13 @@ anterior; las señales `cliente_pierde`, `producto_pierde`,
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,
    driver, centros de trabajo de Odoo, departamentos de RH, *Publicar tarifa*.
+   *Tarifa fija de* (1.8.0): para máquinas que comparten el gasto fijo de otro
+   centro pero no su energía. Caso de uso: las abridoras en un centro
+   «Abridoras» con la tarifa fija de Acabado. El gasto del centro dependiente
+   va al otro; su tarifa fija es la del otro y su tarifa variable es 0; sus
+   horas no bajan la tarifa variable del otro y sí absorben su fijo (no son
+   ociosidad). Con calendario, la capacidad normal del otro suma la suya; la
+   capturada se entiende como la del grupo.
 2. **Clasificación de cuentas**: cada cuenta de resultados a su bucket; las
    de fábrica con centro y %. *Cuentas sin clasificar* lista lo que falta.
 3. **Parámetros**: todos traen ayuda; los defaults sirven.

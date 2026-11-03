@@ -191,3 +191,55 @@ class TestPeriodo(CosteoCase):
         self.assertIn(self.company, companias)
         self.assertNotIn(otra, companias)
         self.env['qb.cuenta.clase'].cron_cuentas_nuevas()
+
+    def test_centro_con_tarifa_fija_de_otro(self):
+        """1.8.0: las abridoras con la tarifa fija de Acabado y sin su
+        energía. El gasto que traigan va a Acabado, la energía de Acabado se
+        reparte solo entre las horas de rama y lo que trabajan las abridoras
+        absorbe la tarifa fija (no es ociosidad)."""
+        cal = self.wc_aca.resource_calendar_id
+        wc_abr = self.env['mrp.workcenter'].create({
+            'name': 'Abridora 1', 'resource_calendar_id': cal.id,
+            'time_efficiency': 100})
+        c_abr = self.env['qb.centro'].create({
+            'code': 'ABR', 'name': 'Abridoras', 'nature': 'directo',
+            'driver': 'm_velocidad', 'workcenter_ids': [(6, 0, [wc_abr.id])],
+            'tarifa_de_id': self.c_aca.id})
+        acc_gas = self.env['account.account'].create({
+            'code': 'QB504G', 'name': 'Gas prueba',
+            'account_type': 'expense_direct_cost'})
+        acc_abr = self.env['account.account'].create({
+            'code': 'QB504A', 'name': 'Refacciones abridora prueba',
+            'account_type': 'expense_direct_cost'})
+        Clase = self.env['qb.cuenta.clase']
+        Clase.create({'account_id': acc_gas.id, 'bucket': 'energia',
+                      'centro_id': self.c_aca.id})
+        Clase.create({'account_id': acc_abr.id, 'bucket': 'fijo',
+                      'centro_id': c_abr.id})
+        self.gasto(self.acc_renta, 100000)      # 40k a Acabado
+        self.gasto(acc_abr, 8000)               # va a Acabado, no a Abridoras
+        self.gasto(acc_gas, 44000)              # energía de las ramas
+        self.workorder_done(self.wc_tin, 10)
+        self.workorder_done(self.wc_aca, 44)
+        self.workorder_done(wc_abr, 20)
+
+        self.periodo.action_calcular()
+        aca = self._tarifa(self.c_aca)
+        abr = self._tarifa(c_abr)
+
+        self.assertAlmostEqual(aca.pool_variable, 44000, 0)
+        self.assertAlmostEqual(aca.horas_reales, 44.0, 2)
+        self.assertAlmostEqual(aca.tarifa_variable, 1000.0, 2)   # solo horas de rama
+        # Rama 88 h normales (50 %) + abridora 176 h: el fijo es de las dos.
+        self.assertAlmostEqual(aca.horas_normales, 88.0 + 176.0, 1)
+        self.assertAlmostEqual(aca.pool_fijo, 40000 + 8000, 0)
+        self.assertAlmostEqual(aca.tarifa_fija, 48000 / 264.0, 2)
+        self.assertAlmostEqual(aca.ociosidad, 48000 - 48000 / 264.0 * 64, 0)
+        self.assertAlmostEqual(abr.pool_fijo, 0.0, 2)
+        self.assertAlmostEqual(abr.tarifa_fija, aca.tarifa_fija, 4)
+        self.assertAlmostEqual(abr.tarifa_variable, 0.0, 4)
+        self.assertAlmostEqual(abr.tarifa, aca.tarifa_fija, 4)
+        self.assertAlmostEqual(abr.horas_reales, 20.0, 2)
+        self.assertAlmostEqual(abr.ociosidad, 0.0, 2)
+        # La compuerta de cierre no le pide nada: no tiene gasto propio.
+        self.assertFalse([b for b in self.periodo._bloqueos_cierre() if 'ABR' in b])
