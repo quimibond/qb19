@@ -191,7 +191,8 @@ class ProductTemplateFichaNativa(models.Model):
 
     @staticmethod
     def _ft_valores(value):
-        return set(value) if isinstance(value, (list, tuple, set)) else {value}
+        # Odoo 19 pasa '=' como 'in' con un OrderedSet (iterable, no hashable).
+        return {value} if isinstance(value, (str, bytes)) or not hasattr(value, '__iter__') else set(value)
 
     def _ft_tmpl_de_revisiones(self, revisiones):
         return set(revisiones.acabado_id.product_acabado_id.product_tmpl_id.ids)
