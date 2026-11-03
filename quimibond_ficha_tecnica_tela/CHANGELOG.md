@@ -24,6 +24,15 @@ final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para 
 - el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
   y la siguiente orden de la tela lo descuenta.
 
+### Saldos en la lista en metros
+
+Segundas y desperdicio se venden en kg (Dirección General, 2026-11-03; diseño
+`docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md`). La lista en metros que crea o pone al
+día «Generar listas desde la ruta» lleva de subproductos `SALDO DE TELA TEJIDO` (segundas) y `SALDO TEJIDO D`
+(desperdicio), en kg, con cantidad 0 y sin costo: la cantidad real es el peso de cada rollo al clasificar. Las
+referencias están en los parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`; si una no
+existe, avisa y no la inventa. A qué ubicación va cada saldo (16 y 17) lo decide la clasificación, no la lista.
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos

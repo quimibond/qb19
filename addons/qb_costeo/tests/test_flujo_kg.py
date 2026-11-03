@@ -300,6 +300,43 @@ class TestFlujoKg(CosteoCase):
         self.assertNotIn(self.proceso.id, datos)
         self.assertEqual(datos[self.tela.id], (900.0, 1000.0))
 
+    def test_saldos_de_la_clasificacion_son_merma(self):
+        """1.10.0: segundas y desperdicio salen de la clasificación como saldo
+        en kg (subproducto); cuentan como merma de la tela, convertidos a
+        metros con la ficha. El saldo no forma rendimiento propio. Sin ficha
+        no se convierte."""
+        P = self.env['qb.parametro']
+        prod_loc = self.proceso.property_stock_production
+        for key, val in (('calidad_locs_vendible', str(self.loc_pt.id)),
+                         ('calidad_locs_merma', str(self.loc_seg.id)),
+                         ('calidad_locs_origen', ','.join(str(i) for i in (
+                             self.env['stock.location'].search([('usage', '=', 'production')])
+                             | prod_loc | self.loc_insp).ids))):
+            P._rec(key).value_text = val
+        saldo = self.env['product.product'].search(
+            [('default_code', '=', 'SALDO DE TELA TEJIDO')], limit=1) or self.env['product.product'].create({
+                'name': 'SALDO DE TELA TEJIDO', 'default_code': 'SALDO DE TELA TEJIDO',
+                'type': 'consu', 'is_storable': True, 'uom_id': self.kg.id})
+        hoy = datetime.now()
+        mo = self._mo(self.bom_b, 900, hoy, picking_type=self.t_clf, dest=self.loc_pt)
+        move = self.env['stock.move'].create({
+            'product_id': saldo.id, 'product_uom_qty': 10, 'product_uom': self.kg.id,
+            'location_id': self.tela.property_stock_production.id,
+            'location_dest_id': self.loc_seg.id, 'production_id': mo.id})
+        move._action_confirm()
+        move.quantity = 10
+        move.picked = True
+        move._action_done()
+        R = self.env['qb.producto.rendimiento']
+        with self._con_ficha():
+            datos, _planta = R.medir()
+        self.assertNotIn(saldo.id, datos, "El saldo de la clasificación no forma rendimiento propio")
+        v, t = datos[self.tela.id]
+        self.assertAlmostEqual(v, 900.0, 4)
+        self.assertAlmostEqual(t, 900.0 + 10 * 11.7925, 3)
+        datos, _planta = R.medir()
+        self.assertEqual(datos[self.tela.id], (900.0, 900.0), "Sin ficha no se inventa la conversión")
+
     def test_horas_reales_mixtas_y_conciliacion(self):
         """Primer mes: una orden en kg con órdenes de trabajo y otra sin
         ellas → órdenes de trabajo + estándar. La mano de obra capitalizada

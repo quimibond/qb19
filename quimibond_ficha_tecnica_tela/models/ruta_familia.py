@@ -15,6 +15,12 @@ y la de metros. Las reglas salen de la tabla «rutas de proceso rev4» de Innova
 Reglas de seguridad: nunca se toca una lista **activa** (la cambia Ingeniería con su visto bueno); lo generado nace
 archivado como borrador del flujo, y los tiempos, la capacidad de los jets y la conversión a metros salen de la ficha
 («Usar los datos de la ficha»). Los componentes que no son el crudo (fórmula, engomado) se conservan.
+
+Saldos (2.24.0, Dirección General 2026-11-03): la lista en metros lleva de subproductos los dos saldos en kg en que
+se venden las segundas y el desperdicio de la clasificación (``SALDO DE TELA TEJIDO`` y ``SALDO TEJIDO D``; las
+referencias están en los parámetros ``quimibond_ficha_tecnica_tela.saldo_segunda`` y ``.saldo_desperdicio``), con
+cantidad 0: la real es el peso de cada rollo al clasificar. Diseño:
+``docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md``.
 """
 from collections import Counter
 
@@ -45,6 +51,9 @@ PASOS_TODAS = ('devanado', 'tintoreria', 'abridora', 'rama', 'inspeccion')
 PASOS_PLANTA = ('devanado', 'abridora', 'inspeccion')
 CODIGO_KG = 'Flujo en kg (borrador)'
 CODIGO_M = 'Clasificación final (borrador)'
+# Subproductos de la lista en metros: (parámetro, referencia por defecto). Segundas y desperdicio se venden en kg.
+SALDOS = (('quimibond_ficha_tecnica_tela.saldo_segunda', 'SALDO DE TELA TEJIDO'),
+          ('quimibond_ficha_tecnica_tela.saldo_desperdicio', 'SALDO TEJIDO D'))
 
 
 def tintoreria_por_codigo(code):
@@ -348,6 +357,24 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         viejas.unlink()
         return avisos
 
+    def _ft_poner_saldos(self, bom):
+        """Subproductos de saldo (segundas y desperdicio, en kg) en la lista en metros, con cantidad 0. Los que ya
+        están no se tocan; una referencia que no existe se avisa y se omite (no se inventa el producto)."""
+        params = self.env['ir.config_parameter'].sudo()
+        avisos = []
+        for clave, defecto in SALDOS:
+            codigo = (params.get_param(clave) or defecto).strip()
+            producto = self.env['product.product'].search([('default_code', '=', codigo)], limit=1)
+            if not producto:
+                avisos.append('No existe el producto %s (parámetro %s): la lista en metros va sin ese saldo.'
+                              % (codigo, clave))
+                continue
+            if producto in bom.byproduct_ids.product_id:
+                continue
+            bom.write({'byproduct_ids': [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
+                                                 'product_uom_id': producto.uom_id.id, 'cost_share': 0.0})]})
+        return avisos
+
     def _ft_generar_listas(self):
         """Genera o pone al día las listas archivadas de la tela; devuelve los avisos."""
         self.ensure_one()
@@ -403,6 +430,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                         'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': kg_por_m,
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
+                avisos += self._ft_poner_saldos(bom_m)
                 generadas |= bom_m
         if generadas:
             self.env.invalidate_all()

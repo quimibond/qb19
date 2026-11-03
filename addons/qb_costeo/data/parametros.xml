@@ -147,6 +147,13 @@
         <field name="value_float">500</field>
         <field name="help">Lotes con menos unidades clasificadas (retazos, reprocesos) no entran al cálculo de la primera para planear.</field>
     </record>
+    <record id="param_saldos_clasificacion" model="qb.parametro">
+        <field name="key">saldos_clasificacion</field>
+        <field name="name">Saldos que salen de la clasificación final (referencias)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">SALDO DE TELA TEJIDO,SALDO TEJIDO D</field>
+        <field name="help">Segundas y desperdicio se venden en kg: la clasificación final los saca como subproducto de saldo. Lo que entra de estos productos a una ubicación de merma desde la clasificación cuenta como merma de la tela, en metros con la ficha de acabado.</field>
+    </record>
     <record id="param_tipos_flujo_nuevo" model="qb.parametro">
         <field name="key">tipos_flujo_nuevo</field>
         <field name="name">Tipos de operación del flujo en dos niveles (ids)</field>

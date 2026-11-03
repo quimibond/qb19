@@ -110,6 +110,60 @@ class QbProductoRendimiento(models.Model):
                 if x.strip().isdigit()]
 
     @api.model
+    def _saldo_ids(self):
+        """1.10.0: productos de saldo en kg (segundas y desperdicio) que salen
+        como subproducto de la clasificación final. [0] si no hay, para SQL."""
+        codigos = [c.strip() for c in self.env['qb.parametro'].get_list(
+            'saldos_clasificacion', 'SALDO DE TELA TEJIDO,SALDO TEJIDO D') if c.strip()]
+        ids = self.env['product.product'].with_context(active_test=False).search(
+            [('default_code', 'in', codigos)]).ids if codigos else []
+        return ids or [0]
+
+    @api.model
+    def _saldos_clasificacion(self, desde, hasta, por_lote=False):
+        """1.10.0: {(tela, lote): unidades} de merma de los saldos en kg que
+        salieron de la clasificación final de cada tela, convertidos a la
+        unidad de la tela con la ficha de acabado (kg por unidad). Sin ficha no
+        se convierte (no se inventa una conversión). `lote` es None si no se
+        pide por lote; si no, el lote del saldo sin su número de rollo, igual
+        que en `medir_lotes`."""
+        merma = self._ids_param('calidad_locs_merma', '41,42,43')
+        origen = self._ids_param('calidad_locs_origen', '15,36,246')
+        clasif = self._ids_param('tipos_clasificacion', '409,411') or [0]
+        if not (merma and origen):
+            return {}
+        self.env.cr.execute("""
+            SELECT mo.product_id,
+                   regexp_replace(COALESCE(lot.name, ''), '-[0-9]{3,}$', '') AS lote,
+                   SUM(sml.quantity) AS kg
+              FROM stock_move_line sml
+              JOIN stock_move sm ON sm.id = sml.move_id
+              JOIN mrp_production mo ON mo.id = sm.production_id
+              LEFT JOIN stock_lot lot ON lot.id = sml.lot_id
+             WHERE sml.state = 'done'
+               AND sml.date >= %s AND sml.date < %s
+               AND sml.location_dest_id IN %s
+               AND sml.location_id IN %s
+               AND sml.product_id IN %s
+               AND mo.picking_type_id IN %s
+               AND sm.company_id = %s
+             GROUP BY 1, 2
+        """, (desde, hasta, tuple(merma), tuple(origen), tuple(self._saldo_ids()),
+              tuple(clasif), self.env.company.id))
+        Horas = self.env['qb.producto.horas']
+        Prod = self.env['product.product']
+        kg_u = {}
+        out = {}
+        for pid, lote, kg in self.env.cr.fetchall():
+            if pid not in kg_u:
+                kg_u[pid] = Horas.kg_por_unidad_ficha(Prod.browse(pid))[0]
+            if not kg_u[pid] or not kg:
+                continue
+            clave = (pid, lote if por_lote else None)
+            out[clave] = out.get(clave, 0.0) + kg / kg_u[pid]
+        return out
+
+    @api.model
     def medir(self, hasta=None, meses=None):
         """{product_id: (vendible, total)} en la ventana que termina en
         `hasta` (exclusivo), más la tasa de planta."""
@@ -141,14 +195,23 @@ class QbProductoRendimiento(models.Model):
                     OR sm.picking_type_id NOT IN %s)
                AND (mo.id IS NULL OR mo.picking_type_id IS NULL
                     OR mo.picking_type_id NOT IN %s)
+               AND NOT (sml.product_id IN %s
+                        AND COALESCE(mo.picking_type_id, 0) IN %s)
                AND sm.company_id = %s
              GROUP BY sml.product_id
         """, (tuple(vendible), desde, hasta, tuple(vendible + merma),
-              tuple(origen), tuple(excluir), tuple(tipos_kg), self.env.company.id))
+              tuple(origen), tuple(excluir), tuple(tipos_kg), tuple(self._saldo_ids()),
+              tuple(self._ids_param('tipos_clasificacion', '409,411') or [0]),
+              self.env.company.id))
         filas = self.env.cr.fetchall()
         Prod = self.env['product.product']
         datos = {pid: (v or 0.0, t or 0.0) for pid, v, t in filas
                  if not es_proceso_kg(Prod.browse(pid))}
+        # 1.10.0: segundas y desperdicio salen de la clasificación como saldo
+        # en kg; cuentan como merma de su tela, en la unidad de la tela.
+        for (pid, _lote), unidades in self._saldos_clasificacion(desde, hasta).items():
+            v, t = datos.get(pid, (0.0, 0.0))
+            datos[pid] = (v, t + unidades)
         tot_v = sum(v for v, _t in datos.values())
         tot_t = sum(t for _v, t in datos.values())
         return datos, (tot_v / tot_t if tot_t else 1.0)
@@ -192,17 +255,24 @@ class QbProductoRendimiento(models.Model):
                     OR sm.picking_type_id NOT IN %s)
                AND (mo.id IS NULL OR mo.picking_type_id IS NULL
                     OR mo.picking_type_id NOT IN %s)
+               AND NOT (sml.product_id IN %s
+                        AND COALESCE(mo.picking_type_id, 0) IN %s)
                AND sm.company_id = %s
              GROUP BY 1, 2
         """, (tuple(vendible), desde, hasta, tuple(vendible + merma),
-              tuple(origen), tuple(excluir), tuple(tipos_kg), self.env.company.id))
+              tuple(origen), tuple(excluir), tuple(tipos_kg), tuple(self._saldo_ids()),
+              tuple(self._ids_param('tipos_clasificacion', '409,411') or [0]),
+              self.env.company.id))
         filas = self.env.cr.fetchall()
         Prod = self.env['product.product']
+        por_lote = {(pid, lote): [v or 0.0, t or 0.0] for pid, lote, v, t in filas}
+        for clave, unidades in self._saldos_clasificacion(desde, hasta, por_lote=True).items():
+            por_lote.setdefault(clave, [0.0, 0.0])[1] += unidades
         out = {}
-        for pid, _lote, v, t in filas:
+        for (pid, _lote), (v, t) in por_lote.items():
             if not t or t < min_lote:
                 continue
-            out.setdefault(pid, []).append((v or 0.0) / t)
+            out.setdefault(pid, []).append(v / t)
         return {pid: lotes for pid, lotes in out.items()
                 if not es_proceso_kg(Prod.browse(pid))}
 

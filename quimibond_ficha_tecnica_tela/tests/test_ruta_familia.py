@@ -112,6 +112,28 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertEqual(bom_m.bom_line_ids.product_id, kg)
         self.assertAlmostEqual(bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)
 
+    def test_06b_saldos_en_la_lista_en_metros(self):
+        """2.24.0: la lista en metros lleva los saldos de segundas y desperdicio (kg) con cantidad 0, una sola vez;
+        si la referencia no existe, avisa y no la inventa."""
+        Product = self.env['product.product']
+        saldos = Product
+        for codigo in ('SALDO DE TELA TEJIDO', 'SALDO TEJIDO D'):
+            saldos |= Product.search([('default_code', '=', codigo)], limit=1) or Product.create({
+                'name': codigo, 'default_code': codigo, 'uom_id': self.kg.id, 'is_storable': True})
+        self._armar()
+        (self.bom | self.bom_m).action_archive()
+        self.acabado.action_ft_generar_listas()
+        self.acabado.action_ft_generar_listas()
+        bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        self.assertFalse(bom_m.active)
+        self.assertEqual(bom_m.byproduct_ids.product_id, saldos)
+        self.assertEqual(len(bom_m.byproduct_ids), 2, "Generar dos veces no repite los saldos")
+        self.assertEqual(set(bom_m.byproduct_ids.mapped('product_qty')), {0.0})
+        self.assertEqual(bom_m.byproduct_ids.product_uom_id, self.kg)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_ficha_tecnica_tela.saldo_segunda', 'ZZ-NO-EXISTE')
+        avisos = self.acabado._ft_poner_saldos(bom_m)
+        self.assertTrue(any('ZZ-NO-EXISTE' in a for a in avisos))
+
     def test_07_botones_de_la_lista_de_rutas(self):
         ruta = self._armar()
         accion = call_kw(self.env['ficha.tecnica.ruta'], 'action_ft_generar_listas', [ruta.ids], {})
