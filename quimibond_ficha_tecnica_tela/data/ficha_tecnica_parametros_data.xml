@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.26.0: los parámetros que usan los cálculos del módulo (tiempos de rama, inspección, devanado y abridora;
+    <!-- 2.23.0: los parámetros que usan los cálculos del módulo (tiempos de rama, inspección, devanado y abridora;
          capacidad de los jets). Solo se crean los que falten en su tipo, por clave: en producción ya existen. -->
     <function model="ficha.tecnica.maquina.tipo" name="_ft_asegurar_parametros"/>
 </odoo>

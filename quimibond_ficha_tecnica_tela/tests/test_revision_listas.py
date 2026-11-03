@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""2.24.0: revisión de las listas en kg contra la ficha, por tela y por área."""
+"""2.23.0: revisión de las listas en kg contra la ficha, por tela y por área."""
 from odoo.service.model import call_kw
 from odoo.tests import tagged
 
@@ -62,7 +62,7 @@ class TestRevisionListas(TiempoFichaCase):
         self.assertEqual(revision.areas, 'Ingeniería (Innovación)')
 
     def test_05_la_lista_del_flujo_aunque_este_archivada(self):
-        """2.25.1: la lista vieja activa (sin operaciones) no gana a la del flujo en kg archivada."""
+        """2.23.0: la lista vieja activa (sin operaciones) no gana a la del flujo en kg archivada."""
         Bom = self.env['mrp.bom']
         vieja = Bom.create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1,
                             'product_uom_id': self.kg.id, 'sequence': 0,
@@ -75,7 +75,7 @@ class TestRevisionListas(TiempoFichaCase):
         self.assertTrue(vieja and piloto)
 
     def test_06_boton_actualizar_como_lo_llama_la_pantalla(self):
-        """2.25.1: el botón de la cabecera de la lista llega con la lista de renglones (vacía) como argumento."""
+        """2.23.0: el botón de la cabecera de la lista llega con la lista de renglones (vacía) como argumento."""
         accion = call_kw(self.env['ficha.tecnica.revision'], 'action_ft_actualizar', [[]], {})
         self.assertEqual(accion['tag'], 'reload')
         self.assertTrue(self.env['ficha.tecnica.revision'].search([('acabado_id', '=', self.acabado.id)]))

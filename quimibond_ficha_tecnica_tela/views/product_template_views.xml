@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.26.0: «Ficha de tejido», «Ficha de acabado» y «Procesos por máquina» salen de aquí: los abre la pestaña
+    <!-- 2.23.0: «Ficha de tejido», «Ficha de acabado» y «Procesos por máquina» salen de aquí: los abre la pestaña
          «Ficha técnica» (ficha_producto_views.xml). Quedan los de materia prima. -->
 
     <record id="view_product_template_form_ficha_tecnica" model="ir.ui.view">

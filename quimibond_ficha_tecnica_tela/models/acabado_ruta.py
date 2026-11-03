@@ -46,7 +46,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
     bom_id = fields.Many2one('mrp.bom', string='Lista de materiales del acabado', compute='_compute_ruta')
     crudo_id = fields.Many2one('product.product', string='Crudo (de la lista de materiales)', compute='_compute_ruta')
     crudo_aviso = fields.Char(string='Aviso del crudo', compute='_compute_ruta')
-    # 2.26.0: active_test en el campo; si no, al leerlo Odoo descarta las operaciones archivadas de la lista del flujo.
+    # 2.23.0: active_test en el campo; si no, al leerlo Odoo descarta las operaciones archivadas de la lista del flujo.
     operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones', compute='_compute_ruta',
                                      context={'active_test': False})
     operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
@@ -78,7 +78,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
                 if product.id in vistos:
                     continue
                 vistos.add(product.id)
-                # 2.26.0: la lista del flujo en kg (con operaciones, aunque esté archivada), la misma que toman la
+                # 2.23.0: la lista del flujo en kg (con operaciones, aunque esté archivada), la misma que toman la
                 # revisión y la pestaña del producto; antes la activa (la vieja en 43 telas).
                 bom = self.env['ficha.tecnica.revision']._ft_bom_de(product)
                 if not bom:
@@ -110,7 +110,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
                 aviso = 'La ficha se basa en el tejido de %s y la lista de materiales lleva %s.' % (
                     base.default_code or base.name, crudo.default_code or crudo.name)
             ficha.crudo_aviso = aviso
-            # 2.26.0: también las operaciones archivadas (al archivar una lista Odoo archiva sus operaciones).
+            # 2.23.0: también las operaciones archivadas (al archivar una lista Odoo archiva sus operaciones).
             operaciones = boms.with_context(active_test=False).operation_ids.sorted(lambda o: (o.bom_id.id != boms[:1].id, o.sequence, o.id))
             ficha.operacion_ids = operaciones
             sin_proceso = operaciones.filtered(lambda o: o.ft_aviso)
@@ -152,7 +152,7 @@ class FichaTecnicaAcabadoRuta(models.Model):
             else:
                 otra = self.search([('product_proceso_id', '=', proceso.id), ('id', '!=', ficha._origin.id)],
                                    limit=1)
-                bom = Revision._ft_bom_de(ficha.product_acabado_id)  # 2.26.0: la del flujo, como la revisión
+                bom = Revision._ft_bom_de(ficha.product_acabado_id)  # 2.23.0: la del flujo, como la revisión
                 if otra:
                     aviso = 'El acabado en proceso %s también es de la ficha %s.' % (
                         proceso.default_code or proceso.name, otra.display_name)

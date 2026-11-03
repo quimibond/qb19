@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Rutas por familia y listas generadas desde la ficha (2.28.0, Dirección General 2026-11-03).
+"""Rutas por familia y listas generadas desde la ficha (2.23.0, Dirección General 2026-11-03).
 
 Ingeniería mantiene una ruta por familia (las telas del mismo crudo) y la ficha de cada tela; Odoo arma la lista en kg
 y la de metros. Las reglas salen de la tabla «rutas de proceso rev4» de Innovación (2026-07-15, 105 artículos):
@@ -134,7 +134,7 @@ class FichaTecnicaRuta(models.Model):
             consumo = sum(line.product_qty for line in bom_kg.bom_line_ids if line.product_id == crudo)
             por_tela[ficha] = (maquinas, consumo)
             bom_m = Revision._ft_bom_de(ficha.product_acabado_id) if ficha.product_acabado_id else self.env['mrp.bom']
-            # 2.28.1: solo máquinas sin tipo de ficha (Empaque); una lista en metros vieja puede traer una circular.
+            # 2.23.0: solo máquinas sin tipo de ficha (Empaque); una lista en metros vieja puede traer una circular.
             for op in bom_m.with_context(active_test=False).operation_ids.filtered(lambda o: not o.workcenter_id.ft_tipo_id):
                 clasificacion[(op.workcenter_id.id, op.time_cycle_manual)] += 1
         return por_paso, (clasificacion.most_common(1)[0][0] if clasificacion else None), por_tela
@@ -221,7 +221,7 @@ class FichaTecnicaRuta(models.Model):
 
     @api.model
     def _ft_habilitar_mcp(self):
-        """2.28.1: expone por MCP las rutas y la revisión, si el servidor MCP del repo está instalado (corre al instalar
+        """2.23.0: expone por MCP las rutas y la revisión, si el servidor MCP del repo está instalado (corre al instalar
         y al actualizar; los modelos que ya estén configurados no se tocan)."""
         if 'mcp.enabled.model' not in self.env:
             return False
@@ -363,7 +363,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         if not kg:
             return ['%s: la ficha no tiene el acabado en kg.' % nombre]
         bom_kg = Revision._ft_bom_de(kg)
-        # 2.28.2: una lista activa sin operaciones es la anterior (no la del flujo): se deja como está y la del flujo se
+        # 2.23.0: una lista activa sin operaciones es la anterior (no la del flujo): se deja como está y la del flujo se
         # crea archivada junto a ella.
         if bom_kg and ('no usar' in (bom_kg.code or '').lower() or (
                 bom_kg.active and not bom_kg.with_context(active_test=False).operation_ids)):

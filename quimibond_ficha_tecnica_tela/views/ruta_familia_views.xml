@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.28.0 (Dirección General 2026-11-03): una ruta por familia de telas (el crudo) con los pasos de la tabla de
+    <!-- 2.23.0 (Dirección General 2026-11-03): una ruta por familia de telas (el crudo) con los pasos de la tabla de
          Innovación; Odoo genera las listas en kg y en metros desde la ruta y la ficha. -->
 
     <record id="view_ficha_tecnica_ruta_list" model="ir.ui.view">

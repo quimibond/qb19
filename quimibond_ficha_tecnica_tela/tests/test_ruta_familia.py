@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""2.28.0: rutas por familia (tabla de Innovación) y listas generadas desde la ruta y la ficha."""
+"""2.23.0: rutas por familia (tabla de Innovación) y listas generadas desde la ruta y la ficha."""
 from odoo.service.model import call_kw
 from odoo.tests import tagged
 
@@ -119,7 +119,7 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertIn(self.acabado, ruta.acabado_ids)
 
     def test_08_habilitar_mcp(self):
-        """2.28.1: si el servidor MCP está instalado, las rutas quedan habilitadas una sola vez."""
+        """2.23.0: si el servidor MCP está instalado, las rutas quedan habilitadas una sola vez."""
         Ruta = self.env['ficha.tecnica.ruta']
         if 'mcp.enabled.model' not in self.env:
             self.assertFalse(Ruta._ft_habilitar_mcp())
@@ -130,7 +130,7 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertTrue(Enabled.search([('model_id.model', '=', 'ficha.tecnica.ruta')]))
 
     def test_09_lista_anterior_activa_sin_operaciones(self):
-        """2.28.2: si la única lista activa es la anterior (sin operaciones), la del flujo se crea archivada junto a
+        """2.23.0: si la única lista activa es la anterior (sin operaciones), la del flujo se crea archivada junto a
         ella y la anterior no se toca."""
         self._armar()
         self.bom.operation_ids.unlink()
