@@ -128,3 +128,16 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertFalse(Ruta._ft_habilitar_mcp(), "La segunda vez no crea nada")
         Enabled = self.env['mcp.enabled.model'].sudo()
         self.assertTrue(Enabled.search([('model_id.model', '=', 'ficha.tecnica.ruta')]))
+
+    def test_09_lista_anterior_activa_sin_operaciones(self):
+        """2.28.2: si la única lista activa es la anterior (sin operaciones), la del flujo se crea archivada junto a
+        ella y la anterior no se toca."""
+        self._armar()
+        self.bom.operation_ids.unlink()
+        self.acabado.action_ft_generar_listas()
+        self.assertTrue(self.bom.active and not self.bom.operation_ids, "La lista anterior queda como estaba")
+        nueva = self.env['ficha.tecnica.revision']._ft_bom_de(self.tela)
+        self.assertNotEqual(nueva, self.bom)
+        self.assertFalse(nueva.active)
+        self.assertEqual(nueva.code, 'Flujo en kg (borrador)')
+        self.assertEqual([o.workcenter_id for o in self._ops(nueva)], [self.dev, self.jet, self.abr, self.insp])

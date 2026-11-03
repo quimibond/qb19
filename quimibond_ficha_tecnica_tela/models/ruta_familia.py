@@ -363,7 +363,10 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         if not kg:
             return ['%s: la ficha no tiene el acabado en kg.' % nombre]
         bom_kg = Revision._ft_bom_de(kg)
-        if bom_kg and 'no usar' in (bom_kg.code or '').lower():
+        # 2.28.2: una lista activa sin operaciones es la anterior (no la del flujo): se deja como está y la del flujo se
+        # crea archivada junto a ella.
+        if bom_kg and ('no usar' in (bom_kg.code or '').lower() or (
+                bom_kg.active and not bom_kg.with_context(active_test=False).operation_ids)):
             bom_kg = Bom
         if bom_kg.active:
             avisos.append('%s: la lista en kg está activa y no se toca (la cambia Ingeniería).' % nombre)
@@ -383,7 +386,8 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                 generadas |= bom_kg
         if tela_m:
             bom_m = Revision._ft_bom_de(tela_m)
-            if bom_m and 'no usar' in (bom_m.code or '').lower():
+            if bom_m and ('no usar' in (bom_m.code or '').lower() or (
+                    bom_m.active and not bom_m.with_context(active_test=False).operation_ids)):
                 bom_m = Bom
             if bom_m.active:
                 avisos.append('%s: la lista en metros está activa y no se toca.' % nombre)
