@@ -9,7 +9,7 @@ class MrpProduction(models.Model):
 
     es_desarrollo = fields.Boolean(
         'Orden de Desarrollo', compute='_compute_es_desarrollo', store=True, readonly=False, copy=True,
-        tracking=True,
+        tracking=True, recursive=True,
         help='Marca la orden en metros como de Desarrollo: sus rollos terminados van al Almacén 31 en vez '
              'de los almacenes 14/15/16/17. La orden en kg que la abastece (MTO) la hereda.')
     rollo_bitacora_ids = fields.One2many('mrp.rollo.bitacora', 'production_id', 'Rollos')

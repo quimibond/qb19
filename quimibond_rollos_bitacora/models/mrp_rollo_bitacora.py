@@ -264,7 +264,7 @@ class MrpRolloBitacora(models.Model):
         renglones = [
             'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
             'COLOR: %s' % datos['color'],
-            'ANCHO (cm): %s' % datos['ancho'],
+            'ANCHO (cm): %g' % datos['ancho'],
             'METROS: %.2f     YARDAS: %.2f' % (metros, metros * YARDAS_POR_METRO),
         ]
         if pnc:
