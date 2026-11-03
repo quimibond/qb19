@@ -40,6 +40,9 @@ NOMBRE_OPERACION = {'devanado': 'DEVANADO', 'abridora_volteado': 'ABRIDORA VOLTE
 # Tipo de máquina de la ficha → paso (para reconocer las operaciones de una lista armada a mano).
 PASO_POR_TIPO = {'devanadora': 'devanado', 'tintoreria': 'tintoreria', 'abridora': 'abridora', 'acabado': 'rama',
                  'inspeccion': 'inspeccion'}
+# Tabla de Innovación (rev4): pasos que llevan todas las telas, y los que tienen una máquina estándar en la planta.
+PASOS_TODAS = ('devanado', 'tintoreria', 'abridora', 'rama', 'inspeccion')
+PASOS_PLANTA = ('devanado', 'abridora', 'inspeccion')
 CODIGO_KG = 'Flujo en kg (borrador)'
 CODIGO_M = 'Clasificación final (borrador)'
 
@@ -114,14 +117,12 @@ class FichaTecnicaRuta(models.Model):
 
     @api.model
     def _ft_armar(self, crudo, acabados):
-        """Valores de la ruta de un crudo desde las listas de sus telas: un paso por cada paso que aparezca en alguna
-        tela (si falta en otras, es que les falta el dato) con la máquina más usada; lo que una tela hace en otra
-        máquina (rama o jet) queda en su ficha. Devuelve (valores de la ruta, {ficha: valores})."""
+        """Lo que dicen las listas del flujo de las telas de un crudo: {paso: Counter(máquina)}, la Clasificación
+        (máquina, tiempo) más usada de sus listas en metros y, por tela, (máquinas por paso, consumo de crudo)."""
         Revision = self.env['ficha.tecnica.revision']
         por_paso = {}
         por_tela = {}
         clasificacion = Counter()
-        tiempos_clasificacion = Counter()
         for ficha in acabados:
             bom_kg = Revision._ft_bom_de(ficha.product_proceso_id) if ficha.product_proceso_id else self.env['mrp.bom']
             maquinas = {}
@@ -133,55 +134,109 @@ class FichaTecnicaRuta(models.Model):
             consumo = sum(line.product_qty for line in bom_kg.bom_line_ids if line.product_id == crudo)
             por_tela[ficha] = (maquinas, consumo)
             bom_m = Revision._ft_bom_de(ficha.product_acabado_id) if ficha.product_acabado_id else self.env['mrp.bom']
-            for op in bom_m.with_context(active_test=False).operation_ids:
-                clasificacion[op.workcenter_id.id] += 1
-                tiempos_clasificacion[op.time_cycle_manual] += 1
-        Workcenter = self.env['mrp.workcenter']
-        pasos = []
-        familia = {}
-        for paso in [p for p, _n in PASOS if p in por_paso]:
-            wc = Workcenter.browse(por_paso[paso].most_common(1)[0][0])
-            familia[paso] = wc
-            pasos.append((0, 0, {'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': wc.id}))
-        if clasificacion:
-            pasos.append((0, 0, {'paso': 'clasificacion', 'sequence': SECUENCIA['clasificacion'],
-                                 'workcenter_id': clasificacion.most_common(1)[0][0],
-                                 'tiempo': tiempos_clasificacion.most_common(1)[0][0]}))
-        fichas = {}
-        for ficha, (maquinas, consumo) in por_tela.items():
-            vals = {}
-            if maquinas.get('rama') and maquinas['rama'] != familia.get('rama'):
-                vals['ruta_rama_id'] = maquinas['rama'].id
-            if maquinas.get('tintoreria') and maquinas['tintoreria'] != familia.get('tintoreria'):
-                vals['ruta_jet_id'] = maquinas['tintoreria'].id
-            if consumo and not ficha.consumo_crudo:
-                vals['consumo_crudo'] = consumo
-            if vals:
-                fichas[ficha] = vals
-        return {'crudo_id': crudo.id, 'paso_ids': pasos}, fichas
+            # 2.28.1: solo máquinas sin tipo de ficha (Empaque); una lista en metros vieja puede traer una circular.
+            for op in bom_m.with_context(active_test=False).operation_ids.filtered(lambda o: not o.workcenter_id.ft_tipo_id):
+                clasificacion[(op.workcenter_id.id, op.time_cycle_manual)] += 1
+        return por_paso, (clasificacion.most_common(1)[0][0] if clasificacion else None), por_tela
 
     def action_ft_armar_desde_listas(self):
-        """Botón de la lista: arma la ruta de cada crudo que todavía no tiene, desde las listas del flujo de sus telas
-        (método de registros: el botón de la cabecera llega con los renglones seleccionados)."""
+        """Botón de la lista: arma la ruta de cada crudo que no la tiene y completa las que ya existen.
+
+        Cada paso toma la máquina más usada por las telas de la familia. Los pasos que la tabla de Innovación pone en
+        todas las telas (devanado, tintorería, abridora, rama, inspección) se agregan aunque falten en las listas (les
+        faltaba el dato): devanado, abridora e inspección con la máquina más usada en toda la planta; tintorería y rama
+        sin máquina si la familia no la tiene, para que lo defina Ingeniería. Nunca cambia un paso que ya existe.
+        Método de registros: el botón de la cabecera llega con los renglones seleccionados."""
         Ruta = self.env['ficha.tecnica.ruta'].with_context(active_test=False)
+        Paso = self.env['ficha.tecnica.ruta.paso']
         Acabado = self.env['ficha.tecnica.acabado']
-        con_ruta = set(Ruta.search([]).crudo_id.ids)
         acabados = Acabado.search([('tejido_id.product_proceso_id', '!=', False)])
-        creadas = Ruta
-        for crudo in acabados.tejido_id.product_proceso_id:
-            if crudo.id in con_ruta:
+        datos = {crudo: self._ft_armar(crudo, acabados.filtered(lambda f, c=crudo: f.tejido_id.product_proceso_id == c))
+                 for crudo in acabados.tejido_id.product_proceso_id}
+        planta = {}
+        for paso in PASOS_PLANTA:
+            total = Counter()
+            for por_paso, _clas, _telas in datos.values():
+                total.update(por_paso.get(paso, Counter()))
+            planta[paso] = total.most_common(1)[0][0] if total else False
+        rutas = {ruta.crudo_id: ruta for ruta in Ruta.search([])}
+        creadas = completadas = 0
+        nombres = dict(PASOS)
+        for crudo, (por_paso, clasif, por_tela) in datos.items():
+            familia = {paso: contador.most_common(1)[0][0] for paso, contador in por_paso.items()}
+            ruta = rutas.get(crudo)
+            existentes = set(ruta.paso_ids.mapped('paso')) if ruta else set()
+            nuevos, de_planta, sin_maquina = [], [], []
+            for paso, _n in PASOS:
+                if paso in existentes:
+                    continue
+                if paso == 'clasificacion':
+                    if clasif:
+                        nuevos.append({'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': clasif[0],
+                                       'tiempo': clasif[1]})
+                    continue
+                wc = familia.get(paso)
+                if not wc and paso in PASOS_TODAS:
+                    wc = planta.get(paso)
+                    (de_planta if wc else sin_maquina).append(nombres[paso])
+                elif not wc:
+                    continue
+                nuevos.append({'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': wc or False})
+            if not nuevos:
                 continue
-            vals, fichas = self._ft_armar(crudo, acabados.filtered(lambda f: f.tejido_id.product_proceso_id == crudo))
-            if not vals['paso_ids']:
+            nota = ''
+            if de_planta or sin_maquina:
+                nota = 'Tabla de Innovación (rev4): %s%s.' % (
+                    ('%s con la máquina más usada en la planta' % ', '.join(de_planta)) if de_planta else '',
+                    ('%s%s sin máquina (por definir)' % ('; ' if de_planta else '', ', '.join(sin_maquina)))
+                    if sin_maquina else '')
+            if ruta:
+                Paso.create([dict(vals, ruta_id=ruta.id) for vals in nuevos])
+                if nota:
+                    ruta.notas = ((ruta.notas + '\n') if ruta.notas else '') + nota
+                completadas += 1
                 continue
-            creadas |= Ruta.create(vals)
-            for ficha, valores in fichas.items():
-                ficha.write(valores)
+            ruta = Ruta.create({'crudo_id': crudo.id, 'paso_ids': [(0, 0, vals) for vals in nuevos], 'notas': nota or False})
+            creadas += 1
+            for ficha, (maquinas, consumo) in por_tela.items():
+                vals = {}
+                if maquinas.get('rama') and maquinas['rama'].id != familia.get('rama'):
+                    vals['ruta_rama_id'] = maquinas['rama'].id
+                if maquinas.get('tintoreria') and maquinas['tintoreria'].id != familia.get('tintoreria'):
+                    vals['ruta_jet_id'] = maquinas['tintoreria'].id
+                if consumo and not ficha.consumo_crudo:
+                    vals['consumo_crudo'] = consumo
+                if vals:
+                    ficha.write(vals)
+        partes = []
+        if creadas:
+            partes.append('%s rutas nuevas' % creadas)
+        if completadas:
+            partes.append('%s rutas completadas con los pasos de la tabla de Innovación' % completadas)
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
-            'title': 'Rutas por familia', 'type': 'success' if creadas else 'info',
-            'message': ('%s rutas nuevas desde las listas del flujo.' % len(creadas)) if creadas else
-            'Todos los crudos con listas del flujo ya tienen su ruta.',
+            'title': 'Rutas por familia', 'type': 'success' if partes else 'info',
+            'message': ('; '.join(partes) + '.') if partes else 'Las rutas ya tienen todos sus pasos.',
             'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
+
+
+    @api.model
+    def _ft_habilitar_mcp(self):
+        """2.28.1: expone por MCP las rutas y la revisión, si el servidor MCP del repo está instalado (corre al instalar
+        y al actualizar; los modelos que ya estén configurados no se tocan)."""
+        if 'mcp.enabled.model' not in self.env:
+            return False
+        Enabled = self.env['mcp.enabled.model'].sudo().with_context(active_test=False)
+        creados = Enabled
+        for model, escribir in (('ficha.tecnica.ruta', True), ('ficha.tecnica.ruta.paso', True),
+                                ('ficha.tecnica.revision', False), ('ficha.tecnica.revision.pendiente', False)):
+            ir_model = self.env['ir.model']._get(model)
+            if not ir_model or Enabled.search([('model_id', '=', ir_model.id)], limit=1):
+                continue
+            creados |= Enabled.create({
+                'model_id': ir_model.id, 'active': True, 'allow_read': True, 'allow_create': escribir,
+                'allow_write': escribir, 'allow_unlink': False, 'allow_method_calls': True,
+                'notes': 'quimibond_ficha_tecnica_tela: habilitado al instalar o actualizar.'})
+        return bool(creados)
 
 
 class FichaTecnicaRutaPaso(models.Model):
