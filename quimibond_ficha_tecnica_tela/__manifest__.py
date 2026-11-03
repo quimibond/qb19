@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.27.1',
+    'version': '19.0.2.27.2',
     'summary': 'Fichas técnicas de tela en las pantallas nativas: tela, crudo, ruta, máquinas y revisión de listas',
     'description': """
 Fichas técnicas de tela
