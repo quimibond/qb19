@@ -227,6 +227,29 @@ class MrpProduction(models.Model):
             'desperdicio_manual': manual,
         })
 
+    # ------------------------------------------------------------ planeación
+    def _ordenes_previas(self):
+        """MOs que abastecen a esta por la cadena MTO (la MO en kg que produce el Producto A de la MO en m)."""
+        self.ensure_one()
+        return self.move_raw_ids.move_orig_ids.production_id - self
+
+    def _plan_workorders(self, replan=False):
+        """La MO en metros no puede empezar antes de que termine la MO en kg que la abastece.
+
+        El core planea cada MO desde su propia fecha de inicio y no mira la cadena MTO entre MOs: la de
+        metros quedaba a la misma hora que la de kg. Aquí se planea primero la MO previa y la fecha de inicio
+        de esta se recorre al fin de la previa (el core arranca el primer paso desde esa fecha)."""
+        resultado = None
+        for orden in self:
+            previas = orden._ordenes_previas().filtered(lambda p: p.state not in ('done', 'cancel'))
+            for previa in previas.filtered(lambda p: p.workorder_ids and (replan or not p.is_planned)):
+                previa._plan_workorders(replan)
+            fin_previas = max(previas.filtered('date_finished').mapped('date_finished'), default=False)
+            if fin_previas and (not orden.date_start or orden.date_start < fin_previas):
+                orden.with_context(force_date=True).write({'date_start': fin_previas})
+            resultado = super(MrpProduction, orden)._plan_workorders(replan)
+        return resultado
+
     def button_mark_done(self):
         self._validar_rollos_inspeccionados()
         """Cierre de la MO en kg con rollos de la bitácora.
