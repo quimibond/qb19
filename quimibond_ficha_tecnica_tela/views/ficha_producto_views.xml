@@ -40,6 +40,9 @@
                         <field name="ft_bom_m_id" invisible="1"/>
                     </div>
                     <div invisible="not ft_es_crudo" class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_ft_agregar_circular" type="object" string="Agregar circular"
+                                class="btn-primary" icon="fa-plus"
+                                help="Crea la ficha de tejido de este crudo en otra circular, con los hilos, ajustes y características de la más reciente. No toca centros de trabajo ni listas de materiales."/>
                         <button name="action_view_ficha_tecnica_tejido" type="object" string="Fichas de tejido"
                                 class="btn-secondary" icon="fa-file-text-o"/>
                     </div>
@@ -120,6 +123,8 @@
                             <field name="area"/>
                             <field name="tipo"/>
                             <field name="detalle"/>
+                            <button name="action_ft_resolver" type="object" string="Resolver" icon="fa-wrench"
+                                    class="btn-link"/>
                         </list>
                     </field>
 
@@ -186,6 +191,10 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Telas que corren aquí" name="ft_telas" invisible="not ft_tipo_id">
                     <field name="ft_tipo_id" invisible="1"/>
+                    <p class="text-muted small">
+                        Dato de: los datos de la tela en cada máquina (Máquinas → Procesos por artículo). Aquí están los
+                        de esta máquina; el lápiz edita el mismo registro.
+                    </p>
                     <field name="ft_proceso_ids" context="{'default_workcenter_id': id}">
                         <list>
                             <field name="articulo"/>

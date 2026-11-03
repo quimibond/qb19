@@ -62,6 +62,8 @@
                             <field name="detalle"/>
                             <field name="workcenter_id" optional="show"/>
                             <field name="bom_id" optional="hide"/>
+                            <button name="action_ft_resolver" type="object" string="Resolver" icon="fa-wrench"
+                                    class="btn-link"/>
                         </list>
                     </field>
                 </sheet>
@@ -114,6 +116,7 @@
                 <field name="workcenter_id" optional="show"/>
                 <field name="bom_id" optional="hide"/>
                 <field name="operation_id" optional="hide"/>
+                <button name="action_ft_resolver" type="object" string="Resolver" icon="fa-wrench" class="btn-link"/>
             </list>
         </field>
     </record>
@@ -148,8 +151,8 @@
         <field name="context">{'search_default_group_area': 1, 'search_default_group_tipo': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin pendientes</p>
-            <p>Lo que le falta a cada área para que las listas en kg cuadren con la ficha. Sale de «Revisión de listas
-                en kg», que se rehace cada noche.</p>
+            <p>Lo que le falta a cada área para que las listas en kg cuadren con la ficha. Filtre su área y pulse
+                «Resolver»: abre el lugar donde se corrige. Se rehace cada noche.</p>
         </field>
     </record>
 </odoo>

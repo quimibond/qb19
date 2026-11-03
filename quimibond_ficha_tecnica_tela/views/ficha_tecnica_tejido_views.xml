@@ -36,6 +36,9 @@
                     <button name="action_ft_ligar_configuracion" type="object" string="Ligar a la configuración vigente"
                             invisible="maquina_config_id or not maquina_tejido"
                             help="Toma la configuración de la máquina vigente a la fecha de elaboración (hoy si no hay fecha). No se liga si un dato de máquina de la ficha contradice el de la configuración."/>
+                    <button name="action_ft_agregar_circular" type="object" string="Agregar circular"
+                            invisible="not id"
+                            help="Abre una ficha nueva de este crudo en otra circular con los hilos, ajustes de tejido, tela acondicionada y características de esta. Los datos de la máquina salen de la configuración de la circular que elija. No toca centros de trabajo ni listas de materiales."/>
                     <button name="action_ft_reporte_ligado_ficha" type="object" string="Ligar hilos"
                             help="Reporte de los hilos de esta ficha con su producto candidato según la lista de materiales del crudo."/>
                 </header>

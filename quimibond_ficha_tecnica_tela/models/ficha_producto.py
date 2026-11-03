@@ -282,6 +282,13 @@ class ProductTemplateFichaNativa(models.Model):
         self.ensure_one()
         return self._ft_abrir(self.ft_crudo_id.product_tmpl_id, 'Crudo')
 
+    def action_ft_agregar_circular(self):
+        """2.24.0: «Agregar circular» en el crudo: copia su ficha de tejido más reciente a una circular nueva."""
+        self.ensure_one()
+        base = self.ft_tejido_ids.sorted(lambda f: (f.fecha_elaboracion or fields.Date.to_date('1900-01-01'), f.id),
+                                         reverse=True)[:1]
+        return base.action_ft_agregar_circular()
+
     def action_ft_datos_ficha(self):
         """«Usar los datos de la ficha» en las listas de la tela y vuelve a revisarla."""
         for tmpl in self.filtered('ficha_tecnica_acabado_id'):
@@ -338,6 +345,9 @@ class ProductProductFichaNativa(models.Model):
 
     def action_ft_crudo(self):
         return self.product_tmpl_id.action_ft_crudo()
+
+    def action_ft_agregar_circular(self):
+        return self.product_tmpl_id.action_ft_agregar_circular()
 
     def action_ft_datos_ficha(self):
         return self.product_tmpl_id.action_ft_datos_ficha()
