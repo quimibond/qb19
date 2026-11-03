@@ -16,3 +16,5 @@ from . import test_longitud_malla  # 2.16.1
 from . import test_alternativas  # 2.20.0
 from . import test_tiempo_rama  # 2.22.0
 from . import test_tiempo_ficha  # 2.23.0
+from . import test_revision_listas  # 2.24.0
+from . import test_ficha_producto  # 2.25.0

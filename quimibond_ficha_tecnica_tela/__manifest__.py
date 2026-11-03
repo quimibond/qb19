@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.23.0',
+    'version': '19.0.2.25.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -89,6 +89,12 @@ Incluye:
   Programación) y conversión kg → m de la lista en metros contra 1 ÷ rendimiento de tela acabada, con «Usar los
   datos de la ficha» en las listas. Una sola regla de capacidad del jet en fichas (``_ft_regla_capacidad``, la de la
   Programación) para los avisos, el costeo y la capacidad por producto; filtro «Tiempo distinto de la ficha» en Operaciones.
+- 2.24.0: «Revisión de listas en kg» (Tela): una fila por tela en verde o rojo y «Pendientes por área» (Ingeniería,
+  Tintorería, Acabado, Inspección, Manufactura) con lo que revisó la auditoría de octubre: acabado en proceso, listas en
+  kg y en metros, crudo, procesos, tiempos, capacidades de los jets y conversión a metros. Se rehace cada noche.
+- 2.25.0: la ficha en las pantallas nativas: pestaña «Ficha técnica» en el producto (tela, crudo, ruta de sus listas,
+  especificación y pendientes; peso, ancho y rendimiento se editan ahí), parámetros del proceso en la operación y
+  «Telas que corren aquí» en el centro de trabajo. La app queda como concentrado: Telas y Crudos abren el producto.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
@@ -106,6 +112,9 @@ Incluye:
         'views/mrp_aviso_maquina_views.xml',  # 2.5.0
         'views/tiempo_rama_views.xml',  # 2.22.0
         'views/capacidad_conversion_views.xml',  # 2.23.0
+        'views/revision_listas_views.xml',  # 2.24.0
+        'views/ficha_producto_views.xml',  # 2.25.0: después de maquina_config_views (usa ft_tipo_id en el centro)
+        'data/ir_cron_revision.xml',  # 2.24.0: después del modelo de la revisión
         'views/proceso_views.xml',  # 2.8.0
         'views/materia_prima_views.xml',  # 2.9.0
         'views/product_template_views.xml',

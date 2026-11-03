@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.25.0 (Dirección General 2026-11-03): la ficha técnica en las pantallas nativas de Odoo. Extienden vistas de
+         product y mrp (otros módulos). -->
+
+    <!-- ===== Producto: pestaña «Ficha técnica» (primera, solo si el producto tiene ficha) ===== -->
+    <record id="view_product_template_form_ft_ficha_nativa" model="ir.ui.view">
+        <field name="name">product.template.form.ft.ficha.nativa</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook/page[1]" position="before">
+                <page string="Ficha técnica" name="ft_ficha_tecnica" invisible="not ft_tiene_ficha">
+                    <field name="ft_tiene_ficha" invisible="1"/>
+                    <field name="ft_es_tela" invisible="1"/>
+                    <field name="ft_es_crudo" invisible="1"/>
+                    <field name="ft_revision_listo" invisible="1"/>
+                    <field name="ft_revision_id" invisible="1"/>
+
+                    <!-- La tela (tela acabada en metros o su producto en kg) -->
+                    <div invisible="not ft_es_tela" class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_ft_datos_ficha" type="object" string="Usar los datos de la ficha"
+                                class="btn-primary" invisible="ft_revision_listo"
+                                help="Capacidad de los jets, tiempos de las operaciones y conversión a metros desde la ficha; luego vuelve a revisar la tela."/>
+                        <button name="action_ft_revisar" type="object" string="Volver a revisar" class="btn-secondary"/>
+                        <button name="action_ft_bom_kg" type="object" string="Lista en kg" class="btn-secondary"
+                                icon="fa-sitemap" invisible="not ft_bom_kg_id"/>
+                        <button name="action_ft_bom_m" type="object" string="Lista en metros" class="btn-secondary"
+                                icon="fa-sitemap" invisible="not ft_bom_m_id"/>
+                        <field name="ft_bom_kg_id" invisible="1"/>
+                        <field name="ft_bom_m_id" invisible="1"/>
+                    </div>
+                    <group invisible="not ft_es_tela">
+                        <group string="La tela">
+                            <field name="ft_peso"/>
+                            <field name="ft_ancho"/>
+                            <field name="ft_rendimiento"/>
+                            <field name="ft_producto_kg_id"/>
+                            <field name="ft_producto_m_id"/>
+                        </group>
+                        <group string="El crudo">
+                            <field name="ft_crudo_id"/>
+                            <field name="ft_crudo_peso"/>
+                            <field name="ft_crudo_ancho"/>
+                            <field name="ft_crudo_rendimiento"/>
+                            <field name="ft_crudo_telas_count"/>
+                        </group>
+                    </group>
+                    <div invisible="not ft_es_tela or ft_crudo_telas_count &lt; 2" class="alert alert-info" role="status">
+                        Este crudo lo usan <field name="ft_crudo_telas_count" class="oe_inline" readonly="1"/> telas: sus
+                        datos (peso, ancho, hilos, circulares) se editan en el crudo, no aquí.
+                        <button name="action_ft_crudo" type="object" string="Abrir el crudo" class="btn-link"/>
+                    </div>
+                    <separator string="La ruta (operaciones de sus listas de materiales)" invisible="not ft_es_tela"/>
+                    <field name="ft_operacion_ids" readonly="1" invisible="not ft_es_tela">
+                        <list decoration-warning="ft_tiempo_difiere">
+                            <field name="bom_id" optional="hide"/>
+                            <field name="name"/>
+                            <field name="workcenter_id"/>
+                            <field name="time_cycle_manual" string="Duración (min)"/>
+                            <field name="ft_tiempo_ficha"/>
+                            <field name="ft_tiempo_difiere" column_invisible="True"/>
+                            <field name="ft_tiempo_calculo" optional="hide"/>
+                        </list>
+                    </field>
+                    <separator string="Especificación" invisible="not ft_es_tela"/>
+                    <field name="ft_spec_ids" readonly="1" invisible="not ft_es_tela">
+                        <list>
+                            <field name="name"/>
+                            <field name="unit"/>
+                            <field name="spec_nominal"/>
+                            <field name="spec_tol_minus"/>
+                            <field name="spec_tol_plus"/>
+                            <field name="method" optional="show"/>
+                        </list>
+                    </field>
+                    <separator string="Pendientes" invisible="not ft_es_tela"/>
+                    <div invisible="not ft_es_tela or ft_revision_id" class="text-muted">
+                        Sin revisión todavía: «Volver a revisar» la hace.
+                    </div>
+                    <div invisible="not ft_revision_listo" class="alert alert-success" role="status">
+                        Las listas de esta tela cuadran con la ficha.
+                    </div>
+                    <field name="ft_pendiente_ids" readonly="1" invisible="not ft_es_tela or ft_revision_listo">
+                        <list>
+                            <field name="area"/>
+                            <field name="tipo"/>
+                            <field name="detalle"/>
+                        </list>
+                    </field>
+
+                    <!-- El crudo, visto desde su propio producto -->
+                    <separator string="Circulares donde se teje" invisible="not ft_es_crudo"/>
+                    <field name="ft_tejido_ids" readonly="1" invisible="not ft_es_crudo">
+                        <list>
+                            <field name="maquina_tejido"/>
+                            <field name="maquina_config_id" optional="show"/>
+                            <field name="galga"/>
+                            <field name="diametro"/>
+                            <field name="peso_acondicionado"/>
+                            <field name="ancho_acondicionado"/>
+                            <field name="rendimiento_tela_tejida"/>
+                        </list>
+                    </field>
+                    <separator string="Telas que usan este crudo" invisible="not ft_es_crudo"/>
+                    <field name="ft_tela_ids" readonly="1" invisible="not ft_es_crudo">
+                        <list>
+                            <field name="product_acabado_id"/>
+                            <field name="peso_acabado"/>
+                            <field name="ancho_acabado"/>
+                            <field name="rendimiento_tela_acabada"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ===== Operación: parámetros del proceso en su máquina y sus alternativas ===== -->
+    <record id="view_mrp_routing_workcenter_form_ft_parametros" model="ir.ui.view">
+        <field name="name">mrp.routing.workcenter.form.ft.parametros</field>
+        <field name="model">mrp.routing.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_routing_workcenter_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <separator string="Parámetros del proceso (la tela en esta máquina y en sus alternativas)"/>
+                <field name="ft_param_proceso_ids" readonly="1">
+                    <list>
+                        <field name="workcenter_id"/>
+                        <field name="resumen"/>
+                        <field name="fuente" optional="show"/>
+                        <field name="fecha" optional="hide"/>
+                        <button name="action_ft_editar" type="object" icon="fa-pencil" title="Editar los parámetros"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ===== Centro de trabajo: telas que corren aquí ===== -->
+    <record id="view_mrp_workcenter_form_ft_telas" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.ft.telas</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Telas que corren aquí" name="ft_telas" invisible="not ft_tipo_id">
+                    <field name="ft_tipo_id" invisible="1"/>
+                    <field name="ft_proceso_ids" readonly="1">
+                        <list>
+                            <field name="articulo"/>
+                            <field name="product_id" optional="show"/>
+                            <field name="resumen"/>
+                            <field name="fuente" optional="hide"/>
+                            <button name="action_ft_editar" type="object" icon="fa-pencil" title="Editar los parámetros"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ===== App Fichas técnicas: el concentrado (abre el producto nativo) ===== -->
+    <record id="view_product_template_ft_telas_list" model="ir.ui.view">
+        <field name="name">product.template.list.ft.telas</field>
+        <field name="model">product.template</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Telas" create="0" decoration-success="ft_revision_listo" decoration-danger="ft_revision_n">
+                <field name="default_code"/>
+                <field name="name"/>
+                <field name="ft_peso"/>
+                <field name="ft_ancho"/>
+                <field name="ft_rendimiento"/>
+                <field name="ft_crudo_id"/>
+                <field name="ft_revision_n"/>
+                <field name="ft_revision_listo" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_product_template_ft_crudos_list" model="ir.ui.view">
+        <field name="name">product.template.list.ft.crudos</field>
+        <field name="model">product.template</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Crudos" create="0">
+                <field name="default_code"/>
+                <field name="name"/>
+                <field name="ficha_tecnica_tejido_count" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ft_telas" model="ir.actions.act_window">
+        <field name="name">Telas</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('ft_es_tela', '=', True)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_product_template_ft_telas_list')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin telas con ficha</p>
+            <p>Cada tela acabada con ficha de acabado. Al abrirla, su pestaña «Ficha técnica» muestra la tela, su crudo,
+                la ruta, la especificación y sus pendientes.</p>
+        </field>
+    </record>
+
+    <record id="action_ft_crudos" model="ir.actions.act_window">
+        <field name="name">Crudos</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('ft_es_crudo', '=', True)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_product_template_ft_crudos_list')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin crudos con ficha</p>
+            <p>Cada crudo con ficha de tejido. Al abrirlo, su pestaña «Ficha técnica» muestra las circulares donde se
+                teje y las telas que lo usan.</p>
+        </field>
+    </record>
+</odoo>
