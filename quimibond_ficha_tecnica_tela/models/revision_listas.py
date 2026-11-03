@@ -45,6 +45,8 @@ TIPOS = [
     ('capacidad_falta', 'Falta la capacidad del jet'),
     ('capacidad_distinta', 'Capacidad del jet distinta de la ficha'),
     ('conversion', 'Conversión kg → m'),
+    ('datos_acabado', 'Ficha de acabado sin peso o rendimiento'),
+    ('datos_tejido', 'Ficha de tejido sin rendimiento'),
 ]
 
 
@@ -147,6 +149,20 @@ class FichaTecnicaRevision(models.Model):
                 'bom_m_id': bom_m.id, 'fecha': fields.Datetime.now()}
         pendientes = []
         ing = {'area': 'ingenieria'}
+        # 2.27.0: los datos de la ficha que usan los cálculos, avisados en su origen (antes solo salían como «falta un
+        # dato» en cada operación, a nombre del área de la máquina).
+        faltan = [nombre for nombre, valor in (('peso', acabado.peso_acabado),
+                                                ('rendimiento de tela acabada', acabado.rendimiento_tela_acabada))
+                  if not valor]
+        if faltan:
+            pendientes.append(dict(ing, tipo='datos_acabado', detalle='La ficha de acabado no tiene %s: sin eso no '
+                                   'salen el tiempo de rama, el de inspección ni la conversión a metros.' % (
+                                       ' ni '.join(faltan))))
+        tejido = acabado.tejido_id
+        if tejido and not tejido.rendimiento_tela_tejida:
+            pendientes.append(dict(ing, tipo='datos_tejido', detalle='La ficha de tejido %s no tiene rendimiento de '
+                                   'tejido: sin él no salen los tiempos de devanado y abridora ni la banda del jet.' % (
+                                       tejido.display_name)))
         if not proceso:
             pendientes.append(dict(ing, tipo='sin_producto_kg', detalle='La ficha %s no tiene el acabado en proceso '
                                    '(kg).' % acabado.display_name))

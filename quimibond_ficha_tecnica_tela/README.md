@@ -9,18 +9,35 @@ lista de materiales, operación, centro de trabajo) y la app «Fichas técnicas�
 guardados en las fichas de tejido y de acabado y en los procesos por máquina, porque los leen el SGI, el costeo y la
 Programación de Tintorería.
 
+## Ruta de uso: de la idea a la venta
+
+| # | Quién | Dónde | Qué hace |
+|---|---|---|---|
+| 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, pestaña «Ficha técnica» → «Crear la ficha de la tela» o «Crear la ficha de tejido». |
+| 2 | Todos | Fichas técnicas → Tela → **Telas** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica»: peso, ancho y rendimiento (editables), crudo, ruta, especificación y pendientes. |
+| 3 | Cada área | Lista de materiales → operación (o máquina → «Telas que corren aquí») | Los datos de la tela en cada máquina: «Agregar los datos de la tela en esta máquina» (velocidad, merma, ancho de rama, tiempo de ciclo, kg por carga). |
+| 4 | Ingeniería (Innovación) | Listas de materiales | Lista en kg (`I…`, consume el crudo; Devanado → Tintorería → Abridora → Rama → Inspección) y lista en metros (`J`, consume el `I…`; Clasificación final). En el producto, «Usar los datos de la ficha» pone tiempos, conversión kg → m y capacidad de los jets. |
+| 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Volver a revisar» (o la revisión de la noche) deja la tela en «Lista para activar». |
+| 6 | Ingeniería | Lista de materiales | Visto bueno: activa la lista en kg (y voltea la de metros). El estado pasa a «Activa». Hasta entonces Odoo fabrica con la lista anterior. |
+| 7 | Planeación y planta | Fabricación | Orden en kg (`I…`); la Programación de Tintorería asigna el jet y divide en baños; cada rollo pasa por Inspección al salir de rama y entra a «10 INSPECCIÓN». Venta en kg: el mismo `I…`. Venta en metros: la Clasificación final produce la J medida con el mismo lote. |
+| 8 | Quien cambie la ficha | Producto o ficha | Si cambia un dato (peso, velocidad…), la revisión lo marca y se vuelve a «Usar los datos de la ficha». |
+
+**Estados de la tela** (columna del concentrado): *sin revisar*; *con pendientes*; *lista para activar* (las listas
+cuadran y la lista en kg sigue archivada); *activa con pendientes* (Odoo ya fabrica con ella y algo no cuadra: lo
+primero que hay que ver); *activa*.
+
 ## Dónde se ve cada cosa
 
 | Pantalla | Qué hay |
 |---|---|
-| **Fichas técnicas → Tela → Telas** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo y pendientes, en verde o rojo. Abre el producto. |
+| **Fichas técnicas → Tela → Telas** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
 | **Tela → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
-| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | La tela (peso, ancho y rendimiento editables ahí), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». |
+| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | La tela (peso, ancho y rendimiento editables ahí), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
 | **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
 | **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
 | **Centro de trabajo** | Pestaña «Ficha de la máquina» (tipo, estado, configuración por fecha), «Capacidades» con la capacidad de la ficha en los jets, y «Telas que corren aquí». Acción «Usar las capacidades de la ficha (jets)». |
-| **Tela → Revisión de listas en kg / Pendientes por área** | Lo que revisó la auditoría de octubre, por tela y por área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura). Se rehace cada noche y con «Actualizar». |
+| **Tela → Pendientes por área** | Cada pendiente de la revisión con su área (Ingeniería, Tintorería, Acabado, Inspección, Manufactura), operación, máquina y lista. La revisión se rehace cada noche y con «Actualizar la revisión» en Telas. |
 | **Tela → Fichas de tejido (por circular) / Fichas de acabado (datos de origen)** | Las fichas donde se guardan los datos; el SGI valida sobre ellas. |
 | **Tintorería** | Fórmulas y tiempos por fórmula y jet (módulos de José Sacramento) y «Artículos en los jets». |
 | **Máquinas** | Máquinas, configuraciones por fecha, procesos por artículo (edición en masa) y comparativo. |
@@ -212,7 +229,7 @@ al final de la importación — el resto de filas válidas sí se procesan.
 - Al instalar o actualizar se crean los parámetros que usan los cálculos que falten en su tipo de máquina (por clave;
   en producción ya existen). Los demás parámetros los da de alta la planta en Configuración → Tipos de máquina.
 - La acción planificada «Fichas técnicas - Revisión de listas en kg» rehace la revisión cada noche; después de
-  desplegar conviene pulsar «Actualizar» una vez.
+  desplegar conviene pulsar «Actualizar la revisión» (Telas) una vez.
 - La tabla `ficha_tecnica_tela` del primer modelo (retirado en 2.1.1) sigue en la base sin uso.
 
 ## Pruebas
