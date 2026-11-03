@@ -99,7 +99,7 @@
                                         <field name="peso_acabado_tol_minus"/>
                                         <field name="peso_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
-                                    <label for="ancho_acabado" string="Ancho"/>
+                                    <label for="ancho_acabado" string="Ancho de venta (especificación)"/>
                                     <div class="o_row">
                                         <field name="ancho_acabado"/>
                                         <span class="text-muted">±</span>

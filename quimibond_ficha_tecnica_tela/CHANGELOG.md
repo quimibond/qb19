@@ -37,6 +37,9 @@ Comentarios de Jessica revisados con Dirección General (2026-11-03):
   ficha de acabado», «Sale de la ficha de tejido») y la ayuda de cada campo dice la pestaña y el campo de origen.
   Nuevo: **ancho bajando de rama** con la rama y el artículo de donde sale. En la ruta, las columnas Lista y Cálculo se
   ven sin abrir el menú de columnas.
+- **Nombres de los anchos:** «Ancho» de la ficha de acabado → **Ancho de venta (especificación)**; «Ancho» de la tela
+  acondicionada → **Ancho de crudo relajado**; «Ancho de rollo» de la ficha de tejido → **Ancho de rollo de crudo**; en
+  el producto, el parámetro «Ancho bajando de rama» se muestra como **Ancho de rollo en rama**. Solo etiquetas.
 - README: tabla «Los anchos» (qué ancho es cada campo, dónde se captura y quién lo usa).
 
 ## 19.0.2.23.0 — 2026-11-03

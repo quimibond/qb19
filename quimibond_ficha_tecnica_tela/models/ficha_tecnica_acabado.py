@@ -47,7 +47,9 @@ class FichaTecnicaAcabado(models.Model):
              'que la de arriba.')
     peso_acabado_tol_unit = fields.Char(string='Unidad — Peso (texto)', default='g/m2')
 
-    ancho_acabado = fields.Float(string='Ancho')
+    ancho_acabado = fields.Float(string='Ancho de venta (especificación)',
+                                 help='El ancho de especificación, el mismo del código (…160 = 160 cm). No es el ancho '
+                                      'de tela relajada ni el de rollo.')
     ancho_acabado_tol = fields.Float(string='Tolerancia ancho')
     ancho_acabado_tol_unit = fields.Char(string='Unidad — Ancho (texto)', default='cm')
 

@@ -67,18 +67,17 @@ class ProductTemplateFichaNativa(models.Model):
         string='Peso de la tela acabada (g/m²)', compute='_compute_ft_tela_datos',
         help='Ficha de acabado → pestaña «Tela acabada» → Peso.')
     ft_ancho = fields.Float(
-        string='Ancho de la tela acabada (cm)', compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → pestaña «Tela acabada» → Ancho: el ancho de especificación de la tela acabada (el '
-             'mismo del código: …155 = 155 cm). Con él y el peso se calcula el rendimiento. No es el ancho bajando '
-             'de rama ni el ancho del rollo.')
+        string='Ancho de venta (especificación, cm)', compute='_compute_ft_tela_datos',
+        help='Ficha de acabado → pestaña «Tela acabada» → Ancho de venta: el de especificación, el mismo del código '
+             '(…155 = 155 cm). No es el ancho de tela relajada ni el ancho de rollo.')
     ft_rendimiento = fields.Float(
         string='Rendimiento de tela acabada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
         help='Ficha de acabado → Rendimiento de tela acabada: 1000 ÷ (peso × ancho en m). Se compara contra el '
              'rendimiento real del pesaje de cada rollo y convierte kg a metros en la lista en metros.')
     ft_ancho_rama = fields.Float(
-        string='Ancho bajando de rama (m)', digits=(12, 3), compute='_compute_ft_ficha_nativa',
-        help='Procesos de la tela → la rama de su lista en kg → parámetro «Ancho bajando de rama». Lo usa el tiempo '
-             'de la rama. Es el ancho de la tela al salir de la rama, antes de relajarse.')
+        string='Ancho de rollo en rama (m)', digits=(12, 3), compute='_compute_ft_ficha_nativa',
+        help='Procesos de la tela → la rama de su lista en kg → parámetro «Ancho bajando de rama»: el ancho del '
+             'rollo que sale de la rama. Lo usa el tiempo de la rama.')
     ft_ancho_rama_origen = fields.Char(string='De la rama', compute='_compute_ft_ficha_nativa')
     ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
                                         compute='_compute_ft_ficha_nativa',
@@ -97,10 +96,11 @@ class ProductTemplateFichaNativa(models.Model):
                                   search='_search_ft_crudo_id', help='Ficha de tejido → Crudo.')
     ft_crudo_peso = fields.Float(string='Peso del crudo acondicionado (g/m²)', compute='_compute_ft_ficha_nativa',
                                  help='Ficha de tejido → pestaña «Tela acondicionada» → Peso.')
-    ft_crudo_ancho = fields.Float(string='Ancho del crudo acondicionado', compute='_compute_ft_ficha_nativa',
-                                  help='Ficha de tejido → pestaña «Tela acondicionada» → Ancho (la tela cruda '
-                                       'relajada; tubular o abierta según la circular). No es el ancho de rollo de '
-                                       '«Ajustes de tejido».')
+    ft_crudo_ancho = fields.Float(string='Ancho de crudo relajado (acondicionado)',
+                                  compute='_compute_ft_ficha_nativa',
+                                  help='Ficha de tejido → pestaña «Tela acondicionada» → Ancho de crudo relajado: el '
+                                       'crudo acondicionado, tubular o abierto según la circular. No es el ancho de '
+                                       'rollo de crudo de «Ajustes de tejido».')
     ft_crudo_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(12, 4),
                                         compute='_compute_ft_ficha_nativa',
                                         help='Ficha de tejido → Rendimiento de tela tejida: 1000 ÷ (peso × ancho) de '

@@ -237,7 +237,7 @@
                                     </div>
                                 </group>
                                 <group string="Rollo">
-                                    <label for="ancho_rollo" string="Ancho de rollo"/>
+                                    <label for="ancho_rollo" string="Ancho de rollo de crudo"/>
                                     <div class="o_row">
                                         <field name="ancho_rollo"/>
                                         <span class="text-muted">±</span>
@@ -268,7 +268,7 @@
                                         <field name="peso_acondicionado_tol_minus"/>
                                         <field name="peso_acondicionado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
-                                    <label for="ancho_acondicionado" string="Ancho"/>
+                                    <label for="ancho_acondicionado" string="Ancho de crudo relajado"/>
                                     <div class="o_row">
                                         <field name="ancho_acondicionado"/>
                                         <span class="text-muted">±</span>

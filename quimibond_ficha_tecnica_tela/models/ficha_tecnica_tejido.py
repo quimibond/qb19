@@ -162,7 +162,7 @@ class FichaTecnicaTejido(models.Model):
     estiraje_tol = fields.Float(string='Tolerancia estiraje')
     estiraje_tol_unit = fields.Char(string='Unidad — Estiraje (texto)')
 
-    ancho_rollo = fields.Float(string='Ancho de rollo')
+    ancho_rollo = fields.Float(string='Ancho de rollo de crudo', help='El rollo de crudo que sale de la circular.')
     ancho_rollo_tol = fields.Float(string='Tolerancia ancho de rollo')
     ancho_rollo_tol_unit = fields.Char(string='Unidad — Ancho de rollo (texto)', default='cm')
 
@@ -183,7 +183,8 @@ class FichaTecnicaTejido(models.Model):
              'que la de arriba.')
     peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado (texto)', default='g/m2')
 
-    ancho_acondicionado = fields.Float(string='Ancho')
+    ancho_acondicionado = fields.Float(string='Ancho de crudo relajado',
+                                       help='El crudo acondicionado (relajado), tubular o abierto según la circular.')
     ancho_acondicionado_tol = fields.Float(string='Tolerancia ancho')
     ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado (texto)', default='cm')
 

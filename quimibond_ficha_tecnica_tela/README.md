@@ -167,16 +167,17 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 
 ## Los anchos: cuál es cada campo y de dónde sale (2.24.0)
 
-| Campo | Qué ancho es | Dónde se captura | Quién lo usa |
+| Campo (nombre en pantalla) | Qué ancho es | Dónde se captura | Quién lo usa |
 |---|---|---|---|
-| Ficha de tejido → Ajustes de tejido → **Ancho de bastidor** | El del bastidor de la circular (ajuste de la máquina) | Ficha de tejido | Ningún cálculo |
-| Ficha de tejido → Ajustes de tejido → **Ancho de rollo** | El del rollo de **crudo** que sale de la circular | Ficha de tejido | Ningún cálculo |
-| Ficha de tejido → Tela acondicionada → **Ancho** (`ancho_acondicionado`) | La tela **cruda** relajada (acondicionada); tubular o abierta según la circular | Ficha de tejido | Rendimiento de tejido → devanado, abridora y banda del jet |
-| Procesos de la tela → rama → **Ancho bajando de rama** (`ancho_rama`, m) | La tela al **salir de la rama**, antes de relajarse | Proceso del artículo `I…` en la rama | Tiempo de la rama; se ve en el producto con la rama de donde sale |
-| Ficha de acabado → Tela acabada → **Ancho** (`ancho_acabado`, cm) | El de **especificación** de la tela acabada, el mismo del código (`…155` = 155 cm) | Ficha de acabado | Rendimiento de tela acabada, kg → m, peso del costeo, especificación |
+| **Ancho de bastidor** (ficha de tejido → Ajustes de tejido) | El bastidor de la circular (ajuste de la máquina) | Ficha de tejido | Ningún cálculo |
+| **Ancho de rollo de crudo** (`ancho_rollo`, ficha de tejido → Ajustes de tejido) | El rollo de crudo que sale de la circular | Ficha de tejido | Ningún cálculo |
+| **Ancho de crudo relajado** (`ancho_acondicionado`, ficha de tejido → Tela acondicionada) | El crudo acondicionado, tubular o abierto según la circular | Ficha de tejido | Rendimiento de tejido → devanado, abridora y banda del jet |
+| **Ancho de rollo en rama** (parámetro `ancho_rama` «Ancho bajando de rama», Procesos de la tela → rama) | El rollo que sale de la rama | Proceso del artículo `I…` en cada rama | Tiempo de la rama; el producto lo muestra con la rama de donde sale |
+| **Ancho de venta (especificación)** (`ancho_acabado`, ficha de acabado → Tela acabada) | El de especificación, el mismo del código (`…160` = 160 cm) | Ficha de acabado | Hoy: rendimiento de tela acabada (kg → m), peso por metro del costeo, especificación |
 
-Hoy no hay campo para el ancho de la tela en Inspección ni para el ancho del rollo en rama o en Inspección.
-Ejemplo `WJ032Q22JNT155`: ancho de la ficha de acabado 155 cm, ancho bajando de RAMA 2 1.62 m.
+Faltan (por producto, Dirección General 2026-11-03): ancho de tela relajada en rama y en inspección y ancho de rollo
+en inspección. Pendiente de decidir: el rendimiento de acabado debe salir del peso y el ancho reales de cada etapa, no
+del ancho de venta.
 
 ## Los dos rendimientos
 
