@@ -948,13 +948,14 @@ el filtro **Conversión kg → m distinta de la ficha** las encuentra todas (tam
 de la ficha») hace las tres cosas: capacidad del jet de la operación de tintorería (y de sus alternativas con proceso
 del artículo, creando el renglón si falta), tiempos de todas las operaciones y conversión. Nada se escribe solo.
 
-**Una sola regla de capacidad** (`mrp.workcenter._ft_regla_capacidad`). Antes había tres copias: la de los avisos y
-el costeo (`_ft_capacidad_carga`, que no topaba la banda a la general), la de la Programación de Tintorería y la de la
-capacidad por producto. Ahora las tres llaman a la misma regla; cambia solo cuánto toleran: la Programación bloquea lo
-que no cuadra (sin configuración, fuera de bandas, banda N/A) y los avisos y el costeo, que estiman, usan la capacidad
-general cuando la tela no tiene rendimiento o cae fuera de las bandas. Programación 1.7.0.
+**Una sola regla de capacidad en fichas** (`mrp.workcenter._ft_regla_capacidad`). En fichas había dos copias: la de
+los avisos y el costeo (`_ft_capacidad_carga`, que no topaba la banda a la general) y la de la capacidad por producto.
+Ahora las dos llaman a la misma regla, que es la de la Programación de Tintorería; cambia solo cuánto toleran: los
+avisos y el costeo, que estiman, usan la capacidad general cuando la tela no tiene rendimiento o cae fuera de las
+bandas. La Programación (`_capacidad_jet`) conserva por ahora su propia copia de la misma regla: pasarla a
+`_ft_regla_capacidad` queda para cuando José Sacramento revise su módulo (Dirección General, 2026-11-03).
 
 **Filtro en Operaciones:** «Tiempo distinto de la ficha» (Fabricación → Configuración → Operaciones) junta todas las
 operaciones cuyo tiempo no es el de la ficha, también las de listas archivadas, sin abrir lista por lista.
 
-Pruebas: `tests/test_tiempo_ficha.py` y, en la Programación, `tests/test_programacion.py`.
+Pruebas: `tests/test_tiempo_ficha.py`.

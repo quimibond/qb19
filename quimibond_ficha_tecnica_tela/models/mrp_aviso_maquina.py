@@ -258,9 +258,10 @@ class MrpWorkcenterCarga(models.Model):
         return (kg, 'kg por carga del artículo en este jet') if kg else (0.0, False)
 
     def _ft_regla_capacidad(self, rendimiento, product=None, day=None):
-        """2.23.0: **regla única** de la capacidad por baño del jet. La usan la Programación de Tintorería (para
-        dividir en baños), la capacidad por producto de los jets, los avisos de carga y el costeo; antes cada uno
-        tenía su copia. Devuelve un dict:
+        """2.23.0: **regla única** de la capacidad por baño del jet en fichas: la usan la capacidad por producto de
+        los jets, los avisos de carga y el costeo. Es la misma regla que la Programación de Tintorería
+        (``mrp.production._capacidad_jet``), que todavía tiene su propia copia; pasarla a esta función queda para
+        cuando José Sacramento revise su módulo. Devuelve un dict:
 
         - ``capacidad`` (kg; 0 si no hay), ``motivo`` (de dónde sale o qué falta), ``banda`` (A/B/C o False),
           ``general`` (capacidad general del jet) y ``origen`` ('articulo', 'banda', 'general' o False).

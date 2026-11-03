@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Programación de Tintorería',
-    'version': '19.0.1.7.0',
+    'version': '19.0.1.6.1',
     'category': 'Manufacturing',
     'summary': 'Asignación de HTJ por orden, cálculo del tamaño de baño y división simétrica de la MO de tela acabada en kg',
     'description': """
@@ -17,7 +17,7 @@ Programación de Tintorería
   - se toma el rendimiento de tejido del artículo (``_ft_rendimiento``) y se obtiene su banda
     (A 3 a <7, B 7 a <11, C 11 a 16, los mismos grupos del módulo de fichas);
   - la capacidad por baño sale de la configuración vigente del jet en las fichas técnicas
-    (1.7.0: la regla única ``_ft_regla_capacidad`` de las fichas 2.23.0): primero los «kg por carga» del artículo en ese jet; si no hay,
+    (``_ft_capacidad_carga``): primero los «kg por carga» del artículo en ese jet; si no hay,
     la capacidad de la banda (no mayor que la capacidad general del jet); un jet sin bandas
     capturadas (p. ej. HTJ5) usa su capacidad general con aviso;
   - si los kg exceden la capacidad, la MO se divide en N órdenes simétricas (mismo HTJ) con la
@@ -35,8 +35,6 @@ Programación de Tintorería
   como lo da Odoo, manual o calculado por historial.
 * 1.6.1: el aviso del chatter dice los minutos por baño y aparte la cantidad base de la lista (antes «150 min por
   1.0 kg, 500 kg por baño» se leía como minutos por kg; revisión de Consolti 2026-10-30).
-* 1.7.0: la capacidad por baño sale de la regla única de las fichas (``_ft_regla_capacidad``), la misma que usan
-  la capacidad por producto de los jets, los avisos de carga y el costeo; los bloqueos y mensajes no cambian.
 * Validación: ninguna operación de una MO que requiere programación puede iniciarse sin haberla
   programado.
 """,

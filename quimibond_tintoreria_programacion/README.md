@@ -28,15 +28,6 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
 
-## Cambios 19.0.1.7.0 (Dirección General, 2026-11-03)
-
-- **Una sola regla de capacidad.** La capacidad por baño del jet sale de `mrp.workcenter._ft_regla_capacidad` de las
-  fichas técnicas (2.23.0), la misma que usan la capacidad por producto de los jets (para que Odoo cuente un ciclo
-  como un baño), los avisos de carga y el costeo. Antes la Programación tenía su copia y las fichas otra que no topaba
-  la banda a la capacidad general. Aquí se sigue bloqueando lo mismo y con los mismos mensajes (sin configuración, sin
-  capacidad, fuera de bandas, banda N/A); un jet sin bandas sigue usando su capacidad general con aviso. Las pruebas
-  simulan los kg por carga del artículo con `_ft_kg_carga_articulo` (antes `_ft_capacidad_carga`).
-
 ## Cambios 19.0.1.6.1 (revisión de Consolti, 2026-10-30)
 
 - Redacción del aviso del chatter cuando se usa la operación de Tintorería de la BoM: decía «150.0 min por 1.0 kg,

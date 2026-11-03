@@ -3,8 +3,8 @@
 
 **Capacidad del jet por producto.** En las listas en kg la operación de Tintorería se cuenta **por baño**: Odoo divide
 la orden entre la capacidad del jet para el producto (un ciclo) y multiplica por los minutos del ciclo. Esa capacidad
-es la misma que usa la Programación de Tintorería para dividir en baños: la regla única
-``mrp.workcenter._ft_regla_capacidad`` (``mrp_aviso_maquina.py``):
+sigue la misma regla que usa la Programación de Tintorería para dividir en baños, escrita una sola vez en fichas
+(``mrp.workcenter._ft_regla_capacidad``, ``mrp_aviso_maquina.py``):
 
 1. «Kg por carga» del artículo en ese jet (proceso del artículo en la máquina), si está.
 2. Si no, la configuración vigente del jet: sin bandas capturadas, su capacidad general; con bandas, la de la banda
