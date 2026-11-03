@@ -57,7 +57,8 @@ class TestRevisionListas(TiempoFichaCase):
         acabado = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ933Q22JNT165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id})
         revision = self._revision(acabado)
-        self.assertEqual(self._tipos(revision), [('lista_m', 'ingenieria'), ('sin_producto_kg', 'ingenieria')])
+        self.assertEqual(self._tipos(revision), [('datos_acabado', 'ingenieria'), ('lista_m', 'ingenieria'),
+                                                 ('sin_producto_kg', 'ingenieria')])
         self.assertEqual(revision.areas, 'Ingeniería (Innovación)')
 
     def test_05_la_lista_del_flujo_aunque_este_archivada(self):

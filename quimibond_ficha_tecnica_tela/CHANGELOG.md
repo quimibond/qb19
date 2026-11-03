@@ -7,6 +7,28 @@ por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual
 (`tools/check_addons.py --base-ref` lo exige).
 
 
+## 19.0.2.27.0 — 2026-11-03
+
+**La ruta de la tela de punta a punta: crear la ficha desde el producto, el estado en el concentrado, validaciones**
+
+Agregado:
+- Producto con código de tela (J en la posición 9), de acabado en kg («I» al frente) o de crudo (H) y **sin ficha**:
+  pestaña «Ficha técnica» con «Crear la ficha de la tela» (abre la ficha de acabado nueva con el artículo, el producto
+  y su acabado en kg por código; falta escoger la ficha de tejido base), «Crear la ficha de tejido» o, en un acabado en
+  kg, «Abrir la tela en metros». Antes la ruta solo empezaba en el SGI o en los menús de datos de origen.
+- Concentrado **Telas**: columna «Estado de la ficha» (sin revisar, con pendientes, lista para activar, activa con
+  pendientes, activa) y «Áreas con pendientes»; filtros por estado y por área; búsqueda por crudo; botón «Actualizar la
+  revisión». El estado lee la lista en kg en vivo: activarla cuenta sin esperar a la revisión de la noche.
+- Pestaña «Ficha técnica»: aviso «Lista para activar» (las listas cuadran y la lista en kg sigue archivada) y aviso de
+  lista en kg activa con pendientes.
+- Revisión: pendientes de Ingeniería «Ficha de acabado sin peso o rendimiento» y «Ficha de tejido sin rendimiento»
+  (antes solo salían como «falta un dato» en cada operación, a nombre del área de la máquina). En producción, 9 fichas
+  de tejido sin rendimiento, usadas por 7 telas.
+
+Retirado:
+- Menú «Revisión de listas en kg»: el concentrado Telas trae lo mismo (estado, áreas, filtros, actualizar). «Pendientes
+  por área» se queda.
+
 ## 19.0.2.26.0 — 2026-11-03
 
 **Auditoría del módulo: duplicados fuera, la ruta de la ficha de acabado al día, documentación en orden**

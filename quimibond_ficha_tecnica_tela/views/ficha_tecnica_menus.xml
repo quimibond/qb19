@@ -80,9 +80,8 @@
               action="action_ficha_tecnica_tejido" sequence="90"/>
     <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado (datos de origen)" parent="menu_ft_tela"
               action="action_ficha_tecnica_acabado" sequence="95"/>
-    <!-- 2.24.0: revisión de las listas en kg contra la ficha. -->
-    <menuitem id="menu_ficha_tecnica_revision" name="Revisión de listas en kg" parent="menu_ft_tela"
-              action="action_ficha_tecnica_revision" sequence="30"/>
+    <!-- 2.24.0: revisión de las listas en kg contra la ficha. 2.27.0: sin menú «Revisión de listas en kg»: el
+         concentrado Telas trae el estado, las áreas, los filtros y «Actualizar la revisión». -->
     <menuitem id="menu_ficha_tecnica_revision_pendiente" name="Pendientes por área" parent="menu_ft_tela"
               action="action_ficha_tecnica_revision_pendiente" sequence="40"/>
 

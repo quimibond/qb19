@@ -85,6 +85,15 @@
                         </list>
                     </field>
                     <separator string="Pendientes" invisible="not ft_es_tela"/>
+                    <field name="ft_estado" invisible="1"/>
+                    <div invisible="ft_estado != 'para_activar'" class="alert alert-info" role="status">
+                        <strong>Lista para activar.</strong> Las listas cuadran con la ficha y la lista en kg sigue
+                        archivada: Ingeniería la revisa y la activa (con la de metros, para que no quede un círculo).
+                    </div>
+                    <div invisible="ft_estado != 'activa_pendientes'" class="alert alert-warning" role="alert">
+                        <strong>La lista en kg ya está activa y tiene pendientes:</strong> Odoo fabrica con datos que no
+                        cuadran con la ficha.
+                    </div>
                     <div invisible="not ft_es_tela or ft_revision_id" class="text-muted">
                         Sin revisión todavía: «Volver a revisar» la hace.
                     </div>
@@ -122,6 +131,33 @@
                         </list>
                     </field>
                 </page>
+                <!-- 2.27.0: producto con código de tela, acabado en kg o crudo y sin ficha: la ruta empieza aquí -->
+                <page string="Ficha técnica" name="ft_ficha_tecnica_nueva"
+                      invisible="ft_tiene_ficha or not ft_tipo_codigo">
+                    <field name="ft_tipo_codigo" invisible="1"/>
+                    <field name="ft_tela_m_de_kg_id" invisible="1"/>
+                    <div invisible="ft_tipo_codigo != 'tela'">
+                        <p>Esta tela todavía no tiene ficha técnica. La ficha de la tela guarda su peso, ancho y
+                            rendimiento, la ficha de tejido en que se basa (su crudo), la especificación y la tintorería;
+                            con ella se revisan sus listas de materiales.</p>
+                        <button name="action_ft_crear_ficha" type="object" string="Crear la ficha de la tela"
+                                class="btn-primary"/>
+                    </div>
+                    <div invisible="ft_tipo_codigo != 'crudo'">
+                        <p>Este crudo todavía no tiene ficha de tejido (una por circular: máquina, hilos, ajustes, tela
+                            acondicionada y rendimiento de tejido).</p>
+                        <button name="action_ft_crear_ficha" type="object" string="Crear la ficha de tejido"
+                                class="btn-primary"/>
+                    </div>
+                    <div invisible="ft_tipo_codigo != 'kg'">
+                        <p>Este es el acabado en kg de una tela. Su ficha va en la tela en metros (el mismo código sin
+                            la «I»).</p>
+                        <button name="action_ft_crear_ficha" type="object" string="Abrir la tela en metros"
+                                class="btn-primary" invisible="not ft_tela_m_de_kg_id"/>
+                        <div invisible="ft_tela_m_de_kg_id" class="text-muted">La tela en metros no existe todavía:
+                            la da de alta Innovación (C1 del SGI).</div>
+                    </div>
+                </page>
             </xpath>
         </field>
     </record>
@@ -156,15 +192,54 @@
         <field name="priority">90</field>
         <field name="arch" type="xml">
             <list string="Telas" create="0" decoration-success="ft_revision_listo" decoration-danger="ft_revision_n">
+                <header>
+                    <button name="action_ft_actualizar_revision" type="object" string="Actualizar la revisión"
+                            display="always" class="btn-secondary"
+                            help="Rehace la revisión de todas las telas, como la de cada noche."/>
+                </header>
                 <field name="default_code"/>
                 <field name="name"/>
                 <field name="ft_peso"/>
                 <field name="ft_ancho"/>
                 <field name="ft_rendimiento"/>
                 <field name="ft_crudo_id"/>
+                <field name="ft_estado" widget="badge" decoration-muted="ft_estado == 'sin_revisar'"
+                       decoration-danger="ft_estado in ('pendientes', 'activa_pendientes')"
+                       decoration-info="ft_estado == 'para_activar'" decoration-success="ft_estado == 'activa'"/>
                 <field name="ft_revision_n"/>
+                <field name="ft_revision_areas" optional="show"/>
                 <field name="ft_revision_listo" column_invisible="True"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_product_template_ft_telas_search" model="ir.ui.view">
+        <field name="name">product.template.search.ft.telas</field>
+        <field name="model">product.template</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Telas">
+                <field name="name" string="Tela" filter_domain="['|', ('default_code', 'ilike', self), ('name', 'ilike', self)]"/>
+                <field name="ft_crudo_id" string="Crudo"/>
+                <filter name="ft_pendientes" string="Con pendientes"
+                        domain="[('ft_estado', 'in', ['pendientes', 'activa_pendientes'])]"/>
+                <filter name="ft_para_activar" string="Lista para activar" domain="[('ft_estado', '=', 'para_activar')]"/>
+                <filter name="ft_activa_pendientes" string="Activa con pendientes"
+                        domain="[('ft_estado', '=', 'activa_pendientes')]"/>
+                <filter name="ft_activa" string="Activa" domain="[('ft_estado', '=', 'activa')]"/>
+                <filter name="ft_sin_revisar" string="Sin revisar" domain="[('ft_estado', '=', 'sin_revisar')]"/>
+                <separator/>
+                <filter name="ft_area_ingenieria" string="Pendientes de Ingeniería"
+                        domain="[('ft_area_pendiente', '=', 'ingenieria')]"/>
+                <filter name="ft_area_tintoreria" string="Pendientes de Tintorería"
+                        domain="[('ft_area_pendiente', '=', 'tintoreria')]"/>
+                <filter name="ft_area_acabado" string="Pendientes de Acabado"
+                        domain="[('ft_area_pendiente', '=', 'acabado')]"/>
+                <filter name="ft_area_inspeccion" string="Pendientes de Inspección"
+                        domain="[('ft_area_pendiente', '=', 'inspeccion')]"/>
+                <filter name="ft_area_manufactura" string="Pendientes de Manufactura"
+                        domain="[('ft_area_pendiente', '=', 'manufactura')]"/>
+            </search>
         </field>
     </record>
 
@@ -186,12 +261,14 @@
         <field name="res_model">product.template</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('ft_es_tela', '=', True)]</field>
+        <field name="search_view_id" ref="view_product_template_ft_telas_search"/>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'list', 'view_id': ref('view_product_template_ft_telas_list')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin telas con ficha</p>
-            <p>Cada tela acabada con ficha de acabado. Al abrirla, su pestaña «Ficha técnica» muestra la tela, su crudo,
-                la ruta, la especificación y sus pendientes.</p>
+            <p>Cada tela acabada con ficha de acabado, con su estado: con pendientes, lista para activar o activa. Al
+                abrirla, su pestaña «Ficha técnica» muestra la tela, su crudo, la ruta, la especificación y sus
+                pendientes. Una tela sin ficha se la crea desde su producto (pestaña «Ficha técnica»).</p>
         </field>
     </record>
 

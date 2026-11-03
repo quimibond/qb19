@@ -16,6 +16,37 @@ el SGI, el costeo y la Programación de Tintorería; estas pantallas los muestra
 """
 from odoo import api, fields, models
 
+# 2.27.0: dónde va cada tela en el camino a producción (de la revisión de la noche o de «Volver a revisar»; si la lista
+# en kg se activó después, ya cuenta: se lee de la lista).
+FT_ESTADOS = [
+    ('sin_revisar', 'Sin revisar'),
+    ('pendientes', 'Con pendientes'),
+    ('para_activar', 'Lista para activar'),
+    ('activa_pendientes', 'Activa con pendientes'),
+    ('activa', 'Activa'),
+]
+FT_AREAS = [
+    ('ingenieria', 'Ingeniería (Innovación)'),
+    ('tintoreria', 'Tintorería'),
+    ('acabado', 'Acabado (ramas)'),
+    ('inspeccion', 'Inspección'),
+    ('manufactura', 'Manufactura (devanado y abridora)'),
+]
+
+
+def ft_tipo_codigo(code):
+    """Qué es un producto por su código (DAT P-D02-01): 'tela' (J en la posición 9), 'kg' (la tela con «I» al
+    frente), 'crudo' (H en la posición 9) o '' si el código no sigue la regla."""
+    from .acabado_ruta import PREFIJO_KG, codigo_proceso
+    code = (code or '').strip().upper()
+    if code.startswith(PREFIJO_KG) and codigo_proceso(code[1:]):
+        return 'kg'
+    if codigo_proceso(code):
+        return 'tela'
+    if len(code) in (14, 16) and code[8:9] == 'H':
+        return 'crudo'
+    return ''
+
 
 class ProductTemplateFichaNativa(models.Model):
     _inherit = 'product.template'
@@ -40,7 +71,8 @@ class ProductTemplateFichaNativa(models.Model):
                                        compute='_compute_ft_ficha_nativa')
     ft_spec_ids = fields.Many2many('ficha.tecnica.spec', string='Especificación', compute='_compute_ft_ficha_nativa')
     # El crudo de la tela.
-    ft_crudo_id = fields.Many2one('product.product', string='Crudo de la tela', compute='_compute_ft_ficha_nativa')
+    ft_crudo_id = fields.Many2one('product.product', string='Crudo de la tela', compute='_compute_ft_ficha_nativa',
+                                  search='_search_ft_crudo_id')
     ft_crudo_peso = fields.Float(string='Peso del crudo (g/m²)', compute='_compute_ft_ficha_nativa')
     ft_crudo_ancho = fields.Float(string='Ancho del crudo', compute='_compute_ft_ficha_nativa')
     ft_crudo_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(12, 4),
@@ -57,6 +89,19 @@ class ProductTemplateFichaNativa(models.Model):
     ft_revision_n = fields.Integer(string='Pendientes de la tela', compute='_compute_ft_ficha_nativa')
     ft_pendiente_ids = fields.Many2many('ficha.tecnica.revision.pendiente', string='Pendientes por área',
                                         compute='_compute_ft_ficha_nativa')
+    ft_estado = fields.Selection(FT_ESTADOS, string='Estado de la ficha', compute='_compute_ft_ficha_nativa',
+                                 search='_search_ft_estado',
+                                 help='Sin revisar; con pendientes; lista para activar (las listas cuadran y la lista en '
+                                      'kg sigue archivada: la activa Ingeniería); activa con pendientes (Odoo ya '
+                                      'fabrica con ella y algo no cuadra); activa.')
+    ft_revision_areas = fields.Char(string='Áreas con pendientes', compute='_compute_ft_ficha_nativa')
+    ft_area_pendiente = fields.Selection(FT_AREAS, string='Área con pendientes', compute='_compute_ft_area_pendiente',
+                                         search='_search_ft_area_pendiente')
+    # 2.27.0: un producto con código de tela, de acabado en kg o de crudo y sin ficha: la pestaña ofrece crearla.
+    ft_tipo_codigo = fields.Selection([('tela', 'Tela acabada'), ('kg', 'Acabado en kg'), ('crudo', 'Crudo')],
+                                      string='Tipo por código', compute='_compute_ft_tipo_codigo')
+    ft_tela_m_de_kg_id = fields.Many2one('product.product', string='Tela en metros de este acabado en kg',
+                                         compute='_compute_ft_tipo_codigo')
     # El crudo visto desde su propio producto.
     ft_tejido_ids = fields.Many2many('ficha.tecnica.tejido', string='Circulares donde se teje',
                                      compute='_compute_ft_ficha_nativa')
@@ -114,9 +159,71 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_revision_listo = revision.listo
             tmpl.ft_revision_n = revision.n_pendientes
             tmpl.ft_pendiente_ids = revision.pendiente_ids
+            tmpl.ft_estado = tmpl._ft_estado_de(revision) if acabado else False
+            tmpl.ft_revision_areas = revision.areas
             tmpl.ft_tejido_ids = tejidos
             tmpl.ft_tela_ids = Acabado.search([('tejido_id.product_proceso_id', 'in', variantes.ids)]) \
                 if tejidos else Acabado
+
+    @api.model
+    def _ft_estado_de(self, revision):
+        if not revision:
+            return 'sin_revisar'
+        activa = revision.bom_kg_id.active
+        if revision.listo:
+            return 'activa' if activa else 'para_activar'
+        return 'activa_pendientes' if activa else 'pendientes'
+
+    def _compute_ft_area_pendiente(self):
+        # Solo para filtrar (una tela puede tener pendientes de varias áreas: ver «Áreas con pendientes»).
+        self.ft_area_pendiente = False
+
+    @api.depends('default_code')
+    def _compute_ft_tipo_codigo(self):
+        from .acabado_ruta import PREFIJO_KG
+        Product = self.env['product.product']
+        for tmpl in self:
+            tipo = ft_tipo_codigo(tmpl.default_code)
+            tmpl.ft_tipo_codigo = tipo or False
+            tmpl.ft_tela_m_de_kg_id = Product.search(
+                [('default_code', '=', tmpl.default_code.strip()[len(PREFIJO_KG):])], limit=1) \
+                if tipo == 'kg' else Product
+
+    @staticmethod
+    def _ft_valores(value):
+        # Odoo 19 pasa '=' como 'in' con un OrderedSet (iterable, no hashable).
+        return {value} if isinstance(value, (str, bytes)) or not hasattr(value, '__iter__') else set(value)
+
+    def _ft_tmpl_de_revisiones(self, revisiones):
+        return set(revisiones.acabado_id.product_acabado_id.product_tmpl_id.ids)
+
+    def _search_ft_estado(self, operator, value):
+        if operator not in ('=', 'in'):
+            return NotImplemented
+        quiero = self._ft_valores(value)
+        ids = set()
+        revisiones = self.env['ficha.tecnica.revision'].search([])
+        for revision in revisiones:
+            if self._ft_estado_de(revision) in quiero:
+                ids |= self._ft_tmpl_de_revisiones(revision)
+        if 'sin_revisar' in quiero:
+            telas = self.search([('ft_es_tela', '=', True)])
+            ids |= set(telas.ids) - self._ft_tmpl_de_revisiones(revisiones)
+        return [('id', 'in', list(ids))]
+
+    def _search_ft_area_pendiente(self, operator, value):
+        if operator not in ('=', 'in'):
+            return NotImplemented
+        areas = [area for area in self._ft_valores(value) if area in dict(FT_AREAS)]
+        if not areas:
+            return [('id', 'in', [])]
+        dominio = ['|'] * (len(areas) - 1) + [('pend_%s' % area, '=', True) for area in areas]
+        return [('id', 'in', list(self._ft_tmpl_de_revisiones(self.env['ficha.tecnica.revision'].search(dominio))))]
+
+    def _search_ft_crudo_id(self, operator, value):
+        """«Buscar por crudo» en el concentrado: las telas cuya ficha de acabado se basa en ese crudo."""
+        acabados = self.env['ficha.tecnica.acabado'].search([('tejido_id.product_proceso_id', operator, value)])
+        return [('id', 'in', acabados.product_acabado_id.product_tmpl_id.ids)]
 
     @api.model
     def _ft_buscar_bool(self, operator, value, tmpl_ids):
@@ -166,6 +273,33 @@ class ProductTemplateFichaNativa(models.Model):
         self.env['ficha.tecnica.revision']._ft_actualizar(self.ficha_tecnica_acabado_id)
         return True
 
+    def action_ft_actualizar_revision(self):
+        """2.27.0: botón «Actualizar la revisión» del concentrado (rehace la de todas las telas, como la de la
+        noche). Método de registros: el botón de la cabecera llega con los renglones seleccionados."""
+        self.env['ficha.tecnica.revision']._cron_ft_actualizar()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
+
+    def action_ft_crear_ficha(self):
+        """2.27.0: crea la ficha desde el producto. Abre el formulario nuevo con lo que sale del producto (artículo,
+        producto y, en una tela, su acabado en kg por código); lo demás (la ficha de tejido base, los datos) lo
+        captura quien la crea. En un acabado en kg abre su tela en metros: la ficha va ahí."""
+        self.ensure_one()
+        variante = self._ft_variantes()[:1]
+        code = (self.default_code or '').strip()
+        if self.ft_tipo_codigo == 'kg':
+            return self._ft_abrir(self.ft_tela_m_de_kg_id.product_tmpl_id, 'Tela en metros')
+        if self.ft_tipo_codigo == 'crudo':
+            return {'type': 'ir.actions.act_window', 'name': 'Nueva ficha de tejido', 'res_model': 'ficha.tecnica.tejido',
+                    'view_mode': 'form', 'target': 'current',
+                    'context': {'default_articulo': code, 'default_product_proceso_id': variante.id}}
+        from .acabado_ruta import codigo_proceso
+        kg = self.env['product.product'].search([('default_code', '=', codigo_proceso(code))], limit=1) \
+            if codigo_proceso(code) else self.env['product.product']
+        return {'type': 'ir.actions.act_window', 'name': 'Nueva ficha de la tela', 'res_model': 'ficha.tecnica.acabado',
+                'view_mode': 'form', 'target': 'current',
+                'context': {'default_articulo': code, 'default_product_acabado_id': variante.id,
+                            'default_product_proceso_id': kg.id}}
+
 
 class ProductProductFichaNativa(models.Model):
     _inherit = 'product.product'
@@ -185,6 +319,9 @@ class ProductProductFichaNativa(models.Model):
 
     def action_ft_revisar(self):
         return self.product_tmpl_id.action_ft_revisar()
+
+    def action_ft_crear_ficha(self):
+        return self.product_tmpl_id.action_ft_crear_ficha()
 
 
 class MrpRoutingWorkcenterParametros(models.Model):
