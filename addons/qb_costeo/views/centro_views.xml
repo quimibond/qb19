@@ -30,6 +30,7 @@
                             <field name="driver" invisible="nature != 'directo'" required="nature == 'directo'"/>
                             <field name="reparto_llave" invisible="nature != 'indirecto'"/>
                             <field name="publica_tarifa" invisible="nature != 'directo'"/>
+                            <field name="tarifa_de_id" invisible="nature != 'directo'" options="{'no_create': True}"/>
                             <field name="active"/>
                         </group>
                         <group string="Capacidad">

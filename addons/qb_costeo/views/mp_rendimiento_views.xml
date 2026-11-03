@@ -83,6 +83,9 @@
                 <field name="fuente" readonly="1"/>
                 <field name="rendimiento_calculado" readonly="1"/>
                 <field name="unidades_clasificadas" readonly="1"/>
+                <field name="rendimiento_plan" readonly="1"/>
+                <field name="plan_fuente" readonly="1" optional="show"/>
+                <field name="plan_lotes" readonly="1" optional="show"/>
                 <field name="rendimiento_manual"/>
                 <field name="manual_motivo"/>
                 <field name="manual_vigente_hasta"/>

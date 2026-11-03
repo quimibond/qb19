@@ -3,6 +3,57 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.9.0 — 2026-11-03
+
+**Agregado**
+- **Primera para planear por tela** (`qb.producto.rendimiento.rendimiento_plan`,
+  `plan_fuente`, `plan_lotes`; Dirección General 2026-11-03). Planeación pide
+  los metros que necesita la venta y deben llegar completos, sin promedios y
+  sin esperar a terminar para mandar otra orden en kg. El valor es el % de
+  primera que alcanzan **9 de cada 10 lotes** de la tela, de sus propios lotes
+  de los últimos 12 meses (`medir_lotes`, mismos filtros que el rendimiento):
+  - lote = lote de teñido en la ruta vieja («20361 J2») o la orden de cada
+    rollo en el flujo en kg («<orden>-0001» sin su número de rollo);
+  - lotes con menos de `rendimiento_plan_min_lote` unidades (500) no cuentan;
+  - con menos de `rendimiento_plan_min_lotes` lotes (8), el valor de planta
+    (la misma cobertura sobre todos los lotes); manual vigente manda;
+  - cobertura en `rendimiento_plan_cobertura` (0.90; entre 0.5 y 1).
+  Se recalcula con el rendimiento (cron y botón). `plan_para(product)` lo da a
+  las fichas; sin fila devuelve 1.0 (sin dato no se infla la orden).
+- La validación `conversion_clasificacion` espera en la lista de clasificación
+  final 1 ÷ (rendimiento de la ficha × primera para planear).
+
+**Sin cambio en el costo**: el costeo sigue con 1 ÷ rendimiento de la ficha y
+el rendimiento del total de metros. El sobrante de primera entra a existencia
+y la siguiente orden de la tela lo descuenta.
+
+## 19.0.1.8.0 — 2026-11-03
+
+**Agregado**
+- **Centro con «Tarifa fija de» otro centro** (`qb.centro.tarifa_de_id`;
+  Dirección General 2026-11-03). Las abridoras estaban en Acabado con la
+  tarifa de rama: $340/h de fijo más $1,358/h de energía, que es el gas de
+  las ramas repartido entre las horas de rama. Con las listas en kg del flujo
+  nuevo (devanado → tintorería → abridora → rama → inspección), la abridora
+  pagaba esa energía otra vez. Un centro dependiente:
+  - no junta gasto propio: lo que traiga su clasificación va al otro centro;
+    tampoco entra a los repartos de nómina, indirectos ni sin centro;
+  - su tarifa fija es la del otro centro y su tarifa variable es 0;
+  - sus horas no entran a la tarifa variable del otro (la energía se reparte
+    entre las horas de rama) y sí absorben su tarifa fija: cuentan para la
+    capacidad superada y no son ociosidad;
+  - con calendario, la capacidad normal del otro suma la del dependiente (el
+    fijo es de todas sus máquinas); la capturada se entiende como la del
+    grupo;
+  - la compuerta de cierre no le pide horas normales ni reales.
+  Las horas por producto no cambian: salen igual de las órdenes de trabajo,
+  la receta o la ficha de las máquinas del centro dependiente.
+- Prueba `test_centro_con_tarifa_fija_de_otro`.
+
+**Para activarlo en la base** (configuración, no código): crear el centro
+directo «Abridoras» (driver *m_velocidad*) con ABRIDORA 1-4, *Tarifa fija de*
+= Acabado, y quitar esas máquinas de Acabado; recalcular el período.
+
 ## 19.0.1.7.0 — 2026-10-30
 
 El costeo cuadra con el **flujo de tela en dos niveles** (diseño técnico

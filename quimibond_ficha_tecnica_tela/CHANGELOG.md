@@ -8,6 +8,61 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.24.0 — 2026-11-03
+
+### Primera para planear en la lista en metros
+
+Planeación pide los metros que necesita la venta y deben llegar completos, sin promedios y sin esperar a terminar
+para mandar otra orden en kg (Dirección General, 2026-11-03). La lista en metros de la tela acabada (Clasificación
+final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para planear)** kg del acabado en proceso:
+
+- la primera para planear es la fracción de primera que alcanzan 9 de cada 10 lotes de esa tela en sus lotes de los
+  últimos 12 meses (`qb_costeo` 1.9.0, `qb.producto.rendimiento.plan_para`; con pocos lotes, el valor de planta);
+- sin `qb_costeo` o sin dato de la tela, 1 (no se infla); la conversión de la lista muestra el factor y su fuente;
+- aplica a «Usar los datos de la ficha», al aviso «Conversión kg → m distinta de la ficha» y a las listas en metros
+  que crea «Generar listas desde la ruta»;
+- el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
+  y la siguiente orden de la tela lo descuenta.
+
+### Menús, formularios nativos y pestaña del producto de solo lectura
+
+Comentarios de Jessica revisados con Dirección General (2026-11-03):
+
+- **Menús:** «Tela» pasa a **Artículos** y el concentrado «Telas» a **Acabado** (mismos xmlid).
+- **Formularios nativos:** las tablas HTML de «Ajustes de tejido» y «Tela acondicionada» (ficha de tejido) y de
+  «Tela acabada» (ficha de acabado) pasan a grupos de Odoo: cada dato en un renglón con valor ± tolerancia y unidad.
+  Mismos campos; no cambia ningún dato.
+- **Producto → «Ficha técnica» de solo lectura:** peso, ancho y rendimiento ya no se editan desde el producto (se quita
+  el inverso hacia la ficha de acabado); se editan en el módulo. Cada bloque liga la ficha de la que sale («Sale de la
+  ficha de acabado», «Sale de la ficha de tejido») y la ayuda de cada campo dice la pestaña y el campo de origen. En la
+  ruta, las columnas Lista y Cálculo se ven sin abrir el menú de columnas.
+- **Nombres de los anchos:** «Ancho» de la ficha de acabado → **Ancho de venta (especificación)**; «Ancho» de la tela
+  acondicionada → **Ancho de crudo relajado**; «Ancho de rollo» de la ficha de tejido → **Ancho de rollo de crudo**.
+  Solo etiquetas.
+- **Un solo rendimiento, de lo fabricado:** el rendimiento de tela acabada de la ficha = metros producidos ÷ kilos de
+  tela consumidos (sin químicos) en las órdenes terminadas de la tela de los últimos 12 meses; sin órdenes se queda el
+  capturado. Se recalcula cada noche antes de la revisión (`models/rendimiento_real.py`). No cambia ninguna lista: la
+  revisión marca las que ya no cuadran.
+- **Tiempo de rama** = rendimiento ÷ velocidad, en todas las ramas (tipo «Acabado»). Ya no usa peso × ancho bajando de
+  rama ni merma: el rendimiento de lo fabricado ya la trae.
+- **Pestaña «Tela acabada»:** Especificación (medidas, encogimiento y elongación) y Real (rendimiento, de cuántas
+  órdenes, y peso real al ancho de venta). El rendimiento sale del encabezado de la ficha.
+- README: tabla «Los anchos» y «El rendimiento de tela acabada».
+
+### Dónde se captura cada dato
+
+Dirección General (2026-11-03): que se entienda desde dónde se llena cada dato, sin reordenar menús.
+
+- **«Resolver» en cada pendiente** (Pendientes por área, revisión y pestaña del producto): abre donde se corrige. Sin
+  proceso → crea y abre los datos de la tela en esa máquina; dato que falta → esos datos; tiempo → la operación;
+  capacidad del jet → el jet; crudo o conversión → la lista; lo demás → la ficha de acabado (o la de tejido).
+- **«Agregar circular»** en la ficha de tejido y en el crudo: ficha nueva del mismo crudo con los hilos, ajustes,
+  tela acondicionada y características de la actual, sin máquina; al elegir la circular, los datos de máquina salen de
+  su configuración. No toca centros de trabajo ni listas.
+- **«Dato de: …»** en la operación (tiempo y parámetros), en la máquina («Telas que corren aquí» y capacidades) y en el
+  aviso de conversión de la lista.
+- README: «Dónde se captura cada dato».
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos

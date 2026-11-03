@@ -120,6 +120,15 @@ rama medida en la ruta vieja no se suma a la que hereda de la tela en kg.
 Lo que sale de la orden en kg (`tipos_kg`) no cuenta para el rendimiento
 vendible aunque caiga en una ubicación de primera.
 
+**Primera para planear (1.9.0).** El costo usa lo esperado (rendimiento del
+total de metros); para que la venta llegue completa, la lista B pide los kg
+con la primera que alcanzan 9 de cada 10 lotes de la tela
+(`rendimiento_plan`): kg por metro = 1 ÷ (rendimiento de la ficha × primera
+para planear). La validación `conversion_clasificacion` espera ese valor; el
+costo no cambia. El sobrante de primera entra a existencia y la siguiente
+orden de la tela lo descuenta. Parámetros: `rendimiento_plan_cobertura`
+(0.90), `rendimiento_plan_min_lotes` (8), `rendimiento_plan_min_lote` (500).
+
 **Horas reales del período.** Por orden de fabricación: sus órdenes de
 trabajo en el centro; una orden sin ellas aporta el estándar de su receta ×
 producido (o, si su receta no pasa por el centro, las horas del producto ×
@@ -153,6 +162,13 @@ anterior; las señales `cliente_pierde`, `producto_pierde`,
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,
    driver, centros de trabajo de Odoo, departamentos de RH, *Publicar tarifa*.
+   *Tarifa fija de* (1.8.0): para máquinas que comparten el gasto fijo de otro
+   centro pero no su energía. Caso de uso: las abridoras en un centro
+   «Abridoras» con la tarifa fija de Acabado. El gasto del centro dependiente
+   va al otro; su tarifa fija es la del otro y su tarifa variable es 0; sus
+   horas no bajan la tarifa variable del otro y sí absorben su fijo (no son
+   ociosidad). Con calendario, la capacidad normal del otro suma la suya; la
+   capturada se entiende como la del grupo.
 2. **Clasificación de cuentas**: cada cuenta de resultados a su bucket; las
    de fábrica con centro y %. *Cuentas sin clasificar* lista lo que falta.
 3. **Parámetros**: todos traen ayuda; los defaults sirven.

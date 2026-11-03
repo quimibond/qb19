@@ -16,6 +16,14 @@
                 <button name="action_ft_usar_capacidad_ficha" type="object" title="Usar la capacidad de la ficha"
                         icon="fa-calculator" invisible="not ft_capacidad_difiere"/>
             </xpath>
+            <!-- 2.24.0: de dónde sale la capacidad de la ficha y que nada la cambia solo. -->
+            <xpath expr="//field[@name='capacity_ids']" position="after">
+                <div class="text-muted small">
+                    En los jets, «Capacidad de la ficha» es dato de: la configuración del jet (Máquinas) y los kg por
+                    carga de la tela en el jet (Procesos por artículo). Solo se escribe aquí con la calculadora, con
+                    «Usar las capacidades de la ficha» o con «Usar los datos de la ficha» en la tela; nada la cambia solo.
+                </div>
+            </xpath>
         </field>
     </record>
 
@@ -40,6 +48,7 @@
                     <field name="ft_conversion_calculo" class="oe_inline" readonly="1"/>.
                     <button name="action_ft_usar_conversion_ficha" type="object" string="Usar la conversión de la ficha"
                             class="btn-link" icon="fa-calculator"/>
+                    <div class="small">Dato de: el rendimiento de tela acabada de la ficha de acabado (de lo fabricado).</div>
                 </div>
             </xpath>
         </field>

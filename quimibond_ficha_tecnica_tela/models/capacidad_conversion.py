@@ -18,6 +18,11 @@ además crean el renglón que falte en el jet de la operación y en sus alternat
 **Conversión kg → m.** La lista en metros de la tela acabada (Clasificación final) consume su acabado en proceso en
 kg: por cada metro, 1 ÷ el rendimiento de tela acabada de la ficha de acabado. La lista avisa si la cantidad es otra
 (más de 0.5 %) y «Usar los datos de la ficha» la corrige.
+
+**Primera para planear (2.24.0, Dirección General 2026-11-03).** Planeación pide los metros de la venta y deben llegar
+completos: la lista divide además entre la fracción de primera que alcanzan 9 de cada 10 lotes de la tela
+(``qb.producto.rendimiento.plan_para`` de ``qb_costeo``). Sin ``qb_costeo`` o sin dato de la tela, 1 (no se infla).
+El costeo sigue con 1 ÷ rendimiento; el sobrante de primera entra a existencia.
 """
 from odoo import api, fields, models
 from odoo.tools import float_round
@@ -26,6 +31,18 @@ from .maquina_config import _fmt
 from .mrp_aviso_maquina import TIPO_TINTORERIA
 
 TOLERANCIA_REL = 0.005  # 0.5 %
+
+
+def primera_para_planear(env, product):
+    """(fracción de primera para planear, fuente) de ``product`` según ``qb_costeo`` (2.24.0); (1.0, False) si el
+    módulo no está o la tela no tiene dato."""
+    Rend = env.get('qb.producto.rendimiento')
+    if Rend is None or 'rendimiento_plan' not in Rend._fields or not product:
+        return 1.0, False
+    plan, fuente = Rend.plan_para(product)
+    if not plan or plan <= 0 or plan > 1 or fuente == 'ninguna':
+        return 1.0, False
+    return plan, fuente
 
 
 class MrpWorkcenterCapacidadFicha(models.Model):
@@ -111,7 +128,8 @@ class MrpBomConversionFicha(models.Model):
     ft_conversion_kg = fields.Float(
         string='Kg de la ficha', digits=(16, 4), compute='_compute_ft_conversion',
         help='Lista en metros de la tela acabada: kg de acabado en proceso que pide la ficha de acabado para la '
-             'cantidad de la lista (metros ÷ rendimiento de tela acabada).')
+             'cantidad de la lista (metros ÷ rendimiento de tela acabada ÷ primera para planear de la tela, si '
+             'el costeo la tiene).')
     ft_conversion_calculo = fields.Char(string='Conversión de la ficha', compute='_compute_ft_conversion')
     ft_conversion_difiere = fields.Boolean(
         string='Conversión distinta de la ficha', compute='_compute_ft_conversion',
@@ -141,7 +159,12 @@ class MrpBomConversionFicha(models.Model):
         if not rendimiento:
             return line, 0.0, 'Falta el rendimiento de tela acabada en la ficha %s.' % ficha.display_name
         metros = self.product_uom_id._compute_quantity(self.product_qty, meter, round=False)
-        kg_ficha = metros / rendimiento
+        plan, fuente = primera_para_planear(self.env, ficha.product_acabado_id or products[:1])
+        kg_ficha = metros / rendimiento / plan
+        if fuente:
+            return line, kg_ficha, '%s m ÷ %s m/kg ÷ %s de primera para planear (%s) = %s kg de %s' % (
+                _fmt(metros), _fmt(rendimiento), '%.4f' % plan, fuente, '%.4f' % kg_ficha,
+                proceso.default_code or proceso.name)
         return line, kg_ficha, '%s m ÷ %s m/kg = %s kg de %s' % (
             _fmt(metros), _fmt(rendimiento), '%.4f' % kg_ficha, proceso.default_code or proceso.name)
 
