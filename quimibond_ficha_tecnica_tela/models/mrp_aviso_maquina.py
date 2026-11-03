@@ -250,31 +250,72 @@ class MrpWorkcenterCarga(models.Model):
         return self.env['ficha.tecnica.proceso']._ft_buscar(product, self) if product else \
             self.env['ficha.tecnica.proceso']
 
-    def _ft_capacidad_carga(self, rendimiento, day=None, product=None):
-        """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica.
-        2.9.0: si el artículo tiene «kg por carga» en este jet, ese manda."""
+    def _ft_kg_carga_articulo(self, product):
+        """2.23.0: (kg por carga del artículo en este jet, motivo); (0, False) si el artículo no lo tiene."""
         self.ensure_one()
         proceso = self._ft_proceso_de(product) if product else False
-        kg_articulo = proceso._ft_value('kg_carga') if proceso else False
+        kg = proceso._ft_value('kg_carga') if proceso else False
+        return (kg, 'kg por carga del artículo en este jet') if kg else (0.0, False)
+
+    def _ft_regla_capacidad(self, rendimiento, product=None, day=None):
+        """2.23.0: **regla única** de la capacidad por baño del jet en fichas: la usan la capacidad por producto de
+        los jets, los avisos de carga y el costeo. Es la misma regla que la Programación de Tintorería
+        (``mrp.production._capacidad_jet``), que todavía tiene su propia copia; pasarla a esta función queda para
+        cuando José Sacramento revise su módulo. Devuelve un dict:
+
+        - ``capacidad`` (kg; 0 si no hay), ``motivo`` (de dónde sale o qué falta), ``banda`` (A/B/C o False),
+          ``general`` (capacidad general del jet) y ``origen`` ('articulo', 'banda', 'general' o False).
+        - ``falla``: False, 'sin_config', 'sin_capacidad', 'sin_rendimiento', 'fuera_de_bandas' o 'banda_na'.
+
+        Orden: kg por carga del artículo en el jet; si no, la configuración vigente: sin bandas capturadas, la
+        capacidad general; con bandas, la de la banda del rendimiento de tejido, topada a la general."""
+        self.ensure_one()
+        banda = next((grupo for _code, grupo, desde, hasta in GRUPOS if desde <= rendimiento < hasta),
+                     False) if rendimiento else False
+        res = {'capacidad': 0.0, 'motivo': '', 'banda': banda, 'general': 0.0, 'origen': False, 'falla': False}
+        kg_articulo, motivo = self._ft_kg_carga_articulo(product)
         if kg_articulo:
-            return kg_articulo, 'kg por carga del artículo en este jet'
+            res.update(capacidad=kg_articulo, motivo=motivo, origen='articulo')
+            return res
         config = self._ft_config_at(day)
         if not config:
-            return 0.0, 'sin configuración vigente'
+            res.update(falla='sin_config', motivo='sin configuración vigente')
+            return res
         general = config._ft_value('capacidad') or 0.0
-        if rendimiento:
-            for code, grupo, desde, hasta in GRUPOS:
-                if desde <= rendimiento < hasta:
-                    capacidad = config._ft_value(code) or 0.0
-                    if capacidad:
-                        return capacidad, 'grupo %s' % grupo
-                    return 0.0, 'sin capacidad para el grupo %s' % grupo
+        bandas = {grupo: config._ft_value(code) or 0.0 for code, grupo, _desde, _hasta in GRUPOS}
+        res['general'] = general
+        if not any(bandas.values()):
             if general:
-                return general, 'rendimiento fuera de los grupos: capacidad general'
-            return 0.0, 'rendimiento fuera de los grupos y sin capacidad general'
-        if general:
-            return general, 'capacidad general (la tela no tiene rendimiento en su ficha)'
-        return 0.0, 'sin capacidad capturada'
+                res.update(capacidad=general, origen='general',
+                           motivo='capacidad general (el jet no tiene bandas de rendimiento)')
+            else:
+                res.update(falla='sin_capacidad', motivo='sin capacidad capturada')
+        elif not rendimiento:
+            res.update(falla='sin_rendimiento', motivo='la tela no tiene rendimiento de tejido en su ficha')
+        elif not banda:
+            res.update(falla='fuera_de_bandas', motivo='rendimiento %s m/kg fuera de los grupos' % _fmt(rendimiento))
+        elif not bandas[banda]:
+            res.update(falla='banda_na', motivo='sin capacidad para el grupo %s' % banda)
+        elif general and general < bandas[banda]:
+            res.update(capacidad=general, origen='banda', motivo='grupo %s, topado a la capacidad general' % banda)
+        else:
+            res.update(capacidad=bandas[banda], origen='banda', motivo='grupo %s' % banda)
+        return res
+
+    def _ft_capacidad_carga(self, rendimiento, day=None, product=None):
+        """(kg por carga, explicación) del jet para una tela de ese rendimiento; (0, motivo) si no aplica.
+        2.9.0: si el artículo tiene «kg por carga» en este jet, ese manda. 2.23.0: sale de la regla única
+        (``_ft_regla_capacidad``); para estimar (avisos de carga, costeo) se tolera más que al programar: una tela sin
+        rendimiento o fuera de las bandas usa la capacidad general."""
+        self.ensure_one()
+        regla = self._ft_regla_capacidad(rendimiento, product, day)
+        if regla['capacidad']:
+            return regla['capacidad'], regla['motivo']
+        if regla['general'] and regla['falla'] == 'sin_rendimiento':
+            return regla['general'], 'capacidad general (la tela no tiene rendimiento en su ficha)'
+        if regla['general'] and regla['falla'] == 'fuera_de_bandas':
+            return regla['general'], 'rendimiento fuera de los grupos: capacidad general'
+        return 0.0, regla['motivo']
 
     def _ft_relacion_bano(self, product=None, day=None):
         """2.9.0: (litros por kg, de dónde sale) para teñir ``product`` en este jet: la del artículo en el jet

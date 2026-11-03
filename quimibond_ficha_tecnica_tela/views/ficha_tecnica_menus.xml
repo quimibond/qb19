@@ -72,10 +72,21 @@
               web_icon="quimibond_ficha_tecnica_tela,static/description/icon.png"/>
 
     <menuitem id="menu_ft_tela" name="Tela" parent="menu_ficha_tecnica_tela_root" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_tejido_list" name="Tejido" parent="menu_ft_tela"
-              action="action_ficha_tecnica_tejido" sequence="10"/>
-    <menuitem id="menu_ficha_tecnica_acabado_list" name="Acabado" parent="menu_ft_tela"
-              action="action_ficha_tecnica_acabado" sequence="20"/>
+    <!-- 2.23.0: el concentrado abre el producto nativo (pestaña «Ficha técnica»); las fichas de tejido y de acabado
+         siguen como datos de origen al final. -->
+    <menuitem id="menu_ft_telas" name="Telas" parent="menu_ft_tela" action="action_ft_telas" sequence="5"/>
+    <menuitem id="menu_ft_crudos" name="Crudos" parent="menu_ft_tela" action="action_ft_crudos" sequence="6"/>
+    <!-- 2.23.0: rutas por familia (crudo); las listas se generan desde la ruta y la ficha. -->
+    <menuitem id="menu_ficha_tecnica_ruta" name="Rutas por familia" parent="menu_ft_tela"
+              action="action_ficha_tecnica_ruta" sequence="20"/>
+    <menuitem id="menu_ficha_tecnica_tejido_list" name="Fichas de tejido (por circular)" parent="menu_ft_tela"
+              action="action_ficha_tecnica_tejido" sequence="90"/>
+    <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado (datos de origen)" parent="menu_ft_tela"
+              action="action_ficha_tecnica_acabado" sequence="95"/>
+    <!-- 2.23.0: revisión de las listas en kg contra la ficha. 2.23.0: sin menú «Revisión de listas en kg»: el
+         concentrado Telas trae el estado, las áreas, los filtros y «Actualizar la revisión». -->
+    <menuitem id="menu_ficha_tecnica_revision_pendiente" name="Pendientes por área" parent="menu_ft_tela"
+              action="action_ficha_tecnica_revision_pendiente" sequence="40"/>
 
     <menuitem id="menu_ft_tintoreria" name="Tintorería" parent="menu_ficha_tecnica_tela_root" sequence="15"/>
     <menuitem id="menu_ficha_tecnica_proceso_jet" name="Artículos en los jets" parent="menu_ft_tintoreria"

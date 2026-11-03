@@ -36,8 +36,8 @@
                          proceso (kg) → tela acabada (m). Botones a las listas de materiales de los dos productos. -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
-                                string="Lista vigente" invisible="not bom_id"
-                                help="La lista de materiales que hoy usa la tela acabada (de ahí salen el crudo y las operaciones)."/>
+                                string="Lista de la ruta" invisible="not bom_id"
+                                help="La lista en metros del flujo en kg (con operaciones, aunque siga archivada mientras Ingeniería la revisa). De ella salen el crudo, las operaciones y la tintorería de esta ficha."/>
                         <button name="action_ft_boms_proceso" type="object" class="oe_stat_button" icon="fa-balance-scale"
                                 invisible="not product_proceso_id">
                             <field name="bom_proceso_count" widget="statinfo" string="Listas en kg"/>
@@ -149,12 +149,33 @@
                             </group>
                         </page>
                         <page string="Ruta y máquinas" name="operaciones">
-                            <p class="text-muted">Las operaciones de la lista de materiales vigente y de sus intermedios (no las
+                            <p class="text-muted">Las operaciones de la lista de la ruta (flujo en kg) y de sus intermedios (no las
                                 del crudo), con los datos del artículo en cada máquina. Las operaciones se editan en la lista
                                 de materiales y los datos en Máquinas → Procesos por artículo. «Máquinas posibles» son la
                                 máquina de la operación y sus alternativas como las ve el planificador: ✓ el artículo corre
                                 ahí, ✗ no hay proceso del artículo, ⚠ la máquina no está operando, ○ el artículo corre en
                                 otra máquina que no es alternativa.</p>
+                            <!-- 2.23.0: la ruta de la familia (crudo) y lo propio de la tela; las listas se generan desde aquí. -->
+                            <group string="Ruta de la familia">
+                                <group>
+                                    <field name="ruta_familia_id" readonly="1"/>
+                                    <field name="ruta_resumen" readonly="1" invisible="not ruta_familia_id"/>
+                                    <field name="ruta_tintoreria" readonly="1"/>
+                                    <field name="ruta_tintoreria_manual"/>
+                                </group>
+                                <group>
+                                    <field name="ruta_rama_id" options="{'no_create': True}"/>
+                                    <field name="ruta_jet_id" options="{'no_create': True}"/>
+                                    <field name="consumo_crudo"/>
+                                </group>
+                            </group>
+                            <div class="mb-3">
+                                <button name="action_ft_generar_listas" type="object" string="Generar listas desde la ruta"
+                                        class="btn-secondary" invisible="not ruta_familia_id"
+                                        help="Arma o pone al día la lista en kg y la de metros de esta tela con la ruta de su familia. Solo si están archivadas: las activas las cambia Ingeniería."/>
+                                <span class="text-muted" invisible="ruta_familia_id">El crudo de esta tela no tiene ruta de
+                                    familia: se arma en Tela → Rutas por familia.</span>
+                            </div>
                             <div class="alert alert-warning mb-2" role="alert" invisible="not operacion_aviso">
                                 <field name="operacion_aviso" readonly="1" nolabel="1"/>
                             </div>

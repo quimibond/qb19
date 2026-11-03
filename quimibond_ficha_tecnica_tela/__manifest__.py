@@ -1,89 +1,23 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.22.0',
-    'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
+    'version': '19.0.2.23.0',
+    'summary': 'Fichas técnicas de tela en las pantallas nativas: tela, crudo, ruta, máquinas y revisión de listas',
     'description': """
-Fichas Técnicas de Tela (Tejido y Acabado)
-===========================================
-Módulo para capturar, importar y administrar las fichas técnicas de tela,
-separadas en 2 modelos:
+Fichas técnicas de tela
+=======================
+Qué es cada tela y cómo se hace, en las pantallas nativas de Odoo:
 
-- **Ficha Técnica de Tejido**: máquina, hilos, especificaciones de tejido,
-  tela acondicionada (peso, ancho, espesor, elongación). Se vincula al
-  producto "Tela en Proceso" (kg).
-- **Ficha Técnica de Acabado**: rendimiento de tela acabada (mts/kg), peso,
-  ancho, espesor, encogimiento (largo/ancho) y elongación (largo/ancho).
-  Cada producto de "Tela Acabada" (m) — por ejemplo cada color — tiene su
-  propia ficha de acabado, vinculada a la ficha de tejido que le sirve de
-  base. Una misma ficha de tejido puede ser la base de varias fichas de
-  acabado (varios colores/variantes).
+- Producto: pestaña «Ficha técnica» (la tela, su crudo, la ruta de sus listas de materiales con el tiempo de cada
+  operación contra el de la ficha, la especificación y los pendientes).
+- Operación de la lista de materiales: tiempo desde la ficha y parámetros de la tela en la máquina y sus alternativas.
+- Centro de trabajo: ficha de la máquina por fecha, capacidad de los jets por producto y telas que corren ahí.
+- App «Fichas técnicas»: concentrado de telas y crudos, revisión de las listas en kg y pendientes por área, fichas de
+  tejido y de acabado (datos de origen), máquinas, materias primas, catálogos e importación desde Excel.
 
-Incluye:
-
-- Importación masiva desde Excel (tabular, fila por fila, muchos
-  artículos a la vez) para ambos modelos, con encabezados flexibles.
-- Validaciones de tolerancia (ej. encogimiento máximo 5%).
-- Botones inteligentes en la ficha de producto para acceder directo a la
-  ficha de tejido y/o de acabado vinculada.
-- 2.1.0: catálogo de características (unidad, método o norma, tipo de dato),
-  claves de la regla de codificación de artículos (DAT P-D02-01) y renglones
-  de característica en las fichas de tejido y acabado con **dos juegos de
-  límites** (especificación del cliente y control interno) y la marca «va a
-  la especificación del cliente». El SGI (proyectos de desarrollo) usa el
-  mismo catálogo y los mismos límites.
-- 2.1.1: se retira el código del modelo viejo `ficha.tecnica.tela` y su
-  importador (sin uso; la tabla queda en la base hasta que se borre a
-  mano). Las columnas fijas de las fichas de tejido y acabado no se tocan:
-  los renglones de características conviven con ellas. Hay dos
-  rendimientos y los dos se conservan: el de tejido alimenta el cálculo de
-  tintorería; el de acabado valida los metros finales.
-- 2.3.0: ficha de la máquina con configuraciones por fecha (cambio de
-  cilindro); la ficha de tejido toma la vigente a su fecha.
-- 2.4.0: la ficha de la máquina es para cualquier tipo de máquina (tejido,
-  tintorería, acabado, inspección, abridora, devanadora…): cada tipo tiene
-  sus parámetros y cada configuración un valor por parámetro.
-- 2.5.0: avisos de máquina en producción: galga distinta al programar
-  tejido y cargas por jet (con aviso de carga) en las órdenes de tintorería.
-- 2.6.0: listo para el producto único de acabado en kg: el aviso de carga
-  también en la orden de trabajo que cae en un jet, y el rendimiento se
-  busca también por la ficha de acabado → su ficha de tejido.
-- 2.7.0: una ficha de tejido por artículo, revisión y máquina (como los
-  formatos de la planta); menús reordenados en la app «Fichas técnicas»
-  (Tela, Máquinas, Importar, Configuración) con ícono.
-- 2.8.0: proceso del artículo en la máquina: los parámetros tienen ámbito
-  (de la máquina / del artículo en la máquina) y cada artículo guarda sus
-  datos en cada máquina en que corre (velocidad en la rama, y lo que den
-  las demás áreas), con importación desde Excel, tabla artículo × máquina
-  y promedio por máquina.
-- 2.9.0: la cadena completa en los dos sentidos: ficha de materia prima con el
-  mismo motor de parámetros (hilo de filamento e hilo hilado con propiedades de
-  norma, composición por fibra), cada hilo de la ficha de tejido es su producto
-  (con polea, consumo, proveedor y lote) y se coteja con la lista de materiales
-  del crudo; reporte de ligado del texto anterior; ficha de acabado con su crudo
-  y sus operaciones; datos del artículo en los jets.
-- 2.10.0: catálogo de unidades técnicas (g/m², cN/dtex, PTO…) ligado a las
-  unidades de Inventario; las unidades de tolerancias, parámetros y
-  características dejan de ser texto libre (el texto se conserva sincronizado).
-- 2.11.0: rendimiento de tela tejida como campo calculado y guardado (editable
-  para forzarlo) y ficha de tejido de referencia = la revisión más alta.
-- 2.12.0 a 2.13.2: producción en kg hasta la Clasificación final (Inspección es
-  operación de la orden en kg). La ficha de acabado
-  liga el acabado en kg (el código de la tela acabada con la «I» al frente,
-  DAT P-D02-01) junto a la tela acabada en metros, con avisos y el reporte
-  «Acabados en proceso faltantes» para crear los que no existen.
-- 2.17.0: árbol nuevo del menú: Tela, Tintorería (fórmulas, tiempos y artículos en
-  los jets), Máquinas, Materias primas y Configuración con Herramientas (importar,
-  acabados faltantes, ligado de hilos) solo para jefes.
-- 2.20.0: máquinas alternativas de Odoo y procesos de la ficha juntos: estado de la
-  máquina (operando, en montaje, en pruebas, fuera de servicio), alternativas armadas por
-  tipo («Alternativas entre sí»), máquinas posibles por operación en la ficha de acabado
-  y, al planear, solo las alternativas que operan y tienen proceso del artículo.
-- 2.21.0: una máquina fijada a mano (clave de contexto ``ft_maquina_fija``, o el jet que
-  asignó la Programación de Tintorería) no la cambia el planificador; queda solo el aviso.
-- 2.22.0: el tiempo de rama sale de la ficha: 1000 ÷ (peso × ancho bajando de rama) × (1 − merma) ÷ velocidad,
-  con «Usar el tiempo de rama de la ficha» en la operación o en varias listas a la vez.
+Manual: README.md. Historia por versión: CHANGELOG.md.
 """,
+
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
     'depends': ['mrp', 'product', 'account', 'hr'],
@@ -92,13 +26,20 @@ Incluye:
         'data/ficha_tecnica_unidad_data.xml',  # 2.10.0: antes de los datos que llevan unidad
         'data/ficha_tecnica_caracteristica_data.xml',
         'data/ficha_tecnica_maquina_tipo_data.xml',  # 2.4.0
+        'data/ficha_tecnica_parametros_data.xml',  # 2.23.0: parámetros del cálculo (solo los que falten)
         'data/ficha_tecnica_material_data.xml',  # 2.9.0: después de los tipos de máquina (usa tintorería)
         'views/ficha_tecnica_tejido_views.xml',
         'views/ficha_tecnica_acabado_views.xml',
         'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
         'views/maquina_config_views.xml',  # 2.3.0: después del menú «Configuración» que usa
         'views/mrp_aviso_maquina_views.xml',  # 2.5.0
-        'views/tiempo_rama_views.xml',  # 2.22.0
+        'views/tiempo_ficha_views.xml',  # 2.22.0 (2.23.0: antes tiempo_rama_views.xml)
+        'views/capacidad_conversion_views.xml',  # 2.23.0
+        'views/revision_listas_views.xml',  # 2.23.0
+        'views/ficha_producto_views.xml',  # 2.23.0: después de maquina_config_views (usa ft_tipo_id en el centro)
+        'views/ruta_familia_views.xml',  # 2.23.0
+        'data/mcp_data.xml',  # 2.23.0: después del modelo de rutas
+        'data/ir_cron_revision.xml',  # 2.23.0: después del modelo de la revisión
         'views/proceso_views.xml',  # 2.8.0
         'views/materia_prima_views.xml',  # 2.9.0
         'views/product_template_views.xml',

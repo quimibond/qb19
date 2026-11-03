@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.23.0: rutas por familia y revisión por MCP (solo si el servidor MCP del repo está instalado; corre en cada
+         actualización y no toca los modelos ya configurados). -->
+    <function model="ficha.tecnica.ruta" name="_ft_habilitar_mcp"/>
+</odoo>

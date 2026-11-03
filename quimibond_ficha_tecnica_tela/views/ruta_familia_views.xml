@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.23.0 (Dirección General 2026-11-03): una ruta por familia de telas (el crudo) con los pasos de la tabla de
+         Innovación; Odoo genera las listas en kg y en metros desde la ruta y la ficha. -->
+
+    <record id="view_ficha_tecnica_ruta_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.ruta.list</field>
+        <field name="model">ficha.tecnica.ruta</field>
+        <field name="arch" type="xml">
+            <list string="Rutas por familia">
+                <header>
+                    <button name="action_ft_armar_desde_listas" type="object" string="Armar rutas desde las listas"
+                            display="always" class="btn-secondary"
+                            help="Para cada crudo sin ruta: la arma con las máquinas que ya usan las listas del flujo de sus telas."/>
+                    <button name="action_ft_generar_listas" type="object" string="Generar listas"
+                            help="En las familias seleccionadas: arma o pone al día las listas archivadas de sus telas (nunca las activas)."/>
+                </header>
+                <field name="name"/>
+                <field name="crudo_id" optional="hide"/>
+                <field name="resumen"/>
+                <field name="acabado_count"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_ruta_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.ruta.form</field>
+        <field name="model">ficha.tecnica.ruta</field>
+        <field name="arch" type="xml">
+            <form string="Ruta de la familia">
+                <header>
+                    <button name="action_ft_generar_listas" type="object" string="Generar listas de la familia"
+                            class="btn-primary"
+                            help="Arma o pone al día la lista en kg y la de metros de cada tela de la familia. Solo las archivadas: las activas las cambia Ingeniería."/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ft_telas" type="object" class="oe_stat_button" icon="fa-th-list">
+                            <field name="acabado_count" widget="statinfo" string="Telas"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1" placeholder="Familia"/></h1>
+                    </div>
+                    <group>
+                        <field name="crudo_id" options="{'no_create': True}"/>
+                        <field name="resumen"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <p class="text-muted">Los pasos valen para todas las telas del crudo. Una tela que va a otra rama u
+                        otro jet lo lleva en su ficha de acabado (pestaña «Ruta y máquinas»). La tintorería es de lavado
+                        si el color del código es NT, NN u OW y de teñido en los demás; un paso «Solo si se tiñe» o
+                        «Solo si se lava» se salta en las otras.</p>
+                    <field name="paso_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="paso"/>
+                            <field name="workcenter_id" options="{'no_create': True}"/>
+                            <field name="condicion"/>
+                            <field name="tiempo" optional="show"/>
+                        </list>
+                    </field>
+                    <separator string="Notas"/>
+                    <field name="notas" nolabel="1" placeholder="Por qué la familia lleva esta ruta, quién la confirmó…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_ruta_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.ruta.search</field>
+        <field name="model">ficha.tecnica.ruta</field>
+        <field name="arch" type="xml">
+            <search string="Rutas por familia">
+                <field name="name"/>
+                <field name="crudo_id"/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_ruta" model="ir.actions.act_window">
+        <field name="name">Rutas por familia</field>
+        <field name="res_model">ficha.tecnica.ruta</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_ruta_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin rutas por familia</p>
+            <p>Una ruta por crudo: los pasos (devanado, tintorería, abridora, rama, inspección y la Clasificación final)
+                con su máquina. «Armar rutas desde las listas» las crea con lo que ya usan las listas del flujo; después
+                «Generar listas» arma las listas de cada tela.</p>
+        </field>
+    </record>
+</odoo>

@@ -14,21 +14,7 @@ class ProductProduct(models.Model):
     # product.product" al abrir la vista de Variante de producto.
 
     def action_view_ficha_tecnica_tejido(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Ficha Técnica de Tejido',
-            'res_model': 'ficha.tecnica.tejido',
-            'view_mode': 'form',
-            'res_id': self.ficha_tecnica_tejido_id.id,
-        }
+        return self.product_tmpl_id.action_view_ficha_tecnica_tejido()
 
     def action_view_ficha_tecnica_acabado(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Ficha Técnica de Acabado',
-            'res_model': 'ficha.tecnica.acabado',
-            'view_mode': 'form',
-            'res_id': self.ficha_tecnica_acabado_id.id,
-        }
+        return self.product_tmpl_id.action_view_ficha_tecnica_acabado()

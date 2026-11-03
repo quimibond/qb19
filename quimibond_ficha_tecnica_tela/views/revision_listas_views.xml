@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.23.0 (Dirección General 2026-11-03): revisión de las listas en kg contra la ficha, por tela y por área. -->
+
+    <record id="view_ficha_tecnica_revision_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.revision.list</field>
+        <field name="model">ficha.tecnica.revision</field>
+        <field name="arch" type="xml">
+            <list string="Revisión de listas en kg" create="0" delete="0" decoration-success="listo"
+                  decoration-danger="not listo">
+                <header>
+                    <button name="action_ft_actualizar" type="object" string="Actualizar" display="always"
+                            help="Vuelve a revisar todas las telas contra sus fichas."/>
+                    <button name="action_ft_datos_ficha" type="object" string="Usar los datos de la ficha"
+                            help="En las telas seleccionadas: capacidad de los jets, tiempos y conversión a metros desde la ficha; luego las vuelve a revisar."/>
+                </header>
+                <field name="articulo"/>
+                <field name="product_proceso_id" optional="show"/>
+                <field name="bom_kg_id" optional="show"/>
+                <field name="bom_kg_activa" optional="show"/>
+                <field name="bom_m_id" optional="show"/>
+                <field name="n_pendientes"/>
+                <field name="areas"/>
+                <field name="listo" optional="hide"/>
+                <field name="fecha" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_revision_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.revision.form</field>
+        <field name="model">ficha.tecnica.revision</field>
+        <field name="arch" type="xml">
+            <form string="Revisión de listas" create="0" delete="0">
+                <header>
+                    <button name="action_ft_datos_ficha" type="object" string="Usar los datos de la ficha"
+                            class="btn-primary" invisible="listo"/>
+                    <button name="action_ft_revisar" type="object" string="Volver a revisar"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Lista" bg_color="text-bg-success" invisible="not listo"/>
+                    <div class="oe_title">
+                        <h1><field name="articulo" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="acabado_id" readonly="1"/>
+                            <field name="product_acabado_id" readonly="1"/>
+                            <field name="product_proceso_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="bom_kg_id" readonly="1"/>
+                            <field name="bom_kg_activa" readonly="1"/>
+                            <field name="bom_m_id" readonly="1"/>
+                            <field name="fecha" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="pendiente_ids" readonly="1">
+                        <list>
+                            <field name="area"/>
+                            <field name="tipo"/>
+                            <field name="detalle"/>
+                            <field name="workcenter_id" optional="show"/>
+                            <field name="bom_id" optional="hide"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_revision_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.revision.search</field>
+        <field name="model">ficha.tecnica.revision</field>
+        <field name="arch" type="xml">
+            <search string="Revisión de listas en kg">
+                <field name="articulo"/>
+                <field name="product_proceso_id"/>
+                <filter string="Con pendientes" name="con_pendientes" domain="[('listo', '=', False)]"/>
+                <filter string="Listas" name="listas" domain="[('listo', '=', True)]"/>
+                <separator/>
+                <filter string="Pendiente de Ingeniería" name="pend_ingenieria" domain="[('pend_ingenieria', '=', True)]"/>
+                <filter string="Pendiente de Tintorería" name="pend_tintoreria" domain="[('pend_tintoreria', '=', True)]"/>
+                <filter string="Pendiente de Acabado" name="pend_acabado" domain="[('pend_acabado', '=', True)]"/>
+                <filter string="Pendiente de Inspección" name="pend_inspeccion" domain="[('pend_inspeccion', '=', True)]"/>
+                <filter string="Pendiente de Manufactura" name="pend_manufactura" domain="[('pend_manufactura', '=', True)]"/>
+                <separator/>
+                <filter string="Lista en kg activa" name="kg_activa" domain="[('bom_kg_activa', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_revision" model="ir.actions.act_window">
+        <field name="name">Revisión de listas en kg</field>
+        <field name="res_model">ficha.tecnica.revision</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_revision_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin revisión todavía</p>
+            <p>Pulse «Actualizar» para revisar cada tela: su lista en kg, su lista en metros, los procesos, los tiempos,
+                las capacidades de los jets y la conversión a metros contra su ficha. Se rehace sola cada noche.</p>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_revision_pendiente_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.revision.pendiente.list</field>
+        <field name="model">ficha.tecnica.revision.pendiente</field>
+        <field name="arch" type="xml">
+            <list string="Pendientes por área" create="0" delete="0">
+                <field name="area"/>
+                <field name="articulo"/>
+                <field name="tipo"/>
+                <field name="detalle"/>
+                <field name="workcenter_id" optional="show"/>
+                <field name="bom_id" optional="hide"/>
+                <field name="operation_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_revision_pendiente_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.revision.pendiente.search</field>
+        <field name="model">ficha.tecnica.revision.pendiente</field>
+        <field name="arch" type="xml">
+            <search string="Pendientes por área">
+                <field name="articulo"/>
+                <field name="workcenter_id"/>
+                <field name="detalle"/>
+                <filter string="Ingeniería" name="ingenieria" domain="[('area', '=', 'ingenieria')]"/>
+                <filter string="Tintorería" name="tintoreria" domain="[('area', '=', 'tintoreria')]"/>
+                <filter string="Acabado" name="acabado" domain="[('area', '=', 'acabado')]"/>
+                <filter string="Inspección" name="inspeccion" domain="[('area', '=', 'inspeccion')]"/>
+                <filter string="Manufactura" name="manufactura" domain="[('area', '=', 'manufactura')]"/>
+                <group>
+                    <filter string="Área" name="group_area" context="{'group_by': 'area'}"/>
+                    <filter string="Pendiente" name="group_tipo" context="{'group_by': 'tipo'}"/>
+                    <filter string="Máquina" name="group_workcenter" context="{'group_by': 'workcenter_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_revision_pendiente" model="ir.actions.act_window">
+        <field name="name">Pendientes por área</field>
+        <field name="res_model">ficha.tecnica.revision.pendiente</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_ficha_tecnica_revision_pendiente_search"/>
+        <field name="context">{'search_default_group_area': 1, 'search_default_group_tipo': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin pendientes</p>
+            <p>Lo que le falta a cada área para que las listas en kg cuadren con la ficha. Sale de «Revisión de listas
+                en kg», que se rehace cada noche.</p>
+        </field>
+    </record>
+</odoo>

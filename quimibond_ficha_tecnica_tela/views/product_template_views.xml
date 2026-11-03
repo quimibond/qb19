@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- 2.23.0: «Ficha de tejido», «Ficha de acabado» y «Procesos por máquina» salen de aquí: los abre la pestaña
+         «Ficha técnica» (ficha_producto_views.xml). Quedan los de materia prima. -->
 
     <record id="view_product_template_form_ficha_tecnica" model="ir.ui.view">
         <field name="name">product.template.form.ficha.tecnica</field>
@@ -7,18 +9,6 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
-                <button name="action_view_ficha_tecnica_tejido" type="object"
-                        class="oe_stat_button" icon="fa-file-text-o"
-                        invisible="ficha_tecnica_tejido_count == 0">
-                    <field name="ficha_tecnica_tejido_count" widget="statinfo"
-                           string="Ficha de Tejido"/>
-                </button>
-                <button name="action_view_ficha_tecnica_acabado" type="object"
-                        class="oe_stat_button" icon="fa-file-text"
-                        invisible="ficha_tecnica_acabado_count == 0">
-                    <field name="ficha_tecnica_acabado_count" widget="statinfo"
-                           string="Ficha de Acabado"/>
-                </button>
                 <button name="action_ft_material" type="object"
                         class="oe_stat_button" icon="fa-dot-circle-o"
                         invisible="ft_material_count == 0 and not ft_material_sugerido">
@@ -31,12 +21,6 @@
                         invisible="ft_hilo_tela_count == 0">
                     <field name="ft_hilo_tela_count" widget="statinfo"
                            string="Telas que lo usan"/>
-                </button>
-                <button name="action_ft_procesos" type="object"
-                        class="oe_stat_button" icon="fa-tachometer"
-                        invisible="ft_proceso_count == 0">
-                    <field name="ft_proceso_count" widget="statinfo"
-                           string="Procesos por máquina"/>
                 </button>
             </div>
         </field>
