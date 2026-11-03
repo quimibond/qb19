@@ -33,6 +33,14 @@ día «Generar listas desde la ruta» lleva de subproductos `SALDO DE TELA TEJID
 referencias están en los parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`; si una no
 existe, avisa y no la inventa. A qué ubicación va cada saldo (16 y 17) lo decide la clasificación, no la lista.
 
+### La lista en metros sin operación
+
+Una sola estación (Dirección General, 2026-11-03): Inspección, en la orden de acabado en kg, corta, pesa, clasifica y
+etiqueta cada rollo, y la orden en metros se registra sola al cerrar el baño. La lista en metros ya no lleva la
+operación de Empaque: «Armar rutas desde listas» no crea el paso «Clasificación final» y la migración quita los que
+existen (42 en producción, todos en EMPAQUE, que no tiene ninguna orden de trabajo en el último año); al volver a
+generar, la lista en metros archivada queda sin operación.
+
 ## 19.0.2.23.0 — 2026-11-03
 
 Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos

@@ -5,19 +5,21 @@ poder consumir los rollos y clasificarlos en calidades y también poder sacar ro
 me salgan cuántos kgs y cuántos metros tiene cada rollo después de la inspección».
 
 Base: módulo `quimibond_rollos_bitacora` 19.0.3.0.1 de Jose Sacramento (Consolti), rama `qbtesting`, diseño técnico
-v5.4. Este documento dice **qué se le agrega**; lo que ya hace se respeta tal cual.
+v5.4. Este documento dice **qué cambia y qué se le agrega**; Rama (pesaje, lote por rollo, etiqueta, desperdicio),
+taras, bitácora, defectos y restricciones de Inspección se respetan tal cual.
 
 ## 1. Decisiones (Dirección General, 2026-11-03)
 
 | # | Decisión |
 |---|---|
-| D1 | La Inspección **se queda en la orden de acabado en kg** (Devanado → Tintorería → Abridora → Rama → Inspección), como la tiene José. |
+| D1 | La Inspección **se queda en la orden de acabado en kg** (Devanado → Tintorería → Abridora → Rama → Inspección). |
 | D2 | Se inspecciona **en cuanto el rollo sale de rama**, con la orden en kg abierta. |
 | D3 | **El corte se hace en la revisadora** (Inspección). |
 | D4 | Cada rollo que sale es un **rollo final con lote nuevo**; al final cada uno tiene sus kg y sus metros. |
 | D5 | **Segundas y desperdicio se venden en kg**; primera y FE en metros. |
 | D6 | **Solo se juntan rollos del mismo baño.** |
 | D7 | Se puede **entregar antes de que termine el baño** sin entregar lo que no está en inventario. |
+| D8 | **Una sola estación: Inspección pesa, clasifica y etiqueta.** No hay operación de Clasificación final en Empaque. Inspección tiene báscula. |
 
 ## 2. Evidencia
 
@@ -35,6 +37,10 @@ segundas como `SALDO DE TELA TEJIDO` en kg (4,504 kg) y el desperdicio como `SAL
 segundas y desperdicio entran en metros de la tela y se convierten a mano a un saldo en kg para venderlos: el flujo
 nuevo los saca directo en kg y elimina esa conversión.
 
+**Dónde se pesa hoy:** las taras de «Clasificación final» del módulo de José salen del archivo de Quimibond
+«INSPECCION TARAS»; el pesaje del rollo terminado ya lo hace Inspección. El centro EMPAQUE (746) no tiene ninguna
+orden de trabajo en producción en el último año.
+
 **qbtesting, prueba del 3-nov** (TL/OP-M/00008, 3,500 m de WJ038Q22JNT160): la rama pesó 2 rollos (`00008-0001`
 32.1 kg, `00008-0002` 32.5 kg), se inspeccionaron, la orden en kg TL/OP-KG/00008 cerró y los rollos quedaron en 10
 INSPECCIÓN apartados por la orden en metros. Falta clasificar.
@@ -45,9 +51,10 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
    no hay corte ni unión.
 2. Todas las calidades salen como la tela en metros al destino del terminado (14 PQ); la calidad solo cambia la
    etiqueta. El ruteo a 15/16/17 está en su lista de pendientes. El costeo mediría todo como primera.
-3. La clasificación exige el rollo en inventario (`_clasif_validar_rollo_disponible`), o sea la orden en kg cerrada;
-   y el cierre iguala la orden a lo pesado y consume todo el crudo (`button_mark_done`): no hay cierre parcial.
-4. Se consume el kg de rama (`_clasif_asegurar_consumo`), no lo que sale.
+3. Dos toques por rollo: Inspección (sin pesar, etiqueta preliminar) y Clasificación final en Empaque (pesa,
+   consume, etiqueta final). La clasificación exige el rollo en inventario, o sea la orden en kg cerrada.
+4. El cierre iguala la orden a lo pesado y consume todo el crudo (`button_mark_done`): no hay cierre parcial.
+5. Se consume el kg de rama (`_clasif_asegurar_consumo`), no lo que sale.
 
 ## 3. Flujo
 
@@ -56,36 +63,33 @@ INSPECCIÓN apartados por la orden en metros. Falta clasificar.
 **1. Rama pesa cada rollo** — sin cambio. Lote por rollo `<orden>-NNNN`, etiqueta chica. **Nuevo:** casilla
 «Último rollo del baño» al pesar.
 
-**2. Inspección en la revisadora** (orden en kg abierta):
+**2. Inspección: la única estación** (orden en kg abierta, en cuanto el rollo sale de rama)
 
-- Escanea el rollo de rama; mide metros, marca defectos y empalmes (como hoy).
-- Registra los **rollos finales** que salen de la revisadora, uno o varios, cada uno con metros y calidad
-  (PQ / FE / Segunda / Desperdicio) y defectos.
-- Cada rollo final recibe **su número de lote nuevo** y su etiqueta preliminar (§4.2).
-- **Juntar:** se pueden escanear dos o más rollos de rama del **mismo baño** (§4.4) y registrar un solo rollo final.
-- No se pesa ni se mueve inventario: en la orden en kg el rollo de rama sigue con sus kg de rama.
+- Escanea el rollo de rama (o varios del **mismo baño** para juntarlos, §4.4).
+- Lo pasa por la revisadora: metros, defectos, empalmes (como hoy).
+- Por cada **rollo final** que sale (uno si no se corta, varios si se corta):
+  - lote nuevo (§4.2);
+  - **peso** en la báscula de Inspección menos la tara (IoT o manual con motivo, como en Rama);
+  - metros de la revisadora;
+  - calidad (PQ / FE / Segunda / Desperdicio) y defectos;
+  - **etiqueta final** (PQ, o PNC para FE / Segunda / Desperdicio, el formato de José) con kg y m.
+- Cuadre a la vista: kg de los rollos de rama contra kg de los rollos finales; merma con alerta (§4.6).
+- No se mueve inventario todavía: los rollos finales quedan «inspeccionados, pendientes de registrar».
 
-**3. Cierre del baño**
+**3. Cierre del baño → la orden en metros se registra sola**
 
 - **Automático:** cuando el último rollo pesado del baño (el marcado en rama) y todos los anteriores están
-  inspeccionados, la orden en kg se cierra sola. El bloqueo actual («no cierra con rollos sin inspeccionar») se
-  queda.
-- **«Liberar lo inspeccionado»** (botón en la orden en kg, grupo de supervisores): cierra la orden solo por los
-  rollos de rama ya inspeccionados (§4.5). Lo pesado sin inspeccionar y lo que falta de rama pasan a la orden
-  pendiente.
+  inspeccionados, la orden en kg se cierra sola y enseguida se registra la orden en metros (§4.5).
+- **«Liberar lo inspeccionado»** (botón en la orden en kg, grupo de supervisores): cierra la orden en kg solo por los
+  rollos de rama ya inspeccionados y registra en la orden en metros sus rollos finales. Lo pesado sin inspeccionar y
+  lo que falta de rama pasan a la orden pendiente.
 
-### Orden en metros (Clasificación final, Empaque)
+### Orden en metros
 
-**4. Empaque: un pesaje por rollo final**
-
-- Escanea la etiqueta del rollo final, lo pesa con la tara de Clasificación final (báscula IoT o manual con
-  motivo, como hoy) y confirma o corrige la calidad (si la cambia, pide motivo).
-- Produce el rollo final en su calidad (§4.3) con su lote, sus metros y sus kg.
-- Cuando todos los rollos finales de un rollo de rama están clasificados, consume el rollo de rama completo (§4.6).
-- Imprime la etiqueta final: PQ, o PNC para FE / Segunda / Desperdicio, como hoy.
-
-**5. Cierre de la orden en metros** — con los metros reales de primera y FE y los kg de los saldos. Sobrante a
-existencia; faltante, otra orden (ya va con la primera para planear, `qb_costeo` 1.9.0).
+**Sin operación ni captura.** Al registrarse (paso 3): consume los rollos de rama (kg) y produce los rollos finales
+con su lote, sus metros y sus kg, cada calidad en su producto y ubicación (§4.3). Se cierra con los metros reales de
+primera y FE y los kg de los saldos. Sobrante a existencia; faltante, otra orden (ya va con la primera para planear,
+`qb_costeo` 1.9.0).
 
 ## 4. Reglas
 
@@ -93,10 +97,10 @@ existencia; faltante, otra orden (ya va con la primera para planear, `qb_costeo`
 
 Modelo nuevo `mrp.rollo.final`: una fila por rollo final, con
 
-- `name` (lote), `production_id` (orden en metros), `bitacora_ids` (rollos de rama de los que sale, Many2many);
-- de Inspección: `metros_insp`, `clasificacion_inicial`, `defecto_ids`, operador, revisadora, fecha;
-- de Empaque: `kg_bruto`, `tara`, `kg_neto`, `metros_final`, `clasificacion_final`, `product_id` y `lot_id`
-  producidos, operador, fecha, captura manual y motivo.
+- `name` (lote), `bitacora_ids` (rollos de rama de los que sale, Many2many), orden en kg y orden en metros;
+- de Inspección: `kg_bruto`, `tara`, `kg_neto`, captura manual y motivo, `metros`, `clasificacion`, `defecto_ids`,
+  operador, revisadora, fecha;
+- del registro: `product_id` y `lot_id` producidos, `estado` (inspeccionado / registrado).
 
 Un rollo final viene de un rollo de rama (sin corte o con corte) o de varios (unión); no se permite cortar y juntar
 en la misma captura.
@@ -106,16 +110,16 @@ en la misma captura.
 - Nombre: `M<último segmento de la orden en metros>-NNNN`, consecutivo por orden en metros (`M00008-0001` de
   TL/OP-M/00008). La `M` lo distingue a simple vista del rollo de rama (`00008-0001`), que en piso conviven. El
   código de barras de la etiqueta final lleva orden y número de rollo, como el de José.
-- El nombre se aparta en Inspección (va en la etiqueta preliminar); el `stock.lot` se crea en Empaque para el
-  producto que corresponda a la calidad definitiva (la tela o el saldo), porque un lote es de un solo producto.
-- La liga rollo final → rollos de rama → baño → crudo queda en `bitacora_ids` y en la orden; no se codifica en el
+- El nombre se asigna en Inspección (va en la etiqueta final); el `stock.lot` se crea al registrar, para el producto
+  que corresponde a la calidad (la tela o el saldo), porque un lote es de un solo producto.
+- La liga rollo final → rollos de rama → baño → crudo queda en `bitacora_ids` y en las órdenes; no se codifica en el
   nombre.
 
 ### 4.3 Calidad → producto y ubicación
 
-| Calidad definitiva | Producto que sale | Unidad | Ubicación |
+| Calidad | Producto que sale | Unidad | Ubicación |
 |---|---|---|---|
-| PQ | la tela (producto de la orden) | m | 14 PRODUCTO TERMINADO PQ |
+| PQ | la tela (producto de la orden en metros) | m | 14 PRODUCTO TERMINADO PQ |
 | FE | la tela | m | 15 PRODUCTO TERMINADO FE |
 | Segunda | `SALDO DE TELA TEJIDO` (subproducto) | kg | 16 PRODUCTO TERMINADO SEGUNDAS |
 | Desperdicio | `SALDO TEJIDO D` (subproducto) | kg | 17 PRODUCTO TERMINADO DESPERDICIO |
@@ -130,21 +134,21 @@ en la misma captura.
 Baño = orden en kg raíz (la orden y sus pendientes de «Liberar lo inspeccionado» son el mismo baño). Al juntar, todos
 los rollos de rama deben ser del mismo baño; si no, error.
 
-### 4.5 Liberar lo inspeccionado
+### 4.5 Registro de la orden en metros y «Liberar lo inspeccionado»
 
-- Cantidad a cerrar = kg de rama de los rollos inspeccionados. Cierre parcial nativo de Odoo con pendiente
-  (`backorder`): el crudo y los tiempos se reparten en proporción; al final del baño el total es el mismo.
-- Los rollos pesados no inspeccionados pasan a la pendiente con sus lotes. La pendiente hereda «Último rollo del
-  baño» si ya se marcó.
+- La orden en metros es la que pidió la orden en kg (origen MTO). El registro corre al cerrar la orden en kg (total o
+  parcial), en la misma transacción: si falla, no se cierra nada.
+- Cierre parcial: nativo de Odoo con pendiente (`backorder`), por los kg de rama de los rollos inspeccionados; el
+  crudo y los tiempos se reparten en proporción y al final del baño el total es el mismo. Los rollos pesados no
+  inspeccionados pasan a la pendiente con sus lotes; la pendiente hereda «Último rollo del baño».
 - El cierre actual de José (iguala la orden a lo pesado, consume todo el crudo) se queda para el cierre final del
   baño; el parcial es otro camino.
 
 ### 4.6 Consumo y merma
 
-- Se consume el rollo de rama completo (sus kg de rama) cuando el último de sus rollos finales se clasifica; con
-  unión, cuando se clasifica el rollo final que los junta.
-- Merma visible por grupo (rollos de rama ↔ rollos finales): kg de rama − kg netos de los rollos finales. Alerta si
-  pasa de un parámetro (%).
+- La orden en metros consume cada rollo de rama completo (sus kg de rama).
+- Merma visible por grupo (rollos de rama ↔ rollos finales): kg de rama − kg netos de los rollos finales. Alerta en
+  Inspección si pasa de un parámetro (%), antes de guardar.
 - Lo que se consume es lo que existe: nunca más kg de los que tiene el lote.
 
 ## 5. Cambios por módulo
@@ -152,35 +156,37 @@ los rollos de rama deben ser del mismo baño; si no, error.
 **`quimibond_rollos_bitacora` (José):**
 
 1. «Último rollo del baño» en PESAR ROLLO.
-2. Inspección: rollos finales (corte y unión, mismo baño), lote apartado, etiqueta preliminar por rollo final.
-3. Cierre automático del baño; botón «Liberar lo inspeccionado».
-4. Clasificación por rollo final: pesaje, calidad, producto y ubicación según §4.3; consumo según §4.6.
-5. Pruebas de los casos de §6.
+2. Inspección como estación única: rollos finales (corte y unión, mismo baño), pesaje con tara de Inspección (la que
+   hoy es de «Clasificación final»), calidad, lote nuevo y etiqueta final; desaparece la etiqueta preliminar.
+3. Registro automático de la orden en metros al cerrar el baño; botón «Liberar lo inspeccionado».
+4. Producto y ubicación por calidad (§4.3); consumo según §4.6.
+5. Sale el botón CLASIFICAR de Empaque.
+6. Pruebas de los casos de §6.
 
-**`quimibond_ficha_tecnica_tela` (nosotros):** las listas en metros que genera «Generar listas desde la ruta» llevan
-los dos subproductos (`SALDO DE TELA TEJIDO` → 16, `SALDO TEJIDO D` → 17, cantidad 0, costo 0 %). Hoy las listas de
-las 31 telas en producción no tienen subproductos.
+**`quimibond_ficha_tecnica_tela` 2.24.0 (hecho):** la lista en metros que genera «Generar listas desde la ruta» lleva
+los dos subproductos (cantidad 0, sin costo) y **no lleva operación**; la migración quita de las rutas los pasos
+«Clasificación final» (42, todos en EMPAQUE).
 
-**`qb_costeo` (nosotros):** el rendimiento cuenta como merma de la tela los saldos en kg que salen de su
-clasificación, convertidos a metros con el rendimiento de la ficha (m/kg); el desperdicio de rama (orden en kg) sigue
-sin contar, porque ya está en el factor del crudo.
+**`qb_costeo` 1.10.0 (hecho):** el rendimiento cuenta como merma de la tela los saldos en kg que salen de su
+clasificación, convertidos a metros con la ficha; la orden en metros sin operaciones no carga horas (la inspección
+va una sola vez, en la orden en kg).
 
 ## 6. Casos de aceptación
 
 | # | Caso | Resultado esperado |
 |---|---|---|
-| 1 | Rollo de rama todo primera, sin corte | 1 rollo final, lote nuevo, m y kg, en 14 |
-| 2 | Rollo cortado en 250 m primera + 120 m segunda | 2 lotes: la tela 250 m en 14; saldo de tela en kg en 16; rollo de rama consumido completo; merma = kg rama − suma |
+| 1 | Rollo de rama todo primera, sin corte | 1 rollo final pesado en Inspección, lote nuevo, etiqueta con m y kg; al cerrar el baño, en 14 |
+| 2 | Rollo cortado en 250 m primera + 120 m segunda | 2 rollos finales pesados; al cerrar: la tela 250 m en 14 y saldo de tela en kg en 16; rollo de rama consumido completo; merma = kg rama − suma |
 | 3 | Rollo todo FE | la tela en m, en 15 |
 | 4 | Desperdicio en la revisadora | saldo tejido D en kg, en 17 |
 | 5 | Juntar 2 rollos cortos del mismo baño | 1 rollo final; los dos rollos de rama consumidos |
 | 6 | Juntar rollos de baños distintos | error |
-| 7 | Entregar con la rama a medio baño | «Liberar lo inspeccionado» → los rollos finales clasificados quedan en existencia y se pueden entregar; la pendiente sigue |
-| 8 | Último rollo inspeccionado | la orden en kg se cierra sola |
-| 9 | Empaque cambia la calidad | pide motivo; el lote se crea para el producto de la calidad definitiva |
-| 10 | Rollo de rama sin inspeccionar en Empaque | error |
-| 11 | Pesaje manual sin motivo | error (como hoy) |
-| 12 | Costeo del mes | rendimiento = primera ÷ (primera + FE + segundas + desperdicio en m equivalentes) |
+| 7 | Entregar con la rama a medio baño | «Liberar lo inspeccionado» → los rollos finales quedan en existencia y se pueden entregar; la pendiente sigue |
+| 8 | Último rollo inspeccionado | la orden en kg se cierra sola y la orden en metros queda registrada |
+| 9 | Merma arriba del límite | alerta antes de guardar en Inspección |
+| 10 | Pesaje manual sin motivo | error (como hoy) |
+| 11 | Falla el registro de la orden en metros | no se cierra la orden en kg; mensaje con el motivo |
+| 12 | Costeo del mes | rendimiento = primera ÷ (primera + FE + segundas + desperdicio en m equivalentes); horas de inspección solo en la orden en kg |
 
 ## 7. Fuera de alcance
 

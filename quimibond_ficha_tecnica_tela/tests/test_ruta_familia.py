@@ -134,6 +134,19 @@ class TestRutaFamilia(TiempoFichaCase):
         avisos = self.acabado._ft_poner_saldos(bom_m)
         self.assertTrue(any('ZZ-NO-EXISTE' in a for a in avisos))
 
+    def test_06c_lista_en_metros_sin_operacion(self):
+        """2.24.0: la lista en metros no lleva operación (Inspección pesa y clasifica en la orden en kg); «Generar»
+        le quita la de Empaque a una lista archivada y armar la ruta no crea el paso de Clasificación final."""
+        empaque = self.env['mrp.workcenter'].create({'name': 'EMPAQUE 931 prueba', 'code': 'E931'})
+        self.env['mrp.routing.workcenter'].create({'bom_id': self.bom_m.id, 'name': 'CLASIFICACION',
+                                                   'workcenter_id': empaque.id})
+        (self.bom | self.bom_m).action_archive()
+        ruta = self._armar()
+        self.assertNotIn('clasificacion', ruta.paso_ids.mapped('paso'))
+        self.acabado.action_ft_generar_listas()
+        bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        self.assertFalse(bom_m.with_context(active_test=False).operation_ids)
+
     def test_07_botones_de_la_lista_de_rutas(self):
         ruta = self._armar()
         accion = call_kw(self.env['ficha.tecnica.ruta'], 'action_ft_generar_listas', [ruta.ids], {})

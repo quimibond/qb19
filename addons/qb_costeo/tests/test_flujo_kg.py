@@ -232,7 +232,8 @@ class TestFlujoKg(CosteoCase):
         self.assertEqual(esperados, self.c_tin | self.c_aca | self.c_insp)
         self.assertEqual(self.H._drivers_por_codigo(self.proceso, self.env['mrp.bom']),
                          {'kg_ciclo', 'm_velocidad', 'fijo_unidad'})
-        self.assertEqual(self.H._drivers_por_codigo(self.tela, self.bom_b), {'fijo_unidad'})
+        self.assertEqual(self.H._drivers_por_codigo(self.tela, self.bom_b), set(),
+                         "1.10.0: la clasificación no pasa por centros propios por su código")
         self.assertEqual(self.H._drivers_por_codigo(self.tela, self.bom_vieja), {'m_velocidad'})
         importado = self.env['product.product'].create({
             'name': 'imp', 'default_code': 'IWJ053Q22JNT160', 'type': 'consu',
@@ -242,6 +243,17 @@ class TestFlujoKg(CosteoCase):
         # por su código.
         self.assertFalse(self.H._centro_aplica(self.tela, self.bom_b, self.c_aca))
         self.assertTrue(self.H._centro_aplica(self.tela, self.bom_b, self.c_insp))
+
+    def test_clasificacion_sin_operaciones_no_carga_horas(self):
+        """1.10.0: con la lista en metros sin operaciones (Inspección pesa y
+        clasifica en la orden en kg), la tela en metros no espera centros
+        propios ni carga horas de inspección; las de la orden en kg siguen."""
+        self.bom_b.operation_ids.unlink()
+        self.assertFalse(self.H._centro_aplica(self.tela, self.bom_b, self.c_insp))
+        self.assertIsNone(self.H._propias_al_vuelo(
+            self.tela, self.bom_b, self.c_insp, {}, {}, {}, {}))
+        esperados = self.H.centros_esperados(self.tela, self.c_tin | self.c_aca | self.c_insp)
+        self.assertIn(self.c_insp, esperados, "La inspección sigue en la orden en kg")
 
     def test_conversion_y_merma_una_sola_vez(self):
         """MP de la tela = kg/m de la ficha × 1.113 kg de crudo × precio: la

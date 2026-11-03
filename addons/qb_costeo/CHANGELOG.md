@@ -16,6 +16,13 @@ Una sección por versión del manifest, la más nueva arriba. El PR que sube
   unidad con la ficha de acabado (kg ÷ kg por metro), en el rendimiento y en
   la primera para planear (por lote). El saldo no forma rendimiento propio.
   Sin ficha no se convierte.
+- **La clasificación sin operaciones no carga horas.** Inspección corta,
+  pesa, clasifica y etiqueta en la orden en kg y la orden en metros se
+  registra sola (una sola estación, Dirección General 2026-11-03): la tela en
+  metros de la clasificación ya no espera inspección y empaque por su código
+  (`DRIVERS_CLASIFICACION` vacío) ni toma horas de ficha, hermanos o promedios
+  si su lista no tiene operaciones. Las horas de inspección siguen en la orden
+  en kg, una sola vez.
 
 ## 19.0.1.9.0 — 2026-11-03
 

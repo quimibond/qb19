@@ -19,7 +19,9 @@ archivado como borrador del flujo, y los tiempos, la capacidad de los jets y la 
 Saldos (2.24.0, Dirección General 2026-11-03): la lista en metros lleva de subproductos los dos saldos en kg en que
 se venden las segundas y el desperdicio de la clasificación (``SALDO DE TELA TEJIDO`` y ``SALDO TEJIDO D``; las
 referencias están en los parámetros ``quimibond_ficha_tecnica_tela.saldo_segunda`` y ``.saldo_desperdicio``), con
-cantidad 0: la real es el peso de cada rollo al clasificar. Diseño:
+cantidad 0: la real es el peso de cada rollo al clasificar. **La lista en metros no lleva operaciones**: Inspección
+(en la orden en kg) corta, pesa, clasifica y etiqueta cada rollo, y la orden en metros se registra sola al cerrar el
+baño; sin paso «Clasificación final» en la ruta, «Generar listas» le quita la de Empaque. Diseño:
 ``docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md``.
 """
 from collections import Counter
@@ -180,9 +182,8 @@ class FichaTecnicaRuta(models.Model):
                 if paso in existentes:
                     continue
                 if paso == 'clasificacion':
-                    if clasif:
-                        nuevos.append({'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': clasif[0],
-                                       'tiempo': clasif[1]})
+                    # 2.24.0: la lista en metros no lleva operación (la inspección pesa, clasifica y etiqueta en la
+                    # orden en kg; Dirección General 2026-11-03). No se arma el paso desde listas viejas con Empaque.
                     continue
                 wc = familia.get(paso)
                 if not wc and paso in PASOS_TODAS:
