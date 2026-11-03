@@ -13,6 +13,15 @@ Agregado: las rutas por familia, sus pasos y la revisión de listas quedan habil
 módulo, si el servidor MCP del repo está instalado (los modelos ya configurados no se tocan). En el build de main no se
 podían usar por MCP: los otros módulos lo hacen solo al instalarse.
 
+Corregido (visto en el build de main con las 42 rutas armadas):
+- «Armar rutas desde las listas» agrega los pasos que la tabla de Innovación pone en todas las telas (devanado,
+  tintorería, abridora, rama, inspección) aunque falten en las listas de la familia: devanado, abridora e inspección
+  con la máquina más usada en la planta; tintorería y rama sin máquina si la familia no la tiene (lo define
+  Ingeniería; «Generar listas» lo avisa). Lo deja anotado en la ruta. También **completa las rutas que ya existen**
+  sin cambiar sus pasos.
+- La Clasificación final se toma solo de operaciones en máquinas sin tipo de ficha (Empaque): una lista en metros
+  vieja traía una circular.
+
 ## 19.0.2.28.0 — 2026-11-03
 
 **Rutas por familia y listas generadas desde la ficha (tabla de Innovación)**

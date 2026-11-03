@@ -30,16 +30,24 @@ class TestRutaFamilia(TiempoFichaCase):
     def test_02_armar_la_ruta_desde_las_listas(self):
         ruta = self._armar()
         self.assertEqual(len(ruta), 1)
+        Workcenter = self.env['mrp.workcenter']
         self.assertEqual([(p.paso, p.workcenter_id) for p in ruta.paso_ids.sorted('sequence')],
                          [('devanado', self.dev), ('tintoreria', self.jet), ('abridora', self.abr),
-                          ('inspeccion', self.insp)])
+                          ('rama', Workcenter), ('inspeccion', self.insp)],
+                         "La rama la llevan todas (tabla de Innovación): sin evidencia, queda sin máquina")
+        self.assertIn('Rama (termofijado) sin máquina', ruta.notas)
         self.assertAlmostEqual(self.acabado.consumo_crudo, 1.1, msg="El consumo sale del renglón del crudo")
         self.assertFalse(self.acabado.ruta_rama_id or self.acabado.ruta_jet_id, "Va a las máquinas de su familia")
         self.assertEqual(self.acabado.ruta_familia_id, ruta)
-        self.assertEqual(self.acabado.ruta_resumen, 'DEV 931 prueba → JET 931 prueba → ABR 931 prueba → INSP 931 prueba')
+        self.assertEqual(self.acabado.ruta_resumen,
+                         'DEV 931 prueba → JET 931 prueba → ABR 931 prueba → Rama (termofijado) (sin máquina) → INSP 931 prueba')
+        ruta.paso_ids.filtered(lambda p: p.paso == 'devanado').unlink()
         self._armar()
         self.assertEqual(self.env['ficha.tecnica.ruta'].search_count([('crudo_id', '=', self.crudo.id)]), 1,
-                         "Un crudo con ruta no se vuelve a armar")
+                         "Un crudo con ruta no se vuelve a crear")
+        self.assertEqual(ruta.paso_ids.filtered(lambda p: p.paso == 'devanado').workcenter_id, self.dev,
+                         "Se completa con el paso que faltaba")
+        self.assertEqual(len(ruta.paso_ids.filtered(lambda p: p.paso == 'rama')), 1, "Lo que ya existe no se duplica")
 
     def test_03_generar_en_la_lista_archivada(self):
         ruta = self._armar()
@@ -47,7 +55,7 @@ class TestRutaFamilia(TiempoFichaCase):
         tipo_rama = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
         rama = self.env['mrp.workcenter'].create({'name': 'RAMA 931 prueba', 'code': 'R931', 'ft_tipo_id': tipo_rama.id})
         ruta.paso_ids.filtered(lambda p: p.paso == 'abridora').unlink()
-        ruta.paso_ids = [(0, 0, {'paso': 'rama', 'sequence': 30, 'workcenter_id': rama.id})]
+        ruta.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
         self.acabado.action_ft_generar_listas()
         ops = self._ops(self.bom)
         self.assertEqual([o.workcenter_id for o in ops], [self.dev, self.jet, rama, self.insp])
