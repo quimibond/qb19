@@ -66,6 +66,17 @@ class QbCentro(models.Model):
         LLAVES, default='horas', string='Llave de reparto',
         help='Solo para centros indirectos: cómo se reparte su gasto entre '
              'los directos.')
+    tarifa_de_id = fields.Many2one(
+        'qb.centro', string='Tarifa fija de',
+        domain="[('nature', '=', 'directo'), ('tarifa_de_id', '=', False), "
+               "('company_id', '=', company_id), ('id', '!=', id)]",
+        help='1.8.0: máquinas que comparten el gasto fijo de otro centro pero '
+             'no su energía (las abridoras dentro de Acabado: la energía es el '
+             'gas de las ramas). El centro no junta gasto propio (lo que traiga '
+             'va al centro de la tarifa), su tarifa fija es la de ese centro y '
+             'su tarifa variable es 0; sus horas no entran a la tarifa variable '
+             'del otro centro. Su capacidad normal se suma a la del otro si este '
+             'usa calendario (la capturada se entiende como la del grupo).')
     capacidad_h_mes = fields.Float(
         string='Capacidad normal capturada (h/mes)', digits=(16, 2),
         help='Déjelo en 0 para que salga del calendario de los centros de '
@@ -116,13 +127,21 @@ class QbCentro(models.Model):
         compañía sin centros tumbaba el cálculo de las demás)."""
         return self.sudo().search([('nature', '=', 'directo')]).company_id
 
-    @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo')
+    @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo', 'tarifa_de_id')
     def _check_consistencia(self):
         for rec in self:
             if rec.nature == 'directo' and not rec.driver:
                 raise ValidationError(
                     'El centro %s es directo: diga cómo mide horas.'
                     % rec.code)
+            padre = rec.tarifa_de_id
+            if padre and (padre == rec or padre.nature != 'directo'
+                          or padre.tarifa_de_id or rec.nature != 'directo'
+                          or padre.company_id != rec.company_id):
+                raise ValidationError(
+                    'El centro %s toma la tarifa fija de %s: los dos deben ser '
+                    'directos, de la misma compañía, y %s no puede tomar a su '
+                    'vez la tarifa de otro.' % (rec.code, padre.code, padre.code))
             if rec.capacidad_h_mes and not (rec.capacidad_motivo or '').strip():
                 raise ValidationError(
                     'El centro %s tiene capacidad capturada: escriba el '

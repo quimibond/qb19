@@ -188,6 +188,19 @@ class QbPeriodo(models.Model):
         fijo = self._suavizado(self.suavizado_fijo_meses or 1)
         real = self._gasto_por_clase(self.date_from, self.date_to)
 
+        # 1.8.0: un centro con «Tarifa fija de» no junta gasto ni entra a los
+        # repartos: lo suyo va al centro de la tarifa y cobra solo su tarifa
+        # fija (las abridoras con Acabado; la energía es de las ramas).
+        dependientes = directos.filtered(
+            lambda c: c.tarifa_de_id in directos and not c.tarifa_de_id.tarifa_de_id)
+        padre_de = {c.id: c.tarifa_de_id.id for c in dependientes}
+        horas_dep = {}
+        for c in dependientes:
+            hn, hn_fuente = c.horas_normales(self.date_from, self.date_to)
+            hr, hr_fuente = c.horas_reales(self.date_from, self.date_to)
+            horas_dep[c.id] = (hn, hn_fuente, hr, hr_fuente)
+        directos -= dependientes
+
         # Horas y nómina por centro directo (llaves de reparto).
         datos = {}
         for c in directos:
@@ -223,6 +236,7 @@ class QbPeriodo(models.Model):
             for (b, cid), monto in origen.items():
                 if b != bucket:
                     continue
+                cid = padre_de.get(cid, cid)
                 if cid in datos:
                     datos[cid][destino] += monto
                 elif cid:
@@ -241,17 +255,27 @@ class QbPeriodo(models.Model):
         self.tarifa_ids.unlink()
         Tarifa = self.env['qb.tarifa']
         tot_fijo = tot_var = tot_ocio = 0.0
+        tarifa_fija_de = {}
         for c in directos:
             d = datos[c.id]
             pool_fijo = d['fijo'] + d['indirecto']
             hn = d['horas_normales']
             hr = d['horas_reales']
-            superada = bool(hn) and hr > hn
+            # El gasto fijo es de todas sus máquinas: con calendario, la
+            # capacidad normal suma la de sus dependientes (la capturada ya
+            # es la del grupo).
+            if d['horas_fuente'] == 'calendario':
+                hn += sum(h[0] for cid, h in horas_dep.items() if padre_de[cid] == c.id)
+            # Lo que trabajan sus centros dependientes absorbe la misma tarifa
+            # fija: cuenta para la capacidad superada y no es ociosidad.
+            hr_abs = hr + sum(h[2] for cid, h in horas_dep.items() if padre_de[cid] == c.id)
+            superada = bool(hn) and hr_abs > hn
             if superada:
-                hn = hr
+                hn = hr_abs
             tarifa_fija = pool_fijo / hn if hn else 0.0
             tarifa_var = d['variable'] / hr if hr else 0.0
-            ociosidad = max(pool_fijo - tarifa_fija * hr, 0.0) if hn else 0.0
+            tarifa_fija_de[c.id] = tarifa_fija
+            ociosidad = max(pool_fijo - tarifa_fija * hr_abs, 0.0) if hn else 0.0
             Tarifa.create({
                 'periodo_id': self.id, 'centro_id': c.id,
                 'pool_fijo': pool_fijo, 'pool_variable': d['variable'],
@@ -265,6 +289,17 @@ class QbPeriodo(models.Model):
             tot_fijo += pool_fijo
             tot_var += d['variable']
             tot_ocio += ociosidad
+        for c in dependientes:
+            hn, hn_fuente, hr, hr_fuente = horas_dep[c.id]
+            Tarifa.create({
+                'periodo_id': self.id, 'centro_id': c.id,
+                'pool_fijo': 0.0, 'pool_variable': 0.0, 'nomina_llave': 0.0,
+                'horas_normales': hn, 'horas_fuente': hn_fuente,
+                'horas_reales': hr, 'horas_reales_fuente': hr_fuente,
+                'tarifa_fija': tarifa_fija_de.get(padre_de[c.id], 0.0),
+                'tarifa_variable': 0.0, 'ociosidad': 0.0,
+                'capacidad_superada': False,
+            })
 
         # 4. Operación como % de ventas.
         meses_op = int(self.env['qb.parametro'].get_float(
@@ -337,6 +372,8 @@ class QbPeriodo(models.Model):
         if not self.costos_calculado_el:
             out.append('No se ha calculado el costo por producto.')
         for t in self.tarifa_ids:
+            if t.centro_id.tarifa_de_id:
+                continue    # 1.8.0: sin gasto propio; cobra la tarifa fija del otro
             if not t.horas_normales:
                 out.append('El centro %s no tiene horas normales (sin '
                            'calendario ni capacidad capturada).'
