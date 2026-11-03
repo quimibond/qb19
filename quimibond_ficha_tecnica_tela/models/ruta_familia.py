@@ -184,6 +184,26 @@ class FichaTecnicaRuta(models.Model):
             'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
 
 
+    @api.model
+    def _ft_habilitar_mcp(self):
+        """2.28.1: expone por MCP las rutas y la revisión, si el servidor MCP del repo está instalado (corre al instalar
+        y al actualizar; los modelos que ya estén configurados no se tocan)."""
+        if 'mcp.enabled.model' not in self.env:
+            return False
+        Enabled = self.env['mcp.enabled.model'].sudo().with_context(active_test=False)
+        creados = Enabled
+        for model, escribir in (('ficha.tecnica.ruta', True), ('ficha.tecnica.ruta.paso', True),
+                                ('ficha.tecnica.revision', False), ('ficha.tecnica.revision.pendiente', False)):
+            ir_model = self.env['ir.model']._get(model)
+            if not ir_model or Enabled.search([('model_id', '=', ir_model.id)], limit=1):
+                continue
+            creados |= Enabled.create({
+                'model_id': ir_model.id, 'active': True, 'allow_read': True, 'allow_create': escribir,
+                'allow_write': escribir, 'allow_unlink': False, 'allow_method_calls': True,
+                'notes': 'quimibond_ficha_tecnica_tela: habilitado al instalar o actualizar.'})
+        return bool(creados)
+
+
 class FichaTecnicaRutaPaso(models.Model):
     _name = 'ficha.tecnica.ruta.paso'
     _description = 'Paso de la ruta de una familia de telas'

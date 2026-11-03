@@ -109,3 +109,14 @@ class TestRutaFamilia(TiempoFichaCase):
         accion = call_kw(self.env['ficha.tecnica.ruta'], 'action_ft_generar_listas', [ruta.ids], {})
         self.assertEqual(accion['tag'], 'display_notification')
         self.assertIn(self.acabado, ruta.acabado_ids)
+
+    def test_08_habilitar_mcp(self):
+        """2.28.1: si el servidor MCP está instalado, las rutas quedan habilitadas una sola vez."""
+        Ruta = self.env['ficha.tecnica.ruta']
+        if 'mcp.enabled.model' not in self.env:
+            self.assertFalse(Ruta._ft_habilitar_mcp())
+            return
+        Ruta._ft_habilitar_mcp()
+        self.assertFalse(Ruta._ft_habilitar_mcp(), "La segunda vez no crea nada")
+        Enabled = self.env['mcp.enabled.model'].sudo()
+        self.assertTrue(Enabled.search([('model_id.model', '=', 'ficha.tecnica.ruta')]))
