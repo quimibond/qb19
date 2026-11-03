@@ -20,31 +20,31 @@ from odoo import api, fields, models
 class ProductTemplateFichaNativa(models.Model):
     _inherit = 'product.template'
 
+    # 2.25.0: todo calculado, nunca «related» a través de la ficha: la ficha del producto es un campo calculado sin
+    # guardar y un related sobre él hace que Odoo busque por ese campo cada vez que cambia la ficha (y revienta).
     ft_tiene_ficha = fields.Boolean(string='Tiene ficha técnica', compute='_compute_ft_ficha_nativa')
     ft_es_tela = fields.Boolean(string='Es tela con ficha', compute='_compute_ft_ficha_nativa', search='_search_ft_es_tela',
                                 help='Tela acabada (en metros) o su acabado en proceso (kg) con ficha de acabado.')
     ft_es_crudo = fields.Boolean(string='Es crudo con ficha', compute='_compute_ft_ficha_nativa',
                                  search='_search_ft_es_crudo', help='Crudo con ficha de tejido.')
     # La tela: se editan aquí y se guardan en su ficha de acabado.
-    ft_peso = fields.Float(related='ficha_tecnica_acabado_id.peso_acabado', string='Peso de la tela (g/m²)',
-                           readonly=False)
-    ft_ancho = fields.Float(related='ficha_tecnica_acabado_id.ancho_acabado', string='Ancho de la tela (cm)',
-                            readonly=False)
-    ft_rendimiento = fields.Float(related='ficha_tecnica_acabado_id.rendimiento_tela_acabada', digits=(12, 4),
-                                  string='Rendimiento acabado (m/kg)', readonly=False)
-    ft_producto_kg_id = fields.Many2one(related='ficha_tecnica_acabado_id.product_proceso_id',
-                                        string='Producto en kg (proceso)')
-    ft_producto_m_id = fields.Many2one(related='ficha_tecnica_acabado_id.product_acabado_id',
-                                       string='Tela acabada (en metros)')
-    ft_spec_ids = fields.One2many(related='ficha_tecnica_acabado_id.spec_line_ids', string='Especificación')
+    ft_peso = fields.Float(string='Peso de la tela (g/m²)', compute='_compute_ft_tela_datos',
+                           inverse='_inverse_ft_tela_datos')
+    ft_ancho = fields.Float(string='Ancho de la tela (cm)', compute='_compute_ft_tela_datos',
+                            inverse='_inverse_ft_tela_datos')
+    ft_rendimiento = fields.Float(string='Rendimiento acabado (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+                                  inverse='_inverse_ft_tela_datos')
+    ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
+                                        compute='_compute_ft_ficha_nativa')
+    ft_producto_m_id = fields.Many2one('product.product', string='Tela acabada (en metros)',
+                                       compute='_compute_ft_ficha_nativa')
+    ft_spec_ids = fields.Many2many('ficha.tecnica.spec', string='Especificación', compute='_compute_ft_ficha_nativa')
     # El crudo de la tela.
     ft_crudo_id = fields.Many2one('product.product', string='Crudo de la tela', compute='_compute_ft_ficha_nativa')
-    ft_crudo_ficha_id = fields.Many2one('ficha.tecnica.tejido', string='Ficha del crudo',
+    ft_crudo_peso = fields.Float(string='Peso del crudo (g/m²)', compute='_compute_ft_ficha_nativa')
+    ft_crudo_ancho = fields.Float(string='Ancho del crudo', compute='_compute_ft_ficha_nativa')
+    ft_crudo_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(12, 4),
                                         compute='_compute_ft_ficha_nativa')
-    ft_crudo_peso = fields.Float(related='ft_crudo_ficha_id.peso_acondicionado', string='Peso del crudo (g/m²)')
-    ft_crudo_ancho = fields.Float(related='ft_crudo_ficha_id.ancho_acondicionado', string='Ancho del crudo')
-    ft_crudo_rendimiento = fields.Float(related='ft_crudo_ficha_id.rendimiento_tela_tejida', digits=(12, 4),
-                                        string='Rendimiento de tejido (m/kg)')
     ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa')
     # La ruta y la revisión.
     ft_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Ruta (operaciones de sus listas)',
@@ -53,14 +53,30 @@ class ProductTemplateFichaNativa(models.Model):
     ft_bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros', compute='_compute_ft_ficha_nativa')
     ft_revision_id = fields.Many2one('ficha.tecnica.revision', string='Revisión de la tela',
                                      compute='_compute_ft_ficha_nativa')
-    ft_revision_listo = fields.Boolean(related='ft_revision_id.listo', string='Listas cuadran con la ficha')
-    ft_revision_n = fields.Integer(related='ft_revision_id.n_pendientes', string='Pendientes de la tela')
-    ft_pendiente_ids = fields.One2many(related='ft_revision_id.pendiente_ids', string='Pendientes por área')
+    ft_revision_listo = fields.Boolean(string='Listas cuadran con la ficha', compute='_compute_ft_ficha_nativa')
+    ft_revision_n = fields.Integer(string='Pendientes de la tela', compute='_compute_ft_ficha_nativa')
+    ft_pendiente_ids = fields.Many2many('ficha.tecnica.revision.pendiente', string='Pendientes por área',
+                                        compute='_compute_ft_ficha_nativa')
     # El crudo visto desde su propio producto.
     ft_tejido_ids = fields.Many2many('ficha.tecnica.tejido', string='Circulares donde se teje',
                                      compute='_compute_ft_ficha_nativa')
     ft_tela_ids = fields.Many2many('ficha.tecnica.acabado', string='Telas que usan este crudo',
                                    compute='_compute_ft_ficha_nativa')
+
+    @api.depends('product_variant_ids')
+    def _compute_ft_tela_datos(self):
+        for tmpl in self:
+            acabado = tmpl.ficha_tecnica_acabado_id
+            tmpl.ft_peso = acabado.peso_acabado
+            tmpl.ft_ancho = acabado.ancho_acabado
+            tmpl.ft_rendimiento = acabado.rendimiento_tela_acabada
+
+    def _inverse_ft_tela_datos(self):
+        for tmpl in self:
+            acabado = tmpl.ficha_tecnica_acabado_id
+            if acabado:
+                acabado.write({'peso_acabado': tmpl.ft_peso, 'ancho_acabado': tmpl.ft_ancho,
+                               'rendimiento_tela_acabada': tmpl.ft_rendimiento})
 
     def _ft_variantes(self):
         return self.with_context(active_test=False).product_variant_ids
@@ -80,7 +96,12 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_es_crudo = bool(tejidos) and not acabado
             tmpl.ft_tiene_ficha = bool(acabado or tejidos)
             tmpl.ft_crudo_id = crudo
-            tmpl.ft_crudo_ficha_id = crudo_ficha
+            tmpl.ft_crudo_peso = crudo_ficha.peso_acondicionado
+            tmpl.ft_crudo_ancho = crudo_ficha.ancho_acondicionado
+            tmpl.ft_crudo_rendimiento = crudo_ficha.rendimiento_tela_tejida
+            tmpl.ft_producto_kg_id = acabado.product_proceso_id
+            tmpl.ft_producto_m_id = acabado.product_acabado_id
+            tmpl.ft_spec_ids = acabado.spec_line_ids
             tmpl.ft_crudo_telas_count = Acabado.search_count(
                 [('tejido_id.product_proceso_id', '=', crudo.id)]) if crudo else 0
             bom_kg = Revision._ft_bom_de(acabado.product_proceso_id) if acabado else self.env['mrp.bom']
@@ -88,7 +109,11 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_bom_kg_id = bom_kg
             tmpl.ft_bom_m_id = bom_m
             tmpl.ft_operacion_ids = (bom_kg | bom_m).with_context(active_test=False).operation_ids
-            tmpl.ft_revision_id = Revision.search([('acabado_id', '=', acabado.id)], limit=1) if acabado else Revision
+            revision = Revision.search([('acabado_id', '=', acabado.id)], limit=1) if acabado else Revision
+            tmpl.ft_revision_id = revision
+            tmpl.ft_revision_listo = revision.listo
+            tmpl.ft_revision_n = revision.n_pendientes
+            tmpl.ft_pendiente_ids = revision.pendiente_ids
             tmpl.ft_tejido_ids = tejidos
             tmpl.ft_tela_ids = Acabado.search([('tejido_id.product_proceso_id', 'in', variantes.ids)]) \
                 if tejidos else Acabado
