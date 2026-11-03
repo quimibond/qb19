@@ -1010,4 +1010,6 @@ Pruebas: `tests/test_ficha_producto.py`.
 **2.25.1 (2026-11-03): qué lista se toma.** En la transición, 44 de las 111 telas tienen activa la lista en kg vieja (un
 renglón con el teñido, sin operaciones) y archivada la nueva «Flujo en kg (borrador)». La pestaña del producto y la
 revisión toman la lista con operaciones aunque esté archivada; entre iguales, la activa; las que dicen «no usar» en la
-referencia (la piloto de IWJ053Q22JNT160) van al final. Prueba: `test_revision_listas.test_05`.
+referencia (la piloto de IWJ053Q22JNT160) van al final. Prueba: `test_revision_listas.test_05`. También se corrige el
+botón «Actualizar» de la Revisión de listas en kg, que daba «takes 1 positional argument but 2 were given» (build de
+`main`, 3-nov); prueba `test_06`, que lo llama como la pantalla.

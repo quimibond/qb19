@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """2.24.0: revisión de las listas en kg contra la ficha, por tela y por área."""
+from odoo.service.model import call_kw
 from odoo.tests import tagged
 
 from .test_tiempo_ficha import TiempoFichaCase
@@ -71,3 +72,9 @@ class TestRevisionListas(TiempoFichaCase):
         self.assertEqual(self.env['ficha.tecnica.revision']._ft_bom_de(self.tela), self.bom,
                          "La que dice «no usar» va al final aunque esté activa y con operaciones")
         self.assertTrue(vieja and piloto)
+
+    def test_06_boton_actualizar_como_lo_llama_la_pantalla(self):
+        """2.25.1: el botón de la cabecera de la lista llega con la lista de renglones (vacía) como argumento."""
+        accion = call_kw(self.env['ficha.tecnica.revision'], 'action_ft_actualizar', [[]], {})
+        self.assertEqual(accion['tag'], 'reload')
+        self.assertTrue(self.env['ficha.tecnica.revision'].search([('acabado_id', '=', self.acabado.id)]))

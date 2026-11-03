@@ -202,10 +202,11 @@ class FichaTecnicaRevision(models.Model):
         self.sudo().search([('acabado_id.active', '=', False)]).unlink()
         self._ft_actualizar()
 
-    @api.model
     def action_ft_actualizar(self):
-        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas."""
-        self._cron_ft_actualizar()
+        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas. 2.25.1: método de registros (sin
+        ``@api.model``): el botón de la cabecera lo llama con los renglones seleccionados (o ninguno) y un
+        ``@api.model`` recibía ese argumento de más («takes 1 positional argument but 2 were given»)."""
+        self.env['ficha.tecnica.revision']._cron_ft_actualizar()
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_ft_datos_ficha(self):
