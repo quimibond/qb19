@@ -26,6 +26,10 @@ cargaron los tiempos en producción el 30-oct:
   Programación de Tintorería está instalada). Es el mismo orden que usa la Programación. Un ciclo de Odoo es la
   capacidad del jet para el producto, así que solo hay tiempo de la ficha si esa capacidad está capturada.
 
+2.24.0 (Dirección General 2026-11-03): **un solo rendimiento**. La rama ya no usa peso × ancho bajando de rama ni
+merma: min/kg = rendimiento de tela acabada de la ficha ÷ velocidad. El rendimiento sale de lo fabricado (metros ÷
+kilos, ``rendimiento_real.py``) y ya trae la merma. Corre en todas las máquinas de tipo «Acabado» (ramas).
+
 Si falta un dato, no hay tiempo y se dice cuál falta: un dato vacío es un dato que la planta no ha dado, nunca un cero.
 
 El tiempo calculado no se escribe solo: la operación muestra el tiempo de la ficha y avisa si el de la lista es otro;
@@ -42,6 +46,7 @@ TIPO_TINTORERIA = 'tintoreria'
 TIPO_INSPECCION = 'inspeccion'
 TIPO_DEVANADORA = 'devanadora'
 TIPO_ABRIDORA = 'abridora'
+TIPO_RAMA = 'acabado'  # 2.24.0: las ramas son el tipo de máquina «Acabado»
 # Abridora: la velocidad según cómo sale la tela del tejido (opciones de «Salida de la tela» de la circular).
 VELOCIDAD_ABRIDORA = {'Tubular': 'velocidad_tubular', 'Abierta': 'velocidad_abierta'}
 
@@ -111,7 +116,7 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
         proceso = self.ft_proceso_id
         if not proceso:
             return 0.0, False
-        if proceso.valor_ids.filtered(lambda v: v.code == 'ancho_rama'):
+        if tipo == TIPO_RAMA or proceso.valor_ids.filtered(lambda v: v.code == 'ancho_rama'):
             return self._ft_tiempo_rama()
         if tipo == TIPO_INSPECCION:
             return self._ft_tiempo_inspeccion()
@@ -120,40 +125,33 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
         return 0.0, False
 
     def _ft_tiempo_rama(self):
-        """(minutos por ciclo, texto del cálculo o del dato que falta). (0, False) si la operación no es de rama."""
+        """(minutos por ciclo, texto del cálculo o del dato que falta). 2.24.0: rendimiento de tela acabada de la
+        ficha (de lo fabricado, ya trae la merma) ÷ velocidad de la rama."""
         self.ensure_one()
         proceso = self.ft_proceso_id
-        if not proceso or not proceso.valor_ids.filtered(lambda v: v.code == 'ancho_rama'):
+        if not proceso:
             return 0.0, False
         if not self._ft_bom_kg():
             return 0.0, 'La lista de materiales no está en kg.'
         faltan = []
-        peso = proceso.ficha_acabado_id.peso_acabado
-        if not proceso.ficha_acabado_id:
-            faltan.append('la ficha de acabado')
-        elif not peso:
-            faltan.append('el peso en la ficha de acabado')
-        ancho = proceso._ft_value('ancho_rama')
-        merma = proceso._ft_value('merma')
+        acabado = proceso.ficha_acabado_id
+        rendimiento = acabado.rendimiento_tela_acabada
         velocidad = proceso._ft_value('velocidad')
-        if not ancho:
-            faltan.append('el ancho bajando de rama')
-        if not merma:
-            faltan.append('la merma')
+        if not acabado:
+            faltan.append('la ficha de acabado')
+        elif not rendimiento:
+            faltan.append('el rendimiento de tela acabada en la ficha de acabado')
         if not velocidad:
             faltan.append('la velocidad')
         if faltan:
             return 0.0, 'Falta %s en %s.' % (', '.join(faltan), proceso.display_name)
-        metros = 1000.0 / (peso * ancho)
-        netos = metros * (1.0 - merma / 100.0)
-        por_kg = netos / velocidad
-        texto = '1000 ÷ (%s g/m² × %s m) = %s m/kg × (1 − %s %%) = %s m/kg ÷ %s m/min = %s min/kg' % (
-            _fmt(peso), _fmt(ancho), _fmt(round(metros, 2)), _fmt(merma), _fmt(round(netos, 2)), _fmt(velocidad),
-            ('%.4f' % por_kg))
+        por_kg = rendimiento / velocidad
+        texto = '%s m/kg ÷ %s m/min = %s min/kg' % (_fmt(rendimiento), _fmt(velocidad), '%.4f' % por_kg)
         return self._ft_por_ciclo(por_kg, texto)
 
     def _ft_tiempo_inspeccion(self):
-        """2.23.0: rendimiento de tela acabada (m/kg) × 60 ÷ velocidad de inspección (m/h)."""
+        """2.23.0: rendimiento de tela acabada (m/kg) × 60 ÷ velocidad de inspección (m/h). 2.24.0: el rendimiento es
+        el de lo fabricado cuando la tela tiene historia."""
         self.ensure_one()
         proceso = self.ft_proceso_id
         if not self._ft_bom_kg():

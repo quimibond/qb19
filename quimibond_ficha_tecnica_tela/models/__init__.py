@@ -16,3 +16,4 @@ from . import capacidad_conversion  # 2.23.0: después de tiempo_ficha (usa _ft_
 from . import revision_listas  # 2.23.0: después de tiempo_ficha y capacidad_conversion (usa sus campos)
 from . import ficha_producto  # 2.23.0: al final (usa la revisión, la ficha del producto y los procesos)
 from . import ruta_familia  # 2.23.0: después de la revisión y la ficha del producto (usa _ft_bom_de y action_ft_datos_ficha)
+from . import rendimiento_real  # 2.24.0: al final (extiende la ficha de acabado y la revisión)

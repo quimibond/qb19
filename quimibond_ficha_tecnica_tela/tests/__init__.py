@@ -19,3 +19,4 @@ from . import test_tiempo_ficha  # 2.23.0
 from . import test_revision_listas  # 2.23.0
 from . import test_ficha_producto  # 2.23.0
 from . import test_ruta_familia  # 2.23.0
+from . import test_rendimiento_real  # 2.24.0
