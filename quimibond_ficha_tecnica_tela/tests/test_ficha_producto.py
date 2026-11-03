@@ -165,3 +165,16 @@ class TestFichaProducto(TiempoFichaCase):
         accion = call_kw(self.env['product.template'], 'action_ft_actualizar_revision', [[]], {})
         self.assertEqual(accion['tag'], 'reload')
         self.assertTrue(self.env['ficha.tecnica.revision'].search([('acabado_id', '=', self.acabado.id)]))
+
+    def test_14_la_lista_anterior_activa_no_es_activa(self):
+        """2.27.1: si la única lista en kg es la anterior (sin operaciones), la tela no está «Activa con pendientes»:
+        le falta la lista del flujo."""
+        self.bom.operation_ids.unlink()
+        self.env.invalidate_all()
+        tmpl = self.tela_m.product_tmpl_id
+        tmpl.action_ft_revisar()
+        self.env.invalidate_all()
+        self.assertEqual(tmpl.ft_estado, 'pendientes')
+        tipos = {(p.tipo, p.area) for p in tmpl.ft_pendiente_ids}
+        self.assertIn(('lista_kg', 'ingenieria'), tipos)
+        self.assertNotIn(('crudo', 'ingenieria'), tipos)

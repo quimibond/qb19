@@ -169,6 +169,12 @@ class FichaTecnicaRevision(models.Model):
         elif not bom_kg:
             pendientes.append(dict(ing, tipo='lista_kg', detalle='%s no tiene lista de materiales.' % (
                 proceso.default_code or proceso.name)))
+        elif not bom_kg.with_context(active_test=False).operation_ids:
+            # 2.27.1: la única lista es la anterior (un renglón, sin operaciones: la «Conversión de unidades» que
+            # consume la tela en metros); falta la del flujo en kg. Antes salía como «crudo distinto».
+            pendientes.append(dict(ing, tipo='lista_kg', bom_id=bom_kg.id, detalle='%s solo tiene la lista anterior '
+                                   '(sin operaciones): falta la lista del flujo en kg.' % (
+                                       proceso.default_code or proceso.name)))
         else:
             esperado = acabado.tejido_id.product_proceso_id
             crudo = next((line.product_id for line in bom_kg.bom_line_ids
