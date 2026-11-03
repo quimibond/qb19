@@ -1,201 +1,19 @@
 # Changelog — quimibond_ficha_tecnica_tela
 
-Una sección por versión del manifest, la más nueva arriba. Hasta 2.25.1 la historia vivía en el README (una sección
-por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual de lo vigente.
+Una sección por versión del manifest, la más nueva arriba. Hasta 2.22.0 la historia vivía en el README (una sección
+por versión); en 2.23.0 se movió aquí tal cual y el README quedó como manual de lo vigente.
 
-**Regla:** el PR que sube `version` en `__manifest__.py` agrega aquí su entrada, con el mismo número
-(`tools/check_addons.py --base-ref` lo exige).
-
-
-## 19.0.2.28.2 — 2026-11-03
-
-Corregido (visto al generar las 42 familias en el build de main): si la única lista activa de una tela es la anterior
-(sin operaciones, como NK100Q46JNT155 o XJ140Q21JNT162), «Generar listas» crea la del flujo archivada junto a ella en
-lugar de avisar que hay una lista activa. La anterior no se toca; Ingeniería decide cuándo cambiarla. Lo mismo con la
-lista en metros.
-
-## 19.0.2.28.1 — 2026-11-03
-
-Agregado: las rutas por familia, sus pasos y la revisión de listas quedan habilitadas por MCP al instalar o actualizar el
-módulo, si el servidor MCP del repo está instalado (los modelos ya configurados no se tocan). En el build de main no se
-podían usar por MCP: los otros módulos lo hacen solo al instalarse.
-
-Corregido (visto en el build de main con las 42 rutas armadas):
-- «Armar rutas desde las listas» agrega los pasos que la tabla de Innovación pone en todas las telas (devanado,
-  tintorería, abridora, rama, inspección) aunque falten en las listas de la familia: devanado, abridora e inspección
-  con la máquina más usada en la planta; tintorería y rama sin máquina si la familia no la tiene (lo define
-  Ingeniería; «Generar listas» lo avisa). Lo deja anotado en la ruta. También **completa las rutas que ya existen**
-  sin cambiar sus pasos.
-- La Clasificación final se toma solo de operaciones en máquinas sin tipo de ficha (Empaque): una lista en metros
-  vieja traía una circular.
-
-## 19.0.2.28.0 — 2026-11-03
-
-**Rutas por familia y listas generadas desde la ficha (tabla de Innovación)**
-
-Dirección General (2026-11-03): Ingeniería mantiene una ruta por familia (las telas del mismo crudo) y la ficha de cada
-tela; Odoo arma la lista en kg y la de metros. Reglas de la tabla «rutas de proceso rev4» de Innovación (2026-07-15,
-105 artículos).
-
-Agregado:
-- **Tela → Rutas por familia** (`ficha.tecnica.ruta` y `.paso`): un crudo, sus pasos (devanado, tintorería, abridora
-  volteado, abridora, rama, inspección y la Clasificación final de la lista en metros) con máquina, cuándo aplica
-  (siempre, solo si se tiñe, solo si se lava) y, si no sale de la ficha, un tiempo fijo. «Armar rutas desde las listas»
-  crea la ruta de cada crudo sin ruta con la máquina más usada por paso en las listas del flujo de sus telas; lo que una
-  tela hace en otra rama u otro jet queda en su ficha, y su consumo de crudo se toma del renglón del crudo.
-- Ficha de acabado, pestaña «Ruta y máquinas»: ruta de la familia, tintorería de lavado o de teñido (por el color del
-  código: NT, NN, OW se lavan; el resto, blanco óptico incluido, se tiñe; se puede cambiar o marcar «sin tintorería»),
-  rama y jet propios de la tela, consumo de crudo por kg y la ruta que se va a generar.
-- «Generar listas desde la ruta» (ficha de acabado, pestaña del producto y ruta de la familia): arma o pone al día la
-  lista en kg y la de metros. Nunca toca una lista activa; lo nuevo nace archivado («Flujo en kg (borrador)»,
-  «Clasificación final (borrador)»). Si la ruta no cambió, no rehace las operaciones; si cambió, los componentes que iban
-  en una operación pasan a la del mismo paso. Los componentes que no son el crudo (fórmula, engomado) se conservan.
-  Después usa los datos de la ficha (tiempos, capacidad de los jets, conversión a metros) y vuelve a revisar la tela.
-  Sin consumo de crudo no crea la lista en kg, y sin rendimiento no crea la de metros: lo avisa.
-
-## 19.0.2.27.2 — 2026-11-03
-
-**El pendiente de la lista en kg sin operaciones dice lo que pasa**
-
-Con datos de producción en el build de main: 8 de las 14 listas «Flujo en kg (borrador)» activas (artículos dados de
-alta el 30-oct) no tienen operaciones. El pendiente decía «solo tiene la lista anterior»; ahora dice que la lista no
-tiene operaciones, sea la anterior o una del flujo sin ruta.
-
-## 19.0.2.27.1 — 2026-11-03
-
-**«Activa» solo con la lista del flujo**
-
-Corregido (visto en el build de main): una tela cuya única lista en kg es la anterior (un renglón, sin operaciones: la
-«Conversión de unidades») salía como «Activa con pendientes». Ahora sale «Con pendientes» con el pendiente de
-Ingeniería «Falta la lista en kg» («solo tiene la lista anterior»), en lugar de «Crudo distinto de la ficha».
-
-## 19.0.2.27.0 — 2026-11-03
-
-**La ruta de la tela de punta a punta: crear la ficha desde el producto, el estado en el concentrado, validaciones**
-
-Agregado:
-- Producto con código de tela (J en la posición 9), de acabado en kg («I» al frente) o de crudo (H) y **sin ficha**:
-  pestaña «Ficha técnica» con «Crear la ficha de la tela» (abre la ficha de acabado nueva con el artículo, el producto
-  y su acabado en kg por código; falta escoger la ficha de tejido base), «Crear la ficha de tejido» o, en un acabado en
-  kg, «Abrir la tela en metros». Antes la ruta solo empezaba en el SGI o en los menús de datos de origen.
-- Concentrado **Telas**: columna «Estado de la ficha» (sin revisar, con pendientes, lista para activar, activa con
-  pendientes, activa) y «Áreas con pendientes»; filtros por estado y por área; búsqueda por crudo; botón «Actualizar la
-  revisión». El estado lee la lista en kg en vivo: activarla cuenta sin esperar a la revisión de la noche.
-- Pestaña «Ficha técnica»: aviso «Lista para activar» (las listas cuadran y la lista en kg sigue archivada) y aviso de
-  lista en kg activa con pendientes.
-- Revisión: pendientes de Ingeniería «Ficha de acabado sin peso o rendimiento» y «Ficha de tejido sin rendimiento»
-  (antes solo salían como «falta un dato» en cada operación, a nombre del área de la máquina). En producción, 9 fichas
-  de tejido sin rendimiento, usadas por 7 telas.
-
-Retirado:
-- Menú «Revisión de listas en kg»: el concentrado Telas trae lo mismo (estado, áreas, filtros, actualizar). «Pendientes
-  por área» se queda.
-
-## 19.0.2.26.0 — 2026-11-03
-
-**Auditoría del módulo: duplicados fuera, la ruta de la ficha de acabado al día, documentación en orden**
-
-Retirado:
-- Producto: los botones «Ficha de tejido», «Ficha de acabado» y «Procesos por máquina» (los abre ahora la pestaña
-  «Ficha técnica», con botones «Ficha de acabado», «Procesos de la tela» y, en un crudo, «Fichas de tejido», que abre
-  todas las del crudo y no solo la primera).
-- Centro de trabajo: el botón «Artículos», que duplicaba la pestaña «Telas que corren aquí» (en la pestaña ahora se
-  pueden agregar telas).
-- Código sin uso: `mrp.bom.action_ft_tiempos_rama` (alias de 2.22.0; la acción usa «Usar los datos de la ficha»),
-  `ficha.tecnica.material.action_ft_uso` y los campos de la máquina `ft_diametro`, `ft_no_agujas`,
-  `ft_no_alimentadores`, `ft_velocidad_max` (calculados, sin vista ni lector).
-
-Corregido:
-- Ficha de acabado: su ruta (botón «Lista de la ruta», antes «Lista vigente»; crudo, avisos, pestañas «Ruta y
-  máquinas» y «Tintorería») tomaba la lista activa, que en 43 telas es la vieja; ahora la del flujo en kg, con la misma
-  regla que la revisión y la pestaña del producto (2.25.1), y con sus operaciones aunque estén archivadas (al archivar
-  una lista Odoo archiva sus operaciones). Afecta también «Lleva tintorería» del SGI, que lee esa pestaña.
-- Las operaciones de la ruta (ficha de acabado, su pestaña Tintorería y la pestaña «Ficha técnica» del producto)
-  llevan `active_test=False` en el campo: el cálculo ya traía las archivadas, pero al leer el campo Odoo las
-  descartaba y la ruta salía vacía en las telas con la lista del flujo archivada.
-
-Agregado:
-- Operación: «Agregar los datos de la tela en esta máquina» cuando la máquina no tiene proceso de la tela.
-- Los parámetros que usan los cálculos (velocidad, merma y ancho bajando de rama; velocidades de inspección, abridora y
-  devanadora; capacidad y bandas de los jets) se aseguran al instalar o actualizar: solo se crean los que falten en su
-  tipo, por clave. Antes solo existían en la base de producción.
-
-Cambiado:
-- `models/tiempo_rama.py` → `models/tiempo_ficha.py` y su vista (calcula los tiempos de todas las operaciones, no solo
-  rama); los parámetros del proceso de la operación quedan en la misma herencia del formulario.
-- README como manual de lo vigente; la historia por versión pasa a este archivo. Descripción del manifest corta.
-
-Sin cambio, a propósito: las fichas de tejido y de acabado siguen (el SGI valida sobre ellas y lee sus campos), igual
-que «Procesos por artículo», «Comparativo» y «Artículos en los jets» (edición en masa por área) y Materias primas.
-La tabla huérfana `ficha_tecnica_tela` (modelo retirado en 2.1.1) sigue en la base: borrarla es decisión aparte.
+**Regla (Dirección General, 2026-11-03):** main va **una sola versión arriba de producción** (rama `quimibond`). El
+primer PR después de un despliegue sube la versión y abre su sección; los siguientes, mientras no se despliegue,
+agregan a esa misma sección sin volver a subirla.
 
 
-## 19.0.2.25.1 — 2026-11-03
+## 19.0.2.23.0 — 2026-11-03
 
-**Qué lista se toma y el botón «Actualizar»**
+Una sola versión para todo lo que va de producción (2.22.0) a este despliegue: en main se había numerado por pasos
+(2.23.0 a 2.28.2). Del más antiguo al más nuevo:
 
-En la transición, 44 de las 111 telas tienen activa la lista en kg vieja (un
-renglón con el teñido, sin operaciones) y archivada la nueva «Flujo en kg (borrador)». La pestaña del producto y la
-revisión toman la lista con operaciones aunque esté archivada; entre iguales, la activa; las que dicen «no usar» en la
-referencia (la piloto de IWJ053Q22JNT160) van al final. Prueba: `test_revision_listas.test_05`. También se corrige el
-botón «Actualizar» de la Revisión de listas en kg, que daba «takes 1 positional argument but 2 were given» (build de
-`main`, 3-nov); prueba `test_06`, que lo llama como la pantalla.
-
-## 19.0.2.25.0 — 2026-11-03
-
-**La ficha en las pantallas nativas de Odoo**
-
-Decisión: la gente ve la ficha donde Odoo ya pone las cosas, en lugar de fichas aparte. La app «Fichas técnicas» queda
-como **concentrado**.
-
-- **Producto** (tela acabada, su producto en kg o el crudo): pestaña **Ficha técnica**, la primera cuando el producto
-  tiene ficha.
-  - Tela: peso, ancho y rendimiento, editables ahí mismo (se guardan en su ficha de acabado); su producto en kg y su
-    tela en metros; su crudo con su peso, ancho y rendimiento, y cuántas telas lo comparten (sus datos se editan en el
-    crudo); la ruta, que son las operaciones de sus listas en kg y en metros, con la duración de la lista contra la de
-    sus parámetros; la especificación; los pendientes de la revisión (2.24.0). Botones «Usar los datos de la ficha»,
-    «Volver a revisar», «Lista en kg» y «Lista en metros».
-  - Crudo: las circulares donde se teje y las telas que lo usan.
-- **Operación** de la lista de materiales: «Parámetros del proceso», los de la tela en la máquina de la operación y en
-  sus alternativas, cada uno con su lápiz para editarlo.
-- **Centro de trabajo**: pestaña «Telas que corren aquí».
-- **App Fichas técnicas → Tela**: **Telas** (una fila por tela acabada con peso, ancho, rendimiento, crudo y
-  pendientes, en verde o rojo) y **Crudos**, que abren el producto; Revisión y Pendientes por área; las fichas de tejido
-  y de acabado siguen al final como datos de origen.
-
-Fase 1: los datos siguen guardados donde estaban (fichas de tejido y de acabado, procesos por máquina) porque los leen el
-SGI, el costeo y la Programación de Tintorería. Pasarlos a campos del producto y de la operación es la fase 2.
-
-Pruebas: `tests/test_ficha_producto.py`.
-
-## 19.0.2.24.0 — 2026-11-03
-
-**Revisión de listas en kg y pendientes por área**
-
-Lo que revisó a mano la auditoría de las listas en kg de octubre, dentro de Odoo, para que cada área vea sus pendientes
-y se sepa qué telas pueden entrar en cada ola (Fichas técnicas → Tela):
-
-- **Revisión de listas en kg**: una fila por ficha de acabado, en verde si está lista y en rojo con el número de
-  pendientes y las áreas. Filtros por área, «Con pendientes», «Listas» y «Lista en kg activa». En la tela: «Usar los
-  datos de la ficha» (capacidad de jets, tiempos y conversión, 2.23.0) y «Volver a revisar».
-- **Pendientes por área**: una fila por pendiente, agrupada por área y tipo, con el detalle, la máquina y la lista.
-
-| Pendiente | Área |
-|---|---|
-| Ficha sin acabado en proceso (kg), falta la lista en kg o en metros, crudo distinto de la ficha, conversión kg → m | Ingeniería (Innovación) |
-| Máquina sin proceso del artículo, tiempo en cero, falta un dato para el tiempo, tiempo distinto de la ficha | La del tipo de máquina: Tintorería, Acabado (ramas), Inspección, Manufactura (devanado y abridora) |
-| Falta la capacidad del jet para el producto o es distinta de la ficha | Tintorería |
-
-Es una foto: se rehace cada noche (acción planificada «Fichas técnicas - Revisión de listas en kg») y con
-**Actualizar**; no cambia nada en las listas. Las listas archivadas cuentan (las listas en kg nacen archivadas hasta que
-Ingeniería las revisa).
-
-Pruebas: `tests/test_revision_listas.py` (con los datos de `tests/test_tiempo_ficha.py`).
-
-
-## 19.0.2.23.0 — 2026-11-02
-
-**Tiempos, capacidad de jets y conversión a metros desde la ficha**
+### Tiempos, capacidad de jets y conversión a metros desde la ficha
 
 El tiempo de la ficha (2.22.0) se extiende a las demás operaciones de la lista en kg, con las mismas cuentas con que
 se cargaron los tiempos en producción el 30-oct:
@@ -239,6 +57,176 @@ bandas. La Programación (`_capacidad_jet`) conserva por ahora su propia copia d
 operaciones cuyo tiempo no es el de la ficha, también las de listas archivadas, sin abrir lista por lista.
 
 Pruebas: `tests/test_tiempo_ficha.py`.
+
+### Revisión de listas en kg y pendientes por área
+
+Lo que revisó a mano la auditoría de las listas en kg de octubre, dentro de Odoo, para que cada área vea sus pendientes
+y se sepa qué telas pueden entrar en cada ola (Fichas técnicas → Tela):
+
+- **Revisión de listas en kg**: una fila por ficha de acabado, en verde si está lista y en rojo con el número de
+  pendientes y las áreas. Filtros por área, «Con pendientes», «Listas» y «Lista en kg activa». En la tela: «Usar los
+  datos de la ficha» (capacidad de jets, tiempos y conversión, 2.23.0) y «Volver a revisar».
+- **Pendientes por área**: una fila por pendiente, agrupada por área y tipo, con el detalle, la máquina y la lista.
+
+| Pendiente | Área |
+|---|---|
+| Ficha sin acabado en proceso (kg), falta la lista en kg o en metros, crudo distinto de la ficha, conversión kg → m | Ingeniería (Innovación) |
+| Máquina sin proceso del artículo, tiempo en cero, falta un dato para el tiempo, tiempo distinto de la ficha | La del tipo de máquina: Tintorería, Acabado (ramas), Inspección, Manufactura (devanado y abridora) |
+| Falta la capacidad del jet para el producto o es distinta de la ficha | Tintorería |
+
+Es una foto: se rehace cada noche (acción planificada «Fichas técnicas - Revisión de listas en kg») y con
+**Actualizar**; no cambia nada en las listas. Las listas archivadas cuentan (las listas en kg nacen archivadas hasta que
+Ingeniería las revisa).
+
+Pruebas: `tests/test_revision_listas.py` (con los datos de `tests/test_tiempo_ficha.py`).
+
+### La ficha en las pantallas nativas de Odoo
+
+Decisión: la gente ve la ficha donde Odoo ya pone las cosas, en lugar de fichas aparte. La app «Fichas técnicas» queda
+como **concentrado**.
+
+- **Producto** (tela acabada, su producto en kg o el crudo): pestaña **Ficha técnica**, la primera cuando el producto
+  tiene ficha.
+  - Tela: peso, ancho y rendimiento, editables ahí mismo (se guardan en su ficha de acabado); su producto en kg y su
+    tela en metros; su crudo con su peso, ancho y rendimiento, y cuántas telas lo comparten (sus datos se editan en el
+    crudo); la ruta, que son las operaciones de sus listas en kg y en metros, con la duración de la lista contra la de
+    sus parámetros; la especificación; los pendientes de la revisión (2.23.0). Botones «Usar los datos de la ficha»,
+    «Volver a revisar», «Lista en kg» y «Lista en metros».
+  - Crudo: las circulares donde se teje y las telas que lo usan.
+- **Operación** de la lista de materiales: «Parámetros del proceso», los de la tela en la máquina de la operación y en
+  sus alternativas, cada uno con su lápiz para editarlo.
+- **Centro de trabajo**: pestaña «Telas que corren aquí».
+- **App Fichas técnicas → Tela**: **Telas** (una fila por tela acabada con peso, ancho, rendimiento, crudo y
+  pendientes, en verde o rojo) y **Crudos**, que abren el producto; Revisión y Pendientes por área; las fichas de tejido
+  y de acabado siguen al final como datos de origen.
+
+Fase 1: los datos siguen guardados donde estaban (fichas de tejido y de acabado, procesos por máquina) porque los leen el
+SGI, el costeo y la Programación de Tintorería. Pasarlos a campos del producto y de la operación es la fase 2.
+
+Pruebas: `tests/test_ficha_producto.py`.
+
+### Qué lista se toma y el botón «Actualizar»
+
+En la transición, 44 de las 111 telas tienen activa la lista en kg vieja (un
+renglón con el teñido, sin operaciones) y archivada la nueva «Flujo en kg (borrador)». La pestaña del producto y la
+revisión toman la lista con operaciones aunque esté archivada; entre iguales, la activa; las que dicen «no usar» en la
+referencia (la piloto de IWJ053Q22JNT160) van al final. Prueba: `test_revision_listas.test_05`. También se corrige el
+botón «Actualizar» de la Revisión de listas en kg, que daba «takes 1 positional argument but 2 were given» (build de
+`main`, 3-nov); prueba `test_06`, que lo llama como la pantalla.
+
+### Auditoría del módulo: duplicados fuera, la ruta de la ficha de acabado al día, documentación en orden
+
+Retirado:
+- Producto: los botones «Ficha de tejido», «Ficha de acabado» y «Procesos por máquina» (los abre ahora la pestaña
+  «Ficha técnica», con botones «Ficha de acabado», «Procesos de la tela» y, en un crudo, «Fichas de tejido», que abre
+  todas las del crudo y no solo la primera).
+- Centro de trabajo: el botón «Artículos», que duplicaba la pestaña «Telas que corren aquí» (en la pestaña ahora se
+  pueden agregar telas).
+- Código sin uso: `mrp.bom.action_ft_tiempos_rama` (alias de 2.22.0; la acción usa «Usar los datos de la ficha»),
+  `ficha.tecnica.material.action_ft_uso` y los campos de la máquina `ft_diametro`, `ft_no_agujas`,
+  `ft_no_alimentadores`, `ft_velocidad_max` (calculados, sin vista ni lector).
+
+Corregido:
+- Ficha de acabado: su ruta (botón «Lista de la ruta», antes «Lista vigente»; crudo, avisos, pestañas «Ruta y
+  máquinas» y «Tintorería») tomaba la lista activa, que en 43 telas es la vieja; ahora la del flujo en kg, con la misma
+  regla que la revisión y la pestaña del producto (2.23.0), y con sus operaciones aunque estén archivadas (al archivar
+  una lista Odoo archiva sus operaciones). Afecta también «Lleva tintorería» del SGI, que lee esa pestaña.
+- Las operaciones de la ruta (ficha de acabado, su pestaña Tintorería y la pestaña «Ficha técnica» del producto)
+  llevan `active_test=False` en el campo: el cálculo ya traía las archivadas, pero al leer el campo Odoo las
+  descartaba y la ruta salía vacía en las telas con la lista del flujo archivada.
+
+Agregado:
+- Operación: «Agregar los datos de la tela en esta máquina» cuando la máquina no tiene proceso de la tela.
+- Los parámetros que usan los cálculos (velocidad, merma y ancho bajando de rama; velocidades de inspección, abridora y
+  devanadora; capacidad y bandas de los jets) se aseguran al instalar o actualizar: solo se crean los que falten en su
+  tipo, por clave. Antes solo existían en la base de producción.
+
+Cambiado:
+- `models/tiempo_rama.py` → `models/tiempo_ficha.py` y su vista (calcula los tiempos de todas las operaciones, no solo
+  rama); los parámetros del proceso de la operación quedan en la misma herencia del formulario.
+- README como manual de lo vigente; la historia por versión pasa a este archivo. Descripción del manifest corta.
+
+Sin cambio, a propósito: las fichas de tejido y de acabado siguen (el SGI valida sobre ellas y lee sus campos), igual
+que «Procesos por artículo», «Comparativo» y «Artículos en los jets» (edición en masa por área) y Materias primas.
+La tabla huérfana `ficha_tecnica_tela` (modelo retirado en 2.1.1) sigue en la base: borrarla es decisión aparte.
+
+### La ruta de la tela de punta a punta: crear la ficha desde el producto, el estado en el concentrado, validaciones
+
+Agregado:
+- Producto con código de tela (J en la posición 9), de acabado en kg («I» al frente) o de crudo (H) y **sin ficha**:
+  pestaña «Ficha técnica» con «Crear la ficha de la tela» (abre la ficha de acabado nueva con el artículo, el producto
+  y su acabado en kg por código; falta escoger la ficha de tejido base), «Crear la ficha de tejido» o, en un acabado en
+  kg, «Abrir la tela en metros». Antes la ruta solo empezaba en el SGI o en los menús de datos de origen.
+- Concentrado **Telas**: columna «Estado de la ficha» (sin revisar, con pendientes, lista para activar, activa con
+  pendientes, activa) y «Áreas con pendientes»; filtros por estado y por área; búsqueda por crudo; botón «Actualizar la
+  revisión». El estado lee la lista en kg en vivo: activarla cuenta sin esperar a la revisión de la noche.
+- Pestaña «Ficha técnica»: aviso «Lista para activar» (las listas cuadran y la lista en kg sigue archivada) y aviso de
+  lista en kg activa con pendientes.
+- Revisión: pendientes de Ingeniería «Ficha de acabado sin peso o rendimiento» y «Ficha de tejido sin rendimiento»
+  (antes solo salían como «falta un dato» en cada operación, a nombre del área de la máquina). En producción, 9 fichas
+  de tejido sin rendimiento, usadas por 7 telas.
+
+Retirado:
+- Menú «Revisión de listas en kg»: el concentrado Telas trae lo mismo (estado, áreas, filtros, actualizar). «Pendientes
+  por área» se queda.
+
+### «Activa» solo con la lista del flujo
+
+Corregido (visto en el build de main): una tela cuya única lista en kg es la anterior (un renglón, sin operaciones: la
+«Conversión de unidades») salía como «Activa con pendientes». Ahora sale «Con pendientes» con el pendiente de
+Ingeniería «Falta la lista en kg» («solo tiene la lista anterior»), en lugar de «Crudo distinto de la ficha».
+
+### El pendiente de la lista en kg sin operaciones dice lo que pasa
+
+Con datos de producción en el build de main: 8 de las 14 listas «Flujo en kg (borrador)» activas (artículos dados de
+alta el 30-oct) no tienen operaciones. El pendiente decía «solo tiene la lista anterior»; ahora dice que la lista no
+tiene operaciones, sea la anterior o una del flujo sin ruta.
+
+### Rutas por familia y listas generadas desde la ficha (tabla de Innovación)
+
+Dirección General (2026-11-03): Ingeniería mantiene una ruta por familia (las telas del mismo crudo) y la ficha de cada
+tela; Odoo arma la lista en kg y la de metros. Reglas de la tabla «rutas de proceso rev4» de Innovación (2026-07-15,
+105 artículos).
+
+Agregado:
+- **Tela → Rutas por familia** (`ficha.tecnica.ruta` y `.paso`): un crudo, sus pasos (devanado, tintorería, abridora
+  volteado, abridora, rama, inspección y la Clasificación final de la lista en metros) con máquina, cuándo aplica
+  (siempre, solo si se tiñe, solo si se lava) y, si no sale de la ficha, un tiempo fijo. «Armar rutas desde las listas»
+  crea la ruta de cada crudo sin ruta con la máquina más usada por paso en las listas del flujo de sus telas; lo que una
+  tela hace en otra rama u otro jet queda en su ficha, y su consumo de crudo se toma del renglón del crudo.
+- Ficha de acabado, pestaña «Ruta y máquinas»: ruta de la familia, tintorería de lavado o de teñido (por el color del
+  código: NT, NN, OW se lavan; el resto, blanco óptico incluido, se tiñe; se puede cambiar o marcar «sin tintorería»),
+  rama y jet propios de la tela, consumo de crudo por kg y la ruta que se va a generar.
+- «Generar listas desde la ruta» (ficha de acabado, pestaña del producto y ruta de la familia): arma o pone al día la
+  lista en kg y la de metros. Nunca toca una lista activa; lo nuevo nace archivado («Flujo en kg (borrador)»,
+  «Clasificación final (borrador)»). Si la ruta no cambió, no rehace las operaciones; si cambió, los componentes que iban
+  en una operación pasan a la del mismo paso. Los componentes que no son el crudo (fórmula, engomado) se conservan.
+  Después usa los datos de la ficha (tiempos, capacidad de los jets, conversión a metros) y vuelve a revisar la tela.
+  Sin consumo de crudo no crea la lista en kg, y sin rendimiento no crea la de metros: lo avisa.
+
+### Rutas y revisión por MCP; el armado completa los pasos de la tabla de Innovación
+
+Agregado: las rutas por familia, sus pasos y la revisión de listas quedan habilitadas por MCP al instalar o actualizar el
+módulo, si el servidor MCP del repo está instalado (los modelos ya configurados no se tocan). En el build de main no se
+podían usar por MCP: los otros módulos lo hacen solo al instalarse.
+
+Corregido (visto en el build de main con las 42 rutas armadas):
+- «Armar rutas desde las listas» agrega los pasos que la tabla de Innovación pone en todas las telas (devanado,
+  tintorería, abridora, rama, inspección) aunque falten en las listas de la familia: devanado, abridora e inspección
+  con la máquina más usada en la planta; tintorería y rama sin máquina si la familia no la tiene (lo define
+  Ingeniería; «Generar listas» lo avisa). Lo deja anotado en la ruta. También **completa las rutas que ya existen**
+  sin cambiar sus pasos.
+- La Clasificación final se toma solo de operaciones en máquinas sin tipo de ficha (Empaque): una lista en metros
+  vieja traía una circular.
+
+### La lista anterior activa no impide crear la del flujo
+
+Corregido (visto al generar las 42 familias en el build de main): si la única li
+
+Corregido (visto al generar las 42 familias en el build de main): si la única lista activa de una tela es la anterior
+(sin operaciones, como NK100Q46JNT155 o XJ140Q21JNT162), «Generar listas» crea la del flujo archivada junto a ella en
+lugar de avisar que hay una lista activa. La anterior no se toca; Ingeniería decide cuándo cambiarla. Lo mismo con la
+lista en metros.
 
 
 ## 19.0.2.22.0 — 2026-10-30

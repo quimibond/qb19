@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""2.25.0: la ficha técnica en las pantallas nativas (producto, operación, centro de trabajo) y el concentrado."""
+"""2.23.0: la ficha técnica en las pantallas nativas (producto, operación, centro de trabajo) y el concentrado."""
 from odoo.tests import tagged
 
 from .test_tiempo_ficha import TiempoFichaCase
@@ -65,7 +65,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertEqual((accion['res_model'], accion['res_id']), ('ficha.tecnica.proceso', self.p_jet.id))
 
     def test_07_parametros_del_calculo_sin_duplicar(self):
-        """2.26.0: los parámetros que usan los cálculos existen y asegurarlos otra vez no duplica nada."""
+        """2.23.0: los parámetros que usan los cálculos existen y asegurarlos otra vez no duplica nada."""
         Tipo = self.env['ficha.tecnica.maquina.tipo']
         Tipo._ft_asegurar_parametros()
         self.assertFalse(Tipo._ft_asegurar_parametros(), "La segunda vez no crea nada")
@@ -83,7 +83,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertEqual((nuevo.articulo, nuevo.workcenter_id), ('IZZ931Q22JNT165', self.dev))
 
     def test_09_la_ficha_de_acabado_sigue_la_lista_del_flujo(self):
-        """2.26.0: la ruta de la ficha de acabado sale de la lista del flujo aunque esté archivada."""
+        """2.23.0: la ruta de la ficha de acabado sale de la lista del flujo aunque esté archivada."""
         Bom = self.env['mrp.bom']
         Bom.create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
                     'sequence': 0, 'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 1})]})
@@ -99,7 +99,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertIn(self.op_tint, self.acabado.tint_operacion_ids)
 
     def test_10_estado_y_filtros_del_concentrado(self):
-        """2.27.0: el estado de la tela, los filtros por estado y por área y la búsqueda por crudo."""
+        """2.23.0: el estado de la tela, los filtros por estado y por área y la búsqueda por crudo."""
         Tmpl = self.env['product.template']
         tmpl = self.tela_m.product_tmpl_id
         self.assertEqual(tmpl.ft_estado, 'sin_revisar')
@@ -124,7 +124,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertIn(tmpl, Tmpl.search([('ft_estado', '=', 'activa')]))
 
     def test_11_validaciones_de_la_ficha(self):
-        """2.27.0: ficha de tejido sin rendimiento y ficha de acabado sin peso, avisadas a Ingeniería."""
+        """2.23.0: ficha de tejido sin rendimiento y ficha de acabado sin peso, avisadas a Ingeniería."""
         self.tejido.rendimiento_tela_tejida = 0
         self.acabado.peso_acabado = 0
         self.env.invalidate_all()
@@ -135,7 +135,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertIn('peso', revision.pendiente_ids.filtered(lambda p: p.tipo == 'datos_acabado').detalle)
 
     def test_12_crear_la_ficha_desde_el_producto(self):
-        """2.27.0: la ruta empieza en el producto: tela, crudo o acabado en kg sin ficha."""
+        """2.23.0: la ruta empieza en el producto: tela, crudo o acabado en kg sin ficha."""
         Product = self.env['product.product']
         meter = self.env.ref('uom.product_uom_meter')
         tela = Product.create({'name': 'Tela 934 prueba (m)', 'default_code': 'ZZ934Q22JNT165', 'uom_id': meter.id})
@@ -160,14 +160,14 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertEqual(tela.product_tmpl_id.ft_estado, 'sin_revisar')
 
     def test_13_actualizar_la_revision_desde_el_concentrado(self):
-        """2.27.0: el botón de la cabecera llega con los renglones seleccionados como argumento."""
+        """2.23.0: el botón de la cabecera llega con los renglones seleccionados como argumento."""
         from odoo.service.model import call_kw
         accion = call_kw(self.env['product.template'], 'action_ft_actualizar_revision', [[]], {})
         self.assertEqual(accion['tag'], 'reload')
         self.assertTrue(self.env['ficha.tecnica.revision'].search([('acabado_id', '=', self.acabado.id)]))
 
     def test_14_la_lista_anterior_activa_no_es_activa(self):
-        """2.27.1: si la única lista en kg es la anterior (sin operaciones), la tela no está «Activa con pendientes»:
+        """2.23.0: si la única lista en kg es la anterior (sin operaciones), la tela no está «Activa con pendientes»:
         le falta la lista del flujo."""
         self.bom.operation_ids.unlink()
         self.env.invalidate_all()

@@ -26,7 +26,7 @@ Programación de Tintorería.
 cuadran y la lista en kg sigue archivada); *activa con pendientes* (Odoo ya fabrica con ella y algo no cuadra: lo
 primero que hay que ver); *activa*.
 
-## Rutas por familia (2.28.0)
+## Rutas por familia (2.23.0)
 
 Una ruta por crudo (Tela → Rutas por familia) y la ficha de cada tela bastan para que Odoo arme las listas. Reglas de
 la tabla «rutas de proceso rev4» de Innovación (2026-07-15):

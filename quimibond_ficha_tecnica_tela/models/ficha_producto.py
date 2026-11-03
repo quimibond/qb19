@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""La ficha técnica en las pantallas nativas de Odoo (2.25.0, Dirección General 2026-11-03).
+"""La ficha técnica en las pantallas nativas de Odoo (2.23.0, Dirección General 2026-11-03).
 
 Decisión: en lugar de fichas aparte, la gente ve la ficha donde Odoo ya pone las cosas:
 
 - **Producto** (la tela, su producto en kg o el crudo): pestaña «Ficha técnica» con los datos de la tela (peso,
   ancho, rendimiento, editables ahí mismo), su crudo, la ruta que sale de sus listas de materiales (operaciones con la
-  duración de la lista contra la de sus parámetros), la especificación y los pendientes de la revisión (2.24.0). En un
+  duración de la lista contra la de sus parámetros), la especificación y los pendientes de la revisión (2.23.0). En un
   crudo: sus datos, las circulares donde se teje y las telas que lo usan.
 - **Operación** de la lista de materiales: los parámetros del proceso de la tela en su máquina y en sus alternativas.
 - **Centro de trabajo**: las telas que corren ahí.
@@ -16,7 +16,7 @@ el SGI, el costeo y la Programación de Tintorería; estas pantallas los muestra
 """
 from odoo import api, fields, models
 
-# 2.27.0: dónde va cada tela en el camino a producción (de la revisión de la noche o de «Volver a revisar»; si la lista
+# 2.23.0: dónde va cada tela en el camino a producción (de la revisión de la noche o de «Volver a revisar»; si la lista
 # en kg se activó después, ya cuenta: se lee de la lista).
 FT_ESTADOS = [
     ('sin_revisar', 'Sin revisar'),
@@ -51,7 +51,7 @@ def ft_tipo_codigo(code):
 class ProductTemplateFichaNativa(models.Model):
     _inherit = 'product.template'
 
-    # 2.25.0: todo calculado, nunca «related» a través de la ficha: la ficha del producto es un campo calculado sin
+    # 2.23.0: todo calculado, nunca «related» a través de la ficha: la ficha del producto es un campo calculado sin
     # guardar y un related sobre él hace que Odoo busque por ese campo cada vez que cambia la ficha (y revienta).
     ft_tiene_ficha = fields.Boolean(string='Tiene ficha técnica', compute='_compute_ft_ficha_nativa')
     ft_es_tela = fields.Boolean(string='Es tela con ficha', compute='_compute_ft_ficha_nativa', search='_search_ft_es_tela',
@@ -97,7 +97,7 @@ class ProductTemplateFichaNativa(models.Model):
     ft_revision_areas = fields.Char(string='Áreas con pendientes', compute='_compute_ft_ficha_nativa')
     ft_area_pendiente = fields.Selection(FT_AREAS, string='Área con pendientes', compute='_compute_ft_area_pendiente',
                                          search='_search_ft_area_pendiente')
-    # 2.27.0: un producto con código de tela, de acabado en kg o de crudo y sin ficha: la pestaña ofrece crearla.
+    # 2.23.0: un producto con código de tela, de acabado en kg o de crudo y sin ficha: la pestaña ofrece crearla.
     ft_tipo_codigo = fields.Selection([('tela', 'Tela acabada'), ('kg', 'Acabado en kg'), ('crudo', 'Crudo')],
                                       string='Tipo por código', compute='_compute_ft_tipo_codigo')
     ft_tela_m_de_kg_id = fields.Many2one('product.product', string='Tela en metros de este acabado en kg',
@@ -169,7 +169,7 @@ class ProductTemplateFichaNativa(models.Model):
     def _ft_estado_de(self, revision):
         if not revision:
             return 'sin_revisar'
-        # 2.27.1: «activa» solo si es la lista del flujo (con operaciones); la anterior activa no cuenta.
+        # 2.23.0: «activa» solo si es la lista del flujo (con operaciones); la anterior activa no cuenta.
         bom = revision.bom_kg_id
         activa = bom.active and bool(bom.with_context(active_test=False).operation_ids)
         if revision.listo:
@@ -276,17 +276,17 @@ class ProductTemplateFichaNativa(models.Model):
         return True
 
     def action_ft_generar_listas(self):
-        """2.28.0: «Generar listas desde la ruta» desde la pestaña del producto."""
+        """2.23.0: «Generar listas desde la ruta» desde la pestaña del producto."""
         return self.ficha_tecnica_acabado_id.action_ft_generar_listas()
 
     def action_ft_actualizar_revision(self):
-        """2.27.0: botón «Actualizar la revisión» del concentrado (rehace la de todas las telas, como la de la
+        """2.23.0: botón «Actualizar la revisión» del concentrado (rehace la de todas las telas, como la de la
         noche). Método de registros: el botón de la cabecera llega con los renglones seleccionados."""
         self.env['ficha.tecnica.revision']._cron_ft_actualizar()
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_ft_crear_ficha(self):
-        """2.27.0: crea la ficha desde el producto. Abre el formulario nuevo con lo que sale del producto (artículo,
+        """2.23.0: crea la ficha desde el producto. Abre el formulario nuevo con lo que sale del producto (artículo,
         producto y, en una tela, su acabado en kg por código); lo demás (la ficha de tejido base, los datos) lo
         captura quien la crea. En un acabado en kg abre su tela en metros: la ficha va ahí."""
         self.ensure_one()
@@ -358,7 +358,7 @@ class MrpRoutingWorkcenterParametros(models.Model):
             op.ft_param_proceso_ids = procesos
 
     def action_ft_nuevo_proceso(self):
-        """2.26.0: crea los datos de la tela en la máquina de la operación (con el código de la lista) y los abre."""
+        """2.23.0: crea los datos de la tela en la máquina de la operación (con el código de la lista) y los abre."""
         self.ensure_one()
         product = self.bom_id.product_id or self.bom_id.product_tmpl_id.product_variant_ids[:1]
         proceso = self.ft_proceso_id or self.env['ficha.tecnica.proceso'].create({

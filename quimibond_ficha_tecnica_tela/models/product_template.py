@@ -35,7 +35,7 @@ class ProductTemplate(models.Model):
             tmpl.ficha_tecnica_acabado_count = 1 if ficha else 0
 
     def action_view_ficha_tecnica_tejido(self):
-        """2.26.0: todas las fichas de tejido del crudo (una por circular), no solo la primera."""
+        """2.23.0: todas las fichas de tejido del crudo (una por circular), no solo la primera."""
         self.ensure_one()
         fichas = self.env['ficha.tecnica.tejido'].search(
             [('product_proceso_id', 'in', self.with_context(active_test=False).product_variant_ids.ids)])

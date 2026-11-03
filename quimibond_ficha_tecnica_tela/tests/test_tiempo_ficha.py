@@ -9,7 +9,7 @@ from odoo.tools import float_round
 
 
 class TiempoFichaCase(TransactionCase):
-    """Datos comunes (2.24.0: también los usa la revisión de listas): una tela ZZ931 con su lista en kg (devanado,
+    """Datos comunes (2.23.0: también los usa la revisión de listas): una tela ZZ931 con su lista en kg (devanado,
     tintorería, abridora, inspección), su lista en metros y sus procesos."""
 
     @classmethod

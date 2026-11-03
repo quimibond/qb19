@@ -77,6 +77,6 @@ class TestTiempoRama(TransactionCase):
 
     def test_04_varias_listas_tambien_archivadas(self):
         self.bom.action_archive()
-        self.bom.action_ft_datos_ficha()  # 2.26.0: «Usar los datos de la ficha» (el alias viejo se retiró)
+        self.bom.action_ft_datos_ficha()  # 2.23.0: «Usar los datos de la ficha» (el alias viejo se retiró)
         self.assertAlmostEqual(self.op_rama.time_cycle_manual, round(1000.0 / (53 * 1.65) * 0.9 / 35, 4), places=6)
         self.assertEqual(self.op_abrir.time_cycle_manual, 0.1)

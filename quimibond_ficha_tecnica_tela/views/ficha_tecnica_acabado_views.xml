@@ -155,7 +155,7 @@
                                 máquina de la operación y sus alternativas como las ve el planificador: ✓ el artículo corre
                                 ahí, ✗ no hay proceso del artículo, ⚠ la máquina no está operando, ○ el artículo corre en
                                 otra máquina que no es alternativa.</p>
-                            <!-- 2.28.0: la ruta de la familia (crudo) y lo propio de la tela; las listas se generan desde aquí. -->
+                            <!-- 2.23.0: la ruta de la familia (crudo) y lo propio de la tela; las listas se generan desde aquí. -->
                             <group string="Ruta de la familia">
                                 <group>
                                     <field name="ruta_familia_id" readonly="1"/>

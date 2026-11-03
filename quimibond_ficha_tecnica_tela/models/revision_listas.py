@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Revisión de las listas en kg contra la ficha (2.24.0, Dirección General 2026-11-03).
+"""Revisión de las listas en kg contra la ficha (2.23.0, Dirección General 2026-11-03).
 
 Lo que revisó la auditoría de las listas en kg (scripts de Dirección, octubre 2026), dentro de Odoo, para que cada área
 vea sus pendientes sin esperar correos y para saber qué telas pueden entrar en cada ola:
@@ -84,7 +84,7 @@ class FichaTecnicaRevision(models.Model):
     def _ft_bom_de(self, product):
         """La lista de materiales normal del producto que corresponde al flujo en kg (también las archivadas).
 
-        2.25.1: no «la activa primero». En la transición, 44 de las 111 telas tienen activa la lista vieja (un solo
+        2.23.0: no «la activa primero». En la transición, 44 de las 111 telas tienen activa la lista vieja (un solo
         renglón con el teñido, sin operaciones) y archivada la nueva («Flujo en kg (borrador)», con operaciones) hasta
         que Ingeniería la revise. Orden: las que no dicen «no usar» en la referencia, las que tienen operaciones, la
         activa, la secuencia."""
@@ -149,7 +149,7 @@ class FichaTecnicaRevision(models.Model):
                 'bom_m_id': bom_m.id, 'fecha': fields.Datetime.now()}
         pendientes = []
         ing = {'area': 'ingenieria'}
-        # 2.27.0: los datos de la ficha que usan los cálculos, avisados en su origen (antes solo salían como «falta un
+        # 2.23.0: los datos de la ficha que usan los cálculos, avisados en su origen (antes solo salían como «falta un
         # dato» en cada operación, a nombre del área de la máquina).
         faltan = [nombre for nombre, valor in (('peso', acabado.peso_acabado),
                                                 ('rendimiento de tela acabada', acabado.rendimiento_tela_acabada))
@@ -170,9 +170,9 @@ class FichaTecnicaRevision(models.Model):
             pendientes.append(dict(ing, tipo='lista_kg', detalle='%s no tiene lista de materiales.' % (
                 proceso.default_code or proceso.name)))
         elif not bom_kg.with_context(active_test=False).operation_ids:
-            # 2.27.1: la única lista es la anterior (un renglón, sin operaciones: la «Conversión de unidades» que
+            # 2.23.0: la única lista es la anterior (un renglón, sin operaciones: la «Conversión de unidades» que
             # consume la tela en metros); falta la del flujo en kg. Antes salía como «crudo distinto».
-            # 2.27.2: también una «Flujo en kg» sin ruta (8 activas en producción, 2026-11-03).
+            # 2.23.0: también una «Flujo en kg» sin ruta (8 activas en producción, 2026-11-03).
             pendientes.append(dict(ing, tipo='lista_kg', bom_id=bom_kg.id, detalle='La lista en kg de %s no tiene '
                                    'operaciones: es la lista anterior o le falta la ruta (Devanado → Tintorería → '
                                    'Abridora → Rama → Inspección).' % (proceso.default_code or proceso.name)))
@@ -226,7 +226,7 @@ class FichaTecnicaRevision(models.Model):
         self._ft_actualizar()
 
     def action_ft_actualizar(self):
-        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas. 2.25.1: método de registros (sin
+        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas. 2.23.0: método de registros (sin
         ``@api.model``): el botón de la cabecera lo llama con los renglones seleccionados (o ninguno) y un
         ``@api.model`` recibía ese argumento de más («takes 1 positional argument but 2 were given»)."""
         self.env['ficha.tecnica.revision']._cron_ft_actualizar()

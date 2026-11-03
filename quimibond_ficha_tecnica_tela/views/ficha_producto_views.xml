@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.25.0 (Dirección General 2026-11-03): la ficha técnica en las pantallas nativas de Odoo. Extienden vistas de
-         product y mrp (otros módulos). 2.26.0: los parámetros de la operación pasan a tiempo_ficha_views.xml (una
+    <!-- 2.23.0 (Dirección General 2026-11-03): la ficha técnica en las pantallas nativas de Odoo. Extienden vistas de
+         product y mrp (otros módulos). 2.23.0: los parámetros de la operación pasan a tiempo_ficha_views.xml (una
          sola herencia del formulario de operación); en el centro de trabajo se pueden agregar telas. -->
 
     <!-- ===== Producto: pestaña «Ficha técnica» (primera, solo si el producto tiene ficha) ===== -->
@@ -134,7 +134,7 @@
                         </list>
                     </field>
                 </page>
-                <!-- 2.27.0: producto con código de tela, acabado en kg o crudo y sin ficha: la ruta empieza aquí -->
+                <!-- 2.23.0: producto con código de tela, acabado en kg o crudo y sin ficha: la ruta empieza aquí -->
                 <page string="Ficha técnica" name="ft_ficha_tecnica_nueva"
                       invisible="ft_tiene_ficha or not ft_tipo_codigo">
                     <field name="ft_tipo_codigo" invisible="1"/>

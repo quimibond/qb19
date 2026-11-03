@@ -94,7 +94,7 @@ class FichaTecnicaMaquinaTipo(models.Model):
         for tipo in self:
             tipo.workcenter_count = len(tipo.workcenter_ids)
 
-    # 2.26.0: los parámetros que usan los cálculos del módulo (tiempos, capacidad de jets). En producción ya existen
+    # 2.23.0: los parámetros que usan los cálculos del módulo (tiempos, capacidad de jets). En producción ya existen
     # (los dio de alta la planta, sin xmlid); una instalación nueva no los tenía. Solo se crean los que falten.
     PARAMETROS_DEL_CALCULO = [
         # (tipo, clave, nombre, unidad, clase, ámbito)

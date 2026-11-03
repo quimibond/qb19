@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 2.24.0 (Dirección General 2026-11-03): revisión de las listas en kg contra la ficha, por tela y por área. -->
+    <!-- 2.23.0 (Dirección General 2026-11-03): revisión de las listas en kg contra la ficha, por tela y por área. -->
 
     <record id="view_ficha_tecnica_revision_list" model="ir.ui.view">
         <field name="name">ficha.tecnica.revision.list</field>
