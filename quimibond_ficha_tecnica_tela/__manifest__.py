@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.25.0',
+    'version': '19.0.2.25.1',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -95,6 +95,8 @@ Incluye:
 - 2.25.0: la ficha en las pantallas nativas: pestaña «Ficha técnica» en el producto (tela, crudo, ruta de sus listas,
   especificación y pendientes; peso, ancho y rendimiento se editan ahí), parámetros del proceso en la operación y
   «Telas que corren aquí» en el centro de trabajo. La app queda como concentrado: Telas y Crudos abren el producto.
+- 2.25.1: la pestaña y la revisión toman la lista del flujo en kg (con operaciones) aunque esté archivada, no la vieja
+  activa; las que dicen «no usar» van al final.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',

@@ -80,14 +80,26 @@ class FichaTecnicaRevision(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _ft_bom_de(self, product):
-        """La lista de materiales normal del producto (la activa primero; también las archivadas)."""
+        """La lista de materiales normal del producto que corresponde al flujo en kg (también las archivadas).
+
+        2.25.1: no «la activa primero». En la transición, 44 de las 111 telas tienen activa la lista vieja (un solo
+        renglón con el teñido, sin operaciones) y archivada la nueva («Flujo en kg (borrador)», con operaciones) hasta
+        que Ingeniería la revise. Orden: las que no dicen «no usar» en la referencia, las que tienen operaciones, la
+        activa, la secuencia."""
+        Bom = self.env['mrp.bom']
         if not product:
-            return self.env['mrp.bom']
-        return self.env['mrp.bom'].with_context(active_test=False).search([
+            return Bom
+        boms = Bom.with_context(active_test=False).search([
             ('type', '=', 'normal'),
             '|', ('product_id', '=', product.id),
             '&', ('product_id', '=', False), ('product_tmpl_id', '=', product.product_tmpl_id.id)],
-            order='active desc, sequence, id', limit=1)
+            order='sequence, id')
+        if not boms:
+            return Bom
+
+        def clave(bom):
+            return ('no usar' in (bom.code or '').lower(), not bom.operation_ids, not bom.active, bom.sequence, bom.id)
+        return min(boms, key=clave)
 
     @api.model
     def _ft_pendientes_operacion(self, op, product):
@@ -190,10 +202,11 @@ class FichaTecnicaRevision(models.Model):
         self.sudo().search([('acabado_id.active', '=', False)]).unlink()
         self._ft_actualizar()
 
-    @api.model
     def action_ft_actualizar(self):
-        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas."""
-        self._cron_ft_actualizar()
+        """Botón «Actualizar» de la lista: rehace la revisión de todas las telas. 2.25.1: método de registros (sin
+        ``@api.model``): el botón de la cabecera lo llama con los renglones seleccionados (o ninguno) y un
+        ``@api.model`` recibía ese argumento de más («takes 1 positional argument but 2 were given»)."""
+        self.env['ficha.tecnica.revision']._cron_ft_actualizar()
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_ft_datos_ficha(self):
