@@ -85,6 +85,14 @@ class TestClasificacionFinal(TransactionCase):
         wiz.production_id._clasif_move_a()
         self.assertFalse(wiz.rollo_id)
 
+    def test_07_orden_previa_por_cadena_mto(self):
+        """La MO en metros reconoce a la MO en kg que la abastece (base de la planeación encadenada)."""
+        self.assertFalse(self.orden_b._ordenes_previas())
+        terminado_a = self.orden_a.move_finished_ids.filtered(lambda m: m.product_id == self.prod_a)
+        consumo_a = self.orden_b._clasif_move_a()
+        consumo_a.move_orig_ids = terminado_a
+        self.assertEqual(self.orden_b._ordenes_previas(), self.orden_a)
+
     def test_06_siglas_requeridas(self):
         wiz = self.env['rollo.clasificacion.wizard'].new({
             'production_id': self.orden_b.id, 'workorder_id': self.workorder.id})
