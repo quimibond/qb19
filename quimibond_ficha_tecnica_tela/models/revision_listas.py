@@ -172,9 +172,10 @@ class FichaTecnicaRevision(models.Model):
         elif not bom_kg.with_context(active_test=False).operation_ids:
             # 2.27.1: la única lista es la anterior (un renglón, sin operaciones: la «Conversión de unidades» que
             # consume la tela en metros); falta la del flujo en kg. Antes salía como «crudo distinto».
-            pendientes.append(dict(ing, tipo='lista_kg', bom_id=bom_kg.id, detalle='%s solo tiene la lista anterior '
-                                   '(sin operaciones): falta la lista del flujo en kg.' % (
-                                       proceso.default_code or proceso.name)))
+            # 2.27.2: también una «Flujo en kg» sin ruta (8 activas en producción, 2026-11-03).
+            pendientes.append(dict(ing, tipo='lista_kg', bom_id=bom_kg.id, detalle='La lista en kg de %s no tiene '
+                                   'operaciones: es la lista anterior o le falta la ruta (Devanado → Tintorería → '
+                                   'Abridora → Rama → Inspección).' % (proceso.default_code or proceso.name)))
         else:
             esperado = acabado.tejido_id.product_proceso_id
             crudo = next((line.product_id for line in bom_kg.bom_line_ids

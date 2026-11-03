@@ -7,6 +7,14 @@ por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual
 (`tools/check_addons.py --base-ref` lo exige).
 
 
+## 19.0.2.27.2 — 2026-11-03
+
+**El pendiente de la lista en kg sin operaciones dice lo que pasa**
+
+Con datos de producción en el build de main: 8 de las 14 listas «Flujo en kg (borrador)» activas (artículos dados de
+alta el 30-oct) no tienen operaciones. El pendiente decía «solo tiene la lista anterior»; ahora dice que la lista no
+tiene operaciones, sea la anterior o una del flujo sin ruta.
+
 ## 19.0.2.27.1 — 2026-11-03
 
 **«Activa» solo con la lista del flujo**
