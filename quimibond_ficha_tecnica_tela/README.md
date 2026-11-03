@@ -904,8 +904,8 @@ máquinas), en rojo si el de la lista es otro; **Usar el tiempo de la ficha** (e
 rama de la ficha** (Acción sobre una o varias listas, también archivadas) lo pasa a la lista como tiempo fijo. Un
 ciclo es la capacidad de la máquina para el producto (1 kg si no está capturada).
 
-El tiempo no se escribe solo: la planta decide cuándo pasarlo a la lista. Inspección queda fuera hasta que el área
-defina su fórmula y sus datos.
+El tiempo no se escribe solo: la planta decide cuándo pasarlo a la lista. (Inspección, devanado, abridora y
+tintorería entran en 2.23.0.)
 
 Prueba: `tests/test_tiempo_rama.py`.
 
@@ -914,3 +914,48 @@ fallaban en staging. Ahora usan códigos que no existen en producción (`test_av
 máquina propio para la abridora (`test_acabado_ruta`; la Abridora de producción ya tiene parámetros del artículo) y
 cuentan solo lo que siembra el módulo (`test_caracteristicas`). El duplicado a propósito de `test_procesos.test_03`
 ya no deja un ERROR de la base en el log (`mute_logger`).
+
+## Tiempos, capacidad de jets y conversión a metros desde la ficha (2.23.0, Dirección General 2026-11-02)
+
+El tiempo de la ficha (2.22.0) se extiende a las demás operaciones de la lista en kg, con las mismas cuentas con que
+se cargaron los tiempos en producción el 30-oct:
+
+| Operación | Cuenta | Datos |
+|---|---|---|
+| Rama | 1000 ÷ (peso × ancho bajando de rama) × (1 − merma) ÷ velocidad | ficha de acabado + proceso en la rama |
+| Inspección | rendimiento de tela acabada (m/kg) × 60 ÷ velocidad (m/h) | ficha de acabado + `velocidad_inspeccion` (rollos con 1 empalme) |
+| Devanado | kg de crudo por kg de la lista × rendimiento de tejido ÷ velocidad (m/min) | línea del crudo (la que tiene ficha de tejido) + `velocidad` |
+| Abridora | igual que devanado | `velocidad_tubular` o `velocidad_abierta` según la salida de la tela del tejido; si no, `velocidad` |
+| Tintorería | **minutos por baño** | `tiempo_ciclo` del artículo en el jet (h); si no, los minutos de la fórmula de la lista en ese jet |
+
+Rama, inspección, devanado y abridora se multiplican por la capacidad del ciclo (1 kg si no está capturada).
+Tintorería no: un ciclo de Odoo es un baño, así que solo hay tiempo de la ficha si el jet tiene capturada la capacidad
+para el producto (si no, lo dice). El orden de tintorería (tiempo de ciclo del artículo, luego fórmula) es el de la
+Programación de Tintorería.
+
+**Capacidad de los jets.** Cada renglón de capacidad con producto en un jet (Centro de trabajo → Capacidades) muestra
+la **Capacidad de la ficha** y su origen, en rojo si la capturada es otra. La regla es la de la Programación: «kg por
+carga» del artículo en el jet; si no, la banda de su rendimiento de tejido (A 3–7, B 7–11, C 11–16 m/kg) topada a la
+capacidad general; un jet sin bandas usa la general. Banda N/A o rendimiento fuera de las bandas: no hay capacidad. Se
+corrige en el renglón, con **Usar las capacidades de la ficha (jets)** sobre uno o varios centros de trabajo, o desde
+las listas.
+
+**Conversión kg → m.** La lista en metros de una tela acabada con ficha consume su acabado en proceso: metros ÷
+rendimiento de tela acabada. Si la cantidad difiere más de 0.5 %, la lista lo avisa arriba con el cálculo y un botón;
+el filtro **Conversión kg → m distinta de la ficha** las encuentra todas (también archivadas).
+
+**Usar los datos de la ficha** (Acción sobre una o varias listas, también archivadas; antes «Usar el tiempo de rama
+de la ficha») hace las tres cosas: capacidad del jet de la operación de tintorería (y de sus alternativas con proceso
+del artículo, creando el renglón si falta), tiempos de todas las operaciones y conversión. Nada se escribe solo.
+
+**Una sola regla de capacidad en fichas** (`mrp.workcenter._ft_regla_capacidad`). En fichas había dos copias: la de
+los avisos y el costeo (`_ft_capacidad_carga`, que no topaba la banda a la general) y la de la capacidad por producto.
+Ahora las dos llaman a la misma regla, que es la de la Programación de Tintorería; cambia solo cuánto toleran: los
+avisos y el costeo, que estiman, usan la capacidad general cuando la tela no tiene rendimiento o cae fuera de las
+bandas. La Programación (`_capacidad_jet`) conserva por ahora su propia copia de la misma regla: pasarla a
+`_ft_regla_capacidad` queda para cuando José Sacramento revise su módulo (Dirección General, 2026-11-03).
+
+**Filtro en Operaciones:** «Tiempo distinto de la ficha» (Fabricación → Configuración → Operaciones) junta todas las
+operaciones cuyo tiempo no es el de la ficha, también las de listas archivadas, sin abrir lista por lista.
+
+Pruebas: `tests/test_tiempo_ficha.py`.

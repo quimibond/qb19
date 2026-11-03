@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- 2.22.0 (Dirección General 2026-10-30): el tiempo de rama sale de la ficha (peso × ancho bajando de rama ×
-         merma ÷ velocidad). Extienden vistas de mrp (otro módulo). -->
+         merma ÷ velocidad). 2.23.0: también inspección, devanado, abridora y tintorería (por baño). Extienden vistas
+         de mrp (otro módulo). -->
 
     <record id="view_mrp_routing_workcenter_form_ft_tiempo" model="ir.ui.view">
         <field name="name">mrp.routing.workcenter.form.ft.tiempo</field>
@@ -37,12 +38,25 @@
         </field>
     </record>
 
+    <!-- 2.23.0: todas las operaciones cuyo tiempo no es el de la ficha, sin abrir lista por lista. -->
+    <record id="view_mrp_routing_workcenter_search_ft_tiempo" model="ir.ui.view">
+        <field name="name">mrp.routing.workcenter.search.ft.tiempo</field>
+        <field name="model">mrp.routing.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_routing_workcenter_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='inactive']" position="after">
+                <filter string="Tiempo distinto de la ficha" name="ft_tiempo_difiere"
+                        domain="[('ft_tiempo_difiere', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="action_mrp_bom_ft_tiempos_rama" model="ir.actions.server">
-        <field name="name">Usar el tiempo de rama de la ficha</field>
+        <field name="name">Usar los datos de la ficha (tiempos, capacidad de jets y conversión a metros)</field>
         <field name="model_id" ref="mrp.model_mrp_bom"/>
         <field name="binding_model_id" ref="mrp.model_mrp_bom"/>
         <field name="binding_view_types">list,form</field>
         <field name="state">code</field>
-        <field name="code">records.action_ft_tiempos_rama()</field>
+        <field name="code">records.action_ft_datos_ficha()</field>
     </record>
 </odoo>
