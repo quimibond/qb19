@@ -169,7 +169,9 @@ class ProductTemplateFichaNativa(models.Model):
     def _ft_estado_de(self, revision):
         if not revision:
             return 'sin_revisar'
-        activa = revision.bom_kg_id.active
+        # 2.27.1: «activa» solo si es la lista del flujo (con operaciones); la anterior activa no cuenta.
+        bom = revision.bom_kg_id
+        activa = bom.active and bool(bom.with_context(active_test=False).operation_ids)
         if revision.listo:
             return 'activa' if activa else 'para_activar'
         return 'activa_pendientes' if activa else 'pendientes'

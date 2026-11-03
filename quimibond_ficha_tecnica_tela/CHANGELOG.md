@@ -7,6 +7,14 @@ por versión); en 2.26.0 se movió aquí tal cual y el README quedó como manual
 (`tools/check_addons.py --base-ref` lo exige).
 
 
+## 19.0.2.27.1 — 2026-11-03
+
+**«Activa» solo con la lista del flujo**
+
+Corregido (visto en el build de main): una tela cuya única lista en kg es la anterior (un renglón, sin operaciones: la
+«Conversión de unidades») salía como «Activa con pendientes». Ahora sale «Con pendientes» con el pendiente de
+Ingeniería «Falta la lista en kg» («solo tiene la lista anterior»), en lugar de «Crudo distinto de la ficha».
+
 ## 19.0.2.27.0 — 2026-11-03
 
 **La ruta de la tela de punta a punta: crear la ficha desde el producto, el estado en el concentrado, validaciones**
