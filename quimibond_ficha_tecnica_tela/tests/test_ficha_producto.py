@@ -90,5 +90,10 @@ class TestFichaProducto(TiempoFichaCase):
         self.bom.action_archive()
         self.env.invalidate_all()
         self.assertEqual(self.acabado.crudo_id, self.crudo)
-        self.assertLessEqual(set(self.bom.with_context(active_test=False).operation_ids.ids),
-                             set(self.acabado.operacion_ids.ids))
+        ops = self.bom.with_context(active_test=False).operation_ids
+        self.assertTrue(ops)
+        self.assertLessEqual(set(ops.ids), set(self.acabado.operacion_ids.ids),
+                             "Archivadas también: al leer el campo Odoo no las descarta")
+        self.assertLessEqual(set(ops.ids), set(self.tela_m.product_tmpl_id.ft_operacion_ids.ids),
+                             "La ruta en la pestaña del producto, igual")
+        self.assertIn(self.op_tint, self.acabado.tint_operacion_ids)

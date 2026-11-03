@@ -48,7 +48,7 @@ class ProductTemplateFichaNativa(models.Model):
     ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa')
     # La ruta y la revisión.
     ft_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Ruta (operaciones de sus listas)',
-                                        compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa', context={'active_test': False})
     ft_bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg', compute='_compute_ft_ficha_nativa')
     ft_bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros', compute='_compute_ft_ficha_nativa')
     ft_revision_id = fields.Many2one('ficha.tecnica.revision', string='Revisión de la tela',

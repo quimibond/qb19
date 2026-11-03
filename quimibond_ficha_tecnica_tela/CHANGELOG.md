@@ -26,6 +26,9 @@ Corregido:
   máquinas» y «Tintorería») tomaba la lista activa, que en 43 telas es la vieja; ahora la del flujo en kg, con la misma
   regla que la revisión y la pestaña del producto (2.25.1), y con sus operaciones aunque estén archivadas (al archivar
   una lista Odoo archiva sus operaciones). Afecta también «Lleva tintorería» del SGI, que lee esa pestaña.
+- Las operaciones de la ruta (ficha de acabado, su pestaña Tintorería y la pestaña «Ficha técnica» del producto)
+  llevan `active_test=False` en el campo: el cálculo ya traía las archivadas, pero al leer el campo Odoo las
+  descartaba y la ruta salía vacía en las telas con la lista del flujo archivada.
 
 Agregado:
 - Operación: «Agregar los datos de la tela en esta máquina» cuando la máquina no tiene proceso de la tela.

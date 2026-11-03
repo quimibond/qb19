@@ -46,7 +46,9 @@ class FichaTecnicaAcabadoRuta(models.Model):
     bom_id = fields.Many2one('mrp.bom', string='Lista de materiales del acabado', compute='_compute_ruta')
     crudo_id = fields.Many2one('product.product', string='Crudo (de la lista de materiales)', compute='_compute_ruta')
     crudo_aviso = fields.Char(string='Aviso del crudo', compute='_compute_ruta')
-    operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones', compute='_compute_ruta')
+    # 2.26.0: active_test en el campo; si no, al leerlo Odoo descarta las operaciones archivadas de la lista del flujo.
+    operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones', compute='_compute_ruta',
+                                     context={'active_test': False})
     operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Acabado en proceso (kg)', index=True,

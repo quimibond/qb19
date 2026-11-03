@@ -49,7 +49,7 @@ class FichaTecnicaAcabadoTintoreria(models.Model):
     _inherit = 'ficha.tecnica.acabado'
 
     tint_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones de tintorería',
-                                          compute='_compute_tintoreria')
+                                          compute='_compute_tintoreria', context={'active_test': False})
     tint_proceso_ids = fields.Many2many('ficha.tecnica.proceso', string='El artículo en los jets',
                                         compute='_compute_tintoreria')
     tint_linea_ids = fields.Many2many('mrp.bom.line', string='Fórmula y auxiliares', compute='_compute_tintoreria')
