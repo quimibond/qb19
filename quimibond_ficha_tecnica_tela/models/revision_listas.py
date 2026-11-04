@@ -51,7 +51,7 @@ TIPOS = [
     ('datos_tejido', 'Ficha de tejido sin rendimiento'),
     ('tipo_operacion', 'Lista sin tipo de operación'),
     ('desperdicio', 'Lista en kg sin desperdicio de Rama'),
-    ('ruta_mto', 'Acabado en kg sin la ruta MTO'),
+    ('ruta_mto', 'Producto sin la ruta del flujo'),
 ]
 
 
@@ -231,6 +231,14 @@ class FichaTecnicaRevision(models.Model):
                 pendientes.append(dict(ing, tipo='ruta_mto', bom_id=bom_kg.id, detalle='%s no tiene la ruta «%s»: la '
                                        'orden en metros no pide la orden en kg.' % (
                                            proceso.default_code or proceso.name, ruta.name)))
+        # 2.25.0: la lista en metros activa del flujo necesita la ruta «Fabricar Tela m» en la tela.
+        from .ruta_familia import CODIGO_M as _CM  # local: ruta_familia se carga después
+        if bom_m and bom_m.active and bom_m.code == _CM:
+            ruta_m = self.env['mrp.bom']._ft_ruta_flujo('m', bom_m.company_id or None)
+            if ruta_m and ruta_m not in bom_m.product_tmpl_id.route_ids:
+                pendientes.append(dict(ing, tipo='ruta_mto', bom_id=bom_m.id, detalle='%s no tiene la ruta «%s»: el plan '
+                                       'maestro no puede pedir la orden en metros.' % (
+                                           tela_m.default_code or tela_m.name, ruta_m.name)))
         areas = {p['area'] for p in pendientes}
         vals.update({
             'n_pendientes': len(pendientes), 'listo': not pendientes,

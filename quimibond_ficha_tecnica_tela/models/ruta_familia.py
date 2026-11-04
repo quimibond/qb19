@@ -531,28 +531,49 @@ class MrpBomDesperdicioRama(models.Model):
         self.filtered(lambda b: b.consumption != 'flexible').write({'consumption': 'flexible'})
 
     @api.model
-    def _ft_ruta_mto_kg(self, company=None):
-        """La ruta MTO que fabrica el acabado en kg: la que tiene una regla de fabricación con el tipo OP-KG."""
-        tipo = self._ft_tipo_operacion('kg', company)
+    def _ft_ruta_flujo(self, cual, company=None):
+        """La ruta que fabrica la lista del flujo: la que tiene una regla de fabricación con su tipo de operación (OP-KG,
+        «Fabricar Tela kg → Inspección (MTO)»; OP-M, «Fabricar Tela m»)."""
+        tipo = self._ft_tipo_operacion(cual, company)
         if not tipo:
             return self.env['stock.route']
         regla = self.env['stock.rule'].search([('action', '=', 'manufacture'), ('picking_type_id', '=', tipo.id),
                                                ('route_id.active', '=', True)], limit=1)
         return regla.route_id
 
+    @api.model
+    def _ft_ruta_mto_kg(self, company=None):
+        """La ruta MTO que fabrica el acabado en kg: la que tiene una regla de fabricación con el tipo OP-KG."""
+        return self._ft_ruta_flujo('kg', company)
+
+    def _ft_poner_ruta_flujo(self, cual):
+        """2.25.0: el producto de la lista recibe la ruta del flujo y, si está en el plan maestro (MPS), esa ruta pasa a
+        ser la preferida (antes «Convertir Unidades» o «Producir Acabado», el flujo anterior)."""
+        for bom in self:
+            ruta = self._ft_ruta_flujo(cual, bom.company_id or None)
+            if not ruta:
+                continue
+            tmpl = bom.product_tmpl_id
+            if ruta not in tmpl.route_ids:
+                tmpl.route_ids = [(4, ruta.id)]
+            if 'mrp.production.schedule' in self.env:
+                planes = self.env['mrp.production.schedule'].sudo().search([
+                    ('product_id.product_tmpl_id', '=', tmpl.id), ('route_id', '!=', ruta.id)])
+                planes.write({'route_id': ruta.id})
+
     def _ft_preparar_activacion(self):
         """2.25.0: al activar una lista del flujo (visto bueno de Ingeniería) se completa lo que la orden necesita: tipo
-        de operación, consumo flexible y, en la lista en kg, el desperdicio de Rama y la ruta MTO del «I…»."""
+        de operación, consumo flexible, la ruta del flujo en el producto (y en su plan maestro) y, en la lista en kg, el
+        desperdicio de Rama."""
         for bom in self:
             if bom.code == CODIGO_KG:
                 bom._ft_poner_tipo_operacion('kg')
                 bom._ft_poner_desperdicio()
-                ruta = self._ft_ruta_mto_kg(bom.company_id or None)
-                if ruta and ruta not in bom.product_tmpl_id.route_ids:
-                    bom.product_tmpl_id.route_ids = [(4, ruta.id)]
+                bom._ft_poner_ruta_flujo('kg')
             elif bom.code == CODIGO_M:
                 bom._ft_poner_tipo_operacion('m')
                 self.env['ficha.tecnica.acabado']._ft_poner_saldos(bom)
+                bom._ft_poner_ruta_flujo('m')
             else:
                 continue
             bom._ft_poner_consumo_flexible()
