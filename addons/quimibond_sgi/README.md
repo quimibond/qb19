@@ -536,7 +536,6 @@ límite de intentos (Q12).
 | Módulo | Qué agrega | Se instala |
 |---|---|---|
 | `quimibond_sgi_mapa` | El mapa de procesos de producción (JSON) y el asistente de carga | A mano, solo staging o recuperación |
-| `quimibond_sgi_pesaje` | Rollo fuera de tolerancia → alerta de calidad; parámetro `pesaje_tolerance_kg` | `auto_install` con `pesaje_rollos_tejido` |
 | `quimibond_sgi_plm` | «Requiere PPAP» por los clientes del producto → un PPAP por cliente y aviso a ventas (pruebas propias desde 3.2.0) | `auto_install` con `mrp_plm` |
 | `quimibond_sgi_revisado` | Pareto de defectos del revisado e indicador MA-03 «Calidad PQ» | `auto_install` con `mrp_revisado_telas` |
 | `quimibond_sgi_knowledge` | Instructivo escrito en Conocimiento y publicado como IT | `auto_install` con `knowledge` |
@@ -554,7 +553,7 @@ de los equipos de calidad (`sgi_quality_team_internal`) y del indicador
 
 ```bash
 # Odoo.sh, shell de la rama. Varios módulos se separan con COMAS, sin espacios.
-odoo-update quimibond_sgi,quimibond_sgi_pesaje && odoosh-restart http && odoosh-restart cron
+odoo-update quimibond_sgi,quimibond_sgi_plm && odoosh-restart http && odoosh-restart cron
 ```
 
 - Verificaciones después del despliegue: `docs/RUNBOOK_DESPLIEGUE.md`, sección SGI.
@@ -563,7 +562,7 @@ odoo-update quimibond_sgi,quimibond_sgi_pesaje && odoosh-restart http && odoosh-
   `--test-tags`**, porque el suite completo se detiene en las pruebas de
   nómina:
   `odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi --stop-after-init --no-http`
-  (agregar `,/quimibond_sgi_pesaje`… para los satélites). Desde 57.100.0 el
+  (agregar `,/quimibond_sgi_plm`… para los satélites; `quimibond_sgi_pesaje` se retiró del repo el 2026-11-04, desinstalado en producción desde el 2026-09-30). Desde 57.100.0 el
   build de la rama corre `--test-tags /quimibond_sgi,/quimibond_sgi_plm`
   (`quimibond_sgi_plm` estrena pruebas; P19).
 - `post_init_hook` (`__init__.py`): al instalar, liga los puntos de control de

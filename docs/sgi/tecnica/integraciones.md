@@ -8,12 +8,13 @@ Archivos fuera del SGI y sus satélites que nombran modelos `sgi.*`. Al renombra
 |---|---|
 | `addons/qb_costeo_sgi/models/cotizacion.py` | `sgi.activity.role`, `sgi.approval.subject`, `sgi.deliverable`, `sgi.process.activity` |
 | `addons/qb_costeo_sgi/models/shipment.py` | `sgi.dev.shipment` |
-| `addons/qb_obligation/models/qb_obligation.py` | `sgi.record` |
 | `addons/quimibond_intelligence/models/senales/calidad_sgi.py` | `sgi.action.line`, `sgi.alert.source`, `sgi.audit.program.line`, `sgi.legal.requirement`, `sgi.ppap`, `sgi.risk` |
 | `addons/quimibond_intelligence/models/senales/compras.py` | `sgi.supplier.eval` |
 | `addons/quimibond_intelligence/models/senales/direccion.py` | `sgi.document.ack`, `sgi.management.review.agreement` |
 | `addons/quimibond_intelligence/models/senales/finanzas.py` | `sgi.indicator.measure` |
 | `addons/quimibond_intelligence/models/senales/rh.py` | `sgi.competence.gap` |
+| `addons/quimibond_sat_sgi/models/sgi_cron.py` | `sgi.config`, `sgi.cron`, `sgi.process.activity` |
+| `addons/quimibond_sat_sgi/models/sgi_my_pending.py` | `sgi.cron`, `sgi.my.pending` |
 | `addons/quimibond_ventas_presupuesto/data/sgi_sales_budget_data.xml` | `sgi.format.map` |
 | `addons/quimibond_ventas_presupuesto/data/sgi_sales_budget_parameters.xml` | `sgi.config` |
 | `addons/quimibond_ventas_presupuesto/models/qb_release.py` | `sgi.sales.budget`, `sgi.sales.budget.line` |
