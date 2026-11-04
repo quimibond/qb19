@@ -8,21 +8,7 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
-## 19.0.2.24.0 — 2026-11-03
-
-### Primera para planear en la lista en metros
-
-Planeación pide los metros que necesita la venta y deben llegar completos, sin promedios y sin esperar a terminar
-para mandar otra orden en kg (Dirección General, 2026-11-03). La lista en metros de la tela acabada (Clasificación
-final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para planear)** kg del acabado en proceso:
-
-- la primera para planear es la fracción de primera que alcanzan 9 de cada 10 lotes de esa tela en sus lotes de los
-  últimos 12 meses (`qb_costeo` 1.9.0, `qb.producto.rendimiento.plan_para`; con pocos lotes, el valor de planta);
-- sin `qb_costeo` o sin dato de la tela, 1 (no se infla); la conversión de la lista muestra el factor y su fuente;
-- aplica a «Usar los datos de la ficha», al aviso «Conversión kg → m distinta de la ficha» y a las listas en metros
-  que crea «Generar listas desde la ruta»;
-- el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
-  y la siguiente orden de la tela lo descuenta.
+## 19.0.2.25.0 — 2026-11-04
 
 ### Saldos en la lista en metros
 
@@ -44,6 +30,50 @@ etiqueta cada rollo, y la orden en metros se registra sola al cerrar el baño. L
 operación de Empaque: «Armar rutas desde listas» no crea el paso «Clasificación final» y la migración quita los que
 existen (42 en producción, todos en EMPAQUE, que no tiene ninguna orden de trabajo en el último año); al volver a
 generar, la lista en metros archivada queda sin operación.
+
+### Desperdicio de Rama en la lista en kg
+
+El pesaje de desperdicio de Rama de José Sacramento (`quimibond_rollos_bitacora`, botón «PESAR DESPERDICIO») pide que
+la orden en kg tenga un subproducto; ninguna lista `I…` lo traía y el botón se bloqueaba. Ahora:
+
+- «Generar listas desde la ruta» deja en la lista en kg el subproducto **«DESPERDICIO TEJIDO»** (Desperdicio tejido y
+  orilla, por lote) en la operación de **Rama**, con **cantidad 0**: no es estándar, Rama pesa el real de cada orden
+  (`mrp.bom._ft_poner_desperdicio`). Al volver a generar no se duplica y se vuelve a ligar a la Rama si las
+  operaciones se rehicieron. Sin el artículo o sin Rama, lo dice en los avisos.
+- La migración lo pone en las listas en kg del flujo que ya están generadas y archivadas (las 31 de producción). Las
+  activas no se tocan.
+- Prueba: `test_ruta_familia.test_10_desperdicio_de_rama_en_la_lista_en_kg`.
+
+### Tipo de operación en las listas del flujo
+
+En el piloto de José en pruebas (2026-11-04) la orden en metros nació como «Re-proceso Tintorería»: su lista no tenía
+tipo de operación y Odoo tomó el predeterminado del almacén. En producción 117 de las 118 listas de cada clase ya lo
+tenían (se pusieron a mano); las dos que creó «Generar listas» el 3-nov no.
+
+- «Generar listas desde la ruta» pone **Fabricación Tela en kg** (`OP-KG`, de 2 PRODUCCIÓN a 10 INSPECCIÓN) en la
+  lista en kg y **Fabricación Tela en m** (`OP-M`, de 10 INSPECCIÓN a 14 PT PQ) en la de metros, si no tienen uno.
+  Nunca cambia un tipo ya puesto (`mrp.bom._ft_poner_tipo_operacion`).
+- La revisión avisa a Ingeniería «Lista sin tipo de operación» en una lista del flujo (con operaciones) que no lo
+  tenga, también activa; «Resolver» abre la lista.
+- La migración de 2.25.0 lo pone en las listas archivadas del flujo que no lo tienen.
+- Prueba: `test_ruta_familia.test_11_tipo_de_operacion_del_flujo`; los datos de prueba (`TiempoFichaCase`) traen los
+  dos tipos.
+
+## 19.0.2.24.0 — 2026-11-03
+
+### Primera para planear en la lista en metros
+
+Planeación pide los metros que necesita la venta y deben llegar completos, sin promedios y sin esperar a terminar
+para mandar otra orden en kg (Dirección General, 2026-11-03). La lista en metros de la tela acabada (Clasificación
+final) pide ahora por metro **1 ÷ (rendimiento de tela acabada × primera para planear)** kg del acabado en proceso:
+
+- la primera para planear es la fracción de primera que alcanzan 9 de cada 10 lotes de esa tela en sus lotes de los
+  últimos 12 meses (`qb_costeo` 1.9.0, `qb.producto.rendimiento.plan_para`; con pocos lotes, el valor de planta);
+- sin `qb_costeo` o sin dato de la tela, 1 (no se infla); la conversión de la lista muestra el factor y su fuente;
+- aplica a «Usar los datos de la ficha», al aviso «Conversión kg → m distinta de la ficha» y a las listas en metros
+  que crea «Generar listas desde la ruta»;
+- el costeo no cambia (1 ÷ rendimiento y rendimiento del total de metros); el sobrante de primera entra a existencia
+  y la siguiente orden de la tela lo descuenta.
 
 ### Menús, formularios nativos y pestaña del producto de solo lectura
 

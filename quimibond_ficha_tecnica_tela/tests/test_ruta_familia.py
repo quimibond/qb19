@@ -176,3 +176,58 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertFalse(nueva.active)
         self.assertEqual(nueva.code, 'Flujo en kg (borrador)')
         self.assertEqual([o.workcenter_id for o in self._ops(nueva)], [self.dev, self.jet, self.abr, self.insp])
+
+    def test_10_desperdicio_de_rama_en_la_lista_en_kg(self):
+        """2.25.0: la lista en kg generada lleva el subproducto «Desperdicio Tejido» en la Rama, con cantidad 0 (lo pesa
+        Rama con quimibond_rollos_bitacora); al volver a generar no se duplica y sigue en la Rama."""
+        ruta = self._armar()
+        self.bom.action_archive()
+        Product = self.env['product.product']
+        desperdicio = Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1)
+        if not desperdicio:
+            accion = self.acabado.action_ft_generar_listas()
+            self.assertIn('DESPERDICIO TEJIDO', accion['params']['message'], "Sin el artículo, avisa y no inventa")
+            self.assertFalse(self.bom.byproduct_ids)
+            desperdicio = Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
+                                          'uom_id': self.kg.id, 'is_storable': True})
+        tipo_rama = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
+        rama = self.env['mrp.workcenter'].create({'name': 'RAMA 931 prueba', 'code': 'R931', 'ft_tipo_id': tipo_rama.id})
+        ruta.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
+        self.acabado.action_ft_generar_listas()
+        sub = self.bom.byproduct_ids
+        self.assertEqual(sub.product_id, desperdicio)
+        self.assertEqual(sub.product_qty, 0.0, "La cantidad no es estándar: se pesa en cada orden")
+        self.assertEqual(sub.operation_id.workcenter_id, rama)
+        ruta.paso_ids.filtered(lambda p: p.paso == 'abridora').unlink()
+        self.acabado.action_ft_generar_listas()
+        self.assertEqual(len(self.bom.byproduct_ids), 1, "No se duplica")
+        self.assertEqual(self.bom.byproduct_ids.operation_id.workcenter_id, rama,
+                         "Al rehacer las operaciones vuelve a la Rama nueva")
+
+    def test_11_tipo_de_operacion_del_flujo(self):
+        """2.25.0: las listas que crea «Generar listas» llevan su tipo de operación (sin él la orden nacía como
+        «Re-proceso Tintorería»), y la revisión avisa a Ingeniería si una lista del flujo no lo tiene."""
+        self._armar()
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 936 prueba (kg)', 'default_code': 'IZZ936Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 936 prueba (m)', 'default_code': 'ZZ936Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ936Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg)
+        self.assertEqual(bom_m.picking_type_id, self.tipo_m)
+        tipos = Revision.search([('acabado_id', '=', ficha.id)]).pendiente_ids.mapped('tipo')
+        self.assertNotIn('tipo_operacion', tipos)
+        bom_kg.picking_type_id = False
+        revision = Revision._ft_actualizar(ficha)
+        pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'tipo_operacion')
+        self.assertEqual((pendiente.area, pendiente.bom_id), ('ingenieria', bom_kg))
+        self.assertEqual(pendiente.action_ft_resolver()['res_id'], bom_kg.id, "«Resolver» abre la lista")
+        ficha.action_ft_generar_listas()
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg, "Al volver a generar se completa")
+

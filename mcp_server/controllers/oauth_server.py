@@ -799,7 +799,7 @@ def _render_consent(grant):
         # ``mcp:read``) AND the client registered for write. A read-only-registered
         # client is never offered write -- it could not be granted it anyway.
         "show_write_checkbox": (
-            not is_read_only_request(grant.request.scope)
+            not is_read_only_request(grant.request.payload.scope)
             and client_allows_write(client)
         ),
         # "Not you?" — log out and come back to this same authorize request so the
@@ -899,7 +899,7 @@ class OAuthFlowController(http.Controller):
             granted = (
                 "mcp:write"
                 if (
-                    not is_read_only_request(grant.request.scope)
+                    not is_read_only_request(grant.request.payload.scope)
                     and request.params.get("grant_write")
                 )
                 else "mcp:read"
@@ -908,7 +908,7 @@ class OAuthFlowController(http.Controller):
             # a read-only-registered client can never be upscoped to write, even
             # if the user submitted the write checkbox. Defence in depth -- the
             # checkbox is also hidden, and get_allowed_scope already narrows
-            # grant.request.scope -- so the persisted code/token never exceeds the
+            # grant.request.payload.scope -- so the persisted code/token never exceeds the
             # client's registered scope.
             if granted == "mcp:write" and not client_allows_write(grant.client):
                 granted = "mcp:read"
