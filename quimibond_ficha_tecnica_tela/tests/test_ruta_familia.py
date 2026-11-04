@@ -281,3 +281,35 @@ class TestRutaFamilia(TiempoFichaCase):
         pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'ruta_mto')
         self.assertEqual(pendiente.area, 'ingenieria')
         self.assertEqual(pendiente.action_ft_resolver()['res_model'], 'product.template')
+
+    def test_13_ruta_de_la_lista_en_metros_al_activar(self):
+        """2.25.0: al activar la lista en metros del flujo, la tela recibe la ruta que fabrica con el tipo OP-M
+        («Fabricar Tela m»); la revisión avisa si a una lista en metros activa le falta."""
+        self._armar()
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        Bom = self.env['mrp.bom']
+        ruta_m = Bom._ft_ruta_flujo('m')
+        if not ruta_m:
+            ruta_m = self.env['stock.route'].create({'name': 'Fabricar Tela m prueba', 'product_selectable': True})
+            self.env['stock.rule'].create({
+                'name': 'Fabricar Tela m prueba', 'route_id': ruta_m.id, 'action': 'manufacture',
+                'picking_type_id': self.tipo_m.id, 'location_dest_id': almacen.lot_stock_id.id,
+                'procure_method': 'make_to_order'})
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 938 prueba (kg)', 'default_code': 'IZZ938Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 938 prueba (m)', 'default_code': 'ZZ938Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ938Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_m = Revision._ft_bom_de(tela_m)
+        self.assertNotIn(ruta_m, tela_m.product_tmpl_id.route_ids)
+        bom_m.action_unarchive()
+        self.assertIn(ruta_m, tela_m.product_tmpl_id.route_ids, "Al activar, la tela recibe la ruta del flujo")
+        tela_m.product_tmpl_id.route_ids = [(3, ruta_m.id)]
+        pendiente = Revision._ft_actualizar(ficha).pendiente_ids.filtered(
+            lambda p: p.tipo == 'ruta_mto' and p.bom_id == bom_m)
+        self.assertTrue(pendiente, "Lista en metros activa sin la ruta: pendiente de Ingeniería")

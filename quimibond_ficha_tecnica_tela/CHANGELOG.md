@@ -71,11 +71,22 @@ Inspección, Clasificación y cierre de las dos órdenes). En fichas:
   flexible y, en la lista en kg, el desperdicio de Rama y la **ruta MTO del «I…»**, la que tiene la regla de
   fabricación con el tipo OP-KG («Fabricar Tela kg → Inspección (MTO)»). En producción la ruta existe y no la tiene
   ningún «I…»: sin ella la orden en metros no pide la orden en kg.
-- **Revisión:** «Lista en kg sin desperdicio de Rama» y «Acabado en kg sin la ruta MTO» (lista activa) en las
+- **Revisión:** «Lista en kg sin desperdicio de Rama» y «Producto sin la ruta del flujo» (lista activa) en las
   listas «Flujo en kg»; «Resolver» abre la lista o el producto.
 - **La migración rehace la revisión** al desplegar. En el build de main la foto del 3-nov daba por bueno el tiempo de
   Rama anterior a 2.24.0 (0.3178 contra 0.3685 min/kg); al revisar de nuevo sale el pendiente.
 - Prueba: `test_ruta_familia.test_12_consumo_flexible_activacion_y_revision`.
+
+### Rutas del flujo y plan maestro al activar (2026-11-04, tarde)
+
+En producción el plan maestro (MPS) tiene los «I…» con la ruta «Convertir Unidades» y las telas con «Producir Acabado»
+o MTO: el flujo anterior. No se cambia a mano (producción sigue en el flujo anterior hasta que se activa cada tela):
+
+- Al activar la **lista en metros** del flujo, la tela recibe la ruta que fabrica con el tipo OP-M («Fabricar Tela
+  m»); al activar la **lista en kg**, el «I…» recibe la de OP-KG («Fabricar Tela kg → Inspección (MTO)»). Si el
+  producto está en el plan maestro, esa ruta pasa a ser su ruta preferida (`mrp.bom._ft_poner_ruta_flujo`).
+- La revisión avisa también la lista en metros activa sin su ruta («Producto sin la ruta del flujo»).
+- Prueba: `test_ruta_familia.test_13_ruta_de_la_lista_en_metros_al_activar`.
 
 ## 19.0.2.24.0 — 2026-11-03
 
