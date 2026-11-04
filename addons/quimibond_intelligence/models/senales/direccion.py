@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Señales de dirección (spec §4): actividades vencidas por persona, firmas, acuses, acuerdos, obligaciones de qb_obligation (puente que solo resuelve lo que quedó)."""
-from .base import senal, hoy, hace, dias, umbral, tiene_modelo, companias, doc, fila, agrupar
+from .base import senal, hoy, hace, dias, umbral, tiene_modelo, doc, fila, agrupar
 
 
 @senal('carga_actividades')
