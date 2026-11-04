@@ -30,16 +30,19 @@ PARAM_ALERTA_MERMA_PCT = 'quimibond_rollos_bitacora.alerta_merma_inspeccion_pct'
 class MrpRolloFinal(models.Model):
     _name = 'mrp.rollo.final'
     _description = 'Rollo final (Inspección)'
-    _order = 'production_m_id desc, secuencia'
+    _order = 'production_id desc, secuencia'
     _rec_name = 'name'
 
     name = fields.Char('Rollo final (lote)', required=True, readonly=True, index=True, copy=False)
     secuencia = fields.Integer('No. de rollo', required=True, readonly=True)
     production_id = fields.Many2one('mrp.production', 'Orden (kg)', required=True, readonly=True, index=True,
                                     ondelete='cascade', help='El baño: solo se juntan rollos de la misma orden en kg.')
-    production_m_id = fields.Many2one('mrp.production', 'Orden (m)', required=True, readonly=True, index=True,
+    production_m_id = fields.Many2one('mrp.production', 'Orden (m)', readonly=True, index=True,
                                       help='La orden en metros que abastece la orden en kg (MTO); da el nombre del lote '
-                                           'y registra el rollo al cerrar el baño.')
+                                           'y registra el rollo al cerrar el baño. Vacía en un baño para venta en kg '
+                                           '(3.2.0): el rollo queda como el acabado en kg, con lote K<orden en kg>.')
+    production_saldo_id = fields.Many2one('mrp.production', 'Orden de saldos', readonly=True, index=True,
+                                          help='3.2.0: baño sin primera ni FE; sus saldos salen de esta orden.')
     bitacora_ids = fields.Many2many('mrp.rollo.bitacora', 'mrp_rollo_final_bitacora_rel', 'final_id', 'bitacora_id',
                                     'Rollos de Rama', readonly=True)
     company_id = fields.Many2one(related='production_id.company_id', store=True)
@@ -68,7 +71,7 @@ class MrpRolloFinal(models.Model):
     lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
     location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
 
-    _unique_nombre = models.Constraint('unique(production_m_id, name)', 'Ese rollo final ya existe en la orden.')
+    _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
     _check_metros = models.Constraint('CHECK(metros > 0)', 'Los metros del rollo final deben ser mayores a cero.')
 
@@ -101,27 +104,39 @@ class MrpRolloFinal(models.Model):
         return producto
 
     @api.model
-    def _siguiente_secuencia(self, orden_m):
-        ultimo = self.search([('production_m_id', '=', orden_m.id)], order='secuencia desc', limit=1)
+    def _siguiente_secuencia(self, orden_m, orden_kg=None):
+        """Consecutivo por orden en metros (lote M…) o, sin ella, por orden en kg (lote K…, 3.2.0)."""
+        dominio = [('production_m_id', '=', orden_m.id)] if orden_m else \
+            [('production_id', '=', orden_kg.id), ('production_m_id', '=', False)]
+        ultimo = self.search(dominio, order='secuencia desc', limit=1)
         return (ultimo.secuencia or 0) + 1
 
     @api.model
-    def _nombre_lote(self, orden_m, secuencia):
-        """``M<último segmento de la orden en metros>-NNNN`` (§4.2): la «M» lo distingue del rollo de Rama."""
-        return 'M%s-%04d' % (orden_m.name.split('/')[-1], secuencia)
+    def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
+        """``M<último segmento de la orden en metros>-NNNN`` (§4.2): la «M» lo distingue del rollo de Rama. Sin orden en
+        metros (venta en kg, 3.2.0): ``K<último segmento de la orden en kg>-NNNN``."""
+        if orden_m:
+            return 'M%s-%04d' % (orden_m.name.split('/')[-1], secuencia)
+        return 'K%s-%04d' % (orden_kg.name.split('/')[-1], secuencia)
 
     # ------------------------------------------------------------------ etiqueta
     def _datos_etiqueta(self):
         self.ensure_one()
-        producto = self.production_m_id.product_id
+        producto = self.production_m_id.product_id or self.production_id.product_id
         codigo = producto.default_code or ''
         Ficha = self.env.get('ficha.tecnica.acabado')
-        ficha = Ficha.search([('product_acabado_id', '=', producto.id)], order='id desc', limit=1) \
-            if Ficha is not None else None
+        ficha = None
+        if Ficha is not None:
+            ficha = Ficha.search(['|', ('product_acabado_id', '=', producto.id), ('product_proceso_id', '=', producto.id)],
+                                 order='id desc', limit=1)
+        if codigo.upper().startswith('I'):
+            codigo_tela = codigo[1:]  # posiciones del código sin la «I» (DAT P-D02-01)
+        else:
+            codigo_tela = codigo
         ancho = ficha.ancho_acabado if ficha and 'ancho_acabado' in ficha._fields else 0
-        if not ancho and codigo[11:14].isdigit():
-            ancho = int(codigo[11:14])
-        return {'codigo': codigo, 'color': COLORES.get(codigo[9:11].upper(), codigo[9:11]), 'ancho': ancho}
+        if not ancho and codigo_tela[11:14].isdigit():
+            ancho = int(codigo_tela[11:14])
+        return {'codigo': codigo, 'color': COLORES.get(codigo_tela[9:11].upper(), codigo_tela[9:11]), 'ancho': ancho}
 
     def _zpl_etiqueta(self):
         """Etiqueta final de José (§12.3) con los datos del rollo final: PQ con neto/bruto; FE, Segunda y Desperdicio

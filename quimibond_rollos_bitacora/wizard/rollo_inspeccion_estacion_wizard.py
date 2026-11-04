@@ -106,9 +106,12 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     def _compute_lote(self):
         Final = self.env['mrp.rollo.final']
         for wiz in self:
-            orden_m = wiz.production_id._insp_orden_metros() if wiz.production_id else self.env['mrp.production']
+            orden_kg = wiz.production_id
+            orden_m = orden_kg._insp_orden_metros() if orden_kg else self.env['mrp.production']
             wiz.orden_m_id = orden_m
-            wiz.lote_name = Final._nombre_lote(orden_m, Final._siguiente_secuencia(orden_m)) if orden_m else False
+            # 3.2.0: sin orden en metros (venta en kg) el lote toma la orden en kg.
+            wiz.lote_name = Final._nombre_lote(orden_m, Final._siguiente_secuencia(orden_m, orden_kg), orden_kg) \
+                if orden_kg else False
 
     @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'termina_rollo', 'metros', 'kg_bruto')
     def _compute_merma(self):
@@ -157,10 +160,6 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                                   ', '.join(rollos.filtered('rollo_final_insp_ids').mapped('name'))))
             if not self.termina_rollo:
                 raise UserError(_('Al juntar rollos sale un solo rollo final: deja encendido «Último pedazo».'))
-        if not self.orden_m_id:
-            raise UserError(_(
-                'La orden %s no abastece una orden en metros: el rollo final toma el lote de la orden en metros y se '
-                'registra en ella al cerrar el baño.', self.production_id.name))
         if self.tara_faltante:
             raise UserError(_(
                 'No hay tara de Inspección para %s. Captúrala en Manufactura → Configuración → Taras por producto '
@@ -190,14 +189,14 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         emp = self._validar()
         Final = self.env['mrp.rollo.final']
         orden_m = self.orden_m_id
-        secuencia = Final._siguiente_secuencia(orden_m)
+        secuencia = Final._siguiente_secuencia(orden_m, self.production_id)
         ahora = fields.Datetime.now()
         operador = ' - '.join(filter(None, [self.empleado_numero, emp.name or False]))
         rollo = Final.create({
-            'name': Final._nombre_lote(orden_m, secuencia),
+            'name': Final._nombre_lote(orden_m, secuencia, self.production_id),
             'secuencia': secuencia,
             'production_id': self.production_id.id,
-            'production_m_id': orden_m.id,
+            'production_m_id': orden_m.id or False,
             'bitacora_ids': [(6, 0, self.bitacora_ids.ids)],
             'kg_bruto': self.kg_bruto,
             'tara': self.tara_kg,

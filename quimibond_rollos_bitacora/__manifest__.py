@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.1.0',
+    'version': '19.0.3.2.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -24,6 +24,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   ``M<orden en metros>-NNNN`` y etiqueta final (``mrp.rollo.final``). Al cerrar la orden en kg con el botón nativo,
   la orden en metros se registra sola: PQ y FE en metros a 14 y 15, Segunda y Desperdicio en kg (saldos) a 16 y 17.
   Sin botón CLASIFICAR en Empaque.
+* 3.2.0: baño para venta en kg (sin orden en metros): los rollos finales (lote ``K<orden en kg>-NNNN``) salen de la
+  orden en kg como el acabado en kg con su peso real, PQ a 14 y FE a 15, y los saldos en kg a 16 y 17. Baño sin
+  primera ni FE: la orden en metros se cancela y una orden de saldos saca los saldos en kg.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
