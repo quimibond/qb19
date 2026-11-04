@@ -629,7 +629,7 @@ pedido todavía no tiene lista activa.
 | Presupuesto Industrial 2026 (aprobado, 118.9 M) | `reemplazado`, como «Industrial 2026 versión Odoo sept-26»: comparable, fuera del KPI |
 | Confección y Especiales 2026 (borrador) | `obsoleto`: la REV1 del Excel los sustituye (mismas cifras) |
 | Releases, partes, perfiles | Se quedan; los perfiles de Shawmut y Saltillo se parten por planta (con los releases ligados a la planta que dicen) |
-| MPS | Se recalcula una vez con la fuente nueva; se guarda antes y después de las 48 programas para compararlos |
+| MPS | Se recalcula una vez con la fuente nueva; se guarda antes y después de los programas para compararlos. Los 14 programas que crearon los releases del 2-nov (ids 131–144, 624 celdas) se recalculan o se borran aquí |
 
 Todo en `migrations/19.0.2.0.0/post-migrate.py`, idempotente, con conteos en el log. Versión del manifiesto: 19.0.2.0.0
 (modelos nuevos: sin bump el CI marca error).
@@ -718,9 +718,9 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 **Para Jose**
 
-1. Releases del 2-nov (1.5): no movieron producción, pero dejaron 14 programas y 624 celdas en el MPS sin revisar. ¿Se
-   borran ya esas celdas (recomendado, para que nadie lance reabastecimiento con ellas) o se dejan hasta que la migración
-   de E1 recalcule el MPS?
+1. ~~Releases del 2-nov~~ (1.5): los 14 programas del MPS (ids 131–144) y sus 624 celdas se quedan hasta la migración de
+   E1, que los recalcula con la fuente nueva o los borra (Jose, 4-nov). Mientras, Planeación no debe lanzar
+   reabastecimiento desde esos programas.
 2. ~~TC de la REV1~~: **17.5**, confirmado en el correo del 25-jun y en la hoja «2026 industrial» (1.4). Queda ver por qué
    la hoja ANUAL dice 17.2 cuando llegue el archivo.
 3. ~~Rendimiento de especificación o real~~: el de la ficha (un solo rendimiento, decisión de Dirección General en fichas
