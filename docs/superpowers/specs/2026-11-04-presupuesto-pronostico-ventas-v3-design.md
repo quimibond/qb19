@@ -517,7 +517,8 @@ vista):**
 5. **El desarrollo ve su venta.** En la ficha del proyecto de desarrollo, un botón «Presupuesto y venta» (herencia de la
    vista del SGI desde este módulo, con ancla revisada por `check_odoo_views.py`): presupuesto del año, pronóstico vigente
    y facturado del cliente + artículo. Es la medición que hoy no existe de «¿el desarrollo se vendió?».
-6. **Limpieza previa (con Diseño y Desarrollo, antes de E2):** ligar a su desarrollo los proyectos de 2026 de producto
+6. **Limpieza previa: la hace Diseño y Desarrollo antes del 1-dic-2026** (decisión de Jose, 4-nov), antes de que E2
+   entre a producción el 9-dic: ligar a su desarrollo los proyectos de 2026 de producto
    nuevo (los de producto de línea no lo necesitan), cerrar los «FT-» viejos que ya no siguen y poner `sgi_dev_state = liberado` a los artículos de
    desarrollos liberados. Corregir también el acabado en kg del análisis de Saltillo (`WJ030Q22KNT168`, que no sigue la
    regla «I» + código de la tela). Sin eso, la carga de la REV1 crea los `qb.sales.project` sin desarrollo y los marca.
@@ -695,5 +696,6 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 **Para Diseño y Desarrollo**
 
-19. ¿Quién limpia los ~75 desarrollos «FT-» viejos en «Muestra» y el estado de sus artículos (2.11 punto 6), y para cuándo?
+19. ~~Limpieza de los FT viejos~~: Diseño y Desarrollo, antes del 1-dic-2026 (Jose, 4-nov). Si no está, la carga de la
+    REV1 sigue y marca en Faltantes lo que quede sin ligar.
 20. ¿La cotización del desarrollo trae precio en algún campo, o el precio objetivo de la solicitud es lo único?
