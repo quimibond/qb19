@@ -552,6 +552,7 @@ class MrpBomDesperdicioRama(models.Model):
                     bom.product_tmpl_id.route_ids = [(4, ruta.id)]
             elif bom.code == CODIGO_M:
                 bom._ft_poner_tipo_operacion('m')
+                self.env['ficha.tecnica.acabado']._ft_poner_saldos(bom)
             else:
                 continue
             bom._ft_poner_consumo_flexible()
