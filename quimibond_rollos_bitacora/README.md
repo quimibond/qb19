@@ -65,7 +65,15 @@ pesaje, taras, bitácora, defectos y el bloqueo de cierre se quedan igual.
   algo falla no se cierra nada. Filtro y menú «Baños inspeccionados sin cerrar».
 - Sale el botón **CLASIFICAR** de Empaque (la lista en metros ya no lleva operación, fichas 2.25.0). El asistente de
   Clasificación final y la etiqueta preliminar quedan en el código sin uso.
-- Pruebas: `tests/test_inspeccion_estacion.py` (casos 1 a 11 del diseño).
+- **Baño para venta en kg (3.2.0):** si la orden en kg no abastece una orden en metros (el cliente compra el «I…» en
+  kg, o es inventario en kg), Inspección funciona igual y los lotes son `K<orden en kg>-NNNN`. Al cerrar, la orden en
+  kg produce los rollos finales con su peso real (no los de Rama): PQ a 14 y FE a 15 como el acabado en kg, y la
+  Segunda y el Desperdicio como saldos en kg a 16 y 17. Cada rollo guarda también sus metros.
+- **Baño sin primera ni FE (3.2.0):** la orden en metros se cancela, la orden en kg cierra como siempre y una orden de
+  saldos (tipo Fabricación Tela en m) consume los rollos de Rama completos y saca cada rollo final como saldo en kg.
+  Odoo no cierra una orden con cero de su producto, por eso va aparte.
+- Si la lista no trae el subproducto del saldo, se agrega a la orden al cerrar.
+- Pruebas: `tests/test_inspeccion_estacion.py` (casos 1 a 11 del diseño, baño en kg y baño solo de saldos).
 
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las

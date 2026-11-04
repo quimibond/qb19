@@ -59,16 +59,20 @@ class TestInspeccionEstacion(TransactionCase):
             'tracking': 'lot'})
 
     # ------------------------------------------------------------------ armado
-    def _bano(self, rollos_kg=(50.0,)):
+    def _bano(self, rollos_kg=(50.0,), en_kg=False):
         """Orden en metros (2,000 m) y la orden en kg que la abastece, ligadas como el MTO, con rollos pesados en Rama."""
-        orden_m = self.env['mrp.production'].create({
-            'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id, 'bom_id': self.bom_m.id})
-        orden_m.action_confirm()
+        orden_m = self.env['mrp.production']
+        if not en_kg:
+            orden_m = orden_m.create({
+                'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id,
+                'bom_id': self.bom_m.id})
+            orden_m.action_confirm()
         orden_kg = self.env['mrp.production'].create({
             'product_id': self.prod_kg.id, 'product_qty': 169.6, 'bom_id': self.bom_kg.id})
         orden_kg.action_confirm()
-        terminado = orden_kg.move_finished_ids.filtered(lambda m: m.product_id == self.prod_kg)
-        orden_m._clasif_move_a().move_orig_ids = terminado
+        if orden_m:
+            terminado = orden_kg.move_finished_ids.filtered(lambda m: m.product_id == self.prod_kg)
+            orden_m._clasif_move_a().move_orig_ids = terminado
         wo_rama = self.env['mrp.workorder'].create({
             'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
         wo_insp = self.env['mrp.workorder'].create({
@@ -189,12 +193,13 @@ class TestInspeccionEstacion(TransactionCase):
             self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0, motivo_manual=False)
 
     def test_11_falla_el_registro_no_cierra_nada(self):
-        """Caso 11: si la lista en metros no tiene el saldo, el baño no se cierra y el mensaje dice por qué."""
+        """Caso 11: si el registro falla (la ubicación de la segunda no existe), el baño no se cierra y el mensaje dice
+        por qué."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
-        orden_m.move_finished_ids.filtered(lambda m: m.product_id == self.saldo_2)._action_cancel()
-        with self.assertRaisesRegex(UserError, 'subproducto'):
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.ubicacion_segunda', 'ZZ951 NO EXISTE')
+        with self.assertRaisesRegex(UserError, 'No existe la ubicación'):
             orden_kg.button_mark_done()
         self.env.invalidate_all()
         self.assertNotEqual(orden_kg.state, 'done')
@@ -205,3 +210,39 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos[0], 10.0, 100.0, termina=False)
         with self.assertRaisesRegex(UserError, 'cortar y juntar'):
             self._inspeccionar(orden_kg, wo, rollos, 30.0, 300.0)
+
+    def test_13_bano_para_venta_en_kg(self):
+        """3.2.0: sin orden en metros, los rollos finales quedan como el acabado en kg con su peso real (lote K…): PQ a
+        14, FE a 15; la segunda como saldo en kg a 16."""
+        _m, orden_kg, wo, rollos = self._bano((40.0, 30.0), en_kg=True)
+        self._inspeccionar(orden_kg, wo, rollos[0], 41.0, 460.0, 'PQ')
+        self._inspeccionar(orden_kg, wo, rollos[1], 20.5, 230.0, 'FE', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos[1], 10.5, 110.0, 'SEGUNDA')
+        primero = orden_kg.rollo_final_kg_ids.sorted('secuencia')[:1]
+        self.assertEqual(primero.name, 'K%s-0001' % orden_kg.name.split('/')[-1])
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertAlmostEqual(orden_kg.qty_produced, 39.5 + 19.0, msg="La orden en kg cierra con el peso real de PQ y FE")
+        self.assertAlmostEqual(self._cantidad(self.prod_kg, self.ubic['PQ'], primero.name), 39.5)
+        self.assertAlmostEqual(self._cantidad(self.prod_kg, self.ubic['FE']), 19.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 9.0)
+        self.assertEqual(set(orden_kg.rollo_final_kg_ids.mapped('estado')), {'registrado'})
+
+    def test_14_bano_sin_primera_ni_fe(self):
+        """3.2.0: todo en segunda y desperdicio: la orden en metros se cancela y una orden de saldos saca los saldos en
+        kg, consumiendo los rollos de Rama completos."""
+        orden_m, orden_kg, wo, rollos = self._bano((20.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertEqual(orden_m.state, 'cancel')
+        finales = orden_kg.rollo_final_kg_ids
+        self.assertEqual(set(finales.mapped('estado')), {'registrado'})
+        orden_s = finales.production_saldo_id
+        self.assertEqual(orden_s.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 17.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 1.5)
+        consumo = orden_s.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
+        self.assertAlmostEqual(consumo.quantity, 20.0)
+
