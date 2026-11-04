@@ -33,6 +33,10 @@ día «Generar listas desde la ruta» lleva de subproductos `SALDO DE TELA TEJID
 referencias están en los parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`; si una no
 existe, avisa y no la inventa. A qué ubicación va cada saldo (16 y 17) lo decide la clasificación, no la lista.
 
+El **rendimiento de lo fabricado** resta de los kilos los saldos en kg que salen de las órdenes de la tela: son
+tela que no se volvió metros y ya cuentan como merma en la primera para planear del costeo. Sin restarlos, la lista
+en metros pediría de más (la misma merma descontada dos veces). Con las órdenes de hoy (sin saldos) no cambia nada.
+
 ### La lista en metros sin operación
 
 Una sola estación (Dirección General, 2026-11-03): Inspección, en la orden de acabado en kg, corta, pesa, clasifica y
