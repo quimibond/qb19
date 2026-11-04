@@ -76,6 +76,12 @@ otros), escalar a, tolerancia de saldo, días para escalar, umbral de saldo y
 de días vencida. En el contacto, `collection_user_id` (finanzas por cliente) y
 la pestaña Memoria con el encargado aprendido.
 
+Los pendientes del correo se traen de Supabase con los parámetros
+`quimibond_intelligence.supabase_url` y `supabase_service_key`. **Desde 3.2.1,
+si faltan** (copias de desarrollo y pruebas, a propósito) la corrida horaria no
+le pregunta a la memoria y solo deja un INFO; con la llave puesta, una caída
+real de la memoria sigue quedando como ERROR en el log.
+
 ## Tres capas de memoria
 
 1. Hechos duros: Odoo (facturas, pedidos, compras).
