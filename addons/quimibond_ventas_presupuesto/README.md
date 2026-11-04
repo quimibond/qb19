@@ -21,6 +21,41 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pronóstico vigente y Demanda por cliente (19.0.2.0.0, E1a, 2026-11-04)
+
+Primera parte de la entrega 1 del diseño v3
+(`docs/superpowers/specs/2026-11-04-presupuesto-pronostico-ventas-v3-design.md`).
+
+- **Artículo y unidades** (`product.product`: `qb_articulo_id`, `qb_m_por_kg`,
+  `qb_ancho_m`, `qb_conv_origen`; `models/product_articulo.py`). Nada propio:
+  el artículo sale de la ficha de acabado o de la regla de Dirección (con «I»
+  es kilos, sin «I» es metros; «M2» al final es la versión en m²); el
+  rendimiento, de la ficha (el mismo de la lista en metros), luego de su
+  especificación y luego del código; sin dato no se convierte. Los kilos a
+  producir son metros ÷ rendimiento ÷ primera para planear, como la lista en
+  metros. Cron nocturno «artículo y conversión de productos».
+- **Pronóstico vigente** (`qb.forecast.line`): una fila por cliente × planta ×
+  producto × semana, sin estados, con la cantidad del cliente, en unidad de
+  venta, metros y kilos. Cada cambio queda en `qb.forecast.change`. Los pedidos
+  confirmados del mismo cliente, artículo y semana lo consumen (`qty_pedido`,
+  `qty_neta`), aunque el pedido venga en el código en kilos.
+- **Cargar forecast de Excel** (`qb.forecast.import`, lector puro
+  `release/forecast_xlsx.py`): lee las hojas de cliente de `forecast.xlsx`
+  (no las de resumen), con planta, OC, parte y la unidad de la hoja
+  PRONOSTICO. Cada hoja se liga a su cliente en «Hojas del forecast» (se
+  sugiere por nombre). Solo desde la semana elegida; quita las semanas que el
+  archivo ya no trae, salvo las de un release. Probado contra el archivo real
+  (983 semanas de 2026–2027, mismos totales por cliente que las hojas).
+- **Demanda por cliente** (`qb.demand.line`): pedidos pendientes + pronóstico
+  sin pedido, en metros, kilos de venta y kilos a producir, con los cortes de
+  Planeación «Acabado: 3 semanas» y «Tejido: próximo mes» (ventana móvil). Se
+  reconstruye cada mañana, al cargar el Excel y con «Actualizar». Es tabla y
+  no vista SQL porque la conversión vive en Fichas (Python).
+- **Grupo «Planeación (consulta)»** y menú Fabricación → Pronóstico de ventas.
+- Sigue en E1b: releases por planta y lector CSV/XLS, aplicar el release al
+  pronóstico nuevo, el MPS desde esta fuente, la matriz de captura y la
+  migración de los 21 pronósticos viejos y del MPS del 2-nov.
+
 ## Sin el módulo anterior de costeo (19.0.1.4.0, 2026-10-16)
 
 La sugerencia de producto y la conversión a kilos ya no leen

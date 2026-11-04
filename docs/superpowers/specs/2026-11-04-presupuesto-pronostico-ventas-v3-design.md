@@ -329,7 +329,7 @@ repartida en los lunes, igual que hoy el presupuesto, `sgi_sales_budget.py:1200`
 
 ### 2.4 Vista de Planeación y demanda al MPS
 
-**Modelo de lectura `qb.demand.planning`** (vista SQL, `_auto = False`) que une, por cliente + planta + artículo + semana:
+**Modelo de lectura `qb.demand.line`** (en E1a quedó como **tabla que se reconstruye** cada mañana, al cargar el forecast y con «Actualizar», y no como vista SQL: la conversión y la primera para planear viven en Fichas, en Python) que une, por cliente + planta + artículo + semana:
 
 - `tipo = pedido`: líneas de pedido confirmadas pendientes de entregar (`product_uom_qty − qty_delivered`), por semana de
   `commitment_date` (o `expected_date`), y
