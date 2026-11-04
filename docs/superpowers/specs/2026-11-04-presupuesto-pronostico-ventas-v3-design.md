@@ -22,7 +22,9 @@ precios por cliente; los totales de control de la REV1 están en la sección 1.3
    mercado, en MXN (`balance`), metros y kilos, con las mismas cuentas (401/402) que ya usa el VE-02. Reportes,
    cumplimiento y KPI leen de ahí: la cifra es una.
 4. **W / IW se agrupan en un «artículo»**: la tela en metros. Sale de la ficha técnica de acabado (31 fichas hoy) y, si
-   no hay ficha, de la regla de la DAT P-D02-01 (`I` + código de la tela). Shawmut se pronostica en WJ y se factura en
+   no hay ficha, de la regla de la DAT P-D02-01 (`I` + código de la tela) que ya escribió Fichas. Rendimiento y kilos a
+   producir también salen de Fichas (un solo rendimiento, el de la lista en metros): Ventas no tiene factores propios.
+   Los proyectos nacen del **Desarrollo de producto** del SGI (C1) y el desarrollo ve su venta (2.11). Shawmut se pronostica en WJ y se factura en
    IWJ: los dos caen en el mismo artículo y el cumplimiento deja de dar 0.
 5. **Unidades**: todo renglón guarda la cantidad en su unidad original, en la unidad de venta del producto, en metros y
    en kilos, con el **origen del factor** (ficha, código, sin dato). La decisión de pasar a kilos solo cambia qué
@@ -182,23 +184,44 @@ releases de septiembre se leyeron y nadie los revisó: no hay bandeja que avise 
 
 ### 2.2 Artículo y unidades (sección 2.7 y 2.5 del prompt)
 
-**Campos nuevos en `product.product` (guardados, recalculados por cron nocturno y al cambiar ficha o código):**
+**Nada de esto se inventa en este módulo: se lee de Fichas técnicas** (`quimibond_ficha_tecnica_tela`, que el SGI ya
+instala). Fichas ya resolvió las tres preguntas de unidades para Producción, y Ventas debe usar las mismas respuestas
+para que el pronóstico, la lista de materiales y el MPS den el mismo número:
+
+| Pregunta | Quién la contesta hoy en Fichas | Dónde |
+|---|---|---|
+| ¿Cuál es la tela en kg de esta tela en metros (W ↔ IW)? | La ficha de acabado: «4. Tela acabada (m)» `product_acabado_id` y «3. Acabado en proceso (kg)» `product_proceso_id`; sin ficha, la regla de código `codigo_proceso()` (14 o 16 posiciones con J en la 9 → «I» al frente) | `models/ficha_tecnica_acabado.py:27`, `models/acabado_ruta.py:30-40`, `ft_tela_m_de_kg_id` en `ficha_producto.py:127` |
+| ¿Cuántos metros da un kilo? | **Un solo rendimiento** por tela (decisión de Dirección General, fichas 2.24.0, 3-nov-2026): metros fabricados ÷ kilos de tela consumidos en las órdenes terminadas de 12 meses, sin saldos; sin órdenes, el capturado en la ficha | `rendimiento_tela_acabada`, `models/rendimiento_real.py:1-110` (cron nocturno); `peso_real` = el peso que da ese rendimiento al ancho de venta |
+| ¿Cuántos kilos hay que producir para entregar N metros? | La lista en metros: metros ÷ rendimiento ÷ «primera para planear» de la tela (`qb_costeo`, fracción de primera que alcanzan 9 de cada 10 lotes) | `mrp.bom._ft_conversion`, `models/capacidad_conversion.py:125-169`; `primera_para_planear()` línea 36 |
+
+Con eso, en `product.product` (guardados, recalculados por el cron nocturno de Fichas y al cambiar ficha o código):
 
 | Campo | Qué es | De dónde sale, en orden |
 |---|---|---|
-| `qb_articulo_id` (m2o `product.product`) | La tela en metros que representa al producto en la medición | 1) ficha de acabado: `ft_producto_m_id` (para el IW, su W; para el W, él mismo); 2) regla DAT P-D02-01: si el código cumple `NOMEN_RE` con `I` al frente y existe el producto con el mismo código sin `I`, ese; 3) código con `M2` al final (la versión en m² que Odoo ya tiene en listas de precios): el mismo código sin `M2`; 4) excepción capturada (`qb.articulo.excepcion`, para cambios de código como «WJ045… → WJ050…»); 5) él mismo |
-| `qb_gramaje` (g/m²), `qb_ancho_cm` | Especificación | 1) ficha (`ft_peso`, `ft_ancho`); 2) código (`NOMEN_RE` grupos 3 y 8, la misma de `qb_costeo/models/horas.py:64`); 3) vacío |
-| `qb_m_por_kg` | Rendimiento para convertir | `1000 ÷ (gramaje × ancho_m)` de la especificación (lo que pide la sección 2.7) |
-| `qb_m_por_kg_real` | Rendimiento real de producción, solo informativo | `ft_rendimiento` de la ficha (metros fabricados ÷ kilos consumidos, 12 meses) |
-| `qb_conv_origen` | `ficha` / `codigo` / `sin_dato` | — |
+| `qb_articulo_id` (m2o `product.product`) | La tela en metros que representa al producto en la medición | 1) ficha de acabado (`ft_producto_m_id`: para el IW, su W; para el W, él mismo); 2) `ft_tela_m_de_kg_id` (la regla `codigo_proceso()` de Fichas al revés); 3) código con `M2` al final (la versión en m² que Odoo ya tiene en listas de precios): el mismo código sin `M2`; 4) el desarrollo que lo creó: `sgi_dev_product_id` del proyecto (`sgi_dev_project_id` del producto, sección 2.11); 5) excepción capturada (`qb.articulo.excepcion`, para cambios de código como «WJ045… → WJ050…»); 6) él mismo |
+| `qb_m_por_kg` | Rendimiento para convertir venta en m ↔ kg | 1) `rendimiento_tela_acabada` de la ficha (el real); 2) especificación de la ficha `1000 ÷ (ft_peso × ft_ancho/100)`; 3) código (gramaje y ancho de la DAT P-D02-01); 4) vacío |
+| `qb_conv_origen` | `ficha_real` / `ficha_especificacion` / `codigo` / `sin_dato` | — |
 
-El caso WC090 del prompt se corrige solo: `WC090Q11JNT168` tiene ficha con 90 g/m² y 168 cm, y los demás WC090 leen
-90 del código. **Ojo:** para `WJ038Q22JNT160` la especificación da 16.45 m/kg y la ficha real 14.19 m/kg (14 % menos).
-Cuál usa Planeación para los kilos de tejido es la pregunta 3 de la sección 7; el modelo guarda los dos.
+**Dos kilos distintos, y la vista de Planeación muestra los dos:**
 
-**Conversión:** una función de módulo `qb_convertir(producto, cantidad, de_unidad, a_dimension)` sobre `release/units.py`
-(se agrega `de_unidad` de Odoo además del código del cliente). Metros ↔ yardas exacto; metros ↔ kilos con `qb_m_por_kg`;
-metros ↔ m² con el ancho. Si `qb_conv_origen = sin_dato`, devuelve `None`.
+- **Kilos de venta** (`qty_kg`): lo que pesa lo que se vende, con `qb_m_por_kg`. Es lo que se compara contra la factura.
+- **Kilos a producir** (`qty_kg_producir`, solo en la Demanda de Planeación): metros ÷ rendimiento ÷ primera para planear,
+  **la misma cuenta que hace la lista en metros**. Para un cliente que compra en kilos el acabado en proceso (Shawmut
+  compra IWJ), los kilos a producir son los kilos pedidos ÷ primera para planear.
+
+Esto contesta la pregunta 3: para `WJ038Q22JNT160` la especificación da 16.45 m/kg y la ficha 14.19 m/kg; manda la
+ficha, porque es el número con el que Producción explota la lista y con el que el MPS pide los kilos. La especificación
+queda como respaldo cuando la tela no tiene órdenes ni ficha. El caso WC090 del prompt también se corrige solo:
+`WC090Q11JNT168` tiene ficha (90 g/m², 168 cm) y los demás WC090 leen 90 del código.
+
+**Unidades del cliente:** `release/units.py` se queda como lógica pura, pero el catálogo de unidades del cliente (MT, LY,
+YD, KG, M2…) pasa al catálogo de unidades de Fichas (`ficha.tecnica.unidad`, con su `uom_id` y su campo «También se
+escribe»: `models/unidades.py`): una sola lista de alias para fichas, Excel y releases.
+
+**Conversión:** una función `qb_convertir(producto, cantidad, de_unidad, a_dimension)` en este módulo que solo junta lo
+anterior (ningún factor propio). Metros ↔ yardas exacto (0.9144); metros ↔ kilos con `qb_m_por_kg`; metros ↔ m² con el
+ancho de venta de la ficha. Si `qb_conv_origen = sin_dato`, devuelve `None`. La misma función la usan el release, la
+carga del Excel, el desarrollo (2.11) y el real.
 
 **Cada renglón con cantidad (pronóstico, presupuesto, real, propuesta de pedido) guarda:**
 
@@ -207,8 +230,9 @@ metros ↔ m² con el ancho. Si `qb_conv_origen = sin_dato`, devuelve `None`.
 - `qty_m` y `qty_kg` (vacíos si no hay dato),
 - `conv_origen`.
 
-Así, la decisión de pasar todo a kilos solo cambia qué columna se muestra primero y en qué producto (W o IW) se hace el
-pedido (parámetro por artículo, sección 2.8); no cambia tablas ni reportes.
+Así, la decisión de pasar todo a kilos solo cambia qué columna se muestra primero; no cambia tablas ni reportes. El
+producto del pedido y del MPS es **el que compra el cliente** (W en metros o IW en kilos): la lista de materiales y Fichas
+hacen el resto.
 
 ### 2.3 Pronóstico vigente: `qb.forecast.line`
 
@@ -278,9 +302,10 @@ Presupuesto y pronóstico.
   pero por cliente + artículo, que cierra el doble conteo N4);
 - más el presupuesto anual vigente solo donde ningún pronóstico cubre cliente + artículo + mes (regla N2 de hoy), para
   los meses más allá del horizonte de los releases;
-- se escribe en el producto del artículo **que tenga programa en el MPS** (hoy 48 programas en Toluca): si el programa es
-  del IW, la cantidad va en kilos; si es del W, en metros; si los dos tienen programa, en el que diga el parámetro del
-  artículo. Esa es la bisagra con la decisión de kilos.
+- se escribe en **el producto que compra el cliente**: W en metros (la lista en metros de Fichas explota los kilos del
+  IW con el rendimiento y la primera para planear) o IW en kilos (Shawmut). Así el MPS no necesita una conversión propia
+  y la decisión de kilos no cambia nada aquí. Si el producto no tiene programa en el MPS (hoy 48 en Toluca), la Demanda
+  de Planeación lo marca y ofrece crearlo.
 - se recalcula al aplicar un release, al guardar la matriz y en el cron diario; ya no depende de ningún estado.
 
 **Abrir la demanda del MPS por cliente:** el MPS de Odoo es una pantalla OWL de Enterprise. Se agrega un parche de
@@ -343,8 +368,9 @@ marcaría 102 M como «nuevos» desde julio de 2025, así que no sirve. Y la hoj
 proyecto es una **combinación producto–cliente** (sección 1.4): el mismo código es línea para un cliente y proyecto para
 otro. Propuesta:
 
-1. **`qb.sales.project`** (cliente comercial, artículo o renglón sin código, `desde`, `hasta`, nota): la combinación en
-   arranque. Mientras esté vigente, su venta y su pronóstico cuentan como proyecto de su mercado base.
+1. **`qb.sales.project`** (cliente comercial, artículo o renglón sin código, `desde`, `hasta`, **proyecto de desarrollo**,
+   nota): la combinación en arranque. Mientras esté vigente, su venta y su pronóstico cuentan como proyecto de su mercado
+   base. Nace del proyecto de Desarrollo (sección 2.11), no se captura aparte.
 2. El presupuesto la declara: un renglón en `proyectos_industrial` o `proyectos_confeccion` crea o liga su
    `qb.sales.project` para ese año. La carga de la REV1 crea las 33 de PRESUPUESTO PROYECTOS.
 3. La combinación «se gradúa» cuando el presupuesto del año siguiente la pone en línea (se cierra `hasta`), o a mano.
@@ -381,7 +407,9 @@ crédito resta sola), `amount_currency` y moneda, `tc` (`balance / amount_curren
 `qty_kg`, `conv_origen`, `team_id` de la factura (solo informativo).
 
 **Desperdicio, saldos y chatarra:** el cierre del Excel no los cuenta (27 mil en septiembre industrial) y el VE-02 sí,
-porque van a la misma cuenta 401. La vista los marca con `es_saldo` (por categoría de producto, lista en Ajustes) y los
+porque van a la misma cuenta 401. La vista los marca con `es_saldo` con la lista de saldos que ya tiene Fichas
+(`_ft_saldo_products()`, parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`, más
+`DESPERDICIO TEJIDO`: `models/ruta_familia.py:57-61`) y los
 reportes de cumplimiento los excluyen por defecto; el VE-02 adopta la misma regla para que las dos cifras sigan siendo
 una (pregunta 15).
 
@@ -435,6 +463,64 @@ La suma da real − presupuesto; para un precio en MXN el efecto TC es 0. Lo ven
 5. **Bandeja:** menú «Releases por revisar» con el contador; el aviso de la sección 2.9.
 
 ---
+
+### 2.11 Proyectos: conexión con Desarrollo de producto (C1) y con Fichas técnicas
+
+**Lo que ya existe.** El SGI tiene el desarrollo de producto completo sobre Proyectos (`quimibond_sgi/models/sgi_dev_*.py`,
+procedimiento C1): un proyecto `project.project` con `sgi_is_ft` que nace como **solicitud → análisis → cotización →
+aprobación del cliente → muestra → respuesta del cliente → pilotaje → liberado** (o cerrado sin producto). Ya guarda casi
+todo lo que el presupuesto necesita de un proyecto:
+
+| Lo que necesita el presupuesto | Campo del desarrollo | Dónde |
+|---|---|---|
+| Cliente y equipo de ventas | `partner_id`, `sgi_dev_team_id`, `sgi_dev_salesperson_id`, `sgi_dev_customer_status` (actual o prospecto) | `sgi_dev_project.py:283-290` |
+| Producto (tela en m y en kg) | `sgi_dev_product_id` (acabado en m) y `sgi_dev_product_proceso_id` (acabado en kg); el generador de código los crea con la DAT P-D02-01 | `sgi_dev_product.py:291-413`, `sgi_dev_product_proceso.py:42` |
+| Producto de línea para un cliente nuevo | `sgi_dev_analysis_result = 'linea'` + `sgi_dev_base_product_id`: se cotiza el existente y el proyecto cierra sin folio | `sgi_dev_project.py:331-339` |
+| Volumen | `sgi_dev_consumption_annual` en m, yd o kg, `sgi_dev_program_years`, `sgi_dev_required_date`; en la solicitud, `sgi_dev_volume` mensual y `sgi_dev_target_price` | `sgi_dev_project.py:295-310`, `sgi_dev_request.py:47-55` |
+| Si ya se puede vender | `product.template.sgi_dev_state`: en desarrollo (el pedido no se confirma), pilotaje (se vende con aviso), liberado, archivado | `sgi_dev_product.py:27-80, 94-110` |
+| Su ficha técnica | el asistente de fichas de proceso del desarrollo crea la ficha de tejido y la de acabado de sus productos | `sgi_dev_fabric_sheet.py:342-480` |
+
+**Cómo está en producción (4-nov):** 95 proyectos de desarrollo. Los 17 capturados desde octubre (Tescap, Saltillo,
+Shawmut, Bondtex…) traen cliente, equipo, producto W + IW y consumo anual; los ~75 migrados de los «FT-» viejos están casi
+todos en «Muestra» sin consumo ni equipo, y ningún producto vendido en 2026 tiene `sgi_dev_state`. De los 33 renglones de
+PRESUPUESTO PROYECTOS del Excel, **12 tienen su proyecto de desarrollo** por producto (W o IW), 2 se parecen (código
+hermano), 3 traen códigos que no existen en Odoo pero sí hay desarrollos con códigos cercanos (Bowen, Blancos) y el resto
+son productos de línea para un cliente nuevo, sin análisis registrado. Lista completa fuera del repo.
+
+**Qué se conecta (todo vive en `quimibond_ventas_presupuesto`, que ya depende del SGI; el SGI no se toca salvo una
+vista):**
+
+1. **El proyecto comercial nace del desarrollo.** Cuando un desarrollo llega a «Cotización» con cliente y artículo
+   (`sgi_dev_product_id`, o `sgi_dev_base_product_id` si el análisis dio «línea»), se crea su `qb.sales.project`
+   (cliente + artículo, `desde` = fecha de cotización, liga al desarrollo). Si el desarrollo cierra sin producto o no
+   es factible, el proyecto comercial se cierra como **perdido** y sus renglones del presupuesto y del pronóstico salen
+   en Faltantes («proyecto perdido con presupuesto»). Si llega a «Liberado», sigue como proyecto hasta que el
+   presupuesto del año siguiente lo pase a línea.
+2. **Renglón de presupuesto sin código = desarrollo sin producto.** El renglón de proyecto (2.6) liga el desarrollo en
+   lugar de solo describir gramaje y ancho; cuando el generador de código crea los productos
+   (`action_sgi_dev_generate_products`), el renglón toma el producto solo (herencia del método en este módulo, que llama
+   a `super()`). Gramaje y ancho del renglón salen de la tabla de características del desarrollo (masa y ancho que ya usa
+   el generador) mientras no haya ficha.
+3. **Volumen del desarrollo → propuesta del presupuesto.** El armado de la propuesta (2.6) suma un origen más,
+   `desarrollo`: para cada desarrollo abierto (de Cotización a Pilotaje) con consumo anual, el volumen mensual desde la
+   fecha requerida, convertido con `qb_convertir` (el consumo en kg hoy se queda sin metros: `sgi_dev_project.py:399-404`
+   solo convierte m ↔ yd). Cada renglón dice la etapa del desarrollo; Jessica decide cuánto entra. Precio: el de la
+   cotización del desarrollo si existe, si no `sgi_dev_target_price`.
+4. **Pronóstico y pedidos respetan el estado del artículo.** Un artículo «en desarrollo» puede estar en el pronóstico
+   (Planeación necesita verlo venir) pero sale marcado; la propuesta de pedidos de E3 no lo propone (el pedido no se
+   confirmaría, `sgi_dev_product.py:94-110`). En «pilotaje» sí, con el mismo aviso que ya pone el pedido.
+5. **El desarrollo ve su venta.** En la ficha del proyecto de desarrollo, un botón «Presupuesto y venta» (herencia de la
+   vista del SGI desde este módulo, con ancla revisada por `check_odoo_views.py`): presupuesto del año, pronóstico vigente
+   y facturado del cliente + artículo. Es la medición que hoy no existe de «¿el desarrollo se vendió?».
+6. **Limpieza previa (con Diseño y Desarrollo, antes de E2):** registrar el análisis «línea» de los proyectos de 2026 que
+   no tienen desarrollo, cerrar los «FT-» viejos que ya no siguen y poner `sgi_dev_state = liberado` a los artículos de
+   desarrollos liberados. Corregir también el acabado en kg del análisis de Saltillo (`WJ030Q22KNT168`, que no sigue la
+   regla «I» + código de la tela). Sin eso, la carga de la REV1 crea los `qb.sales.project` sin desarrollo y los marca.
+
+**Y con Fichas técnicas,** además de unidades (2.2): el artículo, el rendimiento y los kilos a producir salen de la
+ficha de acabado; los saldos que no cuentan como venta, de la lista de saldos de Fichas (2.7); la revisión de listas de
+Fichas (`ft_estado`, «lista para activar») se muestra en la Demanda de Planeación para que Planeación sepa si un artículo
+pedido todavía no tiene lista activa.
 
 ## 3. Flujos y permisos
 
@@ -532,7 +618,7 @@ por pedidos y la Demanda por cliente ya los necesitan.
 | Entrega | Contenido | Revisión del diseño | Staging (Odoo.sh) | Producción |
 |---|---|---|---|---|
 | **E1** | Artículo y unidades; `qb.forecast.line` + bitácora; matriz y «Pegar desde Excel»; releases con planta, lector Excel genérico, confirmación en bloque, aplicar al pronóstico nuevo; `qb.demand.planning`, Demanda por cliente, grupo Planeación; MPS desde la fuente nueva y parche «Demanda por cliente»; migración de los 21 pronósticos; carga de `forecast.xlsx`; comparación de precios | 11-nov (Jessica + Planeación) | 20-nov | **25-nov** |
-| **E2** | Presupuesto anual por año + revisión, mercados, proyectos, precio y TC capturables; `qb.sales.actual`; VE-02 sobre la vista; reportes mensual, anual, cliente × artículo, variación y faltantes; presupuesto del mes con PDF y correo; armado de la propuesta del año; carga REV0/REV1 | — | 4-dic | **9-dic** (Jessica arma 2027 del 9 al 18-dic; cierre de noviembre en paralelo con el Excel) |
+| **E2** | Presupuesto anual por año + revisión, mercados, proyectos ligados a Desarrollo (2.11), precio y TC capturables; `qb.sales.actual`; VE-02 sobre la vista; reportes mensual, anual, cliente × artículo, variación y faltantes; presupuesto del mes con PDF y correo; armado de la propuesta del año; carga REV0/REV1 | — | 4-dic | **9-dic** (Jessica arma 2027 del 9 al 18-dic; cierre de noviembre en paralelo con el Excel) |
 | **E3** | Pedidos desde la zona firme (sección 2.8 del prompt): propuesta, agregar o actualizar por OC, reducciones con autorización, nunca tocar lo embarcado, consumo del pronóstico | — | 13-ene-2027 | **20-ene-2027** (fuera del cierre de año) |
 
 Criterio de salida de E1: Jessica deja de actualizar `forecast.xlsx` y Planeación deja de abrir el Drive (una semana en
@@ -572,7 +658,8 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
    cual?
 2. ~~TC de la REV1~~: **17.5**, confirmado en el correo del 25-jun y en la hoja «2026 industrial» (1.4). Queda ver por qué
    la hoja ANUAL dice 17.2 cuando llegue el archivo.
-3. Para Planeación, ¿kilos con el rendimiento de especificación (gramaje × ancho) o con el real de la ficha?
+3. ~~Rendimiento de especificación o real~~: el de la ficha (un solo rendimiento, decisión de Dirección General en fichas
+   2.24.0); la especificación solo como respaldo (2.2).
 4. ¿El equipo «Distribuidor» y las ventas sin equipo de clientes de giro van a algún mercado o se reportan aparte?
 5. Objetivo y mínimo: ¿sobre la venta total del año anterior o por mercado?
 6. ¿Se acepta que el mercado salga del cliente (no de la factura), con la conciliación de 4.3?
@@ -580,7 +667,8 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 **Para Ventas (Jessica)**
 
 7. Un «proyecto» en el Excel es una combinación producto–cliente en arranque (1.4). ¿Cuándo pasa a «línea»? Hay 6 que
-   ya se vendían antes de 2026 y siguen como proyecto.
+   ya se vendían antes de 2026 y siguen como proyecto. ¿Aceptas que todo proyecto nuevo pase por un desarrollo (aunque
+   sea un análisis «producto de línea» que cierra en Cotización), para que nazca ligado (2.11)?
 8. ¿El precio presupuestal de industrial lo manejas por metro o por kilo, y en qué moneda, por cliente?
 9. Hoja MUESTRAS: ¿se queda en Excel o la quieres en Odoo (sería otra entrega)?
 10. ~~Plantas~~: el forecast ya las separa (1.4). ¿Shawmut Silao y Tennessee mandan release por separado?
@@ -599,3 +687,8 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 17. ¿Me pasas el GENERAL 2026 vigente completo (con ANUAL, confección, proyectos y especiales)? La memoria solo tiene sus
     10 primeras hojas. ¿Y la REV0?
 18. ¿Se corrige el extractor de la memoria para guardar todas las hojas de un Excel (otro PR, en quimibond-intelligence)?
+
+**Para Diseño y Desarrollo**
+
+19. ¿Quién limpia los ~75 desarrollos «FT-» viejos en «Muestra» y el estado de sus artículos (2.11 punto 6), y para cuándo?
+20. ¿La cotización del desarrollo trae precio en algún campo, o el precio objetivo de la solicitud es lo único?
