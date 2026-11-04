@@ -14,6 +14,19 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.198.0 — 2026-11-04
+
+Jessica Francisco (Diseño y Desarrollo de Producto), 2026-11-03: «en la solicitud de desarrollos ya no aparece lo de
+la capacidad». La tabla solo estaba en la Aprobación para iniciar (57.152.0), que deja de poder regenerarse cuando el
+cliente ya aprobó; la Solicitud de desarrollo (FT-040-2026 WJ038Q22JVH165) salía sin ella.
+
+**Agregado**
+- **«Capacidad a utilizar» en la Solicitud de desarrollo** (`report_dev_request.xml`): la misma tabla de la
+  Aprobación para iniciar (materia prima, recursos de la ruta y las circulares de las fichas de tejido del crudo,
+  57.196.0), con la muestra y el consumo mensual y su porcentaje. Sale siempre en español (documento interno), con
+  `_sgi_dev_request_capacity` y la clave de contexto `sgi_dev_labels_es`.
+- Prueba `test_08_request_shows_capacity_in_spanish` (Odoo.sh).
+
 ## 19.0.57.197.0 — 2026-11-04
 
 Dirección General (2026-11-04), a raíz de lo que reportó Jessica Francisco: el 3-nov Diseño presionó «Aprobar
