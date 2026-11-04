@@ -5,6 +5,7 @@ cuando la memoria los da por resueltos o expirados. Áreas por tipo."""
 from unittest.mock import patch
 
 from odoo.exceptions import UserError
+from odoo.tools import mute_logger
 from odoo.tests import tagged
 
 from .common import ObligationCommon
@@ -154,6 +155,23 @@ class TestEmailChannel(ObligationCommon):
 
     def test_cron_survives_memory_outage(self):
         self._configure()
-        with patch.object(self.Client, 'get', side_effect=UserError('Supabase 500')):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('quimibond_intelligence.supabase_url', 'https://memoria.invalid')
+        icp.set_param('quimibond_intelligence.supabase_service_key', 'llave-de-prueba')
+        # La caída es a propósito: el ERROR que deja la corrida no es una falla de la prueba.
+        with patch.object(self.Client, 'get', side_effect=UserError('Supabase 500')), \
+                mute_logger('odoo.addons.qb_obligation.models.qb_obligation'):
             self.Obligation._cron_collection()
         self.assertFalse(self.Obligation.search([('source', '=', 'email')]))
+
+    def test_cron_without_memory_config_skips_quietly(self):
+        """3.2.1: sin URL o llave de Supabase (desarrollo, pruebas) la corrida no le pregunta a la memoria ni
+        deja un ERROR; las demás áreas corren igual."""
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('quimibond_intelligence.supabase_url', 'https://memoria.invalid')
+        icp.set_param('quimibond_intelligence.supabase_service_key', False)
+        self.assertFalse(self.Obligation._memoria_configured())
+        with patch.object(self.Client, 'get') as get, \
+                self.assertNoLogs('odoo.addons.qb_obligation.models.qb_obligation', level='ERROR'):
+            self.Obligation._cron_collection()
+        get.assert_not_called()
