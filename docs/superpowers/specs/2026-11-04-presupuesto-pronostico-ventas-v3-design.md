@@ -586,6 +586,63 @@ ficha de acabado; los saldos que no cuentan como venta, de la lista de saldos de
 Fichas (`ft_estado`, «lista para activar») se muestra en la Demanda de Planeación para que Planeación sepa si un artículo
 pedido todavía no tiene lista activa.
 
+### 2.12 Prácticas de vistas y código (obligatorias en E1–E3)
+
+**Cómo está hoy el módulo (4-nov):** cumple las reglas del repo: `check_odoo_views.py` y `check_odoo_fields.py` no marcan
+nada, usa la sintaxis de Odoo 19 (`<list>`, `invisible`/`readonly` con expresiones, `<chatter/>`, sin `attrs` ni
+`states`), no hereda sus propias vistas (sus 4 herencias son de otros módulos: producto, categoría, Ajustes del SGI y
+`account_budget`), cada vista de búsqueda tiene filtros y agrupaciones, y todas las acciones tienen ayuda salvo la del
+asistente de importación (no la necesita). Lo que sí cambia es el modelo, no la forma.
+
+**Vistas**
+
+1. **Sintaxis de Odoo 19:** `<list>`, expresiones en `invisible`/`readonly`/`required`, `<chatter/>`, `column_invisible`
+   en listas incrustadas. Nada de `attrs`, `states`, `tree` ni `oe_chatter`.
+2. **Sin herencias propias** (regla del repo): la ficha de cada modelo propio va completa en su `<record>`. Se hereda
+   solo lo de otros módulos: la ficha del proyecto de desarrollo (SGI), la del producto, la de Ajustes y el MPS (parche
+   OWL). Cada ancla la revisa `check_odoo_views.py` contra el padre tal como queda en el código; el archivo del padre va
+   antes en el manifiesto.
+3. **Listas:** columnas secundarias con `optional="hide"`; `sum` solo en medidas que se pueden sumar (pesos, metros,
+   kilos; **nunca** la cantidad en unidad de venta mezclando productos); `decoration-*` para estado, zona y origen;
+   `default_order` explícito; `multi_edit="1"` donde Jessica corrige en bloque (pronóstico, renglones del presupuesto).
+4. **Búsqueda:** una por modelo, con los filtros con nombre del proceso («Acabado: 3 semanas», «Tejido: próximo mes»,
+   «Zona firme», «Proyectos», «Sin precio», «Sin conversión»), agrupaciones por cliente, artículo, mercado, semana y mes,
+   y `<group>` sin atributos (RNG de Odoo 19). Las acciones abren con `search_default_*`, no con dominios fijos, para que
+   el usuario pueda quitar el filtro.
+5. **Pivote y gráfica** con medidas declaradas (`type="measure"`) y filas por defecto; la Demanda de Planeación abre en
+   pivote. La captura semanal y mensual va en `web_grid` (ya es dependencia), no en listas editables de 52 columnas.
+6. **Fichas:** encabezado con barra de estado solo donde hay estados (presupuesto anual, release, presupuesto del mes; el
+   pronóstico no tiene); botones inteligentes `oe_stat_button` con conteo (cambios, faltantes, facturas, pedidos); acciones
+   de flujo en el encabezado y las secundarias en el engrane, como ya decidió V-M10.
+7. **Textos:** `help` de acciones y campos en «usted», en español, diciendo de dónde sale el dato; sin etiquetas repetidas
+   en el mismo modelo (el checker lo revisa); los nombres de menú y migas iguales.
+8. **Accesibilidad:** `<a class="btn">` con `role="button"`; avisos `alert-*` con `role="alert"` o `"status"`.
+9. **Campos de otros modelos confirmados en producción** con `get_fields` por MCP antes de ponerlos en una vista
+   (Fichas, MPS y Desarrollo son de otros módulos y Enterprise); lo que agregue Enterprise va a `tools/odoo_fields_allow.txt`.
+10. **Menús:** solo en `views/menus.xml`, con `groups` por puesto (sección 3.3): Ventas → Presupuesto y pronóstico y
+    Fabricación → Planeación → Demanda por cliente. Los modelos técnicos (bitácora, tasas) no llevan menú propio.
+
+**Modelos y código**
+
+11. **Vistas SQL** (`qb.sales.actual`, `qb.demand.planning`, `qb.sales.compare`) con `_auto = False` y `init()` que hace
+    `CREATE OR REPLACE VIEW`; filtros por fecha e índices en las tablas base que use; si el pivote anual pasa de 2 s, se
+    materializa (riesgo 5).
+12. **Sin N+1:** cálculos por lote (`_read_group`, índices por llave), `store=True` solo en lo que se filtra o agrupa. Los
+    campos de Fichas no se guardan (`ft_*` son calculados): lo que dependa de ellos (`qb_articulo_id`, `qb_m_por_kg`) se
+    recalcula con el cron nocturno de Fichas, no con `@api.depends` sobre campos no guardados.
+13. **Seguridad:** un renglón de `ir.model.access.csv` por modelo y grupo; reglas por compañía; regla de confección por
+    mercado; Planeación solo lectura; `sudo()` solo donde se lee contabilidad para el real, documentado.
+14. **Lógica pura fuera de Odoo** (`release/`: lectores, unidades, lector del forecast) con pruebas en `tests_puros/` y
+    fixtures anonimizados; pruebas de Odoo en `tests/` y registradas en `tests/__init__.py` (el checker lo exige), corridas
+    en Odoo.sh con `--test-tags /quimibond_ventas_presupuesto`.
+15. **Correos y PDF:** `mail.template` con QWeb (no HTML armado en Python); PDF con `web.external_layout` y el pie de
+    formato del SGI (`sgi.format.mixin`, F-P-A28-14/17/18).
+16. **Datos:** crons y parámetros con xmlid, sembrados sin pisar valores capturados (como `seed_parameters`); los crons
+    se vuelven a encender en cada update, igual que en `quimibond_intelligence`.
+17. **Despliegue:** versión del manifiesto subida en cada entrega (19.0.2.0.0, 2.1.0, 2.2.0) con su sección en el README;
+    migraciones idempotentes con conteos en el log; `check_addons.py`, `check_odoo_views.py` y `check_odoo_fields.py`
+    en 0 antes de abrir el PR; después de desplegar, revisar el `update.log` y las consultas del runbook.
+
 ## 3. Flujos y permisos
 
 ### 3.1 Semana
