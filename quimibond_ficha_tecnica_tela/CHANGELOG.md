@@ -59,6 +59,24 @@ tenían (se pusieron a mano); las dos que creó «Generar listas» el 3-nov no.
 - Prueba: `test_ruta_familia.test_11_tipo_de_operacion_del_flujo`; los datos de prueba (`TiempoFichaCase`) traen los
   dos tipos.
 
+### Lo que encontró el piloto en el build de main (2026-11-04)
+
+Se corrió el flujo completo sobre `WJ053Q22JNT160` (2,000 m → 169.6 kg: Tintorería, 4 rollos en Rama, desperdicio,
+Inspección, Clasificación y cierre de las dos órdenes). En fichas:
+
+- **Consumo flexible.** Las listas del flujo nacían en «advertencia» y Odoo pedía confirmar el consumo en cada cierre
+  de la orden en kg (se cierra con los kg pesados y el crudo se consume completo). «Generar listas» las crea en
+  «flexible» y la migración lo pone en las archivadas.
+- **Al activar una lista del flujo** (visto bueno de Ingeniería, `mrp.bom.write`): tipo de operación, consumo
+  flexible y, en la lista en kg, el desperdicio de Rama y la **ruta MTO del «I…»**, la que tiene la regla de
+  fabricación con el tipo OP-KG («Fabricar Tela kg → Inspección (MTO)»). En producción la ruta existe y no la tiene
+  ningún «I…»: sin ella la orden en metros no pide la orden en kg.
+- **Revisión:** «Lista en kg sin desperdicio de Rama» y «Acabado en kg sin la ruta MTO» (lista activa) en las
+  listas «Flujo en kg»; «Resolver» abre la lista o el producto.
+- **La migración rehace la revisión** al desplegar. En el build de main la foto del 3-nov daba por bueno el tiempo de
+  Rama anterior a 2.24.0 (0.3178 contra 0.3685 min/kg); al revisar de nuevo sale el pendiente.
+- Prueba: `test_ruta_familia.test_12_consumo_flexible_activacion_y_revision`.
+
 ## 19.0.2.24.0 — 2026-11-03
 
 ### Primera para planear en la lista en metros
