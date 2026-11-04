@@ -8,6 +8,21 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.25.0 — 2026-11-04
+
+### Desperdicio de Rama en la lista en kg
+
+El pesaje de desperdicio de Rama de José Sacramento (`quimibond_rollos_bitacora`, botón «PESAR DESPERDICIO») pide que
+la orden en kg tenga un subproducto; ninguna lista `I…` lo traía y el botón se bloqueaba. Ahora:
+
+- «Generar listas desde la ruta» deja en la lista en kg el subproducto **«DESPERDICIO TEJIDO»** (Desperdicio tejido y
+  orilla, por lote) en la operación de **Rama**, con **cantidad 0**: no es estándar, Rama pesa el real de cada orden
+  (`mrp.bom._ft_poner_desperdicio`). Al volver a generar no se duplica y se vuelve a ligar a la Rama si las
+  operaciones se rehicieron. Sin el artículo o sin Rama, lo dice en los avisos.
+- La migración lo pone en las listas en kg del flujo que ya están generadas y archivadas (las 31 de producción). Las
+  activas no se tocan.
+- Prueba: `test_ruta_familia.test_10_desperdicio_de_rama_en_la_lista_en_kg`.
+
 ## 19.0.2.24.0 — 2026-11-03
 
 ### Primera para planear en la lista en metros

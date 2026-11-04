@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_etiqueta_rama" model="ir.actions.report">
+        <field name="name">Etiqueta de Rama (lote-serie)</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_rama</field>
+    </record>
+
+    <template id="report_etiqueta_rama">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.zpl_etiqueta_rama"/>
+        </t>
+    </template>
+
+    <record id="action_report_etiqueta_final" model="ir.actions.report">
+        <field name="name">Etiqueta final (PQ / PNC)</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_final</field>
+    </record>
+
+    <template id="report_etiqueta_final">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.zpl_etiqueta_final"/>
+        </t>
+    </template>
+
+    <record id="action_report_etiqueta_preliminar" model="ir.actions.report">
+        <field name="name">Etiqueta preliminar de Inspección</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_preliminar</field>
+    </record>
+
+    <template id="report_etiqueta_preliminar">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.zpl_etiqueta_preliminar"/>
+        </t>
+    </template>
+</odoo>

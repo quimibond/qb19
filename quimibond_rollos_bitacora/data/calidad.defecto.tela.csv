@@ -1,0 +1,65 @@
+id,clave,name,tipo_tela
+defecto_ad,AD,ANCHOS DIFERENTES,tejido_acabado
+defecto_agu,AGU,AGUJEROS,tejido_acabado
+defecto_ap,AP,AGUJA PICANDO,tejido_acabado
+defecto_arg,ARG,ARRUGAS,tejido_acabado
+defecto_bdf,BDF,BAJA SOLIDEZ AL FROTE,tejido_acabado
+defecto_brd,BRD,BARRADO,tejido_acabado
+defecto_cas,CAS,CASCARILLA,tejido_acabado
+defecto_cda,CDA,CAIDA,tejido_acabado
+defecto_con_r,CON-R,CONTAMINACION POR RAMA,tejido_acabado
+defecto_da,DA,DESGASTE DE AGUJA,tejido_acabado
+defecto_ddt,DDT,DIBUJO DIFERENTE DE TEJIDO,tejido_acabado
+defecto_dot,DOT,DOBLES EN EL TEJIDO,tejido_acabado
+defecto_dt,DT,DIFERENCIA DE TACTO,tejido_acabado
+defecto_dtt,DTT,DIFERENCIA DE TENSIÓN DE TEJIDO,tejido_acabado
+defecto_ea,EA,ESPESOR ALTO,tejido_acabado
+defecto_eb,EB,ESPESOR BAJO,tejido_acabado
+defecto_ec,EC,EMPALME CORTO,tejido_acabado
+defecto_exe,EXE,EXCESO DE EMPALMES,tejido_acabado
+defecto_enca,ENCA,ENCOGIMIENTO ALTO,tejido_acabado
+defecto_fh,FH,FALTA DE HILO,tejido_acabado
+defecto_ga,GA,GOMA ANCHA,tejido_acabado
+defecto_gc,GC,GOMA CRISTALIZADA,tejido_acabado
+defecto_gcr,GCR,GOMA CRUDA,tejido_acabado
+defecto_gd,GD,GOMA DESLGADA,tejido_acabado
+defecto_hd,HD,HILO DELGADO,tejido_acabado
+defecto_hdb,HDB,HILO DOBLE,tejido_acabado
+defecto_hdf,HDF,HILO DESFILAMENTADO,tejido_acabado
+defecto_hg,HG,HILO GRUESO,tejido_acabado
+defecto_hst,HST,HILO SIN TEJER,tejido_acabado
+defecto_ht,HT,HILO TENSO,tejido_acabado
+defecto_idr,IDR,INICIO DE ROLLO,tejido_acabado
+defecto_jls,JLS,JALONES,tejido_acabado
+defecto_lda,LDA,LINEA DE ACEITE,tejido_acabado
+defecto_ldc,LDC,LINEA DE COLOR,tejido_acabado
+defecto_lna,LNA,LUNAS,tejido_acabado
+defecto_lt,LT,LINEA TRANSPARENTE,tejido_acabado
+defecto_map,MAP,MARCAS DE PELUSA,tejido_acabado
+defecto_mb,MB,MANCHAS BLANCAS,tejido_acabado
+defecto_mda,MDA,MANCHAS DE ACEITE,tejido_acabado
+defecto_mdc,MDC,MANCHAS DE COLOR,tejido_acabado
+defecto_mdg,MDG,MANCHAS DE GRASA,tejido_acabado
+defecto_mdr,MDR,MANCHAS DE RESEQUEDAD,tejido_acabado
+defecto_mll,MLL,MALLAS,tejido_acabado
+defecto_mts,MTS,MOTAS,tejido_acabado
+defecto_omc,OMC,ORILLA MAL CORTADA,tejido_acabado
+defecto_ome,OME,ORILLA MAL ENSARTADA,tejido_acabado
+defecto_osg,OSG,ORILLA SIN GOMA,tejido_acabado
+defecto_pal,PAL,PALMEADO,tejido_acabado
+defecto_pa,PA,PESO ALTO,tejido_acabado
+defecto_pb,PB,PESO BAJO,tejido_acabado
+defecto_pda,PDA,PUNTOS DE ACEITE,tejido_acabado
+defecto_pdc,PDC,PUNTOS DE COLOR,tejido_acabado
+defecto_pdm,PDM,PARO DE MAQUINA (TEJIDO),tejido_acabado
+defecto_pdr,PDR,PARO DE RAMA,tejido_acabado
+defecto_pil,PIL,PRESCENCIA DE PILLING,tejido_acabado
+defecto_plg,PLG,PLIEGUES,tejido_acabado
+defecto_pt,PT,PLATINA,tejido_acabado
+defecto_st,ST,SALTO DE HILO,tejido_acabado
+defecto_tde,TDE,TENSIÓN DE ENROLLADO,tejido_acabado
+defecto_tlq,TLQ,TELA QUEBRADA,tejido_acabado
+defecto_ts,TS,TELA SUCIA,tejido_acabado
+defecto_vmc,VMC,ORILLA MAL CORTADA,tejido_acabado
+defecto_vto,VTO,VARIACIÓN DE TONO,tejido_acabado
+defecto_merma,MERMA,MERMA,tejido_acabado
