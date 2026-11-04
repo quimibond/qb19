@@ -43,7 +43,7 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 «Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
 La lista en kg generada lleva el subproducto «DESPERDICIO TEJIDO» en la Rama con cantidad 0 (2.25.0): lo pesa Rama
-en cada orden con `quimibond_rollos_bitacora`.
+en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de operación: Fabricación Tela en kg y Fabricación Tela en m.
 
 ## Dónde se captura cada dato (2.24.0)
 

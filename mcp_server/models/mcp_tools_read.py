@@ -195,6 +195,37 @@ class McpToolsRead(models.AbstractModel):
         raise UserError(_("Domain must be a list."))
 
     @staticmethod
+    def _check_order(model_rs, order):
+        """Refuse a sort on a field the database cannot sort by, with a clear message.
+
+        Odoo raises ``ValueError: Cannot convert <field> to SQL because it is not
+        stored`` deep in the ORM; the dispatcher logs that as a WARNING with a full
+        traceback on every call. A client that asks to sort by a computed column
+        (``acabado_count``) gets a plain tool error instead, naming the field.
+        Only the first segment of each term is checked (``partner_id.name`` checks
+        ``partner_id``); unknown names are left for the ORM to reject.
+        """
+        if not order:
+            return
+        if not isinstance(order, str):
+            raise UserError(_("'order' must be a string, e.g. 'name asc'."))
+        for term in order.split(","):
+            words = term.strip().split()
+            if not words:
+                continue
+            name = words[0].split(".")[0].strip('"')
+            field = model_rs._fields.get(name)
+            if field is not None and not field.store:
+                raise UserError(
+                    _(
+                        "Cannot sort %(model)s by '%(field)s': it is computed and "
+                        "not stored. Sort by a stored field or omit 'order'.",
+                        model=model_rs._name,
+                        field=name,
+                    )
+                )
+
+    @staticmethod
     def _coerce_fields(fields):
         """Coerce a ``fields`` argument into a list, ``None`` or the sentinel.
 
@@ -682,6 +713,7 @@ class McpToolsRead(models.AbstractModel):
         parsed_domain = self._coerce_domain(domain)
         limit = self._effective_limit(limit)
         offset = self._effective_offset(offset)
+        self._check_order(model_rs, order)
 
         fields_metadata = model_rs.fields_get(attributes=_RECORD_FIELD_ATTRIBUTES)
         selection_method, fields_to_read = self._resolve_fields(fields, fields_metadata)

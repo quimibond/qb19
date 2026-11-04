@@ -48,6 +48,10 @@ CODIGO_M = 'Clasificación final (borrador)'
 # 2.25.0: subproducto que pesa Rama en la orden en kg (quimibond_rollos_bitacora, «PESAR DESPERDICIO»). Nace con
 # cantidad 0: no es estándar, se registra el peso real de cada orden.
 DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
+# 2.25.0: tipo de operación de cada lista del flujo, por su código de secuencia (en producción 410 «Fabricación Tela en
+# kg», de 2 PRODUCCIÓN a 10 INSPECCIÓN, y 411 «Fabricación Tela en m», de 10 INSPECCIÓN a 14 PT PQ). Sin él, la orden
+# toma el tipo de fabricación predeterminado del almacén («Re-proceso Tintorería»).
+TIPO_OPERACION = {'kg': 'OP-KG', 'm': 'OP-M'}
 
 
 def tintoreria_por_codigo(code):
@@ -387,6 +391,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                     bom_kg.bom_line_ids.filtered(lambda line: line.product_id == crudo).product_qty = self.consumo_crudo
                 avisos += self._ft_poner_operaciones(bom_kg, self._ft_pasos('kg'), kg)
                 avisos += bom_kg._ft_poner_desperdicio()
+                avisos += bom_kg._ft_poner_tipo_operacion('kg')
                 generadas |= bom_kg
         if tela_m:
             bom_m = Revision._ft_bom_de(tela_m)
@@ -407,6 +412,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                         'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': kg_por_m,
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
+                avisos += bom_m._ft_poner_tipo_operacion('m')
                 generadas |= bom_m
         if generadas:
             self.env.invalidate_all()
@@ -458,4 +464,25 @@ class MrpBomDesperdicioRama(models.Model):
             bom.byproduct_ids = [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
                                          'product_uom_id': producto.uom_id.id, 'operation_id': rama.id or False,
                                          'cost_share': 0.0})]
+        return avisos
+
+    @api.model
+    def _ft_tipo_operacion(self, cual, company=None):
+        """El tipo de operación de fabricación de la lista en kg (``cual='kg'``) o en metros (``'m'``), o vacío."""
+        company = company or self.env.company
+        return self.env['stock.picking.type'].search([
+            ('code', '=', 'mrp_operation'), ('sequence_code', '=', TIPO_OPERACION[cual]),
+            ('company_id', 'in', [company.id, False])], limit=1)
+
+    def _ft_poner_tipo_operacion(self, cual):
+        """2.25.0: pone el tipo de operación del flujo a las listas que no lo tienen (nunca cambia uno ya puesto).
+        Devuelve los avisos."""
+        avisos = []
+        for bom in self.filtered(lambda b: not b.picking_type_id):
+            tipo = self._ft_tipo_operacion(cual, bom.company_id or None)
+            if tipo:
+                bom.picking_type_id = tipo
+            else:
+                avisos.append('%s: no existe el tipo de operación %s para la lista en %s.' % (
+                    bom.product_tmpl_id.default_code or bom.product_tmpl_id.name, TIPO_OPERACION[cual], cual))
         return avisos
