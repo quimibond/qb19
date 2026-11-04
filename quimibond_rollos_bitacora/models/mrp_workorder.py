@@ -67,8 +67,9 @@ class MrpWorkorder(models.Model):
             self.es_rama, 'rollo.desperdicio.rama.wizard', _('Pesar desperdicio (Rama)'), 'Rama')
 
     def action_inspeccionar_rollo(self):
+        # 3.1.0: Inspección como estación única (diseño 2026-11-03): pesa, corta o junta, clasifica y etiqueta.
         return self._abrir_ventana_operacion(
-            self.es_inspeccion, 'rollo.inspeccion.wizard', _('Inspeccionar rollo'), 'Inspección')
+            self.es_inspeccion, 'rollo.inspeccion.estacion.wizard', _('Inspeccionar rollo'), 'Inspección')
 
     def button_finish(self):
         # §10: la operación de Inspección debe terminar todos los rollos registrados en Rama.

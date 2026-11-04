@@ -1,0 +1,184 @@
+# -*- coding: utf-8 -*-
+"""Rollo final: lo que sale de la revisadora (diseño 2026-11-03, Dirección General, §4.1).
+
+Inspección es la única estación (D8): corta o junta rollos de Rama del mismo baño (D3, D6), pesa cada rollo final con
+la tara de Inspección, le pone metros, calidad y defectos, le asigna su lote (``M<orden en metros>-NNNN``, D4) e
+imprime la etiqueta final. No mueve inventario: los rollos finales quedan «inspeccionados» y se registran en la orden
+en metros cuando el supervisor cierra la orden en kg con el botón nativo (D7, D9; ``mrp_production_inspeccion``).
+"""
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+from .mrp_rollo_bitacora import CLASIFICACIONES, COLORES, LIBRAS_POR_KG, SUFIJO_CODIGO, YARDAS_POR_METRO
+
+# Calidad → (parámetro de la ubicación, nombre por defecto, unidad en que sale). Primera y FE en metros (la tela);
+# segundas y desperdicio en kg (los saldos), D5 y §4.3.
+DESTINO_CALIDAD = {
+    'PQ': ('quimibond_rollos_bitacora.ubicacion_pq', '14 PRODUCTO TERMINADO PQ', 'm'),
+    'FE': ('quimibond_rollos_bitacora.ubicacion_fe', '15 PRODUCTO TERMINADO FE', 'm'),
+    'SEGUNDA': ('quimibond_rollos_bitacora.ubicacion_segunda', '16 PRODUCTO TERMINADO SEGUNDAS', 'kg'),
+    'DESP': ('quimibond_rollos_bitacora.ubicacion_desperdicio', '17 PRODUCTO TERMINADO DESPERDICIO', 'kg'),
+}
+# Saldos en kg: los mismos parámetros que usan las fichas para ponerlos de subproducto en la lista en metros.
+SALDO_CALIDAD = {
+    'SEGUNDA': ('quimibond_ficha_tecnica_tela.saldo_segunda', 'SALDO DE TELA TEJIDO'),
+    'DESP': ('quimibond_ficha_tecnica_tela.saldo_desperdicio', 'SALDO TEJIDO D'),
+}
+PARAM_ALERTA_MERMA_PCT = 'quimibond_rollos_bitacora.alerta_merma_inspeccion_pct'
+
+
+class MrpRolloFinal(models.Model):
+    _name = 'mrp.rollo.final'
+    _description = 'Rollo final (Inspección)'
+    _order = 'production_m_id desc, secuencia'
+    _rec_name = 'name'
+
+    name = fields.Char('Rollo final (lote)', required=True, readonly=True, index=True, copy=False)
+    secuencia = fields.Integer('No. de rollo', required=True, readonly=True)
+    production_id = fields.Many2one('mrp.production', 'Orden (kg)', required=True, readonly=True, index=True,
+                                    ondelete='cascade', help='El baño: solo se juntan rollos de la misma orden en kg.')
+    production_m_id = fields.Many2one('mrp.production', 'Orden (m)', required=True, readonly=True, index=True,
+                                      help='La orden en metros que abastece la orden en kg (MTO); da el nombre del lote '
+                                           'y registra el rollo al cerrar el baño.')
+    bitacora_ids = fields.Many2many('mrp.rollo.bitacora', 'mrp_rollo_final_bitacora_rel', 'final_id', 'bitacora_id',
+                                    'Rollos de Rama', readonly=True)
+    company_id = fields.Many2one(related='production_id.company_id', store=True)
+
+    kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4), readonly=True)
+    tara = fields.Float('Tara de Inspección (kg)', digits=(12, 4), readonly=True)
+    kg_neto = fields.Float('Kg netos', digits=(12, 4), readonly=True)
+    captura_manual = fields.Boolean('Captura manual', readonly=True)
+    motivo_manual = fields.Char('Motivo de captura manual', readonly=True)
+    metros = fields.Float('Metros', digits=(12, 2), readonly=True)
+    no_empalmes = fields.Integer('No. de empalmes', readonly=True)
+    clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad', required=True, readonly=True)
+    defecto_ids = fields.Many2many('calidad.defecto.tela', 'mrp_rollo_final_defecto_rel', 'final_id', 'defecto_id',
+                                   'Defectos', readonly=True)
+    siglas_defectos = fields.Char('Siglas de defectos', compute='_compute_siglas_defectos')
+    workcenter_id = fields.Many2one('mrp.workcenter', 'Revisadora', readonly=True)
+    operador = fields.Char('Operador de Inspección', readonly=True)
+    siglas_operador = fields.Char('Siglas del operador', readonly=True)
+    fecha = fields.Datetime('Inspeccionado el', readonly=True)
+    zpl_etiqueta = fields.Text('ZPL etiqueta final', readonly=True, copy=False)
+
+    estado = fields.Selection([('inspeccionado', 'Inspeccionado, sin registrar'), ('registrado', 'Registrado')],
+                              'Estado', default='inspeccionado', required=True, readonly=True)
+    product_id = fields.Many2one('product.product', 'Producto registrado', readonly=True,
+                                 help='La tela (PQ y FE, en metros) o el saldo (Segunda y Desperdicio, en kg).')
+    lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
+    location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
+
+    _unique_nombre = models.Constraint('unique(production_m_id, name)', 'Ese rollo final ya existe en la orden.')
+    _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
+    _check_metros = models.Constraint('CHECK(metros > 0)', 'Los metros del rollo final deben ser mayores a cero.')
+
+    @api.depends('defecto_ids.clave')
+    def _compute_siglas_defectos(self):
+        for rollo in self:
+            rollo.siglas_defectos = ' '.join(rollo.defecto_ids.sorted('clave').mapped('clave'))
+
+    # ------------------------------------------------------------------ reglas
+    @api.model
+    def _ubicacion_calidad(self, clasificacion):
+        """Ubicación interna de la calidad (§4.3), por parámetro; se busca por nombre y gana la más corta (en producción
+        hay ubicaciones con el mismo prefijo, «15 PRODUCTO TERMINADO FE TOLUCA15»)."""
+        clave, defecto, _unidad = DESTINO_CALIDAD[clasificacion]
+        nombre = (self.env['ir.config_parameter'].sudo().get_param(clave) or defecto).strip()
+        ubicaciones = self.env['stock.location'].search([('name', '=ilike', nombre + '%'), ('usage', '=', 'internal')])
+        if not ubicaciones:
+            raise UserError(_('No existe la ubicación «%(u)s» para la calidad %(c)s (parámetro %(p)s).',
+                              u=nombre, c=clasificacion, p=clave))
+        return ubicaciones.sorted(lambda u: (len(u.complete_name), u.id))[:1]
+
+    @api.model
+    def _producto_saldo(self, clasificacion):
+        clave, defecto = SALDO_CALIDAD[clasificacion]
+        codigo = (self.env['ir.config_parameter'].sudo().get_param(clave) or defecto).strip()
+        producto = self.env['product.product'].search([('default_code', '=', codigo)], limit=1)
+        if not producto:
+            raise UserError(_('No existe el saldo «%(s)s» para la calidad %(c)s (parámetro %(p)s).',
+                              s=codigo, c=clasificacion, p=clave))
+        return producto
+
+    @api.model
+    def _siguiente_secuencia(self, orden_m):
+        ultimo = self.search([('production_m_id', '=', orden_m.id)], order='secuencia desc', limit=1)
+        return (ultimo.secuencia or 0) + 1
+
+    @api.model
+    def _nombre_lote(self, orden_m, secuencia):
+        """``M<último segmento de la orden en metros>-NNNN`` (§4.2): la «M» lo distingue del rollo de Rama."""
+        return 'M%s-%04d' % (orden_m.name.split('/')[-1], secuencia)
+
+    # ------------------------------------------------------------------ etiqueta
+    def _datos_etiqueta(self):
+        self.ensure_one()
+        producto = self.production_m_id.product_id
+        codigo = producto.default_code or ''
+        Ficha = self.env.get('ficha.tecnica.acabado')
+        ficha = Ficha.search([('product_acabado_id', '=', producto.id)], order='id desc', limit=1) \
+            if Ficha is not None else None
+        ancho = ficha.ancho_acabado if ficha and 'ancho_acabado' in ficha._fields else 0
+        if not ancho and codigo[11:14].isdigit():
+            ancho = int(codigo[11:14])
+        return {'codigo': codigo, 'color': COLORES.get(codigo[9:11].upper(), codigo[9:11]), 'ancho': ancho}
+
+    def _zpl_etiqueta(self):
+        """Etiqueta final de José (§12.3) con los datos del rollo final: PQ con neto/bruto; FE, Segunda y Desperdicio
+        (PNC) con kilos y libras, siglas de defectos y el segundo código. Código de barras: metros;kg;orden;rollo."""
+        self.ensure_one()
+        Bitacora = self.env['mrp.rollo.bitacora']
+        params = self.env['ir.config_parameter'].sudo()
+        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_final_ancho', 812))
+        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_final_alto', 1218))
+        t = Bitacora._zpl_texto
+        datos = self._datos_etiqueta()
+        clasif = self.clasificacion
+        pnc = clasif != 'PQ'
+        fecha = fields.Datetime.context_timestamp(self, self.fecha or fields.Datetime.now())
+        of = self.name.rsplit('-', 1)[0]
+        renglones = [
+            'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
+            'COLOR: %s' % datos['color'],
+            'ANCHO (cm): %g' % datos['ancho'],
+            'METROS: %.2f     YARDAS: %.2f' % (self.metros, self.metros * YARDAS_POR_METRO),
+            ('KILOS: %.2f     LIBRAS: %.2f' % (self.kg_neto, self.kg_neto * LIBRAS_POR_KG)) if pnc
+            else ('PESO NETO: %.2f     PESO BRUTO: %.2f' % (self.kg_neto, self.kg_bruto)),
+            'LOTE DE PRODUCCIÓN: %s' % of,
+            'NO. DE ROLLO: %s' % self.secuencia,
+            'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador or ''),
+            'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
+        ]
+        if pnc:
+            renglones.append('DEFECTOS: %s' % (self.siglas_defectos or ''))
+        titulo = 'ETIQUETA DE PRODUCTO CON DEFECTIVA' if pnc else 'ETIQUETA DE PRODUCTO TERMINADO'
+        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto),
+               '^FO30,25^A0N,30,30^FDPRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V.^FS',
+               '^FO30,70^A0N,28,28^FD%s^FS' % t(titulo)]
+        if pnc:
+            zpl.append('^FO30,110^A0N,40,40^FD%s^FS' % {'FE': 'FUERA DE ESPECIFICACIÓN', 'SEGUNDA': 'SEGUNDA',
+                                                         'DESP': 'DESPERDICIO'}[clasif])
+        y = 170
+        for texto in renglones:
+            zpl.append('^FO30,%d^A0N,34,34^FD%s^FS' % (y, t(texto)))
+            y += 58
+        zpl.append(Bitacora._zpl_codigo_barras(
+            '%.2f;%.3f;%s;%s' % (self.metros, self.kg_neto, of, self.secuencia), 30, ancho, y + 10))
+        if pnc:
+            zpl.append(Bitacora._zpl_codigo_barras(
+                ('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip(), 30, ancho, y + 140))
+        zpl.append('^XZ')
+        return '\n'.join(zpl)
+
+    def action_imprimir_etiqueta(self):
+        self.ensure_one()
+        if not self.zpl_etiqueta:
+            raise UserError(_('Este rollo no tiene etiqueta final.'))
+        return self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_rollo_final').report_action(self)
+
+
+class MrpRolloBitacoraFinal(models.Model):
+    _inherit = 'mrp.rollo.bitacora'
+
+    rollo_final_insp_ids = fields.Many2many('mrp.rollo.final', 'mrp_rollo_final_bitacora_rel', 'bitacora_id',
+                                            'final_id', 'Rollos finales', readonly=True)

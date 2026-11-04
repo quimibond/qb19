@@ -3,6 +3,27 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.10.0 — 2026-11-03
+
+**Agregado**
+- **Saldos de la clasificación como merma de la tela** (Dirección General
+  2026-11-03; diseño `docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md`).
+  Segundas y desperdicio se venden en kg: en el flujo nuevo la clasificación
+  final los saca como subproducto de saldo (`SALDO DE TELA TEJIDO`,
+  `SALDO TEJIDO D`; parámetro `saldos_clasificacion`). Lo que entra de esos
+  productos a una ubicación de merma desde una orden de clasificación
+  (`tipos_clasificacion`) cuenta como merma de la tela de la orden, en su
+  unidad con la ficha de acabado (kg ÷ kg por metro), en el rendimiento y en
+  la primera para planear (por lote). El saldo no forma rendimiento propio.
+  Sin ficha no se convierte.
+- **La clasificación sin operaciones no carga horas.** Inspección corta,
+  pesa, clasifica y etiqueta en la orden en kg y la orden en metros se
+  registra sola (una sola estación, Dirección General 2026-11-03): la tela en
+  metros de la clasificación ya no espera inspección y empaque por su código
+  (`DRIVERS_CLASIFICACION` vacío) ni toma horas de ficha, hermanos o promedios
+  si su lista no tiene operaciones. Las horas de inspección siguen en la orden
+  en kg, una sola vez.
+
 ## 19.0.1.9.0 — 2026-11-03
 
 **Agregado**

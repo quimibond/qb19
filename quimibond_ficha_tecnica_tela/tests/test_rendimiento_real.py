@@ -51,3 +51,30 @@ class TestRendimientoReal(TiempoFichaCase):
     def test_06_sin_productos_no_hay_fabricado(self):
         Acabado = self.env['ficha.tecnica.acabado']
         self.assertEqual(Acabado._ft_fabricado(self.env['product.product'], '2026-01-01'), {})
+
+    def test_07_los_saldos_se_restan_de_los_kilos(self):
+        """Los saldos en kg que salen de la orden en metros (segundas, desperdicio) no son metros de la tela: se
+        restan de los kilos consumidos (si no, la primera para planear descontaría la misma merma dos veces)."""
+        Product = self.env['product.product']
+        saldo = Product.search([('default_code', '=', 'SALDO DE TELA TEJIDO')], limit=1) or Product.create({
+            'name': 'SALDO DE TELA TEJIDO', 'default_code': 'SALDO DE TELA TEJIDO', 'uom_id': self.kg.id,
+            'is_storable': True})
+        self.bom_m.write({'byproduct_ids': [(0, 0, {'product_id': saldo.id, 'product_qty': 0.0,
+                                                    'product_uom_id': self.kg.id})]})
+        mo = self.env['mrp.production'].create({'product_id': self.tela_m.id, 'bom_id': self.bom_m.id,
+                                                'product_qty': 100, 'product_uom_id': self.meter.id})
+        mo.action_confirm()
+        mo.qty_producing = 100
+        mo.move_raw_ids.write({'quantity': 20.0, 'picked': True})
+        saldo_move = mo.move_finished_ids.filtered(lambda m: m.product_id == saldo)
+        saldo_move.write({'quantity': 1.5, 'picked': True})
+        res = mo.button_mark_done()
+        if isinstance(res, dict) and res.get('res_model'):
+            wiz = self.env[res['res_model']].with_context(**res.get('context', {})).create({})
+            getattr(wiz, 'action_confirm', getattr(wiz, 'process', lambda: None))()
+        self.assertEqual(mo.state, 'done')
+        datos = self.env['ficha.tecnica.acabado']._ft_fabricado(self.tela_m, '2000-01-01')
+        metros, kilos, ordenes = datos[self.tela_m]
+        self.assertAlmostEqual(metros, 100.0, places=4)
+        self.assertAlmostEqual(kilos, 20.0 - 1.5, places=4)
+        self.assertEqual(ordenes, 1)

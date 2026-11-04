@@ -43,7 +43,7 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 
 «Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
 La lista en kg generada lleva el subproducto «DESPERDICIO TEJIDO» en la Rama con cantidad 0 (2.25.0): lo pesa Rama
-en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de operación: Fabricación Tela en kg y Fabricación Tela en m.
+en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de operación: Fabricación Tela en kg y Fabricación Tela en m. Nacen en consumo «flexible» y, al activar la lista en kg, el acabado en kg recibe la ruta MTO «Fabricar Tela kg → Inspección (MTO)» (2.25.0).
 
 ## Dónde se captura cada dato (2.24.0)
 
@@ -114,7 +114,7 @@ tela en el jet; si no, la banda de su rendimiento de tejido (A de 3 a menos de 7
 m/kg) topada a la capacidad general; un jet sin bandas usa la general; banda N/A o fuera de bandas, no hay. La
 Programación de Tintorería tiene su copia de la misma regla (propuesta a José de usar esta).
 
-**Conversión kg → m:** la lista en metros consume de su producto en kg metros ÷ rendimiento de tela acabada ÷ la primera para planear de la tela (la que alcanzan 9 de cada 10 lotes, del costeo; 1 si no hay dato), para que la venta llegue completa (2.24.0).
+**Conversión kg → m:** la lista en metros consume de su producto en kg metros ÷ rendimiento de tela acabada ÷ la primera para planear de la tela (la que alcanzan 9 de cada 10 lotes, del costeo; 1 si no hay dato), para que la venta llegue completa (2.24.0). La lista en metros lleva de subproductos los saldos en kg de segundas (`SALDO DE TELA TEJIDO`) y desperdicio (`SALDO TEJIDO D`), con cantidad 0 (2.24.0).
 
 **Qué lista se toma** (revisión, pestaña del producto, ruta de la ficha de acabado): la que tiene operaciones aunque
 esté archivada (las listas del flujo en kg esperan el visto bueno de Ingeniería); entre iguales, la activa; las que

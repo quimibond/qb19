@@ -30,4 +30,16 @@
               action="action_mrp_rollo_bitacora"
               groups="mrp.group_mrp_user"
               sequence="45"/>
+    <menuitem id="menu_mrp_rollo_final"
+              name="Rollos finales (Inspección)"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_rollo_final"
+              groups="mrp.group_mrp_user"
+              sequence="46"/>
+    <menuitem id="menu_mrp_production_inspeccion_sin_cerrar"
+              name="Baños inspeccionados sin cerrar"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_production_inspeccion_sin_cerrar"
+              groups="mrp.group_mrp_user"
+              sequence="47"/>
 </odoo>

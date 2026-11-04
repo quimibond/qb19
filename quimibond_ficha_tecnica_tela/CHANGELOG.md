@@ -10,6 +10,27 @@ agregan a esa misma sección sin volver a subirla.
 
 ## 19.0.2.25.0 — 2026-11-04
 
+### Saldos en la lista en metros
+
+Segundas y desperdicio se venden en kg (Dirección General, 2026-11-03; diseño
+`docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md`). La lista en metros que crea o pone al
+día «Generar listas desde la ruta» lleva de subproductos `SALDO DE TELA TEJIDO` (segundas) y `SALDO TEJIDO D`
+(desperdicio), en kg, con cantidad 0 y sin costo: la cantidad real es el peso de cada rollo al clasificar. Las
+referencias están en los parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`; si una no
+existe, avisa y no la inventa. A qué ubicación va cada saldo (16 y 17) lo decide la clasificación, no la lista.
+
+El **rendimiento de lo fabricado** resta de los kilos los saldos en kg que salen de las órdenes de la tela: son
+tela que no se volvió metros y ya cuentan como merma en la primera para planear del costeo. Sin restarlos, la lista
+en metros pediría de más (la misma merma descontada dos veces). Con las órdenes de hoy (sin saldos) no cambia nada.
+
+### La lista en metros sin operación
+
+Una sola estación (Dirección General, 2026-11-03): Inspección, en la orden de acabado en kg, corta, pesa, clasifica y
+etiqueta cada rollo, y la orden en metros se registra sola al cerrar el baño. La lista en metros ya no lleva la
+operación de Empaque: «Armar rutas desde listas» no crea el paso «Clasificación final» y la migración quita los que
+existen (42 en producción, todos en EMPAQUE, que no tiene ninguna orden de trabajo en el último año); al volver a
+generar, la lista en metros archivada queda sin operación.
+
 ### Desperdicio de Rama en la lista en kg
 
 El pesaje de desperdicio de Rama de José Sacramento (`quimibond_rollos_bitacora`, botón «PESAR DESPERDICIO») pide que
@@ -37,6 +58,24 @@ tenían (se pusieron a mano); las dos que creó «Generar listas» el 3-nov no.
 - La migración de 2.25.0 lo pone en las listas archivadas del flujo que no lo tienen.
 - Prueba: `test_ruta_familia.test_11_tipo_de_operacion_del_flujo`; los datos de prueba (`TiempoFichaCase`) traen los
   dos tipos.
+
+### Lo que encontró el piloto en el build de main (2026-11-04)
+
+Se corrió el flujo completo sobre `WJ053Q22JNT160` (2,000 m → 169.6 kg: Tintorería, 4 rollos en Rama, desperdicio,
+Inspección, Clasificación y cierre de las dos órdenes). En fichas:
+
+- **Consumo flexible.** Las listas del flujo nacían en «advertencia» y Odoo pedía confirmar el consumo en cada cierre
+  de la orden en kg (se cierra con los kg pesados y el crudo se consume completo). «Generar listas» las crea en
+  «flexible» y la migración lo pone en las archivadas.
+- **Al activar una lista del flujo** (visto bueno de Ingeniería, `mrp.bom.write`): tipo de operación, consumo
+  flexible y, en la lista en kg, el desperdicio de Rama y la **ruta MTO del «I…»**, la que tiene la regla de
+  fabricación con el tipo OP-KG («Fabricar Tela kg → Inspección (MTO)»). En producción la ruta existe y no la tiene
+  ningún «I…»: sin ella la orden en metros no pide la orden en kg.
+- **Revisión:** «Lista en kg sin desperdicio de Rama» y «Acabado en kg sin la ruta MTO» (lista activa) en las
+  listas «Flujo en kg»; «Resolver» abre la lista o el producto.
+- **La migración rehace la revisión** al desplegar. En el build de main la foto del 3-nov daba por bueno el tiempo de
+  Rama anterior a 2.24.0 (0.3178 contra 0.3685 min/kg); al revisar de nuevo sale el pendiente.
+- Prueba: `test_ruta_familia.test_12_consumo_flexible_activacion_y_revision`.
 
 ## 19.0.2.24.0 — 2026-11-03
 
