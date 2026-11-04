@@ -370,7 +370,9 @@ otro. Propuesta:
 
 1. **`qb.sales.project`** (cliente comercial, artículo o renglón sin código, `desde`, `hasta`, **proyecto de desarrollo**,
    nota): la combinación en arranque. Mientras esté vigente, su venta y su pronóstico cuentan como proyecto de su mercado
-   base. Nace del proyecto de Desarrollo (sección 2.11), no se captura aparte.
+   base. Dos orígenes (decisión de Jose, 4-nov): un **producto nuevo** nace del proyecto de Desarrollo (sección 2.11) y no
+   se captura aparte; un **producto de línea para un cliente nuevo** no pasa por Desarrollo y lo da de alta Ventas
+   directamente (cliente + artículo existente).
 2. El presupuesto la declara: un renglón en `proyectos_industrial` o `proyectos_confeccion` crea o liga su
    `qb.sales.project` para ese año. La carga de la REV1 crea las 33 de PRESUPUESTO PROYECTOS.
 3. La combinación «se gradúa» cuando el presupuesto del año siguiente la pone en línea (se cierra `hasta`), o a mano.
@@ -490,12 +492,15 @@ son productos de línea para un cliente nuevo, sin análisis registrado. Lista c
 **Qué se conecta (todo vive en `quimibond_ventas_presupuesto`, que ya depende del SGI; el SGI no se toca salvo una
 vista):**
 
-1. **El proyecto comercial nace del desarrollo.** Cuando un desarrollo llega a «Cotización» con cliente y artículo
-   (`sgi_dev_product_id`, o `sgi_dev_base_product_id` si el análisis dio «línea»), se crea su `qb.sales.project`
+1. **Todo producto nuevo pasa por Desarrollo; un producto de línea no** (decisión de Jose, 4-nov). El proyecto
+   comercial de un producto nuevo nace del desarrollo: cuando llega a «Cotización» con cliente y artículo
+   (`sgi_dev_product_id`), se crea su `qb.sales.project`
    (cliente + artículo, `desde` = fecha de cotización, liga al desarrollo). Si el desarrollo cierra sin producto o no
    es factible, el proyecto comercial se cierra como **perdido** y sus renglones del presupuesto y del pronóstico salen
    en Faltantes («proyecto perdido con presupuesto»). Si llega a «Liberado», sigue como proyecto hasta que el
-   presupuesto del año siguiente lo pase a línea.
+   presupuesto del año siguiente lo pase a línea. Un producto de línea para un cliente nuevo se da de alta en Ventas sin
+   desarrollo (si el desarrollo ya existe con análisis «línea», se liga, pero no se exige). Faltantes solo marca un
+   proyecto cuyo artículo **no existía** antes (o no existe en Odoo) y no tiene desarrollo.
 2. **Renglón de presupuesto sin código = desarrollo sin producto.** El renglón de proyecto (2.6) liga el desarrollo en
    lugar de solo describir gramaje y ancho; cuando el generador de código crea los productos
    (`action_sgi_dev_generate_products`), el renglón toma el producto solo (herencia del método en este módulo, que llama
@@ -512,8 +517,8 @@ vista):**
 5. **El desarrollo ve su venta.** En la ficha del proyecto de desarrollo, un botón «Presupuesto y venta» (herencia de la
    vista del SGI desde este módulo, con ancla revisada por `check_odoo_views.py`): presupuesto del año, pronóstico vigente
    y facturado del cliente + artículo. Es la medición que hoy no existe de «¿el desarrollo se vendió?».
-6. **Limpieza previa (con Diseño y Desarrollo, antes de E2):** registrar el análisis «línea» de los proyectos de 2026 que
-   no tienen desarrollo, cerrar los «FT-» viejos que ya no siguen y poner `sgi_dev_state = liberado` a los artículos de
+6. **Limpieza previa (con Diseño y Desarrollo, antes de E2):** ligar a su desarrollo los proyectos de 2026 de producto
+   nuevo (los de producto de línea no lo necesitan), cerrar los «FT-» viejos que ya no siguen y poner `sgi_dev_state = liberado` a los artículos de
    desarrollos liberados. Corregir también el acabado en kg del análisis de Saltillo (`WJ030Q22KNT168`, que no sigue la
    regla «I» + código de la tela). Sin eso, la carga de la REV1 crea los `qb.sales.project` sin desarrollo y los marca.
 
@@ -667,8 +672,8 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 **Para Ventas (Jessica)**
 
 7. Un «proyecto» en el Excel es una combinación producto–cliente en arranque (1.4). ¿Cuándo pasa a «línea»? Hay 6 que
-   ya se vendían antes de 2026 y siguen como proyecto. ¿Aceptas que todo proyecto nuevo pase por un desarrollo (aunque
-   sea un análisis «producto de línea» que cierra en Cotización), para que nazca ligado (2.11)?
+   ya se vendían antes de 2026 y siguen como proyecto. (Jose, 4-nov: todo producto nuevo pasa por Desarrollo; un producto
+   de línea para un cliente nuevo, no.)
 8. ¿El precio presupuestal de industrial lo manejas por metro o por kilo, y en qué moneda, por cliente?
 9. Hoja MUESTRAS: ¿se queda en Excel o la quieres en Odoo (sería otra entrega)?
 10. ~~Plantas~~: el forecast ya las separa (1.4). ¿Shawmut Silao y Tennessee mandan release por separado?
