@@ -18,6 +18,10 @@
                 <field name="sgi_dev_stage_key" invisible="1"/>
                 <field name="sgi_dev_analysis_result" invisible="1"/>
                 <field name="sgi_dev_mp_pending" invisible="1"/>
+                <!-- 57.197.0: cada botón de aprobación lo ve quien lo aprueba según el SGI. -->
+                <field name="sgi_dev_can_approve_request" invisible="1"/>
+                <field name="sgi_dev_can_review_approve" invisible="1"/>
+                <field name="sgi_dev_can_assign_folio" invisible="1"/>
             </xpath>
             <!-- 57.134.0: la acción que mueve la etapa va en el encabezado, junto a la barra de etapas, y
                  solo aparece en la etapa que la pide. Lo contextual (buscar parecidos, código del artículo,
@@ -27,12 +31,12 @@
                      Dirección de Operaciones la firma después, así que el botón aparece solo con esa aprobación
                      registrada y folio FT. La corrida de muestra sigue exigiendo la firma. -->
                 <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud de desarrollo" class="btn-primary" icon="fa-check"
-                        invisible="not sgi_is_ft or sgi_dev_approved_by_id or not sgi_dev_customer_approved_at or not sgi_ft_folio or sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
+                        invisible="not sgi_is_ft or not sgi_dev_can_approve_request or sgi_dev_approved_by_id or not sgi_dev_customer_approved_at or not sgi_ft_folio or sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
                         confirm="Firma «Aprobó» la solicitud de desarrollo (Dirección de Operaciones) con su usuario y la fecha de hoy. Al aprobar se avisa a las partes interesadas con el PDF y se revisan existencias de la materia prima. ¿Continuar?"/>
                 <!-- 57.140.0 (Dirección General): el botón aparece hasta que hay resultado del análisis y, si es producto
                      nuevo, el checklist de factibilidad está cargado y sin renglones pendientes. -->
                 <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
-                        invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion') or not sgi_dev_analysis_result or (sgi_dev_analysis_result == 'nuevo' and (not sgi_dev_feasibility_ids or sgi_dev_feasibility_pending))"/>
+                        invisible="not sgi_is_ft or not sgi_dev_can_review_approve or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion') or not sgi_dev_analysis_result or (sgi_dev_analysis_result == 'nuevo' and (not sgi_dev_feasibility_ids or sgi_dev_feasibility_pending))"/>
                 <!-- 57.170.0: un primario por etapa. La aprobación del cliente es
                      primaria cuando el análisis ya está aprobado; antes, secundaria. -->
                 <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-primary" icon="fa-handshake-o"
@@ -41,8 +45,11 @@
                 <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente" class="btn-secondary" icon="fa-handshake-o"
                         invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente') or sgi_dev_review_state == 'aprobado'"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
+                <!-- 57.197.0: el folio llega solo (aprobación para iniciar, o al pasar a Muestra); el botón es respaldo
+                     de Muestra en adelante, para Ventas y Dirección, y pide confirmación (dos folios gastados el 4-nov). -->
                 <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-secondary" icon="fa-hashtag"
-                        invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
+                        invisible="not sgi_is_ft or not sgi_dev_can_assign_folio or sgi_ft_folio or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"
+                        confirm="Se asigna el siguiente folio FT del año y no se regresa. ¿Continuar?"/>
                 <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
                         invisible="not sgi_is_ft or sgi_dev_stage_key != 'muestra' or not sgi_dev_approved_by_id or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
                 <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-secondary" icon="fa-cogs"

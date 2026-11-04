@@ -102,16 +102,31 @@ class TestBridge(CotizadorCase):
         self.assertEqual(req.category_id, category)
         self.assertEqual(req.sgi_subject_id, subject)
         self.assertEqual(req.request_status, 'pending')
-        self.assertFalse(cot.with_user(self.finanzas).puede_aprobar, "Mientras la solicitud vive no se aprueba aquí")
-        with self.assertRaises(UserError):
-            cot.with_user(self.finanzas).action_aprobar()
         approver = req.approver_ids[:1]
+        if self.finanzas not in req.approver_ids.user_id:
+            self.assertFalse(cot.with_user(self.finanzas).puede_aprobar, "Quien no aprueba la solicitud no aprueba aquí")
+            with self.assertRaises(UserError):
+                cot.with_user(self.finanzas).action_aprobar()
         if not approver:
             return
-        req.sudo().action_approve(approver=approver)
+        # 1.9.0: quien aprueba la solicitud aprueba desde la cotización y la solicitud queda aprobada con su renglón.
+        como_aprobador = cot.with_user(approver.user_id).sudo()
+        self.assertTrue(como_aprobador.puede_aprobar, "El aprobador de la solicitud ve «Aprobar y presentar»")
+        como_aprobador.action_aprobar()
+        self.assertEqual(approver.status, 'approved', "Se aprobó su renglón en Aprobaciones")
         if req.request_status == 'approved':
-            self.assertEqual(cot.state, 'presentada', "Aprobar en Aprobaciones presenta la cotización")
-            self.assertTrue(cot.approved_by_id)
+            self.assertEqual(cot.state, 'presentada', "Aprobar presenta la cotización")
+            self.assertEqual(cot.approved_by_id, approver.user_id)
+        # Regresar desde la cotización rechaza la solicitud viva.
+        tercera = self._cot(project_id=self.project.id)
+        tercera.action_calcular()
+        tercera.action_enviar_aprobacion()
+        req3 = tercera.approval_request_id.sudo()
+        line3 = req3.approver_ids[:1]
+        if line3:
+            tercera.with_user(line3.user_id).sudo()._regresar(self.env.ref('qb_cotizador.motivo_regreso_otro'), 'prueba')
+            self.assertEqual(tercera.state, 'borrador')
+            self.assertEqual(line3.status, 'refused', "Regresar rechaza el renglón de quien regresa")
         otra = self._cot(project_id=self.project.id)
         otra.action_calcular()
         otra.action_enviar_aprobacion()

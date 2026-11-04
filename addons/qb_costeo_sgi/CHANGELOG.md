@@ -1,5 +1,16 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.9.0 — 2026-11-04
+
+Dirección General (2026-11-04): «necesito poder aprobar directo desde la cotización, solo lo veo en Aprobaciones».
+
+- **Aprobar desde la cotización con la solicitud viva en Aprobaciones**: quien aprueba la solicitud (su renglón
+  pendiente) ve «Aprobar y presentar» y «Regresar a recotizar» en la cotización. Aprobar aprueba **la misma
+  solicitud** con su renglón: Aprobaciones queda al día y, si la solicitud queda aprobada, la cotización se presenta
+  como hasta ahora; si la categoría pide más aprobadores, espera y lo dice en el chatter. Regresar rechaza su renglón
+  (o cancela la solicitud si quien regresa no es aprobador). Quien pidió la aprobación sigue sin poder aprobarla.
+- Prueba `test_bridge.test_04` ampliada (Odoo.sh).
+
 ## 19.0.1.8.0 — 2026-10-26
 
 Dirección General 2026-10-26 (qb_cotizador 1.7.0, quimibond_sgi 57.194.0):
