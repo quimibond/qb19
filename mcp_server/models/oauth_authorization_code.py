@@ -107,7 +107,7 @@ class OauthAuthorizationCode(models.Model, AuthorizationCodeMixin):
             # granted by the resource owner; fall back to the requested scope when
             # absent (e.g. a code minted outside that flow).
             "scope": getattr(request, "_mcp_granted_scope", None)
-            or oauth2_request.scope
+            or oauth2_request.payload.scope
             or "",
             "code_challenge": data.get("code_challenge"),
             "code_challenge_method": data.get("code_challenge_method") or "S256",

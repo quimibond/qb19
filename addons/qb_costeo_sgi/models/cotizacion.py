@@ -295,23 +295,66 @@ class QbCotizadorCotizacionSgi(models.Model):
             rec.message_post(body="Solicitud %s cancelada en Aprobaciones: la cotización se retiró." % request.name)
         return res
 
+    def _qb_sgi_approver_line(self, user):
+        """1.9.0: el renglón de aprobador de ``user`` en la solicitud viva (pendiente o por iniciar); vacío
+        si no la aprueba. Con sudo: quien aprueba puede no tener grupos de Aprobaciones."""
+        self.ensure_one()
+        if not self._qb_sgi_approval_pending():
+            return self.env['approval.approver']
+        return self.approval_request_id.sudo().approver_ids.filtered(
+            lambda a: a.user_id == user and a.status in ('new', 'pending'))[:1]
+
     def _puede_aprobar(self, user):
         if self.env.context.get('qb_from_approval'):
             return True
         if self._qb_sgi_approval_pending():
-            return False
+            # 1.9.0 (Dirección General 2026-11-04): quien aprueba la solicitud la aprueba también desde la
+            # cotización; antes solo se podía en Aprobaciones.
+            return bool(self._qb_sgi_approver_line(user)) and not self._pidio_la_aprobacion(user)
         return super()._puede_aprobar(user)
 
     def action_aprobar(self):
-        for rec in self:
-            if rec._qb_sgi_approval_pending() and not self.env.context.get('qb_from_approval'):
-                raise UserError("Esta cotización se aprueba en Aprobaciones (solicitud %s), no desde aquí."
-                                % rec.approval_request_id.name)
+        if not self.env.context.get('qb_from_approval'):
+            pendientes = self.filtered(lambda r: r._qb_sgi_approval_pending())
+            for rec in pendientes:
+                line = rec._qb_sgi_approver_line(self.env.user)
+                if not line or rec._pidio_la_aprobacion(self.env.user):
+                    raise UserError("Esta cotización la aprueba %s (solicitud %s en Aprobaciones)." % (
+                        ', '.join(rec.approval_request_id.sudo().approver_ids.filtered(
+                            lambda a: a.status in ('new', 'pending')).user_id.mapped('name')) or 'el aprobador',
+                        rec.approval_request_id.name))
+                # 1.9.0: se aprueba la misma solicitud. Aprobaciones queda al día y, si con esto queda aprobada,
+                # presenta la cotización (_qb_after_decision); si la categoría pide más aprobadores, espera.
+                rec.approval_request_id.sudo().action_approve(approver=line)
+                if rec.state == 'por_aprobar':
+                    rec.message_post(body="%s aprobó desde la cotización; la solicitud %s espera a los demás "
+                                          "aprobadores." % (self.env.user.name, rec.approval_request_id.name))
+            self = self - pendientes  # noqa: PLW0642 — las demás siguen el camino de siempre
+            if not self:
+                return True
         res = super().action_aprobar()
         for rec in self.filtered(lambda r: r.project_id and r.project_id.qb_costo_bloqueado):
             rec.project_id.write({'qb_costo_bloqueado': False, 'qb_costo_bloqueo_nota': False})
             rec.project_id.message_post(body='Cotización %s aprobada tras la revisión: el desarrollo sigue.'
                                         % rec.folio)
+        return res
+
+    def _regresar(self, motivo, nota=None):
+        """1.9.0: regresar desde la cotización con una solicitud viva en Aprobaciones la rechaza (el renglón de
+        quien regresa) o, si no es aprobador, la cancela; así no queda una solicitud pendiente de una cotización
+        que ya volvió a borrador. Lo que llega de Aprobaciones (``qb_from_approval``) ya viene decidido."""
+        vivas = self.env['approval.request']
+        if not self.env.context.get('qb_from_approval'):
+            for rec in self.filtered(lambda r: r._qb_sgi_approval_pending()):
+                vivas |= rec.approval_request_id
+        lineas = {req.id: req.qb_cotizacion_id._qb_sgi_approver_line(self.env.user) for req in vivas}
+        res = super()._regresar(motivo, nota)
+        for req in vivas.sudo().with_context(qb_from_approval=True):
+            line = lineas.get(req.id)
+            if line:
+                req.action_refuse(approver=line)
+            else:
+                req.action_cancel()
         return res
 
     # ------------------------------------------------------------------

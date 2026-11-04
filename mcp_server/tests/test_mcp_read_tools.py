@@ -263,6 +263,28 @@ class TestMcpReadTools(common.HttpCase):
         self.assertGreater(len(first), 1)
         self.assertLessEqual(len(first), DEFAULT_MAX_SMART_FIELDS)
 
+    def test_search_records_order_by_computed_field_is_a_clear_error(self):
+        """Sorting by a non-stored field is refused with a message naming it.
+
+        Before, the ORM raised ``ValueError: Cannot convert ... to SQL because it
+        is not stored`` and the dispatcher logged a WARNING with a traceback
+        (``ficha.tecnica.ruta.acabado_count``, main build, 2026-11-03).
+        """
+        result = self._call_tool(
+            "search_records",
+            {"model": "res.partner", "order": "contact_address desc, id"},
+        )
+        self.assertTrue(result["isError"], msg=result)
+        text = result["content"][0]["text"]
+        self.assertIn("contact_address", text)
+        self.assertIn("not stored", text)
+        self.assertNotIn("Traceback", text)
+
+        ok = self._call_tool(
+            "search_records", {"model": "res.partner", "order": "name asc, id desc"}
+        )
+        self.assertFalse(ok["isError"], msg=ok)
+
     def test_tool_limit_settings_are_honored(self):
         """The configurable tool limits clamp page size and smart-field count.
 

@@ -14,6 +14,26 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.197.0 — 2026-11-04
+
+Dirección General (2026-11-04), a raíz de lo que reportó Jessica Francisco: el 3-nov Diseño presionó «Aprobar
+solicitud de desarrollo» en FT-040-2026 (lo aprueba Dirección de Operaciones; Studio pidió la aprobación a sus dos
+aprobadores) y el 4-nov presionó «Asignar folio FT» en dos proyectos de Tescap en Cotización (FT-056 y FT-057, que se
+retiraron a mano).
+
+**Cambiado**
+- **Cada botón de aprobación del desarrollo lo ve quien lo aprueba** (`models/sgi_dev_buttons.py`): «Aprobar
+  solicitud de desarrollo» (C1.07) y «Aprobar análisis y factibilidad» (C1.02 / C1.03) solo aparecen para las personas
+  que hoy aprueban ese botón según el renglón «Aprueba» de la actividad (puesto, familia o suplente,
+  `approval_user_ids`). Si el SGI no tiene el renglón, se ven como antes. Campos `sgi_dev_can_approve_request` y
+  `sgi_dev_can_review_approve`.
+- **«Asignar folio FT»**: solo para quien aprueba alguno de esos botones (Administración de Ventas y Dirección de
+  Operaciones), Dirección del SGI y administradores (`sgi_dev_can_assign_folio`); solo **de Muestra en adelante** y
+  con confirmación («Se asigna el siguiente folio FT del año y no se regresa»). En Cotización el folio sigue
+  llegando solo al generar la Aprobación para iniciar, y al pasar a Muestra.
+- Es una barrera de pantalla: los métodos no cambian (el sistema también los llama solo).
+- Prueba `test_dev_buttons` (Odoo.sh).
+
 ## 19.0.57.196.0 — 2026-10-29
 
 Jessica Francisco (Diseño y Desarrollo de Producto), proyecto FT-055-2026 WJ038Q22JVH165: la Aprobación para iniciar
