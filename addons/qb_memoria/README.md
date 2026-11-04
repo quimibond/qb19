@@ -7,8 +7,7 @@ de Odoo sin copiar correos: en cada contacto, la pestaña **Memoria**.
 > **Desde 1.3.0 la pestaña está apagada** (decisión del CEO, 2026-09-24): solo
 > la ve el grupo **Ver pestaña Memoria** (Ajustes → Usuarios → privilegio
 > *Memoria*), que nace sin miembros. Todo lo demás sigue: el cron nocturno de
-> dueños aprendidos, `memoria_owner_user_id` en el contacto (lo usa
-> `qb_obligation` como dueño por defecto) y los Buzones (memoria). Para volver
+> dueños aprendidos, `memoria_owner_user_id` en el contacto y los Buzones (memoria). Para volver
 > a verla, agrega tu usuario al grupo; no hace falta desplegar nada.
 
 | Sección | Qué muestra | De dónde |
@@ -63,5 +62,4 @@ dos pasos:
    *Fijado a mano* protege una asignación manual.
 
 API: `partner.memoria_owner_for(area)` → `res.users` (área con señal, si no
-el general, si no vacío). Las obligaciones (`qb_obligation`) lo usan como
-primer criterio para el dueño.
+el general, si no vacío).
