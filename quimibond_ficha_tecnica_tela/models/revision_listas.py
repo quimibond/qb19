@@ -18,6 +18,7 @@ Qué se revisa:
 4. En las operaciones de tintorería: que el jet tenga la capacidad para el producto y que sea la de la ficha (2.23.0).
 5. Que la lista en metros convierta kg → m con el rendimiento de tela acabada de la ficha (2.23.0).
 6. Que las listas del flujo tengan su tipo de operación (Fabricación Tela en kg / en m) (2.25.0).
+7. En la lista «Flujo en kg»: el desperdicio de Rama y, ya activa, la ruta MTO del acabado en kg (2.25.0).
 
 El área sale del tipo de la máquina (tintorería, acabado = ramas, inspección, devanadora y abridora = Manufactura); lo
 que es de la lista o de la ficha es de Ingeniería (Innovación). La revisión es una foto: se rehace cada noche y con
@@ -49,6 +50,8 @@ TIPOS = [
     ('datos_acabado', 'Ficha de acabado sin peso o rendimiento'),
     ('datos_tejido', 'Ficha de tejido sin rendimiento'),
     ('tipo_operacion', 'Lista sin tipo de operación'),
+    ('desperdicio', 'Lista en kg sin desperdicio de Rama'),
+    ('ruta_mto', 'Acabado en kg sin la ruta MTO'),
 ]
 
 
@@ -205,6 +208,22 @@ class FichaTecnicaRevision(models.Model):
                 pendientes.append(dict(ing, tipo='tipo_operacion', bom_id=bom.id, detalle='La lista en %s no tiene '
                                        'tipo de operación: la orden tomaría el predeterminado del almacén. Va «%s».' % (
                                            cual, 'Fabricación Tela en kg' if cual == 'kg' else 'Fabricación Tela en m')))
+        # 2.25.0 (piloto 2026-11-04): en la lista «Flujo en kg», el desperdicio que pesa Rama y, ya activa, la ruta MTO
+        # del «I…» (sin ella la orden en metros no pide la orden en kg).
+        from .ruta_familia import CODIGO_KG, DESPERDICIO_CODIGO  # local: ruta_familia se carga después
+        if bom_kg and bom_kg.code == CODIGO_KG:
+            Ruta = self.env['ficha.tecnica.ruta']
+            con_rama = bom_kg.with_context(active_test=False).operation_ids.filtered(
+                lambda o: Ruta._ft_paso_de_operacion(o) == 'rama')
+            if con_rama and not bom_kg.byproduct_ids.filtered(lambda b: b.product_id.default_code == DESPERDICIO_CODIGO):
+                pendientes.append(dict(ing, tipo='desperdicio', bom_id=bom_kg.id, detalle='La lista en kg no tiene el '
+                                       'subproducto «%s» en la Rama: Rama no puede pesar el desperdicio.' % (
+                                           DESPERDICIO_CODIGO)))
+            ruta = self.env['mrp.bom']._ft_ruta_mto_kg(bom_kg.company_id or None)
+            if bom_kg.active and ruta and ruta not in bom_kg.product_tmpl_id.route_ids:
+                pendientes.append(dict(ing, tipo='ruta_mto', bom_id=bom_kg.id, detalle='%s no tiene la ruta «%s»: la '
+                                       'orden en metros no pide la orden en kg.' % (
+                                           proceso.default_code or proceso.name, ruta.name)))
         areas = {p['area'] for p in pendientes}
         vals.update({
             'n_pendientes': len(pendientes), 'listo': not pendientes,
@@ -289,7 +308,9 @@ class FichaTecnicaRevisionPendiente(models.Model):
             return self._ft_abrir(self.workcenter_id)  # pestaña Capacidades, «Usar la capacidad de la ficha»
         if self.tipo == 'datos_tejido' and acabado.tejido_id:
             return self._ft_abrir(acabado.tejido_id, 'Ficha de tejido')
-        if self.tipo in ('crudo', 'conversion', 'tipo_operacion') and self.bom_id:
+        if self.tipo == 'ruta_mto' and self.bom_id:
+            return self._ft_abrir(self.bom_id.product_tmpl_id, 'Acabado en kg')  # pestaña Inventario → Rutas
+        if self.tipo in ('crudo', 'conversion', 'tipo_operacion', 'desperdicio') and self.bom_id:
             return self._ft_abrir(self.bom_id)
         # Sin acabado en kg, sin listas, ficha sin peso o rendimiento: la ficha de acabado («Generar listas» vive ahí).
         return self._ft_abrir(acabado, 'Ficha de acabado')

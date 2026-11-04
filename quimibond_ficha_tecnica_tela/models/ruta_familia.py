@@ -52,6 +52,9 @@ DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
 # kg», de 2 PRODUCCIÓN a 10 INSPECCIÓN, y 411 «Fabricación Tela en m», de 10 INSPECCIÓN a 14 PT PQ). Sin él, la orden
 # toma el tipo de fabricación predeterminado del almacén («Re-proceso Tintorería»).
 TIPO_OPERACION = {'kg': 'OP-KG', 'm': 'OP-M'}
+# 2.25.0 (piloto en el build de main, 2026-11-04): sin la ruta MTO en el «I…» la orden en metros no pide la orden en kg.
+# Es la ruta cuya regla de fabricación usa el tipo «Fabricación Tela en kg» (en producción, «Fabricar Tela kg →
+# Inspección (MTO)», id 180, sin productos hasta hoy).
 
 
 def tintoreria_por_codigo(code):
@@ -392,6 +395,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                 avisos += self._ft_poner_operaciones(bom_kg, self._ft_pasos('kg'), kg)
                 avisos += bom_kg._ft_poner_desperdicio()
                 avisos += bom_kg._ft_poner_tipo_operacion('kg')
+                bom_kg._ft_poner_consumo_flexible()
                 generadas |= bom_kg
         if tela_m:
             bom_m = Revision._ft_bom_de(tela_m)
@@ -413,6 +417,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
                 avisos += bom_m._ft_poner_tipo_operacion('m')
+                bom_m._ft_poner_consumo_flexible()
                 generadas |= bom_m
         if generadas:
             self.env.invalidate_all()
@@ -486,3 +491,43 @@ class MrpBomDesperdicioRama(models.Model):
                 avisos.append('%s: no existe el tipo de operación %s para la lista en %s.' % (
                     bom.product_tmpl_id.default_code or bom.product_tmpl_id.name, TIPO_OPERACION[cual], cual))
         return avisos
+
+    def _ft_poner_consumo_flexible(self):
+        """2.25.0: las listas del flujo consumen en «flexible». La orden en kg se cierra con los kg pesados en Rama y el
+        crudo se consume completo (la diferencia es merma), y la de metros con los metros clasificados: con
+        «advertencia» Odoo pedía confirmar el consumo en cada cierre (piloto, 2026-11-04)."""
+        self.filtered(lambda b: b.consumption != 'flexible').write({'consumption': 'flexible'})
+
+    @api.model
+    def _ft_ruta_mto_kg(self, company=None):
+        """La ruta MTO que fabrica el acabado en kg: la que tiene una regla de fabricación con el tipo OP-KG."""
+        tipo = self._ft_tipo_operacion('kg', company)
+        if not tipo:
+            return self.env['stock.route']
+        regla = self.env['stock.rule'].search([('action', '=', 'manufacture'), ('picking_type_id', '=', tipo.id),
+                                               ('route_id.active', '=', True)], limit=1)
+        return regla.route_id
+
+    def _ft_preparar_activacion(self):
+        """2.25.0: al activar una lista del flujo (visto bueno de Ingeniería) se completa lo que la orden necesita: tipo
+        de operación, consumo flexible y, en la lista en kg, el desperdicio de Rama y la ruta MTO del «I…»."""
+        for bom in self:
+            if bom.code == CODIGO_KG:
+                bom._ft_poner_tipo_operacion('kg')
+                bom._ft_poner_desperdicio()
+                ruta = self._ft_ruta_mto_kg(bom.company_id or None)
+                if ruta and ruta not in bom.product_tmpl_id.route_ids:
+                    bom.product_tmpl_id.route_ids = [(4, ruta.id)]
+            elif bom.code == CODIGO_M:
+                bom._ft_poner_tipo_operacion('m')
+            else:
+                continue
+            bom._ft_poner_consumo_flexible()
+
+    def write(self, vals):
+        activando = self.filtered(lambda b: not b.active) if vals.get('active') else self.browse()
+        res = super().write(vals)
+        if activando:
+            activando._ft_preparar_activacion()
+        return res
+
