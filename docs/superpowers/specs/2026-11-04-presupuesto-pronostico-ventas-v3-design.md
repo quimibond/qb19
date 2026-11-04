@@ -86,6 +86,78 @@ del Excel suman 101.46 M: la diferencia de 0.4 M se explica en la carga (secció
 | N15 | No hay presupuesto del mes, ni cierre de mes como reporte, ni comparativo de revisiones, ni objetivo/mínimo, ni armado de la propuesta del año siguiente | — | Jessica sigue con F-P-A28-14 en Excel. |
 | N16 | Planeación no tiene grupo ni vista; el menú pide `group_sgi_user` | `views/menus.xml:7-9` | Consulta el Drive. |
 
+### 1.4 Lo que dicen los Excel (leídos el 4-nov)
+
+Fuentes: `forecast.xlsx` vivo (Drive de innovacion@, modificado el 4-nov) y los adjuntos de correo guardados en la
+memoria (Supabase): GENERAL 2026 rev01072026, INDUSTRIAL 26102026 (presupuesto de noviembre), CONFECCIÓN noviembre. El
+detalle con cifras de clientes quedó fuera del repo; aquí solo estructura y conteos.
+
+**Lo que confirma el diseño**
+
+- **TC de la REV1 = 17.5.** Correo «PRESUPUESTO DE VENTAS GENERAL REV 1 JULIO - DICIEMBRE 2026» (25-jun): «de $19.2 a
+  $17.5, aplicado a todo 2026», y la respuesta de Dirección «Si hay que considerar el TC 17.50». La hoja «2026
+  industrial» trae 17.5. El 17.2 de la hoja ANUAL no se pudo ver (sección 4.3).
+- **El presupuesto Industrial REV1 se reproduce:** la hoja «2026 industrial» (16 clientes, 46 renglones cliente ×
+  producto, 4 columnas por mes: cantidad presupuestada, vendida, $ presupuestado, $ vendido) da 139,288,312 contra el
+  control 139,288,311.59 (redondeo de celdas). $ = cantidad × precio USD × 17.5; seis clientes tienen precio en MXN. La
+  unidad (m o kg) no está escrita: se deduce de si el renglón trae precio por m o por kg. Hay columnas de precio por
+  periodo («precio m junio–septiembre», «julio–octubre»): el precio presupuestal cambia dentro del año, por eso va por
+  renglón-mes (sección 2.6).
+- **El real del Excel es el de Odoo:** septiembre industrial cuadra **por producto al centavo** con las facturas de Odoo
+  (el TC por renglón es el de la factura). La diferencia total (27 mil) son líneas de desperdicio, saldos y chatarra que
+  el Excel no cuenta, y las notas de crédito. Confección y Especiales de septiembre también cuadran con el correo de
+  cierre. Ver pregunta nueva 15.
+- **Un proyecto es una combinación producto–cliente, no un producto.** PRESUPUESTO PROYECTOS trae 33 renglones (32
+  códigos, 11 clientes): 21 son productos nuevos, varios son productos de línea para un cliente nuevo (el mismo código
+  es línea para Saltillo y proyecto para Zwisstex), uno es un cambio de código, y 6 combinaciones ya se vendían antes de
+  2026 y siguen como proyecto. 3 códigos no existen en Odoo (proyectos sin código, como prevé 2.6). Ningún producto
+  tiene `sgi_dev_state`. Corrige 2.6: la marca va en la combinación, no en el producto.
+- **TC por mes en el presupuesto del mes y en el forecast:** 11 meses con TC en el industrial de noviembre (nov 18.67)
+  y 12 en PRESUPUESTO MES 2026. Confirma `qb.sales.budget.rate` por mes.
+- **Confección va solo por producto** (F-P-A28-17 noviembre: producto, unidad, cantidad y $ presupuestados y reales,
+  sin cliente).
+- **Las plantas son hojas separadas** en el forecast (FXI Cd. Juárez y Santa Teresa, Saltillo y León) o bloques
+  separados (Shawmut Silao y Tennessee dentro de la hoja SHAWMUT). Confirma el perfil por planta (2.10).
+
+**Lo que el Excel hace mal (y Odoo debe no repetir)**
+
+- yd → m con **1.0963** en PRONÓSTICO y con 1.0936 en CONVERSIÓN y PRESUPUESTO: dos factores en el mismo libro.
+- PRONÓSTICO 2027 copia los totales de 2026 en 9 clientes que no tienen bloque 2027 (el «pronóstico 2027» de esos
+  clientes es el 2026 repetido).
+- Rangos corridos en la tabla mensual y en CONVERSIÓN (octubre se salta la semana 40; un mes suma desde la semana 39 en
+  adelante; Lear usa la llave de Shawmut; Lear divide entre el precio en lugar del rendimiento).
+- PRESUPUESTO SEMANAL 2026 da `#N/A` en todos sus totales (un código que no está en PRECIOS) y casi todas sus semanas
+  usan el TC de enero.
+- La columna «precio / m» de PRECIOS mezcla USD por m, USD por kg (Lear) y MXN (seis clientes), sin decir moneda.
+- Dos rendimientos con el ancho equivocado (Seiren, Contitech). El resto (98) coincide con la especificación o el código.
+
+**PRECIOS (106 renglones) contra las listas de Odoo:** 47 iguales, 26 diferentes, 33 sin regla en Odoo; todos los
+productos existen (uno solo inactivo) y todos los clientes tienen lista.
+
+- **Shawmut:** 18 de 19 diferentes, con patrón: el precio por kg del Excel es el de Odoo **+6.0 %** en los 12 renglones
+  por kg; los precios por m del Excel salen de dividir el kg entre el rendimiento. Hay además dos reglas duplicadas en
+  Odoo sobre la misma plantilla que parecen precios por m² cargados como m.
+- **Seiren:** 4 diferentes (−6.5 % a −6.8 %) contra reglas que **vencieron el 31-oct-2026**.
+- **Pieles:** 23 sin regla. **Zwisstex:** 3 diferentes (+6 %), 2 sin regla. **Contitech:** 3 sin regla. **TQ-1:** 2 sin
+  regla. **FXI:** 2 sin regla (uno es un producto inactivo).
+- **Lear:** su «precio / m» es en realidad el precio por kg y coincide con Odoo.
+- Copo, Saltillo, Poliuretanos, Maisa, Maclin, Entex, Bowen, Blancos y Woodbridge: todo igual.
+
+Odoo vende la misma tela con **tres códigos**: el base en metros, el de «I» al frente en kilos y el de «M2» al final en
+metros cuadrados. El artículo (2.2) tiene que juntar los tres.
+
+**Para el lector del forecast (4.2):** 31 hojas (19 de cliente, ocultas); semanas 1–52 en columnas; bloques de año
+apilados hacia abajo (fila del año, «FECHA DE ENTREGA», «PRODUCTO / PO» con la OC, renglones de producto con nuestro
+código en A y la parte del cliente en B, TOTAL). La unidad no está en la hoja del cliente, solo en PRONÓSTICO (yd en
+FXI, Shawmut y Saltillo; kg en Pieles; m el resto). Seis hojas se salen del layout (semana 1 en otra columna, sin
+columna de parte, subbloques por planta, renglones de PO o de conversión intercalados, cantidades escritas como texto
+«por confirmar»). Por eso el lector no es genérico: lleva un **mapa por hoja** (fila del año, columna de la semana 1,
+columna de parte, unidad) que se revisa con Jessica una vez.
+
+**Hallazgo en la memoria (repo quimibond-intelligence):** el extractor de adjuntos solo guarda las **10 primeras
+hojas** de un Excel (`attachments-extract`, `wb.SheetNames.slice(0, 10)`). Por eso la memoria no tiene ANUAL, MENSUAL ni
+las hojas de confección, proyectos y especiales del presupuesto general.
+
 **Por qué los releases no se usan (sección 2.1 del prompt):** (a) solo Lear y FXI tienen lector; (b) aplicar exige que
 cada parte esté confirmada una por una y que el release esté «revisado» (`qb_release.py:323-341`); (c) aplicar escribe en
 un documento por cliente-año que Planeación no ve, así que a Jessica no le ahorra nada: sigue necesitando su Excel para
@@ -114,7 +186,7 @@ releases de septiembre se leyeron y nadie los revisó: no hay bandeja que avise 
 
 | Campo | Qué es | De dónde sale, en orden |
 |---|---|---|
-| `qb_articulo_id` (m2o `product.product`) | La tela en metros que representa al producto en la medición | 1) ficha de acabado: `ft_producto_m_id` (para el IW, su W; para el W, él mismo); 2) regla DAT P-D02-01: si el código cumple `NOMEN_RE` con `I` al frente y existe el producto con el mismo código sin `I`, ese; 3) excepción capturada (`qb.articulo.excepcion`); 4) él mismo |
+| `qb_articulo_id` (m2o `product.product`) | La tela en metros que representa al producto en la medición | 1) ficha de acabado: `ft_producto_m_id` (para el IW, su W; para el W, él mismo); 2) regla DAT P-D02-01: si el código cumple `NOMEN_RE` con `I` al frente y existe el producto con el mismo código sin `I`, ese; 3) código con `M2` al final (la versión en m² que Odoo ya tiene en listas de precios): el mismo código sin `M2`; 4) excepción capturada (`qb.articulo.excepcion`, para cambios de código como «WJ045… → WJ050…»); 5) él mismo |
 | `qb_gramaje` (g/m²), `qb_ancho_cm` | Especificación | 1) ficha (`ft_peso`, `ft_ancho`); 2) código (`NOMEN_RE` grupos 3 y 8, la misma de `qb_costeo/models/horas.py:64`); 3) vacío |
 | `qb_m_por_kg` | Rendimiento para convertir | `1000 ÷ (gramaje × ancho_m)` de la especificación (lo que pide la sección 2.7) |
 | `qb_m_por_kg_real` | Rendimiento real de producción, solo informativo | `ft_rendimiento` de la ficha (metros fabricados ÷ kilos consumidos, 12 meses) |
@@ -267,17 +339,19 @@ revisión aprobada por año y compañía».
 
 **Línea o proyecto (sección 2.4 del prompt):** no se puede derivar de lo que hay. `sgi_dev_state` existe en el producto
 pero **ningún producto vendido en 2026 lo tiene** (0 de 121.9 M en Industrial + Confección), y `sgi_first_sale_date`
-marcaría 102 M como «nuevos» desde julio de 2025, así que no sirve. Propuesta:
+marcaría 102 M como «nuevos» desde julio de 2025, así que no sirve. Y la hoja PRESUPUESTO PROYECTOS muestra que un
+proyecto es una **combinación producto–cliente** (sección 1.4): el mismo código es línea para un cliente y proyecto para
+otro. Propuesta:
 
-1. El presupuesto declara qué es proyecto: el mercado del renglón (`proyectos_industrial`, `proyectos_confeccion`) para
-   ese **cliente + artículo + año**.
-2. Para lo que no está en el presupuesto, el producto lleva `qb_proyecto_hasta` (fecha, opcional): mientras no llegue, su
-   venta cuenta como proyecto. Jessica lo marca al dar de alta el código de un proyecto; un proyecto «se gradúa» cuando el
-   presupuesto del año siguiente lo pone en línea.
-3. Base del mercado: el equipo de ventas del **cliente** (`res.partner.team_id`), no el de la factura; si no tiene, el de
+1. **`qb.sales.project`** (cliente comercial, artículo o renglón sin código, `desde`, `hasta`, nota): la combinación en
+   arranque. Mientras esté vigente, su venta y su pronóstico cuentan como proyecto de su mercado base.
+2. El presupuesto la declara: un renglón en `proyectos_industrial` o `proyectos_confeccion` crea o liga su
+   `qb.sales.project` para ese año. La carga de la REV1 crea las 33 de PRESUPUESTO PROYECTOS.
+3. La combinación «se gradúa» cuando el presupuesto del año siguiente la pone en línea (se cierra `hasta`), o a mano.
+4. Base del mercado: el equipo de ventas del **cliente** (`res.partner.team_id`), no el de la factura; si no tiene, el de
    la factura; si tampoco, «Sin mercado» visible en el reporte (sección 2.7).
 
-Sin equipos falsos.
+Sin equipos falsos y sin marcar el producto.
 
 **Armado de la propuesta del año siguiente** (asistente «Armar propuesta <año>», crea la REV0 en borrador):
 
@@ -305,6 +379,11 @@ Una fila por línea de factura de cliente publicada (`out_invoice`, `out_refund`
 `product_id`, `articulo_id`, `mercado` (regla de la sección 2.6), `es_proyecto`, `amount_mxn` (`-balance`; la nota de
 crédito resta sola), `amount_currency` y moneda, `tc` (`balance / amount_currency`), `qty_venta` con signo, `qty_m`,
 `qty_kg`, `conv_origen`, `team_id` de la factura (solo informativo).
+
+**Desperdicio, saldos y chatarra:** el cierre del Excel no los cuenta (27 mil en septiembre industrial) y el VE-02 sí,
+porque van a la misma cuenta 401. La vista los marca con `es_saldo` (por categoría de producto, lista en Ajustes) y los
+reportes de cumplimiento los excluyen por defecto; el VE-02 adopta la misma regla para que las dos cifras sigan siendo
+una (pregunta 15).
 
 Se calcula al leer: no hay foto que refrescar (hoy `amount_real` es una foto que se pone vieja, `sgi_sales_budget_line.py:96-99`).
 Metros y kilos se calculan en SQL con los campos guardados del producto (sección 2.2).
@@ -408,13 +487,18 @@ Todo en `migrations/19.0.2.0.0/post-migrate.py`, idempotente, con conteos en el 
 ### 4.2 Carga del `forecast.xlsx` (E1)
 
 Lector en Python puro (`release/forecast_xlsx.py`, pruebas en `tests_puros/` con un **fixture anonimizado** del mismo
-layout: clientes «Cliente A…», partes y cantidades inventadas). Por cada hoja de cliente y cada bloque 2026/2027:
+layout: clientes «Cliente A…», partes y cantidades inventadas). Lee **las hojas de cliente**, no PRONÓSTICO 2026/2027
+(fórmulas con rangos corridos y 2027 copiado de 2026 en 9 clientes, sección 1.4), con un mapa por hoja (fila del año,
+columna de la semana 1, columna de parte, unidad tomada de PRONÓSTICO); las celdas de texto («por confirmar») y los
+renglones de PO o de conversión intercalados van al reporte de la carga, no al pronóstico. Por cada hoja de cliente y
+cada bloque 2026/2027:
 semana, fecha de entrega, OC, producto, parte del cliente y cantidad en su unidad → `qb.forecast.line` con
 `origen = excel`. Las partes que no existen se crean en el catálogo como «sugerido». La hoja PRECIOS y la de MUESTRAS
 no se cargan en E1 (la de precios se compara, 4.4; la de muestras queda como pregunta 9).
 
-Aceptación: por cliente y mes, la suma en la unidad del cliente igual a la hoja «CONVERSIÓN DE UNIDADES VENTA»; la
-diferencia en metros contra «TOTAL M» se explica renglón por renglón (factor del Excel contra especificación).
+Aceptación: por cliente, la suma en su unidad igual a la de sus renglones en PRONÓSTICO 2026 (hoy coinciden salvo dos
+renglones de 500 que PRONÓSTICO no toma); la diferencia en metros contra «TOTAL M» (9,992,405 m en 2026) se explica por
+el factor de yarda (1.0963 → 0.9144 exacto), los factores fijos de Pieles y los rangos corridos.
 
 ### 4.3 Carga del presupuesto general 2026 (E2)
 
@@ -422,16 +506,21 @@ Lector de las 5 hojas de mercado (cliente × producto × mes en industrial; prod
 y precios (`price_origen = excel`), aprobada por Dirección con el botón; REV0 desde su versión, en `reemplazado`.
 
 Aceptación al peso: los totales de la hoja ANUAL por mercado (tabla de control de la sección 1.3 del prompt), tanto el
-presupuesto como lo vendido a septiembre recalculado desde `qb.sales.actual`. Lo vendido no va a cuadrar al peso de
+presupuesto como lo vendido a septiembre recalculado desde `qb.sales.actual`. **Falta el archivo:** la memoria solo
+guarda las 10 primeras hojas (sección 1.4); de ahí sale Industrial (reproducido) pero no Proyectos industrial,
+Confección, Proyectos confección, Especiales ni ANUAL. La versión «01072026 propuesta» trae Proyectos industrial en
+33,005,420, no los 33,866,419.50 del control: hubo un ajuste posterior. Se necesita el .xlsx vigente. Lo vendido no va a cuadrar al peso de
 entrada (Odoo ene–sep Industrial por equipo 101.85 M contra 101.46 M del Excel): la carga produce el reporte de
 diferencias por cliente y mes (facturas sin equipo, cliente cuyo equipo no es el de la factura, notas de crédito,
 fecha) y esa conciliación se revisa con Jessica antes de aprobar.
 
 ### 4.4 Comparación PRECIOS del forecast contra listas de Odoo
 
-La entrega la carga de E1 como reporte (cliente, producto, precio Excel por m y por kg, regla de la lista de Odoo,
-precio de la lista, diferencia %, «sin regla», «precio basura»). **No la puedo entregar hoy**: el archivo no está en el
-repo ni en la sesión (y no debe subirse). En cuanto me lo pases la corro fuera del repo y te mando el resultado.
+Hecha el 4-nov (resumen en 1.4; detalle por renglón fuera del repo). Antes de E1 hay que: (a) decidir el +6 % de
+Shawmut (¿la lista de Odoo está vieja o el Excel trae un aumento no capturado?); (b) renovar las reglas de Seiren que
+vencieron el 31-oct; (c) dar de alta las 33 reglas faltantes (23 de Pieles); (d) borrar las dos reglas duplicadas de
+Shawmut que parecen m². Sin eso, E3 no puede proponer pedidos con precio. La carga de E1 repite la comparación como
+reporte para que Jessica la vea en Odoo.
 
 ---
 
@@ -481,7 +570,8 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 1. ¿Las aplicaciones de releases del 2-nov en producción fueron prueba? Si sí, ¿se deshacen antes de E1 o se migran tal
    cual?
-2. TC de la REV1: ¿17.5 (correo del 25-jun) o 17.2 (hoja ANUAL)?
+2. ~~TC de la REV1~~: **17.5**, confirmado en el correo del 25-jun y en la hoja «2026 industrial» (1.4). Queda ver por qué
+   la hoja ANUAL dice 17.2 cuando llegue el archivo.
 3. Para Planeación, ¿kilos con el rendimiento de especificación (gramaje × ancho) o con el real de la ficha?
 4. ¿El equipo «Distribuidor» y las ventas sin equipo de clientes de giro van a algún mercado o se reportan aparte?
 5. Objetivo y mínimo: ¿sobre la venta total del año anterior o por mercado?
@@ -489,10 +579,11 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 **Para Ventas (Jessica)**
 
-7. ¿Qué es hoy un «proyecto» en tu Excel: producto nuevo, cliente nuevo o los dos? ¿Cuándo pasa a «línea»?
+7. Un «proyecto» en el Excel es una combinación producto–cliente en arranque (1.4). ¿Cuándo pasa a «línea»? Hay 6 que
+   ya se vendían antes de 2026 y siguen como proyecto.
 8. ¿El precio presupuestal de industrial lo manejas por metro o por kilo, y en qué moneda, por cliente?
 9. Hoja MUESTRAS: ¿se queda en Excel o la quieres en Odoo (sería otra entrega)?
-10. Plantas: ¿FXI Cd. Juárez y Santa Teresa mandan un release cada una?
+10. ~~Plantas~~: el forecast ya las separa (1.4). ¿Shawmut Silao y Tennessee mandan release por separado?
 11. Para el armado del 2027: ¿el factor de tendencia de ±30 % te sirve como tope, o lo pones tú por cliente?
 
 **Para Planeación**
@@ -500,3 +591,11 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 12. Unidad de trabajo: metros, kilos o las dos (la vista trae las dos; se elige cuál va primero).
 13. ¿El corte de tejido es el mes calendario siguiente o las próximas 4–5 semanas?
 14. En el MPS, ¿los programas deben quedar en el producto en kilos (IW) o en metros (W)?
+
+**Nuevas tras leer los Excel (4-nov)**
+
+15. Desperdicio, saldos y chatarra: el cierre del Excel no los cuenta y el VE-02 sí. ¿Se excluyen de los dos?
+16. Shawmut: el precio por kg del Excel es el de la lista de Odoo +6 %. ¿Cuál vale?
+17. ¿Me pasas el GENERAL 2026 vigente completo (con ANUAL, confección, proyectos y especiales)? La memoria solo tiene sus
+    10 primeras hojas. ¿Y la REV0?
+18. ¿Se corrige el extractor de la memoria para guardar todas las hojas de un Excel (otro PR, en quimibond-intelligence)?
