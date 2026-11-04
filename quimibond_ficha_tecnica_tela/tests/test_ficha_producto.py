@@ -22,12 +22,17 @@ class TestFichaProducto(TiempoFichaCase):
         # El producto en kg ve la misma ficha.
         self.assertEqual(self.tela.product_tmpl_id.ft_bom_kg_id, self.bom)
 
-    def test_02_editar_la_tela_desde_el_producto(self):
+    def test_02_la_tela_en_el_producto_es_de_solo_lectura_y_dice_de_donde_sale(self):
+        """2.24.0: el producto no edita la ficha; cada dato dice de qué ficha sale."""
         tmpl = self.tela_m.product_tmpl_id
-        tmpl.ft_peso = 54
-        tmpl.ft_rendimiento = 7.5
-        self.assertEqual((self.acabado.peso_acabado, self.acabado.rendimiento_tela_acabada), (54.0, 7.5),
-                         "Se guarda en su ficha de acabado: el SGI, el costeo y la Programación siguen leyendo de ahí")
+        for name in ('ft_peso', 'ft_ancho', 'ft_rendimiento', 'ft_crudo_peso', 'ft_crudo_ancho'):
+            self.assertTrue(tmpl._fields[name].readonly, name)
+            self.assertTrue(tmpl._fields[name].help, "%s dice de dónde sale" % name)
+        self.assertEqual(tmpl.ft_acabado_ficha_id, self.acabado)
+        self.assertEqual(tmpl.ft_tejido_ficha_id, self.tejido)
+        self.acabado.peso_acabado = 54
+        self.env.invalidate_all()
+        self.assertEqual(tmpl.ft_peso, 54.0, "Lo que se cambia en la ficha de acabado se ve en el producto")
 
     def test_03_el_crudo_en_su_producto(self):
         tmpl = self.crudo.product_tmpl_id
