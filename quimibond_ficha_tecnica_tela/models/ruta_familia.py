@@ -45,6 +45,9 @@ PASOS_TODAS = ('devanado', 'tintoreria', 'abridora', 'rama', 'inspeccion')
 PASOS_PLANTA = ('devanado', 'abridora', 'inspeccion')
 CODIGO_KG = 'Flujo en kg (borrador)'
 CODIGO_M = 'Clasificación final (borrador)'
+# 2.25.0: subproducto que pesa Rama en la orden en kg (quimibond_rollos_bitacora, «PESAR DESPERDICIO»). Nace con
+# cantidad 0: no es estándar, se registra el peso real de cada orden.
+DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
 
 
 def tintoreria_por_codigo(code):
@@ -383,6 +386,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                 elif self.consumo_crudo:
                     bom_kg.bom_line_ids.filtered(lambda line: line.product_id == crudo).product_qty = self.consumo_crudo
                 avisos += self._ft_poner_operaciones(bom_kg, self._ft_pasos('kg'), kg)
+                avisos += bom_kg._ft_poner_desperdicio()
                 generadas |= bom_kg
         if tela_m:
             bom_m = Revision._ft_bom_de(tela_m)
@@ -423,3 +427,35 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'title': 'Listas desde la ruta', 'message': mensaje, 'type': 'warning' if avisos else 'success',
             'sticky': bool(avisos), 'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
+
+
+class MrpBomDesperdicioRama(models.Model):
+    _inherit = 'mrp.bom'
+
+    def _ft_poner_desperdicio(self):
+        """2.25.0: deja en la lista en kg el subproducto «Desperdicio Tejido» en la operación de Rama, con cantidad 0.
+
+        Lo pide el pesaje de desperdicio de Rama de José Sacramento (quimibond_rollos_bitacora): sin él, «PESAR
+        DESPERDICIO» se bloquea. Si ya está, solo lo vuelve a ligar a la Rama (las operaciones se rehacen al generar).
+        Devuelve los avisos."""
+        avisos = []
+        Ruta = self.env['ficha.tecnica.ruta']
+        producto = self.env['product.product'].search([('default_code', '=', DESPERDICIO_CODIGO)], limit=1)
+        for bom in self:
+            nombre = bom.product_tmpl_id.default_code or bom.product_tmpl_id.name
+            if not producto:
+                avisos.append('%s: no existe el artículo «%s» para el subproducto de Rama.' % (nombre, DESPERDICIO_CODIGO))
+                continue
+            rama = bom.with_context(active_test=False).operation_ids.filtered(
+                lambda o: Ruta._ft_paso_de_operacion(o) == 'rama').sorted(lambda o: (o.sequence, o.id))[:1]
+            if not rama:
+                avisos.append('%s: la lista en kg no tiene Rama; el desperdicio queda sin operación.' % nombre)
+            actual = bom.byproduct_ids.filtered(lambda b: b.product_id == producto)[:1]
+            if actual:
+                if actual.operation_id != rama:
+                    actual.operation_id = rama
+                continue
+            bom.byproduct_ids = [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
+                                         'product_uom_id': producto.uom_id.id, 'operation_id': rama.id or False,
+                                         'cost_share': 0.0})]
+        return avisos

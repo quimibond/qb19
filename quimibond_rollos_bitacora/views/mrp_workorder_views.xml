@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mismo patrón que PESAR en pesaje_rollos_tejido: botones en la lista de operaciones, para que el
+         operador no entre a la orden de fabricación. Solo en operaciones listas o en proceso. -->
+    <record id="mrp_workorder_view_tree_pesar_rama" model="ir.ui.view">
+        <field name="name">mrp.workorder.view.list.pesar.rama</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="es_rama" column_invisible="1"/>
+                <field name="es_inspeccion" column_invisible="1"/>
+                <button name="action_pesar_rollo_rama" type="object" string="PESAR ROLLO"
+                        class="btn-primary" icon="fa-balance-scale"
+                        invisible="not es_rama or state not in ('ready', 'progress')"/>
+                <button name="action_pesar_desperdicio_rama" type="object" string="PESAR DESPERDICIO"
+                        class="btn-secondary" icon="fa-trash"
+                        invisible="not es_rama or state not in ('ready', 'progress')"/>
+                <field name="es_clasificacion" column_invisible="1"/>
+                <button name="action_clasificar_rollo" type="object" string="CLASIFICAR"
+                        class="btn-primary" icon="fa-tags"
+                        invisible="not es_clasificacion or state not in ('ready', 'progress')"/>
+                <button name="action_inspeccionar_rollo" type="object" string="INSPECCIONAR"
+                        class="btn-primary" icon="fa-search"
+                        invisible="not es_inspeccion or state not in ('ready', 'progress')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

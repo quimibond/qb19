@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_calidad_defecto_tela_list" model="ir.ui.view">
+        <field name="name">calidad.defecto.tela.list</field>
+        <field name="model">calidad.defecto.tela</field>
+        <field name="arch" type="xml">
+            <list string="Defectos de tela" editable="bottom">
+                <field name="clave"/>
+                <field name="name"/>
+                <field name="tipo_tela"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_calidad_defecto_tela_search" model="ir.ui.view">
+        <field name="name">calidad.defecto.tela.search</field>
+        <field name="model">calidad.defecto.tela</field>
+        <field name="arch" type="xml">
+            <search string="Defectos de tela">
+                <field name="clave"/>
+                <field name="name"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_calidad_defecto_tela" model="ir.actions.act_window">
+        <field name="name">Defectos de tela</field>
+        <field name="res_model">calidad.defecto.tela</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_rollos" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.rollos</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="mrp.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='mrp']" position="inside">
+                <block title="Rollos de tela acabada" name="rollos_bitacora_block">
+                    <setting string="Alerta 1: metros finales contra Inspección"
+                             help="Diferencia máxima en metros entre los metros finales (Clasificación final) y los medidos en Inspección.">
+                        <field name="rollos_alerta_metros_insp"/>
+                    </setting>
+                    <setting string="Alerta 2: metros finales contra el teórico"
+                             help="Porcentaje máximo de diferencia contra kg finales por el rendimiento de la ficha de acabado.">
+                        <field name="rollos_alerta_diferencia_pct"/>
+                    </setting>
+                    <setting string="Etiqueta pequeña de Rama"
+                             help="Tamaño de la etiqueta en puntos ZPL (203 dpi: 8 puntos = 1 mm).">
+                        <field name="rollos_etiqueta_rama_ancho"/>
+                        <field name="rollos_etiqueta_rama_alto"/>
+                    </setting>
+                    <setting string="Etiqueta preliminar de Inspección"
+                             help="Tamaño de la etiqueta F-P-I01-02 en puntos ZPL (203 dpi). Provisional hasta confirmar el tamaño real.">
+                        <field name="rollos_etiqueta_prelim_ancho"/>
+                        <field name="rollos_etiqueta_prelim_alto"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
