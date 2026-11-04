@@ -300,7 +300,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (451; 84 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (450; 83 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -410,7 +410,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quality.alert` | `quimibond_sgi.sgi_quality_alert_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_dashboard_views.xml` |
 | `quality.point` | `quimibond_sgi.sgi_quality_point_view_form` | herencia | `quality.quality_point_view_form` | `addons/quimibond_sgi/views/sgi_control_plan_views.xml` |
 | `res.config.settings` | `quimibond_sgi.res_config_settings_view_form_sgi` | herencia | `base.res_config_settings_view_form` | `addons/quimibond_sgi/views/sgi_settings_views.xml` |
-| `res.config.settings` | `quimibond_sgi_pesaje.res_config_settings_view_form_sgi_pesaje` | herencia | `quimibond_sgi.res_config_settings_view_form_sgi` | `addons/quimibond_sgi_pesaje/views/res_config_settings_views.xml` |
 | `res.partner` | `quimibond_sgi.sgi_coa_res_partner_view_form` | herencia | `base.view_partner_form` | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
 | `res.partner` | `quimibond_sgi.sgi_ppap_res_partner_form` | herencia | `base.view_partner_form` | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
 | `res.partner` | `quimibond_sgi.sgi_res_partner_supplier_view_form` | herencia | `base.view_partner_form` | `addons/quimibond_sgi/views/sgi_res_partner_views.xml` |

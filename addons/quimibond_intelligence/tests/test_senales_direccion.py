@@ -24,13 +24,6 @@ class TestSenalesDireccion(SenalesCommon):
         self.assertEqual(zombie['payload']['fecha_base'], str(self.hace(200)))
         self.assertEqual(viva['payload']['grupo'], 'vivas')
 
-    def test_obligacion_legado_solo_abiertas(self):
-        if 'qb.obligation' not in self.env:
-            self.assertIsNone(self.filas('obligacion_legado'))
-            return
-        ob = self.env['qb.obligation'].create({'name': 'Enviar cotización', 'description': 'Enviar cotización a cliente', 'user_id': self.env.user.id,
-                                               'date_deadline': self.hace(1), 'partner_id': self.cliente.id, 'obligation_type': 'comercial.quote', 'state': 'confirmed'})
-        f = self.fila_de(self.filas('obligacion_legado'), 'obligacion_legado:qb.obligation:%d' % ob.id)
-        self.assertEqual(f['vence'], str(self.hace(1)))
-        ob.write({'state': 'done'})
-        self.assertEqual([x for x in self.filas('obligacion_legado') if x['clave'].endswith(':%d' % ob.id)], [])
+    def test_obligacion_legado_lote_vacio(self):
+        # qb_obligation se retiró: la señal manda un lote vacío para resolver lo que quedó en Supabase.
+        self.assertEqual(self.filas('obligacion_legado'), [])
