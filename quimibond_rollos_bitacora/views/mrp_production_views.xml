@@ -46,6 +46,17 @@
                             <field name="metros_insp"/>
                         </list>
                     </field>
+                    <separator string="Rollos finales (Inspección)"/>
+                    <field name="rollo_final_kg_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="bitacora_ids" widget="many2many_tags"/>
+                            <field name="clasificacion"/>
+                            <field name="kg_neto" sum="Total kg"/>
+                            <field name="metros" sum="Total m"/>
+                            <field name="estado" widget="badge"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>

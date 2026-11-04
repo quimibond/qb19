@@ -43,6 +43,30 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
   iniciales», archivo MAQUINA Y OPERADOR INSPECCION). Se imprimen las del operador que inspeccionó el rollo.
 - Cierre de la MO en metros: cantidad = suma de rollos, consumo de A = kg reales por lote (se iguala la demanda).
 
+## Inspección como estación única (3.1.0, Dirección General 2026-11-03)
+
+Diseño: `docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md`. Se agrega a lo de arriba; Rama,
+pesaje, taras, bitácora, defectos y el bloqueo de cierre se quedan igual.
+
+- **INSPECCIONAR** (operación de Inspección de la orden en kg, en cuanto el rollo sale de rama) abre la estación
+  `rollo.inspeccion.estacion.wizard`: se escanea el rollo de Rama (o varios **del mismo baño** para juntarlos), se pesa
+  el rollo final con la tara de Inspección (la de «Clasificación final» en la tabla de taras; báscula IoT o manual con
+  motivo), se capturan metros, empalmes, calidad y defectos y se imprime la **etiqueta final** (PQ o PNC).
+- **Corte:** un registro por pedazo con «Último pedazo» apagado; el último lo cierra y el rollo de Rama queda
+  inspeccionado. No se corta y junta en la misma captura.
+- **Rollo final** (`mrp.rollo.final`, Manufactura → Reportes → Rollos finales): lote `M<orden en metros>-NNNN`, kg,
+  metros, calidad, rollos de Rama de los que sale. Merma del grupo (kg de Rama − kg de los rollos finales) con alerta
+  por porcentaje antes de guardar (parámetro `quimibond_rollos_bitacora.alerta_merma_inspeccion_pct`, 3 %).
+- **Sin inventario hasta cerrar el baño:** el supervisor cierra la orden en kg con «Marcar como hecho» (no cierra con
+  rollos sin inspeccionar) y en la misma operación se registra la orden en metros que la orden en kg abastece:
+  consume cada rollo de Rama completo y produce cada rollo final con su lote: **PQ** la tela en metros a 14, **FE** la
+  tela a 15, **Segunda** `SALDO DE TELA TEJIDO` en kg a 16 y **Desperdicio** `SALDO TEJIDO D` en kg a 17 (ubicaciones
+  en los parámetros `quimibond_rollos_bitacora.ubicacion_pq/_fe/_segunda/_desperdicio`; saldos en los de fichas). Si
+  algo falla no se cierra nada. Filtro y menú «Baños inspeccionados sin cerrar».
+- Sale el botón **CLASIFICAR** de Empaque (la lista en metros ya no lleva operación, fichas 2.25.0). El asistente de
+  Clasificación final y la etiqueta preliminar quedan en el código sin uso.
+- Pruebas: `tests/test_inspeccion_estacion.py` (casos 1 a 11 del diseño).
+
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las
 mediciones de Rama.

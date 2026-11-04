@@ -38,4 +38,17 @@
             <t t-out="o.zpl_etiqueta_preliminar"/>
         </t>
     </template>
+
+    <record id="action_report_etiqueta_rollo_final" model="ir.actions.report">
+        <field name="name">Etiqueta final del rollo (Inspección)</field>
+        <field name="model">mrp.rollo.final</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_rollo_final</field>
+    </record>
+
+    <template id="report_etiqueta_rollo_final">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.zpl_etiqueta"/>
+        </t>
+    </template>
 </odoo>

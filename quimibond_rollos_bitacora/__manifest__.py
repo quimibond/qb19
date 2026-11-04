@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.0.1',
+    'version': '19.0.3.1.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -19,6 +19,11 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   Orden de Fabricación + No. de rollo (inmutable) y etiqueta pequeña ZPL solo con el código de barras.
 * ``es_desarrollo`` en la MO (se hereda de la MO en metros a la MO en kg) para el ruteo al Almacén 31.
 * Parámetros de alerta de metros en Ajustes de Manufactura.
+* 3.1.0 (Dirección General, diseño 2026-11-03): Inspección como estación única. Corta o junta rollos de Rama del
+  mismo baño, pesa cada rollo final con la tara de Inspección, le pone metros, calidad y defectos, lote
+  ``M<orden en metros>-NNNN`` y etiqueta final (``mrp.rollo.final``). Al cerrar la orden en kg con el botón nativo,
+  la orden en metros se registra sola: PQ y FE en metros a 14 y 15, Segunda y Desperdicio en kg (saldos) a 16 y 17.
+  Sin botón CLASIFICAR en Empaque.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -36,6 +41,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'views/mrp_inspeccion_restriccion_views.xml',
         'views/mrp_tara_producto_views.xml',
         'views/mrp_rollo_bitacora_views.xml',
+        'views/mrp_rollo_final_views.xml',
         'views/mrp_production_views.xml',
         'views/mrp_workorder_views.xml',
         'views/res_config_settings_views.xml',
@@ -44,6 +50,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'wizard/rollo_clasificacion_wizard_views.xml',
         'wizard/rollo_inspeccion_wizard_views.xml',
         'wizard/rollo_desperdicio_rama_wizard_views.xml',
+        'wizard/rollo_inspeccion_estacion_wizard_views.xml',
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],
