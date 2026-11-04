@@ -168,3 +168,31 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertEqual(len(self.bom.byproduct_ids), 1, "No se duplica")
         self.assertEqual(self.bom.byproduct_ids.operation_id.workcenter_id, rama,
                          "Al rehacer las operaciones vuelve a la Rama nueva")
+
+    def test_11_tipo_de_operacion_del_flujo(self):
+        """2.25.0: las listas que crea «Generar listas» llevan su tipo de operación (sin él la orden nacía como
+        «Re-proceso Tintorería»), y la revisión avisa a Ingeniería si una lista del flujo no lo tiene."""
+        self._armar()
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 936 prueba (kg)', 'default_code': 'IZZ936Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 936 prueba (m)', 'default_code': 'ZZ936Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ936Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg)
+        self.assertEqual(bom_m.picking_type_id, self.tipo_m)
+        tipos = Revision.search([('acabado_id', '=', ficha.id)]).pendiente_ids.mapped('tipo')
+        self.assertNotIn('tipo_operacion', tipos)
+        bom_kg.picking_type_id = False
+        revision = Revision._ft_actualizar(ficha)
+        pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'tipo_operacion')
+        self.assertEqual((pendiente.area, pendiente.bom_id), ('ingenieria', bom_kg))
+        self.assertEqual(pendiente.action_ft_resolver()['res_id'], bom_kg.id, "«Resolver» abre la lista")
+        ficha.action_ft_generar_listas()
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg, "Al volver a generar se completa")
+

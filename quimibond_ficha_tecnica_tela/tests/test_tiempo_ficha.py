@@ -67,8 +67,19 @@ class TiempoFichaCase(TransactionCase):
         def op(name, seq, wc):
             return (0, 0, {'name': name, 'sequence': seq, 'workcenter_id': wc.id, 'time_mode': 'manual',
                            'time_cycle_manual': 0.1})
+        # 2.25.0: los tipos de operación del flujo (la revisión pide que las listas los traigan).
+        Tipo = cls.env['stock.picking.type']
+        almacen = cls.env['stock.warehouse'].search([('company_id', '=', cls.env.company.id)], limit=1)
+
+        def tipo(codigo, nombre):
+            return Tipo.search([('code', '=', 'mrp_operation'), ('sequence_code', '=', codigo),
+                                ('company_id', 'in', [cls.env.company.id, False])], limit=1) or Tipo.create({
+                'name': nombre, 'code': 'mrp_operation', 'sequence_code': codigo, 'warehouse_id': almacen.id,
+                'company_id': cls.env.company.id})
+        cls.tipo_kg, cls.tipo_m = tipo('OP-KG', 'Fabricación Tela en kg'), tipo('OP-M', 'Fabricación Tela en m')
         cls.bom = cls.env['mrp.bom'].create({
             'product_tmpl_id': cls.tela.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': cls.kg.id,
+            'picking_type_id': cls.tipo_kg.id,
             'bom_line_ids': [(0, 0, {'product_id': cls.crudo.id, 'product_qty': 1.1})],
             'operation_ids': [op('Devanado', 10, cls.dev), op('Tintorería', 20, cls.jet), op('Abridora', 30, cls.abr),
                               op('Inspección', 40, cls.insp)]})

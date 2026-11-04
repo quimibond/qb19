@@ -17,6 +17,7 @@ Qué se revisa:
    falte un dato para calcular el tiempo y que el tiempo sea el de la ficha (2.22.0 y 2.23.0).
 4. En las operaciones de tintorería: que el jet tenga la capacidad para el producto y que sea la de la ficha (2.23.0).
 5. Que la lista en metros convierta kg → m con el rendimiento de tela acabada de la ficha (2.23.0).
+6. Que las listas del flujo tengan su tipo de operación (Fabricación Tela en kg / en m) (2.25.0).
 
 El área sale del tipo de la máquina (tintorería, acabado = ramas, inspección, devanadora y abridora = Manufactura); lo
 que es de la lista o de la ficha es de Ingeniería (Innovación). La revisión es una foto: se rehace cada noche y con
@@ -47,6 +48,7 @@ TIPOS = [
     ('conversion', 'Conversión kg → m'),
     ('datos_acabado', 'Ficha de acabado sin peso o rendimiento'),
     ('datos_tejido', 'Ficha de tejido sin rendimiento'),
+    ('tipo_operacion', 'Lista sin tipo de operación'),
 ]
 
 
@@ -197,6 +199,12 @@ class FichaTecnicaRevision(models.Model):
             if bom_m.ft_conversion_difiere:
                 detalle = 'La lista en metros no convierte con la ficha: %s.' % detalle
             pendientes.append(dict(ing, tipo='conversion', bom_id=bom_m.id, detalle=detalle))
+        # 2.25.0: sin tipo de operación la orden nace como «Re-proceso Tintorería» (piloto de José, 2026-11-04).
+        for bom, cual in ((bom_kg, 'kg'), (bom_m, 'metros')):
+            if bom and bom.with_context(active_test=False).operation_ids and not bom.picking_type_id:
+                pendientes.append(dict(ing, tipo='tipo_operacion', bom_id=bom.id, detalle='La lista en %s no tiene '
+                                       'tipo de operación: la orden tomaría el predeterminado del almacén. Va «%s».' % (
+                                           cual, 'Fabricación Tela en kg' if cual == 'kg' else 'Fabricación Tela en m')))
         areas = {p['area'] for p in pendientes}
         vals.update({
             'n_pendientes': len(pendientes), 'listo': not pendientes,
@@ -281,7 +289,7 @@ class FichaTecnicaRevisionPendiente(models.Model):
             return self._ft_abrir(self.workcenter_id)  # pestaña Capacidades, «Usar la capacidad de la ficha»
         if self.tipo == 'datos_tejido' and acabado.tejido_id:
             return self._ft_abrir(acabado.tejido_id, 'Ficha de tejido')
-        if self.tipo in ('crudo', 'conversion') and self.bom_id:
+        if self.tipo in ('crudo', 'conversion', 'tipo_operacion') and self.bom_id:
             return self._ft_abrir(self.bom_id)
         # Sin acabado en kg, sin listas, ficha sin peso o rendimiento: la ficha de acabado («Generar listas» vive ahí).
         return self._ft_abrir(acabado, 'Ficha de acabado')
