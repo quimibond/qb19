@@ -160,6 +160,59 @@ columna de parte, unidad) que se revisa con Jessica una vez.
 hojas** de un Excel (`attachments-extract`, `wb.SheetNames.slice(0, 10)`). Por eso la memoria no tiene ANUAL, MENSUAL ni
 las hojas de confección, proyectos y especiales del presupuesto general.
 
+### 1.5 Lo que contestaron el correo y Odoo (revisado el 4-nov)
+
+Fuentes: la memoria de correo (Supabase), el Gmail de Jose y Odoo de producción, solo lectura. Detalle fuera del repo.
+
+- **Shawmut +6 %: el Excel está viejo, Odoo tiene el precio bueno.** Fue un recargo temporal del 6 % del 1-jun al
+  30-sep-2026 (Jessica a Shawmut, 19-may, autorizado por Jacobo; nota de Jessica en el chatter de «TARIFA SHAWMUT LLC
+  (USD)» del 4-jun; Jessica a Shawmut el 18-ago: «The 6% surcharge will finish on September 30th, 2026 … no extension or
+  replacement»). Las reglas en kg de esa tarifa se reescribieron el 30-sep a las 23:16 UTC, al terminar el recargo. La
+  hoja PRECIOS del forecast sigue con el recargo.
+- **Releases aplicados el 2-nov: arranque sin consecuencias en producción, pero dejó datos vivos en el MPS.** Los aplicó
+  Jose entre 17:04 y 17:05 UTC; crearon **14 programas nuevos del MPS** (ids 131–144) con **624 celdas** (450 en meses ya
+  pasados; 11 programas en kg y 3 en metros). Nadie lanzó reabastecimiento desde ellos y ninguna de las 88 órdenes de
+  fabricación desde el 2-nov salió del MPS. La minuta de la 2.ª etapa de Odoo (3-nov) deja pendientes las «pruebas en el
+  MPS … con pedidos actuales». Pregunta 1.
+- **Planeación (contesta las preguntas 12 y 13):** tejido se programa **en kilos** con una **ventana móvil de un mes
+  desde el día del corte** (correos semanales «Progr. de Cantidades por Tejer del 06/Oct al 07/Nov», no mes calendario;
+  en diciembre se alarga); acabado se programa **en metros, semanal, en piezas de primera que equivalen a un baño**. La
+  demanda sale del forecast semanal de Ventas. Planeación ya se quejó de huecos del forecast (FXI Santa Teresa sin
+  pronóstico de agosto, 9-jul) y de semanas que rebasan la capacidad de Rama.
+- **Releases por planta (contesta la 10):**
+
+  | Cliente / planta | Día | Formato |
+  |---|---|---|
+  | Shawmut Silao (planta 12) | martes | .csv |
+  | Shawmut Tennessee (planta 50, PO 70152) | martes, correo aparte | .xls |
+  | FXI Cd. Juárez (planta 1500) | viernes | .xlsx «SUM» (el lector que ya existe) |
+  | FXI Santa Teresa | sin release: órdenes de compra por correo | — |
+  | Saltillo Lamination Saltillo | lunes | .pdf (dos archivos) |
+  | Saltillo Lamination León | miércoles | .pdf |
+
+  Ningún cliente manda EDI de entrada. En Odoo **las plantas no existen**: Shawmut, FXI y Saltillo facturan y entregan a
+  la dirección de la empresa (sin direcciones de entrega hijas); la única pista es la OC del cliente en el pedido.
+- **Base del precio por cliente (contesta la 8):** USD por metro (TQ-1, Seiren, Zwisstex, Contitech, Saltillo,
+  Woodbridge, Copo, Bowen), USD por kilo (Shawmut, Lear, FXI), MXN por metro (Blancos, Poliuretanos, Maclin, Entex,
+  Maisa) y MXN por kilo (Pieles). La moneda de cada lista es la de sus facturas. Pero la tarifa de Shawmut tiene 13 reglas
+  en m² y 2 en metros aunque todo se le factura en kg; FXI 3 y Lear 1 en m².
+- **Desperdicio y saldos (pregunta 15):** 264 mil pesos facturados ene–oct (0.19 % de la venta), casi todo de Industrial y
+  en la misma cuenta 401 que la venta. Los parámetros de saldos de Fichas no están en la base (Fichas usa sus códigos por
+  omisión). No hay correo que explique por qué el cierre los excluye; la minuta del 4-nov pide «contemplar la merma de los
+  productos de línea» (Jessica, César París).
+- **Presupuesto general 2026:** el vigente es el rev01072026 del correo de cierre de septiembre (1-oct). Está en el Gmail
+  de Jose y en el almacenamiento de la memoria, pero ninguno de los dos se puede bajar desde aquí (Gmail por MCP no baja
+  adjuntos; la red del contenedor no llega a Supabase). **No existe un «GENERAL REV0»:** la REV0 son el «PRESUPUESTO 2026
+  INDUSTRIAL rev1» (1 y 11-dic-2025) y el de confección (9 y 15-dic-2025); el primer GENERAL es del 2-mar-2026.
+- **Proyecto → línea:** no hay criterio escrito de Ventas. El P-D01 (Diseño y Desarrollo, 13-oct-2026) libera el producto
+  tras al menos 3 pilotajes estables con acta firmada por Ventas, Manufactura y Calidad; Jessica corrigió en dic-2025 un
+  producto de Shawmut que «debería solo ir [en] proyectos».
+- **Desarrollos viejos (para la limpieza de Diseño):** de los 95, **3 ya se venden** al cliente del proyecto y deberían
+  pasar a «Liberado»; **22** no tienen venta ni actividad desde enero–marzo y deberían cerrarse sin producto; **6** hay que
+  revisarlos con Ventas (ventas chicas, posiblemente muestras); **41** están vivos; **15** no tienen cliente o datos (uno es
+  el cliente de prueba de C1). Los 4 liberados no tienen `sgi_dev_state`; solo 12 productos en toda la base lo tienen. La
+  lista va para Diseño (fuera del repo).
+
 **Por qué los releases no se usan (sección 2.1 del prompt):** (a) solo Lear y FXI tienen lector; (b) aplicar exige que
 cada parte esté confirmada una por una y que el release esté «revisado» (`qb_release.py:323-341`); (c) aplicar escribe en
 un documento por cliente-año que Planeación no ve, así que a Jessica no le ahorra nada: sigue necesitando su Excel para
@@ -288,8 +341,9 @@ kilos, `conv_origen`. Medidas sumables: metros y kilos (la unidad de venta solo 
 **Acción «Demanda por cliente»** (menú Planeación → Demanda), vista pivote por defecto:
 
 - filas: artículo → cliente; columnas: semana; medida: metros y kilos (las dos);
-- filtros guardados: **«Acabado: 3 semanas»** (semana actual y dos siguientes; con E3, solo pedidos), **«Tejido: próximo
-  mes»** (pedido + pronóstico del mes siguiente), zona firme / planeada, mercado, cliente, producto;
+- filtros guardados: **«Acabado: 3 semanas»** (semana actual y dos siguientes, en metros; con E3, solo pedidos),
+  **«Tejido: próximo mes»** (pedido + pronóstico de **hoy a un mes**, ventana móvil como el correo semanal de Planeación,
+  en kilos a producir), zona firme / planeada, mercado, cliente, producto;
 - lista con las mismas columnas y exportación nativa a Excel; gráfica opcional.
 
 **Permisos:** grupo nuevo `Planeación (consulta)` con lectura de `qb.demand.planning`, `qb.forecast.line`,
@@ -453,14 +507,17 @@ La suma da real − presupuesto; para un precio en MXN el efecto TC es 0. Lo ven
 
 ### 2.10 Releases (lo que falta para que Jessica los aplique cada semana)
 
-1. **Planta en el perfil** y un perfil por cliente + planta (Shawmut ×2, Saltillo ×2, FXI ×2). Aplicar reemplaza solo
+1. **Planta en el perfil** y un perfil por cliente + planta (Shawmut ×2, Saltillo ×2; FXI Santa Teresa no manda
+   release: se captura de sus órdenes de compra). Las plantas se dan de alta como **direcciones de entrega** del cliente
+   (hoy no existen, sección 1.5), para que pronóstico, pedido y factura digan la planta. Aplicar reemplaza solo
    dentro del mismo perfil y pone en 0 solo las semanas de esa planta (corrige N11).
 2. **Aplicar escribe en `qb.forecast.line`** y muestra antes el resumen de cambios (`qb.forecast.change` en borrador). Sin
    pronóstico por año ni estado «revisado» de documento.
 3. **Confirmación en bloque** de partes sugeridas desde el release («Confirmar sugerencias de este release»); las partes
    nuevas se proponen con la ficha (sección 2.2) además del código.
-4. **Lector genérico «Excel parte × semana»** con mapeo por perfil (fila de encabezado, columna de parte, columnas de
-   fecha, unidad): cubre Saltillo, Shawmut, Zwisstex y los que mandan hoja propia. Los perfiles 3, 5 y 7 dejan de decir
+4. **Lector genérico «Excel/CSV parte × semana»** con mapeo por perfil (fila de encabezado, columna de parte, columnas de
+   fecha, unidad): cubre Shawmut Silao (.csv) y Tennessee (.xls), Zwisstex y los que mandan hoja propia. **Saltillo y León
+   mandan PDF:** en E1 se capturan en la matriz; un lector de PDF (texto, no imagen) va después si el formato es estable. Los perfiles 3, 5 y 7 dejan de decir
    «FXI SUM».
 5. **Bandeja:** menú «Releases por revisar» con el contador; el aviso de la sección 2.9.
 
@@ -660,8 +717,9 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 **Para Jose**
 
-1. ¿Las aplicaciones de releases del 2-nov en producción fueron prueba? Si sí, ¿se deshacen antes de E1 o se migran tal
-   cual?
+1. Releases del 2-nov (1.5): no movieron producción, pero dejaron 14 programas y 624 celdas en el MPS sin revisar. ¿Se
+   borran ya esas celdas (recomendado, para que nadie lance reabastecimiento con ellas) o se dejan hasta que la migración
+   de E1 recalcule el MPS?
 2. ~~TC de la REV1~~: **17.5**, confirmado en el correo del 25-jun y en la hoja «2026 industrial» (1.4). Queda ver por qué
    la hoja ANUAL dice 17.2 cuando llegue el archivo.
 3. ~~Rendimiento de especificación o real~~: el de la ficha (un solo rendimiento, decisión de Dirección General en fichas
@@ -675,23 +733,26 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 7. Un «proyecto» en el Excel es una combinación producto–cliente en arranque (1.4). ¿Cuándo pasa a «línea»? Hay 6 que
    ya se vendían antes de 2026 y siguen como proyecto. (Jose, 4-nov: todo producto nuevo pasa por Desarrollo; un producto
    de línea para un cliente nuevo, no.)
-8. ¿El precio presupuestal de industrial lo manejas por metro o por kilo, y en qué moneda, por cliente?
+8. ~~Base del precio~~: la de la lista y la factura de cada cliente (1.5). Falta limpiar las reglas en m² de Shawmut,
+   FXI y Lear, que no se usan para facturar.
 9. Hoja MUESTRAS: ¿se queda en Excel o la quieres en Odoo (sería otra entrega)?
-10. ~~Plantas~~: el forecast ya las separa (1.4). ¿Shawmut Silao y Tennessee mandan release por separado?
+10. ~~Plantas~~: sí, Shawmut manda dos releases; FXI Santa Teresa ninguno; Saltillo y León dos PDF (1.5). ¿Qué OC es de
+    qué planta, para dar de alta las direcciones de entrega?
 11. Para el armado del 2027: ¿el factor de tendencia de ±30 % te sirve como tope, o lo pones tú por cliente?
 
 **Para Planeación**
 
-12. Unidad de trabajo: metros, kilos o las dos (la vista trae las dos; se elige cuál va primero).
-13. ¿El corte de tejido es el mes calendario siguiente o las próximas 4–5 semanas?
+12. ~~Unidad de trabajo~~: kilos para tejido, metros para acabado (1.5).
+13. ~~Corte de tejido~~: ventana móvil de un mes desde el día del corte (1.5).
 14. En el MPS, ¿los programas deben quedar en el producto en kilos (IW) o en metros (W)?
 
-**Nuevas tras leer los Excel (4-nov)**
+**Nuevas tras leer los Excel, el correo y Odoo (4-nov)**
 
-15. Desperdicio, saldos y chatarra: el cierre del Excel no los cuenta y el VE-02 sí. ¿Se excluyen de los dos?
-16. Shawmut: el precio por kg del Excel es el de la lista de Odoo +6 %. ¿Cuál vale?
-17. ¿Me pasas el GENERAL 2026 vigente completo (con ANUAL, confección, proyectos y especiales)? La memoria solo tiene sus
-    10 primeras hojas. ¿Y la REV0?
+15. Desperdicio, saldos y chatarra: pesan 0.19 % (1.5). Recomendación: excluirlos de los dos para que coincidan con el
+    cierre de Jessica. ¿De acuerdo?
+16. ~~Shawmut +6 %~~: vale Odoo; el Excel trae el recargo de jun–sep que ya terminó (1.5).
+17. ¿Subes el GENERAL 2026 rev01072026 a tu Drive (o me das el enlace)? Por correo y por la memoria no se puede bajar
+    desde aquí. La REV0 se arma del industrial y el de confección de diciembre de 2025 (1.5).
 18. ¿Se corrige el extractor de la memoria para guardar todas las hojas de un Excel (otro PR, en quimibond-intelligence)?
 
 **Para Diseño y Desarrollo**
