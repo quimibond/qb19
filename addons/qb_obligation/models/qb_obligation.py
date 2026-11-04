@@ -717,14 +717,29 @@ class QbObligation(models.Model):
     # ── crons ────────────────────────────────────────────────────────
 
     @api.model
+    def _memoria_configured(self):
+        """¿Hay memoria a la que preguntar? Módulo de la memoria instalado y URL y llave de Supabase
+        capturadas (los mismos parámetros que lee ``qb.memoria.client``)."""
+        if 'qb.memoria.client' not in self.env:
+            return False
+        icp = self.env['ir.config_parameter'].sudo()
+        return bool(icp.get_param('quimibond_intelligence.supabase_url')
+                    and icp.get_param('quimibond_intelligence.supabase_service_key'))
+
+    @api.model
     def _cron_obligations(self):
         """Corrida horaria de todas las áreas: el correo propone, la evidencia
         cierra, el tiempo escala. La red no tumba la corrida."""
-        try:
-            with self.env.cr.savepoint():
-                self._sync_email_pending()
-        except Exception:  # noqa: BLE001 — la memoria puede no responder
-            _logger.exception('qb.obligation: no se pudieron traer los pendientes del correo')
+        if self._memoria_configured():
+            try:
+                with self.env.cr.savepoint():
+                    self._sync_email_pending()
+            except Exception:  # noqa: BLE001 — la memoria puede no responder
+                _logger.exception('qb.obligation: no se pudieron traer los pendientes del correo')
+        else:
+            # 3.2.1: sin la llave de Supabase (copias de desarrollo y pruebas, a propósito) no se pide nada ni se
+            # deja un ERROR en el log en cada corrida; en producción la llave está y una caída real sí se registra.
+            _logger.info('qb.obligation: memoria sin configurar; no se traen pendientes del correo.')
         self._close_by_evidence()
         self._escalate()
         # Con el espejo encendido crea las actividades que falten; apagado, quita las que sobren.
