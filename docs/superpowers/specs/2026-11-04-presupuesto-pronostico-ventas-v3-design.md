@@ -465,9 +465,10 @@ crédito resta sola), `amount_currency` y moneda, `tc` (`balance / amount_curren
 **Desperdicio, saldos y chatarra:** el cierre del Excel no los cuenta (27 mil en septiembre industrial) y el VE-02 sí,
 porque van a la misma cuenta 401. La vista los marca con `es_saldo` con la lista de saldos que ya tiene Fichas
 (`_ft_saldo_products()`, parámetros `quimibond_ficha_tecnica_tela.saldo_segunda` y `.saldo_desperdicio`, más
-`DESPERDICIO TEJIDO`: `models/ruta_familia.py:57-61`) y los
-reportes de cumplimiento los excluyen por defecto; el VE-02 adopta la misma regla para que las dos cifras sigan siendo
-una (pregunta 15).
+`DESPERDICIO TEJIDO`: `models/ruta_familia.py:57-61`). **Se excluyen del cumplimiento y del VE-02** (decisión de Jose,
+4-nov): el VE-02 cambia su filtro de cuentas por esta misma vista, y así reporte, KPI y cierre de Jessica dan la misma
+cifra. Pesan 0.19 % de la venta (264 mil pesos ene–oct 2026). Como los parámetros de saldos de Fichas no están en la
+base, E2 los crea con sus códigos actuales para que la lista sea explícita.
 
 Se calcula al leer: no hay foto que refrescar (hoy `amount_real` es una foto que se pone vieja, `sgi_sales_budget_line.py:96-99`).
 Metros y kilos se calculan en SQL con los campos guardados del producto (sección 2.2).
@@ -748,8 +749,7 @@ todo; después, «automático» por perfil de cliente. El consumo ya existe desd
 
 **Nuevas tras leer los Excel, el correo y Odoo (4-nov)**
 
-15. Desperdicio, saldos y chatarra: pesan 0.19 % (1.5). Recomendación: excluirlos de los dos para que coincidan con el
-    cierre de Jessica. ¿De acuerdo?
+15. ~~Desperdicio, saldos y chatarra~~: se excluyen del cumplimiento y del VE-02 (Jose, 4-nov). Pesan 0.19 % (1.5).
 16. ~~Shawmut +6 %~~: vale Odoo; el Excel trae el recargo de jun–sep que ya terminó (1.5).
 17. ¿Subes el GENERAL 2026 rev01072026 a tu Drive (o me das el enlace)? Por correo y por la memoria no se puede bajar
     desde aquí. La REV0 se arma del industrial y el de confección de diciembre de 2025 (1.5).
