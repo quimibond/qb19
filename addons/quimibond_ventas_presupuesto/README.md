@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Cumplimiento al corte (19.0.3.5.4, 2026-11-05)
+
+El «% Cumplimiento» de la ficha dividía lo capturado por los renglones entre el
+presupuesto del año entero (con meses que todavía no pasan), y la ficha y la
+lista lo mostraban con el widget de porcentaje, que lo multiplica por 100.
+Ahora compara **venta contra presupuesto, los dos al corte** (último día del
+último mes completo; 31-dic en un año cerrado): la venta es la de los equipos
+de los mercados con la regla del VE-02, así que lo vendido fuera de los
+renglones sí cuenta. Trae el cumplimiento por mercado. «Capturado por los
+renglones» queda aparte, y el aviso de cierre de mes usa la misma venta.
+
 ## Traer renglones de otro presupuesto (19.0.3.5.3, 2026-11-05)
 
 Engrane → «Traer renglones de otro presupuesto»: copia a un borrador los
