@@ -9,6 +9,7 @@ from . import sgi_cron
 from . import sgi_settings
 from . import qb_customer_part
 from . import qb_release
+from . import qb_forecast_week
 from . import qb_forecast
 from . import qb_demand
 from . import qb_forecast_import

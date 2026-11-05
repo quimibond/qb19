@@ -108,6 +108,9 @@ class QbForecastLine(models.Model):
     week = fields.Date(string="Semana", required=True, index=True,
                        help="Lunes de la semana de embarque.")
     month = fields.Date(string="Mes", compute='_compute_month', store=True, index=True)
+    # 3.2.0: columna de la matriz semanal (catálogo de lunes; la fecha no da columnas por semana en el grid).
+    week_id = fields.Many2one('qb.forecast.week', string="Semana (matriz)", index=True, readonly=True,
+                              group_expand='_read_group_week_id')
     delivery_date = fields.Date(string="Fecha de entrega del cliente")
     mercado = fields.Selection(MARKETS, string="Mercado", compute='_compute_mercado', store=True,
                                readonly=False, precompute=True)
@@ -191,6 +194,10 @@ class QbForecastLine(models.Model):
         for vals in vals_list:
             if vals.get('week'):
                 vals['week'] = monday_of(fields.Date.to_date(vals['week']))
+        weeks = self.env['qb.forecast.week']._qb_get([vals.get('week') for vals in vals_list])
+        for vals in vals_list:
+            if vals.get('week'):
+                vals['week_id'] = weeks[vals['week']].id
         lines = super().create(vals_list)
         self.env['qb.forecast.change'].sudo().create(
             [line._qb_change_vals(0.0, line.qty_venta) for line in lines])
@@ -199,6 +206,7 @@ class QbForecastLine(models.Model):
     def write(self, vals):
         if vals.get('week'):
             vals['week'] = monday_of(fields.Date.to_date(vals['week']))
+            vals['week_id'] = self.env['qb.forecast.week']._qb_get([vals['week']])[vals['week']].id
         tracked = {'qty_origen', 'uom_origen', 'product_id'} & set(vals)
         before = {line.id: line.qty_venta for line in self} if tracked else {}
         res = super().write(vals)
@@ -219,8 +227,13 @@ class QbForecastLine(models.Model):
             self.env['qb.forecast.change'].sudo().create(changes)
         return res
 
-    # --- Captura en matriz (web_grid, 3.1.0) -----------------------------------
+    # --- Captura en matriz (web_grid, 3.1.0; columna week_id desde 3.2.0) -------
     GRID_KEYS = ('partner_id', 'ship_to_id', 'plant', 'product_id', 'uom_origen', 'company_id')
+
+    @api.model
+    def _read_group_week_id(self, weeks, domain):
+        """La matriz muestra siempre las próximas 13 semanas, aunque no tengan pronóstico."""
+        return (weeks | self.env['qb.forecast.week']._qb_next()).sorted('monday')
 
     @api.model
     def _qb_grid_cell(self, domain):
@@ -234,6 +247,8 @@ class QbForecastLine(models.Model):
             name, op, value = leaf
             if name in self.GRID_KEYS and op == '=':
                 vals[name] = value
+            elif name == 'week_id' and op == '=' and value:
+                start = self.env['qb.forecast.week'].browse(value).monday
             elif name == 'week' and op in ('>=', '='):
                 start = fields.Date.to_date(value)
             elif name == 'week' and op == '<':

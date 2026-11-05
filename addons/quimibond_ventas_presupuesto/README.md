@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Matriz semanal con catálogo de semanas (19.0.3.2.0, 2026-11-05)
+
+- **Captura semanal** (Pronóstico → Captura semanal, Administrador de ventas o
+  del SGI): vista `grid` con renglón = cliente, planta, producto y unidad del
+  cliente; **columna = semana del catálogo** `qb.forecast.week` («2026-S48 ·
+  23 nov», una por lunes, se crean solas); celda = cantidad en la unidad del
+  cliente. Siempre muestra las próximas 13 semanas aunque estén vacías
+  (`group_expand`) y abre con el filtro «Próximas 13 semanas». Al escribir se
+  crea, suma o quita la semana (en cero) y queda en Cambios del pronóstico. Un
+  producto nuevo para el cliente entra con «Pegar semanas desde Excel».
+- Cada renglón del pronóstico lleva `week_id` (lo pone `create`/`write`); la
+  migración llena los que ya existían.
+- La matriz del presupuesto anual ya no lleva `step` en su `<range>` (rango año
+  → columnas por mes), el atributo que Odoo 19 rechaza; no fallaba en
+  producción solo porque esa vista no había cambiado.
+
 ## Sin la vista de matriz (19.0.3.1.1, 2026-11-05)
 
 La vista `grid` de 3.1.0 tumbó el build de producción: en Odoo 19 el `<range>`
