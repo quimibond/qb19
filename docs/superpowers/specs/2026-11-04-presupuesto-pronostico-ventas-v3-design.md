@@ -329,6 +329,11 @@ repartida en los lunes, igual que hoy el presupuesto, `sgi_sales_budget.py:1200`
 
 ### 2.4 Vista de Planeación y demanda al MPS
 
+> **3.0.0 (2026-11-05, decisión de Jose): el MPS queda desconectado por ahora.** El pronóstico no escribe en el
+> Programa Maestro; Planeación usa Demanda por cliente (Fabricación → Pronóstico de ventas). Se borraron las 624
+> celdas del envío del 2-nov (programas 131–144, los programas se quedan). Lo que esta sección dice del MPS queda
+> para cuando se vuelva a conectar.
+
 **Modelo de lectura `qb.demand.line`** (en E1a quedó como **tabla que se reconstruye** cada mañana, al cargar el forecast y con «Actualizar», y no como vista SQL: la conversión y la primera para planear viven en Fichas, en Python) que une, por cliente + planta + artículo + semana:
 
 - `tipo = pedido`: líneas de pedido confirmadas pendientes de entregar (`product_uom_qty − qty_delivered`), por semana de
@@ -679,6 +684,12 @@ asistente de importación (no la necesita). Lo que sí cambia es el modelo, no l
 ## 4. Migración y carga inicial
 
 ### 4.1 Datos actuales (no se borra nada)
+
+> **Hecho en 3.0.0 (2026-11-05), con un cambio:** los 21 documentos `kind = pronostico` pasan a `obsoleto` con una
+> nota, **sin copiar sus líneas** a `qb.forecast.line` (Jose: «archivarlos»; el vigente salió de `forecast.xlsx`).
+> Se ven en Histórico → Pronósticos anteriores, de solo lectura, y ya no se crean. Las 624 celdas del MPS se borraron
+> (no se recalculan: MPS desconectado). Los perfiles de release llevan Planta. Migración:
+> `migrations/19.0.3.0.0/post-migrate.py`.
 
 | Hoy | Queda como |
 |---|---|

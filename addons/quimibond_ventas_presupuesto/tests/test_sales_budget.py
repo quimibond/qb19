@@ -7,7 +7,6 @@ import base64
 import io
 from datetime import date
 
-from odoo import fields
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
@@ -241,7 +240,7 @@ class TestSalesBudget(TransactionCase):
         self.assertEqual(new.line_ids.qty_budget, 10.0)
 
     def test_15_locked_price_and_partner_fields(self):
-        # Fix del candado: price_unit_budget/partner_id/customer_code también se
+        # Fix del candado: price_unit_budget y partner_id también se
         # bloquean en un presupuesto aprobado para no-MAST.
         raso = self.env['res.users'].create({
             'name': 'Raso PPV precio', 'login': 'ppv_raso_price',
@@ -249,8 +248,7 @@ class TestSalesBudget(TransactionCase):
         budget = self._budget()
         line = self._line(budget, date(2040, 6, 1), qty=10.0)
         budget.state = 'aprobado'
-        for vals in ({'price_unit_budget': 3.0}, {'partner_id': self.env.company.partner_id.id},
-                     {'customer_code': 'X'}):
+        for vals in ({'price_unit_budget': 3.0}, {'partner_id': self.env.company.partner_id.id}):
             with self.assertRaises(UserError):
                 line.with_user(raso).write(vals)
 
@@ -271,108 +269,6 @@ class TestSalesBudget(TransactionCase):
         budget.state = 'aprobado'
         budget.unlink()
         self.assertFalse(budget.exists())
-
-
-@tagged('post_install', '-at_install')
-class TestSalesBudgetForecast(TransactionCase):
-    """Extensión 5.2b — Paso 1: pronóstico semanal por cliente (F-P-A28-13)."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Line = cls.env['sgi.sales.budget.line']
-        cls.team = cls.env['crm.team'].create({'name': 'Mercado forecast'})
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.uom_cm = cls.env.ref('uom.product_uom_cm')
-        cls.product = cls.env['product.product'].create({
-            'name': 'Material forecast', 'default_code': 'SCR31', 'type': 'consu',
-            'uom_id': cls.uom_m.id})
-        cls.client = cls.env['res.partner'].create(
-            {'name': 'Cliente forecast', 'is_company': True})
-
-    def _forecast(self, partner=None):
-        return self.Budget.create({
-            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
-            'partner_id': (partner or self.client).id})
-
-    def _monday(self, ref):
-        from datetime import timedelta
-        return ref - timedelta(days=ref.weekday())
-
-    def test_01_forecast_line_must_be_monday(self):
-        fc = self._forecast()
-        # 2040-06-06 no necesariamente es lunes → error si no lo es.
-        bad = date(2040, 6, 3)
-        monday = self._monday(bad)
-        if bad != monday:
-            with self.assertRaises(ValidationError):
-                self.Line.create({
-                    'budget_id': fc.id, 'product_id': self.product.id,
-                    'date': bad, 'uom_id': self.uom_m.id})
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': monday, 'uom_id': self.uom_m.id, 'customer_code': 'SCR31'})
-        self.assertEqual(line.date.weekday(), 0)
-        self.assertEqual(line.partner_id, self.client, "Cliente heredado de la cabecera.")
-
-    def test_02_forecast_requires_partner(self):
-        with self.assertRaises(ValidationError):
-            self.Budget.create({
-                'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico'})
-
-    def test_03_unique_per_client_and_kind(self):
-        self._forecast()
-        with self.assertRaises(ValidationError):
-            self._forecast()  # mismo cliente-año-equipo-kind
-        # Otro cliente sí.
-        other = self.env['res.partner'].create(
-            {'name': 'Cliente forecast 2', 'is_company': True})
-        self._forecast(other)
-        # Un presupuesto mensual del mismo equipo/año coexiste (kind distinto).
-        self.Budget.create({'year': 2040, 'team_id': self.team.id})
-
-    def test_04_real_weekly_by_commitment_with_conversion(self):
-        monday = self._monday(date(2040, 6, 3))
-        # Pedido confirmado del cliente, comprometido a un día de esa semana, en cm.
-        from datetime import datetime, timedelta
-        commit = datetime.combine(monday + timedelta(days=2), datetime.min.time())
-        so = self.env['sale.order'].create({
-            'partner_id': self.client.id, 'team_id': self.team.id,
-            'commitment_date': commit,
-            'order_line': [(0, 0, {
-                'product_id': self.product.id, 'product_uom_qty': 500.0,
-                'product_uom_id': self.uom_cm.id, 'price_unit': 1.0})]})
-        so.action_confirm()
-        fc = self._forecast()
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': monday, 'uom_id': self.uom_m.id, 'qty_budget': 4.0})
-        # 500 cm comprometidos → 5 m (conversión); es la semana de la línea.
-        self.assertEqual(line.qty_real, 5.0)
-        # Drill-down: la orden aparece.
-        action = line.action_view_week_orders()
-        self.assertIn(so.id, action['domain'][0][2])
-
-    def test_05_presupuesto_mode_unchanged_regression(self):
-        # Regresión: un presupuesto mensual sigue midiendo FACTURADO, no pedidos.
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        income = self.env['account.account'].search(
-            [('account_type', '=', 'income')], limit=1)
-        move = self.env['account.move'].create({
-            'move_type': 'out_invoice', 'partner_id': self.client.id,
-            'invoice_date': date(2040, 6, 10), 'team_id': self.team.id,
-            'invoice_line_ids': [(0, 0, {
-                'product_id': self.product.id, 'quantity': 7.0,
-                'product_uom_id': self.uom_m.id, 'price_unit': 10.0,
-                'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
-        move.action_post()
-        line = self.Line.create({
-            'budget_id': budget.id, 'product_id': self.product.id,
-            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0})
-        self.assertEqual(line.kind, 'presupuesto')
-        self.assertEqual(line.qty_real, 7.0, "Sigue siendo facturado, primer día de mes.")
-        self.assertEqual(line.date.day, 1)
 
 
 @tagged('post_install', '-at_install')
@@ -916,226 +812,6 @@ class TestSalesBudgetImport(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestSalesBudgetForecastImport(TransactionCase):
-    """Extensión 5.2b — Paso 2: importación e impresión del forecast."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Wizard = cls.env['sgi.sales.budget.import']
-        cls.team = cls.env['crm.team'].create({'name': 'Mercado fc import'})
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.product = cls.env['product.product'].create({
-            'name': 'Material SCR31', 'default_code': 'SCR31', 'type': 'consu',
-            'uom_id': cls.uom_m.id})
-        cls.client = cls.env['res.partner'].create(
-            {'name': 'Cliente forecast import', 'is_company': True})
-
-    def _forecast(self):
-        return self.Budget.create({
-            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
-            'partner_id': self.client.id})
-
-    def _forecast_xlsx(self):
-        import openpyxl
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = 'Cliente A'
-        ws.append(['SEMANA', '', 23, 24, 25])
-        # Dos bloques del mismo producto (oleadas de PO) → se suman por semana.
-        ws.append(['SCR31', 'SCR31', '16,000', 1000, 0])  # coma de miles
-        ws.append(['SCR31', 'SCR31', 4000, 0, 500])
-        ws.append(['PO', '', 0, 0, 0])       # fila PO → se ignora
-        ws.append(['TOTAL', '', 20000, 1000, 500])  # fila TOTAL → se ignora
-        buf = io.BytesIO()
-        wb.save(buf)
-        return base64.b64encode(buf.getvalue())
-
-    def test_01_import_forecast_layout(self):
-        fc = self._forecast()
-        wiz = self.Wizard.create({
-            'budget_id': fc.id, 'file': self._forecast_xlsx(),
-            'sheet_name': 'Cliente A', 'conflict_mode': 'replace'})
-        wiz.action_import()
-        # 3 semanas (23, 24, 25) para SCR31.
-        self.assertEqual(len(fc.line_ids), 3)
-        by_week = {l.date: l for l in fc.line_ids}
-        wk23 = self.Wizard._week_monday(2040, 23)
-        line23 = by_week[wk23]
-        self.assertEqual(line23.qty_budget, 20000.0,
-                         "16,000 (coma) + 4,000 sumados por semana.")
-        self.assertEqual(line23.customer_code, 'SCR31')
-        self.assertEqual(line23.partner_id, self.client)
-        self.assertEqual(line23.date.weekday(), 0, "Lunes de la semana.")
-
-    def test_02_forecast_report_renders(self):
-        fc = self._forecast()
-        self.env['sgi.sales.budget.line'].create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': self.Wizard._week_monday(2040, 23), 'uom_id': self.uom_m.id,
-            'customer_code': 'SCR31', 'qty_budget': 500.0})
-        html, ttype = self.env['ir.actions.report']._render_qweb_html(
-            'quimibond_ventas_presupuesto.action_report_sales_budget', fc.ids)
-        self.assertIn('Pronóstico de Ventas', html.decode())
-        self.assertIn('F-P-A28-13', html.decode())
-        self.assertIn('SCR31', html.decode())
-
-    def test_03_format_banner_by_kind(self):
-        fc = self._forecast()
-        self.assertIn('F-P-A28-13', fc.sgi_format_banner or '')
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        self.assertIn('F-P-A28-18', budget.sgi_format_banner or '')
-
-    def test_04_monthly_import_still_works_regression(self):
-        # Regresión: un presupuesto mensual sigue usando el layout F-P-A28-18.
-        import openpyxl
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = 'Presupuesto'
-        ws.append(['PRODUCTO', 'ENERO m', 'ENERO $'])
-        ws.append(['SCR31', 100, 5000])
-        buf = io.BytesIO()
-        wb.save(buf)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        wiz = self.Wizard.create({
-            'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
-            'sheet_name': 'Presupuesto'})
-        wiz.action_import()
-        self.assertEqual(len(budget.line_ids), 1)
-        self.assertEqual(budget.line_ids.date, date(2040, 1, 1))
-        self.assertEqual(budget.line_ids.qty_budget, 100.0)
-
-
-@tagged('post_install', '-at_install')
-class TestSalesBudgetNetDemand(TransactionCase):
-    """Extensión 5.2c: consumo de pronóstico + demanda neta al MPS."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Line = cls.env['sgi.sales.budget.line']
-        cls.team = cls.env['crm.team'].create({'name': 'Mercado neta'})
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.uom_cm = cls.env.ref('uom.product_uom_cm')
-        cls.product = cls.env['product.product'].create({
-            'name': 'Material neta', 'default_code': 'NET1', 'type': 'consu',
-            'uom_id': cls.uom_m.id})
-        cls.client = cls.env['res.partner'].create(
-            {'name': 'Cliente neta', 'is_company': True})
-
-    def _forecast(self):
-        return self.Budget.create({
-            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico',
-            'partner_id': self.client.id})
-
-    def _monday(self, ref):
-        from datetime import timedelta
-        return ref - timedelta(days=ref.weekday())
-
-    def _order(self, monday, qty, uom=None):
-        from datetime import datetime, timedelta
-        commit = datetime.combine(monday + timedelta(days=1), datetime.min.time())
-        so = self.env['sale.order'].create({
-            'partner_id': self.client.id, 'team_id': self.team.id,
-            'commitment_date': commit,
-            'order_line': [(0, 0, {
-                'product_id': self.product.id, 'product_uom_qty': qty,
-                'product_uom_id': (uom or self.uom_m).id, 'price_unit': 1.0})]})
-        so.action_confirm()
-        # Pedido de dos semanas antes de la entrega: la precarga solo mira
-        # pedidos del año del pronóstico o el anterior. Se fija DESPUÉS de
-        # confirmar: action_confirm reescribe date_order con la fecha de hoy.
-        so.date_order = commit - timedelta(days=14)
-        return so
-
-    def test_01_net_demand_order_bigger(self):
-        monday = self._monday(date(2040, 6, 3))
-        self._order(monday, 150.0)  # comprometido > pronóstico
-        fc = self._forecast()
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
-        self.assertEqual(line.qty_real, 150.0)
-        self.assertEqual(line.qty_net_demand, 150.0, "Manda el pedido si supera.")
-
-    def test_02_net_demand_order_smaller(self):
-        monday = self._monday(date(2040, 6, 10))
-        self._order(monday, 60.0)  # comprometido < pronóstico
-        fc = self._forecast()
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
-        self.assertEqual(line.qty_net_demand, 100.0, "Manda el pronóstico si es mayor.")
-
-    def test_03_preload_idempotent_no_overwrite(self):
-        m1 = self._monday(date(2040, 6, 3))
-        m2 = self._monday(date(2040, 6, 17))
-        self._order(m1, 80.0)
-        self._order(m2, 40.0)
-        fc = self._forecast()
-        # Captura previa en m1 (no debe pisarse).
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': m1,
-            'uom_id': self.uom_m.id, 'qty_budget': 999.0})
-        fc.action_preload_from_orders()
-        # m1 intacto; m2 creado con lo comprometido.
-        line_m1 = fc.line_ids.filtered(lambda l: l.date == m1)
-        line_m2 = fc.line_ids.filtered(lambda l: l.date == m2)
-        self.assertEqual(line_m1.qty_budget, 999.0, "No pisa la captura.")
-        self.assertEqual(line_m2.qty_budget, 40.0, "Precarga lo comprometido.")
-        # Idempotente: segunda corrida no duplica.
-        before = len(fc.line_ids)
-        fc.action_preload_from_orders()
-        self.assertEqual(len(fc.line_ids), before)
-
-    def test_04_mps_available_reflects_module(self):
-        fc = self._forecast()
-        self.assertEqual(fc.sgi_mps_available,
-                         'mrp.production.schedule' in self.env)
-
-    def test_05_send_net_demand_to_mps_idempotent(self):
-        if 'mrp.production.schedule' not in self.env:
-            self.skipTest("mrp_mps no está instalado en esta BD.")
-        monday = self._monday(date(2040, 6, 3))
-        fc = self._forecast()
-        # Línea en cm: 500 cm de demanda neta → 5 m (unidad del producto) al MPS.
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_cm.id, 'qty_budget': 500.0})
-        # El pronóstico es documento vivo: su estado terminal es 'revisado'.
-        fc.state = 'revisado'
-        fc.action_send_to_mps()
-        wh = self.env['stock.warehouse'].search(
-            [('company_id', '=', fc.company_id.id)], limit=1)
-        sched = self.env['mrp.production.schedule'].search([
-            ('product_id', '=', self.product.id), ('warehouse_id', '=', wh.id)])
-        self.assertTrue(sched)
-        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
-        self.assertEqual(len(forecasts), 1)
-        self.assertAlmostEqual(forecasts.forecast_qty, 5.0, places=2,
-                               msg="Convertido a la unidad del producto (m).")
-        # Re-envío tras revisión: actualiza sin duplicar.
-        fc.action_send_to_mps()
-        forecasts = sched.forecast_ids.filtered(lambda f: f.date == monday)
-        self.assertEqual(len(forecasts), 1, "No duplica en el re-envío.")
-
-    def test_06_no_sale_orders_created(self):
-        # PROHIBIDO crear pedidos desde el pronóstico: la precarga LEE pedidos,
-        # nunca los crea.
-        monday = self._monday(date(2040, 6, 3))
-        fc = self._forecast()
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': 100.0})
-        before = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
-        fc.action_preload_from_orders()
-        after = self.env['sale.order'].search_count([('partner_id', '=', self.client.id)])
-        self.assertEqual(before, after, "El pronóstico no crea pedidos de venta.")
-
-
-@tagged('post_install', '-at_install')
 class TestSalesBudgetTemplate(TransactionCase):
     """5.2d Paso 2: plantilla descargable, roundtrip, menús por tipo."""
 
@@ -1269,8 +945,9 @@ class TestSalesBudgetTemplate(TransactionCase):
 
     def test_03_actions_filter_by_kind(self):
         b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        f = self.Budget.create({'year': 2040, 'team_id': self.team.id,
-                                'kind': 'pronostico', 'partner_id': self.cli1.id})
+        # 3.0.0: el pronóstico por documento es histórico; solo la migración lo crea.
+        f = self.Budget.with_context(qb_allow_old_forecast=True).create({
+            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico', 'partner_id': self.cli1.id})
         act_b = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_action')
         act_f = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_forecast_action')
         budgets = self.Budget.search(
@@ -1606,9 +1283,8 @@ class TestSalesBudgetPriceControl(TransactionCase):
 @tagged('post_install', '-at_install')
 class TestSalesBudgetLifecycle55(TransactionCase):
     """Mini-fase 5.5 — alineación al P-A28 Rev.15: ciclos, roles e interconexión.
-    Presupuesto: borrador→revisado→aprobado (alta dirección). Pronóstico:
-    documento vivo borrador↔revisado (sin candado). Precarga combinada, MPS sin
-    doble conteo y revaluación de junio (Nota 1)."""
+    Presupuesto: borrador→revisado→aprobado (alta dirección) y revaluación de
+    junio (Nota 1). Lo del pronóstico por documento y el MPS se retiró en 3.0.0."""
 
     @classmethod
     def setUpClass(cls):
@@ -1641,15 +1317,6 @@ class TestSalesBudgetLifecycle55(TransactionCase):
     def _team(self, name):
         return self.env['crm.team'].create({'name': name})
 
-    def _monday(self, ref):
-        from datetime import timedelta
-        return ref - timedelta(days=ref.weekday())
-
-    def _forecast(self, team, partner=None):
-        return self.Budget.create({
-            'year': 2040, 'team_id': team.id, 'kind': 'pronostico',
-            'partner_id': (partner or self.client).id})
-
     def _invoice(self, team, partner, product, when, qty):
         move = self.env['account.move'].create({
             'move_type': 'out_invoice', 'partner_id': partner.id,
@@ -1660,34 +1327,6 @@ class TestSalesBudgetLifecycle55(TransactionCase):
                 'account_id': self.income.id, 'tax_ids': [(6, 0, [])]})]})
         move.action_post()
         return move
-
-    # (i) write en línea de un pronóstico revisado → vuelve a borrador y postea.
-    def test_01_forecast_line_write_reopens_and_posts(self):
-        team = self._team('L55 reopen')
-        fc = self._forecast(team)
-        monday = self._monday(date(2040, 6, 3))
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': 10.0})
-        fc.with_user(self.sale_mgr).action_send_to_review()
-        self.assertEqual(fc.state, 'revisado')
-        before = len(fc.message_ids)
-        line.write({'qty_budget': 20.0})
-        self.assertEqual(fc.state, 'borrador', "Editar líneas reabre el pronóstico.")
-        self.assertTrue(len(fc.message_ids) > before)
-        self.assertTrue(any('requiere revisión' in (m.body or '')
-                            for m in fc.message_ids))
-
-    # (ii) el pronóstico no admite action_revise.
-    def test_02_forecast_has_no_revise(self):
-        team = self._team('L55 no revise')
-        fc = self._forecast(team)
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
-            'qty_budget': 10.0})
-        with self.assertRaises(UserError):
-            fc.action_revise()
 
     # (iii) presupuesto: requiere revisado antes de aprobado y grupo Dirección.
     def test_03_budget_review_then_director_approves(self):
@@ -1709,69 +1348,6 @@ class TestSalesBudgetLifecycle55(TransactionCase):
         budget.with_user(self.director).action_approve()
         self.assertEqual(budget.state, 'aprobado')
 
-    # (iv) precarga combina pronóstico (semana→mes) + facturado real (12 m).
-    def test_04_preload_combines_forecast_and_real(self):
-        from datetime import timedelta
-        team = self._team('L55 preload')
-        fc = self._forecast(team)
-        # El real cae en el mes ACTUAL (dentro de los 12 meses); el pronóstico se
-        # coloca en el MISMO mes de 2040 para que ambos aporten a la misma celda.
-        today = fields.Date.context_today(self.env['sgi.cron'])
-        when = today.replace(day=15)
-        first = date(2040, when.month, 1)
-        first_monday = first + timedelta(days=(7 - first.weekday()) % 7)
-        # Pronóstico: 2 semanas × 15 m = 30 m para el producto P en ese mes.
-        for monday in (first_monday, first_monday + timedelta(days=7)):
-            self.Line.create({
-                'budget_id': fc.id, 'product_id': self.product.id,
-                'date': monday, 'uom_id': self.uom_m.id, 'qty_budget': 15.0})
-        fc.state = 'revisado'
-        self._invoice(team, self.client, self.product, when, 20.0)
-        self._invoice(team, self.client, self.product_q, when, 25.0)
-        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
-        budget.action_preload_from_orders()
-        month = when.month
-        line_p = budget.line_ids.filtered(lambda l: l.product_id == self.product)
-        line_q = budget.line_ids.filtered(lambda l: l.product_id == self.product_q)
-        self.assertEqual(len(line_p), 1)
-        self.assertEqual(line_p.date, date(2040, month, 1))
-        self.assertEqual(line_p.partner_id, self.client)
-        self.assertEqual(line_p.qty_budget, 30.0,
-                         "max(pronóstico 30, real 20) = 30.")
-        self.assertEqual(line_q.qty_budget, 25.0,
-                         "Sin pronóstico: manda el real 25.")
-
-    # (v) send_to_mps del presupuesto omite productos con pronóstico vigente.
-    def test_05_budget_mps_omits_forecast_covered(self):
-        team = self._team('L55 mps')
-        fc = self._forecast(team)
-        # Desde 1.1.0 (N2) la cobertura es por producto + cliente + MES de la
-        # semana: la semana tiene que caer en junio, como la línea del
-        # presupuesto. El lunes de 2040-06-03 es 2040-05-28 (mayo) y no cubría.
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': self._monday(date(2040, 6, 6)), 'uom_id': self.uom_m.id,
-            'qty_budget': 10.0})
-        fc.state = 'revisado'
-        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
-        for prod in (self.product, self.product_q):
-            self.Line.create({
-                'budget_id': budget.id, 'product_id': prod.id,
-                'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
-                'qty_budget': 100.0})
-        covered = budget._sgi_forecast_covered_products()
-        self.assertIn(self.product.id, covered, "P lo cubre el pronóstico.")
-        self.assertNotIn(self.product_q.id, covered, "Q no.")
-        if 'mrp.production.schedule' not in self.env:
-            self.skipTest("mrp_mps no está instalado en esta BD.")
-        budget.state = 'aprobado'
-        before = len(budget.message_ids)
-        budget.action_send_to_mps()
-        self.assertTrue(len(budget.message_ids) > before)
-        bodies = " ".join(m.body or '' for m in budget.message_ids)
-        self.assertIn('omitidos 1', bodies)
-        self.assertIn('P55', bodies, "El producto omitido aparece en el resumen.")
-
     # (vi) cron de junio crea la actividad de revaluación al Admin de ventas.
     def test_06_june_revaluation_creates_activity(self):
         team = self._team('L55 junio')
@@ -1786,22 +1362,6 @@ class TestSalesBudgetLifecycle55(TransactionCase):
             ('res_id', '=', budget.id),
             ('summary', '=', "Revaluar cantidades del S2 — P-A28 Nota 1")])
         self.assertTrue(acts, "Debe agendar la revaluación del S2 (P-A28 Nota 1).")
-
-    # (vii) sin candado en pronóstico: editar qty no levanta el UserError del lock.
-    def test_07_forecast_no_lock_on_qty_edit(self):
-        team = self._team('L55 nolock')
-        fc = self._forecast(team)
-        line = self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id,
-            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
-            'qty_budget': 10.0})
-        fc.state = 'revisado'
-        # Un Admin de ventas (NO Jefe MAST) edita la cantidad: el candado le
-        # aplicaría si la línea estuviera bloqueada, pero el pronóstico es
-        # documento vivo → sin candado, no levanta UserError.
-        line.with_user(self.sale_mgr).write({'qty_budget': 50.0})
-        self.assertEqual(line.qty_budget, 50.0)
-        self.assertEqual(fc.state, 'borrador', "La edición reabrió el pronóstico.")
 
 
 @tagged('post_install', '-at_install')
@@ -1881,144 +1441,6 @@ class TestSalesBudgetImportPartner(TransactionCase):
         budget, wiz = self._import([('HFXPROD', 'CLIENTE INEXISTENTE ZZZ', 10)])
         self.assertFalse(budget.line_ids, "Cliente no encontrado: fila reportada.")
         self.assertIn('no encontrado', wiz.result)
-
-
-@tagged('post_install', '-at_install')
-class TestSalesBudgetForecastCoverage(TransactionCase):
-    """5.6: cobertura del pronóstico (pedidos vs pronosticado, P-A28 4.2.2.7)."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        from datetime import timedelta
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Line = cls.env['sgi.sales.budget.line']
-        cls.Cron = cls.env['sgi.cron']
-        cls.Param = cls.env['ir.config_parameter'].sudo()
-        cls.team = cls.env['crm.team'].create({'name': 'Mercado cobertura'})
-        cls.team.user_id = cls.env.user.id
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.client = cls.env['res.partner'].create(
-            {'name': 'Cliente cobertura', 'is_company': True})
-        today = date.today()
-        cls.cur_mon = today - timedelta(days=today.weekday())
-
-    def _monday(self, weeks):
-        from datetime import timedelta
-        return self.cur_mon + timedelta(weeks=weeks)
-
-    def _product(self, code):
-        return self.env['product.product'].create({
-            'name': 'P %s' % code, 'default_code': code, 'type': 'consu',
-            'uom_id': self.uom_m.id, 'list_price': 10.0})
-
-    def _order(self, product, qty, monday):
-        from datetime import datetime, timedelta
-        so = self.env['sale.order'].create({
-            'partner_id': self.client.id, 'team_id': self.team.id,
-            'commitment_date': datetime.combine(
-                monday + timedelta(days=1), datetime.min.time()),
-            'order_line': [(0, 0, {
-                'product_id': product.id, 'product_uom_qty': qty,
-                'product_uom_id': self.uom_m.id, 'price_unit': 1.0})]})
-        so.action_confirm()
-        return so
-
-    def _forecast(self):
-        return self.Budget.create({
-            'year': self.cur_mon.year, 'team_id': self.team.id,
-            'kind': 'pronostico', 'partner_id': self.client.id})
-
-    def _fline(self, budget, product, monday, qty):
-        return self.Line.create({
-            'budget_id': budget.id, 'product_id': product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': qty})
-
-    def test_01_coverage_states(self):
-        p1, p2, p3, p4, p5 = [self._product('COV%d' % i) for i in range(1, 6)]
-        self._order(p1, 100, self._monday(0))   # cubierto
-        self._order(p2, 60, self._monday(0))    # parcial
-        self._order(p4, 120, self._monday(0))   # excedido
-        self._order(p5, 100, self._monday(3))   # fuera de horizonte (>= horizonte 3)
-        fc = self._forecast()
-        l1 = self._fline(fc, p1, self._monday(0), 100)
-        l2 = self._fline(fc, p2, self._monday(0), 100)
-        l3 = self._fline(fc, p3, self._monday(0), 100)  # sin pedido
-        l4 = self._fline(fc, p4, self._monday(0), 100)
-        l5 = self._fline(fc, p5, self._monday(3), 100)
-        self.assertEqual(l1.coverage_state, 'cubierto')
-        self.assertEqual(l2.coverage_state, 'parcial')
-        self.assertEqual(l3.coverage_state, 'sin_pedido')
-        self.assertEqual(l4.coverage_state, 'excedido')
-        self.assertEqual(l5.coverage_state, 'fuera_horizonte')
-        self.assertEqual(fc.uncovered_count, 2)  # l2 parcial + l3 sin_pedido
-
-    def test_02_cron_one_activity_idempotent(self):
-        p1 = self._product('CR1')
-        fc = self._forecast()
-        self._fline(fc, p1, self._monday(0), 100)  # sin pedido → descubierta
-        self.Cron.cron_forecast_coverage()
-        acts = self.env['mail.activity'].search([
-            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)])
-        self.assertEqual(len(acts), 1, "Una sola actividad por pronóstico.")
-        self.assertIn('CR1', acts.note or '')
-        self.assertIn('faltante', acts.note or '')
-        self.Cron.cron_forecast_coverage()  # idempotente
-        self.assertEqual(self.env['mail.activity'].search_count([
-            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', fc.id)]), 1)
-
-    def test_03_create_draft_quotation(self):
-        p1 = self._product('QT1')
-        self._order(p1, 40, self._monday(0))  # parcial: faltan 60
-        fc = self._forecast()
-        line = self._fline(fc, p1, self._monday(0), 100)
-        self.assertEqual(line.coverage_state, 'parcial')
-        action = line.action_create_draft_quotation()
-        order = self.env['sale.order'].browse(action['res_id'])
-        self.assertEqual(order.state, 'draft', "NO se confirma la cotización.")
-        self.assertEqual(order.origin, fc.folio)
-        self.assertEqual(order.order_line.product_uom_qty, 60.0, "Solo el faltante.")
-        self.assertEqual(order.commitment_date.date(), self._monday(0))
-        # Reabrir en vez de duplicar.
-        action2 = line.action_create_draft_quotation()
-        self.assertEqual(action2['res_id'], order.id)
-
-    def test_04_orders_without_forecast(self):
-        p1, p2 = self._product('OWF1'), self._product('OWF2')
-        self._order(p1, 50, self._monday(0))  # con línea de pronóstico
-        self._order(p2, 30, self._monday(0))  # SIN línea de pronóstico
-        fc = self._forecast()
-        self._fline(fc, p1, self._monday(0), 100)
-        orphans = fc._sgi_orders_without_forecast()
-        self.assertIn(p2, orphans.mapped('product_id'))
-        self.assertNotIn(p1, orphans.mapped('product_id'))
-
-    def test_05_horizon_and_tolerance_params(self):
-        p1 = self._product('HZ1')
-        self._order(p1, 105, self._monday(2))  # 1.05
-        fc = self._forecast()
-        line = self._fline(fc, p1, self._monday(2), 100)
-        # Horizonte default 3 → semana +2 está dentro; 1.05 <= 1.10 → cubierto.
-        self.assertEqual(line.coverage_state, 'cubierto')
-        # Tolerancia a 3% → 1.05 > 1.03 → excedido (tras refresh).
-        self.Param.set_param('quimibond_sgi.forecast_over_tolerance_pct', '3.0')
-        fc.action_refresh_actuals()
-        self.assertEqual(line.coverage_state, 'excedido')
-        # Horizonte a 1 → semana +2 queda fuera.
-        self.Param.set_param('quimibond_sgi.forecast_capture_horizon_weeks', '1')
-        fc.action_refresh_actuals()
-        self.assertEqual(line.coverage_state, 'fuera_horizonte')
-
-    def test_06_no_coverage_for_presupuesto(self):
-        p1 = self._product('PB1')
-        budget = self.Budget.create({
-            'year': self.cur_mon.year, 'team_id': self.team.id})
-        line = self.Line.create({
-            'budget_id': budget.id, 'product_id': p1.id,
-            'date': date(self.cur_mon.year, 6, 1), 'uom_id': self.uom_m.id,
-            'qty_budget': 100.0})
-        self.assertEqual(line.coverage_state, 'fuera_horizonte')
-        self.assertEqual(budget.uncovered_count, 0)
 
 
 @tagged('post_install', '-at_install')
@@ -2217,46 +1639,6 @@ class TestSalesBudgetReviewedGovernance(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestSalesBudgetForecastCoveredDraft(TransactionCase):
-    """Ajuste 13.10 P3: solo un pronóstico REVISADO omite productos del MPS."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Line = cls.env['sgi.sales.budget.line']
-        cls.team = cls.env['crm.team'].create({'name': 'Mercado cov draft'})
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.product = cls.env['product.product'].create({
-            'name': 'Tela cov draft', 'default_code': 'COVD', 'type': 'consu',
-            'uom_id': cls.uom_m.id})
-        cls.client = cls.env['res.partner'].create(
-            {'name': 'Cli cov draft', 'is_company': True})
-
-    def _forecast(self):
-        from datetime import timedelta
-        today = date.today()
-        monday = today - timedelta(days=today.weekday())
-        fc = self.Budget.create({
-            'year': monday.year, 'team_id': self.team.id, 'kind': 'pronostico',
-            'partner_id': self.client.id})
-        self.Line.create({
-            'budget_id': fc.id, 'product_id': self.product.id, 'date': monday,
-            'uom_id': self.uom_m.id, 'qty_budget': 10.0})
-        return fc
-
-    def test_01_draft_forecast_does_not_cover(self):
-        fc = self._forecast()  # queda en borrador
-        budget = self.Budget.create({'year': fc.year, 'team_id': self.team.id})
-        self.assertNotIn(self.product.id, budget._sgi_forecast_covered_products(),
-                         "Un pronóstico en borrador NO omite el producto (no puede "
-                         "enviar demanda; lo dejaría sin cubrir en el MPS).")
-        # Al revisarlo, sí lo cubre.
-        fc.state = 'revisado'
-        self.assertIn(self.product.id, budget._sgi_forecast_covered_products())
-
-
-@tagged('post_install', '-at_install')
 class TestSalesBudgetReconcile(TransactionCase):
     """Ajuste 13.10 P4: conciliación facturado vs contabilidad (A = B + partidas)."""
 
@@ -2341,7 +1723,7 @@ class TestSalesBudgetReconcile(TransactionCase):
                         "Publica la tabla de conciliación en el chatter.")
 
     def test_03_reconcile_only_presupuesto(self):
-        fc = self.Budget.create({
+        fc = self.Budget.with_context(qb_allow_old_forecast=True).create({
             'year': 2047, 'team_id': self.team.id, 'kind': 'pronostico',
             'partner_id': self.cli_a.id})
         with self.assertRaises(UserError):
