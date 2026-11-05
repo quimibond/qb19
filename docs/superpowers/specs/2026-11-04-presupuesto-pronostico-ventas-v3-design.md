@@ -323,6 +323,12 @@ misma hoja que Jessica llena hoy. Y un asistente **«Pegar semanas desde Excel»
 hoja del `forecast.xlsx` (mismo lector que la carga inicial, sección 4.2): durante la transición Jessica puede seguir
 recibiendo en Excel y pegar.
 
+> **Hecho en 3.1.0 (2026-11-05):** la matriz es una vista `grid` de `qb.forecast.line` (renglón cliente, planta,
+> producto y unidad; columna semana; celda `qty_origen`) con `grid_update_cell` propio (crea, suma, quita en cero,
+> bitácora). «Pegar semanas desde Excel» es el asistente `qb.forecast.paste`: lee el portapapeles de Excel
+> (tabuladores) en vez del archivo, con el lector puro `release/forecast_paste.py`; mismas reglas que la carga
+> (lo pasado y lo de release no se tocan). Lo revisan Jessica y Planeación el 11-nov.
+
 **Confección:** la misma tabla con `partner_id` vacío y `mercado = confeccion` (pronóstico por producto). Lo capturan
 los vendedores de confección por matriz producto × mes (la semana es el primer lunes del mes; a Planeación le llega
 repartida en los lunes, igual que hoy el presupuesto, `sgi_sales_budget.py:1200`).
