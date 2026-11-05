@@ -343,6 +343,9 @@
                             <field name="amount_sales_to_date"/>
                             <field name="fulfillment_pct"/>
                             <field name="fulfillment_by_mercado_text"/>
+                            <field name="amount_sales_budget_rate"/>
+                            <field name="fulfillment_budget_rate_pct"/>
+                            <field name="fx_effect"/>
                         </group>
                         <group>
                             <field name="amount_real_total"/>

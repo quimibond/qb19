@@ -417,3 +417,28 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertAlmostEqual(line.price_input, round(36.0 / 18.0, 4), places=4)
         if self.own == self.env.ref('base.MXN'):
             self.assertAlmostEqual(line.amount_budget, amount, places=2)
+
+    def test_20_cumplimiento_a_tc_presupuestal(self):
+        """3.6.1: lo facturado en dólares, a TC presupuestal; la diferencia es el efecto del TC."""
+        if self.own != self.env.ref('base.MXN'):
+            return  # la prueba es para una compañía en pesos (producción)
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        self.env['res.currency.rate'].create({
+            'currency_id': self.foreign.id, 'name': date(2019, 3, 1), 'rate': 1.0 / 20.0,
+            'company_id': self.env.company.id})
+        budget = self.Budget.create({'year': 2019})
+        self._line(budget, date=date(2019, 3, 1), price_input=1.0)
+        budget.rate_default = 18.0
+        budget.action_qb_apply_rate_all()
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2019, 3, 5),
+            'team_id': self.team_ind.id, 'currency_id': self.foreign.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1.0, 'price_unit': 50.0,
+                'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        self.assertAlmostEqual(budget.amount_sales_to_date, 1000.0, places=2)     # 50 USD × 20
+        self.assertAlmostEqual(budget.amount_sales_budget_rate, 900.0, places=2)  # 50 USD × 18
+        self.assertAlmostEqual(budget.fx_effect, 100.0, places=2)
+        self.assertAlmostEqual(budget.fulfillment_budget_rate_pct, 90.0, places=1)
