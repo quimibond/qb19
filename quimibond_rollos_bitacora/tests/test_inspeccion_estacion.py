@@ -907,3 +907,20 @@ class TestInspeccionEstacion(TransactionCase):
             self.assertEqual(self.env[modelo].new({'empleado_numero': '85'}).empleado_nombre, 'Operadora semanal', modelo)
             self.assertEqual(self.env[modelo].new({'empleado_numero': 'Q-85'}).empleado_nombre, 'Mecanico quincenal', modelo)
 
+    def test_41_crudo_por_categoria_de_tejido(self):
+        """3.5.1: el crudo es el componente de una categoría de tejido aunque otro pese más (IWJ032: LAVADO001 a 2.2 kg por
+        kg, detergente de la abridora en «Aux. acabado»); sin categoría de tejido sigue ganando el de más kg."""
+        _m, orden_kg, _wo, _rollos = self._bano((40.0,))
+        self.assertEqual(orden_kg._moves_crudo().product_id, self.crudo)
+        Categoria = self.env['product.category']
+        lavado = self.env['product.product'].create({
+            'name': 'Lavado ZZ951', 'type': 'consu', 'uom_id': self.kg.id,
+            'categ_id': Categoria.create({'name': 'Aux. acabado'}).id})
+        self.env['stock.move'].create({
+            'raw_material_production_id': orden_kg.id, 'product_id': lavado.id, 'product_uom_qty': 400.0,
+            'product_uom': self.kg.id, 'location_id': orden_kg.location_src_id.id,
+            'location_dest_id': orden_kg.production_location_id.id, 'company_id': orden_kg.company_id.id})
+        self.assertEqual(orden_kg._moves_crudo().product_id, lavado, "Sin categoría de tejido gana el de más kg")
+        self.crudo.categ_id = Categoria.create({'name': 'Tejido Circular'})
+        self.assertEqual(orden_kg._moves_crudo().product_id, self.crudo)
+

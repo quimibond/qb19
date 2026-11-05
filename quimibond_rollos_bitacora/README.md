@@ -151,6 +151,11 @@ Sin referencia, cae al número de trabajador solo si un único empleado activo l
 operador sin permisos de RH busca en `hr.employee.public`, que no tiene esos campos (lo detectó la prueba 28).
 Tejido (`pesaje_rollos_tejido`, de José) sigue con su búsqueda por número y puesto.
 
+**Crudo por categoría (3.5.1, Ingeniería 2026-11-05).** Para validar el consumo de crudo al cerrar, el crudo es el componente
+en kg de una categoría de tejido («Producto en Proceso / Tejido Circular»), si lo hay; si no, el de más kg como antes.
+En IWJ032Q22JNT155 y JNT160 el LAVADO001 (detergente que se aplica en la abridora, «Aux. acabado») va a 2.2 kg por kg y
+se tomaba como crudo: la orden no podía cerrar. Ahora cuenta como componente (si falta, avisa y no detiene).
+
 ## Número de baño y lotes (3.5.0, Dirección 2026-11-05)
 
 El folio de la tarjeta viajera (serie del 21 mil, impresa por bloques; el «21244» de «21244I1» y «21244 J1») daba
