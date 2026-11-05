@@ -32,6 +32,12 @@
                     </div>
                     <group string="Resumen del baño">
                         <group>
+                            <label for="numero_bano"/>
+                            <div class="o_row">
+                                <field name="numero_bano"/>
+                                <button name="action_asignar_numero_bano" type="object" string="Asignar número"
+                                        class="btn-link" invisible="numero_bano or state in ('done', 'cancel')"/>
+                            </div>
                             <field name="rollos_rama_count"/>
                             <field name="rollos_rama_kg"/>
                             <field name="rollos_rama_pct"/>
@@ -65,6 +71,8 @@
                             <field name="estado_inspeccion" widget="badge"
                                    decoration-success="estado_inspeccion == 'inspeccionado'"
                                    decoration-warning="estado_inspeccion == 'pendiente'"/>
+                            <button name="action_imprimir_etiqueta_rama" type="object" icon="fa-tag"
+                                    title="Etiqueta de Rama (68 x 38 mm)"/>
                         </list>
                     </field>
                     <group string="Desperdicio de Rama" invisible="not desperdicio_kg">
@@ -100,9 +108,25 @@
                             <field name="estado" widget="badge"
                                    decoration-success="estado == 'registrado'"
                                    decoration-info="estado == 'inspeccionado'"/>
+                            <button name="action_imprimir_etiqueta_preliminar" type="object" icon="fa-tag"
+                                    title="Etiqueta preliminar (68 x 38 mm)"/>
+                            <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
+                                    title="Etiqueta final (76 x 102 mm)"/>
                         </list>
                     </field>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 3.5.0: buscar la orden por número de baño (el que traen los lotes y las etiquetas). -->
+    <record id="view_mrp_production_filter_numero_bano" model="ir.ui.view">
+        <field name="name">mrp.production.select.numero_bano</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="numero_bano"/>
             </xpath>
         </field>
     </record>

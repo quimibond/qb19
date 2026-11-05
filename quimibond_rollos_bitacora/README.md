@@ -141,6 +141,48 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Número de baño y lotes (3.5.0, Dirección 2026-11-05)
+
+El folio de la tarjeta viajera (serie del 21 mil, impresa por bloques; el «21244» de «21244I1» y «21244 J1») daba
+nombre a los lotes de tintorería y acabado, tecleado a mano. La tarjeta se deja de usar con los centros de trabajo, así
+que **Odoo asigna el número de baño**:
+
+- **`numero_bano`** en la orden en kg: secuencia `quimibond_rollos_bitacora.numero_bano` (5 cifras, **empieza en
+  00001** para que se distinga la fase nueva; el siguiente número se cambia en Ajustes → Técnico → Secuencias). Única,
+  no se copia al duplicar ni al dividir.
+- **Cuándo se asigna:** cuando el baño ya es definitivo, porque la programación de tintorería divide la orden después
+  de confirmarla. Al empezar la primera operación de una orden con Rama (Tintorería lo usa al cargar el jet), al abrir
+  el pesaje de Rama o la estación de Inspección, o con «Asignar número» en la pestaña Rollos. Un baño cancelado deja
+  su número sin usar.
+- **Lotes:** Rama `<baño>-J0001` (la J es acabado, como en la planta) e Inspección `<baño>-0001`, el que queda en
+  inventario y llega al cliente (antes `<orden>-NNNN`, `M<orden en metros>-NNNN` y `K<orden en kg>-NNNN`). Sin I ni
+  número de rama: la tintorería, la rama y la inspección son la misma orden, el jet queda en la programación y la rama
+  en la bitácora del rollo.
+- **Cada baño su serie:** los rollos finales numeran por baño desde 0001, aunque varios baños abastezcan una orden en
+  metros (antes compartían el consecutivo de la orden en metros).
+- La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
+  (metros;kg;baño;rollo). La orden se busca por número de baño.
+
+## Etiquetas preliminares de 68 x 38 mm (3.4.0, Dirección 2026-11-05)
+
+Hay dos etiquetas preliminares, una de Rama y otra de Inspección, de **68 mm de ancho x 38 mm de alto**
+(544 x 304 puntos a 203 dpi). La **final** sigue en 76 x 102 mm (3.3.7) y es la que lleva código, color, ancho,
+metros, yardas, kilos y libras. Acomodo común en `mrp.rollo.bitacora._zpl_preliminar_acomodo` (escala si se cambia el
+tamaño en Ajustes).
+
+| Etiqueta | Lleva |
+|---|---|
+| Preliminar de Rama | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la Rama), **kg** netos y el código de barras del lote con su texto (el lote ya lleva el número de rollo) |
+| Preliminar de Inspección | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la revisadora), **kg** y **metros** del rollo final, la **calidad** (PQ, FE, 2DA, DESP) en un recuadro y el código de barras del lote `M…`/`K…` |
+
+- **Qué sale al confirmar en la revisadora:** la preliminar (por defecto). En Ajustes («Etiqueta al confirmar en la
+  revisadora», parámetro `quimibond_rollos_bitacora.inspeccion_imprime`) se cambia a la final. La otra se imprime
+  con su botón en el rollo final, con los íconos de cada renglón en la pestaña Rollos de la orden, o desde Imprimir
+  en la lista de rollos finales (varios a la vez). Las dos se guardan al confirmar.
+- La preliminar de Rama se reimprime con el ícono de su renglón en la pestaña Rollos.
+- Los tamaños por defecto pasan a 544 x 304 en Rama y en la preliminar de Inspección; ninguna base tenía guardado otro
+  valor (verificado en main), así que no hay migración.
+
 ## Captura manual sin báscula (3.3.9, Dirección 2026-11-05)
 
 En planta el peso se captura a mano, en Tejido, Rama e Inspección. Mientras no haya báscula IoT registrada
@@ -170,8 +212,8 @@ vuelven a abrir en automático, y capturar a mano pide motivo, como antes. No to
 Impresora Zebra ZD230 de 203 dpi (8 puntos = 1 mm). Los tamaños se cambian en Ajustes de Manufactura → Rollos de
 tela acabada.
 
-- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203). Sigue siendo solo el código de
-  barras del lote-serie.
+- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203), solo el código de barras del
+  lote-serie. Desde 3.4.0, 68 x 38 mm con datos.
 - **Final del rollo** (PQ / PNC, la que imprime la estación de Inspección): 76 mm de ancho x 102 mm de alto =
   608 x 816 puntos (antes 812 x 1218). Acomodo nuevo compartido por el rollo final y la bitácora
   (`mrp.rollo.bitacora._zpl_final_acomodo`): metros/yardas, neto/bruto y kilos/libras en dos columnas, y escala si
@@ -179,8 +221,7 @@ tela acabada.
 - **Código de barras**: Code 128 con los subconjuntos explícitos (`_code128_zpl`: los dígitos seguidos van de dos en
   dos), para que `metros;kg;orden;rollo` quepa en 76 mm con barras de 2 puntos aun con metros de 4 cifras y rollo
   de 2 cifras. Lo que lee el escáner es el mismo dato.
-- La **preliminar de Inspección** (63 x 38 mm según Sistemas) no se imprime en la estación única (3.1.0): Inspección
-  pesa e imprime la final de una vez. Su tamaño no se cambió.
+- La **preliminar de Inspección** no se imprimía en la estación única (3.1.0). Desde 3.4.0 sí, en 68 x 38 mm.
 - Pendiente: probar con las impresoras y básculas que llegan el viernes 7-nov (lectura del código con el escáner
   de Almacén).
 

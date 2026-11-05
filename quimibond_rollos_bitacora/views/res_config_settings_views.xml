@@ -15,8 +15,8 @@
                              help="Porcentaje máximo de diferencia contra kg finales por el rendimiento de la ficha de acabado.">
                         <field name="rollos_alerta_diferencia_pct"/>
                     </setting>
-                    <setting string="Etiqueta pequeña de Rama"
-                             help="Tamaño de la etiqueta en puntos ZPL (203 dpi: 8 puntos = 1 mm). 63 x 38 mm = 504 x 304.">
+                    <setting string="Etiqueta preliminar de Rama"
+                             help="Tamaño de la etiqueta preliminar de Rama en puntos ZPL (203 dpi: 8 puntos = 1 mm). 68 x 38 mm = 544 x 304; el acomodo escala si se cambia.">
                         <field name="rollos_etiqueta_rama_ancho"/>
                         <field name="rollos_etiqueta_rama_alto"/>
                     </setting>
@@ -26,9 +26,13 @@
                         <field name="rollos_etiqueta_final_alto"/>
                     </setting>
                     <setting string="Etiqueta preliminar de Inspección"
-                             help="Tamaño de la etiqueta F-P-I01-02 en puntos ZPL (203 dpi). No se imprime en la estación única de Inspección (3.1.0).">
+                             help="Tamaño de la etiqueta preliminar de Inspección en puntos ZPL (203 dpi). 68 x 38 mm = 544 x 304; el acomodo escala si se cambia.">
                         <field name="rollos_etiqueta_prelim_ancho"/>
                         <field name="rollos_etiqueta_prelim_alto"/>
+                    </setting>
+                    <setting string="Etiqueta al confirmar en la revisadora"
+                             help="La que sale al confirmar cada rollo final en Inspección. La otra se imprime con su botón en el rollo final, en la pestaña Rollos de la orden o desde Imprimir en la lista de rollos finales.">
+                        <field name="rollos_inspeccion_imprime"/>
                     </setting>
                 </block>
             </xpath>

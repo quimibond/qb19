@@ -120,7 +120,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
-        self.assertEqual(final.name, 'M%s-0001' % orden_m.name.split('/')[-1])
+        self.assertEqual(final.name, '%s-0001' % orden_kg.numero_bano)  # 3.5.0: número de baño + rollo
         self.assertAlmostEqual(final.kg_neto, 49.1)
         self.assertIn('METROS: 585.00', final.zpl_etiqueta)
         self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
@@ -231,7 +231,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos[1], 20.5, 230.0, 'FE', termina=False)
         self._inspeccionar(orden_kg, wo, rollos[1], 10.5, 110.0, 'SEGUNDA')
         primero = orden_kg.rollo_final_kg_ids.sorted('secuencia')[:1]
-        self.assertEqual(primero.name, 'K%s-0001' % orden_kg.name.split('/')[-1])
+        self.assertEqual(primero.name, '%s-0001' % orden_kg.numero_bano)
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(orden_kg.qty_produced, 39.5 + 19.0, msg="La orden en kg cierra con el peso real de PQ y FE")
@@ -291,11 +291,11 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_15_dos_banos_una_orden_en_metros(self):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
-        raiz = orden_m.name.split('/')[-1]
         self._inspeccionar(kg_a, wo_a, rollos_a, 40.6, 460.0)
-        # El segundo baño se inspecciona antes de que cierre el primero: mismo consecutivo de lotes.
+        # 3.5.0: cada baño tiene su número y su serie de lotes, aunque abastezcan la misma orden en metros.
         self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
-        self.assertEqual(kg_b.rollo_final_kg_ids.name, 'M%s-0002' % raiz)
+        self.assertNotEqual(kg_a.numero_bano, kg_b.numero_bano)
+        self.assertEqual(kg_b.rollo_final_kg_ids.name, '%s-0001' % kg_b.numero_bano)
 
         kg_a.button_mark_done()
         self.assertEqual(kg_a.state, 'done')
@@ -474,14 +474,13 @@ class TestInspeccionEstacion(TransactionCase):
             'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'kg_bruto': kg_bruto_rama,
         }).action_confirmar()
         rollos = bano.rollo_bitacora_ids
-        self.assertEqual(rollos.lot_id.name, '%s-0001' % bano.name.split('/')[-1])
+        self.assertEqual(rollos.lot_id.name, '%s-J0001' % bano.numero_bano)  # 3.5.0: Rama lleva la J
         for i, (kg_bruto, metros, calidad) in enumerate(capturas, 1):
             self._inspeccionar(bano, wo_insp, rollos, kg_bruto, metros, calidad, termina=i == len(capturas))
         return rollos
 
     def test_21_programacion_divide_y_cada_bano_cierra(self):
         orden_m, (bano_1, bano_2) = self._programar_dos_banos()
-        raiz = orden_m.name.split('/')[-1]  # al crear el pendiente Odoo renombra la orden a …-001
         self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
         bano_1.button_mark_done()
         self.assertEqual(bano_1.state, 'done')
@@ -490,16 +489,17 @@ class TestInspeccionEstacion(TransactionCase):
         pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
         self.assertEqual(len(pendiente), 1)
         self.assertEqual(bano_2._insp_orden_metros(), pendiente, "El segundo baño ya abastece al pendiente")
-        # El segundo baño se inspecciona ya con el primero cerrado: el consecutivo sigue sobre la raíz de la orden.
+        # El segundo baño se inspecciona ya con el primero cerrado; la división le dio su propio número (3.5.0).
         self._rama_e_inspeccion(bano_2, 41.1, [(40.5, 455.0, 'PQ')])
-        self.assertEqual(bano_2.rollo_final_kg_ids.name, 'M%s-0002' % raiz)
+        self.assertTrue(bano_1.numero_bano and bano_2.numero_bano and bano_1.numero_bano != bano_2.numero_bano)
+        self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-0001' % bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, pendiente)
         bano_2.button_mark_done()
         self.assertEqual(bano_2.state, 'done')
         self.assertEqual(pendiente.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 915.0)
         self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
-        self.assertEqual(bano_1.rollo_final_kg_ids.name, 'M%s-0001' % raiz)
+        self.assertEqual(bano_1.rollo_final_kg_ids.name, '%s-0001' % bano_1.numero_bano)
         self.assertEqual(set((bano_1 | bano_2).rollo_final_kg_ids.mapped('estado')), {'registrado'})
 
     def test_22_programacion_cierre_en_orden_inverso_y_bano_de_saldos(self):
@@ -721,12 +721,11 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((40.0, 41.0, 42.0))
         for rollo, bruto in zip(rollos, (41.5, 42.5, 43.5)):
             self._inspeccionar(orden_kg, wo, rollo, bruto, 400.0)
-        raiz = orden_m.name.split('/')[-1]
         segundo = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.secuencia == 2)
         segundo.action_anular()
         self._inspeccionar(orden_kg, wo, rollos[1], 42.5, 410.0)
         self.assertEqual(sorted(orden_kg.rollo_final_kg_ids.mapped('secuencia')), [1, 2, 3])
-        self.assertIn('M%s-0002' % raiz, orden_kg.rollo_final_kg_ids.mapped('name'))
+        self.assertIn('%s-0002' % orden_kg.numero_bano, orden_kg.rollo_final_kg_ids.mapped('name'))
 
     def test_33_inspeccion_en_paralelo_a_rama(self):
         """Inspección se abre con Rama todavía abierta si hay rollos por inspeccionar; no termina hasta que Rama termina."""
@@ -827,3 +826,65 @@ class TestInspeccionEstacion(TransactionCase):
             self.assertEqual(valores['weighing_mode'], 'iot', modelo)
             self.assertFalse(valores.get('motivo_manual'), modelo)
 
+    def test_38_etiquetas_preliminar_y_final(self):
+        """3.4.0: al confirmar sale la etiqueta preliminar de 68 x 38 mm (artículo, orden, fecha, revisadora, kg, metros,
+        calidad y código del lote); con el parámetro `inspeccion_imprime` = final sale la de 76 x 102 mm."""
+        orden_m, orden_kg, wo, rollos = self._bano((50.0, 40.0))
+        valores = {
+            'production_id': orden_kg.id, 'workorder_id': wo.id, 'workcenter_id': self.revisadora.id,
+            'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
+            'rollo_codigos': rollos[0].name, 'kg_bruto': 50.6, 'metros': 585.0, 'clasificacion': 'FE',
+            'defecto_ids': [Command.set(self.defecto.ids)], 'termina_rollo': True}
+        Wizard = self.env['rollo.inspeccion.estacion.wizard'].with_context(discard_logo_check=True)  # sin layout en la base de prueba
+        accion = Wizard.create(valores).action_confirmar()
+        self.assertEqual(accion['report_name'], 'quimibond_rollos_bitacora.report_etiqueta_rollo_preliminar')
+        self.assertTrue(accion.get('close_on_report_download'))
+        final = orden_kg.rollo_final_kg_ids
+        zpl = final.zpl_etiqueta_preliminar
+        self.assertTrue(zpl.startswith('^XA^PW544^LL304'))
+        for texto in ('ARTÍCULO: %s' % self.prod_m.default_code, 'ORDEN: %s' % orden_kg.name, 'FECHA: ',
+                      'CENTRO: %s' % self.revisadora.name, 'KG: %.2f' % final.kg_neto, 'M: 585.00', '^FDFE^FS'):
+            self.assertIn(texto, zpl)
+        self.assertIn('^FD%s^FS' % self.env['mrp.rollo.bitacora']._code128_zpl(final.name)[0], zpl)
+        self.assertTrue(final.zpl_etiqueta.startswith('^XA^PW608^LL816'))  # la final se guarda igual
+
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.inspeccion_imprime', 'final')
+        accion = Wizard.create(
+            dict(valores, rollo_codigos=rollos[1].name, kg_bruto=40.6, metros=470.0, clasificacion='PQ',
+                 defecto_ids=[])).action_confirmar()
+        self.assertEqual(accion['report_name'], 'quimibond_rollos_bitacora.report_etiqueta_rollo_final')
+
+        # Los dos reportes, para varios rollos a la vez (Imprimir en la lista de rollos finales).
+        finales = orden_kg.rollo_final_kg_ids
+        texto, _fmt = self.env['ir.actions.report']._render_qweb_text(
+            'quimibond_rollos_bitacora.report_etiqueta_rollo_preliminar', finales.ids)
+        self.assertEqual(texto.decode().count('^XA^PW544'), 2)
+
+    def test_39_numero_de_bano(self):
+        """3.5.0: Odoo da el número de baño una sola vez (serie desde 00001), no lo copia al duplicar ni al dividir, es único
+        y da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001»."""
+        secuencia = self.env.ref('quimibond_rollos_bitacora.seq_numero_bano')
+        self.assertEqual((secuencia.padding, secuencia.code), (5, 'quimibond_rollos_bitacora.numero_bano'))
+        _m, orden_kg, wo, rollos = self._bano((40.0,))
+        self.assertFalse(orden_kg.numero_bano)
+        orden_kg._asignar_numero_bano()
+        numero = orden_kg.numero_bano
+        self.assertTrue(numero.isdigit() and len(numero) == 5)
+        orden_kg._asignar_numero_bano()
+        self.assertEqual(orden_kg.numero_bano, numero, "No cambia una vez asignado")
+        self.assertFalse(orden_kg.copy().numero_bano, "Una copia no hereda el número")
+        otra = self._bano((30.0,))[1]
+        otra._asignar_numero_bano()
+        self.assertNotEqual(otra.numero_bano, numero)
+        with self.assertRaises(Exception), self.cr.savepoint():
+            otra.numero_bano = numero
+            otra.flush_recordset()
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self.assertEqual(orden_kg.rollo_final_kg_ids.name, '%s-0001' % numero)
+        # Empezar una operación del baño le asigna el número (Tintorería lo usa al cargar el jet).
+        bano = self._bano((30.0,))[1]
+        self.assertFalse(bano.numero_bano)
+        wo_listo = bano.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
+        self.assertTrue(wo_listo)
+        wo_listo.button_start()
+        self.assertTrue(bano.numero_bano)

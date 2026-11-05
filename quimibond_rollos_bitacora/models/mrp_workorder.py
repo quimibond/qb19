@@ -49,6 +49,8 @@ class MrpWorkorder(models.Model):
                 'La operación de %s de %s no está lista (estado actual: %s). Termina primero las operaciones '
                 'anteriores.', nombre_operacion, self.production_id.name,
                 dict(self._fields['state'].selection).get(self.state)))
+        if modelo != 'rollo.clasificacion.wizard':  # 3.5.0: los lotes del baño llevan su número
+            self.production_id._asignar_numero_bano()
         return {
             'type': 'ir.actions.act_window',
             'name': titulo,
@@ -67,6 +69,11 @@ class MrpWorkorder(models.Model):
         return (modelo == 'rollo.inspeccion.estacion.wizard' and es_tipo and self.state == 'blocked'
                 and self.production_id.state in ('confirmed', 'progress', 'to_close')
                 and any(r.estado_inspeccion != 'inspeccionado' for r in self.production_id.rollo_bitacora_ids))
+
+    def button_start(self, *args, **kwargs):
+        # 3.5.0: el baño recibe su número al empezar su primera operación (Tintorería lo usa al cargar el jet).
+        self.production_id.filtered(lambda o: any(o.workorder_ids.mapped('es_rama')))._asignar_numero_bano()
+        return super().button_start(*args, **kwargs)
 
     def action_pesar_rollo_rama(self):
         return self._abrir_ventana_operacion(

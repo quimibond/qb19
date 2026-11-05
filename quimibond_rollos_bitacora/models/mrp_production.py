@@ -7,6 +7,9 @@ from odoo.tools import float_compare
 
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
 PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
+# 3.5.0 (Dirección, 2026-11-05): número de baño consecutivo que asigna Odoo; sustituye al folio de la tarjeta viajera
+# y empieza en 00001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
+SECUENCIA_BANO = 'quimibond_rollos_bitacora.numero_bano'
 
 
 class MrpProduction(models.Model):
@@ -32,6 +35,12 @@ class MrpProduction(models.Model):
     desperdicio_fecha = fields.Datetime('Desperdicio pesado el', readonly=True, copy=False)
     desperdicio_manual = fields.Boolean('Desperdicio capturado manualmente', readonly=True, copy=False)
     desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
+    numero_bano = fields.Char(
+        'No. de baño', readonly=True, copy=False, index=True, tracking=True,
+        help='Consecutivo que Odoo asigna al baño (orden en kg con Rama) al empezar su primera operación o al abrir el '
+             'pesaje de Rama o Inspección. Da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001». '
+             'Sustituye al folio de la tarjeta viajera; una orden dividida en baños da un número a cada uno.')
+    _unique_numero_bano = models.Constraint('UNIQUE(numero_bano)', 'Ese número de baño ya lo tiene otra orden.')
     es_pesaje_rollos = fields.Boolean(
         'Pesa por rollo en Rama', compute='_compute_es_pesaje_rollos',
         help='La orden tiene operación de Rama: el lote del terminado es el de cada rollo, no un lote '
@@ -49,6 +58,17 @@ class MrpProduction(models.Model):
             destino = orden.move_dest_ids.raw_material_production_id
             # Con orden destino manda la de metros; sin ella, el valor capturado se queda.
             orden.es_desarrollo = any(destino.mapped('es_desarrollo')) if destino else orden.es_desarrollo
+
+    def _asignar_numero_bano(self):
+        """Da el siguiente número de baño a las órdenes que aún no lo tienen (3.5.0). Se llama cuando el baño ya es
+        definitivo (la programación de tintorería divide la orden después de confirmarla)."""
+        for orden in self.filtered(lambda o: not o.numero_bano and o.state not in ('done', 'cancel')):
+            orden.numero_bano = self.env['ir.sequence'].sudo().next_by_code(SECUENCIA_BANO)
+        return self
+
+    def action_asignar_numero_bano(self):
+        self._asignar_numero_bano()
+        return True
 
     # ------------------------------------------------------------------ Rama
     # El botón «Pesar rollo» vive en la lista de operaciones (mrp.workorder), no en la orden.
