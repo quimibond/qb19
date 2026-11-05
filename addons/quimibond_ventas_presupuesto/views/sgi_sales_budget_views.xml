@@ -557,6 +557,57 @@
         <field name="code">action = records.action_qb_open_copy()</field>
     </record>
 
+    <!-- 3.7.0: propuesta del presupuesto del año siguiente. -->
+    <record id="qb_sales_budget_proposal_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.budget.proposal.form</field>
+        <field name="model">qb.sales.budget.proposal</field>
+        <field name="arch" type="xml">
+            <form string="Armar la propuesta del presupuesto">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Arma el borrador del presupuesto con lo vendido en el periodo base: en
+                        Industrial y Especiales un renglón por producto, cliente y mes; en
+                        Confección por producto y mes, sin cliente. La cantidad es la vendida ese
+                        mes por el crecimiento del mercado; el precio, el de la lista o, si la
+                        lista no tiene el producto, el real del periodo base. No entran saldos,
+                        desperdicio, notas de crédito genéricas ni servicios. Después se ajusta
+                        renglón por renglón.
+                    </div>
+                    <group>
+                        <group string="Periodo">
+                            <field name="year"/>
+                            <field name="base"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Crecimiento sobre el periodo base">
+                            <field name="growth_industrial"/>
+                            <field name="growth_confeccion"/>
+                            <field name="growth_especiales"/>
+                        </group>
+                        <group string="Opciones">
+                            <field name="min_amount"/>
+                            <field name="rate"/>
+                            <field name="project_source_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_build" type="object" string="Armar propuesta"
+                            class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_sales_budget_proposal_action" model="ir.actions.act_window">
+        <field name="name">Armar propuesta del presupuesto</field>
+        <field name="res_model">qb.sales.budget.proposal</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
     <!-- 3.6.4: poner cliente a varios renglones en una sola escritura. -->
     <record id="qb_sales_budget_set_partner_view_form" model="ir.ui.view">
         <field name="name">qb.sales.budget.set.partner.form</field>

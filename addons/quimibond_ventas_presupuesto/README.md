@@ -21,6 +21,30 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Propuesta del presupuesto del año siguiente (19.0.3.7.0, 2026-11-05)
+
+Presupuesto → **Armar propuesta del año** arma el borrador del presupuesto (para 2027 hace falta
+el 9 de diciembre) con lo vendido en el periodo base, con la regla de venta del VE-02:
+
+- **Periodo base:** los 12 meses cerrados antes de hoy (cada mes va al mismo mes del año nuevo) o
+  el año anterior completo.
+- **Renglones:** Industrial y Especiales por producto, cliente y mes; Confección por producto y
+  mes, sin cliente (se presupuesta por promedios).
+- **Cantidad:** la vendida ese mes × (1 + crecimiento del mercado), redondeada.
+- **Precio:** el de la lista del cliente (o la presupuestal); si la lista no tiene regla del
+  producto, el precio real promedio del periodo base en la moneda en que se facturó (origen
+  «Precio real del periodo base»).
+- **Tipo de cambio:** el presupuestal de Ajustes en los 12 meses (se puede cambiar en el asistente).
+- **Proyectos:** opcionalmente, las líneas de proyecto de otro presupuesto, en los mismos meses.
+- **No entran:** saldos y desperdicio, notas de crédito genéricas y servicios, productos de otra
+  compañía y, si se pide, lo que vendió menos de un mínimo anual por producto y cliente.
+
+Si ya hay un presupuesto abierto del año con renglones, no lo pisa. Crea la revisión siguiente si
+el año ya tiene uno aprobado. El resumen (periodo, renglones e importe por mercado, de dónde salió
+cada precio y lo que no entró) queda en el chatter. Para MCP:
+`sgi.sales.budget.action_qb_build_proposal(año, growth={'industrial': 5, …}, base, min_amount,
+project_source_id, rate)`.
+
 ## Poner cliente a varios renglones (19.0.3.6.4, 2026-11-05)
 
 Un producto no puede tener renglones con cliente y sin cliente en el mismo mercado

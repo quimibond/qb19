@@ -28,7 +28,7 @@ from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS, MERCADO
 
 PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por kilo")]
 PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel', "Excel"),
-                 ('proyecto', "Proyecto")]
+                 ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base")]
 PRICE_PROBLEMS = [('sin_precio', "Sin precio"), ('sin_tc', "Sin tipo de cambio"),
                   ('sin_conversion', "Sin conversión")]
 
