@@ -173,3 +173,21 @@ def test_norm_and_match_client():
     assert fx.match_client('SHAWMUT', 'Tennessee', clients) == 'SHAWMUT TENNESSEE'
     assert fx.match_client('Woodbridge Inoac', None, clients) == 'WOODBRIDGE INOAC TECHNICAL PRODUCTS SOL'
     assert fx.match_client('OTRO', None, clients) is None
+
+
+def test_parse_prices_sheet():
+    rows = [
+        [None, 'PRODUCTORA DE NO TEJIDOS QUIMIBOND'],
+        [],
+        ['Columna 1', 'CLIENTE', 'ZZJ055Q21JNT165', 'precio / m', 'Precio / kg', 'Precio con descuento',
+         'RENDIMIENTO', 'Columna 2'],
+        ['XZZJ045', 'CLIENTE A', 'ZZJ045Q22JNT160', 0.66, None, None, 13.888, None],
+        ['XIZZJ045', 'CLIENTE A', 'izzj045q22jnt160', None, '9.10', None, None, None],
+        ['', 'CLIENTE B', 'ZZJ053Q22JNT160', 0, None, None, None, None],
+        [None, None, None, None, None, None, None, None],
+    ]
+    prices = fx.parse_prices(rows)
+    assert [(p['client'], p['code'], p['price_m'], p['price_kg']) for p in prices] == [
+        ('CLIENTE A', 'ZZJ045Q22JNT160', 0.66, None), ('CLIENTE A', 'IZZJ045Q22JNT160', None, 9.10)]
+    assert prices[0]['yield_m_kg'] == 13.888
+    assert fx.parse_prices([['sin encabezado']]) == []

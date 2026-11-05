@@ -42,3 +42,8 @@ access_qb_forecast_paste_manager,qb.forecast.paste.manager,model_qb_forecast_pas
 access_qb_forecast_week_salesman,qb.forecast.week.salesman,model_qb_forecast_week,sales_team.group_sale_salesman,1,0,0,0
 access_qb_forecast_week_planeacion,qb.forecast.week.planeacion,model_qb_forecast_week,group_qb_planeacion,1,0,0,0
 access_qb_forecast_week_manager,qb.forecast.week.manager,model_qb_forecast_week,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_price_check_salesman,qb.price.check.salesman,model_qb_price_check,sales_team.group_sale_salesman,1,0,0,0
+access_qb_price_check_sale_mgr,qb.price.check.sale.mgr,model_qb_price_check,sales_team.group_sale_manager,1,1,1,1
+access_qb_price_check_manager,qb.price.check.manager,model_qb_price_check,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_price_check_wizard_sale_mgr,qb.price.check.wizard.sale.mgr,model_qb_price_check_wizard,sales_team.group_sale_manager,1,1,1,1
+access_qb_price_check_wizard_manager,qb.price.check.wizard.manager,model_qb_price_check_wizard,quimibond_sgi.group_sgi_manager,1,1,1,1

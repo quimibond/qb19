@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Comparación de precios del forecast (19.0.3.4.0, 2026-11-05)
+
+Diseño v3, sección 4.4. **Presupuesto → Comparación de precios** →
+«Comparar con forecast.xlsx» (Administrador de ventas o del SGI): lee la hoja
+**PRECIOS** (cliente, código, precio por m o por kg, rendimiento) y compara
+cada renglón con la **lista de precios del cliente** en Odoo, en la moneda de
+la lista (el Excel no dice moneda). Resultado por renglón: **igual** (menos de
+0.5 %), **diferente** (con la diferencia y el %), **sin regla** (la lista no
+tiene regla del producto o el cliente no tiene lista: Odoo caería al precio de
+venta, que no se usa), **sin producto**, **sin cliente** (ligarlo en Hojas del
+forecast). Si el forecast da precio por metro y solo existe el código en kilos
+(«I…»), se compara el precio por kilo entre el rendimiento del artículo. Cada
+carga reemplaza la anterior; no toca ninguna lista. Ojo con Lear: su «precio /
+m» del Excel es por kilo (diseño 1.4), así que saldrá «diferente» hasta
+corregir el Excel. El lector es `forecast_xlsx.parse_prices` (Python puro).
+
 ## Lector genérico por número de columna y .xls (19.0.3.3.1, 2026-11-05)
 
 El release de Shawmut Silao («SL 3254 Release for W45 2026.csv») trae todo el
