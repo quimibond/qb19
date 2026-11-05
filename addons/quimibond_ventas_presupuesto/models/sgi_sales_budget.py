@@ -206,6 +206,20 @@ class SgiSalesBudget(models.Model):
         string="Efecto del tipo de cambio", compute='_compute_fulfillment',
         help="Venta al corte (TC real) menos venta al corte a TC presupuestal. Negativo: el peso se "
              "apreció contra el presupuesto.")
+    # 3.6.2: diferencia venta − presupuesto al corte, separada.
+    amount_difference = fields.Monetary(string="Venta − presupuesto al corte", compute='_compute_fulfillment')
+    effect_volume = fields.Monetary(
+        string="Efecto volumen", compute='_compute_fulfillment',
+        help="Renglones con venta: (cantidad real − presupuestada) × precio presupuestal × TC "
+             "presupuestal; renglones sin venta: menos su presupuesto.")
+    effect_price = fields.Monetary(
+        string="Efecto precio", compute='_compute_fulfillment',
+        help="(Precio real − presupuestal, en la moneda de venta) × cantidad real × TC presupuestal.")
+    effect_unbudgeted = fields.Monetary(
+        string="Venta sin presupuesto", compute='_compute_fulfillment',
+        help="Lo que queda: venta que no cae en ningún renglón (otro mes, otro cliente, producto o "
+             "cliente sin presupuesto), a TC presupuestal. Detalle en «Conciliar facturado».")
+    effects_by_mercado_text = fields.Text(string="Diferencia por mercado", compute='_compute_fulfillment')
     fulfillment_budget_rate_pct = fields.Float(
         string="Cumplimiento a TC presupuestal (%)", compute='_compute_fulfillment', digits=(16, 1))
     amount_real_unbudgeted = fields.Monetary(
@@ -440,6 +454,9 @@ class SgiSalesBudget(models.Model):
             if not cutoff:
                 budget.amount_budget_to_date = budget.amount_sales_to_date = 0.0
                 budget.amount_sales_budget_rate = budget.fx_effect = 0.0
+                budget.amount_difference = budget.effect_volume = budget.effect_price = 0.0
+                budget.effect_unbudgeted = 0.0
+                budget.effects_by_mercado_text = False
                 budget.fulfillment_pct = budget.fulfillment_budget_rate_pct = 0.0
                 budget.fulfillment_by_mercado_text = False
                 continue
@@ -462,6 +479,25 @@ class SgiSalesBudget(models.Model):
             to_date = budget.amount_budget_to_date
             budget.fulfillment_pct = round(budget.amount_sales_to_date / to_date * 100.0, 1) if to_date else 0.0
             budget.fulfillment_budget_rate_pct = round(at_budget_rate / to_date * 100.0, 1) if to_date else 0.0
+            # Diferencia separada: volumen y precio de los renglones al corte, tipo de cambio de toda
+            # la venta, y el resto es venta sin presupuesto (suma exacta).
+            lines = budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff)
+            budget.amount_difference = budget.amount_sales_to_date - to_date
+            budget.effect_volume = sum(lines.mapped('effect_volume'))
+            budget.effect_price = sum(lines.mapped('effect_price'))
+            budget.effect_unbudgeted = (budget.amount_difference - budget.effect_volume
+                                        - budget.effect_price - budget.fx_effect)
+            rows = []
+            for base in ('industrial', 'confeccion', 'especiales'):
+                mine = lines.filtered(lambda l, b=base: MERCADO_BASE.get(l.mercado) == b)
+                if not mine and not sold.get(base):
+                    continue
+                rows.append("%s: venta − presupuesto %s · volumen %s · precio %s · TC %s" % (
+                    labels[base], '{:,.0f}'.format(sold.get(base, 0.0) - planned.get(base, 0.0)),
+                    '{:,.0f}'.format(sum(mine.mapped('effect_volume'))),
+                    '{:,.0f}'.format(sum(mine.mapped('effect_price'))),
+                    '{:,.0f}'.format(sum(mine.mapped('effect_fx')))))
+            budget.effects_by_mercado_text = "\n".join(rows)
             parts = []
             for base in ('industrial', 'confeccion', 'especiales'):
                 if planned.get(base):
