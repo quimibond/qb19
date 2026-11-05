@@ -585,3 +585,28 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'FE', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ')
         self.assertEqual(orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'FE').defecto_ids, self.defecto)
+
+    def test_27_no_cierra_con_menos_crudo_que_lo_pesado_en_rama(self):
+        """3.3.2: con el consumo flexible un baño cerraba sin crudo en existencia (en main: 19 y 0 kg) y el kg salía casi
+        gratis. Ahora no cierra si el crudo consumido es menor que lo pesado en Rama; con existencia sí."""
+        self.crudo.write({'is_storable': True})
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        with self.assertRaises(UserError) as error:
+            orden_kg.button_mark_done()
+        self.assertIn('crudo', str(error.exception))
+        self.assertNotEqual(orden_kg.state, 'done')
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(self.crudo, stock, 500.0)
+        orden_kg.action_assign()
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertEqual(orden_m.state, 'done')
+        # Con el parámetro, además pide un porcentaje del crudo planeado.
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.crudo_minimo_pct', '90')
+        orden_m2, orden_kg2, wo2, rollos2 = self._bano((40.0,))
+        crudo2 = orden_kg2._moves_crudo()
+        crudo2.write({'quantity': 45.0, 'picked': True})  # más que Rama, pero lejos de los 186.56 kg planeados
+        self._inspeccionar(orden_kg2, wo2, rollos2, 40.6, 460.0)
+        with self.assertRaisesRegex(UserError, 'planeados'):
+            orden_kg2.button_mark_done()
