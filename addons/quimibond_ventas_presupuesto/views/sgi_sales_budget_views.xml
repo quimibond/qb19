@@ -541,6 +541,16 @@
         <field name="code">action = records.action_qb_open_copy()</field>
     </record>
 
+    <!-- 3.6.0 -->
+    <record id="sgi_sales_budget_xlsx_server" model="ir.actions.server">
+        <field name="name">Descargar Excel</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_qb_download_xlsx()</field>
+    </record>
+
     <!-- 3.5.0 -->
     <record id="sgi_sales_budget_suggest_prices_server" model="ir.actions.server">
         <field name="name">Sugerir precios de la lista</field>

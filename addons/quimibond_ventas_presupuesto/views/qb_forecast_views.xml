@@ -193,6 +193,46 @@
         </field>
     </record>
 
+    <!-- 3.6.0: imprimir o descargar el pronóstico vigente. -->
+    <record id="qb_forecast_print_view_form" model="ir.ui.view">
+        <field name="name">qb.forecast.print.form</field>
+        <field name="model">qb.forecast.print</field>
+        <field name="arch" type="xml">
+            <form string="Imprimir o descargar el pronóstico">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Matriz cliente y planta × producto × semana del pronóstico vigente, en la unidad
+                        que elija. Los totales por cliente solo salen en metros o kilos (la unidad de venta
+                        no se suma entre productos).
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="weeks"/>
+                            <field name="unit"/>
+                        </group>
+                        <group>
+                            <field name="partner_ids" widget="many2many_tags"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_print" type="object" string="PDF" class="btn-primary" icon="fa-print"/>
+                    <button name="action_xlsx" type="object" string="Excel" class="btn-secondary" icon="fa-file-excel-o"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_forecast_print_action" model="ir.actions.act_window">
+        <field name="name">Imprimir o descargar el pronóstico</field>
+        <field name="res_model">qb.forecast.print</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
     <record id="qb_forecast_line_action" model="ir.actions.act_window">
         <field name="name">Pronóstico vigente</field>
         <field name="res_model">qb.forecast.line</field>
