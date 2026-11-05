@@ -248,7 +248,7 @@ class ProjectProjectCotizador(models.Model):
         Centro = self.env['qb.centro'].sudo()
         company = self.company_id or self.env.company
         groups, order = {}, []
-        for _product, op in self._sgi_dev_route_operations():
+        for _product, op in self._sgi_dev_capacity_operations():  # 1.10.0: con ruta de fichas, solo el crudo
             workcenter = op.workcenter_id
             centro = Centro.search([('workcenter_ids', 'in', workcenter.ids), ('company_id', '=', company.id)],
                                    limit=1) if workcenter else Centro

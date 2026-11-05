@@ -70,7 +70,9 @@ START_APPROVAL_LABELS = {
         'machines_row': "Circulares galga %s (producción real, promedio %s días): %s",
         'no_capacity': "Sin capacidad capturada", 'no_kg': "Sin conversión a kg (falta el rendimiento)",
         'no_route': "El artículo no tiene ruta capturada: solo se lista la materia prima.",
-        'capacity_note': "Porcentaje sobre la capacidad mensual de cada recurso en kg.",
+        'capacity_note': "Porcentaje sobre la capacidad mensual de cada recurso en kg. Las máquinas de la ruta de "
+                         "fichas van con su capacidad teórica: horas al mes de su calendario × 60 ÷ minutos por kg de "
+                         "la ficha (jets: kg por baño × baños al mes).",
         'approval_customer': "Aprobación del inicio del proyecto (cliente)",
         'approval_pnt': "Aprobación del inicio del proyecto PNT Quimibond",
         'medium': "Medio", 'date': "Fecha", 'approved_by': "Aprobó", 'reference': "Referencia",
@@ -111,7 +113,9 @@ START_APPROVAL_LABELS = {
         'machines_row': "Gauge %s circular machines (actual output, %s-day average): %s",
         'no_capacity': "No capacity on record", 'no_kg': "No conversion to kg (yield missing)",
         'no_route': "The item has no routing yet: only raw material is listed.",
-        'capacity_note': "Percentage of each resource's monthly capacity in kg.",
+        'capacity_note': "Percentage of each resource's monthly capacity in kg. Machines from the process route show "
+                         "their theoretical capacity: monthly calendar hours × 60 ÷ minutes per kg from the process "
+                         "sheet (dyeing machines: kg per bath × baths per month).",
         'approval_customer': "Project start approval (customer)",
         'approval_pnt': "Project start approval PNT Quimibond",
         'medium': "Medium", 'date': "Date", 'approved_by': "Approved by", 'reference': "Reference",
@@ -220,7 +224,16 @@ class ProjectProjectDevStartApproval(models.Model):
 
     def _sgi_dev_start_approval_labels(self):
         self.ensure_one()
+        if self.env.context.get('sgi_dev_labels_es'):
+            return START_APPROVAL_LABELS['es']
         return START_APPROVAL_LABELS['en' if self._sgi_dev_start_approval_is_en() else 'es']
+
+    def _sgi_dev_request_capacity(self):
+        """57.198.0: la misma tabla «Capacidad a utilizar» para la Solicitud de desarrollo (documento interno, siempre en
+        español): (etiquetas, tabla)."""
+        self.ensure_one()
+        project = self.with_context(sgi_dev_labels_es=True)
+        return project._sgi_dev_start_approval_labels(), project._sgi_dev_start_approval_capacity()
 
     def _sgi_dev_start_approval_format_ref(self):
         self.ensure_one()
@@ -357,7 +370,7 @@ class ProjectProjectDevStartApproval(models.Model):
         ``qb_costeo_sgi`` agrupa por centro de costo (``qb.centro``) y pone su capacidad medida."""
         self.ensure_one()
         groups = {}
-        for _product, op in self._sgi_dev_route_operations():
+        for _product, op in self._sgi_dev_capacity_operations():  # 57.198.0: con ruta de fichas, solo el crudo
             workcenter = op.workcenter_id
             group = groups.setdefault(workcenter.id, {'name': workcenter.display_name or op.name,
                                                       'capacity_kg': False, 'operations': []})
@@ -408,7 +421,9 @@ class ProjectProjectDevStartApproval(models.Model):
                 return ''
             return "%s %%" % _num(kg / capacity * 100.0, 3)
 
-        resources = self._sgi_dev_capacity_resources()
+        # 57.198.0: después de los recursos de las listas (con ruta de fichas, solo el tejido), una fila por máquina de
+        # la ruta de la app de fichas con su capacidad teórica (sgi_dev_capacity_fichas.py).
+        resources = self._sgi_dev_capacity_resources() + self._sgi_dev_capacity_fichas(L)
         # 57.158.0: las circulares que hoy corren la galga del artículo (ficha de la máquina) con su producción
         # real en kg; no sustituye la capacidad de la ruta, la acompaña.
         machines = self._sgi_dev_capacity_machines(L)
