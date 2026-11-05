@@ -40,6 +40,9 @@
               parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_budget_action" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
               parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_analysis_mercado_action" sequence="20"/>
+    <!-- 3.4.0 -->
+    <menuitem id="menu_sale_qb_price_check" name="Comparación de precios"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_price_check_action" sequence="30"/>
 
     <menuitem id="menu_sale_qb_grupo_config" name="Configuración"
               parent="menu_sale_sgi_planning" sequence="90"/>

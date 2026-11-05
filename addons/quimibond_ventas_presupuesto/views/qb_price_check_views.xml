@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.4.0: comparación de precios del forecast contra las listas de Odoo (diseño v3, 4.4). -->
+    <record id="qb_price_check_view_list" model="ir.ui.view">
+        <field name="name">qb.price.check.list</field>
+        <field name="model">qb.price.check</field>
+        <field name="arch" type="xml">
+            <list string="Comparación de precios" create="0" edit="0"
+                  decoration-success="state == 'igual'" decoration-danger="state == 'diferente'"
+                  decoration-warning="state in ('sin_regla', 'sin_producto', 'sin_cliente')">
+                <header>
+                    <button name="action_open_wizard" type="object" string="Comparar con forecast.xlsx"
+                            display="always" groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                </header>
+                <field name="client_excel" optional="hide"/>
+                <field name="partner_id"/>
+                <field name="code"/>
+                <field name="product_id" optional="show"/>
+                <field name="basis"/>
+                <field name="price_excel"/>
+                <field name="price_odoo"/>
+                <field name="currency_id" optional="show"/>
+                <field name="diff" optional="hide"/>
+                <field name="diff_pct"/>
+                <field name="state"/>
+                <field name="pricelist_id" optional="hide"/>
+                <field name="rule_id" optional="hide"/>
+                <field name="note" optional="show"/>
+                <field name="excel_row" optional="hide"/>
+                <field name="check_date" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_price_check_view_search" model="ir.ui.view">
+        <field name="name">qb.price.check.search</field>
+        <field name="model">qb.price.check</field>
+        <field name="arch" type="xml">
+            <search string="Comparación de precios">
+                <field name="partner_id"/>
+                <field name="code"/>
+                <field name="product_id"/>
+                <filter name="por_revisar" string="Por revisar" domain="[('state', '!=', 'igual')]"/>
+                <separator/>
+                <filter name="iguales" string="Iguales" domain="[('state', '=', 'igual')]"/>
+                <filter name="diferentes" string="Diferentes" domain="[('state', '=', 'diferente')]"/>
+                <filter name="sin_regla" string="Sin regla" domain="[('state', '=', 'sin_regla')]"/>
+                <filter name="sin_producto" string="Sin producto" domain="[('state', '=', 'sin_producto')]"/>
+                <filter name="sin_cliente" string="Sin cliente" domain="[('state', '=', 'sin_cliente')]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Resultado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_price_check_action" model="ir.actions.act_window">
+        <field name="name">Comparación de precios</field>
+        <field name="res_model">qb.price.check</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_partner': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay comparación</p>
+            <p>Use «Comparar con forecast.xlsx»: lee la hoja PRECIOS y compara cada precio contra la lista del
+               cliente en Odoo (igual, diferente, sin regla, sin producto, sin cliente).</p>
+        </field>
+    </record>
+
+    <record id="qb_price_check_wizard_view_form" model="ir.ui.view">
+        <field name="name">qb.price.check.wizard.form</field>
+        <field name="model">qb.price.check.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Comparar precios del forecast">
+                <div class="alert alert-info" role="status">
+                    Se lee la hoja PRECIOS. La comparación reemplaza la anterior; no cambia ninguna lista de precios.
+                </div>
+                <group>
+                    <field name="file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_compare" type="object" string="Comparar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

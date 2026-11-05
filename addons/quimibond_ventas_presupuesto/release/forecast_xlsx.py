@@ -311,3 +311,62 @@ def parse_workbook(workbook, years=None, sheets=None):
         warnings.extend(sheet_warnings)
         read.append(title)
     return {'rows': rows, 'warnings': warnings, 'sheets': read}
+
+
+# --- Hoja PRECIOS (3.4.0, comparación contra las listas de Odoo) -------------------
+PRICE_SHEET = 'PRECIOS'
+
+
+def _price(value):
+    """Precio de una celda; None si vacía, cero o texto (no se inventa)."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value) if value > 0 else None
+    text = _text(value).replace('$', '').replace(',', '').strip()
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    return number if number > 0 else None
+
+
+def parse_prices(rows):
+    """Renglones de la hoja PRECIOS del forecast → ``[{'client', 'code', 'price_m', 'price_kg',
+    'price_discount', 'yield_m_kg', 'row'}]``.
+
+    El encabezado es la fila con «CLIENTE» y «precio / m»; el código va en la columna siguiente a
+    CLIENTE (su encabezado es un código suelto, WJ055Q21JNT165). La moneda no está escrita: la decide
+    la lista del cliente en Odoo."""
+    rows = [list(r) for r in rows]
+    header_at = cols = None
+    for index, row in enumerate(rows[:30]):
+        names = [norm(c) for c in row]
+        if 'CLIENTE' in names and any(n.startswith('PRECIO') and n.endswith(' M') for n in names):
+            header_at = index
+            client_col = names.index('CLIENTE')
+            cols = {'client': client_col, 'code': client_col + 1}
+            for col, name in enumerate(names):
+                if name == 'PRECIO M':
+                    cols['price_m'] = col
+                elif name == 'PRECIO KG':
+                    cols['price_kg'] = col
+                elif name.startswith('PRECIO CON DESCUENTO'):
+                    cols['price_discount'] = col
+                elif name.startswith('RENDIMIENTO'):
+                    cols['yield_m_kg'] = col
+            break
+    if header_at is None:
+        return []
+    result = []
+    for n, row in enumerate(rows[header_at + 1:], start=header_at + 2):
+        def cell(key):
+            col = cols.get(key)
+            return row[col] if col is not None and col < len(row) else None
+        client, code = _text(cell('client')), _text(cell('code')).upper().replace(' ', '')
+        if not client or not code:
+            continue
+        entry = {'client': client, 'code': code, 'row': n,
+                 'price_m': _price(cell('price_m')), 'price_kg': _price(cell('price_kg')),
+                 'price_discount': _price(cell('price_discount')), 'yield_m_kg': _price(cell('yield_m_kg'))}
+        if entry['price_m'] or entry['price_kg']:
+            result.append(entry)
+    return result
