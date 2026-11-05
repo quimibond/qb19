@@ -11,7 +11,7 @@ Sustituye al pronóstico como documento (``sgi.sales.budget`` con
 ``kind='pronostico'``), que desde 3.0.0 es histórico: obsoleto y de solo lectura.
 """
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -230,10 +230,47 @@ class QbForecastLine(models.Model):
     # --- Captura en matriz (web_grid, 3.1.0; columna week_id desde 3.2.0) -------
     GRID_KEYS = ('partner_id', 'ship_to_id', 'plant', 'product_id', 'uom_origen', 'company_id')
 
+    @staticmethod
+    def _qb_domain_leaves(domain):
+        """Condiciones (campo, operador, valor) de un dominio, sea lista o ``Domain`` de Odoo 19."""
+        try:
+            from odoo.fields import Domain
+            return [(c.field_expr, c.operator, c.value) for c in Domain(domain).iter_conditions()]
+        except Exception:  # noqa: BLE001 - dominio en forma de lista
+            return [tuple(leaf) for leaf in (domain or []) if isinstance(leaf, (list, tuple)) and len(leaf) == 3]
+
     @api.model
     def _read_group_week_id(self, weeks, domain):
-        """La matriz muestra siempre las próximas 13 semanas, aunque no tengan pronóstico."""
-        return (weeks | self.env['qb.forecast.week']._qb_next()).sorted('monday')
+        """Columnas de la matriz: las semanas del periodo del filtro («Esta semana», «Este mes»…, aunque
+        estén vacías); sin periodo, las próximas 13 (3.3.0)."""
+        start = end = None
+        for name, op, value in self._qb_domain_leaves(domain):
+            if name != 'week' or not value or op not in ('>=', '>', '<', '<='):
+                continue
+            if isinstance(value, datetime):
+                day = value.date()
+            elif isinstance(value, date):
+                day = value
+            else:
+                day = fields.Date.to_date(str(value)[:10])
+            if op in ('>=', '>'):
+                day = day + timedelta(days=1) if op == '>' else day
+                start = max(start, day) if start else day
+            else:
+                day = day - timedelta(days=1) if op == '<' else day
+                end = min(end, day) if end else day
+        Week = self.env['qb.forecast.week']
+        if start and end and start <= end and (end - start).days <= 7 * 60:
+            first = start + timedelta(days=(7 - start.weekday()) % 7)
+            mondays = []
+            while first <= end:
+                mondays.append(first)
+                first += timedelta(weeks=1)
+            found = Week._qb_get(mondays)
+            period = Week.browse([found[m].id for m in mondays])
+        else:
+            period = Week._qb_next()
+        return (weeks | period).sorted('monday')
 
     @api.model
     def _qb_grid_cell(self, domain):
