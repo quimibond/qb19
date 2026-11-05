@@ -373,11 +373,14 @@ class SgiSalesBudget(models.Model):
         first = today.replace(day=1)
         return None if first.month == 1 else first - relativedelta(days=1)
 
-    @api.depends('line_ids.amount_budget', 'line_ids.date', 'line_ids.mercado', 'year', 'kind')
+    @api.depends('line_ids.amount_budget', 'line_ids.date', 'line_ids.mercado', 'year', 'kind', 'state')
     def _compute_fulfillment(self):
         labels = {'industrial': "Industrial", 'confeccion': "Confección", 'especiales': "Especiales"}
         for budget in self:
-            cutoff = budget._qb_cutoff() if budget.kind == 'presupuesto' else None
+            # 3.5.5: un documento obsoleto no mide cumplimiento (mostraba la venta de toda la
+            # empresa contra su único mercado: 396 %, 4,252 %).
+            cutoff = (budget._qb_cutoff()
+                      if budget.kind == 'presupuesto' and budget.state != 'obsoleto' else None)
             budget.cutoff_date = cutoff
             if not cutoff:
                 budget.amount_budget_to_date = budget.amount_sales_to_date = 0.0
