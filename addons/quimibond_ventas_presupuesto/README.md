@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Lector genérico por número de columna y .xls (19.0.3.3.1, 2026-11-05)
+
+El release de Shawmut Silao («SL 3254 Release for W45 2026.csv») trae todo el
+encabezado en una sola celda, así que la parte no se encuentra por nombre: el
+perfil acepta la **columna de la parte y la de la descripción por número**
+(Silao: 5 «Item» y 6 «Desc», fechas mes/día/año, unidad LY). El lector abre
+**.xls** si el servidor tiene `xlrd` (Odoo lo trae). El de Tennessee («Quimibond
+TN Release …xls») es una hoja de planeación con consumo, «Tennessee
+requirements» y saldos por parte: el genérico no la lee bien; va por captura
+hasta tener lector propio.
+
 ## Releases más rápidos (19.0.3.3.0, 2026-11-05)
 
 Diseño v3, sección 2.10 (puntos 3 y 4):
