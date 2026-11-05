@@ -74,6 +74,7 @@
                                 <field name="motivo_manual" invisible="weighing_mode != 'manual'"
                                        required="weighing_mode == 'manual'"/>
                                 <field name="metros"/>
+                                <field name="metros_teoricos" invisible="not metros_teoricos"/>
                                 <field name="no_empalmes"/>
                                 <field name="clasificacion" widget="radio" options="{'horizontal': true}"/>
                             </group>

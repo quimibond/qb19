@@ -26,6 +26,7 @@ class MrpProduction(models.Model):
     desperdicio_operador = fields.Char('Operador del desperdicio', readonly=True, copy=False)
     desperdicio_fecha = fields.Datetime('Desperdicio pesado el', readonly=True, copy=False)
     desperdicio_manual = fields.Boolean('Desperdicio capturado manualmente', readonly=True, copy=False)
+    desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
     es_pesaje_rollos = fields.Boolean(
         'Pesa por rollo en Rama', compute='_compute_es_pesaje_rollos',
         help='La orden tiene operación de Rama: el lote del terminado es el de cada rollo, no un lote '

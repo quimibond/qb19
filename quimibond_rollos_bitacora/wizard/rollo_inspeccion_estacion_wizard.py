@@ -5,13 +5,16 @@ Por cada rollo final que sale de la revisadora: se escanea el rollo de Rama (o v
 se pesa con la tara de Inspección, se capturan metros, calidad y defectos, se le asigna su lote ``M…`` y se imprime la
 etiqueta final. Para cortar, se registra un rollo final por pedazo con «Último pedazo» apagado y el último con él
 encendido: entonces el rollo de Rama queda inspeccionado. No se mueve inventario (D7).
+
+3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado), bloqueo de los rollos y de la orden mientras
+se registra (dos revisadoras a la vez) y el rollo escaneado se busca primero en este baño.
 """
 import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from ..models.mrp_rollo_bitacora import CLASIFICACIONES
+from ..models.mrp_rollo_bitacora import CLASIFICACIONES, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
 
@@ -29,7 +32,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     empleado_numero = fields.Char('Número de empleado', required=True)
     empleado_nombre = fields.Char('Operador', compute='_compute_empleado')
 
-    rollo_codigos = fields.Char('Rollos de Rama', help='Escanea la etiqueta de Rama. Para juntar rollos del mismo baño, '
+    rollo_codigos = fields.Char('Códigos de Rama', help='Escanea la etiqueta de Rama. Para juntar rollos del mismo baño, '
                                                        'escanea varios separados por espacio.')
     bitacora_ids = fields.Many2many('mrp.rollo.bitacora', compute='_compute_bitacora', string='Rollos de Rama')
     codigos_error = fields.Char(compute='_compute_bitacora')
@@ -52,6 +55,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
 
     orden_m_id = fields.Many2one('mrp.production', 'Orden (m)', compute='_compute_lote')
     lote_name = fields.Char('Lote del rollo final', compute='_compute_lote')
+    metros_teoricos = fields.Float('Metros teóricos', compute='_compute_merma', digits=(12, 2),
+                                   help='Kg netos × rendimiento de tela acabada de la ficha (alerta 2, v5.4 §9.1).')
     merma_kg = fields.Float('Merma (kg)', compute='_compute_merma', digits=(12, 4))
     merma_pct = fields.Float('Merma (%)', compute='_compute_merma', digits=(12, 2))
     alertas = fields.Text('Alertas', compute='_compute_merma')
@@ -84,7 +89,13 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         Bitacora = self.env['mrp.rollo.bitacora']
         for wiz in self:
             codigos = wiz._codigos(wiz.rollo_codigos)
-            rollos = Bitacora.search([('name', 'in', codigos)]) if codigos else Bitacora
+            rollos = Bitacora
+            if codigos:
+                # 3.3.0: primero los rollos de este baño; el mismo nombre en otra orden solo si aquí no existe.
+                encontrados = Bitacora.search([('name', 'in', codigos)])
+                propios = encontrados.filtered(lambda r: r.production_id == wiz.production_id)
+                ajenos = encontrados.filtered(lambda r: r.name not in propios.mapped('name'))
+                rollos = propios | ajenos
             wiz.bitacora_ids = rollos
             faltan = [c for c in codigos if c not in rollos.mapped('name')]
             wiz.codigos_error = ', '.join(faltan) or False
@@ -113,12 +124,31 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             wiz.lote_name = Final._nombre_lote(orden_m, Final._siguiente_secuencia(orden_m, orden_kg), orden_kg) \
                 if orden_kg else False
 
+    def _rendimiento_acabado(self):
+        """Rendimiento de tela acabada (m/kg) de la ficha del acabado en kg de esta orden; 0 si no hay ficha."""
+        self.ensure_one()
+        Ficha = self.env.get('ficha.tecnica.acabado')
+        if Ficha is None or 'rendimiento_tela_acabada' not in Ficha._fields or not self.product_id:
+            return 0.0
+        ficha = Ficha.search([('product_proceso_id', '=', self.product_id.id)], order='id desc', limit=1)
+        return ficha.rendimiento_tela_acabada or 0.0
+
     @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'termina_rollo', 'metros', 'kg_bruto')
     def _compute_merma(self):
-        """Merma del grupo (rollos de Rama ↔ rollos finales, §4.6), con alerta por porcentaje antes de guardar."""
-        limite = float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_MERMA_PCT, 3.0))
+        """Merma del grupo (rollos de Rama ↔ rollos finales, §4.6), con alerta por porcentaje antes de guardar. 3.3.0:
+        alerta 2 del v5.4 §9.1, metros contra kg netos × rendimiento de la ficha (parámetro de Ajustes, 3 %)."""
+        params = self.env['ir.config_parameter'].sudo()
+        limite = float(params.get_param(PARAM_ALERTA_MERMA_PCT, 3.0))
+        limite_metros = float(params.get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0))
         for wiz in self:
             avisos = []
+            rendimiento = wiz._rendimiento_acabado() if wiz.kg_neto > 0 else 0.0
+            wiz.metros_teoricos = wiz.kg_neto * rendimiento if rendimiento else 0.0
+            if wiz.metros_teoricos and wiz.metros and \
+                    abs(wiz.metros - wiz.metros_teoricos) > wiz.metros_teoricos * limite_metros / 100.0:
+                avisos.append(_('%(m).2f m contra %(t).2f m teóricos (%(kg).2f kg × %(r).4f m/kg de la ficha): '
+                                'revisa los metros o el peso.', m=wiz.metros, t=wiz.metros_teoricos, kg=wiz.kg_neto,
+                                r=rendimiento))
             salida = wiz.kg_ya_cortados + wiz.kg_neto
             wiz.merma_kg = wiz.kg_rama - salida if wiz.kg_rama else 0.0
             wiz.merma_pct = wiz.merma_kg / wiz.kg_rama * 100.0 if wiz.kg_rama else 0.0
@@ -184,8 +214,19 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         self.env['mrp.inspeccion.restriccion']._validar_centro(self.workcenter_id, self.product_id)
         return emp
 
+    def _bloquear(self):
+        """3.3.0: bloquea los rollos de Rama y la orden mientras se registra: dos revisadoras que escanean el mismo rollo,
+        o que sacan el consecutivo de la misma orden, esperan una a la otra en vez de duplicar."""
+        self.ensure_one()
+        if self.bitacora_ids:
+            self.env.cr.execute('SELECT id FROM mrp_rollo_bitacora WHERE id IN %s FOR UPDATE', [tuple(self.bitacora_ids.ids)])
+        ordenes = (self.orden_m_id | self.production_id).ids
+        self.env.cr.execute('SELECT id FROM mrp_production WHERE id IN %s FOR UPDATE', [tuple(ordenes)])
+        self.env.invalidate_all()
+
     def action_confirmar(self):
         self.ensure_one()
+        self._bloquear()
         emp = self._validar()
         Final = self.env['mrp.rollo.final']
         orden_m = self.orden_m_id
@@ -211,6 +252,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             'operador': operador,
             'siglas_operador': emp.siglas or False,
             'fecha': ahora,
+            'metros_teoricos': self.metros_teoricos,
+            'alerta_metros': bool(self.metros_teoricos) and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
+            * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()
         if self.termina_rollo:

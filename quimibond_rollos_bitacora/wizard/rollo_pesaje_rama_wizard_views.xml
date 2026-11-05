@@ -60,6 +60,10 @@
                             </div>
                             <span style="font-size: 1.6em; font-weight: bold;">KG</span>
                         </div>
+                        <group>
+                            <field name="motivo_manual" invisible="weighing_mode != 'manual'"
+                                   required="weighing_mode == 'manual'"/>
+                        </group>
                     </div>
                 </sheet>
                 <footer>

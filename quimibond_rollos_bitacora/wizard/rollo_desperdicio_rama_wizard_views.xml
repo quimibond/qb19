@@ -36,6 +36,10 @@
                                    style="font-size: 3em; font-weight: bold; text-align: center;"/>
                             <span style="font-size: 1.6em; font-weight: bold;">KG</span>
                         </div>
+                        <group invisible="ya_pesado">
+                            <field name="motivo_manual" invisible="weighing_mode != 'manual'"
+                                   required="weighing_mode == 'manual' and not ya_pesado"/>
+                        </group>
                     </div>
                 </sheet>
                 <footer>

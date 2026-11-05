@@ -3,7 +3,13 @@
 
 Casos de aceptación 1 a 11 del diseño ``docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md``
 (el 12, costeo, lo prueba ``qb_costeo``).
+
+3.3.0 (revisión del flujo, 2026-11-05), pruebas 15 a 20: dos baños para una orden en metros (el primero deja pendiente,
+el segundo lo cierra), baño de saldos con otro baño abierto, anular una captura, alerta de metros contra la ficha,
+motivo de la captura manual en Rama y en el desperdicio, lote reutilizable y mínimo de kg pesados para cerrar.
 """
+from unittest.mock import patch
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
@@ -199,8 +205,11 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
         self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.ubicacion_segunda', 'ZZ951 NO EXISTE')
-        with self.assertRaisesRegex(UserError, 'No existe la ubicación'):
+        # 3.3.0: assertRaises (no assertRaisesRegex) abre un savepoint y lo revierte, como la transacción de la pantalla;
+        # assertRaisesRegex de unittest no revierte nada y la prueba fallaba aunque el cierre sí es atómico.
+        with self.assertRaises(UserError) as error:
             orden_kg.button_mark_done()
+        self.assertIn('No existe la ubicación', str(error.exception))
         self.env.invalidate_all()
         self.assertNotEqual(orden_kg.state, 'done')
         self.assertNotEqual(orden_m.state, 'done')
@@ -246,3 +255,141 @@ class TestInspeccionEstacion(TransactionCase):
         consumo = orden_s.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
         self.assertAlmostEqual(consumo.quantity, 20.0)
 
+    # ------------------------------------------------------------------ 3.3.0
+    def _dos_banos(self, kg_a=(40.0,), kg_b=(40.0,)):
+        """Orden en metros de 2,000 m (169.6 kg) abastecida por dos baños de 84.8 kg, como la división de la
+        programación de tintorería."""
+        orden_m = self.env['mrp.production'].create({
+            'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id, 'bom_id': self.bom_m.id})
+        orden_m.action_confirm()
+        banos = []
+        for rollos_kg in (kg_a, kg_b):
+            orden_kg = self.env['mrp.production'].create({
+                'product_id': self.prod_kg.id, 'product_qty': 84.8, 'bom_id': self.bom_kg.id})
+            orden_kg.action_confirm()
+            terminado = orden_kg.move_finished_ids.filtered(lambda m: m.product_id == self.prod_kg)
+            raw = orden_m._clasif_move_a()
+            raw.move_orig_ids = raw.move_orig_ids | terminado
+            wo_rama = self.env['mrp.workorder'].create({
+                'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
+            wo_insp = self.env['mrp.workorder'].create({
+                'name': 'INSPECCION', 'production_id': orden_kg.id, 'workcenter_id': self.revisadora.id})
+            rollos = self.env['mrp.rollo.bitacora']
+            for i, kg in enumerate(rollos_kg, 1):
+                nombre = '%s-%04d' % (orden_kg.name.split('/')[-1], i)
+                lote = self.env['stock.lot'].create({
+                    'name': nombre, 'product_id': self.prod_kg.id, 'company_id': self.env.company.id})
+                rollos |= self.env['mrp.rollo.bitacora'].create({
+                    'production_id': orden_kg.id, 'secuencia': i, 'lot_id': lote.id, 'kg_rama': kg,
+                    'workcenter_rama_id': self.rama.id})
+                orden_kg._rama_registrar_movimiento(lote, kg, wo_rama)
+            banos.append((orden_kg, wo_insp, rollos))
+        return orden_m, banos
+
+    def test_15_dos_banos_una_orden_en_metros(self):
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
+        raiz = orden_m.name.split('/')[-1]
+        self._inspeccionar(kg_a, wo_a, rollos_a, 40.6, 460.0)
+        # El segundo baño se inspecciona antes de que cierre el primero: mismo consecutivo de lotes.
+        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
+        self.assertEqual(kg_b.rollo_final_kg_ids.name, 'M%s-0002' % raiz)
+
+        kg_a.button_mark_done()
+        self.assertEqual(kg_a.state, 'done')
+        self.assertEqual(orden_m.state, 'done', "El primer baño cierra su parte de la orden en metros")
+        self.assertAlmostEqual(orden_m.qty_produced, 460.0)
+        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        self.assertEqual(len(pendiente), 1, "Queda un pendiente para el segundo baño")
+        kg_por_m = self.bom_m.bom_line_ids.product_qty  # la lista guarda los kg por metro con su precisión
+        self.assertAlmostEqual(pendiente.product_qty, 84.8 / kg_por_m, delta=1.0,
+                               msg="El pendiente es lo planeado del segundo baño")
+        self.assertIn(kg_b, pendiente._ordenes_previas(), "El segundo baño abastece al pendiente")
+
+        kg_b.button_mark_done()
+        self.assertEqual(kg_b.state, 'done', "El segundo baño ya puede cerrar")
+        self.assertEqual(pendiente.state, 'done')
+        self.assertAlmostEqual(pendiente.qty_produced, 455.0)
+        self.assertEqual(kg_b.rollo_final_kg_ids.production_m_id, pendiente)
+        self.assertEqual(set((kg_a | kg_b).rollo_final_kg_ids.mapped('estado')), {'registrado'})
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 915.0)
+        self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')),
+                         "El último baño cierra sin dejar pendiente")
+
+    def test_16_bano_de_saldos_no_cancela_con_otro_bano_abierto(self):
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
+        self._inspeccionar(kg_a, wo_a, rollos_a, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(kg_a, wo_a, rollos_a, 9.0, 80.0, 'DESP')
+        kg_a.button_mark_done()
+        self.assertEqual(kg_a.state, 'done')
+        self.assertNotEqual(orden_m.state, 'cancel', "El otro baño la sigue abasteciendo")
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 29.0)
+        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
+        kg_b.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 455.0)
+
+    def test_17_anular_captura(self):
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
+        self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
+        segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
+        segunda.action_anular()
+        self.assertFalse(segunda.exists())
+        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "El rollo de Rama vuelve a quedar abierto")
+        with self.assertRaisesRegex(UserError, 'sin inspeccionar'):
+            orden_kg.button_mark_done()
+        self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'FE')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        with self.assertRaisesRegex(UserError, 'registrado'):
+            orden_kg.rollo_final_kg_ids[:1].action_anular()
+
+    def test_18_alerta_de_metros_contra_la_ficha(self):
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        Wizard = type(self.env['rollo.inspeccion.estacion.wizard'])
+        with patch.object(Wizard, '_rendimiento_acabado', return_value=11.8):
+            wiz = self.env['rollo.inspeccion.estacion.wizard'].new({
+                'production_id': orden_kg.id, 'workorder_id': wo.id, 'rollo_codigos': rollos.name,
+                'kg_bruto': 50.6, 'metros': 58.5, 'clasificacion': 'PQ', 'termina_rollo': True})
+            self.assertAlmostEqual(wiz.metros_teoricos, 49.1 * 11.8)
+            self.assertIn('teóricos', wiz.alertas, "585 capturado como 58.5 avisa")
+            wiz.metros = 580.0
+            self.assertFalse(wiz.alertas and 'teóricos' in wiz.alertas)
+            self._inspeccionar(orden_kg, wo, rollos, 50.6, 58.5)
+        final = orden_kg.rollo_final_kg_ids
+        self.assertTrue(final.alerta_metros)
+
+    def test_19_motivo_manual_en_rama_y_desperdicio(self):
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id})
+        orden_kg.action_confirm()
+        wo_rama = self.env['mrp.workorder'].create({
+            'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
+        valores = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                   'weighing_mode': 'manual', 'kg_bruto': 31.1}
+        with self.assertRaisesRegex(UserError, 'motivo'):
+            self.env['rollo.pesaje.rama.wizard'].create(valores).action_confirmar()
+        self.env['rollo.pesaje.rama.wizard'].create(dict(valores, motivo_manual='Báscula sin conexión')).action_confirmar()
+        rollo = orden_kg.rollo_bitacora_ids
+        self.assertAlmostEqual(rollo.kg_rama, 30.0)
+        self.assertEqual(rollo.motivo_manual_rama, 'Báscula sin conexión')
+        desp = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                'weighing_mode': 'manual', 'kg_desperdicio': 1.2}
+        with self.assertRaisesRegex(UserError, 'motivo'):
+            self.env['rollo.desperdicio.rama.wizard'].create(desp).action_confirmar()
+
+    def test_20_lote_reutilizable_y_minimo_para_cerrar(self):
+        Produccion = self.env['mrp.production']
+        lote = Produccion._insp_lote(self.prod_m, 'MZZ951-PRUEBA', self.env.company)
+        self.assertEqual(Produccion._insp_lote(self.prod_m, 'MZZ951-PRUEBA', self.env.company), lote,
+                         "Un lote sin movimientos se reutiliza si el cierre se repite")
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.cierre_minimo_pct', '50')
+        with self.assertRaisesRegex(UserError, 'mínimo'):
+            orden_kg.button_mark_done()
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.cierre_minimo_pct', '')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'kg planeados' in (m.body or '')))
