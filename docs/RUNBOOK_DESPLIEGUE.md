@@ -268,7 +268,7 @@ Enterprise): lo que se valida al cargarlo solo se ve en Odoo.sh.
   (el suite completo se detiene en las pruebas de nómina):
 
 ```bash
-odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi,/quimibond_sgi_pesaje,/quimibond_sgi_revisado,/quimibond_sgi_knowledge,/quimibond_sgi_studio --stop-after-init --no-http
+odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi,/quimibond_sgi_revisado,/quimibond_sgi_knowledge,/quimibond_sgi_studio --stop-after-init --no-http
 ```
 
   Guarda el log. `main` es la copia de producción (staging) y **no corre las
@@ -282,7 +282,7 @@ Si hace falta a mano, `odoo-update` recibe los módulos **separados por comas, s
 que `-u` de Odoo):
 
 ```bash
-odoo-update quimibond_sgi,quimibond_sgi_pesaje,quimibond_sgi_plm,quimibond_sgi_revisado,quimibond_sgi_knowledge,quimibond_sgi_studio
+odoo-update quimibond_sgi,quimibond_sgi_plm,quimibond_sgi_revisado,quimibond_sgi_knowledge,quimibond_sgi_studio
 odoosh-restart http && odoosh-restart cron
 ```
 

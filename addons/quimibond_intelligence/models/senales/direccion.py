@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Señales de dirección (spec §4): actividades vencidas por persona, firmas, acuses, acuerdos, obligaciones de qb_obligation (puente)."""
-from .base import senal, hoy, hace, dias, umbral, tiene_modelo, companias, doc, fila, agrupar
+"""Señales de dirección (spec §4): actividades vencidas por persona, firmas, acuses, acuerdos, obligaciones de qb_obligation (puente que solo resuelve lo que quedó)."""
+from .base import senal, hoy, hace, dias, umbral, tiene_modelo, doc, fila, agrupar
 
 
 @senal('carga_actividades')
@@ -59,12 +59,7 @@ def acuerdo_direccion_vencido(env, cfg):
 
 @senal('obligacion_legado')
 def obligacion_legado(env, cfg):
-    """Puente hasta retirar qb_obligation (plan B, paso 6). Antes de desinstalarlo hay que mandar un último lote vacío
-    (o desactivar la señal en senales_config) para que sus situaciones se resuelvan y no queden sin_datos."""
-    if not tiene_modelo(env, 'qb.obligation'):
-        return None
-    obs = env['qb.obligation'].sudo().search([('company_id', 'in', companias(env)), ('state', 'in', ('candidate', 'confirmed'))], order='date_deadline')
-    return [fila(f'obligacion_legado:qb.obligation:{o.id}', [doc(o, o.name, descripcion=(o.description or '')[:300], documento=f'{o.res_model},{o.res_id}' if o.res_model else None)],
-                 valor=dias(o.date_deadline) if o.date_deadline and o.date_deadline < hoy() else 0,
-                 valor_texto=f'{o.name} ({o.state}); vence {o.date_deadline}', vence=o.date_deadline, partner=o.partner_id, user=o.user_id,
-                 payload={'estado': o.state, 'tipo': o.obligation_type, 'area': o.area, 'origen': o.source, 'source_ref': o.source_ref}) for o in obs]
+    """Puente de qb_obligation, retirado del repo el 2026-11-04 (desinstalado en producción desde el 2026-10-06).
+    Manda un lote vacío para que las señales y situaciones que quedaron vivas en Supabase se resuelvan.
+    Cuando ya no quede ninguna vigente, se borra esta función y la fila de senales_config."""
+    return []

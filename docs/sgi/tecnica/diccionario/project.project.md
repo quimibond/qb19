@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_change.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`, `addons/quimibond_sgi/models/sgi_dev_customer.py`, `addons/quimibond_sgi/models/sgi_dev_dossier.py`, `addons/quimibond_sgi/models/sgi_dev_escalation.py`, `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_pilot.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_product_base.py`, `addons/quimibond_sgi/models/sgi_dev_product_proceso.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_review_notice.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_dev_start_approval.py`, `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_buttons.py`, `addons/quimibond_sgi/models/sgi_dev_change.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`, `addons/quimibond_sgi/models/sgi_dev_customer.py`, `addons/quimibond_sgi/models/sgi_dev_dossier.py`, `addons/quimibond_sgi/models/sgi_dev_escalation.py`, `addons/quimibond_sgi/models/sgi_dev_fabric_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_pilot.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_product_base.py`, `addons/quimibond_sgi/models/sgi_dev_product_proceso.py`, `addons/quimibond_sgi/models/sgi_dev_product_regen.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_release_specs.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_review_notice.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_dev_start_approval.py`, `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
 
-## Campos (143)
+## Campos (147)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -17,8 +17,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_approved_by_id` | Many2one | Aprobó (Dirección de Operaciones) | Persona de Dirección de Operaciones que aprueba la solicitud de desarrollo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:80` |
 | `sgi_dev_approved_date` | Datetime | Aprobada el | Cuándo se firmó «Aprobó» en la solicitud de desarrollo (se llena solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:167` |
 | `sgi_dev_base_product_id` | Many2one | Artículo de línea o base | Artículo existente que cumple la solicitud (producto de línea) o que sirve de base al desarrollo nuevo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:336` |
-| `sgi_dev_bom_pending_count` | Integer | Renglones de lista por capturar |  |  |  | compute `_compute_sgi_dev_bom_pending_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product_base.py:103` |
-| `sgi_dev_can_fix` | Boolean | Puede marcar la corrección | El usuario ocupa el puesto de Diseño de Producto o de Procesos. |  |  | compute `_compute_sgi_dev_can_fix`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_review_notice.py:75` |
+| `sgi_dev_bom_pending_count` | Integer | Renglones de lista por capturar |  |  |  | compute `_compute_sgi_dev_bom_pending_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product_base.py:121` |
+| `sgi_dev_can_approve_request` | Boolean | Puede aprobar la solicitud de desarrollo | Quien aprueba C1.07 según el SGI (o cualquiera si el SGI no lo tiene configurado). |  |  | compute `_compute_sgi_dev_button_access`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_buttons.py:28` |
+| `sgi_dev_can_assign_folio` | Boolean | Puede asignar folio FT | Administración de Ventas y Dirección de Operaciones (quienes aprueban los botones del desarrollo), Dirección del SGI y administradores. |  |  | compute `_compute_sgi_dev_button_access`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_buttons.py:34` |
+| `sgi_dev_can_fix` | Boolean | Puede marcar la corrección | El usuario ocupa el puesto de Diseño de Producto o de Procesos. |  |  | compute `_compute_sgi_dev_can_fix`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_review_notice.py:79` |
+| `sgi_dev_can_review_approve` | Boolean | Puede aprobar análisis y factibilidad | Quien aprueba C1.02 / C1.03 según el SGI (o cualquiera si el SGI no lo tiene configurado). |  |  | compute `_compute_sgi_dev_button_access`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_buttons.py:31` |
 | `sgi_dev_change_request_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_change_request_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_change.py:175` |
 | `sgi_dev_change_request_ids` | One2many | Solicitudes de modificación | Cada cambio que pide el cliente o que no dio el resultado esperado: causa, 5 porqués, solución y fases afectadas. Al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra; los cambios a la especificación quedan en la bitácora. |  | `sgi.dev.change.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_change.py:171` |
 | `sgi_dev_coa_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_coa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:226` |
@@ -36,7 +39,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_code_galga_range` | Char | Rango de la galga |  |  |  | compute `_compute_sgi_dev_code_galga_range`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:175` |
 | `sgi_dev_code_hilo_id` | Many2one | Tipo de hilo (6) | Posición 6: hilo natural, preteñido o reciclado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:161` |
 | `sgi_dev_code_peso` | Integer | Peso (3-5, g/m²) | Posiciones 3 a 5: masa por unidad de área en g/m². Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:159` |
-| `sgi_dev_code_proceso_code` | Char | Código acabado en kg | Código propuesto del acabado en kg: el del acabado con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). |  |  | compute `_compute_sgi_dev_code_proceso`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product_proceso.py:37` |
+| `sgi_dev_code_proceso_code` | Char | Código acabado en kg | Código propuesto del acabado en kg: el del acabado con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). |  |  | compute `_compute_sgi_dev_code_proceso`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product_proceso.py:39` |
 | `sgi_dev_code_tenido` | Boolean | Lleva teñido | Si la ruta tiene teñido se crea también el artículo I. Se propone cuando el color no es natural. |  |  | compute `_compute_sgi_dev_code_tenido`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_product.py:188` |
 | `sgi_dev_code_tenido_code` | Char | Código teñido | Código propuesto del teñido (I). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:194` |
 | `sgi_dev_consumption_annual` | Float | Consumo anual | Consumo anual estimado, en la unidad elegida. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:297` |
@@ -63,12 +66,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_dossier_done` | Integer | Requisitos cubiertos |  |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:33` |
 | `sgi_dev_dossier_html` | Html | Expediente ISO 9001 8.3 / APQP | Fases del APQP por pestaña: 1 planeación (análisis de mercado y de proyecto), 2 diseño del producto (cotización, aprobación del cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y fichas), 4 validación (muestra, envío, retroalimentación, pilotaje), 5 retroalimentación y mejora (cambios,… |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:25` |
 | `sgi_dev_dossier_total` | Integer | Requisitos del expediente |  |  |  | compute `_compute_sgi_dev_dossier_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_dossier.py:34` |
-| `sgi_dev_escalation_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_escalation_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:266` |
-| `sgi_dev_escalation_ids` | One2many | Avisos por tiempo |  |  | `sgi.dev.escalation` |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:265` |
+| `sgi_dev_escalation_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_escalation_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:268` |
+| `sgi_dev_escalation_ids` | One2many | Avisos por tiempo |  |  | `sgi.dev.escalation` |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:267` |
 | `sgi_dev_feasibility_ids` | One2many | Checklist de factibilidad |  |  | `sgi.dev.feasibility` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:325` |
 | `sgi_dev_feasibility_no` | Integer | Factibilidad en «No» | Renglones del checklist contestados con «No». |  |  | compute `_compute_sgi_dev_feasibility`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:328` |
 | `sgi_dev_feasibility_pending` | Integer | Factibilidad pendiente | Renglones del checklist sin contestar. |  |  | compute `_compute_sgi_dev_feasibility`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:326` |
-| `sgi_dev_fix_note` | Char | Qué se corrigió | Comentario corto (opcional) para Ventas al usar «Ya corregí». |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_review_notice.py:72` |
+| `sgi_dev_fix_note` | Char | Qué se corrigió | Comentario corto (opcional) para Ventas al usar «Ya corregí». |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_review_notice.py:76` |
 | `sgi_dev_format_code` | Char | Formato |  |  |  | compute `_compute_sgi_dev_format_code`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_request.py:37` |
 | `sgi_dev_hours_dev` | Float | Horas de desarrollo | Horas calendario desde la solicitud sin contar las esperas de materia prima. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:347` |
 | `sgi_dev_hours_mp` | Float | Horas de materia prima | Horas calendario acumuladas esperando materia prima. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:349` |
@@ -84,10 +87,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_line_key` | Selection | Línea | Línea de producción del desarrollo; define el checklist de factibilidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:323` |
 | `sgi_dev_market_id` | Many2one | Mercado | Mercado al que va el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:317` |
 | `sgi_dev_missing_partner` | Boolean | Falta el cliente | Desarrollo de origen cliente sin cliente capturado. |  |  | compute `_compute_sgi_dev_missing_partner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:23` |
-| `sgi_dev_mo_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_mo_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:78` |
-| `sgi_dev_mo_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:77` |
-| `sgi_dev_mp_line_ids` | One2many | Materia prima de la muestra |  |  | `sgi.dev.mp.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:82` |
-| `sgi_dev_mp_missing_count` | Integer | Materias primas que faltan |  |  |  | compute `_compute_sgi_dev_mp_missing_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:83` |
+| `sgi_dev_mo_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_mo_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:81` |
+| `sgi_dev_mo_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:80` |
+| `sgi_dev_mp_line_ids` | One2many | Materia prima de la muestra |  |  | `sgi.dev.mp.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:84` |
+| `sgi_dev_mp_missing_count` | Integer | Materias primas que faltan |  |  |  | compute `_compute_sgi_dev_mp_missing_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:85` |
 | `sgi_dev_mp_pending` | Boolean | Materia prima pendiente | Hay una espera de materia prima abierta: el reloj de desarrollo está detenido. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:345` |
 | `sgi_dev_mp_wait_ids` | One2many | Esperas de materia prima |  |  | `sgi.dev.mp.wait` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:344` |
 | `sgi_dev_norms` | Char | Norma(s) a cumplir |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:56` |
@@ -96,15 +99,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_other` | Text | Otras características |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:64` |
 | `sgi_dev_out_of_spec_count` | Integer | No conformes en corrida | Renglones cuya corrida quedó fuera de lo que pide el cliente. |  |  | compute `_compute_sgi_dev_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_request.py:68` |
 | `sgi_dev_packaging` | Text | Datos en la etiqueta y empaque |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:57` |
-| `sgi_dev_pending_hours` | Float | Horas de desarrollo en el paso |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:268` |
-| `sgi_dev_pending_step` | Char | Paso pendiente |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:267` |
+| `sgi_dev_pending_hours` | Float | Horas de desarrollo en el paso |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:270` |
+| `sgi_dev_pending_step` | Char | Paso pendiente |  |  |  | compute `_compute_sgi_dev_pending_step`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:269` |
 | `sgi_dev_pilot_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_pilot_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:340` |
 | `sgi_dev_pilot_ids` | One2many | Pilotajes |  |  | `sgi.dev.pilot` |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:339` |
 | `sgi_dev_prepared_by_id` | Many2one | Elaboró (Diseño y Desarrollo) | Persona de Diseño y Desarrollo que elaboró la solicitud. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:78` |
 | `sgi_dev_product_crudo_id` | Many2one | Artículo crudo | Artículo crudo (H) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:198` |
 | `sgi_dev_product_id` | Many2one | Artículo en desarrollo | Artículo generado para el desarrollo (lo crea el generador de código). Su referencia interna forma parte del nombre del proyecto. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:267` |
 | `sgi_dev_product_name` | Char | Producto pedido | Cómo llama el cliente al producto mientras no hay código de artículo. Forma parte del nombre del proyecto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:264` |
-| `sgi_dev_product_proceso_id` | Many2one | Artículo acabado en kg | Acabado en kg del desarrollo: sale de rama pesado y entra a la Clasificación final, que lo pasa a metros; también es el que se vende en kg. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product_proceso.py:40` |
+| `sgi_dev_product_proceso_id` | Many2one | Artículo acabado en kg | Acabado en kg del desarrollo: sale de rama pesado y entra a la Clasificación final, que lo pasa a metros; también es el que se vende en kg. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product_proceso.py:42` |
 | `sgi_dev_product_tenido_id` | Many2one | Artículo teñido | Artículo teñido (I) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:200` |
 | `sgi_dev_product_tmpl_ids` | One2many | Artículos del desarrollo |  |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:151` |
 | `sgi_dev_program` | Char | Programa | Programa o plataforma del cliente para el que es el producto (nombre). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:290` |
@@ -114,8 +117,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_requester_employee_id` | Many2one | Solicitante interno | Quien pide el desarrollo cuando es interno. |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:280` |
 | `sgi_dev_required_date` | Date | Fecha requerida | Fecha en que el cliente necesita el producto o la muestra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:319` |
 | `sgi_dev_required_doc_ids` | One2many | Información requerida al cliente | Documentos que el cliente pide para el diseño y desarrollo o que se entregan cuando el proyecto sea factible. |  | `sgi.dev.required.doc` |  |  | `addons/quimibond_sgi/models/sgi_dev_start_approval.py:188` |
-| `sgi_dev_requisition_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_requisition_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:87` |
-| `sgi_dev_requisition_ids` | One2many | Requisiciones a Compras |  |  | `approval.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:85` |
+| `sgi_dev_requisition_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_requisition_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:89` |
+| `sgi_dev_requisition_ids` | One2many | Requisiciones a Compras |  |  | `approval.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:87` |
 | `sgi_dev_review_date` | Datetime | Revisado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:341` |
 | `sgi_dev_review_note` | Char | Motivo del regreso | Qué falta cuando Ventas regresa el análisis. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:342` |
 | `sgi_dev_review_state` | Selection | Revisión de Ventas | Ventas aprueba juntos el análisis de Diseño de Producto y la factibilidad de Diseño de Procesos. Sin aprobación no se cotiza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:336` |
@@ -146,6 +149,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_team_id` | Many2one | Equipo de ventas | Equipo de ventas que atiende la solicitud (Industrial, Confección…). |  | `crm.team` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:283` |
 | `sgi_dev_tech_sheet_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_doc_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:331` |
 | `sgi_dev_tech_sheet_ids` | One2many | Fichas técnicas internas |  |  | `sgi.dev.tech.sheet` |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:330` |
+| `sgi_dev_tejido_id` | Many2one | Crudo de tejido | Opcional: el crudo (tejido) existente que usará el desarrollo. Vacío: el del artículo base, o el que ya consume el acabado si su código existe. «Generar» y «Regenerar artículos» lo ligan y arman el teñido con su código. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:203` |
 | `sgi_dev_type` | Selection | Tipo de desarrollo | Tipo de desarrollo que se solicita; define qué datos pide la solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:34` |
 | `sgi_dev_use` | Text | Descripción y uso del producto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:41` |
 | `sgi_dev_volume` | Float | Volumen estimado | Volumen mensual que el cliente estima comprar si el desarrollo se aprueba. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:47` |
@@ -154,7 +158,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_is_ft` | Boolean | Desarrollo de producto | El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de Diseño y Desarrollo ya lo traen marcado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:29` |
 | `sgi_is_improvement` | Boolean | Proyecto de mejora SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:9` |
 
-## Métodos públicos (54)
+## Métodos públicos (56)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -193,6 +197,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_print_sample_label` | — |
 | `action_sgi_dev_print_start_approval` | — |
 | `action_sgi_dev_process_sheets` | — |
+| `action_sgi_dev_regenerate_products` | — |
 | `action_sgi_dev_register_customer_approval` | Registra la aprobación del cliente y, si el proyecto estaba en «Aprobación del cliente» (o antes), lo pasa a «Muestra», donde recibe su folio FT. |
 | `action_sgi_dev_request_lab_tests` | — |
 | `action_sgi_dev_request_sample` | — |
@@ -200,6 +205,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_review_fixed` | Paso 4: Diseño de Producto o de Procesos corrigió lo que pidió Ventas. |
 | `action_sgi_dev_review_return` | — |
 | `action_sgi_dev_shipments` | — |
+| `action_sgi_dev_specs_to_sheet` | — |
 | `action_sgi_dev_start_approval` | Genera el PDF «Aprobación para iniciar el proyecto», asigna el folio FT si falta y lo deja en el proyecto y en el chatter. |
 | `action_sgi_dev_start_approval_mail` | Correo al cliente con el PDF (lo manda Administración de Ventas). |
 | `action_sgi_dev_tech_sheets` | — |
