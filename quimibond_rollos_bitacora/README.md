@@ -141,6 +141,28 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Número de baño y lotes (3.5.0, Dirección 2026-11-05)
+
+El folio de la tarjeta viajera (serie del 21 mil, impresa por bloques; el «21244» de «21244I1» y «21244 J1») daba
+nombre a los lotes de tintorería y acabado, tecleado a mano. La tarjeta se deja de usar con los centros de trabajo, así
+que **Odoo asigna el número de baño**:
+
+- **`numero_bano`** en la orden en kg: secuencia `quimibond_rollos_bitacora.numero_bano` (5 cifras, **empieza en
+  30001** para que se distinga la fase nueva; el siguiente número se cambia en Ajustes → Técnico → Secuencias). Única,
+  no se copia al duplicar ni al dividir.
+- **Cuándo se asigna:** cuando el baño ya es definitivo, porque la programación de tintorería divide la orden después
+  de confirmarla. Al empezar la primera operación de una orden con Rama (Tintorería lo usa al cargar el jet), al abrir
+  el pesaje de Rama o la estación de Inspección, o con «Asignar número» en la pestaña Rollos. Un baño cancelado deja
+  su número sin usar.
+- **Lotes:** Rama `<baño>-J0001` (la J es acabado, como en la planta) e Inspección `<baño>-0001`, el que queda en
+  inventario y llega al cliente (antes `<orden>-NNNN`, `M<orden en metros>-NNNN` y `K<orden en kg>-NNNN`). Sin I ni
+  número de rama: la tintorería, la rama y la inspección son la misma orden, el jet queda en la programación y la rama
+  en la bitácora del rollo.
+- **Cada baño su serie:** los rollos finales numeran por baño desde 0001, aunque varios baños abastezcan una orden en
+  metros (antes compartían el consecutivo de la orden en metros).
+- La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
+  (metros;kg;baño;rollo). La orden se busca por número de baño.
+
 ## Etiquetas preliminares de 68 x 38 mm (3.4.0, Dirección 2026-11-05)
 
 Hay dos etiquetas preliminares, una de Rama y otra de Inspección, de **68 mm de ancho x 38 mm de alto**

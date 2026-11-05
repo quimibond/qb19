@@ -132,27 +132,13 @@ class MrpRolloFinal(models.Model):
         return productos
 
     @api.model
-    def _ordenes_m_grupo(self, orden_m):
-        """3.3.0: la orden en metros y sus pendientes (``…-001``, ``…-002``): comparten el consecutivo de los lotes."""
-        return orden_m.production_group_id.production_ids | orden_m if orden_m.production_group_id else orden_m
-
-    @api.model
-    def _raiz_orden(self, orden):
-        """Último segmento del nombre sin el sufijo de pendiente: ``TL/OP-M/00008-002`` → ``00008``."""
-        segmento = orden.name.split('/')[-1]
-        if orden.backorder_sequence and '-' in segmento:
-            segmento = segmento.rsplit('-', 1)[0]
-        return segmento
-
     @api.model
     def _siguiente_secuencia(self, orden_m, orden_kg=None):
-        """Consecutivo por orden en metros (lote M…, 3.3.0: con sus pendientes) o, sin ella, por orden en kg (lote K…,
-        3.2.0)."""
-        dominio = [('production_m_id', 'in', self._ordenes_m_grupo(orden_m).ids)] if orden_m else \
-            [('production_id', '=', orden_kg.id), ('production_m_id', '=', False)]
+        """Consecutivo por baño (orden en kg), 3.5.0: el lote lleva el número de baño, así que cada baño tiene su serie
+        aunque varios abastezcan una orden en metros. `orden_m` queda por compatibilidad."""
         # 3.3.5: sin huecos. Al anular un rollo de en medio su número queda libre y el siguiente lo toma; un rollo anulado
         # no tiene lote (solo se registra al cerrar el baño), así que el nombre no choca.
-        usados = set(self.search(dominio).mapped('secuencia'))
+        usados = set(self.search([('production_id', '=', orden_kg.id)]).mapped('secuencia')) if orden_kg else set()
         secuencia = 1
         while secuencia in usados:
             secuencia += 1
@@ -160,12 +146,9 @@ class MrpRolloFinal(models.Model):
 
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
-        """``M<último segmento de la orden en metros>-NNNN`` (§4.2): la «M» lo distingue del rollo de Rama. Sin orden en
-        metros (venta en kg, 3.2.0): ``K<último segmento de la orden en kg>-NNNN``. 3.3.0: sin el sufijo de pendiente,
-        así los baños de una misma orden siguen un solo consecutivo."""
-        if orden_m:
-            return 'M%s-%04d' % (self._raiz_orden(orden_m), secuencia)
-        return 'K%s-%04d' % (orden_kg.name.split('/')[-1], secuencia)
+        """Lote del rollo final = número de baño + No. de rollo: «30001-0001» (3.5.0; antes M<orden en metros>-NNNN o
+        K<orden en kg>-NNNN). Es el que queda en inventario y va en la etiqueta final."""
+        return '%s-%04d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
 
     # ------------------------------------------------------------------ anular (3.3.0)
     def _revertir_rama(self):

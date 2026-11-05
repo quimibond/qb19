@@ -55,10 +55,10 @@ class RolloPesajeRamaWizard(models.TransientModel):
         return (ultimo.secuencia or 0) + 1
 
     def _nombre_lote(self, secuencia):
-        """Lote-serie = Orden de Fabricación + No. de rollo (§12.4): mismo formato que
-        pesaje_rollos_tejido (último segmento de la MO, para que quepa en la etiqueta pequeña)."""
+        """Lote del rollo de Rama = número de baño + «J» (acabado) + No. de rollo: «30001-J0001» (3.5.0). La «J» lo
+        distingue del rollo final de Inspección («30001-0001»). Sin número todavía, solo la vista previa."""
         self.ensure_one()
-        return '%s-%04d' % (self.production_id.name.split('/')[-1], secuencia)
+        return '%s-J%04d' % (self.production_id.numero_bano or _('(baño)'), secuencia)
 
     @api.depends('production_id')
     def _compute_secuencia(self):
@@ -101,6 +101,7 @@ class RolloPesajeRamaWizard(models.TransientModel):
                 'El artículo %s debe tener seguimiento por lote para registrar rollos.',
                 produccion.product_id.display_name))
 
+        produccion._asignar_numero_bano()
         secuencia = self._siguiente_secuencia()
         lote_name = self._nombre_lote(secuencia)
         if self.env['stock.lot'].search_count([

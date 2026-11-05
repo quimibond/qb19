@@ -242,6 +242,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         emp = self._validar()
         Final = self.env['mrp.rollo.final']
         orden_m = self.orden_m_id
+        self.production_id._asignar_numero_bano()
         secuencia = Final._siguiente_secuencia(orden_m, self.production_id)
         ahora = fields.Datetime.now()
         operador = ' - '.join(filter(None, [self.empleado_numero, emp.name or False]))
