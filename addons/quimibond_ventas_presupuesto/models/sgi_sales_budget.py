@@ -323,6 +323,34 @@ class SgiSalesBudget(models.Model):
                         {'budget_id': budget.id, 'month': month, 'rate': budget.rate_default})
         return True
 
+    def action_qb_prices_to_list_currency(self):
+        """3.6.1: los renglones con lista en otra moneda (dólares) y precio presupuestal en
+        pesos pasan a la moneda de la lista: precio = precio en pesos ÷ «Tipo de cambio para
+        todos los meses», y ese tipo de cambio queda en los 12 meses. El importe no cambia
+        (salvo redondeo); la desviación de precio deja de mezclar el tipo de cambio."""
+        for budget in self:
+            if budget.state != 'borrador':
+                raise UserError("Los precios se pasan a la moneda de la lista en un presupuesto en borrador.")
+            rate = budget.rate_default
+            if rate <= 0:
+                raise UserError("Escriba el tipo de cambio presupuestal en «Tipo de cambio para todos los "
+                                "meses» (pestaña Tipo de cambio).")
+            company_ccy = budget.currency_id
+            lines = budget.line_ids.filtered(
+                lambda l: l.price_input > 0 and l.list_currency_id and l.list_currency_id != company_ccy
+                and (l.price_currency_id or company_ccy) == company_ccy)
+            before = budget.amount_budget_total
+            budget.action_qb_apply_rate_all()
+            for line in lines:
+                line.write({'price_input': round(line.price_input / rate, 4),
+                            'price_currency_id': line.list_currency_id.id,
+                            'price_origen': line.price_origen or 'lista'})
+            budget.message_post(body=Markup(
+                "%d renglón(es) pasaron a la moneda de su lista con tipo de cambio %s. Importe %s → %s.") % (
+                    len(lines), '{:,.4f}'.format(rate), '{:,.2f}'.format(before),
+                    '{:,.2f}'.format(budget.amount_budget_total)))
+        return True
+
     def _qb_month_rate(self, month):
         """Tipo de cambio USD/MXN del mes: el del documento; si no hay, el presupuestal de
         Ajustes; 0 si tampoco (el renglón en dólares cuenta 0 y queda en «sin tipo de cambio»)."""

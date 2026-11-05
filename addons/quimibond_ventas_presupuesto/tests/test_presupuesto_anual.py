@@ -394,3 +394,26 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertIn('Pronóstico de ventas vigente', html.decode())
         self.assertIn('/web/content/', wizard.action_xlsx()['url'])
         self.assertEqual(wizard.action_print()['type'], 'ir.actions.report')
+
+    def test_19_pasar_precios_a_la_moneda_de_la_lista(self):
+        """3.6.1: precio en pesos de una lista en dólares → dólares con el tipo de cambio del
+        documento; el importe no cambia."""
+        pl = self.env['product.pricelist'].create({'name': 'Lista USD 19', 'currency_id': self.foreign.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': 2.0})
+        client = self.env['res.partner'].create({
+            'name': 'Cliente USD 19', 'is_company': True, 'team_id': self.team_ind.id,
+            'property_product_pricelist': pl.id})
+        budget = self.Budget.create({'year': 2025})
+        line = self._line(budget, partner_id=client.id, price_input=36.0,
+                          price_currency_id=self.own.id, date=date(2025, 3, 1))
+        amount = line.amount_budget
+        budget.rate_default = 18.0
+        budget.action_qb_prices_to_list_currency()
+        self.assertEqual(line.price_currency_id, self.foreign)
+        self.assertEqual(len(budget.rate_ids), 12)
+        self.assertAlmostEqual(line.price_input, round(36.0 / 18.0, 4), places=4)
+        if self.own == self.env.ref('base.MXN'):
+            self.assertAlmostEqual(line.amount_budget, amount, places=2)

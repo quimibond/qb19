@@ -21,6 +21,14 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Precios a la moneda de la lista (19.0.3.6.1, 2026-11-05)
+
+Pestaña Tipo de cambio → «Pasar precios a la moneda de la lista» (solo en
+borrador): los renglones con lista en dólares y precio presupuestal en pesos
+(los de 2026, desde la migración de 3.5.0) pasan a dólares con «Tipo de cambio
+para todos los meses», que queda en los 12 meses. El importe no cambia (salvo
+redondeo) y la desviación de precio deja de mezclar el tipo de cambio.
+
 ## PDF y Excel del presupuesto y del pronóstico (19.0.3.6.0, 2026-11-05)
 
 - **Presupuesto** (ficha → Imprimir, y engrane → «Descargar Excel»): resumen por
