@@ -26,9 +26,11 @@
               parent="menu_sale_sgi_planning" action="qb_demand_line_action" sequence="16"/>
     <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
               parent="menu_sale_sgi_planning" action="qb_forecast_change_action" sequence="17"/>
+    <!-- 2.0.1 (Jose, 2026-11-05): el Excel se carga una sola vez; después el pronóstico vive en Odoo
+         (releases y matriz). El botón queda solo para el administrador del SGI. -->
     <menuitem id="menu_sale_qb_forecast_import" name="Cargar forecast de Excel"
               parent="menu_sale_sgi_planning" action="qb_forecast_import_action" sequence="18"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+              groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sale_qb_forecast_sheet" name="Hojas del forecast"
               parent="menu_sale_sgi_planning" action="qb_forecast_sheet_action" sequence="26"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>

@@ -21,6 +21,12 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## El Excel se carga una sola vez (19.0.2.0.1, 2026-11-05)
+
+Decisión de Jose: el forecast de Excel es solo la carga inicial; después el
+pronóstico vive en Odoo (releases y la matriz de captura de E1b). El menú
+«Cargar forecast de Excel» queda solo para el administrador del SGI.
+
 ## Pronóstico vigente y Demanda por cliente (19.0.2.0.0, E1a, 2026-11-04)
 
 Primera parte de la entrega 1 del diseño v3
