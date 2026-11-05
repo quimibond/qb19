@@ -76,3 +76,21 @@ def test_csv_semicolon_and_xlsx_files():
     assert gt.parse_file(buffer.getvalue(), 'r.xlsx')['parts'][0]['customer_part'] == 'X-1'
     with pytest.raises(gt.GenericReleaseError):
         gt.parse_file(b'\xd0\xcf\x11\xe0', 'viejo.xls')
+
+
+def test_shawmut_silao_header_in_one_cell_by_column_number():
+    # Mismo acomodo que «SL 3254 Release for W45 2026.csv» (valores inventados).
+    text = ("Plant / Program End Date / Transit Qty / Release / Item / Desc / Greige / On-Hand Qty / Ordered CYTD / "
+            "Received CYTD / Mat Auth / Fab Auth / Weight Conv,,,,,,,,,,,,,11/2/26,11/9/26,11/16/26\r\n"
+            "12, ,0,0000999,900001,ZZJ042Q22JNT160 63,,100.5,1000,1000,2000,2000,0,240,,15\r\n"
+            ",,,,900002,ZZJ038Q22JNT160 63,,50,10,10,20,20,0,,,\r\n")
+    result = gt.parse_file(text.encode(), 'SL 3254 Release for W45 2026.csv', order='mdy', part_col=4, desc_col=5)
+    assert [p['customer_part'] for p in result['parts']] == ['900001']
+    part = result['parts'][0]
+    assert part['description'] == 'ZZJ042Q22JNT160 63'
+    assert part['lines'] == [{'date': date(2026, 11, 2), 'qty': 240.0}, {'date': date(2026, 11, 16), 'qty': 15.0}]
+
+
+def test_numeric_text_columns_are_not_the_part():
+    rows = [['Plant', 'Item', '2040-01-09', '2040-01-16'], ['12', 'ABC', '5', '6']]
+    assert gt.parse_rows(rows)['parts'][0]['customer_part'] == 'ABC'
