@@ -278,6 +278,8 @@
                     <div class="alert alert-danger" role="alert" invisible="no_client_count == 0">
                         <field name="no_client_count" class="oe_inline"/> renglón(es) de
                         Industrial o Especiales sin cliente: no se puede aprobar así.
+                        <button name="action_qb_open_set_partner" type="object"
+                                string="Poner cliente" class="btn-link"/>
                     </div>
                     <field name="needs_justification" invisible="1"/>
                     <div class="alert alert-danger" role="alert"
@@ -553,6 +555,63 @@
         <field name="binding_view_types">form</field>
         <field name="state">code</field>
         <field name="code">action = records.action_qb_open_copy()</field>
+    </record>
+
+    <!-- 3.6.4: poner cliente a varios renglones en una sola escritura. -->
+    <record id="qb_sales_budget_set_partner_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.budget.set.partner.form</field>
+        <field name="model">qb.sales.budget.set.partner</field>
+        <field name="arch" type="xml">
+            <form string="Poner cliente">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Pone el mismo cliente a todos los renglones elegidos de una vez. Un
+                        producto no puede quedar con renglones con cliente y sin cliente en el
+                        mismo mercado: elija todos los de ese producto. Sin cliente, los
+                        renglones quedan para todo el mercado.
+                    </div>
+                    <group>
+                        <field name="budget_id" readonly="1"/>
+                        <field name="partner_id"/>
+                    </group>
+                    <field name="line_ids">
+                        <list>
+                            <field name="mercado"/>
+                            <field name="product_id"/>
+                            <field name="proyecto_descripcion" optional="hide"/>
+                            <field name="partner_id"/>
+                            <field name="date"/>
+                            <field name="qty_budget"/>
+                            <field name="uom_id"/>
+                            <field name="amount_budget" sum="Total"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Poner cliente"
+                            class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_set_partner_server" model="ir.actions.server">
+        <field name="name">Poner cliente a renglones</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_qb_open_set_partner()</field>
+    </record>
+
+    <record id="qb_sales_budget_set_partner_lines_action" model="ir.actions.act_window">
+        <field name="name">Poner cliente</field>
+        <field name="res_model">qb.sales.budget.set.partner</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_sgi_sales_budget_line"/>
+        <field name="binding_view_types">list</field>
     </record>
 
     <!-- 3.6.0 -->

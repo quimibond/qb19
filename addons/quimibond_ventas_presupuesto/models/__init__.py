@@ -5,6 +5,7 @@ from . import sgi_sales_budget
 from . import sgi_sales_budget_line
 from . import qb_sales_budget_rate
 from . import qb_sales_budget_copy
+from . import qb_sales_budget_set_partner
 from . import sgi_sales_budget_import
 from . import sgi_budget_analytic
 from . import sgi_cron
