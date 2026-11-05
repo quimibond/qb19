@@ -13,8 +13,24 @@
                     <field name="sgi_sales_budget_alert_pct"/>
                 </setting>
                 <setting string="Tipo de cambio presupuestal USD→MXN"
-                         help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
+                         help="Para los meses del presupuesto sin tipo de cambio propio (se guarda en el documento al aprobar) y para el precio de lista de referencia. 0 = sin tipo de cambio: los renglones en dólares de esos meses cuentan 0.">
                     <field name="sgi_budget_planning_rate"/>
+                </setting>
+                <!-- 3.5.0: equipo de cada mercado del presupuesto anual. -->
+                <setting string="Equipos de los mercados del presupuesto"
+                         help="El real y lo pedido de cada renglón se miden en el equipo de su mercado. Los Proyectos usan el equipo de su mercado base.">
+                    <div class="content-group">
+                        <div class="row"><label class="col-lg-4" for="qb_team_industrial_id"/><field name="qb_team_industrial_id"/></div>
+                        <div class="row"><label class="col-lg-4" for="qb_team_confeccion_id"/><field name="qb_team_confeccion_id"/></div>
+                        <div class="row"><label class="col-lg-4" for="qb_team_especiales_id"/><field name="qb_team_especiales_id"/></div>
+                    </div>
+                </setting>
+                <setting string="Objetivo y mínimo de crecimiento (%)"
+                         help="Contra la venta del año anterior; valor inicial de cada revisión nueva.">
+                    <div class="content-group">
+                        <div class="row"><label class="col-lg-4" for="qb_objetivo_pct"/><field name="qb_objetivo_pct"/></div>
+                        <div class="row"><label class="col-lg-4" for="qb_minimo_pct"/><field name="qb_minimo_pct"/></div>
+                    </div>
                 </setting>
                 <setting string="Lista de precios presupuestal"
                          help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
