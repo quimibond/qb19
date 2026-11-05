@@ -20,6 +20,8 @@ vive en sgi_sales_budget_line.py, solo separada por tamaño.
 from collections import defaultdict
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+
 from markupsafe import Markup
 
 from odoo import models, fields, api
@@ -171,12 +173,29 @@ class SgiSalesBudget(models.Model):
     # globalmente porque mezclarían unidades distintas.
     amount_budget_total = fields.Monetary(string="Presupuesto (total)",
                                           compute='_compute_amount_totals')
-    amount_real_total = fields.Monetary(string="Facturado (total)",
-                                        compute='_compute_amount_totals')
+    amount_real_total = fields.Monetary(
+        string="Capturado por los renglones", compute='_compute_amount_totals',
+        help="Lo facturado que cae en un renglón (mismo producto, cliente, mes y equipo). No es "
+             "el cumplimiento: lo vendido fuera de los renglones no entra aquí.")
     amount_ordered_total = fields.Monetary(string="Pedido (total)",
                                            compute='_compute_amount_totals')
-    fulfillment_pct = fields.Float(string="% Cumplimiento (importe)",
-                                   compute='_compute_amount_totals')
+    # 3.5.4: el cumplimiento compara lo mismo contra lo mismo: venta (regla del VE-02,
+    # equipos de los mercados) contra presupuesto, los dos al cierre del último mes
+    # completo. Antes era «capturado por los renglones» contra el presupuesto del año
+    # entero (con meses que no han pasado), y la vista lo multiplicaba por 100.
+    cutoff_date = fields.Date(string="Corte", compute='_compute_fulfillment',
+                              help="Último día del último mes completo (o el 31 de diciembre de un año ya "
+                                   "cerrado).")
+    amount_budget_to_date = fields.Monetary(string="Presupuesto al corte", compute='_compute_fulfillment')
+    amount_sales_to_date = fields.Monetary(
+        string="Venta al corte", compute='_compute_fulfillment',
+        help="Venta neta de los equipos de los mercados (cuentas de ventas, la regla del VE-02) del "
+             "1 de enero al corte.")
+    fulfillment_pct = fields.Float(
+        string="Cumplimiento al corte (%)", compute='_compute_fulfillment', digits=(16, 1),
+        help="Venta al corte entre presupuesto al corte, por 100.")
+    fulfillment_by_mercado_text = fields.Char(string="Cumplimiento por mercado",
+                                              compute='_compute_fulfillment')
     amount_real_unbudgeted = fields.Monetary(
         string="Facturado NO presupuestado",
         compute='_compute_unbudgeted',
@@ -342,9 +361,46 @@ class SgiSalesBudget(models.Model):
             budget.amount_budget_total = sum(lines.mapped('amount_budget'))
             budget.amount_real_total = sum(lines.mapped('amount_real'))
             budget.amount_ordered_total = sum(lines.mapped('amount_ordered'))
-            budget.fulfillment_pct = (
-                round(budget.amount_real_total / budget.amount_budget_total * 100.0, 2)
-                if budget.amount_budget_total else 0.0)
+
+    def _qb_cutoff(self):
+        """Último día del último mes completo; 31-dic si el año ya pasó; None si no ha empezado."""
+        self.ensure_one()
+        today = fields.Date.context_today(self)
+        if not self.year or self.year > today.year:
+            return None
+        if self.year < today.year:
+            return date(self.year, 12, 31)
+        first = today.replace(day=1)
+        return None if first.month == 1 else first - relativedelta(days=1)
+
+    @api.depends('line_ids.amount_budget', 'line_ids.date', 'line_ids.mercado', 'year', 'kind')
+    def _compute_fulfillment(self):
+        labels = {'industrial': "Industrial", 'confeccion': "Confección", 'especiales': "Especiales"}
+        for budget in self:
+            cutoff = budget._qb_cutoff() if budget.kind == 'presupuesto' else None
+            budget.cutoff_date = cutoff
+            if not cutoff:
+                budget.amount_budget_to_date = budget.amount_sales_to_date = 0.0
+                budget.fulfillment_pct = 0.0
+                budget.fulfillment_by_mercado_text = False
+                continue
+            planned = defaultdict(float)
+            for line in budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff):
+                planned[MERCADO_BASE.get(line.mercado)] += line.amount_budget
+            sold = defaultdict(float)
+            for aml in budget._qb_sales_lines(date_to=cutoff):
+                sold[team_mercado(self.env, aml.move_id.team_id)] -= aml.balance
+            budget.amount_budget_to_date = sum(planned.values())
+            budget.amount_sales_to_date = sum(sold.values())
+            budget.fulfillment_pct = (round(budget.amount_sales_to_date / budget.amount_budget_to_date * 100.0, 1)
+                                      if budget.amount_budget_to_date else 0.0)
+            parts = []
+            for base in ('industrial', 'confeccion', 'especiales'):
+                if planned.get(base):
+                    parts.append("%s %.1f %%" % (labels[base], sold.get(base, 0.0) / planned[base] * 100.0))
+                elif sold.get(base):
+                    parts.append("%s sin presupuesto (%s vendidos)" % (labels[base], '{:,.0f}'.format(sold[base])))
+            budget.fulfillment_by_mercado_text = " · ".join(parts)
 
     @api.depends('line_ids.qty_budget', 'line_ids.qty_real', 'line_ids.uom_id')
     def _compute_qty_texts(self):
