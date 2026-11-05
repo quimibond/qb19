@@ -343,6 +343,9 @@
                             <field name="amount_sales_to_date"/>
                             <field name="fulfillment_pct"/>
                             <field name="fulfillment_by_mercado_text"/>
+                            <field name="amount_sales_budget_rate"/>
+                            <field name="fulfillment_budget_rate_pct"/>
+                            <field name="fx_effect"/>
                         </group>
                         <group>
                             <field name="amount_real_total"/>
@@ -394,6 +397,9 @@
                                 <field name="rate_default"/>
                                 <button name="action_qb_apply_rate_all" type="object"
                                         string="Aplicar a los 12 meses" class="btn-secondary"/>
+                                <button name="action_qb_prices_to_list_currency" type="object"
+                                        string="Pasar precios a la moneda de la lista" class="btn-secondary"
+                                        confirm="Los renglones con lista en dólares y precio en pesos pasan a dólares con este tipo de cambio, que queda en los 12 meses. ¿Continuar?"/>
                             </div>
                             <field name="rate_ids" context="{'default_budget_id': id}">
                                 <list string="Tipo de cambio" editable="bottom">

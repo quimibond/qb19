@@ -196,6 +196,18 @@ class SgiSalesBudget(models.Model):
         help="Venta al corte entre presupuesto al corte, por 100.")
     fulfillment_by_mercado_text = fields.Char(string="Cumplimiento por mercado",
                                               compute='_compute_fulfillment')
+    # 3.6.1: la misma venta a tipo de cambio presupuestal (lo vendido en dólares por el tipo
+    # de cambio del mes del presupuesto): cumplimiento sin el efecto del tipo de cambio.
+    amount_sales_budget_rate = fields.Monetary(
+        string="Venta al corte a TC presupuestal", compute='_compute_fulfillment',
+        help="Lo facturado en otra moneda, por el tipo de cambio presupuestal de su mes (el del "
+             "documento o el de Ajustes); lo facturado en pesos, tal cual.")
+    fx_effect = fields.Monetary(
+        string="Efecto del tipo de cambio", compute='_compute_fulfillment',
+        help="Venta al corte (TC real) menos venta al corte a TC presupuestal. Negativo: el peso se "
+             "apreció contra el presupuesto.")
+    fulfillment_budget_rate_pct = fields.Float(
+        string="Cumplimiento a TC presupuestal (%)", compute='_compute_fulfillment', digits=(16, 1))
     amount_real_unbudgeted = fields.Monetary(
         string="Facturado NO presupuestado",
         compute='_compute_unbudgeted',
@@ -323,6 +335,49 @@ class SgiSalesBudget(models.Model):
                         {'budget_id': budget.id, 'month': month, 'rate': budget.rate_default})
         return True
 
+    def action_qb_prices_to_list_currency(self):
+        """3.6.1: los renglones con lista en otra moneda (dólares) y precio presupuestal en
+        pesos pasan a la moneda de la lista: precio = precio en pesos ÷ «Tipo de cambio para
+        todos los meses», y ese tipo de cambio queda en los 12 meses. El importe no cambia
+        (salvo redondeo); la desviación de precio deja de mezclar el tipo de cambio."""
+        for budget in self:
+            if budget.state != 'borrador':
+                raise UserError("Los precios se pasan a la moneda de la lista en un presupuesto en borrador.")
+            rate = budget.rate_default
+            if rate <= 0:
+                raise UserError("Escriba el tipo de cambio presupuestal en «Tipo de cambio para todos los "
+                                "meses» (pestaña Tipo de cambio).")
+            company_ccy = budget.currency_id
+            lines = budget.line_ids.filtered(
+                lambda l: l.price_input > 0 and l.list_currency_id and l.list_currency_id != company_ccy
+                and (l.price_currency_id or company_ccy) == company_ccy)
+            before = budget.amount_budget_total
+            budget.action_qb_apply_rate_all()
+            for line in lines:
+                line.write({'price_input': round(line.price_input / rate, 4),
+                            'price_currency_id': line.list_currency_id.id,
+                            'price_origen': line.price_origen or 'lista'})
+            budget.message_post(body=Markup(
+                "%d renglón(es) pasaron a la moneda de su lista con tipo de cambio %s. Importe %s → %s.") % (
+                    len(lines), '{:,.4f}'.format(rate), '{:,.2f}'.format(before),
+                    '{:,.2f}'.format(budget.amount_budget_total)))
+        return True
+
+    def _qb_fx_factor(self, currency, month):
+        """Factor de ``currency`` a la moneda de la compañía con el TC presupuestal del mes
+        (pesos por dólar); 0 si no hay TC o el par no es USD/MXN."""
+        self.ensure_one()
+        rate = self._qb_month_rate(month)
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
+        mxn = self.env.ref('base.MXN', raise_if_not_found=False)
+        if rate <= 0:
+            return 0.0
+        if currency == usd and self.currency_id == mxn:
+            return rate
+        if currency == mxn and self.currency_id == usd:
+            return 1.0 / rate
+        return 0.0
+
     def _qb_month_rate(self, month):
         """Tipo de cambio USD/MXN del mes: el del documento; si no hay, el presupuestal de
         Ajustes; 0 si tampoco (el renglón en dólares cuenta 0 y queda en «sin tipo de cambio»)."""
@@ -384,19 +439,29 @@ class SgiSalesBudget(models.Model):
             budget.cutoff_date = cutoff
             if not cutoff:
                 budget.amount_budget_to_date = budget.amount_sales_to_date = 0.0
-                budget.fulfillment_pct = 0.0
+                budget.amount_sales_budget_rate = budget.fx_effect = 0.0
+                budget.fulfillment_pct = budget.fulfillment_budget_rate_pct = 0.0
                 budget.fulfillment_by_mercado_text = False
                 continue
             planned = defaultdict(float)
             for line in budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff):
                 planned[MERCADO_BASE.get(line.mercado)] += line.amount_budget
             sold = defaultdict(float)
+            at_budget_rate = 0.0
+            company_ccy = budget.currency_id
             for aml in budget._qb_sales_lines(date_to=cutoff):
                 sold[team_mercado(self.env, aml.move_id.team_id)] -= aml.balance
+                factor = 0.0
+                if aml.currency_id and aml.currency_id != company_ccy:
+                    factor = budget._qb_fx_factor(aml.currency_id, aml.move_id.invoice_date.month)
+                at_budget_rate += (-aml.amount_currency * factor) if factor else -aml.balance
             budget.amount_budget_to_date = sum(planned.values())
             budget.amount_sales_to_date = sum(sold.values())
-            budget.fulfillment_pct = (round(budget.amount_sales_to_date / budget.amount_budget_to_date * 100.0, 1)
-                                      if budget.amount_budget_to_date else 0.0)
+            budget.amount_sales_budget_rate = at_budget_rate
+            budget.fx_effect = budget.amount_sales_to_date - at_budget_rate
+            to_date = budget.amount_budget_to_date
+            budget.fulfillment_pct = round(budget.amount_sales_to_date / to_date * 100.0, 1) if to_date else 0.0
+            budget.fulfillment_budget_rate_pct = round(at_budget_rate / to_date * 100.0, 1) if to_date else 0.0
             parts = []
             for base in ('industrial', 'confeccion', 'especiales'):
                 if planned.get(base):
