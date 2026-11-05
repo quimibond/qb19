@@ -323,6 +323,11 @@ misma hoja que Jessica llena hoy. Y un asistente **«Pegar semanas desde Excel»
 hoja del `forecast.xlsx` (mismo lector que la carga inicial, sección 4.2): durante la transición Jessica puede seguir
 recibiendo en Excel y pegar.
 
+> **3.1.1–3.2.0 (2026-11-05):** la vista `grid` de 3.1.0 con columna fecha y `step="week"` tumbó el build: Odoo 19
+> no acepta `step` y el rango de una fecha da días (semana, mes) o meses (año). Desde 3.2.0 la columna es el
+> catálogo `qb.forecast.week` (un registro por lunes, `group_expand` con las próximas 13 semanas), en el menú
+> Pronóstico → Captura semanal.
+>
 > **Hecho en 3.1.0 (2026-11-05):** la matriz es una vista `grid` de `qb.forecast.line` (renglón cliente, planta,
 > producto y unidad; columna semana; celda `qty_origen`) con `grid_update_cell` propio (crea, suma, quita en cero,
 > bitácora). «Pegar semanas desde Excel» es el asistente `qb.forecast.paste`: lee el portapapeles de Excel
