@@ -216,6 +216,10 @@ class TestForecastE1(TransactionCase):
         Demand.action_qb_rebuild()
         self.assertTrue(Demand.search([('order_id', '=', order.id)]),
                         "Con la entrega abierta el pedido es demanda.")
+        order.action_lock()
+        Demand.action_qb_rebuild()
+        self.assertFalse(Demand.search([('order_id', '=', order.id)]), "Un pedido bloqueado no es demanda.")
+        order.action_unlock()
         order.picking_ids.action_cancel()
         self.assertTrue(order.order_line.qty_delivered < order.order_line.product_uom_qty)
         Demand.action_qb_rebuild()

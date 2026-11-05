@@ -46,6 +46,8 @@ el Programa Maestro (MPS) por ahora y reordenar los menús.
   entrega sin hacer ni cancelar. Antes bastaba con «pedido − entregado > 0»:
   273 de los 324 «atrasados» de producción eran faltantes cerrados sin
   backorder o productos cambiados al surtir (2026-11-05).
+  Un pedido **bloqueado** tampoco cuenta (ese día se bloquearon 223 pedidos ya
+  entregados que seguían «abiertos»).
 - **Cobertura del pronóstico** (cron semanal): sobre el pronóstico vigente,
   semanas firmes con pronóstico sin pedido y pedidos firmes sin pronóstico, en
   una actividad al Administrador de ventas sobre el cliente.

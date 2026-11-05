@@ -248,7 +248,8 @@ class QbForecastLine(models.Model):
         ``product_uom_qty − qty_delivered`` sea positivo: es un faltante que se cerró sin
         backorder o un producto que se cambió al surtir. En producción eran 273 de 324
         «atrasados» (2026-11-05)."""
-        domain = [('order_id.state', '=', 'sale'), ('company_id', '=', company.id),
+        # Un pedido bloqueado (Ventas lo cerró) ya no es demanda.
+        domain = [('order_id.state', '=', 'sale'), ('order_id.locked', '=', False), ('company_id', '=', company.id),
                   ('product_id', '!=', False), ('display_type', '=', False)]
         if partners:
             domain.append(('order_id.partner_id.commercial_partner_id', 'in', partners.ids))
