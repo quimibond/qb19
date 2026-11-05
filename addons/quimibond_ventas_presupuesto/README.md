@@ -21,6 +21,27 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Cantidad facturada sin las líneas de costo y conciliación por partida (19.0.3.5.2, 2026-11-05)
+
+El real de cada renglón sumaba también las dos líneas de costo (cogs) que Odoo
+agrega a cada línea de factura: la cantidad facturada salía al triple y el
+precio real a un tercio, así que casi todo el Industrial 2026 salía con
+desviación de precio «grave» (−70 %). El importe facturado no cambiaba (las
+líneas de costo se cancelan). Ahora el real, la precarga y la plantilla solo
+leen líneas de producto; la migración recalcula el real de todos los renglones.
+Además pone a los documentos que ya existían su fecha de revisión (la de
+creación; en 3.5.0 quedó la del update) y su venta del año anterior.
+
+**Conciliación de la venta del año** (engrane → «Conciliar facturado»): la
+venta del año es la del VE-02 (solo cuentas de ventas: una venta de activo
+fijo, un anticipo u otros ingresos ya no salen como «no presupuestado») y cada
+peso cae en una sola partida, con los cinco cliente–producto más grandes de
+cada una: mercado sin renglones en el presupuesto, notas de crédito y
+servicios sin producto de tela, saldos y desperdicio, mes sin ningún renglón,
+mismo cliente y producto en otro mes, producto presupuestado a otro cliente,
+producto no presupuestado a un cliente presupuestado y cliente sin presupuesto.
+El residuo es 0.
+
 ## Equipo de Industrial (19.0.3.5.1, 2026-11-05)
 
 La migración de 3.5.0 buscó los equipos por nombre sin idioma, y el equipo 1
