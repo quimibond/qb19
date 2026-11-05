@@ -11,6 +11,15 @@ from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
 
+def _market_teams(env, team):
+    """3.5.0: el real de un renglón se mide en el equipo de su mercado (Ajustes). En
+    las pruebas, los tres mercados base apuntan al equipo de la prueba."""
+    Param = env['ir.config_parameter'].sudo()
+    for base in ('industrial', 'confeccion', 'especiales'):
+        Param.set_param('quimibond_ventas_presupuesto.team_%s' % base, team.id)
+    return team
+
+
 def _seed_budget_pricelist(env, price):
     """Configura la lista presupuestal (P5) con una regla GLOBAL fija: valúa las
     líneas del presupuesto SIN cliente (antes se tomaba una lista arbitraria)."""
@@ -33,6 +42,7 @@ class TestSalesBudget(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.company = cls.env.company
         cls.team = cls.env['crm.team'].create({'name': 'Mercado Industrial KPI'})
+        _market_teams(cls.env, cls.team)
         # Por xmlid (el nombre depende del idioma): m/cm = Longitud, kg = Peso.
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.uom_cm = cls.env.ref('uom.product_uom_cm')
@@ -47,7 +57,7 @@ class TestSalesBudget(TransactionCase):
         _seed_budget_pricelist(cls.env, 20.0)
 
     def _budget(self, **vals):
-        base = {'year': 2040, 'team_id': self.team.id}
+        base = {'year': 2040}
         base.update(vals)
         return self.Budget.create(base)
 
@@ -73,16 +83,15 @@ class TestSalesBudget(TransactionCase):
     # ------------------------------------------------------------------
     def test_01_name_and_currency(self):
         budget = self._budget()
-        self.assertEqual(budget.name, "Presupuesto Mercado Industrial KPI 2040 Rev.1")
+        self.assertEqual(budget.name, "Presupuesto 2040 REV0")
         self.assertTrue(budget.folio.startswith('PPV-'))
         self.assertEqual(budget.currency_id, self.company.currency_id)
 
-    def test_02_unique_active_per_year_team(self):
-        self._budget()
+    def test_02_unique_active_per_year(self):
+        b1 = self._budget()
         with self.assertRaises(ValidationError):
-            self._budget()  # segundo no-obsoleto mismo año+equipo
-        # Uno obsoleto sí convive con uno vigente.
-        b1 = self.Budget.search([('team_id', '=', self.team.id)], limit=1)
+            self._budget()  # segunda revisión abierta del mismo año
+        # Una obsoleta sí convive con una abierta.
         b1.state = 'obsoleto'
         self._budget()  # ahora sí
 
@@ -232,12 +241,19 @@ class TestSalesBudget(TransactionCase):
         budget.with_user(manager).action_approve()
         action = budget.with_user(manager).action_revise()
         new = self.Budget.browse(action['res_id'])
-        self.assertEqual(budget.state, 'obsoleto', "La anterior se conserva obsoleta.")
+        self.assertEqual(budget.state, 'aprobado',
+                         "3.5.0: la aprobada sigue vigente hasta aprobar la nueva.")
         self.assertEqual(new.state, 'borrador')
-        self.assertEqual(new.revision, 2)
+        self.assertEqual(new.revision, 1)
+        self.assertEqual(new.name, "Presupuesto 2040 REV1")
         self.assertEqual(new.year, 2040)
         self.assertEqual(len(new.line_ids), 1, "Copia las líneas.")
         self.assertEqual(new.line_ids.qty_budget, 10.0)
+        # Al aprobar la REV1, la REV0 queda reemplazada (congelada, comparable).
+        new.with_user(manager).action_send_to_review()
+        new.with_user(manager).action_approve()
+        self.assertEqual(new.state, 'aprobado')
+        self.assertEqual(budget.state, 'reemplazado')
 
     def test_15_locked_price_and_partner_fields(self):
         # Fix del candado: price_unit_budget y partner_id también se
@@ -281,12 +297,13 @@ class TestSalesBudgetStep2(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado Confección PPV'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.product = cls.env['product.product'].create({
             'name': 'Entretela PPV', 'type': 'consu', 'uom_id': cls.uom_m.id})
 
     def _budget(self):
-        return self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        return self.Budget.create({'year': 2040})
 
     def test_01_grid_update_cell_creates_and_increments(self):
         budget = self._budget()
@@ -376,7 +393,7 @@ class TestSalesBudgetStep3(TransactionCase):
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente VE02'})
 
     def _team(self, name):
-        return self.env['crm.team'].create({'name': name})
+        return _market_teams(self.env, self.env['crm.team'].create({'name': name}))
 
     def _approved_budget(self, team, when, amount):
         # El importe ya no se captura: sale de la lista. Lista fija determinista
@@ -391,7 +408,7 @@ class TestSalesBudgetStep3(TransactionCase):
         partner = self.env['res.partner'].create(
             {'name': 'Cliente %s' % team.name, 'is_company': True})
         partner.property_product_pricelist = pl
-        budget = self.Budget.create({'year': when.year, 'team_id': team.id})
+        budget = self.Budget.create({'year': when.year})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': when, 'uom_id': self.uom_m.id, 'qty_budget': 100.0,
@@ -458,11 +475,11 @@ class TestSalesBudgetStep3(TransactionCase):
         team.user_id = self.env.user.id
         self._approved_budget(team, date(2040, 6, 1), 1000.0)
         self._invoice(team, date(2040, 6, 10), 500.0)  # 50% < 80%
+        budget = self.Budget.search([('year', '=', 2040), ('state', '=', 'aprobado')])
         self.Cron._sgi_sales_budget_month_close(date(2040, 6, 1), date(2040, 6, 30))
         acts = self.env['mail.activity'].search([
-            ('res_model', '=', 'sgi.sales.budget'),
-            ('user_id', '=', self.env.user.id)])
-        self.assertTrue(acts, "Equipo bajo umbral debe recibir aviso de cierre.")
+            ('res_model', '=', 'sgi.sales.budget'), ('res_id', '=', budget.id)])
+        self.assertTrue(acts, "Bajo umbral: aviso de cierre al Administrador de ventas.")
 
     def test_05_cierre_de_mes_no_avisa_si_cumple(self):
         team = self._team('Mercado cierre ok')
@@ -487,6 +504,7 @@ class TestSalesBudgetClient(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado cliente PPV'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.product = cls.env['product.product'].create({
             'name': 'Tela cliente PPV', 'type': 'consu', 'uom_id': cls.uom_m.id})
@@ -501,7 +519,7 @@ class TestSalesBudgetClient(TransactionCase):
             {'name': 'Cliente D', 'is_company': True})
 
     def _budget(self):
-        return self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        return self.Budget.create({'year': 2040})
 
     def _line(self, budget, partner=None, amount=0.0, product=None):
         return self.Line.create({
@@ -587,6 +605,7 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado precio PPV'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         # Moneda de la compañía y la divisa «extranjera» del par USD↔MXN: en
         # producción la compañía está en MXN; en una base de demo, en USD.
@@ -600,7 +619,7 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         cls.product = cls.env['product.product'].create({
             'name': 'Tela precio PPV', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 100.0})
-        cls.budget = cls.Budget.create({'year': 2040, 'team_id': cls.team.id})
+        cls.budget = cls.Budget.create({'year': 2040})
 
     def _pricelist(self, currency, price):
         pl = self.env['product.pricelist'].create({
@@ -659,7 +678,7 @@ class TestSalesBudgetOnlyQty(TransactionCase):
 
     def test_04_currency_text_mixed_clients(self):
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '10')
-        budget = self.Budget.create({'year': 2041, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2041})
         p_usd = self._partner_with_list(self._pricelist(self.own, 20.0), 'C propia')
         # Segundo producto para el cliente en divisa (evita esquema mixto).
         prod2 = self.env['product.product'].create(
@@ -683,14 +702,14 @@ class TestSalesBudgetOnlyQty(TransactionCase):
         prod0 = self.env['product.product'].create(
             {'name': 'Sin precio PPV', 'type': 'consu', 'uom_id': self.uom_m.id,
              'list_price': 0.0})
-        budget = self.Budget.create({'year': 2042, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2042})
         line = self._line(budget, qty=5.0, when=date(2042, 6, 1), product=prod0)
         self.assertFalse(line.has_list_price)
         self.assertEqual(budget.no_price_count, 1)
 
     def test_06_price_frozen_on_approve(self):
         partner = self._partner_with_list(self._pricelist(self.own, 50.0))
-        budget = self.Budget.create({'year': 2043, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2043})
         line = self._line(budget, partner, when=date(2043, 6, 1))
         self.assertAlmostEqual(line.price_unit_budget, 50.0, places=2)
         budget.state = 'aprobado'
@@ -711,6 +730,7 @@ class TestSalesBudgetImport(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Wizard = cls.env['sgi.sales.budget.import']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado import PPV'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.uom_kg = cls.env.ref('uom.product_uom_kgm')
         cls.tela = cls.env['product.product'].create({
@@ -751,7 +771,7 @@ class TestSalesBudgetImport(TransactionCase):
             'conflict_mode': mode})
 
     def test_01_import_matrix(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         wiz = self._wizard(budget)
         wiz.action_import()
         # TELA-1: enero + febrero (2 líneas); FIBRA-1: enero (1). Total 3.
@@ -762,14 +782,14 @@ class TestSalesBudgetImport(TransactionCase):
         # El $ del Excel (5000) se IGNORA: el importe sale de la lista
         # (100 × list_price 30 = 3000), y el resultado lo nota.
         self.assertAlmostEqual(tela_ene.amount_budget, 3000.0, places=2)
-        self.assertIn('importes se calculan de la lista', wiz.result)
+        self.assertIn('el importe es cantidad × precio', wiz.result)
         self.assertEqual(tela_ene.uom_id, self.uom_m)
         fibra = budget.line_ids.filtered(lambda l: l.product_id == self.fibra)
         self.assertEqual(fibra.uom_id, self.uom_kg, "Unidad kg de la columna UNIDAD.")
         self.assertEqual(fibra.qty_budget, 50.0)
 
     def test_02_unmatched_reported_not_fatal(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         wiz = self._wizard(budget)
         wiz.action_import()
         self.assertIn('NOEXISTE', wiz.result)
@@ -778,7 +798,7 @@ class TestSalesBudgetImport(TransactionCase):
         self.assertEqual(len(budget.line_ids), 3)
 
     def test_03_reimport_replace_no_duplicate(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self._wizard(budget).action_import()
         self.assertEqual(len(budget.line_ids), 3)
         # Reimportar en modo reemplazar no duplica.
@@ -793,7 +813,7 @@ class TestSalesBudgetImport(TransactionCase):
         ws.append(['x', 'y'])
         buf = io.BytesIO()
         wb.save(buf)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         wiz = self.Wizard.create({
             'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
             'sheet_name': 'Sheet'})
@@ -802,7 +822,7 @@ class TestSalesBudgetImport(TransactionCase):
         self.assertFalse(budget.line_ids, "Error estructural: se revierte todo.")
 
     def test_05_approved_budget_blocks_import(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self.env['sgi.sales.budget.line'].create({
             'budget_id': budget.id, 'product_id': self.tela.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1.0})
@@ -820,6 +840,7 @@ class TestSalesBudgetTemplate(TransactionCase):
         super().setUpClass()
         cls.Budget = cls.env['sgi.sales.budget']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado plantilla'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
@@ -870,7 +891,7 @@ class TestSalesBudgetTemplate(TransactionCase):
         self._invoice(self.cli1, self.prod_a)
         self._invoice(self.cli1, self.prod_b)
         self._invoice(self.cli2, self.prod_a)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         ws, _ = self._read_template(budget)
         # Header en la fila 2 (fila 1 = instrucción).
         self.assertEqual(ws.cell(2, 1).value, 'PRODUCTO')
@@ -886,12 +907,14 @@ class TestSalesBudgetTemplate(TransactionCase):
 
     def test_02_roundtrip_download_fill_import(self):
         self._invoice(self.cli1, self.prod_a)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         ws, att = self._read_template(budget)
-        # Fila del par (PA-TPL, cli1); ENERO m está en la columna 4.
+        # Fila del par (PA-TPL, cli1); 3.5.0: ENERO m está en la columna 5
+        # (PRODUCTO, CLIENTE, MERCADO, UNIDAD).
         row = next(r for r in range(3, ws.max_row + 1)
                    if ws.cell(r, 1).value == 'PA-TPL')
-        ws.cell(row, 4).value = 250
+        self.assertEqual(ws.cell(row, 3).value, 'Industrial')
+        ws.cell(row, 5).value = 250
         import base64
         import io
         buf = io.BytesIO()
@@ -910,7 +933,7 @@ class TestSalesBudgetTemplate(TransactionCase):
         # Plantilla grande, ninguna cantidad → cero líneas (filas vacías se ignoran).
         self._invoice(self.cli1, self.prod_a)
         self._invoice(self.cli2, self.prod_b)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         ws, att = self._read_template(budget)
         import base64
         import io
@@ -924,12 +947,13 @@ class TestSalesBudgetTemplate(TransactionCase):
 
     def test_02c_row_without_client_makes_global_line(self):
         self._invoice(self.cli1, self.prod_a)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         ws, att = self._read_template(budget)
         row = next(r for r in range(3, ws.max_row + 1)
                    if ws.cell(r, 1).value == 'PA-TPL')
         ws.cell(row, 2).value = None   # borra el cliente → global
-        ws.cell(row, 4).value = 120
+        ws.cell(row, 3).value = 'Confección'
+        ws.cell(row, 5).value = 120
         import base64
         import io
         buf = io.BytesIO()
@@ -944,23 +968,23 @@ class TestSalesBudgetTemplate(TransactionCase):
         self.assertEqual(line.qty_budget, 120.0)
 
     def test_03_actions_filter_by_kind(self):
-        b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        b = self.Budget.create({'year': 2040})
         # 3.0.0: el pronóstico por documento es histórico; solo la migración lo crea.
         f = self.Budget.with_context(qb_allow_old_forecast=True).create({
-            'year': 2040, 'team_id': self.team.id, 'kind': 'pronostico', 'partner_id': self.cli1.id})
+            'year': 2040, 'kind': 'pronostico', 'partner_id': self.cli1.id})
         act_b = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_action')
         act_f = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_forecast_action')
         budgets = self.Budget.search(
-            [('team_id', '=', self.team.id)] + list(eval(act_b.domain)))
+            [('id', 'in', (b | f).ids)] + list(eval(act_b.domain)))
         forecasts = self.Budget.search(
-            [('team_id', '=', self.team.id)] + list(eval(act_f.domain)))
+            [('id', 'in', (b | f).ids)] + list(eval(act_f.domain)))
         self.assertIn(b, budgets)
         self.assertNotIn(f, budgets)
         self.assertIn(f, forecasts)
         self.assertNotIn(b, forecasts)
 
     def test_04_template_only_on_draft(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         budget.state = 'aprobado'
         with self.assertRaises(UserError):
             budget.action_download_template()
@@ -977,6 +1001,7 @@ class TestSalesBudgetAnalysis(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Cron = cls.env['sgi.cron']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
@@ -1002,7 +1027,7 @@ class TestSalesBudgetAnalysis(TransactionCase):
 
     def test_01_view_month_invoices(self):
         inv = self._invoice(self.pa, date(2040, 6, 10), 5.0, 10.0)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         line = self.Line.create({
             'budget_id': budget.id, 'product_id': self.pa.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1014,7 +1039,7 @@ class TestSalesBudgetAnalysis(TransactionCase):
     def test_03_month_close_note_lists_top_gaps(self):
         self.team.user_id = self.env.user.id
         # Presupuesto grande, facturación baja → brecha; PA mayor brecha que PB.
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.pa.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1000.0})
@@ -1045,13 +1070,14 @@ class TestSalesBudgetAnalysisViews(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado analisis 53'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.product = cls.env['product.product'].create({
             'name': 'Prod 53', 'type': 'consu', 'uom_id': cls.uom_m.id,
             'list_price': 5.0})
 
     def _budget_line(self, year, state):
-        budget = self.Budget.create({'year': year, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': year})
         line = self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(year, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1109,6 +1135,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado precio 54'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         # Moneda de la compañía y divisa del par USD↔MXN (producción: MXN;
         # base de demo: USD). factor = precio compañía / precio divisa con el
@@ -1162,7 +1189,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
         # sin cruce de divisas.
         client = self._client(self._pricelist(self.own, 100.0))
         self._invoice(client, 5.0, 110.0, self.own)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         line = self._line(budget, client)
         self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
         self.assertAlmostEqual(line.price_real_unit_currency, 110.0, places=2)
@@ -1176,7 +1203,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
         self.Param.set_param('quimibond_sgi.budget_planning_rate', '20')
         client = self._client(self._pricelist(self.foreign, 1000.0 / self.factor))
         self._invoice(client, 5.0, 1100.0, self.own)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         line = self._line(budget, client)
         self.assertEqual(line.list_currency_id, self.foreign)
         self.assertTrue(line.price_gap_fx, "Factura en otra moneda: cruza divisas.")
@@ -1186,7 +1213,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
     def test_03_thresholds_from_settings(self):
         client = self._client(self._pricelist(self.own, 100.0))
         self._invoice(client, 5.0, 105.0, self.own)  # +5%
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         line = self._line(budget, client)
         # Default tol 3 / grave 10 → 5% = leve.
         self.assertEqual(line.price_gap_alert, 'leve')
@@ -1207,7 +1234,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
              'list_price': 0.0})
         client = self.env['res.partner'].create(
             {'name': 'Cli sin precio', 'is_company': True})
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self.Line.create({
             'budget_id': budget.id, 'product_id': prod0.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
@@ -1242,7 +1269,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
         manager = self.env['res.users'].create({
             'name': 'MAST 54', 'login': 'mast54',
             'group_ids': [(6, 0, [self.env.ref('quimibond_sgi.group_sgi_manager').id])]})
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self.Line.create({
             'budget_id': budget.id, 'product_id': prod0.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
@@ -1255,7 +1282,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
 
     def test_05_refresh_does_not_change_frozen_price(self):
         client = self._client(self._pricelist(self.own, 100.0))
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         line = self._line(budget, client)
         self.assertAlmostEqual(line.price_unit_currency, 100.0, places=2)
         budget.state = 'aprobado'
@@ -1271,7 +1298,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
     def test_06_coverage_report_and_deviation_count(self):
         client = self._client(self._pricelist(self.own, 100.0))
         self._invoice(client, 5.0, 130.0, self.own)  # +30% → grave
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         self._line(budget, client)
         self.assertEqual(budget.price_deviation_count, 1)
         act = budget.action_view_price_deviations()
@@ -1315,7 +1342,7 @@ class TestSalesBudgetLifecycle55(TransactionCase):
             'group_ids': [(6, 0, [cls.env.ref('quimibond_sgi.group_sgi_user').id])]})
 
     def _team(self, name):
-        return self.env['crm.team'].create({'name': name})
+        return _market_teams(self.env, self.env['crm.team'].create({'name': name}))
 
     def _invoice(self, team, partner, product, when, qty):
         move = self.env['account.move'].create({
@@ -1330,8 +1357,7 @@ class TestSalesBudgetLifecycle55(TransactionCase):
 
     # (iii) presupuesto: requiere revisado antes de aprobado y grupo Dirección.
     def test_03_budget_review_then_director_approves(self):
-        team = self._team('L55 flow')
-        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        budget = self.Budget.create({'year': 2040})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1350,8 +1376,7 @@ class TestSalesBudgetLifecycle55(TransactionCase):
 
     # (vi) cron de junio crea la actividad de revaluación al Admin de ventas.
     def test_06_june_revaluation_creates_activity(self):
-        team = self._team('L55 junio')
-        budget = self.Budget.create({'year': 2040, 'team_id': team.id})
+        budget = self.Budget.create({'year': 2040})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1374,6 +1399,7 @@ class TestSalesBudgetImportPartner(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Wizard = cls.env['sgi.sales.budget.import']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado import cli'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.prod = cls.env['product.product'].create({
             'name': 'Prod cli', 'default_code': 'HFXPROD', 'type': 'consu',
@@ -1395,7 +1421,7 @@ class TestSalesBudgetImportPartner(TransactionCase):
             ws.append([code, client, qty])
         buf = io.BytesIO()
         wb.save(buf)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2040})
         wiz = self.Wizard.create({
             'budget_id': budget.id, 'file': base64.b64encode(buf.getvalue()),
             'sheet_name': 'Presupuesto'})
@@ -1454,6 +1480,7 @@ class TestSalesBudgetPricePlausibility(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado plausible'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.usd = cls.env.ref('base.USD')
         cls.env.ref('base.MXN').active = True
@@ -1484,7 +1511,7 @@ class TestSalesBudgetPricePlausibility(TransactionCase):
         return pl
 
     def _line(self, pricelist):
-        budget = self.Budget.create({'year': 2044, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2044})
         return self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2044, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0,
@@ -1532,13 +1559,14 @@ class TestSalesBudgetBudgetPricelist(TransactionCase):
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
         cls.team = cls.env['crm.team'].create({'name': 'Mercado ppto PL'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.product = cls.env['product.product'].create({
             'name': 'Tela ppto PL', 'default_code': 'PPTOPL', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 7.0})
 
     def _global_line(self):
-        budget = self.Budget.create({'year': 2045, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2045})
         return self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2045, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1572,7 +1600,7 @@ class TestSalesBudgetBudgetPricelist(TransactionCase):
         client = self.env['res.partner'].create(
             {'name': 'Cli PPTO', 'is_company': True})
         client.property_product_pricelist = pl
-        budget = self.Budget.create({'year': 2045, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2045})
         line = self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2045, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0,
@@ -1591,6 +1619,7 @@ class TestSalesBudgetReviewedGovernance(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado gob'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.product = cls.env['product.product'].create({
             'name': 'Tela gob', 'default_code': 'GOB', 'type': 'consu',
@@ -1601,7 +1630,7 @@ class TestSalesBudgetReviewedGovernance(TransactionCase):
                 cls.env.ref('sales_team.group_sale_manager').id])]})
 
     def _reviewed_budget(self):
-        budget = self.Budget.create({'year': 2046, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2046})
         line = self.Line.create({
             'budget_id': budget.id, 'product_id': self.product.id,
             'date': date(2046, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1648,6 +1677,7 @@ class TestSalesBudgetReconcile(TransactionCase):
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.team = cls.env['crm.team'].create({'name': 'Mercado concilia'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
@@ -1683,7 +1713,7 @@ class TestSalesBudgetReconcile(TransactionCase):
 
     def test_01_reconcile_balances_exactly(self):
         # Presupuesto: p_pres POR CLIENTE cli_a.
-        budget = self.Budget.create({'year': 2047, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2047})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.p_pres.id,
             'date': date(2047, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0,
@@ -1710,7 +1740,7 @@ class TestSalesBudgetReconcile(TransactionCase):
         self.assertAlmostEqual(d['no_team'], 200.0, places=2)
 
     def test_02_action_posts_and_notifies(self):
-        budget = self.Budget.create({'year': 2047, 'team_id': self.team.id})
+        budget = self.Budget.create({'year': 2047})
         self.Line.create({
             'budget_id': budget.id, 'product_id': self.p_pres.id,
             'date': date(2047, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0,
@@ -1724,7 +1754,7 @@ class TestSalesBudgetReconcile(TransactionCase):
 
     def test_03_reconcile_only_presupuesto(self):
         fc = self.Budget.with_context(qb_allow_old_forecast=True).create({
-            'year': 2047, 'team_id': self.team.id, 'kind': 'pronostico',
+            'year': 2047, 'kind': 'pronostico',
             'partner_id': self.cli_a.id})
         with self.assertRaises(UserError):
             fc.action_reconcile_invoiced()
@@ -1743,6 +1773,7 @@ class TestSalesBudgetMultiCompany(TransactionCase):
         cls.company_a = cls.env.company
         cls.company_b = cls.env['res.company'].create({'name': 'Compañía B SGI'})
         cls.team = cls.env['crm.team'].create({'name': 'Mercado multi'})
+        _market_teams(cls.env, cls.team)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income'),
@@ -1771,7 +1802,7 @@ class TestSalesBudgetMultiCompany(TransactionCase):
         # compañía (equivale a "la factura de B no entra al presupuesto de A").
         self._invoice_a()
         budget_a = self.Budget.create({
-            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_a.id})
+            'year': 2048, 'company_id': self.company_a.id})
         self.Line.create({
             'budget_id': budget_a.id, 'product_id': self.product.id,
             'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1780,7 +1811,7 @@ class TestSalesBudgetMultiCompany(TransactionCase):
         self.assertAlmostEqual(budget_a.line_ids.amount_real, 1000.0, places=2)
 
         budget_b = self.Budget.create({
-            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_b.id})
+            'year': 2048, 'company_id': self.company_b.id})
         self.Line.create({
             'budget_id': budget_b.id, 'product_id': self.product.id,
             'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 10.0})
@@ -1806,7 +1837,7 @@ class TestSalesBudgetMultiCompany(TransactionCase):
             'name': 'Prod A multi', 'default_code': 'PA-MULTI', 'type': 'consu',
             'uom_id': self.uom_m.id})
         budget = self.Budget.create({
-            'year': 2048, 'team_id': self.team.id, 'company_id': self.company_a.id})
+            'year': 2048, 'company_id': self.company_a.id})
         self.Line.create({
             'budget_id': budget.id, 'product_id': prod_a.id,
             'date': date(2048, 6, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0,
@@ -1839,8 +1870,7 @@ class TestBudgetAnalyticLink(TransactionCase):
     """P-3: el presupuesto de gastos (app Presupuestos) apunta al de ventas."""
 
     def test_01_expense_budget_links_sales_budget(self):
-        team = self.env['crm.team'].create({'name': 'Mercado P-3'})
-        sales = self.env['sgi.sales.budget'].create({'year': 2041, 'team_id': team.id})
+        sales = self.env['sgi.sales.budget'].create({'year': 2041})
         expense = self.env['budget.analytic'].create({
             'name': 'Gastos 2041', 'date_from': date(2041, 1, 1), 'date_to': date(2041, 12, 31),
             'budget_type': 'expense', 'sgi_sales_budget_id': sales.id})

@@ -22,6 +22,13 @@ _MONTHS = {
     'noviembre': 11, 'diciembre': 12,
 }
 _QTY_TOKENS = {'m', 'cant', 'cantidad', 'unidades', 'cantidades'}
+# 3.5.0: columna MERCADO de la plantilla (etiqueta o clave, sin acentos).
+_MERCADO_TEXT = {
+    'industrial': 'industrial', 'proyectos industrial': 'proyectos_industrial',
+    'proyectos_industrial': 'proyectos_industrial', 'confeccion': 'confeccion',
+    'proyectos confeccion': 'proyectos_confeccion', 'proyectos_confeccion': 'proyectos_confeccion',
+    'especiales': 'especiales',
+}
 _AMOUNT_TOKENS = {'$', 'importe', 'pesos', 'importes', 'mxn'}
 
 
@@ -97,6 +104,7 @@ class SgiSalesBudgetImport(models.TransientModel):
                 "No se encontró la fila de encabezados (debe haber una celda "
                 "'PRODUCTO'). Revisa la hoja seleccionada.")
         unit_col = client_col = None
+        self._qb_cols = {}
         month_cols = {}
         for c in range(1, (ws.max_column or 0) + 1):
             if c == prod_col:
@@ -109,6 +117,9 @@ class SgiSalesBudgetImport(models.TransientModel):
                 continue
             if text == 'cliente':
                 client_col = c
+                continue
+            if text in ('mercado', 'precio', 'moneda'):
+                self._qb_cols[text] = c
                 continue
             tokens = text.replace('$', ' $ ').split()
             month = next((_MONTHS[t] for t in tokens if t in _MONTHS), None)
@@ -273,6 +284,10 @@ class SgiSalesBudgetImport(models.TransientModel):
                         unmatched.append("%s / cliente '%s'" % (
                             product.default_code or product.name, ctext))
                         continue
+            extra = self._qb_row_extra(ws, r, partner, warnings)
+            if extra is None:
+                unmatched.append("%s / fila %d" % (product.default_code or product.name, r))
+                continue
             if self.conflict_mode == 'replace' and product.id not in cleared:
                 budget.line_ids.filtered(
                     lambda l: l.product_id == product).unlink()
@@ -289,17 +304,47 @@ class SgiSalesBudgetImport(models.TransientModel):
             for month, qty in months.items():
                 if self._upsert_line(
                         budget, product, date(budget.year, month, 1), uom,
-                        partner and partner.id, qty, warnings):
+                        partner and partner.id, qty, warnings, extra):
                     imported += 1
         if any(k == 'amount' for (_m, k) in month_cols):
-            warnings.append("Las columnas de importe ($) se ignoraron: los "
-                            "importes se calculan de la lista de precios.")
+            warnings.append("Las columnas de importe ($) se ignoraron: el importe es "
+                            "cantidad × precio × tipo de cambio del mes.")
         return imported, unmatched, warnings
 
-    def _upsert_line(self, budget, product, line_date, uom, partner_id, qty, warnings):
-        """Crea/suma una línea (SOLO cantidad; el precio/importe lo pone la lista).
-        Errores de datos (unidad, esquema mixto, semana fuera de año) se reportan y
-        NO abortan la hoja (savepoint por línea)."""
+    def _qb_row_extra(self, ws, row, partner, warnings):
+        """Mercado y precio de la fila (columnas MERCADO, PRECIO y MONEDA de la plantilla
+        3.5.0). Sin MERCADO, el del cliente; None si el mercado no se reconoce."""
+        cols = getattr(self, '_qb_cols', {})
+        extra = {}
+        if cols.get('mercado'):
+            text = _norm(ws.cell(row, cols['mercado']).value)
+            if text:
+                mercado = _MERCADO_TEXT.get(text)
+                if not mercado:
+                    warnings.append("Fila %d: mercado «%s» no reconocido." % (
+                        row, ws.cell(row, cols['mercado']).value))
+                    return None
+                extra['mercado'] = mercado
+        if cols.get('precio'):
+            price = self._as_number(ws.cell(row, cols['precio']).value)
+            if price > 0:
+                extra.update(price_input=price, price_origen='excel')
+                ccy_text = (str(ws.cell(row, cols['moneda']).value or '').strip().upper()
+                            if cols.get('moneda') else '')
+                if ccy_text:
+                    currency = self.env['res.currency'].with_context(active_test=False).search(
+                        [('name', '=', ccy_text)], limit=1)
+                    if not currency:
+                        warnings.append("Fila %d: moneda «%s» no existe; se tomó la de la "
+                                        "compañía." % (row, ccy_text))
+                    else:
+                        extra['price_currency_id'] = currency.id
+        return extra
+
+    def _upsert_line(self, budget, product, line_date, uom, partner_id, qty, warnings, extra=None):
+        """Crea/suma una línea (cantidad, y mercado y precio si la fila los trae; sin
+        precio se sugiere de la lista). Errores de datos (unidad, esquema mixto, fecha
+        fuera de año) se reportan y NO abortan la hoja (savepoint por línea)."""
         Line = self.env['sgi.sales.budget.line']
         domain = [('budget_id', '=', budget.id), ('product_id', '=', product.id),
                   ('date', '=', line_date),
@@ -310,11 +355,11 @@ class SgiSalesBudgetImport(models.TransientModel):
                 if existing and self.conflict_mode == 'add':
                     existing.qty_budget += qty
                     return True
-                vals = {
+                vals = dict(extra or {}, **{
                     'budget_id': budget.id, 'product_id': product.id,
                     'date': line_date, 'uom_id': uom.id,
                     'partner_id': partner_id or False, 'qty_budget': qty,
-                }
+                })
                 Line.create(vals)
                 return True
         except (ValidationError, UserError) as exc:

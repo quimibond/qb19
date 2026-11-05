@@ -6,38 +6,44 @@
         <field name="model">sgi.sales.budget.line</field>
         <field name="arch" type="xml">
             <list string="Líneas de presupuesto" editable="bottom"
-                  decoration-warning="price_gap_alert == 'leve'"
-                  decoration-danger="price_gap_alert == 'grave'">
+                  decoration-muted="not price_problem and qty_budget == 0"
+                  decoration-danger="price_problem">
                 <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
                 <field name="kind" column_invisible="1"/>
                 <field name="price_gap_alert" column_invisible="1"/>
-                <field name="product_id"/>
+                <field name="mercado"/>
                 <field name="partner_id" optional="show"/>
+                <field name="product_id"/>
+                <field name="proyecto_descripcion" optional="show"/>
                 <field name="date"/>
                 <field name="uom_id"/>
                 <!-- 1.2.0 (V-M10): totales al pie de cantidad e importe. -->
                 <field name="qty_budget" sum="Total"/>
+                <field name="qty_m" readonly="1" optional="hide" sum="Total"/>
+                <field name="qty_kg" readonly="1" optional="hide" sum="Total"/>
                 <field name="qty_forecast" readonly="1" optional="hide"/>
-                <field name="price_unit_currency" readonly="1" optional="show"/>
+                <field name="price_input"/>
+                <field name="price_currency_id" options="{'no_create': True}"/>
+                <field name="price_basis"/>
+                <field name="price_origen" readonly="1" optional="hide"/>
+                <field name="rate" readonly="1" optional="hide"/>
+                <field name="amount_currency" readonly="1" optional="hide"/>
+                <field name="amount_budget" readonly="1" sum="Total"/>
+                <field name="price_problem" readonly="1" optional="show"/>
+                <field name="price_unit_currency" readonly="1" optional="hide"/>
+                <field name="list_currency_id" optional="hide"/>
+                <field name="price_source" readonly="1" optional="hide"/>
                 <field name="price_real_unit_currency" readonly="1" optional="hide"/>
                 <field name="price_gap_pct" readonly="1" optional="hide"/>
-                <field name="price_gap_fx" readonly="1" optional="hide"/>
-                <field name="amount_currency" readonly="1" optional="hide"/>
-                <field name="list_currency_id" optional="hide"/>
-                <field name="price_unit_budget" readonly="1" optional="hide"/>
-                <field name="amount_budget" readonly="1" optional="show" sum="Total"/>
-                <field name="has_list_price" readonly="1" optional="hide"/>
-                <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show" sum="Total"/>
                 <field name="amount_real" readonly="1" optional="show" sum="Total"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide" sum="Total"/>
-                <field name="avg_price_budget" readonly="1" optional="hide"/>
-                <field name="avg_price_real" readonly="1" optional="hide"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
                 <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
-                        string="Ver facturas del mes" title="Ver facturas del mes"/>
+                        string="Ver facturas del mes" title="Ver facturas del mes"
+                        invisible="not product_id"/>
             </list>
         </field>
     </record>
@@ -50,30 +56,47 @@
                 <header>
                     <field name="kind" invisible="1"/>
                     <button name="action_view_month_invoices" type="object"
-                            string="Ver facturas del mes" icon="fa-file-text-o"/>
+                            string="Ver facturas del mes" icon="fa-file-text-o"
+                            invisible="not product_id"/>
                 </header>
                 <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="not price_problem">
+                        Este renglón cuenta 0 en el importe: <field name="price_problem" readonly="1" class="oe_inline"/>.
+                    </div>
                     <group>
-                        <group>
+                        <group string="Qué se presupuesta">
                             <field name="budget_id"/>
-                            <field name="product_id"/>
+                            <field name="mercado"/>
                             <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="proyecto_descripcion" invisible="product_id"/>
+                            <field name="proyecto_gramaje" invisible="product_id"/>
+                            <field name="proyecto_ancho_cm" invisible="product_id"/>
                             <field name="date"/>
+                        </group>
+                        <group string="Cantidad y precio">
                             <field name="uom_id"/>
+                            <field name="qty_budget"/>
+                            <field name="qty_m" readonly="1"/>
+                            <field name="qty_kg" readonly="1"/>
+                            <field name="conv_origen" readonly="1"/>
+                            <field name="price_input"/>
+                            <field name="price_currency_id" options="{'no_create': True}"/>
+                            <field name="price_basis"/>
+                            <field name="price_origen" readonly="1"/>
+                            <field name="rate" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_currency" readonly="1"/>
+                            <field name="amount_budget" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Precio de lista (referencia)">
+                        <group>
+                            <field name="list_currency_id" invisible="1"/>
+                            <field name="price_unit_currency" readonly="1"/>
+                            <field name="has_list_price" readonly="1"/>
                         </group>
                         <group>
-                            <field name="qty_budget"/>
-                            <field name="currency_id" invisible="1"/>
-                            <field name="list_currency_id" invisible="1"/>
-                            <label for="price_unit_currency" string="Precio (divisa)"
-                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
-                            <field name="price_unit_currency" nolabel="1" readonly="1"
-                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
-                            <field name="amount_currency" readonly="1"
-                                   invisible="not list_currency_id or list_currency_id == currency_id"/>
-                            <field name="price_unit_budget" readonly="1"/>
-                            <field name="amount_budget" readonly="1"/>
-                            <field name="has_list_price" readonly="1"/>
                             <field name="price_source" readonly="1"/>
                         </group>
                     </group>
@@ -102,6 +125,10 @@
         <field name="arch" type="xml">
             <grid string="Matriz de cantidades" editable="1" create_inline="1"
                   display_empty="1">
+                <!-- 3.5.0: fila = mercado, cliente y producto (los proyectos sin código se
+                     capturan en la lista). -->
+                <field name="mercado" type="row"/>
+                <field name="partner_id" type="row"/>
                 <field name="product_id" type="row"/>
                 <!-- 3.2.1: sin <range>. Odoo 19 rechaza el elemento (rangos fijos: se elige semana, mes o
                      año en pantalla; año da columnas por mes). -->
@@ -111,14 +138,15 @@
         </field>
     </record>
 
-    <!-- La grid de importes se eliminó: solo se capturan cantidades; el importe
-         lo pone la lista de precios. La grid de cantidades es LA captura. -->
+    <!-- La grid de importes se eliminó: se capturan cantidades (y el precio en la
+         lista); el importe es cantidad × precio × tipo de cambio del mes. -->
 
     <record id="sgi_sales_budget_line_view_pivot" model="ir.ui.view">
         <field name="name">sgi.sales.budget.line.pivot</field>
         <field name="model">sgi.sales.budget.line</field>
         <field name="arch" type="xml">
             <pivot string="Ppto vs facturado vs pedido">
+                <field name="mercado" type="row"/>
                 <field name="uom_id" type="row"/>
                 <field name="product_id" type="row"/>
                 <field name="partner_id" type="row"/>
@@ -151,8 +179,9 @@
         <field name="arch" type="xml">
             <search string="Líneas de presupuesto">
                 <field name="product_id"/>
+                <field name="proyecto_descripcion"/>
                 <field name="budget_id"/>
-                <field name="team_id"/>
+                <field name="mercado"/>
                 <field name="partner_id"/>
                 <filter name="vigente" string="Vigente"
                         domain="[('budget_id.state', '=', 'aprobado')]"/>
@@ -173,8 +202,13 @@
                         domain="[('price_gap_alert', 'in', ('leve', 'grave'))]"/>
                 <filter name="sin_precio_lista" string="Sin precio de lista"
                         domain="[('has_list_price', '=', False)]"/>
+                <filter name="con_problema" string="Cuentan 0 (sin precio, tipo de cambio o conversión)"
+                        domain="[('price_problem', '!=', False)]"/>
+                <filter name="proyectos" string="Proyectos"
+                        domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
                 <group>
-                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
+                    <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
+                    <filter name="group_team" string="Equipo" context="{'group_by': 'team_id'}"/>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
                     <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
@@ -194,12 +228,10 @@
             <form string="Presupuesto de ventas">
                 <header>
                     <!-- Flujo (P-A28 Rev.15): captura → revisado (Admin ventas) →
-                         aprobado (alta dirección). 3.0.0: el pronóstico ya no es un
-                         documento (Pronóstico vigente); aquí solo hay presupuestos.
-                         1.2.0 (V-M10): en el encabezado solo el flujo. «Análisis» es
-                         botón inteligente; «Actualizar real», «Conciliar facturado» e
-                         «Importar desde Excel» están en el engrane (Acción) e
-                         «Imprimir», en el menú Imprimir. -->
+                         aprobado (alta dirección). 3.5.0: un documento por año y revisión
+                         con los cinco mercados; al aprobar una revisión nueva, la anterior
+                         queda reemplazada. 1.2.0 (V-M10): en el encabezado solo el flujo;
+                         las cargas y la conciliación, en el engrane (Acción). -->
                     <button name="action_send_to_review" type="object"
                             string="Enviar a revisión" class="btn-primary"
                             invisible="kind != 'presupuesto' or state != 'borrador'"
@@ -215,7 +247,7 @@
                             invisible="state != 'revisado'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="borrador,revisado,aprobado,obsoleto"/>
+                           statusbar_visible="borrador,revisado,aprobado"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -231,27 +263,35 @@
                     </div>
                     <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
                             invisible="state != 'obsoleto'"/>
+                    <widget name="web_ribbon" title="Reemplazado" bg_color="text-bg-secondary"
+                            invisible="state != 'reemplazado'"/>
                     <div class="alert alert-warning" role="alert"
                          invisible="unconverted_count == 0">
                         <field name="unconverted_count" class="oe_inline"/> línea(s) de factura
                         del periodo vienen en una unidad de otra categoría: cuentan en importe
-                        pero NO en cantidad. Corrige la unidad en la factura o en la línea.
+                        pero no en cantidad. Corrija la unidad en la factura o en la línea.
                     </div>
                     <div class="alert alert-danger" role="alert"
-                         invisible="no_price_count == 0">
-                        <field name="no_price_count" class="oe_inline"/> producto(s) SIN precio
-                        en la lista aplicable. El precio no se captura aquí: corrige
-                        <b>LA LISTA de precios</b> (y arregla cotizaciones, pedidos y presupuesto
-                        de un golpe).
+                         invisible="no_price_count == 0 and no_rate_count == 0 and no_conversion_count == 0">
+                        Renglones que cuentan 0 en el importe:
+                        <field name="no_price_count" class="oe_inline"/> sin precio,
+                        <field name="no_rate_count" class="oe_inline"/> sin tipo de cambio y
+                        <field name="no_conversion_count" class="oe_inline"/> sin conversión a
+                        metros o kilos. Capture el precio (o use «Sugerir precios de la lista»
+                        en el engrane), el tipo de cambio del mes o el rendimiento.
                         <button name="action_view_no_price" type="object"
-                                string="Ver líneas sin precio" class="btn-link"/>
+                                string="Ver renglones" class="btn-link"/>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="no_client_count == 0">
+                        <field name="no_client_count" class="oe_inline"/> renglón(es) de
+                        Industrial o Especiales sin cliente: no se puede aprobar así.
                     </div>
                     <field name="needs_justification" invisible="1"/>
                     <div class="alert alert-danger" role="alert"
                          invisible="not needs_justification">
                         Este presupuesto aprobado va por <b>debajo del umbral de
                         cumplimiento</b> (Ajustes → «Cumplimiento mínimo del
-                        presupuesto»). Captura la <b>justificación del incumplimiento</b>
+                        presupuesto»). Capture la <b>justificación del incumplimiento</b>
                         (P-A28 4.3.6.1) abajo. No bloquea nada: es evidencia del
                         análisis, no un candado.
                     </div>
@@ -264,10 +304,11 @@
                     </div>
                     <group>
                         <group>
-                            <field name="kind"/>
+                            <field name="kind" invisible="1"/>
                             <field name="year"/>
-                            <field name="team_id"/>
                             <field name="revision"/>
+                            <field name="revision_label" invisible="1"/>
+                            <field name="revision_date"/>
                         </group>
                         <group>
                             <field name="company_id" groups="base.group_multi_company"/>
@@ -275,44 +316,82 @@
                             <field name="line_count"/>
                         </group>
                     </group>
-                    <group string="Totales (importe en moneda de la compañía)">
+                    <group string="Contra el año anterior">
+                        <group>
+                            <label for="base_anio_anterior"/>
+                            <div class="o_row">
+                                <field name="base_anio_anterior"/>
+                                <button name="action_qb_update_base" type="object" string="Actualizar base"
+                                        class="btn-link" invisible="state not in ('borrador', 'revisado')"/>
+                            </div>
+                            <field name="objetivo_pct"/>
+                            <field name="objetivo_amount"/>
+                            <field name="minimo_pct"/>
+                            <field name="minimo_amount"/>
+                        </group>
                         <group>
                             <field name="amount_budget_total"/>
+                            <field name="growth_pct"/>
+                            <field name="amount_by_mercado_text"/>
+                            <field name="amount_currency_text"/>
+                        </group>
+                    </group>
+                    <group string="Real (importe en moneda de la compañía)">
+                        <group>
                             <field name="amount_real_total"/>
                             <field name="amount_ordered_total"/>
                             <field name="fulfillment_pct" widget="percentage"/>
                             <field name="amount_real_unbudgeted"/>
                         </group>
                         <group>
-                            <field name="amount_currency_text"/>
                             <field name="qty_budget_text"/>
                             <field name="qty_real_text"/>
                         </group>
                     </group>
                     <group string="Justificación de incumplimiento (P-A28 4.3.6.1)"
-                           invisible="kind != 'presupuesto'">
+                           invisible="state not in ('aprobado', 'reemplazado')">
                         <field name="nonfulfillment_note" nolabel="1"
                                placeholder="Análisis del porqué del incumplimiento del presupuesto (contexto de mercado, causas, acciones). No es candado: es evidencia."/>
                     </group>
                     <notebook>
-                        <page string="Matriz (producto × mes)">
+                        <page string="Renglones" name="lineas">
                             <field name="line_ids" context="{'default_budget_id': id}">
-                                <list string="Líneas" editable="bottom">
-                                    <field name="product_id"/>
+                                <list string="Renglones" editable="bottom"
+                                      decoration-danger="price_problem">
+                                    <field name="mercado"/>
                                     <field name="partner_id" optional="show"/>
+                                    <field name="product_id"/>
+                                    <field name="proyecto_descripcion" optional="show"/>
                                     <field name="date"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget" sum="Total"/>
-                                    <field name="qty_forecast" readonly="1"
-                                           column_invisible="parent.kind != 'presupuesto'"/>
-                                    <field name="price_unit_currency" readonly="1" optional="show"/>
-                                    <field name="amount_currency" readonly="1" optional="show"/>
-                                    <field name="list_currency_id" optional="hide"/>
-                                    <field name="price_unit_budget" readonly="1"/>
+                                    <field name="qty_forecast" readonly="1" optional="hide"/>
+                                    <field name="price_input"/>
+                                    <field name="price_currency_id" options="{'no_create': True}"/>
+                                    <field name="price_basis" optional="show"/>
+                                    <field name="price_problem" readonly="1" optional="show"/>
                                     <field name="amount_budget" readonly="1" sum="Total"/>
-                                    <field name="qty_real" readonly="1" sum="Total"/>
+                                    <field name="qty_real" readonly="1" sum="Total" optional="show"/>
                                     <field name="amount_real" readonly="1" sum="Total"/>
                                     <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Tipo de cambio" name="tipo_cambio">
+                            <p class="text-muted">
+                                Pesos por dólar de cada mes. Un mes sin tipo de cambio usa el
+                                presupuestal de Ajustes, que se guarda aquí al aprobar.
+                            </p>
+                            <div class="o_row" invisible="state not in ('borrador', 'revisado')">
+                                <field name="rate_default"/>
+                                <button name="action_qb_apply_rate_all" type="object"
+                                        string="Aplicar a los 12 meses" class="btn-secondary"/>
+                            </div>
+                            <field name="rate_ids" context="{'default_budget_id': id}">
+                                <list string="Tipo de cambio" editable="bottom">
+                                    <field name="month"/>
+                                    <field name="month_name" readonly="1"/>
+                                    <field name="rate"/>
                                 </list>
                             </field>
                         </page>
@@ -328,12 +407,12 @@
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
             <list string="Presupuestos"
-                  decoration-muted="state == 'obsoleto'"
+                  decoration-muted="state in ('obsoleto', 'reemplazado')"
                   decoration-success="state == 'aprobado'">
                 <field name="folio"/>
                 <field name="year"/>
-                <field name="team_id"/>
-                <field name="revision"/>
+                <field name="revision_label" string="Revisión"/>
+                <field name="revision_date" optional="show"/>
                 <field name="amount_budget_total" optional="show"/>
                 <field name="amount_real_total" optional="show"/>
                 <field name="fulfillment_pct" widget="percentage" optional="show"/>
@@ -351,19 +430,17 @@
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
             <search string="Presupuestos">
-                <field name="team_id"/>
-                <field name="partner_id"/>
                 <field name="year"/>
-                <filter name="mensual" string="Presupuesto mensual" domain="[('kind', '=', 'presupuesto')]"/>
+                <field name="partner_id"/>
+                <filter name="mensual" string="Presupuesto anual" domain="[('kind', '=', 'presupuesto')]"/>
                 <separator/>
                 <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
                 <filter name="revised" string="Revisados" domain="[('state', '=', 'revisado')]"/>
                 <filter name="draft" string="Borradores" domain="[('state', '=', 'borrador')]"/>
-                <filter name="not_obsolete" string="Vigentes (no obsoletos)"
+                <filter name="not_obsolete" string="Vigentes (sin obsoletos)"
                         domain="[('state', '!=', 'obsoleto')]"/>
                 <group>
                     <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
-                    <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                 </group>
             </search>
@@ -417,6 +494,16 @@
         <field name="code">records.action_refresh_actuals()</field>
     </record>
 
+    <!-- 3.5.0 -->
+    <record id="sgi_sales_budget_suggest_prices_server" model="ir.actions.server">
+        <field name="name">Sugerir precios de la lista</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_qb_suggest_prices()</field>
+    </record>
+
     <record id="sgi_sales_budget_reconcile_server" model="ir.actions.server">
         <field name="name">Conciliar facturado</field>
         <field name="model_id" ref="model_sgi_sales_budget"/>
@@ -445,7 +532,6 @@
                 <field name="folio"/>
                 <field name="year"/>
                 <field name="partner_id"/>
-                <field name="team_id" optional="hide"/>
                 <field name="line_count"/>
                 <field name="write_date" string="Última modificación" optional="show"/>
                 <field name="state" widget="badge"/>
@@ -504,11 +590,11 @@
                         <div class="row">
                             <div class="col-8">
                                 <strong><field name="year"/></strong> ·
-                                <field name="team_id"/>
+                                <field name="revision_label"/>
                             </div>
                             <div class="col-4 text-end">
                                 <field name="state" widget="label_selection"
-                                       options="{'classes': {'borrador': 'info', 'revisado': 'warning', 'aprobado': 'success', 'obsoleto': 'muted'}}"/>
+                                       options="{'classes': {'borrador': 'info', 'revisado': 'warning', 'aprobado': 'success', 'reemplazado': 'muted', 'obsoleto': 'muted'}}"/>
                             </div>
                         </div>
                         <div class="row mt-2">
@@ -537,7 +623,7 @@
         <field name="model">sgi.sales.budget.line</field>
         <field name="arch" type="xml">
             <pivot string="Análisis">
-                <field name="team_id" type="row"/>
+                <field name="mercado" type="row"/>
                 <field name="date" interval="month" type="col"/>
                 <field name="amount_budget" type="measure"/>
                 <field name="amount_real" type="measure"/>
@@ -552,7 +638,7 @@
         <field name="arch" type="xml">
             <graph string="Global (Dirección)" type="bar" stacked="1">
                 <field name="date" interval="month"/>
-                <field name="team_id"/>
+                <field name="mercado"/>
                 <field name="amount_budget" type="measure"/>
                 <field name="amount_real" type="measure"/>
             </graph>
@@ -592,11 +678,11 @@
         <field name="domain">[('kind', '=', 'presupuesto')]</field>
         <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'presupuesto'}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el presupuesto maestro de ventas</p>
-            <p>Un presupuesto por mercado (equipo de ventas) y año (F-P-A28-18).
-            Capture las líneas por producto (y cliente) y mes; el real se calcula
-            solo desde lo facturado. Una vez aprobado no se modifica: los ajustes
-            van al estimado de cierre.</p>
+            <p class="o_view_nocontent_smiling_face">Cree el presupuesto anual de ventas</p>
+            <p>Un documento por año y revisión (REV0, REV1) con los cinco mercados
+            (F-P-A28-18): renglones por mercado, cliente, producto (o proyecto) y mes, con
+            su precio y el tipo de cambio de cada mes. El real se calcula solo desde lo
+            facturado. Una vez aprobado no se modifica: los cambios van en una revisión nueva.</p>
         </field>
     </record>
 

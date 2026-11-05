@@ -47,3 +47,7 @@ access_qb_price_check_sale_mgr,qb.price.check.sale.mgr,model_qb_price_check,sale
 access_qb_price_check_manager,qb.price.check.manager,model_qb_price_check,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_price_check_wizard_sale_mgr,qb.price.check.wizard.sale.mgr,model_qb_price_check_wizard,sales_team.group_sale_manager,1,1,1,1
 access_qb_price_check_wizard_manager,qb.price.check.wizard.manager,model_qb_price_check_wizard,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_budget_rate_user,qb.sales.budget.rate.user,model_qb_sales_budget_rate,quimibond_sgi.group_sgi_user,1,0,0,0
+access_qb_sales_budget_rate_sale_mgr,qb.sales.budget.rate.sale.mgr,model_qb_sales_budget_rate,sales_team.group_sale_manager,1,1,1,1
+access_qb_sales_budget_rate_manager,qb.sales.budget.rate.manager,model_qb_sales_budget_rate,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_budget_rate_auditor,qb.sales.budget.rate.auditor,model_qb_sales_budget_rate,quimibond_sgi.group_sgi_auditor,1,0,0,0

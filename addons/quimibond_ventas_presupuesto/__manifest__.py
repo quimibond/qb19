@@ -5,8 +5,9 @@
     'description': """
 Presupuesto y pronóstico de ventas de Quimibond (procedimiento P-A28).
 
-- Presupuesto anual por mercado (equipo de ventas) o por cliente, mensual,
-  con precio de lista, revisiones congeladas y aprobación de Dirección
+- Presupuesto anual por año y revisión con los cinco mercados, mensual, con
+  precio capturable (sugerido de la lista), tipo de cambio por mes,
+  renglones de proyecto, revisiones congeladas y aprobación de Dirección
   (formato F-P-A28-18).
 - Pronóstico vigente por cliente, planta, producto y semana (F-P-A28-13), en
   metros y kilos, con bitácora de cambios, y Demanda por cliente para
@@ -32,7 +33,7 @@ pasa los registros existentes sin borrar ni recrear nada.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Sales/Sales',
-    'version': '19.0.3.4.1',
+    'version': '19.0.3.5.0',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',  # sgi.base.mixin, sgi.format.mixin, grupos, crons y KPI

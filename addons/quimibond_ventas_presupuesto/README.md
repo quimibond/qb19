@@ -1,6 +1,6 @@
 # Quimibond - Presupuesto y pronóstico de ventas
 
-Presupuesto anual de ventas por mercado o cliente (F-P-A28-18) y pronóstico
+Presupuesto anual de ventas por año y revisión con los cinco mercados (F-P-A28-18) y pronóstico
 semanal por cliente (F-P-A28-13) del procedimiento P-A28, en Ventas →
 Presupuesto y pronóstico. Salió de `quimibond_sgi` en 57.11.0 (auditoría
 A-016, A-013, E-014; decisión 5 de Jose: «lo que sale del SGI va a módulos
@@ -20,6 +20,49 @@ propios, sin borrar datos»).
 - Avisos en el motor de crons del SGI (`sgi.cron`): cierre de mes (gancho
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
+
+## Presupuesto anual (19.0.3.5.0, E2 paso 1, 2026-11-05)
+
+Diseño v3, sección 2.6. **Un documento por año y revisión** (REV0, REV1…) con
+los cinco mercados dentro; ya no hay un presupuesto por equipo de ventas.
+
+- **Cabecera:** año, revisión (`revision_label` REV0/REV1, fecha), tipo de
+  cambio por mes (`qb.sales.budget.rate`, pesos por dólar; «Aplicar a los 12
+  meses»), objetivo (+20 %) y mínimo (+15 %) contra la venta del año anterior
+  (la del VE-02, se calcula al enviar a revisión). Estado nuevo
+  **reemplazado**: al aprobar una revisión, la aprobada anterior del año queda
+  reemplazada (congelada, comparable). Una aprobada y una abierta por año y
+  compañía. «Nueva revisión» ya no obsoleta la aprobada: el VE-02 la sigue
+  leyendo hasta que se apruebe la nueva.
+- **Renglón:** mercado (Industrial, Proyectos industrial, Confección,
+  Proyectos confección, Especiales; sin mercado, el del equipo del cliente, y
+  sin cliente, Confección); producto **o** proyecto sin código (descripción,
+  gramaje, ancho; solo en Proyectos); metros y kilos (`qty_m`, `qty_kg`, con
+  el rendimiento del producto o el gramaje y ancho del proyecto).
+- **Precio capturable:** `price_input` en USD o MXN, por la unidad del
+  renglón, por metro o por kilo. Al crear el renglón (y con «Sugerir precios
+  de la lista» o «Actualizar real») se toma el de la lista del cliente con las
+  reglas de siempre; sin regla o con precio basura queda vacío. Importe =
+  cantidad en la base del precio × precio × tipo de cambio del mes. Un
+  renglón sin precio, sin tipo de cambio o sin conversión **cuenta 0** y sale
+  en rojo; aprobar lo bloquea (o se aprueba con excepción, con constancia).
+  Industrial y Especiales sin cliente no se aprueban. El precio de lista
+  queda como referencia y para el control de desviaciones.
+- **Equipos de los mercados** en Ajustes (Industrial, Confección,
+  Especiales): el real y lo pedido de cada renglón se miden en el equipo de su
+  mercado. La migración los pone por nombre.
+- **Plantilla e importación:** columnas MERCADO, PRECIO y MONEDA (opcionales).
+  Matriz por mercado × cliente × producto × mes.
+- **Cierre de mes:** compara el presupuesto aprobado del año contra la venta
+  neta del VE-02 y avisa al Administrador de ventas.
+- **Migración:** los renglones existentes toman el mercado del equipo de su
+  documento y su precio de lista en pesos como precio presupuestal (el importe
+  no cambia: el VE-02 del Industrial 2026 aprobado da lo mismo). Los
+  presupuestos 2026 en borrador (Confección y Especiales) pasan a obsoletos.
+
+Sigue (E2): proyectos ligados a Desarrollo (`qb.sales.project`), el real
+`qb.sales.actual` y los reportes, el presupuesto del mes y la carga de la
+REV0/REV1 del Excel.
 
 ## Comparación de precios: kilos y prefijos (19.0.3.4.1, 2026-11-05)
 
