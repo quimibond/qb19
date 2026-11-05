@@ -1,12 +1,5 @@
 # Changelog — qb_costeo_sgi
 
-## 19.0.1.10.0 — 2026-11-04
-
-**Cambiado**
-- «Capacidad a utilizar» por centro de costo toma las operaciones de `_sgi_dev_capacity_operations` (SGI 57.198.0):
-  con ruta de la app de fichas solo las del crudo; el acabado lo ponen las máquinas de la ruta con su capacidad
-  teórica.
-
 ## 19.0.1.9.0 — 2026-11-04
 
 Dirección General (2026-11-04): «necesito poder aprobar directo desde la cotización, solo lo veo en Aprobaciones».

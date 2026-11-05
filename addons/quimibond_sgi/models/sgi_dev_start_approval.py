@@ -70,9 +70,7 @@ START_APPROVAL_LABELS = {
         'machines_row': "Circulares galga %s (producción real, promedio %s días): %s",
         'no_capacity': "Sin capacidad capturada", 'no_kg': "Sin conversión a kg (falta el rendimiento)",
         'no_route': "El artículo no tiene ruta capturada: solo se lista la materia prima.",
-        'capacity_note': "Porcentaje sobre la capacidad mensual de cada recurso en kg. Las máquinas de la ruta de "
-                         "fichas van con su capacidad teórica: horas al mes de su calendario × 60 ÷ minutos por kg de "
-                         "la ficha (jets: kg por baño × baños al mes).",
+        'capacity_note': "Porcentaje sobre la capacidad mensual de cada recurso en kg.",
         'approval_customer': "Aprobación del inicio del proyecto (cliente)",
         'approval_pnt': "Aprobación del inicio del proyecto PNT Quimibond",
         'medium': "Medio", 'date': "Fecha", 'approved_by': "Aprobó", 'reference': "Referencia",
@@ -113,9 +111,7 @@ START_APPROVAL_LABELS = {
         'machines_row': "Gauge %s circular machines (actual output, %s-day average): %s",
         'no_capacity': "No capacity on record", 'no_kg': "No conversion to kg (yield missing)",
         'no_route': "The item has no routing yet: only raw material is listed.",
-        'capacity_note': "Percentage of each resource's monthly capacity in kg. Machines from the process route show "
-                         "their theoretical capacity: monthly calendar hours × 60 ÷ minutes per kg from the process "
-                         "sheet (dyeing machines: kg per bath × baths per month).",
+        'capacity_note': "Percentage of each resource's monthly capacity in kg.",
         'approval_customer': "Project start approval (customer)",
         'approval_pnt': "Project start approval PNT Quimibond",
         'medium': "Medium", 'date': "Date", 'approved_by': "Approved by", 'reference': "Reference",
@@ -370,7 +366,7 @@ class ProjectProjectDevStartApproval(models.Model):
         ``qb_costeo_sgi`` agrupa por centro de costo (``qb.centro``) y pone su capacidad medida."""
         self.ensure_one()
         groups = {}
-        for _product, op in self._sgi_dev_capacity_operations():  # 57.198.0: con ruta de fichas, solo el crudo
+        for _product, op in self._sgi_dev_route_operations():
             workcenter = op.workcenter_id
             group = groups.setdefault(workcenter.id, {'name': workcenter.display_name or op.name,
                                                       'capacity_kg': False, 'operations': []})
@@ -421,9 +417,7 @@ class ProjectProjectDevStartApproval(models.Model):
                 return ''
             return "%s %%" % _num(kg / capacity * 100.0, 3)
 
-        # 57.198.0: después de los recursos de las listas (con ruta de fichas, solo el tejido), una fila por máquina de
-        # la ruta de la app de fichas con su capacidad teórica (sgi_dev_capacity_fichas.py).
-        resources = self._sgi_dev_capacity_resources() + self._sgi_dev_capacity_fichas(L)
+        resources = self._sgi_dev_capacity_resources()
         # 57.158.0: las circulares que hoy corren la galga del artículo (ficha de la máquina) con su producción
         # real en kg; no sustituye la capacidad de la ruta, la acompaña.
         machines = self._sgi_dev_capacity_machines(L)

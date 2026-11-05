@@ -25,19 +25,7 @@ cliente ya aprobó; la Solicitud de desarrollo (FT-040-2026 WJ038Q22JVH165) sal�
   Aprobación para iniciar (materia prima, recursos de la ruta y las circulares de las fichas de tejido del crudo,
   57.196.0), con la muestra y el consumo mensual y su porcentaje. Sale siempre en español (documento interno), con
   `_sgi_dev_request_capacity` y la clave de contexto `sgi_dev_labels_es`.
-- **La ruta sale de la app de fichas técnicas** (`models/sgi_dev_capacity_fichas.py`; Dirección General 2026-11-04):
-  una fila por máquina de la ruta de la familia del crudo (`ficha.tecnica.ruta`, lista en kg: devanado → tintorería
-  → abridora → rama → inspección), o de la ficha de acabado del desarrollo si ya la tiene. Antes la ruta salía de las
-  listas de materiales del desarrollo, que hasta Muestra solo traen el tejido (FT-040 salía solo con Tejido Circular).
-  Con ruta de fichas, de las listas solo cuentan las operaciones del crudo (`_sgi_dev_capacity_operations`).
-- **Telas de color al jet de colores**: teñido y no blanco (BL) → parámetro `quimibond_sgi.dev_capacity_color_jet_id`
-  (vacío: el centro «TINTORERIA 4»), según Manufactura (correo del 4-nov-2026). Un jet propio en la ficha manda.
-- **Capacidad teórica** de cada máquina de la ruta (kg al mes): horas de su calendario en 30 días × eficiencia × 60 ÷
-  minutos por kg de la ficha (`_ft_tiempo_desde_ficha`); jets: kg por baño (`_ft_capacidad_carga`) × baños al mes
-  (`_ft_minutos_bano`). El tiempo sale del acabado en kg del desarrollo, si no de la tela base y si no de las telas de
-  la familia; en los jets, si ninguna tiene tiempo en ese jet, la mediana de los tiempos de ciclo capturados en él. Sin
-  dato la fila dice «Sin capacidad capturada» y el aviso al generar la lista. La nota de la tabla lo explica.
-- Pruebas `test_08_request_shows_capacity_in_spanish` y `test_dev_capacity_fichas` (Odoo.sh).
+- Prueba `test_08_request_shows_capacity_in_spanish` (Odoo.sh).
 
 ## 19.0.57.197.0 — 2026-11-04
 
