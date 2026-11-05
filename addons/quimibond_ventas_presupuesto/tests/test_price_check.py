@@ -77,3 +77,20 @@ class TestPriceCheck(TransactionCase):
         checks = self._compare([['a', 'ZZCLIENTE PRECIOS', 'ZK045Q22JNT160', 0.66, None, None, None]])
         self.assertEqual(len(self.env['qb.price.check'].search([])), 1, "Cada comparación reemplaza la anterior.")
         self.assertEqual(checks[('ZK045Q22JNT160', 'm')].state, 'sin_regla')
+
+    def test_03_codigo_con_i_en_columna_de_metro_y_metro_sin_regla(self):
+        self.env['product.pricelist.item'].search([('product_id', '=', self.tela_m.id)]).unlink()
+        checks = self._compare([
+            ['a', 'ZZCLIENTE PRECIOS', 'IZK045Q22JNT160', 9.00, None, None, None],   # «precio / m» pero es kilo
+            ['b', 'ZZCLIENTE PRECIOS', 'ZK045Q22JNT160', 0.5, None, None, None],     # el metro sin regla
+        ])
+        kilo = checks[('IZK045Q22JNT160', 'kg')]
+        self.assertEqual((kilo.state, kilo.product_id), ('igual', self.tela_kg))
+        metro = checks[('ZK045Q22JNT160', 'm')]
+        self.assertEqual(metro.product_id, self.tela_kg, "Sin regla en metros se compara el kilo ÷ rendimiento.")
+        self.assertIn('m/kg', metro.note)
+
+    def test_04_cliente_por_prefijo_de_hoja(self):
+        self.env['qb.forecast.sheet'].create({'name': 'ZZFXI CD JUAREZ', 'partner_id': self.customer.id})
+        checks = self._compare([['a', 'ZZFXI', 'ZK045Q22JNT160', 0.66, None, None, None]])
+        self.assertEqual(checks[('ZK045Q22JNT160', 'm')].partner_id, self.customer)
