@@ -33,9 +33,8 @@ class TestSalesBudgetSgi(TransactionCase):
 
     def test_01_sales_budget_of_b_hidden(self):
         """Antes quimibond_sgi test_multicompany test_03."""
-        team = self.env['crm.team'].create({'name': 'ZMC Mercado'})
         budget_b = self.env['sgi.sales.budget'].with_company(self.company_b).create({
-            'year': 2049, 'team_id': team.id, 'company_id': self.company_b.id})
+            'year': 2049, 'company_id': self.company_b.id})
         env_a = self._as_user(self.company_a)
         self.assertFalse(env_a['sgi.sales.budget'].search([('id', '=', budget_b.id)]))
         env_ab = self._as_user(self.company_a, self.company_b)

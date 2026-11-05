@@ -35,19 +35,6 @@ class SgiCronSalesBudget(models.AbstractModel):
         return res
 
     @api.model
-    def _sgi_team_net_invoiced(self, team, date_from, date_to):
-        """Facturación neta (out_invoice − out_refund, sin impuestos, moneda
-        compañía) de un equipo en el rango de fechas de factura."""
-        moves = self.env['account.move'].search([
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('state', '=', 'posted'),
-            ('company_id', '=', self.env['sgi.indicator']._sgi_kpi_company().id),
-            ('team_id', '=', team.id),
-            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
-        ])
-        return sum(moves.mapped('amount_untaxed_signed'))
-
-    @api.model
     def cron_forecast_coverage(self):
         """Cron semanal (P-A28 4.2.2.7), 3.0.0 sobre el pronóstico vigente: por cliente,
         las semanas FIRMES con pronóstico sin pedido (qb.forecast.line.qty_neta) y los
@@ -97,10 +84,11 @@ class SgiCronSalesBudget(models.AbstractModel):
 
     @api.model
     def _sgi_sales_budget_month_close(self, first_prev, last_prev):
-        """Aviso de cierre de mes: por cada equipo con presupuesto aprobado del
-        año, si el acumulado facturado del año va por debajo del umbral del
-        presupuesto acumulado (sales_budget_alert_pct), agenda una actividad al
-        responsable del equipo. Idempotente (dedup por resumen)."""
+        """Aviso de cierre de mes: si el acumulado facturado del año (la venta neta del
+        VE-02) va por debajo del umbral del presupuesto aprobado acumulado
+        (sales_budget_alert_pct), agenda una actividad al Administrador de ventas.
+        3.5.0: un presupuesto por año con los cinco mercados, ya no uno por equipo.
+        Idempotente (dedup por resumen)."""
         Param = self.env['ir.config_parameter'].sudo()
         pct = float(Param.get_param('quimibond_sgi.sales_budget_alert_pct', 80) or 0)
         # Umbral de justificación (P-A28 4.3.6.1): puede diferir del de aviso.
@@ -117,7 +105,7 @@ class SgiCronSalesBudget(models.AbstractModel):
                 lambda l: l.date and l.date <= last_prev).mapped('amount_budget'))
             if not budgeted:
                 return
-            real = self._sgi_team_net_invoiced(budget.team_id, year_start, last_prev)
+            real = budget._qb_company_net_invoiced(year_start, last_prev)
             achieved = real / budgeted * 100.0
             # Justificación del incumplimiento (P-A28 4.3.6.1): si va por debajo del
             # mínimo y AÚN no hay justificación capturada, se pide al Admin de ventas.
@@ -127,29 +115,26 @@ class SgiCronSalesBudget(models.AbstractModel):
                 self._sgi_schedule(
                     budget,
                     "Justificar incumplimiento del presupuesto %s (%.0f%%) — "
-                    "P-A28 4.3.6.1" % (budget.team_id.name, achieved),
+                    "P-A28 4.3.6.1" % (budget.year, achieved),
                     "El presupuesto va en %.1f%% (mínimo %.0f%%) y no tiene "
                     "justificación. Captura el análisis del incumplimiento en el "
                     "campo «Justificación de incumplimiento»." % (achieved, min_pct),
                     sales_admin_id, date_deadline=last_prev + relativedelta(days=15),
                     key='presupuesto_justificar:%d' % year)
-            if achieved >= pct:
-                return
-            user = budget.team_id.user_id
-            if not user:
+            if achieved >= pct or not sales_admin_id:
                 return
             top = self._sgi_budget_top_gaps(budget, last_prev)
-            note = ("El acumulado facturado del equipo va en %.1f%% del presupuesto "
-                    "aprobado del año. Revisa el pipeline y las acciones "
-                    "comerciales." % achieved)
+            note = ("El acumulado facturado del año va en %.1f%% del presupuesto "
+                    "aprobado. Por mercado: %s. Revise el pipeline y las acciones "
+                    "comerciales." % (achieved, budget.amount_by_mercado_text or '—'))
             if top:
                 note += "\nProductos con mayor brecha (ppto − facturado):\n- " + \
                     "\n- ".join(top)
             self._sgi_schedule(
                 budget,
                 "Presupuesto %s por debajo del %.0f%% al cierre de %s" % (
-                    budget.team_id.name, pct, first_prev.strftime('%m/%Y')),
-                note, user.id, date_deadline=last_prev + relativedelta(days=15),
+                    budget.year, pct, first_prev.strftime('%m/%Y')),
+                note, sales_admin_id, date_deadline=last_prev + relativedelta(days=15),
                 key='presupuesto_bajo:%s' % first_prev.strftime('%Y-%m'))
 
         self._sgi_for_each(budgets, _process, "cierre de mes de presupuesto")
@@ -159,22 +144,20 @@ class SgiCronSalesBudget(models.AbstractModel):
     def _sgi_budget_top_gaps(self, budget, last_prev, limit=5):
         """Los productos con mayor brecha (amount_budget − amount_real) del
         presupuesto hasta el mes (accionable: dónde se está quedando corto)."""
-        gaps = defaultdict(lambda: [0.0, 0.0])  # product -> [ppto, real]
+        gaps = defaultdict(lambda: [0.0, 0.0])  # producto o proyecto -> [ppto, real]
         for line in budget.line_ids.filtered(
                 lambda l: l.date and l.date <= last_prev):
-            gaps[line.product_id][0] += line.amount_budget
-            gaps[line.product_id][1] += line.amount_real
+            gaps[line._qb_label()][0] += line.amount_budget
+            gaps[line._qb_label()][1] += line.amount_real
         ranked = sorted(
-            ((product, vals[0] - vals[1]) for product, vals in gaps.items()),
+            ((label, vals[0] - vals[1]) for label, vals in gaps.items()),
             key=lambda kv: kv[1], reverse=True)
         currency = budget.currency_id
         out = []
-        for product, gap in ranked[:limit]:
+        for label, gap in ranked[:limit]:
             if gap <= 0:
                 break
-            out.append("%s: %s %s" % (
-                product.default_code or product.name,
-                '{:,.0f}'.format(gap), currency.name or ''))
+            out.append("%s: %s %s" % (label, '{:,.0f}'.format(gap), currency.name or ''))
         return out
 
     # ------------------------------------------------------------------
