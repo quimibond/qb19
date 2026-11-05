@@ -56,3 +56,5 @@ access_qb_sales_budget_copy_manager,qb.sales.budget.copy.manager,model_qb_sales_
 access_qb_forecast_print_salesman,qb.forecast.print.salesman,model_qb_forecast_print,sales_team.group_sale_salesman,1,1,1,1
 access_qb_forecast_print_planeacion,qb.forecast.print.planeacion,model_qb_forecast_print,group_qb_planeacion,1,1,1,1
 access_qb_forecast_print_mrp,qb.forecast.print.mrp,model_qb_forecast_print,mrp.group_mrp_user,1,1,1,1
+access_qb_sales_budget_set_partner_sale_mgr,qb.sales.budget.set.partner.sale.mgr,model_qb_sales_budget_set_partner,sales_team.group_sale_manager,1,1,1,1
+access_qb_sales_budget_set_partner_manager,qb.sales.budget.set.partner.manager,model_qb_sales_budget_set_partner,quimibond_sgi.group_sgi_manager,1,1,1,1
