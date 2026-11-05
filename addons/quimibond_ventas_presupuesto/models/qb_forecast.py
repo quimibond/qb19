@@ -14,6 +14,7 @@ from collections import defaultdict
 from datetime import timedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 ORIGINS = [
     ('release', "Release del cliente"),
@@ -217,6 +218,65 @@ class QbForecastLine(models.Model):
                 vals['line_id'] = False
             self.env['qb.forecast.change'].sudo().create(changes)
         return res
+
+    # --- Captura en matriz (web_grid, 3.1.0) -----------------------------------
+    GRID_KEYS = ('partner_id', 'ship_to_id', 'plant', 'product_id', 'uom_origen', 'company_id')
+
+    @api.model
+    def _qb_grid_cell(self, domain):
+        """Valores de la celda (cliente, planta, producto, unidad) y el lunes de su semana, leídos
+        del dominio del grid. La columna es un rango de fechas; si la semana del idioma empieza en
+        domingo, el lunes es el siguiente día dentro del rango."""
+        vals, start, end = {}, None, None
+        for leaf in domain:
+            if not (isinstance(leaf, (list, tuple)) and len(leaf) == 3):
+                continue
+            name, op, value = leaf
+            if name in self.GRID_KEYS and op == '=':
+                vals[name] = value
+            elif name == 'week' and op in ('>=', '='):
+                start = fields.Date.to_date(value)
+            elif name == 'week' and op == '<':
+                end = fields.Date.to_date(value)
+        monday = start
+        while monday and monday.weekday() != 0 and (not end or monday < end):
+            monday += timedelta(days=1)
+        if monday and monday.weekday() != 0:
+            monday = monday_of(start)
+        return vals, monday
+
+    @api.model
+    def grid_update_cell(self, domain, measure_field_name, value):
+        """Suma ``value`` a la celda (cliente × producto × semana) en la unidad del cliente. Crea la
+        semana si no existe y la quita si queda en cero; cada cambio queda en la bitácora. Una
+        semana que escribió un release se puede corregir aquí: pasa a «Captura»."""
+        if not value:
+            return
+        if measure_field_name != 'qty_origen':
+            raise UserError("En la matriz solo se captura la cantidad del cliente.")
+        lines = self.search(domain)
+        if lines:
+            line = lines[0]
+            new = line.qty_origen + value
+            if new <= 1e-9:
+                lines.unlink()
+            else:
+                line.write({'qty_origen': new, 'origen': 'captura'})
+                (lines - line).unlink()
+                line.action_qb_refresh()
+            return
+        vals, monday = self._qb_grid_cell(domain)
+        if not vals.get('product_id') or not monday:
+            raise UserError("No se pudo ubicar la celda (producto y semana). Capture la semana desde la lista.")
+        if not vals.get('partner_id'):
+            vals['partner_id'] = self.env.context.get('default_partner_id')
+        if not vals.get('partner_id'):
+            raise UserError("Agrupe la matriz por cliente (o ábrala desde un cliente) para capturar una semana nueva.")
+        if value < 0:
+            return
+        vals.update(week=monday, qty_origen=value, origen='captura')
+        vals.setdefault('company_id', self.env.company.id)
+        self.create(vals).action_qb_refresh()
 
     # --- Zona y pedidos ------------------------------------------------------
     @api.model

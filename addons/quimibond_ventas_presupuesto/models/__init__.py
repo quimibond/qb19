@@ -12,3 +12,4 @@ from . import qb_release
 from . import qb_forecast
 from . import qb_demand
 from . import qb_forecast_import
+from . import qb_forecast_paste

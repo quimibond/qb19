@@ -21,6 +21,26 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Captura semanal (19.0.3.1.0, 2026-11-05)
+
+Para los clientes sin lector de release (diseño v3, sección 2.3), dos formas de
+mantener el pronóstico vigente sin el `forecast.xlsx`:
+
+- **Matriz** (vista «Captura semanal» en Pronóstico vigente): renglón =
+  cliente, planta, producto y unidad del cliente; columna = semana (mes o año);
+  celda = cantidad en la unidad del cliente. Al escribir se crea la semana, al
+  dejarla en cero se quita, y todo queda en Cambios del pronóstico. Una semana
+  que vino de un release se puede corregir aquí y pasa a «Captura». Para una
+  semana nueva la matriz tiene que estar agrupada por cliente.
+- **Pegar semanas desde Excel** (Pronóstico → Pegar semanas desde Excel, solo
+  Administrador de ventas o del SGI): se elige cliente, planta y unidad, y se
+  pega el bloque copiado de la hoja del cliente (código, parte y semanas; con el
+  renglón de los números de semana o indicando la primera semana). El producto
+  se busca por código o por la parte confirmada del cliente. No toca lo
+  anterior a esta semana ni lo que escribió un release; una semana vacía del
+  bloque quita lo que había (se puede apagar). El lector es Python puro
+  (`release/forecast_paste.py`, probado en `tests_puros/`).
+
 ## Pedidos bloqueados siguen contando (19.0.3.0.1, 2026-11-05)
 
 Producción bloquea solo cada pedido de venta al confirmarlo (36 de 62 pedidos

@@ -146,15 +146,36 @@
         </field>
     </record>
 
+    <!-- 3.1.0: captura semanal en matriz (diseño v3, sección 2.3). Celda = cantidad en la unidad del
+         cliente; renglón = cliente, planta, producto y unidad; columna = semana. -->
+    <record id="qb_forecast_line_view_grid" model="ir.ui.view">
+        <field name="name">qb.forecast.line.grid</field>
+        <field name="model">qb.forecast.line</field>
+        <field name="arch" type="xml">
+            <grid string="Captura semanal" editable="1" create_inline="1" display_empty="1">
+                <field name="partner_id" type="row"/>
+                <field name="plant" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="uom_origen" type="row"/>
+                <field name="week" type="col">
+                    <range name="month" string="Mes" span="month" step="week" default="1"/>
+                    <range name="year" string="Año" span="year" step="week"/>
+                </field>
+                <field name="qty_origen" type="measure"/>
+            </grid>
+        </field>
+    </record>
+
     <record id="qb_forecast_line_action" model="ir.actions.act_window">
         <field name="name">Pronóstico vigente</field>
         <field name="res_model">qb.forecast.line</field>
-        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="view_mode">list,grid,pivot,graph,form</field>
         <field name="context">{'search_default_vigente': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Todavía no hay pronóstico cargado</p>
             <p>Cada renglón es una semana de un cliente y un producto, en la unidad del cliente, en la de
-               venta y en metros y kilos. Cárguelo con «Cargar forecast de Excel» o desde los releases.</p>
+               venta y en metros y kilos. Cárguelo desde los releases, capture la semana en la vista de
+               matriz o use «Pegar semanas desde Excel».</p>
         </field>
     </record>
 
@@ -240,6 +261,50 @@
             <p>Cada hoja de forecast.xlsx (y cada planta dentro de ella) se liga a su cliente. La primera
                carga las sugiere por nombre; corrija aquí las que salgan en rojo y vuelva a cargar.</p>
         </field>
+    </record>
+
+    <!-- 3.1.0: pegar semanas copiadas de Excel. -->
+    <record id="qb_forecast_paste_view_form" model="ir.ui.view">
+        <field name="name">qb.forecast.paste.form</field>
+        <field name="model">qb.forecast.paste</field>
+        <field name="arch" type="xml">
+            <form string="Pegar semanas desde Excel">
+                <div class="alert alert-info" role="status" invisible="state == 'done'">
+                    En la hoja del cliente seleccione el código, la parte y las semanas. Si puede, incluya el
+                    renglón con los números de semana. Copie con Ctrl+C y pegue abajo con Ctrl+V. Lo anterior a
+                    esta semana y lo que escribió un release no se tocan.
+                </div>
+                <group invisible="state == 'done'">
+                    <group>
+                        <field name="partner_id"/>
+                        <field name="ship_to_id"/>
+                        <field name="plant" invisible="ship_to_id"/>
+                        <field name="uom_origen"/>
+                    </group>
+                    <group>
+                        <field name="year"/>
+                        <field name="first_week"/>
+                        <field name="replace_blanks"/>
+                    </group>
+                </group>
+                <field name="text" invisible="state == 'done'" nolabel="1"
+                       placeholder="Pegue aquí el bloque copiado de Excel"/>
+                <field name="state" invisible="1"/>
+                <field name="result" invisible="state != 'done'" nolabel="1"/>
+                <footer>
+                    <button name="action_apply" type="object" string="Pegar" class="btn-primary"
+                            invisible="state == 'done'"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_forecast_paste_action" model="ir.actions.act_window">
+        <field name="name">Pegar semanas desde Excel</field>
+        <field name="res_model">qb.forecast.paste</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
     </record>
 
     <!-- Cargar el forecast de Excel. -->
