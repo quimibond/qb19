@@ -21,6 +21,14 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Sin la vista de matriz (19.0.3.1.1, 2026-11-05)
+
+La vista `grid` de 3.1.0 tumbó el build de producción: en Odoo 19 el `<range>`
+del grid no acepta `step` (la columna sale del `span`: mes → días, año →
+meses), así que no hay columnas por semana. Se quita la vista; se quedan
+«Pegar semanas desde Excel» y `grid_update_cell` (probado), para una matriz
+semanal que se diseñe con otra columna.
+
 ## Captura semanal (19.0.3.1.0, 2026-11-05)
 
 Para los clientes sin lector de release (diseño v3, sección 2.3), dos formas de
