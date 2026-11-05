@@ -349,6 +349,46 @@ class TestFlujoKg(CosteoCase):
         datos, _planta = R.medir()
         self.assertEqual(datos[self.tela.id], (900.0, 900.0), "Sin ficha no se inventa la conversión")
 
+    def test_orden_de_saldos_es_merma_de_su_tela(self):
+        """1.10.1: un baño sin primera ni FE sale en una orden de saldos cuyo
+        producto es el propio saldo y que consume el acabado en kg; la merma
+        cuenta para la tela en metros de ese acabado («I» + tela)."""
+        P = self.env['qb.parametro']
+        prod_loc = self.proceso.property_stock_production
+        for key, val in (('calidad_locs_vendible', str(self.loc_pt.id)),
+                         ('calidad_locs_merma', str(self.loc_seg.id)),
+                         ('calidad_locs_origen', ','.join(str(i) for i in (
+                             self.env['stock.location'].search([('usage', '=', 'production')])
+                             | prod_loc | self.loc_insp).ids))):
+            P._rec(key).value_text = val
+        saldo = self.env['product.product'].search(
+            [('default_code', '=', 'SALDO DE TELA TEJIDO')], limit=1) or self.env['product.product'].create({
+                'name': 'SALDO DE TELA TEJIDO', 'default_code': 'SALDO DE TELA TEJIDO',
+                'type': 'consu', 'uom_id': self.kg.id})
+        hoy = datetime.now()
+        self._mo(self.bom_b, 900, hoy, picking_type=self.t_clf, dest=self.loc_pt)
+        orden_s = self.env['mrp.production'].create({
+            'product_id': saldo.id, 'product_qty': 10, 'product_uom_id': self.kg.id,
+            'picking_type_id': self.t_clf.id, 'location_dest_id': self.loc_seg.id,
+            'move_raw_ids': [(0, 0, {
+                'product_id': self.proceso.id, 'product_uom': self.kg.id, 'product_uom_qty': 10,
+                'location_id': self.loc_insp.id, 'location_dest_id': prod_loc.id})]})
+        orden_s.action_confirm()
+        orden_s.qty_producing = 10
+        orden_s.move_raw_ids.write({'quantity': 10, 'picked': True})  # los rollos de Rama
+        res = orden_s.button_mark_done()
+        if isinstance(res, dict) and res.get('res_model'):
+            wiz = self.env[res['res_model']].with_context(**res.get('context', {})).create({})
+            getattr(wiz, 'action_confirm', getattr(wiz, 'process', lambda: None))()
+        self.assertEqual(orden_s.state, 'done')
+        R = self.env['qb.producto.rendimiento']
+        with self._con_ficha():
+            datos, _planta = R.medir()
+        self.assertNotIn(saldo.id, datos)
+        v, t = datos[self.tela.id]
+        self.assertAlmostEqual(v, 900.0, 4)
+        self.assertAlmostEqual(t, 900.0 + 10 * 11.7925, 3)
+
     def test_horas_reales_mixtas_y_conciliacion(self):
         """Primer mes: una orden en kg con órdenes de trabajo y otra sin
         ellas → órdenes de trabajo + estándar. La mano de obra capitalizada

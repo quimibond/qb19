@@ -107,6 +107,22 @@ Revisión de punta a punta del flujo (código, configuración de producción y p
 - Pruebas 15 a 20 en `tests/test_inspeccion_estacion.py`. Corridas en local con Odoo 19 Community y un `iot` mínimo
   de prueba: 42 de 42 pasan.
 
+## Prueba de punta a punta en main (3.3.1, 2026-11-05)
+
+Corrida con las cuatro telas piloto en el ambiente de main (un baño, crudo en el 5, dos baños por capacidad del jet,
+corte y unión, anular, motivo manual, saldos, venta en kg, alertas, costeo, programación y dosificación). Dos errores
+de código, arreglados con su prueba:
+
+- **El último baño no cerraba si uno anterior tuvo Segunda o Desperdicio** y él no: la división nativa copiaba al
+  pendiente la línea sin lote del saldo y el cierre pedía lote. Ahora los saldos pendientes van en cero con sus líneas
+  (`_insp_limpiar_saldos`), en el pendiente y en el baño que no trae esa calidad (prueba 23).
+- **La orden de saldos creaba una orden en kg que nadie pidió**: su consumo tomaba la regla bajo pedido de la ruta del
+  producto en kg. Ahora se confirma con el contexto `qb_insp_sin_abastecer` y su consumo sale de existencias
+  (`stock.move._adjust_procure_method`, prueba 24).
+
+Pruebas de integración con `quimibond_tintoreria_programacion` (21 y 22, se saltan si no está instalado): la
+programación divide la orden en kg en baños con la división nativa y cada baño cierra su parte de la orden en metros.
+
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las
 mediciones de Rama.

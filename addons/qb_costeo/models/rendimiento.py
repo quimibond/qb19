@@ -32,7 +32,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .horas import es_proceso_kg
+from .horas import codigo_metros, es_proceso_kg
 
 FUENTES = [
     ('manual', 'Capturado con motivo'),
@@ -132,8 +132,18 @@ class QbProductoRendimiento(models.Model):
         clasif = self._ids_param('tipos_clasificacion', '409,411') or [0]
         if not (merma and origen):
             return {}
+        saldos = tuple(self._saldo_ids())
+        # 1.10.1: un baño sin primera ni FE sale en una orden de saldos
+        # (quimibond_rollos_bitacora) cuyo producto es el propio saldo; la
+        # tela es la del acabado en kg que consume esa orden (E3 de la
+        # prueba en main, 2026-11-05).
         self.env.cr.execute("""
-            SELECT mo.product_id,
+            SELECT CASE WHEN mo.product_id IN %s THEN COALESCE((
+                       SELECT raw.product_id FROM stock_move raw
+                        WHERE raw.raw_material_production_id = mo.id
+                          AND raw.state = 'done'
+                        ORDER BY raw.id LIMIT 1), mo.product_id)
+                   ELSE mo.product_id END AS pid,
                    regexp_replace(COALESCE(lot.name, ''), '-[0-9]{3,}$', '') AS lote,
                    SUM(sml.quantity) AS kg
               FROM stock_move_line sml
@@ -148,13 +158,26 @@ class QbProductoRendimiento(models.Model):
                AND mo.picking_type_id IN %s
                AND sm.company_id = %s
              GROUP BY 1, 2
-        """, (desde, hasta, tuple(merma), tuple(origen), tuple(self._saldo_ids()),
+        """, (saldos, desde, hasta, tuple(merma), tuple(origen), saldos,
               tuple(clasif), self.env.company.id))
         Horas = self.env['qb.producto.horas']
         Prod = self.env['product.product']
         kg_u = {}
         out = {}
+        telas = {}
         for pid, lote, kg in self.env.cr.fetchall():
+            if pid not in telas:
+                # Orden de saldos: del acabado en kg («I» + tela) a la tela
+                # en metros. Sin tela, no se cuenta.
+                prod = Prod.browse(pid)
+                tela = prod
+                if es_proceso_kg(prod):
+                    tela = Prod.search([('default_code', '=', codigo_metros(
+                        prod.default_code))], limit=1)
+                telas[pid] = tela.id
+            pid = telas[pid]
+            if not pid:
+                continue
             if pid not in kg_u:
                 kg_u[pid] = Horas.kg_por_unidad_ficha(Prod.browse(pid))[0]
             if not kg_u[pid] or not kg:

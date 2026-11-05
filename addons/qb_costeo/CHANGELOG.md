@@ -3,6 +3,17 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.10.1 — 2026-11-05
+
+**Corregido**
+- **La orden de saldos cuenta como merma de su tela.** Un baño sin primera
+  ni FE sale en una orden de saldos (`quimibond_rollos_bitacora` 3.2.0) cuyo
+  producto es el propio saldo; `_saldos_clasificacion` agrupaba por ese
+  producto, que no tiene ficha, y descartaba la merma, así que el rendimiento
+  de la tela salía alto (prueba en main: 1.0 en vez de ≈ 0.50 en un lote con
+  un baño de saldos). Ahora la tela es la del acabado en kg que consume la
+  orden («I» + tela → tela en metros).
+
 ## 19.0.1.10.0 — 2026-11-03
 
 **Agregado**

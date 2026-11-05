@@ -500,3 +500,50 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 300.0)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE']), 150.0)
         self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
+
+    # ------------------------------------------------------------------ errores de la prueba punta a punta en main (3.3.1)
+    def test_23_ultimo_bano_cierra_aunque_el_anterior_tuviera_saldos(self):
+        """E1: el pendiente heredaba la línea sin lote del saldo del primer baño y el último no cerraba («Debe
+        proporcionar un número de serie o lote para el producto SALDO…»)."""
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
+        self._inspeccionar(kg_a, wo_a, rollos_a, 30.6, 345.0, 'PQ', termina=False)
+        self._inspeccionar(kg_a, wo_a, rollos_a, 9.9, 100.0, 'SEGUNDA')
+        kg_a.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        saldos = self.env['mrp.rollo.final']._productos_saldo()
+        movs = pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos and m.state not in ('done', 'cancel'))
+        self.assertFalse(movs.move_line_ids, "El pendiente no hereda líneas de saldo")
+        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
+        kg_b.button_mark_done()
+        self.assertEqual(kg_b.state, 'done')
+        self.assertEqual(pendiente.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 800.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 8.4)
+
+    def test_24_orden_de_saldos_no_lanza_abastecimiento(self):
+        """E2: el consumo de la orden de saldos tomaba la regla bajo pedido de la ruta del producto en kg y creaba una orden
+        en kg nueva que nadie pidió."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        stock = orden_kg.location_dest_id
+        produccion = self.prod_kg.property_stock_production
+        tipo = self.env['stock.picking.type'].search(
+            [('code', '=', 'mrp_operation'), ('company_id', '=', self.env.company.id)], limit=1)
+        ruta = self.env['stock.route'].create({
+            'name': 'ZZ951 bajo pedido a producción', 'product_selectable': True,
+            'rule_ids': [Command.create({
+                'name': 'ZZ951 stock → producción', 'action': 'pull', 'procure_method': 'make_to_order',
+                'location_src_id': stock.id, 'location_dest_id': produccion.id, 'picking_type_id': tipo.id})]})
+        fabricar = self.env.ref('mrp.route_warehouse0_manufacture')
+        self.prod_kg.route_ids = [Command.link(ruta.id), Command.link(fabricar.id)]
+        antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertEqual(orden_m.state, 'cancel')
+        nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
+        self.assertFalse(nuevas, "La orden de saldos no debe crear órdenes en kg: %s" % nuevas.mapped('name'))
+        orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
+        self.assertEqual(orden_s.state, 'done')
+        self.assertEqual(set(orden_s.move_raw_ids.mapped('procure_method')), {'make_to_stock'})
