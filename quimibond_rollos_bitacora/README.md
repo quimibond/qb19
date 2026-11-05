@@ -141,6 +141,13 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Captura manual sin báscula (3.3.9, Dirección 2026-11-05)
+
+En planta el peso se captura a mano, en Tejido, Rama e Inspección. Mientras no haya báscula IoT registrada
+(`iot.device` de tipo báscula), PESAR ROLLO, PESAR DESPERDICIO e INSPECCIONAR abren en captura manual con el motivo
+«Sin báscula IoT» ya escrito, así que no se pide nada extra en cada rollo y queda el rastro. Con una báscula registrada
+vuelven a abrir en automático, y capturar a mano pide motivo, como antes. No toca `iot_scale_common` ni Tejido.
+
 ## Historial de Pesaje y pestaña Rollos (3.3.8, Dirección 2026-11-05)
 
 - **Historial de Pesaje:** cada pesada de Rama (rollo y desperdicio) y de Inspección (rollo final) deja una copia en la

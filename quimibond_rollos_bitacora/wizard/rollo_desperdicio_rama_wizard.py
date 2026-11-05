@@ -2,6 +2,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+
 
 class RolloDesperdicioRamaWizard(models.TransientModel):
     """Pesaje del subproducto Desperdicio Tejido (orilla) en Rama (diseño §16).
@@ -19,7 +21,9 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
     empleado_nombre = fields.Char('Operador', compute='_compute_empleado_nombre')
     kg_desperdicio = fields.Float('Peso del desperdicio (kg)', digits=(12, 3))
     motivo_manual = fields.Char('Motivo de la captura manual',
-                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §13).')
+                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §13).',
+                                default=lambda self: motivo_por_defecto(self))
+    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
     ya_pesado = fields.Boolean(compute='_compute_ya_pesado')
 
     @api.depends('empleado_numero')

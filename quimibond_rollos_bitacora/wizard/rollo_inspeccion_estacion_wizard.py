@@ -14,6 +14,8 @@ import re
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+
 from ..models.mrp_rollo_bitacora import CLASIFICACIONES, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
@@ -46,7 +48,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
     tara_faltante = fields.Boolean(compute='_compute_pesos')
     kg_neto = fields.Float('Peso neto (kg)', compute='_compute_pesos', digits=(12, 4))
-    motivo_manual = fields.Char('Motivo de la captura manual')
+    motivo_manual = fields.Char('Motivo de la captura manual', default=lambda self: motivo_por_defecto(self))
+    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
     metros = fields.Float('Metros', digits=(12, 2))
     no_empalmes = fields.Integer('No. de empalmes')
     clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad')
