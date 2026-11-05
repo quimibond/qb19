@@ -119,3 +119,38 @@ class TestForecastCaptura(TransactionCase):
     def test_08_bloque_sin_renglones(self):
         with self.assertRaises(UserError):
             self._paste("TOTAL\t5\n")
+
+    # --- 3.2.0: matriz con el catálogo de semanas como columna ----------------
+    def test_10_cada_renglon_lleva_su_semana_del_catalogo(self):
+        line = self.Line.create({'partner_id': self.customer.id, 'product_id': self.tela.id,
+                                 'week': self.monday + timedelta(days=2), 'qty_origen': 5.0})
+        self.assertEqual(line.week_id.monday, self.monday)
+        self.assertIn("-S%02d" % self.iso_week, line.week_id.name)
+        line.week = self.monday + timedelta(weeks=1)
+        self.assertEqual(line.week_id.monday, self.monday + timedelta(weeks=1))
+        same = self.Line.create({'partner_id': self.customer.id, 'product_id': self.tela.id,
+                                 'week': self.monday + timedelta(weeks=1), 'plant': 'Otra', 'qty_origen': 1.0})
+        self.assertEqual(same.week_id, line.week_id, "Una sola semana del catálogo por lunes.")
+
+    def test_11_la_matriz_muestra_las_proximas_13_semanas(self):
+        far = self.monday + timedelta(weeks=30)
+        far_week = self.env['qb.forecast.week']._qb_get([far])[far]
+        weeks = self.Line._read_group_week_id(far_week, [])
+        self.assertEqual(len(weeks), 14, "Las próximas 13 semanas, aunque estén vacías, más las que tienen datos.")
+        self.assertEqual(weeks[-1], far_week, "En orden de fecha.")
+
+    def test_12_matriz_por_semana_del_catalogo(self):
+        week = self.env['qb.forecast.week']._qb_get([self.monday])[self.monday]
+        domain = [('partner_id', '=', self.customer.id), ('plant', '=', False), ('product_id', '=', self.tela.id),
+                  ('uom_origen', '=', False), ('week_id', '=', week.id)]
+        self.Line.grid_update_cell(domain, 'qty_origen', 300.0)
+        line = self._lines()
+        self.assertEqual((line.week, line.week_id, line.qty_origen), (self.monday, week, 300.0))
+        self.Line.grid_update_cell(domain, 'qty_origen', 50.0)
+        self.assertEqual(line.qty_origen, 350.0)
+
+    def test_13_vistas_de_matriz_cargan(self):
+        grid = self.env.ref('quimibond_ventas_presupuesto.qb_forecast_line_view_grid')
+        self.assertIn('grid', self.Line.get_views([(grid.id, 'grid')])['views'])
+        budget_grid = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_grid_qty')
+        self.assertIn('grid', self.env['sgi.sales.budget.line'].get_views([(budget_grid.id, 'grid')])['views'])

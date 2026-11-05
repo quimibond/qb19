@@ -19,6 +19,10 @@
               parent="menu_sale_sgi_planning" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronóstico vigente"
               parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_action" sequence="10"/>
+    <!-- 3.2.0: matriz semanal. -->
+    <menuitem id="menu_sale_qb_forecast_grid" name="Captura semanal"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_grid_action" sequence="15"
+              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sale_qb_demand_line" name="Demanda por cliente"
               parent="menu_sale_qb_grupo_pronostico" action="qb_demand_line_action" sequence="20"/>
     <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
