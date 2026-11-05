@@ -95,7 +95,6 @@ class SgiCronSalesBudget(models.AbstractModel):
         min_pct = float(Param.get_param('quimibond_sgi.budget_fulfillment_min', 80) or 0)
         sales_admin_id = self._sgi_sales_admin_user_id()
         year = first_prev.year
-        year_start = first_prev.replace(month=1, day=1)
         budgets = self.env['sgi.sales.budget'].search([
             ('kind', '=', 'presupuesto'),
             ('state', '=', 'aprobado'), ('year', '=', year)])
@@ -105,7 +104,8 @@ class SgiCronSalesBudget(models.AbstractModel):
                 lambda l: l.date and l.date <= last_prev).mapped('amount_budget'))
             if not budgeted:
                 return
-            real = budget._qb_company_net_invoiced(year_start, last_prev)
+            # 3.5.4: la venta de los equipos de los mercados, la misma del cumplimiento de la ficha.
+            real = -sum(budget._qb_sales_lines(date_to=last_prev).mapped('balance'))
             achieved = real / budgeted * 100.0
             # Justificación del incumplimiento (P-A28 4.3.6.1): si va por debajo del
             # mínimo y AÚN no hay justificación capturada, se pide al Admin de ventas.
