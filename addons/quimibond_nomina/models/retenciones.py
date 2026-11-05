@@ -5,7 +5,7 @@ quedan, como NOI.
 Las dos son cuotas fijas de un periodo más largo que la nómina: FONACOT, la
 retención **mensual** de la cédula, repartida entre las nóminas que paga el
 mes (``isr_mensual._qb_nomina_periodos_del_mes``); Infonavit, la cuota
-**bimestral**, repartida entre las 9 semanas o 4 quincenas del bimestre
+**bimestral**, repartida entre los pagos del bimestre (8 o 9 semanas, 4 quincenas)
 (``infonavit._qb_infonavit_retencion``). NOI hace dos cosas más:
 
 1. **Sin sueldo no retiene.** Una semana entera de incapacidad (gravable en
@@ -38,9 +38,9 @@ el ajuste manual ``AJ_INFONAVIT``."""
 import logging
 from datetime import timedelta
 
-from dateutil.relativedelta import relativedelta
-
 from odoo import models
+
+from .calendario import _qb_dias_de_pago, _qb_mes_de
 
 _logger = logging.getLogger(__name__)
 
@@ -90,15 +90,10 @@ class HrPayslip(models.Model):
         version = self.version_id
         inicio_contrato = version.contract_date_start or version.date_start
         pago = self._qb_nomina_fecha_pago()
-        primero = pago.replace(day=1)
-        ultimo = primero + relativedelta(months=1, days=-1)
+        primero, ultimo = _qb_mes_de(pago)
         if version.schedule_pay == 'weekly':
             dia = self._qb_nomina_dia_pago()
-            d = primero + timedelta(days=(dia - primero.weekday()) % 7)
-            fines = []
-            while d <= ultimo:
-                fines.append((d, d + timedelta(days=6 - d.weekday())))
-                d += timedelta(days=7)
+            fines = [(d, d + timedelta(days=6 - d.weekday())) for d in _qb_dias_de_pago(primero, ultimo, dia)]
         elif version.schedule_pay == 'bi-weekly':
             fines = [(primero.replace(day=15),) * 2, (ultimo, ultimo)]
         else:
