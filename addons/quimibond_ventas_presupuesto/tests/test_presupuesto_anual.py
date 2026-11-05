@@ -219,3 +219,15 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertEqual(line.price_currency_id, self.foreign)
         self.assertEqual(line.price_origen, 'excel')
         self.assertIn('Galaxia', wiz.result)
+
+    def test_11_ajustes_cambian_el_equipo_de_los_renglones(self):
+        """3.5.1: al guardar otro equipo de mercado en Ajustes, los renglones lo toman (también
+        en un aprobado: el equipo no entra al importe)."""
+        budget = self.Budget.create({'year': 2060})
+        line = self._line(budget, price_input=1.0)
+        budget.state = 'aprobado'
+        nuevo = self.env['crm.team'].create({'name': 'Industrial nuevo'})
+        settings = self.env['res.config.settings'].create({'qb_team_industrial_id': nuevo.id})
+        settings.execute()
+        self.assertEqual(line.team_id, nuevo)
+        self.assertAlmostEqual(line.amount_budget, 1000.0, places=2)
