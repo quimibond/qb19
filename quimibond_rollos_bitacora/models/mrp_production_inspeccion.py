@@ -172,6 +172,14 @@ class MrpProductionInspeccion(models.Model):
             movimiento._action_confirm()
         return movimiento
 
+    @api.model
+    def _insp_limpiar_saldos(self, movimientos):
+        """3.3.1: deja en cero los saldos pendientes, también sus líneas: la división nativa copia al pendiente la línea
+        sin lote del saldo del baño anterior y el siguiente cierre pedía lote (E1 de la prueba en main, 2026-11-05)."""
+        movimientos = movimientos.filtered(lambda m: m.state not in ('done', 'cancel'))
+        movimientos.move_line_ids.unlink()
+        movimientos.with_context(do_not_unreserve=True).write({'product_uom_qty': 0.0, 'picked': False})
+
     def _insp_lineas_saldo(self, movimiento, grupo):
         producto = movimiento.product_id
         destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion)
@@ -236,7 +244,9 @@ class MrpProductionInspeccion(models.Model):
                 'product_uom_qty': sum(rama.mapped('kg_rama')), 'location_id': origen.id,
                 'location_dest_id': self.product_id.with_company(self.company_id).property_stock_production.id,
                 'company_id': self.company_id.id})]})
-        orden_s.action_confirm()
+        # 3.3.1: el consumo de la orden de saldos sale de existencias (los rollos de Rama ya están en inventario); sin el
+        # contexto, la regla bajo pedido de la ruta del producto en kg creaba una orden en kg que nadie pidió (E2).
+        orden_s.with_context(qb_insp_sin_abastecer=True).action_confirm()
         orden_s.write({'qty_producing': kg_principal})
         terminado = orden_s.move_finished_ids.filtered(lambda m: m.product_id == principal)[:1]
         orden_s._insp_lineas_saldo(terminado, por_saldo[principal_c])
@@ -245,7 +255,9 @@ class MrpProductionInspeccion(models.Model):
         if por_saldo[otra]:
             orden_s._insp_lineas_saldo(orden_s._insp_movimiento_saldo(otra, terminado), por_saldo[otra])
         orden_s._clasif_asegurar_consumo_saldos(rama)
-        resultado = orden_s.button_mark_done()
+        # 3.3.1 (Dirección, 2026-11-05): los saldos entran a costo cero; sin tela que lo absorba, el costo del baño se
+        # queda en la cuenta de la ubicación de producción como merma del periodo (no como inventario de saldo).
+        resultado = orden_s.with_context(qb_insp_saldos_sin_costo=True).button_mark_done()
         if orden_s.state != 'done':
             raise UserError(_(
                 'No se pudo registrar la orden de saldos del baño %(kg)s; no se cerró nada. Respuesta de Odoo: %(r)s',
@@ -258,6 +270,14 @@ class MrpProductionInspeccion(models.Model):
             orden_m.message_post(body=_(
                 'Cancelada al cerrar el baño %s: no salió primera ni FE y ningún otro baño la abastece; los saldos salen '
                 'en kg.', self.name))
+
+    def _cal_price(self, consumed_moves):
+        """3.3.1: en la orden de saldos de un baño sin primera ni FE, Segunda y Desperdicio entran a costo cero: se venden
+        a 1–2 $/kg (facturas del último año) y con el costo del baño quedaban en inventario a más de 100 $/kg."""
+        res = super()._cal_price(consumed_moves)
+        if self.env.context.get('qb_insp_saldos_sin_costo'):
+            self.move_finished_ids.filtered(lambda m: m.state not in ('done', 'cancel')).write({'price_unit': 0.0})
+        return res
 
     def _clasif_asegurar_consumo_saldos(self, rama):
         """Consumo de la orden de saldos: cada rollo de Rama completo, con su lote (picked)."""
@@ -355,6 +375,10 @@ class MrpProductionInspeccion(models.Model):
             grupo = saldos.filtered(lambda r: r.clasificacion == clasificacion)
             if grupo:
                 orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo)
+            else:
+                # 3.3.1: un pendiente trae el saldo que heredó de un baño anterior; sin rollos de esa calidad, va en cero.
+                producto = Final._producto_saldo(clasificacion)
+                orden_m._insp_limpiar_saldos(orden_m.move_finished_ids.filtered(lambda m: m.product_id == producto))
 
         # 5. Se repite el consumo (escribir qty_producing reescala líneas del core) y se cierra; con otros baños, con
         #    pendiente nativo para lo que falta.
@@ -383,9 +407,7 @@ class MrpProductionInspeccion(models.Model):
                                   orden_m.name, ', '.join(otros.mapped('name'))))
             # El pendiente hereda en proporción la demanda de los saldos de este baño: los saldos no se planean.
             saldos_prod = Final._productos_saldo()
-            pendiente.move_finished_ids.filtered(
-                lambda m: m.product_id in saldos_prod and m.state not in ('done', 'cancel')).with_context(
-                do_not_unreserve=True).write({'product_uom_qty': 0.0})
+            pendiente._insp_limpiar_saldos(pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos_prod))
         self.message_post(body=_(
             'Baño cerrado: %(n)s rollos finales registrados en %(m)s (%(mts).2f m de primera y FE; %(kg).2f kg de '
             'saldos).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_neto')),

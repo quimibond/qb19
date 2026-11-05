@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.3.0',
+    'version': '19.0.3.3.1',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -32,6 +32,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
     'license': 'LGPL-3',
     'depends': [
         'mrp',
+        'mrp_account',  # 3.3.1: la orden de saldos entra a costo cero (_cal_price)
         'hr',
         'stock',
         'iot_scale_common',

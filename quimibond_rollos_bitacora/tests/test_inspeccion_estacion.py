@@ -55,6 +55,7 @@ class TestInspeccionEstacion(TransactionCase):
             'byproduct_ids': [Command.create({'product_id': cls.saldo_2.id, 'product_qty': 0.0, 'cost_share': 0.0}),
                               Command.create({'product_id': cls.saldo_d.id, 'product_qty': 0.0, 'cost_share': 0.0})]})
         Workcenter = cls.env['mrp.workcenter']
+        cls.defecto = cls.env['calidad.defecto.tela'].create({'clave': 'ZZ951', 'name': 'Defecto de prueba'})
         cls.rama = Workcenter.create({'name': 'RAMA ZZ951', 'code': 'RZZ951'})
         cls.revisadora = Workcenter.create({'name': 'INSPECCION ZZ951', 'code': 'IZZ951'})
 
@@ -100,6 +101,8 @@ class TestInspeccionEstacion(TransactionCase):
             'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
             'rollo_codigos': ' '.join(rollos.mapped('name')), 'kg_bruto': kg_bruto, 'metros': metros,
             'clasificacion': calidad, 'termina_rollo': termina}
+        if calidad in ('SEGUNDA', 'FE'):
+            valores['defecto_ids'] = [Command.set(self.defecto.ids)]  # 3.3.1: obligatorio en Segunda y FE
         valores.update(vals)
         wiz = self.env['rollo.inspeccion.estacion.wizard'].create(valores)
         wiz.action_confirmar()
@@ -393,3 +396,192 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
         self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'kg planeados' in (m.body or '')))
+
+    # ------------------------------------------------------------------ integración con la programación de tintorería
+    def _programar_dos_banos(self):
+        """Orden en metros de 2,000 m abastecida por una orden en kg de 169.6 kg que la programación de tintorería
+        (quimibond_tintoreria_programacion) divide con la división nativa en dos baños de 84.8 kg en un jet de 100 kg.
+        Las fichas técnicas se simulan como en las pruebas de la programación."""
+        if 'tintoreria.programacion' not in self.env:
+            self.skipTest('quimibond_tintoreria_programacion no está instalado')
+        htj = self.env['mrp.workcenter'].create({'name': 'TINTORERIA ZZ951', 'code': 'TZZ951'})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.prod_kg.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'consumption': 'flexible', 'sequence': 1,
+            'operation_ids': [
+                Command.create({'name': 'Tintorería', 'workcenter_id': htj.id, 'sequence': 10}),
+                Command.create({'name': 'RAMA', 'workcenter_id': self.rama.id, 'sequence': 20}),
+                Command.create({'name': 'INSPECCION', 'workcenter_id': self.revisadora.id, 'sequence': 30})],
+            'bom_line_ids': [Command.create({'product_id': self.crudo.id, 'product_qty': 1.1})]})
+
+        class _Config:
+            def _ft_value(self, codigo):
+                return {'capacidad': 100.0}.get(codigo, 0.0)
+
+        prod_kg = self.prod_kg
+        Workcenter = self.env.registry['mrp.workcenter']
+        self.patch(Workcenter, '_ft_config_at', lambda wc, day=None: _Config() if wc.id == htj.id else False)
+        self.patch(Workcenter, '_ft_capacidad_carga',
+                   lambda wc, rendimiento, day=None, product=None: (0.0, 'sin capacidad capturada'))
+        self.patch(self.env.registry['product.product'], '_ft_rendimiento', lambda producto: (11.79, 'prueba'))
+        self.patch(self.env.registry['mrp.production'], '_es_producto_acabado_kg',
+                   lambda orden: orden.product_id == prod_kg)
+        self.patch(self.env.registry['mrp.production'], '_minutos_tintoreria',
+                   lambda orden, wc, kg_bano=None: (240.0, 'ficha', False))
+
+        orden_m = self.env['mrp.production'].create({
+            'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id, 'bom_id': self.bom_m.id})
+        orden_m.action_confirm()
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 169.6, 'bom_id': bom.id})
+        orden_kg.action_confirm()
+        self.assertTrue(orden_kg.requiere_programacion_tintoreria)
+        # Liga MTO como la deja el abastecimiento: el consumo de la orden en metros nace de la orden en kg.
+        raw = orden_m._clasif_move_a()
+        raw.write({'move_orig_ids': [Command.set(orden_kg.move_finished_ids.filtered(
+            lambda m: m.product_id == self.prod_kg).ids)], 'created_production_id': orden_kg.id})
+        programacion = orden_kg._programar_tintoreria(htj)
+        banos = programacion.production_ids.sorted('id')
+        self.assertEqual(len(banos), 2)
+        self.assertEqual(banos.mapped('product_qty'), [84.8, 84.8])
+        self.assertEqual(orden_m._ordenes_previas(), banos, "Los dos baños abastecen a la orden en metros")
+        for bano in banos:
+            self.assertEqual(bano._insp_orden_metros(), orden_m)
+        return orden_m, banos
+
+    def _rama_e_inspeccion(self, bano, kg_bruto_rama, capturas):
+        """Pesa un rollo en Rama con el asistente y lo inspecciona en una o varias capturas (kg_bruto, metros, calidad)."""
+        wo_rama = bano.workorder_ids.filtered(lambda w: w.workcenter_id == self.rama)
+        wo_insp = bano.workorder_ids.filtered(lambda w: w.workcenter_id == self.revisadora)
+        self.assertTrue(wo_rama and wo_insp, "La división copia las operaciones de la lista a cada baño")
+        self.env['rollo.pesaje.rama.wizard'].create({
+            'production_id': bano.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+            'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'kg_bruto': kg_bruto_rama,
+        }).action_confirmar()
+        rollos = bano.rollo_bitacora_ids
+        self.assertEqual(rollos.lot_id.name, '%s-0001' % bano.name.split('/')[-1])
+        for i, (kg_bruto, metros, calidad) in enumerate(capturas, 1):
+            self._inspeccionar(bano, wo_insp, rollos, kg_bruto, metros, calidad, termina=i == len(capturas))
+        return rollos
+
+    def test_21_programacion_divide_y_cada_bano_cierra(self):
+        orden_m, (bano_1, bano_2) = self._programar_dos_banos()
+        raiz = orden_m.name.split('/')[-1]  # al crear el pendiente Odoo renombra la orden a …-001
+        self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
+        bano_1.button_mark_done()
+        self.assertEqual(bano_1.state, 'done')
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(orden_m.qty_produced, 460.0)
+        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        self.assertEqual(len(pendiente), 1)
+        self.assertEqual(bano_2._insp_orden_metros(), pendiente, "El segundo baño ya abastece al pendiente")
+        # El segundo baño se inspecciona ya con el primero cerrado: el consecutivo sigue sobre la raíz de la orden.
+        self._rama_e_inspeccion(bano_2, 41.1, [(40.5, 455.0, 'PQ')])
+        self.assertEqual(bano_2.rollo_final_kg_ids.name, 'M%s-0002' % raiz)
+        self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, pendiente)
+        bano_2.button_mark_done()
+        self.assertEqual(bano_2.state, 'done')
+        self.assertEqual(pendiente.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 915.0)
+        self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
+        self.assertEqual(bano_1.rollo_final_kg_ids.name, 'M%s-0001' % raiz)
+        self.assertEqual(set((bano_1 | bano_2).rollo_final_kg_ids.mapped('estado')), {'registrado'})
+
+    def test_22_programacion_cierre_en_orden_inverso_y_bano_de_saldos(self):
+        orden_m, (bano_1, bano_2) = self._programar_dos_banos()
+        # El segundo baño sale todo segunda y desperdicio, y cierra antes que el primero.
+        self._rama_e_inspeccion(bano_2, 41.1, [(30.5, 320.0, 'SEGUNDA'), (9.0, 80.0, 'DESP')])
+        bano_2.button_mark_done()
+        self.assertEqual(bano_2.state, 'done')
+        self.assertNotIn(orden_m.state, ('cancel',), "El primer baño sigue abasteciendo a la orden en metros")
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 29.0)
+        self.assertEqual(bano_1._insp_orden_metros(), orden_m)
+        self._rama_e_inspeccion(bano_1, 41.1, [(26.6, 300.0, 'PQ'), (14.0, 150.0, 'FE')])
+        bano_1.button_mark_done()
+        self.assertEqual(bano_1.state, 'done')
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 300.0)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE']), 150.0)
+        self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
+
+    # ------------------------------------------------------------------ errores de la prueba punta a punta en main (3.3.1)
+    def test_23_ultimo_bano_cierra_aunque_el_anterior_tuviera_saldos(self):
+        """E1: el pendiente heredaba la línea sin lote del saldo del primer baño y el último no cerraba («Debe
+        proporcionar un número de serie o lote para el producto SALDO…»)."""
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
+        self._inspeccionar(kg_a, wo_a, rollos_a, 30.6, 345.0, 'PQ', termina=False)
+        self._inspeccionar(kg_a, wo_a, rollos_a, 9.9, 100.0, 'SEGUNDA')
+        kg_a.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        saldos = self.env['mrp.rollo.final']._productos_saldo()
+        movs = pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos and m.state not in ('done', 'cancel'))
+        self.assertFalse(movs.move_line_ids, "El pendiente no hereda líneas de saldo")
+        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
+        kg_b.button_mark_done()
+        self.assertEqual(kg_b.state, 'done')
+        self.assertEqual(pendiente.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 800.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 8.4)
+
+    def test_24_orden_de_saldos_no_lanza_abastecimiento(self):
+        """E2: el consumo de la orden de saldos tomaba la regla bajo pedido de la ruta del producto en kg y creaba una orden
+        en kg nueva que nadie pidió."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        stock = orden_kg.location_dest_id
+        produccion = self.prod_kg.property_stock_production
+        tipo = self.env['stock.picking.type'].search(
+            [('code', '=', 'mrp_operation'), ('company_id', '=', self.env.company.id)], limit=1)
+        ruta = self.env['stock.route'].create({
+            'name': 'ZZ951 bajo pedido a producción', 'product_selectable': True,
+            'rule_ids': [Command.create({
+                'name': 'ZZ951 stock → producción', 'action': 'pull', 'procure_method': 'make_to_order',
+                'location_src_id': stock.id, 'location_dest_id': produccion.id, 'picking_type_id': tipo.id})]})
+        fabricar = self.env.ref('mrp.route_warehouse0_manufacture')
+        self.prod_kg.route_ids = [Command.link(ruta.id), Command.link(fabricar.id)]
+        antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertEqual(orden_m.state, 'cancel')
+        nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
+        self.assertFalse(nuevas, "La orden de saldos no debe crear órdenes en kg: %s" % nuevas.mapped('name'))
+        orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
+        self.assertEqual(orden_s.state, 'done')
+        self.assertEqual(set(orden_s.move_raw_ids.mapped('procure_method')), {'make_to_stock'})
+
+    def test_25_orden_de_saldos_entra_a_costo_cero(self):
+        """E4 (Dirección, 2026-11-05): los saldos se venden a 1–2 $/kg; en la orden de saldos entran a costo cero y el costo
+        del baño no queda como inventario de Segunda (en la prueba de main entró a 131.79 $/kg)."""
+        categoria = self.env['product.category'].create({
+            'name': 'ZZ951 costo promedio', 'property_cost_method': 'average'})
+        (self.crudo | self.prod_kg | self.saldo_2 | self.saldo_d).write({'categ_id': categoria.id})
+        self.crudo.write({'is_storable': True, 'standard_price': 50.0})
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(self.crudo, stock, 500.0)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
+        self.assertEqual(orden_s.state, 'done')
+        consumo = sum(orden_s.move_raw_ids.filtered(lambda m: m.state == 'done').mapped('value'))
+        self.assertGreater(consumo, 0.0, "El baño tiene costo: sale del inventario de la tela en kg")
+        terminados = orden_s.move_finished_ids.filtered(lambda m: m.state == 'done')
+        self.assertTrue(terminados)
+        self.assertFalse(any(terminados.mapped('value')), "Segunda y Desperdicio entran a costo cero")
+        self.assertAlmostEqual(self.saldo_2.standard_price, 0.0)
+
+    def test_26_segunda_y_fe_piden_defecto(self):
+        """E12c: Segunda y FE necesitan al menos un defecto (evidencia de calidad); PQ y Desperdicio no."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        for calidad in ('SEGUNDA', 'FE'):
+            with self.assertRaises(UserError) as error:
+                self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, calidad, termina=False, defecto_ids=[])
+            self.assertIn('defecto', str(error.exception))
+        self.assertFalse(orden_kg.rollo_final_kg_ids, "Sin defecto no se registra el rollo")
+        self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'FE', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ')
+        self.assertEqual(orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'FE').defecto_ids, self.defecto)
