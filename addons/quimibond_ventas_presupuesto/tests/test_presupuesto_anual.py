@@ -231,3 +231,59 @@ class TestPresupuestoAnual(TransactionCase):
         settings.execute()
         self.assertEqual(line.team_id, nuevo)
         self.assertAlmostEqual(line.amount_budget, 1000.0, places=2)
+
+    def _invoice_anual(self, team, partner, product, when, amount, account=None):
+        income = account or self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id, 'invoice_date': when,
+            'team_id': team.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': 1, 'price_unit': amount,
+                'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        return move
+
+    def test_12_conciliacion_por_partida(self):
+        """3.5.3: cada peso de la venta del año cae en una sola partida y el residuo es 0."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        otro = self.env['product.product'].create({
+            'name': 'Otra tela conciliación', 'type': 'consu', 'uom_id': self.uom_m.id})
+        saldo = self.env['product.product'].create({
+            'name': 'SALDO DE TELA prueba', 'default_code': 'SALDO PRUEBA', 'type': 'consu'})
+        nuevo = self.env['res.partner'].create({'name': 'Cliente nuevo anual', 'is_company': True})
+        budget = self.Budget.create({'year': 2061})
+        self._line(budget, date=date(2061, 3, 1), price_input=1.0)
+        self._invoice_anual(self.team_ind, self.client, self.product, date(2061, 3, 10), 100.0)   # capturada
+        self._invoice_anual(self.team_ind, self.client, self.product, date(2061, 3, 20), 7.0)     # capturada
+        self._invoice_anual(self.team_ind, self.client, otro, date(2061, 3, 12), 30.0)            # no presupuestado
+        self._invoice_anual(self.team_ind, nuevo, otro, date(2061, 3, 12), 40.0)                  # cliente nuevo
+        self._invoice_anual(self.team_ind, self.client, self.product, date(2061, 5, 5), 50.0)     # mes sin renglones
+        self._invoice_anual(self.team_ind, self.client, saldo, date(2061, 3, 5), 5.0)             # saldo
+        self._invoice_anual(self.team_conf, nuevo, otro, date(2061, 3, 5), 60.0)                  # mercado sin renglones
+        budget.action_refresh_actuals()
+        d = budget._sgi_reconcile_data()
+        self.assertAlmostEqual(d['A'], 292.0, places=2)
+        self.assertAlmostEqual(d['B'], 107.0, places=2)
+        self.assertAlmostEqual(d['unbudgeted'], 30.0, places=2)
+        self.assertAlmostEqual(d['new_client'], 40.0, places=2)
+        self.assertAlmostEqual(d['month_without_budget'], 50.0, places=2)
+        self.assertAlmostEqual(d['saldos'], 5.0, places=2)
+        self.assertAlmostEqual(d['market_without_budget'], 60.0, places=2)
+        self.assertAlmostEqual(d['residual'], 0.0, places=2)
+        self.assertAlmostEqual(budget.amount_real_unbudgeted, 185.0, places=2)
+        # Un segundo mes con renglón: la venta de mayo pasa a «otro mes» si el renglón es de junio.
+        self._line(budget, date=date(2061, 6, 1), product_id=otro.id, partner_id=nuevo.id, price_input=1.0)
+        self._invoice_anual(self.team_ind, nuevo, otro, date(2061, 5, 6), 9.0)
+        self._line(budget, date=date(2061, 5, 1), product_id=self.env['product.product'].create({
+            'name': 'Tela mayo', 'type': 'consu', 'uom_id': self.uom_m.id}).id, price_input=1.0)
+        budget.action_refresh_actuals()
+        d = budget._sgi_reconcile_data()
+        # Mayo ya tiene renglones: la venta de mayo del producto presupuestado en marzo (50) y
+        # las de «otro» al cliente nuevo en marzo (40) y mayo (9), presupuestado en junio, son
+        # «otro mes». La de «otro» al cliente presupuestado (30) pasa a «a otro cliente».
+        self.assertAlmostEqual(d['other_month'], 99.0, places=2)
+        self.assertAlmostEqual(d['by_client_others'], 30.0, places=2)
+        self.assertAlmostEqual(d['market_without_budget'], 60.0, places=2)
+        self.assertAlmostEqual(d['residual'], 0.0, places=2)
+        budget.action_reconcile_invoiced()

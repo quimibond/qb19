@@ -510,6 +510,9 @@ class TestSalesBudgetClient(TransactionCase):
             'name': 'Tela cliente PPV', 'type': 'consu', 'uom_id': cls.uom_m.id})
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        # 3.5.3: la venta del año es la del VE-02 (cuentas de ventas de Ajustes).
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.sales_account_prefixes', cls.income.code)
         # Empresa comercial C con un contacto hijo CC, y otra empresa D.
         cls.company_c = cls.env['res.partner'].create(
             {'name': 'Cliente C', 'is_company': True})
@@ -1681,6 +1684,9 @@ class TestSalesBudgetReconcile(TransactionCase):
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        # 3.5.3: la venta del año es la del VE-02 (cuentas de ventas de Ajustes).
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.sales_account_prefixes', cls.income.code)
         cls.p_pres = cls.env['product.product'].create({
             'name': 'Prod presupuestado', 'default_code': 'RP', 'type': 'consu',
             'uom_id': cls.uom_m.id})
@@ -1778,6 +1784,9 @@ class TestSalesBudgetMultiCompany(TransactionCase):
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income'),
              ('company_ids', 'in', cls.company_a.id)], limit=1)
+        # 3.5.3: la venta del año es la del VE-02 (cuentas de ventas de Ajustes).
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.sales_account_prefixes', cls.income.code)
         cls.product = cls.env['product.product'].create({
             'name': 'Tela multi', 'default_code': 'MULTI', 'type': 'consu',
             'uom_id': cls.uom_m.id})

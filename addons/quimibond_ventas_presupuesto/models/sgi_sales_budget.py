@@ -434,29 +434,52 @@ class SgiSalesBudget(models.Model):
             'domain': [('budget_id', '=', self.id), ('has_list_price', '=', False)],
         }
 
-    def _qb_year_moves(self):
-        """Facturas y notas de crédito publicadas del año en los equipos de los mercados
-        (Ajustes): el real del presupuesto mide esos equipos, como las líneas."""
-        self.ensure_one()
+    # --- Venta del año contra el presupuesto (3.5.3) --------------------------
+    # La venta del año es la del VE-02: líneas de producto en cuentas de ventas
+    # (401/402, Ajustes del SGI) de facturas y notas de crédito de cliente
+    # timbradas. Una venta de activo fijo, un anticipo u otros ingresos que se
+    # facturan con equipo de ventas no son venta y no cuentan como «sin presupuesto».
+    RECONCILE_KEYS = [
+        ('market_without_budget', "Mercado sin renglones en este presupuesto"),
+        ('month_without_budget', "Mes sin presupuesto (ningún renglón ese mes)"),
+        ('other_month', "Cliente y producto presupuestados en otro mes"),
+        ('by_client_others', "Producto presupuestado por cliente, facturado a otro cliente"),
+        ('unbudgeted', "Producto no presupuestado a un cliente presupuestado"),
+        ('new_client', "Cliente sin presupuesto"),
+        ('saldos', "Saldos, segundas y desperdicio"),
+        ('no_product', "Notas de crédito y servicios sin producto de tela"),
+    ]
+
+    def _qb_market_teams(self):
         teams = self.env['crm.team']
         for base in ('industrial', 'confeccion', 'especiales'):
             teams |= mercado_team(self.env, base)
-        if not self.year or not teams:
-            return self.env['account.move']
-        return self.env['account.move'].sudo().search([
-            ('move_type', 'in', _REAL_MOVE_TYPES),
-            ('state', '=', 'posted'),
-            ('team_id', 'in', teams.ids),
-            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
-            ('invoice_date', '>=', date(self.year, 1, 1)),
-            ('invoice_date', '<=', date(self.year, 12, 31)),
-        ])
+        return teams
+
+    def _qb_sales_lines(self, date_to=None, teams=None):
+        """Líneas de venta del año (regla del VE-02) de la compañía del presupuesto en los
+        equipos dados (por omisión, los de los mercados); ``teams=False`` = sin equipo."""
+        self.ensure_one()
+        if not self.year:
+            return self.env['account.move.line']
+        if teams is None:
+            teams = self._qb_market_teams()
+            if not teams:
+                return self.env['account.move.line']
+        domain = [
+            ('move_id.move_type', 'in', _REAL_MOVE_TYPES), ('parent_state', '=', 'posted'),
+            ('company_id', '=', self.company_id.id), ('display_type', '=', 'product'),
+            ('move_id.invoice_date', '>=', date(self.year, 1, 1)),
+            ('move_id.invoice_date', '<=', date_to or date(self.year, 12, 31)),
+            ('move_id.team_id', 'in', teams.ids) if teams else ('move_id.team_id', '=', False),
+        ] + self.env['sgi.indicator']._sgi_sales_account_domain()
+        return self.env['account.move.line'].sudo().search(domain)
 
     def _sgi_team_year_real(self):
-        """Facturación neta del año en los equipos de los mercados (moneda compañía).
+        """Venta del año (regla del VE-02) en los equipos de los mercados, moneda compañía.
         Base para detectar lo vendido sin presupuestar."""
         self.ensure_one()
-        return sum(self._qb_year_moves().mapped('amount_untaxed_signed'))
+        return -sum(self._qb_sales_lines().mapped('balance'))
 
     @api.depends('line_ids.amount_real', 'year')
     def _compute_unbudgeted(self):
@@ -468,82 +491,107 @@ class SgiSalesBudget(models.Model):
             captured = sum(budget.line_ids.mapped('amount_real'))
             budget.amount_real_unbudgeted = budget._sgi_team_year_real() - captured
 
-    # --- Conciliación facturado vs contabilidad (cuadre del presupuesto) ------
+    @staticmethod
+    def _qb_is_saldo(product):
+        text = ('%s %s' % (product.default_code or '', product.name or '')).upper()
+        return text.startswith(('SALDO', 'DESPERDICIO')) or ' SALDO ' in ' %s ' % text \
+            or 'DESPERDICIO' in text
+
+    @staticmethod
+    def _qb_is_adjustment(product):
+        """Producto que no es tela: nota de crédito genérica, servicio, anticipo."""
+        return (not product or product.type == 'service'
+                or (product.default_code or '').upper().startswith('NOTA DE CREDITO'))
+
+    # --- Conciliación facturado vs presupuesto (cuadre del presupuesto) ------
     def _sgi_reconcile_data(self):
-        """Descompone el facturado contable del equipo en el año contra lo que
-        capturaron las líneas del presupuesto, para explicar la brecha:
+        """Descompone la venta del año en los equipos de los mercados contra lo que
+        capturaron los renglones del presupuesto (3.5.3):
 
-          A  = facturado contable del equipo (out_invoice/out_refund posted del
-               año, amount_untaxed_signed);
-          B  = suma de amount_real de las líneas del presupuesto (lo capturado);
-          partidas que explican A − B (cada una con monto):
-            · unbudgeted        productos facturados del equipo NO presupuestados;
-            · no_product        líneas de factura sin producto (fletes/servicios);
-            · by_client_others  facturado de productos presupuestados POR CLIENTE a
-                                OTROS clientes distintos del presupuestado;
-          residual = A − (B + partidas) → 0 si la foto real está fresca y cuadra;
-          no_team  = informativo (FUERA de A): facturas del año SIN equipo de
-                     ventas (la fuga principal del cuadre).
-
-        Objetivo verificable: A = B + unbudgeted + no_product + by_client_others +
-        residual. Trabaja sobre la foto real vigente (amount_real); refresca antes
-        (action_refresh_actuals) para que el residuo sea solo redondeo."""
+          A  = venta del año (regla del VE-02) de los equipos de los mercados;
+          B  = suma de amount_real de los renglones (lo capturado);
+          partidas (RECONCILE_KEYS), cada línea de factura en una sola, en este orden:
+            mercado sin renglones → nota/servicio sin producto de tela → saldo →
+            mes sin ningún renglón → capturada (B) → mismo cliente y producto en otro
+            mes → producto por cliente a otro cliente → producto no presupuestado a un
+            cliente presupuestado → cliente sin presupuesto;
+          residual = A − B − partidas → 0 si la foto real está fresca;
+          no_team  = informativo (fuera de A): ventas del año sin equipo;
+          outside_sales = informativo (fuera de A): lo que se factura con equipo en
+                     cuentas que no son de ventas (activo fijo, anticipos, otros ingresos).
+        ``top`` trae, por partida, los cinco cliente–producto más grandes."""
         self.ensure_one()
-        result = {
-            'A': 0.0, 'B': 0.0, 'unbudgeted': 0.0, 'no_product': 0.0,
-            'by_client_others': 0.0, 'residual': 0.0, 'captured_aml': 0.0,
-            'no_team': 0.0, 'currency': self.currency_id,
-        }
+        keys = [k for k, _l in self.RECONCILE_KEYS]
+        result = dict({k: 0.0 for k in keys}, A=0.0, B=0.0, residual=0.0, captured_aml=0.0,
+                      no_team=0.0, outside_sales=0.0, currency=self.currency_id,
+                      top={k: [] for k in keys})
         if self.kind != 'presupuesto':
             return result
+        lines = self.line_ids.filtered('product_id')
         result['B'] = sum(self.line_ids.mapped('amount_real'))
-        # Esquema presupuestado por producto (global vs por cliente).
-        global_products = set()
+        months = {l.date.month for l in self.line_ids if l.date}
+        mercados = {MERCADO_BASE.get(l.mercado) for l in self.line_ids}
+        cell = set()          # (team, producto, cliente o 0, mes) que captura un renglón
+        pair = set()          # (producto, cliente o 0) presupuestado en el año
         by_client = defaultdict(set)
-        for line in self.line_ids:
-            if line.partner_id:
-                by_client[line.product_id.id].add(
-                    line.partner_id.commercial_partner_id.id)
-            else:
-                global_products.add(line.product_id.id)
-        moves = self._qb_year_moves()
-        captured = 0.0
-        for move in moves:
-            result['A'] += move.amount_untaxed_signed
+        clients = {l.partner_id.commercial_partner_id.id for l in lines if l.partner_id}
+        for line in lines:
+            partner = line.partner_id.commercial_partner_id.id if line.partner_id else 0
+            cell.add((line.team_id.id, line.product_id.id, partner, line.date.month))
+            pair.add((line.product_id.id, partner))
+            if partner:
+                by_client[line.product_id.id].add(partner)
+        detail = {k: defaultdict(float) for k in keys}
+        for aml in self._qb_sales_lines():
+            amount = -aml.balance
+            result['A'] += amount
+            move = aml.move_id
             cp = move.commercial_partner_id
-            for aml in move.invoice_line_ids.filtered(
-                    lambda l: l.display_type == 'product'):
-                contrib = -aml.balance  # base sin impuestos, moneda compañía, signada
-                product = aml.product_id
-                if not product:
-                    result['no_product'] += contrib
-                elif product.id in global_products:
-                    captured += contrib
-                elif product.id in by_client:
-                    if cp.id in by_client[product.id]:
-                        captured += contrib
-                    else:
-                        result['by_client_others'] += contrib
-                else:
-                    result['unbudgeted'] += contrib
-        result['captured_aml'] = captured
-        result['residual'] = (
-            result['A'] - result['B'] - result['unbudgeted']
-            - result['no_product'] - result['by_client_others'])
-        no_team_moves = self.env['account.move'].sudo().search([
-            ('move_type', 'in', _REAL_MOVE_TYPES),
-            ('state', '=', 'posted'),
-            ('team_id', '=', False),
-            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
-            ('invoice_date', '>=', date(self.year, 1, 1)),
-            ('invoice_date', '<=', date(self.year, 12, 31)),
-        ]) if self.year else self.env['account.move']
-        result['no_team'] = sum(no_team_moves.mapped('amount_untaxed_signed'))
+            product = aml.product_id
+            month = move.invoice_date.month
+            label = "%s — %s" % (cp.name or '', product.default_code or product.name or aml.name or '')
+            if team_mercado(self.env, move.team_id) not in mercados:
+                key = 'market_without_budget'
+                label = "%s — %s" % (move.team_id.name or '', cp.name or '')
+            elif self._qb_is_adjustment(product):
+                key = 'no_product'
+            elif self._qb_is_saldo(product):
+                key = 'saldos'
+            elif month not in months:
+                key = 'month_without_budget'
+            elif ((move.team_id.id, product.id, cp.id, month) in cell
+                  or (move.team_id.id, product.id, 0, month) in cell):
+                result['captured_aml'] += amount
+                continue
+            elif (product.id, cp.id) in pair or (product.id, 0) in pair:
+                key = 'other_month'
+            elif product.id in by_client:
+                key = 'by_client_others'
+            elif cp.id in clients:
+                key = 'unbudgeted'
+            else:
+                key = 'new_client'
+            result[key] += amount
+            detail[key][label] += amount
+        for key in keys:
+            result['top'][key] = sorted(detail[key].items(), key=lambda kv: -abs(kv[1]))[:5]
+        result['residual'] = result['A'] - result['B'] - sum(result[k] for k in keys)
+        result['no_team'] = -sum(self._qb_sales_lines(teams=False).mapped('balance'))
+        teams = self._qb_market_teams()
+        if teams:
+            others = self.env['account.move.line'].sudo().search([
+                ('move_id.move_type', 'in', _REAL_MOVE_TYPES), ('parent_state', '=', 'posted'),
+                ('company_id', '=', self.company_id.id), ('display_type', '=', 'product'),
+                ('move_id.invoice_date', '>=', date(self.year, 1, 1)),
+                ('move_id.invoice_date', '<=', date(self.year, 12, 31)),
+                ('move_id.team_id', 'in', teams.ids),
+                ('id', 'not in', self._qb_sales_lines().ids)])
+            result['outside_sales'] = -sum(others.mapped('balance'))
         return result
 
     def action_reconcile_invoiced(self):
-        """Refresca la foto y publica en el chatter la tabla de conciliación del
-        facturado contable vs el presupuesto (solo presupuesto)."""
+        """Refresca la foto y publica en el chatter la tabla de conciliación de la
+        venta del año contra el presupuesto (solo presupuesto)."""
         self.ensure_one()
         if self.kind != 'presupuesto':
             raise UserError(
@@ -556,33 +604,35 @@ class SgiSalesBudget(models.Model):
         def _m(v):
             return "%s%s" % (ccy, '{:,.2f}'.format(v))
         cuadra = abs(d['residual']) < 0.01
+        rows = Markup('')
+        for key, label in self.RECONCILE_KEYS:
+            if not d[key]:
+                continue
+            tops = Markup("<br/>").join(
+                Markup("<small class='text-muted'>%s: %s</small>") % (name, _m(amount))
+                for name, amount in d['top'][key])
+            rows += Markup("<tr><td>+ %s<br/>%s</td><td style='text-align:right'>%s</td></tr>") % (
+                label, tops, _m(d[key]))
         # 1.4.2: Markup, si no Odoo 19 escapa el HTML y el chatter muestra las etiquetas.
-        body = (Markup(
-            "<b>Conciliación facturado vs presupuesto — %s</b>"
+        body = Markup(
+            "<b>Conciliación de la venta del año contra el presupuesto — %s</b>"
             "<table class='table table-sm'>"
-            "<tr><td><b>A. Facturado contable del equipo</b></td>"
+            "<tr><td><b>A. Venta del año en los equipos de los mercados (regla del VE-02)</b></td>"
             "<td style='text-align:right'>%s</td></tr>"
-            "<tr><td>B. Capturado por el presupuesto (facturado de las líneas)</td>"
+            "<tr><td>B. Capturada por los renglones del presupuesto</td>"
             "<td style='text-align:right'>%s</td></tr>"
-            "<tr><td>+ Productos facturados NO presupuestados</td>"
-            "<td style='text-align:right'>%s</td></tr>"
-            "<tr><td>+ Líneas de factura sin producto (fletes/servicios)</td>"
-            "<td style='text-align:right'>%s</td></tr>"
-            "<tr><td>+ Presupuestado por cliente, facturado a OTROS clientes</td>"
-            "<td style='text-align:right'>%s</td></tr>"
+            "%s"
             "<tr><td><b>= Residuo (A − B − partidas)</b></td>"
             "<td style='text-align:right'><b>%s</b></td></tr>"
-            "</table>"
-            "%s"
-            "<i>Informativo (fuera de A): facturas del año SIN equipo de ventas: "
-            "%s.</i>") % (
-                self.year, _m(d['A']), _m(d['B']), _m(d['unbudgeted']),
-                _m(d['no_product']), _m(d['by_client_others']), _m(d['residual']),
+            "</table>%s"
+            "<i>Fuera de A: ventas sin equipo %s; facturado con equipo en cuentas que no son de "
+            "ventas (activo fijo, anticipos, otros ingresos) %s.</i>") % (
+                self.year, _m(d['A']), _m(d['B']), rows, _m(d['residual']),
                 (Markup("<span class='text-success'>Cuadra exacto (residuo 0).</span><br/>")
                  if cuadra else
-                 Markup("<span class='text-danger'>No cuadra: revisa el residuo "
+                 Markup("<span class='text-danger'>No cuadra: revise el residuo "
                         "(foto real desactualizada o redondeos).</span><br/>")),
-                _m(d['no_team'])))
+                _m(d['no_team']), _m(d['outside_sales']))
         self.message_post(body=body)
         return {
             'type': 'ir.actions.client',
@@ -899,12 +949,6 @@ class SgiSalesBudget(models.Model):
     _SGI_TEMPLATE_MONTHS = [
         'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
         'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
-
-    def _qb_market_teams(self):
-        teams = self.env['crm.team']
-        for base in ('industrial', 'confeccion', 'especiales'):
-            teams |= mercado_team(self.env, base)
-        return teams
 
     def _sgi_historical_pairs(self):
         """[(mercado, cliente comercial, producto)] FACTURADOS en los equipos de los
