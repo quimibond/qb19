@@ -21,6 +21,19 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## PDF y Excel del presupuesto y del pronóstico (19.0.3.6.0, 2026-11-05)
+
+- **Presupuesto** (ficha → Imprimir, y engrane → «Descargar Excel»): resumen por
+  mercado y mes, y detalle por mercado con cliente, producto o proyecto, unidad,
+  cantidad por mes, precio presupuestal e importe. El PDF es horizontal (carta)
+  y trae el cumplimiento al corte. El Excel tiene las hojas Resumen, Cantidades e
+  Importes MXN.
+- **Pronóstico vigente** (Pronóstico → «Imprimir o descargar», también en
+  Fabricación → Pronóstico de ventas): desde una semana, cuántas semanas, qué
+  clientes y en qué unidad (metros, kilos o la de venta); matriz cliente y
+  planta × producto × semana, en PDF horizontal o en Excel. Los totales por
+  cliente solo salen en metros o kilos.
+
 ## Desviación contra el precio presupuestal (19.0.3.5.6, 2026-11-05)
 
 La desviación de precio comparaba lo facturado contra el **precio de lista de

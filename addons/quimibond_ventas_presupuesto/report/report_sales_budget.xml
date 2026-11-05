@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- 3.6.0: hoja horizontal para las matrices de 12 meses y de 13 semanas. -->
+    <record id="paperformat_qb_landscape" model="report.paperformat">
+        <field name="name">Quimibond horizontal (presupuesto y pronóstico)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">25</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">20</field>
+        <field name="dpi">90</field>
+    </record>
+
     <record id="action_report_sales_budget" model="ir.actions.report">
         <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
         <field name="model">sgi.sales.budget</field>
@@ -7,101 +21,165 @@
         <field name="report_name">quimibond_ventas_presupuesto.report_sales_budget_document</field>
         <field name="report_file">quimibond_ventas_presupuesto.report_sales_budget_document</field>
         <field name="print_report_name">'%s' % (object.folio or object.name or 'Presupuesto')</field>
+        <field name="paperformat_id" ref="paperformat_qb_landscape"/>
         <!-- 1.2.0 (V-M10): se imprime desde el menú Imprimir, no desde un botón
              del encabezado. -->
         <field name="binding_model_id" ref="model_sgi_sales_budget"/>
         <field name="binding_type">report</field>
     </record>
 
+    <!-- 3.6.0: resumen por mercado y mes, y detalle por mercado (cliente, producto o proyecto). -->
     <template id="report_sales_budget_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <t>
-                    <t t-set="matrix" t-value="doc._report_matrix()"/>
-                    <div class="page">
-                        <h2 class="text-center">
+                    <t t-set="data" t-value="doc._qb_report_data()"/>
+                    <t t-set="ccy" t-value="doc.currency_id"/>
+                    <div class="page" style="font-size:8px;">
+                        <h3 class="text-center">
                             Presupuesto de Ventas (F-P-A28-17/18)<br/>
                             <small t-out="doc.name"/>
-                        </h2>
-                        <p class="text-muted text-center" style="font-size:11px;">
-                            Cantidades por unidad (no se suman entre unidades distintas);
-                            el total global es solo en pesos (<span t-out="doc.currency_id.name"/>).
+                            <small> · Folio <span t-out="doc.folio"/></small>
+                        </h3>
+                        <p class="text-muted text-center" style="font-size:9px;">
+                            Importes en <span t-out="ccy.name"/> (cantidad en la base del precio × precio × tipo
+                            de cambio del mes). Las cantidades se leen por unidad y no se suman entre unidades.
+                            <t t-if="doc.cutoff_date"> Cumplimiento al <span t-out="doc.cutoff_date"
+                               t-options="{'widget': 'date'}"/>: <b t-out="'%.1f %%' % doc.fulfillment_pct"/>
+                               (<span t-out="doc.fulfillment_by_mercado_text"/>).</t>
                         </p>
-                        <table class="table table-sm table-bordered" style="font-size:9px;">
+
+                        <h5>Resumen por mercado</h5>
+                        <table class="table table-sm table-bordered">
                             <thead>
                                 <tr class="table-active">
-                                    <th>Producto / Cliente</th>
-                                    <th>Unidad</th>
-                                    <th t-foreach="matrix['months']" t-as="m" class="text-end"
-                                        t-out="m"/>
-                                    <th class="text-end">Total cant.</th>
-                                    <th class="text-end">P. unit. ppto</th>
-                                    <th class="text-end">P. prom. real</th>
-                                    <th class="text-end">Importe</th>
+                                    <th>Mercado</th>
+                                    <th t-foreach="data['month_names']" t-as="mn" class="text-end" t-out="mn"/>
+                                    <th class="text-end">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <t t-foreach="matrix['groups']" t-as="grp">
-                                    <tr t-foreach="grp['rows']" t-as="row">
-                                        <td>
-                                            <span t-if="row_index == 0" class="fw-bold"
-                                                  t-out="grp['product']"/>
-                                            <span t-if="grp['by_client']" class="text-muted ps-2"
-                                                  t-out="row['client']"/>
-                                        </td>
-                                        <td t-out="row['uom']"/>
-                                        <td t-foreach="matrix['months']" t-as="m" class="text-end"
-                                            t-out="'{:,.0f}'.format(row['cells'][m]) if row['cells'][m] else ''"/>
-                                        <td class="text-end fw-bold"
-                                            t-out="'{:,.2f}'.format(row['qty_total'])"/>
-                                        <td class="text-end">
-                                            <span t-out="row['price_budget']"
-                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                                        </td>
-                                        <td class="text-end text-muted">
-                                            <span t-out="row['price_real']"
-                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                                        </td>
-                                        <td class="text-end">
-                                            <span t-out="row['amount_total']"
-                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                                            <t t-if="row['list_currency'] and row['list_currency'] != doc.currency_id">
-                                                <br/>
-                                                <span class="text-muted" t-out="row['amount_currency']"
-                                                      t-options="{'widget': 'monetary', 'display_currency': row['list_currency']}"/>
-                                            </t>
-                                        </td>
-                                    </tr>
-                                    <tr t-if="grp['by_client']" class="table-light">
-                                        <td colspan="17" class="text-end">
-                                            Subtotal <span t-out="grp['product']"/>:
-                                        </td>
-                                        <td class="text-end fw-bold">
-                                            <span t-out="grp['subtotal_amount']"
-                                                  t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                                        </td>
-                                    </tr>
-                                </t>
+                                <tr t-foreach="data['summary']" t-as="s">
+                                    <td t-out="s['label']"/>
+                                    <td t-foreach="data['months']" t-as="m" class="text-end"
+                                        t-out="'{:,.0f}'.format(s['cells'].get(m, 0.0)) if s['cells'].get(m) else ''"/>
+                                    <td class="text-end fw-bold" t-out="'{:,.0f}'.format(s['total'])"/>
+                                </tr>
                             </tbody>
                             <tfoot>
-                                <tr class="table-active">
-                                    <td colspan="17" class="text-end fw-bold">
-                                        Subtotal de cantidad por unidad:
-                                        <span t-out="matrix['qty_by_uom']"/>
-                                    </td>
-                                    <td class="text-end fw-bold">
-                                        <span t-out="matrix['amount_total']"
-                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                                    </td>
+                                <tr class="table-active fw-bold">
+                                    <td>Total</td>
+                                    <td t-foreach="data['months']" t-as="m" class="text-end"
+                                        t-out="'{:,.0f}'.format(data['total_cells'].get(m, 0.0))"/>
+                                    <td class="text-end" t-out="'{:,.0f}'.format(data['total'])"/>
                                 </tr>
                             </tfoot>
                         </table>
+
+                        <t t-foreach="data['sections']" t-as="sec">
+                            <h5 style="page-break-before: always;" t-out="sec['label']"/>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr class="table-active">
+                                        <th>Cliente</th>
+                                        <th>Producto / proyecto</th>
+                                        <th>Unidad</th>
+                                        <th t-foreach="data['month_names']" t-as="mn" class="text-end" t-out="mn"/>
+                                        <th class="text-end">Total cant.</th>
+                                        <th class="text-end">Precio</th>
+                                        <th class="text-end">Importe</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="sec['rows']" t-as="row">
+                                        <td t-out="row['client'] or '—'"/>
+                                        <td t-out="row['product']"/>
+                                        <td t-out="row['uom']"/>
+                                        <td t-foreach="data['months']" t-as="m" class="text-end"
+                                            t-out="'{:,.0f}'.format(row['cells'].get(m, 0.0)) if row['cells'].get(m) else ''"/>
+                                        <td class="text-end fw-bold" t-out="'{:,.0f}'.format(row['qty_total'])"/>
+                                        <td class="text-end" t-out="'%s %s' % ('{:,.4f}'.format(row['price']).rstrip('0').rstrip('.'), row['currency'])"/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(row['amount_total'])"/>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-active fw-bold">
+                                        <td colspan="3">Importe <span t-out="sec['label']"/></td>
+                                        <td t-foreach="data['months']" t-as="m" class="text-end"
+                                            t-out="'{:,.0f}'.format(sec['cells'].get(m, 0.0))"/>
+                                        <td/>
+                                        <td/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(sec['total'])"/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
                         <t t-call="quimibond_sgi.sgi_format_footer">
                             <t t-set="sgi_rec" t-value="doc"/>
                         </t>
                     </div>
-                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- 3.6.0: pronóstico vigente (asistente «Imprimir o descargar el pronóstico»). -->
+    <record id="action_report_forecast" model="ir.actions.report">
+        <field name="name">Pronóstico vigente</field>
+        <field name="model">qb.forecast.print</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_ventas_presupuesto.report_forecast_document</field>
+        <field name="report_file">quimibond_ventas_presupuesto.report_forecast_document</field>
+        <field name="print_report_name">'Pronostico %s' % object.date_from</field>
+        <field name="paperformat_id" ref="paperformat_qb_landscape"/>
+    </record>
+
+    <template id="report_forecast_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="data" t-value="doc._qb_matrix()"/>
+                    <div class="page" style="font-size:8px;">
+                        <h3 class="text-center">
+                            Pronóstico de ventas vigente<br/>
+                            <small><span t-out="data['labels'][0]"/> a <span t-out="data['labels'][-1]"/>
+                                · <span t-out="data['unit']"/></small>
+                        </h3>
+                        <p t-if="not data['groups']" class="text-center text-muted">
+                            No hay pronóstico en esas semanas.
+                        </p>
+                        <t t-foreach="data['groups']" t-as="grp">
+                            <h6><b t-out="grp['client']"/><t t-if="grp['plant']"> · <span t-out="grp['plant']"/></t></h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr class="table-active">
+                                        <th>Producto</th>
+                                        <th>Unidad</th>
+                                        <th t-foreach="data['labels']" t-as="lb" class="text-end"
+                                            t-out="lb.split(' · ')[0]"/>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="grp['rows']" t-as="row">
+                                        <td t-out="row['product']"/>
+                                        <td t-out="row['uom']"/>
+                                        <td t-foreach="data['mondays']" t-as="mo" class="text-end"
+                                            t-out="'{:,.0f}'.format(row['cells'].get(mo, 0.0)) if row['cells'].get(mo) else ''"/>
+                                        <td class="text-end fw-bold" t-out="'{:,.0f}'.format(row['total'])"/>
+                                    </tr>
+                                </tbody>
+                                <tfoot t-if="data['sum_groups'] and len(grp['rows']) > 1">
+                                    <tr class="table-active fw-bold">
+                                        <td colspan="2">Total</td>
+                                        <td t-foreach="data['mondays']" t-as="mo" class="text-end"
+                                            t-out="'{:,.0f}'.format(grp['cells'].get(mo, 0.0))"/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(grp['total'])"/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+                    </div>
                 </t>
             </t>
         </t>
