@@ -31,6 +31,7 @@ Ahora compara **venta contra presupuesto, los dos al corte** (último día del
 de los mercados con la regla del VE-02, así que lo vendido fuera de los
 renglones sí cuenta. Trae el cumplimiento por mercado. «Capturado por los
 renglones» queda aparte, y el aviso de cierre de mes usa la misma venta.
+Desde 19.0.3.5.5 un documento obsoleto no mide cumplimiento.
 
 ## Traer renglones de otro presupuesto (19.0.3.5.3, 2026-11-05)
 
