@@ -194,16 +194,15 @@ class TestForecastE1(TransactionCase):
 
     def test_08_pronostico_viejo_no_se_crea(self):
         from odoo.exceptions import UserError
-        team = self.env['crm.team'].create({'name': 'Mercado E1 viejo'})
         Budget = self.env['sgi.sales.budget']
         with self.assertRaises(UserError):
-            Budget.create({'year': 2040, 'team_id': team.id, 'kind': 'pronostico',
+            Budget.create({'year': 2040, 'kind': 'pronostico',
                            'partner_id': self.customer.id})
         old = Budget.with_context(qb_allow_old_forecast=True).create({
-            'year': 2040, 'team_id': team.id, 'kind': 'pronostico', 'partner_id': self.customer.id})
+            'year': 2040, 'kind': 'pronostico', 'partner_id': self.customer.id})
         with self.assertRaises(UserError):
             old.action_send_to_review()
-        self.assertTrue(Budget.create({'year': 2040, 'team_id': team.id}),
+        self.assertTrue(Budget.create({'year': 2040}),
                         "El presupuesto se sigue creando normal.")
 
     def test_09_pedido_sin_entrega_abierta_no_es_demanda(self):

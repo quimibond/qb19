@@ -31,6 +31,9 @@ BUDGET_PARAMS = {
     # Lista de precios PRESUPUESTAL para líneas sin cliente (id). 0 = sin
     # configurar: esas líneas quedan sin precio (nunca una lista arbitraria).
     'quimibond_sgi.budget_pricelist_id': '0',
+    # 3.5.0: objetivo y mínimo de crecimiento del presupuesto anual.
+    'quimibond_ventas_presupuesto.objetivo_pct': '20',
+    'quimibond_ventas_presupuesto.minimo_pct': '15',
 }
 
 
@@ -102,6 +105,28 @@ class ResConfigSettings(models.TransientModel):
              "(global). Sin configurar, esas líneas quedan sin precio (NUNCA se "
              "toma una lista arbitraria: eso valuaba el global con la tarifa de un "
              "cliente).")
+
+    # 3.5.0: equipo de ventas de cada mercado base del presupuesto anual (el real y lo
+    # pedido de los renglones se miden en ese equipo) y objetivo y mínimo de crecimiento.
+    qb_team_industrial_id = fields.Many2one(
+        'crm.team', string="Equipo de Industrial",
+        config_parameter='quimibond_ventas_presupuesto.team_industrial',
+        help="Equipo de ventas de Industrial y Proyectos industrial en el presupuesto.")
+    qb_team_confeccion_id = fields.Many2one(
+        'crm.team', string="Equipo de Confección",
+        config_parameter='quimibond_ventas_presupuesto.team_confeccion',
+        help="Equipo de ventas de Confección y Proyectos confección en el presupuesto.")
+    qb_team_especiales_id = fields.Many2one(
+        'crm.team', string="Equipo de Especiales",
+        config_parameter='quimibond_ventas_presupuesto.team_especiales')
+    qb_objetivo_pct = fields.Float(
+        string="Objetivo de crecimiento del presupuesto (%)",
+        config_parameter='quimibond_ventas_presupuesto.objetivo_pct',
+        help="Valor inicial de cada revisión nueva (20 % por omisión).")
+    qb_minimo_pct = fields.Float(
+        string="Crecimiento mínimo del presupuesto (%)",
+        config_parameter='quimibond_ventas_presupuesto.minimo_pct',
+        help="Valor inicial de cada revisión nueva (15 % por omisión).")
 
     @api.model
     def get_values(self):

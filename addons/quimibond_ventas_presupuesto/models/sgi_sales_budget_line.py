@@ -1,11 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Línea del presupuesto de ventas (producto × mes/semana).
+"""Línea del presupuesto de ventas (mercado × cliente × producto × mes).
 
-La cabecera vive en sgi_sales_budget.py; aquí la línea con su precio de lista,
-la foto del real (facturado y pedido) y las guardas de captura. 3.0.0: el
-pronóstico ya no vive aquí (qb.forecast.line); los pronósticos viejos quedan
-como histórico de solo lectura. Se separó del archivo de la cabecera solo por tamaño
-(mismo modelo lógico); comparte los helpers _REAL_MOVE_TYPES y _convert_qty.
+La cabecera vive en sgi_sales_budget.py; aquí la línea con su precio, la foto del
+real (facturado y pedido) y las guardas de captura. 3.0.0: el pronóstico ya no
+vive aquí (qb.forecast.line); los pronósticos viejos quedan como histórico de
+solo lectura.
+
+3.5.0 (diseño v3, 2.6): la línea lleva el **mercado** (uno de cinco), puede ser
+un **renglón de proyecto** sin producto (descripción, gramaje y ancho), y el
+**precio se captura** (``price_input`` en USD o MXN, por metro, por kilo o por
+la unidad del renglón). Al crear el renglón se sugiere el de la lista del cliente
+con las reglas de siempre (``_sgi_pricelist_price``); si la lista no tiene regla
+o el precio es basura, queda vacío y el renglón cuenta 0 («sin precio»), nunca
+el precio de venta del producto. Importe = cantidad en la base del precio ×
+precio × tipo de cambio del mes del documento. El precio de lista sigue como
+referencia (columna aparte y control de desviaciones contra lo facturado).
 """
 from collections import defaultdict
 
@@ -13,7 +22,24 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.quimibond_sgi.models.sgi_base import sgi_bypass_allowed
-from .sgi_sales_budget import _REAL_MOVE_TYPES, _convert_qty
+from .product_articulo import CONV_ORIGINS, _UOM_REFS
+from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS,
+                               PROYECTO_MERCADOS, default_mercado, mercado_team)
+
+PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por kilo")]
+PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel', "Excel"),
+                 ('proyecto', "Proyecto")]
+PRICE_PROBLEMS = [('sin_precio', "Sin precio"), ('sin_tc', "Sin tipo de cambio"),
+                  ('sin_conversion', "Sin conversión")]
+
+
+def _uom_code(env, uom):
+    """'m' o 'kg' si la unidad es de longitud o de peso; '' si no."""
+    for xmlid, code in _UOM_REFS:
+        ref = env.ref(xmlid, raise_if_not_found=False)
+        if ref and uom and uom._has_common_reference(ref):
+            return code
+    return ''
 
 
 class SgiSalesBudgetLine(models.Model):
@@ -23,14 +49,27 @@ class SgiSalesBudgetLine(models.Model):
 
     budget_id = fields.Many2one('sgi.sales.budget', string="Presupuesto",
                                 required=True, ondelete='cascade', index=True)
-    team_id = fields.Many2one(related='budget_id.team_id', store=True,
-                              string="Mercado")
+    # 3.5.0: el equipo sale del mercado (parámetro de Ajustes); el real y lo pedido
+    # se miden en ese equipo.
+    team_id = fields.Many2one('crm.team', string="Equipo del mercado", compute='_compute_team_id',
+                              store=True, index=True)
+    mercado = fields.Selection(MERCADOS, string="Mercado", index=True,
+                               help="Industrial y Especiales llevan cliente; Confección se "
+                                    "presupuesta sin cliente. Proyectos: combinaciones producto–"
+                                    "cliente en arranque, o renglones sin código todavía.")
     company_id = fields.Many2one(related='budget_id.company_id', store=True)
     currency_id = fields.Many2one(related='budget_id.currency_id', store=True,
                                   string="Moneda")
     kind = fields.Selection(related='budget_id.kind', store=True, string="Tipo")
-    product_id = fields.Many2one('product.product', string="Producto",
-                                 required=True, index=True)
+    product_id = fields.Many2one('product.product', string="Producto", index=True,
+                                 help="Vacío solo en un renglón de proyecto que aún no tiene código: "
+                                      "cuando se dé de alta, póngale el producto y conserva su historia.")
+    articulo_id = fields.Many2one(related='product_id.qb_articulo_id', store=True,
+                                  string="Artículo")
+    proyecto_descripcion = fields.Char(
+        string="Proyecto", help="Qué es el renglón de proyecto sin código (tela, cliente, uso).")
+    proyecto_gramaje = fields.Float(string="Gramaje del proyecto (g/m²)")
+    proyecto_ancho_cm = fields.Float(string="Ancho del proyecto (cm)")
     partner_id = fields.Many2one(
         'res.partner', string="Cliente", index=True,
         domain="[('is_company', '=', True)]",
@@ -47,20 +86,43 @@ class SgiSalesBudgetLine(models.Model):
              "la misma categoría que la unidad de venta del producto.")
     qty_budget = fields.Float(string="Cantidad presupuestada",
                               digits='Product Unit')
+    qty_m = fields.Float(string="Metros", digits=(16, 2), compute='_compute_qty_conv', store=True,
+                         help="La cantidad en metros (rendimiento del producto, o gramaje y "
+                              "ancho del proyecto). Vacío si no se puede convertir.")
+    qty_kg = fields.Float(string="Kilos", digits=(16, 2), compute='_compute_qty_conv', store=True)
+    conv_origen = fields.Selection(CONV_ORIGINS + [('proyecto', "Datos del proyecto")],
+                                   string="Origen de la conversión", compute='_compute_qty_conv',
+                                   store=True)
+    # PRECIO PRESUPUESTAL (3.5.0): se captura; al crear se sugiere de la lista.
+    price_input = fields.Float(
+        string="Precio", digits=(16, 4),
+        help="Precio presupuestal en la moneda y la base indicadas. Al crear el renglón se "
+             "sugiere el de la lista del cliente; vacío = cuenta 0 («sin precio»).")
+    price_currency_id = fields.Many2one(
+        'res.currency', string="Moneda del precio",
+        default=lambda self: self.env.company.currency_id)
+    price_basis = fields.Selection(PRICE_BASIS, string="Base del precio", default='venta',
+                                   required=True)
+    price_origen = fields.Selection(PRICE_ORIGINS, string="De dónde salió el precio", copy=True)
+    rate = fields.Float(string="Tipo de cambio", digits=(12, 4), compute='_compute_amount_budget',
+                        store=True, help="Tipo de cambio del mes del documento (1 si el precio "
+                                         "está en la moneda de la compañía).")
+    price_problem = fields.Selection(PRICE_PROBLEMS, string="Problema del importe",
+                                     compute='_compute_amount_budget', store=True)
     # PRECIO: no se captura. Sale SIEMPRE de la lista de precios (la única fuente
     # de verdad); si un precio está mal se corrige LA LISTA. Compute almacenado
     # (foto), se refresca en borrador; al aprobar queda congelado (candado de
     # líneas). Doble moneda: la de la lista (lo que el cliente conoce) y la de la
     # compañía (convertida con el tipo presupuestal de Ajustes).
     price_unit_budget = fields.Monetary(
-        string="Precio MXN", currency_field='currency_id',
+        string="Precio de lista (MXN)", currency_field='currency_id',
         compute='_compute_price', store=True,
-        help="Precio unitario en moneda de la compañía, tomado de la lista de "
-             "precios del cliente (o la lista default). No se captura.")
+        help="Referencia: precio de la lista del cliente (o la presupuestal) en moneda "
+             "de la compañía. El importe usa el precio presupuestal.")
     price_unit_currency = fields.Monetary(
-        string="Precio (divisa)", currency_field='list_currency_id',
+        string="Precio de lista", currency_field='list_currency_id',
         compute='_compute_price', store=True,
-        help="Precio en la moneda de la lista aplicada (lo que el cliente conoce).")
+        help="Referencia: precio en la moneda de la lista aplicada (lo que el cliente conoce).")
     list_currency_id = fields.Many2one(
         'res.currency', string="Moneda de la lista",
         compute='_compute_price', store=True)
@@ -75,11 +137,12 @@ class SgiSalesBudgetLine(models.Model):
     amount_budget = fields.Monetary(
         string="Importe MXN", currency_field='currency_id',
         compute='_compute_amount_budget', store=True,
-        help="Cantidad × precio de lista, en moneda de la compañía.")
+        help="Cantidad en la base del precio × precio × tipo de cambio del mes, en moneda "
+             "de la compañía. Lo lee el VE-02.")
     amount_currency = fields.Monetary(
-        string="Importe (divisa)", currency_field='list_currency_id',
+        string="Importe (moneda del precio)", currency_field='price_currency_id',
         compute='_compute_amount_budget', store=True,
-        help="Cantidad × precio, en la moneda de la lista.")
+        help="Cantidad en la base del precio × precio, en la moneda del precio.")
 
     # Real automático (base = FACTURADO). Almacenados para poder agregarse en
     # pivot/graph; son una FOTO: se recalculan al tocar la línea, con el botón
@@ -144,38 +207,132 @@ class SgiSalesBudgetLine(models.Model):
     # Unicidad producto+mes+cliente. NULLS NOT DISTINCT (PG15+): un cliente nulo
     # cuenta como su propio valor, así que solo hay una línea global por prod+mes.
     _product_month_partner_uniq = models.Constraint(
-        'unique nulls not distinct (budget_id, product_id, date, partner_id)',
-        "Ya existe una línea para ese producto, mes y cliente en este presupuesto.")
+        'unique nulls not distinct (budget_id, product_id, date, partner_id, proyecto_descripcion)',
+        "Ya existe una línea para ese producto (o proyecto), mes y cliente en este presupuesto.")
 
-    @api.depends('product_id', 'date', 'uom_id', 'partner_id')
+    def _qb_label(self):
+        self.ensure_one()
+        if self.product_id:
+            return self.product_id.default_code or self.product_id.name or ''
+        return "Proyecto: %s" % (self.proyecto_descripcion or '?')
+
+    @api.depends('product_id', 'date', 'uom_id', 'partner_id', 'proyecto_descripcion')
     def _compute_display_name(self):
         for line in self:
-            product = line.product_id
-            label = product.default_code or product.name or ''
+            label = line._qb_label()
             uom = line.uom_id.name or ''
             name = "%s (%s)" % (label, uom) if uom else label
             if line.partner_id:
                 name = "%s — %s" % (name, line.partner_id.name)
             line.display_name = name
 
-    @api.depends('qty_budget', 'price_unit_budget', 'price_unit_currency')
+    @api.depends('mercado', 'budget_id.kind')
+    def _compute_team_id(self):
+        for line in self:
+            line.team_id = mercado_team(self.env, line.mercado) if line.mercado else False
+
+    # Sin depends sobre el rendimiento del producto: un aprobado no cambia de importe si
+    # el cron nocturno corrige un rendimiento. «Actualizar real» recalcula los abiertos.
+    @api.depends('qty_budget', 'uom_id', 'product_id', 'proyecto_gramaje', 'proyecto_ancho_cm')
+    def _compute_qty_conv(self):
+        for line in self:
+            line.qty_m, line.qty_kg, line.conv_origen = line._qb_conv_values()
+
+    def _qb_conv_values(self):
+        """(metros, kilos, origen) de la cantidad; 0 donde no se puede convertir."""
+        self.ensure_one()
+        code = _uom_code(self.env, self.uom_id)
+        if not self.qty_budget or not code:
+            return 0.0, 0.0, 'sin_dato'
+        ref = self.env.ref('uom.product_uom_meter' if code == 'm' else 'uom.product_uom_kgm')
+        qty = _convert_qty(self.qty_budget, self.uom_id, ref) or 0.0
+        if self.product_id:
+            product = self.product_id
+            other = 'kg' if code == 'm' else 'm'
+            converted = product.qb_convertir(qty, code, other) or 0.0
+            values = {code: qty, other: converted}
+            origen = (product.qb_conv_origen if product.qb_m_por_kg
+                      else (product.qb_articulo_id.qb_conv_origen or 'sin_dato'))
+            return values['m'], values['kg'], origen if converted else 'sin_dato'
+        # Proyecto: kg = m × ancho (m) × gramaje (g/m²) / 1000.
+        factor = (self.proyecto_ancho_cm / 100.0) * self.proyecto_gramaje / 1000.0
+        if not factor:
+            return (qty, 0.0, 'sin_dato') if code == 'm' else (0.0, qty, 'sin_dato')
+        if code == 'm':
+            return qty, qty * factor, 'proyecto'
+        return qty / factor, qty, 'proyecto'
+
+    @api.depends('qty_budget', 'qty_m', 'qty_kg', 'price_input', 'price_currency_id', 'price_basis',
+                 'date', 'budget_id.rate_ids.rate', 'budget_id.rate_ids.month', 'currency_id')
     def _compute_amount_budget(self):
         for line in self:
-            line.amount_budget = line.qty_budget * line.price_unit_budget
-            line.amount_currency = line.qty_budget * line.price_unit_currency
+            line.amount_budget, line.amount_currency, line.rate, line.price_problem = \
+                line._qb_amount_values()
+
+    def _qb_amount_values(self):
+        """(importe en moneda de la compañía, importe en la moneda del precio, tipo de cambio,
+        problema). Un renglón con problema cuenta 0: nunca se inventa un precio ni un factor."""
+        self.ensure_one()
+        if not self.qty_budget:
+            return 0.0, 0.0, 0.0, False
+        if self.price_input <= 0:
+            return 0.0, 0.0, 0.0, 'sin_precio'
+        base_qty = {'venta': self.qty_budget, 'm': self.qty_m, 'kg': self.qty_kg}[self.price_basis or 'venta']
+        if not base_qty:
+            return 0.0, 0.0, 0.0, 'sin_conversion'
+        amount_ccy = base_qty * self.price_input
+        company_ccy = self.currency_id or self.env.company.currency_id
+        price_ccy = self.price_currency_id or company_ccy
+        if price_ccy == company_ccy:
+            return amount_ccy, amount_ccy, 1.0, False
+        month_rate = self.budget_id._qb_month_rate(self.date.month) if self.date else 0.0
+        factor = self._qb_rate_factor(price_ccy, company_ccy, month_rate)
+        if not factor:
+            return 0.0, amount_ccy, 0.0, 'sin_tc'
+        return amount_ccy * factor, amount_ccy, month_rate, False
+
+    def _qb_rate_factor(self, price_ccy, company_ccy, month_rate):
+        """Factor de la moneda del precio a la de la compañía con el tipo de cambio del mes
+        (pesos por dólar): × tipo si el precio es en dólares y la compañía en pesos; ÷ al revés."""
+        if month_rate <= 0:
+            return 0.0
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
+        mxn = self.env.ref('base.MXN', raise_if_not_found=False)
+        if price_ccy == usd and company_ccy == mxn:
+            return month_rate
+        if price_ccy == mxn and company_ccy == usd:
+            return 1.0 / month_rate
+        return 0.0
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if self.product_id and not self.uom_id:
             self.uom_id = self.product_id.uom_id
 
+    @api.onchange('partner_id')
+    def _onchange_partner_mercado(self):
+        if self.partner_id and not self.mercado:
+            self.mercado = default_mercado(self.env, self.partner_id)
+
+    def _qb_suggest_price(self):
+        """Pone el precio de la lista del cliente (o la presupuestal) en los renglones sin
+        precio, si la lista tiene una regla real del producto. Devuelve cuántos tomó."""
+        done = 0
+        for line in self.filtered(lambda l: l.product_id and l.price_input <= 0):
+            _price, _source, list_ccy, raw, has_price = line._sgi_pricelist_price()
+            if has_price and raw > 0:
+                line.write({'price_input': raw, 'price_currency_id': list_ccy.id,
+                            'price_basis': 'venta', 'price_origen': 'lista'})
+                done += 1
+        return done
+
     @api.depends('product_id', 'partner_id', 'uom_id', 'qty_budget')
     def _compute_price(self):
-        """El precio SIEMPRE sale de la lista (nunca se captura). Los campos de la
-        línea no cambian tras aprobar (candado), así que este compute no se
-        re-dispara solo en aprobados; el refresco manual/cron sí lo salta para no
-        pisar lo aprobado (ver action_refresh_actuals). Congelar aquí rompería el
-        primer cálculo perezoso de una línea recién aprobada."""
+        """Precio de LISTA de referencia (3.5.0: el importe usa el precio presupuestal,
+        ``price_input``; la lista lo sugiere al crear y mide la desviación contra lo
+        facturado). Los campos de la línea no cambian tras aprobar (candado), así que
+        este compute no se re-dispara solo en aprobados; el refresco manual/cron sí lo
+        salta para no pisar lo aprobado (ver action_refresh_actuals)."""
         for line in self:
             price_company, source, list_ccy, price_list, has_price = \
                 line._sgi_pricelist_price()
@@ -344,6 +501,19 @@ class SgiSalesBudgetLine(models.Model):
                 raise ValidationError(
                     "La fecha de la línea debe ser el primer día del mes (%s)." % line.date)
 
+    @api.constrains('product_id', 'proyecto_descripcion', 'mercado', 'kind')
+    def _check_product_or_project(self):
+        for line in self.filtered(lambda l: l.kind == 'presupuesto'):
+            if not line.mercado:
+                raise ValidationError("Cada renglón del presupuesto lleva su mercado.")
+            if not line.product_id and not (line.proyecto_descripcion or '').strip():
+                raise ValidationError(
+                    "Un renglón sin producto es un proyecto: escriba qué es (descripción) o "
+                    "ponga el producto.")
+            if not line.product_id and line.mercado not in PROYECTO_MERCADOS:
+                raise ValidationError(
+                    "Solo los renglones de Proyectos van sin producto (%s)." % line.proyecto_descripcion)
+
     @api.constrains('partner_id', 'product_id', 'budget_id')
     def _check_no_mixed_scheme(self):
         """Anti-doble-conteo: dentro de un presupuesto, un producto es global
@@ -374,7 +544,7 @@ class SgiSalesBudgetLine(models.Model):
 
     @api.constrains('uom_id', 'product_id')
     def _check_uom_category(self):
-        for line in self:
+        for line in self.filtered('product_id'):
             sale_uom = line.product_id.uom_id
             if line.uom_id and sale_uom and not sale_uom._has_common_reference(line.uom_id):
                 raise ValidationError(
@@ -515,6 +685,8 @@ class SgiSalesBudgetLine(models.Model):
         """Drill-down del presupuesto: las facturas del producto/equipo(/cliente)
         cuyo mes es el de la línea — análogo a "Ver pedidos de la semana"."""
         self.ensure_one()
+        if not self.product_id:
+            raise UserError("Un renglón de proyecto sin producto todavía no tiene facturas.")
         first, nxt = self._sgi_month_bounds(self.date)
         domain = [
             ('move_type', 'in', _REAL_MOVE_TYPES),
@@ -626,11 +798,23 @@ class SgiSalesBudgetLine(models.Model):
     _SGI_LOCKED_PARENT_STATES = ('aprobado',)
     _SGI_EDITABLE_FIELDS = {
         'product_id', 'date', 'uom_id', 'qty_budget', 'amount_budget', 'budget_id',
-        'price_unit_budget', 'price_source', 'partner_id'}
+        'price_unit_budget', 'price_source', 'partner_id', 'mercado', 'price_input',
+        'price_currency_id', 'price_basis', 'price_origen', 'proyecto_descripcion',
+        'proyecto_gramaje', 'proyecto_ancho_cm'}
 
     @api.model_create_multi
     def create(self, vals_list):
+        Partner = self.env['res.partner']
+        for vals in vals_list:
+            if not vals.get('mercado'):
+                vals['mercado'] = default_mercado(self.env, Partner.browse(vals.get('partner_id')))
+            if not vals.get('product_id') and vals.get('price_input') and not vals.get('price_origen'):
+                vals['price_origen'] = 'proyecto'
+            elif vals.get('price_input') and not vals.get('price_origen'):
+                vals['price_origen'] = 'captura'
         lines = super().create(vals_list)
+        # 3.5.0: precio sugerido de la lista donde no vino precio (presupuesto, no histórico).
+        lines.filtered(lambda l: l.kind == 'presupuesto')._qb_suggest_price()
         # Agregar líneas a un presupuesto 'revisado' lo regresa a borrador, para que
         # Dirección no apruebe contenido distinto al que revisó el Admin.
         lines._sgi_reopen_reviewed_parents(lines.budget_id)
@@ -668,6 +852,8 @@ class SgiSalesBudgetLine(models.Model):
                     "evidencia). Pide al Jefe de MAST regresarlo a borrador o "
                     "crear una nueva revisión.\n\nPresupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
+        if 'price_input' in vals and 'price_origen' not in vals:
+            vals = dict(vals, price_origen='captura' if vals['price_input'] else False)
         res = super().write(vals)
         # Tocar campos de captura de un presupuesto 'revisado' lo regresa a borrador
         # (gobernanza del revisado). Solo la edición de captura cuenta, no el refresh de la foto.
@@ -702,8 +888,8 @@ class SgiSalesBudgetLine(models.Model):
         for leaf in domain:
             if isinstance(leaf, (list, tuple)) and len(leaf) == 3:
                 field, op, val = leaf
-                if field == 'product_id' and op == '=':
-                    vals['product_id'] = val
+                if field in ('product_id', 'partner_id', 'mercado') and op == '=':
+                    vals[field] = val[0] if isinstance(val, (list, tuple)) else val
                 elif field == 'date' and op in ('>=', '=', '>'):
                     vals['date'] = val
                 elif field == 'budget_id' and op == '=':
@@ -715,20 +901,23 @@ class SgiSalesBudgetLine(models.Model):
 
     @api.model
     def grid_update_cell(self, domain, measure_field_name, value):
-        """Suma `value` a la celda (producto × mes) del grid; crea la línea si no
-        existe (patrón timesheet_grid). El grid gestiona SOLO el esquema por
-        producto (sin cliente); el presupuesto por cliente se captura en la vista
-        lista (si el producto ya tiene líneas por cliente, el constraint
-        anti-doble-conteo avisará)."""
+        """Suma `value` a la celda (mercado × cliente × producto × mes) del grid; crea la
+        línea si no existe (patrón timesheet_grid). Sin cliente en la fila, la celda es
+        la del producto sin cliente (si el producto ya tiene líneas por cliente, el
+        constraint anti-doble-conteo avisará). Los proyectos sin producto se capturan
+        en la lista."""
         if not value:
             return
-        domain = list(domain) + [('partner_id', '=', False)]
+        domain = list(domain)
+        fields_in = {leaf[0] for leaf in domain if isinstance(leaf, (list, tuple)) and len(leaf) == 3}
+        if 'partner_id' not in fields_in:
+            domain.append(('partner_id', '=', False))
         line = self.search(domain, limit=1)
         if line:
             line[measure_field_name] += value
             return
         vals = self._grid_cell_vals_from_domain(domain)
-        vals['partner_id'] = False
+        vals.setdefault('partner_id', False)
         if not vals.get('budget_id') or not vals.get('product_id') or not vals.get('date'):
             raise UserError(
                 "No se pudo ubicar la celda (producto/mes/presupuesto). Captura "
