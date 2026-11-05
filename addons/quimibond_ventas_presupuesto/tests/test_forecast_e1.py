@@ -154,3 +154,21 @@ class TestForecastE1(TransactionCase):
         self.assertAlmostEqual(lines[0].qty_origen, 1500.0)
         self.assertTrue(release_line.exists())
         self.assertEqual(release_line.qty_origen, 77.0)
+
+    def test_06_dos_hojas_del_mismo_cliente_son_dos_plantas(self):
+        wb = openpyxl.Workbook()
+        for index, title in enumerate(('ZZCLIENTE E1 NORTE', 'ZZCLIENTE E1 SUR')):
+            ws = wb.active if index == 0 else wb.create_sheet()
+            ws.title = title
+            for week in range(1, 53):
+                ws.cell(row=3, column=2 + week, value=float(week))
+            ws['A4'] = 2040.0
+            ws['B5'] = 'FECHA DE ENTREGA'
+            ws['A6'] = 'ZJ038Q22JNT160'
+            ws.cell(row=6, column=4, value=100.0 * (index + 1))
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        self._import(base64.b64encode(buffer.getvalue()))
+        lines = self.env['qb.forecast.line'].search([('partner_id', '=', self.customer.id)])
+        self.assertEqual(sorted(lines.mapped('plant')), ['ZZCLIENTE E1 NORTE', 'ZZCLIENTE E1 SUR'])
+        self.assertEqual(sorted(lines.mapped('qty_origen')), [100.0, 200.0])
