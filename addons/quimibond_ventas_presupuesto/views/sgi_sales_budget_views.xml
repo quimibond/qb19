@@ -12,9 +12,6 @@
                 <field name="kind" column_invisible="1"/>
                 <field name="price_gap_alert" column_invisible="1"/>
                 <field name="product_id"/>
-                <field name="customer_code" optional="hide"/>
-                <field name="forecast_source" optional="hide" column_invisible="context.get('sgi_hide_coverage')"/>
-                <field name="release_id" optional="hide" column_invisible="context.get('sgi_hide_coverage')"/>
                 <field name="partner_id" optional="show"/>
                 <field name="date"/>
                 <field name="uom_id"/>
@@ -32,28 +29,15 @@
                 <field name="has_list_price" readonly="1" optional="hide"/>
                 <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show" sum="Total"/>
-                <field name="qty_net_demand" readonly="1" optional="hide"/>
                 <field name="amount_real" readonly="1" optional="show" sum="Total"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide" sum="Total"/>
-                <field name="coverage_pct" widget="percentage" readonly="1" optional="show"
-                       column_invisible="context.get('sgi_hide_coverage')"/>
-                <field name="coverage_state" widget="badge" readonly="1" optional="show"
-                       column_invisible="context.get('sgi_hide_coverage')"
-                       decoration-success="coverage_state == 'cubierto'"
-                       decoration-warning="coverage_state == 'parcial'"
-                       decoration-danger="coverage_state == 'sin_pedido'"
-                       decoration-info="coverage_state == 'excedido'"/>
                 <field name="avg_price_budget" readonly="1" optional="hide"/>
                 <field name="avg_price_real" readonly="1" optional="hide"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
-                <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
-                        string="Ver pedidos de la semana" title="Ver pedidos de la semana"
-                        invisible="kind != 'pronostico'"/>
                 <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
-                        string="Ver facturas del mes" title="Ver facturas del mes"
-                        invisible="kind == 'pronostico'"/>
+                        string="Ver facturas del mes" title="Ver facturas del mes"/>
             </list>
         </field>
     </record>
@@ -65,21 +49,15 @@
             <form string="Línea de presupuesto">
                 <header>
                     <field name="kind" invisible="1"/>
-                    <field name="coverage_state" invisible="1"/>
-                    <button name="action_view_week_orders" type="object"
-                            string="Ver pedidos de la semana" icon="fa-shopping-cart"
-                            invisible="kind != 'pronostico'"/>
                     <button name="action_view_month_invoices" type="object"
-                            string="Ver facturas del mes" icon="fa-file-text-o"
-                            invisible="kind == 'pronostico'"/>
+                            string="Ver facturas del mes" icon="fa-file-text-o"/>
                 </header>
                 <sheet>
                     <group>
                         <group>
                             <field name="budget_id"/>
                             <field name="product_id"/>
-                            <field name="customer_code"/>
-                            <field name="partner_id" readonly="kind == 'pronostico'"/>
+                            <field name="partner_id"/>
                             <field name="date"/>
                             <field name="uom_id"/>
                         </group>
@@ -102,18 +80,13 @@
                     <group string="Real (facturado) y pedido — automático">
                         <group>
                             <field name="qty_real" readonly="1"/>
-                            <field name="qty_forecast" readonly="1"
-                                   invisible="kind == 'pronostico'"/>
+                            <field name="qty_forecast" readonly="1"/>
                             <field name="amount_real" readonly="1"/>
                             <field name="unconverted_count" readonly="1"/>
                         </group>
                         <group>
                             <field name="qty_ordered" readonly="1"/>
                             <field name="amount_ordered" readonly="1"/>
-                            <field name="coverage_pct" widget="percentage" readonly="1"
-                                   invisible="kind != 'pronostico'"/>
-                            <field name="coverage_state" widget="badge" readonly="1"
-                                   invisible="kind != 'pronostico'"/>
                             <field name="avg_price_budget" readonly="1"/>
                             <field name="avg_price_real" readonly="1"/>
                         </group>
@@ -155,7 +128,6 @@
                 <field name="amount_ordered" type="measure"/>
                 <field name="qty_budget" type="measure"/>
                 <field name="qty_real" type="measure"/>
-                <field name="qty_net_demand" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -187,8 +159,6 @@
                 <separator/>
                 <filter name="presupuesto" string="Presupuesto"
                         domain="[('kind', '=', 'presupuesto')]"/>
-                <filter name="pronostico" string="Pronóstico"
-                        domain="[('kind', '=', 'pronostico')]"/>
                 <separator/>
                 <filter name="year_current" string="Año actual"
                         domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d')),
@@ -203,13 +173,6 @@
                         domain="[('price_gap_alert', 'in', ('leve', 'grave'))]"/>
                 <filter name="sin_precio_lista" string="Sin precio de lista"
                         domain="[('has_list_price', '=', False)]"/>
-                <separator/>
-                <filter name="cov_sin_pedido" string="Sin pedido (en horizonte)"
-                        domain="[('coverage_state', '=', 'sin_pedido')]"/>
-                <filter name="cov_parcial" string="Parciales"
-                        domain="[('coverage_state', '=', 'parcial')]"/>
-                <filter name="cov_excedido" string="Excedidos"
-                        domain="[('coverage_state', '=', 'excedido')]"/>
                 <group>
                     <filter name="group_team" string="Mercado" context="{'group_by': 'team_id'}"/>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
@@ -231,8 +194,8 @@
             <form string="Presupuesto de ventas">
                 <header>
                     <!-- Flujo (P-A28 Rev.15): captura → revisado (Admin ventas) →
-                         aprobado (alta dirección, solo presupuesto). El pronóstico
-                         es documento vivo: solo se marca revisado.
+                         aprobado (alta dirección). 3.0.0: el pronóstico ya no es un
+                         documento (Pronóstico vigente); aquí solo hay presupuestos.
                          1.2.0 (V-M10): en el encabezado solo el flujo. «Análisis» es
                          botón inteligente; «Actualizar real», «Conciliar facturado» e
                          «Importar desde Excel» están en el engrane (Acción) e
@@ -240,10 +203,6 @@
                     <button name="action_send_to_review" type="object"
                             string="Enviar a revisión" class="btn-primary"
                             invisible="kind != 'presupuesto' or state != 'borrador'"
-                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_send_to_review" type="object"
-                            string="Marcar revisado" class="btn-primary"
-                            invisible="kind != 'pronostico' or state != 'borrador'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_approve" type="object" string="Aprobar (Dirección)"
                             class="btn-primary"
@@ -255,10 +214,6 @@
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
                             invisible="state != 'revisado'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_send_to_mps" type="object"
-                            string="Enviar demanda al MPS" icon="fa-industry"
-                            invisible="not sgi_mps_available or (kind == 'pronostico' and state != 'revisado') or (kind == 'presupuesto' and state != 'aprobado')"/>
-                    <field name="sgi_mps_available" invisible="1"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,revisado,aprobado,obsoleto"/>
                 </header>
@@ -273,16 +228,6 @@
                             <field name="price_deviation_count" widget="statinfo"
                                    string="Desviaciones de precio"/>
                         </button>
-                        <button name="action_view_uncovered" type="object"
-                                class="oe_stat_button" icon="fa-calendar-times-o"
-                                invisible="kind != 'pronostico' or uncovered_count == 0">
-                            <field name="uncovered_count" widget="statinfo"
-                                   string="Semanas descubiertas"/>
-                        </button>
-                        <button name="action_view_orders_without_forecast" type="object"
-                                class="oe_stat_button" icon="fa-shopping-cart"
-                                invisible="kind != 'pronostico'"
-                                string="Pedidos fuera de pronóstico"/>
                     </div>
                     <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
                             invisible="state != 'obsoleto'"/>
@@ -322,9 +267,6 @@
                             <field name="kind"/>
                             <field name="year"/>
                             <field name="team_id"/>
-                            <field name="partner_id"
-                                   required="kind == 'pronostico'"
-                                   invisible="kind != 'pronostico'"/>
                             <field name="revision"/>
                         </group>
                         <group>
@@ -369,8 +311,6 @@
                                     <field name="price_unit_budget" readonly="1"/>
                                     <field name="amount_budget" readonly="1" sum="Total"/>
                                     <field name="qty_real" readonly="1" sum="Total"/>
-                                    <field name="qty_net_demand" readonly="1"
-                                           column_invisible="parent.kind != 'pronostico'"/>
                                     <field name="amount_real" readonly="1" sum="Total"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </list>
@@ -415,7 +355,6 @@
                 <field name="partner_id"/>
                 <field name="year"/>
                 <filter name="mensual" string="Presupuesto mensual" domain="[('kind', '=', 'presupuesto')]"/>
-                <filter name="semanal" string="Pronóstico semanal" domain="[('kind', '=', 'pronostico')]"/>
                 <separator/>
                 <filter name="approved" string="Aprobados" domain="[('state', '=', 'aprobado')]"/>
                 <filter name="revised" string="Revisados" domain="[('state', '=', 'revisado')]"/>
@@ -497,29 +436,62 @@
     </record>
 
 
+    <!-- 3.0.0: pronósticos como documento (antes de Pronóstico vigente), solo consulta. -->
     <record id="sgi_sales_forecast_view_list" model="ir.ui.view">
         <field name="name">sgi.sales.forecast.list</field>
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
-            <list string="Pronósticos"
-                  decoration-muted="state == 'obsoleto'"
-                  decoration-success="state == 'aprobado'">
+            <list string="Pronósticos anteriores" create="0" edit="0" delete="0">
                 <field name="folio"/>
                 <field name="year"/>
                 <field name="partner_id"/>
-                <field name="team_id" optional="show"/>
-                <field name="revision"/>
-                <field name="qty_real_text" optional="show"/>
-                <field name="state" widget="badge"
-                       decoration-success="state == 'aprobado'"
-                       decoration-warning="state == 'revisado'"
-                       decoration-info="state == 'borrador'"/>
+                <field name="team_id" optional="hide"/>
+                <field name="line_count"/>
+                <field name="write_date" string="Última modificación" optional="show"/>
+                <field name="state" widget="badge"/>
             </list>
         </field>
     </record>
 
+    <record id="sgi_sales_forecast_view_form" model="ir.ui.view">
+        <field name="name">sgi.sales.forecast.form</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="arch" type="xml">
+            <form string="Pronóstico anterior" create="0" edit="0" delete="0">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Pronóstico de antes del pronóstico vigente (3.0.0), solo de consulta.
+                        El pronóstico de hoy está en Presupuesto y pronóstico → Pronóstico vigente.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="year" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="folio" readonly="1"/>
+                            <field name="state" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" readonly="1">
+                        <list string="Semanas">
+                            <field name="date" string="Semana"/>
+                            <field name="product_id"/>
+                            <field name="uom_id"/>
+                            <field name="qty_budget" string="Cantidad" sum="Total"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
 
-    <!-- ============ KANBAN de presupuestos/pronósticos ============ -->
+
+    <!-- ============ KANBAN de presupuestos ============ -->
     <record id="sgi_sales_budget_view_kanban" model="ir.ui.view">
         <field name="name">sgi.sales.budget.kanban</field>
         <field name="model">sgi.sales.budget</field>
@@ -532,8 +504,7 @@
                         <div class="row">
                             <div class="col-8">
                                 <strong><field name="year"/></strong> ·
-                                <field name="partner_id" invisible="kind != 'pronostico'"/>
-                                <field name="team_id" invisible="kind == 'pronostico'"/>
+                                <field name="team_id"/>
                             </div>
                             <div class="col-4 text-end">
                                 <field name="state" widget="label_selection"
@@ -630,22 +601,19 @@
     </record>
 
     <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
-        <field name="name">Pronósticos</field>
+        <field name="name">Pronósticos anteriores</field>
         <field name="res_model">sgi.sales.budget</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_sales_budget_view_search"/>
         <field name="domain">[('kind', '=', 'pronostico')]</field>
-        <field name="context">{'search_default_not_obsolete': 1, 'default_kind': 'pronostico'}</field>
+        <field name="context">{'create': 0, 'edit': 0, 'delete': 0}</field>
         <field name="view_ids" eval="[(5, 0, 0),
-            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_sales_budget_view_kanban')}),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_forecast_view_list')}),
-            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_forecast_view_form')})]"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el pronóstico semanal por cliente</p>
-            <p>Un pronóstico por cliente y año (F-P-A28-13). Los clientes con release
-            lo actualizan solo al aplicar su release (Releases de clientes); para los
-            demás, capture las semanas. El real es lo comprometido a entregar
-            (pedidos confirmados por fecha de compromiso).</p>
+            <p class="o_view_nocontent_smiling_face">Sin pronósticos anteriores</p>
+            <p>Los pronósticos por cliente y año de antes del pronóstico vigente, solo de consulta.
+               El pronóstico de hoy está en Pronóstico vigente.</p>
         </field>
     </record>
 </odoo>

@@ -1,23 +1,26 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Quimibond - Presupuesto y pronóstico de ventas",
-    'summary': "Presupuesto de ventas anual por mercado y pronóstico semanal por cliente (P-A28), en la app Ventas",
+    'summary': "Presupuesto de ventas anual y pronóstico vigente por cliente y semana (P-A28), en la app Ventas",
     'description': """
 Presupuesto y pronóstico de ventas de Quimibond (procedimiento P-A28).
 
 - Presupuesto anual por mercado (equipo de ventas) o por cliente, mensual,
   con precio de lista, revisiones congeladas y aprobación de Dirección
-  (formato F-P-A28-18); pronóstico semanal por cliente (F-P-A28-13).
-- Captura en matriz (grid), importación desde Excel, foto de lo facturado y
-  lo pedido, cobertura del pronóstico, control de precios (lista vs
-  facturado) y análisis por mercado, cliente, producto y global.
+  (formato F-P-A28-18).
+- Pronóstico vigente por cliente, planta, producto y semana (F-P-A28-13), en
+  metros y kilos, con bitácora de cambios, y Demanda por cliente para
+  Planeación (pedidos + pronóstico sin pedido).
+- Captura en matriz (grid), importación desde Excel, foto de lo facturado,
+  cobertura del pronóstico, control de precios (lista vs facturado) y
+  análisis por mercado, cliente, producto y global.
 - Avisos: cierre de mes por debajo del umbral y justificación del
   incumplimiento, cobertura semanal del pronóstico y revaluación del S2.
 - Liga del presupuesto de gastos (Presupuestos, budget.analytic) con el de
   ventas.
 - Releases de clientes: catálogo de partes del cliente → producto (con
-  sugerencia), perfiles, lectores de Lear (AIAG) y FXI (SUM), aplicación al
-  pronóstico por año y demanda total al MPS.
+  sugerencia), perfiles por planta, lectores de Lear (AIAG) y FXI (SUM) y
+  aplicación al pronóstico vigente. Sin envío al MPS desde 3.0.0.
 
 Salió de quimibond_sgi en 57.11.0 (auditoría A-016, A-013, decisión 5): es
 planeación comercial; el SGI solo lo mide (KPI VE-02, «presupuesto_ventas»,
@@ -29,7 +32,7 @@ pasa los registros existentes sin borrar ni recrear nada.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Sales/Sales',
-    'version': '19.0.2.0.3',
+    'version': '19.0.3.0.0',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',  # sgi.base.mixin, sgi.format.mixin, grupos, crons y KPI

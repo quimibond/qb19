@@ -39,6 +39,9 @@ class QbReleaseProfile(models.Model):
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     partner_id = fields.Many2one('res.partner', string="Cliente", required=True,
                                  domain="[('is_company', '=', True)]", tracking=True)
+    plant = fields.Char(string="Planta (pronóstico)", tracking=True,
+                        help="Planta del cliente como la escribe el pronóstico (Silao, Tennessee) "
+                             "mientras no exista como dirección de entrega. Un perfil por planta.")
     ship_to_id = fields.Many2one('res.partner', string="Planta / ship-to",
                                  domain="[('id', 'child_of', partner_id)]", tracking=True)
     supplier_code = fields.Char(string="Nuestro número de proveedor", tracking=True,
@@ -79,15 +82,17 @@ class QbReleaseProfile(models.Model):
     release_ids = fields.One2many('qb.release', 'profile_id', string="Releases")
 
     _profile_uniq = models.Constraint(
-        'unique nulls not distinct (company_id, partner_id, ship_to_id)',
+        'unique nulls not distinct (company_id, partner_id, ship_to_id, plant)',
         "Ya hay un perfil de release para ese cliente y planta.")
 
-    @api.depends('partner_id', 'ship_to_id')
+    @api.depends('partner_id', 'ship_to_id', 'plant')
     def _compute_name(self):
         for profile in self:
             name = profile.partner_id.name or ''
             if profile.ship_to_id:
                 name = "%s — %s" % (name, profile.ship_to_id.name)
+            elif profile.plant:
+                name = "%s — %s" % (name, profile.plant)
             profile.name = name
 
 
@@ -124,7 +129,9 @@ class QbRelease(models.Model):
                                copy=False)
     line_ids = fields.One2many('qb.release.line', 'release_id', string="Semanas",
                                copy=False)
-    forecast_ids = fields.Many2many('sgi.sales.budget', string="Pronósticos escritos",
+    forecast_line_ids = fields.One2many('qb.forecast.line', 'release_id', string="Semanas del pronóstico")
+    # Hasta 2.x el release escribía en el pronóstico como documento; se conserva la liga histórica.
+    forecast_ids = fields.Many2many('sgi.sales.budget', string="Pronósticos escritos (histórico)",
                                     readonly=True, copy=False)
     applied_date = fields.Datetime(string="Aplicado el", readonly=True, copy=False)
     applied_by_id = fields.Many2one('res.users', string="Aplicó", readonly=True,
@@ -340,84 +347,70 @@ class QbRelease(models.Model):
             raise UserError("No se aplica el release %s:\n- %s" % (
                 self.name, "\n- ".join(problems)))
 
-    def _qb_forecast_for(self, year):
-        """Pronóstico vigente del cliente para ese año; se crea si no hay."""
-        self.ensure_one()
-        profile = self.profile_id
-        partner = profile.partner_id.commercial_partner_id
-        Budget = self.env['sgi.sales.budget']
-        forecast = Budget.search([
-            ('kind', '=', 'pronostico'), ('partner_id', '=', partner.id),
-            ('year', '=', year), ('company_id', '=', profile.company_id.id),
-            ('state', '!=', 'obsoleto')], limit=1)
-        if not forecast:
-            forecast = Budget.create({
-                'kind': 'pronostico', 'partner_id': partner.id, 'year': year,
-                'team_id': profile.team_id.id, 'company_id': profile.company_id.id,
-            })
-        return forecast
-
     def action_apply(self):
-        """Escribe el release en el pronóstico del cliente y recalcula el MPS.
+        """Escribe el release en el pronóstico vigente (qb.forecast.line, 3.0.0).
 
-        Por producto y semana de embarque, la cantidad del pronóstico = la del
-        release (suma de partes del mismo producto). Desde la primera semana del
-        release en adelante, las semanas de esos productos que el release ya no
-        trae quedan en 0; las semanas anteriores no se tocan. Si el release
-        cruza de año, escribe en el pronóstico de cada año (N3)."""
-        Line = self.env['sgi.sales.budget.line']
+        Por producto y semana de embarque, la cantidad = la del release (suma de las
+        partes del mismo producto, ya en la unidad de venta). Desde la primera semana
+        del release en adelante, las semanas de esos productos y de ese cliente y
+        planta que el release ya no trae se quitan (queda en la bitácora); las
+        anteriores no se tocan. Ya no escribe en el Programa Maestro (desconectado
+        en 3.0.0, decisión de Jose 2026-11-05)."""
+        Line = self.env['qb.forecast.line']
         for release in self:
             release._qb_check_applicable()
-            partner = release.profile_id.partner_id.commercial_partner_id
+            profile = release.profile_id
+            partner = profile.partner_id.commercial_partner_id
+            ship_to = profile.ship_to_id
+            plant = (profile.plant or False) if not ship_to else False
             demand = defaultdict(float)
+            info = {}
             for line in release.line_ids:
-                demand[(line.product_id, line.week)] += line.qty
+                key = (line.product_id, line.week)
+                demand[key] += line.qty
+                part = line.release_part_id
+                info.setdefault(key, {'customer_part': part.customer_part or False,
+                                      'customer_po': part.customer_po or False,
+                                      'delivery_date': line.date_customer})
             start = min(week for (_p, week) in demand)
             products = release.line_ids.product_id
-            by_year = defaultdict(dict)
+            existing = Line.search([
+                ('company_id', '=', release.company_id.id), ('partner_id', '=', partner.id),
+                ('ship_to_id', '=', ship_to.id or False), ('plant', '=', plant),
+                ('product_id', 'in', products.ids), ('week', '>=', start)])
+            by_key = {(ln.product_id, ln.week): ln for ln in existing}
+            created = changed = 0
+            to_create = []
             for (product, week), qty in demand.items():
-                by_year[week.year][(product, week)] = qty
-            forecasts = self.env['sgi.sales.budget']
-            for year in sorted(set(by_year) | {start.year}):
-                forecast = release._qb_forecast_for(year)
-                forecasts |= forecast
-                cells = by_year.get(year, {})
-                existing = {(ln.product_id, ln.date): ln for ln in forecast.line_ids
-                            if ln.product_id in products and ln.date >= start}
-                for key, line in existing.items():
-                    if key not in cells:
-                        line.write({'qty_budget': 0.0, 'release_id': release.id,
-                                    'forecast_source': 'release'})
-                for (product, week), qty in cells.items():
-                    vals = {'qty_budget': qty, 'release_id': release.id,
-                            'forecast_source': 'release'}
-                    line = existing.get((product, week))
-                    if line:
-                        line.write(vals)
-                    else:
-                        vals.update(budget_id=forecast.id, product_id=product.id,
-                                    date=week, uom_id=product.uom_id.id,
-                                    partner_id=partner.id)
-                        Line.create(vals)
-                # El release ya lo revisó Ventas: el pronóstico queda revisado
-                # (editar sus líneas lo regresó a borrador).
-                if forecast.state != 'revisado':
-                    forecast.state = 'revisado'
-                forecast.message_post(body="Actualizado desde el release %s (versión %s)."
-                                      % (release.name, release.version))
+                vals = dict(info[(product, week)], qty_origen=qty, uom_origen=False,
+                            origen='release', release_id=release.id)
+                line = by_key.pop((product, week), None)
+                if line:
+                    line.write(vals)
+                    changed += 1
+                else:
+                    vals.update(company_id=release.company_id.id, partner_id=partner.id,
+                                ship_to_id=ship_to.id or False, plant=plant,
+                                product_id=product.id, week=week)
+                    to_create.append(vals)
+            new_lines = Line.create(to_create)
+            created = len(new_lines)
+            stale = Line.browse([ln.id for ln in by_key.values()])
+            removed = len(stale)
+            stale.unlink()
             previous = self.search([
-                ('profile_id', '=', release.profile_id.id),
+                ('profile_id', '=', profile.id),
                 ('state', '=', 'aplicado'), ('id', '!=', release.id)])
             previous.write({'state': 'reemplazado'})
             release.write({
-                'state': 'aplicado', 'forecast_ids': [(6, 0, forecasts.ids)],
+                'state': 'aplicado',
                 'applied_date': fields.Datetime.now(), 'applied_by_id': self.env.user.id,
             })
-            details, _omitted = self.env['sgi.sales.budget']._qb_mps_refresh(
-                products, release.company_id)
+            Line.search([('release_id', '=', release.id)]).action_qb_refresh()
             release.message_post(
-                body="Aplicado a %s. Programa Maestro: %d celda(s) recalculadas." % (
-                    ", ".join(forecasts.mapped('name')), len(details)))
+                body="Aplicado al pronóstico vigente: %d semana(s) nueva(s), %d cambiada(s) y "
+                     "%d quitada(s) (ya no venían en el release)." % (created, changed, removed))
+        self.env['qb.demand.line'].action_qb_rebuild()
         return True
 
 
