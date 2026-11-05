@@ -231,6 +231,14 @@ class MrpProduction(models.Model):
             for move in orden.move_raw_ids - crudo:
                 if move.state in ('done', 'cancel') or not move.product_id.is_storable:
                     continue
+                # 3.3.6: una reserva sin lote de un componente con lote (en 2 PRODUCCIÓN quedan registros sin lote y sin
+                # existencia) detenía el cierre con «Debe proporcionar un número de lote» (prueba en main, 2026-11-05).
+                # Esa parte no existe: se quita y queda como faltante.
+                if move.product_id.tracking != 'none':
+                    sin_lote = move.move_line_ids.filtered(
+                        lambda ml: not ml.lot_id and not ml.lot_name and ml.state not in ('done', 'cancel'))
+                    if sin_lote:
+                        sin_lote.unlink()
                 # Lo que sí está apartado se consume: sin «picked», Odoo cancelaría el consumo parcial al cerrar.
                 if not move.picked and move.product_uom.compare(move.quantity, 0) > 0:
                     move.picked = True

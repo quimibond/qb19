@@ -59,8 +59,9 @@ class MrpWorkorder(models.Model):
         }
 
     def _insp_en_paralelo(self, es_tipo, modelo):
-        """3.3.5: Inspección empieza mientras Rama sigue: la operación nativa queda «bloqueada» hasta que Rama termina,
-        pero en cuanto Rama pesó un rollo, ese rollo ya se puede inspeccionar. La operación de Inspección no termina ni la
+        """3.3.5: Inspección empieza mientras Rama sigue. En Odoo 19 la operación pasa sola de «bloqueada» a «por hacer»
+        en cuanto Rama produce (cada pesaje sube ``qty_produced`` de Rama; prueba en main, 2026-11-05); esto cubre el
+        caso de una operación que siguiera bloqueada con rollos pendientes. La operación de Inspección no termina ni la
         orden cierra hasta que Rama terminó y todos sus rollos están inspeccionados (``button_finish``)."""
         self.ensure_one()
         return (modelo == 'rollo.inspeccion.estacion.wizard' and es_tipo and self.state == 'blocked'
