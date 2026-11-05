@@ -21,6 +21,27 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Releases más rápidos (19.0.3.3.0, 2026-11-05)
+
+Diseño v3, sección 2.10 (puntos 3 y 4):
+
+- **Lector «Excel / CSV genérico (parte × fecha)»** para los clientes sin lector
+  propio. Reconoce la tabla **ancha** (fechas como columnas, una fila por parte)
+  y la **larga** (columnas parte, fecha y cantidad), en .xlsx o .csv (separador
+  `,` `;` tabulador o `|`; un .xls viejo pide guardarlo como .xlsx). En el perfil
+  van la unidad del cliente (obligatoria: MT, LY, KG, M2…), y si hace falta los
+  encabezados de la parte, la OC y la descripción, y el orden día/mes de las
+  fechas de texto. El Release ID es el nombre del archivo. Python puro:
+  `release/generic_table.py` (pruebas en `tests_puros/`).
+- **Periodo en Captura semanal y Pronóstico vigente** (filtros del buscador):
+  Esta semana, Próximas 4 semanas, Próximas 13 semanas (por omisión en la
+  matriz), Este mes, Próximo mes, Este año y el filtro de fecha nativo «Semana
+  (periodo)» (mes, trimestre, año). Las columnas de la matriz son las semanas
+  del periodo elegido, aunque estén vacías (`group_expand` lee el dominio).
+- **«Confirmar sugerencias»** en el release: confirma de una vez las partes que
+  ya tienen producto sugerido y anota en el chatter las que no tienen producto.
+  En Partes del cliente, **«Confirmar seleccionadas»** en la lista.
+
 ## Matriz del presupuesto sin `<range>` (19.0.3.2.1, 2026-11-05)
 
 El build de 3.2.0 falló en la matriz del presupuesto: Odoo 19 no acepta el

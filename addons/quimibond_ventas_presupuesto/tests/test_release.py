@@ -188,3 +188,72 @@ class TestRelease(TransactionCase):
         line = release.line_ids.filtered(lambda ln: ln.date_customer == date(2040, 12, 17))
         self.assertEqual(line.date_ship, date(2040, 12, 14))
         self.assertEqual(line.week, date(2040, 12, 10))
+
+
+@tagged('post_install', '-at_install')
+class TestReleaseGeneric(TransactionCase):
+    """3.3.0: lector genérico (Excel/CSV parte × fecha) y «Confirmar sugerencias»."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.uom_m = cls.env.ref('uom.product_uom_meter')
+        cls.team = cls.env['crm.team'].create({'name': 'Industrial genérico test'})
+        cls.customer = cls.env['res.partner'].create({'name': 'Cliente CSV E1', 'is_company': True})
+        cls.product = cls.env['product.product'].create({
+            'name': 'Tela genérica', 'default_code': 'ZZG045Q22JNT160', 'type': 'consu',
+            'uom_id': cls.uom_m.id, 'sale_ok': True})
+        cls.profile = cls.env['qb.release.profile'].create({
+            'partner_id': cls.customer.id, 'team_id': cls.team.id, 'plant': 'Silao',
+            'reader': 'generic_table', 'generic_uom': 'MT', 'generic_desc_header': 'Description',
+            'firm_rule': 'semanas'})
+
+    def _release(self, text, filename='silao.csv'):
+        return self.env['qb.release'].create({
+            'profile_id': self.profile.id, 'file': base64.b64encode(text.encode()), 'filename': filename})
+
+    def test_01_csv_ancho_lee_confirma_y_aplica(self):
+        text = ("Part Number;Description;09/01/2040;16/01/2040\r\n"
+                "SIL-1;SCRIM ZZG045Q22JNT160;1,000;500\r\n")
+        release = self._release(text)
+        release.action_read()
+        self.assertEqual(release.state, 'leido', release.error_reason)
+        self.assertEqual(release.release_ref, 'silao')
+        self.assertEqual(len(release.line_ids), 2)
+        part = release.part_ids
+        self.assertEqual((part.customer_part, part.customer_uom), ('SIL-1', 'MT'))
+        catalog = part.catalog_part_id
+        if catalog.product_id != self.product:  # la sugerencia depende de lo que haya en la base
+            catalog.write({'product_id': self.product.id})
+        self.assertEqual(catalog.state, 'sugerido')
+        release.action_confirm_suggestions()
+        self.assertEqual(catalog.state, 'confirmado')
+        self.assertEqual(release.unmapped_count, 0)
+        release.action_mark_reviewed()
+        release.action_apply()
+        lines = self.env['qb.forecast.line'].search([('release_id', '=', release.id)])
+        self.assertEqual({(l.week, l.qty_venta, l.plant) for l in lines},
+                         {(date(2040, 1, 9), 1000.0, 'Silao'), (date(2040, 1, 16), 500.0, 'Silao')})
+
+    def test_02_sin_unidad_queda_por_revisar(self):
+        self.profile.generic_uom = False
+        release = self._release("Part;09/01/2040;16/01/2040\nP-1;1;2\n")
+        release.action_read()
+        self.assertEqual(release.state, 'por_revisar')
+        self.assertIn('unidad', release.error_reason)
+
+    def test_03_archivo_sin_tabla_queda_por_revisar(self):
+        release = self._release("hola\nmundo\n")
+        release.action_read()
+        self.assertEqual(release.state, 'por_revisar')
+        self.assertTrue(release.error_reason)
+
+    def test_04_confirmar_sugerencias_sin_nada_que_confirmar(self):
+        release = self._release("Part;09/01/2040;16/01/2040\nSIN-PRODUCTO-XYZ;1;2\n")
+        release.action_read()
+        catalog = release.part_ids.catalog_part_id
+        catalog.write({'product_id': False})
+        catalog.state = 'sin_producto'
+        release.action_confirm_suggestions()
+        self.assertEqual(catalog.state, 'sin_producto', "Sin producto no se confirma.")
+        self.assertIn('SIN-PRODUCTO-XYZ', release.message_ids[0].body)
