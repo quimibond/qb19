@@ -13,7 +13,7 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_rollos_bitacora.alerta_diferencia_pct', default=3.0)
     rollos_etiqueta_rama_ancho = fields.Integer(
         'Etiqueta de Rama: ancho (puntos ZPL)',
-        config_parameter='quimibond_rollos_bitacora.etiqueta_rama_ancho', default=406)
+        config_parameter='quimibond_rollos_bitacora.etiqueta_rama_ancho', default=504)
     rollos_etiqueta_prelim_ancho = fields.Integer(
         'Etiqueta preliminar: ancho (puntos ZPL)',
         config_parameter='quimibond_rollos_bitacora.etiqueta_prelim_ancho', default=812)
@@ -22,4 +22,10 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_rollos_bitacora.etiqueta_prelim_alto', default=609)
     rollos_etiqueta_rama_alto = fields.Integer(
         'Etiqueta de Rama: alto (puntos ZPL)',
-        config_parameter='quimibond_rollos_bitacora.etiqueta_rama_alto', default=203)
+        config_parameter='quimibond_rollos_bitacora.etiqueta_rama_alto', default=304)
+    rollos_etiqueta_final_ancho = fields.Integer(
+        'Etiqueta final: ancho (puntos ZPL)',
+        config_parameter='quimibond_rollos_bitacora.etiqueta_final_ancho', default=608)
+    rollos_etiqueta_final_alto = fields.Integer(
+        'Etiqueta final: alto (puntos ZPL)',
+        config_parameter='quimibond_rollos_bitacora.etiqueta_final_alto', default=816)

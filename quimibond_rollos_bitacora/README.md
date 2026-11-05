@@ -141,6 +141,25 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Tamaño real de las etiquetas (3.3.7, Sistemas 2026-11-05)
+
+Impresora Zebra ZD230 de 203 dpi (8 puntos = 1 mm). Los tamaños se cambian en Ajustes de Manufactura → Rollos de
+tela acabada.
+
+- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203). Sigue siendo solo el código de
+  barras del lote-serie.
+- **Final del rollo** (PQ / PNC, la que imprime la estación de Inspección): 76 mm de ancho x 102 mm de alto =
+  608 x 816 puntos (antes 812 x 1218). Acomodo nuevo compartido por el rollo final y la bitácora
+  (`mrp.rollo.bitacora._zpl_final_acomodo`): metros/yardas, neto/bruto y kilos/libras en dos columnas, y escala si
+  se cambia el tamaño en Ajustes (nuevo par «Etiqueta final del rollo»).
+- **Código de barras**: Code 128 con los subconjuntos explícitos (`_code128_zpl`: los dígitos seguidos van de dos en
+  dos), para que `metros;kg;orden;rollo` quepa en 76 mm con barras de 2 puntos aun con metros de 4 cifras y rollo
+  de 2 cifras. Lo que lee el escáner es el mismo dato.
+- La **preliminar de Inspección** (63 x 38 mm según Sistemas) no se imprime en la estación única (3.1.0): Inspección
+  pesa e imprime la final de una vez. Su tamaño no se cambió.
+- Pendiente: probar con las impresoras y básculas que llegan el viernes 7-nov (lectura del código con el escáner
+  de Almacén).
+
 ## Reserva sin lote de un químico (3.3.6, 2026-11-05)
 
 En la prueba de main, dos órdenes en kg no cerraban con «Debe proporcionar un número de lote para ENGOMADO002»: Odoo

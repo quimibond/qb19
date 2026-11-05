@@ -16,12 +16,17 @@
                         <field name="rollos_alerta_diferencia_pct"/>
                     </setting>
                     <setting string="Etiqueta pequeña de Rama"
-                             help="Tamaño de la etiqueta en puntos ZPL (203 dpi: 8 puntos = 1 mm).">
+                             help="Tamaño de la etiqueta en puntos ZPL (203 dpi: 8 puntos = 1 mm). 63 x 38 mm = 504 x 304.">
                         <field name="rollos_etiqueta_rama_ancho"/>
                         <field name="rollos_etiqueta_rama_alto"/>
                     </setting>
+                    <setting string="Etiqueta final del rollo"
+                             help="Tamaño de la etiqueta final (PQ / PNC) en puntos ZPL (203 dpi). 76 mm de ancho x 102 mm de alto = 608 x 816; el acomodo escala si se cambia.">
+                        <field name="rollos_etiqueta_final_ancho"/>
+                        <field name="rollos_etiqueta_final_alto"/>
+                    </setting>
                     <setting string="Etiqueta preliminar de Inspección"
-                             help="Tamaño de la etiqueta F-P-I01-02 en puntos ZPL (203 dpi). Provisional hasta confirmar el tamaño real.">
+                             help="Tamaño de la etiqueta F-P-I01-02 en puntos ZPL (203 dpi). No se imprime en la estación única de Inspección (3.1.0).">
                         <field name="rollos_etiqueta_prelim_ancho"/>
                         <field name="rollos_etiqueta_prelim_alto"/>
                     </setting>

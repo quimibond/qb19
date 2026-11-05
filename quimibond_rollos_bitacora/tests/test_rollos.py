@@ -124,6 +124,8 @@ class TestRollos(TransactionCase):
         self.assertIn('^BCN', zpl)
         self.assertIn('^FD00004-0001^FS', zpl)
         self.assertEqual(zpl.count('^FD'), 1)  # solo el código de barras, sin texto
+        self.assertTrue(zpl.startswith('^XA^PW504^LL304'))  # 63 x 38 mm a 203 dpi (3.3.7)
+        self.assertIn('^BY3,', zpl)
 
     # ------------------------------------------------- botón en la lista de operaciones
     def test_10_operacion_de_rama(self):
