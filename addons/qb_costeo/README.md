@@ -37,14 +37,20 @@ centros de trabajo marcados con *Publicar tarifa*. Odoo costea con ella las
 Un período no cierra si:
 
 - no se ha calculado;
-- algún centro directo no tiene horas normales o no tuvo horas reales ni
-  estándar en el mes;
+- algún centro directo no tiene horas normales;
+- algún centro directo no tuvo horas reales ni estándar en el mes **y tiene
+  gasto variable** (sin horas ese gasto no se reparte y se pierde);
 - hay más de la tolerancia en cuentas de resultados sin clasificar;
 - algún producto de los N principales del mes (por venta) tiene una
   validación abierta.
 
 Las razones se ven en el formulario («Qué impide cerrar»). Reabrir exige
 motivo y queda en el chatter.
+
+Desde 1.11.0, un centro sin horas en el mes y **sin gasto variable** (Entretelas
+o Inspección y Empaque mientras no corren en Odoo) no impide cerrar: su gasto
+fijo queda completo como ociosidad y los productos que pasan por él salen con
+costo incompleto. Se ve en «Avisos al cerrar» y el cierre lo deja en el chatter.
 
 ## Validaciones
 
