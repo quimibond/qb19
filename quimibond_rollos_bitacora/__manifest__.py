@@ -32,6 +32,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
     'license': 'LGPL-3',
     'depends': [
         'mrp',
+        'mrp_account',  # 3.3.1: la orden de saldos entra a costo cero (_cal_price)
         'hr',
         'stock',
         'iot_scale_common',

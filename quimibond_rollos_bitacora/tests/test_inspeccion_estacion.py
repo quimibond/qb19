@@ -55,6 +55,7 @@ class TestInspeccionEstacion(TransactionCase):
             'byproduct_ids': [Command.create({'product_id': cls.saldo_2.id, 'product_qty': 0.0, 'cost_share': 0.0}),
                               Command.create({'product_id': cls.saldo_d.id, 'product_qty': 0.0, 'cost_share': 0.0})]})
         Workcenter = cls.env['mrp.workcenter']
+        cls.defecto = cls.env['calidad.defecto.tela'].create({'clave': 'ZZ951', 'name': 'Defecto de prueba'})
         cls.rama = Workcenter.create({'name': 'RAMA ZZ951', 'code': 'RZZ951'})
         cls.revisadora = Workcenter.create({'name': 'INSPECCION ZZ951', 'code': 'IZZ951'})
 
@@ -100,6 +101,8 @@ class TestInspeccionEstacion(TransactionCase):
             'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
             'rollo_codigos': ' '.join(rollos.mapped('name')), 'kg_bruto': kg_bruto, 'metros': metros,
             'clasificacion': calidad, 'termina_rollo': termina}
+        if calidad in ('SEGUNDA', 'FE'):
+            valores['defecto_ids'] = [Command.set(self.defecto.ids)]  # 3.3.1: obligatorio en Segunda y FE
         valores.update(vals)
         wiz = self.env['rollo.inspeccion.estacion.wizard'].create(valores)
         wiz.action_confirmar()
@@ -547,3 +550,38 @@ class TestInspeccionEstacion(TransactionCase):
         orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
         self.assertEqual(orden_s.state, 'done')
         self.assertEqual(set(orden_s.move_raw_ids.mapped('procure_method')), {'make_to_stock'})
+
+    def test_25_orden_de_saldos_entra_a_costo_cero(self):
+        """E4 (Dirección, 2026-11-05): los saldos se venden a 1–2 $/kg; en la orden de saldos entran a costo cero y el costo
+        del baño no queda como inventario de Segunda (en la prueba de main entró a 131.79 $/kg)."""
+        categoria = self.env['product.category'].create({
+            'name': 'ZZ951 costo promedio', 'property_cost_method': 'average'})
+        (self.crudo | self.prod_kg | self.saldo_2 | self.saldo_d).write({'categ_id': categoria.id})
+        self.crudo.write({'is_storable': True, 'standard_price': 50.0})
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(self.crudo, stock, 500.0)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
+        self.assertEqual(orden_s.state, 'done')
+        consumo = sum(orden_s.move_raw_ids.filtered(lambda m: m.state == 'done').mapped('value'))
+        self.assertGreater(consumo, 0.0, "El baño tiene costo: sale del inventario de la tela en kg")
+        terminados = orden_s.move_finished_ids.filtered(lambda m: m.state == 'done')
+        self.assertTrue(terminados)
+        self.assertFalse(any(terminados.mapped('value')), "Segunda y Desperdicio entran a costo cero")
+        self.assertAlmostEqual(self.saldo_2.standard_price, 0.0)
+
+    def test_26_segunda_y_fe_piden_defecto(self):
+        """E12c: Segunda y FE necesitan al menos un defecto (evidencia de calidad); PQ y Desperdicio no."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        for calidad in ('SEGUNDA', 'FE'):
+            with self.assertRaises(UserError) as error:
+                self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, calidad, termina=False, defecto_ids=[])
+            self.assertIn('defecto', str(error.exception))
+        self.assertFalse(orden_kg.rollo_final_kg_ids, "Sin defecto no se registra el rollo")
+        self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'FE', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ')
+        self.assertEqual(orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'FE').defecto_ids, self.defecto)

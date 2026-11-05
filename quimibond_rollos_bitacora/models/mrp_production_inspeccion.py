@@ -255,7 +255,9 @@ class MrpProductionInspeccion(models.Model):
         if por_saldo[otra]:
             orden_s._insp_lineas_saldo(orden_s._insp_movimiento_saldo(otra, terminado), por_saldo[otra])
         orden_s._clasif_asegurar_consumo_saldos(rama)
-        resultado = orden_s.button_mark_done()
+        # 3.3.1 (Dirección, 2026-11-05): los saldos entran a costo cero; sin tela que lo absorba, el costo del baño se
+        # queda en la cuenta de la ubicación de producción como merma del periodo (no como inventario de saldo).
+        resultado = orden_s.with_context(qb_insp_saldos_sin_costo=True).button_mark_done()
         if orden_s.state != 'done':
             raise UserError(_(
                 'No se pudo registrar la orden de saldos del baño %(kg)s; no se cerró nada. Respuesta de Odoo: %(r)s',
@@ -268,6 +270,14 @@ class MrpProductionInspeccion(models.Model):
             orden_m.message_post(body=_(
                 'Cancelada al cerrar el baño %s: no salió primera ni FE y ningún otro baño la abastece; los saldos salen '
                 'en kg.', self.name))
+
+    def _cal_price(self, consumed_moves):
+        """3.3.1: en la orden de saldos de un baño sin primera ni FE, Segunda y Desperdicio entran a costo cero: se venden
+        a 1–2 $/kg (facturas del último año) y con el costo del baño quedaban en inventario a más de 100 $/kg."""
+        res = super()._cal_price(consumed_moves)
+        if self.env.context.get('qb_insp_saldos_sin_costo'):
+            self.move_finished_ids.filtered(lambda m: m.state not in ('done', 'cancel')).write({'price_unit': 0.0})
+        return res
 
     def _clasif_asegurar_consumo_saldos(self, rama):
         """Consumo de la orden de saldos: cada rollo de Rama completo, con su lote (picked)."""

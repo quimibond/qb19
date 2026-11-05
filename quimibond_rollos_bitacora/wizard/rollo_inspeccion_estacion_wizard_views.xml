@@ -79,7 +79,8 @@
                                 <field name="clasificacion" widget="radio" options="{'horizontal': true}"/>
                             </group>
                             <group>
-                                <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"
+                                       required="clasificacion in ('SEGUNDA', 'FE')"/>
                                 <field name="kg_rama"/>
                                 <field name="kg_ya_cortados"/>
                                 <field name="merma_kg"/>

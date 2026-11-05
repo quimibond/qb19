@@ -120,6 +120,16 @@ de código, arreglados con su prueba:
   producto en kg. Ahora se confirma con el contexto `qb_insp_sin_abastecer` y su consumo sale de existencias
   (`stock.move._adjust_procure_method`, prueba 24).
 
+Decisiones de Dirección del mismo día:
+
+- **Los saldos entran a costo cero** (se venden a 1–2 $/kg según las facturas del último año). En la orden en metros y
+  en la venta en kg ya era así (subproductos con `cost_share` 0). En la orden de saldos de un baño sin primera ni FE,
+  Segunda y Desperdicio entran a cero (`_cal_price` con el contexto `qb_insp_saldos_sin_costo`) y el costo del baño
+  se queda en la cuenta de la ubicación de producción como merma del periodo, no como inventario de saldo (en la
+  prueba entraba a 131.79 $/kg). El módulo depende ahora de `mrp_account` (prueba 25).
+- **Segunda y FE piden al menos un defecto** en la estación de Inspección: sin defecto no queda la causa de la baja de
+  calidad (prueba 26).
+
 Pruebas de integración con `quimibond_tintoreria_programacion` (21 y 22, se saltan si no está instalado): la
 programación divide la orden en kg en baños con la división nativa y cada baño cierra su parte de la orden en metros.
 

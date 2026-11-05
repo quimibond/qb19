@@ -205,6 +205,10 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             raise UserError(_('Captura los metros del rollo final.'))
         if not self.clasificacion:
             raise UserError(_('Elige la calidad del rollo final.'))
+        if self.clasificacion in ('SEGUNDA', 'FE') and not self.defecto_ids:
+            # 3.3.1 (Dirección, 2026-11-05): sin defecto no queda evidencia de por qué bajó la calidad (ISO 9001).
+            raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',
+                              dict(CLASIFICACIONES).get(self.clasificacion)))
         emp = self._empleado(self.empleado_numero)
         if not emp and 'x_studio_nmero_de_trabajador' in self.env['hr.employee']._fields:
             raise UserError(_('No existe el empleado %s.', self.empleado_numero))
