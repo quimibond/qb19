@@ -494,6 +494,45 @@
         <field name="code">records.action_refresh_actuals()</field>
     </record>
 
+    <!-- 3.5.3: traer renglones de otro presupuesto del mismo año. -->
+    <record id="qb_sales_budget_copy_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.budget.copy.form</field>
+        <field name="model">qb.sales.budget.copy</field>
+        <field name="arch" type="xml">
+            <form string="Traer renglones de otro presupuesto">
+                <sheet>
+                    <div class="alert alert-info" role="status" invisible="result">
+                        Copia al presupuesto en borrador los renglones de otros presupuestos del
+                        mismo año, con su mercado, cliente, producto, mes, cantidad y precio. Lo que
+                        ya existe o no cabe (anti-doble-conteo, unidad) no se copia y queda anotado.
+                    </div>
+                    <group invisible="result">
+                        <field name="budget_id" readonly="1"/>
+                        <field name="year" invisible="1"/>
+                        <field name="source_ids" widget="many2many_tags"/>
+                    </group>
+                    <group invisible="not result">
+                        <field name="result" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_copy" type="object" string="Traer renglones"
+                            class="btn-primary" invisible="result"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_sales_budget_copy_server" model="ir.actions.server">
+        <field name="name">Traer renglones de otro presupuesto</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_qb_open_copy()</field>
+    </record>
+
     <!-- 3.5.0 -->
     <record id="sgi_sales_budget_suggest_prices_server" model="ir.actions.server">
         <field name="name">Sugerir precios de la lista</field>

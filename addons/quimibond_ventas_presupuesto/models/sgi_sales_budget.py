@@ -532,15 +532,15 @@ class SgiSalesBudget(models.Model):
         months = {l.date.month for l in self.line_ids if l.date}
         mercados = {MERCADO_BASE.get(l.mercado) for l in self.line_ids}
         cell = set()          # (team, producto, cliente o 0, mes) que captura un renglón
-        pair = set()          # (producto, cliente o 0) presupuestado en el año
-        by_client = defaultdict(set)
+        pair = set()          # (team, producto, cliente o 0) presupuestado en el año
+        by_client = defaultdict(set)  # (team, producto) -> clientes
         clients = {l.partner_id.commercial_partner_id.id for l in lines if l.partner_id}
         for line in lines:
             partner = line.partner_id.commercial_partner_id.id if line.partner_id else 0
             cell.add((line.team_id.id, line.product_id.id, partner, line.date.month))
-            pair.add((line.product_id.id, partner))
+            pair.add((line.team_id.id, line.product_id.id, partner))
             if partner:
-                by_client[line.product_id.id].add(partner)
+                by_client[(line.team_id.id, line.product_id.id)].add(partner)
         detail = {k: defaultdict(float) for k in keys}
         for aml in self._qb_sales_lines():
             amount = -aml.balance
@@ -563,9 +563,10 @@ class SgiSalesBudget(models.Model):
                   or (move.team_id.id, product.id, 0, month) in cell):
                 result['captured_aml'] += amount
                 continue
-            elif (product.id, cp.id) in pair or (product.id, 0) in pair:
+            elif ((move.team_id.id, product.id, cp.id) in pair
+                  or (move.team_id.id, product.id, 0) in pair):
                 key = 'other_month'
-            elif product.id in by_client:
+            elif (move.team_id.id, product.id) in by_client:
                 key = 'by_client_others'
             elif cp.id in clients:
                 key = 'unbudgeted'

@@ -525,9 +525,10 @@ class TestSalesBudgetClient(TransactionCase):
         return self.Budget.create({'year': 2040})
 
     def _line(self, budget, partner=None, amount=0.0, product=None):
+        # 3.5.3: el anti-doble-conteo es por mercado; aquí todo es Industrial.
         return self.Line.create({
             'budget_id': budget.id, 'product_id': (product or self.product).id,
-            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
+            'date': date(2040, 6, 1), 'uom_id': self.uom_m.id, 'mercado': 'industrial',
             'partner_id': partner.id if partner else False,
             'qty_budget': 10.0, 'amount_budget': amount})
 

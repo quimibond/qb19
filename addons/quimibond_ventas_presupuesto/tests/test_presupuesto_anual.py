@@ -287,3 +287,22 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertAlmostEqual(d['market_without_budget'], 60.0, places=2)
         self.assertAlmostEqual(d['residual'], 0.0, places=2)
         budget.action_reconcile_invoiced()
+
+    def test_13_traer_renglones_de_otro_presupuesto(self):
+        """3.5.3: la REV2 junta los renglones de Industrial (por cliente) y de Confección (sin
+        cliente) del mismo producto; lo repetido no se copia."""
+        industrial = self.Budget.create({'year': 2062})
+        self._line(industrial, date=date(2062, 4, 1), price_input=2.0)
+        industrial.state = 'aprobado'
+        confeccion = self.Budget.with_context(tracking_disable=True).create({'year': 2062})
+        self._line(confeccion, date=date(2062, 4, 1), partner_id=False, mercado='confeccion', price_input=3.0)
+        confeccion.state = 'obsoleto'
+        rev = self.Budget.browse(industrial.with_user(self.manager).action_revise()['res_id'])
+        copied, skipped = rev.action_qb_copy_lines_from([confeccion.id, industrial.id])
+        self.assertEqual(copied, 1, "El de Confección entra; el de Industrial ya está en la revisión.")
+        self.assertEqual(len(skipped), 1)
+        self.assertEqual(sorted(rev.line_ids.mapped('mercado')), ['confeccion', 'industrial'])
+        self.assertAlmostEqual(rev.amount_budget_total, 2000.0 + 3000.0, places=2)
+        wizard = self.env['qb.sales.budget.copy'].create({'budget_id': rev.id, 'source_ids': [(6, 0, confeccion.ids)]})
+        wizard.action_copy()
+        self.assertIn('ya existe', wizard.result)
