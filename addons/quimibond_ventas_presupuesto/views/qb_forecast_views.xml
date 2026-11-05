@@ -122,6 +122,8 @@
                 <field name="customer_po"/>
                 <field name="release_id"/>
                 <filter name="vigente" string="Desde esta semana" domain="[('zona', '!=', 'pasado')]"/>
+                <filter name="proximas_13" string="Próximas 13 semanas"
+                        domain="[('week', '&gt;=', (context_today() - relativedelta(days=6)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(weeks=13)).strftime('%Y-%m-%d'))]"/>
                 <filter name="firme" string="Zona firme" domain="[('zona', '=', 'firme')]"/>
                 <filter name="planeado" string="Planeado" domain="[('zona', '=', 'planeado')]"/>
                 <separator/>
@@ -143,6 +145,36 @@
                     <filter name="group_origen" string="Origen" context="{'group_by': 'origen'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- 3.2.0: captura semanal en matriz. La columna es el catálogo de semanas (week_id): en Odoo 19 el
+         grid sobre una fecha no da columnas por semana (3.1.1). Siempre muestra las próximas 13 semanas. -->
+    <record id="qb_forecast_line_view_grid" model="ir.ui.view">
+        <field name="name">qb.forecast.line.grid</field>
+        <field name="model">qb.forecast.line</field>
+        <field name="arch" type="xml">
+            <grid string="Captura semanal" editable="1">
+                <field name="partner_id" type="row"/>
+                <field name="plant" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="uom_origen" type="row"/>
+                <field name="week_id" type="col"/>
+                <field name="qty_origen" type="measure"/>
+            </grid>
+        </field>
+    </record>
+
+    <record id="qb_forecast_line_grid_action" model="ir.actions.act_window">
+        <field name="name">Captura semanal</field>
+        <field name="res_model">qb.forecast.line</field>
+        <field name="view_mode">grid,list,form</field>
+        <field name="view_id" ref="qb_forecast_line_view_grid"/>
+        <field name="context">{'search_default_proximas_13': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin pronóstico en las próximas semanas</p>
+            <p>Escriba la cantidad en la unidad del cliente: la semana se crea, cambia o se quita (en cero) y
+               queda en Cambios del pronóstico. Para un producto nuevo use «Pegar semanas desde Excel».</p>
         </field>
     </record>
 
