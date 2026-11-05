@@ -610,3 +610,38 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg2, wo2, rollos2, 40.6, 460.0)
         with self.assertRaisesRegex(UserError, 'planeados'):
             orden_kg2.button_mark_done()
+
+    def test_28_operador_sin_permisos_de_administrador(self):
+        """Un operador de Manufactura (sin administrador ni supervisor) pesa en Rama, inspecciona y cierra los baños, incluida la
+        orden de saldos y el pendiente; «Anular captura» es solo del supervisor."""
+        operador = self.env['res.users'].create({
+            'name': 'Operador ZZ951', 'login': 'operador.zz951', 'email': 'operador.zz951@example.com',
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)],
+            'group_ids': [Command.set([self.env.ref('mrp.group_mrp_user').id, self.env.ref('base.group_user').id])]})
+        self.assertFalse(operador.has_group('mrp.group_mrp_manager'))
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
+        Wizard = self.env['rollo.inspeccion.estacion.wizard'].with_user(operador)
+        base = {'workcenter_id': self.revisadora.id, 'empleado_numero': '1', 'weighing_mode': 'manual',
+                'motivo_manual': 'Prueba sin báscula'}
+        Wizard.create(dict(base, production_id=kg_a.id, workorder_id=wo_a.id, rollo_codigos=rollos_a.name,
+                           kg_bruto=30.6, metros=345.0, clasificacion='PQ', termina_rollo=False)).action_confirmar()
+        Wizard.create(dict(base, production_id=kg_a.id, workorder_id=wo_a.id, rollo_codigos=rollos_a.name,
+                           kg_bruto=9.9, metros=100.0, clasificacion='SEGUNDA', termina_rollo=True,
+                           defecto_ids=[Command.set(self.defecto.ids)])).action_confirmar()
+        segunda = kg_a.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
+        with self.assertRaises(UserError):
+            segunda.with_user(operador).action_anular()
+        kg_a.with_user(operador).button_mark_done()
+        self.assertEqual(kg_a.state, 'done')
+        Wizard.create(dict(base, production_id=kg_b.id, workorder_id=wo_b.id, rollo_codigos=rollos_b.name,
+                           kg_bruto=40.5, metros=455.0, clasificacion='PQ', termina_rollo=True)).action_confirmar()
+        kg_b.with_user(operador).button_mark_done()
+        self.assertEqual(kg_b.state, 'done')
+        self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
+        # Baño de solo saldos (orden de saldos) también con el operador.
+        orden_m2, orden_kg2, wo2, rollos2 = self._bano((40.0,))
+        Wizard.create(dict(base, production_id=orden_kg2.id, workorder_id=wo2.id, rollo_codigos=rollos2.name,
+                           kg_bruto=40.5, metros=400.0, clasificacion='SEGUNDA', termina_rollo=True,
+                           defecto_ids=[Command.set(self.defecto.ids)])).action_confirmar()
+        orden_kg2.with_user(operador).button_mark_done()
+        self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
