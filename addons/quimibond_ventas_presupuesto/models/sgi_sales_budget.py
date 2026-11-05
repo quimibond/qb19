@@ -915,6 +915,7 @@ class SgiSalesBudget(models.Model):
         date_from = fields.Date.context_today(self) - _rd(months=24)
         amls = self.env['account.move.line'].search([
             ('parent_state', '=', 'posted'),
+            ('display_type', '=', 'product'),  # 3.5.2: sin las líneas de costo (cogs)
             ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
             ('move_id.team_id', 'in', self._qb_market_teams().ids),
             ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
@@ -1109,6 +1110,7 @@ class SgiSalesBudget(models.Model):
         date_from = fields.Date.context_today(self) - _rd(months=12)
         amls = self.env['account.move.line'].sudo().search([
             ('parent_state', '=', 'posted'),
+            ('display_type', '=', 'product'),  # 3.5.2: sin las líneas de costo (cogs)
             ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
             ('move_id.team_id', 'in', self._qb_market_teams().ids),
             ('company_id', '=', self.company_id.id),  # solo la compañía del ppto

@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Cantidad facturada sin las líneas de costo (19.0.3.5.2, 2026-11-05)
+
+El real de cada renglón sumaba también las dos líneas de costo (cogs) que Odoo
+agrega a cada línea de factura: la cantidad facturada salía al triple y el
+precio real a un tercio, así que casi todo el Industrial 2026 salía con
+desviación de precio «grave» (−70 %). El importe facturado no cambiaba (las
+líneas de costo se cancelan). Ahora el real, la precarga y la plantilla solo
+leen líneas de producto; la migración recalcula el real de todos los renglones.
+
 ## Equipo de Industrial (19.0.3.5.1, 2026-11-05)
 
 La migración de 3.5.0 buscó los equipos por nombre sin idioma, y el equipo 1
