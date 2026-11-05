@@ -3,6 +3,8 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
 
+PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
+
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
@@ -165,6 +167,57 @@ class MrpProduction(models.Model):
                     'La orden %(orden)s tiene %(n)s rollo(s) sin inspeccionar: %(rollos)s.',
                     orden=orden.name, n=len(pendientes),
                     rollos=', '.join(pendientes.sorted('secuencia').mapped('name'))))
+
+    def _moves_crudo(self):
+        """3.3.2: consumo de la tela cruda de la orden en kg: el componente en peso con más kg planeados (el crudo va a
+        1.1 kg por kg; químicos y engomado son gramos o pocos kg por baño)."""
+        self.ensure_one()
+        kg = self.env.ref('uom.product_uom_kgm')
+        pesos = self.move_raw_ids.filtered(
+            lambda m: m.state != 'cancel' and m.product_uom._has_common_reference(kg))
+        if not pesos:
+            return pesos
+        planeado = {}
+        for move in pesos:
+            planeado[move.product_id] = planeado.get(move.product_id, 0.0) + move.product_uom._compute_quantity(
+                move.product_uom_qty, kg, round=False)
+        crudo = max(planeado, key=planeado.get)
+        return pesos.filtered(lambda m: m.product_id == crudo)
+
+    def _validar_consumo_crudo(self):
+        """3.3.2 (Dirección, 2026-11-05): la orden en kg no cierra si consume menos crudo que los kg que pesó Rama: la
+        tela teñida no puede pesar más que el crudo que entró. Pasaba con el consumo flexible cuando no había crudo en
+        existencia (en la prueba de main cerraron baños con 19 y 0 kg de crudo y el kg salió a 15 y 1.92 $/kg).
+        Con el parámetro ``crudo_minimo_pct`` capturado, además pide ese porcentaje del crudo planeado."""
+        kg = self.env.ref('uom.product_uom_kgm')
+        minimo = (self.env['ir.config_parameter'].sudo().get_param(PARAM_CRUDO_MINIMO_PCT) or '').strip()
+        try:
+            minimo = float(minimo) if minimo else 0.0
+        except ValueError:
+            minimo = 0.0
+        for orden in self.filtered('rollo_bitacora_ids'):
+            moves = orden._moves_crudo()
+            if not moves:
+                continue
+            consumido = sum(m.product_uom._compute_quantity(m.quantity, kg, round=False)
+                            for m in moves if m.state == 'done' or m.picked)
+            planeado = sum(m.product_uom._compute_quantity(m.product_uom_qty, kg, round=False) for m in moves)
+            pesado = sum(orden.rollo_bitacora_ids.mapped('kg_rama'))
+            producto = moves[:1].product_id.display_name
+            if float_compare(consumido, pesado, precision_digits=2) < 0:
+                raise UserError(_(
+                    'La orden %(o)s consume %(c).2f kg de crudo (%(p)s) y Rama pesó %(r).2f kg: la tela teñida no puede '
+                    'pesar más que el crudo. Captura el consumo real del crudo (con su lote) antes de cerrar; si no hay '
+                    'existencia, primero la requisición.', o=orden.name, c=consumido, p=producto, r=pesado))
+            if minimo and planeado and consumido / planeado * 100.0 < minimo:
+                raise UserError(_(
+                    'La orden %(o)s consume %(c).2f kg de crudo, el %(pct).1f %% de los %(pl).2f kg planeados; el mínimo es '
+                    '%(m)s %%. Captura el consumo real del crudo antes de cerrar.', o=orden.name, c=consumido,
+                    pct=consumido / planeado * 100.0, pl=planeado, m=minimo))
+
+    def _post_inventory(self, cancel_backorder=False):
+        self._validar_consumo_crudo()
+        return super()._post_inventory(cancel_backorder=cancel_backorder)
 
     def _lote_desperdicio(self, producto):
         """Lote del Desperdicio Tejido: el que ya se usa en la planta, uno por mes («MM-AAAA», ej. 10-2026),
