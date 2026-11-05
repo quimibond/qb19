@@ -139,6 +139,12 @@ class ResConfigSettings(models.TransientModel):
         return res
 
     def set_values(self):
+        Param = self.env['ir.config_parameter'].sudo()
+        team_keys = ['quimibond_ventas_presupuesto.team_%s' % b
+                     for b in ('industrial', 'confeccion', 'especiales')]
+        before = [Param.get_param(key) for key in team_keys]
         super().set_values()
-        self.env['ir.config_parameter'].sudo().set_param(
-            'quimibond_sgi.budget_pricelist_id', self.sgi_budget_pricelist_id.id or 0)
+        Param.set_param('quimibond_sgi.budget_pricelist_id', self.sgi_budget_pricelist_id.id or 0)
+        # 3.5.1: si cambia el equipo de un mercado, los renglones lo toman y se recalcula su real.
+        if [Param.get_param(key) for key in team_keys] != before:
+            self.env['sgi.sales.budget.line'].sudo()._qb_refresh_market_teams()

@@ -231,6 +231,18 @@ class SgiSalesBudgetLine(models.Model):
         for line in self:
             line.team_id = mercado_team(self.env, line.mercado) if line.mercado else False
 
+    @api.model
+    def _qb_refresh_market_teams(self):
+        """Equipo de cada renglón de presupuesto según los parámetros de Ajustes, y su real y
+        pedido. El equipo no entra al importe, así que también se corrige en un aprobado."""
+        lines = self.search([('kind', '=', 'presupuesto'), ('mercado', '!=', False)])
+        changed = lines.filtered(lambda l: l.team_id != mercado_team(self.env, l.mercado))
+        if changed:
+            changed._compute_team_id()
+            changed._compute_real()
+            changed._compute_ordered()
+        return len(changed)
+
     # Sin depends sobre el rendimiento del producto: un aprobado no cambia de importe si
     # el cron nocturno corrige un rendimiento. «Actualizar real» recalcula los abiertos.
     @api.depends('qty_budget', 'uom_id', 'product_id', 'proyecto_gramaje', 'proyecto_ancho_cm')

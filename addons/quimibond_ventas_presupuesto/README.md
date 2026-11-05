@@ -21,6 +21,16 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Equipo de Industrial (19.0.3.5.1, 2026-11-05)
+
+La migración de 3.5.0 buscó los equipos por nombre sin idioma, y el equipo 1
+no se llama «Industrial» en ese idioma: los 325 renglones del Industrial 2026
+quedaron sin equipo y su real en 0 (el importe y el VE-02 no cambiaron). Ahora
+la migración compara el nombre en todos los idiomas; la de 3.5.1 completa el
+parámetro y pone el equipo de su mercado a cada renglón, con su real y su
+pedido. Al guardar Ajustes con otro equipo de mercado, los renglones lo toman
+solos.
+
 ## Presupuesto anual (19.0.3.5.0, E2 paso 1, 2026-11-05)
 
 Diseño v3, sección 2.6. **Un documento por año y revisión** (REV0, REV1…) con
