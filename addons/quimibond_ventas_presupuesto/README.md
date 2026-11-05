@@ -21,6 +21,16 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Poner cliente a varios renglones (19.0.3.6.4, 2026-11-05)
+
+Un producto no puede tener renglones con cliente y sin cliente en el mismo mercado
+(anti-doble-conteo), así que cambiar el cliente renglón por renglón chocaba siempre con el
+primer renglón. **Poner cliente** (en el aviso rojo de renglones sin cliente, en el engrane de
+la ficha y en la acción de la lista de renglones) pone el mismo cliente a todos los elegidos en
+una sola escritura; abre con los renglones de Industrial y Especiales sin cliente ya elegidos.
+Sin cliente, los renglones quedan para todo el mercado. Deja nota en el chatter; para MCP,
+`action_qb_set_partner(line_ids, partner_id)` en el presupuesto.
+
 ## Cada mercado suma igual que el total (19.0.3.6.3, 2026-11-05)
 
 «Diferencia por mercado» mostraba el tipo de cambio de los renglones y no la venta sin
