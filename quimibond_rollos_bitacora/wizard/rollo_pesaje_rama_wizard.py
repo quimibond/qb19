@@ -78,6 +78,9 @@ class RolloPesajeRamaWizard(models.TransientModel):
     def action_confirmar(self):
         self.ensure_one()
         produccion = self.production_id
+        if produccion.state in ('done', 'cancel'):
+            # 3.3.5: un asistente abierto no registra rollos en una orden cerrada o cancelada.
+            raise UserError(_('La orden %s ya está cerrada o cancelada: no se pesan rollos.', produccion.name))
         if self.kg_bruto <= 0:
             raise UserError(_('Captura el peso bruto del rollo.'))
         if self.tara_faltante:

@@ -78,3 +78,31 @@ class TestRendimientoReal(TiempoFichaCase):
         self.assertAlmostEqual(metros, 100.0, places=4)
         self.assertAlmostEqual(kilos, 20.0 - 1.5, places=4)
         self.assertEqual(ordenes, 1)
+
+    def test_08_cambio_grande_queda_por_revisar(self):
+        """2.26.0: el recálculo nocturno escribe el rendimiento, pero si se mueve más que la alerta queda un pendiente de
+        Ingeniería hasta que alguien lo marca revisado."""
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.0)
+        with self._con_fabricado({self.tela_m: (9000.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 9.0, "El número se escribe igual")
+        self.assertTrue(self.acabado.rendimiento_por_revisar)
+        self.assertEqual(self.acabado.rendimiento_anterior, 8.0)
+        Revision = self.env['ficha.tecnica.revision']
+        revision = Revision._ft_actualizar(self.acabado)
+        pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'rendimiento_cambio')
+        self.assertEqual(pendiente.area, 'ingenieria')
+        self.assertIn('+12.5 %', pendiente.detalle)
+        self.acabado.action_ft_rendimiento_revisado()
+        revision = Revision._ft_actualizar(self.acabado)
+        self.assertFalse(revision.pendiente_ids.filtered(lambda p: p.tipo == 'rendimiento_cambio'))
+
+    def test_09_cambio_chico_no_avisa(self):
+        with self._con_fabricado({self.tela_m: (8200.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.2)
+        self.assertFalse(self.acabado.rendimiento_por_revisar, "2.5 % no pasa la alerta de 5 %")
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_ficha_tecnica_tela.alerta_rendimiento_pct', '1')
+        with self._con_fabricado({self.tela_m: (8400.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertTrue(self.acabado.rendimiento_por_revisar, "Con la alerta en 1 %, 2.4 % sí avisa")

@@ -52,6 +52,7 @@ TIPOS = [
     ('tipo_operacion', 'Lista sin tipo de operación'),
     ('desperdicio', 'Lista en kg sin desperdicio de Rama'),
     ('ruta_mto', 'Producto sin la ruta del flujo'),
+    ('rendimiento_cambio', 'El rendimiento cambió con lo fabricado'),
 ]
 
 
@@ -168,6 +169,15 @@ class FichaTecnicaRevision(models.Model):
             pendientes.append(dict(ing, tipo='datos_acabado', detalle='La ficha de acabado no tiene %s: sin eso no '
                                    'salen el tiempo de rama, el de inspección ni la conversión a metros.' % (
                                        ' ni '.join(faltan))))
+        if acabado.rendimiento_por_revisar:
+            # 2.26.0: el recálculo nocturno movió el rendimiento más que la alerta; cambia la conversión kg → m, la lista
+            # J y los tiempos de rama e inspección de la tela.
+            pendientes.append(dict(ing, tipo='rendimiento_cambio', detalle='El rendimiento pasó de %.4f a %.4f m/kg '
+                                   '(%+.1f %%) con %s órdenes terminadas. Revísalo y márcalo revisado en la ficha.' % (
+                                       acabado.rendimiento_anterior, acabado.rendimiento_tela_acabada,
+                                       (acabado.rendimiento_tela_acabada / acabado.rendimiento_anterior - 1) * 100.0
+                                       if acabado.rendimiento_anterior else 0.0,
+                                       acabado.rendimiento_real_ordenes)))
         tejido = acabado.tejido_id
         if tejido and not tejido.rendimiento_tela_tejida:
             pendientes.append(dict(ing, tipo='datos_tejido', detalle='La ficha de tejido %s no tiene rendimiento de '

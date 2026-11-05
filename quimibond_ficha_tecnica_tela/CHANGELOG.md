@@ -8,6 +8,17 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.26.0 — 2026-11-05
+
+**Agregado**
+- **Aviso cuando el rendimiento nocturno cambia mucho** (propuesta de Consolti, 2026-11-05: que las telas del piloto no
+  cambien sin aviso). El recálculo de cada noche (2.24.0) sigue escribiendo el rendimiento con lo fabricado, pero si se
+  mueve más que la alerta (parámetro `quimibond_ficha_tecnica_tela.alerta_rendimiento_pct`, 5 % si no está) la ficha
+  guarda el rendimiento anterior y la fecha, muestra el aviso en la pestaña del rendimiento con el botón «Marcar
+  revisado», y la revisión de listas le pone a la tela el pendiente de Ingeniería «El rendimiento cambió con lo
+  fabricado» hasta que alguien lo marca revisado. El número no se detiene: cambia la conversión kg → m, la lista J y los
+  tiempos de rama e inspección, por eso se avisa.
+
 ## 19.0.2.25.0 — 2026-11-04
 
 ### Saldos en la lista en metros

@@ -682,3 +682,53 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
         self.assertFalse(orden_kg.message_ids.filtered(lambda m: 'Faltante de componentes' in (m.subject or '')))
+
+    # ------------------------------------------------------------------ 3.3.5 (propuesta de Consolti, 2026-11-05)
+    def test_31_desarrollo_va_a_la_31(self):
+        """La primera y la FE de una orden de desarrollo van al almacén de desarrollos; los saldos siguen a 16 y 17."""
+        stock = self.ubic['PQ'].location_id
+        desarrollos = self.env['stock.location'].create({'name': 'ZZ951 DESARROLLOS', 'location_id': stock.id,
+                                                         'usage': 'internal'})
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.ubicacion_desarrollo',
+                                                         'ZZ951 DESARROLLOS')
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        orden_m.es_desarrollo = True
+        self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        pq = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'PQ')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, desarrollos, pq.name), 250.0)
+        self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']), "Nada de desarrollo entra a 14")
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 11.9)
+
+    def test_32_consecutivo_sin_huecos_al_anular(self):
+        orden_m, orden_kg, wo, rollos = self._bano((40.0, 41.0, 42.0))
+        for rollo, bruto in zip(rollos, (41.5, 42.5, 43.5)):
+            self._inspeccionar(orden_kg, wo, rollo, bruto, 400.0)
+        raiz = orden_m.name.split('/')[-1]
+        segundo = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.secuencia == 2)
+        segundo.action_anular()
+        self._inspeccionar(orden_kg, wo, rollos[1], 42.5, 410.0)
+        self.assertEqual(sorted(orden_kg.rollo_final_kg_ids.mapped('secuencia')), [1, 2, 3])
+        self.assertIn('M%s-0002' % raiz, orden_kg.rollo_final_kg_ids.mapped('name'))
+
+    def test_33_inspeccion_en_paralelo_a_rama(self):
+        """Inspección se abre con Rama todavía abierta si hay rollos por inspeccionar; no termina hasta que Rama termina."""
+        orden_m, orden_kg, wo_insp, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.workcenter_id == self.rama)
+        # En Odoo 19 la operación queda «bloqueada» mientras la anterior no produce (qty_ready); aquí se fija a mano.
+        wo_insp.state = 'blocked'
+        accion = wo_insp.action_inspeccionar_rollo()
+        self.assertEqual(accion['res_model'], 'rollo.inspeccion.estacion.wizard')
+        self._inspeccionar(orden_kg, wo_insp, rollos, 41.5, 400.0)
+        with self.assertRaisesRegex(UserError, 'no está lista'):
+            wo_insp.action_inspeccionar_rollo()  # sin rollos pendientes, se espera a Rama como siempre
+        with self.assertRaisesRegex(UserError, 'Rama siga abierta'):
+            wo_insp.button_finish()
+
+    def test_34_no_se_captura_en_orden_cancelada(self):
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        orden_kg.action_cancel()
+        with self.assertRaisesRegex(UserError, 'cerrada o cancelada'):
+            self._inspeccionar(orden_kg, wo, rollos, 41.5, 400.0)

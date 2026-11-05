@@ -143,7 +143,7 @@ class MrpProductionInspeccion(models.Model):
             raise UserError(_('La orden %s no tiene movimiento del acabado en kg pendiente.', self.name))
         terminado.move_line_ids.unlink()
         for rollo in finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE')).sorted('secuencia'):
-            destino = Final._ubicacion_calidad(rollo.clasificacion)
+            destino = Final._ubicacion_calidad(rollo.clasificacion, desarrollo=self.es_desarrollo)
             lote = self._insp_lote(self.product_id, rollo.name, self.company_id)
             self.env['stock.move.line'].create({
                 'move_id': terminado.id, 'product_id': self.product_id.id, 'lot_id': lote.id, 'lot_name': lote.name,
@@ -360,8 +360,9 @@ class MrpProductionInspeccion(models.Model):
         orden_m._rama_unlink_lines_without_lot(terminado)
         terminado.move_line_ids.unlink()
         terminado.with_context(do_not_unreserve=True).write({'product_uom_qty': cantidad})
+        desarrollo = orden_m.es_desarrollo or self.es_desarrollo
         for rollo in primeras.sorted('secuencia'):
-            destino = Final._ubicacion_calidad(rollo.clasificacion)
+            destino = Final._ubicacion_calidad(rollo.clasificacion, desarrollo=desarrollo)
             lote = self._insp_lote(orden_m.product_id, rollo.name, orden_m.company_id)
             self.env['stock.move.line'].create({
                 'move_id': terminado.id, 'product_id': orden_m.product_id.id, 'lot_id': lote.id,
