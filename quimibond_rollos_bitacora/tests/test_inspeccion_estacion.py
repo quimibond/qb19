@@ -888,3 +888,22 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(wo_listo)
         wo_listo.button_start()
         self.assertTrue(bano.numero_bano)
+
+    def test_40_operador_por_referencia_de_nomina(self):
+        """3.5.1: el número tecleado se busca como la referencia S-<número> (nómina semanal); otra nómina se teclea completa.
+        El mismo número en dos nóminas ya no confunde a la estación."""
+        Emp = self.env['hr.employee']
+        if 'registration_number' not in Emp._fields:
+            self.skipTest('Sin «Referencia de empleado» (nómina Enterprise): corre en Odoo.sh')
+        semanal = Emp.create({'name': 'Operadora semanal', 'registration_number': 'S-85'})
+        quincenal = Emp.create({'name': 'Mecanico quincenal', 'registration_number': 'Q-85'})
+        self.assertEqual(Emp._qb_operador('85'), semanal)
+        self.assertEqual(Emp._qb_operador(' 085 '), semanal)
+        self.assertEqual(Emp._qb_operador('Q-85'), quincenal)
+        self.assertEqual(Emp._qb_operador('q85'), quincenal)
+        self.assertFalse(Emp._qb_operador('86'))
+        self.assertFalse(Emp._qb_operador(''))
+        for modelo in ('rollo.pesaje.rama.wizard', 'rollo.desperdicio.rama.wizard', 'rollo.inspeccion.estacion.wizard'):
+            self.assertEqual(self.env[modelo].new({'empleado_numero': '85'}).empleado_nombre, 'Operadora semanal', modelo)
+            self.assertEqual(self.env[modelo].new({'empleado_numero': 'Q-85'}).empleado_nombre, 'Mecanico quincenal', modelo)
+

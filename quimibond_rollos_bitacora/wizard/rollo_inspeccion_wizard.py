@@ -48,11 +48,10 @@ class RolloInspeccionWizard(models.TransientModel):
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
         Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
         for wiz in self:
             nombre = False
-            if wiz.empleado_numero and campo in Empleado._fields:
-                emp = Empleado.search([(campo, '=', wiz.empleado_numero)], limit=1)
+            if wiz.empleado_numero:
+                emp = Empleado._qb_operador(wiz.empleado_numero)  # 3.5.1: número = referencia S-<número>
                 nombre = emp.name if emp else _('EMPLEADO NO ENCONTRADO')
             wiz.empleado_nombre = nombre
 

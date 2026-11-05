@@ -141,6 +141,16 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Operador por referencia de nómina (3.5.1, Dirección 2026-11-05)
+
+El número de trabajador se repite entre nóminas (85 es Lorena Santiago, S, y Franco Huerta, Q; 34 es un operador de
+Abridora y el director de Operaciones). La «Referencia de empleado» con prefijo es única. En Rama, desperdicio,
+Inspección y Clasificación el operador teclea **solo su número**, como en Tejido, y Odoo lo busca como **S-<número>**
+(toda la planta es nómina semanal); alguien de otra nómina teclea su referencia completa (Q-7, C-26, también «q7»).
+Sin referencia, cae al número de trabajador solo si un único empleado activo lo tiene. La búsqueda va con sudo: un
+operador sin permisos de RH busca en `hr.employee.public`, que no tiene esos campos (lo detectó la prueba 28).
+Tejido (`pesaje_rollos_tejido`, de José) sigue con su búsqueda por número y puesto.
+
 ## Número de baño y lotes (3.5.0, Dirección 2026-11-05)
 
 El folio de la tarjeta viajera (serie del 21 mil, impresa por bloques; el «21244» de «21244I1» y «21244 J1») daba
