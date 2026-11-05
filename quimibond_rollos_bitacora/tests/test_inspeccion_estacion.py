@@ -363,7 +363,22 @@ class TestInspeccionEstacion(TransactionCase):
         final = orden_kg.rollo_final_kg_ids
         self.assertTrue(final.alerta_metros)
 
+    def _registrar_bascula(self):
+        """3.3.9: con una báscula IoT registrada, capturar a mano pide motivo (sin báscula se llena solo)."""
+        caja = False
+        if 'iot.box' in self.env:
+            Caja = self.env['iot.box'].sudo()
+            valores_caja = {'name': 'Caja prueba ZZ951'}
+            if 'identifier' in Caja._fields:
+                valores_caja['identifier'] = 'ZZ951'
+            caja = Caja.create(valores_caja)
+        valores = {'name': 'Báscula ZZ951', 'type': 'scale', 'identifier': 'ZZ951-scale'}
+        if caja:
+            valores['iot_id'] = caja.id
+        return self.env['iot.device'].sudo().create(valores)
+
     def test_19_motivo_manual_en_rama_y_desperdicio(self):
+        self._registrar_bascula()
         orden_kg = self.env['mrp.production'].create({
             'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id})
         orden_kg.action_confirm()
@@ -795,4 +810,20 @@ class TestInspeccionEstacion(TransactionCase):
         final.action_anular()
         self.assertFalse(Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', nombre_final)]))
         self.assertEqual(len(Log.search([('production_id', '=', orden_kg.id)])), 2, 'Rama y desperdicio se quedan')
+
+    def test_37_sin_bascula_abre_en_manual(self):
+        """3.3.9: sin báscula IoT registrada, Rama, desperdicio e Inspección abren en captura manual con el motivo
+        «Sin báscula IoT»; con una báscula registrada abren en automático y sin motivo."""
+        from ..wizard.pesaje_manual import MOTIVO_SIN_BASCULA
+        Dispositivo = self.env['iot.device'].sudo()
+        Dispositivo.search([('type', '=', 'scale')]).unlink()
+        modelos = ('rollo.pesaje.rama.wizard', 'rollo.desperdicio.rama.wizard', 'rollo.inspeccion.estacion.wizard')
+        for modelo in modelos:
+            valores = self.env[modelo].default_get(['weighing_mode', 'motivo_manual'])
+            self.assertEqual((valores['weighing_mode'], valores['motivo_manual']), ('manual', MOTIVO_SIN_BASCULA), modelo)
+        self._registrar_bascula()
+        for modelo in modelos:
+            valores = self.env[modelo].default_get(['weighing_mode', 'motivo_manual'])
+            self.assertEqual(valores['weighing_mode'], 'iot', modelo)
+            self.assertFalse(valores.get('motivo_manual'), modelo)
 
