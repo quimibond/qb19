@@ -44,9 +44,43 @@ def monday_of(day):
     return day - timedelta(days=day.weekday()) if day else day
 
 
-def market_of_partner(partner):
-    team = partner.commercial_partner_id.team_id or partner.team_id if partner else None
-    return TEAM_MARKET.get((team.name or '').strip().upper(), 'otro') if team else 'otro'
+def team_of_partner(partner):
+    """Equipo de ventas del cliente. En Odoo 19 ``res.partner`` ya no tiene ``team_id`` (2.0.3): sale
+    del último pedido confirmado del cliente, si no de su última factura publicada y si no del equipo
+    de su vendedor. Vacío si no hay ninguno."""
+    if not partner:
+        return None
+    commercial = partner.commercial_partner_id
+    env = partner.env
+    if 'team_id' in commercial._fields and commercial.team_id:
+        return commercial.team_id
+    order = env['sale.order'].sudo().search([
+        ('partner_id', 'child_of', commercial.id), ('state', '=', 'sale'), ('team_id', '!=', False)],
+        order='date_order desc', limit=1)
+    if order:
+        return order.team_id
+    move = env['account.move'].sudo().search([
+        ('commercial_partner_id', '=', commercial.id), ('move_type', 'in', ('out_invoice', 'out_refund')),
+        ('state', '=', 'posted'), ('team_id', '!=', False)], order='invoice_date desc', limit=1)
+    if move:
+        return move.team_id
+    user = commercial.user_id
+    return user.sale_team_id if user and 'sale_team_id' in user._fields and user.sale_team_id else None
+
+
+def market_of_partner(partner, cache=None):
+    """Mercado del cliente por el nombre de su equipo de ventas; 'otro' si no tiene. ``cache``: dict
+    {partner_id: mercado} para no repetir la búsqueda en un lote."""
+    if not partner:
+        return 'otro'
+    key = partner.commercial_partner_id.id
+    if cache is not None and key in cache:
+        return cache[key]
+    team = team_of_partner(partner)
+    market = TEAM_MARKET.get((team.name or '').strip().upper(), 'otro') if team else 'otro'
+    if cache is not None:
+        cache[key] = market
+    return market
 
 
 class QbForecastLine(models.Model):
@@ -120,9 +154,10 @@ class QbForecastLine(models.Model):
 
     @api.depends('partner_id')
     def _compute_mercado(self):
+        cache = {}
         for line in self:
             if not line.mercado or line.mercado == 'otro':
-                line.mercado = market_of_partner(line.partner_id) if line.partner_id else 'confeccion'
+                line.mercado = market_of_partner(line.partner_id, cache) if line.partner_id else 'confeccion'
 
     @api.depends('qty_origen', 'uom_origen', 'product_id', 'product_id.uom_id', 'product_id.qb_m_por_kg',
                  'product_id.qb_ancho_m', 'product_id.qb_articulo_id.qb_m_por_kg')

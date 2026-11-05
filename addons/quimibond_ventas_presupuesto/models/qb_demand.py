@@ -74,7 +74,8 @@ class QbDemandLine(models.Model):
         return acabado, tejido
 
     @api.model
-    def _qb_row(self, company, tipo, partner, plant, product, week, qty_venta, today, mps_products, **extra):
+    def _qb_row(self, company, tipo, partner, plant, product, week, qty_venta, today, mps_products,
+                markets=None, **extra):
         acabado, tejido = self._qb_cuts(week, today) if week else (False, False)
         qty_m = product.qb_convertir(qty_venta, 'venta', 'm')
         qty_kg = product.qb_convertir(qty_venta, 'venta', 'kg')
@@ -82,7 +83,7 @@ class QbDemandLine(models.Model):
         articulo = product.qb_articulo_id or product
         vals = {
             'company_id': company.id, 'tipo': tipo, 'partner_id': partner.id or False, 'plant': plant or False,
-            'mercado': market_of_partner(partner) if partner else 'confeccion',
+            'mercado': market_of_partner(partner, markets) if partner else 'confeccion',
             'product_id': product.id, 'articulo_id': articulo.id, 'week': week,
             'month': week.replace(day=1) if week else False,
             'qty_venta': qty_venta, 'uom_venta': product.uom_id.name,
@@ -104,6 +105,7 @@ class QbDemandLine(models.Model):
         if 'mrp.production.schedule' in self.env:
             mps_products = set(self.env['mrp.production.schedule'].sudo().search([]).product_id.ids)
         rows = []
+        markets = {}
         oldest = current - timedelta(weeks=PAST_WEEKS)
         for company in self.env['res.company'].sudo().search([]):
             for sol in Forecast._qb_open_sale_lines(company):
@@ -115,7 +117,7 @@ class QbDemandLine(models.Model):
                 rows.append(self._qb_row(
                     company, 'pedido', partner, sol.order_id.partner_shipping_id != partner
                     and sol.order_id.partner_shipping_id.name or False, sol.product_id,
-                    week, pending, today, mps_products,
+                    week, pending, today, mps_products, markets=markets,
                     zona=Forecast._qb_zone_for(week, today) if week else False,
                     atrasado=bool(week and week < current), sale_line_id=sol.id, order_id=sol.order_id.id,
                     customer_po=sol.order_id.client_order_ref or False))
@@ -125,7 +127,7 @@ class QbDemandLine(models.Model):
                 rows.append(self._qb_row(
                     company, 'pronostico', line.partner_id, line.plant or line.ship_to_id.name,
                     line.product_id, line.week, line.qty_neta, today, mps_products,
-                    zona=line.zona, forecast_line_id=line.id, customer_po=line.customer_po or False))
+                    zona=line.zona, mercado=line.mercado, forecast_line_id=line.id, customer_po=line.customer_po or False))
         self.sudo().search([]).unlink()
         if rows:
             self.sudo().create(rows)
