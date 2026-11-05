@@ -113,8 +113,13 @@ def _wide_header(rows, order):
     return None, {}
 
 
-def parse_rows(rows, part_header=None, po_header=None, desc_header=None, order='dmy'):
-    """Filas (listas de celdas) → partes del release. Ver la docstring del módulo."""
+def parse_rows(rows, part_header=None, po_header=None, desc_header=None, order='dmy',
+               part_col=None, po_col=None, desc_col=None):
+    """Filas (listas de celdas) → partes del release. Ver la docstring del módulo.
+
+    ``part_col``/``po_col``/``desc_col`` (0 = primera columna) ganan sobre los encabezados: hay archivos
+    con todo el encabezado en una sola celda (Shawmut Silao: «Plant / Program End Date / … / Weight Conv»)."""
+    fixed_part, fixed_po, fixed_desc = part_col, po_col, desc_col
     rows = [list(r) for r in rows if r is not None]
     warnings = []
     head_at, date_cols = _wide_header(rows, order)
@@ -136,20 +141,23 @@ def parse_rows(rows, part_header=None, po_header=None, desc_header=None, order='
         header = rows[head_at]
         first_date = min(date_cols)
         exclude = set(date_cols)
-        part_col = _find_col(header, [part_header], exclude) if part_header else None
+        part_col = fixed_part
+        if part_col is None and part_header:
+            part_col = _find_col(header, [part_header], exclude)
         if part_col is None:
             part_col = _find_col(header[:first_date], LONG_PART, exclude)
         if part_col is None:
-            # Primera columna antes de las fechas que trae texto en las filas de datos.
+            # Primera columna antes de las fechas que trae texto (no números) en las filas de datos.
             for col in range(first_date):
-                if any(isinstance(_cell(r, col), str) and _cell(r, col).strip()
-                       for r in rows[head_at + 1:head_at + 20]):
+                if any(number(_cell(r, col)) is False for r in rows[head_at + 1:head_at + 20]):
                     part_col = col
                     break
         if part_col is None:
             raise GenericReleaseError("No se encontró la columna de la parte del cliente; indíquela en el perfil.")
-        po_col = _find_col(header, [po_header], exclude) if po_header else None
-        desc_col = _find_col(header, [desc_header], exclude) if desc_header else None
+        po_col = fixed_po if fixed_po is not None else (
+            _find_col(header, [po_header], exclude) if po_header else None)
+        desc_col = fixed_desc if fixed_desc is not None else (
+            _find_col(header, [desc_header], exclude) if desc_header else None)
         for n, row in enumerate(rows[head_at + 1:], start=head_at + 2):
             part = str(_cell(row, part_col) or '').strip()
             if not part or _norm(part).startswith('total'):
@@ -170,13 +178,16 @@ def parse_rows(rows, part_header=None, po_header=None, desc_header=None, order='
         header = rows[head_at]
         date_col = _find_col(header, LONG_DATE)
         qty_col = _find_col(header, LONG_QTY, {date_col})
-        part_col = _find_col(header, [part_header]) if part_header else None
+        part_col = fixed_part
+        if part_col is None and part_header:
+            part_col = _find_col(header, [part_header])
         if part_col is None:
             part_col = _find_col(header, LONG_PART, {date_col, qty_col})
         if part_col is None:
             raise GenericReleaseError("No se encontró la columna de la parte del cliente; indíquela en el perfil.")
-        po_col = _find_col(header, [po_header]) if po_header else None
-        desc_col = _find_col(header, [desc_header]) if desc_header else None
+        po_col = fixed_po if fixed_po is not None else (_find_col(header, [po_header]) if po_header else None)
+        desc_col = fixed_desc if fixed_desc is not None else (
+            _find_col(header, [desc_header]) if desc_header else None)
         for n, row in enumerate(rows[head_at + 1:], start=head_at + 2):
             part = str(_cell(row, part_col) or '').strip()
             if not part:
@@ -200,8 +211,30 @@ def parse_rows(rows, part_header=None, po_header=None, desc_header=None, order='
 def rows_from_file(content, filename=''):
     """Bytes del archivo → filas: .xlsx con openpyxl (primera hoja con datos), .csv/.txt con csv."""
     name = (filename or '').lower()
-    if name.endswith('.xls'):
-        raise GenericReleaseError("El archivo es .xls (Excel viejo): ábralo y guárdelo como .xlsx o .csv.")
+    if name.endswith('.xls') or content[:4] == b'\xd0\xcf\x11\xe0':
+        try:
+            import xlrd
+        except ImportError:
+            raise GenericReleaseError("El archivo es .xls (Excel viejo) y el servidor no tiene xlrd: ábralo y "
+                                      "guárdelo como .xlsx o .csv.")
+        try:
+            book = xlrd.open_workbook(file_contents=content)
+        except Exception as exc:  # noqa: BLE001 - archivo dañado
+            raise GenericReleaseError("No se pudo abrir el .xls: %s" % exc)
+        for sheet in book.sheets():
+            rows = []
+            for r in range(sheet.nrows):
+                row = []
+                for c in range(sheet.ncols):
+                    cell = sheet.cell(r, c)
+                    if cell.ctype == xlrd.XL_CELL_DATE:
+                        row.append(xlrd.xldate.xldate_as_datetime(cell.value, book.datemode))
+                    else:
+                        row.append(cell.value)
+                rows.append(row)
+            if any(any(c not in (None, '') for c in r) for r in rows):
+                return rows
+        raise GenericReleaseError("El .xls no tiene datos.")
     if name.endswith(('.csv', '.txt')) or not content[:2] == b'PK':
         text = None
         for encoding in ('utf-8-sig', 'latin-1'):

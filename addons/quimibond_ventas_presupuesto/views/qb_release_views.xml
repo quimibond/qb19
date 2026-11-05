@@ -48,8 +48,10 @@
                         <group string="Lector genérico (Excel / CSV)" invisible="reader != 'generic_table'">
                             <field name="generic_uom" required="reader == 'generic_table'"/>
                             <field name="generic_part_header"/>
+                            <field name="generic_part_col"/>
                             <field name="generic_po_header"/>
                             <field name="generic_desc_header"/>
+                            <field name="generic_desc_col"/>
                             <field name="generic_date_order"/>
                         </group>
                         <group string="Zona firme">

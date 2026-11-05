@@ -80,6 +80,12 @@ class QbReleaseProfile(models.Model):
     generic_part_header = fields.Char(string="Encabezado de la parte", tracking=True,
                                       help="Texto de la columna con la parte del cliente (Part Number). Vacío = "
                                            "se busca «parte», «part», «material»… o la primera columna de texto.")
+    generic_part_col = fields.Integer(string="Columna de la parte (número)", tracking=True,
+                                      help="1 = columna A. Gana sobre el encabezado; sirve cuando el archivo trae "
+                                           "todo el encabezado en una celda (Shawmut Silao: 5, «Item»).")
+    generic_desc_col = fields.Integer(string="Columna de la descripción (número)", tracking=True,
+                                      help="1 = columna A. Si la descripción trae nuestro código, la sugerencia "
+                                           "de producto lo usa (Shawmut Silao: 6, «Desc»).")
     generic_po_header = fields.Char(string="Encabezado de la OC", tracking=True)
     generic_desc_header = fields.Char(string="Encabezado de la descripción", tracking=True)
     generic_date_order = fields.Selection([('dmy', "Día/mes/año (31/12/26)"), ('mdy', "Mes/día/año (12/31/26)")],
@@ -218,7 +224,9 @@ class QbRelease(models.Model):
             data = generic_table.parse_file(
                 content, self.filename or '', part_header=profile.generic_part_header or None,
                 po_header=profile.generic_po_header or None, desc_header=profile.generic_desc_header or None,
-                order=profile.generic_date_order or 'dmy')
+                order=profile.generic_date_order or 'dmy',
+                part_col=profile.generic_part_col - 1 if profile.generic_part_col > 0 else None,
+                desc_col=profile.generic_desc_col - 1 if profile.generic_desc_col > 0 else None)
             ref = (self.filename or '').rsplit('.', 1)[0] or False
             today = fields.Date.context_today(self)
             if data['warnings']:
