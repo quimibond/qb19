@@ -34,6 +34,10 @@
               parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_paste_action" sequence="50"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
 
+    <!-- 3.6.0 -->
+    <menuitem id="menu_sale_qb_forecast_print" name="Imprimir o descargar"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_print_action" sequence="60"/>
+
     <menuitem id="menu_sale_qb_grupo_presupuesto" name="Presupuesto"
               parent="menu_sale_sgi_planning" sequence="20"/>
     <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
@@ -74,4 +78,6 @@
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_line_action" sequence="20"/>
     <menuitem id="menu_mrp_qb_forecast_change" name="Cambios del pronóstico"
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_change_action" sequence="30"/>
+    <menuitem id="menu_mrp_qb_forecast_print" name="Imprimir o descargar"
+              parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_print_action" sequence="40"/>
 </odoo>

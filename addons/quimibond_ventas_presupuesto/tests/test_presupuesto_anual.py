@@ -338,3 +338,59 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertFalse(budget.cutoff_date)
         self.assertEqual(budget.fulfillment_pct, 0.0)
         self.assertFalse(budget.fulfillment_by_mercado_text)
+
+    def test_16_desviacion_contra_precio_presupuestal(self):
+        """3.5.6: la desviación compara lo facturado contra el precio presupuestal del renglón,
+        en su base (aquí por kilo), no contra la lista."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        budget = self.Budget.create({'year': 2023})
+        line = self._line(budget, date=date(2023, 3, 1), price_input=10.0, price_basis='kg')
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2023, 3, 5),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1000.0, 'product_uom_id': self.uom_m.id,
+                'price_unit': 2.2, 'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        budget.action_refresh_actuals()
+        # 2,200 pesos por 1,000 m = 200 kg → 11 pesos/kg contra 10 presupuestados: +10 %.
+        self.assertAlmostEqual(line.price_real_unit_currency, 11.0, places=2)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
+        self.assertEqual(line.price_gap_alert, 'leve')
+        self.assertFalse(line.price_gap_fx)
+
+    def test_17_pdf_y_excel_del_presupuesto(self):
+        """3.6.0: resumen por mercado y detalle; el PDF se genera y el Excel se descarga."""
+        budget = self.Budget.create({'year': 2024})
+        self._line(budget, date=date(2024, 3, 1), price_input=2.0)
+        otro = self.env['product.product'].create({'name': 'Conf 2024', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self._line(budget, date=date(2024, 4, 1), product_id=otro.id, partner_id=False,
+                   mercado='confeccion', price_input=1.0)
+        data = budget._qb_report_data()
+        self.assertEqual([s['label'] for s in data['summary']], ["Industrial", "Confección"])
+        self.assertAlmostEqual(data['total'], 3000.0, places=2)
+        self.assertAlmostEqual(data['summary'][0]['cells'][3], 2000.0, places=2)
+        html, _ttype = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_ventas_presupuesto.action_report_sales_budget', budget.ids)
+        self.assertIn('Resumen por mercado', html.decode())
+        action = budget.action_qb_download_xlsx()
+        self.assertIn('/web/content/', action['url'])
+
+    def test_18_pdf_y_excel_del_pronostico(self):
+        """3.6.0: matriz cliente × producto × semana del pronóstico vigente."""
+        monday = date(2030, 1, 7)
+        self.env['qb.forecast.line'].create({
+            'partner_id': self.client.id, 'product_id': self.product.id, 'week': monday,
+            'qty_origen': 500.0, 'uom_origen': 'm'})
+        wizard = self.env['qb.forecast.print'].create({'date_from': monday, 'weeks': 4, 'unit': 'm',
+                                                       'partner_ids': [(6, 0, self.client.ids)]})
+        data = wizard._qb_matrix()
+        self.assertEqual(len(data['mondays']), 4)
+        self.assertEqual(len(data['groups']), 1)
+        self.assertAlmostEqual(data['groups'][0]['rows'][0]['cells'][monday], 500.0, places=2)
+        html, _ttype = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_ventas_presupuesto.action_report_forecast', wizard.ids)
+        self.assertIn('Pronóstico de ventas vigente', html.decode())
+        self.assertIn('/web/content/', wizard.action_xlsx()['url'])
+        self.assertEqual(wizard.action_print()['type'], 'ir.actions.report')
