@@ -359,6 +359,14 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
         self.assertEqual(line.price_gap_alert, 'leve')
         self.assertFalse(line.price_gap_fx)
+        # 3.6.2: la diferencia (2,200 − 2,000) es toda precio: 1 peso/kg × 200 kg.
+        self.assertAlmostEqual(line.effect_volume, 0.0, places=2)
+        self.assertAlmostEqual(line.effect_price, 200.0, places=2)
+        self.assertAlmostEqual(line.effect_fx, 0.0, places=2)
+        self.assertAlmostEqual(budget.amount_difference, 200.0, places=2)
+        self.assertAlmostEqual(budget.effect_price, 200.0, places=2)
+        self.assertAlmostEqual(budget.effect_volume + budget.effect_price + budget.fx_effect
+                               + budget.effect_unbudgeted, budget.amount_difference, places=2)
 
     def test_17_pdf_y_excel_del_presupuesto(self):
         """3.6.0: resumen por mercado y detalle; el PDF se genera y el Excel se descarga."""
