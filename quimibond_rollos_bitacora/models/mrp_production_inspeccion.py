@@ -29,6 +29,8 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
+from .mrp_rollo_bitacora import CLASIFICACIONES
+
 PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 
 
@@ -37,6 +39,19 @@ class MrpProductionInspeccion(models.Model):
 
     rollo_final_kg_ids = fields.One2many('mrp.rollo.final', 'production_id', 'Rollos finales (Inspección)')
     rollo_final_m_ids = fields.One2many('mrp.rollo.final', 'production_m_id', 'Rollos finales')
+    # 3.3.8 (Dirección, 2026-11-05): resumen de la pestaña Rollos (sin guardar).
+    rollos_rama_count = fields.Integer('Rollos pesados en Rama', compute='_compute_resumen_rollos')
+    rollos_rama_kg = fields.Float('Kg pesados en Rama', digits=(12, 2), compute='_compute_resumen_rollos')
+    rollos_rama_pct = fields.Float('Pesado en Rama contra lo planeado (%)', digits=(12, 1),
+                                   compute='_compute_resumen_rollos')
+    rollos_pendientes_count = fields.Integer('Rollos de Rama por inspeccionar', compute='_compute_resumen_rollos')
+    rollos_final_count = fields.Integer('No. de rollos finales', compute='_compute_resumen_rollos')
+    rollos_final_kg = fields.Float('Kg de rollos finales', digits=(12, 2), compute='_compute_resumen_rollos')
+    rollos_final_metros = fields.Float('Metros de rollos finales', digits=(12, 2), compute='_compute_resumen_rollos')
+    rollos_merma_kg = fields.Float('Merma de Inspección (kg)', digits=(12, 2), compute='_compute_resumen_rollos',
+                                   help='Kg de Rama de los rollos ya inspeccionados menos los kg de sus rollos finales.')
+    rollos_merma_pct = fields.Float('Merma de Inspección (%)', digits=(12, 1), compute='_compute_resumen_rollos')
+    rollos_por_calidad = fields.Char('Kg por calidad', compute='_compute_resumen_rollos')
     inspeccion_completa_sin_cerrar = fields.Boolean(
         'Rollos inspeccionados, sin cerrar', compute='_compute_inspeccion_completa_sin_cerrar', store=True,
         help='Orden en kg abierta con todos sus rollos de Rama inspeccionados: el baño ya se puede cerrar. Sus rollos '
@@ -56,6 +71,35 @@ class MrpProductionInspeccion(models.Model):
         terminado = self.move_finished_ids.filtered(lambda m: m.product_id == self.product_id)
         ordenes = terminado.move_dest_ids.raw_material_production_id
         return ordenes.filtered(lambda p: p.state not in ('done', 'cancel'))[:1]
+
+    @api.depends('product_qty', 'rollo_bitacora_ids.kg_rama', 'rollo_bitacora_ids.estado_inspeccion',
+                 'rollo_final_kg_ids.kg_neto', 'rollo_final_kg_ids.metros', 'rollo_final_kg_ids.clasificacion',
+                 'rollo_final_kg_ids.bitacora_ids')
+    def _compute_resumen_rollos(self):
+        """3.3.8: lo que la pestaña Rollos resume arriba. La merma se mide sobre los rollos de Rama ya inspeccionados y
+        los rollos finales que salen solo de ellos, para no contar un rollo cortado a la mitad."""
+        etiquetas = dict(CLASIFICACIONES)
+        for orden in self:
+            rama = orden.rollo_bitacora_ids
+            finales = orden.rollo_final_kg_ids
+            orden.rollos_rama_count = len(rama)
+            orden.rollos_rama_kg = sum(rama.mapped('kg_rama'))
+            orden.rollos_rama_pct = orden.rollos_rama_kg / orden.product_qty * 100.0 if orden.product_qty else 0.0
+            orden.rollos_pendientes_count = len(rama.filtered(lambda r: r.estado_inspeccion == 'pendiente'))
+            orden.rollos_final_count = len(finales)
+            orden.rollos_final_kg = sum(finales.mapped('kg_neto'))
+            orden.rollos_final_metros = sum(finales.mapped('metros'))
+            inspeccionados = rama.filtered(lambda r: r.estado_inspeccion == 'inspeccionado')
+            cerrados = finales.filtered(lambda f: f.bitacora_ids and not (f.bitacora_ids - inspeccionados))
+            base = sum(inspeccionados.mapped('kg_rama'))
+            orden.rollos_merma_kg = base - sum(cerrados.mapped('kg_neto')) if base else 0.0
+            orden.rollos_merma_pct = orden.rollos_merma_kg / base * 100.0 if base else 0.0
+            partes = []
+            for clave, _etiqueta in CLASIFICACIONES:
+                del_tipo = finales.filtered(lambda f, c=clave: f.clasificacion == c)
+                if del_tipo:
+                    partes.append('%s %s: %.2f kg' % (len(del_tipo), etiquetas[clave], sum(del_tipo.mapped('kg_neto'))))
+            orden.rollos_por_calidad = ' · '.join(partes)
 
     def _insp_otros_banos(self, orden_m):
         """3.3.0: las otras órdenes en kg (baños) que siguen abasteciendo a la orden en metros y no han cerrado."""

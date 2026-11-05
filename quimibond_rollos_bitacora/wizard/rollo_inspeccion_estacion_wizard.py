@@ -266,6 +266,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()
+        self.production_id._historial_pesaje(self.workcenter_id, rollo.name, self.kg_bruto, self.tara_kg,
+                                             rollo.kg_neto, operador, fecha=ahora)
         if self.termina_rollo:
             for rama in self.bitacora_ids:
                 finales = rama.rollo_final_insp_ids

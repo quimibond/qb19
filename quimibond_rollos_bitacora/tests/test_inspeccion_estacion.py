@@ -758,3 +758,41 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(sum(hechos.mapped('quantity')), 2.0, delta=0.01, msg="Solo se consume lo del lote")
         self.assertFalse(hechos.move_line_ids.filtered(lambda ml: not ml.lot_id))
         self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'ENGZZ953' in (m.body or '')), "Queda como faltante")
+
+    def test_36_historial_de_pesaje(self):
+        """3.3.8: Rama, desperdicio e Inspección dejan copia en el «Historial de Pesaje» de la orden (si está el módulo
+        de pesaje de Tejido); al anular el rollo final, su pesada sale del historial."""
+        if 'mrp.weighing.log' not in self.env:
+            self.skipTest('Sin pesaje_rollos_tejido no hay historial de pesaje.')
+        Log = self.env['mrp.weighing.log']
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.workcenter_id == self.rama)
+        self.env['rollo.pesaje.rama.wizard'].create({
+            'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+            'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_bruto': 31.1}).action_confirmar()
+        nuevo = orden_kg.rollo_bitacora_ids - rollos
+        log_rama = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', nuevo.lot_id.name)])
+        self.assertEqual(len(log_rama), 1)
+        self.assertEqual((log_rama.weight_bruto, log_rama.tara, log_rama.weight_neto, log_rama.workcenter_id),
+                         (31.1, 1.1, 30.0, self.rama))
+        self.assertEqual(log_rama.lot_id, nuevo.lot_id)
+        self.assertFalse(log_rama.rollo_circular)
+        self.assertFalse(orden_kg.roll_count if 'roll_count' in orden_kg._fields else 0,
+                         'El historial no mueve el contador de rollos de Tejido')
+        # El baño de prueba no trae subproducto de desperdicio: aquí solo importa la copia en el historial.
+        with patch.object(type(orden_kg), '_rama_registrar_desperdicio', lambda *args, **kwargs: None):
+            self.env['rollo.desperdicio.rama.wizard'].create({
+                'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_desperdicio': 1.2}).action_confirmar()
+        log_desp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO RAMA')])
+        self.assertEqual((log_desp.weight_bruto, log_desp.tara, log_desp.weight_neto), (1.2, 0.0, 1.2))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        final = orden_kg.rollo_final_kg_ids
+        log_insp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', final.name)])
+        self.assertEqual((log_insp.weight_bruto, log_insp.tara, log_insp.weight_neto, log_insp.workcenter_id),
+                         (50.6, 1.5, final.kg_neto, self.revisadora))
+        nombre_final = final.name
+        final.action_anular()
+        self.assertFalse(Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', nombre_final)]))
+        self.assertEqual(len(Log.search([('production_id', '=', orden_kg.id)])), 2, 'Rama y desperdicio se quedan')
+
