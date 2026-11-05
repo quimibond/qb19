@@ -21,6 +21,20 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Diferencia por volumen, precio y tipo de cambio (19.0.3.6.2, 2026-11-05)
+
+Las alertas de precio por renglón y mes (contador «Desviaciones de precio»,
+colores, filtro) hacían mucho ruido y no decían por qué la venta no da el
+presupuesto; salen de las pantallas (los campos se quedan: el VE-05 los lee).
+En su lugar, la práctica de análisis de variaciones: la ficha separa **venta −
+presupuesto al corte** en **volumen** ((cantidad real − presupuestada) × precio
+presupuestal × TC presupuestal), **precio** ((precio real − presupuestal, en la
+moneda de venta) × cantidad real × TC presupuestal), **tipo de cambio** (venta
+a TC real − a TC presupuestal) y **venta sin presupuesto** (lo que no cae en un
+renglón); suman exacto, también por mercado. Los renglones guardan su efecto
+volumen, precio y tipo de cambio y el Análisis los suma por cliente, producto o
+mes.
+
 ## Precios a la moneda de la lista (19.0.3.6.1, 2026-11-05)
 
 Pestaña Tipo de cambio → «Pasar precios a la moneda de la lista» (solo en
