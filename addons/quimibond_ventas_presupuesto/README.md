@@ -21,6 +21,13 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pedidos bloqueados siguen contando (19.0.3.0.1, 2026-11-05)
+
+Producción bloquea solo cada pedido de venta al confirmarlo (36 de 62 pedidos
+con entrega futura estaban bloqueados), así que el filtro «sin bloquear» de
+3.0.0 sacaba de la Demanda pedidos vigentes (de 50 a 3 en las semanas firmes y
+planeadas). Se quita; cuenta solo «con entrega abierta».
+
 ## Limpieza: un solo pronóstico, sin MPS (19.0.3.0.0, 2026-11-05)
 
 Decisiones de Jose (2026-11-05): archivar los pronósticos viejos, desconectar
@@ -46,8 +53,8 @@ el Programa Maestro (MPS) por ahora y reordenar los menús.
   entrega sin hacer ni cancelar. Antes bastaba con «pedido − entregado > 0»:
   273 de los 324 «atrasados» de producción eran faltantes cerrados sin
   backorder o productos cambiados al surtir (2026-11-05).
-  Un pedido **bloqueado** tampoco cuenta (ese día se bloquearon 223 pedidos ya
-  entregados que seguían «abiertos»).
+  En 3.0.0 un pedido **bloqueado** tampoco contaba; **3.0.1 lo quita**: producción
+  bloquea cada pedido al confirmarlo, y la Demanda perdió 47 pedidos vigentes.
 - **Cobertura del pronóstico** (cron semanal): sobre el pronóstico vigente,
   semanas firmes con pronóstico sin pedido y pedidos firmes sin pronóstico, en
   una actividad al Administrador de ventas sobre el cliente.
