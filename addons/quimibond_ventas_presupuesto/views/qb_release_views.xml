@@ -45,6 +45,13 @@
                             <field name="date_basis"/>
                             <field name="transit_days" invisible="date_basis != 'entrega'"/>
                         </group>
+                        <group string="Lector genérico (Excel / CSV)" invisible="reader != 'generic_table'">
+                            <field name="generic_uom" required="reader == 'generic_table'"/>
+                            <field name="generic_part_header"/>
+                            <field name="generic_po_header"/>
+                            <field name="generic_desc_header"/>
+                            <field name="generic_date_order"/>
+                        </group>
                         <group string="Zona firme">
                             <field name="firm_rule"/>
                             <field name="firm_weeks" invisible="firm_rule != 'semanas'"/>
@@ -109,6 +116,10 @@
                             invisible="state not in ('recibido', 'por_revisar')"/>
                     <button name="action_read" type="object" string="Volver a leer"
                             invisible="state != 'leido'"/>
+                    <button name="action_confirm_suggestions" type="object" string="Confirmar sugerencias"
+                            invisible="state not in ('leido', 'revisado') or unmapped_count == 0"
+                            groups="sales_team.group_sale_manager"
+                            help="Confirma de una vez las partes de este release que ya tienen producto sugerido."/>
                     <button name="action_mark_reviewed" type="object" string="Marcar revisado"
                             class="btn-primary" invisible="state != 'leido'"
                             groups="sales_team.group_sale_manager"/>
@@ -129,7 +140,8 @@
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="unmapped_count == 0">
                         <field name="unmapped_count" class="oe_inline"/> parte(s) sin producto
-                        confirmado: confírmelas en «Partes del cliente» antes de aplicar.
+                        confirmado. Revise las sugerencias en la pestaña Partes y use «Confirmar sugerencias», o
+                        capture el producto en «Partes del cliente», antes de aplicar.
                     </div>
                     <group>
                         <group>

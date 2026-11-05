@@ -6,6 +6,11 @@
         <field name="arch" type="xml">
             <list string="Partes del cliente" decoration-muted="state == 'sin_producto'"
                   decoration-warning="state == 'sugerido'" decoration-success="state == 'confirmado'">
+                <!-- 3.3.0: confirmar varias partes seleccionadas de una vez. -->
+                <header>
+                    <button name="action_confirm" type="object" string="Confirmar seleccionadas"
+                            groups="sales_team.group_sale_manager"/>
+                </header>
                 <field name="partner_id"/>
                 <field name="ship_to_id" optional="show"/>
                 <field name="customer_part"/>

@@ -18,11 +18,12 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from ..release import fxi_sum, lear_aiag
+from ..release import fxi_sum, generic_table, lear_aiag, units
 
 _READERS = [
     ('lear_aiag', "Lear — texto AIAG (Supplier Schedule / Material Release)"),
     ('fxi_sum', "FXI — Excel SUM (reporte SAP)"),
+    ('generic_table', "Excel / CSV genérico (parte × fecha)"),
 ]
 
 
@@ -73,6 +74,18 @@ class QbReleaseProfile(models.Model):
     sales_user_id = fields.Many2one('res.users', string="Responsable en Ventas",
                                     tracking=True)
     logistics_user_id = fields.Many2one('res.users', string="Responsable en Logística")
+    # 3.3.0: lector genérico (diseño v3, 2.10.4). Lo que no se adivina del archivo.
+    generic_uom = fields.Char(string="Unidad del cliente", tracking=True,
+                              help="Como la manda el cliente: MT, LY, KG, M2… (el archivo no siempre la trae).")
+    generic_part_header = fields.Char(string="Encabezado de la parte", tracking=True,
+                                      help="Texto de la columna con la parte del cliente (Part Number). Vacío = "
+                                           "se busca «parte», «part», «material»… o la primera columna de texto.")
+    generic_po_header = fields.Char(string="Encabezado de la OC", tracking=True)
+    generic_desc_header = fields.Char(string="Encabezado de la descripción", tracking=True)
+    generic_date_order = fields.Selection([('dmy', "Día/mes/año (31/12/26)"), ('mdy', "Mes/día/año (12/31/26)")],
+                                          string="Fechas de texto", default='dmy', tracking=True,
+                                          help="Solo para fechas escritas como texto; las fechas de Excel no "
+                                               "dependen de esto.")
     sender_domains = fields.Char(
         string="Dominios del remitente",
         help="Separados por coma (lear.com, fxi.com): así se reconoce el correo (E1b).")
@@ -198,6 +211,24 @@ class QbRelease(models.Model):
                            'line_type': 'P', 'cum_req': ln['cum'], 'net_req': 0.0}
                           for ln in p['lines']],
             } for p in data['parts']]
+        if reader == 'generic_table':
+            profile = self.profile_id
+            if not units.customer_unit(profile.generic_uom):
+                raise ValueError("El perfil no dice en qué unidad manda el cliente (MT, LY, KG, M2…).")
+            data = generic_table.parse_file(
+                content, self.filename or '', part_header=profile.generic_part_header or None,
+                po_header=profile.generic_po_header or None, desc_header=profile.generic_desc_header or None,
+                order=profile.generic_date_order or 'dmy')
+            ref = (self.filename or '').rsplit('.', 1)[0] or False
+            today = fields.Date.context_today(self)
+            if data['warnings']:
+                self.message_post(body="Avisos del archivo:\n- " + "\n- ".join(data['warnings'][:30]))
+            return [{
+                'release_ref': ref, 'release_date': today, 'customer_part': p['customer_part'],
+                'description': p.get('description'), 'customer_po': p.get('customer_po'),
+                'uom': profile.generic_uom.strip().upper(),
+                'lines': [{'date': ln['date'], 'qty': ln['qty'], 'line_type': 'P'} for ln in p['lines']],
+            } for p in data['parts']]
         raise ValueError("El perfil no tiene un lector conocido.")
 
     @staticmethod
@@ -312,6 +343,28 @@ class QbRelease(models.Model):
             release.write(vals)
 
     # --- Revisión y aplicación ----------------------------------------------------
+    def action_confirm_suggestions(self):
+        """3.3.0 (diseño v3, 2.10.3): confirma de una vez las partes de este release que ya tienen
+        producto sugerido. Las que no tienen producto se quedan para captura."""
+        Catalog = self.env['qb.customer.part']
+        for release in self:
+            catalog = release.part_ids.catalog_part_id.filtered(
+                lambda c: c.state == 'sugerido' and c.product_id)
+            missing = release.part_ids.catalog_part_id.filtered(lambda c: c.state == 'sin_producto')
+            if not catalog and not missing:
+                raise UserError("No hay partes por confirmar en este release.")
+            catalog.action_confirm()
+            Catalog |= catalog
+            body = "Se confirmaron %d parte(s): %s." % (
+                len(catalog), ", ".join(c.display_name for c in catalog)) if catalog else ""
+            if missing:
+                body += " Sin producto (captúrelo en Partes del cliente): %s." % ", ".join(
+                    missing.mapped('customer_part'))
+            release.message_post(body=body.strip())
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'type': 'success' if Catalog else 'warning', 'sticky': False,
+            'message': "Partes confirmadas: %d." % len(Catalog)}}
+
     def action_mark_reviewed(self):
         for release in self:
             if release.state != 'leido':
