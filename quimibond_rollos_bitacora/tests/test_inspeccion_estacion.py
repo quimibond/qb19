@@ -861,7 +861,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(texto.decode().count('^XA^PW544'), 2)
 
     def test_39_numero_de_bano(self):
-        """3.5.0: Odoo da el número de baño una sola vez (serie desde 30001), no lo copia al duplicar ni al dividir, es único
+        """3.5.0: Odoo da el número de baño una sola vez (serie desde 00001), no lo copia al duplicar ni al dividir, es único
         y da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001»."""
         secuencia = self.env.ref('quimibond_rollos_bitacora.seq_numero_bano')
         self.assertEqual((secuencia.padding, secuencia.code), (5, 'quimibond_rollos_bitacora.numero_bano'))

@@ -55,8 +55,8 @@ class RolloPesajeRamaWizard(models.TransientModel):
         return (ultimo.secuencia or 0) + 1
 
     def _nombre_lote(self, secuencia):
-        """Lote del rollo de Rama = número de baño + «J» (acabado) + No. de rollo: «30001-J0001» (3.5.0). La «J» lo
-        distingue del rollo final de Inspección («30001-0001»). Sin número todavía, solo la vista previa."""
+        """Lote del rollo de Rama = número de baño + «J» (acabado) + No. de rollo: «00001-J0001» (3.5.0). La «J» lo
+        distingue del rollo final de Inspección («00001-0001»). Sin número todavía, solo la vista previa."""
         self.ensure_one()
         return '%s-J%04d' % (self.production_id.numero_bano or _('(baño)'), secuencia)
 

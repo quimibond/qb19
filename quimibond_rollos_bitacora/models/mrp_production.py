@@ -8,7 +8,7 @@ from odoo.tools import float_compare
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
 PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
 # 3.5.0 (Dirección, 2026-11-05): número de baño consecutivo que asigna Odoo; sustituye al folio de la tarjeta viajera
-# y empieza en 30001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
+# y empieza en 00001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
 SECUENCIA_BANO = 'quimibond_rollos_bitacora.numero_bano'
 
 

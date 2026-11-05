@@ -148,7 +148,7 @@ nombre a los lotes de tintorería y acabado, tecleado a mano. La tarjeta se deja
 que **Odoo asigna el número de baño**:
 
 - **`numero_bano`** en la orden en kg: secuencia `quimibond_rollos_bitacora.numero_bano` (5 cifras, **empieza en
-  30001** para que se distinga la fase nueva; el siguiente número se cambia en Ajustes → Técnico → Secuencias). Única,
+  00001** para que se distinga la fase nueva; el siguiente número se cambia en Ajustes → Técnico → Secuencias). Única,
   no se copia al duplicar ni al dividir.
 - **Cuándo se asigna:** cuando el baño ya es definitivo, porque la programación de tintorería divide la orden después
   de confirmarla. Al empezar la primera operación de una orden con Rama (Tintorería lo usa al cargar el jet), al abrir

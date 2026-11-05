@@ -146,7 +146,7 @@ class MrpRolloFinal(models.Model):
 
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
-        """Lote del rollo final = número de baño + No. de rollo: «30001-0001» (3.5.0; antes M<orden en metros>-NNNN o
+        """Lote del rollo final = número de baño + No. de rollo: «00001-0001» (3.5.0; antes M<orden en metros>-NNNN o
         K<orden en kg>-NNNN). Es el que queda en inventario y va en la etiqueta final."""
         return '%s-%04d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
 
