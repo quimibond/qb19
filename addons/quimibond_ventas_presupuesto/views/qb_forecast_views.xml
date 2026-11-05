@@ -122,8 +122,23 @@
                 <field name="customer_po"/>
                 <field name="release_id"/>
                 <filter name="vigente" string="Desde esta semana" domain="[('zona', '!=', 'pasado')]"/>
+                <!-- 3.3.0: periodo de la matriz y de la lista. Uno a la vez; las columnas de la matriz siguen
+                     al periodo (la semana es la de su lunes). -->
+                <separator/>
+                <filter name="esta_semana" string="Esta semana"
+                        domain="[('week', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')), ('week', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="proximas_4" string="Próximas 4 semanas"
+                        domain="[('week', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(weeks=4)).strftime('%Y-%m-%d'))]"/>
                 <filter name="proximas_13" string="Próximas 13 semanas"
-                        domain="[('week', '&gt;=', (context_today() - relativedelta(days=6)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(weeks=13)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('week', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(weeks=13)).strftime('%Y-%m-%d'))]"/>
+                <filter name="este_mes" string="Este mes"
+                        domain="[('week', '&gt;=', context_today().strftime('%Y-%m-01')), ('week', '&lt;', (context_today() + relativedelta(months=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="proximo_mes" string="Próximo mes"
+                        domain="[('week', '&gt;=', (context_today() + relativedelta(months=1, day=1)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(months=2, day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="este_anio" string="Este año"
+                        domain="[('week', '&gt;=', context_today().strftime('%Y-01-01')), ('week', '&lt;=', context_today().strftime('%Y-12-31'))]"/>
+                <filter name="filtro_semana" string="Semana (periodo)" date="week"/>
+                <separator/>
                 <filter name="firme" string="Zona firme" domain="[('zona', '=', 'firme')]"/>
                 <filter name="planeado" string="Planeado" domain="[('zona', '=', 'planeado')]"/>
                 <separator/>

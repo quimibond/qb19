@@ -154,3 +154,15 @@ class TestForecastCaptura(TransactionCase):
         self.assertIn('grid', self.Line.get_views([(grid.id, 'grid')])['views'])
         budget_grid = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_grid_qty')
         self.assertIn('grid', self.env['sgi.sales.budget.line'].get_views([(budget_grid.id, 'grid')])['views'])
+
+    def test_14_las_columnas_siguen_al_periodo_del_filtro(self):
+        start, end = self.monday, self.monday + timedelta(weeks=3)
+        domain = [('week', '>=', fields.Date.to_string(start)), ('week', '<', fields.Date.to_string(end))]
+        weeks = self.Line._read_group_week_id(self.env['qb.forecast.week'], domain)
+        self.assertEqual(weeks.mapped('monday'), [start, start + timedelta(weeks=1), start + timedelta(weeks=2)])
+        # «Esta semana»: del día siguiente a hace 7 días hasta hoy.
+        today = fields.Date.context_today(self.env.user)
+        domain = [('week', '>', fields.Date.to_string(today - timedelta(days=7))),
+                  ('week', '<=', fields.Date.to_string(today))]
+        weeks = self.Line._read_group_week_id(self.env['qb.forecast.week'], domain)
+        self.assertEqual(weeks.mapped('monday'), [today - timedelta(days=today.weekday())])
