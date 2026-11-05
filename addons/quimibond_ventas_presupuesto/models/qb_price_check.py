@@ -91,22 +91,32 @@ class QbPriceCheck(models.Model):
         if not partner:
             return dict(vals, state='sin_cliente', note="Ligue el cliente en Hojas del forecast.")
         code = row['code']
-        # El forecast escribe el código en metros (WJ…) o el de kilos (IWJ…); la «I» al frente es kilos.
-        base_code = code[1:] if code.startswith('I') and code[1:] in products else code
-        product_m = products.get(base_code)
-        product_kg = products.get('I' + base_code) or (products.get(code) if code != base_code else None)
-        product = product_m if basis == 'm' else product_kg
-        derived = False
-        if basis == 'm' and not product and product_kg:
-            product, derived = product_kg, True  # se compara el kilo entre el rendimiento
-        if not product:
-            return dict(vals, state='sin_producto',
-                        note="No existe %s en Odoo." % (base_code if basis == 'm' else 'I' + base_code))
-        price, rule, pricelist, problem = self._qb_list_price(partner, product)
-        vals.update(product_id=product.id, pricelist_id=pricelist.id if pricelist else False,
-                    currency_id=pricelist.currency_id.id if pricelist else False)
-        if problem:
-            return dict(vals, state='sin_regla', note=problem)
+        # 3.4.1: el código con «I» al frente es el de kilos; si existe tal cual, el precio es por kilo
+        # aunque venga en la columna «precio / m» (Pieles, Lear). Sin «I», el precio por metro se compara
+        # contra la regla del código en metros; si ese no tiene regla, contra la del código en kilos entre el
+        # rendimiento (Shawmut tiene sus reglas en los IWJ…).
+        if code.startswith('I') and code in products:
+            basis = 'kg'
+            excel = row['price_kg'] or row['price_m']
+            vals.update(basis=basis, price_excel=excel)
+            candidates = [(products[code], False)]
+        elif basis == 'm':
+            candidates = [(p, derived) for p, derived in ((products.get(code), False),
+                                                          (products.get('I' + code), True)) if p]
+        else:
+            candidates = [(p, False) for p in (products.get('I' + code), products.get(code)) if p]
+        if not candidates:
+            return dict(vals, state='sin_producto', note="No existe %s en Odoo." % code)
+        problems = []
+        for product, derived in candidates:
+            price, rule, pricelist, problem = self._qb_list_price(partner, product)
+            vals.update(product_id=product.id, pricelist_id=pricelist.id if pricelist else False,
+                        currency_id=pricelist.currency_id.id if pricelist else False)
+            if not problem:
+                break
+            problems.append(problem)
+        else:
+            return dict(vals, state='sin_regla', note="; ".join(problems))
         note = False
         if derived:
             m_por_kg = product.qb_m_por_kg or row.get('yield_m_kg')
@@ -153,6 +163,11 @@ class QbPriceCheckWizard(models.TransientModel):
         key = forecast_xlsx.norm(client)
         sheets = self.env['qb.forecast.sheet'].search([('partner_id', '!=', False)])
         partner = next((s.partner_id for s in sheets if forecast_xlsx.norm(s.name) == key), None)
+        if not partner:
+            # 3.4.1: PRECIOS dice «FXI» y las hojas «FXI CD JUAREZ», «FXI SANTA TERESA».
+            found = {s.partner_id.commercial_partner_id for s in sheets
+                     if forecast_xlsx.norm(s.name).startswith(key + ' ')}
+            partner = found.pop() if len(found) == 1 else None
         if not partner:
             partner = self.env['qb.forecast.import']._qb_guess_partner(client, None) or None
         cache[client] = partner.commercial_partner_id if partner else None

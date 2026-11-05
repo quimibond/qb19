@@ -21,6 +21,16 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Comparación de precios: kilos y prefijos (19.0.3.4.1, 2026-11-05)
+
+Primera corrida en producción (106 renglones): 60 «sin regla» y 6 «sin
+cliente» que no eran tales. Corregido: un código con «I» que existe tal cual
+se compara como precio por kilo aunque venga en la columna «precio / m»
+(Pieles, Lear); un precio por metro cuyo código en metros no tiene regla se
+compara con la regla del código en kilos entre el rendimiento (Shawmut tiene
+sus reglas en los IWJ…); «FXI» se liga por las hojas «FXI CD JUAREZ» y «FXI
+SANTA TERESA» (mismo cliente).
+
 ## Comparación de precios del forecast (19.0.3.4.0, 2026-11-05)
 
 Diseño v3, sección 4.4. **Presupuesto → Comparación de precios** →
