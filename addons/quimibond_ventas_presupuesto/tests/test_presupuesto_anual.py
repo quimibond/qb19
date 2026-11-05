@@ -329,3 +329,12 @@ class TestPresupuestoAnual(TransactionCase):
         future = self.Budget.create({'year': 2099})
         self.assertFalse(future.cutoff_date)
         self.assertEqual(future.fulfillment_pct, 0.0)
+
+    def test_15_obsoleto_sin_cumplimiento(self):
+        budget = self.Budget.create({'year': 2022})
+        self._line(budget, date=date(2022, 3, 1), price_input=1.0)
+        self.assertTrue(budget.cutoff_date)
+        budget.state = 'obsoleto'
+        self.assertFalse(budget.cutoff_date)
+        self.assertEqual(budget.fulfillment_pct, 0.0)
+        self.assertFalse(budget.fulfillment_by_mercado_text)
