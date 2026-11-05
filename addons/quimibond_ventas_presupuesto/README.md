@@ -21,6 +21,20 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Mercado sin `res.partner.team_id` (19.0.2.0.3, 2026-11-05)
+
+En Odoo 19 el contacto ya no tiene equipo de ventas (`res.partner.team_id` no existe; se vio
+en producción antes de la primera carga). El mercado del pronóstico y de la Demanda por cliente
+sale ahora del último pedido confirmado del cliente, si no de su última factura y si no del
+equipo de su vendedor (`res.users.sale_team_id`); sin ninguno, «Sin mercado». Antes de esto,
+crear un renglón de pronóstico con cliente fallaba. También: un cliente con varias hojas en el forecast (FXI Cd. Juárez y Santa Teresa; Saltillo y León) carga una planta por hoja en lugar de sumarlas, y entre dos productos activos con el mismo código se toma el que tiene conversión.
+
+## Aviso del build (19.0.2.0.2, 2026-11-05)
+
+`qb.forecast.line.conv_origen` es relacionado del producto y declaraba además su lista de
+opciones; Odoo 19 la ignora y dejaba el WARNING «selection attribute will be ignored as the
+field is related» en el update de producción. Se quita la lista repetida.
+
 ## El Excel se carga una sola vez (19.0.2.0.1, 2026-11-05)
 
 Decisión de Jose: el forecast de Excel es solo la carga inicial; después el

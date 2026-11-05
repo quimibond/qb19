@@ -111,11 +111,22 @@ class QbForecastImport(models.TransientModel):
         for product in self.env['product.product'].with_context(active_test=False).search(
                 [('default_code', 'in', list({r['code'] for r in rows}))]):
             code = forecast_xlsx.norm(product.default_code).replace(' ', '')
-            if code not in products or (product.active and not products[code].active):
+            current = products.get(code)
+            # Activo antes que archivado; entre dos activos con el mismo código (pasa), el que sí
+            # tiene conversión.
+            if (not current or (product.active and not current.active)
+                    or (product.active == current.active and current.qb_conv_origen == 'sin_dato'
+                        and product.qb_conv_origen != 'sin_dato')):
                 products[code] = product
         stats = defaultdict(lambda: defaultdict(float))
         problems = defaultdict(set)
         wanted = {}
+        # Un cliente con varias hojas (FXI CD JUAREZ y FXI SANTA TERESA; Saltillo y León): cada hoja
+        # es una planta. Sin esto las dos plantas se sumarían en un solo renglón (2.0.3).
+        sheets_by_partner = defaultdict(set)
+        for (sheet_name, _plant), mapping in sheets.items():
+            if mapping.partner_id:
+                sheets_by_partner[mapping.partner_id.commercial_partner_id.id].add(sheet_name)
         for row in rows:
             sheet_key = (row['sheet'], row['plant'] or False)
             mapping = sheets[sheet_key]
@@ -133,8 +144,10 @@ class QbForecastImport(models.TransientModel):
             if not product.active:
                 problems[label].add("el producto %s está archivado (se cargó igual)" % row['code'])
             unit = row['unit'] or mapping.default_uom or False
-            key = (mapping.partner_id.commercial_partner_id.id, mapping.ship_to_id.id or False,
-                   (row['plant'] or False) if not mapping.ship_to_id else False, product.id, row['monday'])
+            partner_id = mapping.partner_id.commercial_partner_id.id
+            plant = row['plant'] or (row['sheet'] if len(sheets_by_partner[partner_id]) > 1 else False)
+            key = (partner_id, mapping.ship_to_id.id or False,
+                   (plant or False) if not mapping.ship_to_id else False, product.id, row['monday'])
             vals = wanted.setdefault(key, {
                 'company_id': company.id, 'partner_id': key[0], 'ship_to_id': key[1], 'plant': key[2],
                 'product_id': product.id, 'week': row['monday'], 'qty_origen': 0.0,
