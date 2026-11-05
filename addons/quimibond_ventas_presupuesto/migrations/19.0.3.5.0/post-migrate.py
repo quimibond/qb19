@@ -30,8 +30,11 @@ def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
     Param = env['ir.config_parameter']
     team_by_base = {}
+    langs = [code for code, _name in env['res.lang'].get_installed()]
     for team in env['crm.team'].with_context(active_test=False).search([], order='id'):
-        base = NAMES.get(_norm(team.name))
+        # 3.5.1: el nombre en todos los idiomas (sin idioma, el equipo 1 se llama distinto).
+        names = {_norm(team.with_context(lang=lang).name) for lang in langs} | {_norm(team.name)}
+        base = next((NAMES[n] for n in names if n in NAMES), None)
         if base and base not in team_by_base:
             team_by_base[base] = team
     for base, team in team_by_base.items():
