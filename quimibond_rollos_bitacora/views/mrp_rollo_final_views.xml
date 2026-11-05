@@ -11,7 +11,8 @@
                 <field name="bitacora_ids" widget="many2many_tags"/>
                 <field name="clasificacion"/>
                 <field name="kg_neto" sum="Total kg"/>
-                <field name="metros" sum="Total m"/>
+                <field name="metros" sum="Total m" decoration-warning="alerta_metros"/>
+                <field name="alerta_metros" column_invisible="True"/>
                 <field name="siglas_defectos"/>
                 <field name="operador" optional="hide"/>
                 <field name="fecha" optional="show"/>
@@ -28,6 +29,9 @@
             <form create="false" edit="false">
                 <header>
                     <button name="action_imprimir_etiqueta" type="object" string="Reimprimir etiqueta"/>
+                    <button name="action_anular" type="object" string="Anular captura" groups="mrp.group_mrp_manager"
+                            invisible="estado != 'inspeccionado'"
+                            confirm="Se borra este rollo final y sus rollos de Rama quedan pendientes para volver a inspeccionarlos. ¿Continuar?"/>
                     <field name="estado" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -45,6 +49,8 @@
                             <field name="tara"/>
                             <field name="kg_neto"/>
                             <field name="metros"/>
+                            <field name="metros_teoricos"/>
+                            <field name="alerta_metros"/>
                             <field name="no_empalmes"/>
                             <field name="captura_manual"/>
                             <field name="motivo_manual" invisible="not captura_manual"/>

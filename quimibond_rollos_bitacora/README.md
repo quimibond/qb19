@@ -75,6 +75,38 @@ pesaje, taras, bitácora, defectos y el bloqueo de cierre se quedan igual.
 - Si la lista no trae el subproducto del saldo, se agrega a la orden al cerrar.
 - Pruebas: `tests/test_inspeccion_estacion.py` (casos 1 a 11 del diseño, baño en kg y baño solo de saldos).
 
+## Revisión del flujo (3.3.0, 2026-11-05)
+
+Revisión de punta a punta del flujo (código, configuración de producción y pruebas de qbtesting). Arreglos:
+
+- **Varios baños para una orden en metros.** La programación de tintorería divide la orden en kg en baños (v5.4 §17.3)
+  y todos abastecen la misma orden en metros. Antes el primer baño la cerraba y el segundo ya no podía cerrar. Ahora
+  cada baño registra sus metros y la orden en metros deja **pendiente** nativo (`TL/OP-M/…-002`) con lo planeado de los
+  baños que siguen (kg de esos baños ÷ kg por metro de la lista); el último baño la cierra con sus metros reales. Los
+  lotes siguen un solo consecutivo por orden (`M<orden>-NNNN`, sin el sufijo del pendiente).
+- **Cierre por estado:** el registro de la orden en metros se decide por el estado de la orden en kg después del cierre
+  nativo. Antes, si el cierre venía del piso de producción (devuelve una acción), la orden en kg quedaba hecha y la de
+  metros sin registrar.
+- **Baño sin primera ni FE:** ya no cancela la orden en metros mientras otro baño la abastezca; se cancela solo si es
+  el último.
+- **Lote reutilizable:** si Odoo pide confirmar algo al cerrar y el cierre se repite, los lotes ya creados (sin
+  movimientos) se reutilizan en vez de dar «Ya existe el lote».
+- **Anular captura** (botón en el rollo final, responsable de Manufactura): borra un rollo final sin registrar y deja
+  pendientes sus rollos de Rama para volver a inspeccionarlos. Un rollo registrado no se anula ni se borra.
+- **Alerta 2 de José (v5.4 §9.1):** en la estación, metros contra kg netos × rendimiento de tela acabada de la ficha;
+  avisa si se aparta más del parámetro de Ajustes «Alerta 2» (3 %). Se guarda en el rollo final (`metros_teoricos`,
+  `alerta_metros`). Un 585 capturado como 58.5 ya no pasa sin aviso.
+- **Motivo de la captura manual** obligatorio también en PESAR ROLLO (Rama) y PESAR DESPERDICIO (v5.4 §8.8 y §13).
+- **Dos revisadoras a la vez:** la estación bloquea los rollos de Rama y la orden mientras registra (no se duplica un
+  rollo ni el consecutivo); el rollo escaneado se busca primero en este baño.
+- **Aviso al cerrar el baño:** en el chatter, kg pesados en Rama contra kg planeados. Con el parámetro
+  `quimibond_rollos_bitacora.cierre_minimo_pct` capturado (vacío por defecto) no cierra un baño abajo de ese
+  porcentaje: en la prueba de qbtesting se cerró un baño con 2 de ~7 rollos y el 73 % del crudo quedó como merma.
+- La prueba 11 (falla el registro, no cierra nada) usaba `assertRaisesRegex`, que no revierte; ya usa `assertRaises`
+  con savepoint, como la transacción de la pantalla. El cierre sí es atómico.
+- Pruebas 15 a 20 en `tests/test_inspeccion_estacion.py`. Corridas en local con Odoo 19 Community y un `iot` mínimo
+  de prueba: 42 de 42 pasan.
+
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las
 mediciones de Rama.

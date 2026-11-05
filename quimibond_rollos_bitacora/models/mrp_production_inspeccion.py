@@ -12,10 +12,24 @@ transacción, se registra la orden en metros que la orden en kg abastece (MTO):
 
 Si algo falla, no se cierra nada (caso 11). No hay cierre parcial (D7): los rollos finales no están en inventario
 hasta que el baño cierra.
+
+3.3.0 (revisión del flujo, 2026-11-05):
+
+- **Varios baños para una orden en metros** (la programación divide la orden en kg; v5.4 §17.3): cada baño registra su
+  parte en la orden en metros abierta y deja pendiente lo de los baños que siguen (pendiente nativo de Odoo,
+  ``TL/OP-M/…-002``); el último baño la cierra con sus metros reales. Antes el segundo baño ya no podía cerrar.
+- El registro se decide por el **estado** de la orden en kg después del cierre nativo, no por lo que devuelve: el cierre
+  desde el piso de producción devuelve una acción y la orden ya quedó hecha.
+- Un baño sin primera ni FE ya no cancela la orden en metros mientras otro baño la siga abasteciendo.
+- Los lotes de los rollos finales se reutilizan si el cierre se repite (Odoo pidió confirmar algo y se vuelve a llamar).
+- Aviso en el chatter con los kg pesados contra lo planeado; con el parámetro
+  ``quimibond_rollos_bitacora.cierre_minimo_pct`` capturado, no cierra un baño con menos de ese porcentaje.
 """
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
+
+PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 
 
 class MrpProductionInspeccion(models.Model):
@@ -36,11 +50,41 @@ class MrpProductionInspeccion(models.Model):
                 and all(r.estado_inspeccion == 'inspeccionado' for r in rollos)
 
     def _insp_orden_metros(self):
-        """La orden en metros que consume el acabado en kg de esta orden (destino MTO de su terminado)."""
+        """La orden en metros abierta que consume el acabado en kg de esta orden (destino MTO de su terminado). 3.3.0:
+        si un baño anterior ya registró su parte, es el pendiente (``…-002``), no la orden que ya quedó hecha."""
         self.ensure_one()
         terminado = self.move_finished_ids.filtered(lambda m: m.product_id == self.product_id)
-        ordenes = terminado.move_dest_ids.raw_material_production_id.filtered(lambda p: p.state != 'cancel')
-        return ordenes[:1]
+        ordenes = terminado.move_dest_ids.raw_material_production_id
+        return ordenes.filtered(lambda p: p.state not in ('done', 'cancel'))[:1]
+
+    def _insp_otros_banos(self, orden_m):
+        """3.3.0: las otras órdenes en kg (baños) que siguen abasteciendo a la orden en metros y no han cerrado."""
+        self.ensure_one()
+        return orden_m._ordenes_previas().filtered(lambda p: p.state not in ('done', 'cancel')) - self
+
+    def _insp_aviso_cierre(self, planeado):
+        """3.3.0: kg pesados en Rama (más el desperdicio) contra los kg planeados del baño. Con el parámetro
+        ``cierre_minimo_pct`` capturado no deja cerrar abajo de ese porcentaje (José cerró una prueba con 2 de ~7 rollos y
+        el 73 % del crudo quedó como merma sin aviso). Devuelve el texto para el chatter."""
+        self.ensure_one()
+        pesado = sum(self.rollo_bitacora_ids.mapped('kg_rama'))
+        if not planeado:
+            return False
+        pct = pesado / planeado * 100.0
+        minimo = (self.env['ir.config_parameter'].sudo().get_param(PARAM_CIERRE_MINIMO_PCT) or '').strip()
+        if minimo:
+            try:
+                minimo = float(minimo)
+            except ValueError:
+                minimo = 0.0
+            if minimo and pct < minimo:
+                raise UserError(_(
+                    'El baño %(o)s tiene %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%), abajo del '
+                    'mínimo de %(m).1f %% para cerrar. Si el baño de verdad terminó, revisa que se hayan pesado todos '
+                    'los rollos; el crudo se consume completo al cerrar.',
+                    o=self.name, p=pesado, pl=planeado, pct=pct, m=minimo))
+        return _('Baño cerrado con %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%); desperdicio de '
+                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_kg or 0.0)
 
     def _insp_modo(self):
         """Cómo se registra el baño al cerrarlo (3.2.0):
@@ -60,26 +104,19 @@ class MrpProductionInspeccion(models.Model):
         return 'metros' if finales.production_m_id else 'kg'
 
     def button_mark_done(self):
-        modos = {}
+        modos, avisos = {}, {}
         for orden in self.filtered('rollo_final_kg_ids'):
             modo = orden._insp_modo()
             if not modo:
                 continue
             orden._validar_rollos_inspeccionados()
+            avisos[orden.id] = orden._insp_aviso_cierre(orden.product_qty)
             modos[orden.id] = modo
             if modo == 'kg':
                 orden._insp_preparar_kg()
-            elif modo == 'saldos':
-                orden_m = orden.rollo_final_kg_ids.production_m_id
-                if orden_m and orden_m.state not in ('done', 'cancel'):
-                    orden_m.action_cancel()
-                    orden_m.message_post(body=_(
-                        'Cancelada al cerrar el baño %s: no salió primera ni FE; los saldos salen en kg.', orden.name))
         res = super().button_mark_done()
-        if isinstance(res, dict):
-            # El core pidió confirmar algo (consumo, pendiente): el baño todavía no se cerró. Al confirmar, el asistente
-            # del core vuelve a llamar a este método y entonces se registra.
-            return res
+        # 3.3.0: se decide por el estado. El core devuelve una acción tanto cuando pide confirmar algo (la orden sigue
+        # abierta; al confirmar vuelve a llamar a este método) como cuando ya cerró (piso de producción, reporte).
         for orden in self.browse(list(modos)).filtered(lambda o: o.state == 'done'):
             modo = modos[orden.id]
             if modo == 'metros':
@@ -88,6 +125,8 @@ class MrpProductionInspeccion(models.Model):
                 orden._insp_registrar_kg()
             else:
                 orden._insp_registrar_saldos()
+            if avisos.get(orden.id):
+                orden.message_post(body=avisos[orden.id])
         return res
 
     # ------------------------------------------------------------ baño en kg (3.2.0)
@@ -170,6 +209,13 @@ class MrpProductionInspeccion(models.Model):
         finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
         rama = finales.bitacora_ids
         Final = self.env['mrp.rollo.final']
+        # 3.3.0: la orden en metros (si hay) ya no se cancela antes del cierre: al cerrar, el MTO le reservó estos rollos;
+        # se le quitan para que la orden de saldos los consuma, y se cancela solo si ningún otro baño la abastece.
+        orden_m = self._insp_orden_metros() or finales.production_m_id.filtered(
+            lambda p: p.state not in ('done', 'cancel'))[:1]
+        if orden_m:
+            orden_m.move_raw_ids.move_line_ids.filtered(
+                lambda ml: ml.lot_id in rama.lot_id and ml.state not in ('done', 'cancel')).unlink()
         por_saldo = {c: finales.filtered(lambda r, c=c: r.clasificacion == c) for c in ('SEGUNDA', 'DESP')}
         principal_c = max(por_saldo, key=lambda c: sum(por_saldo[c].mapped('kg_neto')))
         principal = Final._producto_saldo(principal_c)
@@ -207,6 +253,11 @@ class MrpProductionInspeccion(models.Model):
         finales.write({'estado': 'registrado', 'production_saldo_id': orden_s.id})
         self.message_post(body=_(
             'Baño cerrado sin primera ni FE: los saldos salen en kg en %(o)s.', o=orden_s.name))
+        if orden_m and not self._insp_otros_banos(orden_m):
+            orden_m.action_cancel()
+            orden_m.message_post(body=_(
+                'Cancelada al cerrar el baño %s: no salió primera ni FE y ningún otro baño la abastece; los saldos salen '
+                'en kg.', self.name))
 
     def _clasif_asegurar_consumo_saldos(self, rama):
         """Consumo de la orden de saldos: cada rollo de Rama completo, con su lote (picked)."""
@@ -223,19 +274,23 @@ class MrpProductionInspeccion(models.Model):
         raw.picked = True
 
     def _insp_registrar_metros(self):
-        """Registra en la orden en metros los rollos finales del baño (§4.5). ``self`` es la orden en kg ya cerrada."""
+        """Registra en la orden en metros los rollos finales del baño (§4.5). ``self`` es la orden en kg ya cerrada.
+
+        3.3.0: si otros baños siguen abasteciendo la misma orden en metros (la programación dividió la orden en kg), este
+        baño produce solo sus metros y la orden en metros deja pendiente (backorder nativo) lo planeado de esos baños; el
+        último baño la cierra con sus metros reales, sin pendiente (D7)."""
         self.ensure_one()
         finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
         if not finales:
             return
-        orden_m = finales.production_m_id
-        if len(orden_m) != 1:
-            raise UserError(_('Los rollos finales de %s pertenecen a más de una orden en metros.', self.name))
-        if orden_m.state in ('done', 'cancel'):
-            raise UserError(_('No se puede registrar el baño %(kg)s: la orden en metros %(m)s ya está %(e)s.',
-                              kg=self.name, m=orden_m.name, e=dict(orden_m._fields['state'].selection)[orden_m.state]))
+        orden_m = self._insp_orden_metros() or finales.production_m_id.filtered(
+            lambda p: p.state not in ('done', 'cancel'))[:1]
+        if not orden_m:
+            raise UserError(_('No se puede registrar el baño %(kg)s: no hay orden en metros abierta que abastezca '
+                              '(%(m)s).', kg=self.name, m=', '.join(finales.production_m_id.mapped('name')) or '—'))
         if orden_m.state == 'draft':
             orden_m.action_confirm()
+        finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
         Final = self.env['mrp.rollo.final']
         rama = finales.bitacora_ids
         primeras = finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE'))
@@ -246,17 +301,36 @@ class MrpProductionInspeccion(models.Model):
             raise UserError(_(
                 'El baño %s no tiene rollos de primera ni FE: la orden en metros %s no puede cerrar en cero. Revisa la '
                 'clasificación en Inspección.', self.name, orden_m.name))
-
-        # 1. Cantidad de la orden en metros = metros reales de primera y FE (sin pendiente: D7).
-        orden_m.write({'product_qty': total_m, 'qty_producing': total_m, 'consumption': 'flexible'})
-
-        # 2. Consumo: cada rollo de Rama completo, de donde esté (10 INSPECCIÓN al cerrar la orden en kg).
         raw = orden_m._clasif_move_a()
         if not raw:
             raise UserError(_('La orden en metros %s no tiene consumo pendiente del acabado en kg.', orden_m.name))
+
+        # 1. Cantidad de la orden en metros. Último baño: los metros reales (sin pendiente). Con otros baños abiertos: sus
+        #    metros más lo planeado de los otros, que queda de pendiente.
+        otros = self._insp_otros_banos(orden_m)
+        pendiente_m = 0.0
+        if otros:
+            kg_por_m = orden_m._insp_kg_por_metro(raw)
+            kg_otros = sum(otros.mapped('product_qty'))
+            kg_este = sum(rama.mapped('kg_rama'))
+            if kg_por_m > 0:
+                pendiente_m = kg_otros / kg_por_m
+            elif kg_este:
+                pendiente_m = kg_otros * total_m / kg_este
+            pendiente_m = uom_m.round(pendiente_m)
+            if float_is_zero(pendiente_m, precision_rounding=uom_m.rounding):
+                pendiente_m = uom_m.rounding
+        cantidad = total_m + pendiente_m
+        orden_m.write({'product_qty': cantidad, 'qty_producing': total_m, 'consumption': 'flexible'})
+
+        # 2. Consumo: cada rollo de Rama completo, de donde esté (10 INSPECCIÓN al cerrar la orden en kg). Los rollos de
+        #    los otros baños no se tocan: siguen reservados y pasan al pendiente.
         orden_m._clasif_asegurar_consumo(rama)
         (raw.move_line_ids - raw.move_line_ids.filtered(lambda ml: ml.lot_id in rama.lot_id)).unlink()
-        raw.with_context(do_not_unreserve=True).write({'product_uom_qty': sum(rama.mapped('kg_rama'))})
+        # Demanda: lo que consume este baño, más lo planeado de los otros cuando los hay (Odoo pasa al pendiente la parte
+        # proporcional).
+        kg_demanda = sum(rama.mapped('kg_rama')) + (sum(otros.mapped('product_qty')) if otros else 0.0)
+        raw.with_context(do_not_unreserve=True).write({'product_uom_qty': kg_demanda})
 
         # 3. La tela en metros: un lote por rollo final, PQ a 14 y FE a 15.
         terminado = orden_m.move_finished_ids.filtered(
@@ -265,7 +339,7 @@ class MrpProductionInspeccion(models.Model):
             raise UserError(_('La orden en metros %s no tiene movimiento de la tela pendiente.', orden_m.name))
         orden_m._rama_unlink_lines_without_lot(terminado)
         terminado.move_line_ids.unlink()
-        terminado.with_context(do_not_unreserve=True).write({'product_uom_qty': total_m})
+        terminado.with_context(do_not_unreserve=True).write({'product_uom_qty': cantidad})
         for rollo in primeras.sorted('secuencia'):
             destino = Final._ubicacion_calidad(rollo.clasificacion)
             lote = self._insp_lote(orden_m.product_id, rollo.name, orden_m.company_id)
@@ -282,9 +356,14 @@ class MrpProductionInspeccion(models.Model):
             if grupo:
                 orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo)
 
-        # 5. Se repite el consumo (escribir qty_producing reescala líneas del core) y se cierra.
+        # 5. Se repite el consumo (escribir qty_producing reescala líneas del core) y se cierra; con otros baños, con
+        #    pendiente nativo para lo que falta.
         orden_m._clasif_asegurar_consumo(rama)
-        resultado = orden_m.button_mark_done()
+        if otros:
+            orden_cierre = orden_m.with_context(skip_backorder=True, mo_ids_to_backorder=orden_m.ids)
+        else:
+            orden_cierre = orden_m
+        resultado = orden_cierre.button_mark_done()
         if orden_m.state != 'done':
             raise UserError(_(
                 'No se pudo registrar la orden en metros %(m)s al cerrar el baño %(kg)s; no se cerró nada. Respuesta '
@@ -295,14 +374,47 @@ class MrpProductionInspeccion(models.Model):
         if float_compare(sum(hechos.filtered(lambda m: m.product_id == orden_m.product_id).mapped('quantity')),
                          total_m, precision_rounding=uom_m.rounding):
             raise UserError(_('La orden en metros %s no registró los metros de los rollos finales.', orden_m.name))
+        pendiente = self.env['mrp.production']
+        if otros:
+            pendiente = orden_m.production_group_id.production_ids.filtered(
+                lambda p: p.state not in ('done', 'cancel') and p != orden_m)
+            if not pendiente:
+                raise UserError(_('La orden en metros %s no dejó pendiente para los baños %s.',
+                                  orden_m.name, ', '.join(otros.mapped('name'))))
+            # El pendiente hereda en proporción la demanda de los saldos de este baño: los saldos no se planean.
+            saldos_prod = Final._productos_saldo()
+            pendiente.move_finished_ids.filtered(
+                lambda m: m.product_id in saldos_prod and m.state not in ('done', 'cancel')).with_context(
+                do_not_unreserve=True).write({'product_uom_qty': 0.0})
         self.message_post(body=_(
             'Baño cerrado: %(n)s rollos finales registrados en %(m)s (%(mts).2f m de primera y FE; %(kg).2f kg de '
-            'saldos).', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_neto'))))
+            'saldos).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_neto')),
+            p=(_(' Queda pendiente %s para los baños %s.', pendiente[:1].name, ', '.join(otros.mapped('name')))
+               if pendiente else '')))
+
+    def _insp_kg_por_metro(self, raw):
+        """3.3.0: kg del acabado por metro de la orden en metros, de su lista de materiales (la demanda del movimiento
+        ya cambió con baños anteriores); si no hay lista, la proporción de la demanda."""
+        self.ensure_one()
+        bom = self.bom_id
+        lineas = bom.bom_line_ids.filtered(lambda l: l.product_id == raw.product_id)
+        if bom and lineas and bom.product_qty:
+            kg = sum(l.product_uom_id._compute_quantity(l.product_qty, raw.product_uom, round=False) for l in lineas)
+            metros = bom.product_uom_id._compute_quantity(bom.product_qty, self.product_uom_id, round=False)
+            if metros:
+                return kg / metros
+        return raw.product_uom_qty / self.product_qty if self.product_qty else 0.0
 
     @api.model
     def _insp_lote(self, producto, nombre, company):
+        """Lote del rollo final. 3.3.0: si ya existe sin existencia ni movimientos hechos (el cierre se repitió porque
+        Odoo pidió confirmar algo), se reutiliza; si ya tiene inventario, es otro rollo y es error."""
         Lote = self.env['stock.lot']
         dominio = [('name', '=', nombre), ('product_id', '=', producto.id), ('company_id', '=', company.id)]
-        if Lote.search_count(dominio):
-            raise UserError(_('Ya existe el lote %(l)s para %(p)s.', l=nombre, p=producto.display_name))
+        lote = Lote.search(dominio, limit=1)
+        if lote:
+            usado = self.env['stock.move.line'].sudo().search_count([('lot_id', '=', lote.id), ('state', '=', 'done')])
+            if usado:
+                raise UserError(_('Ya existe el lote %(l)s para %(p)s.', l=nombre, p=producto.display_name))
+            return lote
         return Lote.create({'name': nombre, 'product_id': producto.id, 'company_id': company.id})

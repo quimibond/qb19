@@ -71,6 +71,13 @@ class MrpRolloFinal(models.Model):
     lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
     location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
 
+    # 3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado de la ficha), guardada al capturar.
+    metros_teoricos = fields.Float('Metros teóricos', digits=(12, 2), readonly=True,
+                                   help='Kg netos × rendimiento de tela acabada de la ficha, al capturar el rollo.')
+    alerta_metros = fields.Boolean('Alerta de metros', readonly=True,
+                                   help='Los metros capturados se apartan de los teóricos más que la alerta 2 de Ajustes '
+                                        'de Manufactura (%).')
+
     _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
     _check_metros = models.Constraint('CHECK(metros > 0)', 'Los metros del rollo final deben ser mayores a cero.')
@@ -104,9 +111,33 @@ class MrpRolloFinal(models.Model):
         return producto
 
     @api.model
+    def _productos_saldo(self):
+        """3.3.0: los productos de saldo que existan (Segunda y Desperdicio)."""
+        productos = self.env['product.product']
+        for clasificacion in SALDO_CALIDAD:
+            clave, defecto = SALDO_CALIDAD[clasificacion]
+            codigo = (self.env['ir.config_parameter'].sudo().get_param(clave) or defecto).strip()
+            productos |= productos.search([('default_code', '=', codigo)], limit=1)
+        return productos
+
+    @api.model
+    def _ordenes_m_grupo(self, orden_m):
+        """3.3.0: la orden en metros y sus pendientes (``…-001``, ``…-002``): comparten el consecutivo de los lotes."""
+        return orden_m.production_group_id.production_ids | orden_m if orden_m.production_group_id else orden_m
+
+    @api.model
+    def _raiz_orden(self, orden):
+        """Último segmento del nombre sin el sufijo de pendiente: ``TL/OP-M/00008-002`` → ``00008``."""
+        segmento = orden.name.split('/')[-1]
+        if orden.backorder_sequence and '-' in segmento:
+            segmento = segmento.rsplit('-', 1)[0]
+        return segmento
+
+    @api.model
     def _siguiente_secuencia(self, orden_m, orden_kg=None):
-        """Consecutivo por orden en metros (lote M…) o, sin ella, por orden en kg (lote K…, 3.2.0)."""
-        dominio = [('production_m_id', '=', orden_m.id)] if orden_m else \
+        """Consecutivo por orden en metros (lote M…, 3.3.0: con sus pendientes) o, sin ella, por orden en kg (lote K…,
+        3.2.0)."""
+        dominio = [('production_m_id', 'in', self._ordenes_m_grupo(orden_m).ids)] if orden_m else \
             [('production_id', '=', orden_kg.id), ('production_m_id', '=', False)]
         ultimo = self.search(dominio, order='secuencia desc', limit=1)
         return (ultimo.secuencia or 0) + 1
@@ -114,10 +145,49 @@ class MrpRolloFinal(models.Model):
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
         """``M<último segmento de la orden en metros>-NNNN`` (§4.2): la «M» lo distingue del rollo de Rama. Sin orden en
-        metros (venta en kg, 3.2.0): ``K<último segmento de la orden en kg>-NNNN``."""
+        metros (venta en kg, 3.2.0): ``K<último segmento de la orden en kg>-NNNN``. 3.3.0: sin el sufijo de pendiente,
+        así los baños de una misma orden siguen un solo consecutivo."""
         if orden_m:
-            return 'M%s-%04d' % (orden_m.name.split('/')[-1], secuencia)
+            return 'M%s-%04d' % (self._raiz_orden(orden_m), secuencia)
         return 'K%s-%04d' % (orden_kg.name.split('/')[-1], secuencia)
+
+    # ------------------------------------------------------------------ anular (3.3.0)
+    def _revertir_rama(self):
+        """Deja pendientes de inspección los rollos de Rama de estos rollos finales, quitando lo que la estación les
+        copió."""
+        for rama in self.bitacora_ids:
+            rama.write({'estado_inspeccion': 'pendiente', 'clasificacion_inicial': False, 'metros_insp': 0.0,
+                        'no_empalmes': 0, 'defecto_ids': [(5, 0, 0)], 'workcenter_insp_id': False,
+                        'operador_insp': False, 'fecha_registro_insp': False})
+
+    def action_anular(self):
+        """3.3.0: corrige una captura de Inspección antes de cerrar el baño. Borra el rollo final y deja pendientes sus
+        rollos de Rama (con sus otros pedazos, si los hay) para volver a inspeccionarlos. Solo el responsable de
+        Manufactura; un rollo ya registrado no se anula (ya está en inventario)."""
+        if not self.env.user.has_group('mrp.group_mrp_manager'):
+            raise UserError(_('Solo el responsable de Manufactura anula un rollo final.'))
+        registrados = self.filtered(lambda r: r.estado == 'registrado')
+        if registrados:
+            raise UserError(_('El rollo final %s ya está registrado en inventario; no se anula.',
+                              ', '.join(registrados.mapped('name'))))
+        cerradas = self.production_id.filtered(lambda p: p.state in ('done', 'cancel'))
+        if cerradas:
+            raise UserError(_('El baño %s ya cerró; no se anulan sus rollos finales.', ', '.join(cerradas.mapped('name'))))
+        for rollo in self:
+            rollo.production_id.message_post(body=_(
+                'Rollo final %(r)s anulado por %(u)s (%(c)s, %(kg).2f kg, %(m).2f m); sus rollos de Rama %(rama)s quedan '
+                'pendientes de inspección.', r=rollo.name, u=self.env.user.name, c=rollo.clasificacion,
+                kg=rollo.kg_neto, m=rollo.metros, rama=', '.join(rollo.bitacora_ids.mapped('name'))))
+        # Al anular un pedazo, el rollo de Rama queda abierto y sus otros pedazos siguen capturados.
+        self.unlink()
+        return {'type': 'ir.actions.act_window_close'}
+
+    def unlink(self):
+        """3.3.0: un rollo final registrado no se borra; uno sin registrar deja pendientes sus rollos de Rama."""
+        if self.filtered(lambda r: r.estado == 'registrado'):
+            raise UserError(_('Un rollo final registrado en inventario no se borra.'))
+        self._revertir_rama()
+        return super().unlink()
 
     # ------------------------------------------------------------------ etiqueta
     def _datos_etiqueta(self):

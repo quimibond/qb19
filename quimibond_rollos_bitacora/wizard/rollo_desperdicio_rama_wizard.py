@@ -18,6 +18,8 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
     empleado_numero = fields.Char('Número de empleado', required=True)
     empleado_nombre = fields.Char('Operador', compute='_compute_empleado_nombre')
     kg_desperdicio = fields.Float('Peso del desperdicio (kg)', digits=(12, 3))
+    motivo_manual = fields.Char('Motivo de la captura manual',
+                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §13).')
     ya_pesado = fields.Boolean(compute='_compute_ya_pesado')
 
     @api.depends('empleado_numero')
@@ -40,8 +42,12 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
         self.ensure_one()
         if self.kg_desperdicio <= 0:
             raise UserError(_('Captura el peso del desperdicio.'))
+        manual = self.weighing_mode == 'manual'
+        if manual and not (self.motivo_manual or '').strip():
+            raise UserError(_('Captura el motivo de la captura manual del peso.'))
         self.production_id._rama_registrar_desperdicio(
             self.workorder_id, self.kg_desperdicio,
-            ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])),
-            self.weighing_mode == 'manual')
+            ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])), manual)
+        if manual:
+            self.production_id.desperdicio_motivo = self.motivo_manual.strip()
         return {'type': 'ir.actions.act_window_close'}

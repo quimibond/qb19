@@ -30,6 +30,8 @@ class RolloPesajeRamaWizard(models.TransientModel):
     tara_kg = fields.Float('Tara de Rama (kg)', digits=(12, 4), compute='_compute_pesos')
     tara_faltante = fields.Boolean(compute='_compute_pesos')
     kg_neto = fields.Float('Peso neto (kg)', digits=(12, 4), compute='_compute_pesos')
+    motivo_manual = fields.Char('Motivo de la captura manual',
+                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §8.8 y §13).')
 
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
@@ -85,6 +87,8 @@ class RolloPesajeRamaWizard(models.TransientModel):
         if self.kg_neto <= 0:
             raise UserError(_('El peso bruto (%.4f kg) no supera la tara (%.4f kg).', self.kg_bruto, self.tara_kg))
         manual = self.weighing_mode == 'manual'
+        if manual and not (self.motivo_manual or '').strip():
+            raise UserError(_('Captura el motivo de la captura manual del peso.'))
         if produccion.product_id.tracking != 'lot':
             raise UserError(_(
                 'El artículo %s debe tener seguimiento por lote para registrar rollos.',
@@ -114,6 +118,7 @@ class RolloPesajeRamaWizard(models.TransientModel):
             'tara_rama': self.tara_kg,
             'kg_rama': kg_neto,
             'captura_manual_rama': manual,
+            'motivo_manual_rama': (self.motivo_manual or '').strip() or False if manual else False,
             'operador_rama': ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])),
             'fecha_registro_rama': ahora,
             'fecha_etiqueta_rama': ahora,

@@ -32,6 +32,7 @@
                             <field name="desperdicio_operador"/>
                             <field name="desperdicio_fecha"/>
                             <field name="desperdicio_manual"/>
+                            <field name="desperdicio_motivo" invisible="not desperdicio_manual"/>
                         </group>
                     </group>
                     <field name="rollo_bitacora_ids" readonly="1">
