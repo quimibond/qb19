@@ -141,6 +141,13 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Reserva sin lote de un químico (3.3.6, 2026-11-05)
+
+En la prueba de main, dos órdenes en kg no cerraban con «Debe proporcionar un número de lote para ENGOMADO002»: Odoo
+había apartado engomado de un registro sin lote y sin existencia en 2 PRODUCCIÓN. Al cerrar, esas líneas sin lote de
+un componente con lote (químicos, colorantes, engomado; no el crudo, que se captura con su lote) se quitan y la
+cantidad queda como faltante, con la nota y la actividad de 3.3.4.
+
 ## Propuesta de Consolti que se adopta (3.3.5, 2026-11-05)
 
 De la propuesta de José Sacramento (Consolti) del 5-nov se toma lo que sirve al diseño vigente (estación única):
@@ -150,9 +157,9 @@ De la propuesta de José Sacramento (Consolti) del 5-nov se toma lo que sirve al
   en kg siguen a 16 y 17. El campo existía pero ningún ruteo lo leía: en la prueba de main los desarrollos entraron a 14.
 - **Número de rollo final consecutivo, sin huecos.** Al anular un rollo de en medio, el siguiente que se inspecciona
   toma su número (el anulado no tiene lote: el lote nace al cerrar el baño).
-- **Inspección en paralelo a Rama.** La operación de Inspección queda «bloqueada» en Odoo hasta que Rama termina, pero
-  en cuanto Rama pesó un rollo ya se puede inspeccionar. Inspección no termina mientras Rama siga abierta, y la orden en
-  kg no cierra con rollos sin inspeccionar (como antes).
+- **Inspección en paralelo a Rama.** En cuanto Rama pesó un rollo, la operación de Inspección pasa sola a «Por hacer»
+  y ese rollo ya se puede inspeccionar (antes del primer pesaje sigue «Bloqueada»). Inspección no termina mientras Rama
+  siga abierta, y la orden en kg no cierra con rollos sin inspeccionar (como antes). Probado en main el 5-nov.
 - **Una sola tara por artículo para el rollo final.** Ya era así: Inspección usa la tara «Clasificación final» de la
   tabla de taras (Rama tiene la suya). No cambia nada.
 - **No se captura en una orden cerrada o cancelada.** Los asistentes de Rama y de Inspección lo rechazan aunque estén

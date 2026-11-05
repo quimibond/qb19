@@ -732,3 +732,29 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.action_cancel()
         with self.assertRaisesRegex(UserError, 'cerrada o cancelada'):
             self._inspeccionar(orden_kg, wo, rollos, 41.5, 400.0)
+
+    def test_35_reserva_sin_lote_de_quimico_no_bloquea(self):
+        """3.3.6: una línea sin lote de un químico con lote (registro sin lote ni existencia en la ubicación) no detiene
+        el cierre: se quita y queda como faltante."""
+        quimico = self.env['product.product'].create({
+            'name': 'Engomado ZZ953', 'default_code': 'ENGZZ953', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'tracking': 'lot'})
+        self.bom_kg.write({'bom_line_ids': [Command.create({'product_id': quimico.id, 'product_qty': 0.04})]})
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        lote = self.env['stock.lot'].create({'name': 'ZZ953-1', 'product_id': quimico.id,
+                                             'company_id': self.env.company.id})
+        self.env['stock.quant']._update_available_quantity(quimico, stock, 2.0, lot_id=lote)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        orden_kg.action_assign()
+        movimiento = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico)
+        self.env['stock.move.line'].create({
+            'move_id': movimiento.id, 'product_id': quimico.id, 'quantity': 0.5,
+            'location_id': movimiento.location_id.id, 'location_dest_id': movimiento.location_dest_id.id})
+        self.assertTrue(movimiento.move_line_ids.filtered(lambda ml: not ml.lot_id))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done', "La línea sin lote no detiene el cierre")
+        hechos = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico and m.state == 'done')
+        self.assertAlmostEqual(sum(hechos.mapped('quantity')), 2.0, delta=0.01, msg="Solo se consume lo del lote")
+        self.assertFalse(hechos.move_line_ids.filtered(lambda ml: not ml.lot_id))
+        self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'ENGZZ953' in (m.body or '')), "Queda como faltante")
