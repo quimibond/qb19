@@ -21,6 +21,12 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Aviso del build (19.0.2.0.2, 2026-11-05)
+
+`qb.forecast.line.conv_origen` es relacionado del producto y declaraba además su lista de
+opciones; Odoo 19 la ignora y dejaba el WARNING «selection attribute will be ignored as the
+field is related» en el update de producción. Se quita la lista repetida.
+
 ## El Excel se carga una sola vez (19.0.2.0.1, 2026-11-05)
 
 Decisión de Jose: el forecast de Excel es solo la carga inicial; después el

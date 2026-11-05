@@ -15,8 +15,6 @@ from datetime import timedelta
 
 from odoo import api, fields, models
 
-from .product_articulo import CONV_ORIGINS
-
 ORIGINS = [
     ('release', "Release del cliente"),
     ('captura', "Captura"),
@@ -91,8 +89,9 @@ class QbForecastLine(models.Model):
                           aggregator='sum')
     conv_ok = fields.Boolean(string="Convertida", compute='_compute_qty', store=True,
                              help="Falso si falta el rendimiento o el ancho para pasar a la unidad de venta.")
-    conv_origen = fields.Selection(CONV_ORIGINS, string="Origen de la conversión",
-                                   related='product_id.qb_conv_origen')
+    # Sin lista de opciones propia: un campo relacionado toma la del producto (con lista, Odoo 19
+    # avisa «selection attribute will be ignored»; 2.0.2).
+    conv_origen = fields.Selection(string="Origen de la conversión", related='product_id.qb_conv_origen')
     origen = fields.Selection(ORIGINS, string="Origen", required=True, default='captura')
     release_id = fields.Many2one('qb.release', string="Release", index=True)
     customer_po = fields.Char(string="OC del cliente")
