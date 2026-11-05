@@ -394,3 +394,51 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertIn('Pronóstico de ventas vigente', html.decode())
         self.assertIn('/web/content/', wizard.action_xlsx()['url'])
         self.assertEqual(wizard.action_print()['type'], 'ir.actions.report')
+
+    def test_19_pasar_precios_a_la_moneda_de_la_lista(self):
+        """3.6.1: precio en pesos de una lista en dólares → dólares con el tipo de cambio del
+        documento; el importe no cambia."""
+        pl = self.env['product.pricelist'].create({'name': 'Lista USD 19', 'currency_id': self.foreign.id})
+        self.env['product.pricelist.item'].create({
+            'pricelist_id': pl.id, 'applied_on': '1_product',
+            'product_tmpl_id': self.product.product_tmpl_id.id,
+            'compute_price': 'fixed', 'fixed_price': 2.0})
+        client = self.env['res.partner'].create({
+            'name': 'Cliente USD 19', 'is_company': True, 'team_id': self.team_ind.id,
+            'property_product_pricelist': pl.id})
+        budget = self.Budget.create({'year': 2025})
+        line = self._line(budget, partner_id=client.id, price_input=36.0,
+                          price_currency_id=self.own.id, date=date(2025, 3, 1))
+        amount = line.amount_budget
+        budget.rate_default = 18.0
+        budget.action_qb_prices_to_list_currency()
+        self.assertEqual(line.price_currency_id, self.foreign)
+        self.assertEqual(len(budget.rate_ids), 12)
+        self.assertAlmostEqual(line.price_input, round(36.0 / 18.0, 4), places=4)
+        if self.own == self.env.ref('base.MXN'):
+            self.assertAlmostEqual(line.amount_budget, amount, places=2)
+
+    def test_20_cumplimiento_a_tc_presupuestal(self):
+        """3.6.1: lo facturado en dólares, a TC presupuestal; la diferencia es el efecto del TC."""
+        if self.own != self.env.ref('base.MXN'):
+            return  # la prueba es para una compañía en pesos (producción)
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        self.env['res.currency.rate'].create({
+            'currency_id': self.foreign.id, 'name': date(2019, 3, 1), 'rate': 1.0 / 20.0,
+            'company_id': self.env.company.id})
+        budget = self.Budget.create({'year': 2019})
+        self._line(budget, date=date(2019, 3, 1), price_input=1.0)
+        budget.rate_default = 18.0
+        budget.action_qb_apply_rate_all()
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2019, 3, 5),
+            'team_id': self.team_ind.id, 'currency_id': self.foreign.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1.0, 'price_unit': 50.0,
+                'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        self.assertAlmostEqual(budget.amount_sales_to_date, 1000.0, places=2)     # 50 USD × 20
+        self.assertAlmostEqual(budget.amount_sales_budget_rate, 900.0, places=2)  # 50 USD × 18
+        self.assertAlmostEqual(budget.fx_effect, 100.0, places=2)
+        self.assertAlmostEqual(budget.fulfillment_budget_rate_pct, 90.0, places=1)
