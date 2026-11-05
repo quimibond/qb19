@@ -306,3 +306,26 @@ class TestPresupuestoAnual(TransactionCase):
         wizard = self.env['qb.sales.budget.copy'].create({'budget_id': rev.id, 'source_ids': [(6, 0, confeccion.ids)]})
         wizard.action_copy()
         self.assertIn('ya existe', wizard.result)
+
+    def test_14_cumplimiento_al_corte(self):
+        """3.5.4: venta de los equipos de los mercados contra presupuesto, los dos al corte; un año
+        cerrado corta el 31 de diciembre. Lo vendido fuera de los renglones sí cuenta."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        budget = self.Budget.create({'year': 2021})
+        self._line(budget, date=date(2021, 3, 1), price_input=1.0)                      # 1000 Industrial
+        otro = self.env['product.product'].create({'name': 'Conf 2021', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self._line(budget, date=date(2021, 3, 1), product_id=otro.id, partner_id=False,
+                   mercado='confeccion', price_input=1.0)                                # 1000 Confección
+        self._invoice_anual(self.team_ind, self.client, self.product, date(2021, 3, 10), 900.0)
+        self._invoice_anual(self.team_ind, self.client, otro, date(2021, 6, 10), 300.0)  # fuera de renglones
+        self._invoice_anual(self.team_conf, self.client, otro, date(2021, 3, 10), 500.0)
+        self.assertEqual(budget.cutoff_date, date(2021, 12, 31))
+        self.assertAlmostEqual(budget.amount_budget_to_date, 2000.0, places=2)
+        self.assertAlmostEqual(budget.amount_sales_to_date, 1700.0, places=2)
+        self.assertAlmostEqual(budget.fulfillment_pct, 85.0, places=1)
+        self.assertIn('Industrial 120.0 %', budget.fulfillment_by_mercado_text)
+        self.assertIn('Confección 50.0 %', budget.fulfillment_by_mercado_text)
+        future = self.Budget.create({'year': 2099})
+        self.assertFalse(future.cutoff_date)
+        self.assertEqual(future.fulfillment_pct, 0.0)

@@ -336,13 +336,21 @@
                             <field name="amount_currency_text"/>
                         </group>
                     </group>
-                    <group string="Real (importe en moneda de la compañía)">
+                    <group string="Cumplimiento (importe en moneda de la compañía)">
+                        <group>
+                            <field name="cutoff_date"/>
+                            <field name="amount_budget_to_date"/>
+                            <field name="amount_sales_to_date"/>
+                            <field name="fulfillment_pct"/>
+                            <field name="fulfillment_by_mercado_text"/>
+                        </group>
                         <group>
                             <field name="amount_real_total"/>
-                            <field name="amount_ordered_total"/>
-                            <field name="fulfillment_pct" widget="percentage"/>
                             <field name="amount_real_unbudgeted"/>
+                            <field name="amount_ordered_total"/>
                         </group>
+                    </group>
+                    <group string="Cantidades">
                         <group>
                             <field name="qty_budget_text"/>
                             <field name="qty_real_text"/>
@@ -415,7 +423,7 @@
                 <field name="revision_date" optional="show"/>
                 <field name="amount_budget_total" optional="show"/>
                 <field name="amount_real_total" optional="show"/>
-                <field name="fulfillment_pct" widget="percentage" optional="show"/>
+                <field name="fulfillment_pct" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'aprobado'"
                        decoration-warning="state == 'revisado'"
