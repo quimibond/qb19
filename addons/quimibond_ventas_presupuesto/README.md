@@ -29,6 +29,8 @@ precio real a un tercio, así que casi todo el Industrial 2026 salía con
 desviación de precio «grave» (−70 %). El importe facturado no cambiaba (las
 líneas de costo se cancelan). Ahora el real, la precarga y la plantilla solo
 leen líneas de producto; la migración recalcula el real de todos los renglones.
+Además pone a los documentos que ya existían su fecha de revisión (la de
+creación; en 3.5.0 quedó la del update) y su venta del año anterior.
 
 ## Equipo de Industrial (19.0.3.5.1, 2026-11-05)
 
