@@ -184,19 +184,22 @@ class SgiSalesBudgetLine(models.Model):
     # Control de precios (lista vs facturado): informativo, parte de la FOTO del
     # real (se recalcula solo en el refresh; el precio de lista congelado del
     # aprobado es la referencia contra la que se mide la desviación).
+    # 3.5.6: la desviación es contra el PRECIO PRESUPUESTAL del renglón (price_input), en
+    # su moneda y su base (unidad, metro o kilo), no contra la lista de hoy.
     price_real_unit_currency = fields.Monetary(
-        string="Precio real (divisa)", currency_field='list_currency_id',
+        string="Precio real", currency_field='price_currency_id',
         compute='_compute_real', store=True,
-        help="Precio unitario facturado promedio, en la moneda de la lista. Si la "
-             "factura está en otra moneda, se convierte el promedio contable con "
-             "el tipo presupuestal (ver Desviación cruza divisas).")
+        help="Precio facturado promedio en la moneda y la base del precio presupuestal. Si "
+             "la factura está en otra moneda, se convierte con el tipo de cambio del mes del "
+             "presupuesto (ver «Desviación cruza divisas»).")
     price_gap_fx = fields.Boolean(
         string="Desviación cruza divisas", compute='_compute_real', store=True,
         help="La comparación de precio usó conversión (la factura no estaba en la "
-             "moneda de la lista); tómala como referencia.")
+             "moneda del precio presupuestal).")
     price_gap = fields.Monetary(
-        string="Desviación de precio (divisa)", currency_field='list_currency_id',
-        compute='_compute_real', store=True)
+        string="Desviación de precio", currency_field='price_currency_id',
+        compute='_compute_real', store=True,
+        help="Precio real menos precio presupuestal, en la moneda del precio presupuestal.")
     price_gap_pct = fields.Float(
         string="Desviación de precio (%)", compute='_compute_real', store=True)
     price_gap_alert = fields.Selection([
@@ -578,7 +581,8 @@ class SgiSalesBudgetLine(models.Model):
             nxt = first.replace(month=first.month + 1)
         return first, nxt
 
-    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id', 'kind')
+    @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id', 'kind',
+                 'price_input', 'price_currency_id', 'price_basis')
     def _compute_real(self):
         """Real = FACTURADO (account.move.line) del mes. 3.0.0: el «comprometido» del
         pronóstico como documento se fue; los pedidos consumen qb.forecast.line."""
@@ -629,10 +633,10 @@ class SgiSalesBudgetLine(models.Model):
                 key = (line.product_id.id, (line.date.year, line.date.month))
                 qty = amount = 0.0
                 unconverted = 0
-                amt_list = qty_list = 0.0  # importe/cantidad en la divisa de la lista
+                amt_list = qty_list = 0.0  # importe/cantidad en la moneda del precio presupuestal
                 any_non_list = False
                 partner = line.partner_id.commercial_partner_id
-                list_ccy = line.list_currency_id
+                list_ccy = line.price_currency_id or line.currency_id
                 for aml in bucket.get(key, self.env['account.move.line']):
                     # Línea por cliente: solo la empresa comercial del documento.
                     if partner and aml.move_id.commercial_partner_id != partner:
@@ -656,25 +660,38 @@ class SgiSalesBudgetLine(models.Model):
                 line._sgi_set_price_gap(qty, amount, amt_list, qty_list,
                                         any_non_list, day, tol, grave)
 
+    def _qb_basis_factor(self):
+        """Cuánto vale una unidad del renglón en la base del precio (1 para la unidad del
+        renglón; metros o kilos por unidad si el precio es por metro o por kilo). 0 si no
+        se puede convertir."""
+        self.ensure_one()
+        if (self.price_basis or 'venta') == 'venta':
+            return 1.0
+        if self.qty_budget:
+            base = self.qty_m if self.price_basis == 'm' else self.qty_kg
+            return base / self.qty_budget if base else 0.0
+        return 0.0
+
     def _sgi_set_price_gap(self, qty, amount, amt_list, qty_list, any_non_list,
                            day, tol, grave):
-        """Desviación de precio facturado vs lista (en la divisa de la lista)."""
+        """Desviación del precio facturado contra el precio presupuestal (3.5.6), en la
+        moneda y la base del precio presupuestal."""
         self.ensure_one()
-        list_ccy = self.list_currency_id
-        if not list_ccy or qty <= 0 or not self.has_list_price:
+        ref_ccy = self.price_currency_id or self.currency_id
+        factor = self._qb_basis_factor()
+        if not ref_ccy or qty <= 0 or self.price_input <= 0 or not factor:
             return  # ya está en 0/ok
         if qty_list and not any_non_list:
-            # Todas las facturas en la divisa de la lista: precio directo.
-            price_real = amt_list / qty_list
+            # Todas las facturas en la moneda del precio presupuestal: precio directo.
+            price_real = amt_list / (qty_list * factor)
             self.price_gap_fx = False
         else:
-            # Convierte el promedio contable (MXN) a la divisa de la lista.
-            price_real = self._sgi_company_to_list_price(amount / qty, list_ccy, day)
-            self.price_gap_fx = True
+            price_real = self._qb_company_to_price_ccy(amount, ref_ccy, day) / (qty * factor)
+            self.price_gap_fx = ref_ccy != self.currency_id
         self.price_real_unit_currency = price_real
-        gap = price_real - self.price_unit_currency
+        gap = price_real - self.price_input
         self.price_gap = gap
-        pct = (gap / self.price_unit_currency * 100.0) if self.price_unit_currency else 0.0
+        pct = gap / self.price_input * 100.0
         self.price_gap_pct = pct
         magnitude = abs(pct)
         if magnitude <= tol:
@@ -684,18 +701,18 @@ class SgiSalesBudgetLine(models.Model):
         else:
             self.price_gap_alert = 'grave'
 
-    def _sgi_company_to_list_price(self, price, list_currency, day):
-        """Convierte un precio en moneda de la compañía a la moneda de la lista con
-        el tipo presupuestal (inverso de _sgi_to_company_price: ÷ factor)."""
+    def _qb_company_to_price_ccy(self, amount, ref_ccy, day):
+        """Importe en moneda de la compañía → moneda del precio presupuestal, con el tipo de
+        cambio del mes del presupuesto; sin él, el del día."""
         company = self.company_id or self.env.company
-        company_currency = self.currency_id or company.currency_id
-        if not list_currency or list_currency == company_currency:
-            return price
-        planning = self._sgi_planning_factor(list_currency, company_currency)
-        if planning is not None:
-            factor, _rate = planning
-            return price / factor
-        return company_currency._convert(price, list_currency, company, day)
+        company_ccy = self.currency_id or company.currency_id
+        if ref_ccy == company_ccy:
+            return amount
+        month_rate = self.budget_id._qb_month_rate(self.date.month) if self.date else 0.0
+        factor = self._qb_rate_factor(ref_ccy, company_ccy, month_rate)
+        if factor:
+            return amount / factor
+        return company_ccy._convert(amount, ref_ccy, company, day)
 
     def action_view_month_invoices(self):
         """Drill-down del presupuesto: las facturas del producto/equipo(/cliente)

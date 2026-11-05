@@ -338,3 +338,24 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertFalse(budget.cutoff_date)
         self.assertEqual(budget.fulfillment_pct, 0.0)
         self.assertFalse(budget.fulfillment_by_mercado_text)
+
+    def test_16_desviacion_contra_precio_presupuestal(self):
+        """3.5.6: la desviación compara lo facturado contra el precio presupuestal del renglón,
+        en su base (aquí por kilo), no contra la lista."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        budget = self.Budget.create({'year': 2023})
+        line = self._line(budget, date=date(2023, 3, 1), price_input=10.0, price_basis='kg')
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2023, 3, 5),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id, 'quantity': 1000.0, 'product_uom_id': self.uom_m.id,
+                'price_unit': 2.2, 'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        budget.action_refresh_actuals()
+        # 2,200 pesos por 1,000 m = 200 kg → 11 pesos/kg contra 10 presupuestados: +10 %.
+        self.assertAlmostEqual(line.price_real_unit_currency, 11.0, places=2)
+        self.assertAlmostEqual(line.price_gap_pct, 10.0, places=1)
+        self.assertEqual(line.price_gap_alert, 'leve')
+        self.assertFalse(line.price_gap_fx)
