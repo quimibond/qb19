@@ -141,6 +141,15 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Componentes completos al cerrar (3.3.3, 2026-11-05)
+
+Decisión de Dirección para el piloto: los químicos se quedan en 2 PRODUCCIÓN, se surten por requisición de tambo cuando
+se acaban y la orden en kg consume la cantidad teórica de la fórmula (sin orden de Cocina Tintorería para las telas del
+flujo nuevo). En main, una orden con engomado insuficiente (0.75 de 3.22 kg) quedaba parcial y, con el consumo flexible,
+habría cerrado consumiendo de menos. Ahora la orden en kg con rollos de Rama **no cierra si a un componente con
+inventario (químicos, colorantes, engomado, agua) le falta consumo contra lo planeado**; el mensaje lista cada faltante.
+El crudo sigue con su propia regla (3.3.2). Prueba 29.
+
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las
 mediciones de Rama.

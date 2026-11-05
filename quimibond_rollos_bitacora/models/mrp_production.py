@@ -215,8 +215,30 @@ class MrpProduction(models.Model):
                     '%(m)s %%. Captura el consumo real del crudo antes de cerrar.', o=orden.name, c=consumido,
                     pct=consumido / planeado * 100.0, pl=planeado, m=minimo))
 
+    def _validar_componentes_completos(self):
+        """3.3.3 (Dirección, 2026-11-05): la orden en kg con rollos de Rama no cierra si a un componente con inventario
+        (químicos, colorantes, engomado, agua) le falta consumo contra lo planeado: los químicos se consumen teóricos desde
+        2 PRODUCCIÓN, así que un consumo menor solo pasa cuando no hay existencia (en main, engomado 0.75 de 3.22 kg) y el
+        costo saldría corto. El crudo tiene su propia regla (``_validar_consumo_crudo``)."""
+        for orden in self.filtered('rollo_bitacora_ids'):
+            crudo = orden._moves_crudo()
+            faltan = []
+            for move in orden.move_raw_ids - crudo:
+                if move.state in ('done', 'cancel') or not move.product_id.is_storable:
+                    continue
+                consumido = move.quantity if move.picked else 0.0
+                if move.product_uom.compare(consumido, move.product_uom_qty) < 0:
+                    faltan.append(_('%(p)s: %(c)s de %(d)s %(u)s', p=move.product_id.display_name,
+                                    c=round(consumido, 4), d=round(move.product_uom_qty, 4), u=move.product_uom.name))
+            if faltan:
+                raise UserError(_(
+                    'La orden %(o)s no puede cerrar: faltan componentes por consumir (sin existencia en %(l)s). Surte el '
+                    'faltante (requisición) y vuelve a reservar antes de cerrar:\n%(f)s',
+                    o=orden.name, l=orden.location_src_id.display_name, f='\n'.join(faltan)))
+
     def _post_inventory(self, cancel_backorder=False):
         self._validar_consumo_crudo()
+        self._validar_componentes_completos()
         return super()._post_inventory(cancel_backorder=cancel_backorder)
 
     def _lote_desperdicio(self, producto):

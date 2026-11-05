@@ -645,3 +645,26 @@ class TestInspeccionEstacion(TransactionCase):
                            defecto_ids=[Command.set(self.defecto.ids)])).action_confirmar()
         orden_kg2.with_user(operador).button_mark_done()
         self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
+
+    def test_29_no_cierra_con_quimico_sin_existencia(self):
+        """3.3.3: la orden en kg con rollos de Rama no cierra si a un químico (o engomado) le falta existencia para su
+        consumo teórico; con la existencia, cierra."""
+        quimico = self.env['product.product'].create({
+            'name': 'Engomado ZZ951', 'default_code': 'ENGZZ951', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id})
+        self.bom_kg.write({'bom_line_ids': [Command.create({'product_id': quimico.id, 'product_qty': 0.04})]})
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(quimico, stock, 2.0)  # alcanza para 2 de 6.78 kg
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        orden_kg.action_assign()
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        with self.assertRaises(UserError) as error:
+            orden_kg.button_mark_done()
+        self.assertIn('ENGZZ951', str(error.exception))
+        self.assertNotEqual(orden_kg.state, 'done')
+        self.env['stock.quant']._update_available_quantity(quimico, stock, 10.0)
+        orden_kg.action_assign()
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        consumo = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico)
+        self.assertAlmostEqual(sum(consumo.mapped('quantity')), 169.6 * 0.04, delta=0.01)
