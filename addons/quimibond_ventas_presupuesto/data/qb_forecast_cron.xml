@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- E1: artículo y conversión de los productos (después del cron nocturno de Fichas, que recalcula el
+         rendimiento real) y pronóstico + Demanda por cliente cada mañana. -->
+    <record id="cron_qb_articulo" model="ir.cron">
+        <field name="name">Pronóstico de ventas: artículo y conversión de productos</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_qb_articulo()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="cron_qb_forecast_refresh" model="ir.cron">
+        <field name="name">Pronóstico de ventas: zona, pedidos y Demanda por cliente</field>
+        <field name="model_id" ref="model_qb_forecast_line"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_qb_forecast_refresh()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
