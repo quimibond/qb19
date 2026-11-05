@@ -242,13 +242,19 @@ class QbForecastLine(models.Model):
 
     @api.model
     def _qb_open_sale_lines(self, company, partners=None):
-        """Líneas de pedido confirmadas con cantidad pendiente de entregar."""
+        """Líneas de pedido confirmadas con cantidad pendiente de entregar **y una entrega abierta**.
+
+        3.0.0: sin entrega abierta (todo hecho o cancelado) la línea ya no es demanda aunque
+        ``product_uom_qty − qty_delivered`` sea positivo: es un faltante que se cerró sin
+        backorder o un producto que se cambió al surtir. En producción eran 273 de 324
+        «atrasados» (2026-11-05)."""
         domain = [('order_id.state', '=', 'sale'), ('company_id', '=', company.id),
                   ('product_id', '!=', False), ('display_type', '=', False)]
         if partners:
             domain.append(('order_id.partner_id.commercial_partner_id', 'in', partners.ids))
         sols = self.env['sale.order.line'].sudo().search(domain)
-        return sols.filtered(lambda s: s.product_uom_qty - s.qty_delivered > 1e-6)
+        return sols.filtered(lambda s: s.product_uom_qty - s.qty_delivered > 1e-6 and any(
+            move.state not in ('done', 'cancel') for move in s.move_ids))
 
     @staticmethod
     def _qb_sol_week(sol):

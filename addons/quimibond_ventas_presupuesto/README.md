@@ -41,6 +41,11 @@ el Programa Maestro (MPS) por ahora y reordenar los menús.
   demanda neta, suma por cliente). La migración borra las 624 celdas que dejó
   el envío del 2026-11-02 (17:04–17:06 UTC); las que Planeación tocó a mano se
   quedan. Planeación ve la demanda en Fabricación → Pronóstico de ventas.
+- **Pedidos pendientes = con entrega abierta.** Pronóstico consumido, Demanda
+  por cliente y cobertura cuentan una línea de pedido solo si le queda una
+  entrega sin hacer ni cancelar. Antes bastaba con «pedido − entregado > 0»:
+  273 de los 324 «atrasados» de producción eran faltantes cerrados sin
+  backorder o productos cambiados al surtir (2026-11-05).
 - **Cobertura del pronóstico** (cron semanal): sobre el pronóstico vigente,
   semanas firmes con pronóstico sin pedido y pedidos firmes sin pronóstico, en
   una actividad al Administrador de ventas sobre el cliente.

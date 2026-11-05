@@ -205,3 +205,19 @@ class TestForecastE1(TransactionCase):
             old.action_send_to_review()
         self.assertTrue(Budget.create({'year': 2040, 'team_id': team.id}),
                         "El presupuesto se sigue creando normal.")
+
+    def test_09_pedido_sin_entrega_abierta_no_es_demanda(self):
+        """Un faltante cerrado sin backorder (entrega cancelada) ya no cuenta como pedido pendiente."""
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id, 'commitment_date': datetime(2040, 4, 4, 12, 0),
+            'order_line': [(0, 0, {'product_id': self.tela_m.id, 'product_uom_qty': 300.0})]})
+        order.action_confirm()
+        Demand = self.env['qb.demand.line']
+        Demand.action_qb_rebuild()
+        self.assertTrue(Demand.search([('order_id', '=', order.id)]),
+                        "Con la entrega abierta el pedido es demanda.")
+        order.picking_ids.action_cancel()
+        self.assertTrue(order.order_line.qty_delivered < order.order_line.product_uom_qty)
+        Demand.action_qb_rebuild()
+        self.assertFalse(Demand.search([('order_id', '=', order.id)]),
+                         "Sin entrega abierta ya no es demanda, aunque falte cantidad en la línea.")
