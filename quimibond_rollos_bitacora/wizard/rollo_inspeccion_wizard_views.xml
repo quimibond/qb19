@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rollo_inspeccion_wizard_form" model="ir.ui.view">
+        <field name="name">rollo.inspeccion.wizard.form</field>
+        <field name="model">rollo.inspeccion.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Inspeccionar rollo">
+                <sheet>
+                    <field name="rollo_no_encontrado" invisible="1"/>
+                    <field name="rollo_id" invisible="1"/>
+                    <group>
+                        <field name="empleado_numero" password="True" default_focus="1"
+                               readonly="empleado_numero != False" force_save="1"/>
+                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                    </group>
+                    <div invisible="not empleado_numero">
+                        <group>
+                            <group>
+                                <field name="production_id"/>
+                                <field name="workorder_id"/>
+                                <field name="product_id"/>
+                            </group>
+                            <group>
+                                <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="pendientes"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="rollo_codigo" placeholder="Escanea la etiqueta de Rama"
+                                   style="font-size: 1.5em; font-weight: bold;"/>
+                        </group>
+                        <div class="alert alert-danger" role="alert" invisible="not rollo_no_encontrado">
+                            Ese código no corresponde a un rollo de esta orden.
+                        </div>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not rollo_id or estado_inspeccion != 'inspeccionado'">
+                            Este rollo ya fue inspeccionado; los datos de abajo son los guardados.
+                        </div>
+                        <field name="estado_inspeccion" invisible="1"/>
+                        <div invisible="not rollo_id">
+                            <group>
+                                <group>
+                                    <field name="kg_neto" readonly="1"/>
+                                    <field name="clasificacion" widget="radio" options="{'horizontal': true}"/>
+                                    <field name="no_empalmes"/>
+                                    <field name="metros"/>
+                                </group>
+                                <group>
+                                    <field name="defecto_ids" widget="many2many_tags"
+                                           options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" type="object" string="REGISTRAR E IMPRIMIR ETIQUETA"
+                            class="btn-primary btn-lg" invisible="not empleado_numero or not rollo_id"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

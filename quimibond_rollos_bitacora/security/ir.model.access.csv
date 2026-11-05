@@ -1,0 +1,18 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_tara_producto_user,mrp.tara.producto user,model_mrp_tara_producto,mrp.group_mrp_user,1,0,0,0
+access_mrp_tara_producto_manager,mrp.tara.producto manager,model_mrp_tara_producto,mrp.group_mrp_manager,1,1,1,1
+access_mrp_rollo_bitacora_user,mrp.rollo.bitacora user,model_mrp_rollo_bitacora,mrp.group_mrp_user,1,1,1,0
+access_mrp_rollo_bitacora_manager,mrp.rollo.bitacora manager,model_mrp_rollo_bitacora,mrp.group_mrp_manager,1,1,1,1
+access_mrp_rollo_medicion_rama_user,mrp.rollo.medicion.rama user,model_mrp_rollo_medicion_rama,mrp.group_mrp_user,1,1,1,0
+access_mrp_rollo_medicion_rama_manager,mrp.rollo.medicion.rama manager,model_mrp_rollo_medicion_rama,mrp.group_mrp_manager,1,1,1,1
+access_rollo_pesaje_rama_wizard_user,rollo.pesaje.rama.wizard user,model_rollo_pesaje_rama_wizard,mrp.group_mrp_user,1,1,1,1
+access_calidad_defecto_tela_user,calidad.defecto.tela user,model_calidad_defecto_tela,mrp.group_mrp_user,1,0,0,0
+access_calidad_defecto_tela_manager,calidad.defecto.tela manager,model_calidad_defecto_tela,mrp.group_mrp_manager,1,1,1,1
+access_mrp_inspeccion_restriccion_user,mrp.inspeccion.restriccion user,model_mrp_inspeccion_restriccion,mrp.group_mrp_user,1,0,0,0
+access_mrp_inspeccion_restriccion_manager,mrp.inspeccion.restriccion manager,model_mrp_inspeccion_restriccion,mrp.group_mrp_manager,1,1,1,1
+access_rollo_inspeccion_wizard_user,rollo.inspeccion.wizard user,model_rollo_inspeccion_wizard,mrp.group_mrp_user,1,1,1,1
+access_rollo_clasificacion_wizard_user,rollo.clasificacion.wizard user,model_rollo_clasificacion_wizard,mrp.group_mrp_user,1,1,1,1
+access_rollo_desperdicio_rama_wizard_user,rollo.desperdicio.rama.wizard user,model_rollo_desperdicio_rama_wizard,mrp.group_mrp_user,1,1,1,1
+access_mrp_rollo_final_user,mrp.rollo.final user,model_mrp_rollo_final,mrp.group_mrp_user,1,1,1,0
+access_mrp_rollo_final_manager,mrp.rollo.final manager,model_mrp_rollo_final,mrp.group_mrp_manager,1,1,1,1
+access_rollo_inspeccion_estacion_wizard_user,rollo.inspeccion.estacion.wizard user,model_rollo_inspeccion_estacion_wizard,mrp.group_mrp_user,1,1,1,1

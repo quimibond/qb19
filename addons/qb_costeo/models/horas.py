@@ -886,11 +886,13 @@ class QbProductoHoras(models.Model):
 
     ETAPA_DRIVER = {'H': 'workorder', 'I': 'kg_ciclo', 'J': 'm_velocidad'}
     # 1.7.0: flujo en dos niveles. La tela en proceso en kg («I» + código)
-    # pasa por tintorería (con devanado), acabado e inspección; la tela en
-    # metros que sale de la clasificación final, solo por inspección y
-    # empaque (lo demás lo hereda de la de kg).
+    # pasa por tintorería (con devanado), acabado e inspección. 1.10.0: la
+    # tela en metros que sale de la clasificación final no pasa por ningún
+    # centro propio: Inspección corta, pesa, clasifica y etiqueta en la orden
+    # en kg (Dirección General 2026-11-03) y la orden en metros se registra
+    # sola. Sus horas son solo las de sus operaciones, si las tiene.
     DRIVERS_PROCESO_KG = {'kg_ciclo', 'm_velocidad', 'fijo_unidad'}
-    DRIVERS_CLASIFICACION = {'fijo_unidad'}
+    DRIVERS_CLASIFICACION = set()
 
     @api.model
     def _ops_fuera(self, bom, centro):
@@ -921,7 +923,7 @@ class QbProductoHoras(models.Model):
         trabajo (1.7.0: la operación real manda sobre el código); sin
         operaciones, la etapa del código (H tejido, I tintorería, J acabado;
         la tela en proceso en kg: tintorería, acabado e inspección; la tela
-        en metros de la clasificación final: inspección y empaque). Un código
+        en metros de la clasificación final: ninguno, desde 1.10.0). Un código
         fuera de la norma o un importado (prefijo de unidad) no aporta etapa:
         la ruta no se conoce por el código. Un terminado natural cuya receta
         va directo del crudo no espera tintorería."""
@@ -963,6 +965,10 @@ class QbProductoHoras(models.Model):
     def _propias_al_vuelo(self, product, bom, centro, medido, hermanos, prom,
                           prom_galga, fichas=None):
         if self._ops_fuera(bom, centro):
+            return None
+        if not (bom and bom.operation_ids) and self._es_clasificacion(product, bom):
+            # 1.10.0: la clasificación sin operaciones no carga horas: la
+            # inspección ya va en la orden en kg (no se cuenta dos veces).
             return None
         m = medido.get((product.id, centro.id))
         if m:

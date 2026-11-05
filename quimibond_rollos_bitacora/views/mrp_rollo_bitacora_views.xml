@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_rollo_bitacora_list" model="ir.ui.view">
+        <field name="name">mrp.rollo.bitacora.list</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="arch" type="xml">
+            <list string="Bitácora de rollos" create="0">
+                <field name="production_id"/>
+                <field name="secuencia"/>
+                <field name="lot_id"/>
+                <field name="product_id"/>
+                <field name="kg_rama" sum="Total kg"/>
+                <field name="estado_inspeccion" widget="badge"/>
+                <field name="clasificacion_inicial"/>
+                <field name="metros_insp" optional="show"/>
+                <field name="clasificacion_final" optional="show"/>
+                <field name="metros_final" optional="show"/>
+                <field name="alerta_metros_insp" optional="hide"/>
+                <field name="alerta_diferencia_metros" optional="hide"/>
+                <field name="fecha_registro_rama" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_rollo_bitacora_form" model="ir.ui.view">
+        <field name="name">mrp.rollo.bitacora.form</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="arch" type="xml">
+            <form string="Rollo" create="0">
+                <header>
+                    <button name="action_imprimir_etiqueta_rama" type="object" string="Reimprimir etiqueta de Rama"
+                            invisible="not zpl_etiqueta_rama"/>
+                    <button name="action_imprimir_etiqueta_preliminar" type="object"
+                            string="Reimprimir etiqueta preliminar" invisible="not zpl_etiqueta_preliminar"/>
+                    <button name="action_imprimir_etiqueta_final" type="object"
+                            string="Reimprimir etiqueta final" invisible="not zpl_etiqueta_final"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="production_id"/>
+                            <field name="product_id"/>
+                            <field name="secuencia"/>
+                            <field name="lote_origen_id"/>
+                        </group>
+                        <group>
+                            <field name="lot_id"/>
+                            <field name="lot_b_id"/>
+                            <field name="zpl_etiqueta_rama" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rama" name="rama">
+                            <group>
+                                <group>
+                                    <field name="workcenter_rama_id"/>
+                                    <field name="kg_bruto_rama"/>
+                                    <field name="tara_rama"/>
+                                    <field name="kg_rama"/>
+                                </group>
+                                <group>
+                                    <field name="operador_rama"/>
+                                    <field name="fecha_registro_rama"/>
+                                    <field name="fecha_etiqueta_rama"/>
+                                    <field name="captura_manual_rama"/>
+                                    <field name="motivo_manual_rama" invisible="not captura_manual_rama"/>
+                                </group>
+                            </group>
+                            <field name="rama_medicion_ids">
+                                <list editable="bottom">
+                                    <field name="zona"/>
+                                    <field name="apartado"/>
+                                    <field name="valor_medicion"/>
+                                    <field name="temperatura"/>
+                                    <field name="velocidad_cadena"/>
+                                    <field name="extraccion"/>
+                                    <field name="alimentacion_rodillos"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Inspección" name="inspeccion">
+                            <group>
+                                <group>
+                                    <field name="estado_inspeccion"/>
+                                    <field name="clasificacion_inicial"/>
+                                    <field name="no_empalmes"/>
+                                </group>
+                                <group>
+                                    <field name="metros_insp"/>
+                                    <field name="workcenter_insp_id"/>
+                                    <field name="operador_insp"/>
+                                    <field name="fecha_registro_insp"/>
+                                    <field name="fecha_etiqueta_preliminar"/>
+                                </group>
+                            </group>
+                            <field name="zpl_etiqueta_preliminar" invisible="1"/>
+                            <group string="Defectos">
+                                <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                <field name="siglas_defectos"/>
+                            </group>
+                        </page>
+                        <page string="Clasificación final" name="clasificacion_final">
+                            <group>
+                                <group string="Clasificación">
+                                    <field name="production_b_id"/>
+                                    <field name="workcenter_final_id"/>
+                                    <field name="operador_final"/>
+                                    <field name="siglas_operador_final"/>
+                                    <field name="fecha_registro_final"/>
+                                    <field name="zpl_etiqueta_final" invisible="1"/>
+                                    <field name="qc_laboratorio_aplica"/>
+                                    <field name="clasificacion_final"/>
+                                    <field name="reetiquetado"/>
+                                    <field name="fecha_etiqueta_final"/>
+                                </group>
+                                <group string="Segundo pesaje (referencia)">
+                                    <field name="kg_bruto_final"/>
+                                    <field name="tara_final"/>
+                                    <field name="kg_final"/>
+                                    <field name="diferencia_kg"/>
+                                    <field name="captura_manual_final"/>
+                                    <field name="motivo_manual_final" invisible="not captura_manual_final"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Metros finales">
+                                    <field name="metros_final"/>
+                                    <field name="remedido"/>
+                                    <field name="motivo_ajuste_metros" invisible="not remedido"/>
+                                </group>
+                                <group string="Alertas">
+                                    <field name="diferencia_metros_insp"/>
+                                    <field name="alerta_metros_insp"/>
+                                    <field name="rendimiento_real"/>
+                                    <field name="rendimiento_teorico"/>
+                                    <field name="diferencia_metros_vs_teorico"/>
+                                    <field name="alerta_diferencia_metros"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mrp_rollo_bitacora_search" model="ir.ui.view">
+        <field name="name">mrp.rollo.bitacora.search</field>
+        <field name="model">mrp.rollo.bitacora</field>
+        <field name="arch" type="xml">
+            <search string="Bitácora de rollos">
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="product_id"/>
+                <filter string="Pendientes de inspección" name="pendiente_insp"
+                        domain="[('estado_inspeccion', '=', 'pendiente')]"/>
+                <filter string="Alerta de metros" name="alerta"
+                        domain="['|', ('alerta_metros_insp', '=', True), ('alerta_diferencia_metros', '=', True)]"/>
+                <filter string="Reetiquetados" name="reetiquetado" domain="[('reetiquetado', '=', True)]"/>
+                <group>
+                    <filter string="Orden" name="group_orden" context="{'group_by': 'production_id'}"/>
+                    <filter string="Artículo" name="group_producto" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mrp_rollo_bitacora" model="ir.actions.act_window">
+        <field name="name">Bitácora de rollos</field>
+        <field name="res_model">mrp.rollo.bitacora</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

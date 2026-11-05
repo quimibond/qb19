@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_rollo_final_list" model="ir.ui.view">
+        <field name="name">mrp.rollo.final.list</field>
+        <field name="model">mrp.rollo.final</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="estado == 'registrado'" create="false">
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="production_m_id"/>
+                <field name="bitacora_ids" widget="many2many_tags"/>
+                <field name="clasificacion"/>
+                <field name="kg_neto" sum="Total kg"/>
+                <field name="metros" sum="Total m" decoration-warning="alerta_metros"/>
+                <field name="alerta_metros" column_invisible="True"/>
+                <field name="siglas_defectos"/>
+                <field name="operador" optional="hide"/>
+                <field name="fecha" optional="show"/>
+                <field name="location_dest_id" optional="show"/>
+                <field name="estado" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_rollo_final_form" model="ir.ui.view">
+        <field name="name">mrp.rollo.final.form</field>
+        <field name="model">mrp.rollo.final</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <header>
+                    <button name="action_imprimir_etiqueta" type="object" string="Reimprimir etiqueta"/>
+                    <button name="action_anular" type="object" string="Anular captura" groups="mrp.group_mrp_manager"
+                            invisible="estado != 'inspeccionado'"
+                            confirm="Se borra este rollo final y sus rollos de Rama quedan pendientes para volver a inspeccionarlos. ¿Continuar?"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="production_id"/>
+                            <field name="production_m_id"/>
+                            <field name="bitacora_ids" widget="many2many_tags"/>
+                            <field name="clasificacion"/>
+                            <field name="defecto_ids" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="kg_bruto"/>
+                            <field name="tara"/>
+                            <field name="kg_neto"/>
+                            <field name="metros"/>
+                            <field name="metros_teoricos"/>
+                            <field name="alerta_metros"/>
+                            <field name="no_empalmes"/>
+                            <field name="captura_manual"/>
+                            <field name="motivo_manual" invisible="not captura_manual"/>
+                        </group>
+                        <group>
+                            <field name="workcenter_id"/>
+                            <field name="operador"/>
+                            <field name="siglas_operador"/>
+                            <field name="fecha"/>
+                        </group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="lot_id"/>
+                            <field name="location_dest_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mrp_rollo_final_search" model="ir.ui.view">
+        <field name="name">mrp.rollo.final.search</field>
+        <field name="model">mrp.rollo.final</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="production_m_id"/>
+                <filter name="inspeccionado" string="Sin registrar" domain="[('estado', '=', 'inspeccionado')]"/>
+                <filter name="registrado" string="Registrados" domain="[('estado', '=', 'registrado')]"/>
+                <separator/>
+                <filter name="pq" string="PQ" domain="[('clasificacion', '=', 'PQ')]"/>
+                <filter name="fe" string="FE" domain="[('clasificacion', '=', 'FE')]"/>
+                <filter name="segunda" string="Segunda" domain="[('clasificacion', '=', 'SEGUNDA')]"/>
+                <filter name="desp" string="Desperdicio" domain="[('clasificacion', '=', 'DESP')]"/>
+                <group>
+                    <filter name="por_kg" string="Orden (kg)" context="{'group_by': 'production_id'}"/>
+                    <filter name="por_calidad" string="Calidad" context="{'group_by': 'clasificacion'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mrp_rollo_final" model="ir.actions.act_window">
+        <field name="name">Rollos finales</field>
+        <field name="res_model">mrp.rollo.final</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Órdenes en kg con todo inspeccionado y sin cerrar: sus rollos finales no están en inventario. -->
+    <record id="mrp_production_search_inspeccion_sin_cerrar" model="ir.ui.view">
+        <field name="name">mrp.production.search.inspeccion.sin.cerrar</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="inspeccion_completa_sin_cerrar" string="Rollos inspeccionados, sin cerrar"
+                        domain="[('inspeccion_completa_sin_cerrar', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_mrp_production_inspeccion_sin_cerrar" model="ir.actions.act_window">
+        <field name="name">Baños inspeccionados sin cerrar</field>
+        <field name="res_model">mrp.production</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_inspeccion_completa_sin_cerrar': 1}</field>
+    </record>
+</odoo>

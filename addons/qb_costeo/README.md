@@ -114,7 +114,7 @@ rama medida en la ruta vieja no se suma a la que hereda de la tela en kg.
 |---|---|---|
 | Merma de proceso (crudo → tela en kg: devanado, teñido, rama, orillas) | Factor del crudo en la lista A (1.113 kg de crudo por kg) | Ingeniería en la lista |
 | Conversión kg → m de la tela acabada | 1 ÷ rendimiento de la ficha de acabado (1000 ÷ g/m² ÷ ancho m); el costeo usa la ficha aunque la lista B diga otra cosa, y la validación `conversion_clasificacion` avisa si se aleja más de 0.5 % | Ficha técnica de acabado |
-| Segundas, FE y desperdicio de la clasificación | `rendimiento` de la tela en metros: lo que sale de la clasificación a primera ÷ lo que sale a primera + merma (`vendible = producción ÷ rendimiento`) | Movimientos de la clasificación |
+| Segundas, FE y desperdicio de la clasificación | `rendimiento` de la tela en metros: lo que sale de la clasificación a primera ÷ lo que sale a primera + merma (`vendible = producción ÷ rendimiento`). Desde 1.10.0, segundas y desperdicio que salen como saldo en kg cuentan en metros con la ficha | Movimientos de la clasificación |
 | Tela en kg (semielaborado) | Ninguna: rendimiento 1 («semielaborado») | — |
 
 Lo que sale de la orden en kg (`tipos_kg`) no cuenta para el rendimiento

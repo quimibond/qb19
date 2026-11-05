@@ -112,6 +112,41 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertEqual(bom_m.bom_line_ids.product_id, kg)
         self.assertAlmostEqual(bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)
 
+    def test_06b_saldos_en_la_lista_en_metros(self):
+        """2.24.0: la lista en metros lleva los saldos de segundas y desperdicio (kg) con cantidad 0, una sola vez;
+        si la referencia no existe, avisa y no la inventa."""
+        Product = self.env['product.product']
+        saldos = Product
+        for codigo in ('SALDO DE TELA TEJIDO', 'SALDO TEJIDO D'):
+            saldos |= Product.search([('default_code', '=', codigo)], limit=1) or Product.create({
+                'name': codigo, 'default_code': codigo, 'uom_id': self.kg.id, 'is_storable': True})
+        self._armar()
+        (self.bom | self.bom_m).action_archive()
+        self.acabado.action_ft_generar_listas()
+        self.acabado.action_ft_generar_listas()
+        bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        self.assertFalse(bom_m.active)
+        self.assertEqual(bom_m.byproduct_ids.product_id, saldos)
+        self.assertEqual(len(bom_m.byproduct_ids), 2, "Generar dos veces no repite los saldos")
+        self.assertEqual(set(bom_m.byproduct_ids.mapped('product_qty')), {0.0})
+        self.assertEqual(bom_m.byproduct_ids.product_uom_id, self.kg)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_ficha_tecnica_tela.saldo_segunda', 'ZZ-NO-EXISTE')
+        avisos = self.acabado._ft_poner_saldos(bom_m)
+        self.assertTrue(any('ZZ-NO-EXISTE' in a for a in avisos))
+
+    def test_06c_lista_en_metros_sin_operacion(self):
+        """2.24.0: la lista en metros no lleva operación (Inspección pesa y clasifica en la orden en kg); «Generar»
+        le quita la de Empaque a una lista archivada y armar la ruta no crea el paso de Clasificación final."""
+        empaque = self.env['mrp.workcenter'].create({'name': 'EMPAQUE 931 prueba', 'code': 'E931'})
+        self.env['mrp.routing.workcenter'].create({'bom_id': self.bom_m.id, 'name': 'CLASIFICACION',
+                                                   'workcenter_id': empaque.id})
+        (self.bom | self.bom_m).action_archive()
+        ruta = self._armar()
+        self.assertNotIn('clasificacion', ruta.paso_ids.mapped('paso'))
+        self.acabado.action_ft_generar_listas()
+        bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        self.assertFalse(bom_m.with_context(active_test=False).operation_ids)
+
     def test_07_botones_de_la_lista_de_rutas(self):
         ruta = self._armar()
         accion = call_kw(self.env['ficha.tecnica.ruta'], 'action_ft_generar_listas', [ruta.ids], {})
@@ -141,3 +176,140 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertFalse(nueva.active)
         self.assertEqual(nueva.code, 'Flujo en kg (borrador)')
         self.assertEqual([o.workcenter_id for o in self._ops(nueva)], [self.dev, self.jet, self.abr, self.insp])
+
+    def test_10_desperdicio_de_rama_en_la_lista_en_kg(self):
+        """2.25.0: la lista en kg generada lleva el subproducto «Desperdicio Tejido» en la Rama, con cantidad 0 (lo pesa
+        Rama con quimibond_rollos_bitacora); al volver a generar no se duplica y sigue en la Rama."""
+        ruta = self._armar()
+        self.bom.action_archive()
+        Product = self.env['product.product']
+        desperdicio = Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1)
+        if not desperdicio:
+            accion = self.acabado.action_ft_generar_listas()
+            self.assertIn('DESPERDICIO TEJIDO', accion['params']['message'], "Sin el artículo, avisa y no inventa")
+            self.assertFalse(self.bom.byproduct_ids)
+            desperdicio = Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
+                                          'uom_id': self.kg.id, 'is_storable': True})
+        tipo_rama = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
+        rama = self.env['mrp.workcenter'].create({'name': 'RAMA 931 prueba', 'code': 'R931', 'ft_tipo_id': tipo_rama.id})
+        ruta.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
+        self.acabado.action_ft_generar_listas()
+        sub = self.bom.byproduct_ids
+        self.assertEqual(sub.product_id, desperdicio)
+        self.assertEqual(sub.product_qty, 0.0, "La cantidad no es estándar: se pesa en cada orden")
+        self.assertEqual(sub.operation_id.workcenter_id, rama)
+        ruta.paso_ids.filtered(lambda p: p.paso == 'abridora').unlink()
+        self.acabado.action_ft_generar_listas()
+        self.assertEqual(len(self.bom.byproduct_ids), 1, "No se duplica")
+        self.assertEqual(self.bom.byproduct_ids.operation_id.workcenter_id, rama,
+                         "Al rehacer las operaciones vuelve a la Rama nueva")
+
+    def test_11_tipo_de_operacion_del_flujo(self):
+        """2.25.0: las listas que crea «Generar listas» llevan su tipo de operación (sin él la orden nacía como
+        «Re-proceso Tintorería»), y la revisión avisa a Ingeniería si una lista del flujo no lo tiene."""
+        self._armar()
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 936 prueba (kg)', 'default_code': 'IZZ936Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 936 prueba (m)', 'default_code': 'ZZ936Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ936Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg)
+        self.assertEqual(bom_m.picking_type_id, self.tipo_m)
+        tipos = Revision.search([('acabado_id', '=', ficha.id)]).pendiente_ids.mapped('tipo')
+        self.assertNotIn('tipo_operacion', tipos)
+        bom_kg.picking_type_id = False
+        revision = Revision._ft_actualizar(ficha)
+        pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'tipo_operacion')
+        self.assertEqual((pendiente.area, pendiente.bom_id), ('ingenieria', bom_kg))
+        self.assertEqual(pendiente.action_ft_resolver()['res_id'], bom_kg.id, "«Resolver» abre la lista")
+        ficha.action_ft_generar_listas()
+        self.assertEqual(bom_kg.picking_type_id, self.tipo_kg, "Al volver a generar se completa")
+
+
+    def test_12_consumo_flexible_activacion_y_revision(self):
+        """2.25.0 (piloto en el build de main, 2026-11-04): las listas del flujo nacen en consumo flexible; al activar
+        la lista en kg el «I…» recibe la ruta MTO (y la lista su desperdicio y tipo); la revisión avisa si a la lista
+        «Flujo en kg» le falta el desperdicio de Rama o, ya activa, al «I…» la ruta MTO."""
+        ruta_fam = self._armar()
+        tipo_rama = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
+        rama = self.env['mrp.workcenter'].create({'name': 'RAMA 937 prueba', 'code': 'R937', 'ft_tipo_id': tipo_rama.id})
+        ruta_fam.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
+        Product = self.env['product.product']
+        if not Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1):
+            Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
+                            'uom_id': self.kg.id, 'is_storable': True})
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        Bom = self.env['mrp.bom']
+        ruta_mto = Bom._ft_ruta_mto_kg()
+        if not ruta_mto:
+            ruta_mto = self.env['stock.route'].create({'name': 'Fabricar Tela kg prueba (MTO)', 'product_selectable': True})
+            self.env['stock.rule'].create({
+                'name': 'Fabricar Tela kg prueba', 'route_id': ruta_mto.id, 'action': 'manufacture',
+                'picking_type_id': self.tipo_kg.id, 'location_dest_id': almacen.lot_stock_id.id,
+                'procure_method': 'make_to_order'})
+        kg = Product.create({'name': 'Tela 937 prueba (kg)', 'default_code': 'IZZ937Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 937 prueba (m)', 'default_code': 'ZZ937Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ937Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
+        self.assertEqual((bom_kg.consumption, bom_m.consumption), ('flexible', 'flexible'))
+        self.assertTrue(bom_kg.byproduct_ids)
+        bom_kg.consumption = 'warning'
+        bom_kg.byproduct_ids.unlink()
+        tipos = Revision._ft_actualizar(ficha).pendiente_ids.mapped('tipo')
+        self.assertIn('desperdicio', tipos)
+        self.assertNotIn('ruta_mto', tipos, "Archivada, la ruta todavía no hace falta")
+        self.assertNotIn(ruta_mto, kg.product_tmpl_id.route_ids)
+        bom_kg.action_unarchive()
+        self.assertIn(ruta_mto, kg.product_tmpl_id.route_ids, "Al activar, el «I…» recibe la ruta MTO")
+        self.assertEqual(bom_kg.consumption, 'flexible')
+        self.assertTrue(bom_kg.byproduct_ids, "Al activar se completa el desperdicio")
+        self.assertNotIn('desperdicio', Revision._ft_actualizar(ficha).pendiente_ids.mapped('tipo'))
+        kg.product_tmpl_id.route_ids = [(3, ruta_mto.id)]
+        revision = Revision._ft_actualizar(ficha)
+        pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'ruta_mto')
+        self.assertEqual(pendiente.area, 'ingenieria')
+        self.assertEqual(pendiente.action_ft_resolver()['res_model'], 'product.template')
+
+    def test_13_ruta_de_la_lista_en_metros_al_activar(self):
+        """2.25.0: al activar la lista en metros del flujo, la tela recibe la ruta que fabrica con el tipo OP-M
+        («Fabricar Tela m»); la revisión avisa si a una lista en metros activa le falta."""
+        self._armar()
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        Bom = self.env['mrp.bom']
+        ruta_m = Bom._ft_ruta_flujo('m')
+        if not ruta_m:
+            ruta_m = self.env['stock.route'].create({'name': 'Fabricar Tela m prueba', 'product_selectable': True})
+            self.env['stock.rule'].create({
+                'name': 'Fabricar Tela m prueba', 'route_id': ruta_m.id, 'action': 'manufacture',
+                'picking_type_id': self.tipo_m.id, 'location_dest_id': almacen.lot_stock_id.id,
+                'procure_method': 'make_to_order'})
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 938 prueba (kg)', 'default_code': 'IZZ938Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 938 prueba (m)', 'default_code': 'ZZ938Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ938Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        Revision = self.env['ficha.tecnica.revision']
+        bom_m = Revision._ft_bom_de(tela_m)
+        self.assertNotIn(ruta_m, tela_m.product_tmpl_id.route_ids)
+        bom_m.action_unarchive()
+        self.assertIn(ruta_m, tela_m.product_tmpl_id.route_ids, "Al activar, la tela recibe la ruta del flujo")
+        tela_m.product_tmpl_id.route_ids = [(3, ruta_m.id)]
+        pendiente = Revision._ft_actualizar(ficha).pendiente_ids.filtered(
+            lambda p: p.tipo == 'ruta_mto' and p.bom_id == bom_m)
+        self.assertTrue(pendiente, "Lista en metros activa sin la ruta: pendiente de Ingeniería")

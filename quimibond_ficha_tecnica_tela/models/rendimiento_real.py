@@ -6,6 +6,9 @@ engomado ni químicos) en sus órdenes terminadas de los últimos 12 meses. Ese 
 ``rendimiento_tela_acabada`` de la ficha: lo usan la conversión kg → m de la lista en metros y los tiempos de rama e
 inspección. Sin órdenes, se queda el que tiene la ficha. Se recalcula cada noche antes de la revisión de listas; nunca
 toca una lista de materiales.
+
+Los saldos en kg que salen de esas órdenes (segundas y desperdicio, flujo nuevo de inspección) se restan de los kilos:
+son tela que no se volvió metros de la tela y ya cuentan como merma en la primera para planear del costeo.
 """
 from datetime import timedelta
 
@@ -71,7 +74,25 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             if not es_tela_kg(componente.default_code) or not (uom == kg or uom._has_common_reference(kg)):
                 continue
             kilos[product] = kilos.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
+        # Los saldos en kg (segundas y desperdicio) que salen de esas órdenes son tela que no se volvió metros de la
+        # tela: se restan de los kilos. Así el rendimiento es el de la tela que sí se vuelve metros, y la primera para
+        # planear del costeo (que cuenta los saldos como merma) no descuenta la misma merma dos veces.
+        for product, uom, qty in Move._read_group(
+                [('state', '=', 'done'), ('product_id', 'in', self._ft_saldo_products().ids),
+                 ('production_id.product_id', 'in', products.ids), ('production_id.state', '=', 'done'),
+                 ('production_id.date_finished', '>=', desde)],
+                ['production_id.product_id', 'product_uom'], ['quantity:sum']):
+            if product in kilos and (uom == kg or uom._has_common_reference(kg)):
+                kilos[product] = max(kilos[product] - uom._compute_quantity(qty, kg, round=False), 0.0)
         return {p: (metros[p], kilos.get(p, 0.0), ordenes.get(p, 0)) for p in metros}
+
+    @api.model
+    def _ft_saldo_products(self):
+        """Los productos de saldo de la lista en metros (los mismos parámetros que «Generar listas»)."""
+        from .ruta_familia import SALDOS  # local: orden de carga de models/
+        params = self.env['ir.config_parameter'].sudo()
+        codigos = [(params.get_param(clave) or defecto).strip() for clave, defecto in SALDOS]
+        return self.env['product.product'].with_context(active_test=False).search([('default_code', 'in', codigos)])
 
     def _ft_actualizar_rendimiento_real(self):
         """El rendimiento de estas fichas (todas si vacío) con lo fabricado; sin órdenes se queda el de la ficha."""

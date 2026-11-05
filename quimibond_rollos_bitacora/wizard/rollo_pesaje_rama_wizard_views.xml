@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rollo_pesaje_rama_wizard_form" model="ir.ui.view">
+        <field name="name">rollo.pesaje.rama.wizard.form</field>
+        <field name="model">rollo.pesaje.rama.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pesar rollo (Rama)">
+                <sheet>
+                    <!-- Campo puente del widget Owl 'peso_bascula' (scale.wizard.mixin, iot_scale_common) -->
+                    <field name="scale_read_url" invisible="1"/>
+                    <field name="tara_faltante" invisible="1"/>
+                    <group>
+                        <field name="empleado_numero" password="True" default_focus="1"
+                               readonly="empleado_numero != False" force_save="1"/>
+                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                    </group>
+                    <div invisible="not empleado_numero">
+                        <div class="alert alert-info" role="status" groups="mrp.group_mrp_manager">
+                            <group col="4">
+                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                                <field name="iot_device_id" invisible="weighing_mode != 'iot'"
+                                       required="weighing_mode == 'iot'"/>
+                            </group>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="production_id"/>
+                                <field name="workorder_id"/>
+                                <field name="workcenter_id"/>
+                                <field name="product_id"/>
+                            </group>
+                            <group>
+                                <field name="secuencia"/>
+                                <field name="lote_name" style="font-weight: bold;"/>
+                                <field name="lote_origen_id"/>
+                            </group>
+                        </group>
+                        <div class="alert alert-danger" role="alert" invisible="not tara_faltante">
+                            No hay tara de Rama para este artículo. Captúrala en Manufactura → Configuración →
+                            Taras por producto antes de pesar.
+                        </div>
+                        <div class="text-center mt-3 mb-3 p-4 border rounded bg-light">
+                            <div class="row">
+                                <div class="col-4">
+                                    <label for="kg_bruto" string="PESO BRUTO"/><br/>
+                                    <field name="kg_bruto" widget="peso_bascula" options="{'digits': [12, 4]}"
+                                           readonly="weighing_mode == 'iot'" force_save="1"
+                                           style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                                </div>
+                                <div class="col-4">
+                                    <label for="tara_kg" string="TARA DE RAMA"/><br/>
+                                    <field name="tara_kg" readonly="1"
+                                           style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                                </div>
+                                <div class="col-4">
+                                    <label for="kg_neto" string="PESO NETO"/><br/>
+                                    <field name="kg_neto" readonly="1"
+                                           style="font-size: 3em; font-weight: bold; text-align: center;"/>
+                                </div>
+                            </div>
+                            <span style="font-size: 1.6em; font-weight: bold;">KG</span>
+                        </div>
+                        <group>
+                            <field name="motivo_manual" invisible="weighing_mode != 'manual'"
+                                   required="weighing_mode == 'manual'"/>
+                        </group>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" type="object" string="REGISTRAR E IMPRIMIR ETIQUETA"
+                            class="btn-primary btn-lg" invisible="not empleado_numero or tara_faltante"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

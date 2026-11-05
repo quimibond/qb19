@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rollo_desperdicio_rama_wizard_form" model="ir.ui.view">
+        <field name="name">rollo.desperdicio.rama.wizard.form</field>
+        <field name="model">rollo.desperdicio.rama.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pesar desperdicio (Rama)">
+                <sheet>
+                    <!-- Campo puente del widget Owl 'peso_bascula' (scale.wizard.mixin, iot_scale_common) -->
+                    <field name="scale_read_url" invisible="1"/>
+                    <field name="ya_pesado" invisible="1"/>
+                    <group>
+                        <field name="empleado_numero" password="True" default_focus="1"
+                               readonly="empleado_numero != False" force_save="1"/>
+                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                    </group>
+                    <div invisible="not empleado_numero">
+                        <div class="alert alert-info" role="status" groups="mrp.group_mrp_manager">
+                            <group col="4">
+                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                                <field name="iot_device_id" invisible="weighing_mode != 'iot'"
+                                       required="weighing_mode == 'iot'"/>
+                            </group>
+                        </div>
+                        <group>
+                            <field name="production_id"/>
+                            <field name="workorder_id"/>
+                        </group>
+                        <div class="alert alert-danger" role="alert" invisible="not ya_pesado">
+                            Esta orden ya tiene el desperdicio pesado.
+                        </div>
+                        <div class="text-center mt-3 mb-3 p-4 border rounded bg-light" invisible="ya_pesado">
+                            <label for="kg_desperdicio" string="PESO DEL DESPERDICIO"/><br/>
+                            <field name="kg_desperdicio" widget="peso_bascula" options="{'digits': [12, 3]}"
+                                   readonly="weighing_mode == 'iot'" force_save="1"
+                                   style="font-size: 3em; font-weight: bold; text-align: center;"/>
+                            <span style="font-size: 1.6em; font-weight: bold;">KG</span>
+                        </div>
+                        <group invisible="ya_pesado">
+                            <field name="motivo_manual" invisible="weighing_mode != 'manual'"
+                                   required="weighing_mode == 'manual' and not ya_pesado"/>
+                        </group>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" type="object" string="REGISTRAR DESPERDICIO"
+                            class="btn-primary btn-lg" invisible="not empleado_numero or ya_pesado"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

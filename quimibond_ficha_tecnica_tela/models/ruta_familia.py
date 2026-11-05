@@ -15,6 +15,14 @@ y la de metros. Las reglas salen de la tabla «rutas de proceso rev4» de Innova
 Reglas de seguridad: nunca se toca una lista **activa** (la cambia Ingeniería con su visto bueno); lo generado nace
 archivado como borrador del flujo, y los tiempos, la capacidad de los jets y la conversión a metros salen de la ficha
 («Usar los datos de la ficha»). Los componentes que no son el crudo (fórmula, engomado) se conservan.
+
+Saldos (2.24.0, Dirección General 2026-11-03): la lista en metros lleva de subproductos los dos saldos en kg en que
+se venden las segundas y el desperdicio de la clasificación (``SALDO DE TELA TEJIDO`` y ``SALDO TEJIDO D``; las
+referencias están en los parámetros ``quimibond_ficha_tecnica_tela.saldo_segunda`` y ``.saldo_desperdicio``), con
+cantidad 0: la real es el peso de cada rollo al clasificar. **La lista en metros no lleva operaciones**: Inspección
+(en la orden en kg) corta, pesa, clasifica y etiqueta cada rollo, y la orden en metros se registra sola al cerrar el
+baño; sin paso «Clasificación final» en la ruta, «Generar listas» le quita la de Empaque. Diseño:
+``docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md``.
 """
 from collections import Counter
 
@@ -45,6 +53,19 @@ PASOS_TODAS = ('devanado', 'tintoreria', 'abridora', 'rama', 'inspeccion')
 PASOS_PLANTA = ('devanado', 'abridora', 'inspeccion')
 CODIGO_KG = 'Flujo en kg (borrador)'
 CODIGO_M = 'Clasificación final (borrador)'
+# Subproductos de la lista en metros: (parámetro, referencia por defecto). Segundas y desperdicio se venden en kg.
+SALDOS = (('quimibond_ficha_tecnica_tela.saldo_segunda', 'SALDO DE TELA TEJIDO'),
+          ('quimibond_ficha_tecnica_tela.saldo_desperdicio', 'SALDO TEJIDO D'))
+# 2.25.0: subproducto que pesa Rama en la orden en kg (quimibond_rollos_bitacora, «PESAR DESPERDICIO»). Nace con
+# cantidad 0: no es estándar, se registra el peso real de cada orden.
+DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
+# 2.25.0: tipo de operación de cada lista del flujo, por su código de secuencia (en producción 410 «Fabricación Tela en
+# kg», de 2 PRODUCCIÓN a 10 INSPECCIÓN, y 411 «Fabricación Tela en m», de 10 INSPECCIÓN a 14 PT PQ). Sin él, la orden
+# toma el tipo de fabricación predeterminado del almacén («Re-proceso Tintorería»).
+TIPO_OPERACION = {'kg': 'OP-KG', 'm': 'OP-M'}
+# 2.25.0 (piloto en el build de main, 2026-11-04): sin la ruta MTO en el «I…» la orden en metros no pide la orden en kg.
+# Es la ruta cuya regla de fabricación usa el tipo «Fabricación Tela en kg» (en producción, «Fabricar Tela kg →
+# Inspección (MTO)», id 180, sin productos hasta hoy).
 
 
 def tintoreria_por_codigo(code):
@@ -171,9 +192,8 @@ class FichaTecnicaRuta(models.Model):
                 if paso in existentes:
                     continue
                 if paso == 'clasificacion':
-                    if clasif:
-                        nuevos.append({'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': clasif[0],
-                                       'tiempo': clasif[1]})
+                    # 2.24.0: la lista en metros no lleva operación (la inspección pesa, clasifica y etiqueta en la
+                    # orden en kg; Dirección General 2026-11-03). No se arma el paso desde listas viejas con Empaque.
                     continue
                 wc = familia.get(paso)
                 if not wc and paso in PASOS_TODAS:
@@ -348,6 +368,24 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         viejas.unlink()
         return avisos
 
+    def _ft_poner_saldos(self, bom):
+        """Subproductos de saldo (segundas y desperdicio, en kg) en la lista en metros, con cantidad 0. Los que ya
+        están no se tocan; una referencia que no existe se avisa y se omite (no se inventa el producto)."""
+        params = self.env['ir.config_parameter'].sudo()
+        avisos = []
+        for clave, defecto in SALDOS:
+            codigo = (params.get_param(clave) or defecto).strip()
+            producto = self.env['product.product'].search([('default_code', '=', codigo)], limit=1)
+            if not producto:
+                avisos.append('No existe el producto %s (parámetro %s): la lista en metros va sin ese saldo.'
+                              % (codigo, clave))
+                continue
+            if producto in bom.byproduct_ids.product_id:
+                continue
+            bom.write({'byproduct_ids': [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
+                                                 'product_uom_id': producto.uom_id.id, 'cost_share': 0.0})]})
+        return avisos
+
     def _ft_generar_listas(self):
         """Genera o pone al día las listas archivadas de la tela; devuelve los avisos."""
         self.ensure_one()
@@ -383,11 +421,17 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                 elif self.consumo_crudo:
                     bom_kg.bom_line_ids.filtered(lambda line: line.product_id == crudo).product_qty = self.consumo_crudo
                 avisos += self._ft_poner_operaciones(bom_kg, self._ft_pasos('kg'), kg)
+                avisos += bom_kg._ft_poner_desperdicio()
+                avisos += bom_kg._ft_poner_tipo_operacion('kg')
+                bom_kg._ft_poner_consumo_flexible()
                 generadas |= bom_kg
         if tela_m:
             bom_m = Revision._ft_bom_de(tela_m)
+            # 2.25.0: la del flujo ya no lleva operación; solo una activa sin operaciones que no sea del flujo es la
+            # anterior.
             if bom_m and ('no usar' in (bom_m.code or '').lower() or (
-                    bom_m.active and not bom_m.with_context(active_test=False).operation_ids)):
+                    bom_m.active and bom_m.code != CODIGO_M
+                    and not bom_m.with_context(active_test=False).operation_ids)):
                 bom_m = Bom
             if bom_m.active:
                 avisos.append('%s: la lista en metros está activa y no se toca.' % nombre)
@@ -403,6 +447,9 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                         'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': kg_por_m,
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
+                avisos += self._ft_poner_saldos(bom_m)
+                avisos += bom_m._ft_poner_tipo_operacion('m')
+                bom_m._ft_poner_consumo_flexible()
                 generadas |= bom_m
         if generadas:
             self.env.invalidate_all()
@@ -423,3 +470,118 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'title': 'Listas desde la ruta', 'message': mensaje, 'type': 'warning' if avisos else 'success',
             'sticky': bool(avisos), 'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
+
+
+class MrpBomDesperdicioRama(models.Model):
+    _inherit = 'mrp.bom'
+
+    def _ft_poner_desperdicio(self):
+        """2.25.0: deja en la lista en kg el subproducto «Desperdicio Tejido» en la operación de Rama, con cantidad 0.
+
+        Lo pide el pesaje de desperdicio de Rama de José Sacramento (quimibond_rollos_bitacora): sin él, «PESAR
+        DESPERDICIO» se bloquea. Si ya está, solo lo vuelve a ligar a la Rama (las operaciones se rehacen al generar).
+        Devuelve los avisos."""
+        avisos = []
+        Ruta = self.env['ficha.tecnica.ruta']
+        producto = self.env['product.product'].search([('default_code', '=', DESPERDICIO_CODIGO)], limit=1)
+        for bom in self:
+            nombre = bom.product_tmpl_id.default_code or bom.product_tmpl_id.name
+            if not producto:
+                avisos.append('%s: no existe el artículo «%s» para el subproducto de Rama.' % (nombre, DESPERDICIO_CODIGO))
+                continue
+            rama = bom.with_context(active_test=False).operation_ids.filtered(
+                lambda o: Ruta._ft_paso_de_operacion(o) == 'rama').sorted(lambda o: (o.sequence, o.id))[:1]
+            if not rama:
+                avisos.append('%s: la lista en kg no tiene Rama; el desperdicio queda sin operación.' % nombre)
+            actual = bom.byproduct_ids.filtered(lambda b: b.product_id == producto)[:1]
+            if actual:
+                if actual.operation_id != rama:
+                    actual.operation_id = rama
+                continue
+            bom.byproduct_ids = [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
+                                         'product_uom_id': producto.uom_id.id, 'operation_id': rama.id or False,
+                                         'cost_share': 0.0})]
+        return avisos
+
+    @api.model
+    def _ft_tipo_operacion(self, cual, company=None):
+        """El tipo de operación de fabricación de la lista en kg (``cual='kg'``) o en metros (``'m'``), o vacío."""
+        company = company or self.env.company
+        return self.env['stock.picking.type'].search([
+            ('code', '=', 'mrp_operation'), ('sequence_code', '=', TIPO_OPERACION[cual]),
+            ('company_id', 'in', [company.id, False])], limit=1)
+
+    def _ft_poner_tipo_operacion(self, cual):
+        """2.25.0: pone el tipo de operación del flujo a las listas que no lo tienen (nunca cambia uno ya puesto).
+        Devuelve los avisos."""
+        avisos = []
+        for bom in self.filtered(lambda b: not b.picking_type_id):
+            tipo = self._ft_tipo_operacion(cual, bom.company_id or None)
+            if tipo:
+                bom.picking_type_id = tipo
+            else:
+                avisos.append('%s: no existe el tipo de operación %s para la lista en %s.' % (
+                    bom.product_tmpl_id.default_code or bom.product_tmpl_id.name, TIPO_OPERACION[cual], cual))
+        return avisos
+
+    def _ft_poner_consumo_flexible(self):
+        """2.25.0: las listas del flujo consumen en «flexible». La orden en kg se cierra con los kg pesados en Rama y el
+        crudo se consume completo (la diferencia es merma), y la de metros con los metros clasificados: con
+        «advertencia» Odoo pedía confirmar el consumo en cada cierre (piloto, 2026-11-04)."""
+        self.filtered(lambda b: b.consumption != 'flexible').write({'consumption': 'flexible'})
+
+    @api.model
+    def _ft_ruta_flujo(self, cual, company=None):
+        """La ruta que fabrica la lista del flujo: la que tiene una regla de fabricación con su tipo de operación (OP-KG,
+        «Fabricar Tela kg → Inspección (MTO)»; OP-M, «Fabricar Tela m»)."""
+        tipo = self._ft_tipo_operacion(cual, company)
+        if not tipo:
+            return self.env['stock.route']
+        regla = self.env['stock.rule'].search([('action', '=', 'manufacture'), ('picking_type_id', '=', tipo.id),
+                                               ('route_id.active', '=', True)], limit=1)
+        return regla.route_id
+
+    @api.model
+    def _ft_ruta_mto_kg(self, company=None):
+        """La ruta MTO que fabrica el acabado en kg: la que tiene una regla de fabricación con el tipo OP-KG."""
+        return self._ft_ruta_flujo('kg', company)
+
+    def _ft_poner_ruta_flujo(self, cual):
+        """2.25.0: el producto de la lista recibe la ruta del flujo y, si está en el plan maestro (MPS), esa ruta pasa a
+        ser la preferida (antes «Convertir Unidades» o «Producir Acabado», el flujo anterior)."""
+        for bom in self:
+            ruta = self._ft_ruta_flujo(cual, bom.company_id or None)
+            if not ruta:
+                continue
+            tmpl = bom.product_tmpl_id
+            if ruta not in tmpl.route_ids:
+                tmpl.route_ids = [(4, ruta.id)]
+            if 'mrp.production.schedule' in self.env:
+                planes = self.env['mrp.production.schedule'].sudo().search([
+                    ('product_id.product_tmpl_id', '=', tmpl.id), ('route_id', '!=', ruta.id)])
+                planes.write({'route_id': ruta.id})
+
+    def _ft_preparar_activacion(self):
+        """2.25.0: al activar una lista del flujo (visto bueno de Ingeniería) se completa lo que la orden necesita: tipo
+        de operación, consumo flexible, la ruta del flujo en el producto (y en su plan maestro) y, en la lista en kg, el
+        desperdicio de Rama."""
+        for bom in self:
+            if bom.code == CODIGO_KG:
+                bom._ft_poner_tipo_operacion('kg')
+                bom._ft_poner_desperdicio()
+                bom._ft_poner_ruta_flujo('kg')
+            elif bom.code == CODIGO_M:
+                bom._ft_poner_tipo_operacion('m')
+                self.env['ficha.tecnica.acabado']._ft_poner_saldos(bom)
+                bom._ft_poner_ruta_flujo('m')
+            else:
+                continue
+            bom._ft_poner_consumo_flexible()
+
+    def write(self, vals):
+        activando = self.filtered(lambda b: not b.active) if vals.get('active') else self.browse()
+        res = super().write(vals)
+        if activando:
+            activando._ft_preparar_activacion()
+        return res
+
