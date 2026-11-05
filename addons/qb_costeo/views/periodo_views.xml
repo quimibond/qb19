@@ -80,6 +80,10 @@
                         <strong>No puede cerrar:</strong>
                         <field name="bloqueos" nolabel="1"/>
                     </div>
+                    <div class="alert alert-info" role="status" invisible="not avisos_cierre">
+                        <strong>Avisos (no impiden cerrar):</strong>
+                        <field name="avisos_cierre" nolabel="1"/>
+                    </div>
                     <group>
                         <group>
                             <field name="period"/>
