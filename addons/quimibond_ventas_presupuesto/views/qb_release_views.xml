@@ -8,6 +8,7 @@
             <list string="Perfiles de release">
                 <field name="partner_id"/>
                 <field name="ship_to_id"/>
+                <field name="plant" optional="show"/>
                 <field name="supplier_code"/>
                 <field name="reader"/>
                 <field name="date_basis"/>
@@ -31,6 +32,7 @@
                         <group string="Cliente">
                             <field name="partner_id"/>
                             <field name="ship_to_id"/>
+                            <field name="plant"/>
                             <field name="supplier_code"/>
                             <field name="team_id"/>
                             <field name="sales_user_id"/>
@@ -180,7 +182,20 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Pronósticos" name="pronosticos" invisible="not forecast_ids">
+                        <page string="Pronóstico vigente" name="pronostico" invisible="not forecast_line_ids">
+                            <field name="forecast_line_ids" readonly="1">
+                                <list string="Semanas del pronóstico">
+                                    <field name="week"/>
+                                    <field name="product_id"/>
+                                    <field name="plant" optional="show"/>
+                                    <field name="qty_venta" sum="Total"/>
+                                    <field name="uom_venta"/>
+                                    <field name="qty_m" sum="Total" optional="show"/>
+                                    <field name="qty_kg" sum="Total" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Pronósticos (histórico)" name="pronosticos" invisible="not forecast_ids">
                             <field name="forecast_ids"/>
                         </page>
                     </notebook>

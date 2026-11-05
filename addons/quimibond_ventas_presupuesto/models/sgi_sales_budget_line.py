@@ -2,12 +2,12 @@
 """Línea del presupuesto de ventas (producto × mes/semana).
 
 La cabecera vive en sgi_sales_budget.py; aquí la línea con su precio de lista,
-la foto del real (facturado/comprometido/pedido), la cobertura del pronóstico
-y las guardas de captura. Se separó del archivo de la cabecera solo por tamaño
+la foto del real (facturado y pedido) y las guardas de captura. 3.0.0: el
+pronóstico ya no vive aquí (qb.forecast.line); los pronósticos viejos quedan
+como histórico de solo lectura. Se separó del archivo de la cabecera solo por tamaño
 (mismo modelo lógico); comparte los helpers _REAL_MOVE_TYPES y _convert_qty.
 """
 from collections import defaultdict
-from datetime import timedelta
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -31,24 +31,12 @@ class SgiSalesBudgetLine(models.Model):
     kind = fields.Selection(related='budget_id.kind', store=True, string="Tipo")
     product_id = fields.Many2one('product.product', string="Producto",
                                  required=True, index=True)
-    customer_code = fields.Char(
-        string="Código del cliente para el material",
-        help="Código con que el cliente identifica el material (ej. SCR31); se "
-             "imprime junto al producto en el pronóstico F-P-A28-13.")
     partner_id = fields.Many2one(
         'res.partner', string="Cliente", index=True,
         domain="[('is_company', '=', True)]",
         help="Presupuesto: vacío = producto para todo el mercado; con cliente = "
              "esa cuenta (un producto no mezcla ambos). Pronóstico: es el cliente "
              "de la cabecera (no editable).")
-    release_id = fields.Many2one(
-        'qb.release', string="Release", index=True, copy=False,
-        help="Release del cliente que escribió la cantidad de esta semana.")
-    forecast_source = fields.Selection([
-        ('manual', "Captura"),
-        ('release', "Release del cliente"),
-    ], string="Origen", default='manual', copy=False,
-        help="Pronóstico: de dónde salió la cantidad.")
     date = fields.Date(string="Mes / Semana", required=True,
                        help="Presupuesto: primer día del mes. Pronóstico: lunes "
                             "de la semana.")
@@ -103,11 +91,9 @@ class SgiSalesBudgetLine(models.Model):
                                  "unidad de esta línea.")
     amount_real = fields.Monetary(
         string="Importe real", compute='_compute_real', store=True,
-        help="Presupuesto: FACTURADO — suma de account.move.line.balance (con el "
-             "signo de out_invoice/out_refund) de las facturas del periodo "
-             "(contabilidad ya convirtió a moneda compañía; no se reconvierte). "
-             "Pronóstico: COMPROMETIDO — importe de los pedidos confirmados del "
-             "cliente cuya fecha comprometida cae en la semana.")
+        help="FACTURADO: suma de account.move.line.balance (con el signo de "
+             "out_invoice/out_refund) de las facturas del periodo (contabilidad ya "
+             "convirtió a moneda compañía; no se reconvierte).")
     unconverted_count = fields.Integer(
         string="Facturas sin convertir", compute='_compute_real', store=True)
     qty_ordered = fields.Float(string="Cantidad pedida", digits='Product Unit',
@@ -117,34 +103,11 @@ class SgiSalesBudgetLine(models.Model):
                                     "comercial, aún no necesariamente facturado.")
     amount_ordered = fields.Monetary(string="Importe pedido",
                                      compute='_compute_ordered', store=True)
-    qty_net_demand = fields.Float(
-        string="Demanda neta", digits='Product Unit',
-        compute='_compute_net_demand', store=True, aggregator='sum',
-        help="Consumo de pronóstico (forecast consumption): max(pronosticado, "
-             "comprometido). Los pedidos confirmados CONSUMEN el pronóstico de su "
-             "semana; si superan lo pronosticado, manda el pedido. Es la demanda "
-             "que se envía al Programa Maestro (no el pronóstico bruto).")
     avg_price_budget = fields.Monetary(string="Precio prom. presupuestado",
                                        compute='_compute_avg_prices')
     avg_price_real = fields.Monetary(string="Precio prom. real",
                                      compute='_compute_avg_prices')
 
-    # Cobertura del pronóstico (P-A28 4.2.2.7): comprometido (qty_real, que en el
-    # pronóstico son los pedidos confirmados por producto+cliente+semana) vs lo
-    # pronosticado. Foto: se refresca con el mismo mecanismo del real. Solo aplica
-    # a kind=pronostico; en presupuesto queda 'fuera_horizonte'/0.
-    coverage_pct = fields.Float(
-        string="Cobertura del pronóstico", compute='_compute_real', store=True,
-        help="Comprometido / pronosticado (pedidos confirmados de la semana entre "
-             "lo pronosticado). Solo pronóstico.")
-    coverage_state = fields.Selection([
-        ('cubierto', "Cubierto"),
-        ('parcial', "Parcial"),
-        ('sin_pedido', "Sin pedido"),
-        ('excedido', "Excedido"),
-        ('fuera_horizonte', "Fuera de horizonte"),
-    ], string="Estado de cobertura", default='fuera_horizonte',
-        compute='_compute_real', store=True)
     # Informativo (P-A28 4.2.2.1): lo PRONOSTICADO del mismo producto/cliente/mes
     # por los pronósticos vigentes del año. Compute NO almacenado (referencia viva
     # para el comercial); se muestra en la lista y la ficha del presupuesto.
@@ -184,13 +147,11 @@ class SgiSalesBudgetLine(models.Model):
         'unique nulls not distinct (budget_id, product_id, date, partner_id)',
         "Ya existe una línea para ese producto, mes y cliente en este presupuesto.")
 
-    @api.depends('product_id', 'date', 'uom_id', 'partner_id', 'customer_code')
+    @api.depends('product_id', 'date', 'uom_id', 'partner_id')
     def _compute_display_name(self):
         for line in self:
             product = line.product_id
             label = product.default_code or product.name or ''
-            if line.customer_code:
-                label = "%s [%s]" % (label, line.customer_code)
             uom = line.uom_id.name or ''
             name = "%s (%s)" % (label, uom) if uom else label
             if line.partner_id:
@@ -378,23 +339,10 @@ class SgiSalesBudgetLine(models.Model):
                 raise ValidationError(
                     "La fecha %s no cae dentro del año del presupuesto (%s)." % (
                         line.date, line.budget_id.year))
-            if line.budget_id.kind == 'pronostico':
-                if line.date.weekday() != 0:
-                    raise ValidationError(
-                        "En un pronóstico semanal, la fecha de la línea debe ser "
-                        "lunes de la semana (%s)." % line.date)
-            elif line.date.day != 1:
+            # Los pronósticos históricos van por semana (lunes); solo el presupuesto por mes.
+            if line.budget_id.kind == 'presupuesto' and line.date.day != 1:
                 raise ValidationError(
                     "La fecha de la línea debe ser el primer día del mes (%s)." % line.date)
-
-    @api.constrains('partner_id', 'budget_id')
-    def _check_forecast_partner(self):
-        """En pronóstico, el cliente de la línea es el de la cabecera."""
-        for line in self:
-            if line.budget_id.kind == 'pronostico' and line.partner_id != line.budget_id.partner_id:
-                raise ValidationError(
-                    "En un pronóstico, el cliente de la línea es el del pronóstico "
-                    "(%s)." % (line.budget_id.partner_id.name or ''))
 
     @api.constrains('partner_id', 'product_id', 'budget_id')
     def _check_no_mixed_scheme(self):
@@ -447,13 +395,9 @@ class SgiSalesBudgetLine(models.Model):
 
     @api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id', 'kind')
     def _compute_real(self):
-        """Presupuesto: real = FACTURADO (account.move.line). Pronóstico: real =
-        COMPROMETIDO a entregar = pedidos confirmados del cliente cuya fecha
-        comprometida (commitment_date, fallback expected_date/date_order) cae en la
-        semana. Base distinta a propósito (mide compromiso, no facturación)."""
-        forecast = self.filtered(lambda l: l.kind == 'pronostico')
-        (self - forecast)._sgi_compute_real_invoiced()
-        forecast._sgi_compute_real_committed()
+        """Real = FACTURADO (account.move.line) del mes. 3.0.0: el «comprometido» del
+        pronóstico como documento se fue; los pedidos consumen qb.forecast.line."""
+        self._sgi_compute_real_invoiced()
 
     def _sgi_compute_real_invoiced(self):
         AML = self.env['account.move.line']
@@ -471,9 +415,6 @@ class SgiSalesBudgetLine(models.Model):
             line.price_gap = 0.0
             line.price_gap_pct = 0.0
             line.price_gap_alert = 'ok'
-            # La cobertura solo aplica al pronóstico; el presupuesto queda neutral.
-            line.coverage_pct = 0.0
-            line.coverage_state = 'fuera_horizonte'
             # Agrupa por (equipo, compañía): un mismo equipo puede existir en
             # varias compañías del grupo; el real solo mide la compañía del ppto.
             if line.team_id and line.product_id and line.date:
@@ -570,165 +511,6 @@ class SgiSalesBudgetLine(models.Model):
             return price / factor
         return company_currency._convert(price, list_currency, company, day)
 
-    def _sgi_effective_monday(self, order):
-        """Lunes de la semana comprometida de un pedido: commitment_date, o
-        expected_date, o date_order."""
-        from datetime import timedelta
-        eff = order.commitment_date or order.expected_date or order.date_order
-        if not eff:
-            return False
-        eff_date = fields.Datetime.to_datetime(eff).date()
-        return eff_date - timedelta(days=eff_date.weekday())
-
-    def _sgi_forecast_sols(self):
-        """Líneas de pedido confirmadas del cliente (comercial) para el producto
-        de esta línea, cuya semana comprometida = la semana de la línea."""
-        self.ensure_one()
-        partner = self.partner_id.commercial_partner_id
-        if not partner or not self.product_id or not self.date:
-            return self.env['sale.order.line']
-        sols = self.env['sale.order.line'].search([
-            ('order_id.state', 'in', ('sale', 'done')),
-            ('product_id', '=', self.product_id.id),
-            ('order_id.partner_id.commercial_partner_id', '=', partner.id),
-            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
-        ])
-        return sols.filtered(
-            lambda s: self._sgi_effective_monday(s.order_id) == self.date)
-
-    def _sgi_compute_real_committed(self):
-        SOL = self.env['sale.order.line']
-        Param = self.env['ir.config_parameter'].sudo()
-        over_tol = float(Param.get_param(
-            'quimibond_sgi.forecast_over_tolerance_pct', 10.0) or 0)
-        horizon = int(float(Param.get_param(
-            'quimibond_sgi.forecast_capture_horizon_weeks', 3) or 1))
-        today = fields.Date.context_today(self)
-        current_monday = today - timedelta(days=today.weekday())
-        by_partner = defaultdict(lambda: self.browse())
-        for line in self:
-            line.qty_real = 0.0
-            line.amount_real = 0.0
-            line.unconverted_count = 0
-            # El control de precios es sobre lo facturado; el pronóstico no lo usa.
-            line.price_real_unit_currency = 0.0
-            line.price_gap_fx = False
-            line.price_gap = 0.0
-            line.price_gap_pct = 0.0
-            line.price_gap_alert = 'ok'
-            line.coverage_pct = 0.0
-            line.coverage_state = 'fuera_horizonte'
-            if line.partner_id and line.product_id and line.date:
-                by_partner[(line.partner_id.commercial_partner_id.id,
-                            line.company_id.id)] |= line
-        for (partner_id, company_id), lines in by_partner.items():
-            products = lines.mapped('product_id')
-            sols = SOL.search([
-                ('order_id.state', 'in', ('sale', 'done')),
-                ('product_id', 'in', products.ids),
-                ('order_id.partner_id.commercial_partner_id', '=', partner_id),
-                ('company_id', '=', company_id),  # solo la compañía del ppto
-            ])
-            bucket = defaultdict(lambda: self.env['sale.order.line'])
-            for sol in sols:
-                monday = lines[0]._sgi_effective_monday(sol.order_id)
-                if monday:
-                    bucket[(sol.product_id.id, monday)] |= sol
-            for line in lines:
-                key = (line.product_id.id, line.date)
-                qty = amount = 0.0
-                unconverted = 0
-                company = line.company_id or self.env.company
-                for sol in bucket.get(key, self.env['sale.order.line']):
-                    amount += sol.currency_id._convert(
-                        sol.price_subtotal, line.currency_id, company,
-                        sol.order_id.date_order.date())
-                    conv = _convert_qty(
-                        sol.product_uom_qty, sol.product_uom_id, line.uom_id)
-                    if conv is None:
-                        unconverted += 1
-                    else:
-                        qty += conv
-                line.qty_real = qty
-                line.amount_real = amount
-                line.unconverted_count = unconverted
-                line._sgi_set_coverage(qty, current_monday, horizon, over_tol)
-
-    def _sgi_set_coverage(self, committed, current_monday, horizon, over_tol):
-        """Estado de cobertura de una línea de pronóstico (P-A28 4.2.2.7)."""
-        self.ensure_one()
-        self.coverage_pct = (committed / self.qty_budget) if self.qty_budget else 0.0
-        last_monday = current_monday + timedelta(weeks=horizon - 1)
-        if not (current_monday <= self.date <= last_monday):
-            self.coverage_state = 'fuera_horizonte'
-        elif committed <= 0:
-            self.coverage_state = 'sin_pedido'
-        elif self.coverage_pct > 1.0 + over_tol / 100.0:
-            self.coverage_state = 'excedido'
-        elif self.coverage_pct >= 1.0:
-            self.coverage_state = 'cubierto'
-        else:
-            self.coverage_state = 'parcial'
-
-    def action_view_week_orders(self):
-        """Drill-down: los pedidos confirmados de ese producto/cliente/semana
-        (sustituye a las filas de PO/fecha del Excel)."""
-        self.ensure_one()
-        orders = self._sgi_forecast_sols().mapped('order_id')
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Pedidos de la semana — %s" % self.display_name,
-            'res_model': 'sale.order',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', orders.ids)],
-        }
-
-    def action_create_draft_quotation(self):
-        """Crea una cotización BORRADOR por el faltante (qty_budget − comprometido)
-        para cerrar la semana descubierta. NO la confirma (demanda real la genera
-        el cliente); si ya existe un borrador con ese origin para el producto/
-        semana, la reabre en vez de duplicar."""
-        self.ensure_one()
-        if self.budget_id.kind != 'pronostico':
-            raise UserError("La cotización se crea desde una línea de pronóstico.")
-        partner = self.partner_id or self.budget_id.partner_id
-        if not partner:
-            raise UserError("El pronóstico no tiene cliente.")
-        shortfall = self.qty_budget - self.qty_real
-        if shortfall <= 0:
-            raise UserError(
-                "No hay faltante en %s: los pedidos ya cubren el pronóstico." % (
-                    self.display_name))
-        from datetime import datetime, time as _time
-        origin = self.budget_id.folio or self.budget_id.name
-        SO = self.env['sale.order']
-        existing = SO.search([
-            ('state', '=', 'draft'), ('origin', '=', origin),
-            ('partner_id', '=', partner.id),
-            ('company_id', '=', self.company_id.id),  # solo la compañía del ppto
-            ('order_line.product_id', '=', self.product_id.id),
-        ]).filtered(
-            lambda o: o.commitment_date and o.commitment_date.date() == self.date)
-        order = existing[:1] or SO.create({
-            'partner_id': partner.id,
-            'origin': origin,
-            'commitment_date': datetime.combine(self.date, _time()),
-            'team_id': self.team_id.id,
-            'company_id': self.company_id.id,
-            'order_line': [(0, 0, {
-                'product_id': self.product_id.id,
-                'product_uom_qty': shortfall,
-                'product_uom_id': self.uom_id.id,
-            })],
-        })
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Cotización — %s" % self.display_name,
-            'res_model': 'sale.order',
-            'view_mode': 'form',
-            'res_id': order.id,
-        }
-
     def action_view_month_invoices(self):
         """Drill-down del presupuesto: las facturas del producto/equipo(/cliente)
         cuyo mes es el de la línea — análogo a "Ver pedidos de la semana"."""
@@ -797,11 +579,6 @@ class SgiSalesBudgetLine(models.Model):
                 line.qty_ordered = qty
                 line.amount_ordered = amount
 
-    @api.depends('qty_budget', 'qty_real')
-    def _compute_net_demand(self):
-        for line in self:
-            line.qty_net_demand = max(line.qty_budget, line.qty_real)
-
     @api.depends('amount_budget', 'qty_budget', 'amount_real', 'qty_real')
     def _compute_avg_prices(self):
         for line in self:
@@ -812,40 +589,35 @@ class SgiSalesBudgetLine(models.Model):
 
     @api.depends('product_id', 'partner_id', 'date', 'kind', 'uom_id')
     def _compute_qty_forecast(self):
-        """Suma lo pronosticado del mismo producto/cliente/mes por los pronósticos
-        vigentes (no obsoletos) del año, convertido a la unidad de esta línea.
-
-        Por lote: una search de pronósticos por (año, compañía) y un índice por
-        producto+mes — antes cada línea mostrada buscaba los pronósticos e
-        iteraba TODAS sus líneas (O(n×m) en presupuestos grandes)."""
+        """Lo pronosticado del mismo artículo/cliente/mes en el pronóstico vigente
+        (qb.forecast.line), en la unidad de esta línea. 3.0.0: antes leía los
+        pronósticos como documento. Un solo search por lote."""
         budget_lines = self.filtered(
             lambda l: l.kind == 'presupuesto' and l.product_id and l.date)
         for line in (self - budget_lines):
             line.qty_forecast = 0.0
-        # (año, company_id) -> {(product_id, mes): [líneas de pronóstico]}
-        index_cache = {}
+        if not budget_lines:
+            return
+        start = min(budget_lines.mapped('date')).replace(day=1)
+        _first, end = budget_lines[0]._sgi_month_bounds(max(budget_lines.mapped('date')))
+        articulos = budget_lines.product_id.mapped(lambda p: p.qb_articulo_id or p)
+        forecast = self.env['qb.forecast.line'].search([
+            ('company_id', 'in', budget_lines.company_id.ids), ('week', '>=', start), ('week', '<', end),
+            ('articulo_id', 'in', articulos.ids)])
+        index = defaultdict(list)
+        for fl in forecast:
+            index[(fl.company_id.id, fl.articulo_id.id, fl.week.year, fl.week.month)].append(fl)
         for line in budget_lines:
-            key = (line.budget_id.year, line.company_id.id)
-            index = index_cache.get(key)
-            if index is None:
-                index = {}
-                forecasts = self.env['sgi.sales.budget'].search([
-                    ('kind', '=', 'pronostico'),
-                    ('year', '=', key[0]),
-                    ('state', '!=', 'obsoleto'),
-                    ('company_id', '=', key[1])])
-                for fl in forecasts.line_ids:
-                    if fl.product_id and fl.date:
-                        index.setdefault(
-                            (fl.product_id.id, fl.date.month), []).append(fl)
-                index_cache[key] = index
+            articulo = line.product_id.qb_articulo_id or line.product_id
             partner = line.partner_id.commercial_partner_id
             total = 0.0
-            for fl in index.get((line.product_id.id, line.date.month), []):
+            for fl in index.get((line.company_id.id, articulo.id, line.date.year, line.date.month), []):
                 if partner and fl.partner_id.commercial_partner_id != partner:
                     continue
-                conv = _convert_qty(fl.qty_budget, fl.uom_id, line.uom_id)
-                total += conv if conv is not None else fl.qty_budget
+                conv = _convert_qty(fl.qty_venta, fl.product_id.uom_id, line.uom_id)
+                if conv is None and fl.product_id != line.product_id:
+                    conv = fl.product_id.qb_convertir(fl.qty_venta, 'venta', line.product_id._qb_sale_unit())
+                total += conv or 0.0
             line.qty_forecast = total
 
     # --- Inmutabilidad: las líneas de un presupuesto aprobado no se tocan -----
@@ -854,20 +626,13 @@ class SgiSalesBudgetLine(models.Model):
     _SGI_LOCKED_PARENT_STATES = ('aprobado',)
     _SGI_EDITABLE_FIELDS = {
         'product_id', 'date', 'uom_id', 'qty_budget', 'amount_budget', 'budget_id',
-        'price_unit_budget', 'price_source', 'partner_id', 'customer_code'}
+        'price_unit_budget', 'price_source', 'partner_id'}
 
     @api.model_create_multi
     def create(self, vals_list):
-        Budget = self.env['sgi.sales.budget']
-        for vals in vals_list:
-            if vals.get('budget_id') and not vals.get('partner_id'):
-                budget = Budget.browse(vals['budget_id'])
-                if budget.kind == 'pronostico' and budget.partner_id:
-                    vals['partner_id'] = budget.partner_id.id
         lines = super().create(vals_list)
-        # Agregar líneas a un documento 'revisado' lo regresa a borrador: el
-        # pronóstico porque es documento vivo (P-A28 4.2.2.7); el presupuesto para
-        # que Dirección no apruebe contenido distinto al que revisó el Admin.
+        # Agregar líneas a un presupuesto 'revisado' lo regresa a borrador, para que
+        # Dirección no apruebe contenido distinto al que revisó el Admin.
         lines._sgi_reopen_reviewed_parents(lines.budget_id)
         return lines
 
@@ -881,19 +646,12 @@ class SgiSalesBudgetLine(models.Model):
             return
         for budget in budgets.filtered(lambda b: b.state == 'revisado'):
             budget.with_context(sgi_bypass_lock=True).state = 'borrador'
-            if budget.kind == 'pronostico':
-                body = "Actualizado por %s, requiere revisión." % self.env.user.name
-            else:
-                body = ("Actualizado por %s tras la revisión, requiere "
-                        "re-revisión." % self.env.user.name)
-            budget.message_post(body=body)
+            budget.message_post(body="Actualizado por %s tras la revisión, requiere "
+                                     "re-revisión." % self.env.user.name)
 
     def _sgi_locked_lines(self):
-        # El pronóstico es documento vivo: SIN candado de líneas (P-A28 4.2.2.7);
-        # solo el presupuesto aprobado congela sus líneas.
-        return self.filtered(
-            lambda l: l.kind != 'pronostico'
-            and l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
+        # Solo el presupuesto aprobado congela sus líneas.
+        return self.filtered(lambda l: l.budget_id.state in self._SGI_LOCKED_PARENT_STATES)
 
     def write(self, vals):
         # El bypass por contexto solo cuenta desde sistema o MAST (el contexto
@@ -911,9 +669,8 @@ class SgiSalesBudgetLine(models.Model):
                     "crear una nueva revisión.\n\nPresupuesto(s): %s" % (
                         ", ".join(locked.mapped('budget_id.name'))))
         res = super().write(vals)
-        # Tocar campos de captura de un documento 'revisado' lo regresa a borrador
-        # (pronóstico documento vivo P-A28 4.2.2.7; presupuesto: gobernanza del
-        # revisado). Solo la edición de captura cuenta, no el refresh de la foto.
+        # Tocar campos de captura de un presupuesto 'revisado' lo regresa a borrador
+        # (gobernanza del revisado). Solo la edición de captura cuenta, no el refresh de la foto.
         if self._SGI_EDITABLE_FIELDS & set(vals):
             self._sgi_reopen_reviewed_parents(self.budget_id)
         return res

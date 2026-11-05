@@ -1,39 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Ventas → Presupuesto y pronóstico. Vivían en quimibond_sgi/views/sgi_menus.xml;
-         mismos XML IDs, así que en producción conservan su id (2438, 2434, 2435,
-         2449; E-002: documentos y actividades apuntan a 2434). Los cuatro
-         submenús de análisis (2444-2447) se juntaron en «Análisis» (1.1.0). -->
+         mismos XML IDs, así que en producción conservan su id (E-002: documentos y
+         actividades apuntan a ellos).
+
+         3.0.0 (limpieza, diseño v3): cuatro grupos.
+         - Pronóstico: lo que se usa cada semana (vigente, demanda, cambios, releases).
+         - Presupuesto: el anual y su análisis.
+         - Configuración: perfiles, partes, hojas del forecast y la carga única del Excel.
+         - Histórico: los documentos de pronóstico por cliente y año (solo lectura).
+         «menu_sale_sgi_sales_forecast» ahora abre el pronóstico vigente: el documento
+         F-P-A28-13 del SGI apunta a ese XML ID y debe llevar al pronóstico que se usa. -->
     <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
               parent="sale.sale_menu_root" sequence="6"
               groups="quimibond_sgi.group_sgi_user"/>
-    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
-    <menuitem id="menu_sale_qb_release" name="Releases de clientes"
-              parent="menu_sale_sgi_planning" action="qb_release_action" sequence="22"/>
-    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
-              parent="menu_sale_sgi_planning" action="qb_release_profile_action" sequence="24"/>
-    <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
-              parent="menu_sale_sgi_planning" action="qb_customer_part_action" sequence="25"/>
-    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_sgi_planning" action="sgi_sales_analysis_mercado_action" sequence="30"/>
-    <!-- E1 (diseño v3): pronóstico vigente, Demanda por cliente y carga del forecast de Excel. -->
-    <menuitem id="menu_sale_qb_forecast_line" name="Pronóstico vigente"
-              parent="menu_sale_sgi_planning" action="qb_forecast_line_action" sequence="15"/>
+
+    <menuitem id="menu_sale_qb_grupo_pronostico" name="Pronóstico"
+              parent="menu_sale_sgi_planning" sequence="10"/>
+    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronóstico vigente"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_action" sequence="10"/>
     <menuitem id="menu_sale_qb_demand_line" name="Demanda por cliente"
-              parent="menu_sale_sgi_planning" action="qb_demand_line_action" sequence="16"/>
+              parent="menu_sale_qb_grupo_pronostico" action="qb_demand_line_action" sequence="20"/>
     <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
-              parent="menu_sale_sgi_planning" action="qb_forecast_change_action" sequence="17"/>
-    <!-- 2.0.1 (Jose, 2026-11-05): el Excel se carga una sola vez; después el pronóstico vive en Odoo
-         (releases y matriz). El botón queda solo para el administrador del SGI. -->
-    <menuitem id="menu_sale_qb_forecast_import" name="Cargar forecast de Excel"
-              parent="menu_sale_sgi_planning" action="qb_forecast_import_action" sequence="18"
-              groups="quimibond_sgi.group_sgi_manager"/>
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_change_action" sequence="30"/>
+    <menuitem id="menu_sale_qb_release" name="Releases de clientes"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_release_action" sequence="40"/>
+
+    <menuitem id="menu_sale_qb_grupo_presupuesto" name="Presupuesto"
+              parent="menu_sale_sgi_planning" sequence="20"/>
+    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
+              parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_budget_action" sequence="10"/>
+    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
+              parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_analysis_mercado_action" sequence="20"/>
+
+    <menuitem id="menu_sale_qb_grupo_config" name="Configuración"
+              parent="menu_sale_sgi_planning" sequence="90"/>
+    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
+              parent="menu_sale_qb_grupo_config" action="qb_release_profile_action" sequence="10"/>
+    <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
+              parent="menu_sale_qb_grupo_config" action="qb_customer_part_action" sequence="20"/>
     <menuitem id="menu_sale_qb_forecast_sheet" name="Hojas del forecast"
-              parent="menu_sale_sgi_planning" action="qb_forecast_sheet_action" sequence="26"
+              parent="menu_sale_qb_grupo_config" action="qb_forecast_sheet_action" sequence="30"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+    <!-- 2.0.1 (Jose, 2026-11-05): el Excel se carga una sola vez; después el pronóstico vive en
+         Odoo (releases y captura). El menú queda solo para el administrador del SGI. -->
+    <menuitem id="menu_sale_qb_forecast_import" name="Cargar forecast de Excel"
+              parent="menu_sale_qb_grupo_config" action="qb_forecast_import_action" sequence="40"
+              groups="quimibond_sgi.group_sgi_manager"/>
+
+    <menuitem id="menu_sale_qb_grupo_historico" name="Histórico"
+              parent="menu_sale_sgi_planning" sequence="95"/>
+    <menuitem id="menu_sale_qb_forecast_line" name="Pronósticos anteriores"
+              parent="menu_sale_qb_grupo_historico" action="sgi_sales_forecast_action" sequence="10"/>
+
     <!-- Planeación lo consulta desde Fabricación, sin entrar a Ventas. -->
     <menuitem id="menu_mrp_qb_planeacion_ventas" name="Pronóstico de ventas"
               parent="mrp.menu_mrp_root" sequence="35"

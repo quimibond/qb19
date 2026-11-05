@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Releases de clientes (E1a): leer, confirmar la parte, aplicar al
-pronóstico repartido por año y recalcular el MPS sumando clientes.
+"""Releases de clientes: leer, confirmar la parte y aplicar al pronóstico vigente
+(qb.forecast.line, 3.0.0). El release ya no escribe en el Programa Maestro.
 
 Release inventado con el layout de Lear (sin datos reales)."""
 import base64
@@ -8,6 +8,7 @@ from datetime import date
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 LEAR_TEXT = "\n".join([
     "                     SUPPLIER SCHEDULE / MATERIAL RELEASE",
@@ -99,26 +100,30 @@ class TestRelease(TransactionCase):
         release.action_apply()
         self.assertEqual(release.state, 'aplicado')
 
-    def test_04_apply_splits_years_and_replaces_previous(self):
+
+    def _forecast(self, **domain):
+        dom = [('partner_id', '=', self.customer.id)] + [(k, '=', v) for k, v in domain.items()]
+        return self.env['qb.forecast.line'].search(dom)
+
+    def test_04_apply_writes_forecast_lines_and_replaces_previous(self):
         first = self._release()
         first.action_read()
         self._confirm_part()
         first.action_mark_reviewed()
         first.action_apply()
-        Budget = self.env['sgi.sales.budget']
-        fc40 = Budget.search([('kind', '=', 'pronostico'), ('partner_id', '=', self.customer.id),
-                              ('year', '=', 2040)])
-        fc41 = Budget.search([('kind', '=', 'pronostico'), ('partner_id', '=', self.customer.id),
-                              ('year', '=', 2041)])
-        self.assertTrue(fc40 and fc41, "El release cruza de año: un pronóstico por año.")
-        self.assertEqual(fc40.state, 'revisado')
-        qty40 = {ln.date: ln.qty_budget for ln in fc40.line_ids}
-        self.assertEqual(qty40, {date(2040, 12, 17): 100, date(2040, 12, 24): 200,
-                                 date(2040, 12, 31): 300})
-        # 07/01/41 cae en lunes 7-ene-2041.
-        self.assertEqual(fc41.line_ids.qty_budget, 400)
-        self.assertEqual(fc41.line_ids.release_id, first)
-        self.assertEqual(fc41.line_ids.forecast_source, 'release')
+        lines = self._forecast()
+        self.assertEqual({ln.week: ln.qty_venta for ln in lines},
+                         {date(2040, 12, 17): 100, date(2040, 12, 24): 200,
+                          date(2040, 12, 31): 300, date(2041, 1, 7): 400},
+                         "Una línea por semana, sin partir por año.")
+        self.assertEqual(set(lines.mapped('origen')), {'release'})
+        self.assertEqual(lines.release_id, first)
+        self.assertEqual(set(lines.mapped('customer_part')), {'LX00000001AA'})
+        self.assertFalse(self.env['sgi.sales.budget'].search([
+            ('kind', '=', 'pronostico'), ('partner_id', '=', self.customer.id)]),
+            "Ya no crea documentos de pronóstico por año.")
+        self.assertEqual(len(self.env['qb.forecast.change'].search([
+            ('release_id', '=', first.id)])), 4, "Cada semana nueva queda en la bitácora.")
 
         # Segundo release: ya no trae la semana del 31-dic y cambia otra.
         second_text = LEAR_TEXT.replace("Release ID: 000901", "Release ID: 000902") \
@@ -131,9 +136,50 @@ class TestRelease(TransactionCase):
         second.action_mark_reviewed()
         second.action_apply()
         self.assertEqual(first.state, 'reemplazado')
-        qty40 = {ln.date: ln.qty_budget for ln in fc40.line_ids}
-        self.assertEqual(qty40[date(2040, 12, 24)], 250)
-        self.assertEqual(qty40[date(2040, 12, 31)], 0, "La semana que desaparece queda en 0.")
+        lines = self._forecast()
+        self.assertEqual({ln.week: ln.qty_venta for ln in lines},
+                         {date(2040, 12, 17): 100, date(2040, 12, 24): 250,
+                          date(2041, 1, 7): 400}, "La semana que ya no viene se quita.")
+        self.assertEqual(lines.release_id, second)
+        removed = self.env['qb.forecast.change'].search([
+            ('partner_id', '=', self.customer.id), ('week', '=', date(2040, 12, 31)),
+            ('qty_after', '=', 0)])
+        self.assertTrue(removed, "La semana quitada queda en la bitácora.")
+
+    def test_06_apply_keeps_weeks_before_the_release_and_other_plants(self):
+        Line = self.env['qb.forecast.line']
+        old = Line.create({'company_id': self.env.company.id, 'partner_id': self.customer.id,
+                           'product_id': self.product.id, 'week': date(2040, 12, 10),
+                           'qty_origen': 50, 'origen': 'captura'})
+        other_plant = Line.create({'company_id': self.env.company.id, 'partner_id': self.customer.id,
+                                   'plant': 'Otra planta', 'product_id': self.product.id,
+                                   'week': date(2040, 12, 31), 'qty_origen': 70, 'origen': 'excel'})
+        release = self._release()
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        self.assertTrue(old.exists(), "Las semanas anteriores al release no se tocan.")
+        self.assertEqual(other_plant.qty_venta, 70, "Otra planta del cliente no se toca.")
+        self.assertEqual(len(self._forecast(plant=False)), 5)
+
+    def test_07_profile_per_plant(self):
+        self.profile.plant = 'Silao'
+        other = self.env['qb.release.profile'].create({
+            'partner_id': self.customer.id, 'plant': 'Tennessee',
+            'reader': 'lear_aiag', 'firm_rule': 'fab_auth'})
+        self.assertIn('Tennessee', other.name)
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
+            with self.env.cr.savepoint():
+                self.env['qb.release.profile'].create({
+                    'partner_id': self.customer.id, 'plant': 'Tennessee',
+                    'reader': 'lear_aiag', 'firm_rule': 'fab_auth'})
+        release = self._release()
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        self.assertEqual(set(self._forecast().mapped('plant')), {'Silao'})
 
     def test_05_delivery_basis_moves_week(self):
         self.profile.write({'date_basis': 'entrega', 'transit_days': 3})
@@ -142,61 +188,3 @@ class TestRelease(TransactionCase):
         line = release.line_ids.filtered(lambda ln: ln.date_customer == date(2040, 12, 17))
         self.assertEqual(line.date_ship, date(2040, 12, 14))
         self.assertEqual(line.week, date(2040, 12, 10))
-
-
-@tagged('post_install', '-at_install')
-class TestMpsTotals(TransactionCase):
-    """N1/N2: la celda del MPS es la suma de todos los clientes, y el
-    presupuesto solo se omite para el cliente y mes que el pronóstico cubre."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.Budget = cls.env['sgi.sales.budget']
-        cls.Line = cls.env['sgi.sales.budget.line']
-        cls.uom_m = cls.env.ref('uom.product_uom_meter')
-        cls.team = cls.env['crm.team'].create({'name': 'Industrial mps test'})
-        cls.product = cls.env['product.product'].create({
-            'name': 'Tela mps', 'default_code': 'ZZMPS', 'type': 'consu',
-            'uom_id': cls.uom_m.id})
-        cls.a = cls.env['res.partner'].create({'name': 'Cliente A mps', 'is_company': True})
-        cls.b = cls.env['res.partner'].create({'name': 'Cliente B mps', 'is_company': True})
-        cls.monday = date(2040, 6, 4)
-
-    def _forecast(self, partner, qty):
-        fc = self.Budget.create({'year': 2040, 'team_id': self.team.id,
-                                 'kind': 'pronostico', 'partner_id': partner.id})
-        self.Line.create({'budget_id': fc.id, 'product_id': self.product.id,
-                          'date': self.monday, 'uom_id': self.uom_m.id,
-                          'qty_budget': qty})
-        fc.state = 'revisado'
-        return fc
-
-    def test_01_two_customers_add_up(self):
-        self._forecast(self.a, 100)
-        self._forecast(self.b, 50)
-        demand, _omitted = self.Budget._qb_mps_totals(self.product, self.env.company)
-        self.assertEqual(demand[(self.product, self.monday)], 150)
-
-    def test_02_budget_omitted_only_for_covered_customer(self):
-        self._forecast(self.a, 100)
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        for partner, qty in ((self.a, 400), (self.b, 80)):
-            self.Line.create({'budget_id': budget.id, 'product_id': self.product.id,
-                              'partner_id': partner.id, 'date': date(2040, 6, 1),
-                              'uom_id': self.uom_m.id, 'qty_budget': qty})
-        budget.state = 'aprobado'
-        demand, omitted = self.Budget._qb_mps_totals(self.product, self.env.company)
-        self.assertEqual(omitted.partner_id, self.a)
-        total = sum(demand.values())
-        self.assertAlmostEqual(total, 100 + 80, msg="Pronóstico de A + presupuesto de B.")
-
-    def test_03_weekly_mps_splits_budget_month(self):
-        if 'manufacturing_period' not in self.env.company._fields:
-            self.skipTest("Sin mrp_mps: no hay periodo de MPS.")
-        self.env.company.manufacturing_period = 'week'
-        split = self.Budget._qb_mps_split_month(date(2040, 6, 1), 100, self.env.company)
-        # Junio 2040: lunes 4, 11, 18 y 25.
-        self.assertEqual(sorted(split), [date(2040, 6, 4), date(2040, 6, 11),
-                                         date(2040, 6, 18), date(2040, 6, 25)])
-        self.assertAlmostEqual(sum(split.values()), 100)

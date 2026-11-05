@@ -7,7 +7,7 @@ from lxml import etree
 from odoo.tests import TransactionCase, tagged
 
 FLOW = {'action_send_to_review', 'action_approve', 'action_revise',
-        'action_set_borrador', 'action_send_to_mps'}
+        'action_set_borrador'}
 
 
 def _arch(env, model, view_type, view_ref):

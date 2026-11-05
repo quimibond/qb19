@@ -12,14 +12,54 @@ propios, sin borrar datos»).
   `sgi.sales.budget.import` y el campo `budget.analytic.sgi_sales_budget_id`.
   **Conservan el nombre técnico `sgi.*`** a propósito: cambiarlo obligaba a
   renombrar tablas, columnas, XML IDs, reglas y referencias de 1,291 líneas.
-- Vistas, matriz (web_grid), reporte, análisis (4 acciones), 8 menús, 2
+- Vistas, matriz (web_grid), reporte, análisis (4 acciones), menús, 2
   reglas por empresa, 10 accesos, la secuencia `PPV-AAAA-`, el pie de
   formato `format_map_sales_budget`, los 9 parámetros `quimibond_sgi.budget_*`,
   `price_*`, `forecast_*` y `sales_budget_alert_pct` (mismas claves) y sus
   ajustes en Ajustes → SGI → Indicadores automáticos.
 - Avisos en el motor de crons del SGI (`sgi.cron`): cierre de mes (gancho
-  `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
+  `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
+
+## Limpieza: un solo pronóstico, sin MPS (19.0.3.0.0, 2026-11-05)
+
+Decisiones de Jose (2026-11-05): archivar los pronósticos viejos, desconectar
+el Programa Maestro (MPS) por ahora y reordenar los menús.
+
+- **Un solo pronóstico**: el vigente (`qb.forecast.line`). El documento por
+  cliente y año (`sgi.sales.budget` con `kind = 'pronostico'`) es histórico:
+  ya no se crea (solo con el contexto `qb_allow_old_forecast`, que usan las
+  pruebas), no se revisa ni se aprueba, y se ve de solo lectura en
+  Histórico → Pronósticos anteriores. La migración los pasa a «Obsoleto» con
+  una nota en el chatter (21 en producción).
+- **Releases**: «Aplicar» escribe en el pronóstico vigente (origen `release`)
+  por cliente, dirección de entrega o planta, producto y semana, sin partir por
+  año. Desde la primera semana del release, lo que ya no trae se quita (queda en
+  Cambios del pronóstico); lo anterior y las otras plantas no se tocan. El
+  perfil de release lleva **Planta** (un perfil por cliente y planta).
+- **Sin MPS**: se quitó el envío al Programa Maestro (botones, cálculo de
+  demanda neta, suma por cliente). La migración borra las 624 celdas que dejó
+  el envío del 2026-11-02 (17:04–17:06 UTC); las que Planeación tocó a mano se
+  quedan. Planeación ve la demanda en Fabricación → Pronóstico de ventas.
+- **Pedidos pendientes = con entrega abierta.** Pronóstico consumido, Demanda
+  por cliente y cobertura cuentan una línea de pedido solo si le queda una
+  entrega sin hacer ni cancelar. Antes bastaba con «pedido − entregado > 0»:
+  273 de los 324 «atrasados» de producción eran faltantes cerrados sin
+  backorder o productos cambiados al surtir (2026-11-05).
+  Un pedido **bloqueado** tampoco cuenta (ese día se bloquearon 223 pedidos ya
+  entregados que seguían «abiertos»).
+- **Cobertura del pronóstico** (cron semanal): sobre el pronóstico vigente,
+  semanas firmes con pronóstico sin pedido y pedidos firmes sin pronóstico, en
+  una actividad al Administrador de ventas sobre el cliente.
+- **Presupuesto**: la columna «Pronóstico» de la línea y la precarga leen el
+  pronóstico vigente del mes (por artículo). Se quitaron la importación del
+  pronóstico por Excel semanal y el campo «Código del cliente» de la línea.
+- **Menús** (mismos XML IDs): Pronóstico (vigente, Demanda por cliente,
+  Cambios, Releases), Presupuesto (Presupuestos, Análisis), Configuración
+  (Perfiles, Partes del cliente, Hojas del forecast, Cargar forecast — solo
+  administrador) e Histórico (Pronósticos anteriores). El menú 2435
+  (`menu_sale_sgi_sales_forecast`, el que cita el documento F-P-A28-13 del
+  SGI) ahora abre el pronóstico vigente.
 
 ## Mercado sin `res.partner.team_id` (19.0.2.0.3, 2026-11-05)
 
@@ -158,12 +198,10 @@ Diseño: `docs/superpowers/specs/2026-09-30-releases-pronostico-presupuesto-e0.m
 - **Releases** (`qb.release`, con partes y semanas):
   - se sube el archivo y se oprime «Leer», con los lectores de Lear (texto
     AIAG, también dentro de un .eml) y de FXI (Excel SUM);
-  - Ventas lo revisa y oprime «Aplicar»: reescribe el pronóstico del cliente
-    desde la primera semana del release, repartido por año (crea el
-    pronóstico del año siguiente si hace falta);
-  - las semanas que el release ya no trae quedan en 0;
+  - Ventas lo revisa y oprime «Aplicar» (desde 3.0.0 escribe en el
+    pronóstico vigente; ver arriba);
   - el release anterior queda «reemplazado».
-- **MPS**: cada celda producto × fecha lleva la **suma** de todos los
+- **MPS** (retirado en 3.0.0): cada celda producto × fecha lleva la **suma** de todos los
   pronósticos revisados y presupuestos aprobados de la compañía.
   - Antes el último documento enviado pisaba a los demás clientes.
   - El presupuesto solo se omite para el cliente y el mes que un pronóstico
@@ -201,7 +239,9 @@ borrador con la misma condición.
 ## Verificación después de desplegar
 
 - `sgi.sales.budget` = 4 registros (ids 4, 5, 7, 137) y 1,291 líneas.
-- Menús 2434 «Presupuestos» y 2435 «Pronósticos» con el mismo id, bajo 2438.
+- Menús 2434 «Presupuestos» y 2435 (desde 3.0.0 «Pronóstico vigente») con el mismo id.
+- Desde 3.0.0: `sgi.sales.budget` con `kind = 'pronostico'` todos en `obsoleto`;
+  `mrp.product.forecast` de los programas creados el 2026-11-02 = 0.
 - `ir.model.data` con `module = 'quimibond_ventas_presupuesto'` para
   `menu_sale_sgi_sales_budget` (res_id 2434) y `model_sgi_sales_budget`.
 
@@ -211,7 +251,9 @@ borrador con la misma condición.
 `tests/test_sales_budget_sgi.py` (multiempresa, Dirección y el cron de
 cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 `tests/test_ajustes_130.py` (mínimo propio y precio en revisado),
-`tests/test_customer_part.py` y `tests/test_release.py` (catálogo de partes,
-releases y la suma del MPS): corren en el build de Odoo.sh con
+`tests/test_customer_part.py`, `tests/test_release.py` (catálogo de partes y
+releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
+pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
+pronósticos viejos): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

@@ -49,55 +49,49 @@ class SgiCronSalesBudget(models.AbstractModel):
 
     @api.model
     def cron_forecast_coverage(self):
-        """Cron semanal (lunes): por cada pronóstico vigente/revisado, agrupa las
-        líneas descubiertas EN HORIZONTE y los pedidos fuera de pronóstico, y crea
-        UNA actividad al coordinador con el resumen. Idempotente (dedup por
-        resumen). No aplica a presupuestos (P-A28 4.2.2.7)."""
+        """Cron semanal (P-A28 4.2.2.7), 3.0.0 sobre el pronóstico vigente: por cliente,
+        las semanas FIRMES con pronóstico sin pedido (qb.forecast.line.qty_neta) y los
+        pedidos de las semanas firmes que no tienen pronóstico (qb.demand.line), en UNA
+        actividad al Administrador de ventas sobre el cliente. Idempotente por clave."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
+        Forecast = self.env['qb.forecast.line']
+        Forecast.action_qb_refresh()
+        self.env['qb.demand.line'].action_qb_rebuild()
+        user_id = self._sgi_sales_admin_user_id()
 
         def _fmt(value):
             return '{:,.0f}'.format(value or 0)
-        Budget = self.env['sgi.sales.budget']
-        Line = self.env['sgi.sales.budget.line']
+        firm = Forecast.search([('zona', '=', 'firme'), ('qty_neta', '>', 0)])
+        firm_keys = {(l.partner_id.id, l.articulo_id.id, l.week) for l in Forecast.search([('zona', '=', 'firme')])}
+        orphans = self.env['qb.demand.line'].search([('tipo', '=', 'pedido'), ('zona', '=', 'firme')]).filtered(
+            lambda d: (d.partner_id.id, d.articulo_id.id, d.week) not in firm_keys)
+        partners = firm.partner_id | orphans.partner_id
 
-        def _process(budget):
-            budget.action_refresh_actuals()  # cobertura con el horizonte de hoy
-            uncovered = budget.line_ids.filtered(
-                lambda l: l.coverage_state in ('sin_pedido', 'parcial'))
-            orphans = budget._sgi_orders_without_forecast()
-            if not uncovered and not orphans:
-                return
-            user_id = budget.team_id.user_id.id or self._sgi_sales_admin_user_id()
+        def _process(partner):
             if not user_id:
                 return
             parts = []
-            if uncovered:
-                rows = ["%s · %s: pronosticado %s, comprometido %s, faltante %s %s" % (
-                    l.product_id.default_code or l.product_id.name, l.date,
-                    _fmt(l.qty_budget), _fmt(l.qty_real),
-                    _fmt(l.qty_budget - l.qty_real), l.uom_id.name or '')
-                    for l in uncovered.sorted(
-                        lambda x: (x.date, x.product_id.default_code or ''))]
-                parts.append("Semanas descubiertas:\n- " + "\n- ".join(rows))
-            if orphans:
-                rows = ["Pedido sin pronóstico: %s · %s (%s) — agrégalo al pronóstico" % (
-                    sol.product_id.default_code or sol.product_id.name,
-                    Line._sgi_effective_monday(sol.order_id), sol.order_id.name)
-                    for sol in orphans.sorted(
-                        lambda s: s.product_id.default_code or '')]
+            mine = firm.filtered(lambda l: l.partner_id == partner)
+            if mine:
+                rows = ["%s · semana %s: pronóstico %s, pedido %s, sin pedido %s %s" % (
+                    l.product_id.default_code or l.product_id.name, l.week, _fmt(l.qty_venta),
+                    _fmt(l.qty_pedido), _fmt(l.qty_neta), l.uom_venta or '')
+                    for l in mine.sorted(lambda x: (x.week, x.product_id.default_code or ''))]
+                parts.append("Semanas firmes sin pedido:\n- " + "\n- ".join(rows))
+            extra = orphans.filtered(lambda d: d.partner_id == partner)
+            if extra:
+                rows = ["Pedido sin pronóstico: %s · semana %s (%s)" % (
+                    d.product_id.default_code or d.product_id.name, d.week, d.order_id.name or '')
+                    for d in extra.sorted(lambda x: (x.week, x.product_id.default_code or ''))]
                 parts.append("Pedidos fuera de pronóstico:\n- " + "\n- ".join(rows))
-            self._sgi_schedule(
-                budget,
-                "Cobertura del pronóstico %s (P-A28 4.2.2.7)" % (
-                    budget.partner_id.name or budget.name),
-                "\n\n".join(parts), user_id,
-                date_deadline=fields.Date.context_today(self) + relativedelta(days=7),
-                key='cobertura_pronostico')
-
-        budgets = Budget.search([('kind', '=', 'pronostico'),
-                                 ('state', '!=', 'obsoleto')])
-        failures = self._sgi_for_each(budgets, _process, "cobertura del pronóstico")
+            if parts:
+                self._sgi_schedule(
+                    partner, "Cobertura del pronóstico %s (P-A28 4.2.2.7)" % partner.name,
+                    "\n\n".join(parts), user_id,
+                    date_deadline=fields.Date.context_today(self) + relativedelta(days=7),
+                    key='cobertura_pronostico')
+        failures = self._sgi_for_each(partners, _process, "cobertura del pronóstico")
         self._sgi_sweep(['cobertura_pronostico'], "el pronóstico ya está cubierto", failures)
         return True
 
