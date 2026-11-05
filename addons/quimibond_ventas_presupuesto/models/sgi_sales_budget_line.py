@@ -200,6 +200,16 @@ class SgiSalesBudgetLine(models.Model):
         string="Desviación de precio", currency_field='price_currency_id',
         compute='_compute_real', store=True,
         help="Precio real menos precio presupuestal, en la moneda del precio presupuestal.")
+    # 3.6.2: análisis de la diferencia del renglón (presupuesto contra lo facturado que cae en
+    # él): volumen = (cantidad real − presupuestada) × precio presupuestal × TC presupuestal;
+    # precio = (precio real − presupuestal) × cantidad real × TC presupuestal; tipo de cambio =
+    # lo facturado en pesos − lo facturado a TC presupuestal. Suman facturado − presupuesto.
+    effect_volume = fields.Monetary(string="Efecto volumen", compute='_compute_effects', store=True,
+                                    currency_field='currency_id')
+    effect_price = fields.Monetary(string="Efecto precio", compute='_compute_effects', store=True,
+                                   currency_field='currency_id')
+    effect_fx = fields.Monetary(string="Efecto tipo de cambio", compute='_compute_effects', store=True,
+                                currency_field='currency_id')
     price_gap_pct = fields.Float(
         string="Desviación de precio (%)", compute='_compute_real', store=True)
     price_gap_alert = fields.Selection([
@@ -659,6 +669,23 @@ class SgiSalesBudgetLine(models.Model):
                 line.unconverted_count = unconverted
                 line._sgi_set_price_gap(qty, amount, amt_list, qty_list,
                                         any_non_list, day, tol, grave)
+
+    @api.depends('amount_budget', 'amount_real', 'qty_real', 'price_real_unit_currency', 'price_input',
+                 'rate', 'qty_budget', 'qty_m', 'qty_kg', 'price_basis')
+    def _compute_effects(self):
+        for line in self:
+            factor = line._qb_basis_factor()
+            rate = line.rate or 1.0
+            qty_real = line.qty_real * factor
+            qty_budget = line.qty_budget * factor
+            if line.price_input > 0 and factor and qty_real > 0 and line.price_real_unit_currency:
+                volume = (qty_real - qty_budget) * line.price_input * rate
+                price = (line.price_real_unit_currency - line.price_input) * qty_real * rate
+                fx = line.amount_real - line.price_real_unit_currency * qty_real * rate
+            else:
+                # Sin venta (o sin precio o conversión): todo es volumen.
+                volume, price, fx = line.amount_real - line.amount_budget, 0.0, 0.0
+            line.effect_volume, line.effect_price, line.effect_fx = volume, price, fx
 
     def _qb_basis_factor(self):
         """Cuánto vale una unidad del renglón en la base del precio (1 para la unidad del

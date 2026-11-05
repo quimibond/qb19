@@ -10,7 +10,6 @@
                   decoration-danger="price_problem">
                 <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
                 <field name="kind" column_invisible="1"/>
-                <field name="price_gap_alert" column_invisible="1"/>
                 <field name="mercado"/>
                 <field name="partner_id" optional="show"/>
                 <field name="product_id"/>
@@ -37,6 +36,9 @@
                 <field name="price_gap_pct" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show" sum="Total"/>
                 <field name="amount_real" readonly="1" optional="show" sum="Total"/>
+                <field name="effect_volume" readonly="1" optional="hide" sum="Total"/>
+                <field name="effect_price" readonly="1" optional="show" sum="Total"/>
+                <field name="effect_fx" readonly="1" optional="hide" sum="Total"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide" sum="Total"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
@@ -198,8 +200,6 @@
                 <separator/>
                 <filter name="con_facturacion" string="Con facturación"
                         domain="[('amount_real', '!=', 0)]"/>
-                <filter name="price_out_of_tolerance" string="Precio fuera de tolerancia"
-                        domain="[('price_gap_alert', 'in', ('leve', 'grave'))]"/>
                 <filter name="sin_precio_lista" string="Sin precio de lista"
                         domain="[('has_list_price', '=', False)]"/>
                 <filter name="con_problema" string="Cuentan 0 (sin precio, tipo de cambio o conversión)"
@@ -214,7 +214,6 @@
                     <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
                     <filter name="group_budget" string="Presupuesto" context="{'group_by': 'budget_id'}"/>
                     <filter name="group_uom" string="Unidad" context="{'group_by': 'uom_id'}"/>
-                    <filter name="group_price_alert" string="Alerta de precio" context="{'group_by': 'price_gap_alert'}"/>
                 </group>
             </search>
         </field>
@@ -254,12 +253,6 @@
                         <button name="action_open_analysis" type="object"
                                 class="oe_stat_button" icon="fa-table"
                                 string="Análisis" invisible="kind != 'presupuesto'"/>
-                        <button name="action_view_price_deviations" type="object"
-                                class="oe_stat_button" icon="fa-exclamation-triangle"
-                                invisible="price_deviation_count == 0">
-                            <field name="price_deviation_count" widget="statinfo"
-                                   string="Desviaciones de precio"/>
-                        </button>
                     </div>
                     <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
                             invisible="state != 'obsoleto'"/>
@@ -351,6 +344,21 @@
                             <field name="amount_real_total"/>
                             <field name="amount_real_unbudgeted"/>
                             <field name="amount_ordered_total"/>
+                        </group>
+                    </group>
+                    <!-- 3.6.2: por qué la venta no da el presupuesto (al corte), la práctica de análisis de
+                         variaciones: volumen, precio (en la moneda de venta), tipo de cambio y venta sin
+                         presupuesto. Suman la diferencia venta − presupuesto. -->
+                    <group string="Diferencia contra el presupuesto al corte">
+                        <group>
+                            <field name="amount_difference"/>
+                            <field name="effect_volume"/>
+                            <field name="effect_price"/>
+                            <field name="fx_effect"/>
+                            <field name="effect_unbudgeted"/>
+                        </group>
+                        <group>
+                            <field name="effects_by_mercado_text"/>
                         </group>
                     </group>
                     <group string="Cantidades">
@@ -691,6 +699,10 @@
                 <field name="amount_budget" type="measure"/>
                 <field name="amount_real" type="measure"/>
                 <field name="amount_ordered" type="measure"/>
+                <!-- 3.6.2 -->
+                <field name="effect_volume" type="measure"/>
+                <field name="effect_price" type="measure"/>
+                <field name="effect_fx" type="measure"/>
             </pivot>
         </field>
     </record>
