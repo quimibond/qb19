@@ -8,7 +8,7 @@ y en metros y kilos, con el origen de la conversión. Cada cambio deja una fila
 en ``qb.forecast.change``.
 
 Sustituye al pronóstico como documento (``sgi.sales.budget`` con
-``kind='pronostico'``), que se queda como histórico hasta la migración de E1b.
+``kind='pronostico'``), que desde 3.0.0 es histórico: obsoleto y de solo lectura.
 """
 from collections import defaultdict
 from datetime import timedelta

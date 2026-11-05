@@ -3,7 +3,7 @@
 Excel y Demanda por cliente. Datos inventados en 2040 (no chocan con producción)."""
 import base64
 import io
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import openpyxl
 
@@ -172,3 +172,36 @@ class TestForecastE1(TransactionCase):
         lines = self.env['qb.forecast.line'].search([('partner_id', '=', self.customer.id)])
         self.assertEqual(sorted(lines.mapped('plant')), ['ZZCLIENTE E1 NORTE', 'ZZCLIENTE E1 SUR'])
         self.assertEqual(sorted(lines.mapped('qty_origen')), [100.0, 200.0])
+
+    # --- 3.0.0: cobertura sobre el pronóstico vigente y pronósticos viejos ----
+    def test_07_cobertura_semana_firme_sin_pedido(self):
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        week = today - timedelta(days=today.weekday()) + timedelta(weeks=1)
+        self.env['qb.forecast.line'].create({
+            'partner_id': self.customer.id, 'product_id': self.tela_m.id, 'week': week,
+            'qty_origen': 700.0})
+        Cron = self.env['sgi.cron']
+        Cron.cron_forecast_coverage()
+        Activity = self.env['mail.activity']
+        domain = [('res_model', '=', 'res.partner'), ('res_id', '=', self.customer.id),
+                  ('summary', 'ilike', 'Cobertura del pronóstico')]
+        acts = Activity.search(domain)
+        self.assertEqual(len(acts), 1, "Una actividad por cliente con semanas firmes sin pedido.")
+        self.assertIn('ZJ038Q22JNT160', acts.note or '')
+        Cron.cron_forecast_coverage()
+        self.assertEqual(len(Activity.search(domain)), 1, "La segunda corrida no duplica.")
+
+    def test_08_pronostico_viejo_no_se_crea(self):
+        from odoo.exceptions import UserError
+        team = self.env['crm.team'].create({'name': 'Mercado E1 viejo'})
+        Budget = self.env['sgi.sales.budget']
+        with self.assertRaises(UserError):
+            Budget.create({'year': 2040, 'team_id': team.id, 'kind': 'pronostico',
+                           'partner_id': self.customer.id})
+        old = Budget.with_context(qb_allow_old_forecast=True).create({
+            'year': 2040, 'team_id': team.id, 'kind': 'pronostico', 'partner_id': self.customer.id})
+        with self.assertRaises(UserError):
+            old.action_send_to_review()
+        self.assertTrue(Budget.create({'year': 2040, 'team_id': team.id}),
+                        "El presupuesto se sigue creando normal.")

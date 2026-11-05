@@ -191,47 +191,6 @@ class SgiSalesBudgetImport(models.TransientModel):
         except (TypeError, ValueError):
             return 0.0
 
-    @staticmethod
-    def _as_int(value):
-        try:
-            return int(float(str(value).replace(',', '').strip()))
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _week_monday(year, week):
-        """Lunes de la semana `week` (1..52): primer lunes del año + (week-1)."""
-        from datetime import timedelta
-        jan1 = date(year, 1, 1)
-        first_monday = jan1 + timedelta(days=(7 - jan1.weekday()) % 7)
-        return first_monday + timedelta(weeks=week - 1)
-
-    def _parse_forecast_header(self, ws):
-        """Ubica la fila 'SEMANA' y mapea número de semana → columna."""
-        header_row = None
-        max_r = min(ws.max_row or 0, 40)
-        max_c = min(ws.max_column or 0, 120)
-        for r in range(1, max_r + 1):
-            for c in range(1, max_c + 1):
-                if 'semana' in _norm(ws.cell(r, c).value):
-                    header_row = r
-                    break
-            if header_row:
-                break
-        if not header_row:
-            raise UserError(
-                "No se encontró la fila de semanas (debe haber una celda "
-                "'SEMANA'). ¿Es la hoja del forecast (F-P-A28-13)?")
-        week_cols = {}
-        for c in range(1, (ws.max_column or 0) + 1):
-            w = self._as_int(ws.cell(header_row, c).value)
-            if w and 1 <= w <= 53:
-                week_cols[w] = c
-        if not week_cols:
-            raise UserError(
-                "No se reconocieron columnas de semana (números 1–52 en la fila "
-                "'SEMANA').")
-        return header_row, week_cols
 
     def _resolve_uom(self, unit_text, product, warnings):
         """Unidad de la columna UNIDAD (validando categoría) o la de venta."""
@@ -262,13 +221,12 @@ class SgiSalesBudgetImport(models.TransientModel):
         if not name or name not in wb.sheetnames:
             raise UserError("La hoja '%s' no existe en el archivo." % (name or ''))
         ws = wb[name]
-        # Errores ESTRUCTURALES abortan todo (dentro del savepoint). El layout se
-        # elige por el tipo del presupuesto (mensual F-P-A28-18 / semanal A28-13).
+        if budget.kind != 'presupuesto':
+            raise UserError("Solo se importa sobre un presupuesto (el pronóstico se carga en "
+                            "Pronóstico vigente).")
+        # Errores ESTRUCTURALES abortan todo (dentro del savepoint). Layout F-P-A28-18.
         with self.env.cr.savepoint():
-            if budget.kind == 'pronostico':
-                imported, unmatched, warnings = self._import_forecast(ws, budget)
-            else:
-                imported, unmatched, warnings = self._import_monthly(ws, budget)
+            imported, unmatched, warnings = self._import_monthly(ws, budget)
             budget.message_post(body=self._result_body(
                 imported, unmatched, warnings))
         self.result = self._result_body(imported, unmatched, warnings, html=False)
@@ -338,53 +296,7 @@ class SgiSalesBudgetImport(models.TransientModel):
                             "importes se calculan de la lista de precios.")
         return imported, unmatched, warnings
 
-    def _import_forecast(self, ws, budget):
-        """Layout forecast.xlsx (F-P-A28-13): fila 'SEMANA' con números 1–52,
-        producto en col A y código de cliente en col B. Los bloques repetidos del
-        mismo producto (oleadas de PO) se SUMAN por semana; las filas PO/TOTAL/
-        FECHA (o producto vacío) se ignoran."""
-        header_row, week_cols = self._parse_forecast_header(ws)
-        unmatched, warnings = [], []
-        # Acumula por producto: {product: {'code':.., 'weeks':{w: qty}}}.
-        acc = {}
-        for r in range(header_row + 1, (ws.max_row or header_row) + 1):
-            ref = ws.cell(r, 1).value
-            norm = _norm(ref)
-            if not norm or norm == 'po' or 'total' in norm or 'fecha' in norm:
-                continue  # filas PO / total / fecha de entrega
-            product = self._match_product(ref)
-            if not product:
-                unmatched.append(str(ref).strip())
-                continue
-            code = ws.cell(r, 2).value
-            code = str(code).strip() if code not in (None, '') else False
-            entry = acc.setdefault(product.id, {
-                'product': product, 'code': code, 'weeks': {}})
-            if code and not entry['code']:
-                entry['code'] = code
-            for week, col in week_cols.items():
-                val = self._as_number(ws.cell(r, col).value)
-                if val > 0:
-                    entry['weeks'][week] = entry['weeks'].get(week, 0.0) + val
-        imported = 0
-        cleared = set()
-        for entry in acc.values():
-            product = entry['product']
-            if self.conflict_mode == 'replace' and product.id not in cleared:
-                budget.line_ids.filtered(
-                    lambda l: l.product_id == product).unlink()
-                cleared.add(product.id)
-            for week, qty in entry['weeks'].items():
-                monday = self._week_monday(budget.year, week)
-                if self._upsert_line(
-                        budget, product, monday, product.uom_id,
-                        budget.partner_id.id, qty, warnings,
-                        customer_code=entry['code']):
-                    imported += 1
-        return imported, unmatched, warnings
-
-    def _upsert_line(self, budget, product, line_date, uom, partner_id, qty,
-                     warnings, customer_code=None):
+    def _upsert_line(self, budget, product, line_date, uom, partner_id, qty, warnings):
         """Crea/suma una línea (SOLO cantidad; el precio/importe lo pone la lista).
         Errores de datos (unidad, esquema mixto, semana fuera de año) se reportan y
         NO abortan la hoja (savepoint por línea)."""
@@ -403,8 +315,6 @@ class SgiSalesBudgetImport(models.TransientModel):
                     'date': line_date, 'uom_id': uom.id,
                     'partner_id': partner_id or False, 'qty_budget': qty,
                 }
-                if customer_code:
-                    vals['customer_code'] = customer_code
                 Line.create(vals)
                 return True
         except (ValidationError, UserError) as exc:
