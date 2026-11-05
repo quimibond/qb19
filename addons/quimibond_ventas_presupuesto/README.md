@@ -29,6 +29,13 @@ borrador): los renglones con lista en dólares y precio presupuestal en pesos
 para todos los meses», que queda en los 12 meses. El importe no cambia (salvo
 redondeo) y la desviación de precio deja de mezclar el tipo de cambio.
 
+Práctica de presupuesto en varias monedas: precio en la moneda de venta, un
+tipo de cambio presupuestal (por mes si hace falta, congelado al aprobar), la
+desviación de precio en la moneda de venta, y el cumplimiento de dos formas: a
+tipo de cambio real (el contable, el del VE-02) y **a TC presupuestal** (lo
+facturado en dólares por el TC del mes del presupuesto). La diferencia es el
+**efecto del tipo de cambio**.
+
 ## PDF y Excel del presupuesto y del pronóstico (19.0.3.6.0, 2026-11-05)
 
 - **Presupuesto** (ficha → Imprimir, y engrane → «Descargar Excel»): resumen por
