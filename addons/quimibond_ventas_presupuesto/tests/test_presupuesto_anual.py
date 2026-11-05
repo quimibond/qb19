@@ -367,6 +367,9 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertAlmostEqual(budget.effect_price, 200.0, places=2)
         self.assertAlmostEqual(budget.effect_volume + budget.effect_price + budget.fx_effect
                                + budget.effect_unbudgeted, budget.amount_difference, places=2)
+        # 3.6.3: el renglón del mercado suma igual que el total.
+        self.assertIn("= volumen 0 + precio 200 + TC 0 + sin presupuesto 0",
+                      budget.effects_by_mercado_text)
 
     def test_17_pdf_y_excel_del_presupuesto(self):
         """3.6.0: resumen por mercado y detalle; el PDF se genera y el Excel se descarga."""

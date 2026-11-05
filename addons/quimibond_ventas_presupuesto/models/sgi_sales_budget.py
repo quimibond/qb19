@@ -464,14 +464,16 @@ class SgiSalesBudget(models.Model):
             for line in budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff):
                 planned[MERCADO_BASE.get(line.mercado)] += line.amount_budget
             sold = defaultdict(float)
-            at_budget_rate = 0.0
+            sold_budget_rate = defaultdict(float)
             company_ccy = budget.currency_id
             for aml in budget._qb_sales_lines(date_to=cutoff):
-                sold[team_mercado(self.env, aml.move_id.team_id)] -= aml.balance
+                mercado = team_mercado(self.env, aml.move_id.team_id)
+                sold[mercado] -= aml.balance
                 factor = 0.0
                 if aml.currency_id and aml.currency_id != company_ccy:
                     factor = budget._qb_fx_factor(aml.currency_id, aml.move_id.invoice_date.month)
-                at_budget_rate += (-aml.amount_currency * factor) if factor else -aml.balance
+                sold_budget_rate[mercado] += (-aml.amount_currency * factor) if factor else -aml.balance
+            at_budget_rate = sum(sold_budget_rate.values())
             budget.amount_budget_to_date = sum(planned.values())
             budget.amount_sales_to_date = sum(sold.values())
             budget.amount_sales_budget_rate = at_budget_rate
@@ -487,16 +489,22 @@ class SgiSalesBudget(models.Model):
             budget.effect_price = sum(lines.mapped('effect_price'))
             budget.effect_unbudgeted = (budget.amount_difference - budget.effect_volume
                                         - budget.effect_price - budget.fx_effect)
+            # 3.6.3: cada mercado suma exacto como el total: el TC es el de toda su venta
+            # (también la que no tiene renglón) y lo que queda es venta sin presupuesto.
             rows = []
+            fmt = '{:,.0f}'.format
             for base in ('industrial', 'confeccion', 'especiales'):
                 mine = lines.filtered(lambda l, b=base: MERCADO_BASE.get(l.mercado) == b)
                 if not mine and not sold.get(base):
                     continue
-                rows.append("%s: venta − presupuesto %s · volumen %s · precio %s · TC %s" % (
-                    labels[base], '{:,.0f}'.format(sold.get(base, 0.0) - planned.get(base, 0.0)),
-                    '{:,.0f}'.format(sum(mine.mapped('effect_volume'))),
-                    '{:,.0f}'.format(sum(mine.mapped('effect_price'))),
-                    '{:,.0f}'.format(sum(mine.mapped('effect_fx')))))
+                diff = sold.get(base, 0.0) - planned.get(base, 0.0)
+                volume = sum(mine.mapped('effect_volume'))
+                price = sum(mine.mapped('effect_price'))
+                fx = sold.get(base, 0.0) - sold_budget_rate.get(base, 0.0)
+                rows.append("%s: venta − presupuesto %s = volumen %s + precio %s + TC %s"
+                            " + sin presupuesto %s" % (
+                                labels[base], fmt(diff), fmt(volume), fmt(price), fmt(fx),
+                                fmt(diff - volume - price - fx)))
             budget.effects_by_mercado_text = "\n".join(rows)
             parts = []
             for base in ('industrial', 'confeccion', 'especiales'):

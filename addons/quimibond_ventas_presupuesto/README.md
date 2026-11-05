@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Cada mercado suma igual que el total (19.0.3.6.3, 2026-11-05)
+
+«Diferencia por mercado» mostraba el tipo de cambio de los renglones y no la venta sin
+presupuesto, así que los mercados no llegaban al total (en la REV2 faltaban 205 mil de tipo de
+cambio de venta sin renglón). Ahora cada mercado se lee
+`venta − presupuesto = volumen + precio + TC + sin presupuesto`: el TC es el de toda la venta del
+mercado y lo que queda es venta sin presupuesto a tipo de cambio del presupuesto. La suma de los
+mercados es la del encabezado.
+
 ## Diferencia por volumen, precio y tipo de cambio (19.0.3.6.2, 2026-11-05)
 
 Las alertas de precio por renglón y mes (contador «Desviaciones de precio»,
