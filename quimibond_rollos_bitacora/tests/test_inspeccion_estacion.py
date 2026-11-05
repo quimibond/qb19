@@ -646,9 +646,9 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg2.with_user(operador).button_mark_done()
         self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
 
-    def test_29_no_cierra_con_quimico_sin_existencia(self):
-        """3.3.3: la orden en kg con rollos de Rama no cierra si a un químico (o engomado) le falta existencia para su
-        consumo teórico; con la existencia, cierra."""
+    def test_29_quimico_faltante_avisa_y_no_bloquea(self):
+        """3.3.4: si a un químico o al engomado le falta existencia para su consumo teórico, la orden en kg cierra con lo
+        que hay y deja una nota y una actividad con el faltante (el crudo es el único que bloquea)."""
         quimico = self.env['product.product'].create({
             'name': 'Engomado ZZ951', 'default_code': 'ENGZZ951', 'type': 'consu', 'is_storable': True,
             'uom_id': self.kg.id})
@@ -658,13 +658,27 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         orden_kg.action_assign()
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
-        with self.assertRaises(UserError) as error:
-            orden_kg.button_mark_done()
-        self.assertIn('ENGZZ951', str(error.exception))
-        self.assertNotEqual(orden_kg.state, 'done')
-        self.env['stock.quant']._update_available_quantity(quimico, stock, 10.0)
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done', "El faltante de químico no detiene el cierre")
+        self.assertEqual(orden_m.state, 'done')
+        consumo = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico and m.state == 'done')
+        self.assertAlmostEqual(sum(consumo.mapped('quantity')), 2.0, delta=0.01, msg="Se consumió lo que había")
+        nota = orden_kg.message_ids.filtered(lambda m: 'ENGZZ951' in (m.body or ''))
+        self.assertTrue(nota, "La orden deja la nota con el faltante")
+        actividad = self.env['mail.activity'].search([('res_model', '=', 'mrp.production'), ('res_id', '=', orden_kg.id)])
+        self.assertTrue(actividad.filtered(lambda a: 'Faltante' in (a.summary or '')), "Queda la actividad para Almacén")
+
+    def test_30_sin_faltante_no_hay_aviso(self):
+        """3.3.4: con la existencia completa no se deja nota ni actividad de faltante."""
+        quimico = self.env['product.product'].create({
+            'name': 'Engomado ZZ952', 'default_code': 'ENGZZ952', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id})
+        self.bom_kg.write({'bom_line_ids': [Command.create({'product_id': quimico.id, 'product_qty': 0.04})]})
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(quimico, stock, 20.0)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         orden_kg.action_assign()
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
-        consumo = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico)
-        self.assertAlmostEqual(sum(consumo.mapped('quantity')), 169.6 * 0.04, delta=0.01)
+        self.assertFalse(orden_kg.message_ids.filtered(lambda m: 'Faltante de componentes' in (m.subject or '')))

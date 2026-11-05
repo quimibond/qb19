@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from markupsafe import Markup
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
 
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
+PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
 
 
 class MrpProduction(models.Model):
@@ -215,30 +218,43 @@ class MrpProduction(models.Model):
                     '%(m)s %%. Captura el consumo real del crudo antes de cerrar.', o=orden.name, c=consumido,
                     pct=consumido / planeado * 100.0, pl=planeado, m=minimo))
 
-    def _validar_componentes_completos(self):
-        """3.3.3 (Dirección, 2026-11-05): la orden en kg con rollos de Rama no cierra si a un componente con inventario
-        (químicos, colorantes, engomado, agua) le falta consumo contra lo planeado: los químicos se consumen teóricos desde
-        2 PRODUCCIÓN, así que un consumo menor solo pasa cuando no hay existencia (en main, engomado 0.75 de 3.22 kg) y el
-        costo saldría corto. El crudo tiene su propia regla (``_validar_consumo_crudo``)."""
+    def _avisar_componentes_faltantes(self):
+        """3.3.4 (Dirección, 2026-11-05): químicos, colorantes, engomado y agua se descuentan con la cantidad teórica y su
+        existencia en Odoo es una estimación (el agua no se mide), así que un faltante no detiene el cierre: la orden en kg
+        cierra con lo que hay y deja una nota en la orden y una actividad para Almacén (requisición o ajuste); el conteo
+        periódico corrige la diferencia. Solo el crudo bloquea (``_validar_consumo_crudo``)."""
+        usuario_param = (self.env['ir.config_parameter'].sudo().get_param(PARAM_USUARIO_FALTANTES) or '').strip()
+        usuario_avisos = self.env['res.users'].search([('login', '=', usuario_param)], limit=1) if usuario_param else False
         for orden in self.filtered('rollo_bitacora_ids'):
             crudo = orden._moves_crudo()
             faltan = []
             for move in orden.move_raw_ids - crudo:
                 if move.state in ('done', 'cancel') or not move.product_id.is_storable:
                     continue
+                # Lo que sí está apartado se consume: sin «picked», Odoo cancelaría el consumo parcial al cerrar.
+                if not move.picked and move.product_uom.compare(move.quantity, 0) > 0:
+                    move.picked = True
                 consumido = move.quantity if move.picked else 0.0
                 if move.product_uom.compare(consumido, move.product_uom_qty) < 0:
-                    faltan.append(_('%(p)s: %(c)s de %(d)s %(u)s', p=move.product_id.display_name,
-                                    c=round(consumido, 4), d=round(move.product_uom_qty, 4), u=move.product_uom.name))
-            if faltan:
-                raise UserError(_(
-                    'La orden %(o)s no puede cerrar: faltan componentes por consumir (sin existencia en %(l)s). Surte el '
-                    'faltante (requisición) y vuelve a reservar antes de cerrar:\n%(f)s',
-                    o=orden.name, l=orden.location_src_id.display_name, f='\n'.join(faltan)))
+                    faltan.append(_('%(p)s: faltaron %(f)s %(u)s (se consumió %(c)s de %(d)s)',
+                                    p=move.product_id.display_name, u=move.product_uom.name,
+                                    f=round(move.product_uom_qty - consumido, 4), c=round(consumido, 4),
+                                    d=round(move.product_uom_qty, 4)))
+            if not faltan:
+                continue
+            titulo = _('Faltante de componentes al cerrar %s', orden.name)
+            nota = Markup('<p>%s</p><ul>%s</ul><p>%s</p>') % (
+                _('La orden cerró con lo que había en existencia en %s; el costo de esta orden queda corto en estos '
+                  'componentes:', orden.location_src_id.display_name),
+                Markup('').join(Markup('<li>%s</li>') % linea for linea in faltan),
+                _('Hacer la requisición o el ajuste de inventario que corresponda.'))
+            orden.message_post(body=nota, subject=titulo)
+            usuario = usuario_avisos or orden.user_id or self.env.user
+            orden.activity_schedule('mail.mail_activity_data_todo', summary=titulo, note=nota, user_id=usuario.id)
 
     def _post_inventory(self, cancel_backorder=False):
         self._validar_consumo_crudo()
-        self._validar_componentes_completos()
+        self._avisar_componentes_faltantes()
         return super()._post_inventory(cancel_backorder=cancel_backorder)
 
     def _lote_desperdicio(self, producto):

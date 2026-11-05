@@ -141,14 +141,21 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
-## Componentes completos al cerrar (3.3.3, 2026-11-05)
+## Faltante de componentes al cerrar (3.3.3 → 3.3.4, 2026-11-05)
 
 Decisión de Dirección para el piloto: los químicos se quedan en 2 PRODUCCIÓN, se surten por requisición de tambo cuando
 se acaban y la orden en kg consume la cantidad teórica de la fórmula (sin orden de Cocina Tintorería para las telas del
-flujo nuevo). En main, una orden con engomado insuficiente (0.75 de 3.22 kg) quedaba parcial y, con el consumo flexible,
-habría cerrado consumiendo de menos. Ahora la orden en kg con rollos de Rama **no cierra si a un componente con
-inventario (químicos, colorantes, engomado, agua) le falta consumo contra lo planeado**; el mensaje lista cada faltante.
-El crudo sigue con su propia regla (3.3.2). Prueba 29.
+flujo nuevo). Su existencia en Odoo es una estimación: el agua no se mide (Almacén le suma 2,000,000 L por ajuste cada
+2 o 3 semanas) y el engomado tiene reservas sin existencia. Por eso un faltante **no detiene el cierre**:
+
+- La 3.3.3 bloqueaba el cierre si a un químico, colorante, engomado o agua le faltaba existencia. La 3.3.4 lo cambia por
+  un aviso: la orden en kg con rollos de Rama consume lo que sí está apartado (también lo parcial, que Odoo cancelaba) y
+  cierra; deja en la orden una nota con cada faltante y una actividad «Faltante de componentes» para el usuario del
+  parámetro `quimibond_rollos_bitacora.usuario_faltantes` (login; vacío = el responsable de la orden). El conteo
+  periódico corrige la diferencia (pruebas 29 y 30).
+- **Solo el crudo bloquea** (3.3.2): son rollos reales con lote y el costo grande.
+- Recomendación de configuración: el agua (costo 0, sin medidor) como producto sin inventario (consumible), para que
+  siga en la fórmula sin descontarse.
 
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las
