@@ -453,3 +453,20 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertAlmostEqual(budget.amount_sales_budget_rate, 900.0, places=2)  # 50 USD × 18
         self.assertAlmostEqual(budget.fx_effect, 100.0, places=2)
         self.assertAlmostEqual(budget.fulfillment_budget_rate_pct, 90.0, places=1)
+
+    def test_21_poner_cliente_a_varios_renglones(self):
+        """3.6.4: renglón por renglón choca con el anti-doble-conteo; todos juntos, no."""
+        budget = self.Budget.create({'year': 2018})
+        lines = (self._line(budget, mercado='especiales', partner_id=False, date=date(2018, 1, 1))
+                 | self._line(budget, mercado='especiales', partner_id=False, date=date(2018, 3, 1)))
+        self.assertEqual(budget.no_client_count, 2)
+        with self.assertRaises(ValidationError):
+            with self.env.cr.savepoint():
+                lines[0].partner_id = self.client
+        budget.action_qb_set_partner(lines.ids, self.client.id)
+        self.assertEqual(lines.partner_id, self.client)
+        self.assertEqual(budget.no_client_count, 0)
+        wizard = self.env['qb.sales.budget.set.partner'].with_context(
+            active_model='sgi.sales.budget', active_id=budget.id).create({})
+        self.assertEqual(wizard.budget_id, budget)
+        self.assertFalse(wizard.line_ids)  # ya no queda ninguno sin cliente
