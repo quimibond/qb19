@@ -27,7 +27,7 @@ En Odoo 19 el contacto ya no tiene equipo de ventas (`res.partner.team_id` no ex
 en producción antes de la primera carga). El mercado del pronóstico y de la Demanda por cliente
 sale ahora del último pedido confirmado del cliente, si no de su última factura y si no del
 equipo de su vendedor (`res.users.sale_team_id`); sin ninguno, «Sin mercado». Antes de esto,
-crear un renglón de pronóstico con cliente fallaba.
+crear un renglón de pronóstico con cliente fallaba. También: un cliente con varias hojas en el forecast (FXI Cd. Juárez y Santa Teresa; Saltillo y León) carga una planta por hoja en lugar de sumarlas, y entre dos productos activos con el mismo código se toma el que tiene conversión.
 
 ## Aviso del build (19.0.2.0.2, 2026-11-05)
 
