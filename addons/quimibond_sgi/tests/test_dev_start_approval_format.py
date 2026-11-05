@@ -125,17 +125,3 @@ class TestDevStartApprovalFormat(TransactionCase):
                      'Aprobación del inicio del proyecto (cliente)', 'Aprobación del inicio del proyecto PNT Quimibond',
                      'F-P-D01-09', 'Norma a aplicar', 'Tolerancias'):
             self.assertIn(text, html, text)
-
-    def test_08_request_shows_capacity_in_spanish(self):
-        """57.198.0 (Jessica Francisco, 2026-11-03): la Solicitud de desarrollo trae la capacidad a utilizar, en español
-        aunque el cliente sea extranjero (es documento interno)."""
-        self.partner.country_id = self.env.ref('base.us')
-        dev = self._dev()
-        labels, cap = dev._sgi_dev_request_capacity()
-        self.assertEqual(labels['capacity'], "Capacidad a utilizar")
-        self.assertEqual(cap['rows'][0]['name'], "Materia prima")
-        html = self.env['ir.actions.report']._render_qweb_html(
-            'quimibond_sgi.report_dev_request_document', dev.ids)[0].decode()
-        for text in ('Capacidad a utilizar', 'Materia prima', 'Cantidad de la muestra',
-                     'El artículo no tiene ruta capturada'):
-            self.assertIn(text, html, text)

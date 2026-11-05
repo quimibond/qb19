@@ -65,36 +65,6 @@
                             </tbody>
                         </table>
                         <p t-if="doc.sgi_dev_other" style="font-size:11px;"><strong>Otras características:</strong> <span t-out="doc.sgi_dev_other"/></p>
-                        <!-- 57.198.0 (Jessica Francisco, 2026-11-03): la capacidad a utilizar, igual que en la
-                             Aprobación para iniciar, para que Dirección de Operaciones la vea al aprobar. -->
-                        <t t-set="cap_data" t-value="doc._sgi_dev_request_capacity()"/>
-                        <t t-set="CL" t-value="cap_data[0]"/>
-                        <t t-set="cap" t-value="cap_data[1]"/>
-                        <h5 t-out="CL['capacity']"/>
-                        <table class="table table-sm table-bordered mb-1" style="font-size:10px;">
-                            <thead>
-                                <tr>
-                                    <th t-out="CL['resource']"/>
-                                    <th t-out="CL['sample_qty']"/>
-                                    <th t-out="CL['sample_pct']"/>
-                                    <th t-out="CL['monthly_qty']"/>
-                                    <th t-out="CL['monthly_pct']"/>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="cap['rows']" t-as="c">
-                                    <td t-out="c['name']"/>
-                                    <td t-out="c['sample_qty'] or '—'"/>
-                                    <td t-out="c['sample_pct'] or '—'"/>
-                                    <td t-out="c['monthly_qty'] or '—'"/>
-                                    <td t-out="c['monthly_pct'] or '—'"/>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p class="text-muted" style="font-size:9px;">
-                            <span t-out="CL['capacity_note']"/>
-                            <t t-if="cap['no_route']"> <span t-out="CL['no_route']"/></t>
-                        </p>
                         <table class="table table-sm mt-4" style="font-size:10px; width:70%;">
                             <tr><td class="text-center" style="border-top:1px solid #000;">Elaboró · Diseño y Desarrollo<br/><span t-out="doc.sgi_dev_prepared_by_id.name or ''"/></td>
                                 <td class="text-center" style="border-top:1px solid #000;">Aprobó · Dirección de Operaciones<br/><span t-out="doc.sgi_dev_approved_by_id.name or ''"/></td></tr>

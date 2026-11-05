@@ -220,16 +220,7 @@ class ProjectProjectDevStartApproval(models.Model):
 
     def _sgi_dev_start_approval_labels(self):
         self.ensure_one()
-        if self.env.context.get('sgi_dev_labels_es'):
-            return START_APPROVAL_LABELS['es']
         return START_APPROVAL_LABELS['en' if self._sgi_dev_start_approval_is_en() else 'es']
-
-    def _sgi_dev_request_capacity(self):
-        """57.198.0: la misma tabla «Capacidad a utilizar» para la Solicitud de desarrollo (documento interno, siempre en
-        español): (etiquetas, tabla)."""
-        self.ensure_one()
-        project = self.with_context(sgi_dev_labels_es=True)
-        return project._sgi_dev_start_approval_labels(), project._sgi_dev_start_approval_capacity()
 
     def _sgi_dev_start_approval_format_ref(self):
         self.ensure_one()
