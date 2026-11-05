@@ -827,3 +827,36 @@ class TestInspeccionEstacion(TransactionCase):
             self.assertEqual(valores['weighing_mode'], 'iot', modelo)
             self.assertFalse(valores.get('motivo_manual'), modelo)
 
+    def test_38_etiquetas_preliminar_y_final(self):
+        """3.4.0: al confirmar sale la etiqueta preliminar de 68 x 38 mm (artículo, orden, fecha, revisadora, kg, metros,
+        calidad y código del lote); con el parámetro `inspeccion_imprime` = final sale la de 76 x 102 mm."""
+        orden_m, orden_kg, wo, rollos = self._bano((50.0, 40.0))
+        valores = {
+            'production_id': orden_kg.id, 'workorder_id': wo.id, 'workcenter_id': self.revisadora.id,
+            'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
+            'rollo_codigos': rollos[0].name, 'kg_bruto': 50.6, 'metros': 585.0, 'clasificacion': 'FE',
+            'defecto_ids': [Command.set(self.defecto.ids)], 'termina_rollo': True}
+        Wizard = self.env['rollo.inspeccion.estacion.wizard'].with_context(discard_logo_check=True)  # sin layout en la base de prueba
+        accion = Wizard.create(valores).action_confirmar()
+        self.assertEqual(accion['report_name'], 'quimibond_rollos_bitacora.report_etiqueta_rollo_preliminar')
+        self.assertTrue(accion.get('close_on_report_download'))
+        final = orden_kg.rollo_final_kg_ids
+        zpl = final.zpl_etiqueta_preliminar
+        self.assertTrue(zpl.startswith('^XA^PW544^LL304'))
+        for texto in ('ARTÍCULO: %s' % self.prod_m.default_code, 'ORDEN: %s' % orden_kg.name, 'FECHA: ',
+                      'CENTRO: %s' % self.revisadora.name, 'KG: %.2f' % final.kg_neto, 'M: 585.00', '^FDFE^FS'):
+            self.assertIn(texto, zpl)
+        self.assertIn('^FD%s^FS' % self.env['mrp.rollo.bitacora']._code128_zpl(final.name)[0], zpl)
+        self.assertTrue(final.zpl_etiqueta.startswith('^XA^PW608^LL816'))  # la final se guarda igual
+
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.inspeccion_imprime', 'final')
+        accion = Wizard.create(
+            dict(valores, rollo_codigos=rollos[1].name, kg_bruto=40.6, metros=470.0, clasificacion='PQ',
+                 defecto_ids=[])).action_confirmar()
+        self.assertEqual(accion['report_name'], 'quimibond_rollos_bitacora.report_etiqueta_rollo_final')
+
+        # Los dos reportes, para varios rollos a la vez (Imprimir en la lista de rollos finales).
+        finales = orden_kg.rollo_final_kg_ids
+        texto, _fmt = self.env['ir.actions.report']._render_qweb_text(
+            'quimibond_rollos_bitacora.report_etiqueta_rollo_preliminar', finales.ids)
+        self.assertEqual(texto.decode().count('^XA^PW544'), 2)

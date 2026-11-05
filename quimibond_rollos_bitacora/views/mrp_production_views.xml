@@ -65,6 +65,8 @@
                             <field name="estado_inspeccion" widget="badge"
                                    decoration-success="estado_inspeccion == 'inspeccionado'"
                                    decoration-warning="estado_inspeccion == 'pendiente'"/>
+                            <button name="action_imprimir_etiqueta_rama" type="object" icon="fa-tag"
+                                    title="Etiqueta de Rama (68 x 38 mm)"/>
                         </list>
                     </field>
                     <group string="Desperdicio de Rama" invisible="not desperdicio_kg">
@@ -100,6 +102,10 @@
                             <field name="estado" widget="badge"
                                    decoration-success="estado == 'registrado'"
                                    decoration-info="estado == 'inspeccionado'"/>
+                            <button name="action_imprimir_etiqueta_preliminar" type="object" icon="fa-tag"
+                                    title="Etiqueta preliminar (68 x 38 mm)"/>
+                            <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
+                                    title="Etiqueta final (76 x 102 mm)"/>
                         </list>
                     </field>
                 </page>

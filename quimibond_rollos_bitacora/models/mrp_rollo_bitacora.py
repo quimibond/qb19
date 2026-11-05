@@ -22,6 +22,15 @@ PARAM_ALERTA_DIFERENCIA_PCT = 'quimibond_rollos_bitacora.alerta_diferencia_pct'
 PARAM_FINAL_ANCHO = 'quimibond_rollos_bitacora.etiqueta_final_ancho'
 PARAM_FINAL_ALTO = 'quimibond_rollos_bitacora.etiqueta_final_alto'
 FINAL_ANCHO, FINAL_ALTO = 608, 816
+# Etiquetas preliminares de Rama e Inspección (3.4.0, Sistemas 2026-11-05): 68 mm de ancho x 38 mm de alto
+# = 544 x 304 puntos a 203 dpi. Inspección imprime al confirmar la preliminar o la final (parámetro).
+PARAM_RAMA_ANCHO = 'quimibond_rollos_bitacora.etiqueta_rama_ancho'
+PARAM_RAMA_ALTO = 'quimibond_rollos_bitacora.etiqueta_rama_alto'
+PARAM_PRELIM_ANCHO = 'quimibond_rollos_bitacora.etiqueta_prelim_ancho'
+PARAM_PRELIM_ALTO = 'quimibond_rollos_bitacora.etiqueta_prelim_alto'
+PRELIM_ANCHO, PRELIM_ALTO = 544, 304
+PARAM_INSPECCION_IMPRIME = 'quimibond_rollos_bitacora.inspeccion_imprime'
+CALIDAD_CORTA = {'PQ': 'PQ', 'FE': 'FE', 'SEGUNDA': '2DA', 'DESP': 'DESP'}
 EMPRESA_ETIQUETA = 'PRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V.'
 LEYENDA_PNC = {'FE': 'FUERA DE ESPECIFICACIÓN', 'SEGUNDA': 'SEGUNDA', 'DESP': 'DESPERDICIO'}
 
@@ -175,46 +184,65 @@ class MrpRolloBitacora(models.Model):
         """Quita los caracteres de control de ZPL (^ y ~) de un texto libre."""
         return (texto or '').replace('^', ' ').replace('~', ' ')
 
-    def _zpl_etiqueta_preliminar(self):
-        """ETIQUETA DE IDENTIFICACIÓN PRELIMINAR DE INSPECCIÓN (F-P-I01-02, en kg), §12.2.
-
-        Los Kgs son el neto de Rama y los metros los medidos en Inspección. Tamaño en puntos ZPL desde
-        Ajustes (provisional: 812x609 = 10x7.5 cm a 203 dpi). Código de barras = lote-serie del rollo.
-        """
-        self.ensure_one()
+    @api.model
+    def _zpl_preliminar_acomodo(self, param_ancho, param_alto, renglones, cantidades, lote, calidad=False):
+        """Etiqueta preliminar de 68 x 38 mm (544 x 304 puntos a 203 dpi; escala si Ajustes cambia el tamaño), 3.4.0.
+        Arriba los `renglones` (artículo, orden, fecha, centro); en medio las `cantidades` en grande (kg, metros); abajo
+        el código de barras del lote con su texto. `calidad` (PQ, FE, 2DA, DESP) va en un recuadro a la derecha."""
         params = self.env['ir.config_parameter'].sudo()
-        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_prelim_ancho', 812))
-        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_prelim_alto', 609))
+        ancho = int(params.get_param(param_ancho, PRELIM_ANCHO))
+        alto = int(params.get_param(param_alto, PRELIM_ALTO))
+        escala = min(ancho / PRELIM_ANCHO, alto / PRELIM_ALTO)
+
+        def p(n):
+            return int(round(n * escala))
+
         t = self._zpl_texto
-        fecha = fields.Datetime.context_timestamp(self, self.fecha_registro_insp or fields.Datetime.now())
-        centro = self.workcenter_insp_id
-        revisadora = ''.join(ch for ch in (centro.name or '') if ch.isdigit()) or (centro.code or '')
-        clases = [('PQ', 'PQ'), ('FE', 'FE'), ('SEGUNDA', '2das.'), ('DESP', 'DESP.')]
-        marcas = '   '.join('[%s] %s' % ('X' if self.clasificacion_inicial == k else ' ', txt) for k, txt in clases)
-        lote = self.lot_id.name or self.name
-        modulos = (len(lote) + 3) * 11 + 2
-        modulo = next((m for m in (3, 2, 1) if modulos * m <= ancho - 40), 1)
-        x_barras = max((ancho - modulos * modulo) // 2, 0)
-        renglones = [
-            ('ARTÍCULO: %s' % (self.product_id.default_code or ''), 28),
-            ('ORDEN DE TRABAJO: %s' % (self.production_id.name or ''), 28),
-            ('FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'), 28),
-            ('REVISADORA No.: %s     OPERADOR: %s' % (revisadora, self.operador_insp or ''), 28),
-            ('NO. ROLLO: %s' % self.secuencia, 28),
-            (marcas, 30),
-            ('CANTIDAD MTS: %.2f     KGS: %.2f' % (self.metros_insp, self.kg_rama), 30),
-            ('CALIDAD: %s     NO. EMPALMES: %s' % (self.clasificacion_inicial or '', self.no_empalmes), 28),
-        ]
-        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto),
-               '^FO20,15^A0N,26,26^FDPRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V.^FS',
-               '^FO20,48^A0N,24,24^FDETIQUETA DE IDENTIFICACIÓN PRELIMINAR DE INSPECCIÓN^FS']
-        y = 95
-        for texto, tam in renglones:
-            zpl.append('^FO20,%d^A0N,%d,%d^FD%s^FS' % (y, tam, tam, t(texto)))
-            y += 48
-        zpl.append('^BY%d,3,80^FO%d,%d^BCN,80,Y,N,N^FD%s^FS' % (modulo, x_barras, min(y + 10, alto - 120), t(lote)))
+        x = p(12)
+        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto)]
+        caja = p(140) if calidad else 0
+        if calidad:
+            # Recuadro de la calidad a la derecha de los renglones, letra según su largo.
+            x_caja, letra = ancho - caja - p(8), p(64) if len(calidad) <= 2 else p(46) if len(calidad) == 3 else p(36)
+            zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (x_caja, p(10), caja, p(96), p(4)))
+            zpl.append('^FO%d,%d^A0N,%d,%d^FB%d,1,0,C^FD%s^FS' % (
+                x_caja, p(10) + (p(96) - letra) // 2 + p(4), letra, letra, caja, t(calidad)))
+        y = p(8)
+        for i, texto in enumerate(renglones):
+            tam = p(26) if i == 0 else p(22)
+            zpl.append('^FO%d,%d^A0N,%d,%d^FB%d,1,0,L^FD%s^FS' % (x, y, tam, tam, ancho - caja - p(28), t(texto)))
+            y += tam + p(4)  # renglones en 8, 38, 64 y 90; el último termina en 112
+        tam = p(40) if len(cantidades) == 1 else p(30)
+        zpl.append('^FO%d,%d^A0N,%d,%d^FD%s^FS' % (x, p(118), tam, tam, t('     '.join(cantidades))))
+        # Código con su texto abajo: 166 + 84 + ~30 del texto = 280 de 304.
+        zpl.append(self._zpl_codigo_barras(lote, x, ancho, p(166), alto_barras=p(84)))
         zpl.append('^XZ')
         return '\n'.join(zpl)
+
+    def _zpl_etiqueta_rama(self):
+        """Etiqueta preliminar de Rama (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, Rama, kg netos y el código
+        de barras del lote (que ya lleva el número de rollo)."""
+        self.ensure_one()
+        fecha = fields.Datetime.context_timestamp(self, self.fecha_registro_rama or fields.Datetime.now())
+        return self._zpl_preliminar_acomodo(PARAM_RAMA_ANCHO, PARAM_RAMA_ALTO, [
+            'ARTÍCULO: %s' % (self.product_id.default_code or self.product_id.name or ''),
+            'ORDEN: %s' % (self.production_id.name or ''),
+            'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
+            'CENTRO: %s' % (self.workcenter_rama_id.name or ''),
+        ], ['KG: %.2f' % self.kg_rama], self.lot_id.name or self.name)
+
+    def _zpl_etiqueta_preliminar(self):
+        """Etiqueta preliminar de Inspección del flujo anterior a la estación única (F-P-I01-02), con el mismo acomodo de
+        68 x 38 mm que la del rollo final (3.4.0)."""
+        self.ensure_one()
+        fecha = fields.Datetime.context_timestamp(self, self.fecha_registro_insp or fields.Datetime.now())
+        return self._zpl_preliminar_acomodo(PARAM_PRELIM_ANCHO, PARAM_PRELIM_ALTO, [
+            'ARTÍCULO: %s' % (self.product_id.default_code or self.product_id.name or ''),
+            'ORDEN: %s' % (self.production_id.name or ''),
+            'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
+            'CENTRO: %s' % (self.workcenter_insp_id.name or ''),
+        ], ['KG: %.2f' % self.kg_rama, 'M: %.2f' % self.metros_insp], self.lot_id.name or self.name,
+            CALIDAD_CORTA.get(self.clasificacion_inicial, ''))
 
     def action_imprimir_etiqueta_preliminar(self):
         self.ensure_one()

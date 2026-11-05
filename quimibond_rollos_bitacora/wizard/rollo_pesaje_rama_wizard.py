@@ -130,7 +130,7 @@ class RolloPesajeRamaWizard(models.TransientModel):
             'fecha_registro_rama': ahora,
             'fecha_etiqueta_rama': ahora,
         })
-        rollo.zpl_etiqueta_rama = self._zpl_etiqueta_rama(lote_name)
+        rollo.zpl_etiqueta_rama = rollo._zpl_etiqueta_rama()
         produccion._rama_registrar_movimiento(lote, kg_neto, self.workorder_id)
         produccion._historial_pesaje(self.workcenter_id, lote_name, self.kg_bruto, self.tara_kg, kg_neto,
                                      rollo.operador_rama, lot=lote, fecha=ahora)
@@ -139,18 +139,3 @@ class RolloPesajeRamaWizard(models.TransientModel):
         accion = rollo.action_imprimir_etiqueta_rama()
         accion.update({'close_on_report_download': True})
         return accion
-
-    def _zpl_etiqueta_rama(self, lote_name):
-        """Etiqueta pequeña de Rama: solo el código de barras del lote-serie (§12.1).
-
-        El tamaño sale de Ajustes (puntos ZPL; 504x304 = 63 x 38 mm a 203 dpi, Sistemas 2026-11-05) y el ancho
-        de módulo se elige el mayor que deja el código completo dentro de la etiqueta.
-        """
-        params = self.env['ir.config_parameter'].sudo()
-        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_ancho', 504))
-        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_alto', 304))
-        modulos = (len(lote_name) + 3) * 11 + 2  # Code 128: inicio + datos + control + paro
-        modulo = next((m for m in (3, 2, 1) if modulos * m <= ancho - 20), 1)
-        x = max((ancho - modulos * modulo) // 2, 0)
-        return '^XA^PW%d^LL%d^CI28\n^BY%d,3,%d^FO%d,%d^BCN,%d,N,N,N^FD%s^FS\n^XZ' % (
-            ancho, alto, modulo, alto - 60, x, 30, alto - 60, lote_name)

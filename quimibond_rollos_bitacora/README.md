@@ -141,6 +141,26 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Etiquetas preliminares de 68 x 38 mm (3.4.0, Dirección 2026-11-05)
+
+Hay dos etiquetas preliminares, una de Rama y otra de Inspección, de **68 mm de ancho x 38 mm de alto**
+(544 x 304 puntos a 203 dpi). La **final** sigue en 76 x 102 mm (3.3.7) y es la que lleva código, color, ancho,
+metros, yardas, kilos y libras. Acomodo común en `mrp.rollo.bitacora._zpl_preliminar_acomodo` (escala si se cambia el
+tamaño en Ajustes).
+
+| Etiqueta | Lleva |
+|---|---|
+| Preliminar de Rama | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la Rama), **kg** netos y el código de barras del lote con su texto (el lote ya lleva el número de rollo) |
+| Preliminar de Inspección | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la revisadora), **kg** y **metros** del rollo final, la **calidad** (PQ, FE, 2DA, DESP) en un recuadro y el código de barras del lote `M…`/`K…` |
+
+- **Qué sale al confirmar en la revisadora:** la preliminar (por defecto). En Ajustes («Etiqueta al confirmar en la
+  revisadora», parámetro `quimibond_rollos_bitacora.inspeccion_imprime`) se cambia a la final. La otra se imprime
+  con su botón en el rollo final, con los íconos de cada renglón en la pestaña Rollos de la orden, o desde Imprimir
+  en la lista de rollos finales (varios a la vez). Las dos se guardan al confirmar.
+- La preliminar de Rama se reimprime con el ícono de su renglón en la pestaña Rollos.
+- Los tamaños por defecto pasan a 544 x 304 en Rama y en la preliminar de Inspección; ninguna base tenía guardado otro
+  valor (verificado en main), así que no hay migración.
+
 ## Captura manual sin báscula (3.3.9, Dirección 2026-11-05)
 
 En planta el peso se captura a mano, en Tejido, Rama e Inspección. Mientras no haya báscula IoT registrada
@@ -170,8 +190,8 @@ vuelven a abrir en automático, y capturar a mano pide motivo, como antes. No to
 Impresora Zebra ZD230 de 203 dpi (8 puntos = 1 mm). Los tamaños se cambian en Ajustes de Manufactura → Rollos de
 tela acabada.
 
-- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203). Sigue siendo solo el código de
-  barras del lote-serie.
+- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203), solo el código de barras del
+  lote-serie. Desde 3.4.0, 68 x 38 mm con datos.
 - **Final del rollo** (PQ / PNC, la que imprime la estación de Inspección): 76 mm de ancho x 102 mm de alto =
   608 x 816 puntos (antes 812 x 1218). Acomodo nuevo compartido por el rollo final y la bitácora
   (`mrp.rollo.bitacora._zpl_final_acomodo`): metros/yardas, neto/bruto y kilos/libras en dos columnas, y escala si
@@ -179,8 +199,7 @@ tela acabada.
 - **Código de barras**: Code 128 con los subconjuntos explícitos (`_code128_zpl`: los dígitos seguidos van de dos en
   dos), para que `metros;kg;orden;rollo` quepa en 76 mm con barras de 2 puntos aun con metros de 4 cifras y rollo
   de 2 cifras. Lo que lee el escáner es el mismo dato.
-- La **preliminar de Inspección** (63 x 38 mm según Sistemas) no se imprime en la estación única (3.1.0): Inspección
-  pesa e imprime la final de una vez. Su tamaño no se cambió.
+- La **preliminar de Inspección** no se imprimía en la estación única (3.1.0). Desde 3.4.0 sí, en 68 x 38 mm.
 - Pendiente: probar con las impresoras y básculas que llegan el viernes 7-nov (lectura del código con el escáner
   de Almacén).
 

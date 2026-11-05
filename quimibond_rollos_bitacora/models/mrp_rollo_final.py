@@ -9,7 +9,9 @@ en metros cuando el supervisor cierra la orden en kg con el botón nativo (D7, D
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from .mrp_rollo_bitacora import CLASIFICACIONES, COLORES, LIBRAS_POR_KG, SUFIJO_CODIGO, YARDAS_POR_METRO
+from .mrp_rollo_bitacora import (
+    CALIDAD_CORTA, CLASIFICACIONES, COLORES, LIBRAS_POR_KG, PARAM_INSPECCION_IMPRIME, PARAM_PRELIM_ALTO,
+    PARAM_PRELIM_ANCHO, SUFIJO_CODIGO, YARDAS_POR_METRO)
 
 # Calidad → (parámetro de la ubicación, nombre por defecto, unidad en que sale). Primera y FE en metros (la tela);
 # segundas y desperdicio en kg (los saldos), D5 y §4.3.
@@ -65,6 +67,7 @@ class MrpRolloFinal(models.Model):
     siglas_operador = fields.Char('Siglas del operador', readonly=True)
     fecha = fields.Datetime('Inspeccionado el', readonly=True)
     zpl_etiqueta = fields.Text('ZPL etiqueta final', readonly=True, copy=False)
+    zpl_etiqueta_preliminar = fields.Text('ZPL etiqueta preliminar', readonly=True, copy=False)
 
     estado = fields.Selection([('inspeccionado', 'Inspeccionado, sin registrar'), ('registrado', 'Registrado')],
                               'Estado', default='inspeccionado', required=True, readonly=True)
@@ -251,11 +254,32 @@ class MrpRolloFinal(models.Model):
             codigos.append(('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip())
         return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, renglones, codigos)
 
-    def action_imprimir_etiqueta(self):
+    def _zpl_etiqueta_preliminar(self):
+        """Etiqueta preliminar de Inspección (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, revisadora, kg,
+        metros, la calidad en un recuadro y el código de barras del lote (que ya lleva el número de rollo)."""
         self.ensure_one()
-        if not self.zpl_etiqueta:
-            raise UserError(_('Este rollo no tiene etiqueta final.'))
+        fecha = fields.Datetime.context_timestamp(self, self.fecha or fields.Datetime.now())
+        return self.env['mrp.rollo.bitacora']._zpl_preliminar_acomodo(PARAM_PRELIM_ANCHO, PARAM_PRELIM_ALTO, [
+            'ARTÍCULO: %s' % self._datos_etiqueta()['codigo'],
+            'ORDEN: %s' % (self.production_id.name or ''),
+            'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
+            'CENTRO: %s' % (self.workcenter_id.name or ''),
+        ], ['KG: %.2f' % self.kg_neto, 'M: %.2f' % self.metros], self.name, CALIDAD_CORTA.get(self.clasificacion, ''))
+
+    @api.model
+    def _accion_al_confirmar(self):
+        """Qué etiqueta sale al confirmar un rollo en la revisadora: la preliminar de 68 x 38 mm (por defecto) o la final
+        de 76 x 102 mm (parámetro `inspeccion_imprime` = `final`). La otra se imprime con su botón o desde Imprimir."""
+        return self.env['ir.config_parameter'].sudo().get_param(PARAM_INSPECCION_IMPRIME, 'preliminar')
+
+    def action_imprimir_etiqueta(self):
+        if not all(self.mapped('zpl_etiqueta')):
+            raise UserError(_('Hay rollos sin etiqueta final.'))
         return self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_rollo_final').report_action(self)
+
+    def action_imprimir_etiqueta_preliminar(self):
+        # Los rollos de antes de 3.4.0 no la guardaron: el reporte la arma al vuelo.
+        return self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_rollo_preliminar').report_action(self)
 
 
 class MrpRolloBitacoraFinal(models.Model):

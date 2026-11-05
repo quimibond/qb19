@@ -269,6 +269,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()
+        rollo.zpl_etiqueta_preliminar = rollo._zpl_etiqueta_preliminar()
         self.production_id._historial_pesaje(self.workcenter_id, rollo.name, self.kg_bruto, self.tara_kg,
                                              rollo.kg_neto, operador, fecha=ahora)
         if self.termina_rollo:
@@ -285,6 +286,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                     'operador_insp': operador,
                     'fecha_registro_insp': ahora,
                 })
-        accion = rollo.action_imprimir_etiqueta()
+        if Final._accion_al_confirmar() == 'final':
+            accion = rollo.action_imprimir_etiqueta()
+        else:
+            accion = rollo.action_imprimir_etiqueta_preliminar()
         accion.update({'close_on_report_download': True})
         return accion

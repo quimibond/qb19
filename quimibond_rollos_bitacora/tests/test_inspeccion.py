@@ -90,10 +90,11 @@ class TestInspeccion(TransactionCase):
         self.assertEqual(self.rollo.workcenter_insp_id, self.centro)
         zpl = self.rollo.zpl_etiqueta_preliminar
         self.assertIn('^BCN', zpl)
-        self.assertIn('INSPTEST-0001', zpl)
-        self.assertIn('[X] PQ', zpl)
-        self.assertIn('123.45', zpl)
-        self.assertIn('50.00', zpl)  # Kgs = neto de Rama
+        self.assertIn('^FD%s^FS' % self.rollo._code128_zpl('INSPTEST-0001')[0], zpl)
+        self.assertIn('^XA^PW544^LL304', zpl)  # 68 x 38 mm (3.4.0)
+        self.assertIn('^FDPQ^FS', zpl)
+        self.assertIn('M: 123.45', zpl)
+        self.assertIn('KG: 50.00', zpl)  # Kgs = neto de Rama
 
     def test_06_datos_obligatorios(self):
         for cambio in ({'clasificacion': False}, {'metros': 0}, {'rollo_codigo': 'NO-EXISTE'}):
