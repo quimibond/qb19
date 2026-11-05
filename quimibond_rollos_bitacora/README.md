@@ -141,6 +141,23 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Historial de Pesaje y pestaña Rollos (3.3.8, Dirección 2026-11-05)
+
+- **Historial de Pesaje:** cada pesada de Rama (rollo y desperdicio) y de Inspección (rollo final) deja una copia en la
+  pestaña «Historial de Pesaje» de la orden (`mrp.weighing.log`, de `pesaje_rollos_tejido`), con fecha, lote, operador,
+  bruto, tara, neto y máquina, para ver en un solo lugar lo pesado en Tejido, Rama e Inspección. Es copia de consulta:
+  la fuente sigue siendo la pestaña Rollos. Al anular un rollo final, su pesada sale del historial. Sin ese módulo no
+  hace nada.
+- **No toca Tejido:** el cierre de Tejido depende de su contador `roll_count`, que solo sube al pesar en Tejido (las
+  órdenes en kg lo dejan en 0); el número de rollo circular queda en 0, que su validación ignora; el ritmo de Tejido
+  (`qb_tejido_ritmo` 1.0.3) lee solo órdenes con `roll_count > 0`. El reporte resumen de la orden imprime el historial
+  de esa orden, así que el de una orden en kg muestra sus pesadas de Rama e Inspección.
+- **Pestaña Rollos rediseñada:** resumen del baño arriba (rollos y kg de Rama, porcentaje contra lo planeado,
+  desperdicio, rollos por inspeccionar, rollos finales con kg y metros, merma de Inspección y kg por calidad) y dos
+  secciones en el orden del proceso: 1. Rama (máquina, fecha, operador, bruto, tara, neto, captura manual y estado de
+  inspección) y 2. Inspección (lote, calidad con color, rollos de Rama de origen, pesos, metros, defectos, revisadora,
+  operador y estado). Solo aparece en órdenes que pesan en Rama.
+
 ## Tamaño real de las etiquetas (3.3.7, Sistemas 2026-11-05)
 
 Impresora Zebra ZD230 de 203 dpi (8 puntos = 1 mm). Los tamaños se cambian en Ajustes de Manufactura → Rollos de

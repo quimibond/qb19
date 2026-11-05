@@ -128,6 +128,8 @@ class RolloPesajeRamaWizard(models.TransientModel):
         })
         rollo.zpl_etiqueta_rama = self._zpl_etiqueta_rama(lote_name)
         produccion._rama_registrar_movimiento(lote, kg_neto, self.workorder_id)
+        produccion._historial_pesaje(self.workcenter_id, lote_name, self.kg_bruto, self.tara_kg, kg_neto,
+                                     rollo.operador_rama, lot=lote, fecha=ahora)
         # Cierra la ventana de pesaje al descargar/imprimir la etiqueta: los rollos salen de Rama
         # espaciados en el tiempo, cada uno se pesa abriendo de nuevo PESAR ROLLO.
         accion = rollo.action_imprimir_etiqueta_rama()

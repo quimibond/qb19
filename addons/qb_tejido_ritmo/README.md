@@ -11,6 +11,8 @@ Especificación: «Tiempos y ritmos de tejido desde el pesaje» (2026-10-08).
 
 ## Qué calcula
 
+Solo cuenta pesadas de Tejido: desde 1.0.3 ignora las del Historial de Pesaje que vienen de Rama e Inspección (rollos 3.3.8), que son de órdenes sin rollos del pesaje de Tejido (`roll_count = 0`).
+
 - **Intervalo por rollo** (`qb.tejido.intervalo`): horas brutas desde el
   rollo anterior de la misma máquina, menos descanso del calendario y paros
   generales = horas netas. Clase: primer rollo, captura atrasada (grupos de

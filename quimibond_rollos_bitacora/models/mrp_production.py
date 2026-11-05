@@ -274,6 +274,35 @@ class MrpProduction(models.Model):
         return Lote.search(dominio, limit=1) or Lote.create({
             'name': nombre, 'product_id': producto.id, 'company_id': self.company_id.id})
 
+    def _historial_pesaje(self, workcenter, roll_number, bruto, tara, neto, pesador, lot=False, fecha=False):
+        """3.3.8 (Dirección, 2026-11-05): copia de consulta de cada pesada de Rama e Inspección en el «Historial de
+        Pesaje» de la orden (``mrp.weighing.log`` de ``pesaje_rollos_tejido``), para ver en un solo lugar lo pesado
+        en Tejido, Rama e Inspección. La fuente sigue siendo la pestaña Rollos (bitácora y rollos finales); el
+        historial no mueve inventario ni el contador de rollos de Tejido (``roll_count``), así que no cambia el
+        cierre. Sin ese módulo instalado no hace nada."""
+        self.ensure_one()
+        if 'mrp.weighing.log' not in self.env:
+            return False
+        return self.env['mrp.weighing.log'].sudo().create({
+            'production_id': self.id,
+            'date_time': fecha or fields.Datetime.now(),
+            'roll_number': roll_number,
+            'lot_id': lot.id if lot else False,
+            'pesador': pesador or False,
+            'weight_bruto': bruto,
+            'tara': tara,
+            'weight_neto': neto,
+            'workcenter_id': workcenter.id if workcenter else False,
+        })
+
+    def _historial_pesaje_borrar(self, roll_numbers):
+        """3.3.8: quita del historial las pesadas de capturas anuladas (los usuarios de Manufactura no borran
+        registros del historial, por eso con sudo)."""
+        if 'mrp.weighing.log' not in self.env or not self or not roll_numbers:
+            return
+        self.env['mrp.weighing.log'].sudo().search([
+            ('production_id', 'in', self.ids), ('roll_number', 'in', list(roll_numbers))]).unlink()
+
     def _rama_registrar_desperdicio(self, workorder, kg, operador, manual):
         """Registra el peso real del subproducto Desperdicio Tejido (orilla) en su movimiento de la MO.
 

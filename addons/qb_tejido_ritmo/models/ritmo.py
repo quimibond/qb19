@@ -88,7 +88,12 @@ class QbTejidoRitmo(models.Model):
     @api.model
     def _leer_rollos(self, desde, hasta, workcenters):
         """Rollos pesados en [desde, hasta) (fechas locales) en esas máquinas:
-        dicts para el motor. Separado para poder sustituirlo en pruebas."""
+        dicts para el motor. Separado para poder sustituirlo en pruebas.
+
+        1.0.3: solo pesadas de Tejido (órdenes con rollos del pesaje de Tejido,
+        ``roll_count > 0``). Desde rollos 3.3.8 Rama e Inspección también dejan
+        copia en el Historial de Pesaje; con esto no entran al ritmo aunque sus
+        máquinas se agreguen a un centro de costeo directo."""
         if 'mrp.weighing.log' not in self.env or not workcenters:
             return []
         self.env.flush_all()
@@ -102,6 +107,7 @@ class QbTejidoRitmo(models.Model):
             LEFT JOIN product_product pp ON pp.id = mo.product_id
             LEFT JOIN product_template pt ON pt.id = pp.product_tmpl_id
             WHERE w.workcenter_id IN %s AND w.date_time >= %s AND w.date_time < %s
+              AND (mo.id IS NULL OR mo.roll_count > 0)
             ORDER BY w.workcenter_id, w.date_time, w.id
         """, (tuple(workcenters.ids), a_utc(datetime.combine(desde, datetime.min.time())),
               a_utc(datetime.combine(hasta, datetime.min.time()))))

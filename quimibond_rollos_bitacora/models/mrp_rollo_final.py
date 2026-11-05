@@ -200,6 +200,8 @@ class MrpRolloFinal(models.Model):
         if self.filtered(lambda r: r.estado == 'registrado'):
             raise UserError(_('Un rollo final registrado en inventario no se borra.'))
         self._revertir_rama()
+        for orden in self.production_id:
+            orden._historial_pesaje_borrar(self.filtered(lambda r: r.production_id == orden).mapped('name'))
         return super().unlink()
 
     # ------------------------------------------------------------------ etiqueta

@@ -45,9 +45,11 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
         manual = self.weighing_mode == 'manual'
         if manual and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
-        self.production_id._rama_registrar_desperdicio(
-            self.workorder_id, self.kg_desperdicio,
-            ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])), manual)
+        operador = ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre]))
+        self.production_id._rama_registrar_desperdicio(self.workorder_id, self.kg_desperdicio, operador, manual)
+        # 3.3.8: el desperdicio se pesa neto (sin tara).
+        self.production_id._historial_pesaje(self.workorder_id.workcenter_id, 'DESPERDICIO RAMA',
+                                             self.kg_desperdicio, 0.0, self.kg_desperdicio, operador)
         if manual:
             self.production_id.desperdicio_motivo = self.motivo_manual.strip()
         return {'type': 'ir.actions.act_window_close'}
