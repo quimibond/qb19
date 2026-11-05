@@ -25,6 +25,8 @@ SALDO_CALIDAD = {
     'DESP': ('quimibond_ficha_tecnica_tela.saldo_desperdicio', 'SALDO TEJIDO D'),
 }
 PARAM_ALERTA_MERMA_PCT = 'quimibond_rollos_bitacora.alerta_merma_inspeccion_pct'
+# 3.3.5: la primera y la FE de una orden de desarrollo van al almacén de desarrollos (los saldos siguen a 16 y 17).
+DESTINO_DESARROLLO = ('quimibond_rollos_bitacora.ubicacion_desarrollo', '31 DESARROLLOS TOLUCA')
 
 
 class MrpRolloFinal(models.Model):
@@ -89,10 +91,16 @@ class MrpRolloFinal(models.Model):
 
     # ------------------------------------------------------------------ reglas
     @api.model
-    def _ubicacion_calidad(self, clasificacion):
+    def _ubicacion_calidad(self, clasificacion, desarrollo=False):
         """Ubicación interna de la calidad (§4.3), por parámetro; se busca por nombre y gana la más corta (en producción
-        hay ubicaciones con el mismo prefijo, «15 PRODUCTO TERMINADO FE TOLUCA15»)."""
+        hay ubicaciones con el mismo prefijo, «15 PRODUCTO TERMINADO FE TOLUCA15»).
+
+        3.3.5: con ``desarrollo`` (la orden en metros o la orden en kg marcada «Orden de Desarrollo»), la primera y la FE
+        van a «31 DESARROLLOS TOLUCA» (parámetro ``ubicacion_desarrollo``); los saldos en kg siguen a 16 y 17. Antes el
+        campo existía pero ningún ruteo lo leía y los desarrollos entraban a 14 (prueba 5 en main, 2026-11-05)."""
         clave, defecto, _unidad = DESTINO_CALIDAD[clasificacion]
+        if desarrollo and clasificacion in ('PQ', 'FE'):
+            clave, defecto = DESTINO_DESARROLLO
         nombre = (self.env['ir.config_parameter'].sudo().get_param(clave) or defecto).strip()
         ubicaciones = self.env['stock.location'].search([('name', '=ilike', nombre + '%'), ('usage', '=', 'internal')])
         if not ubicaciones:
@@ -139,8 +147,13 @@ class MrpRolloFinal(models.Model):
         3.2.0)."""
         dominio = [('production_m_id', 'in', self._ordenes_m_grupo(orden_m).ids)] if orden_m else \
             [('production_id', '=', orden_kg.id), ('production_m_id', '=', False)]
-        ultimo = self.search(dominio, order='secuencia desc', limit=1)
-        return (ultimo.secuencia or 0) + 1
+        # 3.3.5: sin huecos. Al anular un rollo de en medio su número queda libre y el siguiente lo toma; un rollo anulado
+        # no tiene lote (solo se registra al cerrar el baño), así que el nombre no choca.
+        usados = set(self.search(dominio).mapped('secuencia'))
+        secuencia = 1
+        while secuencia in usados:
+            secuencia += 1
+        return secuencia
 
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):

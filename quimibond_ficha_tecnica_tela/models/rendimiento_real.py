@@ -15,6 +15,9 @@ from datetime import timedelta
 from odoo import api, fields, models
 
 DIAS_REAL = 365
+# 2.26.0: el cambio de rendimiento que pide revisión (%), y la constante si el parámetro no está.
+PARAM_ALERTA_RENDIMIENTO_PCT = 'quimibond_ficha_tecnica_tela.alerta_rendimiento_pct'
+ALERTA_RENDIMIENTO_PCT = 5.0
 POSICION_PROCESO = ('H', 'I', 'J')  # crudo, teñido, acabado (DAT P-D02-01, posición 9)
 
 
@@ -38,6 +41,13 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
     rendimiento_real_ordenes = fields.Integer(
         string='Órdenes del rendimiento', readonly=True,
         help='Órdenes terminadas de los últimos 12 meses con las que se calculó el rendimiento.')
+    # 2.26.0: aviso cuando el recálculo nocturno mueve el rendimiento más que la alerta (propuesta de Consolti,
+    # 2026-11-05: que las telas del piloto no cambien sin aviso). El número se escribe igual; el aviso queda como
+    # pendiente de Ingeniería en la revisión de listas hasta que alguien lo marca revisado.
+    rendimiento_por_revisar = fields.Boolean(string='Rendimiento por revisar', readonly=True, copy=False)
+    rendimiento_anterior = fields.Float(string='Rendimiento anterior (m/kg)', digits=(12, 4), readonly=True,
+                                        copy=False)
+    rendimiento_cambio_fecha = fields.Datetime(string='Rendimiento cambió el', readonly=True, copy=False)
     peso_real = fields.Float(
         string='Peso real (g/m²)', digits=(12, 1), compute='_compute_peso_real',
         help='El peso que da lo fabricado al ancho de venta: 1000 ÷ (rendimiento × ancho de venta en m).')
@@ -99,12 +109,32 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         fichas = self or self.search([('product_acabado_id', '!=', False)])
         desde = fields.Date.context_today(self) - timedelta(days=DIAS_REAL)
         datos = self._ft_fabricado(fichas.product_acabado_id, desde)
+        limite = self._ft_alerta_rendimiento_pct()
         for ficha in fichas:
             m, kilos, n = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0))
             if m and kilos:
-                ficha.write({'rendimiento_tela_acabada': round(m / kilos, 4), 'rendimiento_real_ordenes': n})
+                nuevo = round(m / kilos, 4)
+                vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n}
+                antes = ficha.rendimiento_tela_acabada
+                if antes and abs(nuevo - antes) / antes * 100.0 > limite:
+                    vals.update(rendimiento_por_revisar=True, rendimiento_anterior=antes,
+                                rendimiento_cambio_fecha=fields.Datetime.now())
+                ficha.write(vals)
             elif ficha.rendimiento_real_ordenes:
                 ficha.rendimiento_real_ordenes = 0
+        return True
+
+    @api.model
+    def _ft_alerta_rendimiento_pct(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_RENDIMIENTO_PCT)
+        try:
+            return float(valor) if valor not in (None, False, '') else ALERTA_RENDIMIENTO_PCT
+        except ValueError:
+            return ALERTA_RENDIMIENTO_PCT
+
+    def action_ft_rendimiento_revisado(self):
+        """Ingeniería revisó el cambio de rendimiento: se quita el aviso (el número no cambia)."""
+        self.write({'rendimiento_por_revisar': False})
         return True
 
 

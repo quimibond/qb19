@@ -158,6 +158,14 @@
                                         órdenes en 12 meses; se recalcula cada noche.
                                     </div>
                                     <field name="peso_real"/>
+                                    <field name="rendimiento_por_revisar" invisible="1"/>
+                                    <div colspan="2" class="alert alert-warning" role="status" invisible="not rendimiento_por_revisar">
+                                        El rendimiento cambió con lo fabricado: antes
+                                        <field name="rendimiento_anterior" class="oe_inline" readonly="1"/> m/kg, el
+                                        <field name="rendimiento_cambio_fecha" class="oe_inline" readonly="1"/>.
+                                        <button name="action_ft_rendimiento_revisado" type="object" string="Marcar revisado"
+                                                class="btn btn-sm btn-secondary ms-2"/>
+                                    </div>
                                 </group>
                             </group>
                         </page>

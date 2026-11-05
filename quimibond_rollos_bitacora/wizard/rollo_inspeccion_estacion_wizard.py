@@ -170,6 +170,11 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     # ------------------------------------------------------------------ registro
     def _validar(self):
         self.ensure_one()
+        if self.production_id.state in ('done', 'cancel'):
+            # 3.3.5: el botón de la operación ya lo impedía, pero el asistente abierto dejaba capturar un rollo final en
+            # una orden cancelada (prueba 4a en main, 2026-11-05).
+            raise UserError(_('La orden %s ya está cerrada o cancelada: no se inspeccionan rollos.',
+                              self.production_id.name))
         rollos = self.bitacora_ids
         if self.codigos_error:
             raise UserError(_('No existe el rollo de Rama %s.', self.codigos_error))

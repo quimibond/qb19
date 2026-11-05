@@ -141,6 +141,26 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Propuesta de Consolti que se adopta (3.3.5, 2026-11-05)
+
+De la propuesta de José Sacramento (Consolti) del 5-nov se toma lo que sirve al diseño vigente (estación única):
+
+- **Desarrollos a la 31.** La primera y la FE de una orden marcada «Orden de Desarrollo» (en la orden en metros o en la
+  orden en kg) van a «31 DESARROLLOS TOLUCA» (parámetro `quimibond_rollos_bitacora.ubicacion_desarrollo`); los saldos
+  en kg siguen a 16 y 17. El campo existía pero ningún ruteo lo leía: en la prueba de main los desarrollos entraron a 14.
+- **Número de rollo final consecutivo, sin huecos.** Al anular un rollo de en medio, el siguiente que se inspecciona
+  toma su número (el anulado no tiene lote: el lote nace al cerrar el baño).
+- **Inspección en paralelo a Rama.** La operación de Inspección queda «bloqueada» en Odoo hasta que Rama termina, pero
+  en cuanto Rama pesó un rollo ya se puede inspeccionar. Inspección no termina mientras Rama siga abierta, y la orden en
+  kg no cierra con rollos sin inspeccionar (como antes).
+- **Una sola tara por artículo para el rollo final.** Ya era así: Inspección usa la tara «Clasificación final» de la
+  tabla de taras (Rama tiene la suya). No cambia nada.
+- **No se captura en una orden cerrada o cancelada.** Los asistentes de Rama y de Inspección lo rechazan aunque estén
+  abiertos (en la prueba de main se capturó un rollo final en una orden cancelada).
+
+Lo que no se adopta (dos estaciones, lotes J, ubicación nueva de químicos, quitar el registro automático, los varios
+baños y la venta en kg) queda como está por decisión de Dirección.
+
 ## Faltante de componentes al cerrar (3.3.3 → 3.3.4, 2026-11-05)
 
 Decisión de Dirección para el piloto: los químicos se quedan en 2 PRODUCCIÓN, se surten por requisición de tambo cuando
