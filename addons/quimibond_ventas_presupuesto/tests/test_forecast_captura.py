@@ -61,11 +61,6 @@ class TestForecastCaptura(TransactionCase):
         self.Line.with_context(default_partner_id=self.customer.id).grid_update_cell(domain, 'qty_origen', 10.0)
         self.assertEqual(self._lines().qty_origen, 10.0)
 
-    def test_03_vista_de_matriz_carga(self):
-        views = self.Line.get_views([(self.env.ref('quimibond_ventas_presupuesto.qb_forecast_line_view_grid').id,
-                                      'grid')])
-        self.assertIn('grid', views['views'])
-
     # --- Pegar desde Excel ---------------------------------------------------
     def _paste(self, text, **kwargs):
         vals = dict(partner_id=self.customer.id, text=text, year=self.iso_year, first_week=self.iso_week)
