@@ -103,10 +103,9 @@
             <grid string="Matriz de cantidades" editable="1" create_inline="1"
                   display_empty="1">
                 <field name="product_id" type="row"/>
-                <field name="date" type="col">
-                    <!-- 3.2.0: sin step (Odoo 19 lo rechaza; el rango año da columnas por mes). -->
-                    <range name="year" string="Año" span="year" default="1"/>
-                </field>
+                <!-- 3.2.1: sin <range>. Odoo 19 rechaza el elemento (rangos fijos: se elige semana, mes o
+                     año en pantalla; año da columnas por mes). -->
+                <field name="date" type="col"/>
                 <field name="qty_budget" type="measure"/>
             </grid>
         </field>

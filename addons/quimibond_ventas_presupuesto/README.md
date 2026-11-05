@@ -21,6 +21,13 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Matriz del presupuesto sin `<range>` (19.0.3.2.1, 2026-11-05)
+
+El build de 3.2.0 falló en la matriz del presupuesto: Odoo 19 no acepta el
+elemento `<range>` dentro de la columna de un grid (ni con `step` ni sin él).
+La columna queda `<field name="date" type="col"/>` y el rango (semana, mes,
+año) se elige en pantalla.
+
 ## Matriz semanal con catálogo de semanas (19.0.3.2.0, 2026-11-05)
 
 - **Captura semanal** (Pronóstico → Captura semanal, Administrador de ventas o
