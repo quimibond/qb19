@@ -37,3 +37,5 @@ access_qb_demand_line_mrp,qb.demand.line.mrp,model_qb_demand_line,mrp.group_mrp_
 access_qb_demand_line_manager,qb.demand.line.manager,model_qb_demand_line,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_release_planeacion,qb.release.planeacion,model_qb_release,group_qb_planeacion,1,0,0,0
 access_qb_customer_part_planeacion,qb.customer.part.planeacion,model_qb_customer_part,group_qb_planeacion,1,0,0,0
+access_qb_forecast_paste_sale_mgr,qb.forecast.paste.sale.mgr,model_qb_forecast_paste,sales_team.group_sale_manager,1,1,1,1
+access_qb_forecast_paste_manager,qb.forecast.paste.manager,model_qb_forecast_paste,quimibond_sgi.group_sgi_manager,1,1,1,1
