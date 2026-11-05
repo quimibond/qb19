@@ -223,13 +223,9 @@ class MrpRolloFinal(models.Model):
 
     def _zpl_etiqueta(self):
         """Etiqueta final de José (§12.3) con los datos del rollo final: PQ con neto/bruto; FE, Segunda y Desperdicio
-        (PNC) con kilos y libras, siglas de defectos y el segundo código. Código de barras: metros;kg;orden;rollo."""
+        (PNC) con kilos y libras, siglas de defectos y el segundo código. Código de barras: metros;kg;orden;rollo.
+        Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
         self.ensure_one()
-        Bitacora = self.env['mrp.rollo.bitacora']
-        params = self.env['ir.config_parameter'].sudo()
-        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_final_ancho', 812))
-        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_final_alto', 1218))
-        t = Bitacora._zpl_texto
         datos = self._datos_etiqueta()
         clasif = self.clasificacion
         pnc = clasif != 'PQ'
@@ -239,34 +235,19 @@ class MrpRolloFinal(models.Model):
             'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
             'COLOR: %s' % datos['color'],
             'ANCHO (cm): %g' % datos['ancho'],
-            'METROS: %.2f     YARDAS: %.2f' % (self.metros, self.metros * YARDAS_POR_METRO),
-            ('KILOS: %.2f     LIBRAS: %.2f' % (self.kg_neto, self.kg_neto * LIBRAS_POR_KG)) if pnc
-            else ('PESO NETO: %.2f     PESO BRUTO: %.2f' % (self.kg_neto, self.kg_bruto)),
+            ('METROS: %.2f' % self.metros, 'YARDAS: %.2f' % (self.metros * YARDAS_POR_METRO)),
+            ('KILOS: %.2f' % self.kg_neto, 'LIBRAS: %.2f' % (self.kg_neto * LIBRAS_POR_KG)) if pnc
+            else ('PESO NETO: %.2f' % self.kg_neto, 'PESO BRUTO: %.2f' % self.kg_bruto),
             'LOTE DE PRODUCCIÓN: %s' % of,
             'NO. DE ROLLO: %s' % self.secuencia,
             'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador or ''),
             'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
         ]
+        codigos = ['%.2f;%.3f;%s;%s' % (self.metros, self.kg_neto, of, self.secuencia)]
         if pnc:
             renglones.append('DEFECTOS: %s' % (self.siglas_defectos or ''))
-        titulo = 'ETIQUETA DE PRODUCTO CON DEFECTIVA' if pnc else 'ETIQUETA DE PRODUCTO TERMINADO'
-        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto),
-               '^FO30,25^A0N,30,30^FDPRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V.^FS',
-               '^FO30,70^A0N,28,28^FD%s^FS' % t(titulo)]
-        if pnc:
-            zpl.append('^FO30,110^A0N,40,40^FD%s^FS' % {'FE': 'FUERA DE ESPECIFICACIÓN', 'SEGUNDA': 'SEGUNDA',
-                                                         'DESP': 'DESPERDICIO'}[clasif])
-        y = 170
-        for texto in renglones:
-            zpl.append('^FO30,%d^A0N,34,34^FD%s^FS' % (y, t(texto)))
-            y += 58
-        zpl.append(Bitacora._zpl_codigo_barras(
-            '%.2f;%.3f;%s;%s' % (self.metros, self.kg_neto, of, self.secuencia), 30, ancho, y + 10))
-        if pnc:
-            zpl.append(Bitacora._zpl_codigo_barras(
-                ('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip(), 30, ancho, y + 140))
-        zpl.append('^XZ')
-        return '\n'.join(zpl)
+            codigos.append(('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip())
+        return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, renglones, codigos)
 
     def action_imprimir_etiqueta(self):
         self.ensure_one()

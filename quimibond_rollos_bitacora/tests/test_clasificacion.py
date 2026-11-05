@@ -79,6 +79,28 @@ class TestClasificacionFinal(TransactionCase):
         self.assertIn('WJ038Q22JNT160.', self._final('SEGUNDA'))
         self.assertIn('WJ038Q22JNT160*', self._final('DESP'))
 
+    def test_08_etiqueta_final_cabe_en_76x102(self):
+        """3.3.7 (Sistemas 2026-11-05): 76 mm de ancho x 102 mm de alto = 608 x 816 puntos a 203 dpi. Todo lo
+        impreso queda dentro de la etiqueta y los códigos con datos de largo real llevan módulo de 2 puntos."""
+        import re
+        for clasif, defectos in (('PQ', ()), ('FE', ('AD', 'AGU'))):
+            zpl = self._final(clasif, defectos)
+            self.assertTrue(zpl.startswith('^XA^PW608^LL816'))
+            posiciones = [(int(x), int(y)) for x, y in re.findall(r'\^FO(\d+),(\d+)', zpl)]
+            self.assertTrue(all(0 <= x < 608 and 0 <= y < 816 for x, y in posiciones))
+            ultimo = re.findall(r'\^FO\d+,(\d+)\^BCN,(\d+)', zpl)[-1]
+            self.assertLessEqual(int(ultimo[0]) + int(ultimo[1]) + 30, 816)  # barras + texto legible
+        # Dato real: metros de 4 cifras, kg, orden en metros (M + 5 dígitos) y rollo de 2 cifras.
+        codigo = self.rollo._zpl_codigo_barras('1234.50;49.100;M00123;12', 12, 608, 0)
+        self.assertTrue(codigo.startswith('^BY2,'))
+        self.assertIn('^FD>;1234>6.50;49.100;M00123;12^FS', codigo)
+        # Subconjuntos: inicio y final en C con 4+ dígitos; corrida impar deja el primero en B; '>' se escapa.
+        Bitacora = self.env['mrp.rollo.bitacora']
+        self.assertEqual(Bitacora._code128_zpl('00004-0001'), ('>;0000>64->50001', 10 * 11 + 13))
+        self.assertEqual(Bitacora._code128_zpl('A12345'), ('>:A1>52345', 7 * 11 + 13))
+        self.assertEqual(Bitacora._code128_zpl('1 AD'), ('>:1 AD', 6 * 11 + 13))
+        self.assertEqual(Bitacora._code128_zpl('a>b')[0], '>:a><b')
+
     def test_05_wizard_estados_del_rollo(self):
         wiz = self.env['rollo.clasificacion.wizard'].new({
             'production_id': self.orden_b.id, 'workorder_id': self.workorder.id, 'rollo_codigo': 'NO-EXISTE'})
