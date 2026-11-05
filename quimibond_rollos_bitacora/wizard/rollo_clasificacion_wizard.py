@@ -51,11 +51,10 @@ class RolloClasificacionWizard(models.TransientModel):
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
         Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
         for wiz in self:
             nombre = False
-            if wiz.empleado_numero and campo in Empleado._fields:
-                emp = Empleado.search([(campo, '=', wiz.empleado_numero)], limit=1)
+            if wiz.empleado_numero:
+                emp = Empleado._qb_operador(wiz.empleado_numero)  # 3.5.1: número = referencia S-<número>
                 nombre = emp.name if emp else _('EMPLEADO NO ENCONTRADO')
             wiz.empleado_nombre = nombre
 
@@ -121,9 +120,7 @@ class RolloClasificacionWizard(models.TransientModel):
     def _siglas_operador_insp(self, rollo):
         """Siglas del operador que inspeccionó el rollo (el número de empleado va antes del « - »)."""
         numero = (rollo.operador_insp or '').split(' - ')[0].strip()
-        campo = 'x_studio_nmero_de_trabajador'
-        Empleado = self.env['hr.employee']
-        emp = Empleado.search([(campo, '=', numero)], limit=1) if numero and campo in Empleado._fields else Empleado
+        emp = self.env['hr.employee']._qb_operador(numero)
         if not emp.siglas:
             raise UserError(_(
                 'El operador de Inspección del rollo (%s) no tiene siglas. Captúralas en el empleado '

@@ -71,11 +71,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
 
     @api.model
     def _empleado(self, numero):
-        Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
-        if not numero or campo not in Empleado._fields:
-            return Empleado
-        return Empleado.search([(campo, '=', numero)], limit=1)
+        return self.env['hr.employee']._qb_operador(numero)  # 3.5.1: número = referencia S-<número>
 
     @api.depends('empleado_numero')
     def _compute_empleado(self):
@@ -219,7 +215,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                               dict(CLASIFICACIONES).get(self.clasificacion)))
         emp = self._empleado(self.empleado_numero)
         if not emp and 'x_studio_nmero_de_trabajador' in self.env['hr.employee']._fields:
-            raise UserError(_('No existe el empleado %s.', self.empleado_numero))
+            raise UserError(_('No existe el empleado %s. Se busca por la referencia de nómina (S-85); si es de otra '
+                              'nómina, teclea la referencia completa (Q-7, C-26).', self.empleado_numero))
         if emp and not emp.siglas:
             raise UserError(_('El operador %s no tiene siglas: captúralas en el empleado (van en la etiqueta).',
                               emp.name))

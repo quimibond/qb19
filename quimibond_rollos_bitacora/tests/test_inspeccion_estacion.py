@@ -888,3 +888,39 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(wo_listo)
         wo_listo.button_start()
         self.assertTrue(bano.numero_bano)
+
+    def test_40_operador_por_referencia_de_nomina(self):
+        """3.5.1: el número tecleado se busca como la referencia S-<número> (nómina semanal); otra nómina se teclea completa.
+        El mismo número en dos nóminas ya no confunde a la estación."""
+        Emp = self.env['hr.employee']
+        if 'registration_number' not in Emp._fields:
+            self.skipTest('Sin «Referencia de empleado» (nómina Enterprise): corre en Odoo.sh')
+        semanal = Emp.create({'name': 'Operadora semanal', 'registration_number': 'S-85'})
+        quincenal = Emp.create({'name': 'Mecanico quincenal', 'registration_number': 'Q-85'})
+        self.assertEqual(Emp._qb_operador('85'), semanal)
+        self.assertEqual(Emp._qb_operador(' 085 '), semanal)
+        self.assertEqual(Emp._qb_operador('Q-85'), quincenal)
+        self.assertEqual(Emp._qb_operador('q85'), quincenal)
+        self.assertFalse(Emp._qb_operador('86'))
+        self.assertFalse(Emp._qb_operador(''))
+        for modelo in ('rollo.pesaje.rama.wizard', 'rollo.desperdicio.rama.wizard', 'rollo.inspeccion.estacion.wizard'):
+            self.assertEqual(self.env[modelo].new({'empleado_numero': '85'}).empleado_nombre, 'Operadora semanal', modelo)
+            self.assertEqual(self.env[modelo].new({'empleado_numero': 'Q-85'}).empleado_nombre, 'Mecanico quincenal', modelo)
+
+    def test_41_crudo_por_categoria_de_tejido(self):
+        """3.5.1: el crudo es el componente de una categoría de tejido aunque otro pese más (IWJ032: LAVADO001 a 2.2 kg por
+        kg, detergente de la abridora en «Aux. acabado»); sin categoría de tejido sigue ganando el de más kg."""
+        _m, orden_kg, _wo, _rollos = self._bano((40.0,))
+        self.assertEqual(orden_kg._moves_crudo().product_id, self.crudo)
+        Categoria = self.env['product.category']
+        lavado = self.env['product.product'].create({
+            'name': 'Lavado ZZ951', 'type': 'consu', 'uom_id': self.kg.id,
+            'categ_id': Categoria.create({'name': 'Aux. acabado'}).id})
+        self.env['stock.move'].create({
+            'raw_material_production_id': orden_kg.id, 'product_id': lavado.id, 'product_uom_qty': 400.0,
+            'product_uom': self.kg.id, 'location_id': orden_kg.location_src_id.id,
+            'location_dest_id': orden_kg.production_location_id.id, 'company_id': orden_kg.company_id.id})
+        self.assertEqual(orden_kg._moves_crudo().product_id, lavado, "Sin categoría de tejido gana el de más kg")
+        self.crudo.categ_id = Categoria.create({'name': 'Tejido Circular'})
+        self.assertEqual(orden_kg._moves_crudo().product_id, self.crudo)
+

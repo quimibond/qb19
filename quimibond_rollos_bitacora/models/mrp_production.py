@@ -193,13 +193,17 @@ class MrpProduction(models.Model):
 
     def _moves_crudo(self):
         """3.3.2: consumo de la tela cruda de la orden en kg: el componente en peso con más kg planeados (el crudo va a
-        1.1 kg por kg; químicos y engomado son gramos o pocos kg por baño)."""
+        1.1 kg por kg; químicos y engomado son gramos o pocos kg por baño). 3.5.1: entre los componentes de una categoría
+        de tejido, si los hay: en IWJ032 el LAVADO001 (detergente en la abridora, «Aux. acabado») va a 2.2 kg por kg y
+        se tomaba como crudo, así que la orden no cerraba (Ingeniería, 2026-11-05)."""
         self.ensure_one()
         kg = self.env.ref('uom.product_uom_kgm')
         pesos = self.move_raw_ids.filtered(
             lambda m: m.state != 'cancel' and m.product_uom._has_common_reference(kg))
         if not pesos:
             return pesos
+        tela = pesos.filtered(lambda m: 'TEJIDO' in (m.product_id.categ_id.complete_name or '').upper())
+        pesos = tela or pesos
         planeado = {}
         for move in pesos:
             planeado[move.product_id] = planeado.get(move.product_id, 0.0) + move.product_uom._compute_quantity(
