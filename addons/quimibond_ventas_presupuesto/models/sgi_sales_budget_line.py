@@ -23,7 +23,7 @@ from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.quimibond_sgi.models.sgi_base import sgi_bypass_allowed
 from .product_articulo import CONV_ORIGINS, _UOM_REFS
-from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS,
+from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS, MERCADO_BASE,
                                PROYECTO_MERCADOS, default_mercado, mercado_team)
 
 PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por kilo")]
@@ -526,11 +526,13 @@ class SgiSalesBudgetLine(models.Model):
                 raise ValidationError(
                     "Solo los renglones de Proyectos van sin producto (%s)." % line.proyecto_descripcion)
 
-    @api.constrains('partner_id', 'product_id', 'budget_id')
+    @api.constrains('partner_id', 'product_id', 'budget_id', 'mercado')
     def _check_no_mixed_scheme(self):
-        """Anti-doble-conteo: dentro de un presupuesto, un producto es global
-        (sin cliente) O por cliente, nunca ambos — o el mismo importe se contaría
-        dos veces contra el mismo real.
+        """Anti-doble-conteo: dentro de un presupuesto y un mercado base (el mismo
+        equipo de ventas), un producto es global (sin cliente) O por cliente, nunca
+        ambos — o el mismo importe se contaría dos veces contra el mismo real.
+        3.5.3: por mercado base; Confección presupuesta sin cliente un producto que
+        Industrial presupuesta por cliente, y cada uno mide su equipo.
 
         Una search POR PRESUPUESTO, no por línea: una importación de cientos de
         líneas disparaba cientos de searches (N+1)."""
@@ -544,15 +546,16 @@ class SgiSalesBudgetLine(models.Model):
             products = {}  # product_id -> record (para el mensaje)
             for sibling in siblings:
                 product = sibling.product_id
-                schemes.setdefault(product.id, set()).add(bool(sibling.partner_id))
+                key = (product.id, MERCADO_BASE.get(sibling.mercado))
+                schemes.setdefault(key, set()).add(bool(sibling.partner_id))
                 products[product.id] = product
-            for product_id, kinds in schemes.items():
+            for (product_id, _base), kinds in schemes.items():
                 if len(kinds) > 1:
                     raise ValidationError(
                         "El producto '%s' ya está presupuestado por cliente en este "
-                        "presupuesto; captura el resto como otro cliente o cambia el "
-                        "esquema (no mezcles líneas con cliente y sin cliente para el "
-                        "mismo producto)." % products[product_id].display_name)
+                        "mercado; capture el resto como otro cliente o cambie el "
+                        "esquema (no mezcle líneas con cliente y sin cliente para el "
+                        "mismo producto en el mismo mercado)." % products[product_id].display_name)
 
     @api.constrains('uom_id', 'product_id')
     def _check_uom_category(self):

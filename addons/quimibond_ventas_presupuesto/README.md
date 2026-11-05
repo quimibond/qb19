@@ -21,6 +21,20 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Traer renglones de otro presupuesto (19.0.3.5.3, 2026-11-05)
+
+Engrane → «Traer renglones de otro presupuesto»: copia a un borrador los
+renglones de otros presupuestos del mismo año (de cualquier estado), con su
+mercado, cliente, producto o proyecto, mes, unidad, cantidad y precio; lo que
+ya existe o no cabe queda anotado en el chatter. Con esto se arma la REV2
+2026 con los cinco mercados: «Nueva revisión» del Industrial aprobado y traer
+los renglones de Confección (PPV-2026-004) y Especiales (PPV-2026-005).
+
+El anti-doble-conteo («un producto no va con cliente y sin cliente») ahora es
+**por mercado base**: Confección presupuesta sin cliente productos que
+Industrial presupuesta por cliente, y cada uno mide su propio equipo. La
+conciliación también separa por equipo.
+
 ## Cantidad facturada sin las líneas de costo y conciliación por partida (19.0.3.5.2, 2026-11-05)
 
 El real de cada renglón sumaba también las dos líneas de costo (cogs) que Odoo
