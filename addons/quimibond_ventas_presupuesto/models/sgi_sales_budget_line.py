@@ -609,6 +609,7 @@ class SgiSalesBudgetLine(models.Model):
             _, end_next = lines[0]._sgi_month_bounds(end)
             amls = AML.search([
                 ('parent_state', '=', 'posted'),
+                ('display_type', '=', 'product'),  # 3.5.2: sin las líneas de costo (cogs)
                 ('move_id.move_type', 'in', _REAL_MOVE_TYPES),
                 ('move_id.team_id', '=', team_id),
                 ('company_id', '=', company_id),  # solo la compañía del ppto
