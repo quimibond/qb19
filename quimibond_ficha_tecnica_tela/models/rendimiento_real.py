@@ -24,13 +24,16 @@ m/kg contra 15.79 de las listas de empaque de 2026, 1,800 rollos pesados). Ahora
 3. **Ficha** (``ficha``): sin nada, se queda el de la ficha.
 
 2.27.1: una conversión o rollo a más de 15 % de la mediana de su tela no cuenta, y lo medido se usa con al menos 3
-muestras buenas; con menos, el estimado (y si tampoco hay, esas pocas muestras).
+muestras buenas; con menos, el estimado (y si tampoco hay, el de la ficha).
 
 2.27.2: **los rollos de Inspección le ganan a las conversiones** (son la fuente que escala: cada rollo pesado neto en la
 estación; las conversiones son el puente mientras no hay rollos, con el kg de la lista de empaque) y **el rendimiento
 que Ingeniería escribe a mano queda fijo** («Rendimiento forzado», como el de la ficha de tejido): el recálculo no lo
 pisa con conversiones ni con el estimado, solo con 3 o más rollos de Inspección, y entonces avisa si cambió más que la
-alerta. Orden: rollos → forzado → conversiones → estimado → pocas muestras → ficha.
+alerta. Orden: rollos → forzado → conversiones → estimado → ficha.
+
+Revisión 2026-11-06 (en 2.27.1): el estimado cuenta los kg de reproceso (códigos con punto al final) y no multiplica por el
+consumo de crudo los kg de la tela acabada en kg; con menos de 3 muestras y sin estimado se queda el de la ficha.
 """
 from datetime import timedelta
 
@@ -54,13 +57,22 @@ ALERTA_RENDIMIENTO_PCT = 5.0
 POSICION_PROCESO = ('H', 'I', 'J')  # crudo, teñido, acabado (DAT P-D02-01, posición 9)
 
 
+def tipo_tela(code):
+    """Revisión 2026-11-06: «terminada» si es la tela acabada en kg (su código con «I» al frente), «entrada» si es crudo, teñido o
+    tela (H, I o J en la posición 9), o None si no es tela (engomado, colorantes, auxiliares). Quita la marca de
+    reproceso del final («WD038Q46ING163.»): esos kg son tela y antes se perdían (WD038Q46JNG166 salía a 32.1 m/kg)."""
+    code = (code or '').strip().upper().rstrip('.-_ ')
+    if len(code) in (15, 17) and code.startswith('I') and code[9:10] in POSICION_PROCESO:
+        return 'terminada'
+    if len(code) in (14, 16) and code[8:9] in POSICION_PROCESO:
+        return 'entrada'
+    return None
+
+
 def es_tela_kg(code):
     """Crudo, teñido o tela (H, I o J en la posición 9), o su código en kg con «I» al frente. Lo demás
     (engomado, colorantes, auxiliares) no es tela."""
-    code = (code or '').strip().upper()
-    if len(code) in (15, 17) and code.startswith('I'):
-        code = code[1:]
-    return len(code) in (14, 16) and code[8:9] in POSICION_PROCESO
+    return tipo_tela(code) is not None
 
 
 def ancho_en_m(ancho):
@@ -108,14 +120,16 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
 
     @api.model
     def _ft_fabricado(self, products, desde):
-        """{producto: (metros, kilos de tela, órdenes)} de las órdenes terminadas desde ``desde`` que fabricaron
-        esos productos."""
+        """{producto: (metros, kg de tela que entró, kg de tela acabada en kg, kg de saldos, órdenes)} de las órdenes
+        terminadas desde ``desde`` que fabricaron esos productos. Revisión 2026-11-06: los kg de la tela acabada en kg (el «I…» que
+        consume la orden en metros del flujo nuevo) van aparte de los de crudo o teñido, porque ya son kg de tela
+        terminada y no se multiplican por el consumo de crudo; los saldos también van aparte."""
         Move = self.env['stock.move'].sudo()
         metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
         kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
         if not products or not metro or not kg:
             return {}
-        metros, ordenes, kilos = {}, {}, {}
+        metros, ordenes, kilos, terminada, saldos = {}, {}, {}, {}, {}
         for product, uom, qty, n in Move._read_group(
                 [('state', '=', 'done'), ('product_id', 'in', products.ids), ('production_id.state', '=', 'done'),
                  ('production_id.date_finished', '>=', desde)],
@@ -128,9 +142,11 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                  ('raw_material_production_id.state', '=', 'done'),
                  ('raw_material_production_id.date_finished', '>=', desde)],
                 ['raw_material_production_id.product_id', 'product_id', 'product_uom'], ['quantity:sum']):
-            if not es_tela_kg(componente.default_code) or not (uom == kg or uom._has_common_reference(kg)):
+            tipo = tipo_tela(componente.default_code)
+            if not tipo or not (uom == kg or uom._has_common_reference(kg)):
                 continue
-            kilos[product] = kilos.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
+            destino = terminada if tipo == 'terminada' else kilos
+            destino[product] = destino.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
         # Los saldos en kg (segundas y desperdicio) que salen de esas órdenes son tela que no se volvió metros de la
         # tela: se restan de los kilos. Así el rendimiento es el de la tela que sí se vuelve metros, y la primera para
         # planear del costeo (que cuenta los saldos como merma) no descuenta la misma merma dos veces.
@@ -139,9 +155,10 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                  ('production_id.product_id', 'in', products.ids), ('production_id.state', '=', 'done'),
                  ('production_id.date_finished', '>=', desde)],
                 ['production_id.product_id', 'product_uom'], ['quantity:sum']):
-            if product in kilos and (uom == kg or uom._has_common_reference(kg)):
-                kilos[product] = max(kilos[product] - uom._compute_quantity(qty, kg, round=False), 0.0)
-        return {p: (metros[p], kilos.get(p, 0.0), ordenes.get(p, 0)) for p in metros}
+            if uom == kg or uom._has_common_reference(kg):
+                saldos[product] = saldos.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
+        return {p: (metros[p], kilos.get(p, 0.0), terminada.get(p, 0.0), saldos.get(p, 0.0), ordenes.get(p, 0))
+                for p in metros}
 
     @api.model
     def _ft_conversiones(self, fichas, desde):
@@ -224,7 +241,8 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
 
     def _ft_actualizar_rendimiento_real(self):
         """El rendimiento de estas fichas (todas si vacío) con lo fabricado; sin datos se queda el de la ficha. Orden
-        (2.27.2): rollos de Inspección → forzado por Ingeniería → conversiones → estimado → pocas muestras → ficha."""
+        (2.27.2): rollos de Inspección → forzado por Ingeniería → conversiones → estimado → ficha (sin «pocas
+        muestras» desde la revisión del 2026-11-06)."""
         fichas = self or self.search([('product_acabado_id', '!=', False)])
         desde = fields.Date.context_today(self) - timedelta(days=DIAS_REAL)
         rollos = self._ft_rollos(fichas, desde)
@@ -235,8 +253,14 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             nuevo, n, fuente = 0.0, 0, 'ficha'
             m_r, kg_r, n_r = rollos.get(ficha, (0.0, 0.0, 0))
             m_c, kg_c, n_c = conversiones.get(ficha, (0.0, 0.0, 0))
-            m, kilos, n_e = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0))
+            m, kg_entrada, kg_terminada, kg_saldos, n_e = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0.0, 0.0, 0))
             consumo = ficha.consumo_crudo if 'consumo_crudo' in ficha._fields else 0.0
+            # Revisión 2026-11-06: kg de tela terminada que salieron de esas órdenes: la tela acabada en kg tal cual, el crudo o
+            # teñido entre el consumo de crudo (kg que entran por kg de tela acabada) y menos los saldos. Con crudo o
+            # teñido y sin consumo capturado no se puede estimar.
+            kg_estimado = 0.0
+            if m and (kg_terminada or kg_entrada) and (consumo or not kg_entrada):
+                kg_estimado = kg_terminada + (kg_entrada / consumo if kg_entrada else 0.0) - kg_saldos
             if m_r and kg_r and n_r >= MIN_MUESTRAS:
                 nuevo, n, fuente = round(m_r / kg_r, 4), n_r, 'rollos'
             elif ficha.rendimiento_manual:
@@ -246,15 +270,10 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 continue
             elif m_c and kg_c and n_c >= MIN_MUESTRAS:
                 nuevo, n, fuente = round(m_c / kg_c, 4), n_c, 'terminado'
-            elif m and kilos and consumo:
-                # metros por kg que entró × kg que entran por kg de tela acabada = metros por kg de tela acabada
-                nuevo, n, fuente = round(m / kilos * consumo, 4), n_e, 'estimado'
-            elif (m_r and kg_r) or (m_c and kg_c):
-                # Pocas muestras y nada mejor: los rollos antes que las conversiones.
-                if m_r and kg_r:
-                    nuevo, n, fuente = round(m_r / kg_r, 4), n_r, 'rollos'
-                else:
-                    nuevo, n, fuente = round(m_c / kg_c, 4), n_c, 'terminado'
+            elif kg_estimado > 0:
+                nuevo, n, fuente = round(m / kg_estimado, 4), n_e, 'estimado'
+            # Revisión 2026-11-06: con menos de MIN_MUESTRAS rollos o conversiones y sin estimado se queda el de la ficha: una o dos
+            # muestras no se pueden filtrar (WJ060Q21JNT165: una conversión de 12.05 contra 9.77 real).
             if nuevo:
                 vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n, 'rendimiento_fuente': fuente,
                         'rendimiento_manual': False}
