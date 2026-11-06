@@ -33,8 +33,9 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - **El número de baños sale de los kg de crudo que entran al jet**, no de los kg de tela terminada de la orden. El
   crudo es el componente en peso de una categoría de tejido con más kg planeados (la misma regla con la que
   `quimibond_rollos_bitacora` valida el crudo al cerrar). En IWJ038Q22JNT160 entran 1.1505 kg de crudo por kg de
-  tela: un baño de 500 kg de tela cargaba 575 kg en un jet de 500. La orden se sigue repartiendo en kg de tela, en
-  baños iguales.
+  tela: en TINTORERIA 1 (banda B, 600 kg) una orden de 550 kg de tela cabía en 1 baño, que cargaba 633 kg de crudo;
+  ahora son 2 baños de 316 kg (ronda 8 en main, 2026-11-06). La orden se sigue repartiendo en kg de tela, en baños
+  iguales.
 - El cálculo del crudo (`_kg_carga_jet`) vive en `quimibond_tintoreria_dosificacion` 1.4.0, que con los mismos kg
   dosifica los químicos (g/L × relación de baño) y los colorantes (% sobre el peso cargado).
 - El asistente, la programación y la nota de cada orden muestran los kg de crudo por baño. Sin componente de tejido
