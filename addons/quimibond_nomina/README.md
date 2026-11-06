@@ -689,6 +689,58 @@ de diciembre) y NOI usa 8: en la semana 46 Odoo retenía 8/9 de lo de NOI en los
   recibo «tenía» un recibo anterior que no existe, y la recuperación de 1.16.0
   (sección 15) nunca se disparaba en noviembre–diciembre.
 
+### 17. Aguinaldo: los días de cada grupo de nómina (1.18.0)
+
+La regla `BASIC` de la estructura «Aguinaldo» (id 104) paga el salario diario
+por `l10n_mx_christmas_bonus`, un parámetro de la localización con un solo
+valor por país: **15 días**. Quimibond paga **25** a la planta semanal
+(sindicalizados, acuerdo con el sindicato; prima vacacional al 41 %) y **16** a
+los quincenales de Toluca y CDMX (empleados, desde el incremento de agosto de
+2025; prima al 25 %). Sustento: la tabla de factores de «MOD SALARIAL VARIABLES
+5o BIMESTRE 2026» (MSTOL 25, MQTOL y MQMEX 16), el aguinaldo de NOI de
+diciembre de 2025 (14 de los primeros 24 renglones de la semanal dan 25.000
+días exactos; 19 de 20 de la quincenal de Toluca dan 16.000) y Lorena por
+correo el 5-nov-2026. El ensayo del lote 133 (5-nov) dio a Gerónimo Bartolo
+$7,756.95 (15 días) contra los $12,928.25 que le tocan.
+
+- Campo **«Días de aguinaldo»** en el tipo de estructura
+  (`hr.payroll.structure.type.qb_dias_aguinaldo`, Nómina → Configuración →
+  Tipos de estructura). Al instalar o actualizar se siembra donde está en
+  cero: 16 en «Mexico: Employee» (`l10n_mx_hr_payroll.l10n_mx_employee`, los
+  quincenales) y 25 en los tipos semanales de México («Mexico: Employee
+  semanal»). En cero, cuenta el parámetro de la localización.
+- `payslip._qb_aguinaldo_base()` (`models/aguinaldo.py`) es la regla 104 con
+  los días del grupo: salario diario × días × (días del año desde el 1-ene o
+  el alta − días no pagados) ÷ días del año. Los días no pagados son los de
+  la regla (`LEAVE90`, `LEAVE1000`, `LEAVE1100`, `LEAVE1200`) de los recibos
+  regulares del año validados o pagados; con
+  `quimibond_nomina.isr_mensual_incluye_borrador` también los borradores, un
+  recibo por periodo (el más reciente), para comparar la piloto contra NOI.
+- **Límite del paralelo de 2026:** la piloto solo tiene recibos desde la
+  semana 42, así que las faltas e incapacidades de enero a septiembre no
+  están en Odoo y el aguinaldo de 2026 en Odoo no las descuenta (Gerónimo
+  Bartolo cobró 23.63 días en 2025 por sus faltas). Ese aguinaldo lo timbra
+  NOI; el prorrateo completo cuadra con el de 2027, cuando todo el año viva en
+  Odoo. Para el paralelo, comparar a quien no faltó en el año.
+- La exención (30 UMA = 3,519.30 en 2026) y el ISR del art. 174 (regla 61) ya
+  estaban bien y no cambian.
+- **La prima vacacional también cambia por grupo** (41 % contra 25 %); no se
+  tocó aquí. La semanal ya cuadra contra NOI; los quincenales quedan por
+  revisar en su paralelo.
+
+**Regla que se cambia en la base después de desplegar 1.18.0** (sin el cambio
+el aguinaldo sigue a 15 días): `BASIC` de «Aguinaldo» (id 104), fórmula
+completa:
+
+```python
+# Aguinaldo: salario diario por los dias del grupo de nomina (25 la planta semanal, 16 los
+# quincenales; quimibond_nomina 1.18.0, models/aguinaldo.py), prorrateado por el ano trabajado.
+result = payslip._qb_aguinaldo_base()
+```
+
+La regla 104 no está bajo el centinela; conviene agregarla después de
+editarla.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -710,6 +762,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Parámetro `quimibond_nomina.idse_guia.<registro>` (1.9.0) | al generar un lote | la guía capturada, para proponerla la próxima vez |
 | Modelos `qb.nomina.incidencias` y `qb.nomina.incidencias.linea` (tablas nuevas) y menú «Incidencias» en la raíz de Nómina (1.13.0) | al instalar y en cada actualización (menú) | nacen vacías |
 | Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
+| Campo `qb_dias_aguinaldo` en `hr.payroll.structure.type` (1.18.0) | al instalar y al actualizar a 1.18.0 | columna nueva; se siembra 16 en «Mexico: Employee» y 25 en los tipos semanales de México solo donde está en cero; nunca pisa lo capturado |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
