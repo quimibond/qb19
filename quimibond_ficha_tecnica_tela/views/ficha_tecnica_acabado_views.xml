@@ -176,12 +176,23 @@
                                     </div>
                                     <field name="peso_real"/>
                                     <field name="rendimiento_por_revisar" invisible="1"/>
+                                    <field name="rendimiento_teorico"/>
+                                    <field name="rendimiento_medido" invisible="not rendimiento_medido"/>
+                                    <field name="rendimiento_medido_fuente" invisible="not rendimiento_medido"/>
+                                    <field name="rendimiento_medido_ordenes" invisible="not rendimiento_medido"/>
+                                    <field name="rendimiento_medido_estado" invisible="not rendimiento_medido"/>
                                     <div colspan="2" class="alert alert-warning" role="status" invisible="not rendimiento_por_revisar">
-                                        El rendimiento cambió con lo fabricado: antes
-                                        <field name="rendimiento_anterior" class="oe_inline" readonly="1"/> m/kg, el
-                                        <field name="rendimiento_cambio_fecha" class="oe_inline" readonly="1"/>.
+                                        Lo fabricado da otro rendimiento que la ficha (calculado el
+                                        <field name="rendimiento_cambio_fecha" class="oe_inline" readonly="1"/>). La ficha
+                                        no cambia sola: úselo o quédese con el de la ficha.
+                                        <button name="action_ft_usar_rendimiento_medido" type="object" string="Usar el medido"
+                                                class="btn btn-sm btn-primary ms-2"/>
                                         <button name="action_ft_rendimiento_revisado" type="object" string="Marcar revisado"
                                                 class="btn btn-sm btn-secondary ms-2"/>
+                                    </div>
+                                    <div colspan="2" class="alert alert-danger" role="alert" invisible="rendimiento_medido_estado != 'fuera'">
+                                        Lo fabricado se aleja más de 25 % del rendimiento teórico (peso y ancho de la
+                                        ficha): es un dato malo y no se propone. Revise el peso, el ancho o las órdenes.
                                     </div>
                                 </group>
                             </group>

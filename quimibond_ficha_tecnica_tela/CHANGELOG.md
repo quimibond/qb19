@@ -8,6 +8,22 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.28.0 — 2026-11-06
+
+**Cambia (Dirección)**
+- **El recálculo nocturno propone el rendimiento; ya no lo escribe en la ficha.** Lo medido (rollos de Inspección,
+  conversiones a kg o estimado) queda en campos aparte: «Rendimiento medido», su fuente, sus muestras y su estado
+  («Igual al de la ficha», «Por aprobar» o «Fuera del teórico»). El rendimiento de la ficha, que usan la lista en metros,
+  los tiempos de rama e inspección y el costeo (`qb_costeo`), cambia solo cuando Ingeniería da **«Usar el medido»**;
+  **«Marcar revisado»** se queda con el de la ficha. Motivo: la revisión del 2026-11-06 encontró que el estimado
+  escribía números imposibles en la ficha (WD038Q46JNG166 a 32.1 m/kg, WC090Q11JNT162 a 36.7) que el costeo habría
+  tomado sin que nadie los viera.
+- **Tope contra el teórico.** Lo medido que se aleja más de 25 % (parámetro `tope_teorico_pct`) del rendimiento teórico
+  de la ficha, 1000 ÷ (peso en g/m² × ancho de venta en m), es un dato malo: no se propone, «Usar el medido» no lo
+  aplica y la revisión deja el pendiente «Lo fabricado da un rendimiento fuera del teórico».
+- El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
+- Pruebas 8, 9, 14 y 19.
+
 ## 19.0.2.27.1 — 2026-11-05
 
 **Corregido**
