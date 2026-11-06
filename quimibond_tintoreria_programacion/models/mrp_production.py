@@ -306,3 +306,23 @@ class MrpProduction(models.Model):
     def button_mark_done(self):
         self._check_tintoreria_programada()
         return super().button_mark_done()
+
+    def action_cancel(self):
+        """1.6.2 (ronda 5 de pruebas en main, 2026-11-05): al cancelar órdenes de una programación, la programación lo
+        anota; si ya no le queda ninguna orden viva, pasa a «Cancelada» (antes se quedaba «Programada»)."""
+        programaciones = self.filtered(lambda o: o.state not in ('done', 'cancel')).tintoreria_programacion_id
+        res = super().action_cancel()
+        for programacion in programaciones:
+            canceladas = self.filtered(
+                lambda o: o.tintoreria_programacion_id == programacion and o.state == 'cancel')
+            if not canceladas:
+                continue
+            nombres = ', '.join(canceladas.mapped('name'))
+            if all(o.state == 'cancel' for o in programacion.production_ids):
+                programacion.state = 'cancelada'
+                programacion.message_post(body=_(
+                    "Cancelada: se cancelaron todas sus órdenes (%s).", nombres))
+            else:
+                programacion.message_post(body=_(
+                    "Se canceló %s; las demás órdenes siguen programadas.", nombres))
+        return res

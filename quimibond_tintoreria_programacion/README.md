@@ -28,6 +28,11 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
 
+## Cambios 19.0.1.6.2 (ronda 5 de pruebas en main, 2026-11-05)
+
+- Cancelar una orden de una programación lo anota en la programación; si ya no le queda ninguna orden viva, la
+  programación pasa a «Cancelada» (antes se quedaba «Programada»).
+
 ## Cambios 19.0.1.6.1 (revisión de Consolti, 2026-10-30)
 
 - Redacción del aviso del chatter cuando se usa la operación de Tintorería de la BoM: decía «150.0 min por 1.0 kg,

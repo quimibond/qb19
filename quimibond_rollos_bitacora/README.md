@@ -141,6 +141,16 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Cancelar una orden en kg (3.5.2, ronda 5 de pruebas, 2026-11-05)
+
+Una orden en kg con rollos o desperdicio pesados en Rama **no se cancela**: la tela ya existe, cancelar la saca del
+inventario y deja la bitácora pendiente, y regresar a medio baño descuadra el inventario (plan de regreso). Se termina
+el baño; lo que no sirva sale como Segunda o Desperdicio. Solo un administrador de Fabricación la cancela (rollos
+pesados en la orden equivocada), y queda una nota con los lotes y los kg. Si el baño abastecía una orden en metros,
+esa orden recibe la nota de que se quedó sin abasto. Los rollos de una orden cancelada ya no salen en «Pendientes de
+inspección». En la programación de tintorería (1.6.2), cancelar sus órdenes lo anota y, sin órdenes vivas, la
+programación pasa a «Cancelada».
+
 ## Operador por referencia de nómina (3.5.1, Dirección 2026-11-05)
 
 El número de trabajador se repite entre nóminas (85 es Lorena Santiago, S, y Franco Huerta, Q; 34 es un operador de
