@@ -31,7 +31,8 @@ class TestSenalesFinanzas(SenalesCommon):
         self.assertEqual(f['payload']['dias_max'], 40)
         self.assertEqual(f['vence'], str(self.hace(40)))
         self.assertIn('2 facturas', f['valor_texto'])
-        self.assertEqual(len(filas), 1)
+        # No se cuenta len(filas): en la copia de producción hay cientos de
+        # clientes con cartera vencida. La fila de este cliente ya se comprobó.
 
     def test_cxp_vencida_es_positiva_y_por_proveedor(self):
         self._factura(self.proveedor, 'in_invoice', 300, 3)
