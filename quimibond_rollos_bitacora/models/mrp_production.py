@@ -436,7 +436,12 @@ class MrpProduction(models.Model):
     def _ordenes_previas(self):
         """MOs que abastecen a esta por la cadena MTO (la MO en kg que produce el Producto A de la MO en m)."""
         self.ensure_one()
-        return self.move_raw_ids.move_orig_ids.production_id - self
+        # 3.6.4: solo los movimientos que de verdad abastecen el consumo (mismo producto, no cancelados). Los
+        # subproductos del baño (desperdicio de Rama, cancelado en cero) también quedan ligados y hacían creer que otro
+        # baño abastecía la orden en metros (ronda 13 en main: pendiente TL/OP-M/00035-003).
+        origenes = self.move_raw_ids.mapped(lambda raw: raw.move_orig_ids.filtered(
+            lambda m, raw=raw: m.product_id == raw.product_id and m.state != 'cancel'))
+        return origenes.production_id - self
 
     def _plan_workorders(self, replan=False):
         """La MO en metros no puede empezar antes de que termine la MO en kg que la abastece.

@@ -300,11 +300,16 @@ class MrpProduction(models.Model):
             raise UserError(_(
                 "La orden en metros %(m)s se dividió en %(p)s partes para %(b)s baños; no se programó nada. Revisa las "
                 "cantidades de la orden en metros.", m=orden_m.name, p=len(partes), b=len(banos)))
+        consumos_partes = partes.move_raw_ids.filtered(lambda m: m.product_id == producto)
         for bano, parte in zip(banos, partes):
-            terminado = bano.move_finished_ids.filtered(
-                lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
             consumo = parte.move_raw_ids.filtered(lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
-            terminado.move_dest_ids = [Command.set(consumo.ids)]
+            # Todos los terminados del baño, no solo el del acabado: los subproductos (el desperdicio de Rama de la
+            # lista en kg) también quedan ligados al consumo de la orden en metros, y si apuntan a las otras partes la
+            # orden en metros cree que otro baño la abastece y al cerrar deja un pendiente (ronda 13 en main:
+            # TL/OP-M/00035-003).
+            for terminado in bano.move_finished_ids.filtered(lambda m: m.move_dest_ids & consumos_partes):
+                otros = terminado.move_dest_ids - consumos_partes
+                terminado.move_dest_ids = [Command.set((otros | consumo).ids)]
             parte.message_post(body=_(
                 "Orden en metros del baño %(b)s: %(m)s %(u)s planeados para %(kg)s kg de tela. Al cerrar el baño se "
                 "registra con sus metros reales.", b=bano.name, m=parte.product_qty, u=uom.name, kg=bano.product_qty))
@@ -321,7 +326,9 @@ class MrpProduction(models.Model):
             if len(orden_m) != 1:
                 continue
             consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == orden.product_id)
-            if consumo.move_orig_ids.production_id != orden:
+            # Solo los terminados del acabado (no el desperdicio de Rama, subproducto en cero) dicen quién la abastece.
+            abastecen = consumo.move_orig_ids.filtered(lambda m: m.product_id == orden.product_id and m.state != 'cancel')
+            if abastecen.production_id != orden:
                 continue
             if len(orden_m.production_group_id.production_ids) < 2 or orden_m.qty_produced \
                     or any(wo.state not in ('blocked', 'ready') for wo in orden_m.workorder_ids):

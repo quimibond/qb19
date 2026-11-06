@@ -11,12 +11,20 @@ agregan a esa misma sección sin volver a subirla.
 ## 19.0.2.27.1 — 2026-11-05
 
 **Corregido**
+- **El estimado contaba mal los kilos (revisión independiente, 2026-11-06).** En main, WD038Q46JNG166 quedó en 32.10
+  m/kg (antes 15.17; lo esperado ≈ 16) y WC090Q11JNT162 en 36.71, y 51 de 111 fichas usaban el estimado. Dos errores:
+  los kg de reproceso (códigos con punto al final, `WD038Q46ING163.`) no contaban como tela, y los kg de la tela acabada
+  en kg (el «I…» que consume la orden en metros del flujo nuevo) se multiplicaban por el consumo de crudo como si fueran
+  crudo. Ahora el estimado es metros ÷ (kg de tela acabada en kg + kg de crudo o teñido ÷ consumo de crudo − saldos);
+  con crudo o teñido y sin consumo capturado no se estima (pruebas 1, 7 y 17).
+- **Pocas muestras ya no pisan la ficha.** Con 1 o 2 rollos o conversiones y sin estimado, el rendimiento se queda el de
+  la ficha (antes las escribía: NK100Q46JNT155 y WJ038Q22JCO160 con una sola conversión, XJ140Q21JNT162 con dos).
 - **Conversiones raras y pocas muestras.** Al correr 2.27.0 en main, las telas con muchas conversiones quedaron igual que
   las listas de empaque (WJ038 15.73 contra 15.79; WD038Q46JNT163 15.51 contra 15.52), pero una sola conversión movía
   todo: XJ140Q21JNT165 tenía cinco entre 4.35 y 4.48 m/kg y dos de 0.81 y 2.07 (juntaban kg de otra fuente) y quedó en
   3.74; WJ060Q21JNT165 tomó una sola conversión (12.05 contra 9.77 real). Ahora una conversión o rollo a más de 15 % de la
   mediana de su tela no cuenta, y lo medido se usa con al menos 3 muestras buenas; con menos, el estimado, y si tampoco
-  hay, esas pocas muestras.
+  hay, el de la ficha (corregido el 2026-11-06; antes esas pocas muestras).
 - **Los rollos de Inspección le ganan a las conversiones.** Con 3 o más rollos finales registrados (primera y FE) el
   rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg neto de la lista de empaque,
   sin tara; confirmado por Almacén el 2026-11-05) quedan como puente mientras la tela no tiene rollos. Antes se sumaban
