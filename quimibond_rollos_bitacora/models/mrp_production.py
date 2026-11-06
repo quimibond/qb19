@@ -10,6 +10,8 @@ PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
 # 3.5.0 (Dirección, 2026-11-05): número de baño consecutivo que asigna Odoo; sustituye al folio de la tarjeta viajera
 # y empieza en 00001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
 SECUENCIA_BANO = 'quimibond_rollos_bitacora.numero_bano'
+# 3.6.1: código de secuencia del tipo «Fabricación Tela en kg» (fichas, ruta_familia.TIPO_OPERACION['kg']).
+TIPO_FLUJO_KG = 'OP-KG'
 
 
 class MrpProduction(models.Model):
@@ -213,6 +215,24 @@ class MrpProduction(models.Model):
                 ))
 
     # ---------------------------------------------------------- Inspección y desperdicio
+    def _es_bano_flujo_kg(self):
+        """3.6.1: baño del flujo nuevo: orden del tipo «Fabricación Tela en kg» (código de secuencia OP-KG, el que
+        pone «Generar listas» de fichas) con operación de Rama. Las órdenes del flujo viejo en metros y las de otros tipos
+        con Rama no entran."""
+        self.ensure_one()
+        return self.picking_type_id.sequence_code == TIPO_FLUJO_KG and any(self.workorder_ids.mapped('es_rama'))
+
+    def _validar_rollos_pesados(self):
+        """3.6.1 (prueba de Dirección en main, 2026-11-06): un baño del flujo nuevo sin rollos pesados en Rama no
+        termina Rama ni cierra. Las revisiones de rollos e Inspección solo corrían con rollos: con las 5 operaciones en
+        «Hecho» y sin pesar nada, la orden cerraba con los kg planeados, sin pesaje ni clasificación. Si el baño no llegó
+        a Rama, la orden se cancela (sin rollos la cancela cualquiera, 3.5.2)."""
+        for orden in self.filtered(lambda o: o.state not in ('done', 'cancel') and not o.rollo_bitacora_ids):
+            if orden._es_bano_flujo_kg():
+                raise UserError(_(
+                    'La orden %s no tiene rollos pesados en Rama. Pese cada rollo con «PESAR ROLLO» antes de terminar '
+                    'Rama o cerrar el baño; si el baño no llegó a Rama, cancele la orden.', orden.name))
+
     def _validar_rollos_inspeccionados(self):
         """Inspección no libera parcialmente: todos los rollos de Rama deben estar inspeccionados."""
         for orden in self:
@@ -436,6 +456,7 @@ class MrpProduction(models.Model):
         return resultado
 
     def button_mark_done(self):
+        self._validar_rollos_pesados()
         self._validar_rollos_inspeccionados()
         """Cierre de la MO en kg con rollos de la bitácora.
 

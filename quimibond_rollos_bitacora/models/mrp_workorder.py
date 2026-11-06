@@ -89,6 +89,8 @@ class MrpWorkorder(models.Model):
             self.es_inspeccion, 'rollo.inspeccion.estacion.wizard', _('Inspeccionar rollo'), 'Inspección')
 
     def button_finish(self):
+        # 3.6.1: Rama de un baño del flujo nuevo no termina sin rollos pesados.
+        self.filtered('es_rama').production_id._validar_rollos_pesados()
         # §10: la operación de Inspección debe terminar todos los rollos registrados en Rama.
         for wo in self.filtered('es_inspeccion'):
             # 3.3.5: con Inspección en paralelo, no termina mientras Rama siga pesando rollos.
