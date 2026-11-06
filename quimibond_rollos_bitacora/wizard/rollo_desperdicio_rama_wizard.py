@@ -45,6 +45,7 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
         self.ensure_one()
         if self.kg_desperdicio <= 0:
             raise UserError(_('Captura el peso del desperdicio.'))
+        self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)  # 3.5.3
         manual = self.weighing_mode == 'manual'
         if manual and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))

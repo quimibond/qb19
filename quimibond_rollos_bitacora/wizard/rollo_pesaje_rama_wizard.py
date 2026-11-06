@@ -86,6 +86,7 @@ class RolloPesajeRamaWizard(models.TransientModel):
             raise UserError(_('La orden %s ya está cerrada o cancelada: no se pesan rollos.', produccion.name))
         if self.kg_bruto <= 0:
             raise UserError(_('Captura el peso bruto del rollo.'))
+        self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)  # 3.5.3
         if self.tara_faltante:
             raise UserError(_(
                 'No hay tara de Rama para el artículo %s. Captúrala en Manufactura → Configuración → Taras '
