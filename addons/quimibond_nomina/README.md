@@ -858,6 +858,22 @@ Texto vigente de las dos reglas:
   `result = pago - float_round(pago - exento, precision_digits=2)`.
 - `HE_TAX`: el mismo `pago` y `exento`, `result = float_round(pago - exento, precision_digits=2)`.
 
+### 21. El descuento por faltas redondea el sueldo pagado (1.19.3)
+
+En la semana 44, S-182 y S-310 quedaban 1 centavo abajo: el descuento sin
+redondear caía en medio centavo (S-310: 483.875 sobre 2,322.60) y la línea
+`DESC_FALTAS` lo redondeaba a 483.88, con lo que el sueldo pagado quedaba en
+1,838.72. NOI redondea el **sueldo pagado** (1,838.725 → 1,838.73) y el
+descuento es lo que falta. Regla `DESC_FALTAS` (id 470), últimas líneas:
+
+```python
+basico = categories['BASIC']
+result = -(basico - float_round(basico - min(descuento, basico), precision_digits=2))
+```
+
+Fuera de los medios centavos da lo mismo que antes. Editada en `main` y en
+producción el 2026-11-06, bajo el centinela.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
