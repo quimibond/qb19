@@ -80,7 +80,7 @@ de modelos que desaparecen del código.
 
 ## Deploy a produccion
 
-Procedimiento completo con verificaciones: **`docs/RUNBOOK_DESPLIEGUE.md`**. Resumen:
+Procedimiento completo con verificaciones: **`docs/RUNBOOK_DESPLIEGUE.md`**. Para el go-live de Tintorería, Rama e Inspección (piloto de `main` → producción), la configuración y los datos que hay que llevar, con el orden del día: **`docs/GO_LIVE_TINTORERIA.md`**. Resumen:
 
 1. `main` al dia con `quimibond` (PR `quimibond` → `main`)
 2. PR `main` → `quimibond`
