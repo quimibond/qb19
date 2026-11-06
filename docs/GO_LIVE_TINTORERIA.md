@@ -22,7 +22,7 @@ se captura en `main` hasta el go-live.
 
 | # | Qué | Camino |
 |---|---|---|
-| 1 | Código: rollos 3.6.0, fichas 2.27.1, programación 1.7.1, dosificación 1.4.0 (costeo 1.10.1 ya está) | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
+| 1 | Código: rollos 3.6.4, fichas 2.28.0, programación 1.8.1, dosificación 1.4.0 (costeo 1.10.1 ya está) | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
 | 2 | Lo que crea el código al instalar: modelos, vistas, secuencia del número de baño (arranca en 00001), catálogo de 64 defectos, reportes de etiqueta | Viaja con el paso 1 |
 | 3 | Listas «Flujo en kg (borrador)»: 45 en `main`, 0 en producción | Botón «Generar listas» de fichas en producción, tela por tela. No se copian: salen de los datos de la ficha |
 | 4 | Ruta de entrega desde la 14 y quitar «Convertir Unidades» | Código (propuesta: al activar la tela) o a mano (abajo) |
@@ -41,7 +41,7 @@ Estado al 2026-11-06. En el ensayo se vuelve a leer de `main`.
 | Dato | En `main` | Clave para emparejar | Nota |
 |---|---|---|---|
 | Taras (`mrp.tara.producto`) | 99 | producto + operación | 5 son provisionales (deducidas de telas hermanas); faltan las de WT140Q21JNT155 y WN070B66JNG155 |
-| Rendimiento forzado (`ficha.tecnica.acabado`, `rendimiento_manual`) | 17 fichas | artículo | Copiar el rendimiento y la marca. El campo existe en producción hasta fichas 2.27 (paso 1) |
+| Rendimiento de la ficha (`ficha.tecnica.acabado`, `rendimiento_tela_acabada` y `rendimiento_manual`) | 17 fichas forzadas | artículo | Copiar el rendimiento y la marca de las fichas que Ingeniería escribió o aprobó en `main`. Desde fichas 2.28.0 el recálculo nocturno **propone** (`rendimiento_medido`) y no escribe: en producción las fichas no cambian solas al desplegar; Ingeniería aprueba cada propuesta con «Usar el medido». Lo que se aleja más de 25 % del teórico (1000 ÷ g/m² × ancho, parámetro `tope_teorico_pct`) no se propone. Los campos existen en producción desde fichas 2.28 (paso 1) |
 | Restricción de Inspección (`mrp.inspeccion.restriccion`) | 1 | centro | INSPECCION 9: `prefijos_excluidos` = `WD`, `codigos_exclusivos` = `WN075Q66JBL205,WJ070Q66JBL205` |
 | Procesos de máquina quitados (`ficha.tecnica.proceso`) | 16 | artículo + centro | Archivar en producción (mismos ids, verificados): las 6 IWD038/IWD040 en INSPECCION 9 (1034, 887, 888, 1040, 886, 1046) y IWJ070Q66JBL205 e IWN075Q66JBL205 en INSPECCION 2, 5, 6, 7 y 8 (757, 788, 819, 850, 881, 1143 a 1147) |
 | Procesos nuevos de Ingeniería (2026-11-06) | 8 | artículo + centro | Devanado de IWJ042Q22JNN160 a 35 m/min (Devanadoras 1 y 2) e Inspección de IWT140Q21JNT155 a 12 m/min (720 m/h, Inspección 2, 5 a 9). En producción después se usa «tiempo de la ficha» en esas operaciones |
@@ -55,6 +55,7 @@ Estado al 2026-11-06. En el ensayo se vuelve a leer de `main`.
 | Siglas de operadores (`hr.employee.siglas`) | 13 | empleado | Las usa la etiqueta final. Faltan Misael Bibiano (S-4), Juanito Silva (S-50) y Lucio Mejía (S-25) |
 | Catálogo de defectos (`calidad.defecto.tela`) | 64 del módulo | código | Solo si Inspección lo modifica en `main` durante el piloto |
 | `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` | 2026-11-06 | — | En producción, la fecha del go-live |
+| `quimibond_ficha_tecnica_tela.tope_teorico_pct` | vacío (25 del código) | — | No se crea salvo que Ingeniería pida otro tope |
 | `quimibond_rollos_bitacora.alerta_diferencia_pct` | 8.0 (piloto) | — | En producción no se crea: queda el 3 % del código |
 | `crudo_minimo_pct`, `cierre_minimo_pct` | vacíos | — | Se fijan con las dos primeras semanas del piloto (pendiente de Dirección) |
 
@@ -106,7 +107,8 @@ el motivo «Sin báscula IoT».
 4. **«Generar listas»** en las fichas de las telas de la ola.
 5. **Sistemas** liga los reportes a la Zebra y da de alta las básculas; prueba una etiqueta por estación.
 6. **Verificar:** comparación en cero, versiones instaladas, número de baño en 00001, una orden de prueba en kg
-   programada (sin confirmarla) para ver baños, crudo y jet.
+   programada (sin confirmarla) para ver baños, crudo y jet. Con programación 1.8.1 una orden de dos baños deja dos
+   órdenes en metros, una por baño (un baño = una orden en kg = una orden en metros); cancelar la prueba cancela las dos.
 7. **Activar las telas** de la ola con el visto bueno de Ingeniería (ruta MTO y, según el paso 4, ruta de la 14 y
    sin «Convertir Unidades»).
 
@@ -117,3 +119,11 @@ el motivo «Sin báscula IoT».
 - Respuesta de Tintorería (correo del 2026-11-06): capacidad y relación de baño por kg de crudo, TINTORERIA 5,
   banda A de la 3 y 150 kg de la 4. (Las 4 telas sin rendimiento de tejido son muestras, Ingeniería 2026-11-06.)
 - LUBRICANTECHT en 2 PRODUCCIÓN y ENGOMADO002 fabricado por Cocina el día del baño.
+- Respuesta de Manufactura sobre el Jet 2 (una carga repartida en sus dos partes o dos cargas de 300 kg): con ella se
+  cargan los kg por carga de Tintorería 2 en producción.
+- Confirmación de José Sacramento: capacidad de los jets y relación de baño por kg de crudo cargado (programación 1.7.0,
+  dosificación 1.4.0) y «un baño = una orden en metros» (programación 1.8.0). Documento con las preguntas:
+  «Tintorería, Rama e Inspección: lo que cambió y lo que falta decidir» (claude.ai, 2026-11-06).
+- Ingeniería revisa los rendimientos «por aprobar» de fichas 2.28.0 en `main` (4 al 2026-11-06: NN040Q66JNT163,
+  WJ060Q21JNN165, WJ042Q22JNT175 y WJ032Q22JNT155; los dos primeros salen iguales al teórico porque sus órdenes viejas
+  calcularon los kg con el factor de la lista, no son medición).
