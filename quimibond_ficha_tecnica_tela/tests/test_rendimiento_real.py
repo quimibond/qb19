@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """2.24.0: un solo rendimiento de tela acabada, calculado con lo fabricado, y el peso real. 2.27.0: por kg de tela
-terminada (conversiones a kg y rollos de Inspección); estimado con el consumo de crudo si no hay."""
+terminada (conversiones a kg y rollos de Inspección); estimado con el consumo de crudo si no hay. 2.27.2: los rollos
+ganan a las conversiones y el rendimiento escrito a mano queda forzado."""
 from unittest.mock import patch
 
 from odoo.tests import tagged
@@ -16,10 +17,13 @@ class TestRendimientoReal(TiempoFichaCase):
         Acabado = type(self.env['ficha.tecnica.acabado'])
         return patch.object(Acabado, '_ft_fabricado', return_value=datos)
 
-    def _con_terminado(self, datos):
-        """2.27.0: lo medido por kg de tela terminada; sin datos de entrada (fabricado vacío)."""
+    def _con_terminado(self, datos, rollos=None, fabricado=None):
+        """2.27.0: lo medido por kg de tela terminada (conversiones; 2.27.2: rollos aparte); sin datos de entrada
+        (fabricado vacío) salvo que se den."""
         Acabado = type(self.env['ficha.tecnica.acabado'])
-        return patch.multiple(Acabado, _ft_terminado=lambda *a, **k: datos, _ft_fabricado=lambda *a, **k: {})
+        return patch.multiple(Acabado, _ft_conversiones=lambda *a, **k: datos,
+                              _ft_rollos=lambda *a, **k: rollos or {},
+                              _ft_fabricado=lambda *a, **k: fabricado or {})
 
     def test_01_que_cuenta_como_tela(self):
         self.assertTrue(es_tela_kg('WJ044Q22INT235'), "Teñido (I en la posición 9)")
@@ -118,9 +122,7 @@ class TestRendimientoReal(TiempoFichaCase):
     def test_10_sin_tela_terminada_se_estima_con_el_consumo_de_crudo(self):
         """2.27.0: sin conversiones ni rollos, metros por kg que entró × kg que entran por kg de tela acabada. Sin consumo
         de crudo capturado no se estima: se queda el de la ficha (antes quedaba ≈10 % abajo, por kg de crudo)."""
-        Acabado = type(self.env['ficha.tecnica.acabado'])
-        with patch.multiple(Acabado, _ft_terminado=lambda *a, **k: {},
-                            _ft_fabricado=lambda *a, **k: {self.tela_m: (9000.0, 1000.0, 3)}):
+        with self._con_terminado({}, fabricado={self.tela_m: (9000.0, 1000.0, 3)}):
             self.acabado.consumo_crudo = 0.0
             self.acabado._ft_actualizar_rendimiento_real()
             self.assertEqual((self.acabado.rendimiento_tela_acabada, self.acabado.rendimiento_fuente), (8.0, 'ficha'))
@@ -145,7 +147,7 @@ class TestRendimientoReal(TiempoFichaCase):
             wiz = self.env[res['res_model']].with_context(**res.get('context', {})).create({})
             getattr(wiz, 'action_confirm', getattr(wiz, 'process', lambda: None))()
         self.assertEqual(mo.state, 'done')
-        datos = self.env['ficha.tecnica.acabado']._ft_terminado(self.acabado, '2000-01-01')
+        datos = self.env['ficha.tecnica.acabado']._ft_conversiones(self.acabado, '2000-01-01')
         metros, kilos, n = datos[self.acabado]
         self.assertAlmostEqual(metros, 7560.0, places=2)
         self.assertAlmostEqual(kilos, 470.1, places=2)
@@ -176,21 +178,91 @@ class TestRendimientoReal(TiempoFichaCase):
         buenas = [(4518.0, 1013.3), (4403.0, 1011.75), (4433.0, 1002.95)]
         for m, k in buenas + [(1100.0, 1353.95)]:
             self._conversion(m, k)
-        metros, kilos, n = self.env['ficha.tecnica.acabado']._ft_terminado(self.acabado, '2000-01-01')[self.acabado]
+        metros, kilos, n = self.env['ficha.tecnica.acabado']._ft_conversiones(self.acabado, '2000-01-01')[self.acabado]
         self.assertEqual(n, 3, "La de 0.81 m/kg no cuenta")
         self.assertAlmostEqual(metros, sum(m for m, _k in buenas), places=2)
         self.assertAlmostEqual(kilos, sum(k for _m, k in buenas), places=2)
-        Acabado = type(self.env['ficha.tecnica.acabado'])
         # Una sola conversión (WJ060Q21JNT165: 12.05 contra 9.77 real) no gana al estimado.
         self.acabado.consumo_crudo = 1.1
-        with patch.multiple(Acabado, _ft_terminado=lambda *a, **k: {self.acabado: (1205.0, 100.0, 1)},
-                            _ft_fabricado=lambda *a, **k: {self.tela_m: (9000.0, 1000.0, 3)}):
+        with self._con_terminado({self.acabado: (1205.0, 100.0, 1)}, fabricado={self.tela_m: (9000.0, 1000.0, 3)}):
             self.acabado._ft_actualizar_rendimiento_real()
         self.assertEqual(self.acabado.rendimiento_fuente, 'estimado')
         self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, 9.9, places=4)
         # Sin estimado, esas pocas muestras sí.
         self.acabado.consumo_crudo = 0.0
-        with patch.multiple(Acabado, _ft_terminado=lambda *a, **k: {self.acabado: (1205.0, 100.0, 1)},
-                            _ft_fabricado=lambda *a, **k: {}):
+        with self._con_terminado({self.acabado: (1205.0, 100.0, 1)}):
             self.acabado._ft_actualizar_rendimiento_real()
         self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('terminado', 12.05))
+
+    def test_13_los_rollos_de_inspeccion_ganan_a_las_conversiones(self):
+        """2.27.2: con 3 rollos de Inspección cuentan solo los rollos (kg neto de la estación), aunque haya conversiones;
+        con menos de 3 y nada mejor, los rollos antes que las conversiones."""
+        conversiones = {self.acabado: (9000.0, 1000.0, 5)}
+        with self._con_terminado(conversiones, rollos={self.acabado: (2550.0, 300.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_real_ordenes), ('rollos', 3))
+        self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, 8.5, places=4)
+        with self._con_terminado(conversiones, rollos={self.acabado: (1700.0, 200.0, 2)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_fuente, 'terminado', "Dos rollos no ganan a 5 conversiones")
+        with self._con_terminado({self.acabado: (900.0, 100.0, 1)}, rollos={self.acabado: (1700.0, 200.0, 2)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('rollos', 8.5))
+
+    def test_14_el_rendimiento_escrito_a_mano_queda_forzado(self):
+        """2.27.2: lo que Ingeniería escribe en la ficha no lo pisan las conversiones ni el estimado; solo 3 rollos de
+        Inspección, y entonces avisa. Desmarcar «Rendimiento forzado» vuelve al cálculo en ese momento."""
+        self.acabado.consumo_crudo = 1.1
+        with self._con_terminado({self.acabado: (9000.0, 1000.0, 5)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertTrue(self.acabado.rendimiento_por_revisar)
+        self.acabado.rendimiento_tela_acabada = 8.1
+        self.assertTrue(self.acabado.rendimiento_manual, "Escribirlo a mano lo deja forzado")
+        self.assertEqual(self.acabado.rendimiento_fuente, 'ficha')
+        self.assertFalse(self.acabado.rendimiento_por_revisar, "Escribirlo a mano cuenta como revisado")
+        with self._con_terminado({self.acabado: (9000.0, 1000.0, 5)}, fabricado={self.tela_m: (9000.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_tela_acabada, self.acabado.rendimiento_fuente), (8.1, 'ficha'))
+        self.assertTrue(self.acabado.rendimiento_manual)
+        with self._con_terminado({}, rollos={self.acabado: (2700.0, 300.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_tela_acabada, self.acabado.rendimiento_fuente), (9.0, 'rollos'))
+        self.assertFalse(self.acabado.rendimiento_manual, "Los rollos lo miden: deja de estar forzado")
+        self.assertTrue(self.acabado.rendimiento_por_revisar, "8.1 → 9.0 pasa la alerta")
+        self.acabado.rendimiento_tela_acabada = 8.1
+        with self._con_terminado({self.acabado: (9500.0, 1000.0, 5)}):
+            self.acabado.rendimiento_manual = False
+        self.assertEqual((self.acabado.rendimiento_tela_acabada, self.acabado.rendimiento_fuente), (9.5, 'terminado'))
+
+    def test_15_la_importacion_no_fuerza_el_rendimiento(self):
+        """2.27.2: el rendimiento del Excel es el teórico; el recálculo lo sigue cambiando."""
+        self.acabado.with_context(ft_rendimiento_calculado=True).write({'rendimiento_tela_acabada': 7.0})
+        self.assertFalse(self.acabado.rendimiento_manual)
+        with self._con_terminado({self.acabado: (9000.0, 1000.0, 5)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 9.0)
+
+    def test_16_rollos_finales_de_inspeccion(self):
+        """2.27.2: con el módulo de rollos, cada rollo final registrado de primera o FE de la orden en kg de la tela es
+        una muestra (metros y kg netos); los inspeccionados sin registrar, la segunda y los raros no cuentan."""
+        Final = self.env.get('mrp.rollo.final')
+        if Final is None:
+            self.skipTest('Sin quimibond_rollos_bitacora')
+        orden = self.env['mrp.production'].create({'product_id': self.tela.id, 'product_qty': 100,
+                                                   'product_uom_id': self.kg.id, 'bom_id': False})
+        ahora = '2026-11-06 12:00:00'
+        for i, (m, kg, calidad, estado) in enumerate([
+                (850.0, 100.0, 'PQ', 'registrado'), (860.0, 100.0, 'FE', 'registrado'),
+                (840.0, 100.0, 'PQ', 'registrado'), (500.0, 100.0, 'PQ', 'registrado'),  # 5 m/kg: raro
+                (850.0, 100.0, 'SEGUNDA', 'registrado'), (850.0, 100.0, 'PQ', 'inspeccionado')], 1):
+            Final.sudo().create({'name': 'PRUEBA-%04d' % i, 'secuencia': i, 'production_id': orden.id,
+                                 'metros': m, 'kg_neto': kg, 'clasificacion': calidad, 'estado': estado,
+                                 'fecha': ahora})
+        metros, kilos, n = self.env['ficha.tecnica.acabado']._ft_rollos(self.acabado, '2000-01-01')[self.acabado]
+        self.assertEqual(n, 3)
+        self.assertAlmostEqual(metros / kilos, 8.5, places=4)
+        Acabado = type(self.env['ficha.tecnica.acabado'])
+        with patch.multiple(Acabado, _ft_conversiones=lambda *a, **k: {self.acabado: (9000.0, 1000.0, 5)},
+                            _ft_fabricado=lambda *a, **k: {}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('rollos', 8.5))

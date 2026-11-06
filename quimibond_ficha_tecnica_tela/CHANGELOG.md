@@ -17,6 +17,16 @@ agregan a esa misma sección sin volver a subirla.
   3.74; WJ060Q21JNT165 tomó una sola conversión (12.05 contra 9.77 real). Ahora una conversión o rollo a más de 15 % de la
   mediana de su tela no cuenta, y lo medido se usa con al menos 3 muestras buenas; con menos, el estimado, y si tampoco
   hay, esas pocas muestras.
+- **Los rollos de Inspección le ganan a las conversiones.** Con 3 o más rollos finales registrados (primera y FE) el
+  rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg de la lista de empaque, sin
+  confirmar si es neto o bruto) quedan como puente mientras la tela no tiene rollos. Antes se sumaban juntas.
+
+**Nuevo**
+- **«Rendimiento forzado» en la ficha de acabado** (campo `rendimiento_manual`, como en la ficha de tejido). Si
+  Ingeniería escribe el rendimiento a mano queda forzado: el recálculo nocturno no lo pisa con conversiones ni con el
+  estimado (que sale 3 a 12 % arriba con el consumo de crudo actual), solo con 3 o más rollos de Inspección, y entonces
+  avisa si se movió más que la alerta. Escribirlo cuenta como revisado (quita el aviso). Desmarcarlo lo recalcula en
+  ese momento. La importación desde Excel no lo fuerza.
 
 ## 19.0.2.27.0 — 2026-11-05
 

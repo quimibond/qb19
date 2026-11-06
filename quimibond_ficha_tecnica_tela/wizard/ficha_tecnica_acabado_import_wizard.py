@@ -177,7 +177,9 @@ class FichaTecnicaAcabadoImportWizard(models.TransientModel):
                             'producto y "Actualizar si ya existe" está '
                             'desmarcado, se omitió.' % (row_num, articulo))
                         continue
-                    existing.write(values)
+                    # 2.27.2: el rendimiento del Excel es el teórico: no lo deja forzado (el recálculo lo sigue
+                    # cambiando con lo fabricado); forzarlo es a mano en la ficha.
+                    existing.with_context(ft_rendimiento_calculado=True).write(values)
                     existing._ft_ligar_proceso_sugerido()
                     updated += 1
                 else:
