@@ -493,7 +493,8 @@ class MrpProduction(models.Model):
             self._clasif_asegurar_consumo(rollos)
             (raw.move_line_ids - raw.move_line_ids.filtered(lambda ml: ml.lot_id in rollos.lot_id)).unlink()
             total_kg = sum(rollos.mapped('kg_rama'))
-            raw.with_context(do_not_unreserve=True).write({'product_uom_qty': total_kg})
+            # 3.6.2: igualar la demanda a lo pesado no abastece (ver _insp_registrar_metros).
+            raw.with_context(do_not_unreserve=True, no_procurement=True).write({'product_uom_qty': total_kg})
         if finished_move:
             self._rama_unlink_lines_without_lot(finished_move)
             lineas_rollo = finished_move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.lot_name)

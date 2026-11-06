@@ -50,7 +50,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     kg_neto = fields.Float('Peso neto (kg)', compute='_compute_pesos', digits=(12, 4))
     motivo_manual = fields.Char('Motivo de la captura manual', default=lambda self: motivo_por_defecto(self))
     weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
-    metros = fields.Float('Metros', digits=(12, 2))
+    metros = fields.Float('Metros', digits=(12, 2),
+                          help='Obligatorio en Primera, FE y Segunda; el Desperdicio puede ir sin metros (3.6.2).')
     no_empalmes = fields.Integer('No. de empalmes')
     clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad')
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_insp_estacion_defecto_rel', 'wizard_id', 'defecto_id',
@@ -205,7 +206,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                               t=self.tara_kg))
         if self.weighing_mode == 'manual' and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
-        if self.metros <= 0:
+        if self.metros < 0 or (self.metros == 0 and self.clasificacion != 'DESP'):
+            # 3.6.2 (ronda 11 en main): el Desperdicio sale en kg y puede ir sin metros.
             raise UserError(_('Captura los metros del rollo final.'))
         if not self.clasificacion:
             raise UserError(_('Elige la calidad del rollo final.'))

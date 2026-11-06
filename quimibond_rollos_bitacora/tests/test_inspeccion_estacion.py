@@ -1040,3 +1040,49 @@ class TestInspeccionEstacion(TransactionCase):
         self.env['mrp.workorder'].create({'name': 'RAMA', 'production_id': otra.id, 'workcenter_id': self.rama.id})
         self.assertFalse(otra._es_bano_flujo_kg())
         otra._validar_rollos_pesados()
+
+    def test_47_ultimo_bano_con_mas_kg_no_crea_orden_en_kg(self):
+        """3.6.2 (ronda 12 en main, 2026-11-06): al cerrar el último baño con más kg que la parte que Odoo le dejó al
+        pendiente, el cierre subía la demanda del acabado en kg de la orden en metros y Odoo abastecía la diferencia con
+        una orden en kg nueva (TL/OP-KG/00066, 20.6 kg, con crudo reservado). Ajustar la demanda no debe abastecer."""
+        orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos(kg_b=(45.0, 45.0))
+        # Ruta bajo pedido como la del acabado en kg en planta: una demanda mayor se abastece con una orden en kg.
+        stock = kg_a.location_dest_id
+        produccion = self.prod_kg.property_stock_production
+        tipo = self.env['stock.picking.type'].search(
+            [('code', '=', 'mrp_operation'), ('company_id', '=', self.env.company.id)], limit=1)
+        ruta = self.env['stock.route'].create({
+            'name': 'ZZ967 bajo pedido a producción', 'product_selectable': True,
+            'rule_ids': [Command.create({
+                'name': 'ZZ967 stock → producción', 'action': 'pull', 'procure_method': 'make_to_order',
+                'location_src_id': stock.id, 'location_dest_id': produccion.id, 'picking_type_id': tipo.id})]})
+        self.prod_kg.route_ids = [Command.link(ruta.id), Command.link(self.env.ref('mrp.route_warehouse0_manufacture').id)]
+        orden_m._clasif_move_a().procure_method = 'make_to_order'
+        antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
+        # El primer baño rinde mucho (700 m con 40 kg): al pendiente le toca menos demanda de la que pesará el segundo.
+        self._inspeccionar(kg_a, wo_a, rollos_a, 41.5, 700.0)
+        kg_a.button_mark_done()
+        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        self.assertEqual(len(pendiente), 1)
+        self.assertLess(pendiente._clasif_move_a().product_uom_qty, 90.0, "El pendiente quedó con menos kg de los pesados")
+        self._inspeccionar(kg_b, wo_b, rollos_b[:1], 45.5, 600.0)
+        self._inspeccionar(kg_b, wo_b, rollos_b[1:], 45.5, 600.0)
+        kg_b.button_mark_done()
+        self.assertEqual(kg_b.state, 'done')
+        self.assertEqual(pendiente.state, 'done')
+        self.assertAlmostEqual(pendiente.qty_produced, 1200.0)
+        nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
+        self.assertFalse(nuevas, "Cerrar el último baño no debe crear órdenes en kg: %s" % nuevas.mapped('name'))
+
+    def test_48_desperdicio_sin_metros(self):
+        """3.6.2 (ronda 11 en main): el Desperdicio sale en kg y puede ir sin metros; Primera, FE y Segunda los piden."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        with self.assertRaisesRegex(UserError, 'Captura los metros del rollo final'):
+            self._inspeccionar(orden_kg, wo, rollos, 30.5, 0.0, termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
+        desp = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
+        self.assertEqual(desp.metros, 0.0)
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)

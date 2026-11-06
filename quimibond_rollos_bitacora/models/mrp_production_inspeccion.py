@@ -398,7 +398,10 @@ class MrpProductionInspeccion(models.Model):
         # Demanda: lo que consume este baño, más lo planeado de los otros cuando los hay (Odoo pasa al pendiente la parte
         # proporcional).
         kg_demanda = sum(rama.mapped('kg_rama')) + (sum(otros.mapped('product_qty')) if otros else 0.0)
-        raw.with_context(do_not_unreserve=True).write({'product_uom_qty': kg_demanda})
+        # 3.6.2: sin abastecer. La demanda solo se iguala a lo pesado; los baños que la cubren ya existen. Sin
+        # no_procurement, cuando el último baño pesa más que la parte que Odoo le dejó al pendiente, Odoo abastecía la
+        # diferencia con una orden en kg nueva (ronda 12 en main, TL/OP-KG/00066).
+        raw.with_context(do_not_unreserve=True, no_procurement=True).write({'product_uom_qty': kg_demanda})
 
         # 3. La tela en metros: un lote por rollo final, PQ a 14 y FE a 15.
         terminado = orden_m.move_finished_ids.filtered(
