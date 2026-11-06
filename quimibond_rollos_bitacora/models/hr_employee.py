@@ -6,6 +6,7 @@ import re
 import unicodedata
 
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 from odoo.tools import file_open
 
 _logger = logging.getLogger(__name__)
@@ -57,6 +58,17 @@ class HrEmployee(models.Model):
             if len(emp) == 1:
                 return emp
         return self.browse()
+
+    @api.model
+    def _qb_operador_requerido(self, numero):
+        """3.5.3 (ronda 7 de pruebas en main, 2026-11-05): el empleado del número tecleado, o error. Rama y el desperdicio
+        de Rama registraban «EMPLEADO NO ENCONTRADO» con un número que no existe; Inspección ya lo rechazaba. Solo se
+        exige donde existe el número de trabajador (la base de Quimibond), como en Inspección."""
+        emp = self._qb_operador(numero)
+        if not emp and CAMPO_NUMERO in self._fields:
+            raise UserError(_('No existe el empleado %s. Se busca por la referencia de nómina (S-85); si es de otra '
+                              'nómina, teclea la referencia completa (Q-7, C-26).', numero))
+        return emp
 
     def action_cargar_siglas_iniciales(self):
         """Carga las siglas de MAQUINA Y OPERADOR INSPECCION.pdf. Empata por nombre sin importar el orden

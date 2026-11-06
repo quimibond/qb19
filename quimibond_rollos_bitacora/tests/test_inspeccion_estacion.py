@@ -957,3 +957,22 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.action_confirm()
         orden_kg.with_user(operador).action_cancel()
         self.assertEqual(orden_kg.state, 'cancel')
+
+    def test_44_rama_rechaza_operador_inexistente(self):
+        """3.5.3 (ronda 7 de pruebas en main): Rama y el desperdicio de Rama registraban «EMPLEADO NO ENCONTRADO» con un
+        número que no existe. Donde existe el número de trabajador (la base de Quimibond) ahora lo rechazan, como Inspección.
+        Aquí se simula ese campo con el nombre del empleado."""
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id})
+        orden_kg.action_confirm()
+        wo_rama = self.env['mrp.workorder'].create({
+            'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
+        base = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'weighing_mode': 'manual',
+                'motivo_manual': 'Prueba sin báscula'}
+        with patch('odoo.addons.quimibond_rollos_bitacora.models.hr_employee.CAMPO_NUMERO', 'name'):
+            with self.assertRaisesRegex(UserError, 'No existe el empleado 9999'):
+                self.env['rollo.pesaje.rama.wizard'].create(dict(base, empleado_numero='9999', kg_bruto=31.1)).action_confirmar()
+            with self.assertRaisesRegex(UserError, 'No existe el empleado 9999'):
+                self.env['rollo.desperdicio.rama.wizard'].create(
+                    dict(base, empleado_numero='9999', kg_desperdicio=1.2)).action_confirmar()
+        self.assertFalse(orden_kg.rollo_bitacora_ids)

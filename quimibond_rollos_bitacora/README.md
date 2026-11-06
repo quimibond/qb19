@@ -141,6 +141,12 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Operador inexistente en Rama (3.5.3, ronda 7 de pruebas, 2026-11-05)
+
+Rama y el desperdicio de Rama registraban el rollo con «EMPLEADO NO ENCONTRADO» cuando el número tecleado no existía;
+Inspección ya lo rechazaba. Ahora las tres estaciones usan la misma regla (`hr.employee._qb_operador_requerido`): si el
+número no corresponde a nadie, no se registra y el mensaje pide la referencia completa si es de otra nómina.
+
 ## Cancelar una orden en kg (3.5.2, ronda 5 de pruebas, 2026-11-05)
 
 Una orden en kg con rollos o desperdicio pesados en Rama **no se cancela**: la tela ya existe, cancelar la saca del

@@ -213,10 +213,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             # 3.3.1 (Dirección, 2026-11-05): sin defecto no queda evidencia de por qué bajó la calidad (ISO 9001).
             raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',
                               dict(CLASIFICACIONES).get(self.clasificacion)))
-        emp = self._empleado(self.empleado_numero)
-        if not emp and 'x_studio_nmero_de_trabajador' in self.env['hr.employee']._fields:
-            raise UserError(_('No existe el empleado %s. Se busca por la referencia de nómina (S-85); si es de otra '
-                              'nómina, teclea la referencia completa (Q-7, C-26).', self.empleado_numero))
+        emp = self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
         if emp and not emp.siglas:
             raise UserError(_('El operador %s no tiene siglas: captúralas en el empleado (van en la etiqueta).',
                               emp.name))
