@@ -47,6 +47,9 @@ MIN_MUESTRAS = 3
 CTX_CALCULADO = 'ft_rendimiento_calculado'
 # 2.26.0: el cambio de rendimiento que pide revisión (%), y la constante si el parámetro no está.
 PARAM_ALERTA_RENDIMIENTO_PCT = 'quimibond_ficha_tecnica_tela.alerta_rendimiento_pct'
+# 2.27.1: los rollos de Inspección cuentan desde esta fecha (AAAA-MM-DD; vacío = los últimos 12 meses). Es el arranque
+# del flujo nuevo en esa base: en main, los rollos de las pruebas de punta a punta (5-nov) no son producción.
+PARAM_ROLLOS_DESDE = 'quimibond_ficha_tecnica_tela.rendimiento_rollos_desde'
 ALERTA_RENDIMIENTO_PCT = 5.0
 POSICION_PROCESO = ('H', 'I', 'J')  # crudo, teñido, acabado (DAT P-D02-01, posición 9)
 
@@ -187,6 +190,8 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             return {}
         por_kg = {f.product_proceso_id: f for f in fichas}
         por_m = {f.product_acabado_id: f for f in fichas}
+        arranque = fields.Date.to_date(self.env['ir.config_parameter'].sudo().get_param(PARAM_ROLLOS_DESDE) or None)
+        desde = max(fields.Date.to_date(desde), arranque) if arranque else desde
         muestras = {}  # ficha → [(metros, kg)], una por rollo
         for rollo in Final.sudo().search([('estado', '=', 'registrado'), ('clasificacion', 'in', ('PQ', 'FE')),
                                           ('fecha', '>=', desde), ('metros', '>', 0), ('kg_neto', '>', 0)]):
