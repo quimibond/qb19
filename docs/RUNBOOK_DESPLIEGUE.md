@@ -29,6 +29,9 @@ Antes de trabajar en una rama de desarrollo, mergea `quimibond` en ella.
 
 ## Despliegue
 
+> **Go-live de Tintorería, Rama e Inspección** (paso del piloto de `main` a producción): además de este
+> procedimiento, la configuración y los datos que hay que llevar están en `docs/GO_LIVE_TINTORERIA.md`.
+
 ### 1. Poner `main` al día
 
 PR **base `main` ← compare `quimibond`**. Merge limpio o se resuelve ahí, nunca
