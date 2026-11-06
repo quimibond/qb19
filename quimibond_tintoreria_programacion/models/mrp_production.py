@@ -193,10 +193,23 @@ class MrpProduction(models.Model):
         return preparacion + limpieza + ciclos * operacion.time_cycle * 100.0 / (
             workcenter.time_efficiency or 100.0)
 
+    @api.model
+    def _check_jet_operando(self, workcenter):
+        """1.7.1: no se programa en un jet que no está operando (en montaje, en pruebas o fuera de servicio). El jet
+        programado queda fijo y el planificador no lo cambia por otro (``_ft_maquina_fija``), así que la orden se
+        quedaría esperando en una máquina que no trabaja. Ronda 10 en main (2026-11-06): el asistente dejaba
+        programar en TINTORERIA 5, en montaje, sin aviso."""
+        if workcenter.ft_estado != 'operando':
+            estado = dict(workcenter._fields['ft_estado']._description_selection(self.env)).get(workcenter.ft_estado)
+            raise UserError(_(
+                "%(wc)s está %(estado)s: no se programa en un jet que no está operando. Escoge otro jet o cambia su "
+                "estado en el centro de trabajo.", wc=workcenter.display_name, estado=(estado or '').lower()))
+
     def _calcular_plan_tintoreria(self, workcenter):
         """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado. 1.7.0: el número de
         baños sale de los kg de crudo que entran al jet; la orden se reparte en kg de tela en la misma proporción."""
         self.ensure_one()
+        self._check_jet_operando(workcenter)
         rendimiento = self._rendimiento_tejido()
         capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
         kg_total = self.product_qty

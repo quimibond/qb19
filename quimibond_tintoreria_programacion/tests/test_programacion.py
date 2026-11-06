@@ -197,12 +197,13 @@ class TestProgramacionTintoreria(TransactionCase):
             'parametro_ids': [Command.create({'code': 'tiempo_ciclo', 'name': 'Tiempo de ciclo', 'unit': 'h',
                                               'kind': 'num', 'ambito': 'articulo'})]})
         (self.htj1 | self.htj3).write({'ft_tipo_id': tipo.id})
-        self.htj1.ft_estado = 'montaje'
         self.env['ficha.tecnica.proceso'].create({'articulo': self.producto_kg.default_code,
                                                   'workcenter_id': self.htj3.id})
         self.bom.operation_ids.write({'time_mode': 'manual', 'time_cycle_manual': 0.5})
         mo = self._crear_mo(500.0)
         orden = mo._programar_tintoreria(self.htj1).production_ids
+        # 1.7.1: un jet que no opera ya no se programa; el caso real es que pase a montaje después de programado.
+        self.htj1.ft_estado = 'montaje'
         workorder = orden._workorder_tintoreria()
         self.assertTrue(workorder._ft_maquina_fija())
         orden.button_plan()
@@ -257,3 +258,19 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertAlmostEqual(plan['kg_crudo'], 1000.0)
         self.assertEqual(plan['n_banos'], 2)
         self.assertTrue(plan['aviso_crudo'])
+
+    def test_jet_que_no_opera_no_se_programa(self):
+        """1.7.1: un jet en montaje (o en pruebas, o fuera de servicio) no se programa: el asistente lo avisa y no
+        confirma. Ronda 10 en main: TINTORERIA 5, en montaje, se dejaba programar sin aviso."""
+        self.htj5.ft_estado = 'montaje'
+        mo = self._crear_mo(1000.0)
+        with self.assertRaisesRegex(UserError, 'no está operando'):
+            mo._calcular_plan_tintoreria(self.htj5)
+        wizard = self.env['tintoreria.programacion.wizard'].create({
+            'line_ids': [Command.create({'production_id': mo.id, 'workcenter_id': self.htj5.id})]})
+        self.assertIn('no está operando', wizard.line_ids.advertencia)
+        with self.assertRaises(UserError):
+            wizard.action_confirmar()
+        self.assertFalse(mo.tintoreria_programada)
+        self.htj5.ft_estado = 'operando'
+        self.assertEqual(mo._calcular_plan_tintoreria(self.htj5)['n_banos'], 1)
