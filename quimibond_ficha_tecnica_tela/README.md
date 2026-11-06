@@ -65,18 +65,24 @@ revisión de la noche avisa lo que no cuadra.
 **«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
 jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
 
-## Rendimiento de tela acabada (2.27.0)
+## Rendimiento de tela acabada (2.27.0, 2.27.1)
 
 El rendimiento (m/kg) de la ficha es **por kg de tela terminada** y se recalcula cada noche, en este orden:
 
-1. **Tela terminada:** metros ÷ kg de las conversiones de metros a kg de los últimos 12 meses (su kg es el pesado de la
-   lista de empaque) y de los rollos finales registrados de Inspección del flujo nuevo (primera y FE).
-2. **Estimado:** sin esos datos, metros por kg que entró a la orden × el consumo de crudo de la ficha.
-3. **Ficha:** sin nada, se queda el que tiene.
+1. **Rollos de Inspección:** con 3 o más rollos finales registrados de primera o FE en 12 meses, metros ÷ kg netos de
+   esos rollos (pesados en la estación). Es la fuente que escala con el flujo nuevo y le gana a todo.
+2. **Forzado por Ingeniería:** si Ingeniería escribe el rendimiento a mano en la ficha queda «Rendimiento forzado»
+   (como el de la ficha de tejido) y solo los rollos de Inspección lo cambian, con aviso si se mueve más que la alerta.
+   Desmarcarlo lo vuelve a calcular en ese momento. La importación desde Excel no lo fuerza (es el teórico).
+3. **Conversiones a kg:** con 3 o más conversiones de metros a kg en 12 meses (su kg es el de la lista de empaque),
+   metros ÷ kg. Es el puente mientras la tela no tiene rollos de Inspección.
+4. **Estimado:** sin eso, metros por kg que entró a la orden × el consumo de crudo de la ficha.
+5. **Pocas muestras:** si tampoco hay estimado, los rollos o conversiones que haya (rollos primero).
+6. **Ficha:** sin nada, se queda el que tiene.
 
-La ficha dice de dónde sale («De dónde sale el rendimiento»). Hasta 2.26.0 se dividía entre los kg que **entran** (crudo
-o teñido) y salía ≈10 % abajo; lo usan la conversión kg → m (lista en metros y costeo), los tiempos de rama e inspección
-y la alerta de metros de Inspección.
+Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. La ficha dice de dónde sale («De dónde sale el
+rendimiento»). Hasta 2.26.0 se dividía entre los kg que **entran** (crudo o teñido) y salía ≈10 % abajo; lo usan la
+conversión kg → m (lista en metros y costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
 
 ## Dónde se ve cada cosa
 
