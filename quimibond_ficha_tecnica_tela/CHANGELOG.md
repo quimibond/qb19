@@ -8,6 +8,16 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.27.1 — 2026-11-05
+
+**Corregido**
+- **Conversiones raras y pocas muestras.** Al correr 2.27.0 en main, las telas con muchas conversiones quedaron igual que
+  las listas de empaque (WJ038 15.73 contra 15.79; WD038Q46JNT163 15.51 contra 15.52), pero una sola conversión movía
+  todo: XJ140Q21JNT165 tenía cinco entre 4.35 y 4.48 m/kg y dos de 0.81 y 2.07 (juntaban kg de otra fuente) y quedó en
+  3.74; WJ060Q21JNT165 tomó una sola conversión (12.05 contra 9.77 real). Ahora una conversión o rollo a más de 15 % de la
+  mediana de su tela no cuenta, y lo medido se usa con al menos 3 muestras buenas; con menos, el estimado, y si tampoco
+  hay, esas pocas muestras.
+
 ## 19.0.2.27.0 — 2026-11-05
 
 Excepción a la regla de una versión arriba: 2.26.0 sigue sin desplegarse a producción y esta versión la incluye. Se

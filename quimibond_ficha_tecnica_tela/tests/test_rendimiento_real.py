@@ -154,3 +154,43 @@ class TestRendimientoReal(TiempoFichaCase):
         self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, round(7560.0 / 470.1, 4), places=4)
         self.assertEqual(self.acabado.rendimiento_fuente, 'terminado')
 
+    def _conversion(self, metros, kilos):
+        """Una conversión terminada: consume ``metros`` de la tela y produce ``kilos`` de su acabado en kg."""
+        mo = self.env['mrp.production'].create({
+            'product_id': self.tela.id, 'product_qty': kilos, 'product_uom_id': self.kg.id, 'bom_id': False,
+            'move_raw_ids': [(0, 0, {'product_id': self.tela_m.id, 'product_uom_qty': metros,
+                                     'product_uom': self.meter.id})]})
+        mo.action_confirm()
+        mo.qty_producing = kilos
+        mo.move_raw_ids.write({'quantity': metros, 'picked': True})
+        res = mo.button_mark_done()
+        if isinstance(res, dict) and res.get('res_model'):
+            wiz = self.env[res['res_model']].with_context(**res.get('context', {})).create({})
+            getattr(wiz, 'action_confirm', getattr(wiz, 'process', lambda: None))()
+        self.assertEqual(mo.state, 'done')
+        return mo
+
+    def test_12_conversiones_raras_no_cuentan_y_hacen_falta_tres(self):
+        """2.27.1: XJ140Q21JNT165 tenía conversiones entre 4.35 y 4.48 m/kg y otras de 0.81 y 2.07 (juntaban kg de otra
+        fuente); esas no cuentan. Con menos de 3 muestras buenas se usa el estimado."""
+        buenas = [(4518.0, 1013.3), (4403.0, 1011.75), (4433.0, 1002.95)]
+        for m, k in buenas + [(1100.0, 1353.95)]:
+            self._conversion(m, k)
+        metros, kilos, n = self.env['ficha.tecnica.acabado']._ft_terminado(self.acabado, '2000-01-01')[self.acabado]
+        self.assertEqual(n, 3, "La de 0.81 m/kg no cuenta")
+        self.assertAlmostEqual(metros, sum(m for m, _k in buenas), places=2)
+        self.assertAlmostEqual(kilos, sum(k for _m, k in buenas), places=2)
+        Acabado = type(self.env['ficha.tecnica.acabado'])
+        # Una sola conversión (WJ060Q21JNT165: 12.05 contra 9.77 real) no gana al estimado.
+        self.acabado.consumo_crudo = 1.1
+        with patch.multiple(Acabado, _ft_terminado=lambda *a, **k: {self.acabado: (1205.0, 100.0, 1)},
+                            _ft_fabricado=lambda *a, **k: {self.tela_m: (9000.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_fuente, 'estimado')
+        self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, 9.9, places=4)
+        # Sin estimado, esas pocas muestras sí.
+        self.acabado.consumo_crudo = 0.0
+        with patch.multiple(Acabado, _ft_terminado=lambda *a, **k: {self.acabado: (1205.0, 100.0, 1)},
+                            _ft_fabricado=lambda *a, **k: {}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('terminado', 12.05))

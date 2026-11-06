@@ -22,12 +22,20 @@ m/kg contra 15.79 de las listas de empaque de 2026, 1,800 rollos pesados). Ahora
 2. **Estimado** (``estimado``): sin esos datos, metros por kg que entró (lo de 2.24.0) × el consumo de crudo de la
    ficha (kg que entran por kg de tela acabada).
 3. **Ficha** (``ficha``): sin nada, se queda el de la ficha.
+
+2.27.1: una conversión o rollo a más de 15 % de la mediana de su tela no cuenta, y lo medido se usa con al menos 3
+muestras buenas; con menos, el estimado (y si tampoco hay, esas pocas muestras).
 """
 from datetime import timedelta
 
 from odoo import api, fields, models
 
 DIAS_REAL = 365
+# 2.27.1: una conversión o un rollo que se aleja más que esto de la mediana de la tela no cuenta (conversiones que juntan
+# kg de otra fuente: XJ140Q21JNT165 tenía 5 entre 4.35 y 4.48 m/kg y dos de 0.81 y 2.07), y hacen falta al menos
+# MIN_MUESTRAS buenas para usar lo medido; con menos, el estimado.
+DESVIACION_MAX = 0.15
+MIN_MUESTRAS = 3
 # 2.26.0: el cambio de rendimiento que pide revisión (%), y la constante si el parámetro no está.
 PARAM_ALERTA_RENDIMIENTO_PCT = 'quimibond_ficha_tecnica_tela.alerta_rendimiento_pct'
 ALERTA_RENDIMIENTO_PCT = 5.0
@@ -129,7 +137,7 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         if not fichas or not metro or not kg:
             return {}
         por_par = {(f.product_proceso_id, f.product_acabado_id): f for f in fichas}
-        metros, kilos, cuenta = {}, {}, {}
+        muestras = {}  # ficha → [(metros, kg)], una por conversión o por rollo
         # Conversiones: metros de la tela consumidos por orden, y kg del acabado en kg producidos por esa misma orden.
         metros_orden = {}
         for orden, producto, uom, qty in Move._read_group(
@@ -152,9 +160,7 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 ficha, m = metros_orden[orden]
                 k = uom._compute_quantity(qty, kg, round=False)
                 if m and k:
-                    metros[ficha] = metros.get(ficha, 0.0) + m
-                    kilos[ficha] = kilos.get(ficha, 0.0) + k
-                    cuenta[ficha] = cuenta.get(ficha, 0) + 1
+                    muestras.setdefault(ficha, []).append((m, k))
         # Rollos finales de Inspección (flujo nuevo): metros y kg netos de cada rollo de primera o FE.
         Final = self.env.get('mrp.rollo.final')
         if Final is not None and {'metros', 'kg_neto', 'estado', 'clasificacion'} <= set(Final._fields):
@@ -165,10 +171,17 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 ficha = next((f for f in fichas if f.product_proceso_id == producto_kg
                               or (producto_m and f.product_acabado_id == producto_m)), None)
                 if ficha:
-                    metros[ficha] = metros.get(ficha, 0.0) + rollo.metros
-                    kilos[ficha] = kilos.get(ficha, 0.0) + rollo.kg_neto
-                    cuenta[ficha] = cuenta.get(ficha, 0) + 1
-        return {f: (metros[f], kilos[f], cuenta[f]) for f in metros}
+                    muestras.setdefault(ficha, []).append((rollo.metros, rollo.kg_neto))
+        res = {}
+        for ficha, lista in muestras.items():
+            # 2.27.1: fuera las muestras que se alejan más de DESVIACION_MAX de la mediana de la tela.
+            ratios = sorted(m / k for m, k in lista)
+            mitad = len(ratios) // 2
+            mediana = ratios[mitad] if len(ratios) % 2 else (ratios[mitad - 1] + ratios[mitad]) / 2.0
+            buenas = [(m, k) for m, k in lista if abs(m / k - mediana) <= mediana * DESVIACION_MAX]
+            if buenas:
+                res[ficha] = (sum(m for m, _k in buenas), sum(k for _m, k in buenas), len(buenas))
+        return res
 
     @api.model
     def _ft_saldo_products(self):
@@ -190,11 +203,13 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             m_t, kg_t, n_t = terminado.get(ficha, (0.0, 0.0, 0))
             m, kilos, n_e = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0))
             consumo = ficha.consumo_crudo if 'consumo_crudo' in ficha._fields else 0.0
-            if m_t and kg_t:
+            if m_t and kg_t and n_t >= MIN_MUESTRAS:
                 nuevo, n, fuente = round(m_t / kg_t, 4), n_t, 'terminado'
             elif m and kilos and consumo:
                 # metros por kg que entró × kg que entran por kg de tela acabada = metros por kg de tela acabada
                 nuevo, n, fuente = round(m / kilos * consumo, 4), n_e, 'estimado'
+            elif m_t and kg_t:
+                nuevo, n, fuente = round(m_t / kg_t, 4), n_t, 'terminado'  # pocas muestras y nada mejor
             if nuevo:
                 vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n, 'rendimiento_fuente': fuente}
                 antes = ficha.rendimiento_tela_acabada
