@@ -87,9 +87,40 @@ cuenta como retenido del ordinario.
 existiendo y **se suma** al ISR del periodo como hoy; el ajuste automático no
 la sustituye. En los periodos que no son el último del mes cuenta como
 retenido para el ajuste de fin de mes. No hace falta capturarla para cuadrar
-el mes: el ajuste automático ya lo hace."""
+el mes: el ajuste automático ya lo hace.
+
+**ISR y subsidio de cada semana, como NOI (1.19.0).** Medido contra «NOMINA
+46 SMTL» (semana 46 de 2026): con el gravable de NOI, el ISR que retiene NOI
+sale en 94 de los 95 recibos (el otro es de prima vacacional, art. 174) con
+este procedimiento, y con ninguno de los que usaba Odoo:
+
+- ISR del periodo = tarifa **mensual** sobre el gravable llevado a mes
+  (÷ 7 × 30.4), de vuelta a la semana (÷ 30.4 × 7). Odoo usaba la tarifa
+  diaria × 7, cuyos límites no son los de la semanal (1,650.74 contra
+  1,650.68): de 1 a 2 centavos de diferencia en 80 recibos.
+- Subsidio de la semana = subsidio mensual redondeado hacia arriba (535.65
+  en 2026) ÷ 30.4 × 7, con **4 decimales** (123.3405); Odoo usaba el diario ×
+  7 redondeado a 2 (123.34). El límite es el mensual × 7 ÷ 30.4.
+- La semana es del mes de su **fecha de pago** completa: el tope del
+  subsidio del mes descuenta lo ya aplicado en las semanas pagadas ese mes.
+  Odoo la partía entre los dos meses por días (6/7 y 1/7 en la semana 45,
+  1/7 y 6/7 en la 49) con el acumulado del mes de ``date_from``.
+- Se redondea **una vez**, como NOI: ISR neto = redondeo(ISR − subsidio). La
+  línea ``SUBSIDY`` lleva el subsidio a 2 decimales y la línea ``ISR`` ese
+  subsidio más el ISR neto, así que la suma de las líneas del recibo es su
+  neto. Antes el neto se calculaba con el ISR sin redondear y en 39 recibos
+  no cuadraba por 1 centavo con la suma de sus líneas (la clave 1: líneas
+  5,224.14, neto 5,224.13), lo que el PAC puede rechazar al timbrar.
+
+Solo la nómina semanal; la quincenal ya cuadraba con su procedimiento y no
+se tocó. La última nómina del mes sigue con el ajuste mensual de arriba.
+Las reglas lo llaman con ``payslip._qb_isr_semanal(ordinario)`` (``ISR``),
+``payslip._qb_subsidio_semanal(ordinario)`` (``SUBSIDY_CURRENT_MONTH``) y
+dejan de calcular ``SUBSIDY_NEXT_MONTH`` en la semanal; ver la sección 18
+del README."""
 import logging
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from odoo import models
 from odoo.tools import float_round
@@ -108,6 +139,8 @@ ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
 CODIGOS_RETENIDO = ('ISR', 'ISR_ADJUSTMENT')
 CODIGO_SUBSIDIO = 'SUBSIDY'
+CATEGORIA_IMSS_EMPLEADO = 'IMSS_EMPLOYEE'
+FACTOR_SEMANA_MES = 4.34286                              # 30.4 / 7 a 5 decimales, como NOI
 
 
 class HrPayslip(models.Model):
@@ -356,3 +389,93 @@ class HrPayslip(models.Model):
         }
         _logger.debug('quimibond_nomina: recibo %s ajuste mensual de ISR: %s', self.id, res)
         return res
+
+    # ------------------------------------------------------------------
+    # 5. ISR y subsidio de la semana, como NOI (1.19.0)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _qb_redondeo(valor, decimales=2):
+        """Redondeo a la mitad hacia arriba, sobre la representación decimal del
+        número (``float_round`` sobre 904.495 en binario puede bajar)."""
+        cuanto = Decimal(1).scaleb(-decimales)
+        return float(Decimal(repr(valor)).quantize(cuanto, rounding=ROUND_HALF_UP))
+
+    def _qb_subsidio_semanal_bruto(self, ordinario):
+        """Subsidio de la semana sin redondear a centavos (4 decimales), con el
+        tope del mes de pago. 0 si el ordinario rebasa el límite semanal."""
+        self.ensure_one()
+        pago = self._qb_nomina_fecha_pago()
+        limite = self._rule_parameter('l10n_mx_subsidy_salary_limit', pago) * 7 / 30.4
+        if not (0 < (ordinario or 0.0) <= limite):
+            return 0.0
+        uma = self._rule_parameter('l10n_mx_uma', pago)
+        pct = self._rule_parameter('l10n_mx_uma_percentage_for_subsidy', pago)
+        mensual = float_round(uma['monthly'] * pct, precision_digits=2, rounding_method='UP')
+        semanal = self._qb_redondeo(mensual / 30.4 * 7, 4)
+        previos, _abiertos = self._qb_recibos_previos_desde(pago.replace(day=1))
+        aplicado = sum(l.total for l in previos.mapped('line_ids') if l.code == CODIGO_SUBSIDIO)
+        return max(min(semanal, mensual - aplicado), 0.0)
+
+    def _qb_isr_semanal_partes(self, ordinario):
+        """``(isr, subsidio)`` de la semana ya redondeados como NOI, o ``None``
+        si el recibo no es semanal o no hay ordinario."""
+        self.ensure_one()
+        if self.version_id.schedule_pay != 'weekly' or not ordinario or ordinario <= 0:
+            return None
+        # NOI calcula sobre el gravable en centavos; ``categories['GROSS']`` trae los
+        # decimales de cada regla (3,571.9575 en la semana 44) y el ISR caía medio
+        # centavo abajo (1.19.1).
+        ordinario = float_round(ordinario, precision_digits=2)
+        tabla = self._rule_parameter('l10n_mx_isr_tables', self.date_to)['monthly']
+        # NOI lleva la semana a mes con 30.4 / 7 redondeado a 5 decimales (4.34286) y la
+        # regresa con el mismo factor (semana 44: 4,137.04 -> 448.86, no 448.85; 1.19.2).
+        isr = self._qb_isr_tarifa(ordinario * FACTOR_SEMANA_MES, tabla) / FACTOR_SEMANA_MES
+        subsidio = min(self._qb_subsidio_semanal_bruto(ordinario), isr)
+        if not subsidio:
+            return self._qb_redondeo(isr), 0.0
+        subsidio_linea = self._qb_redondeo(subsidio)
+        return subsidio_linea + self._qb_redondeo(isr - subsidio), subsidio_linea
+
+    def _qb_isr_semanal(self, ordinario):
+        """ISR de la semana (positivo) para la regla ``ISR``, o ``None`` si el
+        recibo no es semanal: la regla sigue con su cálculo de siempre."""
+        partes = self._qb_isr_semanal_partes(ordinario)
+        return None if partes is None else partes[0]
+
+    def _qb_subsidio_semanal(self, ordinario):
+        """Subsidio de la semana para la regla ``SUBSIDY_CURRENT_MONTH``, o
+        ``None`` si el recibo no es semanal."""
+        partes = self._qb_isr_semanal_partes(ordinario)
+        return None if partes is None else partes[1]
+
+    # ------------------------------------------------------------------
+    # 6. El neto es la suma de las líneas (1.19.1)
+    # ------------------------------------------------------------------
+    def _qb_neto_lineas(self, result_rules, categorias=('BASIC', 'ALW', 'DED')):
+        """Neto como la suma de las líneas del recibo ya redondeadas a centavos.
+
+        La regla ``NET`` de la localización suma ``categories`` con los montos
+        sin redondear y el recibo podía no cuadrar con sus propias líneas (semana
+        44: clave 9, líneas 1,901.16 y neto 1,901.15); el PAC rechaza un CFDI
+        así. Suma lo mismo que ``categories['BASIC'] + categories['ALW'] +
+        categories['DED']`` (cada regla cuenta en su categoría y en las de
+        arriba), pero con el total de cada regla redondeado como su línea. Lo
+        llama la regla ``NET`` de «Paga regular»:
+        ``result = payslip._qb_neto_lineas(result_rules)``."""
+        self.ensure_one()
+        redondeo = self.company_id.currency_id.round
+        bloques = {}
+        for regla in self.struct_id.rule_ids:
+            if regla.code not in result_rules:
+                continue
+            categoria = regla.category_id
+            while categoria and categoria.code not in categorias:
+                categoria = categoria.parent_id
+            if not categoria:
+                continue
+            # Las cuotas IMSS del trabajador (una regla por ramo) van juntas, como la
+            # línea «Total IMSS (empleado)» y la deducción 001 del CFDI.
+            bloque = (CATEGORIA_IMSS_EMPLEADO if regla.category_id.code == CATEGORIA_IMSS_EMPLEADO
+                      else regla.code)
+            bloques[bloque] = bloques.get(bloque, 0.0) + result_rules[regla.code]['total']
+        return redondeo(sum(redondeo(v) for v in bloques.values()))
