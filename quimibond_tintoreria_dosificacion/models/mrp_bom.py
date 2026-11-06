@@ -24,6 +24,26 @@ class MrpBom(models.Model):
          ('modificada', 'Difiere del catálogo')],
         'Estado de la fórmula', compute='_compute_formula_estado', store=True)
 
+    def _kg_carga_jet_lote(self):
+        """1.4.0: (kg del lote de la lista, kg de crudo del lote, producto crudo). El crudo es la línea en peso de una
+        categoría de tejido con más kg; sin ella, (kg del lote, kg del lote, False)."""
+        self.ensure_one()
+        Mixin = self.env['tintoreria.dosificacion.mixin']
+        kg = Mixin._kg_uom()
+        try:
+            kg_lote = self.product_uom_id._compute_quantity(self.product_qty, kg, round=False)
+        except UserError:
+            kg_lote = self.product_qty
+        planeado = {}
+        for linea in self.bom_line_ids:
+            if linea.product_uom_id._has_common_reference(kg) and Mixin._es_tejido(linea.product_id):
+                planeado[linea.product_id] = planeado.get(linea.product_id, 0.0) + linea.product_uom_id._compute_quantity(
+                    linea.product_qty, kg, round=False)
+        if not planeado:
+            return kg_lote, kg_lote, False
+        crudo = max(planeado, key=planeado.get)
+        return kg_lote, planeado[crudo], crudo
+
     # ------------------------------------------------------------------
     # Comparación contra el catálogo
     # ------------------------------------------------------------------
