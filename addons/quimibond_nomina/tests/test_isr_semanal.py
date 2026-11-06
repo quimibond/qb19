@@ -124,3 +124,10 @@ class TestIsrSemanal(TransactionCase):
         }
         slip = self._semana(LUNES_46)
         self.assertEqual(slip._qb_neto_lineas(result_rules), 199.99)
+
+    def test_factor_semana_mes_de_noi(self):
+        """Semana 44, clave 22: NOI lleva la semana a mes con 4.34286 (30.4 / 7 a
+        5 decimales) y retiene 448.86; con 30.4 / 7 exacto salía 448.85 (1.19.2)."""
+        slip = self._semana(LUNES_46)
+        self.assertEqual(slip._qb_isr_semanal_partes(4137.04), (448.86, 0.0))
+        self.assertEqual(slip._qb_isr_semanal_partes(3594.50), (348.20, 0.0))
