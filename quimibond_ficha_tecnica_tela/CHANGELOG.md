@@ -18,8 +18,14 @@ agregan a esa misma sección sin volver a subirla.
   mediana de su tela no cuenta, y lo medido se usa con al menos 3 muestras buenas; con menos, el estimado, y si tampoco
   hay, esas pocas muestras.
 - **Los rollos de Inspección le ganan a las conversiones.** Con 3 o más rollos finales registrados (primera y FE) el
-  rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg de la lista de empaque, sin
-  confirmar si es neto o bruto) quedan como puente mientras la tela no tiene rollos. Antes se sumaban juntas.
+  rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg neto de la lista de empaque,
+  sin tara; confirmado por Almacén el 2026-11-06) quedan como puente mientras la tela no tiene rollos. Antes se sumaban
+  juntas.
+- **Los rollos de prueba no cuentan.** Parámetro `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` (AAAA-MM-DD,
+  vacío = 12 meses): los rollos de Inspección cuentan desde el arranque del flujo en esa base. En main, los 95 rollos
+  finales de las pruebas de punta a punta del 5-nov (baños 99001 y 99002, kg sacados del factor) habían dado el
+  rendimiento a WJ038Q22JNT160, WJ053Q22JNT160 y WJ070Q66JBL205; con el parámetro en 2026-11-06 vuelven a
+  conversiones o estimado.
 
 **Nuevo**
 - **«Rendimiento forzado» en la ficha de acabado** (campo `rendimiento_manual`, como en la ficha de tejido). Si

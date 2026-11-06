@@ -266,3 +266,10 @@ class TestRendimientoReal(TiempoFichaCase):
                             _ft_fabricado=lambda *a, **k: {}):
             self.acabado._ft_actualizar_rendimiento_real()
         self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('rollos', 8.5))
+        # Con la fecha de arranque del flujo después de esos rollos (pruebas), no cuentan.
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_ficha_tecnica_tela.rendimiento_rollos_desde',
+                                                         '2026-11-07')
+        self.assertFalse(self.env['ficha.tecnica.acabado']._ft_rollos(self.acabado, '2000-01-01'))
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_ficha_tecnica_tela.rendimiento_rollos_desde',
+                                                         '2026-11-06')
+        self.assertEqual(self.env['ficha.tecnica.acabado']._ft_rollos(self.acabado, '2000-01-01')[self.acabado][2], 3)

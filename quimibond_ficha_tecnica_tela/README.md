@@ -70,12 +70,13 @@ jet, la lista o la ficha). También en la pestaña «Ficha técnica» del produc
 El rendimiento (m/kg) de la ficha es **por kg de tela terminada** y se recalcula cada noche, en este orden:
 
 1. **Rollos de Inspección:** con 3 o más rollos finales registrados de primera o FE en 12 meses, metros ÷ kg netos de
-   esos rollos (pesados en la estación). Es la fuente que escala con el flujo nuevo y le gana a todo.
+   esos rollos (pesados en la estación). Es la fuente que escala con el flujo nuevo y le gana a todo. Cuentan desde
+   `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` si está (el arranque del flujo; deja fuera rollos de prueba).
 2. **Forzado por Ingeniería:** si Ingeniería escribe el rendimiento a mano en la ficha queda «Rendimiento forzado»
    (como el de la ficha de tejido) y solo los rollos de Inspección lo cambian, con aviso si se mueve más que la alerta.
    Desmarcarlo lo vuelve a calcular en ese momento. La importación desde Excel no lo fuerza (es el teórico).
 3. **Conversiones a kg:** con 3 o más conversiones de metros a kg en 12 meses (su kg es el de la lista de empaque),
-   metros ÷ kg. Es el puente mientras la tela no tiene rollos de Inspección.
+   metros ÷ kg. Es el puente mientras la tela no tiene rollos de Inspección. El kg de la lista de empaque es neto (sin tara).
 4. **Estimado:** sin eso, metros por kg que entró a la orden × el consumo de crudo de la ficha.
 5. **Pocas muestras:** si tampoco hay estimado, los rollos o conversiones que haya (rollos primero).
 6. **Ficha:** sin nada, se queda el que tiene.
