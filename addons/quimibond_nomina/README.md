@@ -447,7 +447,8 @@ la deja visible para los usuarios de RH, con un ejemplo de formato. No es el
 ### 12. Infonavit: el primer bimestre, como NOI (1.12.0)
 
 La regla `INFONAVIT` reparte la **cuota bimestral** de la ficha del crédito
-(cuota mensual × 2 + 15 de seguro de vivienda) entre 9 semanas o 4 quincenas.
+(cuota mensual × 2 + 15 de seguro de vivienda) entre los pagos del bimestre
+(9 semanas fijas hasta 1.16.2; 8 o 9 desde 1.17.0, sección 16) o 4 quincenas.
 Eso cuadra en un bimestre completo, pero no cuando el crédito empieza a la
 mitad (alta, reingreso o aviso nuevo). NOI cobra solo los días desde el inicio
 del descuento, con la fórmula de cuota fija del Infonavit (cuota mensual × 2 ÷
@@ -652,6 +653,41 @@ la recuperación de Infonavit ya funciona, pero FONACOT sigue con la fórmula de
 
 - `INFONAVIT` (id 526), última línea:
   `result = -(payslip._qb_infonavit_retencion(categories['GROSS']) + ajuste)`.
+
+### 16. Infonavit: el divisor son los pagos del bimestre (1.17.0)
+
+Hasta 1.16.2 la cuota bimestral completa se repartía entre **9 semanas fijas**
+(o 4 quincenas). Septiembre–octubre de 2026 tiene 9 viernes y NOI usó 9 en las
+semanas 37 a 41 (Filiberta Florentino: 2,158.72 ÷ 9 = 239.84), pero
+noviembre–diciembre tiene **8** (6, 13, 20 y 27 de noviembre; 4, 11, 18 y 25
+de diciembre) y NOI usa 8: en la semana 46 Odoo retenía 8/9 de lo de NOI en los
+14 recibos con crédito y el lote quedaba +788.78 arriba del neto de NOI.
+
+- **Divisor** = `payslip._qb_pagos_en_bimestre()` (`models/infonavit.py`):
+  semanal, cuántas veces cae el día de pago (`quimibond_nomina.dia_pago_semanal`,
+  viernes) entre el día 1 del primer mes del bimestre y el último del segundo;
+  quincenal, 4 siempre. El bimestre es el de la **fecha de pago** del recibo
+  (la semana 45, del 26-oct al 1-nov, se paga el 30-oct: es de
+  septiembre–octubre). Nunca da 0.
+- **Un solo conteo de días de pago** (`models/calendario.py`, funciones puras
+  `_qb_pagos_en_ventana`, `_qb_bimestre_de`, `_qb_mes_de`): lo usan el divisor
+  del Infonavit, los periodos que quedan del bimestre
+  (`_qb_infonavit_periodos_desde`), las nóminas que paga el mes del FONACOT y
+  el ISR (`_qb_nomina_periodos_del_mes`) y los periodos previos y restantes del
+  FONACOT (`_qb_fonacot_periodos`). Los tres bucles que había daban lo mismo
+  (comprobado día por día de 2024 a 2029 con los siete días de pago posibles).
+- Divisores semanales con viernes: 9 en todos los bimestres de 2026 menos
+  noviembre–diciembre (8); 9 en enero–febrero de 2027 (el 1-ene-2027 es
+  viernes). Los seis bimestres de un año suman los viernes del año (52, 52, 53
+  y 52 en 2025–2028). Pruebas en `tests/test_calendario.py` y
+  `tests/test_infonavit.py`.
+- **La regla `INFONAVIT` (id 526) no cambia**: sigue llamando
+  `payslip._qb_infonavit_retencion(categories['GROSS'])`. Su comentario («entre
+  9 semanas o 4 quincenas») quedó viejo; corregirlo es decisión de Jose y el
+  centinela avisará si se edita.
+- Efecto lateral corregido: con el 9 fijo, en un bimestre de 8 pagos el primer
+  recibo «tenía» un recibo anterior que no existe, y la recuperación de 1.16.0
+  (sección 15) nunca se disparaba en noviembre–diciembre.
 
 ## Qué escribe el módulo en la base (inventario completo)
 

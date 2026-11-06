@@ -91,10 +91,10 @@ el mes: el ajuste automático ya lo hace."""
 import logging
 from datetime import timedelta
 
-from dateutil.relativedelta import relativedelta
-
 from odoo import models
 from odoo.tools import float_round
+
+from .calendario import _qb_mes_de, _qb_pagos_en_ventana
 
 _logger = logging.getLogger(__name__)
 
@@ -149,15 +149,8 @@ class HrPayslip(models.Model):
             fecha = self._qb_nomina_fecha_pago()
             if not fecha:
                 return 0
-            dia = self._qb_nomina_dia_pago()
-            primero = fecha.replace(day=1)
-            ultimo = primero + relativedelta(months=1, days=-1)
-            d = primero + timedelta(days=(dia - primero.weekday()) % 7)
-            n = 0
-            while d <= ultimo:
-                n += 1
-                d += timedelta(days=7)
-            return n
+            primero, ultimo = _qb_mes_de(fecha)
+            return _qb_pagos_en_ventana(primero, ultimo, self._qb_nomina_dia_pago())
         if periodicidad == 'bi-weekly':
             return 2
         if periodicidad == 'monthly':
