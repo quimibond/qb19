@@ -85,7 +85,9 @@ class MrpRolloFinal(models.Model):
 
     _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
-    _check_metros = models.Constraint('CHECK(metros > 0)', 'Los metros del rollo final deben ser mayores a cero.')
+    # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedazos, orillas); Primera, FE y Segunda sí los llevan.
+    _check_metros = models.Constraint("CHECK(metros > 0 OR (clasificacion = 'DESP' AND metros >= 0))",
+                                      'Los metros del rollo final deben ser mayores a cero (salvo en Desperdicio).')
 
     @api.depends('defecto_ids.clave')
     def _compute_siglas_defectos(self):

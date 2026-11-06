@@ -141,6 +141,19 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Último baño sin orden fantasma y Desperdicio sin metros (3.6.2, rondas 11 y 12 en main, 2026-11-06)
+
+- **Orden en kg fantasma.** Al cerrar el último baño de una orden en metros, el cierre iguala la demanda del acabado en kg
+  a lo que pesó Rama. Cuando ese baño pesaba más que la parte que Odoo le había dejado al pendiente (Odoo reparte la
+  demanda entre el cierre y el pendiente por metros, no por kg), Odoo abastecía la diferencia con una orden en kg nueva
+  que nadie pidió (ronda 12: TL/OP-KG/00066, 20.6 kg, con crudo reservado). El ajuste de la demanda ya no abastece
+  (`no_procurement`); los baños que la cubren ya existen (prueba 47).
+- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedazos u orillas
+  sin metros: Inspección ya no los pide en Desperdicio. Primera, FE y Segunda siguen pidiéndolos (prueba 48).
+- Formación de baños valida que lo escaneado sea igual a la demanda (`mrp_caja_surtido`, Consolti). No se cambia: en
+  producción la demanda del baño formado es lo producido por su orden de Tejido, así que con sus 12 rollos cuadra exacto;
+  es el control de que entren todos. Solo falla si el baño formado se crea a mano.
+
 ## Baño sin rollos pesados (3.6.1, prueba de Dirección en main, 2026-11-06)
 
 En la prueba de Dirección se dio «Hecho» a las 5 operaciones de un baño sin pesar ningún rollo y Odoo lo dejó pasar: las
