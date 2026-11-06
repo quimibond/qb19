@@ -705,12 +705,15 @@ MCP-specific XML-RPC endpoints with enhanced access control (used by the
 ### Running Tests
 
 ```bash
-# Run all MCP module tests
+# Vendor tests. They are tagged much_unit, not standard: Odoo.sh runs
+# `standard` on a copy of production, and these tests assume an empty
+# database (30-day API keys, login admin/admin). See
+# docs/RUNBOOK_DESPLIEGUE.md (2026-10-22). On a clean database:
 /path/to/odoo-bin \
   -d your_database \
   -u mcp_server \
   --test-enable \
-  --test-tags /mcp_server \
+  --test-tags much_unit/mcp_server \
   --stop-after-init
 ```
 
