@@ -741,6 +741,139 @@ result = payslip._qb_aguinaldo_base()
 Aplicada en producción el 2026-11-06 (lote 133 recalculado: Gerónimo Bartolo
 $12,928.25 = 517.13 × 25) y agregada al centinela ese mismo día.
 
+### 18. ISR y subsidio de la semana, como NOI (1.19.0)
+
+Comparando la semana 46 de 2026 recibo por recibo contra «NOMINA 46 SMTL»,
+los 95 netos quedaban a 5 centavos o menos, pero solo 40 al centavo exacto.
+IMSS, fondo de ahorro, cuota sindical, FONACOT, Infonavit, préstamos y
+pensión daban iguales; todo salía del ISR:
+
+- **La tarifa.** NOI calcula el ISR de la semana con la tarifa **mensual**
+  sobre el gravable llevado a mes (÷ 7 × 30.4) y lo regresa a la semana
+  (÷ 30.4 × 7). Odoo usaba la tarifa diaria × 7, cuyos límites no son los de
+  la semanal (1,650.74 contra 1,650.68). Con el procedimiento de NOI salen 94
+  de 95 recibos al centavo; el que no, es de prima vacacional (art. 174).
+- **El subsidio.** NOI usa el mensual redondeado hacia arriba (535.65) ÷ 30.4
+  × 7 con 4 decimales (123.3405) y redondea una sola vez el ISR neto. Odoo lo
+  redondeaba a 2 decimales (123.34) por separado.
+- **El neto contra sus líneas.** Odoo calculaba el neto con el ISR sin
+  redondear: en 39 recibos la suma de las líneas no daba el neto (clave 1:
+  5,224.14 contra 5,224.13). Al timbrar, un CFDI así lo puede rechazar el PAC.
+- **El mes de la semana.** La semana es del mes de su fecha de pago completa
+  (sección 9). El subsidio la partía por días entre los dos meses (6/7 y 1/7
+  en la semana 45; 1/7 y 6/7 en la 49) con el acumulado del mes de
+  `date_from`. Ahora el tope del mes descuenta lo ya aplicado en las semanas
+  pagadas ese mes.
+
+`payslip._qb_isr_semanal(ordinario)` y `payslip._qb_subsidio_semanal(ordinario)`
+(`models/isr_mensual.py`, sección 5) devuelven el ISR y el subsidio de la
+semana ya redondeados como NOI; la línea `ISR` lleva el subsidio más el ISR
+neto, así que la suma de las líneas es el neto. Solo la nómina semanal; en
+la quincenal devuelven `None` y las reglas siguen como estaban. La última
+semana del mes sigue con el ajuste mensual (sección 8). Pruebas:
+`tests/test_isr_semanal.py`.
+
+**Reglas que se cambian en la base después de desplegar 1.19.0** (sin el
+cambio el módulo no altera nada):
+
+- `ISR` (id 514), el bloque del periodo normal:
+
+  ```python
+      mes = payslip._qb_isr_mensual(ordinario)
+      # Semana normal: tarifa mensual / 30.4 x 7 y subsidio redondeado como NOI (quimibond_nomina 1.19.0).
+      semanal = payslip._qb_isr_semanal(ordinario) if mes is None else None
+      if mes is not None:
+          result = -(mes['isr'] + a174['isr'])
+      elif semanal is not None:
+          result = -(semanal + a174['isr'])
+      elif ordinario > 0:
+  ```
+
+- `SUBSIDY_CURRENT_MONTH` (id 524), al principio del cálculo del monto, antes
+  de `if schedule_days >= 30:` (que pasa a `elif`):
+
+  ```python
+  # Semanal: la semana completa es del mes de su fecha de pago, 4 decimales y tope del mes (1.19.0).
+  semanal = payslip._qb_subsidio_semanal(categories['GROSS'] - payslip._qb_art174_monto(result_rules))
+  if semanal is not None:
+      result = semanal
+  elif schedule_days >= 30:
+  ```
+
+- `SUBSIDY_NEXT_MONTH` (id 91), condición, última línea:
+  `result = is_within_subsidy_limit and is_cross_month_period and payslip.version_id.schedule_pay != 'weekly'`.
+
+`ISR` y `SUBSIDY_CURRENT_MONTH` están bajo el centinela: aceptar el cambio
+después de editarlas. `SUBSIDY_NEXT_MONTH` no lo está; conviene agregarla.
+
+### 19. El neto es la suma de sus líneas y las horas extra se reparten como NOI (1.19.1)
+
+El paralelo de la semana 44 (lote 127 en `main`, 6-nov-2026) con 1.19.0 dejó
+45 de 93 netos al centavo y 86 de 93 ISR. Lo demás eran tres redondeos:
+
+- **El neto.** La regla `NET` suma `categories` con los montos sin redondear.
+  En la clave 9 cada línea cuadraba con NOI y el neto salía 1,901.15 contra
+  1,901.16 (la suma de sus líneas). `payslip._qb_neto_lineas(result_rules)`
+  suma lo mismo que `categories['BASIC'] + categories['ALW'] +
+  categories['DED']`, pero con el total de cada regla redondeado como su
+  línea; las cuotas IMSS del trabajador (`IMSS_EMPLOYEE`, una regla por ramo)
+  se redondean juntas, como «Total IMSS (empleado)».
+- **Las horas extra.** `HE_EXEMPT` y `HE_TAX` partían el pago en dos mitades
+  sin redondear y cada línea perdía medio centavo (9 dobles a 61.1525:
+  1,100.745 → 550.37 + 550.37). NOI redondea el pago (1,100.75) y el exento
+  (550.37), y el gravado es la resta (550.38); el detalle final está en la
+  sección 20. La prima dominical no lo
+  necesita: su exento es 1 UMA exacta o la prima completa.
+- **El gravable del ISR.** `_qb_isr_semanal_partes` redondea el ordinario a
+  centavos antes de la tarifa (clave 5: 3,571.9575 → 3,571.96, ISR 344.17).
+
+**Reglas que se cambian en la base después de desplegar 1.19.1:**
+
+- `NET` (id 131): `result = payslip._qb_neto_lineas(result_rules)`.
+- `HE_EXEMPT` (id 463) y `HE_TAX` (id 464): ver la sección 20 (el primer
+  intento, exento redondeado y gravado como resto, dejaba 6 de 46 recibos 1
+  centavo abajo).
+
+Las tres, y `SUBSIDY_NEXT_MONTH` (91), van al centinela.
+
+### 20. El factor semana-mes de NOI (1.19.2)
+
+Tras 1.19.1, 3 de 93 ISR de la semana 44 quedaban 1 centavo abajo (claves 22,
+90 y 242). NOI no usa 30.4 / 7 exacto: lleva la semana a mes con el factor
+redondeado a 5 decimales, **4.34286**, y la regresa dividiendo entre el mismo
+factor (`FACTOR_SEMANA_MES` en `models/isr_mensual.py`). Con eso cuadran 92 de
+93 ISR de la semana 44 y 94 de 95 de la 46; los dos que no son de prima
+vacacional (art. 174). El subsidio sigue con 535.65 / 30.4 × 7 a 4 decimales
+(123.3405, como lo muestra NOI). Sin reglas que editar.
+
+También quedó el reparto de las horas extra como NOI (sección 19, reglas
+`HE_EXEMPT` 463 y `HE_TAX` 464): **pago redondeado, gravado = pago − exento
+redondeado, y el exento es lo que queda**. Cuando el exento cae en medio
+centavo (6 dobles a 54.2375: 325.425) NOI lo deja en 325.42 y el gravado en
+325.43. Semana 44: 46 de 46 recibos con horas extra al centavo en el gravable.
+Texto vigente de las dos reglas:
+
+- `HE_EXEMPT`: `pago = float_round(dobles * vh * 2 + triples * vh * 3, precision_digits=2)`,
+  `exento = min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas)`,
+  `result = pago - float_round(pago - exento, precision_digits=2)`.
+- `HE_TAX`: el mismo `pago` y `exento`, `result = float_round(pago - exento, precision_digits=2)`.
+
+### 21. El descuento por faltas redondea el sueldo pagado (1.19.3)
+
+En la semana 44, S-182 y S-310 quedaban 1 centavo abajo: el descuento sin
+redondear caía en medio centavo (S-310: 483.875 sobre 2,322.60) y la línea
+`DESC_FALTAS` lo redondeaba a 483.88, con lo que el sueldo pagado quedaba en
+1,838.72. NOI redondea el **sueldo pagado** (1,838.725 → 1,838.73) y el
+descuento es lo que falta. Regla `DESC_FALTAS` (id 470), últimas líneas:
+
+```python
+basico = categories['BASIC']
+result = -(basico - float_round(basico - min(descuento, basico), precision_digits=2))
+```
+
+Fuera de los medios centavos da lo mismo que antes. Editada en `main` y en
+producción el 2026-11-06, bajo el centinela.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
