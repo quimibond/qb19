@@ -193,13 +193,35 @@ class MrpProduction(models.Model):
         return preparacion + limpieza + ciclos * operacion.time_cycle * 100.0 / (
             workcenter.time_efficiency or 100.0)
 
+    def _kg_carga_jet(self):
+        """1.7.0: (kg que entran al jet, producto crudo). El jet se carga con el crudo, no con la tela terminada: en
+        IWJ038Q22JNT160 entran 1.1505 kg de crudo por kg de tela, así que un baño de 500 kg de tela llevaba 575 kg
+        al jet (auditoría del flujo, 2026-11-06). Es el componente en peso de una categoría de tejido con más kg
+        planeados, la misma regla con la que rollos valida el crudo al cerrar. Sin componente de tejido, los kg de la
+        orden, como antes."""
+        self.ensure_one()
+        kg = self.env.ref('uom.product_uom_kgm')
+        tela = self.move_raw_ids.filtered(
+            lambda m: m.state != 'cancel' and m.product_uom._has_common_reference(kg)
+            and 'TEJIDO' in (m.product_id.categ_id.complete_name or '').upper())
+        if not tela:
+            return self.product_uom_id._compute_quantity(self.product_qty, kg, round=False), False
+        planeado = {}
+        for move in tela:
+            planeado[move.product_id] = planeado.get(move.product_id, 0.0) + move.product_uom._compute_quantity(
+                move.product_uom_qty, kg, round=False)
+        crudo = max(planeado, key=planeado.get)
+        return planeado[crudo], crudo
+
     def _calcular_plan_tintoreria(self, workcenter):
-        """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado."""
+        """Capacidad por baño, número de baños y kg por baño (reparto simétrico) en el HTJ dado. 1.7.0: el número de
+        baños sale de los kg de crudo que entran al jet; la orden se reparte en kg de tela en la misma proporción."""
         self.ensure_one()
         rendimiento = self._rendimiento_tejido()
         capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
         kg_total = self.product_qty
-        n_banos = max(1, math.ceil(round(kg_total / capacidad, 6)))
+        kg_carga, crudo = self._kg_carga_jet()
+        n_banos = max(1, math.ceil(round(kg_carga / capacidad, 6)))
         uom = self.product_uom_id
         kg_bano = uom.round(kg_total / n_banos)
         montos = [kg_bano] * (n_banos - 1)
@@ -213,6 +235,12 @@ class MrpProduction(models.Model):
             'n_banos': n_banos,
             'kg_bano': kg_bano,
             'montos': montos,
+            'kg_crudo': kg_carga,
+            'kg_crudo_bano': float_round(kg_carga / n_banos, precision_digits=3),
+            'crudo_id': crudo.id if crudo else False,
+            'aviso_crudo': False if crudo else _(
+                "La orden %s no tiene componente de tejido: los baños se calcularon con los kg de la orden.",
+                self.name),
             'aviso': aviso,
             'minutos': minutos,
             'origen_tiempo': origen_tiempo,
@@ -266,6 +294,8 @@ class MrpProduction(models.Model):
             'capacidad_kg': plan['capacidad_kg'],
             'n_banos': plan['n_banos'],
             'kg_bano': plan['kg_bano'],
+            'kg_crudo': plan['kg_crudo'],
+            'kg_crudo_bano': plan['kg_crudo_bano'],
             'minutos_bano': plan['minutos'],
             'origen_tiempo': plan['origen_tiempo'],
         })
@@ -281,8 +311,12 @@ class MrpProduction(models.Model):
                 'tintoreria_programacion_id': programacion.id,
             })
             orden.message_post(body=_(
-                "Tintorería programada en %(wc)s: %(n)s baño(s) de %(kg)s kg (orden de origen %(o)s).",
-                wc=workcenter.display_name, n=plan['n_banos'], kg=orden.product_qty, o=nombre_origen))
+                "Tintorería programada en %(wc)s: %(n)s baño(s) de %(kg)s kg de tela, %(crudo)s kg de crudo por baño "
+                "(capacidad %(cap)s kg; orden de origen %(o)s).",
+                wc=workcenter.display_name, n=plan['n_banos'], kg=orden.product_qty, crudo=plan['kg_crudo_bano'],
+                cap=plan['capacidad_kg'], o=nombre_origen))
+            if plan['aviso_crudo']:
+                orden.message_post(body=plan['aviso_crudo'])
             if plan['aviso']:
                 orden.message_post(body=plan['aviso'])
             if plan['aviso_tiempo']:

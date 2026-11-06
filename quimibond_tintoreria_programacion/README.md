@@ -28,6 +28,18 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
 
+## Cambios 19.0.1.7.0 (auditoría del flujo, 2026-11-06)
+
+- **El número de baños sale de los kg de crudo que entran al jet**, no de los kg de tela terminada de la orden. El
+  crudo es el componente en peso de una categoría de tejido con más kg planeados (la misma regla con la que
+  `quimibond_rollos_bitacora` valida el crudo al cerrar). En IWJ038Q22JNT160 entran 1.1505 kg de crudo por kg de
+  tela: un baño de 500 kg de tela cargaba 575 kg en un jet de 500. La orden se sigue repartiendo en kg de tela, en
+  baños iguales.
+- El asistente, la programación y la nota de cada orden muestran los kg de crudo por baño. Sin componente de tejido
+  se usan los kg de la orden, como antes, y queda un aviso en el chatter.
+- La capacidad del jet se toma como kg de crudo cargado: en el flujo anterior la orden de Tintorería consume el crudo
+  1 a 1 (TL/OP-TIN/06736: 404.44 kg de WJ035Q22HNT200 para 404.44 kg), y con ese flujo se fijaron las capacidades.
+
 ## Cambios 19.0.1.6.2 (ronda 5 de pruebas en main, 2026-11-05)
 
 - Cancelar una orden de una programación lo anota en la programación; si ya no le queda ninguna orden viva, la

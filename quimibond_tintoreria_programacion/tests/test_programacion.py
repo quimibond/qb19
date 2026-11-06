@@ -219,3 +219,41 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertTrue(programacion.message_ids.filtered(lambda m: 'siguen programadas' in (m.body or '')))
         segunda.action_cancel()
         self.assertEqual(programacion.state, 'cancelada')
+
+    def test_banos_con_kg_de_crudo(self):
+        """1.7.0: el jet se carga con el crudo. 550 kg de tela con 1.15 kg de crudo por kg son 632.5 kg en el jet:
+        en banda B (600 kg) son 2 baños de 275 kg de tela y 316.25 kg de crudo; con los kg de tela era 1 baño."""
+        categoria = self.env['product.category'].create({'name': 'TEJIDO PRUEBA PROGRAMACION'})
+        crudo = self._producto('WJ-CRUDO-TEST')
+        crudo.categ_id = categoria
+        producto = self._producto('IWJ-CRUDO-TEST')
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': producto.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'operation_ids': [Command.create({'name': 'Tintorería', 'workcenter_id': self.htj1.id})],
+            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': 1.15}),
+                             Command.create({'product_id': self.componente.id, 'product_qty': 0.1})],
+        })
+        mo = self.env['mrp.production'].create({
+            'product_id': producto.id, 'product_qty': 550.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        mo.action_confirm()
+        plan = mo._calcular_plan_tintoreria(self.htj1)
+        self.assertEqual(plan['crudo_id'], crudo.id)
+        self.assertAlmostEqual(plan['kg_crudo'], 632.5)
+        self.assertEqual(plan['n_banos'], 2, "Con los kg de tela (550) cabía en un baño de 600")
+        self.assertAlmostEqual(plan['kg_crudo_bano'], 316.25)
+        self.assertFalse(plan['aviso_crudo'])
+        programacion = mo._programar_tintoreria(self.htj1)
+        self.assertEqual(sorted(programacion.production_ids.mapped('product_qty')), [275.0, 275.0])
+        self.assertAlmostEqual(programacion.kg_crudo, 632.5)
+        self.assertAlmostEqual(programacion.kg_crudo_bano, 316.25)
+        self.assertTrue(all(any('316.25 kg de crudo' in (m.body or '') for m in orden.message_ids)
+                            for orden in programacion.production_ids))
+
+    def test_sin_componente_de_tejido_usa_los_kg_de_la_orden(self):
+        """1.7.0: sin componente de una categoría de tejido, los baños salen de los kg de la orden, con aviso."""
+        mo = self._crear_mo(1000.0)
+        plan = mo._calcular_plan_tintoreria(self.htj1)
+        self.assertFalse(plan['crudo_id'])
+        self.assertAlmostEqual(plan['kg_crudo'], 1000.0)
+        self.assertEqual(plan['n_banos'], 2)
+        self.assertTrue(plan['aviso_crudo'])

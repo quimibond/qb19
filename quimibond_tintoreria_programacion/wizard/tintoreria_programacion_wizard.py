@@ -56,6 +56,7 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
     capacidad_kg = fields.Float('Capacidad por baño (kg)', compute='_compute_plan', digits=(16, 3))
     n_banos = fields.Integer('No. de baños', compute='_compute_plan')
     kg_bano = fields.Float('kg por baño', compute='_compute_plan', digits=(16, 3))
+    kg_crudo_bano = fields.Float('kg de crudo por baño', compute='_compute_plan', digits=(16, 3))
     minutos_bano = fields.Float('Min por baño', compute='_compute_plan', digits=(12, 2))
     origen_tiempo = fields.Selection(ORIGENES_TIEMPO, 'Origen del tiempo', compute='_compute_plan')
     advertencia = fields.Char('Advertencia', compute='_compute_plan')
@@ -63,7 +64,7 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
     @api.depends('production_id', 'workcenter_id')
     def _compute_plan(self):
         for linea in self:
-            linea.rendimiento = linea.capacidad_kg = linea.kg_bano = linea.minutos_bano = 0.0
+            linea.rendimiento = linea.capacidad_kg = linea.kg_bano = linea.kg_crudo_bano = linea.minutos_bano = 0.0
             linea.origen_tiempo = False
             linea.n_banos = 0
             linea.banda = False
@@ -78,6 +79,7 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
                     linea.capacidad_kg = plan['capacidad_kg']
                     linea.n_banos = plan['n_banos']
                     linea.kg_bano = plan['kg_bano']
+                    linea.kg_crudo_bano = plan['kg_crudo_bano']
                     linea.minutos_bano = plan['minutos']
                     linea.origen_tiempo = plan['origen_tiempo']
                 else:
