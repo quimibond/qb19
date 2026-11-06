@@ -26,7 +26,13 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El producto en kg debe estar ligado a una **ficha de acabado** (`product_proceso_id`) y esa ficha a una **ficha de tejido** con peso y ancho (de ahí sale el rendimiento). Sin ficha de acabado la orden **no** requiere programación y el asistente responde «Selecciona órdenes pendientes de programar Tintorería».
 - El campo se calcula al **crear** la orden: si la ficha se liga después, las órdenes ya creadas no se recalculan solas.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
-- El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
+- El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
+
+## Cambios 19.0.1.7.1 (ronda 10 en main, 2026-11-06)
+
+- **No se programa en un jet que no está operando.** El asistente dejaba escoger TINTORERIA 5, en montaje, sin aviso;
+  como el jet programado queda fijo, la orden se quedaba en una máquina que no trabaja. Ahora el asistente solo ofrece
+  jets operando y, si el renglón ya traía uno que no opera, muestra la advertencia y no confirma.
 
 ## Cambios 19.0.1.7.0 (auditoría del flujo, 2026-11-06)
 
