@@ -132,3 +132,38 @@ class TestDosificacionTintoreria(TransactionCase):
         with self.assertRaises(ValidationError):  # producto que no es químico ni colorante
             self.env['tintoreria.formula.line'].create({
                 'formula_id': self.formula.id, 'product_id': self.otro.id, 'gramos_por_litro': 1.0})
+
+    def test_dosis_sobre_los_kg_de_crudo(self):
+        """1.4.0: la relación de baño y el % de colorante van sobre los kg que entran al jet (el crudo), no sobre los kg
+        de tela de la orden. Con 1.15 kg de crudo por kg de tela, 100 kg de tela cargan 115 kg."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (prueba)'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo', 'default_code': 'T-CRUDO', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id})
+        tela = self.env['product.product'].create({
+            'name': 'Tela acabada con crudo', 'default_code': 'T-ITELA2', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'operation_ids': [(0, 0, {'name': 'TINTORERIA', 'workcenter_id': self.wc1.id})],
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id, 'product_qty': 1.15})],
+            'formula_tintoreria_id': self.formula.id,
+        })
+        bom.action_cargar_formula()
+        self.assertEqual(bom._kg_carga_jet_lote(), (1.0, 1.15, crudo))
+        linea = bom.bom_line_ids.filtered(lambda l: l.product_id == self.detergente)
+        self.assertAlmostEqual(linea.product_qty, 1.5 * 7 * 1.15 / 1000, places=4)  # la línea guarda 4 decimales
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        self.assertAlmostEqual(mo._kg_carga_jet()[0], 115.0)
+        self.assertAlmostEqual(self._mov(mo, self.detergente).product_uom_qty, 1.5 * 7 * 115 / 1000, places=6)
+        self.assertAlmostEqual(self._mov(mo, self.amarillo).product_uom_qty, 0.034 / 100 * 115, places=6)
+        # Con los movimientos ya creados manda el crudo de la orden: cambio de jet (RB 6) sobre los mismos 115 kg.
+        mo.workorder_ids.filtered(lambda w: w.operation_id.name == 'TINTORERIA').write({'workcenter_id': self.wc2.id})
+        self.assertAlmostEqual(self._mov(mo, self.detergente).product_uom_qty, 1.5 * 6 * 115 / 1000, places=6)
+
+    def test_sin_crudo_dosifica_sobre_los_kg_de_la_orden(self):
+        """1.4.0: sin componente de tejido, como antes: los kg de la orden."""
+        self.assertEqual(self.bom._kg_carga_jet_lote(), (1.0, 1.0, False))
+        mo = self._crear_mo(100.0)
+        self.assertEqual(mo._kg_carga_jet(), (100.0, False))
