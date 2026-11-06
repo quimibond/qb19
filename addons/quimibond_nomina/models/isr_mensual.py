@@ -140,6 +140,7 @@ CODIGO_GRAVABLE = 'GROSS'
 CODIGOS_RETENIDO = ('ISR', 'ISR_ADJUSTMENT')
 CODIGO_SUBSIDIO = 'SUBSIDY'
 CATEGORIA_IMSS_EMPLEADO = 'IMSS_EMPLOYEE'
+FACTOR_SEMANA_MES = 4.34286                              # 30.4 / 7 a 5 decimales, como NOI
 
 
 class HrPayslip(models.Model):
@@ -426,7 +427,9 @@ class HrPayslip(models.Model):
         # centavo abajo (1.19.1).
         ordinario = float_round(ordinario, precision_digits=2)
         tabla = self._rule_parameter('l10n_mx_isr_tables', self.date_to)['monthly']
-        isr = self._qb_isr_tarifa(ordinario / 7 * 30.4, tabla) / 30.4 * 7
+        # NOI lleva la semana a mes con 30.4 / 7 redondeado a 5 decimales (4.34286) y la
+        # regresa con el mismo factor (semana 44: 4,137.04 -> 448.86, no 448.85; 1.19.2).
+        isr = self._qb_isr_tarifa(ordinario * FACTOR_SEMANA_MES, tabla) / FACTOR_SEMANA_MES
         subsidio = min(self._qb_subsidio_semanal_bruto(ordinario), isr)
         if not subsidio:
             return self._qb_redondeo(isr), 0.0

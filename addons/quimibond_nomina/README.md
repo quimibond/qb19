@@ -821,7 +821,8 @@ El paralelo de la semana 44 (lote 127 en `main`, 6-nov-2026) con 1.19.0 dejó
 - **Las horas extra.** `HE_EXEMPT` y `HE_TAX` partían el pago en dos mitades
   sin redondear y cada línea perdía medio centavo (9 dobles a 61.1525:
   1,100.745 → 550.37 + 550.37). NOI redondea el pago (1,100.75) y el exento
-  (550.37), y el gravado es la resta (550.38). La prima dominical no lo
+  (550.37), y el gravado es la resta (550.38); el detalle final está en la
+  sección 20. La prima dominical no lo
   necesita: su exento es 1 UMA exacta o la prima completa.
 - **El gravable del ISR.** `_qb_isr_semanal_partes` redondea el ordinario a
   centavos antes de la tarifa (clave 5: 3,571.9575 → 3,571.96, ISR 344.17).
@@ -829,14 +830,33 @@ El paralelo de la semana 44 (lote 127 en `main`, 6-nov-2026) con 1.19.0 dejó
 **Reglas que se cambian en la base después de desplegar 1.19.1:**
 
 - `NET` (id 131): `result = payslip._qb_neto_lineas(result_rules)`.
-- `HE_EXEMPT` (id 463), última línea:
-  `result = float_round(min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas), precision_digits=2)`.
-- `HE_TAX` (id 464), las dos últimas líneas:
-  `pago = float_round(dobles * vh * 2 + triples * vh * 3, precision_digits=2)`,
-  `exento = float_round(min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas), precision_digits=2)`
-  y `result = pago - exento`.
+- `HE_EXEMPT` (id 463) y `HE_TAX` (id 464): ver la sección 20 (el primer
+  intento, exento redondeado y gravado como resto, dejaba 6 de 46 recibos 1
+  centavo abajo).
 
 Las tres, y `SUBSIDY_NEXT_MONTH` (91), van al centinela.
+
+### 20. El factor semana-mes de NOI (1.19.2)
+
+Tras 1.19.1, 3 de 93 ISR de la semana 44 quedaban 1 centavo abajo (claves 22,
+90 y 242). NOI no usa 30.4 / 7 exacto: lleva la semana a mes con el factor
+redondeado a 5 decimales, **4.34286**, y la regresa dividiendo entre el mismo
+factor (`FACTOR_SEMANA_MES` en `models/isr_mensual.py`). Con eso cuadran 92 de
+93 ISR de la semana 44 y 94 de 95 de la 46; los dos que no son de prima
+vacacional (art. 174). El subsidio sigue con 535.65 / 30.4 × 7 a 4 decimales
+(123.3405, como lo muestra NOI). Sin reglas que editar.
+
+También quedó el reparto de las horas extra como NOI (sección 19, reglas
+`HE_EXEMPT` 463 y `HE_TAX` 464): **pago redondeado, gravado = pago − exento
+redondeado, y el exento es lo que queda**. Cuando el exento cae en medio
+centavo (6 dobles a 54.2375: 325.425) NOI lo deja en 325.42 y el gravado en
+325.43. Semana 44: 46 de 46 recibos con horas extra al centavo en el gravable.
+Texto vigente de las dos reglas:
+
+- `HE_EXEMPT`: `pago = float_round(dobles * vh * 2 + triples * vh * 3, precision_digits=2)`,
+  `exento = min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas)`,
+  `result = pago - float_round(pago - exento, precision_digits=2)`.
+- `HE_TAX`: el mismo `pago` y `exento`, `result = float_round(pago - exento, precision_digits=2)`.
 
 ## Qué escribe el módulo en la base (inventario completo)
 
