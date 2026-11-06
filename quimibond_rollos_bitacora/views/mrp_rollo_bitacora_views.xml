@@ -10,6 +10,7 @@
                 <field name="lot_id"/>
                 <field name="product_id"/>
                 <field name="kg_rama" sum="Total kg"/>
+                <field name="metros_rama" sum="Total m" optional="show"/>
                 <field name="estado_inspeccion" widget="badge"/>
                 <field name="clasificacion_inicial"/>
                 <field name="metros_insp" optional="show"/>
@@ -60,6 +61,9 @@
                                     <field name="kg_bruto_rama"/>
                                     <field name="tara_rama"/>
                                     <field name="kg_rama"/>
+                                    <field name="metros_rama"/>
+                                    <field name="rendimiento_rama"/>
+                                    <field name="motivo_sin_metros_rama" invisible="metros_rama"/>
                                 </group>
                                 <group>
                                     <field name="operador_rama"/>

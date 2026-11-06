@@ -36,6 +36,11 @@ class RolloPesajeRamaWizard(models.TransientModel):
                                 help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §8.8 y §13).',
                                 default=lambda self: motivo_por_defecto(self))
     weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
+    metros_rama = fields.Float(
+        'Metros (cuentametros)', digits=(12, 2),
+        help='3.6.0: lo que marca el cuentametros al final de la Rama cuando sale el rollo. Obligatorio; si no se pudo '
+             'leer, se captura el motivo.')
+    motivo_sin_metros = fields.Char('Motivo sin metros', help='3.6.0: solo si no se pudieron leer los metros.')
 
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
@@ -96,6 +101,13 @@ class RolloPesajeRamaWizard(models.TransientModel):
         manual = self.weighing_mode == 'manual'
         if manual and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
+        # 3.6.0 (Dirección, 2026-11-06): los metros del cuentametros de la Rama son obligatorios; sin ellos, el motivo.
+        if self.metros_rama < 0:
+            raise UserError(_('Los metros del cuentametros no pueden ser negativos.'))
+        sin_metros = (self.motivo_sin_metros or '').strip()
+        if not self.metros_rama and not sin_metros:
+            raise UserError(_(
+                'Captura los metros que marca el cuentametros de la Rama o, si no se pudieron leer, el motivo.'))
         if produccion.product_id.tracking != 'lot':
             raise UserError(_(
                 'El artículo %s debe tener seguimiento por lote para registrar rollos.',
@@ -125,6 +137,8 @@ class RolloPesajeRamaWizard(models.TransientModel):
             'kg_bruto_rama': self.kg_bruto,
             'tara_rama': self.tara_kg,
             'kg_rama': kg_neto,
+            'metros_rama': self.metros_rama,
+            'motivo_sin_metros_rama': sin_metros or False if not self.metros_rama else False,
             'captura_manual_rama': manual,
             'motivo_manual_rama': (self.motivo_manual or '').strip() or False if manual else False,
             'operador_rama': ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])),

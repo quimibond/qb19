@@ -388,7 +388,8 @@ class TestInspeccionEstacion(TransactionCase):
                    'weighing_mode': 'manual', 'kg_bruto': 31.1}
         with self.assertRaisesRegex(UserError, 'motivo'):
             self.env['rollo.pesaje.rama.wizard'].create(valores).action_confirmar()
-        self.env['rollo.pesaje.rama.wizard'].create(dict(valores, motivo_manual='Báscula sin conexión')).action_confirmar()
+        self.env['rollo.pesaje.rama.wizard'].create(
+            dict(valores, motivo_manual='Báscula sin conexión', metros_rama=480.0)).action_confirmar()
         rollo = orden_kg.rollo_bitacora_ids
         self.assertAlmostEqual(rollo.kg_rama, 30.0)
         self.assertEqual(rollo.motivo_manual_rama, 'Báscula sin conexión')
@@ -472,6 +473,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.env['rollo.pesaje.rama.wizard'].create({
             'production_id': bano.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
             'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'kg_bruto': kg_bruto_rama,
+            'metros_rama': 600.0,
         }).action_confirmar()
         rollos = bano.rollo_bitacora_ids
         self.assertEqual(rollos.lot_id.name, '%s-J0001' % bano.numero_bano)  # 3.5.0: Rama lleva la J
@@ -783,7 +785,7 @@ class TestInspeccionEstacion(TransactionCase):
         wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.workcenter_id == self.rama)
         self.env['rollo.pesaje.rama.wizard'].create({
             'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
-            'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_bruto': 31.1}).action_confirmar()
+            'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_bruto': 31.1, 'metros_rama': 480.0}).action_confirmar()
         nuevo = orden_kg.rollo_bitacora_ids - rollos
         log_rama = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', nuevo.lot_id.name)])
         self.assertEqual(len(log_rama), 1)
@@ -976,3 +978,33 @@ class TestInspeccionEstacion(TransactionCase):
                 self.env['rollo.desperdicio.rama.wizard'].create(
                     dict(base, empleado_numero='9999', kg_desperdicio=1.2)).action_confirmar()
         self.assertFalse(orden_kg.rollo_bitacora_ids)
+
+    def test_45_metros_de_rama_obligatorios_con_motivo(self):
+        """3.6.0 (Dirección, 2026-11-06): Rama captura los metros del cuentametros con cada rollo; sin metros solo registra
+        con el motivo. Los metros quedan en el rollo, en el resumen del baño, en el rendimiento y en la etiqueta."""
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id})
+        orden_kg.action_confirm()
+        wo_rama = self.env['mrp.workorder'].create({
+            'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
+        base = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'kg_bruto': 31.1}
+        Wizard = self.env['rollo.pesaje.rama.wizard']
+        with self.assertRaisesRegex(UserError, 'cuentametros'):
+            Wizard.create(base).action_confirmar()
+        with self.assertRaisesRegex(UserError, 'negativos'):
+            Wizard.create(dict(base, metros_rama=-5.0)).action_confirmar()
+        self.assertFalse(orden_kg.rollo_bitacora_ids)
+        Wizard.create(dict(base, metros_rama=480.0, motivo_sin_metros='no aplica')).action_confirmar()
+        rollo = orden_kg.rollo_bitacora_ids
+        self.assertEqual(rollo.metros_rama, 480.0)
+        self.assertFalse(rollo.motivo_sin_metros_rama, 'Con metros no se guarda motivo')
+        self.assertAlmostEqual(rollo.rendimiento_rama, 480.0 / rollo.kg_rama, places=4)
+        self.assertIn('M: 480.00', rollo.zpl_etiqueta_rama)
+        Wizard.create(dict(base, motivo_sin_metros='Cuentametros descompuesto')).action_confirmar()
+        sin_metros = orden_kg.rollo_bitacora_ids - rollo
+        self.assertEqual(sin_metros.metros_rama, 0.0)
+        self.assertEqual(sin_metros.motivo_sin_metros_rama, 'Cuentametros descompuesto')
+        self.assertEqual(sin_metros.rendimiento_rama, 0.0)
+        self.assertNotIn('M: ', sin_metros.zpl_etiqueta_rama)
+        self.assertEqual(orden_kg.rollos_rama_metros, 480.0)

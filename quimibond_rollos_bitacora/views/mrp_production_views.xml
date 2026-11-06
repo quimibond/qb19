@@ -40,6 +40,7 @@
                             </div>
                             <field name="rollos_rama_count"/>
                             <field name="rollos_rama_kg"/>
+                            <field name="rollos_rama_metros"/>
                             <field name="rollos_rama_pct"/>
                             <field name="desperdicio_kg" string="Desperdicio de Rama (kg)"/>
                             <field name="rollos_pendientes_count"
@@ -66,6 +67,8 @@
                             <field name="kg_bruto_rama" string="Bruto (kg)"/>
                             <field name="tara_rama" string="Tara (kg)"/>
                             <field name="kg_rama" string="Neto (kg)" sum="Total kg"/>
+                            <field name="metros_rama" string="Metros" sum="Total m"/>
+                            <field name="motivo_sin_metros_rama" string="Sin metros" optional="hide"/>
                             <field name="captura_manual_rama" string="Manual" optional="show"/>
                             <field name="motivo_manual_rama" string="Motivo" optional="hide"/>
                             <field name="estado_inspeccion" widget="badge"

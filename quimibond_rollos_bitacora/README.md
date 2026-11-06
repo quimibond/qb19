@@ -141,6 +141,17 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Metros del cuentametros en Rama (3.6.0, Dirección, 2026-11-06)
+
+- La Rama tiene un cuentametros al final y hoy todo se registra en metros: para no perder ese dato, «PESAR ROLLO» pide
+  los **metros del cuentametros** junto con el peso. Son obligatorios; si no se pudieron leer, el rollo se registra con
+  el motivo («Motivo sin metros»), igual que la captura manual del peso.
+- Quedan en el rollo de Rama (`metros_rama`, `motivo_sin_metros_rama`), con su rendimiento en Rama
+  (`rendimiento_rama` = metros entre kg netos), en la etiqueta preliminar de Rama («M:» debajo de los kg), en la
+  lista de rollos de Rama de la pestaña Rollos y en el resumen del baño (`rollos_rama_metros`).
+- No cambian el inventario ni el cierre: la orden sigue en kg; los metros son el dato de proceso de la Rama.
+- Prueba: `test_45_metros_de_rama_obligatorios_con_motivo`.
+
 ## Operador inexistente en Rama (3.5.3, ronda 7 de pruebas, 2026-11-05)
 
 Rama y el desperdicio de Rama registraban el rollo con «EMPLEADO NO ENCONTRADO» cuando el número tecleado no existía;
