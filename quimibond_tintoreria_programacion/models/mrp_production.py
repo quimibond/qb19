@@ -272,7 +272,9 @@ class MrpProduction(models.Model):
         estaba (varios baños para una orden en metros, rollos 3.3.0). Devuelve las partes en el orden de los baños."""
         banos = self
         nada = self.env['mrp.production']
-        if len(banos) < 2:
+        if len(banos) < 2 or 'mrp.rollo.final' not in self.env:
+            # Sin quimibond_rollos_bitacora no hay cierre que registre cada orden en metros con sus metros reales:
+            # dividirla solo dejaría N órdenes para cerrar a mano (revisión 2026-11-06).
             return nada
         producto = banos[0].product_id
         terminados = banos.move_finished_ids.filtered(
@@ -295,7 +297,9 @@ class MrpProduction(models.Model):
         montos.append(uom.round(cantidad - sum(montos)))
         partes = orden_m._split_productions({orden_m: montos})
         if len(partes) != len(banos):
-            return partes
+            raise UserError(_(
+                "La orden en metros %(m)s se dividió en %(p)s partes para %(b)s baños; no se programó nada. Revisa las "
+                "cantidades de la orden en metros.", m=orden_m.name, p=len(partes), b=len(banos)))
         for bano, parte in zip(banos, partes):
             terminado = bano.move_finished_ids.filtered(
                 lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
@@ -305,6 +309,25 @@ class MrpProduction(models.Model):
                 "Orden en metros del baño %(b)s: %(m)s %(u)s planeados para %(kg)s kg de tela. Al cerrar el baño se "
                 "registra con sus metros reales.", b=bano.name, m=parte.product_qty, u=uom.name, kg=bano.product_qty))
         return partes
+
+    def _tintoreria_orden_metros_propia(self):
+        """Pares (baño, orden en metros) donde la orden en metros la abastece solo ese baño y es una parte de la división
+        de 1.8.0 (su grupo tiene otras partes) y no ha empezado."""
+        pares = []
+        for orden in self.filtered(lambda o: o.state not in ('done', 'cancel') and o.tintoreria_programada):
+            terminado = orden.move_finished_ids.filtered(lambda m: m.product_id == orden.product_id)
+            orden_m = terminado.move_dest_ids.raw_material_production_id.filtered(
+                lambda p: p.state in ('draft', 'confirmed'))
+            if len(orden_m) != 1:
+                continue
+            consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == orden.product_id)
+            if consumo.move_orig_ids.production_id != orden:
+                continue
+            if len(orden_m.production_group_id.production_ids) < 2 or orden_m.qty_produced \
+                    or any(wo.state not in ('blocked', 'ready') for wo in orden_m.workorder_ids):
+                continue
+            pares.append((orden, orden_m))
+        return pares
 
     def _programar_tintoreria(self, workcenter):
         """Asigna el HTJ, divide la MO en baños simétricos si hace falta y marca las órdenes como
@@ -384,7 +407,14 @@ class MrpProduction(models.Model):
         """1.6.2 (ronda 5 de pruebas en main, 2026-11-05): al cancelar órdenes de una programación, la programación lo
         anota; si ya no le queda ninguna orden viva, pasa a «Cancelada» (antes se quedaba «Programada»)."""
         programaciones = self.filtered(lambda o: o.state not in ('done', 'cancel')).tintoreria_programacion_id
+        partes_m = self._tintoreria_orden_metros_propia()
         res = super().action_cancel()
+        # 1.8.0 (revisión 2026-11-06): un baño cancelado se lleva su orden en metros (un baño = una orden en metros); si
+        # no, quedaba «Confirmada» con sus metros planeados y nadie que la abastezca. La de los otros baños no cambia.
+        for orden, orden_m in partes_m:
+            if orden.state == 'cancel' and orden_m.state not in ('done', 'cancel'):
+                orden_m.action_cancel()
+                orden_m.message_post(body=_("Cancelada junto con su baño %s.", orden.name))
         for programacion in programaciones:
             canceladas = self.filtered(
                 lambda o: o.tintoreria_programacion_id == programacion and o.state == 'cancel')

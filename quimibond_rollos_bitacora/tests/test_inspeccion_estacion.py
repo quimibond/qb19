@@ -1100,3 +1100,17 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)
+
+    def test_49_cancelar_un_bano_cancela_su_orden_en_metros(self):
+        """Programación 1.8.0 (revisión 2026-11-06): un baño cancelado antes de Rama se lleva su orden en metros; la del
+        otro baño no cambia y sigue cerrando con sus metros reales."""
+        orden_m, (bano_1, bano_2) = self._programar_dos_banos()
+        m2 = bano_2._insp_orden_metros()
+        bano_2.action_cancel()
+        self.assertEqual(bano_2.state, 'cancel')
+        self.assertEqual(m2.state, 'cancel', "La orden en metros del baño cancelado no queda colgada")
+        self.assertEqual(orden_m.state, 'confirmed')
+        self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
+        bano_1.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(orden_m.qty_produced, 460.0)

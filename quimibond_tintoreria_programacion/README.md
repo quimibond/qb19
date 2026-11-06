@@ -41,6 +41,9 @@ reparto hizo nacer una orden en kg que nadie pidió (corregido también en rollo
 - No divide si la orden en metros ya empezó o la abastece otra orden en kg además de estos baños; en ese caso sigue el
   flujo de varios baños para una orden en metros (rollos 3.3.0).
 - Un baño sin primera ni FE cancela solo su orden en metros (rollos 3.2.0); la de los otros baños no cambia.
+- Cancelar un baño (antes de Rama) cancela también su orden en metros; la de los otros baños no cambia.
+- Solo divide con `quimibond_rollos_bitacora` instalado: sin su cierre, cada orden en metros habría que cerrarla a mano.
+- Si la división no da una parte por baño, no se programa nada (error).
 
 ## Cambios 19.0.1.7.1 (ronda 10 en main, 2026-11-06)
 
