@@ -141,6 +141,15 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Baño sin rollos pesados (3.6.1, prueba de Dirección en main, 2026-11-06)
+
+En la prueba de Dirección se dio «Hecho» a las 5 operaciones de un baño sin pesar ningún rollo y Odoo lo dejó pasar: las
+revisiones de rollos e Inspección solo corren cuando ya hay rollos, así que la orden habría cerrado con los kg planeados,
+sin pesaje ni clasificación. Ahora, en una orden del tipo «Fabricación Tela en kg» (código de secuencia `OP-KG`) con
+operación de Rama, **Rama no termina y la orden no cierra sin al menos un rollo pesado en Rama**. Si el baño no llegó a
+Rama (se echó a perder antes), la orden se cancela: sin rollos la cancela cualquiera (3.5.2). Las órdenes de otros tipos
+con Rama (flujo viejo en metros, pruebas de costeo) no cambian.
+
 ## Metros del cuentametros en Rama (3.6.0, Dirección, 2026-11-06)
 
 - La Rama tiene un cuentametros al final y hoy todo se registra en metros: para no perder ese dato, «PESAR ROLLO» pide

@@ -1008,3 +1008,35 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(sin_metros.rendimiento_rama, 0.0)
         self.assertNotIn('M: ', sin_metros.zpl_etiqueta_rama)
         self.assertEqual(orden_kg.rollos_rama_metros, 480.0)
+
+    def test_46_bano_del_flujo_kg_no_termina_rama_ni_cierra_sin_rollos(self):
+        """3.6.1 (prueba de Dirección en main, 2026-11-06): con las 5 operaciones en «Hecho» y sin pesar nada, el baño
+        cerraba con los kg planeados. En el tipo «Fabricación Tela en kg» (OP-KG), Rama no termina y la orden no cierra
+        sin rollos pesados; con un rollo pesado Rama sí termina. Una orden con Rama de otro tipo no cambia."""
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ966', 'sequence_code': 'OP-KG'})
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
+            'picking_type_id': tipo_kg.id})
+        orden_kg.action_confirm()
+        wo_rama = self.env['mrp.workorder'].create({
+            'name': 'RAMA', 'production_id': orden_kg.id, 'workcenter_id': self.rama.id})
+        self.assertTrue(orden_kg._es_bano_flujo_kg())
+        with self.assertRaisesRegex(UserError, 'no tiene rollos pesados en Rama'):
+            wo_rama.button_finish()
+        self.assertNotEqual(wo_rama.state, 'done')
+        with self.assertRaisesRegex(UserError, 'no tiene rollos pesados en Rama'):
+            orden_kg.button_mark_done()
+        self.assertNotEqual(orden_kg.state, 'done')
+        self.env['rollo.pesaje.rama.wizard'].create({
+            'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1', 'weighing_mode': 'manual',
+            'motivo_manual': 'Prueba sin báscula', 'kg_bruto': 31.1, 'metros_rama': 480.0}).action_confirmar()
+        wo_rama.button_finish()
+        self.assertEqual(wo_rama.state, 'done')
+        # Otro tipo de operación con Rama (flujo viejo, costeo): sin cambio.
+        otra = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id})
+        otra.action_confirm()
+        self.env['mrp.workorder'].create({'name': 'RAMA', 'production_id': otra.id, 'workcenter_id': self.rama.id})
+        self.assertFalse(otra._es_bano_flujo_kg())
+        otra._validar_rollos_pesados()
