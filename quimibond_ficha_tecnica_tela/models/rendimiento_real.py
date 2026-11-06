@@ -32,6 +32,11 @@ que Ingeniería escribe a mano queda fijo** («Rendimiento forzado», como el de
 pisa con conversiones ni con el estimado, solo con 3 o más rollos de Inspección, y entonces avisa si cambió más que la
 alerta. Orden: rollos → forzado → conversiones → estimado → ficha.
 
+2.28.0 (Dirección, 2026-11-06): **el recálculo nocturno propone, no escribe.** Lo medido queda en
+``rendimiento_medido`` con su fuente y estado; la ficha (lista en metros, tiempos, costeo) cambia solo con «Usar el medido»
+de Ingeniería. Lo que se aleja más de 25 % del teórico (1000 ÷ peso × ancho) se marca «fuera del teórico» y no se
+propone. El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
+
 Revisión 2026-11-06 (en 2.27.1): el estimado cuenta los kg de reproceso (códigos con punto al final) y no multiplica por el
 consumo de crudo los kg de la tela acabada en kg; con menos de 3 muestras y sin estimado se queda el de la ficha.
 """
@@ -54,6 +59,10 @@ PARAM_ALERTA_RENDIMIENTO_PCT = 'quimibond_ficha_tecnica_tela.alerta_rendimiento_
 # del flujo nuevo en esa base: en main, los rollos de las pruebas de punta a punta (5-nov) no son producción.
 PARAM_ROLLOS_DESDE = 'quimibond_ficha_tecnica_tela.rendimiento_rollos_desde'
 ALERTA_RENDIMIENTO_PCT = 5.0
+# 2.28.0: lo medido que se aleja más que esto del teórico (1000 ÷ peso × ancho) no se propone: es un dato malo.
+PARAM_TOPE_TEORICO_PCT = 'quimibond_ficha_tecnica_tela.tope_teorico_pct'
+TOPE_TEORICO_PCT = 25.0
+UNIDADES_GRAMAJE = ('', 'g/m2', 'gr/m2', 'gsm', 'g', 'gr')
 POSICION_PROCESO = ('H', 'I', 'J')  # crudo, teñido, acabado (DAT P-D02-01, posición 9)
 
 
@@ -107,9 +116,32 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
     rendimiento_anterior = fields.Float(string='Rendimiento anterior (m/kg)', digits=(12, 4), readonly=True,
                                         copy=False)
     rendimiento_cambio_fecha = fields.Datetime(string='Rendimiento cambió el', readonly=True, copy=False)
+    # 2.28.0 (Dirección, 2026-11-06): el recálculo nocturno PROPONE; el rendimiento de la ficha (el que usan la lista
+    # en metros, los tiempos y el costeo) solo cambia cuando Ingeniería lo aprueba con «Usar el medido».
+    rendimiento_medido = fields.Float(string='Rendimiento medido (m/kg)', digits=(12, 4), readonly=True, copy=False)
+    rendimiento_medido_fuente = fields.Selection(
+        [('rollos', 'Rollos de Inspección'), ('terminado', 'Conversiones a kg'), ('estimado', 'Estimado')],
+        string='De dónde sale lo medido', readonly=True, copy=False)
+    rendimiento_medido_ordenes = fields.Integer(string='Muestras de lo medido', readonly=True, copy=False)
+    rendimiento_medido_estado = fields.Selection(
+        [('igual', 'Igual al de la ficha'), ('propuesto', 'Por aprobar'), ('fuera', 'Fuera del teórico')],
+        string='Lo medido contra la ficha', readonly=True, copy=False,
+        help='«Por aprobar»: se aleja de la ficha más que la alerta; Ingeniería lo usa o lo marca revisado. «Fuera del '
+             'teórico»: se aleja más que el tope del teórico (peso y ancho): es un dato malo y no se propone.')
+    rendimiento_teorico = fields.Float(string='Rendimiento teórico (m/kg)', digits=(12, 4),
+                                       compute='_compute_rendimiento_teorico',
+                                       help='1000 ÷ (peso en g/m² × ancho de venta en m).')
     peso_real = fields.Float(
         string='Peso real (g/m²)', digits=(12, 1), compute='_compute_peso_real',
         help='El peso que da lo fabricado al ancho de venta: 1000 ÷ (rendimiento × ancho de venta en m).')
+
+    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado')
+    def _compute_rendimiento_teorico(self):
+        from .unidades import _norm  # local: orden de carga de models/
+        for ficha in self:
+            ancho = ancho_en_m(ficha.ancho_acabado)
+            gramaje = ficha.peso_acabado if _norm(ficha.peso_acabado_tol_unit) in UNIDADES_GRAMAJE else 0.0
+            ficha.rendimiento_teorico = round(1000.0 / (gramaje * ancho), 4) if gramaje and ancho else 0.0
 
     @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado')
     def _compute_peso_real(self):
@@ -262,41 +294,61 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         conversiones = self._ft_conversiones(fichas, desde)
         datos = self._ft_fabricado(fichas.product_acabado_id, desde)
         limite = self._ft_alerta_rendimiento_pct()
+        tope = self._ft_param_pct(PARAM_TOPE_TEORICO_PCT, TOPE_TEORICO_PCT)
         for ficha in fichas.with_context(**{CTX_CALCULADO: True}):
-            nuevo, n, fuente = 0.0, 0, 'ficha'
+            nuevo, n, fuente = 0.0, 0, False
             m_r, kg_r, n_r = rollos.get(ficha, (0.0, 0.0, 0))
             m_c, kg_c, n_c = conversiones.get(ficha, (0.0, 0.0, 0))
             m, kg_entrada, kg_terminada, kg_saldos, n_e = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0.0, 0.0, 0))
             consumo = ficha.consumo_crudo if 'consumo_crudo' in ficha._fields else 0.0
-            # Revisión 2026-11-06: kg de tela terminada que salieron de esas órdenes: la tela acabada en kg tal cual, el crudo o
-            # teñido entre el consumo de crudo (kg que entran por kg de tela acabada) y menos los saldos. Con crudo o
-            # teñido y sin consumo capturado no se puede estimar.
+            # Revisión 2026-11-06: kg de tela terminada que salieron de esas órdenes: la tela acabada en kg tal cual, el
+            # crudo o teñido entre el consumo de crudo (kg que entran por kg de tela acabada) y menos los saldos. Con
+            # crudo o teñido y sin consumo capturado no se puede estimar.
             kg_estimado = 0.0
             if m and (kg_terminada or kg_entrada) and (consumo or not kg_entrada):
                 kg_estimado = kg_terminada + (kg_entrada / consumo if kg_entrada else 0.0) - kg_saldos
             if m_r and kg_r and n_r >= MIN_MUESTRAS:
                 nuevo, n, fuente = round(m_r / kg_r, 4), n_r, 'rollos'
-            elif ficha.rendimiento_manual:
-                # Lo escribió Ingeniería: solo los rollos de Inspección lo cambian.
-                if ficha.rendimiento_fuente != 'ficha' or ficha.rendimiento_real_ordenes:
-                    ficha.write({'rendimiento_real_ordenes': 0, 'rendimiento_fuente': 'ficha'})
-                continue
             elif m_c and kg_c and n_c >= MIN_MUESTRAS:
                 nuevo, n, fuente = round(m_c / kg_c, 4), n_c, 'terminado'
             elif kg_estimado > 0:
                 nuevo, n, fuente = round(m / kg_estimado, 4), n_e, 'estimado'
-            # Revisión 2026-11-06: con menos de MIN_MUESTRAS rollos o conversiones y sin estimado se queda el de la ficha: una o dos
-            # muestras no se pueden filtrar (WJ060Q21JNT165: una conversión de 12.05 contra 9.77 real).
+            # Con menos de MIN_MUESTRAS rollos o conversiones y sin estimado no hay medido: una o dos muestras no se
+            # pueden filtrar (WJ060Q21JNT165: una conversión de 12.05 contra 9.77 real).
+            vals = {'rendimiento_medido': nuevo, 'rendimiento_medido_fuente': fuente,
+                    'rendimiento_medido_ordenes': n, 'rendimiento_medido_estado': False, 'rendimiento_por_revisar': False}
+            if not ficha.rendimiento_fuente:
+                vals['rendimiento_fuente'] = 'ficha'  # el rendimiento de la ficha viene de lo capturado
             if nuevo:
-                vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n, 'rendimiento_fuente': fuente,
-                        'rendimiento_manual': False}
-                antes = ficha.rendimiento_tela_acabada
-                if antes and abs(nuevo - antes) / antes * 100.0 > limite:
-                    vals.update(rendimiento_por_revisar=True, rendimiento_anterior=antes,
-                                rendimiento_cambio_fecha=fields.Datetime.now())
+                # 2.28.0: lo medido se propone; la ficha no cambia sola.
+                teorico, antes = ficha.rendimiento_teorico, ficha.rendimiento_tela_acabada
+                if teorico and abs(nuevo - teorico) / teorico * 100.0 > tope:
+                    vals['rendimiento_medido_estado'] = 'fuera'
+                elif not antes or abs(nuevo - antes) / antes * 100.0 > limite:
+                    vals.update(rendimiento_medido_estado='propuesto', rendimiento_por_revisar=True)
+                    if not ficha.rendimiento_por_revisar or ficha.rendimiento_medido != nuevo:
+                        vals['rendimiento_cambio_fecha'] = fields.Datetime.now()
+                else:
+                    vals['rendimiento_medido_estado'] = 'igual'
+            if any(ficha[k] != v for k, v in vals.items() if k != 'rendimiento_cambio_fecha') \
+                    or 'rendimiento_cambio_fecha' in vals:
                 ficha.write(vals)
-            elif ficha.rendimiento_real_ordenes or ficha.rendimiento_fuente != 'ficha':
-                ficha.write({'rendimiento_real_ordenes': 0, 'rendimiento_fuente': 'ficha'})
+        return True
+
+    def action_ft_usar_rendimiento_medido(self):
+        """2.28.0: Ingeniería aprueba lo medido: pasa a ser el rendimiento de la ficha (lista en metros, tiempos, costeo).
+        Lo «fuera del teórico» no se aplica con este botón: hay que capturarlo a mano después de revisar los datos."""
+        for ficha in self.filtered(lambda f: f.rendimiento_medido and f.rendimiento_medido_estado != 'fuera'):
+            ficha.with_context(**{CTX_CALCULADO: True}).write({
+                'rendimiento_anterior': ficha.rendimiento_tela_acabada,
+                'rendimiento_tela_acabada': ficha.rendimiento_medido,
+                'rendimiento_fuente': ficha.rendimiento_medido_fuente,
+                'rendimiento_real_ordenes': ficha.rendimiento_medido_ordenes,
+                'rendimiento_manual': False,
+                'rendimiento_por_revisar': False,
+                'rendimiento_medido_estado': 'igual',
+                'rendimiento_cambio_fecha': fields.Datetime.now(),
+            })
         return True
 
     def write(self, vals):
@@ -316,14 +368,19 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
 
     @api.model
     def _ft_alerta_rendimiento_pct(self):
-        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_RENDIMIENTO_PCT)
+        return self._ft_param_pct(PARAM_ALERTA_RENDIMIENTO_PCT, ALERTA_RENDIMIENTO_PCT)
+
+    @api.model
+    def _ft_param_pct(self, clave, defecto):
+        valor = self.env['ir.config_parameter'].sudo().get_param(clave)
         try:
-            return float(valor) if valor not in (None, False, '') else ALERTA_RENDIMIENTO_PCT
+            return float(valor) if valor not in (None, False, '') else defecto
         except ValueError:
-            return ALERTA_RENDIMIENTO_PCT
+            return defecto
 
     def action_ft_rendimiento_revisado(self):
-        """Ingeniería revisó el cambio de rendimiento: se quita el aviso (el número no cambia)."""
+        """Ingeniería revisó lo medido y se queda con el rendimiento de la ficha: se quita el aviso (el número no
+        cambia). Vuelve a avisar si lo medido cambia."""
         self.write({'rendimiento_por_revisar': False})
         return True
 

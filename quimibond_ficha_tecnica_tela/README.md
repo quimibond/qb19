@@ -56,7 +56,7 @@ revisión de la noche avisa lo que no cuadra.
 |---|---|---|---|
 | La tela: peso, ancho de venta, especificación y tolerancias | **Ficha de acabado** | Producto | No llega |
 | El crudo en cada circular: hilos, ajustes de tejido, tela acondicionada | **Ficha de tejido** (una por circular; «Agregar circular» copia una a otra máquina) | Crudo | No llega |
-| Rendimiento de tela acabada | **Nadie: sale de lo fabricado** (metros ÷ kilos) | Ficha de acabado, producto | Conversión kg → m, con botón |
+| Rendimiento de tela acabada | **Ingeniería aprueba lo medido** («Usar el medido»; se calcula cada noche con lo fabricado) | Ficha de acabado, producto | Conversión kg → m, con botón |
 | La tela en cada máquina: velocidad, merma, tiempo de ciclo, kg por carga | **Máquinas → Procesos por artículo** (también con el lápiz en la operación o en la máquina) | Operación, máquina, ficha de acabado | Tiempos de las operaciones, con botón |
 | La máquina: galga, capacidad, bandas, relación de baño | **Máquinas → Configuraciones por fecha** | Centro de trabajo | Capacidad de los jets por producto, con botón (las circulares no tienen) |
 | La ruta de la familia | **Artículos → Rutas por familia** | Ficha de acabado | Listas nuevas archivadas, con «Generar listas» |
@@ -65,25 +65,30 @@ revisión de la noche avisa lo que no cuadra.
 **«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
 jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
 
-## Rendimiento de tela acabada (2.27.0, 2.27.1)
+## Rendimiento de tela acabada (2.27.0 a 2.28.0)
 
-El rendimiento (m/kg) de la ficha es **por kg de tela terminada** y se recalcula cada noche, en este orden:
+El rendimiento (m/kg) de la ficha es **por kg de tela terminada**. Lo usan la conversión kg → m (lista en metros y
+costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
 
-1. **Rollos de Inspección:** con 3 o más rollos finales registrados de primera o FE en 12 meses, metros ÷ kg netos de
-   esos rollos (pesados en la estación). Es la fuente que escala con el flujo nuevo y le gana a todo. Cuentan desde
-   `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` si está (el arranque del flujo; deja fuera rollos de prueba).
-2. **Forzado por Ingeniería:** si Ingeniería escribe el rendimiento a mano en la ficha queda «Rendimiento forzado»
-   (como el de la ficha de tejido) y solo los rollos de Inspección lo cambian, con aviso si se mueve más que la alerta.
-   Desmarcarlo lo vuelve a calcular en ese momento. La importación desde Excel no lo fuerza (es el teórico).
-3. **Conversiones a kg:** con 3 o más conversiones de metros a kg en 12 meses (su kg es el de la lista de empaque),
-   metros ÷ kg. Es el puente mientras la tela no tiene rollos de Inspección. El kg de la lista de empaque es neto (sin tara).
-4. **Estimado:** sin eso, metros por kg que entró a la orden × el consumo de crudo de la ficha.
-5. **Pocas muestras:** si tampoco hay estimado, los rollos o conversiones que haya (rollos primero).
-6. **Ficha:** sin nada, se queda el que tiene.
+**Desde 2.28.0 la ficha no cambia sola.** Cada noche se calcula el **rendimiento medido** y se propone:
 
-Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. La ficha dice de dónde sale («De dónde sale el
-rendimiento»). Hasta 2.26.0 se dividía entre los kg que **entran** (crudo o teñido) y salía ≈10 % abajo; lo usan la
-conversión kg → m (lista en metros y costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
+1. **Rollos de Inspección:** con 3 o más rollos finales registrados de primera o FE en 12 meses, metros ÷ kg netos.
+   Cuentan desde `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` si está (deja fuera rollos de prueba).
+2. **Conversiones a kg:** con 3 o más conversiones de metros a kg en 12 meses (kg neto de la lista de empaque).
+3. **Estimado:** metros ÷ (kg de tela acabada en kg + kg de crudo o teñido ÷ consumo de crudo − saldos), solo con
+   órdenes que consumieron tela en kg (las conversiones de metros a metros no cuentan; los reprocesos sí).
+4. Con menos de 3 rollos o conversiones y sin estimado no hay medido.
+
+Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo medido queda con su estado:
+
+| Estado | Qué pasa |
+|---|---|
+| Igual al de la ficha | Se aleja menos que la alerta (5 %, `alerta_rendimiento_pct`): nada que hacer |
+| Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
+| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho de venta en m): dato malo, no se propone |
+
+Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
+Excel no lo fuerza (es el teórico).
 
 ## Dónde se ve cada cosa
 
