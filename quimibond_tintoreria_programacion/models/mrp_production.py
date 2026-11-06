@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_round
 
@@ -261,6 +261,51 @@ class MrpProduction(models.Model):
         if not self._workorder_tintoreria():
             raise UserError(_("La orden %s no tiene operación de Tintorería.", self.name))
 
+    def _tintoreria_dividir_orden_metros(self):
+        """1.8.0 (Dirección, 2026-11-06): un baño = una orden en kg = una orden en metros. Al dividir la orden en kg en
+        baños se divide también, en la misma proporción, la orden en metros que la consume (MTO), y cada parte queda ligada
+        a su baño. Así cada baño cierra su propia orden en metros con sus metros reales: sin pendiente calculado con el
+        factor de la lista y sin repartir la demanda de kg entre baños (ronda 12 en main: la orden de 9,040 m cerró en
+        10,763 y el reparto hizo nacer una orden en kg que nadie pidió).
+
+        Solo divide si la orden en metros se abastece únicamente de estos baños y no ha empezado; si no, la deja como
+        estaba (varios baños para una orden en metros, rollos 3.3.0). Devuelve las partes en el orden de los baños."""
+        banos = self
+        nada = self.env['mrp.production']
+        if len(banos) < 2:
+            return nada
+        producto = banos[0].product_id
+        terminados = banos.move_finished_ids.filtered(
+            lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
+        consumos = terminados.move_dest_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
+        orden_m = consumos.raw_material_production_id
+        if len(orden_m) != 1 or orden_m.state not in ('draft', 'confirmed'):
+            return nada
+        if any(wo.state not in ('blocked', 'ready') for wo in orden_m.workorder_ids) \
+                or any(orden_m.move_raw_ids.mapped('picked')):
+            return nada
+        if consumos.move_orig_ids.production_id - banos:
+            return nada  # la abastece otra orden en kg además de estos baños
+        kg_total = sum(banos.mapped('product_qty'))
+        if not kg_total:
+            return nada
+        uom = orden_m.product_uom_id
+        cantidad = orden_m.product_qty
+        montos = [uom.round(cantidad * b.product_qty / kg_total) for b in banos[:-1]]
+        montos.append(uom.round(cantidad - sum(montos)))
+        partes = orden_m._split_productions({orden_m: montos})
+        if len(partes) != len(banos):
+            return partes
+        for bano, parte in zip(banos, partes):
+            terminado = bano.move_finished_ids.filtered(
+                lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
+            consumo = parte.move_raw_ids.filtered(lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
+            terminado.move_dest_ids = [Command.set(consumo.ids)]
+            parte.message_post(body=_(
+                "Orden en metros del baño %(b)s: %(m)s %(u)s planeados para %(kg)s kg de tela. Al cerrar el baño se "
+                "registra con sus metros reales.", b=bano.name, m=parte.product_qty, u=uom.name, kg=bano.product_qty))
+        return partes
+
     def _programar_tintoreria(self, workcenter):
         """Asigna el HTJ, divide la MO en baños simétricos si hace falta y marca las órdenes como
         programadas. Devuelve el registro tintoreria.programacion."""
@@ -276,6 +321,7 @@ class MrpProduction(models.Model):
             # División nativa de Odoo 19: conserva los enlaces MTO (move_dest_ids) hacia la MO de B
             # y reparte los consumos de manera proporcional.
             ordenes = self._split_productions({self: plan['montos']})
+            ordenes._tintoreria_dividir_orden_metros()  # 1.8.0: un baño = una orden en metros
 
         programacion = self.env['tintoreria.programacion'].create({
             'name': nombre_origen,

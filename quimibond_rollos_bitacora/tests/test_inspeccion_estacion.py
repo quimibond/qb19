@@ -460,9 +460,14 @@ class TestInspeccionEstacion(TransactionCase):
         banos = programacion.production_ids.sorted('id')
         self.assertEqual(len(banos), 2)
         self.assertEqual(banos.mapped('product_qty'), [84.8, 84.8])
-        self.assertEqual(orden_m._ordenes_previas(), banos, "Los dos baños abastecen a la orden en metros")
-        for bano in banos:
-            self.assertEqual(bano._insp_orden_metros(), orden_m)
+        # Programación 1.8.0 (Dirección, 2026-11-06): un baño = una orden en metros. La orden en metros se divide en la
+        # misma proporción que los baños y cada parte queda ligada a su baño.
+        m1, m2 = banos[0]._insp_orden_metros(), banos[1]._insp_orden_metros()
+        self.assertEqual(m1, orden_m, "La primera parte es la orden en metros original")
+        self.assertTrue(m2 and m2 != m1)
+        self.assertEqual([m1.product_qty, m2.product_qty], [1000.0, 1000.0])
+        self.assertEqual(m1._ordenes_previas(), banos[0])
+        self.assertEqual(m2._ordenes_previas(), banos[1])
         return orden_m, banos
 
     def _rama_e_inspeccion(self, bano, kg_bruto_rama, capturas):
@@ -482,35 +487,44 @@ class TestInspeccionEstacion(TransactionCase):
         return rollos
 
     def test_21_programacion_divide_y_cada_bano_cierra(self):
+        """Programación 1.8.0: cada baño cierra su propia orden en metros completa, con sus metros reales, sin pendiente;
+        cerrar el primero no toca la orden del segundo y no nace ninguna orden en kg."""
         orden_m, (bano_1, bano_2) = self._programar_dos_banos()
+        m2 = bano_2._insp_orden_metros()
+        antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
         self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
         bano_1.button_mark_done()
         self.assertEqual(bano_1.state, 'done')
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
-        pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
-        self.assertEqual(len(pendiente), 1)
-        self.assertEqual(bano_2._insp_orden_metros(), pendiente, "El segundo baño ya abastece al pendiente")
-        # El segundo baño se inspecciona ya con el primero cerrado; la división le dio su propio número (3.5.0).
+        self.assertEqual(m2.state, 'confirmed', "La orden en metros del segundo baño no cambia")
+        self.assertAlmostEqual(m2.product_qty, 1000.0)
+        self.assertEqual(bano_2._insp_orden_metros(), m2)
         self._rama_e_inspeccion(bano_2, 41.1, [(40.5, 455.0, 'PQ')])
         self.assertTrue(bano_1.numero_bano and bano_2.numero_bano and bano_1.numero_bano != bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-0001' % bano_2.numero_bano)
-        self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, pendiente)
+        self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, m2)
         bano_2.button_mark_done()
         self.assertEqual(bano_2.state, 'done')
-        self.assertEqual(pendiente.state, 'done')
+        self.assertEqual(m2.state, 'done')
+        self.assertAlmostEqual(m2.qty_produced, 455.0)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 915.0)
-        self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
-        self.assertEqual(bano_1.rollo_final_kg_ids.name, '%s-0001' % bano_1.numero_bano)
+        self.assertFalse((orden_m | m2).production_group_id.production_ids.filtered(
+            lambda p: p.state not in ('done', 'cancel')), "No queda ningún pendiente")
         self.assertEqual(set((bano_1 | bano_2).rollo_final_kg_ids.mapped('estado')), {'registrado'})
+        nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
+        self.assertFalse(nuevas, "Cerrar los baños no crea órdenes en kg: %s" % nuevas.mapped('name'))
 
     def test_22_programacion_cierre_en_orden_inverso_y_bano_de_saldos(self):
+        """Programación 1.8.0: el segundo baño sale todo Segunda y Desperdicio y cierra primero: cancela solo su orden en
+        metros y saca los saldos aparte; el primer baño cierra la suya."""
         orden_m, (bano_1, bano_2) = self._programar_dos_banos()
-        # El segundo baño sale todo segunda y desperdicio, y cierra antes que el primero.
+        m2 = bano_2._insp_orden_metros()
         self._rama_e_inspeccion(bano_2, 41.1, [(30.5, 320.0, 'SEGUNDA'), (9.0, 80.0, 'DESP')])
         bano_2.button_mark_done()
         self.assertEqual(bano_2.state, 'done')
-        self.assertNotIn(orden_m.state, ('cancel',), "El primer baño sigue abasteciendo a la orden en metros")
+        self.assertEqual(m2.state, 'cancel', "Sin primera ni FE se cancela la orden en metros de ese baño")
+        self.assertEqual(orden_m.state, 'confirmed', "La orden en metros del primer baño no cambia")
         self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 29.0)
         self.assertEqual(bano_1._insp_orden_metros(), orden_m)
         self._rama_e_inspeccion(bano_1, 41.1, [(26.6, 300.0, 'PQ'), (14.0, 150.0, 'FE')])
