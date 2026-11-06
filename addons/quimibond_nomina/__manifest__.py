@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.17.0',
+    'version': '19.0.1.18.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -66,6 +66,7 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
         'data/payslip_input_types.xml',
         'data/ir_cron_data.xml',
         'views/hr_employee_views.xml',
+        'views/hr_payroll_structure_type_views.xml',
         'views/rule_sentinel_views.xml',
         'views/hr_payslip_run_views.xml',
         'views/imss_views.xml',

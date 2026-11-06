@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Días de aguinaldo por grupo de nómina (1.18.0): 25 la planta semanal,
+         16 los quincenales; en cero se usa el parámetro de la localización. -->
+    <record id="hr_payroll_structure_type_view_form_aguinaldo" model="ir.ui.view">
+        <field name="name">hr.payroll.structure.type.form.quimibond.aguinaldo</field>
+        <field name="model">hr.payroll.structure.type</field>
+        <field name="inherit_id" ref="hr_payroll.hr_payroll_structure_type_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_schedule_pay']" position="after">
+                <field name="qb_dias_aguinaldo" invisible="country_code != 'MX'"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
