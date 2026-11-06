@@ -187,6 +187,8 @@ class TestDosificacionTintoreria(TransactionCase):
         kg, producto = mo._ft_kg_carga_jet()
         self.assertAlmostEqual(kg, 115.0)
         self.assertEqual(producto, crudo)
+        # El aviso de carga solo aplica a centros con tipo de máquina «Tintorería».
+        self.wc1.ft_tipo_id = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
         self.patch(self.env.registry['mrp.workcenter'], '_ft_capacidad_carga',
                    lambda wc, rendimiento, day=None, product=None: (105.0, 'prueba'))
         aviso = self.wc1._ft_aviso_para(tela, kg)
