@@ -4,7 +4,7 @@
 En la ficha de cada crédito (``l10n.mx.hr.infonavit``) se guarda la **cuota
 bimestral** tal como la emite el Infonavit: cuota mensual × 2 + 15 pesos del
 seguro de daños a la vivienda. En un bimestre completo se reparte entre los
-periodos: 9 semanas o 4 quincenas (verificado contra la semana 38 y la
+periodos del bimestre: 8 o 9 semanas o 4 quincenas (verificado contra la semana 38 y la
 quincena 18 de 2026: los cinco créditos quincenales y los trece semanales al
 centavo).
 
@@ -29,19 +29,29 @@ Los bimestres son los del Infonavit (enero–febrero, marzo–abril…) y cada
 nómina es del bimestre de su **fecha de pago** (viernes en la semanal,
 ``date_to`` en la quincenal), como en el resto del módulo.
 
+**El divisor del bimestre completo** (1.17.0) es el número de pagos que caen
+en el bimestre (``_qb_pagos_en_bimestre``): en la semanal, cuántas veces cae
+el día de pago (``quimibond_nomina.dia_pago_semanal``, viernes) entre el día 1
+del primer mes y el último del segundo; en la quincenal, 4 siempre. Hasta
+1.16.2 era 9 fijo en la semanal, cierto en septiembre–octubre de 2026 (9
+viernes, lo que usó NOI en las semanas 37 a 41) y falso en noviembre–diciembre
+(8 viernes): en la semana 46 Odoo retenía 8/9 de lo de NOI en los 14 créditos
+y el lote quedaba 788.78 arriba del neto de NOI.
+
 Desde 1.16.0 un recibo sin sueldo no retiene, y lo que no retuvieron los
 recibos anteriores del bimestre se reparte entre los que quedan, como NOI
 (``models/retenciones.py``)."""
-from datetime import date, timedelta
+from datetime import timedelta
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields, models
 
+from .calendario import QUINCENAS_POR_BIMESTRE, _qb_bimestre_de, _qb_pagos_en_ventana
+
 # Seguro de daños a la vivienda: 15 pesos por bimestre, incluido en la cuota
 # bimestral de la ficha («Modalidades de descuento…», Infonavit, enero 2026).
 SEGURO_VIVIENDA_BIMESTRAL = 15.0
-PERIODOS_BIMESTRE = {'weekly': 9, 'bi-weekly': 4}
 
 
 class L10nMxHrInfonavit(models.Model):
@@ -61,9 +71,21 @@ class HrPayslip(models.Model):
     @staticmethod
     def _qb_bimestre(fecha):
         """``(primer_dia, ultimo_dia)`` del bimestre del Infonavit de ``fecha``."""
-        mes = fecha.month - (fecha.month - 1) % 2
-        inicio = date(fecha.year, mes, 1)
-        return inicio, inicio + relativedelta(months=2, days=-1)
+        return _qb_bimestre_de(fecha)
+
+    def _qb_pagos_en_bimestre(self):
+        """Pagos de nómina que caen en el bimestre de este recibo: el divisor
+        de la cuota bimestral completa. Semanal: veces que cae el día de pago
+        en el bimestre (8 o 9); quincenal (y cualquier otra periodicidad, como
+        hasta 1.16.2): 4. Nunca 0."""
+        self.ensure_one()
+        if self.version_id.schedule_pay != 'weekly':
+            return QUINCENAS_POR_BIMESTRE
+        referencia = self._qb_nomina_fecha_pago() or self.date_to
+        if not referencia:
+            return QUINCENAS_POR_BIMESTRE
+        inicio, fin = _qb_bimestre_de(referencia)
+        return _qb_pagos_en_ventana(inicio, fin, self._qb_nomina_dia_pago()) or 1
 
     def _qb_infonavit_periodos_desde(self, bim_ini, bim_fin, desde):
         """Cuántos periodos de este recibo (su periodicidad) tiene el bimestre
@@ -71,14 +93,10 @@ class HrPayslip(models.Model):
         self.ensure_one()
         if self.version_id.schedule_pay == 'weekly':
             dia = self._qb_nomina_dia_pago()
-            pago = bim_ini + timedelta(days=(dia - bim_ini.weekday()) % 7)
-            n = 0
-            while pago <= bim_fin:
-                # La semana de nómina va de lunes a domingo.
-                if pago + timedelta(days=6 - pago.weekday()) >= desde:
-                    n += 1
-                pago += timedelta(days=7)
-            return n
+            # La semana de nómina va de lunes a domingo: cuenta el pago cuya
+            # semana termina en ``desde`` o después, es decir, el que cae a
+            # partir de ``desde − (6 − día de pago)``.
+            return _qb_pagos_en_ventana(max(bim_ini, desde - timedelta(days=6 - dia)), bim_fin, dia)
         n = 0
         mes = bim_ini
         while mes <= bim_fin:
@@ -98,10 +116,10 @@ class HrPayslip(models.Model):
         if gravable is not None and gravable <= 0:
             return 0.0
         version = self.version_id
-        periodos = PERIODOS_BIMESTRE.get(version.schedule_pay, 4)
         pago = self._qb_nomina_fecha_pago()
         if not pago:
             return 0.0
+        periodos = self._qb_pagos_en_bimestre()
         bim_ini, bim_fin = self._qb_bimestre(pago)
         inicio_contrato = version.contract_date_start or version.date_start
         n_restantes = self._qb_infonavit_periodos_desde(bim_ini, bim_fin, self.date_from)

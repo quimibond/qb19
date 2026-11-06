@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Retención de Infonavit en cuota fija: bimestre completo entre 9 o 4, y el
+"""Retención de Infonavit en cuota fija: bimestre completo entre los pagos del
+bimestre (8 o 9 semanas, 4 quincenas; 1.17.0), y el
 primer bimestre de un crédito que empieza a la mitad, como NOI (Reyes Sánchez,
 quincena 20 de 2026: 1,171.49).
 
 No corre en el CI (depende de Enterprise); se corre en el shell de Odoo.sh:
 ``odoo-bin ... --test-tags /quimibond_nomina --stop-after-init``."""
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.tests.common import TransactionCase
 
@@ -77,3 +78,39 @@ class TestInfonavit(TransactionCase):
         empleado = self._empleado('bi-weekly', date(2026, 9, 22), 5351.70, date(2026, 9, 1))
         q20 = self._recibo(empleado, date(2026, 10, 1), date(2026, 10, 15))
         self.assertAlmostEqual(q20._qb_infonavit_retencion(), 1171.49, places=2)
+
+    def test_divisor_noviembre_diciembre(self):
+        """Noviembre–diciembre de 2026 tiene 8 viernes: NOI retuvo 2,158.72 ÷ 8 =
+        269.84 a Filiberta Florentino en la semana 46 (Odoo 1.16.2: ÷ 9 = 239.86)."""
+        empleado = self._empleado('weekly', date(2020, 1, 6), 2158.72)
+        s46 = self._recibo(empleado, date(2026, 11, 2), date(2026, 11, 8))
+        self.assertEqual(s46._qb_pagos_en_bimestre(), 8)
+        self.assertAlmostEqual(s46._qb_infonavit_retencion(), 269.84, places=2)
+        # La semana 45 se paga el viernes 30-oct: es de septiembre–octubre (9).
+        s45 = self._recibo(empleado, date(2026, 10, 26), date(2026, 11, 1))
+        self.assertEqual(s45._qb_pagos_en_bimestre(), 9)
+        self.assertAlmostEqual(s45._qb_infonavit_retencion(), 2158.72 / 9, places=2)
+
+    def test_divisor_por_bimestre_semanal(self):
+        empleado = self._empleado('weekly', date(2020, 1, 6), 3650.24)
+        casos = [
+            (date(2026, 9, 7), 9), (date(2026, 11, 9), 8), (date(2027, 1, 4), 9),
+            (date(2027, 3, 1), 9), (date(2026, 1, 5), 9), (date(2026, 7, 6), 9),
+        ]
+        for lunes, esperado in casos:
+            with self.subTest(semana=lunes):
+                slip = self._recibo(empleado, lunes, lunes + timedelta(days=6))
+                self.assertEqual(slip._qb_pagos_en_bimestre(), esperado)
+
+    def test_divisor_quincenal_siempre_cuatro(self):
+        empleado = self._empleado('bi-weekly', date(2020, 1, 6), 5351.70)
+        q22 = self._recibo(empleado, date(2026, 11, 1), date(2026, 11, 15))
+        self.assertEqual(q22._qb_pagos_en_bimestre(), 4)
+        self.assertAlmostEqual(q22._qb_infonavit_retencion(), 5351.70 / 4, places=2)
+
+    def test_divisor_sigue_el_dia_de_pago(self):
+        """Con el día de pago en jueves, noviembre–diciembre de 2026 tiene 9."""
+        empleado = self._empleado('weekly', date(2020, 1, 6), 2158.72)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_nomina.dia_pago_semanal', '3')
+        s46 = self._recibo(empleado, date(2026, 11, 2), date(2026, 11, 8))
+        self.assertEqual(s46._qb_pagos_en_bimestre(), 9)

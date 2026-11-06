@@ -6,3 +6,4 @@ from . import test_imss
 from . import test_infonavit
 from . import test_retenciones
 from . import test_incidencias
+from . import test_calendario
