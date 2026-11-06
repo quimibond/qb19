@@ -7,3 +7,4 @@ from . import test_infonavit
 from . import test_retenciones
 from . import test_incidencias
 from . import test_calendario
+from . import test_aguinaldo
