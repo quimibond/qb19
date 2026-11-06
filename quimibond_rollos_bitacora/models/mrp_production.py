@@ -70,6 +70,38 @@ class MrpProduction(models.Model):
         self._asignar_numero_bano()
         return True
 
+    # ------------------------------------------------------------------ cancelar (3.5.2)
+    def action_cancel(self):
+        """3.5.2 (ronda 5 de pruebas en main, 2026-11-05): una orden en kg con rollos o desperdicio pesados en Rama no se
+        cancela: la tela ya existe y cancelar la saca del inventario, deja la bitácora pendiente y regresar a medio baño
+        descuadra el inventario (plan de regreso). Se termina el baño; lo que no sirva sale como Segunda o Desperdicio.
+        Solo un administrador de Fabricación la cancela (rollos pesados en la orden equivocada), y queda la nota. Al
+        cancelarse un baño que abastecía una orden en metros, esa orden recibe la nota de que se quedó sin abasto."""
+        abiertas = self.filtered(lambda o: o.state not in ('done', 'cancel'))
+        con_rama = abiertas.filtered(lambda o: o.rollo_bitacora_ids or o.desperdicio_kg)
+        if con_rama and not self.env.user.has_group('mrp.group_mrp_manager'):
+            orden = con_rama[:1]
+            raise UserError(_(
+                'La orden %(o)s ya tiene %(n)s rollos pesados en Rama (%(kg).2f kg) y no se cancela: la tela ya existe. '
+                'Termine el baño (Inspección y Marcar como hecho); lo que no sirva sale como Segunda o Desperdicio. Si '
+                'los rollos se pesaron en la orden equivocada, la cancela un administrador de Fabricación.',
+                o=orden.name, n=len(orden.rollo_bitacora_ids), kg=sum(orden.rollo_bitacora_ids.mapped('kg_rama'))))
+        abasto = {orden: (orden._insp_orden_metros(), orden.product_qty) for orden in abiertas}
+        res = super().action_cancel()
+        for orden in con_rama.filtered(lambda o: o.state == 'cancel'):
+            rollos = orden.rollo_bitacora_ids
+            orden.message_post(body=_(
+                'Cancelada por %(u)s con %(n)s rollos pesados en Rama (%(kg).2f kg; lotes %(l)s) y %(d).2f kg de '
+                'desperdicio: esos lotes no entraron al inventario.',
+                u=self.env.user.name, n=len(rollos), kg=sum(rollos.mapped('kg_rama')),
+                l=', '.join(rollos.lot_id.mapped('name')) or '-', d=orden.desperdicio_kg))
+        for orden, (orden_m, kg) in abasto.items():
+            if orden.state == 'cancel' and orden_m and orden_m.state not in ('done', 'cancel'):
+                orden_m.message_post(body=_(
+                    'El baño %(b)s se canceló: esta orden se quedó sin %(kg).2f kg de abasto. Cree otra orden en kg o '
+                    'vuelva a correr el reabastecimiento.', b=orden.name, kg=kg))
+        return res
+
     # ------------------------------------------------------------------ Rama
     # El botón «Pesar rollo» vive en la lista de operaciones (mrp.workorder), no en la orden.
 

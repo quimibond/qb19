@@ -208,3 +208,14 @@ class TestProgramacionTintoreria(TransactionCase):
         orden.button_plan()
         self.assertEqual(workorder.workcenter_id, self.htj1, "Sin 1.6.0 se iría al HTJ3, el único con proceso")
         self.assertIn('en montaje', workorder.ft_aviso_maquina)
+
+    def test_cancelar_ordenes_cancela_la_programacion(self):
+        """1.6.2: al cancelar un baño la programación lo anota; con todos cancelados pasa a «Cancelada»."""
+        mo = self._crear_mo(1000.0)
+        programacion = mo._programar_tintoreria(self.htj1)
+        primera, segunda = programacion.production_ids.sorted('id')
+        primera.action_cancel()
+        self.assertEqual(programacion.state, 'programada')
+        self.assertTrue(programacion.message_ids.filtered(lambda m: 'siguen programadas' in (m.body or '')))
+        segunda.action_cancel()
+        self.assertEqual(programacion.state, 'cancelada')

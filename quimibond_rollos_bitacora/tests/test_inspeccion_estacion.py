@@ -924,3 +924,36 @@ class TestInspeccionEstacion(TransactionCase):
         self.crudo.categ_id = Categoria.create({'name': 'Tejido Circular'})
         self.assertEqual(orden_kg._moves_crudo().product_id, self.crudo)
 
+
+    def test_42_no_se_cancela_orden_con_rollos_de_rama(self):
+        """3.5.2 (ronda 5 de pruebas): un operador no cancela una orden en kg con rollos pesados en Rama (la tela existe);
+        un administrador de Fabricación sí, con nota; la orden en metros que abastecía recibe el aviso de que se quedó sin
+        abasto, y los rollos de esa orden ya no salen en «Pendientes de inspección»."""
+        operador = self.env['res.users'].create({
+            'name': 'Operador ZZ960', 'login': 'operador.zz960', 'email': 'operador.zz960@example.com',
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)],
+            'group_ids': [Command.set([self.env.ref('mrp.group_mrp_user').id, self.env.ref('base.group_user').id])]})
+        orden_m, orden_kg, wo, rollos = self._bano((40.0, 35.0))
+        with self.assertRaisesRegex(UserError, 'no se cancela'):
+            orden_kg.with_user(operador).action_cancel()
+        self.assertNotEqual(orden_kg.state, 'cancel')
+        self.assertTrue(self.env.user.has_group('mrp.group_mrp_manager'))
+        orden_kg.action_cancel()
+        self.assertEqual(orden_kg.state, 'cancel')
+        self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'no entraron al inventario' in (m.body or '')))
+        self.assertTrue(orden_m.message_ids.filtered(lambda m: 'sin 169.60 kg de abasto' in (m.body or '')))
+        pendientes = self.env['mrp.rollo.bitacora'].search(
+            [('estado_inspeccion', '=', 'pendiente'), ('production_id.state', '!=', 'cancel')])
+        self.assertFalse(pendientes & rollos)
+
+    def test_43_orden_sin_rollos_se_cancela(self):
+        """Una orden en kg sin pesar se cancela como siempre, también por un operador."""
+        operador = self.env['res.users'].create({
+            'name': 'Operador ZZ961', 'login': 'operador.zz961', 'email': 'operador.zz961@example.com',
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)],
+            'group_ids': [Command.set([self.env.ref('mrp.group_mrp_user').id, self.env.ref('base.group_user').id])]})
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100, 'bom_id': self.bom_kg.id})
+        orden_kg.action_confirm()
+        orden_kg.with_user(operador).action_cancel()
+        self.assertEqual(orden_kg.state, 'cancel')

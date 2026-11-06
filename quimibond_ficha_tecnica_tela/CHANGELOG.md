@@ -19,7 +19,7 @@ agregan a esa misma sección sin volver a subirla.
   hay, esas pocas muestras.
 - **Los rollos de Inspección le ganan a las conversiones.** Con 3 o más rollos finales registrados (primera y FE) el
   rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg neto de la lista de empaque,
-  sin tara; confirmado por Almacén el 2026-11-06) quedan como puente mientras la tela no tiene rollos. Antes se sumaban
+  sin tara; confirmado por Almacén el 2026-11-05) quedan como puente mientras la tela no tiene rollos. Antes se sumaban
   juntas.
 - **Los rollos de prueba no cuentan.** Parámetro `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` (AAAA-MM-DD,
   vacío = 12 meses): los rollos de Inspección cuentan desde el arranque del flujo en esa base. En main, los 95 rollos

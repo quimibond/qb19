@@ -156,7 +156,7 @@
                 <field name="production_id"/>
                 <field name="product_id"/>
                 <filter string="Pendientes de inspección" name="pendiente_insp"
-                        domain="[('estado_inspeccion', '=', 'pendiente')]"/>
+                        domain="[('estado_inspeccion', '=', 'pendiente'), ('production_id.state', '!=', 'cancel')]"/>
                 <filter string="Alerta de metros" name="alerta"
                         domain="['|', ('alerta_metros_insp', '=', True), ('alerta_diferencia_metros', '=', True)]"/>
                 <filter string="Reetiquetados" name="reetiquetado" domain="[('reetiquetado', '=', True)]"/>
