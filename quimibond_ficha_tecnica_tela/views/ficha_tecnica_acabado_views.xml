@@ -152,10 +152,16 @@
                             <group>
                                 <group>
                                     <field name="rendimiento_tela_acabada" string="Rendimiento (m/kg)"/>
-                                    <div colspan="2" class="text-muted small" invisible="not rendimiento_real_ordenes">
-                                        Metros fabricados ÷ kilos consumidos de
+                                    <field name="rendimiento_fuente"/>
+                                    <div colspan="2" class="text-muted small" invisible="rendimiento_fuente != 'terminado'">
+                                        Metros ÷ kg de tela terminada de
                                         <field name="rendimiento_real_ordenes" class="oe_inline" readonly="1"/>
-                                        órdenes en 12 meses; se recalcula cada noche.
+                                        conversiones a kg y rollos de Inspección en 12 meses; se recalcula cada noche.
+                                    </div>
+                                    <div colspan="2" class="text-muted small" invisible="rendimiento_fuente != 'estimado'">
+                                        Sin conversiones a kg ni rollos de Inspección: metros por kg que entró de
+                                        <field name="rendimiento_real_ordenes" class="oe_inline" readonly="1"/>
+                                        órdenes × el consumo de crudo de la ficha. Es una estimación.
                                     </div>
                                     <field name="peso_real"/>
                                     <field name="rendimiento_por_revisar" invisible="1"/>

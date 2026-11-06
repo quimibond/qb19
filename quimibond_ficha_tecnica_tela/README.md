@@ -65,6 +65,19 @@ revisión de la noche avisa lo que no cuadra.
 **«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
 jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
 
+## Rendimiento de tela acabada (2.27.0)
+
+El rendimiento (m/kg) de la ficha es **por kg de tela terminada** y se recalcula cada noche, en este orden:
+
+1. **Tela terminada:** metros ÷ kg de las conversiones de metros a kg de los últimos 12 meses (su kg es el pesado de la
+   lista de empaque) y de los rollos finales registrados de Inspección del flujo nuevo (primera y FE).
+2. **Estimado:** sin esos datos, metros por kg que entró a la orden × el consumo de crudo de la ficha.
+3. **Ficha:** sin nada, se queda el que tiene.
+
+La ficha dice de dónde sale («De dónde sale el rendimiento»). Hasta 2.26.0 se dividía entre los kg que **entran** (crudo
+o teñido) y salía ≈10 % abajo; lo usan la conversión kg → m (lista en metros y costeo), los tiempos de rama e inspección
+y la alerta de metros de Inspección.
+
 ## Dónde se ve cada cosa
 
 | Pantalla | Qué hay |
@@ -100,7 +113,7 @@ jet, la lista o la ficha). También en la pestaña «Ficha técnica» del produc
 
 | Operación | Cuenta |
 |---|---|
-| Rama | rendimiento de tela acabada m/kg ÷ velocidad m/min (2.24.0: el rendimiento de lo fabricado ya trae la merma) |
+| Rama | rendimiento de tela acabada m/kg ÷ velocidad m/min (2.27.0: por kg de tela terminada, de las conversiones a kg y los rollos de Inspección) |
 | Inspección | rendimiento de tela acabada m/kg × 60 ÷ velocidad de inspección m/h (rollos con 1 empalme) |
 | Devanado | kg de crudo por kg × rendimiento de tejido ÷ velocidad m/min |
 | Abridora | igual, con la velocidad de tela tubular o abierta según sale del tejido (si no, la general) |

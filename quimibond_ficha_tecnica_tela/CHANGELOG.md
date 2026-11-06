@@ -8,6 +8,26 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.27.0 — 2026-11-05
+
+Excepción a la regla de una versión arriba: 2.26.0 sigue sin desplegarse a producción y esta versión la incluye. Se
+sube porque trae un campo nuevo y main tiene que actualizarse antes del piloto del 6-nov.
+
+**Corregido**
+- **El rendimiento de la ficha es por kg de tela terminada** (Dirección General, 2026-11-05). El recálculo nocturno de
+  2.24.0 dividía los metros fabricados entre los kilos de tela que **entran** a la orden (crudo o teñido), que pesan más
+  que la tela acabada: el rendimiento salía ≈10 % abajo. WJ038Q22JNT160: 14.19 m/kg contra 15.79 de las listas de empaque
+  de 2026 (1,800 rollos pesados). Todos los que lo usan lo necesitan por kg de tela acabada (el producto «I»): la
+  conversión kg → m de la lista en metros y del costeo, los tiempos de rama e inspección y la alerta de metros de
+  Inspección (`quimibond_rollos_bitacora`), que con el número viejo saltaba en casi todos los rollos.
+- Ahora, en orden: **tela terminada** (metros ÷ kg de las conversiones de metros a kg de los últimos 12 meses, cuyo kg es
+  el pesado de la lista de empaque, más los rollos finales registrados de Inspección del flujo nuevo, primera y FE);
+  **estimado** si no hay (metros por kg que entró × el consumo de crudo de la ficha); y si tampoco, se queda el de la
+  ficha. Campo nuevo `rendimiento_fuente` en la ficha («De dónde sale el rendimiento»).
+- El primer recálculo mueve el rendimiento de casi todas las telas ≈10 %: quedan con el aviso «El rendimiento cambió con
+  lo fabricado» (2.26.0) para que Ingeniería lo revise. Las listas no cambian solas: los tiempos nuevos de rama e
+  inspección pasan a la lista con «Usar el tiempo de la ficha».
+
 ## 19.0.2.26.0 — 2026-11-05
 
 **Agregado**
