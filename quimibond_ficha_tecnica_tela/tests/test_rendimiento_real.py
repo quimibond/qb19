@@ -317,3 +317,22 @@ class TestRendimientoReal(TiempoFichaCase):
         with self._con_terminado({}, fabricado={self.tela_m: (16000.0, 550.0, 0.0, 0.0, 2)}):
             self.acabado._ft_actualizar_rendimiento_real()
         self.assertEqual((self.acabado.rendimiento_fuente, self.acabado.rendimiento_tela_acabada), ('ficha', antes))
+
+    def test_18_conversion_de_metros_a_metros_no_cuenta(self):
+        """Revisión 2026-11-06 (WC090Q11JNT162 en main a 36.7 m/kg): una orden que fabrica la tela consumiendo otra tela
+        ya en metros (conversión de artículo) no tiene kilos de tela: sus metros no entran al estimado."""
+        otra = self.env['product.product'].create({'name': 'Tela 931 otra (m)', 'default_code': 'ZZ931Q22JNT170',
+                                                   'uom_id': self.meter.id, 'is_storable': True})
+        mo = self.env['mrp.production'].create({
+            'product_id': self.tela_m.id, 'product_qty': 1000.0, 'product_uom_id': self.meter.id, 'bom_id': False,
+            'move_raw_ids': [(0, 0, {'product_id': otra.id, 'product_uom_qty': 1000.0, 'product_uom': self.meter.id})]})
+        mo.action_confirm()
+        mo.qty_producing = 1000.0
+        mo.move_raw_ids.write({'quantity': 1000.0, 'picked': True})
+        res = mo.button_mark_done()
+        if isinstance(res, dict) and res.get('res_model'):
+            wiz = self.env[res['res_model']].with_context(**res.get('context', {})).create({})
+            getattr(wiz, 'action_confirm', getattr(wiz, 'process', lambda: None))()
+        self.assertEqual(mo.state, 'done')
+        self.assertEqual(self.env['ficha.tecnica.acabado']._ft_fabricado(self.tela_m, '2000-01-01'), {},
+                         "Sin kilos de tela la orden no cuenta")

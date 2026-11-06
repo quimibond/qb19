@@ -123,42 +123,55 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         """{producto: (metros, kg de tela que entró, kg de tela acabada en kg, kg de saldos, órdenes)} de las órdenes
         terminadas desde ``desde`` que fabricaron esos productos. Revisión 2026-11-06: los kg de la tela acabada en kg (el «I…» que
         consume la orden en metros del flujo nuevo) van aparte de los de crudo o teñido, porque ya son kg de tela
-        terminada y no se multiplican por el consumo de crudo; los saldos también van aparte."""
+        terminada y no se multiplican por el consumo de crudo; los saldos también van aparte. Solo cuentan las órdenes
+        que consumieron tela en kg."""
         Move = self.env['stock.move'].sudo()
         metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
         kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
         if not products or not metro or not kg:
             return {}
-        metros, ordenes, kilos, terminada, saldos = {}, {}, {}, {}, {}
-        for product, uom, qty, n in Move._read_group(
+        # Por orden: solo cuentan las órdenes que consumieron tela en kg. Las que fabrican la tela con otra tela ya en
+        # metros (conversión de artículo TL/CONV-ART: WC090Q11JNT162 desde WC090Q11JNT165) suman metros sin kilos y
+        # el rendimiento salía al triple (36.7 m/kg en main, revisión 2026-11-06).
+        metros_orden, producto_orden = {}, {}
+        for orden, product, uom, qty in Move._read_group(
                 [('state', '=', 'done'), ('product_id', 'in', products.ids), ('production_id.state', '=', 'done'),
                  ('production_id.date_finished', '>=', desde)],
-                ['product_id', 'product_uom'], ['quantity:sum', 'production_id:count_distinct']):
+                ['production_id', 'product_id', 'product_uom'], ['quantity:sum']):
             if uom == metro or uom._has_common_reference(metro):
-                metros[product] = metros.get(product, 0.0) + uom._compute_quantity(qty, metro, round=False)
-                ordenes[product] = ordenes.get(product, 0) + n
-        for product, componente, uom, qty in Move._read_group(
+                metros_orden[orden] = metros_orden.get(orden, 0.0) + uom._compute_quantity(qty, metro, round=False)
+                producto_orden[orden] = product
+        kilos_orden, terminada_orden = {}, {}
+        for orden, componente, uom, qty in Move._read_group(
                 [('state', '=', 'done'), ('raw_material_production_id.product_id', 'in', products.ids),
                  ('raw_material_production_id.state', '=', 'done'),
                  ('raw_material_production_id.date_finished', '>=', desde)],
-                ['raw_material_production_id.product_id', 'product_id', 'product_uom'], ['quantity:sum']):
+                ['raw_material_production_id', 'product_id', 'product_uom'], ['quantity:sum']):
             tipo = tipo_tela(componente.default_code)
             if not tipo or not (uom == kg or uom._has_common_reference(kg)):
                 continue
-            destino = terminada if tipo == 'terminada' else kilos
-            destino[product] = destino.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
+            destino = terminada_orden if tipo == 'terminada' else kilos_orden
+            destino[orden] = destino.get(orden, 0.0) + uom._compute_quantity(qty, kg, round=False)
         # Los saldos en kg (segundas y desperdicio) que salen de esas órdenes son tela que no se volvió metros de la
         # tela: se restan de los kilos. Así el rendimiento es el de la tela que sí se vuelve metros, y la primera para
         # planear del costeo (que cuenta los saldos como merma) no descuenta la misma merma dos veces.
-        for product, uom, qty in Move._read_group(
+        saldos_orden = {}
+        for orden, uom, qty in Move._read_group(
                 [('state', '=', 'done'), ('product_id', 'in', self._ft_saldo_products().ids),
                  ('production_id.product_id', 'in', products.ids), ('production_id.state', '=', 'done'),
                  ('production_id.date_finished', '>=', desde)],
-                ['production_id.product_id', 'product_uom'], ['quantity:sum']):
+                ['production_id', 'product_uom'], ['quantity:sum']):
             if uom == kg or uom._has_common_reference(kg):
-                saldos[product] = saldos.get(product, 0.0) + uom._compute_quantity(qty, kg, round=False)
-        return {p: (metros[p], kilos.get(p, 0.0), terminada.get(p, 0.0), saldos.get(p, 0.0), ordenes.get(p, 0))
-                for p in metros}
+                saldos_orden[orden] = saldos_orden.get(orden, 0.0) + uom._compute_quantity(qty, kg, round=False)
+        res = {}
+        for orden, m in metros_orden.items():
+            k_ent, k_term = kilos_orden.get(orden, 0.0), terminada_orden.get(orden, 0.0)
+            if not (k_ent or k_term):
+                continue
+            product = producto_orden[orden]
+            m0, e0, t0, s0, n0 = res.get(product, (0.0, 0.0, 0.0, 0.0, 0))
+            res[product] = (m0 + m, e0 + k_ent, t0 + k_term, s0 + saldos_orden.get(orden, 0.0), n0 + 1)
+        return res
 
     @api.model
     def _ft_conversiones(self, fichas, desde):
