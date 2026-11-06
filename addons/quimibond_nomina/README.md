@@ -806,6 +806,38 @@ cambio el módulo no altera nada):
 `ISR` y `SUBSIDY_CURRENT_MONTH` están bajo el centinela: aceptar el cambio
 después de editarlas. `SUBSIDY_NEXT_MONTH` no lo está; conviene agregarla.
 
+### 19. El neto es la suma de sus líneas y las horas extra se reparten como NOI (1.19.1)
+
+El paralelo de la semana 44 (lote 127 en `main`, 6-nov-2026) con 1.19.0 dejó
+45 de 93 netos al centavo y 86 de 93 ISR. Lo demás eran tres redondeos:
+
+- **El neto.** La regla `NET` suma `categories` con los montos sin redondear.
+  En la clave 9 cada línea cuadraba con NOI y el neto salía 1,901.15 contra
+  1,901.16 (la suma de sus líneas). `payslip._qb_neto_lineas(result_rules)`
+  suma lo mismo que `categories['BASIC'] + categories['ALW'] +
+  categories['DED']`, pero con el total de cada regla redondeado como su
+  línea; las cuotas IMSS del trabajador (`IMSS_EMPLOYEE`, una regla por ramo)
+  se redondean juntas, como «Total IMSS (empleado)».
+- **Las horas extra.** `HE_EXEMPT` y `HE_TAX` partían el pago en dos mitades
+  sin redondear y cada línea perdía medio centavo (9 dobles a 61.1525:
+  1,100.745 → 550.37 + 550.37). NOI redondea el pago (1,100.75) y el exento
+  (550.37), y el gravado es la resta (550.38). La prima dominical no lo
+  necesita: su exento es 1 UMA exacta o la prima completa.
+- **El gravable del ISR.** `_qb_isr_semanal_partes` redondea el ordinario a
+  centavos antes de la tarifa (clave 5: 3,571.9575 → 3,571.96, ISR 344.17).
+
+**Reglas que se cambian en la base después de desplegar 1.19.1:**
+
+- `NET` (id 131): `result = payslip._qb_neto_lineas(result_rules)`.
+- `HE_EXEMPT` (id 463), última línea:
+  `result = float_round(min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas), precision_digits=2)`.
+- `HE_TAX` (id 464), las dos últimas líneas:
+  `pago = float_round(dobles * vh * 2 + triples * vh * 3, precision_digits=2)`,
+  `exento = float_round(min(min(dobles, 9 * semanas) * vh * 2 * 0.5, 5 * uma * semanas), precision_digits=2)`
+  y `result = pago - exento`.
+
+Las tres, y `SUBSIDY_NEXT_MONTH` (91), van al centinela.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es

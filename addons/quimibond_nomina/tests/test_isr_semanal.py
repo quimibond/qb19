@@ -97,3 +97,30 @@ class TestIsrSemanal(TransactionCase):
         })
         self.assertIsNone(slip._qb_isr_semanal(5000.0))
         self.assertIsNone(slip._qb_subsidio_semanal(5000.0))
+
+    def test_gravable_en_centavos(self):
+        """Semana 44, clave 5: el gravable llega como 3,571.9575 (decimales de las
+        horas extra); NOI calcula con 3,571.96 y retiene 344.17 (1.19.1)."""
+        slip = self._semana(LUNES_46)
+        self.assertEqual(slip._qb_isr_semanal_partes(3571.9575), (344.17, 0.0))
+
+    def test_neto_es_la_suma_de_las_lineas(self):
+        """Dos percepciones de 100.004 son dos líneas de 100.00: el neto es 200.00,
+        no 200.01. Las cuotas IMSS del trabajador se redondean juntas, como su
+        línea de total (1.19.1)."""
+        Rule = self.env['hr.salary.rule']
+        basic = self.env.ref('hr_payroll.BASIC')
+        imss = self.env['hr.salary.rule.category'].search([('code', '=', 'IMSS_EMPLOYEE')], limit=1)
+        if not imss:
+            self.skipTest('sin la categoría IMSS_EMPLOYEE de la localización')
+        codigos = {'QB_A': basic, 'QB_B': basic, 'QB_IMSS1': imss, 'QB_IMSS2': imss}
+        for codigo, categoria in codigos.items():
+            Rule.create({'name': codigo, 'code': codigo, 'struct_id': self.struct.id,
+                         'category_id': categoria.id, 'condition_select': 'none',
+                         'amount_select': 'code', 'amount_python_compute': 'result = 0'})
+        result_rules = {
+            'QB_A': {'total': 100.004}, 'QB_B': {'total': 100.004},
+            'QB_IMSS1': {'total': -0.004}, 'QB_IMSS2': {'total': -0.004},
+        }
+        slip = self._semana(LUNES_46)
+        self.assertEqual(slip._qb_neto_lineas(result_rules), 199.99)
