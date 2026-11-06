@@ -59,15 +59,49 @@ class SatCommon(AccountTestInvoicingCommon):
         cls.usd = cls.env.ref('base.USD')
         (cls.mxn + cls.usd).write({'active': True})
         cls.company.write({'vat': RFC_QUIMIBOND, 'sat_sync_enabled': True, 'currency_id': cls.mxn.id})
-        cls.env['res.currency.rate'].create({
-            'currency_id': cls.usd.id, 'company_id': cls.company.id,
-            'name': '2026-01-01', 'rate': 1 / 20.0,   # 1 MXN = 0.05 USD → 1 USD = 20 MXN
-        })
-        cls.proveedor = cls.env['res.partner'].create({
-            'name': 'PAPELERA SANDOVAL', 'is_company': True, 'vat': RFC_PROVEEDOR})
-        cls.cliente = cls.env['res.partner'].create({
-            'name': 'EUROTECNICA TEXTIL', 'is_company': True, 'vat': RFC_CLIENTE})
+        # 1 USD = 20 MXN. En la copia de producción ese día ya tiene tipo de
+        # cambio (restricción única por moneda, compañía y fecha).
+        cls._tipo_de_cambio_de_prueba()
+        cls.proveedor = cls._partner_con_rfc('PAPELERA SANDOVAL', RFC_PROVEEDOR)
+        cls.cliente = cls._partner_con_rfc('EUROTECNICA TEXTIL', RFC_CLIENTE)
         cls.has_mx_edi = 'l10n_mx_edi.document' in cls.env
+
+    @classmethod
+    def _tipo_de_cambio_de_prueba(cls):
+        """Deja 1 USD = 20 MXN el 2026-01-01, creando o pisando el del día.
+
+        La copia de producción ya trae esa fila (en compañía 1, 2026-01-01,
+        rate 0.06). Un ``create`` segundo revienta el setUp de todas las
+        pruebas y Odoo.sh marca el build de la rama de desarrollo.
+        """
+        Rate = cls.env['res.currency.rate']
+        rate = Rate.search([
+            ('currency_id', '=', cls.usd.id),
+            ('company_id', '=', cls.company.id),
+            ('name', '=', '2026-01-01'),
+        ], limit=1)
+        if rate:
+            rate.rate = 1 / 20.0
+            return rate
+        return Rate.create({
+            'currency_id': cls.usd.id, 'company_id': cls.company.id,
+            'name': '2026-01-01', 'rate': 1 / 20.0,
+        })
+
+    @classmethod
+    def _partner_con_rfc(cls, name, vat):
+        """Un solo contacto con ese RFC: el del test.
+
+        Papelera Sandoval y Eurotecnica ya existen en producción. ``_find_partner``
+        se queda con el de id menor, así que el CFDI no quedaba ligado al
+        contacto que crea la prueba.
+        """
+        otros = cls.env['res.partner'].sudo().search([('vat', '=ilike', vat)])
+        if otros:
+            otros.write({'vat': False})
+        return cls.env['res.partner'].create({
+            'name': name, 'is_company': True, 'vat': vat,
+        })
 
     def _require_mx_edi(self):
         if not self.has_mx_edi:
