@@ -9,6 +9,19 @@ toca una lista de materiales.
 
 Los saldos en kg que salen de esas órdenes (segundas y desperdicio, flujo nuevo de inspección) se restan de los kilos:
 son tela que no se volvió metros de la tela y ya cuentan como merma en la primera para planear del costeo.
+
+2.27.0 (Dirección General 2026-11-05): **por kg de tela terminada.** Todos los que usan el rendimiento lo necesitan por
+kg de la tela acabada en kg (el producto «I»): la conversión kg → m de la lista en metros y del costeo, los tiempos de
+rama e inspección (la lista en kg es por kg de tela acabada) y la alerta de metros de Inspección. 2.24.0 lo dividía
+entre los kilos de tela que **entran** a la orden (crudo o teñido), que pesan más: salía ≈10 % abajo (WJ038: 14.19
+m/kg contra 15.79 de las listas de empaque de 2026, 1,800 rollos pesados). Ahora, en orden:
+
+1. **Tela terminada** (``terminado``): metros ÷ kg de las conversiones de metros a kg (órdenes que consumen la tela en
+   metros y producen su acabado en kg; el kg es el pesado de la lista de empaque) y de los rollos finales registrados
+   de Inspección (``mrp.rollo.final``, metros y kg netos de cada rollo de primera o FE, si está instalado).
+2. **Estimado** (``estimado``): sin esos datos, metros por kg que entró (lo de 2.24.0) × el consumo de crudo de la
+   ficha (kg que entran por kg de tela acabada).
+3. **Ficha** (``ficha``): sin nada, se queda el de la ficha.
 """
 from datetime import timedelta
 
@@ -40,7 +53,15 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
 
     rendimiento_real_ordenes = fields.Integer(
         string='Órdenes del rendimiento', readonly=True,
-        help='Órdenes terminadas de los últimos 12 meses con las que se calculó el rendimiento.')
+        help='Conversiones a kg y rollos de Inspección (o, estimado, órdenes terminadas) de los últimos 12 meses con '
+             'los que se calculó el rendimiento.')
+    rendimiento_fuente = fields.Selection(
+        [('terminado', 'Tela terminada (conversiones a kg y rollos de Inspección)'),
+         ('estimado', 'Estimado (metros por kg que entró × consumo de crudo)'),
+         ('ficha', 'Capturado en la ficha')],
+        string='De dónde sale el rendimiento', readonly=True, copy=False,
+        help='2.27.0: el rendimiento es por kg de tela terminada. «Tela terminada» es el dato medido; «Estimado» se usa '
+             'cuando la tela no tiene conversiones a kg ni rollos de Inspección.')
     # 2.26.0: aviso cuando el recálculo nocturno mueve el rendimiento más que la alerta (propuesta de Consolti,
     # 2026-11-05: que las telas del piloto no cambien sin aviso). El número se escribe igual; el aviso queda como
     # pendiente de Ingeniería en la revisión de listas hasta que alguien lo marca revisado.
@@ -97,6 +118,59 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         return {p: (metros[p], kilos.get(p, 0.0), ordenes.get(p, 0)) for p in metros}
 
     @api.model
+    def _ft_terminado(self, fichas, desde):
+        """2.27.0: {ficha: (metros, kg de tela terminada, conversiones + rollos)} desde ``desde``: conversiones de metros a
+        kg (órdenes terminadas que producen el acabado en kg de la ficha consumiendo su tela en metros) y rollos finales
+        registrados de Inspección (``mrp.rollo.final``, primera y FE), si está instalado."""
+        Move = self.env['stock.move'].sudo()
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        fichas = fichas.filtered(lambda f: f.product_acabado_id and f.product_proceso_id)
+        if not fichas or not metro or not kg:
+            return {}
+        por_par = {(f.product_proceso_id, f.product_acabado_id): f for f in fichas}
+        metros, kilos, cuenta = {}, {}, {}
+        # Conversiones: metros de la tela consumidos por orden, y kg del acabado en kg producidos por esa misma orden.
+        metros_orden = {}
+        for orden, producto, uom, qty in Move._read_group(
+                [('state', '=', 'done'), ('product_id', 'in', fichas.product_acabado_id.ids),
+                 ('raw_material_production_id.product_id', 'in', fichas.product_proceso_id.ids),
+                 ('raw_material_production_id.state', '=', 'done'),
+                 ('raw_material_production_id.date_finished', '>=', desde)],
+                ['raw_material_production_id', 'product_id', 'product_uom'], ['quantity:sum']):
+            ficha = por_par.get((orden.product_id, producto))
+            if ficha and (uom == metro or uom._has_common_reference(metro)):
+                metros_orden[orden] = (ficha, metros_orden.get(orden, (ficha, 0.0))[1]
+                                       + uom._compute_quantity(qty, metro, round=False))
+        if metros_orden:
+            for orden, uom, qty in Move._read_group(
+                    [('state', '=', 'done'), ('production_id', 'in', [o.id for o in metros_orden]),
+                     ('product_id', 'in', fichas.product_proceso_id.ids)],
+                    ['production_id', 'product_uom'], ['quantity:sum']):
+                if not (uom == kg or uom._has_common_reference(kg)):
+                    continue
+                ficha, m = metros_orden[orden]
+                k = uom._compute_quantity(qty, kg, round=False)
+                if m and k:
+                    metros[ficha] = metros.get(ficha, 0.0) + m
+                    kilos[ficha] = kilos.get(ficha, 0.0) + k
+                    cuenta[ficha] = cuenta.get(ficha, 0) + 1
+        # Rollos finales de Inspección (flujo nuevo): metros y kg netos de cada rollo de primera o FE.
+        Final = self.env.get('mrp.rollo.final')
+        if Final is not None and {'metros', 'kg_neto', 'estado', 'clasificacion'} <= set(Final._fields):
+            for rollo in Final.sudo().search([('estado', '=', 'registrado'), ('clasificacion', 'in', ('PQ', 'FE')),
+                                              ('fecha', '>=', desde), ('metros', '>', 0), ('kg_neto', '>', 0)]):
+                producto_m = rollo.production_m_id.product_id
+                producto_kg = rollo.production_id.product_id
+                ficha = next((f for f in fichas if f.product_proceso_id == producto_kg
+                              or (producto_m and f.product_acabado_id == producto_m)), None)
+                if ficha:
+                    metros[ficha] = metros.get(ficha, 0.0) + rollo.metros
+                    kilos[ficha] = kilos.get(ficha, 0.0) + rollo.kg_neto
+                    cuenta[ficha] = cuenta.get(ficha, 0) + 1
+        return {f: (metros[f], kilos[f], cuenta[f]) for f in metros}
+
+    @api.model
     def _ft_saldo_products(self):
         """Los productos de saldo de la lista en metros (los mismos parámetros que «Generar listas»)."""
         from .ruta_familia import SALDOS  # local: orden de carga de models/
@@ -108,20 +182,28 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         """El rendimiento de estas fichas (todas si vacío) con lo fabricado; sin órdenes se queda el de la ficha."""
         fichas = self or self.search([('product_acabado_id', '!=', False)])
         desde = fields.Date.context_today(self) - timedelta(days=DIAS_REAL)
+        terminado = self._ft_terminado(fichas, desde)
         datos = self._ft_fabricado(fichas.product_acabado_id, desde)
         limite = self._ft_alerta_rendimiento_pct()
         for ficha in fichas:
-            m, kilos, n = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0))
-            if m and kilos:
-                nuevo = round(m / kilos, 4)
-                vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n}
+            nuevo, n, fuente = 0.0, 0, 'ficha'
+            m_t, kg_t, n_t = terminado.get(ficha, (0.0, 0.0, 0))
+            m, kilos, n_e = datos.get(ficha.product_acabado_id, (0.0, 0.0, 0))
+            consumo = ficha.consumo_crudo if 'consumo_crudo' in ficha._fields else 0.0
+            if m_t and kg_t:
+                nuevo, n, fuente = round(m_t / kg_t, 4), n_t, 'terminado'
+            elif m and kilos and consumo:
+                # metros por kg que entró × kg que entran por kg de tela acabada = metros por kg de tela acabada
+                nuevo, n, fuente = round(m / kilos * consumo, 4), n_e, 'estimado'
+            if nuevo:
+                vals = {'rendimiento_tela_acabada': nuevo, 'rendimiento_real_ordenes': n, 'rendimiento_fuente': fuente}
                 antes = ficha.rendimiento_tela_acabada
                 if antes and abs(nuevo - antes) / antes * 100.0 > limite:
                     vals.update(rendimiento_por_revisar=True, rendimiento_anterior=antes,
                                 rendimiento_cambio_fecha=fields.Datetime.now())
                 ficha.write(vals)
-            elif ficha.rendimiento_real_ordenes:
-                ficha.rendimiento_real_ordenes = 0
+            elif ficha.rendimiento_real_ordenes or ficha.rendimiento_fuente != 'ficha':
+                ficha.write({'rendimiento_real_ordenes': 0, 'rendimiento_fuente': 'ficha'})
         return True
 
     @api.model
