@@ -141,6 +141,13 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Solo el acabado abastece la orden en metros (3.6.4, ronda 13 en main, 2026-11-06)
+
+Las órdenes que abastecen una orden en metros (`_ordenes_previas`) se cuentan solo por los movimientos del acabado en kg
+que no están cancelados. El desperdicio de Rama de cada baño (subproducto en cero) también queda ligado al consumo y hacía
+creer que otro baño seguía abasteciendo: el cierre dejaba un pendiente que nadie iba a cubrir. Las pruebas de
+programación ahora llevan ese subproducto.
+
 ## Un baño = una orden en metros (3.6.3, con programación 1.8.0, 2026-11-06)
 
 Con la programación de Tintorería 1.8.0, cada baño tiene su propia orden en metros desde que se programa, así que al

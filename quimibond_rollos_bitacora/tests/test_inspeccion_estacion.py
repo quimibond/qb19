@@ -428,7 +428,9 @@ class TestInspeccionEstacion(TransactionCase):
                 Command.create({'name': 'Tintorería', 'workcenter_id': htj.id, 'sequence': 10}),
                 Command.create({'name': 'RAMA', 'workcenter_id': self.rama.id, 'sequence': 20}),
                 Command.create({'name': 'INSPECCION', 'workcenter_id': self.revisadora.id, 'sequence': 30})],
-            'bom_line_ids': [Command.create({'product_id': self.crudo.id, 'product_qty': 1.1})]})
+            'bom_line_ids': [Command.create({'product_id': self.crudo.id, 'product_qty': 1.1})],
+            # Como la lista en kg de las fichas (2.25.0): el desperdicio de Rama sale de subproducto en cero.
+            'byproduct_ids': [Command.create({'product_id': self.saldo_d.id, 'product_qty': 0.0, 'cost_share': 0.0})]})
 
         class _Config:
             def _ft_value(self, codigo):
@@ -454,8 +456,8 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(orden_kg.requiere_programacion_tintoreria)
         # Liga MTO como la deja el abastecimiento: el consumo de la orden en metros nace de la orden en kg.
         raw = orden_m._clasif_move_a()
-        raw.write({'move_orig_ids': [Command.set(orden_kg.move_finished_ids.filtered(
-            lambda m: m.product_id == self.prod_kg).ids)], 'created_production_id': orden_kg.id})
+        # Como en planta, todos los terminados de la orden en kg (también el subproducto) quedan ligados al consumo.
+        raw.write({'move_orig_ids': [Command.set(orden_kg.move_finished_ids.ids)], 'created_production_id': orden_kg.id})
         programacion = orden_kg._programar_tintoreria(htj)
         banos = programacion.production_ids.sorted('id')
         self.assertEqual(len(banos), 2)
