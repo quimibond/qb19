@@ -28,6 +28,23 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.8.0 (Dirección, 2026-11-06): un baño = una orden en metros
+
+Al dividir la orden en kg en baños, la programación divide también, en la misma proporción, la orden en metros que la
+consume (MTO), con la división nativa de Odoo, y liga cada parte a su baño. Cada baño cierra su propia orden en metros
+con sus metros reales: ya no queda una orden en metros a medias con un pendiente calculado con el factor de la lista,
+ni se reparte la demanda de kg entre baños. Motivo: en la ronda 12 en main la orden de 9,040 m cerró en 10,763 m y el
+reparto hizo nacer una orden en kg que nadie pidió (corregido también en rollos 3.6.2).
+
+- La orden en metros original queda como la del primer baño; las demás nacen con el sufijo nativo (`…-002`).
+- La entrega del pedido queda ligada a todas las partes (la división nativa conserva el destino del terminado).
+- No divide si la orden en metros ya empezó o la abastece otra orden en kg además de estos baños; en ese caso sigue el
+  flujo de varios baños para una orden en metros (rollos 3.3.0).
+- Un baño sin primera ni FE cancela solo su orden en metros (rollos 3.2.0); la de los otros baños no cambia.
+- Cancelar un baño (antes de Rama) cancela también su orden en metros; la de los otros baños no cambia.
+- Solo divide con `quimibond_rollos_bitacora` instalado: sin su cierre, cada orden en metros habría que cerrarla a mano.
+- Si la división no da una parte por baño, no se programa nada (error).
+
 ## Cambios 19.0.1.7.1 (ronda 10 en main, 2026-11-06)
 
 - **No se programa en un jet que no está operando.** El asistente dejaba escoger TINTORERIA 5, en montaje, sin aviso;
