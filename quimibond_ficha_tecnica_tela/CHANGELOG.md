@@ -17,6 +17,10 @@ agregan a esa misma sección sin volver a subirla.
   en kg (el «I…» que consume la orden en metros del flujo nuevo) se multiplicaban por el consumo de crudo como si fueran
   crudo. Ahora el estimado es metros ÷ (kg de tela acabada en kg + kg de crudo o teñido ÷ consumo de crudo − saldos);
   con crudo o teñido y sin consumo capturado no se estima (pruebas 1, 7 y 17).
+- **Las conversiones de metros a metros no cuentan en el estimado.** Una orden que fabrica la tela consumiendo otra
+  tela ya en metros (conversión de artículo TL/CONV-ART) suma metros sin kilos: WC090Q11JNT162 seguía en 36.7 m/kg
+  después de la corrección anterior (1,471 m contra 45.9 kg en 12 meses). Ahora solo cuentan las órdenes que
+  consumieron tela en kg (prueba 18).
 - **Pocas muestras ya no pisan la ficha.** Con 1 o 2 rollos o conversiones y sin estimado, el rendimiento se queda el de
   la ficha (antes las escribía: NK100Q46JNT155 y WJ038Q22JCO160 con una sola conversión, XJ140Q21JNT162 con dos).
 - **Conversiones raras y pocas muestras.** Al correr 2.27.0 en main, las telas con muchas conversiones quedaron igual que
