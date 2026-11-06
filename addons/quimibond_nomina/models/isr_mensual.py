@@ -139,6 +139,7 @@ ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
 CODIGOS_RETENIDO = ('ISR', 'ISR_ADJUSTMENT')
 CODIGO_SUBSIDIO = 'SUBSIDY'
+CATEGORIA_IMSS_EMPLEADO = 'IMSS_EMPLOYEE'
 
 
 class HrPayslip(models.Model):
@@ -420,6 +421,10 @@ class HrPayslip(models.Model):
         self.ensure_one()
         if self.version_id.schedule_pay != 'weekly' or not ordinario or ordinario <= 0:
             return None
+        # NOI calcula sobre el gravable en centavos; ``categories['GROSS']`` trae los
+        # decimales de cada regla (3,571.9575 en la semana 44) y el ISR caía medio
+        # centavo abajo (1.19.1).
+        ordinario = float_round(ordinario, precision_digits=2)
         tabla = self._rule_parameter('l10n_mx_isr_tables', self.date_to)['monthly']
         isr = self._qb_isr_tarifa(ordinario / 7 * 30.4, tabla) / 30.4 * 7
         subsidio = min(self._qb_subsidio_semanal_bruto(ordinario), isr)
@@ -439,3 +444,35 @@ class HrPayslip(models.Model):
         ``None`` si el recibo no es semanal."""
         partes = self._qb_isr_semanal_partes(ordinario)
         return None if partes is None else partes[1]
+
+    # ------------------------------------------------------------------
+    # 6. El neto es la suma de las líneas (1.19.1)
+    # ------------------------------------------------------------------
+    def _qb_neto_lineas(self, result_rules, categorias=('BASIC', 'ALW', 'DED')):
+        """Neto como la suma de las líneas del recibo ya redondeadas a centavos.
+
+        La regla ``NET`` de la localización suma ``categories`` con los montos
+        sin redondear y el recibo podía no cuadrar con sus propias líneas (semana
+        44: clave 9, líneas 1,901.16 y neto 1,901.15); el PAC rechaza un CFDI
+        así. Suma lo mismo que ``categories['BASIC'] + categories['ALW'] +
+        categories['DED']`` (cada regla cuenta en su categoría y en las de
+        arriba), pero con el total de cada regla redondeado como su línea. Lo
+        llama la regla ``NET`` de «Paga regular»:
+        ``result = payslip._qb_neto_lineas(result_rules)``."""
+        self.ensure_one()
+        redondeo = self.company_id.currency_id.round
+        bloques = {}
+        for regla in self.struct_id.rule_ids:
+            if regla.code not in result_rules:
+                continue
+            categoria = regla.category_id
+            while categoria and categoria.code not in categorias:
+                categoria = categoria.parent_id
+            if not categoria:
+                continue
+            # Las cuotas IMSS del trabajador (una regla por ramo) van juntas, como la
+            # línea «Total IMSS (empleado)» y la deducción 001 del CFDI.
+            bloque = (CATEGORIA_IMSS_EMPLEADO if regla.category_id.code == CATEGORIA_IMSS_EMPLEADO
+                      else regla.code)
+            bloques[bloque] = bloques.get(bloque, 0.0) + result_rules[regla.code]['total']
+        return redondeo(sum(redondeo(v) for v in bloques.values()))
