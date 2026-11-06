@@ -738,8 +738,8 @@ completa:
 result = payslip._qb_aguinaldo_base()
 ```
 
-La regla 104 no está bajo el centinela; conviene agregarla después de
-editarla.
+Aplicada en producción el 2026-11-06 (lote 133 recalculado: Gerónimo Bartolo
+$12,928.25 = 517.13 × 25) y agregada al centinela ese mismo día.
 
 ## Qué escribe el módulo en la base (inventario completo)
 
@@ -767,16 +767,17 @@ lectura o valores en memoria del CFDI de cada recibo.
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
 1.16.0), `INFONAVIT` (1.12.0 y 1.16.0), `SUBSIDY_CURRENT_MONTH` y `PVAC_TAX`
-(1.15.0) de «Paga regular» **se editaron en la base**, no las escribe el
-módulo: las fórmulas vigentes están en las secciones 7, 8, 9, 14 y 15, y el
-centinela avisa si cambian.
+(1.15.0) de «Paga regular», y `BASIC` de «Aguinaldo» (1.18.0), **se editaron en
+la base**, no las escribe el módulo: las fórmulas vigentes están en las
+secciones 7, 8, 9, 14, 15 y 17, y el centinela avisa si cambian.
 
-**Reglas bajo el centinela en producción (23 desde el 2026-10-23):** `ISR`,
+**Reglas bajo el centinela en producción (24 desde el 2026-11-06):** `ISR`,
 `SUBSIDY`, `SUBSIDY_CURRENT_MONTH`, `INT_DAY_WAGE`, `INT_DAY_WAGE_BASE`,
 `DIAS_IMSS`, `FONACOT`, `INFONAVIT`, `PRESTAMO`, `CHILD_SUPPORT`, `CUOTA_SIND`,
 `H_SENC`, `HE_EXEMPT`, `HE_TAX`, `PDOM_EXEMPT`, `PDOM_TAX`, `PVAC_EXEMPT`,
-`PVAC_TAX`, `PA`, `PP`, `MEAL_VOUCHER_PERIOD`, `RETRO_SUELDO` y `DESC_FALTAS`:
-todas las de «Paga regular» con código de Quimibond. Al instalar, el módulo solo
+`PVAC_TAX`, `PA`, `PP`, `MEAL_VOUCHER_PERIOD`, `RETRO_SUELDO` y `DESC_FALTAS`
+(todas las de «Paga regular» con código de Quimibond), más `BASIC` de
+«Aguinaldo» (id 104, desde el 2026-11-06). Al instalar, el módulo solo
 siembra `SUBSIDY` e `INT_DAY_WAGE`; las demás se agregaron a mano (Nómina →
 Configuración → Centinela de reglas → Nuevo). Una regla nueva o editada en la
 base se agrega ahí.
