@@ -42,6 +42,8 @@ class MrpProductionInspeccion(models.Model):
     # 3.3.8 (Dirección, 2026-11-05): resumen de la pestaña Rollos (sin guardar).
     rollos_rama_count = fields.Integer('Rollos pesados en Rama', compute='_compute_resumen_rollos')
     rollos_rama_kg = fields.Float('Kg pesados en Rama', digits=(12, 2), compute='_compute_resumen_rollos')
+    rollos_rama_metros = fields.Float('Metros en Rama (cuentametros)', digits=(12, 2),
+                                      compute='_compute_resumen_rollos')
     rollos_rama_pct = fields.Float('Pesado en Rama contra lo planeado (%)', digits=(12, 1),
                                    compute='_compute_resumen_rollos')
     rollos_pendientes_count = fields.Integer('Rollos de Rama por inspeccionar', compute='_compute_resumen_rollos')
@@ -72,7 +74,8 @@ class MrpProductionInspeccion(models.Model):
         ordenes = terminado.move_dest_ids.raw_material_production_id
         return ordenes.filtered(lambda p: p.state not in ('done', 'cancel'))[:1]
 
-    @api.depends('product_qty', 'rollo_bitacora_ids.kg_rama', 'rollo_bitacora_ids.estado_inspeccion',
+    @api.depends('product_qty', 'rollo_bitacora_ids.kg_rama', 'rollo_bitacora_ids.metros_rama',
+                 'rollo_bitacora_ids.estado_inspeccion',
                  'rollo_final_kg_ids.kg_neto', 'rollo_final_kg_ids.metros', 'rollo_final_kg_ids.clasificacion',
                  'rollo_final_kg_ids.bitacora_ids')
     def _compute_resumen_rollos(self):
@@ -84,6 +87,7 @@ class MrpProductionInspeccion(models.Model):
             finales = orden.rollo_final_kg_ids
             orden.rollos_rama_count = len(rama)
             orden.rollos_rama_kg = sum(rama.mapped('kg_rama'))
+            orden.rollos_rama_metros = sum(rama.mapped('metros_rama'))
             orden.rollos_rama_pct = orden.rollos_rama_kg / orden.product_qty * 100.0 if orden.product_qty else 0.0
             orden.rollos_pendientes_count = len(rama.filtered(lambda r: r.estado_inspeccion == 'pendiente'))
             orden.rollos_final_count = len(finales)

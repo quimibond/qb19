@@ -60,6 +60,15 @@
                             </div>
                             <span style="font-size: 1.6em; font-weight: bold;">KG</span>
                         </div>
+                        <div class="text-center mb-3 p-3 border rounded bg-light">
+                            <label for="metros_rama" string="METROS DEL CUENTAMETROS"/><br/>
+                            <field name="metros_rama" options="{'digits': [12, 2]}"
+                                   style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                        </div>
+                        <group>
+                            <field name="motivo_sin_metros" invisible="metros_rama"
+                                   placeholder="Solo si no se pudieron leer los metros"/>
+                        </group>
                         <group>
                             <field name="motivo_manual" invisible="weighing_mode != 'manual'"
                                    required="weighing_mode == 'manual'"/>

@@ -22,7 +22,7 @@ se captura en `main` hasta el go-live.
 
 | # | Qué | Camino |
 |---|---|---|
-| 1 | Código: rollos 3.5.3, fichas 2.27.1, programación 1.7.1, dosificación 1.4.0 (costeo 1.10.1 ya está) | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
+| 1 | Código: rollos 3.6.0, fichas 2.27.1, programación 1.7.1, dosificación 1.4.0 (costeo 1.10.1 ya está) | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
 | 2 | Lo que crea el código al instalar: modelos, vistas, secuencia del número de baño (arranca en 00001), catálogo de 64 defectos, reportes de etiqueta | Viaja con el paso 1 |
 | 3 | Listas «Flujo en kg (borrador)»: 45 en `main`, 0 en producción | Botón «Generar listas» de fichas en producción, tela por tela. No se copian: salen de los datos de la ficha |
 | 4 | Ruta de entrega desde la 14 y quitar «Convertir Unidades» | Código (propuesta: al activar la tela) o a mano (abajo) |
@@ -44,6 +44,8 @@ Estado al 2026-11-06. En el ensayo se vuelve a leer de `main`.
 | Rendimiento forzado (`ficha.tecnica.acabado`, `rendimiento_manual`) | 17 fichas | artículo | Copiar el rendimiento y la marca. El campo existe en producción hasta fichas 2.27 (paso 1) |
 | Restricción de Inspección (`mrp.inspeccion.restriccion`) | 1 | centro | INSPECCION 9: `prefijos_excluidos` = `WD`, `codigos_exclusivos` = `WN075Q66JBL205,WJ070Q66JBL205` |
 | Procesos de máquina quitados (`ficha.tecnica.proceso`) | 16 | artículo + centro | Archivar en producción (mismos ids, verificados): las 6 IWD038/IWD040 en INSPECCION 9 (1034, 887, 888, 1040, 886, 1046) y IWJ070Q66JBL205 e IWN075Q66JBL205 en INSPECCION 2, 5, 6, 7 y 8 (757, 788, 819, 850, 881, 1143 a 1147) |
+| Procesos nuevos de Ingeniería (2026-11-06) | 8 | artículo + centro | Devanado de IWJ042Q22JNN160 a 35 m/min (Devanadoras 1 y 2) e Inspección de IWT140Q21JNT155 a 12 m/min (720 m/h, Inspección 2, 5 a 9). En producción después se usa «tiempo de la ficha» en esas operaciones |
+| Correcciones de listas (2026-11-06) | 6 listas | producto «I» + componente | WN055 Devanado y Abridora con el tiempo de la ficha; LAVADO001 de las dos WJ032 a 1.85 kg por kg en Abridora; componentes de WD038Q46JNG163, WJ038, WJ053 y WJ070 en Tintorería y el engomado en Rama. Las listas se generan en producción con «Generar listas»: revisar que salgan igual o corregirlas igual |
 | Otros procesos | producción 1,086 vs `main` 1,029 | artículo + centro | Además de los 16, hay 41 de diferencia: revisar en el ensayo de qué lado cambiaron antes de tocar nada |
 | Siglas de operadores (`hr.employee.siglas`) | 13 | empleado | Las usa la etiqueta final. Faltan Misael Bibiano (S-4), Juanito Silva (S-50) y Lucio Mejía (S-25) |
 | Catálogo de defectos (`calidad.defecto.tela`) | 64 del módulo | código | Solo si Inspección lo modifica en `main` durante el piloto |
@@ -105,9 +107,8 @@ el motivo «Sin báscula IoT».
 
 ## Lo que debe estar resuelto antes
 
-- Visto bueno escrito de Ingeniería por ola.
+- Visto bueno escrito de Ingeniería por ola (el del piloto lo dio Jessica Francisco el 2026-11-06).
 - Catálogo de defectos validado por Inspección.
-- Respuestas de Tintorería e Ingeniería (correo del 2026-11-06): capacidad y relación de baño por kg de crudo,
-  TINTORERIA 5, banda A de la 3, 150 kg de la 4, rendimiento de tejido de IWR150Q67JNG160DI, IWC120Q21JNT165,
-  IZJ042R22JNT160 e IWK140R70JNT165.
+- Respuesta de Tintorería (correo del 2026-11-06): capacidad y relación de baño por kg de crudo, TINTORERIA 5,
+  banda A de la 3 y 150 kg de la 4. (Las 4 telas sin rendimiento de tejido son muestras, Ingeniería 2026-11-06.)
 - LUBRICANTECHT en 2 PRODUCCIÓN y ENGOMADO002 fabricado por Cocina el día del baño.

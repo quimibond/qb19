@@ -59,6 +59,14 @@ class MrpRolloBitacora(models.Model):
     tara_rama = fields.Float('Tara Rama (kg)', digits=(12, 4), readonly=True)
     kg_rama = fields.Float('Kg netos (Rama)', digits=(12, 4), readonly=True,
                            help='Cantidad del lote de A. Es el kg que usan Inspección y Clasificación final.')
+    metros_rama = fields.Float(
+        'Metros de Rama (cuentametros)', digits=(12, 2), readonly=True,
+        help='3.6.0: lo que marca el cuentametros al final de la Rama cuando sale el rollo. Se captura junto con el '
+             'peso; si no se pudo leer, queda el motivo.')
+    motivo_sin_metros_rama = fields.Char('Motivo sin metros (Rama)', readonly=True)
+    rendimiento_rama = fields.Float(
+        'Rendimiento en Rama (m/kg)', digits=(12, 4), compute='_compute_rendimiento_rama', store=True,
+        help='3.6.0: metros del cuentametros entre los kg netos de Rama del rollo.')
     captura_manual_rama = fields.Boolean('Captura manual (Rama)', readonly=True)
     motivo_manual_rama = fields.Char('Motivo de captura manual (Rama)', readonly=True)
     operador_rama = fields.Char('Operador de Rama', readonly=True)
@@ -143,6 +151,11 @@ class MrpRolloBitacora(models.Model):
         ficha = Ficha.search([('product_proceso_id', '=', self.product_id.id)], order='id desc', limit=1)
         return ficha.rendimiento_tela_acabada or 0.0
 
+    @api.depends('metros_rama', 'kg_rama')
+    def _compute_rendimiento_rama(self):
+        for rollo in self:
+            rollo.rendimiento_rama = rollo.metros_rama / rollo.kg_rama if rollo.metros_rama and rollo.kg_rama else 0.0
+
     @api.depends('metros_insp', 'metros_final', 'kg_rama', 'kg_final', 'clasificacion_inicial',
                  'clasificacion_final', 'product_id')
     def _compute_alertas(self):
@@ -220,8 +233,8 @@ class MrpRolloBitacora(models.Model):
         return '\n'.join(zpl)
 
     def _zpl_etiqueta_rama(self):
-        """Etiqueta preliminar de Rama (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, Rama, kg netos y el código
-        de barras del lote (que ya lleva el número de rollo)."""
+        """Etiqueta preliminar de Rama (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, Rama, kg netos, metros del
+        cuentametros (3.6.0, si se capturaron) y el código de barras del lote (que ya lleva el número de rollo)."""
         self.ensure_one()
         fecha = fields.Datetime.context_timestamp(self, self.fecha_registro_rama or fields.Datetime.now())
         return self._zpl_preliminar_acomodo(PARAM_RAMA_ANCHO, PARAM_RAMA_ALTO, [
@@ -229,7 +242,8 @@ class MrpRolloBitacora(models.Model):
             'ORDEN: %s' % (self.production_id.name or ''),
             'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
             'CENTRO: %s' % (self.workcenter_rama_id.name or ''),
-        ], ['KG: %.2f' % self.kg_rama], self.lot_id.name or self.name)
+        ], ['KG: %.2f' % self.kg_rama] + (['M: %.2f' % self.metros_rama] if self.metros_rama else []),
+            self.lot_id.name or self.name)
 
     def _zpl_etiqueta_preliminar(self):
         """Etiqueta preliminar de Inspección del flujo anterior a la estación única (F-P-I01-02), con el mismo acomodo de
