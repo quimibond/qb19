@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.6.4',
+    'version': '19.0.3.7.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -27,6 +27,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
 * 3.2.0: baño para venta en kg (sin orden en metros): los rollos finales (lote ``K<orden en kg>-NNNN``) salen de la
   orden en kg como el acabado en kg con su peso real, PQ a 14 y FE a 15, y los saldos en kg a 16 y 17. Baño sin
   primera ni FE: la orden en metros se cancela y una orden de saldos saca los saldos en kg.
+* 3.7.0 (Dirección, 2026-11-06): numeración «J». Las órdenes «Fabricación Tela en kg» y «en m» se llaman
+  ``TL/OP-KG/J00001`` y ``TL/OP-M/J00001``; el número de baño es el nombre de la orden sin el prefijo (``J00001``, o
+  ``J00001-001`` en un baño dividido) y los lotes de Rama y de Inspección son ``<baño>-0001``. Sin secuencia aparte.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -41,7 +44,6 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
     'data': [
         'security/ir.model.access.csv',
         'data/calidad.defecto.tela.csv',
-        'data/ir_sequence_data.xml',
         'views/calidad_defecto_tela_views.xml',
         'views/mrp_inspeccion_restriccion_views.xml',
         'views/mrp_tara_producto_views.xml',
@@ -59,6 +61,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
 }
