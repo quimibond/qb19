@@ -249,6 +249,11 @@ que **Odoo asigna el número de baño**:
   producto consume del Piso si tiene —por producto (engomado) o por categoría (químicos y colorantes)— una ruta con una
   regla que sale del Piso. Solo cuentan los componentes que la lista de materiales pone al crear la orden. Si la base no
   tiene `Toluca/Stock`, no hace nada. Las órdenes que ya existen conservan sus movimientos.
+- **Sobrante del Piso (3.9.0):** al cerrar la orden en kg, lo que se surtió al Piso para un componente y no se consumió
+  (surtido menos consumido, por lote, sin pasar de lo que hay en el Piso) regresa a la ubicación exacta de donde salió con
+  una transferencia interna que queda en el chatter de la orden. Se apoya en los movimientos de la requisición ligados al
+  consumo; si un componente no tiene requisición ligada no se devuelve nada. Si la devolución falla, el cierre no se
+  deshace: queda una nota para hacerla a mano. Para lo que ya no sirve, el botón de scrap nativo.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 
