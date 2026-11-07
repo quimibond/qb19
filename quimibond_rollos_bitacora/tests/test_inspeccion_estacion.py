@@ -178,7 +178,9 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
         self._inspeccionar(orden_kg, wo, rollos[0], 21.4, 230.0)
         final = orden_kg.rollo_final_kg_ids
-        self.assertFalse(self.env['stock.lot'].search([('name', '=', final.name)]), "El lote se crea al registrar")
+        # 3.7.0: el lote de Rama (producto en kg) se llama igual que el rollo final (producto en metros): se busca el del B.
+        self.assertFalse(self.env['stock.lot'].search([
+            ('name', '=', final.name), ('product_id', '=', orden_m.product_id.id)]), "El lote se crea al registrar")
         self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
         self.assertTrue(orden_kg.inspeccion_completa_sin_cerrar is False)
         with self.assertRaisesRegex(UserError, 'sin inspeccionar'):
@@ -483,7 +485,7 @@ class TestInspeccionEstacion(TransactionCase):
             'metros_rama': 600.0,
         }).action_confirmar()
         rollos = bano.rollo_bitacora_ids
-        self.assertEqual(rollos.lot_id.name, '%s-J0001' % bano.numero_bano)  # 3.5.0: Rama lleva la J
+        self.assertEqual(rollos.lot_id.name, '%s-0001' % bano.numero_bano)  # 3.7.0: la J ya va en el número
         for i, (kg_bruto, metros, calidad) in enumerate(capturas, 1):
             self._inspeccionar(bano, wo_insp, rollos, kg_bruto, metros, calidad, termina=i == len(capturas))
         return rollos
@@ -879,15 +881,13 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(texto.decode().count('^XA^PW544'), 2)
 
     def test_39_numero_de_bano(self):
-        """3.5.0: Odoo da el número de baño una sola vez (serie desde 00001), no lo copia al duplicar ni al dividir, es único
-        y da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001»."""
-        secuencia = self.env.ref('quimibond_rollos_bitacora.seq_numero_bano')
-        self.assertEqual((secuencia.padding, secuencia.code), (5, 'quimibond_rollos_bitacora.numero_bano'))
+        """3.7.0: el número de baño es el nombre de la orden sin el prefijo («TL/OP-KG/J00001» → «J00001»); se fija una sola
+        vez, no se copia al duplicar, es único y da nombre a los lotes: Rama e Inspección «<baño>-0001»."""
         _m, orden_kg, wo, rollos = self._bano((40.0,))
         self.assertFalse(orden_kg.numero_bano)
         orden_kg._asignar_numero_bano()
         numero = orden_kg.numero_bano
-        self.assertTrue(numero.isdigit() and len(numero) == 5)
+        self.assertEqual(numero, orden_kg.name.rsplit('/', 1)[-1])
         orden_kg._asignar_numero_bano()
         self.assertEqual(orden_kg.numero_bano, numero, "No cambia una vez asignado")
         self.assertFalse(orden_kg.copy().numero_bano, "Una copia no hereda el número")
@@ -897,6 +897,13 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaises(Exception), self.cr.savepoint():
             otra.numero_bano = numero
             otra.flush_recordset()
+        # Si el número del nombre ya lo tiene otra orden (una vieja numerada con la secuencia de 3.5.0), se usa el nombre
+        # completo con guiones.
+        tercera = self._bano((20.0,))[1]
+        tercera.numero_bano = False
+        self.env['mrp.production'].search([('id', '=', otra.id)]).numero_bano = tercera.name.rsplit('/', 1)[-1]
+        tercera._asignar_numero_bano()
+        self.assertEqual(tercera.numero_bano, tercera.name.replace('/', '-'))
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         self.assertEqual(orden_kg.rollo_final_kg_ids.name, '%s-0001' % numero)
         # Empezar una operación del baño le asigna el número (Tintorería lo usa al cargar el jet).
@@ -1116,3 +1123,66 @@ class TestInspeccionEstacion(TransactionCase):
         bano_1.button_mark_done()
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
+
+    def test_50_secuencias_j(self):
+        """3.7.0: las secuencias de OP-KG y OP-M llevan el prefijo «J» y arrancan en 00001; es idempotente."""
+        from odoo.addons.quimibond_rollos_bitacora.hooks import configurar_secuencias_j
+        almacen = self.env['stock.warehouse'].search([], limit=1)
+        tipo = self.env['stock.picking.type'].create({
+            'name': 'Fabricación Tela en kg (prueba J)', 'code': 'mrp_operation', 'sequence_code': 'OP-KG',
+            'warehouse_id': almacen.id})
+        prefijo = tipo.sequence_id.prefix
+        self.assertFalse((prefijo or '').endswith('J'))
+        self.assertIn(tipo, configurar_secuencias_j(self.env))
+        self.assertEqual(tipo.sequence_id.prefix, '%sJ' % prefijo)
+        self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00001'))
+        configurar_secuencias_j(self.env)
+        self.assertEqual(tipo.sequence_id.prefix, '%sJ' % prefijo, "Idempotente: no agrega otra J")
+        self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00002'), "Ni reinicia el consecutivo")
+
+    def test_51_piso_configuracion_y_consumo(self):
+        """3.8.0: configurar_piso crea «Químicos-Colorantes Piso», repunta las rutas de surtido y la orden en kg consume
+        de ahí el producto cuya ruta sale del Piso; el crudo (sin esa ruta) sigue en la Ubic. 2. Idempotente."""
+        from odoo.addons.quimibond_rollos_bitacora.hooks import (
+            configurar_piso, NOMBRE_PISO, PARAM_UBICACION_PISO)
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ967', 'sequence_code': 'OP-KG'})
+        ubic2 = self.env['stock.location'].create({'name': 'ZZ2 PRODUCCIÓN', 'usage': 'internal',
+                                                   'location_id': almacen.lot_stock_id.id})
+        ruta = self.env['stock.route'].create({'name': 'Surtido Engomado ZZ967 (Ubic. 1 → Producción)'})
+        compania = almacen.company_id.id
+        produccion_virtual = self.env['stock.location'].search([
+            ('usage', '=', 'production'), ('company_id', 'in', [compania, False])], limit=1)
+        self.assertTrue(produccion_virtual, "La base de prueba tiene una ubicación virtual de producción")
+        regla_surte = self.env['stock.rule'].create({
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': almacen.in_type_id.id,
+            'company_id': compania,
+            'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': ubic2.id})
+        regla_consumo = self.env['stock.rule'].create({
+            'name': 'ZZ consumo', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_kg.id,
+            'company_id': compania,
+            'location_src_id': ubic2.id, 'location_dest_id': produccion_virtual.id})
+        padre = self.env['stock.location'].search([('complete_name', '=', 'Toluca/Stock')], limit=1)
+        if not padre:
+            # Base de prueba sin «Toluca/Stock»: el padre se da por nombre completo, como en la planta.
+            padre = almacen.lot_stock_id
+            padre.name = 'Stock'
+            padre.location_id.name = 'Toluca'
+        piso = configurar_piso(self.env)
+        self.assertEqual(piso.name, NOMBRE_PISO)
+        self.assertEqual(piso.location_id, padre)
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO), str(piso.id))
+        self.assertEqual(regla_surte.location_dest_id, piso)
+        self.assertEqual(regla_consumo.location_src_id, piso)
+        self.assertIn('→ Piso)', ruta.name)
+        self.assertEqual(configurar_piso(self.env), piso, "Idempotente: no crea otra ubicación")
+        engomado = self.env['product.product'].create({
+            'name': 'Engomado ZZ967', 'default_code': 'ENGZZ967', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'route_ids': [Command.link(ruta.id)]})
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
+            'picking_type_id': tipo_kg.id})
+        datos = orden_kg._get_move_raw_values(engomado, 1.0, self.kg)
+        self.assertEqual(datos['location_id'], piso.id, "El engomado sale del Piso")
+        crudo = orden_kg._get_move_raw_values(self.prod_kg, 1.0, self.kg)
+        self.assertNotEqual(crudo['location_id'], piso.id, "Lo que no pasa por el Piso sigue en la ubicación de la orden")

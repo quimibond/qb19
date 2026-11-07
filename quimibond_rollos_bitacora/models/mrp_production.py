@@ -7,11 +7,13 @@ from odoo.tools import float_compare
 
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
 PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
-# 3.5.0 (Dirección, 2026-11-05): número de baño consecutivo que asigna Odoo; sustituye al folio de la tarjeta viajera
-# y empieza en 00001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
-SECUENCIA_BANO = 'quimibond_rollos_bitacora.numero_bano'
+# 3.7.0 (Dirección, 2026-11-06): el número de baño sale del nombre de la orden en kg («TL/OP-KG/J00001» → «J00001»;
+# una parte de la división en baños, «J00001-001»). La «J» viene del prefijo de la secuencia del tipo de operación
+# (hooks.configurar_secuencias_j). Antes era una secuencia aparte (3.5.0).
 # 3.6.1: código de secuencia del tipo «Fabricación Tela en kg» (fichas, ruta_familia.TIPO_OPERACION['kg']).
 TIPO_FLUJO_KG = 'OP-KG'
+# 3.8.0: id de la ubicación «Químicos-Colorantes Piso» (de donde la orden en kg consume engomado, químicos y colorantes).
+PARAM_UBICACION_PISO = 'quimibond_rollos_bitacora.ubicacion_piso'
 
 
 class MrpProduction(models.Model):
@@ -39,9 +41,9 @@ class MrpProduction(models.Model):
     desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
     numero_bano = fields.Char(
         'No. de baño', readonly=True, copy=False, index=True, tracking=True,
-        help='Consecutivo que Odoo asigna al baño (orden en kg con Rama) al empezar su primera operación o al abrir el '
-             'pesaje de Rama o Inspección. Da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001». '
-             'Sustituye al folio de la tarjeta viajera; una orden dividida en baños da un número a cada uno.')
+        help='Nombre de la orden en kg sin el prefijo del tipo de operación («J00001», o «J00001-001» si la programación '
+             'de tintorería la dividió en baños). Se fija al empezar su primera operación o al abrir el pesaje de Rama o '
+             'Inspección. Da nombre a los lotes de Rama y de Inspección: «<baño>-0001».')
     _unique_numero_bano = models.Constraint('UNIQUE(numero_bano)', 'Ese número de baño ya lo tiene otra orden.')
     es_pesaje_rollos = fields.Boolean(
         'Pesa por rollo en Rama', compute='_compute_es_pesaje_rollos',
@@ -65,8 +67,43 @@ class MrpProduction(models.Model):
         """Da el siguiente número de baño a las órdenes que aún no lo tienen (3.5.0). Se llama cuando el baño ya es
         definitivo (la programación de tintorería divide la orden después de confirmarla)."""
         for orden in self.filtered(lambda o: not o.numero_bano and o.state not in ('done', 'cancel')):
-            orden.numero_bano = self.env['ir.sequence'].sudo().next_by_code(SECUENCIA_BANO)
+            orden.numero_bano = orden._numero_bano_del_nombre()
         return self
+
+    # ------------------------------------------------------------------
+    # 3.8.0 — Ubicación «Químicos-Colorantes Piso»
+    # ------------------------------------------------------------------
+    def _ubicacion_piso(self):
+        """La ubicación «Químicos-Colorantes Piso» (parámetro ``ubicacion_piso``, que pone la migración 3.8.0), o vacío."""
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO)
+        piso = self.env['stock.location'].browse(int(valor)).exists() if valor and valor.isdigit() else \
+            self.env['stock.location']
+        return piso if piso.active else self.env['stock.location']
+
+    def _surte_desde_piso(self, product, piso):
+        """3.8.0: el producto va por el Piso si tiene (por producto o por categoría) una ruta con una regla que sale del
+        Piso, que es como la migración deja «Surtido Engomado» y «Surtido Químicos y Colorantes». El engomado lleva la
+        ruta en el producto y los químicos y colorantes en su categoría, así que no se decide por categoría."""
+        rutas = self.env['stock.rule'].sudo().search([('location_src_id', '=', piso.id)]).route_id
+        return bool(rutas and (product.route_ids | product.categ_id.total_route_ids) & rutas)
+
+    def _get_move_raw_values(self, product, product_uom_qty, product_uom, operation_id=False, bom_line=False):
+        datos = super()._get_move_raw_values(product, product_uom_qty, product_uom, operation_id, bom_line)
+        if self.picking_type_id.sequence_code == TIPO_FLUJO_KG:
+            piso = self._ubicacion_piso()
+            if piso and self._surte_desde_piso(product, piso):
+                datos['location_id'] = piso.id
+        return datos
+
+    def _numero_bano_del_nombre(self):
+        """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una
+        orden vieja numerada con la secuencia de 3.5.0), se usa el nombre completo con guiones."""
+        self.ensure_one()
+        nombre = self.name or ''
+        numero = nombre.rsplit('/', 1)[-1]
+        if self.search_count([('numero_bano', '=', numero), ('id', '!=', self.id)]):
+            numero = nombre.replace('/', '-')
+        return numero
 
     def action_asignar_numero_bano(self):
         self._asignar_numero_bano()
