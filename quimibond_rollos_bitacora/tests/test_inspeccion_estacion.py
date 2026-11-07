@@ -1269,6 +1269,30 @@ class TestInspeccionEstacion(TransactionCase):
     def _empaque(self, valor='1'):
         self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.clasificacion_empaque', valor)
 
+    def _clasificar_en_empaque(self, orden_m, rollo, calidad=None, metros=None, motivo=None, pesar=False,
+                               kg_bruto=0.0, defectos=True):
+        """Estación de Empaque (3.12.0): el rollo se escanea por su lote y se confirma o se cambia."""
+        wiz = self.env['rollo.empaque.clasificacion.wizard'].create({
+            'production_id': orden_m.id, 'empleado_numero': '1', 'codigo': rollo.name,
+            'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'pesar': pesar, 'kg_bruto': kg_bruto})
+        cambios = {}
+        if calidad:
+            cambios['clasificacion'] = calidad
+            if calidad in ('SEGUNDA', 'FE') and defectos:
+                cambios['defecto_ids'] = [Command.set(self.defecto.ids)]
+        if metros is not None:
+            cambios['metros'] = metros
+        if motivo:
+            cambios['motivo_ajuste'] = motivo
+        if cambios:
+            wiz.write(cambios)
+        return wiz.action_confirmar()
+
+    def _empaque_confirma_todos(self, orden_m):
+        """Empaque confirma tal cual lo que Inspección clasificó, rollo por rollo."""
+        for rollo in orden_m.rollo_final_m_ids.filtered(lambda r: r.estado == 'inspeccionado'):
+            self._clasificar_en_empaque(orden_m, rollo)
+
     def test_54_empaque_activo_el_cierre_de_kg_no_registra_la_orden_en_metros(self):
         """A3.2: con el parámetro en 1 el cierre de la orden en kg pasa los rollos a la orden en metros sin registrarlos;
         la orden en metros los registra al cerrar, con la calidad, el peso y los metros de registro."""
@@ -1282,6 +1306,9 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(final.estado, 'inspeccionado')
         self.assertEqual(final.production_m_id, orden_m)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 0.0)
+        with self.assertRaisesRegex(UserError, 'por clasificar'):
+            orden_m.button_mark_done()
+        self._clasificar_en_empaque(orden_m, final)
         orden_m.button_mark_done()
         self.assertEqual(orden_m.state, 'done')
         self.assertEqual(final.estado, 'registrado')
@@ -1326,6 +1353,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertNotEqual(orden_m.state, 'cancel')
+        self._empaque_confirma_todos(orden_m)
         orden_m.button_mark_done()
         self.assertEqual(orden_m.state, 'cancel')
         finales = orden_kg.rollo_final_kg_ids
@@ -1343,6 +1371,7 @@ class TestInspeccionEstacion(TransactionCase):
         segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
         segunda.write({'clasificacion_final': 'SEGUNDA', 'kg_neto_final': 11.5, 'metros_final': 120.0,
                        'estado': 'clasificado'})
+        self._empaque_confirma_todos(orden_m)
         orden_m.button_mark_done()
         self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA'], segunda.name), 11.5)
 
@@ -1355,3 +1384,86 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.rollo_final_kg_ids.write({'production_m_id': orden_m.id})
         with self.assertRaises(UserError):
             orden_m.button_mark_done()
+
+    # ------------------------------------------------------------------ 3.12.0: estación de Empaque (A3.3)
+    def _bano_en_empaque(self, kg=50.6, metros=585.0, calidad='PQ'):
+        self._empaque()
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, kg, metros, calidad)
+        orden_kg.button_mark_done()
+        return orden_m, orden_kg, orden_kg.rollo_final_kg_ids
+
+    def test_60_empaque_confirma_la_calidad_de_inspeccion(self):
+        """A3.3: Empaque escanea el rollo y lo confirma tal cual: queda clasificado, sin reetiquetar, con la etiqueta final."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        self.assertTrue(orden_m.clasificacion_empaque_pendiente)
+        accion = self._clasificar_en_empaque(orden_m, final)
+        self.assertEqual(final.estado, 'clasificado')
+        self.assertEqual(final.clasificacion_final, 'PQ')
+        self.assertAlmostEqual(final.metros_final, 585.0)
+        self.assertFalse(final.reetiquetado)
+        self.assertFalse(final.motivo_ajuste_final)
+        self.assertEqual(final.operador_final.split(' - ')[0], '1')
+        self.assertIn('METROS: 585.00', final.zpl_etiqueta)
+        self.assertTrue(accion, "Sale la etiqueta final")
+
+    def test_61_cambio_de_calidad_pide_motivo_y_reetiqueta(self):
+        """A3.3: cambiar la calidad o los metros pide motivo; queda reetiquetado y la etiqueta lleva lo definitivo."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        with self.assertRaisesRegex(UserError, 'motivo'):
+            self._clasificar_en_empaque(orden_m, final, calidad='FE', metros=580.0)
+        self.assertEqual(final.estado, 'inspeccionado')
+        self._clasificar_en_empaque(orden_m, final, calidad='FE', metros=580.0, motivo='Indicación de Calidad')
+        self.assertEqual(final.clasificacion_registro, 'FE')
+        self.assertAlmostEqual(final.metros_registro, 580.0)
+        self.assertTrue(final.reetiquetado)
+        self.assertEqual(final.motivo_ajuste_final, 'Indicación de Calidad')
+        self.assertEqual(final.defecto_final_ids, self.defecto)
+        self.assertIn('METROS: 580.00', final.zpl_etiqueta)
+        self.assertIn('DEFECTOS', final.zpl_etiqueta, "FE sale como PNC con sus defectos")
+        self.assertIn('Indicación de Calidad', ' '.join(orden_m.message_ids.mapped('body')))
+        orden_m.button_mark_done()
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE'], final.name), 580.0)
+
+    def test_62_peso_de_empaque_opcional_con_la_tara_compartida(self):
+        """A3.3: si Empaque pesa, el peso (con la misma tara que Inspección) manda; si no pesa, manda el de Inspección."""
+        orden_m, orden_kg, final = self._bano_en_empaque(kg=50.6, metros=585.0)
+        neto_insp = final.kg_neto
+        self._clasificar_en_empaque(orden_m, final, pesar=True, kg_bruto=50.0)
+        self.assertAlmostEqual(final.tara_final, 1.5, msg="Misma tara que Inspección («Clasificación final»)")
+        self.assertAlmostEqual(final.kg_neto_final, 48.5)
+        self.assertAlmostEqual(final.kg_registro, 48.5)
+        self.assertFalse(final.reetiquetado, "Cambiar solo el peso no cambia la calidad")
+        otro_m, otro_kg, otro = self._bano_en_empaque(kg=30.6, metros=300.0)
+        self._clasificar_en_empaque(otro_m, otro)
+        self.assertAlmostEqual(otro.kg_registro, otro.kg_neto, msg="Sin pesar manda el peso de Inspección")
+        self.assertNotAlmostEqual(final.kg_registro, neto_insp)
+
+    def test_63_validaciones_de_la_estacion(self):
+        """A3.3: rollo que no es de la orden, Segunda o FE sin defecto, rollo ya registrado."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        Wizard = self.env['rollo.empaque.clasificacion.wizard']
+        base = {'production_id': orden_m.id, 'empleado_numero': '1', 'weighing_mode': 'manual',
+                'motivo_manual': 'Prueba sin báscula'}
+        ajeno = Wizard.create(dict(base, codigo='NO-EXISTE-0001'))
+        with self.assertRaisesRegex(UserError, 'no está en'):
+            ajeno.action_confirmar()
+        with self.assertRaisesRegex(UserError, 'defecto'):
+            self._clasificar_en_empaque(orden_m, final, calidad='SEGUNDA', metros=585.0, motivo='Calidad',
+                                        defectos=False)
+        self._clasificar_en_empaque(orden_m, final)
+        orden_m.button_mark_done()
+        registrado = Wizard.create(dict(base, codigo=final.name))
+        with self.assertRaises(UserError):
+            registrado.action_confirmar()
+
+    def test_64_boton_de_la_orden_y_parametro_apagado(self):
+        """A3.3: el botón abre la estación solo con el parámetro encendido y rollos por clasificar."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        accion = orden_m.action_clasificar_empaque()
+        self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
+        self.assertEqual(accion['context']['default_production_id'], orden_m.id)
+        self._empaque('0')
+        self.assertFalse(orden_m.clasificacion_empaque_pendiente)
+        with self.assertRaises(UserError):
+            orden_m.action_clasificar_empaque()
