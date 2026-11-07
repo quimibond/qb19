@@ -268,7 +268,12 @@ class MrpRolloFinal(models.Model):
         Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
         self.ensure_one()
         datos = self._datos_etiqueta()
-        clasif = self.clasificacion
+        # 3.12.0: la etiqueta final lleva lo definitivo: lo que Empaque confirmó o cambió; sin clasificar, lo de Inspección.
+        clasificado = bool(self.clasificacion_final)
+        clasif = self.clasificacion_registro or self.clasificacion
+        metros, kg_neto = self.metros_registro, self.kg_registro
+        kg_bruto = self.kg_bruto_final if (clasificado and self.kg_neto_final > 0) else self.kg_bruto
+        siglas_defectos = self.siglas_defectos_final if clasificado else self.siglas_defectos
         pnc = clasif != 'PQ'
         fecha = fields.Datetime.context_timestamp(self, self.fecha or fields.Datetime.now())
         of = self.name.rsplit('-', 1)[0]
@@ -276,18 +281,18 @@ class MrpRolloFinal(models.Model):
             'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
             'COLOR: %s' % datos['color'],
             'ANCHO (cm): %g' % datos['ancho'],
-            ('METROS: %.2f' % self.metros, 'YARDAS: %.2f' % (self.metros * YARDAS_POR_METRO)),
-            ('KILOS: %.2f' % self.kg_neto, 'LIBRAS: %.2f' % (self.kg_neto * LIBRAS_POR_KG)) if pnc
-            else ('PESO NETO: %.2f' % self.kg_neto, 'PESO BRUTO: %.2f' % self.kg_bruto),
+            ('METROS: %.2f' % metros, 'YARDAS: %.2f' % (metros * YARDAS_POR_METRO)),
+            ('KILOS: %.2f' % kg_neto, 'LIBRAS: %.2f' % (kg_neto * LIBRAS_POR_KG)) if pnc
+            else ('PESO NETO: %.2f' % kg_neto, 'PESO BRUTO: %.2f' % kg_bruto),
             'LOTE DE PRODUCCIÓN: %s' % of,
             'NO. DE ROLLO: %s' % self.secuencia,
             'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador or ''),
             'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
         ]
-        codigos = ['%.2f;%.3f;%s;%s' % (self.metros, self.kg_neto, of, self.secuencia)]
+        codigos = ['%.2f;%.3f;%s;%s' % (metros, kg_neto, of, self.secuencia)]
         if pnc:
-            renglones.append('DEFECTOS: %s' % (self.siglas_defectos or ''))
-            codigos.append(('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip())
+            renglones.append('DEFECTOS: %s' % (siglas_defectos or ''))
+            codigos.append(('%s %s' % (self.secuencia, siglas_defectos or '')).strip())
         return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, renglones, codigos)
 
     def _zpl_etiqueta_preliminar(self):

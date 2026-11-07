@@ -225,6 +225,35 @@ class MrpProductionInspeccion(models.Model):
             'Recibe %(n)s rollos finales del baño %(b)s, clasificados por Inspección. Se registran en inventario al cerrar '
             'esta orden.', n=len(finales), b=self.name))
 
+    clasificacion_empaque_pendiente = fields.Boolean(
+        'Con rollos por clasificar en Empaque', compute='_compute_clasificacion_empaque_pendiente')
+
+    def _compute_clasificacion_empaque_pendiente(self):
+        for orden in self:
+            orden.clasificacion_empaque_pendiente = orden._insp_orden_m_en_empaque()
+
+    def action_clasificar_empaque(self):
+        """Abre la estación de Clasificación final (Empaque) de esta orden en metros (3.12.0, A3.3)."""
+        self.ensure_one()
+        if not self._insp_empaque_activo():
+            raise UserError(_('La Clasificación final en Empaque no está activa (parámetro '
+                              '«quimibond_rollos_bitacora.clasificacion_empaque»).'))
+        if self.state in ('done', 'cancel'):
+            raise UserError(_('La orden %s ya está cerrada o cancelada.', self.name))
+        if not self._insp_orden_m_en_empaque():
+            raise UserError(_('La orden %s no tiene rollos por clasificar: los baños pasan sus rollos a la orden en '
+                              'metros al cerrar la orden en kg.', self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Clasificar en Empaque'),
+            'res_model': 'rollo.empaque.clasificacion.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_production_id': self.id, **(
+                {'default_workorder_id': self.env.context['default_workorder_id']}
+                if self.env.context.get('default_workorder_id') else {})},
+        }
+
     def _insp_orden_m_en_empaque(self):
         """Orden en metros abierta con rollos finales que le pasó un baño y todavía no se registran."""
         self.ensure_one()
@@ -245,6 +274,14 @@ class MrpProductionInspeccion(models.Model):
                     'La orden en metros %(m)s recibe rollos de %(n)s baños (%(b)s). Con Clasificación final en Empaque cada '
                     'baño tiene su orden en metros (programación 1.8.0).',
                     m=orden_m.name, n=len(banos), b=', '.join(banos.mapped('name'))))
+            sin_clasificar = finales.filtered(lambda r: r.estado != 'clasificado')
+            if sin_clasificar:
+                # 3.12.0 (Dirección, 2026-11-07): Empaque confirma o cambia la calidad de cada rollo antes de cerrar.
+                nombres = ', '.join(sin_clasificar.sorted('secuencia').mapped('name')[:10])
+                raise UserError(_(
+                    'Faltan %(n)s rollos por clasificar en Empaque en %(m)s: %(r)s%(mas)s. Confirma o cambia la calidad '
+                    'de cada uno en «Clasificar en Empaque» antes de cerrar.', n=len(sin_clasificar), m=orden_m.name,
+                    r=nombres, mas='…' if len(sin_clasificar) > 10 else ''))
             if banos.state != 'done':
                 raise UserError(_('El baño %(b)s sigue abierto: cierra primero la orden en kg antes de cerrar %(m)s.',
                                   b=banos.name, m=orden_m.name))

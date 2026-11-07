@@ -35,6 +35,12 @@ class MrpWorkorder(models.Model):
                 or 'CLASIFIC' in (wo.name or '').upper()
 
     def action_clasificar_rollo(self):
+        if self.env['mrp.production']._insp_empaque_activo():
+            # 3.12.0: con el flujo de Empaque la operación abre la estación de Clasificación final de la orden en metros.
+            self.ensure_one()
+            if not self.es_clasificacion:
+                raise UserError(_('Esta operación no es de Clasificación final.'))
+            return self.production_id.with_context(default_workorder_id=self.id).action_clasificar_empaque()
         return self._abrir_ventana_operacion(
             self.es_clasificacion, 'rollo.clasificacion.wizard', _('Clasificar rollo (Clasificación final)'),
             'Clasificación final')

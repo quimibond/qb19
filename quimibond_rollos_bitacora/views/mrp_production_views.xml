@@ -21,6 +21,12 @@
             <xpath expr="(//button[@name='action_generate_serial'])[2]" position="attributes">
                 <attribute name="invisible" add="es_pesaje_rollos" separator="or"/>
             </xpath>
+            <!-- 3.12.0 (A3.3): Clasificación final en Empaque, desde la orden en metros. -->
+            <xpath expr="//header" position="inside">
+                <field name="clasificacion_empaque_pendiente" invisible="1"/>
+                <button name="action_clasificar_empaque" type="object" string="CLASIFICAR EN EMPAQUE"
+                        class="btn-primary" icon="fa-tags" invisible="not clasificacion_empaque_pendiente"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <!-- 3.3.8 (Dirección, 2026-11-05): la pestaña cuenta el proceso en orden: resumen, Rama, Inspección.
                      Solo en órdenes que pesan en Rama; las de Tejido no la ven. -->
