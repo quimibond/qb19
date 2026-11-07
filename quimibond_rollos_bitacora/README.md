@@ -241,6 +241,14 @@ que **Odoo asigna el número de baño**:
   en la bitácora del rollo.
 - **Cada baño su serie:** los rollos finales numeran por baño desde 0001, aunque varios baños abastezcan una orden en
   metros (antes compartían el consecutivo de la orden en metros).
+- **Ubicación «Químicos-Colorantes Piso» (3.8.0):** `Toluca/Stock/Químicos-Colorantes Piso`. El engomado, los químicos y
+  los colorantes se surten (requisición automática, como antes) al Piso de Tintorería y la orden en kg los consume de
+  ahí; el crudo sigue en la Ubic. 2. La migración (`hooks.configurar_piso`, idempotente) crea la ubicación si no existe,
+  guarda su id en el parámetro `quimibond_rollos_bitacora.ubicacion_piso` y en las rutas «Surtido Engomado» y «Surtido
+  Químicos y Colorantes» pone el Piso de destino en la regla que surte y de origen en la de consumo (tipo OP-KG). Un
+  producto consume del Piso si tiene —por producto (engomado) o por categoría (químicos y colorantes)— una ruta con una
+  regla que sale del Piso. Solo cuentan los componentes que la lista de materiales pone al crear la orden. Si la base no
+  tiene `Toluca/Stock`, no hace nada. Las órdenes que ya existen conservan sus movimientos.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 
