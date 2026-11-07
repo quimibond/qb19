@@ -1151,6 +1151,9 @@ class TestInspeccionEstacion(TransactionCase):
                                                    'location_id': almacen.lot_stock_id.id})
         ruta = self.env['stock.route'].create({'name': 'Surtido Engomado ZZ967 (Ubic. 1 → Producción)'})
         compania = almacen.company_id.id
+        produccion_virtual = self.env['stock.location'].search([
+            ('usage', '=', 'production'), ('company_id', 'in', [compania, False])], limit=1)
+        self.assertTrue(produccion_virtual, "La base de prueba tiene una ubicación virtual de producción")
         regla_surte = self.env['stock.rule'].create({
             'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': almacen.in_type_id.id,
             'company_id': compania,
@@ -1158,7 +1161,7 @@ class TestInspeccionEstacion(TransactionCase):
         regla_consumo = self.env['stock.rule'].create({
             'name': 'ZZ consumo', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_kg.id,
             'company_id': compania,
-            'location_src_id': ubic2.id, 'location_dest_id': self.env.ref('stock.location_production').id})
+            'location_src_id': ubic2.id, 'location_dest_id': produccion_virtual.id})
         padre = self.env['stock.location'].search([('complete_name', '=', 'Toluca/Stock')], limit=1)
         if not padre:
             # Base de prueba sin «Toluca/Stock»: el padre se da por nombre completo, como en la planta.
