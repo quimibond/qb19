@@ -178,7 +178,9 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
         self._inspeccionar(orden_kg, wo, rollos[0], 21.4, 230.0)
         final = orden_kg.rollo_final_kg_ids
-        self.assertFalse(self.env['stock.lot'].search([('name', '=', final.name)]), "El lote se crea al registrar")
+        # 3.7.0: el lote de Rama (producto en kg) se llama igual que el rollo final (producto en metros): se busca el del B.
+        self.assertFalse(self.env['stock.lot'].search([
+            ('name', '=', final.name), ('product_id', '=', orden_m.product_id.id)]), "El lote se crea al registrar")
         self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
         self.assertTrue(orden_kg.inspeccion_completa_sin_cerrar is False)
         with self.assertRaisesRegex(UserError, 'sin inspeccionar'):
