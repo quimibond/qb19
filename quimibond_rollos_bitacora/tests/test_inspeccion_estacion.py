@@ -67,11 +67,12 @@ class TestInspeccionEstacion(TransactionCase):
 
     # ------------------------------------------------------------------ armado
     def _consumir_crudo(self, orden_kg):
-        """3.3.2: la orden en kg no cierra si consume menos crudo que lo pesado en Rama. En las pruebas el crudo no tiene
-        existencia (y no es almacenable), así que se captura el consumo como lo haría el operador, salvo lo ya reservado."""
-        for move in orden_kg._moves_crudo():
-            if not move.quantity:
-                move.write({'quantity': move.product_uom_qty, 'picked': True})
+        """3.3.2: la orden en kg no cierra si consume menos crudo que lo pesado en Rama. Se deja crudo en existencia en la
+        ubicación de la orden y se reserva, como en test_27: el consumo sale de la reserva, igual que en la planta."""
+        self.crudo.write({'is_storable': True})
+        planeado = sum(orden_kg._moves_crudo().mapped('product_uom_qty'))
+        self.env['stock.quant']._update_available_quantity(self.crudo, orden_kg.location_src_id, planeado)
+        orden_kg.action_assign()
 
     def _bano(self, rollos_kg=(50.0,), en_kg=False, con_crudo=True):
         """Orden en metros (2,000 m) y la orden en kg que la abastece, ligadas como el MTO, con rollos pesados en Rama."""
