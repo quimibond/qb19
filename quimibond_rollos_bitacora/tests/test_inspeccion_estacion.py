@@ -483,7 +483,7 @@ class TestInspeccionEstacion(TransactionCase):
             'metros_rama': 600.0,
         }).action_confirmar()
         rollos = bano.rollo_bitacora_ids
-        self.assertEqual(rollos.lot_id.name, '%s-J0001' % bano.numero_bano)  # 3.5.0: Rama lleva la J
+        self.assertEqual(rollos.lot_id.name, '%s-0001' % bano.numero_bano)  # 3.7.0: la J ya va en el número
         for i, (kg_bruto, metros, calidad) in enumerate(capturas, 1):
             self._inspeccionar(bano, wo_insp, rollos, kg_bruto, metros, calidad, termina=i == len(capturas))
         return rollos
@@ -879,15 +879,13 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(texto.decode().count('^XA^PW544'), 2)
 
     def test_39_numero_de_bano(self):
-        """3.5.0: Odoo da el número de baño una sola vez (serie desde 00001), no lo copia al duplicar ni al dividir, es único
-        y da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001»."""
-        secuencia = self.env.ref('quimibond_rollos_bitacora.seq_numero_bano')
-        self.assertEqual((secuencia.padding, secuencia.code), (5, 'quimibond_rollos_bitacora.numero_bano'))
+        """3.7.0: el número de baño es el nombre de la orden sin el prefijo («TL/OP-KG/J00001» → «J00001»); se fija una sola
+        vez, no se copia al duplicar, es único y da nombre a los lotes: Rama e Inspección «<baño>-0001»."""
         _m, orden_kg, wo, rollos = self._bano((40.0,))
         self.assertFalse(orden_kg.numero_bano)
         orden_kg._asignar_numero_bano()
         numero = orden_kg.numero_bano
-        self.assertTrue(numero.isdigit() and len(numero) == 5)
+        self.assertEqual(numero, orden_kg.name.rsplit('/', 1)[-1])
         orden_kg._asignar_numero_bano()
         self.assertEqual(orden_kg.numero_bano, numero, "No cambia una vez asignado")
         self.assertFalse(orden_kg.copy().numero_bano, "Una copia no hereda el número")
@@ -897,6 +895,13 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaises(Exception), self.cr.savepoint():
             otra.numero_bano = numero
             otra.flush_recordset()
+        # Si el número del nombre ya lo tiene otra orden (una vieja numerada con la secuencia de 3.5.0), se usa el nombre
+        # completo con guiones.
+        tercera = self._bano((20.0,))[1]
+        tercera.numero_bano = False
+        self.env['mrp.production'].search([('id', '=', otra.id)]).numero_bano = tercera.name.rsplit('/', 1)[-1]
+        tercera._asignar_numero_bano()
+        self.assertEqual(tercera.numero_bano, tercera.name.replace('/', '-'))
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         self.assertEqual(orden_kg.rollo_final_kg_ids.name, '%s-0001' % numero)
         # Empezar una operación del baño le asigna el número (Tintorería lo usa al cargar el jet).
@@ -1116,3 +1121,19 @@ class TestInspeccionEstacion(TransactionCase):
         bano_1.button_mark_done()
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
+
+    def test_50_secuencias_j(self):
+        """3.7.0: las secuencias de OP-KG y OP-M llevan el prefijo «J» y arrancan en 00001; es idempotente."""
+        from odoo.addons.quimibond_rollos_bitacora.hooks import configurar_secuencias_j
+        almacen = self.env['stock.warehouse'].search([], limit=1)
+        tipo = self.env['stock.picking.type'].create({
+            'name': 'Fabricación Tela en kg (prueba J)', 'code': 'mrp_operation', 'sequence_code': 'OP-KG',
+            'warehouse_id': almacen.id})
+        prefijo = tipo.sequence_id.prefix
+        self.assertFalse((prefijo or '').endswith('J'))
+        self.assertIn(tipo, configurar_secuencias_j(self.env))
+        self.assertEqual(tipo.sequence_id.prefix, '%sJ' % prefijo)
+        self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00001'))
+        configurar_secuencias_j(self.env)
+        self.assertEqual(tipo.sequence_id.prefix, '%sJ' % prefijo, "Idempotente: no agrega otra J")
+        self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00002'), "Ni reinicia el consecutivo")

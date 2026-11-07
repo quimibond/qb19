@@ -116,10 +116,10 @@ class TestRollos(TransactionCase):
         self.assertFalse(wiz.tara_faltante)
         self.assertAlmostEqual(wiz.kg_neto, 51.9)
         self.assertEqual(wiz.secuencia, 1)
-        self.assertEqual(wiz.lote_name, '(baño)-J0001')  # vista previa: el número se asigna al confirmar
+        self.assertEqual(wiz.lote_name, '(baño)-0001')  # vista previa: el número se asigna al confirmar
         self.orden._asignar_numero_bano()
         wiz = self.env['rollo.pesaje.rama.wizard'].new({'production_id': self.orden.id, 'kg_bruto': 53.0})
-        self.assertEqual(wiz.lote_name, '%s-J0001' % self.orden.numero_bano)  # 3.5.0
+        self.assertEqual(wiz.lote_name, '%s-0001' % self.orden.numero_bano)  # 3.7.0: sin J aparte
 
     def test_09_etiqueta_de_rama_68_x_38(self):
         """3.4.0: la etiqueta de Rama mide 68 x 38 mm y lleva artículo, orden, fecha, centro, kg y el código del lote."""
