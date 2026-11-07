@@ -1186,3 +1186,47 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(datos['location_id'], piso.id, "El engomado sale del Piso")
         crudo = orden_kg._get_move_raw_values(self.prod_kg, 1.0, self.kg)
         self.assertNotEqual(crudo['location_id'], piso.id, "Lo que no pasa por el Piso sigue en la ubicación de la orden")
+
+    def test_52_sobrante_del_piso_regresa_a_su_origen(self):
+        """3.9.0: lo que se surtió al Piso y la orden en kg no consumió regresa a la ubicación de donde salió (transferencia
+        interna ligada a la orden); lo consumido no se devuelve. Sin sobrante no se crea nada."""
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ968', 'sequence_code': 'OP-KG'})
+        piso = self.env['stock.location'].create({
+            'name': 'Piso ZZ968', 'usage': 'internal', 'location_id': almacen.lot_stock_id.id})
+        origen = self.env['stock.location'].create({
+            'name': 'Origen ZZ968', 'usage': 'internal', 'location_id': almacen.lot_stock_id.id})
+        produccion = self.env['stock.location'].search([
+            ('usage', '=', 'production'), ('company_id', 'in', [almacen.company_id.id, False])], limit=1)
+        quimico = self.env['product.product'].create({
+            'name': 'Químico ZZ968', 'default_code': 'QZZ968', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id})
+        self.env['stock.quant']._update_available_quantity(quimico, origen, 10.0)
+        surtido = self.env['stock.move'].create({
+            'product_id': quimico.id, 'product_uom': self.kg.id, 'product_uom_qty': 10.0,
+            'location_id': origen.id, 'location_dest_id': piso.id})
+        surtido._action_confirm()
+        surtido._action_assign()
+        surtido.picked = True
+        surtido._action_done()
+        self.assertEqual(surtido.state, 'done')
+        orden = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
+            'picking_type_id': tipo_kg.id})
+        consumo = self.env['stock.move'].create({
+            'product_id': quimico.id, 'product_uom': self.kg.id, 'product_uom_qty': 10.0,
+            'location_id': piso.id, 'location_dest_id': produccion.id,
+            'raw_material_production_id': orden.id, 'move_orig_ids': [Command.link(surtido.id)]})
+        consumo._action_confirm()
+        consumo._action_assign()
+        consumo.write({'quantity': 6.0, 'picked': True})
+        consumo._action_done()
+        self.assertEqual(consumo.state, 'done')
+        transferencias = orden._devolver_sobrante_piso_orden(piso)
+        self.assertEqual(len(transferencias), 1)
+        self.assertEqual(transferencias.state, 'done')
+        self.assertEqual(transferencias.location_dest_id, origen)
+        Quant = self.env['stock.quant']
+        self.assertAlmostEqual(Quant._get_available_quantity(quimico, origen, strict=True), 4.0)
+        self.assertAlmostEqual(Quant._get_available_quantity(quimico, piso, strict=True), 0.0)
+        self.assertFalse(orden._devolver_sobrante_piso_orden(piso), "Sin sobrante no se crea otra transferencia")
