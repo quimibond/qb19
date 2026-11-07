@@ -1150,12 +1150,14 @@ class TestInspeccionEstacion(TransactionCase):
         ubic2 = self.env['stock.location'].create({'name': 'ZZ2 PRODUCCIÓN', 'usage': 'internal',
                                                    'location_id': almacen.lot_stock_id.id})
         ruta = self.env['stock.route'].create({'name': 'Surtido Engomado ZZ967 (Ubic. 1 → Producción)'})
-        tipo_req = self.env['stock.picking.type'].search([('code', '=', 'incoming')], limit=1)
+        compania = almacen.company_id.id
         regla_surte = self.env['stock.rule'].create({
-            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_req.id,
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': almacen.in_type_id.id,
+            'company_id': compania,
             'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': ubic2.id})
         regla_consumo = self.env['stock.rule'].create({
             'name': 'ZZ consumo', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_kg.id,
+            'company_id': compania,
             'location_src_id': ubic2.id, 'location_dest_id': self.env.ref('stock.location_production').id})
         padre = self.env['stock.location'].search([('complete_name', '=', 'Toluca/Stock')], limit=1)
         if not padre:
