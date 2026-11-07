@@ -19,10 +19,16 @@ archivado como borrador del flujo, y los tiempos, la capacidad de los jets y la 
 Saldos (2.24.0, Dirección General 2026-11-03): la lista en metros lleva de subproductos los dos saldos en kg en que
 se venden las segundas y el desperdicio de la clasificación (``SALDO DE TELA TEJIDO`` y ``SALDO TEJIDO D``; las
 referencias están en los parámetros ``quimibond_ficha_tecnica_tela.saldo_segunda`` y ``.saldo_desperdicio``), con
-cantidad 0: la real es el peso de cada rollo al clasificar. **La lista en metros no lleva operaciones**: Inspección
-(en la orden en kg) corta, pesa, clasifica y etiqueta cada rollo, y la orden en metros se registra sola al cerrar el
-baño; sin paso «Clasificación final» en la ruta, «Generar listas» le quita la de Empaque. Diseño:
+cantidad 0: la real es el peso de cada rollo al clasificar. Diseño:
 ``docs/superpowers/specs/2026-11-03-inspeccion-clasificacion-rollos-design.md``.
+
+Clasificación final en Empaque (2.28.0, Dirección General 2026-11-07, el diseño de la Clasificación final en Empaque
+sustituye al de la Inspección única de 2.24.0): la lista en metros vuelve a llevar **una operación, CLASIFICACION, en
+el centro EMPAQUE**. Inspección pesa y clasifica el rollo de forma preliminar en la orden en kg; Empaque confirma o
+cambia la clasificación de cada rollo en la orden en metros (``quimibond_rollos_bitacora``, interruptor
+``clasificacion_empaque``). El paso «Clasificación final» de la ruta de familia es el de la lista en metros; mientras
+no se mide cuánto tarda Calidad en dictaminar, su tiempo es provisional: 400 m por hora (ciclo de 60 min para 400 m,
+con la capacidad de 400 m dada de alta en EMPAQUE para cada tela en metros).
 """
 from collections import Counter
 
@@ -63,6 +69,11 @@ DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
 # kg», de 2 PRODUCCIÓN a 10 INSPECCIÓN, y 411 «Fabricación Tela en m», de 10 INSPECCIÓN a 14 PT PQ). Sin él, la orden
 # toma el tipo de fabricación predeterminado del almacén («Re-proceso Tintorería»).
 TIPO_OPERACION = {'kg': 'OP-KG', 'm': 'OP-M'}
+# 2.28.0: Clasificación final en Empaque (provisional, 2026-11-07: Calidad aún no mide cuánto tarda en dictaminar).
+# Odoo divide la cantidad entre la capacidad del centro (metros por ciclo) y multiplica por el tiempo del ciclo.
+CENTRO_EMPAQUE = 'EMPAQUE'
+CLASIFICACION_M_POR_CICLO = 400.0
+CLASIFICACION_MIN_POR_CICLO = 60.0
 # 2.25.0 (piloto en el build de main, 2026-11-04): sin la ruta MTO en el «I…» la orden en metros no pide la orden en kg.
 # Es la ruta cuya regla de fabricación usa el tipo «Fabricación Tela en kg» (en producción, «Fabricar Tela kg →
 # Inspección (MTO)», id 180, sin productos hasta hoy).
@@ -110,7 +121,7 @@ class FichaTecnicaRuta(models.Model):
     def _compute_resumen(self):
         for ruta in self:
             partes = []
-            for paso in ruta.paso_ids.filtered(lambda p: p.paso != 'clasificacion').sorted(lambda p: (p.sequence, p.id)):
+            for paso in ruta.paso_ids.sorted(lambda p: (p.sequence, p.id)):
                 texto = paso.workcenter_id.name or ('%s (sin máquina)' % dict(PASOS)[paso.paso])
                 if paso.condicion != 'siempre':
                     texto += ' (%s)' % dict(CONDICIONES)[paso.condicion].lower()
@@ -129,6 +140,45 @@ class FichaTecnicaRuta(models.Model):
     # ------------------------------------------------------------------
     # Armar las rutas desde las listas que ya existen
     # ------------------------------------------------------------------
+    @api.model
+    def _ft_centro_empaque(self):
+        """El centro de trabajo EMPAQUE: el que existe (se reactiva si está archivado) o uno nuevo con ese nombre."""
+        Centro = self.env['mrp.workcenter'].with_context(active_test=False)
+        centro = Centro.search([('name', '=ilike', CENTRO_EMPAQUE)], limit=1, order='active desc, id')
+        if centro and not centro.active:
+            centro.active = True
+        return centro or Centro.create({'name': CENTRO_EMPAQUE})
+
+    @api.model
+    def _ft_poner_clasificacion_rutas(self):
+        """2.28.0 (migración y pruebas): el paso «Clasificación final» en las rutas que no lo tienen, la operación en
+        las listas en metros archivadas del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas
+        activas no se tocan. Devuelve {'rutas', 'listas', 'capacidades', 'avisos'}."""
+        Paso = self.env['ficha.tecnica.ruta.paso']
+        rutas = self.with_context(active_test=False).search([]).filtered(
+            lambda r: 'clasificacion' not in r.paso_ids.mapped('paso'))
+        if rutas:
+            empaque = self._ft_centro_empaque()
+            Paso.create([{'ruta_id': r.id, 'paso': 'clasificacion', 'sequence': SECUENCIA['clasificacion'],
+                          'workcenter_id': empaque.id, 'tiempo': CLASIFICACION_MIN_POR_CICLO} for r in rutas])
+        self.env.invalidate_all()
+        listas = 0
+        avisos = []
+        Capacidad = self.env['mrp.workcenter.capacity']
+        capacidades = Capacidad.search_count([])
+        Bom = self.env['mrp.bom'].with_context(active_test=False)
+        for ficha in self.env['ficha.tecnica.acabado'].search([('product_acabado_id', '!=', False)]):
+            tela_m = ficha.product_acabado_id
+            # el borrador del flujo, aunque no tenga operaciones (el criterio de «_ft_bom_de» las prefiere)
+            for bom_m in Bom.search([('product_tmpl_id', '=', tela_m.product_tmpl_id.id), ('code', '=', CODIGO_M),
+                                     ('active', '=', False)]):
+                antes = bom_m.operation_ids
+                avisos += ficha._ft_poner_clasificacion(bom_m)
+                listas += bom_m.operation_ids != antes
+            ficha._ft_poner_capacidad_clasificacion(tela_m)
+        return {'rutas': len(rutas), 'listas': listas,
+                'capacidades': Capacidad.search_count([]) - capacidades, 'avisos': avisos}
+
     @api.model
     def _ft_paso_de_operacion(self, op):
         tipo = op.workcenter_id.ft_tipo_id.code
@@ -182,6 +232,7 @@ class FichaTecnicaRuta(models.Model):
             planta[paso] = total.most_common(1)[0][0] if total else False
         rutas = {ruta.crudo_id: ruta for ruta in Ruta.search([])}
         creadas = completadas = 0
+        empaque = self.env['mrp.workcenter']
         nombres = dict(PASOS)
         for crudo, (por_paso, clasif, por_tela) in datos.items():
             familia = {paso: contador.most_common(1)[0][0] for paso, contador in por_paso.items()}
@@ -192,8 +243,11 @@ class FichaTecnicaRuta(models.Model):
                 if paso in existentes:
                     continue
                 if paso == 'clasificacion':
-                    # 2.24.0: la lista en metros no lleva operación (la inspección pesa, clasifica y etiqueta en la
-                    # orden en kg; Dirección General 2026-11-03). No se arma el paso desde listas viejas con Empaque.
+                    # 2.28.0: la lista en metros lleva CLASIFICACION en Empaque (la Clasificación final se confirma en
+                    # la orden en metros). Siempre en el centro EMPAQUE, no en la circular que traiga una lista vieja.
+                    empaque = empaque or self._ft_centro_empaque()
+                    nuevos.append({'paso': paso, 'sequence': SECUENCIA[paso], 'workcenter_id': empaque.id,
+                                   'tiempo': CLASIFICACION_MIN_POR_CICLO})
                     continue
                 wc = familia.get(paso)
                 if not wc and paso in PASOS_TODAS:
@@ -270,9 +324,10 @@ class FichaTecnicaRutaPaso(models.Model):
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina',
                                     help='Sin máquina, el paso no se genera y se avisa al generar las listas.')
     condicion = fields.Selection(CONDICIONES, string='Cuándo', required=True, default='siempre')
-    tiempo = fields.Float(string='Tiempo fijo (min por unidad)', digits=(12, 4),
-                          help='Solo para pasos cuyo tiempo no sale de la ficha (por ejemplo, la Clasificación final). '
-                               'Los demás tiempos los calcula «Usar los datos de la ficha».')
+    tiempo = fields.Float(string='Tiempo fijo (min por ciclo)', digits=(12, 4),
+                          help='Solo para pasos cuyo tiempo no sale de la ficha (por ejemplo, la Clasificación final: '
+                               '60 min por ciclo de 400 m, la capacidad del centro). Los demás tiempos los calcula '
+                               '«Usar los datos de la ficha».')
 
     @api.onchange('paso')
     def _onchange_paso(self):
@@ -368,6 +423,35 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
         viejas.unlink()
         return avisos
 
+    def _ft_poner_capacidad_clasificacion(self, tela_m):
+        """2.28.0: la capacidad de la tela en metros en el centro de la Clasificación final (400 m por ciclo,
+        provisional). Si ya tiene renglón de capacidad (en su unidad), no se toca. Devuelve los renglones creados."""
+        self.ensure_one()
+        Capacidad = self.env['mrp.workcenter.capacity']
+        creados = Capacidad
+        for paso, wc in self._ft_pasos('m'):
+            if paso.paso != 'clasificacion' or not wc:
+                continue
+            if wc.capacity_ids.filtered(lambda c: c.product_id == tela_m and c.product_uom_id == tela_m.uom_id):
+                continue
+            creados |= Capacidad.create({'workcenter_id': wc.id, 'product_id': tela_m.id,
+                                         'product_uom_id': tela_m.uom_id.id,
+                                         'capacity': CLASIFICACION_M_POR_CICLO})
+        return creados
+
+    def _ft_poner_clasificacion(self, bom_m):
+        """2.28.0: la operación CLASIFICACION (y la capacidad de la tela en el centro) en una lista en metros que ya
+        existe, archivada o activa, según el paso de la ruta de su familia. Sin paso en la ruta no hace nada (no
+        quita operaciones que alguien puso a mano). Devuelve los avisos."""
+        self.ensure_one()
+        tela_m = bom_m.product_id or bom_m.product_tmpl_id.product_variant_id
+        pasos = self._ft_pasos('m')
+        if not pasos or not tela_m:
+            return []
+        avisos = self._ft_poner_operaciones(bom_m, pasos, tela_m)
+        self._ft_poner_capacidad_clasificacion(tela_m)
+        return avisos
+
     def _ft_poner_saldos(self, bom):
         """Subproductos de saldo (segundas y desperdicio, en kg) en la lista en metros, con cantidad 0. Los que ya
         están no se tocan; una referencia que no existe se avisa y se omite (no se inventa el producto)."""
@@ -447,6 +531,7 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
                         'bom_line_ids': [(0, 0, {'product_id': kg.id, 'product_qty': kg_por_m,
                                                  'product_uom_id': kg.uom_id.id})]})
                 avisos += self._ft_poner_operaciones(bom_m, self._ft_pasos('m'), tela_m)
+                self._ft_poner_capacidad_clasificacion(tela_m)
                 avisos += self._ft_poner_saldos(bom_m)
                 avisos += bom_m._ft_poner_tipo_operacion('m')
                 bom_m._ft_poner_consumo_flexible()
@@ -474,6 +559,32 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
 
 class MrpBomDesperdicioRama(models.Model):
     _inherit = 'mrp.bom'
+
+    def _ft_poner_clasificacion(self):
+        """2.28.0: la operación CLASIFICACION (EMPAQUE) y la capacidad en una lista en metros del flujo, según la ruta de
+        la familia de su tela. Se llama al activar la lista (visto bueno de Ingeniería) y desde el botón. Devuelve avisos."""
+        avisos = []
+        Acabado = self.env['ficha.tecnica.acabado']
+        for bom in self:
+            ficha = Acabado.search([('product_acabado_id.product_tmpl_id', '=', bom.product_tmpl_id.id)], limit=1)
+            if not ficha:
+                avisos.append('%s: no tiene ficha de acabado; no se pone la Clasificación final.'
+                              % (bom.product_tmpl_id.default_code or bom.product_tmpl_id.name))
+                continue
+            if not ficha.ruta_familia_id.paso_ids.filtered(lambda p: p.paso == 'clasificacion'):
+                avisos.append('%s: la ruta de su familia no tiene el paso «Clasificación final».' % ficha.articulo)
+                continue
+            avisos += ficha._ft_poner_clasificacion(bom)
+        return avisos
+
+    def action_ft_poner_clasificacion(self):
+        """Botón de la lista en metros: pone la operación CLASIFICACION en EMPAQUE y la capacidad de la tela (también en
+        una lista activa: es decisión explícita de Ingeniería, ninguna migración la toca)."""
+        avisos = self._ft_poner_clasificacion()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
+            'title': 'Clasificación final', 'type': 'warning' if avisos else 'success',
+            'message': ' '.join(avisos) if avisos else 'Operación CLASIFICACION en EMPAQUE y capacidad listas.',
+            'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
 
     def _ft_poner_desperdicio(self):
         """2.25.0: deja en la lista en kg el subproducto «Desperdicio Tejido» en la operación de Rama, con cantidad 0.
@@ -572,6 +683,7 @@ class MrpBomDesperdicioRama(models.Model):
                 bom._ft_poner_ruta_flujo('kg')
             elif bom.code == CODIGO_M:
                 bom._ft_poner_tipo_operacion('m')
+                bom._ft_poner_clasificacion()
                 self.env['ficha.tecnica.acabado']._ft_poner_saldos(bom)
                 bom._ft_poner_ruta_flujo('m')
             else:
