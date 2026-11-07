@@ -32,6 +32,12 @@ from odoo.tools import float_compare, float_is_zero
 from .mrp_rollo_bitacora import CLASIFICACIONES
 
 PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
+# 3.11.0 (A3.2): con el parámetro en «1», el cierre de la orden en kg ya no registra ni cierra la orden en metros: los rollos
+# finales pasan a ella clasificados por Inspección (preliminar) y se registran al cerrar la orden en metros, ya con la
+# clasificación definitiva de Empaque. Sin el parámetro (por defecto) todo funciona como en 3.10.0.
+PARAM_CLASIFICACION_EMPAQUE = 'quimibond_rollos_bitacora.clasificacion_empaque'
+# Rollos finales que aún no se registran en inventario: recién inspeccionados o ya clasificados en Empaque.
+ESTADOS_SIN_REGISTRAR = ('inspeccionado', 'clasificado')
 
 
 class MrpProductionInspeccion(models.Model):
@@ -144,19 +150,29 @@ class MrpProductionInspeccion(models.Model):
           saldos aparte (Odoo no cierra una orden con cero de su producto).
         """
         self.ensure_one()
-        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         if not finales:
             return False
-        if not finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE')):
+        if not finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')):
             return 'saldos'
         return 'metros' if finales.production_m_id else 'kg'
 
     def button_mark_done(self):
+        # 3.11.0: con la Clasificación final en Empaque activa, cerrar la orden en metros es lo que registra sus rollos
+        # finales (con la calidad definitiva); el cierre de la orden en kg solo se los pasa.
+        if not self.env.context.get('qb_insp_desde_empaque'):
+            en_empaque = self.filtered(lambda o: o._insp_orden_m_en_empaque())
+            if en_empaque:
+                res = en_empaque._insp_cerrar_desde_empaque()
+                resto = self - en_empaque
+                return resto.button_mark_done() if resto else res
         modos, avisos = {}, {}
         for orden in self.filtered('rollo_final_kg_ids'):
             modo = orden._insp_modo()
             if not modo:
                 continue
+            if modo in ('metros', 'saldos') and orden._insp_difiere_a_empaque():
+                modo = 'empaque'
             orden._validar_rollos_inspeccionados()
             avisos[orden.id] = orden._insp_aviso_cierre(orden.product_qty)
             modos[orden.id] = modo
@@ -169,6 +185,8 @@ class MrpProductionInspeccion(models.Model):
             modo = modos[orden.id]
             if modo == 'metros':
                 orden._insp_registrar_metros()
+            elif modo == 'empaque':
+                orden._insp_pasar_a_orden_m()
             elif modo == 'kg':
                 orden._insp_registrar_kg()
             else:
@@ -177,6 +195,66 @@ class MrpProductionInspeccion(models.Model):
                 orden.message_post(body=avisos[orden.id])
         return res
 
+    # ------------------------------------------------------------ Clasificación final en Empaque (3.11.0, A3.2)
+    @api.model
+    def _insp_empaque_activo(self):
+        """El parámetro ``clasificacion_empaque`` en «1» enciende el flujo con Empaque; apagado (por defecto), el cierre de
+        la orden en kg registra y cierra la orden en metros como siempre."""
+        return (self.env['ir.config_parameter'].sudo().get_param(PARAM_CLASIFICACION_EMPAQUE) or '').strip() == '1'
+
+    def _insp_difiere_a_empaque(self):
+        """Orden en kg: ¿sus rollos finales pasan a la orden en metros sin registrarse? Solo si el flujo con Empaque está
+        activo y hay orden en metros abierta; un baño para venta en kg (sin orden en metros) cierra como siempre."""
+        self.ensure_one()
+        return self._insp_empaque_activo() and bool(self._insp_orden_metros())
+
+    def _insp_pasar_a_orden_m(self):
+        """Cierre de la orden en kg con el flujo de Empaque: los rollos finales (clasificados por Inspección) quedan ligados a
+        la orden en metros, sin movimientos de inventario; ahí Empaque los confirma o cambia y la orden los registra al
+        cerrar."""
+        self.ensure_one()
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
+        orden_m = self._insp_orden_metros()
+        if orden_m.state == 'draft':
+            orden_m.action_confirm()
+        finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
+        self.message_post(body=_(
+            'Baño cerrado: %(n)s rollos finales (%(kg).2f kg) pasan a %(m)s, pendientes de Clasificación final en '
+            'Empaque.', n=len(finales), kg=sum(finales.mapped('kg_neto')), m=orden_m.name))
+        orden_m.message_post(body=_(
+            'Recibe %(n)s rollos finales del baño %(b)s, clasificados por Inspección. Se registran en inventario al cerrar '
+            'esta orden.', n=len(finales), b=self.name))
+
+    def _insp_orden_m_en_empaque(self):
+        """Orden en metros abierta con rollos finales que le pasó un baño y todavía no se registran."""
+        self.ensure_one()
+        if self.state in ('done', 'cancel') or not self._insp_empaque_activo():
+            return False
+        return bool(self.rollo_final_m_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR))
+
+    def _insp_cerrar_desde_empaque(self):
+        """Cierre de la orden en metros con rollos pendientes: registra el baño con la calidad, el peso y los metros de
+        registro de cada rollo (los de Empaque si ya clasificó, si no los de Inspección). Con primera o FE registra la tela
+        y cierra la orden; sin ellas (todo saldos) cancela la orden en metros y saca los saldos en una orden aparte, la
+        misma lógica de 3.2.0. Un baño por orden en metros (programación 1.8.0)."""
+        for orden_m in self:
+            finales = orden_m.rollo_final_m_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
+            banos = finales.production_id
+            if len(banos) != 1:
+                raise UserError(_(
+                    'La orden en metros %(m)s recibe rollos de %(n)s baños (%(b)s). Con Clasificación final en Empaque cada '
+                    'baño tiene su orden en metros (programación 1.8.0).',
+                    m=orden_m.name, n=len(banos), b=', '.join(banos.mapped('name'))))
+            if banos.state != 'done':
+                raise UserError(_('El baño %(b)s sigue abierto: cierra primero la orden en kg antes de cerrar %(m)s.',
+                                  b=banos.name, m=orden_m.name))
+            registrar = banos.with_context(qb_insp_desde_empaque=True)
+            if finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')):
+                registrar._insp_registrar_metros()
+            else:
+                registrar._insp_registrar_saldos()
+        return True
+
     # ------------------------------------------------------------ baño en kg (3.2.0)
     def _insp_preparar_kg(self):
         """Antes del cierre de un baño en kg: el terminado de la orden en kg son los rollos finales (no los de Rama),
@@ -184,22 +262,22 @@ class MrpProductionInspeccion(models.Model):
         17. El cierre de José iguala la orden a la suma de esas líneas."""
         self.ensure_one()
         Final = self.env['mrp.rollo.final']
-        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         terminado = self.move_finished_ids.filtered(
             lambda m: m.product_id == self.product_id and m.state not in ('done', 'cancel'))[:1]
         if not terminado:
             raise UserError(_('La orden %s no tiene movimiento del acabado en kg pendiente.', self.name))
         terminado.move_line_ids.unlink()
-        for rollo in finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE')).sorted('secuencia'):
-            destino = Final._ubicacion_calidad(rollo.clasificacion, desarrollo=self.es_desarrollo)
+        for rollo in finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')).sorted('secuencia'):
+            destino = Final._ubicacion_calidad(rollo.clasificacion_registro, desarrollo=self.es_desarrollo)
             lote = self._insp_lote(self.product_id, rollo.name, self.company_id)
             self.env['stock.move.line'].create({
                 'move_id': terminado.id, 'product_id': self.product_id.id, 'lot_id': lote.id, 'lot_name': lote.name,
-                'quantity': rollo.kg_neto, 'location_id': terminado.location_id.id, 'location_dest_id': destino.id,
+                'quantity': rollo.kg_registro, 'location_id': terminado.location_id.id, 'location_dest_id': destino.id,
                 'production_id': self.id})
             rollo.write({'product_id': self.product_id.id, 'lot_id': lote.id, 'location_dest_id': destino.id})
         for clasificacion in ('SEGUNDA', 'DESP'):
-            grupo = finales.filtered(lambda r: r.clasificacion == clasificacion)
+            grupo = finales.filtered(lambda r: r.clasificacion_registro == clasificacion)
             if grupo:
                 movimiento = self._insp_movimiento_saldo(clasificacion, terminado)
                 self._insp_lineas_saldo(movimiento, grupo)
@@ -230,23 +308,23 @@ class MrpProductionInspeccion(models.Model):
 
     def _insp_lineas_saldo(self, movimiento, grupo):
         producto = movimiento.product_id
-        destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion)
+        destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion_registro)
         movimiento.move_line_ids.unlink()
         movimiento.with_context(do_not_unreserve=True).write({
-            'product_uom_qty': producto.uom_id.round(sum(grupo.mapped('kg_neto'))), 'location_dest_id': destino.id})
+            'product_uom_qty': producto.uom_id.round(sum(grupo.mapped('kg_registro'))), 'location_dest_id': destino.id})
         for rollo in grupo.sorted('secuencia'):
             lote = self._insp_lote(producto, rollo.name, self.company_id) if producto.tracking != 'none' \
                 else self.env['stock.lot']
             self.env['stock.move.line'].create({
                 'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': lote.id or False,
-                'quantity': rollo.kg_neto, 'location_id': movimiento.location_id.id, 'location_dest_id': destino.id,
+                'quantity': rollo.kg_registro, 'location_id': movimiento.location_id.id, 'location_dest_id': destino.id,
                 'production_id': movimiento.production_id.id})
             rollo.write({'product_id': producto.id, 'lot_id': lote.id or False, 'location_dest_id': destino.id})
         movimiento.picked = True
 
     def _insp_registrar_kg(self):
         self.ensure_one()
-        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         faltan = finales.filtered(lambda r: not r.lot_id)
         if faltan:
             raise UserError(_('No se registraron los rollos finales %s del baño %s.',
@@ -254,15 +332,15 @@ class MrpProductionInspeccion(models.Model):
         finales.write({'estado': 'registrado'})
         self.message_post(body=_(
             'Baño cerrado en kg: %(n)s rollos finales con su peso real (%(kg).2f kg de primera y FE; %(s).2f kg de '
-            'saldos).', n=len(finales), kg=sum(finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE')).mapped('kg_neto')),
-            s=sum(finales.filtered(lambda r: r.clasificacion in ('SEGUNDA', 'DESP')).mapped('kg_neto'))))
+            'saldos).', n=len(finales), kg=sum(finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')).mapped('kg_neto')),
+            s=sum(finales.filtered(lambda r: r.clasificacion_registro in ('SEGUNDA', 'DESP')).mapped('kg_neto'))))
 
     # ------------------------------------------------------- baño sin primera ni FE (3.2.0)
     def _insp_registrar_saldos(self):
         """Después del cierre (los rollos de Rama ya están en inventario): una orden de saldos consume los rollos de Rama
         completos y saca cada rollo final como saldo en kg, con su lote, a 16 o 17."""
         self.ensure_one()
-        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         rama = finales.bitacora_ids
         Final = self.env['mrp.rollo.final']
         # 3.3.0: la orden en metros (si hay) ya no se cancela antes del cierre: al cerrar, el MTO le reservó estos rollos;
@@ -272,10 +350,10 @@ class MrpProductionInspeccion(models.Model):
         if orden_m:
             orden_m.move_raw_ids.move_line_ids.filtered(
                 lambda ml: ml.lot_id in rama.lot_id and ml.state not in ('done', 'cancel')).unlink()
-        por_saldo = {c: finales.filtered(lambda r, c=c: r.clasificacion == c) for c in ('SEGUNDA', 'DESP')}
-        principal_c = max(por_saldo, key=lambda c: sum(por_saldo[c].mapped('kg_neto')))
+        por_saldo = {c: finales.filtered(lambda r, c=c: r.clasificacion_registro == c) for c in ('SEGUNDA', 'DESP')}
+        principal_c = max(por_saldo, key=lambda c: sum(por_saldo[c].mapped('kg_registro')))
         principal = Final._producto_saldo(principal_c)
-        kg_principal = principal.uom_id.round(sum(por_saldo[principal_c].mapped('kg_neto')))
+        kg_principal = principal.uom_id.round(sum(por_saldo[principal_c].mapped('kg_registro')))
         Tipo = self.env['stock.picking.type']
         tipo = Tipo.search([('code', '=', 'mrp_operation'), ('sequence_code', '=', 'OP-M'),
                             ('company_id', 'in', [self.company_id.id, False])], limit=1) or self.picking_type_id
@@ -348,7 +426,7 @@ class MrpProductionInspeccion(models.Model):
         baño produce solo sus metros y la orden en metros deja pendiente (backorder nativo) lo planeado de esos baños; el
         último baño la cierra con sus metros reales, sin pendiente (D7)."""
         self.ensure_one()
-        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado == 'inspeccionado')
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         if not finales:
             return
         orden_m = self._insp_orden_metros() or finales.production_m_id.filtered(
@@ -361,10 +439,10 @@ class MrpProductionInspeccion(models.Model):
         finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
         Final = self.env['mrp.rollo.final']
         rama = finales.bitacora_ids
-        primeras = finales.filtered(lambda r: r.clasificacion in ('PQ', 'FE'))
+        primeras = finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE'))
         saldos = finales - primeras
         uom_m = orden_m.product_id.uom_id
-        total_m = uom_m.round(sum(primeras.mapped('metros')))
+        total_m = uom_m.round(sum(primeras.mapped('metros_registro')))
         if float_is_zero(total_m, precision_rounding=uom_m.rounding):
             raise UserError(_(
                 'El baño %s no tiene rollos de primera ni FE: la orden en metros %s no puede cerrar en cero. Revisa la '
@@ -413,18 +491,18 @@ class MrpProductionInspeccion(models.Model):
         terminado.with_context(do_not_unreserve=True).write({'product_uom_qty': cantidad})
         desarrollo = orden_m.es_desarrollo or self.es_desarrollo
         for rollo in primeras.sorted('secuencia'):
-            destino = Final._ubicacion_calidad(rollo.clasificacion, desarrollo=desarrollo)
+            destino = Final._ubicacion_calidad(rollo.clasificacion_registro, desarrollo=desarrollo)
             lote = self._insp_lote(orden_m.product_id, rollo.name, orden_m.company_id)
             self.env['stock.move.line'].create({
                 'move_id': terminado.id, 'product_id': orden_m.product_id.id, 'lot_id': lote.id,
-                'quantity': rollo.metros, 'location_id': terminado.location_id.id,
+                'quantity': rollo.metros_registro, 'location_id': terminado.location_id.id,
                 'location_dest_id': destino.id, 'production_id': orden_m.id})
             rollo.write({'product_id': orden_m.product_id.id, 'lot_id': lote.id, 'location_dest_id': destino.id})
 
         # 4. Los saldos en kg (subproductos de la lista en metros, cantidad 0 en la lista; la real es el peso). Si la
         #    lista no los trae, se agregan a la orden (3.2.0).
         for clasificacion in ('SEGUNDA', 'DESP'):
-            grupo = saldos.filtered(lambda r: r.clasificacion == clasificacion)
+            grupo = saldos.filtered(lambda r: r.clasificacion_registro == clasificacion)
             if grupo:
                 orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo)
             else:
@@ -462,7 +540,7 @@ class MrpProductionInspeccion(models.Model):
             pendiente._insp_limpiar_saldos(pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos_prod))
         self.message_post(body=_(
             'Baño cerrado: %(n)s rollos finales registrados en %(m)s (%(mts).2f m de primera y FE; %(kg).2f kg de '
-            'saldos).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_neto')),
+            'saldos).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_registro')),
             p=(_(' Queda pendiente %s para los baños %s.', pendiente[:1].name, ', '.join(otros.mapped('name')))
                if pendiente else '')))
 
