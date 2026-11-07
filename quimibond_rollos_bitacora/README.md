@@ -259,6 +259,13 @@ que **Odoo asigna el número de baño**:
   y defectos, el operador y la fecha, y el estado pasa por «Clasificado en Empaque» antes de «Registrado». Los campos «de
   registro» (`clasificacion_registro`, `kg_registro`, `metros_registro`) valen lo de Empaque si ya clasificó y, si no, lo de
   Inspección; con ellos registrará la orden en metros (A3.2). Esta versión solo agrega campos y vistas.
+- **Registro en la orden en metros (3.11.0, A3.2):** parámetro `quimibond_rollos_bitacora.clasificacion_empaque`. En «1», al
+  cerrar la orden en kg los rollos finales pasan a la orden en metros (nota en las dos) sin tocar inventario, y la orden en
+  metros los registra al cerrarse (PQ y FE a 14 y 15 en metros, Segunda y Desperdicio a 16 y 17 en kg) con la calidad, el
+  peso y los metros de registro. Si ningún rollo queda en primera ni FE, se cancela la orden en metros y los saldos salen en
+  una orden aparte (como en 3.2.0). Exige un baño por orden en metros y el baño cerrado. Sin el parámetro (por defecto), el
+  cierre de la orden en kg registra y cierra la orden en metros como siempre; el baño para venta en kg no cambia. La estación
+  de Empaque que llena los campos definitivos viene en A3.3.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 
