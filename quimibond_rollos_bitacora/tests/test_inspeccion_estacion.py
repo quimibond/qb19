@@ -1467,3 +1467,65 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(orden_m.clasificacion_empaque_pendiente)
         with self.assertRaises(UserError):
             orden_m.action_clasificar_empaque()
+
+    # ------------------------------------------------------------------ 3.13.0: desperdicio de Empaque (A3.3b)
+    def _pesar_desperdicio_empaque(self, orden_m, kg, **extra):
+        valores = {'production_id': orden_m.id, 'empleado_numero': '1', 'kg_desperdicio': kg,
+                   'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula'}
+        valores.update(extra)
+        return self.env['rollo.empaque.desperdicio.wizard'].create(valores).action_confirmar()
+
+    def test_65_desperdicio_de_empaque_se_suma_al_de_inspeccion(self):
+        """A3.3b: el peso de Empaque se suma al saldo Desperdicio de los rollos que Inspección clasificó como tal."""
+        self._empaque()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 30.6, 320.0, 'PQ', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 40.0, 'DESP')
+        orden_kg.button_mark_done()
+        self._pesar_desperdicio_empaque(orden_m, 2.5)
+        self.assertAlmostEqual(orden_m.desperdicio_empaque_kg, 2.5)
+        self._empaque_confirma_todos(orden_m)
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        desp_rollo = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP'], desp_rollo.name), 7.5)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5 + 2.5,
+                               msg="Rollo de Desperdicio más lo pesado en Empaque, en el mismo producto y ubicación")
+
+    def test_66_desperdicio_de_empaque_sin_rollos_de_desperdicio(self):
+        """A3.3b: aunque Inspección no clasifique Desperdicio, lo que Empaque pesa sale como Saldo Desperdicio."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        self._pesar_desperdicio_empaque(orden_m, 3.0)
+        self._clasificar_en_empaque(orden_m, final)
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 3.0)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
+
+    def test_67_desperdicio_de_empaque_con_un_bano_de_puros_saldos(self):
+        """A3.3b: si todo el baño es saldo, la orden en metros se cancela y el desperdicio sale en la orden de saldos."""
+        self._empaque()
+        orden_m, orden_kg, wo, rollos = self._bano((20.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA')
+        orden_kg.button_mark_done()
+        self._pesar_desperdicio_empaque(orden_m, 2.0)
+        self._empaque_confirma_todos(orden_m)
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'cancel')
+        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 17.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 2.0)
+
+    def test_68_validaciones_y_repesar_del_desperdicio_de_empaque(self):
+        """A3.3b: sin peso no registra, un nuevo peso sustituye al anterior, solo con el parámetro y la orden abierta."""
+        orden_m, orden_kg, final = self._bano_en_empaque()
+        with self.assertRaisesRegex(UserError, 'peso'):
+            self._pesar_desperdicio_empaque(orden_m, 0.0)
+        self._pesar_desperdicio_empaque(orden_m, 2.0)
+        self._pesar_desperdicio_empaque(orden_m, 2.4)
+        self.assertAlmostEqual(orden_m.desperdicio_empaque_kg, 2.4)
+        self.assertIn('antes 2.000', ' '.join(orden_m.message_ids.mapped('body')))
+        self.assertTrue(orden_m.action_pesar_desperdicio_empaque())
+        self._empaque('0')
+        with self.assertRaises(UserError):
+            self._pesar_desperdicio_empaque(orden_m, 1.0)
+        self.assertAlmostEqual(orden_m._insp_extra_desperdicio(), 0.0, msg="Apagado el parámetro no se registra")

@@ -225,12 +225,44 @@ class MrpProductionInspeccion(models.Model):
             'Recibe %(n)s rollos finales del baño %(b)s, clasificados por Inspección. Se registran en inventario al cerrar '
             'esta orden.', n=len(finales), b=self.name))
 
+    # 3.13.0 (A3.3b): desperdicio de la orden en metros (SALDO TEJIDO D), pesado en Empaque (diseño §16). Campos propios: los
+    # de Rama (`desperdicio_kg`) son del subproducto de la orden en kg y bloquean su cancelación.
+    desperdicio_empaque_kg = fields.Float('Desperdicio pesado en Empaque (kg)', digits=(12, 3), readonly=True, copy=False)
+    desperdicio_empaque_operador = fields.Char('Operador del desperdicio de Empaque', readonly=True, copy=False)
+    desperdicio_empaque_fecha = fields.Datetime('Desperdicio de Empaque pesado el', readonly=True, copy=False)
+    desperdicio_empaque_manual = fields.Boolean('Desperdicio de Empaque capturado a mano', readonly=True, copy=False)
+    desperdicio_empaque_motivo = fields.Char('Motivo de la captura manual (desperdicio de Empaque)', readonly=True,
+                                             copy=False)
+
     clasificacion_empaque_pendiente = fields.Boolean(
         'Con rollos por clasificar en Empaque', compute='_compute_clasificacion_empaque_pendiente')
 
     def _compute_clasificacion_empaque_pendiente(self):
         for orden in self:
             orden.clasificacion_empaque_pendiente = orden._insp_orden_m_en_empaque()
+
+    def _insp_extra_desperdicio(self):
+        """Kg de desperdicio que Empaque pesó en esta orden en metros: se suman al saldo Desperdicio de los rollos que
+        Inspección clasificó como tal (mismo producto, ubicación 17), al registrar."""
+        self.ensure_one()
+        return (self.desperdicio_empaque_kg or 0.0) if self._insp_empaque_activo() else 0.0
+
+    def action_pesar_desperdicio_empaque(self):
+        """Abre el pesaje del desperdicio de Empaque de esta orden en metros (3.13.0, A3.3b)."""
+        self.ensure_one()
+        if not self._insp_orden_m_en_empaque():
+            raise UserError(_('La orden %s no está en Clasificación final: el desperdicio se pesa mientras Empaque '
+                              'clasifica los rollos y la orden sigue abierta.', self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Pesar desperdicio (Empaque)'),
+            'res_model': 'rollo.empaque.desperdicio.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_production_id': self.id, **(
+                {'default_workorder_id': self.env.context['default_workorder_id']}
+                if self.env.context.get('default_workorder_id') else {})},
+        }
 
     def action_clasificar_empaque(self):
         """Abre la estación de Clasificación final (Empaque) de esta orden en metros (3.12.0, A3.3)."""
@@ -343,12 +375,21 @@ class MrpProductionInspeccion(models.Model):
         movimientos.move_line_ids.unlink()
         movimientos.with_context(do_not_unreserve=True).write({'product_uom_qty': 0.0, 'picked': False})
 
-    def _insp_lineas_saldo(self, movimiento, grupo):
+    def _insp_lineas_saldo(self, movimiento, grupo, extra_kg=0.0, clasificacion=False):
+        """Líneas del saldo: una por rollo final del grupo y, con ``extra_kg`` (3.13.0: el desperdicio que Empaque pesó
+        en la orden en metros), una más con el lote del mes, como el desperdicio de Rama."""
         producto = movimiento.product_id
-        destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion_registro)
+        destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion_registro or clasificacion)
         movimiento.move_line_ids.unlink()
         movimiento.with_context(do_not_unreserve=True).write({
-            'product_uom_qty': producto.uom_id.round(sum(grupo.mapped('kg_registro'))), 'location_dest_id': destino.id})
+            'product_uom_qty': producto.uom_id.round(sum(grupo.mapped('kg_registro')) + extra_kg),
+            'location_dest_id': destino.id})
+        if extra_kg:
+            lote_extra = self._lote_desperdicio(producto) if producto.tracking != 'none' else self.env['stock.lot']
+            self.env['stock.move.line'].create({
+                'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': lote_extra.id or False,
+                'quantity': extra_kg, 'location_id': movimiento.location_id.id, 'location_dest_id': destino.id,
+                'production_id': movimiento.production_id.id})
         for rollo in grupo.sorted('secuencia'):
             lote = self._insp_lote(producto, rollo.name, self.company_id) if producto.tracking != 'none' \
                 else self.env['stock.lot']
@@ -388,9 +429,12 @@ class MrpProductionInspeccion(models.Model):
             orden_m.move_raw_ids.move_line_ids.filtered(
                 lambda ml: ml.lot_id in rama.lot_id and ml.state not in ('done', 'cancel')).unlink()
         por_saldo = {c: finales.filtered(lambda r, c=c: r.clasificacion_registro == c) for c in ('SEGUNDA', 'DESP')}
-        principal_c = max(por_saldo, key=lambda c: sum(por_saldo[c].mapped('kg_registro')))
+        # 3.13.0: el desperdicio que Empaque pesó en la orden en metros (que aquí se cancela) sale en esta orden de saldos.
+        extra_desp = orden_m._insp_extra_desperdicio() if orden_m else 0.0
+        extra = {'SEGUNDA': 0.0, 'DESP': extra_desp}
+        principal_c = max(por_saldo, key=lambda c: sum(por_saldo[c].mapped('kg_registro')) + extra[c])
         principal = Final._producto_saldo(principal_c)
-        kg_principal = principal.uom_id.round(sum(por_saldo[principal_c].mapped('kg_registro')))
+        kg_principal = principal.uom_id.round(sum(por_saldo[principal_c].mapped('kg_registro')) + extra[principal_c])
         Tipo = self.env['stock.picking.type']
         tipo = Tipo.search([('code', '=', 'mrp_operation'), ('sequence_code', '=', 'OP-M'),
                             ('company_id', 'in', [self.company_id.id, False])], limit=1) or self.picking_type_id
@@ -412,11 +456,13 @@ class MrpProductionInspeccion(models.Model):
         orden_s.with_context(qb_insp_sin_abastecer=True).action_confirm()
         orden_s.write({'qty_producing': kg_principal})
         terminado = orden_s.move_finished_ids.filtered(lambda m: m.product_id == principal)[:1]
-        orden_s._insp_lineas_saldo(terminado, por_saldo[principal_c])
+        orden_s._insp_lineas_saldo(terminado, por_saldo[principal_c], extra_kg=extra[principal_c],
+                                   clasificacion=principal_c)
         terminado.picked = False  # el terminado principal no va «picked» (patrón de José)
         otra = 'DESP' if principal_c == 'SEGUNDA' else 'SEGUNDA'
-        if por_saldo[otra]:
-            orden_s._insp_lineas_saldo(orden_s._insp_movimiento_saldo(otra, terminado), por_saldo[otra])
+        if por_saldo[otra] or extra[otra]:
+            orden_s._insp_lineas_saldo(orden_s._insp_movimiento_saldo(otra, terminado), por_saldo[otra],
+                                       extra_kg=extra[otra], clasificacion=otra)
         orden_s._clasif_asegurar_consumo_saldos(rama)
         # 3.3.1 (Dirección, 2026-11-05): los saldos entran a costo cero; sin tela que lo absorba, el costo del baño se
         # queda en la cuenta de la ubicación de producción como merma del periodo (no como inventario de saldo).
@@ -538,10 +584,13 @@ class MrpProductionInspeccion(models.Model):
 
         # 4. Los saldos en kg (subproductos de la lista en metros, cantidad 0 en la lista; la real es el peso). Si la
         #    lista no los trae, se agregan a la orden (3.2.0).
+        extra_desp = orden_m._insp_extra_desperdicio()
         for clasificacion in ('SEGUNDA', 'DESP'):
             grupo = saldos.filtered(lambda r: r.clasificacion_registro == clasificacion)
-            if grupo:
-                orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo)
+            extra = extra_desp if clasificacion == 'DESP' else 0.0
+            if grupo or extra:
+                orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo,
+                                           extra_kg=extra, clasificacion=clasificacion)
             else:
                 # 3.3.1: un pendiente trae el saldo que heredó de un baño anterior; sin rollos de esa calidad, va en cero.
                 producto = Final._producto_saldo(clasificacion)
