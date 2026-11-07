@@ -276,6 +276,14 @@ que **Odoo asigna el número de baño**:
   esto solo con el parámetro encendido; el desperdicio de la orden en metros (se pesa en Empaque) viene en A3.3b y la
   operación CLASIFICACION en las listas de materiales en A3.4. La etiqueta final conserva «Operador inspección» (sin
   decisión de Dirección sobre las siglas del operador de Empaque).
+- **Desperdicio de la orden en metros (3.13.0, A3.3b):** el botón **PESAR DESPERDICIO** de la orden en metros (mismo
+  momento que CLASIFICAR EN EMPAQUE) pesa neto, sin tara, el SALDO TEJIDO D de Empaque (diseño §16). Queda en campos propios
+  de la orden (`desperdicio_empaque_*`, no los de Rama) y se puede volver a pesar mientras la orden siga abierta (el último
+  peso sustituye al anterior y queda nota). Al cerrar la orden, **se suma** al saldo Desperdicio de los rollos que
+  Inspección clasificó como tal (mismo producto y movimiento, ubicación 17), con un lote del mes como el desperdicio de
+  Rama; si Inspección no clasificó ninguno, sale solo ese peso. Si el baño es de puros saldos (la orden en metros se
+  cancela), el desperdicio sale en la orden de saldos. No exige que la lista en metros traiga el subproducto: si falta, se
+  agrega al cerrar.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 

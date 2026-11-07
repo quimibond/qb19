@@ -34,7 +34,7 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
     rollo_id = fields.Many2one('mrp.rollo.final', 'Rollo final', compute='_compute_rollo')
     codigo_error = fields.Char(compute='_compute_rollo')
     estado_rollo = fields.Selection(related='rollo_id.estado', string='Estado del rollo')
-    clasificacion_insp = fields.Selection(CLASIFICACIONES, 'Calidad de Inspección', related='rollo_id.clasificacion')
+    clasificacion_insp = fields.Selection(related='rollo_id.clasificacion', string='Calidad de Inspección')
     metros_insp = fields.Float('Metros de Inspección', related='rollo_id.metros', digits=(12, 2))
     kg_insp = fields.Float('Kg de Inspección', related='rollo_id.kg_neto', digits=(12, 4))
 

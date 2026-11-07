@@ -26,6 +26,8 @@
                 <field name="clasificacion_empaque_pendiente" invisible="1"/>
                 <button name="action_clasificar_empaque" type="object" string="CLASIFICAR EN EMPAQUE"
                         class="btn-primary" icon="fa-tags" invisible="not clasificacion_empaque_pendiente"/>
+                <button name="action_pesar_desperdicio_empaque" type="object" string="PESAR DESPERDICIO"
+                        class="btn-secondary" icon="fa-trash" invisible="not clasificacion_empaque_pendiente"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <!-- 3.3.8 (Dirección, 2026-11-05): la pestaña cuenta el proceso en orden: resumen, Rama, Inspección.
@@ -93,6 +95,18 @@
                             <field name="desperdicio_operador" string="Operador"/>
                             <field name="desperdicio_manual" string="Captura manual"/>
                             <field name="desperdicio_motivo" string="Motivo" invisible="not desperdicio_manual"/>
+                        </group>
+                    </group>
+                    <group string="Desperdicio de Empaque" invisible="not desperdicio_empaque_kg">
+                        <group>
+                            <field name="desperdicio_empaque_kg" string="Kg"/>
+                            <field name="desperdicio_empaque_fecha" string="Fecha"/>
+                        </group>
+                        <group>
+                            <field name="desperdicio_empaque_operador" string="Operador"/>
+                            <field name="desperdicio_empaque_manual" string="Captura manual"/>
+                            <field name="desperdicio_empaque_motivo" string="Motivo"
+                                   invisible="not desperdicio_empaque_manual"/>
                         </group>
                     </group>
                     <separator string="2. Inspección: rollos finales"/>
