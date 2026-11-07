@@ -66,7 +66,14 @@ class TestInspeccionEstacion(TransactionCase):
             'tracking': 'lot'})
 
     # ------------------------------------------------------------------ armado
-    def _bano(self, rollos_kg=(50.0,), en_kg=False):
+    def _consumir_crudo(self, orden_kg):
+        """3.3.2: la orden en kg no cierra si consume menos crudo que lo pesado en Rama. En las pruebas el crudo no tiene
+        existencia (y no es almacenable), así que se captura el consumo como lo haría el operador, salvo lo ya reservado."""
+        for move in orden_kg._moves_crudo():
+            if not move.quantity:
+                move.write({'quantity': move.product_uom_qty, 'picked': True})
+
+    def _bano(self, rollos_kg=(50.0,), en_kg=False, con_crudo=True):
         """Orden en metros (2,000 m) y la orden en kg que la abastece, ligadas como el MTO, con rollos pesados en Rama."""
         orden_m = self.env['mrp.production']
         if not en_kg:
@@ -77,6 +84,8 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg = self.env['mrp.production'].create({
             'product_id': self.prod_kg.id, 'product_qty': 169.6, 'bom_id': self.bom_kg.id})
         orden_kg.action_confirm()
+        if con_crudo:
+            self._consumir_crudo(orden_kg)
         if orden_m:
             terminado = orden_kg.move_finished_ids.filtered(lambda m: m.product_id == self.prod_kg)
             orden_m._clasif_move_a().move_orig_ids = terminado
@@ -272,6 +281,7 @@ class TestInspeccionEstacion(TransactionCase):
             orden_kg = self.env['mrp.production'].create({
                 'product_id': self.prod_kg.id, 'product_qty': 84.8, 'bom_id': self.bom_kg.id})
             orden_kg.action_confirm()
+            self._consumir_crudo(orden_kg)
             terminado = orden_kg.move_finished_ids.filtered(lambda m: m.product_id == self.prod_kg)
             raw = orden_m._clasif_move_a()
             raw.move_orig_ids = raw.move_orig_ids | terminado
@@ -625,7 +635,7 @@ class TestInspeccionEstacion(TransactionCase):
         """3.3.2: con el consumo flexible un baño cerraba sin crudo en existencia (en main: 19 y 0 kg) y el kg salía casi
         gratis. Ahora no cierra si el crudo consumido es menor que lo pesado en Rama; con existencia sí."""
         self.crudo.write({'is_storable': True})
-        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,), con_crudo=False)
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         with self.assertRaises(UserError) as error:
             orden_kg.button_mark_done()
