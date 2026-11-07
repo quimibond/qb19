@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.8.0',
+    'version': '19.0.3.9.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -32,6 +32,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   ``J00001-001`` en un baño dividido) y los lotes de Rama y de Inspección son ``<baño>-0001``. Sin secuencia aparte.
 * 3.8.0 (Dirección, 2026-11-06): ubicación ``Toluca/Stock/Químicos-Colorantes Piso``. El engomado, los químicos y los
   colorantes se surten (requisición automática) al Piso y la orden en kg los consume de ahí; el crudo sigue en la Ubic. 2.
+* 3.9.0 (Dirección, 2026-11-07): al cerrar la orden en kg, el sobrante del Piso (lo surtido que no se consumió) regresa a la
+  ubicación exacta de donde salió, lote por lote, con una transferencia interna ligada a la orden. El scrap sigue siendo el
+  botón nativo de Odoo.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
