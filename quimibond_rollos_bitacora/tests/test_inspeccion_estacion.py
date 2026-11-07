@@ -1313,7 +1313,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
         self.assertNotEqual(orden_m.state, 'cancel', "Con Empaque activo la orden en metros espera la clasificación")
-        final.write({'clasificacion_final': 'PQ', 'estado': 'clasificado'})
+        final.write({'clasificacion_final': 'PQ', 'metros_final': 200.0, 'estado': 'clasificado'})
         orden_m.button_mark_done()
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 200.0)
