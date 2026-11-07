@@ -167,3 +167,30 @@ class TestDosificacionTintoreria(TransactionCase):
         self.assertEqual(self.bom._kg_carga_jet_lote(), (1.0, 1.0, False))
         mo = self._crear_mo(100.0)
         self.assertEqual(mo._kg_carga_jet(), (100.0, False))
+
+    def test_cargas_y_avisos_de_ficha_van_sobre_el_crudo(self):
+        """1.4.1: el gancho de fichas técnicas (2.28.0) devuelve los kg de crudo: 100 kg de tela con 1.15 kg de crudo
+        por kg son 115 kg, y el aviso de carga del jet habla de kg de crudo."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (gancho)'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo gancho', 'default_code': 'T-CRUDOG', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id})
+        tela = self.env['product.product'].create({
+            'name': 'Tela gancho', 'default_code': 'T-ITELAG', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'operation_ids': [(0, 0, {'name': 'TINTORERIA', 'workcenter_id': self.wc1.id})],
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id, 'product_qty': 1.15})]})
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        kg, producto = mo._ft_kg_carga_jet()
+        self.assertAlmostEqual(kg, 115.0)
+        self.assertEqual(producto, crudo)
+        # El aviso de carga solo aplica a centros con tipo de máquina «Tintorería».
+        self.wc1.ft_tipo_id = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
+        self.patch(self.env.registry['mrp.workcenter'], '_ft_capacidad_carga',
+                   lambda wc, rendimiento, day=None, product=None: (105.0, 'prueba'))
+        aviso = self.wc1._ft_aviso_para(tela, kg)
+        self.assertIn('115 kg de crudo', aviso)
+        self.assertIn('2 cargas', aviso)

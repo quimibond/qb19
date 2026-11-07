@@ -24,6 +24,19 @@ agregan a esa misma sección sin volver a subirla.
 - El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
 - Pruebas 8, 9, 14 y 19.
 
+**Corregido**
+- **Avisos y cargas por jet en kg de crudo.** Tintorería confirmó (2026-11-06) que la capacidad del jet y la relación de
+  baño de las fichas son por **kg de crudo cargado**. Programación 1.7.0 y dosificación 1.4.0 ya contaban así, pero el
+  aviso de la orden de trabajo, la pestaña «Cargas por jet» de la orden y el aviso de la orden comparaban la capacidad
+  contra los kg de la orden (tela terminada): con 1.15 kg de crudo por kg de tela, una orden de 100 kg decía «1 carga» en
+  un jet de 105 kg cuando lleva 115 kg de crudo y son 2. Ahora usan `mrp.production._ft_kg_carga_jet()`, gancho que aquí
+  devuelve los kg de la orden y que `quimibond_tintoreria_dosificacion` 1.4.1 sobreescribe con el crudo de la lista de
+  materiales (ficha no depende de dosificación). El texto dice «kg de crudo» y la pestaña indica sobre cuántos kg se
+  calcula. Sin dosificación instalada o sin tejido en la lista, como antes.
+- Pendiente (no incluido): las líneas de capacidad por producto (`mrp.workcenter.capacity`) y la conversión de
+  `capacidad_conversion.py` siguen expresadas por kg de la lista (tela terminada); alinearlas al crudo cambia los ciclos
+  que Odoo cuenta en las listas y el costeo, y se decide aparte.
+
 ## 19.0.2.27.1 — 2026-11-05
 
 **Corregido**

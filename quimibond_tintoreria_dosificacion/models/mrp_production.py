@@ -50,6 +50,12 @@ class MrpProduction(models.Model):
                 return kg_orden * kg_crudo / kg_lote, crudo
         return kg_orden, False
 
+    def _ft_kg_carga_jet(self):
+        """1.4.1: los avisos y las cargas por jet de la ficha técnica (2.28.0) cuentan los kg de crudo que entran al
+        jet, los mismos que usan la dosificación y la programación."""
+        self.ensure_one()
+        return self._kg_carga_jet()
+
     def _dosificacion_kg_orden(self):
         """Kg sobre los que se dosifica: los que entran al jet (1.4.0)."""
         self.ensure_one()
