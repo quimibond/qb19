@@ -254,6 +254,28 @@ que **Odoo asigna el número de baño**:
   una transferencia interna que queda en el chatter de la orden. Se apoya en los movimientos de la requisición ligados al
   consumo; si un componente no tiene requisición ligada no se devuelve nada. Si la devolución falla, el cierre no se
   deshace: queda una nota para hacerla a mano. Para lo que ya no sirve, el botón de scrap nativo.
+- **Clasificación final en Empaque (3.10.0, A3.1):** el rollo final guarda, además de la calidad preliminar de Inspección, la
+  definitiva de Empaque (`clasificacion_final`), su peso (`kg_neto_final`, manda sobre el de Inspección si existe), sus metros
+  y defectos, el operador y la fecha, y el estado pasa por «Clasificado en Empaque» antes de «Registrado». Los campos «de
+  registro» (`clasificacion_registro`, `kg_registro`, `metros_registro`) valen lo de Empaque si ya clasificó y, si no, lo de
+  Inspección; con ellos registrará la orden en metros (A3.2). Esta versión solo agrega campos y vistas.
+- **Registro en la orden en metros (3.11.0, A3.2):** parámetro `quimibond_rollos_bitacora.clasificacion_empaque`. En «1», al
+  cerrar la orden en kg los rollos finales pasan a la orden en metros (nota en las dos) sin tocar inventario, y la orden en
+  metros los registra al cerrarse (PQ y FE a 14 y 15 en metros, Segunda y Desperdicio a 16 y 17 en kg) con la calidad, el
+  peso y los metros de registro. Si ningún rollo queda en primera ni FE, se cancela la orden en metros y los saldos salen en
+  una orden aparte (como en 3.2.0). Exige un baño por orden en metros y el baño cerrado. Sin el parámetro (por defecto), el
+  cierre de la orden en kg registra y cierra la orden en metros como siempre; el baño para venta en kg no cambia. La estación
+  de Empaque que llena los campos definitivos viene en A3.3.
+- **Estación de Clasificación final en Empaque (3.12.0, A3.3):** con el parámetro en «1», la orden en metros con rollos por
+  clasificar muestra el botón **CLASIFICAR EN EMPAQUE** (y la operación CLASIFICAR de la orden lo abre). El operador teclea
+  su número, escanea el lote de la etiqueta preliminar y confirma o cambia la calidad (con defectos en Segunda y FE) y los
+  metros; un cambio pide motivo. El peso es opcional: si Empaque pesa, usa la misma tara que Inspección (operación
+  «Clasificación final») y ese peso manda; si no, el de Inspección. Al confirmar el rollo queda «Clasificado en Empaque»
+  (`clasificacion_final`, `metros_final`, `kg_neto_final`, operador, centro y fecha) y **sale siempre la etiqueta final**
+  con lo definitivo (Inspección imprime la preliminar). La orden en metros **no cierra con rollos sin clasificar**. Todo
+  esto solo con el parámetro encendido; el desperdicio de la orden en metros (se pesa en Empaque) viene en A3.3b y la
+  operación CLASIFICACION en las listas de materiales en A3.4. La etiqueta final conserva «Operador inspección» (sin
+  decisión de Dirección sobre las siglas del operador de Empaque).
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 
