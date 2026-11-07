@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.7.0',
+    'version': '19.0.3.8.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -30,6 +30,8 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
 * 3.7.0 (Dirección, 2026-11-06): numeración «J». Las órdenes «Fabricación Tela en kg» y «en m» se llaman
   ``TL/OP-KG/J00001`` y ``TL/OP-M/J00001``; el número de baño es el nombre de la orden sin el prefijo (``J00001``, o
   ``J00001-001`` en un baño dividido) y los lotes de Rama y de Inspección son ``<baño>-0001``. Sin secuencia aparte.
+* 3.8.0 (Dirección, 2026-11-06): ubicación ``Toluca/Stock/Químicos-Colorantes Piso``. El engomado, los químicos y los
+  colorantes se surten (requisición automática) al Piso y la orden en kg los consume de ahí; el crudo sigue en la Ubic. 2.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

@@ -12,6 +12,8 @@ PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
 # (hooks.configurar_secuencias_j). Antes era una secuencia aparte (3.5.0).
 # 3.6.1: código de secuencia del tipo «Fabricación Tela en kg» (fichas, ruta_familia.TIPO_OPERACION['kg']).
 TIPO_FLUJO_KG = 'OP-KG'
+# 3.8.0: id de la ubicación «Químicos-Colorantes Piso» (de donde la orden en kg consume engomado, químicos y colorantes).
+PARAM_UBICACION_PISO = 'quimibond_rollos_bitacora.ubicacion_piso'
 
 
 class MrpProduction(models.Model):
@@ -67,6 +69,31 @@ class MrpProduction(models.Model):
         for orden in self.filtered(lambda o: not o.numero_bano and o.state not in ('done', 'cancel')):
             orden.numero_bano = orden._numero_bano_del_nombre()
         return self
+
+    # ------------------------------------------------------------------
+    # 3.8.0 — Ubicación «Químicos-Colorantes Piso»
+    # ------------------------------------------------------------------
+    def _ubicacion_piso(self):
+        """La ubicación «Químicos-Colorantes Piso» (parámetro ``ubicacion_piso``, que pone la migración 3.8.0), o vacío."""
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO)
+        piso = self.env['stock.location'].browse(int(valor)).exists() if valor and valor.isdigit() else \
+            self.env['stock.location']
+        return piso if piso.active else self.env['stock.location']
+
+    def _surte_desde_piso(self, product, piso):
+        """3.8.0: el producto va por el Piso si tiene (por producto o por categoría) una ruta con una regla que sale del
+        Piso, que es como la migración deja «Surtido Engomado» y «Surtido Químicos y Colorantes». El engomado lleva la
+        ruta en el producto y los químicos y colorantes en su categoría, así que no se decide por categoría."""
+        rutas = self.env['stock.rule'].sudo().search([('location_src_id', '=', piso.id)]).route_id
+        return bool(rutas and (product.route_ids | product.categ_id.total_route_ids) & rutas)
+
+    def _get_move_raw_values(self, product, product_uom_qty, product_uom, operation_id=False, bom_line=False):
+        datos = super()._get_move_raw_values(product, product_uom_qty, product_uom, operation_id, bom_line)
+        if self.picking_type_id.sequence_code == TIPO_FLUJO_KG:
+            piso = self._ubicacion_piso()
+            if piso and self._surte_desde_piso(product, piso):
+                datos['location_id'] = piso.id
+        return datos
 
     def _numero_bano_del_nombre(self):
         """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una

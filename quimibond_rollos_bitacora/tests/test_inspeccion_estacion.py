@@ -1139,3 +1139,45 @@ class TestInspeccionEstacion(TransactionCase):
         configurar_secuencias_j(self.env)
         self.assertEqual(tipo.sequence_id.prefix, '%sJ' % prefijo, "Idempotente: no agrega otra J")
         self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00002'), "Ni reinicia el consecutivo")
+
+    def test_51_piso_configuracion_y_consumo(self):
+        """3.8.0: configurar_piso crea «Químicos-Colorantes Piso», repunta las rutas de surtido y la orden en kg consume
+        de ahí el producto cuya ruta sale del Piso; el crudo (sin esa ruta) sigue en la Ubic. 2. Idempotente."""
+        from odoo.addons.quimibond_rollos_bitacora.hooks import (
+            configurar_piso, NOMBRE_PISO, PARAM_UBICACION_PISO)
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ967', 'sequence_code': 'OP-KG'})
+        ubic2 = self.env['stock.location'].create({'name': 'ZZ2 PRODUCCIÓN', 'usage': 'internal',
+                                                   'location_id': almacen.lot_stock_id.id})
+        ruta = self.env['stock.route'].create({'name': 'Surtido Engomado ZZ967 (Ubic. 1 → Producción)'})
+        tipo_req = self.env['stock.picking.type'].search([('code', '=', 'incoming')], limit=1)
+        regla_surte = self.env['stock.rule'].create({
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_req.id,
+            'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': ubic2.id})
+        regla_consumo = self.env['stock.rule'].create({
+            'name': 'ZZ consumo', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_kg.id,
+            'location_src_id': ubic2.id, 'location_dest_id': self.env.ref('stock.location_production').id})
+        padre = self.env['stock.location'].search([('complete_name', '=', 'Toluca/Stock')], limit=1)
+        if not padre:
+            # Base de prueba sin «Toluca/Stock»: el padre se da por nombre completo, como en la planta.
+            padre = almacen.lot_stock_id
+            padre.name = 'Stock'
+            padre.location_id.name = 'Toluca'
+        piso = configurar_piso(self.env)
+        self.assertEqual(piso.name, NOMBRE_PISO)
+        self.assertEqual(piso.location_id, padre)
+        self.assertEqual(self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO), str(piso.id))
+        self.assertEqual(regla_surte.location_dest_id, piso)
+        self.assertEqual(regla_consumo.location_src_id, piso)
+        self.assertIn('→ Piso)', ruta.name)
+        self.assertEqual(configurar_piso(self.env), piso, "Idempotente: no crea otra ubicación")
+        engomado = self.env['product.product'].create({
+            'name': 'Engomado ZZ967', 'default_code': 'ENGZZ967', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'route_ids': [Command.link(ruta.id)]})
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
+            'picking_type_id': tipo_kg.id})
+        datos = orden_kg._get_move_raw_values(engomado, 1.0, self.kg)
+        self.assertEqual(datos['location_id'], piso.id, "El engomado sale del Piso")
+        crudo = orden_kg._get_move_raw_values(self.prod_kg, 1.0, self.kg)
+        self.assertNotEqual(crudo['location_id'], piso.id, "Lo que no pasa por el Piso sigue en la ubicación de la orden")
