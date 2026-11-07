@@ -254,6 +254,11 @@ que **Odoo asigna el número de baño**:
   una transferencia interna que queda en el chatter de la orden. Se apoya en los movimientos de la requisición ligados al
   consumo; si un componente no tiene requisición ligada no se devuelve nada. Si la devolución falla, el cierre no se
   deshace: queda una nota para hacerla a mano. Para lo que ya no sirve, el botón de scrap nativo.
+- **Clasificación final en Empaque (3.10.0, A3.1):** el rollo final guarda, además de la calidad preliminar de Inspección, la
+  definitiva de Empaque (`clasificacion_final`), su peso (`kg_neto_final`, manda sobre el de Inspección si existe), sus metros
+  y defectos, el operador y la fecha, y el estado pasa por «Clasificado en Empaque» antes de «Registrado». Los campos «de
+  registro» (`clasificacion_registro`, `kg_registro`, `metros_registro`) valen lo de Empaque si ya clasificó y, si no, lo de
+  Inspección; con ellos registrará la orden en metros (A3.2). Esta versión solo agrega campos y vistas.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 

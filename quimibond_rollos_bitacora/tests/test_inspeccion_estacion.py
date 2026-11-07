@@ -1230,3 +1230,26 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(Quant._get_available_quantity(quimico, origen, strict=True), 4.0)
         self.assertAlmostEqual(Quant._get_available_quantity(quimico, piso, strict=True), 0.0)
         self.assertFalse(orden._devolver_sobrante_piso_orden(piso), "Sin sobrante no se crea otra transferencia")
+
+    def test_53_valores_de_registro_con_clasificacion_en_empaque(self):
+        """3.10.0: mientras Empaque no clasifica, el rollo final se registra con lo de Inspección; con la clasificación
+        de Empaque manda lo de Empaque (el peso solo si Empaque pesó) y un cambio de calidad deja el rollo reetiquetado."""
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ969', 'sequence_code': 'OP-KG'})
+        orden = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
+            'picking_type_id': tipo_kg.id})
+        rollo = self.env['mrp.rollo.final'].create({
+            'name': 'ZZ969-0001', 'secuencia': 1, 'production_id': orden.id, 'clasificacion': 'PQ',
+            'kg_bruto': 21.0, 'tara': 1.0, 'kg_neto': 20.0, 'metros': 100.0})
+        self.assertEqual(rollo.estado, 'inspeccionado')
+        self.assertEqual((rollo.clasificacion_registro, rollo.kg_registro, rollo.metros_registro), ('PQ', 20.0, 100.0))
+        self.assertFalse(rollo.reetiquetado)
+        # Empaque confirma la calidad y pesa: manda su peso y sus metros; no hay reetiquetado.
+        rollo.write({'clasificacion_final': 'PQ', 'kg_neto_final': 19.5, 'metros_final': 98.0, 'estado': 'clasificado'})
+        self.assertEqual((rollo.clasificacion_registro, rollo.kg_registro, rollo.metros_registro), ('PQ', 19.5, 98.0))
+        self.assertFalse(rollo.reetiquetado)
+        # Calidad cambia a FE y Empaque no pesó (kg en cero): se queda el peso de Inspección.
+        rollo.write({'clasificacion_final': 'FE', 'kg_neto_final': 0.0, 'metros_final': 97.0})
+        self.assertEqual((rollo.clasificacion_registro, rollo.kg_registro, rollo.metros_registro), ('FE', 20.0, 97.0))
+        self.assertTrue(rollo.reetiquetado, "Empaque cambió la calidad: hay que reimprimir la etiqueta final")

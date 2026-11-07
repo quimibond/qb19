@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.9.0',
+    'version': '19.0.3.10.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -35,6 +35,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
 * 3.9.0 (Dirección, 2026-11-07): al cerrar la orden en kg, el sobrante del Piso (lo surtido que no se consumió) regresa a la
   ubicación exacta de donde salió, lote por lote, con una transferencia interna ligada a la orden. El scrap sigue siendo el
   botón nativo de Odoo.
+* 3.10.0 (Dirección, 2026-11-07): campos de la Clasificación final en Empaque en el rollo final (calidad definitiva, peso y
+  metros de Empaque, defectos, operador) y estado «Clasificado en Empaque». Inspección pasa a ser la calidad preliminar. Solo
+  campos y vistas: el comportamiento no cambia (A3.1).
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

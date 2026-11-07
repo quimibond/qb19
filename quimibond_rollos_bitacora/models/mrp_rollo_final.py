@@ -58,7 +58,9 @@ class MrpRolloFinal(models.Model):
     motivo_manual = fields.Char('Motivo de captura manual', readonly=True)
     metros = fields.Float('Metros', digits=(12, 2), readonly=True)
     no_empalmes = fields.Integer('No. de empalmes', readonly=True)
-    clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad', required=True, readonly=True)
+    clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad (Inspección, preliminar)', required=True, readonly=True,
+                                     help='La calidad con la que Inspección clasifica el rollo. La definitiva la confirma o '
+                                          'la cambia Clasificación final en Empaque (3.10.0).')
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'mrp_rollo_final_defecto_rel', 'final_id', 'defecto_id',
                                    'Defectos', readonly=True)
     siglas_defectos = fields.Char('Siglas de defectos', compute='_compute_siglas_defectos')
@@ -69,7 +71,8 @@ class MrpRolloFinal(models.Model):
     zpl_etiqueta = fields.Text('ZPL etiqueta final', readonly=True, copy=False)
     zpl_etiqueta_preliminar = fields.Text('ZPL etiqueta preliminar', readonly=True, copy=False)
 
-    estado = fields.Selection([('inspeccionado', 'Inspeccionado, sin registrar'), ('registrado', 'Registrado')],
+    estado = fields.Selection([('inspeccionado', 'Inspeccionado, sin registrar'),
+                               ('clasificado', 'Clasificado en Empaque'), ('registrado', 'Registrado')],
                               'Estado', default='inspeccionado', required=True, readonly=True)
     product_id = fields.Many2one('product.product', 'Producto registrado', readonly=True,
                                  help='La tela (PQ y FE, en metros) o el saldo (Segunda y Desperdicio, en kg).')
@@ -83,6 +86,38 @@ class MrpRolloFinal(models.Model):
                                    help='Los metros capturados se apartan de los teóricos más que la alerta 2 de Ajustes '
                                         'de Manufactura (%).')
 
+    # ------------------------------------------------------------------ 3.10.0: Clasificación final (Empaque)
+    # Inspección clasifica de forma preliminar en la orden en kg; Empaque, ya en la orden en metros, confirma o cambia
+    # la calidad según Calidad (Dirección, 2026-11-07). Estos campos los llena la estación de Empaque (A3.3); la
+    # orden en metros registra con los valores «de registro»: los de Empaque si los hay, si no los de Inspección.
+    clasificacion_final = fields.Selection(
+        CLASIFICACIONES, 'Calidad definitiva (Empaque)', readonly=True, copy=False, index=True,
+        help='La calidad que confirma o cambia Clasificación final. Vacía mientras Empaque no clasifique el rollo.')
+    kg_bruto_final = fields.Float('Peso bruto en Empaque (kg)', digits=(12, 4), readonly=True, copy=False)
+    tara_final = fields.Float('Tara en Empaque (kg)', digits=(12, 4), readonly=True, copy=False)
+    kg_neto_final = fields.Float('Kg netos en Empaque', digits=(12, 4), readonly=True, copy=False,
+                                 help='Si Empaque pesa el rollo, este peso manda; si no, el de Inspección.')
+    metros_final = fields.Float('Metros definitivos (Empaque)', digits=(12, 2), readonly=True, copy=False)
+    motivo_ajuste_final = fields.Char('Motivo del cambio en Empaque', readonly=True, copy=False)
+    defecto_final_ids = fields.Many2many(
+        'calidad.defecto.tela', 'mrp_rollo_final_defecto_final_rel', 'final_id', 'defecto_id',
+        'Defectos definitivos (Empaque)', readonly=True, copy=False)
+    siglas_defectos_final = fields.Char('Siglas de defectos definitivos', compute='_compute_siglas_defectos_final')
+    workcenter_final_id = fields.Many2one('mrp.workcenter', 'Centro de Clasificación final', readonly=True, copy=False)
+    operador_final = fields.Char('Operador de Clasificación final', readonly=True, copy=False)
+    siglas_operador_final = fields.Char('Siglas del operador de Empaque', readonly=True, copy=False)
+    fecha_final = fields.Datetime('Clasificado en Empaque el', readonly=True, copy=False)
+    reetiquetado = fields.Boolean(
+        'Reetiquetado', compute='_compute_valores_registro', store=True,
+        help='Empaque cambió la calidad que Inspección había puesto: hay que reimprimir la etiqueta final.')
+    clasificacion_registro = fields.Selection(
+        CLASIFICACIONES, 'Calidad de registro', compute='_compute_valores_registro', store=True,
+        help='Con la que se registra en inventario: la definitiva de Empaque si existe, si no la de Inspección.')
+    kg_registro = fields.Float('Kg de registro', digits=(12, 4), compute='_compute_valores_registro', store=True,
+                               help='Los kg de Empaque si pesó el rollo; si no, los de Inspección.')
+    metros_registro = fields.Float('Metros de registro', digits=(12, 2), compute='_compute_valores_registro',
+                                   store=True, help='Los metros de Empaque si ya clasificó el rollo; si no, los de Inspección.')
+
     _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
     # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedazos, orillas); Primera, FE y Segunda sí los llevan.
@@ -93,6 +128,22 @@ class MrpRolloFinal(models.Model):
     def _compute_siglas_defectos(self):
         for rollo in self:
             rollo.siglas_defectos = ' '.join(rollo.defecto_ids.sorted('clave').mapped('clave'))
+
+    @api.depends('defecto_final_ids.clave')
+    def _compute_siglas_defectos_final(self):
+        for rollo in self:
+            rollo.siglas_defectos_final = ' '.join(rollo.defecto_final_ids.sorted('clave').mapped('clave'))
+
+    @api.depends('clasificacion', 'kg_neto', 'metros', 'clasificacion_final', 'kg_neto_final', 'metros_final')
+    def _compute_valores_registro(self):
+        """3.10.0: lo que manda al registrar es lo de Empaque si ya clasificó el rollo y, si no, lo de Inspección. El peso
+        de Empaque solo cuenta si Empaque pesó (mayor a cero)."""
+        for rollo in self:
+            clasificado = bool(rollo.clasificacion_final)
+            rollo.reetiquetado = clasificado and rollo.clasificacion_final != rollo.clasificacion
+            rollo.clasificacion_registro = rollo.clasificacion_final or rollo.clasificacion
+            rollo.kg_registro = rollo.kg_neto_final if (clasificado and rollo.kg_neto_final > 0) else rollo.kg_neto
+            rollo.metros_registro = rollo.metros_final if clasificado else rollo.metros
 
     # ------------------------------------------------------------------ reglas
     @api.model
