@@ -28,6 +28,11 @@ clasificación de cada rollo en la orden en metros (`quimibond_rollos_bitacora` 
 - Botón «Clasificación en Empaque» en la lista de materiales: pone la operación y la capacidad en una lista en
   metros **ya activa** (decisión explícita de Ingeniería; sin paso en la ruta avisa y no quita nada).
 
+**Clasificación final: tiempos y capacidad de lo que ya existía.** Los pasos y las operaciones CLASIFICACION que traían
+«0.05 min por metro» (menos de 1) pasan a 60 min por ciclo de 400 m, y toda tela en metros con la operación, tenga o no
+ficha de acabado, queda con su capacidad de 400 m en EMPAQUE (sin capacidad, Odoo toma 1 m por ciclo y 60 min por metro).
+La función `_ft_poner_clasificacion_rutas` devuelve también `tiempos` (prueba 06h).
+
 **Migración 2.28.0** (`post-migrate-clasificacion-empaque.py`, una vez al pasar de una versión anterior; en una base que ya está en 2.28.0 se corre a mano: `env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()`): el paso en las rutas que no lo tienen, la operación en las listas en metros
 **archivadas** del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas activas no se tocan.
 
