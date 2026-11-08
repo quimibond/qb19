@@ -28,6 +28,14 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.8.2 (revisión, 2026-11-08)
+
+- Si la orden en metros no se puede dividir entre los baños (la abastecen varias órdenes, ya empezó, ya no está
+  confirmada o también la abastece otra orden en kg), se queda como estaba, pero ahora deja nota en los baños y en la
+  orden en metros. Antes no avisaba. Cada baño registra sus metros en ella y deja pendiente para los que siguen
+  (rollos 3.3.0). Prueba 74 de rollos.
+- Volver a programar no es posible: una orden ya programada se cancela y se vuelve a crear (sin cambio).
+
 ## Cambios 19.0.1.8.1 (ronda 13 en main, 2026-11-06)
 
 Al dividir la orden en metros se vuelven a ligar **todos** los terminados de cada baño, no solo el del acabado: el
