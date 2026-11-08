@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.6.4',
+    'version': '19.0.3.13.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -27,6 +27,20 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
 * 3.2.0: baño para venta en kg (sin orden en metros): los rollos finales (lote ``K<orden en kg>-NNNN``) salen de la
   orden en kg como el acabado en kg con su peso real, PQ a 14 y FE a 15, y los saldos en kg a 16 y 17. Baño sin
   primera ni FE: la orden en metros se cancela y una orden de saldos saca los saldos en kg.
+* 3.7.0 (Dirección, 2026-11-06): numeración «J». Las órdenes «Fabricación Tela en kg» y «en m» se llaman
+  ``TL/OP-KG/J00001`` y ``TL/OP-M/J00001``; el número de baño es el nombre de la orden sin el prefijo (``J00001``, o
+  ``J00001-001`` en un baño dividido) y los lotes de Rama y de Inspección son ``<baño>-0001``. Sin secuencia aparte.
+* 3.8.0 (Dirección, 2026-11-06): ubicación ``Toluca/Stock/Químicos-Colorantes Piso``. El engomado, los químicos y los
+  colorantes se surten (requisición automática) al Piso y la orden en kg los consume de ahí; el crudo sigue en la Ubic. 2.
+* 3.9.0 (Dirección, 2026-11-07): al cerrar la orden en kg, el sobrante del Piso (lo surtido que no se consumió) regresa a la
+  ubicación exacta de donde salió, lote por lote, con una transferencia interna ligada a la orden. El scrap sigue siendo el
+  botón nativo de Odoo.
+* 3.10.0 (Dirección, 2026-11-07): campos de la Clasificación final en Empaque en el rollo final (calidad definitiva, peso y
+  metros de Empaque, defectos, operador) y estado «Clasificado en Empaque». Inspección pasa a ser la calidad preliminar. Solo
+  campos y vistas: el comportamiento no cambia (A3.1).
+* 3.11.0 (Dirección, 2026-11-07): con el parámetro ``clasificacion_empaque`` = 1, el cierre de la orden en kg ya no registra ni
+  cierra la orden en metros: sus rollos finales pasan a ella y se registran al cerrar la orden en metros, con la calidad,
+  el peso y los metros definitivos de Empaque si los hay (A3.2). Apagado (por defecto) todo funciona como en 3.10.0.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -41,7 +55,6 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
     'data': [
         'security/ir.model.access.csv',
         'data/calidad.defecto.tela.csv',
-        'data/ir_sequence_data.xml',
         'views/calidad_defecto_tela_views.xml',
         'views/mrp_inspeccion_restriccion_views.xml',
         'views/mrp_tara_producto_views.xml',
@@ -56,9 +69,12 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'wizard/rollo_inspeccion_wizard_views.xml',
         'wizard/rollo_desperdicio_rama_wizard_views.xml',
         'wizard/rollo_inspeccion_estacion_wizard_views.xml',
+        'wizard/rollo_empaque_clasificacion_wizard_views.xml',
+        'wizard/rollo_empaque_desperdicio_wizard_views.xml',
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
 }

@@ -10,6 +10,30 @@ agregan a esa misma sección sin volver a subirla.
 
 ## 19.0.2.28.0 — 2026-11-06
 
+**Clasificación final en Empaque (A3.4, Dirección General: el diseño de la Clasificación final en Empaque sustituye al
+de la Inspección única de 2.24.0).** La lista en metros vuelve a llevar una operación, CLASIFICACION, en el centro
+EMPAQUE; Inspección sigue pesando y clasificando de forma preliminar en la orden en kg y Empaque confirma o cambia la
+clasificación de cada rollo en la orden en metros (`quimibond_rollos_bitacora` 3.12.0 y siguientes, con el interruptor
+`clasificacion_empaque`).
+
+**Agregado**
+- El paso «Clasificación final» vuelve a las rutas por familia, siempre en EMPAQUE (el centro se crea con ese nombre
+  si no existe y se reactiva si está archivado). «Armar rutas desde listas» lo agrega a las rutas que no lo tienen y
+  el resumen de la ruta lo muestra.
+- «Generar listas» pone la operación CLASIFICACION en la lista en metros archivada y da de alta la capacidad de la
+  tela en metros en EMPAQUE. **Provisional (Dirección, 2026-11-07): 400 m por hora** = capacidad de 400 m por ciclo
+  con ciclo de 60 min (así divide Odoo y así lo lee el costeo). Calidad aún no mide cuánto tarda en dictaminar. Una
+  capacidad ya capturada no se pisa.
+- Al activar una lista en metros del flujo (visto bueno de Ingeniería) se completa sola la operación si faltaba.
+- Botón «Clasificación en Empaque» en la lista de materiales: pone la operación y la capacidad en una lista en
+  metros **ya activa** (decisión explícita de Ingeniería; sin paso en la ruta avisa y no quita nada).
+
+**Migración 2.28.0** (`post-migrate-clasificacion-empaque.py`, una vez al pasar de una versión anterior; en una base que ya está en 2.28.0 se corre a mano: `env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()`): el paso en las rutas que no lo tienen, la operación en las listas en metros
+**archivadas** del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas activas no se tocan.
+
+**Cambiado**
+- «Tiempo fijo» del paso pasa a minutos **por ciclo** (antes decía por unidad; la operación siempre lo tomó por ciclo).
+
 **Cambia (Dirección)**
 - **El recálculo nocturno propone el rendimiento; ya no lo escribe en la ficha.** Lo medido (rollos de Inspección,
   conversiones a kg o estimado) queda en campos aparte: «Rendimiento medido», su fuente, sus muestras y su estado
@@ -23,6 +47,19 @@ agregan a esa misma sección sin volver a subirla.
   aplica y la revisión deja el pendiente «Lo fabricado da un rendimiento fuera del teórico».
 - El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
 - Pruebas 8, 9, 14 y 19.
+
+**Corregido**
+- **Avisos y cargas por jet en kg de crudo.** Tintorería confirmó (2026-11-06) que la capacidad del jet y la relación de
+  baño de las fichas son por **kg de crudo cargado**. Programación 1.7.0 y dosificación 1.4.0 ya contaban así, pero el
+  aviso de la orden de trabajo, la pestaña «Cargas por jet» de la orden y el aviso de la orden comparaban la capacidad
+  contra los kg de la orden (tela terminada): con 1.15 kg de crudo por kg de tela, una orden de 100 kg decía «1 carga» en
+  un jet de 105 kg cuando lleva 115 kg de crudo y son 2. Ahora usan `mrp.production._ft_kg_carga_jet()`, gancho que aquí
+  devuelve los kg de la orden y que `quimibond_tintoreria_dosificacion` 1.4.1 sobreescribe con el crudo de la lista de
+  materiales (ficha no depende de dosificación). El texto dice «kg de crudo» y la pestaña indica sobre cuántos kg se
+  calcula. Sin dosificación instalada o sin tejido en la lista, como antes.
+- Pendiente (no incluido): las líneas de capacidad por producto (`mrp.workcenter.capacity`) y la conversión de
+  `capacidad_conversion.py` siguen expresadas por kg de la lista (tela terminada); alinearlas al crudo cambia los ciclos
+  que Odoo cuenta en las listas y el costeo, y se decide aparte.
 
 ## 19.0.2.27.1 — 2026-11-05
 

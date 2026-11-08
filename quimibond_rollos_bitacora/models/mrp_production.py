@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
+import logging
+from collections import defaultdict
+
 from markupsafe import Markup
 
-from odoo import api, fields, models, _
+from odoo import api, Command, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
 
+_logger = logging.getLogger(__name__)
+
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
 PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
-# 3.5.0 (Dirección, 2026-11-05): número de baño consecutivo que asigna Odoo; sustituye al folio de la tarjeta viajera
-# y empieza en 00001 para que se distinga la fase nueva (data/ir_sequence_data.xml).
-SECUENCIA_BANO = 'quimibond_rollos_bitacora.numero_bano'
+# 3.7.0 (Dirección, 2026-11-06): el número de baño sale del nombre de la orden en kg («TL/OP-KG/J00001» → «J00001»;
+# una parte de la división en baños, «J00001-001»). La «J» viene del prefijo de la secuencia del tipo de operación
+# (hooks.configurar_secuencias_j). Antes era una secuencia aparte (3.5.0).
 # 3.6.1: código de secuencia del tipo «Fabricación Tela en kg» (fichas, ruta_familia.TIPO_OPERACION['kg']).
 TIPO_FLUJO_KG = 'OP-KG'
+# 3.8.0: id de la ubicación «Químicos-Colorantes Piso» (de donde la orden en kg consume engomado, químicos y colorantes).
+PARAM_UBICACION_PISO = 'quimibond_rollos_bitacora.ubicacion_piso'
 
 
 class MrpProduction(models.Model):
@@ -39,9 +46,9 @@ class MrpProduction(models.Model):
     desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
     numero_bano = fields.Char(
         'No. de baño', readonly=True, copy=False, index=True, tracking=True,
-        help='Consecutivo que Odoo asigna al baño (orden en kg con Rama) al empezar su primera operación o al abrir el '
-             'pesaje de Rama o Inspección. Da nombre a los lotes: Rama «<baño>-J0001», Inspección «<baño>-0001». '
-             'Sustituye al folio de la tarjeta viajera; una orden dividida en baños da un número a cada uno.')
+        help='Nombre de la orden en kg sin el prefijo del tipo de operación («J00001», o «J00001-001» si la programación '
+             'de tintorería la dividió en baños). Se fija al empezar su primera operación o al abrir el pesaje de Rama o '
+             'Inspección. Da nombre a los lotes de Rama y de Inspección: «<baño>-0001».')
     _unique_numero_bano = models.Constraint('UNIQUE(numero_bano)', 'Ese número de baño ya lo tiene otra orden.')
     es_pesaje_rollos = fields.Boolean(
         'Pesa por rollo en Rama', compute='_compute_es_pesaje_rollos',
@@ -65,8 +72,131 @@ class MrpProduction(models.Model):
         """Da el siguiente número de baño a las órdenes que aún no lo tienen (3.5.0). Se llama cuando el baño ya es
         definitivo (la programación de tintorería divide la orden después de confirmarla)."""
         for orden in self.filtered(lambda o: not o.numero_bano and o.state not in ('done', 'cancel')):
-            orden.numero_bano = self.env['ir.sequence'].sudo().next_by_code(SECUENCIA_BANO)
+            orden.numero_bano = orden._numero_bano_del_nombre()
         return self
+
+    # ------------------------------------------------------------------
+    # 3.8.0 — Ubicación «Químicos-Colorantes Piso»
+    # ------------------------------------------------------------------
+    def _ubicacion_piso(self):
+        """La ubicación «Químicos-Colorantes Piso» (parámetro ``ubicacion_piso``, que pone la migración 3.8.0), o vacío."""
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO)
+        piso = self.env['stock.location'].browse(int(valor)).exists() if valor and valor.isdigit() else \
+            self.env['stock.location']
+        return piso if piso.active else self.env['stock.location']
+
+    def _surte_desde_piso(self, product, piso):
+        """3.8.0: el producto va por el Piso si tiene (por producto o por categoría) una ruta con una regla que sale del
+        Piso, que es como la migración deja «Surtido Engomado» y «Surtido Químicos y Colorantes». El engomado lleva la
+        ruta en el producto y los químicos y colorantes en su categoría, así que no se decide por categoría."""
+        rutas = self.env['stock.rule'].sudo().search([('location_src_id', '=', piso.id)]).route_id
+        return bool(rutas and (product.route_ids | product.categ_id.total_route_ids) & rutas)
+
+    def _get_move_raw_values(self, product, product_uom_qty, product_uom, operation_id=False, bom_line=False):
+        datos = super()._get_move_raw_values(product, product_uom_qty, product_uom, operation_id, bom_line)
+        if self.picking_type_id.sequence_code == TIPO_FLUJO_KG:
+            piso = self._ubicacion_piso()
+            if piso and self._surte_desde_piso(product, piso):
+                datos['location_id'] = piso.id
+        return datos
+
+    # ------------------------------------------------------------------
+    # 3.9.0 — El sobrante del Piso regresa a su ubicación de origen
+    # ------------------------------------------------------------------
+    def _sobrante_piso(self, move):
+        """Lo que se surtió al Piso para este componente y la orden no consumió, por lote y ubicación de origen.
+
+        Surtido = lo hecho en los movimientos que alimentan el movimiento de consumo (la requisición); consumido = lo
+        que la orden descontó, por lote. Regresa una lista de ``(lote, origen, cantidad)`` en la unidad del movimiento y
+        sin pasar de lo que hoy hay en el Piso (la devolución no deja el Piso en negativo)."""
+        surtido = defaultdict(float)
+        for linea in move.move_orig_ids.filtered(lambda m: m.state == 'done').move_line_ids:
+            cantidad = linea.product_uom_id._compute_quantity(linea.quantity, move.product_uom, round=False)
+            surtido[(linea.lot_id, linea.location_id)] += cantidad
+        consumido = defaultdict(float)
+        for linea in move.move_line_ids:
+            consumido[linea.lot_id] += linea.product_uom_id._compute_quantity(
+                linea.quantity, move.product_uom, round=False)
+        piso = move.location_id
+        resultado = []
+        for lote in {lote for lote, _origen in surtido}:
+            sobra = sum(c for (l, _o), c in surtido.items() if l == lote) - consumido.get(lote, 0.0)
+            disponible = move.product_id.uom_id._compute_quantity(
+                self.env['stock.quant']._get_available_quantity(move.product_id, piso, lot_id=lote or None, strict=True),
+                move.product_uom, round=False)
+            sobra = min(sobra, disponible)
+            for (l, origen), cantidad in surtido.items():
+                if l != lote or move.product_uom.compare(sobra, 0) <= 0:
+                    continue
+                parte = min(sobra, cantidad)
+                resultado.append((lote, origen, parte))
+                sobra -= parte
+        return resultado
+
+    def _devolver_sobrante_piso(self):
+        """3.9.0 (Dirección, 2026-11-07): al cerrar la orden en kg, lo que se surtió al Piso y no se consumió regresa a
+        la ubicación de donde salió, con una transferencia interna ligada a la orden (lote por lote). El scrap sigue
+        siendo el botón nativo de Odoo para lo que ya no se puede reutilizar. Si algo falla no se deshace el cierre: se
+        deja la nota para hacer la devolución a mano."""
+        piso = self._ubicacion_piso()
+        if not piso:
+            return
+        for orden in self.filtered(lambda o: o.picking_type_id.sequence_code == TIPO_FLUJO_KG):
+            try:
+                with self.env.cr.savepoint():
+                    orden._devolver_sobrante_piso_orden(piso)
+            except Exception:  # no se detiene el cierre por una devolución: queda la nota para Almacén
+                _logger.exception('rollos 3.9.0: no se pudo devolver el sobrante del Piso de %s', orden.name)
+                orden.message_post(body=_(
+                    'No se pudo devolver el sobrante de químicos y colorantes al almacén. Hacer la transferencia '
+                    'interna a mano desde %s.', piso.display_name))
+
+    def _devolver_sobrante_piso_orden(self, piso):
+        self.ensure_one()
+        por_origen = defaultdict(list)
+        for move in self.move_raw_ids.filtered(lambda m: m.state == 'done' and m.location_id == piso):
+            for lote, origen, cantidad in self._sobrante_piso(move):
+                por_origen[origen].append((move, lote, cantidad))
+        if not por_origen:
+            return self.env['stock.picking']
+        tipo = self.picking_type_id.warehouse_id.int_type_id
+        if not tipo:
+            raise UserError(_('El almacén de %s no tiene tipo de operación de transferencia interna.', self.name))
+        transferencias = self.env['stock.picking']
+        lineas_nota = []
+        for origen, partidas in por_origen.items():
+            transferencia = self.env['stock.picking'].create({
+                'picking_type_id': tipo.id, 'location_id': piso.id, 'location_dest_id': origen.id,
+                'origin': _('Sobrante de %s', self.name), 'company_id': self.company_id.id,
+                'move_ids': [Command.create({
+                    'product_id': move.product_id.id, 'product_uom': move.product_uom.id,
+                    'product_uom_qty': cantidad, 'location_id': piso.id, 'location_dest_id': origen.id,
+                    'company_id': self.company_id.id, 'picked': True,
+                    'move_line_ids': [Command.create({
+                        'product_id': move.product_id.id, 'product_uom_id': move.product_uom.id,
+                        'quantity': cantidad, 'lot_id': lote.id, 'location_id': piso.id,
+                        'location_dest_id': origen.id, 'company_id': self.company_id.id})],
+                }) for move, lote, cantidad in partidas]})
+            transferencia.action_confirm()
+            transferencia.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+            transferencias |= transferencia
+            for move, lote, cantidad in partidas:
+                lineas_nota.append(_('%(p)s: %(c)s %(u)s a %(o)s', p=move.product_id.display_name, c=round(cantidad, 4),
+                                     u=move.product_uom.name, o=origen.display_name))
+        self.message_post(body=Markup('<p>%s</p><ul>%s</ul>') % (
+            _('Sobrante del Piso devuelto a su ubicación de origen (%s):', ', '.join(transferencias.mapped('name'))),
+            Markup('').join(Markup('<li>%s</li>') % linea for linea in lineas_nota)))
+        return transferencias
+
+    def _numero_bano_del_nombre(self):
+        """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una
+        orden vieja numerada con la secuencia de 3.5.0), se usa el nombre completo con guiones."""
+        self.ensure_one()
+        nombre = self.name or ''
+        numero = nombre.rsplit('/', 1)[-1]
+        if self.search_count([('numero_bano', '=', numero), ('id', '!=', self.id)]):
+            numero = nombre.replace('/', '-')
+        return numero
 
     def action_asignar_numero_bano(self):
         self._asignar_numero_bano()
@@ -484,7 +614,11 @@ class MrpProduction(models.Model):
                 finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': total})
         for orden in self.filtered('rollo_final_ids'):
             orden._clasif_cierre_metros()
-        return super().button_mark_done()
+        res = super().button_mark_done()
+        # 3.9.0: el sobrante del Piso regresa a su origen cuando la orden en kg ya cerró (el core puede devolver una
+        # acción y dejarla abierta; en ese caso se hará al cerrarla).
+        self.filtered(lambda o: o.state == 'done')._devolver_sobrante_piso()
+        return res
 
     def _clasif_cierre_metros(self):
         """Cierre de la MO en metros: igual que en kg, la cantidad de la MO es la suma de los rollos

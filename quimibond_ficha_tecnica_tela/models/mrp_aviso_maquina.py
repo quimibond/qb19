@@ -222,7 +222,9 @@ class MrpWorkcenterCarga(models.Model):
 
     def _ft_aviso_para(self, product, qty_kg=0.0, day=None):
         """Aviso de esta máquina para fabricar ``product``: galga distinta en una circular, o más kg de los
-        que caben en una carga de un jet. False si no hay nada que avisar. Lo usan la orden de trabajo y la
+        que caben en una carga de un jet. 2.28.0: en el jet ``qty_kg`` son los **kg de crudo que entran al jet**
+        (la capacidad y la relación de baño son por kg de crudo cargado, confirmado por Tintorería 2026-11-06),
+        no los kg de tela terminada. False si no hay nada que avisar. Lo usan la orden de trabajo y la
         corrida de muestra del desarrollo antes de crear las órdenes."""
         self.ensure_one()
         tipo = self.ft_tipo_id.code
@@ -240,7 +242,7 @@ class MrpWorkcenterCarga(models.Model):
             if not capacidad:
                 return '%s: %s.' % (self.name, motivo)
             if qty_kg > capacidad:
-                return 'La orden lleva %s kg y %s carga %s kg (%s): son %s cargas.' % (
+                return 'La orden lleva %s kg de crudo y %s carga %s kg (%s): son %s cargas.' % (
                     _fmt(qty_kg), self.name, _fmt(capacidad), motivo, math.ceil(qty_kg / capacidad))
         return False
 
@@ -349,11 +351,13 @@ class MrpWorkorderAviso(models.Model):
         self.ensure_one()
         if not self.workcenter_id:
             return False
-        qty = self.production_id._ft_qty_kg() if self.production_id else 0.0
+        # 2.28.0: en un jet la orden se compara en kg de crudo; en las demás máquinas la cantidad no se usa.
+        qty = self.production_id._ft_kg_carga_jet()[0] if self.production_id else 0.0
         return self.workcenter_id._ft_aviso_para(self.product_id, qty, self.date_start or None)
 
     @api.depends('workcenter_id', 'workcenter_id.ft_estado', 'product_id', 'date_start',
-                 'production_id.product_qty', 'production_id.product_uom_id')
+                 'production_id.product_qty', 'production_id.product_uom_id', 'production_id.bom_id',
+                 'production_id.move_raw_ids.product_uom_qty')
     def _compute_ft_aviso_maquina(self):
         for workorder in self:
             workorder.ft_aviso_maquina = workorder._ft_aviso()
@@ -428,13 +432,21 @@ class MrpProductionAviso(models.Model):
         except Exception:  # unidades que no son de peso (m, unidades): no se puede comparar contra kg
             return 0.0
 
+    def _ft_kg_carga_jet(self):
+        """2.28.0: (kg que entran al jet, producto crudo). La capacidad del jet y la relación de baño son por kg de
+        **crudo cargado**, no por kg de tela terminada. Aquí, sin dosificación, solo se conocen los kg de la orden;
+        ``quimibond_tintoreria_dosificacion`` lo sobreescribe con el crudo de la lista de materiales."""
+        self.ensure_one()
+        return self._ft_qty_kg(), False
+
     def _ft_jets(self):
         return self.env['mrp.workcenter'].search([('ft_tipo_id.code', '=', TIPO_TINTORERIA),
                                                   ('company_id', 'in', (self.company_id.id, False))],
                                                  order='name')
 
     @api.depends('product_id', 'product_qty', 'product_uom_id', 'ft_jet_id', 'picking_type_id',
-                 'workorder_ids.workcenter_id', 'date_start')
+                 'workorder_ids.workcenter_id', 'date_start', 'bom_id', 'move_raw_ids.product_uom_qty',
+                 'move_raw_ids.product_id')
     def _compute_ft_cargas(self):
         for production in self:
             avisos = [w.ft_aviso_maquina for w in production.workorder_ids if w.ft_aviso_maquina]
@@ -442,7 +454,8 @@ class MrpProductionAviso(models.Model):
             production.ft_rendimiento = rendimiento
             html = False
             if production.ft_es_tintoreria:
-                qty = production._ft_qty_kg()
+                qty_orden = production._ft_qty_kg()
+                qty, crudo = production._ft_kg_carga_jet() if qty_orden else (0.0, False)
                 day = production.date_start or None
                 rows = []
                 elegido = production.ft_jet_wo_id or production.ft_jet_id
@@ -457,12 +470,16 @@ class MrpProductionAviso(models.Model):
                         if not capacidad:
                             avisos.append('%s: %s.' % (jet.name, motivo))
                         elif qty > capacidad:
-                            avisos.append('La orden lleva %s kg y %s carga %s kg (%s): son %s cargas.' % (
+                            avisos.append('La orden lleva %s kg de crudo y %s carga %s kg (%s): son %s cargas.' % (
                                 _fmt(qty), jet.name, _fmt(capacidad), motivo, cargas))
                 nota = (Markup('Rendimiento %s m/kg (%s).') % (_fmt(rendimiento), origen) if rendimiento
                         else Markup('La tela no tiene rendimiento en su ficha de tejido: se usa la capacidad '
                                     'general de cada jet.'))
-                if not qty:
+                if qty:
+                    nota += Markup(' Cargas sobre %s kg de %s.') % (
+                        _fmt(qty), ('crudo (%s)' % crudo.display_name) if crudo else
+                        'la orden (la lista no tiene un tejido que se tome como crudo)')
+                else:
                     nota += Markup(' La cantidad de la orden no está en kg: no se calculan cargas.')
                 html = (Markup('<p class="text-muted mb-2">%s</p><table class="table table-sm o_ft_cargas">'
                                '<thead><tr><th>Jet</th><th class="text-end">Capacidad por carga</th>'

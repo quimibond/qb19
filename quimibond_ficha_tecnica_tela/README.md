@@ -39,9 +39,13 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 | Abridora | Todas, aunque el tejido salga abierto (sale del jet en cuerda); abierto o tubular solo cambia la velocidad |
 | Rama (termofijado) | Todas; la rama es de la familia y la tela puede llevar otra |
 | Inspección | Todas |
-| Clasificación final | En la lista en metros, con tiempo fijo |
+| Clasificación final | En la lista en metros, en EMPAQUE; tiempo fijo por ciclo (60 min por 400 m, provisional) |
 
 «Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
+La lista en metros generada lleva la operación CLASIFICACION en EMPAQUE (2.28.0) y la tela queda con su capacidad en
+ese centro (400 m por ciclo de 60 min, provisional): la Clasificación final se confirma en la orden en metros. En una
+lista en metros ya activa, el botón «Clasificación en Empaque» de la lista de materiales pone la operación y la
+capacidad.
 La lista en kg generada lleva el subproducto «DESPERDICIO TEJIDO» en la Rama con cantidad 0 (2.25.0): lo pesa Rama
 en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de operación: Fabricación Tela en kg y Fabricación Tela en m. Nacen en consumo «flexible» y, al activar la lista en kg, el acabado en kg recibe la ruta MTO «Fabricar Tela kg → Inspección (MTO)» (2.25.0).
 
