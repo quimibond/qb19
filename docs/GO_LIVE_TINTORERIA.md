@@ -6,7 +6,7 @@ configuración y qué datos del piloto hay que llevar, y cómo verificarlo. Plan
 «Plan de implementación: tintorería, acabado e inspección en Odoo» (sección 2.1 Despliegue).
 
 Inventario verificado el 2026-11-06 comparando `main` contra producción por MCP; puesto al día el 2026-11-08 con lo que
-José Sacramento metió a `main` el 2026-11-07 (rollos 3.7.0 a 3.13.0, fichas 2.28.0 con la Clasificación final en
+José Sacramento metió a `main` el 2026-11-07 (rollos 3.7.0 a 3.14.0, fichas 2.28.0 con la Clasificación final en
 Empaque, dosificación 1.4.1). **Antes del go-live se vuelve a comparar**: el piloto sigue cambiando datos en `main` y
 producción también cambia.
 
@@ -24,7 +24,7 @@ se captura en `main` hasta el go-live.
 
 | # | Qué | Camino |
 |---|---|---|
-| 1 | Código: rollos 3.13.0, fichas 2.28.0, programación 1.8.1, dosificación 1.4.1 (costeo 1.10.1 ya está). En producción hoy: fichas 2.25.0, programación 1.6.1, dosificación 1.3.0, rollos sin instalar | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
+| 1 | Código: rollos 3.14.0, fichas 2.28.0, programación 1.8.1, dosificación 1.4.1 (costeo 1.10.1 ya está). En producción hoy: fichas 2.25.0, programación 1.6.1, dosificación 1.3.0, rollos sin instalar | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
 | 2 | Lo que crea el código al instalar: modelos, vistas, catálogo de 64 defectos, reportes de etiqueta. **Numeración J** (rollos 3.7.0): las secuencias de «Fabricación Tela en kg» (410) y «en m» (411) pasan de `TL/OP-KG/` y `TL/OP-M/` a `TL/OP-KG/J` y `TL/OP-M/J` desde 00001, y el número de baño es el nombre sin el prefijo (J00001; la parte de una orden partida, J00001-001). En producción las dos secuencias están en 1 y no hay órdenes de esos tipos (2026-11-08), así que no hay choque. También crea la ubicación «Toluca/Stock/Químicos-Colorantes Piso» (rollos 3.8.0, ver «Lo que debe estar resuelto») | Viaja con el paso 1 |
 | 2b | **Fichas 2.25.0 → 2.28.0 cambia datos sola en producción** (migración de la Clasificación final en Empaque): agrega el paso «Clasificación final» (EMPAQUE, 60 min por ciclo) a las rutas de familia que no lo tienen, la operación CLASIFICACION a las listas en metros **archivadas** del flujo, la capacidad de 400 m por ciclo en EMPAQUE a cada tela en metros con ficha (provisional) y rehace la revisión de listas. Las listas activas no se tocan. En `main` ya está (42 de 42 rutas) | Viaja con el paso 1; revisar el log del update |
 | 3 | Listas «Flujo en kg (borrador)»: 45 en `main`, 0 en producción | Botón «Generar listas» de fichas en producción, tela por tela. No se copian: salen de los datos de la ficha |
@@ -149,9 +149,16 @@ el motivo «Sin báscula IoT».
   estación y la etiqueta en pantalla. **Si se prende, cada lista en metros activa necesita la operación de Empaque**
   (botón «Clasificación en Empaque»; la migración solo la pone en las archivadas): en `main` la de WJ038 (4901) no la
   tiene, y sin ella la orden en metros no programa el tiempo de Empaque.
-- Pendiente de José, sin PR: rama `claude/ficha-clasificacion-tiempos` (las operaciones CLASIFICACION viejas con
-  0.05 min por metro pasan a 60 min por 400 m). Y el PR [#953](https://github.com/quimibond/qb19/pull/953) (fichas 2.28.1: al activar una tela quita «Convertir
+- Ya en `main` (José, 2026-11-07, PRs #954 y #955): las operaciones CLASIFICACION viejas pasan de 0.05 min por metro
+  a 60 min por 400 m y cada tela en metros con la operación queda con 400 m de capacidad en EMPAQUE (en `main`: 50
+  operaciones y 118 capacidades); y rollos 3.14.0 pone CLASIFICAR y PESAR DESPERDICIO en la operación de Empaque de la
+  orden en metros (solo con `clasificacion_empaque` prendido). Sin fusionar: el PR [#953](https://github.com/quimibond/qb19/pull/953) (fichas 2.28.1: al activar una tela quita «Convertir
   Unidades» y pone la ruta de la 14 solo con dos parámetros, apagado; es la propuesta del paso 4).
+- **Venta en kg y unidades** (documento «Unidades de medida y códigos de tela», claude.ai, 2026-11-08): un solo
+  inventario de producto terminado en metros, ningún rollo en kg en la 14 y nunca «kg» como unidad adicional de una tela
+  en metros. Probado en `main`: una venta del «I…» en kg no abre baño ni conversión; espera «I…» en la 14 y, si lo hay,
+  la reserva automática parte rollos. Para el go-live, la venta en kg se convierte a mano como hoy (443 conversiones
+  manuales en 2026) y en kg se surten rollos completos.
 - Ingeniería revisa los rendimientos «por aprobar» de fichas 2.28.0 en `main` (4 al 2026-11-06: NN040Q66JNT163,
   WJ060Q21JNN165, WJ042Q22JNT175 y WJ032Q22JNT155; los dos primeros salen iguales al teórico porque sus órdenes viejas
   calcularon los kg con el factor de la lista, no son medición).
