@@ -8,6 +8,14 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.28.1 — 2026-11-08
+
+**Agregado, apagado**
+- Al activar una lista del flujo no se tocan las rutas viejas salvo que Jose prenda los parámetros.
+  `quimibond_ficha_tecnica_tela.al_activar_quitar_convertir` = `1` quita «Convertir Unidades» del producto.
+  `al_activar_ruta_entrega` con el nombre exacto de una ruta que ya exista se la agrega. Vacío, no cambia nada.
+  Si el nombre no existe, la activación sigue. No crea la entrega desde la 14. Prueba 14 de rutas.
+
 ## 19.0.2.28.0 — 2026-11-06
 
 **Clasificación final en Empaque (A3.4, Dirección General: el diseño de la Clasificación final en Empaque sustituye al
@@ -27,7 +35,6 @@ clasificación de cada rollo en la orden en metros (`quimibond_rollos_bitacora` 
 - Al activar una lista en metros del flujo (visto bueno de Ingeniería) se completa sola la operación si faltaba.
 - Botón «Clasificación en Empaque» en la lista de materiales: pone la operación y la capacidad en una lista en
   metros **ya activa** (decisión explícita de Ingeniería; sin paso en la ruta avisa y no quita nada).
-
 **Migración 2.28.0** (`post-migrate-clasificacion-empaque.py`, una vez al pasar de una versión anterior; en una base que ya está en 2.28.0 se corre a mano: `env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()`): el paso en las rutas que no lo tienen, la operación en las listas en metros
 **archivadas** del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas activas no se tocan.
 
@@ -47,6 +54,12 @@ clasificación de cada rollo en la orden en metros (`quimibond_rollos_bitacora` 
   aplica y la revisión deja el pendiente «Lo fabricado da un rendimiento fuera del teórico».
 - El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
 - Pruebas 8, 9, 14 y 19.
+- **Rutas viejas al activar, apagado.** Dos parámetros vacíos por omisión. Con
+  `al_activar_quitar_convertir` = `1`, al activar la lista se quita «Convertir Unidades»
+  del producto. Con `al_activar_ruta_entrega` igual al nombre exacto de una ruta que ya
+  exista, se la pone. Si el nombre no existe, la activación sigue. No crea la ruta de la
+  14: esa la tiene que dar de alta Sistemas. Requiere el visto bueno de Jose antes de
+  prenderlos. Prueba 14.
 
 **Corregido**
 - **Avisos y cargas por jet en kg de crudo.** Tintorería confirmó (2026-11-06) que la capacidad del jet y la relación de

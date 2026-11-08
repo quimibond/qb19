@@ -689,6 +689,38 @@ class MrpBomDesperdicioRama(models.Model):
             else:
                 continue
             bom._ft_poner_consumo_flexible()
+            bom._ft_rutas_viejas_al_activar()
+
+    def _ft_rutas_viejas_al_activar(self):
+        """Opcional, apagado hasta que Jose lo prenda.
+
+        Parámetros del sistema (vacíos = no hace nada, que es el comportamiento de hoy):
+
+        * ``quimibond_ficha_tecnica_tela.al_activar_quitar_convertir`` en ``1``:
+          quita del producto la ruta cuyo nombre contiene «Convertir Unidades».
+        * ``quimibond_ficha_tecnica_tela.al_activar_ruta_entrega``: nombre exacto
+          de una ruta ya creada (por ejemplo la entrega desde la 14). Si existe
+          y se puede poner en el producto, se agrega. Si no existe, la activación
+          sigue: no se inventa la ruta ni se detiene el visto bueno.
+        """
+        params = self.env['ir.config_parameter'].sudo()
+        quitar = (params.get_param('quimibond_ficha_tecnica_tela.al_activar_quitar_convertir') or '').strip().lower()
+        nombre = (params.get_param('quimibond_ficha_tecnica_tela.al_activar_ruta_entrega') or '').strip()
+        if quitar not in ('1', 'true', 'si', 'sí') and not nombre:
+            return
+        Route = self.env['stock.route']
+        entrega = Route.search([('name', '=', nombre), ('product_selectable', '=', True)], limit=1) if nombre else Route
+        for bom in self:
+            tmpl = bom.product_tmpl_id
+            if not tmpl:
+                continue
+            if quitar in ('1', 'true', 'si', 'sí'):
+                viejas = tmpl.route_ids.filtered(
+                    lambda r: 'convertir unidades' in (r.name or '').lower())
+                if viejas:
+                    tmpl.route_ids = [(3, ruta.id) for ruta in viejas]
+            if entrega and entrega not in tmpl.route_ids:
+                tmpl.route_ids = [(4, entrega.id)]
 
     def write(self, vals):
         activando = self.filtered(lambda b: not b.active) if vals.get('active') else self.browse()
@@ -696,4 +728,3 @@ class MrpBomDesperdicioRama(models.Model):
         if activando:
             activando._ft_preparar_activacion()
         return res
-

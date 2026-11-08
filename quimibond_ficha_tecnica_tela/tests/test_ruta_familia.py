@@ -404,3 +404,39 @@ class TestRutaFamilia(TiempoFichaCase):
         pendiente = Revision._ft_actualizar(ficha).pendiente_ids.filtered(
             lambda p: p.tipo == 'ruta_mto' and p.bom_id == bom_m)
         self.assertTrue(pendiente, "Lista en metros activa sin la ruta: pendiente de Ingeniería")
+
+    def test_14_rutas_viejas_solo_si_jose_las_prende(self):
+        """Apagado, activar no quita «Convertir Unidades» ni agrega otra ruta.
+        Prendido, quita esa ruta y pone la de entrega si ya existe con ese nombre.
+        Un nombre que no existe no detiene la activación."""
+        self._armar()
+        Product = self.env['product.product']
+        kg = Product.create({'name': 'Tela 939 prueba (kg)', 'default_code': 'IZZ939Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 939 prueba (m)', 'default_code': 'ZZ939Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        convertir = self.env['stock.route'].create({'name': 'Convertir Unidades', 'product_selectable': True})
+        entrega = self.env['stock.route'].create({'name': 'Entrega desde 14 prueba', 'product_selectable': True})
+        kg.product_tmpl_id.route_ids = [(4, convertir.id)]
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ939Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        bom_kg = self.env['ficha.tecnica.revision']._ft_bom_de(kg)
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.set_param('quimibond_ficha_tecnica_tela.al_activar_quitar_convertir', '')
+        Param.set_param('quimibond_ficha_tecnica_tela.al_activar_ruta_entrega', '')
+        bom_kg.action_unarchive()
+        self.assertIn(convertir, kg.product_tmpl_id.route_ids)
+        self.assertNotIn(entrega, kg.product_tmpl_id.route_ids)
+        bom_kg.action_archive()
+        Param.set_param('quimibond_ficha_tecnica_tela.al_activar_quitar_convertir', '1')
+        Param.set_param('quimibond_ficha_tecnica_tela.al_activar_ruta_entrega', 'Entrega desde 14 prueba')
+        bom_kg.action_unarchive()
+        self.assertNotIn(convertir, kg.product_tmpl_id.route_ids)
+        self.assertIn(entrega, kg.product_tmpl_id.route_ids)
+        bom_kg.action_archive()
+        Param.set_param('quimibond_ficha_tecnica_tela.al_activar_ruta_entrega', 'Ruta que no existe')
+        bom_kg.action_unarchive()
+        self.assertNotIn('Ruta que no existe', kg.product_tmpl_id.route_ids.mapped('name'))
+        self.assertIn(entrega, kg.product_tmpl_id.route_ids, "No se quita la ruta buena si el nombre nuevo no existe")
