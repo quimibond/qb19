@@ -42,7 +42,7 @@ class MrpBom(models.Model):
         if not planeado:
             return kg_lote, kg_lote, False
         crudo = max(planeado, key=planeado.get)
-        return kg_lote, planeado[crudo], crudo
+        return kg_lote, sum(planeado.values()), crudo  # 1.4.2: con dos crudos se suman
 
     # ------------------------------------------------------------------
     # Comparación contra el catálogo

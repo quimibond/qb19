@@ -502,6 +502,38 @@ class MrpProductionInspeccion(models.Model):
                 'location_id': (quant.location_id or raw.location_id).id, 'location_dest_id': raw.location_dest_id.id})
         raw.picked = True
 
+    def _insp_orden_metros_reemplazo(self, finales):
+        """3.14.1 (revisión de código, 2026-11-06): si la orden en metros de los rollos finales se canceló o se cerró por
+        fuera después de inspeccionar (pedido cancelado), el baño no podía cerrar nunca: «no hay orden en metros abierta».
+        Ahora se crea otra orden en metros de la misma tela y lista de materiales, sin abastecer (los rollos de Rama ya
+        están en inventario), y el baño se registra en ella como siempre: la tela queda en metros, no en kg. Sin tela en
+        metros a la cual registrar, no hace nada (el llamador avisa)."""
+        self.ensure_one()
+        anterior = finales.production_m_id.sorted('id')[-1:]
+        producto = anterior.product_id
+        if not producto:
+            return self.env['mrp.production']
+        rama = finales.bitacora_ids
+        primeras = finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE'))
+        metros = producto.uom_id.round(sum(primeras.mapped('metros_registro'))) or anterior.product_qty
+        quant = self.env['stock.quant'].sudo().search([
+            ('lot_id', 'in', rama.lot_id.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
+        origen = quant.location_id or self.location_dest_id
+        nueva = self.create({
+            'product_id': producto.id, 'product_qty': metros, 'product_uom_id': producto.uom_id.id,
+            'bom_id': anterior.bom_id.id, 'picking_type_id': anterior.picking_type_id.id,
+            'location_src_id': origen.id, 'origin': self.name, 'company_id': self.company_id.id,
+            'es_desarrollo': anterior.es_desarrollo or self.es_desarrollo})
+        # Sin abastecer: el consumo del acabado en kg sale de los rollos de Rama ya registrados (como la orden de saldos).
+        nueva.with_context(qb_insp_sin_abastecer=True).action_confirm()
+        finales.write({'production_m_id': nueva.id})
+        estado = _('cancelada') if anterior.state == 'cancel' else _('cerrada')
+        mensaje = _('La orden en metros %(a)s está %(e)s; el baño %(b)s se registra en la orden en metros nueva %(n)s.',
+                    a=anterior.name, e=estado, b=self.name, n=nueva.name)
+        self.message_post(body=mensaje)
+        nueva.message_post(body=mensaje)
+        return nueva
+
     def _insp_registrar_metros(self):
         """Registra en la orden en metros los rollos finales del baño (§4.5). ``self`` es la orden en kg ya cerrada.
 
@@ -514,6 +546,8 @@ class MrpProductionInspeccion(models.Model):
             return
         orden_m = self._insp_orden_metros() or finales.production_m_id.filtered(
             lambda p: p.state not in ('done', 'cancel'))[:1]
+        if not orden_m:
+            orden_m = self._insp_orden_metros_reemplazo(finales)
         if not orden_m:
             raise UserError(_('No se puede registrar el baño %(kg)s: no hay orden en metros abierta que abastezca '
                               '(%(m)s).', kg=self.name, m=', '.join(finales.production_m_id.mapped('name')) or '—'))

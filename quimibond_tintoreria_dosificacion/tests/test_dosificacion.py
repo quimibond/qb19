@@ -162,6 +162,27 @@ class TestDosificacionTintoreria(TransactionCase):
         mo.workorder_ids.filtered(lambda w: w.operation_id.name == 'TINTORERIA').write({'workcenter_id': self.wc2.id})
         self.assertAlmostEqual(self._mov(mo, self.detergente).product_uom_qty, 1.5 * 6 * 115 / 1000, places=6)
 
+    def test_dos_crudos_se_suman(self):
+        """1.4.2 (revisión de código, 2026-11-06): con dos crudos en la lista entran los dos al jet; se suman."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (dos crudos)'})
+        crudo_a, crudo_b = [self.env['product.product'].create({
+            'name': 'Crudo %s' % letra, 'default_code': 'T-CRUDO-%s' % letra, 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id}) for letra in 'AB']
+        tela = self.env['product.product'].create({
+            'name': 'Tela con dos crudos', 'default_code': 'T-ITELA3', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo_a.id, 'product_qty': 0.8}),
+                             (0, 0, {'product_id': crudo_b.id, 'product_qty': 0.35})],
+        })
+        self.assertEqual(bom._kg_carga_jet_lote(), (1.0, 1.15, crudo_a))
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        kg, crudo = mo._kg_carga_jet()
+        self.assertAlmostEqual(kg, 115.0)
+        self.assertEqual(crudo, crudo_a)
+
     def test_sin_crudo_dosifica_sobre_los_kg_de_la_orden(self):
         """1.4.0: sin componente de tejido, como antes: los kg de la orden."""
         self.assertEqual(self.bom._kg_carga_jet_lote(), (1.0, 1.0, False))
