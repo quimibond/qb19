@@ -5,8 +5,10 @@ Lista de lo que hay que hacer el día que el flujo nuevo pasa de `main` (piloto)
 configuración y qué datos del piloto hay que llevar, y cómo verificarlo. Plan general y estado del piloto: documento
 «Plan de implementación: tintorería, acabado e inspección en Odoo» (sección 2.1 Despliegue).
 
-Inventario verificado el 2026-11-06 comparando `main` contra producción por MCP. **Antes del go-live se vuelve a
-comparar**: el piloto sigue cambiando datos en `main` y producción también cambia.
+Inventario verificado el 2026-11-06 comparando `main` contra producción por MCP; puesto al día el 2026-11-08 con lo que
+José Sacramento metió a `main` el 2026-11-07 (rollos 3.7.0 a 3.13.0, fichas 2.28.0 con la Clasificación final en
+Empaque, dosificación 1.4.1). **Antes del go-live se vuelve a comparar**: el piloto sigue cambiando datos en `main` y
+producción también cambia.
 
 ## Regla
 
@@ -22,8 +24,9 @@ se captura en `main` hasta el go-live.
 
 | # | Qué | Camino |
 |---|---|---|
-| 1 | Código: rollos 3.6.4, fichas 2.28.0, programación 1.8.1, dosificación 1.4.0 (costeo 1.10.1 ya está) | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
-| 2 | Lo que crea el código al instalar: modelos, vistas, secuencia del número de baño (arranca en 00001), catálogo de 64 defectos, reportes de etiqueta | Viaja con el paso 1 |
+| 1 | Código: rollos 3.13.0, fichas 2.28.0, programación 1.8.1, dosificación 1.4.1 (costeo 1.10.1 ya está). En producción hoy: fichas 2.25.0, programación 1.6.1, dosificación 1.3.0, rollos sin instalar | «push a quimibond» + `odoo-update` + instalar `quimibond_rollos_bitacora` (runbook) |
+| 2 | Lo que crea el código al instalar: modelos, vistas, catálogo de 64 defectos, reportes de etiqueta. **Numeración J** (rollos 3.7.0): las secuencias de «Fabricación Tela en kg» (410) y «en m» (411) pasan de `TL/OP-KG/` y `TL/OP-M/` a `TL/OP-KG/J` y `TL/OP-M/J` desde 00001, y el número de baño es el nombre sin el prefijo (J00001; la parte de una orden partida, J00001-001). En producción las dos secuencias están en 1 y no hay órdenes de esos tipos (2026-11-08), así que no hay choque. También crea la ubicación «Toluca/Stock/Químicos-Colorantes Piso» (rollos 3.8.0, ver «Lo que debe estar resuelto») | Viaja con el paso 1 |
+| 2b | **Fichas 2.25.0 → 2.28.0 cambia datos sola en producción** (migración de la Clasificación final en Empaque): agrega el paso «Clasificación final» (EMPAQUE, 60 min por ciclo) a las rutas de familia que no lo tienen, la operación CLASIFICACION a las listas en metros **archivadas** del flujo, la capacidad de 400 m por ciclo en EMPAQUE a cada tela en metros con ficha (provisional) y rehace la revisión de listas. Las listas activas no se tocan. En `main` ya está (42 de 42 rutas) | Viaja con el paso 1; revisar el log del update |
 | 3 | Listas «Flujo en kg (borrador)»: 45 en `main`, 0 en producción | Botón «Generar listas» de fichas en producción, tela por tela. No se copian: salen de los datos de la ficha |
 | 4 | Ruta de entrega desde la 14 y quitar «Convertir Unidades» | Código (propuesta: al activar la tela) o a mano (abajo) |
 | 5 | Datos capturados en `main` (taras, rendimientos forzados, restricción de Inspección, procesos quitados, siglas, parámetros) | Copia por MCP: ensayo → aplicar → verificar |
@@ -49,7 +52,7 @@ Estado al 2026-11-06. En el ensayo se vuelve a leer de `main`.
 | Otros procesos | producción 1,086 vs `main` 1,029 | artículo + centro | Además de los 16, hay 41 de diferencia: revisar en el ensayo de qué lado cambiaron antes de tocar nada |
 | Secuencia de los centros (`mrp.workcenter`, `sequence`) | 21 centros | centro | Orden del proceso en la planeación por centro de trabajo: Devanadoras 10, Tintorerías 20, Abridoras 30, Ramas 40, Inspecciones 50 (en producción todos en 1; mismos ids 701 a 722 sin la 714). Puesto en `main` el 2026-11-06 |
 | Filtro «Piloto Tintorería (orden del proceso)» (`ir.filters` 489, compartido) | 1 | nombre | Órdenes de trabajo de los 21 centros sin las canceladas, agrupadas por centro. Se crea igual en producción (ids de los centros iguales) |
-| Reabastecimiento de químicos en 2 PRODUCCIÓN (`stock.warehouse.orderpoint`) | 21 reglas | producto + ubicación | Acuerdo del piloto (2026-11-06): los químicos se surten por tambo, no por orden, igual que el engomado. Cada regla, en 2 PRODUCCIÓN con la ruta 47 «Requisición MP» (de 1 Materia Prima), mínimo 0, máximo 0, automática: cuando el pronóstico de la 2 baja de cero (baños confirmados sin existencia), Odoo crea la requisición y Almacén surte el tambo completo. Son los químicos comprados de las listas «Flujo en kg (borrador)»; fórmulas de Cocina (ENGOMADO001/002, LAVADO 001, APRESTO 008) no llevan regla. Falta el tamaño del tambo de cada químico (Almacén) para ponerlo como múltiplo |
+| Reabastecimiento de químicos en 2 PRODUCCIÓN (`stock.warehouse.orderpoint`) | 21 reglas | producto + ubicación | Acuerdo del piloto (2026-11-06): los químicos se surten por tambo, no por orden, igual que el engomado. Cada regla, en 2 PRODUCCIÓN con la ruta 47 «Requisición MP» (de 1 Materia Prima), mínimo 0, máximo 0, automática: cuando el pronóstico de la 2 baja de cero (baños confirmados sin existencia), Odoo crea la requisición y Almacén surte el tambo completo. Son los químicos comprados de las listas «Flujo en kg (borrador)»; fórmulas de Cocina (ENGOMADO001/002, LAVADO 001, APRESTO 008) no llevan regla. Falta el tamaño del tambo de cada químico (Almacén) para ponerlo como múltiplo. **Choca con el diseño del Piso de rollos 3.8.0** si alguien crea sus rutas (ver «Lo que debe estar resuelto») |
 | Kg por carga del artículo (`ficha.tecnica.proceso.valor`, parámetro 39 `kg_carga`) | 27 procesos | artículo + centro | Deducido el 2026-11-06 de producción: mediana de kg de crudo por orden de Tintorería (TL/OP-TIN, 1-may a 6-nov) del crudo de la tela en ese jet, **cerrada a la decena** (Dirección). Solo se cargó si el crudo tiene 5 baños o más y p75 ≤ 1.25 × p25. Valores: Tintorería 1: WJ035 y WJ035 HNN 420 kg (IWJ038, IWJ042 JNT160, JNN160 y JNT165; en IWJ038 el 420 es el dato de Tintorería), WJ044 450 (IWJ042JNT175, IWJ045, las 4 IWJ053), XJ130 1,220; Tintorería 3: XJ130 1,220; Tintorería 2: WJ047 510 (las 4 IWJ060 JNT157 a 170), WD040 600 (las 4 IWD038), WC090 410 (IWC090 JNT168 y JNG165), WN048 610, WN063 620 (las 2 IWN075), WJ064 680, WT140 750. **Tintorería 1 y 3 ya están en producción** (2026-11-06, autorizado por Dirección), con el proceso nuevo de IWJ042Q22JNT165 en Tintorería 1 (id 1216 en producción, 1169 en `main`) y las notas fechadas iguales en las dos bases. **Tintorería 2 queda pendiente** de que Tintorería confirme si el baño entra entero o a la mitad: los valores viejos de producción (IWJ060Q21JNT170 255, IWN055Q66JNT162 309) son la mitad del baño, y las órdenes de producción muestran una sola orden de Tintorería por baño entero. Los procesos de Tintorería 2 de IWD038Q46JNT152 e IWC090Q11JNG165 no existen en producción: se crean (en `main` son 1170 y 1171; emparejar por artículo + centro). La relación de baño no se cambia: 9 y 6 son la base de las recetas (NAT 005 a 9 L/kg; BLANCO 001 y NATURAL 006 a 6 L/kg). Sin cargar (dos tamaños de baño o pocos baños): NN053 en la 2, WB046 y WD040 en la 4, WJ045R, WJ047HNN, WN052B y las muestras |
 | Capacidad por producto en el centro (`mrp.workcenter.capacity`) | 27 filas de Tintorería 1, 2 y 3 | producto + centro | Igual a los kg por carga de la ficha. El botón «Usar la capacidad de la ficha» (`action_ft_usar_capacidad_ficha`) se salta las diferencias chicas (451 contra 450): revisar después y escribir el número exacto donde no coincida. Sin esto el tiempo de Tintorería cuenta varios ciclos por baño (p. ej. IWD038 tenía 300 kg y su baño es de 600). Tintorería 1 y 3 ya iguales en producción (12 filas). Probado en `main` el 2026-11-06: IWJ038 de 721 kg salió en 2 baños de 414.8 kg de crudo con 210 min por baño |
 | Siglas de operadores (`hr.employee.siglas`) | 13 | empleado | Las usa la etiqueta final. Faltan Misael Bibiano (S-4), Juanito Silva (S-50) y Lucio Mejía (S-25) |
@@ -58,6 +61,8 @@ Estado al 2026-11-06. En el ensayo se vuelve a leer de `main`.
 | `quimibond_ficha_tecnica_tela.tope_teorico_pct` | vacío (25 del código) | — | No se crea salvo que Ingeniería pida otro tope |
 | `quimibond_rollos_bitacora.alerta_diferencia_pct` | 8.0 (piloto) | — | En producción no se crea: queda el 3 % del código |
 | `crudo_minimo_pct`, `cierre_minimo_pct` | vacíos | — | Se fijan con las dos primeras semanas del piloto (pendiente de Dirección) |
+| `quimibond_rollos_bitacora.clasificacion_empaque` | vacío | — | Vacío (código): Inspección clasifica y el cierre del baño registra y cierra la orden en metros, como hasta 3.10. En `1` (rollos 3.11 a 3.13): el baño pasa sus rollos a la orden en metros sin registrarlos; Empaque confirma o cambia la calidad de cada rollo, pesa el desperdicio de la orden en metros y el cierre de la orden en metros registra todo con la calidad de Empaque. Decisión de Dirección para el go-live (ver abajo) |
+| `quimibond_rollos_bitacora.ubicacion_piso` | id 492 | — | Lo pone solo la instalación de rollos (3.8.0) con el id de la ubicación del Piso en producción; no se copia |
 
 Cómo se copia:
 
@@ -82,6 +87,9 @@ Dos maneras de llevarlo:
 - **Propuesta (código, pendiente de aprobar):** que fichas, al activar la tela (cuando hoy le pone la ruta MTO al
   acabado en kg, 2.25.0), le ponga también la ruta de la 14 y le quite «Convertir Unidades». Así sale solo en
   producción y en cada tela nueva.
+  Está hecha en el PR [#953](https://github.com/quimibond/qb19/pull/953) (fichas 2.28.1, sin fusionar): apagada, con
+  dos parámetros (`al_activar_quitar_convertir` = `1` y `al_activar_ruta_entrega` = nombre exacto de la ruta, que
+  Sistemas crea antes).
 - **A mano:** crear la ruta y la regla en producción con los datos de arriba, asignarla a las telas que se activan y
   quitarles la ruta 120.
 
@@ -106,7 +114,7 @@ el motivo «Sin báscula IoT».
 3. **Aplicar** la copia de datos aprobada.
 4. **«Generar listas»** en las fichas de las telas de la ola.
 5. **Sistemas** liga los reportes a la Zebra y da de alta las básculas; prueba una etiqueta por estación.
-6. **Verificar:** comparación en cero, versiones instaladas, número de baño en 00001, una orden de prueba en kg
+6. **Verificar:** comparación en cero, versiones instaladas, secuencias `TL/OP-KG/J` y `TL/OP-M/J` en 00001, una orden de prueba en kg
    programada (sin confirmarla) para ver baños, crudo y jet. Con programación 1.8.1 una orden de dos baños deja dos
    órdenes en metros, una por baño (un baño = una orden en kg = una orden en metros); cancelar la prueba cancela las dos.
 7. **Activar las telas** de la ola con el visto bueno de Ingeniería (ruta MTO y, según el paso 4, ruta de la 14 y
@@ -116,14 +124,26 @@ el motivo «Sin báscula IoT».
 
 - Visto bueno escrito de Ingeniería por ola (el del piloto lo dio Jessica Francisco el 2026-11-06).
 - Catálogo de defectos validado por Inspección.
-- Respuesta de Tintorería (correo del 2026-11-06): capacidad y relación de baño por kg de crudo, TINTORERIA 5,
-  banda A de la 3 y 150 kg de la 4. (Las 4 telas sin rendimiento de tejido son muestras, Ingeniería 2026-11-06.)
+- Respuesta de Tintorería (correo del 2026-11-06): TINTORERIA 5, banda A de la 3 y 150 kg de la 4. (Lo de kg de
+  crudo ya lo confirmó Tintorería a José Sacramento, ver abajo.) (Las 4 telas sin rendimiento de tejido son muestras, Ingeniería 2026-11-06.)
 - LUBRICANTECHT en 2 PRODUCCIÓN y ENGOMADO002 fabricado por Cocina el día del baño.
 - Respuesta de Manufactura sobre el Jet 2 (una carga repartida en sus dos partes o dos cargas de 300 kg): con ella se
   cargan los kg por carga de Tintorería 2 en producción.
-- Confirmación de José Sacramento: capacidad de los jets y relación de baño por kg de crudo cargado (programación 1.7.0,
-  dosificación 1.4.0) y «un baño = una orden en metros» (programación 1.8.0). Documento con las preguntas:
-  «Tintorería, Rama e Inspección: lo que cambió y lo que falta decidir» (claude.ai, 2026-11-06).
+- ~~Confirmación de José Sacramento sobre kg de crudo y «un baño = una orden en metros»~~: resuelto en su trabajo del
+  2026-11-07. Fichas 2.28.0 pasa los avisos y las cargas del jet a kg de crudo («Tintorería confirmó el 2026-11-06 que
+  la capacidad del jet y la relación de baño son por kg de crudo») y la Clasificación en Empaque exige un baño por orden
+  en metros (cita programación 1.8.0). Las 259 pruebas de los cuatro módulos pasan con su código y el nuestro juntos
+  (2026-11-08, Odoo 19 local).
+- **Piso contra 2 PRODUCCIÓN (decisión de Dirección).** Rollos 3.8.0 y 3.9.0 hacen que la orden en kg consuma
+  químicos, colorantes y engomado de «Químicos-Colorantes Piso» y devuelva lo que sobra, pero solo si existen las rutas
+  «Surtido Engomado» y «Surtido Químicos y Colorantes» (no existen ni en `main` ni en producción, 2026-11-08). Sin
+  ellas no cambia nada: se consume de 2 PRODUCCIÓN con las 21 reglas de reabastecimiento del piloto. Hay que escoger una
+  de las dos formas antes del go-live; si conviven, el químico se pide dos veces o a la ubicación equivocada.
+- **Clasificación final en Empaque: prendida o apagada el día del go-live** (parámetro `clasificacion_empaque`).
+  Prendida, Empaque necesita su estación, su báscula y su impresora como Rama e Inspección (paso 6).
+- Pendiente de José, sin PR: rama `claude/ficha-clasificacion-tiempos` (las operaciones CLASIFICACION viejas con
+  0.05 min por metro pasan a 60 min por 400 m). Y el PR [#953](https://github.com/quimibond/qb19/pull/953) (fichas 2.28.1: al activar una tela quita «Convertir
+  Unidades» y pone la ruta de la 14 solo con dos parámetros, apagado; es la propuesta del paso 4).
 - Ingeniería revisa los rendimientos «por aprobar» de fichas 2.28.0 en `main` (4 al 2026-11-06: NN040Q66JNT163,
   WJ060Q21JNN165, WJ042Q22JNT175 y WJ032Q22JNT155; los dos primeros salen iguales al teórico porque sus órdenes viejas
   calcularon los kg con el factor de la lista, no son medición).
