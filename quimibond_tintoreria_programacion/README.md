@@ -35,6 +35,10 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
   orden en metros. Antes no avisaba. Cada baño registra sus metros en ella y deja pendiente para los que siguen
   (rollos 3.3.0). Prueba 74 de rollos.
 - Volver a programar no es posible: una orden ya programada se cancela y se vuelve a crear (sin cambio).
+- Terminar una operación (`button_finish`) exige la misma Programación de Tintorería confirmada que iniciarla. Antes se
+  podía terminar Devanado, Tintorería o Abridora sin iniciar (botón de terminar, Shop Floor o RPC): quedaban «hechas»
+  con duración 0, la orden pasaba a «iniciada» y ya no se podía programar (hallazgo de la prueba de punta a punta en
+  qbtesting, 2026-11-08).
 
 ## Cambios 19.0.1.8.1 (ronda 13 en main, 2026-11-06)
 
