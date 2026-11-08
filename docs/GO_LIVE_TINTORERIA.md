@@ -141,6 +141,14 @@ el motivo «Sin báscula IoT».
   de las dos formas antes del go-live; si conviven, el químico se pide dos veces o a la ubicación equivocada.
 - **Clasificación final en Empaque: prendida o apagada el día del go-live** (parámetro `clasificacion_empaque`).
   Prendida, Empaque necesita su estación, su báscula y su impresora como Rama e Inspección (paso 6).
+  Probado en `main` el 2026-11-08 de punta a punta (TL/OP-KG/J00001-001 y TL/OP-M/J00001-001): el baño cerró sin
+  registrar la orden en metros, Empaque cambió un rollo de PQ a Segunda, la orden en metros no cerró con rollos sin
+  clasificar y al cerrar registró PQ 758 m a la 14, FE 760 m a la 15, Segunda 59.7 kg a la 16 y Desperdicio 59.8 kg
+  más 4.5 kg de Empaque a la 17; el costo del baño (15,357.18) quedó en los 1,518 m y cancelar el otro baño canceló su
+  orden en metros. El paso de Empaque se escribió por MCP (sus asistentes no están expuestos): falta probar la
+  estación y la etiqueta en pantalla. **Si se prende, cada lista en metros activa necesita la operación de Empaque**
+  (botón «Clasificación en Empaque»; la migración solo la pone en las archivadas): en `main` la de WJ038 (4901) no la
+  tiene, y sin ella la orden en metros no programa el tiempo de Empaque.
 - Pendiente de José, sin PR: rama `claude/ficha-clasificacion-tiempos` (las operaciones CLASIFICACION viejas con
   0.05 min por metro pasan a 60 min por 400 m). Y el PR [#953](https://github.com/quimibond/qb19/pull/953) (fichas 2.28.1: al activar una tela quita «Convertir
   Unidades» y pone la ruta de la 14 solo con dos parámetros, apagado; es la propuesta del paso 4).
