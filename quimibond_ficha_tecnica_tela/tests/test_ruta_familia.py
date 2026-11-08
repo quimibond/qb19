@@ -227,6 +227,31 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertEqual(accion['tag'], 'display_notification')
         self.assertEqual(bom_m.operation_ids.workcenter_id, self._empaque(), "El botón sí la completa")
 
+    def test_06h_normaliza_tiempos_viejos_y_da_capacidad_a_telas_sin_ficha(self):
+        """Operaciones y pasos de «0.05 min por metro» pasan a 60 min por ciclo; una tela sin ficha con la operación
+        también queda con su capacidad de 400 m."""
+        ruta = self._armar()
+        paso = ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion')
+        paso.tiempo = 0.05
+        empaque = self._empaque()
+        sin_ficha = self.env['product.product'].create({
+            'name': 'Tela sin ficha 931', 'default_code': 'ZZ931SINFICHA', 'uom_id': self.meter.id,
+            'is_storable': True})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': sin_ficha.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.meter.id,
+            'code': 'Clasificación final (borrador)', 'active': False,
+            'bom_line_ids': [(0, 0, {'product_id': self.tela.id, 'product_qty': 0.2})]})
+        op = self.env['mrp.routing.workcenter'].with_context(active_test=False).create({
+            'bom_id': bom.id, 'name': 'CLASIFICACION', 'workcenter_id': empaque.id, 'time_cycle_manual': 0.05})
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual(paso.tiempo, 60.0)
+        self.assertEqual(op.time_cycle_manual, 60.0)
+        cap = empaque.capacity_ids.filtered(lambda c: c.product_id == sin_ficha)
+        self.assertEqual((cap.capacity, cap.product_uom_id), (400.0, self.meter))
+        self.assertGreaterEqual(res['tiempos'], 2)
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual((res['rutas'], res['listas'], res['tiempos'], res['capacidades']), (0, 0, 0, 0))
+
     def test_06g_sin_paso_en_la_ruta_no_quita_operaciones(self):
         """Sin el paso en la ruta, el botón avisa y no quita lo que alguien puso a mano."""
         ruta = self._armar()

@@ -274,7 +274,7 @@ que **Odoo asigna el número de baño**:
   (`clasificacion_final`, `metros_final`, `kg_neto_final`, operador, centro y fecha) y **sale siempre la etiqueta final**
   con lo definitivo (Inspección imprime la preliminar). La orden en metros **no cierra con rollos sin clasificar**. Todo
   esto solo con el parámetro encendido; el desperdicio de la orden en metros (se pesa en Empaque) viene en A3.3b y la
-  operación CLASIFICACION en las listas de materiales en A3.4. La etiqueta final conserva «Operador inspección» (sin
+  operación CLASIFICACION en las listas de materiales en A3.4 (fichas 2.28.0 y rollos 3.14.0). La etiqueta final conserva «Operador inspección» (sin
   decisión de Dirección sobre las siglas del operador de Empaque).
 - **Desperdicio de la orden en metros (3.13.0, A3.3b):** el botón **PESAR DESPERDICIO** de la orden en metros (mismo
   momento que CLASIFICAR EN EMPAQUE) pesa neto, sin tara, el SALDO TEJIDO D de Empaque (diseño §16). Queda en campos propios
@@ -284,6 +284,11 @@ que **Odoo asigna el número de baño**:
   Rama; si Inspección no clasificó ninguno, sale solo ese peso. Si el baño es de puros saldos (la orden en metros se
   cancela), el desperdicio sale en la orden de saldos. No exige que la lista en metros traiga el subproducto: si falta, se
   agrega al cerrar.
+- **Operación CLASIFICACION en la orden en metros (3.14.0, A3.4b):** cuando la lista en metros trae la operación
+  CLASIFICACION en el centro EMPAQUE (`quimibond_ficha_tecnica_tela` 2.28.0), la operación de la orden en metros muestra
+  **CLASIFICAR** y **PESAR DESPERDICIO** (las mismas estaciones del botón de la orden) mientras la orden tiene rollos que
+  le pasó un baño. La operación **no termina con rollos por clasificar**; al cerrar la orden en metros termina con ella y
+  registra la tela. Sin el interruptor encendido nada cambia.
 - La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
   (metros;kg;baño;rollo). La orden se busca por número de baño.
 
