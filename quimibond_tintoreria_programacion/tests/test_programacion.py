@@ -151,6 +151,19 @@ class TestProgramacionTintoreria(TransactionCase):
         with self.assertRaises(UserError):
             orden_trabajo.button_start(True, True)
 
+    def test_terminar_sin_programar_bloquea_igual_que_iniciar(self):
+        # 1.8.2: button_finish se saltaba la regla y dejaba la operación «hecha» sin programación.
+        mo = self._crear_mo(100.0)
+        orden_trabajo = mo.workorder_ids[:1]
+        self.assertTrue(mo.requiere_programacion_tintoreria)
+        self.assertFalse(mo.tintoreria_programada)
+        with self.assertRaises(UserError):
+            orden_trabajo.button_finish()
+        self.assertNotIn(orden_trabajo.state, ('done', 'cancel'))
+        # Una operación ya hecha no se vuelve a revisar (el cierre nativo vuelve a llamar button_finish).
+        orden_trabajo.state = 'done'
+        orden_trabajo.button_finish()
+
     def test_tiempos_por_jet_en_la_formula(self):
         """1.4.0: los minutos por jet se capturan en la propia fórmula."""
         formula = self.env['tintoreria.formula'].create({
