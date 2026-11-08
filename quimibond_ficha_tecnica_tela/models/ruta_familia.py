@@ -152,8 +152,11 @@ class FichaTecnicaRuta(models.Model):
     @api.model
     def _ft_poner_clasificacion_rutas(self):
         """2.28.0 (migración y pruebas): el paso «Clasificación final» en las rutas que no lo tienen, la operación en
-        las listas en metros archivadas del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas
-        activas no se tocan. Devuelve {'rutas', 'listas', 'capacidades', 'avisos'}."""
+        las listas en metros archivadas del flujo y la capacidad en EMPAQUE de cada tela en metros con la operación.
+        Las listas activas no se tocan (salvo normalizar el tiempo de una operación CLASIFICACION que ya traían).
+        Los tiempos de antes, capturados como «0.05 min por metro» (menos de 1), pasan a 60 min por ciclo de 400 m, que
+        es como lo divide Odoo con la capacidad de 400 m. Devuelve {'rutas', 'listas', 'capacidades', 'tiempos',
+        'avisos'}."""
         Paso = self.env['ficha.tecnica.ruta.paso']
         rutas = self.with_context(active_test=False).search([]).filtered(
             lambda r: 'clasificacion' not in r.paso_ids.mapped('paso'))
@@ -161,6 +164,8 @@ class FichaTecnicaRuta(models.Model):
             empaque = self._ft_centro_empaque()
             Paso.create([{'ruta_id': r.id, 'paso': 'clasificacion', 'sequence': SECUENCIA['clasificacion'],
                           'workcenter_id': empaque.id, 'tiempo': CLASIFICACION_MIN_POR_CICLO} for r in rutas])
+        viejos = Paso.search([('paso', '=', 'clasificacion'), ('tiempo', '<', 1.0)])
+        viejos.write({'tiempo': CLASIFICACION_MIN_POR_CICLO})
         self.env.invalidate_all()
         listas = 0
         avisos = []
@@ -176,7 +181,22 @@ class FichaTecnicaRuta(models.Model):
                 avisos += ficha._ft_poner_clasificacion(bom_m)
                 listas += bom_m.operation_ids != antes
             ficha._ft_poner_capacidad_clasificacion(tela_m)
-        return {'rutas': len(rutas), 'listas': listas,
+        # Operaciones de Clasificación que ya existían en los centros de la ruta (listas con operación puesta a mano,
+        # activas o archivadas, con o sin ficha de acabado): con tiempo por ciclo y la capacidad de su artículo.
+        centros = Paso.search([('paso', '=', 'clasificacion')]).workcenter_id
+        ops = self.env['mrp.routing.workcenter'].with_context(active_test=False).search([
+            ('workcenter_id', 'in', centros.ids), ('name', '=ilike', 'CLASIFICACION%'),
+            ('time_cycle_manual', '<', 1.0)])
+        tiempos = len(ops)
+        ops.write({'time_cycle_manual': CLASIFICACION_MIN_POR_CICLO})
+        for op in ops.search([('workcenter_id', 'in', centros.ids), ('name', '=ilike', 'CLASIFICACION%')]):
+            producto = op.bom_id.product_id or op.bom_id.product_tmpl_id.product_variant_id
+            centro = op.workcenter_id
+            if producto and not centro.capacity_ids.filtered(
+                    lambda c: c.product_id == producto and c.product_uom_id == producto.uom_id):
+                Capacidad.create({'workcenter_id': centro.id, 'product_id': producto.id,
+                                  'product_uom_id': producto.uom_id.id, 'capacity': CLASIFICACION_M_POR_CICLO})
+        return {'rutas': len(rutas), 'listas': listas, 'tiempos': tiempos + len(viejos),
                 'capacidades': Capacidad.search_count([]) - capacidades, 'avisos': avisos}
 
     @api.model
