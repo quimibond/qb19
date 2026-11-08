@@ -16,7 +16,17 @@
                 <button name="action_pesar_desperdicio_rama" type="object" string="PESAR DESPERDICIO"
                         class="btn-secondary" icon="fa-trash"
                         invisible="not es_rama or state not in ('ready', 'progress')"/>
-                <!-- 3.1.0: sin CLASIFICAR en Empaque; Inspección pesa, clasifica y etiqueta (diseño 2026-11-03, D8). -->
+                <!-- 3.14.0 (A3.4b): CLASIFICAR y PESAR DESPERDICIO de Empaque en la operación CLASIFICACION de la orden
+                     en metros, mientras la orden tiene rollos que le pasó un baño (Clasificación final en Empaque). -->
+                <field name="es_clasificacion" column_invisible="1"/>
+                <field name="empaque_pendiente" column_invisible="1"/>
+                <button name="action_clasificar_rollo" type="object" string="CLASIFICAR"
+                        class="btn-primary" icon="fa-tags"
+                        invisible="not es_clasificacion or not empaque_pendiente or state in ('done', 'cancel')"/>
+                <button name="action_pesar_desperdicio_empaque" type="object" string="PESAR DESPERDICIO"
+                        class="btn-secondary" icon="fa-trash"
+                        invisible="not es_clasificacion or not empaque_pendiente or state in ('done', 'cancel')"/>
+                <!-- 3.1.0: Inspección pesa, clasifica y etiqueta de forma preliminar (diseño 2026-11-03, D8). -->
                 <button name="action_inspeccionar_rollo" type="object" string="INSPECCIONAR"
                         class="btn-primary" icon="fa-search"
                         invisible="not es_inspeccion or state not in ('ready', 'progress')"/>

@@ -1529,3 +1529,67 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaises(UserError):
             self._pesar_desperdicio_empaque(orden_m, 1.0)
         self.assertAlmostEqual(orden_m._insp_extra_desperdicio(), 0.0, msg="Apagado el parámetro no se registra")
+
+    # ------------------------------------------------------------------ 3.14.0: operación CLASIFICACION (A3.4b)
+    def _con_operacion_clasificacion(self):
+        """La lista en metros con la operación CLASIFICACION en EMPAQUE (fichas 2.28.0)."""
+        empaque = self.env['mrp.workcenter'].create({'name': 'EMPAQUE ZZ951', 'code': 'EZZ951'})
+        self.env['mrp.routing.workcenter'].create({
+            'bom_id': self.bom_m.id, 'name': 'CLASIFICACION', 'workcenter_id': empaque.id, 'time_cycle_manual': 60.0})
+        return empaque
+
+    def test_69_botones_de_empaque_en_la_operacion_de_la_orden_en_metros(self):
+        """A3.4b: con la operación CLASIFICACION en la orden en metros, CLASIFICAR y PESAR DESPERDICIO abren las
+        estaciones de Empaque desde la operación, solo mientras hay rollos por clasificar."""
+        self._empaque()
+        self._con_operacion_clasificacion()
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        wo_c = orden_m.workorder_ids
+        self.assertEqual(len(wo_c), 1)
+        self.assertTrue(wo_c.es_clasificacion)
+        self.assertFalse(wo_c.empaque_pendiente, "Antes de que el baño cierre no hay nada que clasificar")
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        orden_kg.button_mark_done()
+        self.assertTrue(wo_c.empaque_pendiente)
+        accion = wo_c.action_clasificar_rollo()
+        self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
+        self.assertEqual(accion['context']['default_workorder_id'], wo_c.id)
+        accion = wo_c.action_pesar_desperdicio_empaque()
+        self.assertEqual(accion['res_model'], 'rollo.empaque.desperdicio.wizard')
+        self.assertEqual(accion['context']['default_workorder_id'], wo_c.id)
+        with self.assertRaisesRegex(UserError, 'no es de Clasificación final'):
+            wo.action_pesar_desperdicio_empaque()
+
+    def test_70_la_operacion_no_termina_sin_clasificar_y_la_orden_cierra(self):
+        """A3.4b: la operación CLASIFICACION no termina con rollos por clasificar; clasificados, la orden en metros
+        cierra con su operación y registra la tela."""
+        self._empaque()
+        self._con_operacion_clasificacion()
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        orden_kg.button_mark_done()
+        wo_c = orden_m.workorder_ids
+        final = orden_kg.rollo_final_kg_ids
+        with self.assertRaisesRegex(UserError, 'por clasificar'):
+            wo_c.button_finish()
+        self.assertEqual(wo_c.state not in ('done', 'cancel'), True)
+        self._clasificar_en_empaque(orden_m, final)
+        self.assertEqual(final.estado, 'clasificado')
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        self.assertEqual(wo_c.state, 'done')
+        self.assertEqual(final.estado, 'registrado')
+        self.assertFalse(wo_c.empaque_pendiente)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
+
+    def test_71_sin_el_flujo_de_empaque_la_operacion_usa_el_asistente_anterior(self):
+        """A3.4b: con el interruptor apagado, CLASIFICAR sigue abriendo el asistente de siempre y no hay estación."""
+        self._empaque('0')
+        self._con_operacion_clasificacion()
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        wo_c = orden_m.workorder_ids
+        self.assertFalse(wo_c.empaque_pendiente)
+        wo_c.state = 'ready'
+        accion = wo_c.action_clasificar_rollo()
+        self.assertEqual(accion['res_model'], 'rollo.clasificacion.wizard')
+
