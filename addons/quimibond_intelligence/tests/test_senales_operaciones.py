@@ -15,6 +15,9 @@ class TestSenalesOperaciones(SenalesCommon):
         return mo
 
     def test_op_atrasada_y_zombie(self):
+        # quimibond_intelligence no depende de mrp (la señal devuelve None sin él).
+        if 'mrp.production' not in self.env:
+            self.skipTest("Fabricación (mrp) no está instalado")
         vieja = self._op(100)
         media = self._op(10)
         self._op(-3)

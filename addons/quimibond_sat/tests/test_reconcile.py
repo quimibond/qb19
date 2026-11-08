@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from odoo.exceptions import UserError
 from odoo.tests import tagged
+from odoo.tools import mute_logger
 
 from .common import SatCommon, syntage_invoice
 
@@ -103,8 +104,10 @@ class TestSatReconcile(SatCommon):
                 raise RuntimeError('chatter caído')
             return orig(self, **kw)
 
+        # La falla del chatter se registra a propósito (_logger.exception).
         with patch.object(Move, 'message_post', boom), \
-                patch.object(type(cfdi), '_fetch_xml', return_value=XML):
+                patch.object(type(cfdi), '_fetch_xml', return_value=XML), \
+                mute_logger('odoo.addons.quimibond_sat.models.sat_cfdi'):
             body = cfdi._reconcile_with(bill)
         self.assertEqual(cfdi.move_id, bill)
         self.assertEqual(cfdi.match_method, 'conciliado')
@@ -114,7 +117,8 @@ class TestSatReconcile(SatCommon):
     def test_reconcile_without_xml_is_soft(self):
         bill = self._invoice(self.proveedor, 3287.86, day='2026-04-10')
         cfdi = self._upsert(syntage_invoice(U1))
-        with patch.object(type(cfdi), '_fetch_xml', side_effect=UserError('Syntage respondió 404')):
+        with patch.object(type(cfdi), '_fetch_xml', side_effect=UserError('Syntage respondió 404')), \
+                mute_logger('odoo.addons.quimibond_sat.models.sat_cfdi'):
             body = cfdi._reconcile_with(bill)
         self.assertEqual(cfdi.move_id, bill)
         self.assertIn('XML no adjuntado', body)

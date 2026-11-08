@@ -125,8 +125,10 @@ def _json_safe(value, max_records=MAX_LIMIT):
             )
             out = list(capped.ids)
         if len(value) > max_records:
+            # value.env._: _json_safe is a plain function, so the module-level
+            # _() finds no env in its frames and warns "no translation language".
             out.append(
-                _(
+                value.env._(
                     "... [truncated: %(shown)d of %(total)d records shown]",
                     shown=max_records,
                     total=len(value),

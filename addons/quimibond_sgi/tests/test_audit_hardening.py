@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
@@ -78,7 +79,9 @@ class TestAuditHardening(TransactionCase):
                 raise ValueError("registro envenenado")
             touched.append(record.code)
 
-        self.env['sgi.cron']._sgi_for_each(areas, func, "prueba C2")
+        # El fallo del registro envenenado se registra a propósito.
+        with mute_logger('odoo.addons.quimibond_sgi.models.sgi_cron'):
+            self.env['sgi.cron']._sgi_for_each(areas, func, "prueba C2")
         self.assertEqual(touched, ['ZC2B'])
 
     # ------------------------------------------------------------------

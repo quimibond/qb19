@@ -1696,13 +1696,17 @@ class SgiMyPending(models.Model):
         domain = [('res_id', 'in', res_ids)]
         for res_id in res_ids[:50]:
             domain = ['|', ('group_res_ids', 'like', ',%d,' % res_id)] + domain
-        rows = self.sudo().search([('res_model', '=', res_model)] + domain)
+        rows = self.sudo().search([('res_model', '=', res_model)] + domain).exists()
         if not rows:
             return
+        # Se lee todo antes de rearmar: _sgi_build borra y vuelve a crear los
+        # renglones de esas personas, y leer después un renglón borrado
+        # revienta con MissingError (sgi.legal.requirement, test_bandeja 31).
         employees = rows.employee_id
+        users = rows.filtered(lambda r: not r.employee_id).user_id
         if employees:
             self._sgi_build(employees)
-        for user in rows.filtered(lambda r: not r.employee_id).user_id:
+        for user in users:
             self._sgi_store(
                 [('employee_id', '=', False), ('user_id', '=', user.id)],
                 [dict(row, user_id=user.id, employee_id=False)

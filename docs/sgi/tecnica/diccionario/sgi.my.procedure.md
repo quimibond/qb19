@@ -46,8 +46,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quim
 | `official_indicator_ids` | Many2many | Indicadores oficiales a mi cargo |  |  | `sgi.indicator` | compute `_compute_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:514` |
 | `ok_count` | Integer | Al día |  |  |  | compute `_compute_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:471` |
 | `pending_ack_count` | Integer | Firmas pendientes |  |  |  | compute `_compute_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:483` |
-| `pending_late` | Integer | Pendientes atrasados | Pendientes atrasados de la persona. |  |  | compute `_compute_pending_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2200` |
-| `pending_total` | Integer | Mis pendientes | Total de pendientes de la persona. |  |  | compute `_compute_pending_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2198` |
+| `pending_late` | Integer | Pendientes atrasados | Pendientes atrasados de la persona. |  |  | compute `_compute_pending_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2204` |
+| `pending_total` | Integer | Mis pendientes | Total de pendientes de la persona. |  |  | compute `_compute_pending_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:2202` |
 | `periodic_count` | Integer | Periódicas |  |  |  | compute `_compute_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:475` |
 | `plant_count` | Integer | Atrasadas en la planta |  |  |  | compute `_compute_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:474` |
 | `process_ids` | Many2many | Procesos donde participa | Procesos en los que participa el puesto. |  | `sgi.process` | compute `_compute_who`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:463` |

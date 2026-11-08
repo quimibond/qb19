@@ -8,6 +8,7 @@ import io
 from datetime import date
 
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -566,7 +567,7 @@ class TestSalesBudgetClient(TransactionCase):
         budget = self._budget()
         self._line(budget, partner=None, amount=1000.0)
         # Segundo global mismo producto+mes → viola el índice único.
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
             with self.env.cr.savepoint():
                 self._line(budget, partner=None, amount=200.0)
 

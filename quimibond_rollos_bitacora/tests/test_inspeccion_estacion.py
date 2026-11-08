@@ -10,10 +10,13 @@ motivo de la captura manual en Rama y en el desperdicio, lote reutilizable y mí
 """
 from unittest.mock import patch
 
+from psycopg2 import IntegrityError
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install', 'quimibond_rollos_bitacora')
@@ -914,7 +917,8 @@ class TestInspeccionEstacion(TransactionCase):
         otra = self._bano((30.0,))[1]
         otra._asignar_numero_bano()
         self.assertNotEqual(otra.numero_bano, numero)
-        with self.assertRaises(Exception), self.cr.savepoint():
+        # La llave única se viola a propósito: el ERROR de odoo.sql_db se silencia.
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'), self.cr.savepoint():
             otra.numero_bano = numero
             otra.flush_recordset()
         # Si el número del nombre ya lo tiene otra orden (una vieja numerada con la secuencia de 3.5.0), se usa el nombre
