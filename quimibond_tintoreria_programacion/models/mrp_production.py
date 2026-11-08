@@ -281,13 +281,21 @@ class MrpProduction(models.Model):
             lambda m: m.product_id == producto and m.state not in ('done', 'cancel'))
         consumos = terminados.move_dest_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
         orden_m = consumos.raw_material_production_id
-        if len(orden_m) != 1 or orden_m.state not in ('draft', 'confirmed'):
-            return nada
+        if not orden_m:
+            return nada  # venta en kg o inventario en kg: no hay orden en metros que dividir
+        # 1.8.2 (revisión 2026-11-08): en estos casos no se divide y antes no se avisaba; los baños registran en la misma
+        # orden en metros con pendiente (rollos 3.3.0).
+        if len(orden_m) != 1:
+            return banos._tintoreria_avisar_sin_dividir(orden_m, _('la abastecen varias órdenes en metros'))
+        if orden_m.state not in ('draft', 'confirmed'):
+            return banos._tintoreria_avisar_sin_dividir(orden_m, _('la orden en metros ya no está confirmada'))
         if any(wo.state not in ('blocked', 'ready') for wo in orden_m.workorder_ids) \
                 or any(orden_m.move_raw_ids.mapped('picked')):
-            return nada
+            return banos._tintoreria_avisar_sin_dividir(orden_m, _('la orden en metros ya empezó'))
         if consumos.move_orig_ids.production_id - banos:
-            return nada  # la abastece otra orden en kg además de estos baños
+            return banos._tintoreria_avisar_sin_dividir(
+                orden_m, _('también la abastece otra orden en kg (%s)',
+                           ', '.join((consumos.move_orig_ids.production_id - banos).mapped('name'))))
         kg_total = sum(banos.mapped('product_qty'))
         if not kg_total:
             return nada
@@ -314,6 +322,16 @@ class MrpProduction(models.Model):
                 "Orden en metros del baño %(b)s: %(m)s %(u)s planeados para %(kg)s kg de tela. Al cerrar el baño se "
                 "registra con sus metros reales.", b=bano.name, m=parte.product_qty, u=uom.name, kg=bano.product_qty))
         return partes
+
+    def _tintoreria_avisar_sin_dividir(self, ordenes_m, motivo):
+        """1.8.2: nota en los baños y en la orden en metros cuando no se divide la orden en metros (un baño = una orden
+        en metros no se cumple): cada baño registra sus metros y la orden en metros deja pendiente para los que siguen."""
+        mensaje = _('No se dividió la orden en metros %(m)s entre los baños %(b)s: %(r)s. Cada baño registra sus metros en '
+                    'ella y deja pendiente para los que siguen.', m=', '.join(ordenes_m.mapped('name')),
+                    b=', '.join(self.mapped('name')), r=motivo)
+        for orden in self | ordenes_m:
+            orden.message_post(body=mensaje)
+        return self.env['mrp.production']
 
     def _tintoreria_orden_metros_propia(self):
         """Pares (baño, orden en metros) donde la orden en metros la abastece solo ese baño y es una parte de la división

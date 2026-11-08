@@ -42,8 +42,10 @@ class MrpProduction(models.Model):
             for move in tela:
                 planeado[move.product_id] = planeado.get(move.product_id, 0.0) + move.product_uom._compute_quantity(
                     move.product_uom_qty, kg, round=False)
+            # 1.4.2 (revisión de código, 2026-11-06): con dos crudos en el baño entran los dos al jet; se suman (antes solo
+            # el de más kg). El producto que se informa es el de más kg.
             crudo = max(planeado, key=planeado.get)
-            return planeado[crudo], crudo
+            return sum(planeado.values()), crudo
         if self.bom_id:
             kg_lote, kg_crudo, crudo = self.bom_id._kg_carga_jet_lote()
             if crudo and kg_lote:

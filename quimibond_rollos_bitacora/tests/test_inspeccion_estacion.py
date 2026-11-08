@@ -427,7 +427,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'kg planeados' in (m.body or '')))
 
     # ------------------------------------------------------------------ integración con la programación de tintorería
-    def _programar_dos_banos(self):
+    def _programar_dos_banos(self, otra_orden_kg=False):
         """Orden en metros de 2,000 m abastecida por una orden en kg de 169.6 kg que la programación de tintorería
         (quimibond_tintoreria_programacion) divide con la división nativa en dos baños de 84.8 kg en un jet de 100 kg.
         Las fichas técnicas se simulan como en las pruebas de la programación."""
@@ -470,11 +470,20 @@ class TestInspeccionEstacion(TransactionCase):
         # Liga MTO como la deja el abastecimiento: el consumo de la orden en metros nace de la orden en kg.
         raw = orden_m._clasif_move_a()
         # Como en planta, todos los terminados de la orden en kg (también el subproducto) quedan ligados al consumo.
-        raw.write({'move_orig_ids': [Command.set(orden_kg.move_finished_ids.ids)], 'created_production_id': orden_kg.id})
+        origenes = orden_kg.move_finished_ids
+        if otra_orden_kg:
+            # Programación 1.8.2: otra orden en kg también abastece la orden en metros (p. ej. se subió la cantidad de la
+            # orden en metros después de abastecer).
+            otra = self.env['mrp.production'].create({'product_id': self.prod_kg.id, 'product_qty': 20.0, 'bom_id': bom.id})
+            otra.action_confirm()
+            origenes |= otra.move_finished_ids
+        raw.write({'move_orig_ids': [Command.set(origenes.ids)], 'created_production_id': orden_kg.id})
         programacion = orden_kg._programar_tintoreria(htj)
         banos = programacion.production_ids.sorted('id')
         self.assertEqual(len(banos), 2)
         self.assertEqual(banos.mapped('product_qty'), [84.8, 84.8])
+        if otra_orden_kg:
+            return orden_m, banos
         # Programación 1.8.0 (Dirección, 2026-11-06): un baño = una orden en metros. La orden en metros se divide en la
         # misma proporción que los baños y cada parte queda ligada a su baño.
         m1, m2 = banos[0]._insp_orden_metros(), banos[1]._insp_orden_metros()
@@ -1593,3 +1602,47 @@ class TestInspeccionEstacion(TransactionCase):
         accion = wo_c.action_clasificar_rollo()
         self.assertEqual(accion['res_model'], 'rollo.clasificacion.wizard')
 
+    def test_72_orden_en_metros_cancelada_registra_en_una_nueva(self):
+        """3.14.1 (revisión de código, 2026-11-06): si la orden en metros se cancela después de inspeccionar (pedido
+        cancelado), el baño cierra y registra la tela en una orden en metros nueva, en metros; antes no cerraba nunca."""
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
+        orden_m.action_cancel()
+        self.assertEqual(orden_m.state, 'cancel')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        final = orden_kg.rollo_final_kg_ids
+        nueva = final.production_m_id
+        self.assertTrue(nueva and nueva != orden_m)
+        self.assertEqual(nueva.product_id, self.prod_m)
+        self.assertEqual(nueva.state, 'done')
+        self.assertEqual(final.estado, 'registrado')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
+        self.assertTrue(any('orden en metros nueva' in (m.body or '') for m in orden_kg.message_ids))
+        nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
+        self.assertFalse(nuevas, "Registrar en la orden nueva no debe crear órdenes en kg: %s" % nuevas.mapped('name'))
+
+    def test_73_dos_crudos_cuentan_los_dos(self):
+        """3.14.1 (revisión de código, 2026-11-06): con dos crudos de tejido en el baño, los dos cuentan como crudo (antes
+        solo el de más kg, y el otro se trataba como químico)."""
+        _m, orden_kg, _wo, _rollos = self._bano((40.0,))
+        tejido = self.env['product.category'].create({'name': 'Tejido Circular ZZ973'})
+        self.crudo.categ_id = tejido
+        crudo_2 = self.env['product.product'].create({
+            'name': 'Crudo dos ZZ973', 'type': 'consu', 'is_storable': True, 'uom_id': self.kg.id, 'categ_id': tejido.id})
+        self.env['stock.move'].create({
+            'raw_material_production_id': orden_kg.id, 'product_id': crudo_2.id, 'product_uom_qty': 30.0,
+            'product_uom': self.kg.id, 'location_id': orden_kg.location_src_id.id,
+            'location_dest_id': orden_kg.production_location_id.id, 'company_id': orden_kg.company_id.id})
+        self.assertEqual(set(orden_kg._moves_crudo().mapped('product_id').ids), {self.crudo.id, crudo_2.id})
+
+    def test_74_no_dividir_la_orden_en_metros_avisa(self):
+        """Programación 1.8.2 (revisión 2026-11-08): si la orden en metros no se puede dividir (aquí la abastece otra
+        orden en kg), se queda como estaba pero deja nota en los baños y en la orden en metros; antes no avisaba."""
+        orden_m, banos = self._programar_dos_banos(otra_orden_kg=True)
+        self.assertEqual(banos[0]._insp_orden_metros(), orden_m)
+        self.assertEqual(banos[1]._insp_orden_metros(), orden_m, "No se dividió: los dos baños abastecen la misma")
+        for orden in orden_m | banos:
+            self.assertTrue(any('No se dividió la orden en metros' in (m.body or '') for m in orden.message_ids),
+                            "Sin nota en %s" % orden.name)

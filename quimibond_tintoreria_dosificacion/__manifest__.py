@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Dosificación de Tintorería',
-    'version': '19.0.1.4.1',
+    'version': '19.0.1.4.2',
     'category': 'Manufacturing',
     'summary': 'Catálogo de fórmulas de tintorería y cálculo de requerimiento de químicos (g/L) y colorantes (%)',
     'description': """

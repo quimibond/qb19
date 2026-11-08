@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Programación de Tintorería',
-    'version': '19.0.1.8.1',
+    'version': '19.0.1.8.2',
     'category': 'Manufacturing',
     'summary': 'Asignación de HTJ por orden, cálculo del tamaño de baño y división simétrica de la MO de tela acabada en kg',
     'description': """

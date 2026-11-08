@@ -141,6 +141,16 @@ consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar m
 componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
 además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
 
+## Orden en metros cancelada y dos crudos (3.14.1, revisión de código, 2026-11-08)
+
+- **Orden en metros cancelada después de inspeccionar** (pedido cancelado, o cerrada por fuera): el baño ya no se queda
+  sin poder cerrar («no hay orden en metros abierta»). Al cerrar, se crea otra orden en metros de la misma tela y lista
+  de materiales, sin abastecer, y el baño se registra en ella como siempre: la tela queda en metros. Nota en el baño y en
+  la orden nueva. Prueba 72.
+- **Dos crudos en un baño:** todos los componentes de una categoría de tejido cuentan como crudo para validar el cierre
+  (antes solo el de más kg, y el otro se trataba como químico y se le borraban las reservas sin lote). Prueba 73. Con
+  dosificación 1.4.2, la carga del jet también suma los dos.
+
 ## Solo el acabado abastece la orden en metros (3.6.4, ronda 13 en main, 2026-11-06)
 
 Las órdenes que abastecen una orden en metros (`_ordenes_previas`) se cuentan solo por los movimientos del acabado en kg
