@@ -72,6 +72,11 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="perm_read" eval="False"/>
     </record>
+    <record id="rule_qb_order_rule_company" model="ir.rule">
+        <field name="name">Reglas de pedido por empresa</field>
+        <field name="model_id" ref="model_qb_order_rule"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="rule_qb_release_company" model="ir.rule">
         <field name="name">Releases por empresa</field>
         <field name="model_id" ref="model_qb_release"/>
