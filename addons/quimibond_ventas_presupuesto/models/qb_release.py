@@ -435,17 +435,32 @@ class QbRelease(models.Model):
                                       'delivery_date': line.date_customer})
             start = min(week for (_p, week) in demand)
             products = release.line_ids.product_id
+            # 3.15.1: por ARTÍCULO, no por producto. El forecast de Excel traía a Shawmut en WJ (metros)
+            # y el release viene en IWJ (kilos): son la misma tela y la semana se reemplaza, no se suma
+            # (el 9-nov la primera aplicación duplicó 62 semanas).
+            articulos = products.mapped(lambda p: p.qb_articulo_id or p)
             existing = Line.search([
                 ('company_id', '=', release.company_id.id), ('partner_id', '=', partner.id),
                 ('ship_to_id', '=', ship_to.id or False), ('plant', '=', plant),
-                ('product_id', 'in', products.ids), ('week', '>=', start)])
+                '|', ('product_id', 'in', products.ids), ('articulo_id', 'in', articulos.ids),
+                ('week', '>=', start)])
             by_key = {(ln.product_id, ln.week): ln for ln in existing}
+            by_articulo = defaultdict(list)
+            for ln in existing:
+                by_articulo[(ln.product_id.qb_articulo_id or ln.product_id, ln.week)].append(ln)
             created = changed = 0
             to_create = []
             for (product, week), qty in demand.items():
                 vals = dict(info[(product, week)], qty_origen=qty, uom_origen=False,
                             origen='release', release_id=release.id)
                 line = by_key.pop((product, week), None)
+                if not line:
+                    # La misma tela en otro código (metros / kilos): se cambia a la del release.
+                    for candidate in by_articulo.get((product.qb_articulo_id or product, week), []):
+                        if (candidate.product_id, week) in by_key:
+                            line = by_key.pop((candidate.product_id, week))
+                            vals['product_id'] = product.id
+                            break
                 if line:
                     line.write(vals)
                     changed += 1
