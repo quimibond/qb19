@@ -77,3 +77,12 @@ access_qb_sales_missing_salesman,qb.sales.missing.salesman,model_qb_sales_missin
 access_qb_sales_missing_manager,qb.sales.missing.manager,model_qb_sales_missing,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_sales_close_sgi_user,qb.sales.close.sgi.user,model_qb_sales_close,quimibond_sgi.group_sgi_user,1,1,1,1
 access_qb_sales_close_salesman,qb.sales.close.salesman,model_qb_sales_close,sales_team.group_sale_salesman,1,1,1,1
+access_qb_sales_month_plan_sgi_user,qb.sales.month.plan.sgi.user,model_qb_sales_month_plan,quimibond_sgi.group_sgi_user,1,0,0,0
+access_qb_sales_month_plan_salesman,qb.sales.month.plan.salesman,model_qb_sales_month_plan,sales_team.group_sale_salesman,1,1,0,0
+access_qb_sales_month_plan_sale_mgr,qb.sales.month.plan.sale.mgr,model_qb_sales_month_plan,sales_team.group_sale_manager,1,1,1,0
+access_qb_sales_month_plan_manager,qb.sales.month.plan.manager,model_qb_sales_month_plan,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_month_plan_line_sgi_user,qb.sales.month.plan.line.sgi.user,model_qb_sales_month_plan_line,quimibond_sgi.group_sgi_user,1,0,0,0
+access_qb_sales_month_plan_line_salesman,qb.sales.month.plan.line.salesman,model_qb_sales_month_plan_line,sales_team.group_sale_salesman,1,1,1,1
+access_qb_sales_month_plan_line_manager,qb.sales.month.plan.line.manager,model_qb_sales_month_plan_line,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_month_plan_build_sale_mgr,qb.sales.month.plan.build.sale.mgr,model_qb_sales_month_plan_build,sales_team.group_sale_manager,1,1,1,1
+access_qb_sales_month_plan_build_manager,qb.sales.month.plan.build.manager,model_qb_sales_month_plan_build,quimibond_sgi.group_sgi_manager,1,1,1,1

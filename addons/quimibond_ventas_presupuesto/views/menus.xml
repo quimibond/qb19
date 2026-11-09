@@ -51,6 +51,12 @@
               parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_project_action" sequence="17"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
               parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_analysis_mercado_action" sequence="20"/>
+    <!-- 3.14.0 -->
+    <menuitem id="menu_sale_qb_month_plan" name="Presupuesto del mes"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_action" sequence="12"/>
+    <menuitem id="menu_sale_qb_month_plan_build" name="Armar presupuesto del mes"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_build_action" sequence="13"
+              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
     <!-- 3.4.0 -->
     <menuitem id="menu_sale_qb_price_check" name="Comparación de precios"
               parent="menu_sale_qb_grupo_presupuesto" action="qb_price_check_action" sequence="30"/>

@@ -11,3 +11,4 @@ from . import test_price_check
 from . import test_presupuesto_anual
 from . import test_sales_project
 from . import test_sales_actual
+from . import test_sales_month_plan

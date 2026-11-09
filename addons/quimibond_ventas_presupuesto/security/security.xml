@@ -46,6 +46,32 @@
         <field name="model_id" ref="model_qb_sales_missing"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="rule_qb_sales_month_plan_company" model="ir.rule">
+        <field name="name">Presupuesto del mes por empresa</field>
+        <field name="model_id" ref="model_qb_sales_month_plan"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_qb_sales_month_plan_line_company" model="ir.rule">
+        <field name="name">Renglones del presupuesto del mes por empresa</field>
+        <field name="model_id" ref="model_qb_sales_month_plan_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <!-- 3.14.0 (diseño v3, 2.5): los vendedores capturan solo su parte de Confección. Las reglas de
+         grupos distintos se suman: el administrador de ventas y el del SGI tocan todo. -->
+    <record id="rule_qb_month_plan_line_salesman_confeccion" model="ir.rule">
+        <field name="name">Presupuesto del mes: vendedores solo en Confección</field>
+        <field name="model_id" ref="model_qb_sales_month_plan_line"/>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+        <field name="domain_force">[('mercado', 'in', ('confeccion', 'proyectos_confeccion'))]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_qb_month_plan_line_manager_all" model="ir.rule">
+        <field name="name">Presupuesto del mes: administradores en todos los mercados</field>
+        <field name="model_id" ref="model_qb_sales_month_plan_line"/>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_manager')), (4, ref('quimibond_sgi.group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
     <record id="rule_qb_release_company" model="ir.rule">
         <field name="name">Releases por empresa</field>
         <field name="model_id" ref="model_qb_release"/>

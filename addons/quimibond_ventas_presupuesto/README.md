@@ -21,6 +21,32 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Presupuesto del mes (19.0.3.14.0, E2, 2026-11-09)
+
+Diseño v3, 2.5. Sustituye el F-P-A28-14 de Excel. Presupuesto → **Presupuesto del mes** y
+**Armar presupuesto del mes** (`qb.sales.month.plan`, uno por compañía y mes).
+
+- **Armar** (por omisión, el mes siguiente): una **foto del pronóstico vigente** del mes, un
+  renglón por cliente comercial, planta y producto (las semanas del mes sumadas), en la unidad
+  de venta, metros y kilos.
+  - **Precio:** el del renglón del presupuesto anual aprobado del mismo cliente, producto y mes;
+    si no hay, el de la lista del cliente (la regla del anual); si no, cuenta 0 y sale en rojo.
+  - **Tipo de cambio del mes:** el del presupuesto anual aprobado (o el de Ajustes), editable.
+  - **Mercado:** el del pronóstico; con proyecto comercial vigente, «Proyectos».
+- **Ajustes antes de enviar:** cantidad y precio por renglón; no tocan el pronóstico. «Pronóstico
+  al armar» guarda la cantidad original. «Volver a armar» rehace los renglones del pronóstico y
+  conserva los capturados a mano.
+- **Confección:** los vendedores agregan sus renglones (sin cliente) en el mismo documento; una
+  regla de registro solo les deja crear, cambiar o borrar renglones de Confección y Proyectos
+  confección, y la cabecera (mes, tipo de cambio) es del administrador de ventas.
+- **Totales:** por mercado, y **productos de línea / proyectos** (los dos números del correo).
+- **Enviar a Dirección:** congela el documento (solo el administrador del SGI lo regresa a
+  borrador), genera el PDF F-P-A28-14 (resumen línea / proyectos y detalle por mercado) y abre el
+  correo con el PDF y los totales.
+
+**Pendiente:** el comparativo (`qb.sales.compare`) todavía no trae la foto del presupuesto del mes
+(diseño 2.8) para medir cuánto se movió el pronóstico contra lo presupuestado en el mes.
+
 ## Cierre de ventas general (19.0.3.13.0, E2, 2026-11-09)
 
 Diseño v3, 2.8 y 2.9. Sustituye la hoja MENSUAL del Excel.
@@ -166,7 +192,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
+Sigue en E2: la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
 de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
 
@@ -716,7 +742,7 @@ cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
 pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
-Desarrollo de producto) y `tests/test_sales_actual.py` (venta real, comparativo y
-faltantes): corren en el build de Odoo.sh con
+Desarrollo de producto), `tests/test_sales_actual.py` (venta real, comparativo, faltantes,
+VE-02 y cierre) y `tests/test_sales_month_plan.py` (presupuesto del mes): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).
