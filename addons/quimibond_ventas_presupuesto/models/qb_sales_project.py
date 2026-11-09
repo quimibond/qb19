@@ -386,7 +386,18 @@ class ProjectProject(models.Model):
                     qb_project_link=True).write({'dev_project_id': self.id})
                 twin.message_post(body=Markup("Se liga al desarrollo %s.") % self.display_name)
                 return twin
-        mercado = proyecto_mercado(self.env, self.sgi_dev_team_id or partner.team_id)
+            # 3.14.1: otro desarrollo del mismo cliente y artículo ya tiene el proyecto vigente
+            # (una revisión, un desarrollo repetido): no se duplica la combinación.
+            other = Sales.search([
+                ('state', '=', 'vigente'), ('company_id', '=', company.id),
+                ('partner_id', '=', partner.id), ('product_id', '=', product.id)], limit=1)
+            if other:
+                other.message_post(body=Markup("El desarrollo %s es del mismo cliente y artículo; el "
+                                               "proyecto sigue ligado a %s.") % (
+                    self.display_name, other.dev_project_id.display_name or "ningún desarrollo"))
+                return other
+        from .qb_forecast import team_of_partner  # import local: qb_forecast va después
+        mercado = proyecto_mercado(self.env, self.sgi_dev_team_id or team_of_partner(partner))
         if line is not None and line.mercado in PROYECTO_MERCADOS:
             mercado = line.mercado
         project = Sales.create({
