@@ -21,8 +21,9 @@ La OC del pronóstico se limpia con ``release/oc.py`` (viene del Excel como «67
 
 **Qué propone por OC, semana y producto:** la cantidad del pronóstico contra la de las
 cotizaciones y pedidos abiertos de esa OC y semana: **nuevo**, **aumenta**, **baja** o **sin
-cambio**. Una baja en un pedido confirmado queda **por autorizar** (no se aplica sola) y nunca
-baja de lo entregado. No se propone: sin precio en la lista del cliente, artículo en desarrollo
+cambio**. Un pedido confirmado **no se modifica** (producción lo bloquea al confirmar): si el
+pronóstico sube, la diferencia va a una cotización de la misma OC y semana; si baja, queda **por
+autorizar** (3.15.2). Nunca baja de lo entregado. No se propone: sin precio en la lista del cliente, artículo en desarrollo
 o archivado, ni lo que no tiene OC (cada caso queda en la lista con su motivo).
 
 **Facturar sin OC:** con «Exige OC para facturar» en la regla, un pedido cuya referencia es un
@@ -258,9 +259,12 @@ class QbOrderProposal(models.TransientModel):
             elif target > qty_existing:
                 vals.update(action='aumenta', apply=True)
             else:
-                confirmed = any(sol.order_id.state == 'sale' for sol in existing)
-                vals.update(action='por_autorizar' if confirmed else 'baja', apply=not confirmed,
-                            reason="Pedido confirmado: la baja se autoriza a mano" if confirmed else False)
+                # Baja: se aplica si alcanza con quitar de cotizaciones; si hay que bajar un pedido
+                # confirmado (bloqueado), se autoriza a mano.
+                confirmed = sum(existing.filtered(lambda s: s.order_id.state == 'sale').mapped('product_uom_qty'))
+                locked = target < confirmed - 1e-6
+                vals.update(action='por_autorizar' if locked else 'baja', apply=not locked,
+                            reason="Hay que bajar un pedido confirmado: se autoriza a mano" if locked else False)
             vals_list.append(vals)
         self.env['qb.order.proposal.line'].create(vals_list)
         return self._qb_reopen()
@@ -280,13 +284,21 @@ class QbOrderProposal(models.TransientModel):
             by_order[(line.partner_id.id, line.ship_to_id.id, line.customer_po, line.week)] |= line
         for (_p, _s, ref, week), lines in by_order.items():
             first = lines[0]
-            existing_orders = lines.sale_line_ids.order_id
-            order = existing_orders.filtered(lambda o: o.state in ('draft', 'sent'))[:1] or existing_orders[:1]
-            if not order:
-                order = self._qb_find_order(first) or Order.create(self._qb_order_vals(first))
+            # 3.15.2: un pedido confirmado no se toca (producción los bloquea al confirmar): lo que
+            # falta va a una cotización de la misma OC y semana.
+            order = lines.sale_line_ids.order_id.filtered(lambda o: o.state in ('draft', 'sent'))[:1]
+            created = False
+            if not order and any(line._qb_missing_qty() > 0 for line in lines):
+                order = self._qb_find_order(first)
+                if not order:
+                    order = Order.create(self._qb_order_vals(first))
+                    created = True
             for line in lines:
                 line._qb_apply_to(order)
-            touched |= order
+            if order and (created or order.order_line):
+                touched |= order
+            elif order and not order.order_line and order.qb_from_forecast:
+                order.unlink()
         if touched:
             for order in touched:
                 order.message_post(body=Markup("Actualizado desde el pronóstico por %s.") % self.env.user.name)
@@ -343,17 +355,32 @@ class QbOrderProposalLine(models.TransientModel):
     apply = fields.Boolean(string="Aplicar")
     sale_line_ids = fields.Many2many('sale.order.line', string="Líneas de pedido", readonly=True)
 
-    def _qb_apply_to(self, order):
-        """Pone en ``order`` la cantidad del pronóstico del producto (nunca menos de lo entregado)."""
+    def _qb_confirmed_qty(self):
+        return sum(self.sale_line_ids.filtered(lambda s: s.order_id.state == 'sale').mapped('product_uom_qty'))
+
+    def _qb_missing_qty(self):
+        """Lo que el pronóstico pide por encima de lo ya confirmado (va en cotización)."""
         self.ensure_one()
-        target = max(self.qty_forecast, self.qty_delivered)
-        mine = self.sale_line_ids.filtered(lambda s: s.order_id == order)
-        if mine:
-            rest = mine[1:]
-            mine[0].write({'product_uom_qty': max(target - sum(rest.mapped('product_uom_qty')),
-                                                  mine[0].qty_delivered)})
+        return round(max(self.qty_forecast, self.qty_delivered) - self._qb_confirmed_qty(), 6)
+
+    def _qb_apply_to(self, order):
+        """Deja en la cotización ``order`` lo que el pronóstico pide por encima de los pedidos
+        confirmados de esa OC y semana (que no se tocan). Sin cotización y sin faltante, nada."""
+        self.ensure_one()
+        need = max(self._qb_missing_qty(), 0.0)
+        drafts = self.sale_line_ids.filtered(lambda s: s.order_id.state in ('draft', 'sent'))
+        if order:
+            drafts |= order.order_line.filtered(lambda s: s.product_id == self.product_id)
+        if drafts:
+            first, rest = drafts[0], drafts[1:]
+            keep = max(need - sum(rest.mapped('product_uom_qty')), 0.0)
+            if keep > 0:
+                first.write({'product_uom_qty': keep})
+            else:
+                first.unlink()
             return
-        self.env['sale.order.line'].create({
-            'order_id': order.id, 'product_id': self.product_id.id, 'product_uom_qty': target,
-            'qb_forecast_week': self.week, 'qb_release_id': self.release_id.id or False,
-            'qb_customer_part': self.customer_part or False})
+        if need > 0 and order:
+            self.env['sale.order.line'].create({
+                'order_id': order.id, 'product_id': self.product_id.id, 'product_uom_qty': need,
+                'qb_forecast_week': self.week, 'qb_release_id': self.release_id.id or False,
+                'qb_customer_part': self.customer_part or False})
