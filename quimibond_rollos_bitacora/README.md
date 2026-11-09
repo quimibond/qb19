@@ -36,7 +36,16 @@ Alinea el módulo con el diseño técnico (§2, §8 paso 13 y §16), que la deci
 - **Etiqueta del desperdicio de Empaque:** al pesar el desperdicio sale una etiqueta (ZPL, 68 x 38 mm, el tamaño de la preliminar) con fecha, producto, nombre, número de lote (el del mes), cantidad con su unidad y el código de barras del lote.
 - Sin migración de datos: lo ya registrado no cambia.
 
-## Clasificación final (3.0)
+## Retiro del esquema anterior y de su interruptor (3.16.0, A3.5, José, 2026-11-08)
+
+La Clasificación final en Empaque (3.11.0 a 3.15.0) queda **siempre activa**, como el diseño técnico (§8 paso 13, §16):
+
+- Se quita el parámetro `quimibond_rollos_bitacora.clasificacion_empaque` (la migración lo borra). Al cerrar la orden en kg, sus rollos pasan siempre a la orden en metros y esta los registra al cerrarse; el baño para venta en kg (sin orden en metros) no cambia.
+- Se retira el asistente anterior `rollo.clasificacion.wizard` (y su acceso), el campo `production_b_id` de la bitácora, `rollo_final_ids` de la orden y el cierre de la orden en metros que dependía de ellos. El botón CLASIFICAR de la operación abre la estación de Empaque.
+- La etiqueta final de la bitácora (`action_report_etiqueta_final`, botón «Reimprimir etiqueta final») se retira: solo la llenaba el asistente anterior. La información definitiva de cada rollo y su etiqueta final viven en el **rollo final** (`mrp.rollo.final`, reporte `action_report_etiqueta_rollo_final`).
+- Los demás campos «finales» de la bitácora (pestaña Clasificación final) se quedan sin cambio. La migración borra las columnas huérfanas `production_b_id` y `zpl_etiqueta_final`.
+
+## Clasificación final (3.0) — histórico, retirado en 3.16.0
 - Botón **CLASIFICAR** en la lista de operaciones de la MO en metros (operación en centro EMPAQUE).
 - Se escanea el lote-serie del rollo de A (debe estar inspeccionado, tener existencia en el origen del consumo
   —Ubic. 10— y no haber sido clasificado). Segundo pesaje con la tara de «Clasificación final» (kg finales =

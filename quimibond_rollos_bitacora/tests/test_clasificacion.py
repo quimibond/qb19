@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from odoo import Command
-from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -41,21 +40,22 @@ class TestClasificacionFinal(TransactionCase):
             'uom_id': uom.id, 'tracking': 'lot'})
 
     def _final(self, clasificacion, defectos=()):
-        self.rollo.write({
-            'production_b_id': self.orden_b.id, 'clasificacion_final': clasificacion,
-            'metros_final': 521.0, 'kg_final': 33.4, 'kg_bruto_final': 34.0,
-            'siglas_operador_final': 'RI', 'lot_b_id': False,
+        """Rollo final (3.16.0: la etiqueta final vive aquí, no en la bitácora) y su ZPL."""
+        final = self.env['mrp.rollo.final'].create({
+            'name': 'CLASTEST-0001', 'secuencia': 1, 'production_id': self.orden_a.id,
+            'production_m_id': self.orden_b.id, 'clasificacion': clasificacion, 'metros': 521.0,
+            'kg_bruto': 34.0, 'kg_neto': 33.4, 'siglas_operador': 'RI',
             'defecto_ids': [Command.set(self.env['calidad.defecto.tela'].search([('clave', 'in', list(defectos))]).ids)],
         })
-        return self.rollo._zpl_etiqueta_final()
+        return final._zpl_etiqueta()
 
     def test_01_operacion_de_clasificacion(self):
         self.assertTrue(self.workorder.es_clasificacion)
         self.assertTrue(self.orden_b.es_clasificacion_final)
 
     def test_02_datos_de_etiqueta(self):
-        self.rollo.production_b_id = self.orden_b
-        datos = self.rollo._datos_etiqueta_final()
+        self._final('PQ')
+        datos = self.env['mrp.rollo.final'].search([('name', '=', 'CLASTEST-0001')])._datos_etiqueta()
         self.assertEqual(datos['color'], 'NATURAL')
         self.assertEqual(datos['ancho'], 160)
 
@@ -101,12 +101,6 @@ class TestClasificacionFinal(TransactionCase):
         self.assertEqual(Bitacora._code128_zpl('1 AD'), ('>:1 AD', 6 * 11 + 13))
         self.assertEqual(Bitacora._code128_zpl('a>b')[0], '>:a><b')
 
-    def test_05_wizard_estados_del_rollo(self):
-        wiz = self.env['rollo.clasificacion.wizard'].new({
-            'production_id': self.orden_b.id, 'workorder_id': self.workorder.id, 'rollo_codigo': 'NO-EXISTE'})
-        wiz.production_id._clasif_move_a()
-        self.assertFalse(wiz.rollo_id)
-
     def test_07_orden_previa_por_cadena_mto(self):
         """La MO en metros reconoce a la MO en kg que la abastece (base de la planeación encadenada)."""
         self.assertFalse(self.orden_b._ordenes_previas())
@@ -114,9 +108,3 @@ class TestClasificacionFinal(TransactionCase):
         consumo_a = self.orden_b._clasif_move_a()
         consumo_a.move_orig_ids = terminado_a
         self.assertEqual(self.orden_b._ordenes_previas(), self.orden_a)
-
-    def test_06_siglas_requeridas(self):
-        wiz = self.env['rollo.clasificacion.wizard'].new({
-            'production_id': self.orden_b.id, 'workorder_id': self.workorder.id})
-        with self.assertRaises(UserError):
-            wiz._siglas_operador_insp(self.rollo)
