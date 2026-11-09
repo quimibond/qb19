@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.14.0: Presupuesto de ventas del mes, F-P-A28-14. -->
+    <record id="action_report_sales_month_plan" model="ir.actions.report">
+        <field name="name">Presupuesto del mes (F-P-A28-14)</field>
+        <field name="model">qb.sales.month.plan</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_ventas_presupuesto.report_sales_month_plan_document</field>
+        <field name="report_file">quimibond_ventas_presupuesto.report_sales_month_plan_document</field>
+        <field name="print_report_name">object.name</field>
+        <field name="paperformat_id" ref="paperformat_qb_landscape"/>
+        <field name="binding_model_id" ref="model_qb_sales_month_plan"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_sales_month_plan_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size:9px;">
+                        <h3 class="text-center">
+                            Presupuesto de Ventas del Mes (F-P-A28-14)<br/>
+                            <small t-out="doc.name"/>
+                        </h3>
+                        <p class="text-muted text-center">
+                            Importes en <span t-out="doc.currency_id.name"/>; tipo de cambio del mes
+                            <span t-out="'%.4f' % doc.rate"/>. Cantidades del pronóstico vigente al armar, ajustadas
+                            antes del envío. <t t-if="doc.state == 'enviado'">Enviado el
+                            <span t-field="doc.sent_date"/> por <span t-out="doc.sent_by_id.name"/>.</t>
+                        </p>
+                        <table class="table table-sm table-bordered" style="width:50%;">
+                            <tr><td>Productos de línea</td>
+                                <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_linea)"/></tr>
+                            <tr><td>Proyectos</td>
+                                <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_proyectos)"/></tr>
+                            <tr class="fw-bold"><td>Total</td>
+                                <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_total)"/></tr>
+                        </table>
+                        <t t-foreach="doc._qb_report_sections()" t-as="section">
+                            <h5 t-out="section[0]"/>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr class="table-active">
+                                        <th>Cliente</th>
+                                        <th>Planta</th>
+                                        <th>Producto</th>
+                                        <th class="text-end">Cantidad</th>
+                                        <th>Unidad</th>
+                                        <th class="text-end">Metros</th>
+                                        <th class="text-end">Kilos</th>
+                                        <th class="text-end">Precio</th>
+                                        <th>Moneda</th>
+                                        <th class="text-end">Importe</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="section[1]" t-as="line">
+                                        <td t-out="line.partner_id.name or ''"/>
+                                        <td t-out="line.plant or ''"/>
+                                        <td t-out="line.product_id.default_code or line.product_id.name"/>
+                                        <td class="text-end" t-out="'{:,.2f}'.format(line.qty)"/>
+                                        <td t-out="line.uom_name"/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(line.qty_m) if line.qty_m else ''"/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(line.qty_kg) if line.qty_kg else ''"/>
+                                        <td class="text-end" t-out="'{:,.4f}'.format(line.price_input) if line.price_input else ''"/>
+                                        <td t-out="line.price_currency_id.name or ''"/>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(line.amount) if not line.price_problem else 'cuenta 0'"/>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-active fw-bold">
+                                        <td colspan="9">Total <span t-out="section[0]"/></td>
+                                        <td class="text-end" t-out="'{:,.0f}'.format(section[2])"/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

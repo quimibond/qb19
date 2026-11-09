@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.11.0: venta real del año en curso y el anterior, y faltantes, cada noche. -->
+    <record id="cron_qb_sales_actual" model="ir.cron">
+        <field name="name">Presupuesto de ventas: venta real y faltantes</field>
+        <field name="model_id" ref="model_qb_sales_actual"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_qb_sales_actual()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
