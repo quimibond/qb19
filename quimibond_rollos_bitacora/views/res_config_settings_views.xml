@@ -15,15 +15,24 @@
                              help="Porcentaje máximo de diferencia contra kg finales por el rendimiento de la ficha de acabado.">
                         <field name="rollos_alerta_diferencia_pct"/>
                     </setting>
-                    <setting string="Etiqueta pequeña de Rama"
-                             help="Tamaño de la etiqueta en puntos ZPL (203 dpi: 8 puntos = 1 mm).">
+                    <setting string="Etiqueta preliminar de Rama"
+                             help="Tamaño de la etiqueta preliminar de Rama en puntos ZPL (203 dpi: 8 puntos = 1 mm). 68 x 38 mm = 544 x 304; el acomodo escala si se cambia.">
                         <field name="rollos_etiqueta_rama_ancho"/>
                         <field name="rollos_etiqueta_rama_alto"/>
                     </setting>
+                    <setting string="Etiqueta final del rollo"
+                             help="Tamaño de la etiqueta final (PQ / PNC) en puntos ZPL (203 dpi). 76 mm de ancho x 102 mm de alto = 608 x 816; el acomodo escala si se cambia.">
+                        <field name="rollos_etiqueta_final_ancho"/>
+                        <field name="rollos_etiqueta_final_alto"/>
+                    </setting>
                     <setting string="Etiqueta preliminar de Inspección"
-                             help="Tamaño de la etiqueta F-P-I01-02 en puntos ZPL (203 dpi). Provisional hasta confirmar el tamaño real.">
+                             help="Tamaño de la etiqueta preliminar de Inspección en puntos ZPL (203 dpi). 68 x 38 mm = 544 x 304; el acomodo escala si se cambia.">
                         <field name="rollos_etiqueta_prelim_ancho"/>
                         <field name="rollos_etiqueta_prelim_alto"/>
+                    </setting>
+                    <setting string="Etiqueta al confirmar en la revisadora"
+                             help="La que sale al confirmar cada rollo final en Inspección. La otra se imprime con su botón en el rollo final, en la pestaña Rollos de la orden o desde Imprimir en la lista de rollos finales.">
+                        <field name="rollos_inspeccion_imprime"/>
                     </setting>
                 </block>
             </xpath>

@@ -14,6 +14,8 @@ import re
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+
 from ..models.mrp_rollo_bitacora import CLASIFICACIONES, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
@@ -46,8 +48,10 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
     tara_faltante = fields.Boolean(compute='_compute_pesos')
     kg_neto = fields.Float('Peso neto (kg)', compute='_compute_pesos', digits=(12, 4))
-    motivo_manual = fields.Char('Motivo de la captura manual')
-    metros = fields.Float('Metros', digits=(12, 2))
+    motivo_manual = fields.Char('Motivo de la captura manual', default=lambda self: motivo_por_defecto(self))
+    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
+    metros = fields.Float('Metros', digits=(12, 2),
+                          help='Obligatorio en Primera, FE y Segunda; el Desperdicio puede ir sin metros (3.6.2).')
     no_empalmes = fields.Integer('No. de empalmes')
     clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad')
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_insp_estacion_defecto_rel', 'wizard_id', 'defecto_id',
@@ -68,11 +72,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
 
     @api.model
     def _empleado(self, numero):
-        Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
-        if not numero or campo not in Empleado._fields:
-            return Empleado
-        return Empleado.search([(campo, '=', numero)], limit=1)
+        return self.env['hr.employee']._qb_operador(numero)  # 3.5.1: número = referencia S-<número>
 
     @api.depends('empleado_numero')
     def _compute_empleado(self):
@@ -170,6 +170,11 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     # ------------------------------------------------------------------ registro
     def _validar(self):
         self.ensure_one()
+        if self.production_id.state in ('done', 'cancel'):
+            # 3.3.5: el botón de la operación ya lo impedía, pero el asistente abierto dejaba capturar un rollo final en
+            # una orden cancelada (prueba 4a en main, 2026-11-05).
+            raise UserError(_('La orden %s ya está cerrada o cancelada: no se inspeccionan rollos.',
+                              self.production_id.name))
         rollos = self.bitacora_ids
         if self.codigos_error:
             raise UserError(_('No existe el rollo de Rama %s.', self.codigos_error))
@@ -201,7 +206,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                               t=self.tara_kg))
         if self.weighing_mode == 'manual' and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
-        if self.metros <= 0:
+        if self.metros < 0 or (self.metros == 0 and self.clasificacion != 'DESP'):
+            # 3.6.2 (ronda 11 en main): el Desperdicio sale en kg y puede ir sin metros.
             raise UserError(_('Captura los metros del rollo final.'))
         if not self.clasificacion:
             raise UserError(_('Elige la calidad del rollo final.'))
@@ -209,9 +215,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             # 3.3.1 (Dirección, 2026-11-05): sin defecto no queda evidencia de por qué bajó la calidad (ISO 9001).
             raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',
                               dict(CLASIFICACIONES).get(self.clasificacion)))
-        emp = self._empleado(self.empleado_numero)
-        if not emp and 'x_studio_nmero_de_trabajador' in self.env['hr.employee']._fields:
-            raise UserError(_('No existe el empleado %s.', self.empleado_numero))
+        emp = self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
         if emp and not emp.siglas:
             raise UserError(_('El operador %s no tiene siglas: captúralas en el empleado (van en la etiqueta).',
                               emp.name))
@@ -234,6 +238,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         emp = self._validar()
         Final = self.env['mrp.rollo.final']
         orden_m = self.orden_m_id
+        self.production_id._asignar_numero_bano()
         secuencia = Final._siguiente_secuencia(orden_m, self.production_id)
         ahora = fields.Datetime.now()
         operador = ' - '.join(filter(None, [self.empleado_numero, emp.name or False]))
@@ -257,10 +262,15 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             'siglas_operador': emp.siglas or False,
             'fecha': ahora,
             'metros_teoricos': self.metros_teoricos,
-            'alerta_metros': bool(self.metros_teoricos) and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
+            # 3.16.1: sin metros capturados (Desperdicio, 3.6.2) no hay contra qué comparar: sin alerta.
+            'alerta_metros': bool(self.metros_teoricos and self.metros)
+            and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
             * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()
+        rollo.zpl_etiqueta_preliminar = rollo._zpl_etiqueta_preliminar()
+        self.production_id._historial_pesaje(self.workcenter_id, rollo.name, self.kg_bruto, self.tara_kg,
+                                             rollo.kg_neto, operador, fecha=ahora)
         if self.termina_rollo:
             for rama in self.bitacora_ids:
                 finales = rama.rollo_final_insp_ids
@@ -275,6 +285,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                     'operador_insp': operador,
                     'fecha_registro_insp': ahora,
                 })
-        accion = rollo.action_imprimir_etiqueta()
+        if Final._accion_al_confirmar() == 'final':
+            accion = rollo.action_imprimir_etiqueta()
+        else:
+            accion = rollo.action_imprimir_etiqueta_preliminar()
         accion.update({'close_on_report_download': True})
         return accion

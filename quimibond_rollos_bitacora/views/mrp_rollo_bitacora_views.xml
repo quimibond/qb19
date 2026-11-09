@@ -10,6 +10,7 @@
                 <field name="lot_id"/>
                 <field name="product_id"/>
                 <field name="kg_rama" sum="Total kg"/>
+                <field name="metros_rama" sum="Total m" optional="show"/>
                 <field name="estado_inspeccion" widget="badge"/>
                 <field name="clasificacion_inicial"/>
                 <field name="metros_insp" optional="show"/>
@@ -32,8 +33,6 @@
                             invisible="not zpl_etiqueta_rama"/>
                     <button name="action_imprimir_etiqueta_preliminar" type="object"
                             string="Reimprimir etiqueta preliminar" invisible="not zpl_etiqueta_preliminar"/>
-                    <button name="action_imprimir_etiqueta_final" type="object"
-                            string="Reimprimir etiqueta final" invisible="not zpl_etiqueta_final"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -60,6 +59,9 @@
                                     <field name="kg_bruto_rama"/>
                                     <field name="tara_rama"/>
                                     <field name="kg_rama"/>
+                                    <field name="metros_rama"/>
+                                    <field name="rendimiento_rama"/>
+                                    <field name="motivo_sin_metros_rama" invisible="metros_rama"/>
                                 </group>
                                 <group>
                                     <field name="operador_rama"/>
@@ -105,12 +107,10 @@
                         <page string="Clasificación final" name="clasificacion_final">
                             <group>
                                 <group string="Clasificación">
-                                    <field name="production_b_id"/>
                                     <field name="workcenter_final_id"/>
                                     <field name="operador_final"/>
                                     <field name="siglas_operador_final"/>
                                     <field name="fecha_registro_final"/>
-                                    <field name="zpl_etiqueta_final" invisible="1"/>
                                     <field name="qc_laboratorio_aplica"/>
                                     <field name="clasificacion_final"/>
                                     <field name="reetiquetado"/>
@@ -156,7 +156,7 @@
                 <field name="production_id"/>
                 <field name="product_id"/>
                 <filter string="Pendientes de inspección" name="pendiente_insp"
-                        domain="[('estado_inspeccion', '=', 'pendiente')]"/>
+                        domain="[('estado_inspeccion', '=', 'pendiente'), ('production_id.state', '!=', 'cancel')]"/>
                 <filter string="Alerta de metros" name="alerta"
                         domain="['|', ('alerta_metros_insp', '=', True), ('alerta_diferencia_metros', '=', True)]"/>
                 <filter string="Reetiquetados" name="reetiquetado" domain="[('reetiquetado', '=', True)]"/>

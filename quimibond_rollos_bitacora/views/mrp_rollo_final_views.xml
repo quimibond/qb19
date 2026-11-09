@@ -10,6 +10,8 @@
                 <field name="production_m_id"/>
                 <field name="bitacora_ids" widget="many2many_tags"/>
                 <field name="clasificacion"/>
+                <field name="clasificacion_final" optional="show"/>
+                <field name="reetiquetado" optional="hide"/>
                 <field name="kg_neto" sum="Total kg"/>
                 <field name="metros" sum="Total m" decoration-warning="alerta_metros"/>
                 <field name="alerta_metros" column_invisible="True"/>
@@ -28,7 +30,8 @@
         <field name="arch" type="xml">
             <form create="false" edit="false">
                 <header>
-                    <button name="action_imprimir_etiqueta" type="object" string="Reimprimir etiqueta"/>
+                    <button name="action_imprimir_etiqueta_preliminar" type="object" string="Etiqueta preliminar"/>
+                    <button name="action_imprimir_etiqueta" type="object" string="Etiqueta final"/>
                     <button name="action_anular" type="object" string="Anular captura" groups="mrp.group_mrp_manager"
                             invisible="estado != 'inspeccionado'"
                             confirm="Se borra este rollo final y sus rollos de Rama quedan pendientes para volver a inspeccionarlos. ¿Continuar?"/>
@@ -61,6 +64,25 @@
                             <field name="siglas_operador"/>
                             <field name="fecha"/>
                         </group>
+                        <group string="Clasificación final (Empaque)">
+                            <field name="clasificacion_final"/>
+                            <field name="reetiquetado"/>
+                            <field name="kg_bruto_final"/>
+                            <field name="tara_final"/>
+                            <field name="kg_neto_final"/>
+                            <field name="metros_final"/>
+                            <field name="motivo_ajuste_final"/>
+                            <field name="defecto_final_ids" widget="many2many_tags"/>
+                            <field name="workcenter_final_id"/>
+                            <field name="operador_final"/>
+                            <field name="siglas_operador_final"/>
+                            <field name="fecha_final"/>
+                        </group>
+                        <group string="Con lo que se registra">
+                            <field name="clasificacion_registro"/>
+                            <field name="kg_registro"/>
+                            <field name="metros_registro"/>
+                        </group>
                         <group>
                             <field name="product_id"/>
                             <field name="lot_id"/>
@@ -81,7 +103,9 @@
                 <field name="production_id"/>
                 <field name="production_m_id"/>
                 <filter name="inspeccionado" string="Sin registrar" domain="[('estado', '=', 'inspeccionado')]"/>
+                <filter name="clasificado" string="Clasificados en Empaque" domain="[('estado', '=', 'clasificado')]"/>
                 <filter name="registrado" string="Registrados" domain="[('estado', '=', 'registrado')]"/>
+                <filter name="reetiquetado" string="Reetiquetados" domain="[('reetiquetado', '=', True)]"/>
                 <separator/>
                 <filter name="pq" string="PQ" domain="[('clasificacion', '=', 'PQ')]"/>
                 <filter name="fe" string="FE" domain="[('clasificacion', '=', 'FE')]"/>

@@ -30,6 +30,10 @@ class TintoreriaProgramacion(models.Model):
     capacidad_kg = fields.Float('Capacidad por baño (kg)', digits=(16, 3), readonly=True)
     n_banos = fields.Integer('No. de baños', readonly=True)
     kg_bano = fields.Float('kg por baño', digits=(16, 3), readonly=True)
+    kg_crudo = fields.Float('kg de crudo', digits=(16, 3), readonly=True,
+                            help='1.7.0: kg de crudo planeados que entran al jet; con ellos se calcula el número de baños.')
+    kg_crudo_bano = fields.Float('kg de crudo por baño', digits=(16, 3), readonly=True,
+                                 help='Lo que se carga en el jet en cada baño; no pasa la capacidad por baño.')
     minutos_bano = fields.Float('Minutos por baño', digits=(12, 2), readonly=True)
     origen_tiempo = fields.Selection(ORIGENES_TIEMPO, 'Origen del tiempo', readonly=True)
     production_ids = fields.One2many('mrp.production', 'tintoreria_programacion_id', 'Órdenes de fabricación')

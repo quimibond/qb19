@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Dosificación de Tintorería',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.2',
     'category': 'Manufacturing',
     'summary': 'Catálogo de fórmulas de tintorería y cálculo de requerimiento de químicos (g/L) y colorantes (%)',
     'description': """
@@ -20,6 +20,10 @@ Dosificación de Tintorería
 * 1.3.0: el formulario de la fórmula lleva el nombre como título y explica la regla de dosificación
   (g/L con la relación de baño, % sobre kg); los colorantes se distinguen en la lista, y la
   lista de fórmulas trae el número de ingredientes.
+* 1.4.0: la dosis va sobre los kg que entran al jet (el crudo, componente de una categoría de
+  tejido), no sobre los kg de tela de la orden: con 1.1505 kg de crudo por kg de tela (IWJ038),
+  la orden pedía alrededor de 13 % menos químico y colorante. Sin componente de tejido, como antes.
+* 1.4.1: da a las cargas y avisos por jet de fichas técnicas (2.28.0) los kg de crudo (`_ft_kg_carga_jet`).
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

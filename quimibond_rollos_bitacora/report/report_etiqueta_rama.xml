@@ -13,19 +13,6 @@
         </t>
     </template>
 
-    <record id="action_report_etiqueta_final" model="ir.actions.report">
-        <field name="name">Etiqueta final (PQ / PNC)</field>
-        <field name="model">mrp.rollo.bitacora</field>
-        <field name="report_type">qweb-text</field>
-        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_final</field>
-    </record>
-
-    <template id="report_etiqueta_final">
-        <t t-foreach="docs" t-as="o">
-            <t t-out="o.zpl_etiqueta_final"/>
-        </t>
-    </template>
-
     <record id="action_report_etiqueta_preliminar" model="ir.actions.report">
         <field name="name">Etiqueta preliminar de Inspección</field>
         <field name="model">mrp.rollo.bitacora</field>
@@ -44,11 +31,41 @@
         <field name="model">mrp.rollo.final</field>
         <field name="report_type">qweb-text</field>
         <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_rollo_final</field>
+        <field name="binding_model_id" ref="model_mrp_rollo_final"/>
+        <field name="binding_type">report</field>
     </record>
 
     <template id="report_etiqueta_rollo_final">
         <t t-foreach="docs" t-as="o">
             <t t-out="o.zpl_etiqueta"/>
+        </t>
+    </template>
+
+    <record id="action_report_etiqueta_rollo_preliminar" model="ir.actions.report">
+        <field name="name">Etiqueta preliminar del rollo (Inspección)</field>
+        <field name="model">mrp.rollo.final</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_rollo_preliminar</field>
+        <field name="binding_model_id" ref="model_mrp_rollo_final"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_etiqueta_rollo_preliminar">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o.zpl_etiqueta_preliminar or o._zpl_etiqueta_preliminar()"/>
+        </t>
+    </template>
+
+    <record id="action_report_etiqueta_desperdicio_empaque" model="ir.actions.report">
+        <field name="name">Etiqueta del desperdicio de Empaque</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_desperdicio_empaque</field>
+    </record>
+
+    <template id="report_etiqueta_desperdicio_empaque">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o._zpl_etiqueta_desperdicio_empaque()"/>
         </t>
     </template>
 </odoo>

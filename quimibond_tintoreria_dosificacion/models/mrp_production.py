@@ -21,12 +21,47 @@ class MrpProduction(models.Model):
     # ------------------------------------------------------------------
     # Cálculo
     # ------------------------------------------------------------------
-    def _dosificacion_kg_orden(self):
+    def _kg_carga_jet(self):
+        """1.4.0: (kg que entran al jet, producto crudo). El jet se carga con el crudo, no con la tela terminada: en
+        IWJ038Q22JNT160 entran 1.1505 kg de crudo por kg de tela (auditoría del flujo, 2026-11-06). La relación de baño
+        (L por kg cargado) y el % de colorante (sobre el peso cargado) van sobre esos kg, y la programación de
+        Tintorería reparte los baños con ellos. El crudo es el componente en peso de una categoría de tejido con más
+        kg: el de los movimientos de la orden y, mientras no existen (al crearla), el de la lista de materiales. Sin
+        componente de tejido, los kg de la orden, como antes."""
         self.ensure_one()
+        kg = self._kg_uom()
         try:
-            return self.product_uom_id._compute_quantity(self.product_qty, self._kg_uom())
+            kg_orden = self.product_uom_id._compute_quantity(self.product_qty, kg, round=False)
         except UserError:
-            return self.product_qty
+            kg_orden = self.product_qty
+        tela = self.move_raw_ids.filtered(
+            lambda m: m.state != 'cancel' and m.product_uom._has_common_reference(kg)
+            and self._es_tejido(m.product_id))
+        if tela:
+            planeado = {}
+            for move in tela:
+                planeado[move.product_id] = planeado.get(move.product_id, 0.0) + move.product_uom._compute_quantity(
+                    move.product_uom_qty, kg, round=False)
+            # 1.4.2 (revisión de código, 2026-11-06): con dos crudos en el baño entran los dos al jet; se suman (antes solo
+            # el de más kg). El producto que se informa es el de más kg.
+            crudo = max(planeado, key=planeado.get)
+            return sum(planeado.values()), crudo
+        if self.bom_id:
+            kg_lote, kg_crudo, crudo = self.bom_id._kg_carga_jet_lote()
+            if crudo and kg_lote:
+                return kg_orden * kg_crudo / kg_lote, crudo
+        return kg_orden, False
+
+    def _ft_kg_carga_jet(self):
+        """1.4.1: los avisos y las cargas por jet de la ficha técnica (2.28.0) cuentan los kg de crudo que entran al
+        jet, los mismos que usan la dosificación y la programación."""
+        self.ensure_one()
+        return self._kg_carga_jet()
+
+    def _dosificacion_kg_orden(self):
+        """Kg sobre los que se dosifica: los que entran al jet (1.4.0)."""
+        self.ensure_one()
+        return self._kg_carga_jet()[0]
 
     def _dosificacion_contexto(self, operacion):
         """(work center vigente, relación de baño) para la operación: el de la orden de trabajo

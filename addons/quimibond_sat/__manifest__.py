@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.29.1',
+    'version': '19.0.1.29.2',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -22,7 +22,8 @@ UUID contra las facturas de Odoo.
   Odoo) y hallazgos (monto distinto, cancelado en el SAT pero publicado en
   Odoo, cancelado en Odoo pero vigente en el SAT).
 
-Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema):
+Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema)::
+
   quimibond_sat.api_key         API key de Syntage
   quimibond_sat.webhook_secret  Secreto de firma del webhook de Syntage
   quimibond_sat.api_base        Opcional, default https://api.syntage.com

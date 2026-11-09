@@ -40,6 +40,12 @@ class TintoreriaDosificacionMixin(models.AbstractModel):
         return self.env.ref('uom.product_uom_kgm')
 
     @api.model
+    def _es_tejido(self, producto):
+        """1.4.0: el crudo que entra al jet es de una categoría de tejido (la misma regla con la que rollos valida el
+        crudo al cerrar)."""
+        return 'TEJIDO' in (producto.categ_id.complete_name or '').upper()
+
+    @api.model
     def _rb_workcenter(self, workcenter, producto=None):
         """Relación de baño (L/kg) para teñir ``producto`` en el work center: la del artículo en el jet
         y, si no la tiene, la de la máquina (fichas técnicas: ``_ft_relacion_bano``; no leer el texto)."""

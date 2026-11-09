@@ -14,15 +14,60 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
-## 19.0.57.198.2 — 2026-11-09
+## 19.0.57.199.0 — 2026-11-09
 
-Solo este arreglo pasa a producción (desde 57.197.0); 57.198.0 y 57.198.1 siguen en `main`.
+Sube la versión para llevar a producción 57.198.0 y 57.198.1. Producción pasó de 57.197.0 a 57.198.2 solo con
+el arreglo de «Crear las órdenes de muestra»; con el mismo número que `main`, el update de `quimibond` podía no
+aplicar lo demás. Sin cambios de código respecto de 57.198.2 en `main`.
+
+**Al desplegar:** Odoo borra las vistas `sgi_format_banner_mrp_production` y `report_mrporder_sgi` (sus xmlid ya
+no están en el módulo). Verificar en una orden de fabricación que no sale «Formato controlado del SGI».
+
+
+## 19.0.57.198.2 — 2026-11-09
 
 ### Corregido
 - «Pedir corrida de muestra» (C1): «Crear las órdenes de muestra» fallaba con «Falta el valor requerido
   para el campo 'Artículo' (product_id)» en `sgi.dev.sample.wizard.line`. Artículo y Etapa son de solo
   lectura en la lista y el cliente web no los mandaba al guardar; ahora van con `force_save` (también
   «Cómo se calculó», que se copia al chatter de la orden).
+
+
+## 19.0.57.198.1 — 2026-11-09
+
+Fallas del suite del SGI en el build de desarrollo (`--test-tags /quimibond_sgi`, 9-nov-2026).
+
+**Corregido**
+- **Árbol de menús** (`_sgi_menu_tree_offenders`): una carpeta del raíz archivada en su lugar (Administración desde
+  57.183.0, en `SGI_MENU_ARCHIVED`) y lo que cuelga de ella ya no cuentan como menús sueltos.
+- **Factibilidad, materia prima** (`_sgi_dev_auto_answer`): la existencia se relee al volver a cargar el checklist;
+  `qty_available` no se guarda y su caché no se invalidaba al cambiar un quant en la misma transacción.
+
+**Pruebas**
+- `test_aprobaciones_asunto` 02 y `test_dev_buttons`: el «Ejecuta» es de otro puesto (quien ejecuta no aprueba).
+- `test_dev_analysis` 03 pone la existencia en el almacén de la compañía activa; `test_dev_characteristics` 05: el
+  límite del control interno cuenta como dentro (1.62 cumple, 1.63 es desviación).
+- Las pruebas que crean actividades sin importar quién las ejecuta usan `sgi_skip_role_check`, como las demás.
+
+
+## 19.0.57.198.0 — 2026-11-08
+
+**Retirado**
+- **Aviso «Formato controlado del SGI» en las órdenes de fabricación**: se quitan la herencia del formulario
+  (`sgi_format_banner_mrp_production`) y el pie del PDF de la orden (`report_mrporder_sgi`). Los demás documentos
+  (cotización, OC, remisión, orden de mantenimiento, lote/CoA) conservan su aviso. El mapeo de `mrp.production` sigue
+  para las claves por operación. Al actualizar, Odoo borra las dos vistas (sus xmlid ya no están en el módulo).
+
+**Corregido**
+- **Mis pendientes al registrar una evaluación legal** (`_sgi_refresh_for`): los usuarios se leen antes de rearmar la
+  lista; `_sgi_build` borra y vuelve a crear los renglones, y leer uno borrado reventaba con `MissingError`.
+
+**Pruebas**
+- `test_aprobaciones_asunto`, `test_autovalidacion`, `test_bandeja` 32 y 33 al día con las reglas vigentes: la
+  actividad nace con su «Ejecuta», las mediciones de pendientes con periodo ya vencido, la actividad de un
+  procedimiento vigente con método de medición y `assertRaises(UserError)` (el de Odoo no acepta tuplas;
+  `AccessError` hereda de `UserError`). `test_audit_hardening` y `test_excel_migration` silencian los errores que
+  provocan a propósito.
 
 
 ## 19.0.57.197.0 — 2026-11-04

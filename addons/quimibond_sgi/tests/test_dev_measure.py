@@ -49,7 +49,7 @@ class TestDevMeasure(TransactionCase):
     def test_03_c1_deliverables_point_to_the_project(self):
         Process = self.env['sgi.process']
         Deliverable = self.env['sgi.deliverable']
-        Activity = self.env['sgi.process.activity']
+        Activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True)
         process = Process.search([('code', '=', 'C1')], limit=1) or Process.create({'code': 'C1', 'name': 'C1 prueba'})
         task_model = self.env['ir.model']._get('project.task')
         analysis = Deliverable.search([('code', '=', 'C1-ANALISIS')], limit=1) or Deliverable.create({

@@ -21,12 +21,16 @@ from collections import defaultdict
 from lxml import etree
 
 from odoo import api, models
+from odoo.tools import mute_logger
 
 _logger = logging.getLogger(__name__)
 
 # Módulos "de nadie": lo que está bajo estos nombres se creó en la base
 # (Studio, importaciones), no en un addon; es lo único que se toca.
 MODULOS_DE_LA_BASE = ('studio_customization', '__export__', '__import__', '__cloc_exclude__')
+
+# Lo que Odoo registra al validar una vista inválida (RNG y validador).
+LOGGERS_VALIDACION = ('odoo.tools.view_validation', 'odoo.addons.base.models.ir_ui_view')
 
 RE_GROUPS_ATTR = re.compile(r'groups="([^"]*)"')
 RE_GROUPS_NODE = re.compile(r'<attribute name="groups">([^<]*)</attribute>')
@@ -347,7 +351,7 @@ class QbBuildLimpio(models.AbstractModel):
             reparada = arch.replace('quick_add=', 'quick_create=')
             if reparada != arch:
                 try:
-                    with self.env.cr.savepoint():
+                    with self.env.cr.savepoint(), mute_logger(*LOGGERS_VALIDACION):
                         view.write({'arch_db': reparada})
                     hechos.append('vista %d "%s": quick_add → quick_create' % (view.id, view.name))
                     continue
@@ -364,8 +368,11 @@ class QbBuildLimpio(models.AbstractModel):
         return hechos
 
     def _vista_valida(self, view):
+        # Es una sonda: la vista rota se reporta en «hechos», así que el
+        # aviso del RNG («Invalid attribute quick_add for element calendar»)
+        # y el del validador no deben salir en el log además.
         try:
-            with self.env.cr.savepoint():
+            with self.env.cr.savepoint(), mute_logger(*LOGGERS_VALIDACION):
                 view._check_xml()
             return True
         except Exception:  # noqa: BLE001

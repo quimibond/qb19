@@ -320,6 +320,7 @@ class TestRateLimiting(common.TransactionCase):
                 # The rejection must surface as HTTP 429, not a silent 200.
                 self.assertEqual(mock_err.call_args.kwargs.get("status"), 429)
 
+    @mute_logger("odoo.addons.mcp_server.controllers.rate_limiting")  # el aviso lo provoca la prueba
     def test_rate_limit_decorator_no_user(self):
         """Test rate limit decorator without user (anonymous)"""
 
@@ -341,6 +342,7 @@ class TestRateLimiting(common.TransactionCase):
                 (self.dbname, -1), rate_limiting._api_limiter._buckets
             )  # Anonymous user ID is -1
 
+    @mute_logger("odoo.addons.mcp_server.controllers.rate_limiting")  # el aviso lo provoca la prueba
     def test_rate_limit_decorator_anonymous_exceeded(self):
         """Test rate limit decorator for anonymous user when limit exceeded"""
         # Set limit above minimum (10) for testing

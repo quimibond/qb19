@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import ValidationError
 from odoo.tools import float_compare
 
 from .dosificacion_mixin import TIPOS_COMPONENTE
@@ -59,10 +59,8 @@ class MrpBomLine(models.Model):
         self.ensure_one()
         bom = self.bom_id
         kg = self._kg_uom()
-        try:
-            kg_lote = bom.product_uom_id._compute_quantity(bom.product_qty, kg)
-        except UserError:
-            kg_lote = bom.product_qty
+        # 1.4.0: sobre los kg de crudo del lote, que son los que entran al jet.
+        _kg_lote, kg_lote, _crudo = bom._kg_carga_jet_lote()
         operacion = self.operation_id or bom._operacion_tintoreria()
         rb = self._rb_workcenter(
             operacion.workcenter_id, bom.product_id or bom.product_tmpl_id.product_variant_id)

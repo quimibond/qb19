@@ -132,3 +132,86 @@ class TestDosificacionTintoreria(TransactionCase):
         with self.assertRaises(ValidationError):  # producto que no es químico ni colorante
             self.env['tintoreria.formula.line'].create({
                 'formula_id': self.formula.id, 'product_id': self.otro.id, 'gramos_por_litro': 1.0})
+
+    def test_dosis_sobre_los_kg_de_crudo(self):
+        """1.4.0: la relación de baño y el % de colorante van sobre los kg que entran al jet (el crudo), no sobre los kg
+        de tela de la orden. Con 1.15 kg de crudo por kg de tela, 100 kg de tela cargan 115 kg."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (prueba)'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo', 'default_code': 'T-CRUDO', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id})
+        tela = self.env['product.product'].create({
+            'name': 'Tela acabada con crudo', 'default_code': 'T-ITELA2', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'operation_ids': [(0, 0, {'name': 'TINTORERIA', 'workcenter_id': self.wc1.id})],
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id, 'product_qty': 1.15})],
+            'formula_tintoreria_id': self.formula.id,
+        })
+        bom.action_cargar_formula()
+        self.assertEqual(bom._kg_carga_jet_lote(), (1.0, 1.15, crudo))
+        linea = bom.bom_line_ids.filtered(lambda l: l.product_id == self.detergente)
+        self.assertAlmostEqual(linea.product_qty, 1.5 * 7 * 1.15 / 1000, places=4)  # la línea guarda 4 decimales
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        self.assertAlmostEqual(mo._kg_carga_jet()[0], 115.0)
+        self.assertAlmostEqual(self._mov(mo, self.detergente).product_uom_qty, 1.5 * 7 * 115 / 1000, places=6)
+        self.assertAlmostEqual(self._mov(mo, self.amarillo).product_uom_qty, 0.034 / 100 * 115, places=6)
+        # Con los movimientos ya creados manda el crudo de la orden: cambio de jet (RB 6) sobre los mismos 115 kg.
+        mo.workorder_ids.filtered(lambda w: w.operation_id.name == 'TINTORERIA').write({'workcenter_id': self.wc2.id})
+        self.assertAlmostEqual(self._mov(mo, self.detergente).product_uom_qty, 1.5 * 6 * 115 / 1000, places=6)
+
+    def test_dos_crudos_se_suman(self):
+        """1.4.2 (revisión de código, 2026-11-06): con dos crudos en la lista entran los dos al jet; se suman."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (dos crudos)'})
+        crudo_a, crudo_b = [self.env['product.product'].create({
+            'name': 'Crudo %s' % letra, 'default_code': 'T-CRUDO-%s' % letra, 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id}) for letra in 'AB']
+        tela = self.env['product.product'].create({
+            'name': 'Tela con dos crudos', 'default_code': 'T-ITELA3', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'bom_line_ids': [(0, 0, {'product_id': crudo_a.id, 'product_qty': 0.8}),
+                             (0, 0, {'product_id': crudo_b.id, 'product_qty': 0.35})],
+        })
+        self.assertEqual(bom._kg_carga_jet_lote(), (1.0, 1.15, crudo_a))
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        kg, crudo = mo._kg_carga_jet()
+        self.assertAlmostEqual(kg, 115.0)
+        self.assertEqual(crudo, crudo_a)
+
+    def test_sin_crudo_dosifica_sobre_los_kg_de_la_orden(self):
+        """1.4.0: sin componente de tejido, como antes: los kg de la orden."""
+        self.assertEqual(self.bom._kg_carga_jet_lote(), (1.0, 1.0, False))
+        mo = self._crear_mo(100.0)
+        self.assertEqual(mo._kg_carga_jet(), (100.0, False))
+
+    def test_cargas_y_avisos_de_ficha_van_sobre_el_crudo(self):
+        """1.4.1: el gancho de fichas técnicas (2.28.0) devuelve los kg de crudo: 100 kg de tela con 1.15 kg de crudo
+        por kg son 115 kg, y el aviso de carga del jet habla de kg de crudo."""
+        cat_tejido = self.env['product.category'].create({'name': 'Tejido Circular (gancho)'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo gancho', 'default_code': 'T-CRUDOG', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': cat_tejido.id})
+        tela = self.env['product.product'].create({
+            'name': 'Tela gancho', 'default_code': 'T-ITELAG', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'categ_id': self.cat_general.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': tela.product_tmpl_id.id, 'product_qty': 1.0, 'product_uom_id': self.kg.id,
+            'operation_ids': [(0, 0, {'name': 'TINTORERIA', 'workcenter_id': self.wc1.id})],
+            'bom_line_ids': [(0, 0, {'product_id': crudo.id, 'product_qty': 1.15})]})
+        mo = self.env['mrp.production'].create({
+            'product_id': tela.id, 'product_qty': 100.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        kg, producto = mo._ft_kg_carga_jet()
+        self.assertAlmostEqual(kg, 115.0)
+        self.assertEqual(producto, crudo)
+        # El aviso de carga solo aplica a centros con tipo de máquina «Tintorería».
+        self.wc1.ft_tipo_id = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_tintoreria')
+        self.patch(self.env.registry['mrp.workcenter'], '_ft_capacidad_carga',
+                   lambda wc, rendimiento, day=None, product=None: (105.0, 'prueba'))
+        aviso = self.wc1._ft_aviso_para(tela, kg)
+        self.assertIn('115 kg de crudo', aviso)
+        self.assertIn('2 cargas', aviso)

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.12.0 (A3.3): Clasificación final en Empaque, un rollo final por registro. -->
+    <record id="view_rollo_empaque_clasificacion_wizard_form" model="ir.ui.view">
+        <field name="name">rollo.empaque.clasificacion.wizard.form</field>
+        <field name="model">rollo.empaque.clasificacion.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Clasificar en Empaque">
+                <sheet>
+                    <field name="scale_read_url" invisible="1"/>
+                    <field name="tara_faltante" invisible="1"/>
+                    <field name="codigo_error" invisible="1"/>
+                    <field name="rollo_id" invisible="1"/>
+                    <field name="cambia" invisible="1"/>
+                    <group>
+                        <field name="empleado_numero" password="True" default_focus="1"
+                               readonly="empleado_numero != False" force_save="1"/>
+                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                    </group>
+                    <div invisible="not empleado_numero">
+                        <div class="alert alert-info" role="status" groups="mrp.group_mrp_manager"
+                             invisible="not pesar">
+                            <group col="4">
+                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                                <field name="iot_device_id" invisible="weighing_mode != 'iot'"
+                                       required="weighing_mode == 'iot'"/>
+                            </group>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="production_id"/>
+                                <field name="product_id"/>
+                            </group>
+                            <group>
+                                <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="pendientes"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="codigo" placeholder="Escanea la etiqueta preliminar del rollo"
+                                   style="font-size: 1.5em; font-weight: bold;"/>
+                        </group>
+                        <div class="alert alert-danger" role="alert" invisible="not codigo_error">
+                            El rollo <field name="codigo_error" readonly="1" class="oe_inline"/> no está en esta orden.
+                        </div>
+                        <group invisible="not rollo_id">
+                            <group string="Lo que dijo Inspección">
+                                <field name="clasificacion_insp"/>
+                                <field name="metros_insp"/>
+                                <field name="kg_insp"/>
+                                <field name="estado_rollo"/>
+                            </group>
+                            <group string="Clasificación final">
+                                <field name="clasificacion" widget="radio" options="{'horizontal': true}"/>
+                                <field name="metros"/>
+                                <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"
+                                       required="clasificacion in ('SEGUNDA', 'FE')"
+                                       invisible="clasificacion not in ('SEGUNDA', 'FE')"/>
+                                <field name="motivo_ajuste" invisible="not cambia" required="cambia"
+                                       placeholder="Por qué cambia (indicación de Calidad)"/>
+                            </group>
+                        </group>
+                        <div invisible="not rollo_id">
+                            <group>
+                                <field name="pesar"/>
+                            </group>
+                            <div class="alert alert-danger" role="alert" invisible="not tara_faltante">
+                                No hay tara para este artículo. Captúrala en Manufactura → Configuración → Taras por
+                                producto (operación «Clasificación final») antes de pesar.
+                            </div>
+                            <div class="text-center mt-3 mb-3 p-4 border rounded bg-light" invisible="not pesar">
+                                <div class="row">
+                                    <div class="col-4">
+                                        <label for="kg_bruto" string="PESO BRUTO"/><br/>
+                                        <field name="kg_bruto" widget="peso_bascula" options="{'digits': [12, 4]}"
+                                               readonly="weighing_mode == 'iot'" force_save="1"
+                                               style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="tara_kg" string="TARA"/><br/>
+                                        <field name="tara_kg" readonly="1"
+                                               style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="kg_neto" string="PESO NETO"/><br/>
+                                        <field name="kg_neto" readonly="1"
+                                               style="font-size: 3em; font-weight: bold; text-align: center;"/>
+                                    </div>
+                                </div>
+                                <span style="font-size: 1.6em; font-weight: bold;">KG</span>
+                            </div>
+                            <group invisible="not pesar or weighing_mode != 'manual'">
+                                <field name="motivo_manual" required="pesar and weighing_mode == 'manual'"/>
+                            </group>
+                        </div>
+                        <div class="alert alert-warning" role="alert" invisible="not alertas">
+                            <field name="alertas" readonly="1"/>
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" type="object" string="CLASIFICAR E IMPRIMIR ETIQUETA FINAL"
+                            class="btn-primary btn-lg"
+                            invisible="not empleado_numero or not rollo_id or tara_faltante"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -116,14 +116,26 @@ class TestRollos(TransactionCase):
         self.assertFalse(wiz.tara_faltante)
         self.assertAlmostEqual(wiz.kg_neto, 51.9)
         self.assertEqual(wiz.secuencia, 1)
-        self.assertEqual(wiz.lote_name, '%s-0001' % self.orden.name.split('/')[-1])
+        self.assertEqual(wiz.lote_name, '(baño)-0001')  # vista previa: el número se asigna al confirmar
+        self.orden._asignar_numero_bano()
+        wiz = self.env['rollo.pesaje.rama.wizard'].new({'production_id': self.orden.id, 'kg_bruto': 53.0})
+        self.assertEqual(wiz.lote_name, '%s-0001' % self.orden.numero_bano)  # 3.7.0: sin J aparte
 
-    def test_09_etiqueta_zpl_solo_codigo_de_barras(self):
-        wiz = self.env['rollo.pesaje.rama.wizard'].new({'production_id': self.orden.id})
-        zpl = wiz._zpl_etiqueta_rama('00004-0001')
-        self.assertIn('^BCN', zpl)
-        self.assertIn('^FD00004-0001^FS', zpl)
-        self.assertEqual(zpl.count('^FD'), 1)  # solo el código de barras, sin texto
+    def test_09_etiqueta_de_rama_68_x_38(self):
+        """3.4.0: la etiqueta de Rama mide 68 x 38 mm y lleva artículo, orden, fecha, centro, kg y el código del lote."""
+        rama = self.env['mrp.workcenter'].create({'name': 'RAMA ETIQUETA', 'code': 'RETQ'})
+        lote = self.env['stock.lot'].create({'name': '00004-0001', 'product_id': self.producto_kg.id})
+        rollo = self.env['mrp.rollo.bitacora'].create({
+            'production_id': self.orden.id, 'secuencia': 1, 'lot_id': lote.id, 'workcenter_rama_id': rama.id,
+            'kg_rama': 51.9})
+        zpl = rollo._zpl_etiqueta_rama()
+        self.assertTrue(zpl.startswith('^XA^PW544^LL304'))  # 68 x 38 mm a 203 dpi
+        for texto in ('ARTÍCULO: %s' % (self.producto_kg.default_code or self.producto_kg.name),
+                      'ORDEN: %s' % self.orden.name, 'FECHA: ', 'CENTRO: RAMA ETIQUETA', 'KG: 51.90'):
+            self.assertIn(texto, zpl)
+        datos, _modulos = rollo._code128_zpl('00004-0001')
+        self.assertIn('^FD%s^FS' % datos, zpl)
+        self.assertIn('^BY3,', zpl)
 
     # ------------------------------------------------- botón en la lista de operaciones
     def test_10_operacion_de_rama(self):

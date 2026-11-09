@@ -2,6 +2,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+
 
 class RolloDesperdicioRamaWizard(models.TransientModel):
     """Pesaje del subproducto Desperdicio Tejido (orilla) en Rama (diseño §16).
@@ -19,17 +21,18 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
     empleado_nombre = fields.Char('Operador', compute='_compute_empleado_nombre')
     kg_desperdicio = fields.Float('Peso del desperdicio (kg)', digits=(12, 3))
     motivo_manual = fields.Char('Motivo de la captura manual',
-                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §13).')
+                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §13).',
+                                default=lambda self: motivo_por_defecto(self))
+    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
     ya_pesado = fields.Boolean(compute='_compute_ya_pesado')
 
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
         Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
         for wiz in self:
             nombre = False
-            if wiz.empleado_numero and campo in Empleado._fields:
-                emp = Empleado.search([(campo, '=', wiz.empleado_numero)], limit=1)
+            if wiz.empleado_numero:
+                emp = Empleado._qb_operador(wiz.empleado_numero)  # 3.5.1: número = referencia S-<número>
                 nombre = emp.name if emp else _('EMPLEADO NO ENCONTRADO')
             wiz.empleado_nombre = nombre
 
@@ -42,12 +45,15 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
         self.ensure_one()
         if self.kg_desperdicio <= 0:
             raise UserError(_('Captura el peso del desperdicio.'))
+        self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)  # 3.5.3
         manual = self.weighing_mode == 'manual'
         if manual and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
-        self.production_id._rama_registrar_desperdicio(
-            self.workorder_id, self.kg_desperdicio,
-            ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])), manual)
+        operador = ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre]))
+        self.production_id._rama_registrar_desperdicio(self.workorder_id, self.kg_desperdicio, operador, manual)
+        # 3.3.8: el desperdicio se pesa neto (sin tara).
+        self.production_id._historial_pesaje(self.workorder_id.workcenter_id, 'DESPERDICIO RAMA',
+                                             self.kg_desperdicio, 0.0, self.kg_desperdicio, operador)
         if manual:
             self.production_id.desperdicio_motivo = self.motivo_manual.strip()
         return {'type': 'ir.actions.act_window_close'}

@@ -28,9 +28,13 @@ class TestAprobacionesAsunto(TransactionCase):
         self.env['hr.employee'].create({'name': 'Aprobador asunto', 'user_id': self.approver.id,
                                         'job_id': job.id})
         process = self.env['sgi.process'].create({'code': 'ZAS', 'name': 'Proceso asunto'})
+        # La actividad nace con su único «Ejecuta» (_sgi_check_roles), de otro
+        # puesto: quien ejecuta no aprueba (_sgi_approver_users).
+        exec_job = self.env['hr.job'].create({'name': 'AUXILIAR DE PRUEBA ASUNTO'})
         activity = self.env['sgi.process.activity'].create({
             'process_id': process.id, 'number': 'ZAS.01',
-            'name': 'Preparar la propuesta de pago y pedir su autorización'})
+            'name': 'Preparar la propuesta de pago y pedir su autorización',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': exec_job.id})]})
         role = self.env['sgi.activity.role'].create({
             'activity_id': activity.id, 'role': 'aprueba', 'job_id': job.id,
             'approval_kind': 'solicitud', 'approval_category_id': self.category.id})

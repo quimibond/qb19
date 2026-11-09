@@ -150,20 +150,10 @@
         </field>
     </record>
 
-    <record id="sgi_format_banner_mrp_production" model="ir.ui.view">
-        <field name="name">mrp.production.form.sgi.format</field>
-        <field name="model">mrp.production</field>
-        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="status"
-                     invisible="not sgi_format_banner">
-                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
-                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
-                </div>
-            </xpath>
-        </field>
-    </record>
+    <!-- mrp.production: desde 57.198.0 la orden de fabricación no lleva el
+         aviso de formato controlado (ni en el formulario ni en el PDF);
+         Dirección, 2026-11-08. El mapeo sigue para las claves por
+         operación (sgi_footer_info). -->
 
     <record id="sgi_format_banner_maintenance_request" model="ir.ui.view">
         <field name="name">maintenance.request.form.sgi.format</field>

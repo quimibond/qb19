@@ -2,12 +2,21 @@
 import csv
 import io
 import logging
+import re
 import unicodedata
 
-from odoo import fields, models, _
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 from odoo.tools import file_open
 
 _logger = logging.getLogger(__name__)
+
+
+# 3.5.1 (Dirección, 2026-11-05): el número de trabajador se repite entre nóminas (S-85 Lorena, Q-85 Franco); la
+# «Referencia de empleado» con prefijo es única. La planta es nómina semanal: el número solo se busca como S-<número>.
+_REFERENCIA = re.compile(r'^([SQC])\s*-?\s*0*(\d+)$')
+CAMPO_NUMERO = 'x_studio_nmero_de_trabajador'
+CAMPO_REFERENCIA = 'registration_number'  # «Referencia de empleado» (nómina; no existe en Community sin nómina)
 
 
 def _tokens(nombre):
@@ -23,6 +32,43 @@ class HrEmployee(models.Model):
     siglas = fields.Char(
         'Siglas', copy=False,
         help='Siglas del operador de Inspección que se imprimen en las etiquetas finales de tela acabada.')
+
+    @api.model
+    def _qb_operador(self, numero):
+        """Empleado que teclea su número en una estación (3.5.1). «85» se busca como la referencia S-85 (nómina semanal,
+        toda la planta); una referencia completa («Q-7», «q7», «C-26») se busca tal cual. Si no hay referencia, cae al
+        número de trabajador solo cuando un único empleado activo lo tiene: con número repetido entre nóminas no adivina."""
+        texto = (numero or '').strip().upper()
+        if not texto:
+            return self.browse()
+        # Con sudo: un operador sin permisos de RH busca en hr.employee.public, que no tiene la referencia ni el número
+        # de trabajador (prueba 28). Solo se lee el nombre y las siglas.
+        self = self.sudo()
+        if texto.isdigit():
+            referencia = 'S-%d' % int(texto)
+        else:
+            m = _REFERENCIA.match(texto)
+            referencia = '%s-%d' % (m.group(1), int(m.group(2))) if m else texto
+        if CAMPO_REFERENCIA in self._fields:
+            emp = self.search([(CAMPO_REFERENCIA, '=', referencia)], limit=2)
+            if len(emp) == 1:
+                return emp
+        if texto.isdigit() and CAMPO_NUMERO in self._fields:
+            emp = self.search([(CAMPO_NUMERO, '=', texto)], limit=2)
+            if len(emp) == 1:
+                return emp
+        return self.browse()
+
+    @api.model
+    def _qb_operador_requerido(self, numero):
+        """3.5.3 (ronda 7 de pruebas en main, 2026-11-05): el empleado del número tecleado, o error. Rama y el desperdicio
+        de Rama registraban «EMPLEADO NO ENCONTRADO» con un número que no existe; Inspección ya lo rechazaba. Solo se
+        exige donde existe el número de trabajador (la base de Quimibond), como en Inspección."""
+        emp = self._qb_operador(numero)
+        if not emp and CAMPO_NUMERO in self._fields:
+            raise UserError(_('No existe el empleado %s. Se busca por la referencia de nómina (S-85); si es de otra '
+                              'nómina, teclea la referencia completa (Q-7, C-26).', numero))
+        return emp
 
     def action_cargar_siglas_iniciales(self):
         """Carga las siglas de MAQUINA Y OPERADOR INSPECCION.pdf. Empata por nombre sin importar el orden

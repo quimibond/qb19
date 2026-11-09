@@ -130,7 +130,9 @@ class TestDevAnalysis(TransactionCase):
         self.dev.write({'sgi_dev_base_product_id': finished.id})
         self.dev.action_sgi_dev_load_feasibility()
         self.assertEqual(lines.filtered(lambda l: l.item_id == auto).answer, 'no', "Sin existencia del hilo.")
-        self.env['stock.quant']._update_available_quantity(yarn, self.env.ref('stock.stock_location_stock'), 10)
+        # El almacén de la compañía activa (en una base copia de producción no tiene que ser WH/Stock).
+        stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(yarn, stock, 10)
         self.dev.action_sgi_dev_load_feasibility()
         self.assertEqual(lines.filtered(lambda l: l.item_id == auto).answer, 'si')
         lines.filtered(lambda l: l.item_id == manual).write({'answer': 'si', 'observation': 'Circular 7'})

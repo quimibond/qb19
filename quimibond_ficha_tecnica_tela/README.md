@@ -39,9 +39,13 @@ la tabla «rutas de proceso rev4» de Innovación (2026-07-15):
 | Abridora | Todas, aunque el tejido salga abierto (sale del jet en cuerda); abierto o tubular solo cambia la velocidad |
 | Rama (termofijado) | Todas; la rama es de la familia y la tela puede llevar otra |
 | Inspección | Todas |
-| Clasificación final | En la lista en metros, con tiempo fijo |
+| Clasificación final | En la lista en metros, en EMPAQUE; tiempo fijo por ciclo (60 min por 400 m, provisional) |
 
 «Generar listas» nunca toca una lista activa; lo generado nace archivado y se activa con el visto bueno de Ingeniería.
+La lista en metros generada lleva la operación CLASIFICACION en EMPAQUE (2.28.0) y la tela queda con su capacidad en
+ese centro (400 m por ciclo de 60 min, provisional): la Clasificación final se confirma en la orden en metros. En una
+lista en metros ya activa, el botón «Clasificación en Empaque» de la lista de materiales pone la operación y la
+capacidad.
 La lista en kg generada lleva el subproducto «DESPERDICIO TEJIDO» en la Rama con cantidad 0 (2.25.0): lo pesa Rama
 en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de operación: Fabricación Tela en kg y Fabricación Tela en m. Nacen en consumo «flexible» y, al activar la lista en kg, el acabado en kg recibe la ruta MTO «Fabricar Tela kg → Inspección (MTO)» (2.25.0).
 
@@ -56,7 +60,7 @@ revisión de la noche avisa lo que no cuadra.
 |---|---|---|---|
 | La tela: peso, ancho de venta, especificación y tolerancias | **Ficha de acabado** | Producto | No llega |
 | El crudo en cada circular: hilos, ajustes de tejido, tela acondicionada | **Ficha de tejido** (una por circular; «Agregar circular» copia una a otra máquina) | Crudo | No llega |
-| Rendimiento de tela acabada | **Nadie: sale de lo fabricado** (metros ÷ kilos) | Ficha de acabado, producto | Conversión kg → m, con botón |
+| Rendimiento de tela acabada | **Ingeniería aprueba lo medido** («Usar el medido»; se calcula cada noche con lo fabricado) | Ficha de acabado, producto | Conversión kg → m, con botón |
 | La tela en cada máquina: velocidad, merma, tiempo de ciclo, kg por carga | **Máquinas → Procesos por artículo** (también con el lápiz en la operación o en la máquina) | Operación, máquina, ficha de acabado | Tiempos de las operaciones, con botón |
 | La máquina: galga, capacidad, bandas, relación de baño | **Máquinas → Configuraciones por fecha** | Centro de trabajo | Capacidad de los jets por producto, con botón (las circulares no tienen) |
 | La ruta de la familia | **Artículos → Rutas por familia** | Ficha de acabado | Listas nuevas archivadas, con «Generar listas» |
@@ -64,6 +68,31 @@ revisión de la noche avisa lo que no cuadra.
 **Para trabajar no hace falta saberse la tabla:** Artículos → **Pendientes por área**, filtrar el área y pulsar
 **«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
 jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
+
+## Rendimiento de tela acabada (2.27.0 a 2.28.0)
+
+El rendimiento (m/kg) de la ficha es **por kg de tela terminada**. Lo usan la conversión kg → m (lista en metros y
+costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
+
+**Desde 2.28.0 la ficha no cambia sola.** Cada noche se calcula el **rendimiento medido** y se propone:
+
+1. **Rollos de Inspección:** con 3 o más rollos finales registrados de primera o FE en 12 meses, metros ÷ kg netos.
+   Cuentan desde `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` si está (deja fuera rollos de prueba).
+2. **Conversiones a kg:** con 3 o más conversiones de metros a kg en 12 meses (kg neto de la lista de empaque).
+3. **Estimado:** metros ÷ (kg de tela acabada en kg + kg de crudo o teñido ÷ consumo de crudo − saldos), solo con
+   órdenes que consumieron tela en kg (las conversiones de metros a metros no cuentan; los reprocesos sí).
+4. Con menos de 3 rollos o conversiones y sin estimado no hay medido.
+
+Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo medido queda con su estado:
+
+| Estado | Qué pasa |
+|---|---|
+| Igual al de la ficha | Se aleja menos que la alerta (5 %, `alerta_rendimiento_pct`): nada que hacer |
+| Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
+| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho de venta en m): dato malo, no se propone |
+
+Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
+Excel no lo fuerza (es el teórico).
 
 ## Dónde se ve cada cosa
 
@@ -100,7 +129,7 @@ jet, la lista o la ficha). También en la pestaña «Ficha técnica» del produc
 
 | Operación | Cuenta |
 |---|---|
-| Rama | rendimiento de tela acabada m/kg ÷ velocidad m/min (2.24.0: el rendimiento de lo fabricado ya trae la merma) |
+| Rama | rendimiento de tela acabada m/kg ÷ velocidad m/min (2.27.0: por kg de tela terminada, de las conversiones a kg y los rollos de Inspección) |
 | Inspección | rendimiento de tela acabada m/kg × 60 ÷ velocidad de inspección m/h (rollos con 1 empalme) |
 | Devanado | kg de crudo por kg × rendimiento de tejido ÷ velocidad m/min |
 | Abridora | igual, con la velocidad de tela tubular o abierta según sale del tejido (si no, la general) |

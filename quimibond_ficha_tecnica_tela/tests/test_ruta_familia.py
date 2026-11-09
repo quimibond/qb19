@@ -31,7 +31,8 @@ class TestRutaFamilia(TiempoFichaCase):
         ruta = self._armar()
         self.assertEqual(len(ruta), 1)
         Workcenter = self.env['mrp.workcenter']
-        self.assertEqual([(p.paso, p.workcenter_id) for p in ruta.paso_ids.sorted('sequence')],
+        self.assertEqual([(p.paso, p.workcenter_id) for p in ruta.paso_ids.sorted('sequence')
+                          if p.paso != 'clasificacion'],
                          [('devanado', self.dev), ('tintoreria', self.jet), ('abridora', self.abr),
                           ('rama', Workcenter), ('inspeccion', self.insp)],
                          "La rama la llevan todas (tabla de Innovación): sin evidencia, queda sin máquina")
@@ -134,18 +135,133 @@ class TestRutaFamilia(TiempoFichaCase):
         avisos = self.acabado._ft_poner_saldos(bom_m)
         self.assertTrue(any('ZZ-NO-EXISTE' in a for a in avisos))
 
-    def test_06c_lista_en_metros_sin_operacion(self):
-        """2.24.0: la lista en metros no lleva operación (Inspección pesa y clasifica en la orden en kg); «Generar»
-        le quita la de Empaque a una lista archivada y armar la ruta no crea el paso de Clasificación final."""
-        empaque = self.env['mrp.workcenter'].create({'name': 'EMPAQUE 931 prueba', 'code': 'E931'})
+    def _borrador_m(self):
+        return self.env['mrp.bom'].with_context(active_test=False).search([
+            ('product_tmpl_id', '=', self.tela_m.product_tmpl_id.id), ('code', '=', 'Clasificación final (borrador)')])
+
+    def _empaque(self):
+        return self.env['mrp.workcenter'].with_context(active_test=False).search([('name', '=ilike', 'EMPAQUE')], limit=1)
+
+    def test_06c_clasificacion_en_empaque(self):
+        """2.28.0: armar la ruta crea el paso «Clasificación final» en EMPAQUE (el centro se crea si no existe, se
+        reactiva si está archivado) y «Generar» pone la operación CLASIFICACION y la capacidad de 400 m."""
+        self.assertFalse(self._empaque().filtered('active'))
+        antiguo = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 931 prueba', 'code': 'C931'})
         self.env['mrp.routing.workcenter'].create({'bom_id': self.bom_m.id, 'name': 'CLASIFICACION',
-                                                   'workcenter_id': empaque.id})
+                                                   'workcenter_id': antiguo.id})
         (self.bom | self.bom_m).action_archive()
         ruta = self._armar()
-        self.assertNotIn('clasificacion', ruta.paso_ids.mapped('paso'))
+        paso = ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion')
+        self.assertEqual(len(paso), 1)
+        self.assertEqual(paso.workcenter_id, self._empaque(), "Siempre EMPAQUE, no la máquina de la lista vieja")
+        self.assertEqual(paso.tiempo, 60.0)
+        self.assertIn('EMPAQUE', ruta.resumen)
+        self._armar()
+        self.assertEqual(len(ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion')), 1, "No se duplica")
+        self.acabado.action_ft_generar_listas()
         self.acabado.action_ft_generar_listas()
         bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        self.assertFalse(bom_m.active)
+        ops = self._ops(bom_m)
+        self.assertEqual(ops.mapped('name'), ['CLASIFICACION %s' % self.tela_m.default_code])
+        self.assertEqual(ops.workcenter_id, self._empaque())
+        self.assertEqual(ops.time_cycle_manual, 60.0)
+        cap = self._empaque().capacity_ids.filtered(lambda c: c.product_id == self.tela_m)
+        self.assertEqual(len(cap), 1, "Generar dos veces no repite la capacidad")
+        self.assertEqual((cap.capacity, cap.product_uom_id), (400.0, self.meter))
+
+    def test_06d_capacidad_y_duracion(self):
+        """La capacidad dada de alta manda: 400 m por hora; sin tocar la que ya existe."""
+        self._armar()
+        (self.bom | self.bom_m).action_archive()
+        self.acabado.action_ft_generar_listas()
+        bom_m = self.env['ficha.tecnica.revision']._ft_bom_de(self.acabado.product_acabado_id)
+        capacidad, _ini, _fin = self._empaque()._get_capacity(self.tela_m, self.meter, 1)
+        self.assertEqual(capacidad, 400.0)
+        op = self._ops(bom_m)
+        ciclos = -(-1000 // int(capacidad))
+        self.assertEqual(ciclos * op.time_cycle_manual, 180.0)
+        cap = self._empaque().capacity_ids.filtered(lambda c: c.product_id == self.tela_m)
+        cap.capacity = 300.0
+        self.acabado.action_ft_generar_listas()
+        self.assertEqual(cap.capacity, 300.0, "Una capacidad ya capturada no se pisa")
+
+    def test_06e_activar_el_borrador_completa_la_clasificacion(self):
+        """Al activar la lista en metros (visto bueno de Ingeniería) se completa la operación si faltaba."""
+        self._armar()
+        self.bom_m.code = 'Clasificación final (borrador)'
+        (self.bom | self.bom_m).action_archive()
+        self.acabado.action_ft_generar_listas()
+        bom_m = self._borrador_m()
+        bom_m.with_context(active_test=False).operation_ids.unlink()
         self.assertFalse(bom_m.with_context(active_test=False).operation_ids)
+        bom_m.active = True
+        ops = bom_m.operation_ids
+        self.assertEqual(ops.workcenter_id, self._empaque())
+        self.assertEqual(ops.time_cycle_manual, 60.0)
+
+    def test_06f_migracion_archivadas_si_activas_no(self):
+        """La migración pone el paso en las rutas, la operación en las listas archivadas y la capacidad de cada tela;
+        una lista activa no se toca (se arregla con el botón)."""
+        ruta = self._armar()
+        ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion').unlink()
+        self.bom_m.code = 'Clasificación final (borrador)'
+        (self.bom | self.bom_m).action_archive()
+        self.acabado.action_ft_generar_listas()
+        bom_m = self._borrador_m()
+        bom_m.with_context(active_test=False).operation_ids.unlink()
+        self._empaque().capacity_ids.unlink()
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual((res['rutas'], res['listas'], res['capacidades']), (1, 1, 1))
+        self.assertEqual(bom_m.with_context(active_test=False).operation_ids.workcenter_id, self._empaque())
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual((res['rutas'], res['listas'], res['capacidades']), (0, 0, 0), "Repetirla no cambia nada")
+        # una lista en metros activa no se toca
+        bom_m.with_context(active_test=False).operation_ids.unlink()
+        bom_m.active = False
+        bom_m.write({'active': True})
+        bom_m.operation_ids.unlink()
+        self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertFalse(bom_m.operation_ids, "La lista activa queda como estaba")
+        accion = bom_m.action_ft_poner_clasificacion()
+        self.assertEqual(accion['tag'], 'display_notification')
+        self.assertEqual(bom_m.operation_ids.workcenter_id, self._empaque(), "El botón sí la completa")
+
+    def test_06h_normaliza_tiempos_viejos_y_da_capacidad_a_telas_sin_ficha(self):
+        """Operaciones y pasos de «0.05 min por metro» pasan a 60 min por ciclo; una tela sin ficha con la operación
+        también queda con su capacidad de 400 m."""
+        ruta = self._armar()
+        paso = ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion')
+        paso.tiempo = 0.05
+        empaque = self._empaque()
+        sin_ficha = self.env['product.product'].create({
+            'name': 'Tela sin ficha 931', 'default_code': 'ZZ931SINFICHA', 'uom_id': self.meter.id,
+            'is_storable': True})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': sin_ficha.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.meter.id,
+            'code': 'Clasificación final (borrador)', 'active': False,
+            'bom_line_ids': [(0, 0, {'product_id': self.tela.id, 'product_qty': 0.2})]})
+        op = self.env['mrp.routing.workcenter'].with_context(active_test=False).create({
+            'bom_id': bom.id, 'name': 'CLASIFICACION', 'workcenter_id': empaque.id, 'time_cycle_manual': 0.05})
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual(paso.tiempo, 60.0)
+        self.assertEqual(op.time_cycle_manual, 60.0)
+        cap = empaque.capacity_ids.filtered(lambda c: c.product_id == sin_ficha)
+        self.assertEqual((cap.capacity, cap.product_uom_id), (400.0, self.meter))
+        self.assertGreaterEqual(res['tiempos'], 2)
+        res = self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
+        self.assertEqual((res['rutas'], res['listas'], res['tiempos'], res['capacidades']), (0, 0, 0, 0))
+
+    def test_06g_sin_paso_en_la_ruta_no_quita_operaciones(self):
+        """Sin el paso en la ruta, el botón avisa y no quita lo que alguien puso a mano."""
+        ruta = self._armar()
+        ruta.paso_ids.filtered(lambda p: p.paso == 'clasificacion').unlink()
+        circular = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 931 prueba', 'code': 'C931'})
+        self.env['mrp.routing.workcenter'].create({'bom_id': self.bom_m.id, 'name': 'CLASIFICACION',
+                                                   'workcenter_id': circular.id})
+        avisos = self.bom_m._ft_poner_clasificacion()
+        self.assertTrue(any('Clasificación final' in a for a in avisos))
+        self.assertEqual(self.bom_m.operation_ids.workcenter_id, circular)
 
     def test_07_botones_de_la_lista_de_rutas(self):
         ruta = self._armar()

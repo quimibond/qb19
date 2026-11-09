@@ -472,6 +472,9 @@ class ProjectProjectDevAnalysis(models.Model):
             bom = self.env['mrp.bom']._bom_find(product)[product] if product else False
             if not bom or not bom.bom_line_ids:
                 return 'pendiente', "Sin lista de materiales: la contesta una persona."
+            # La existencia se lee con el dato de hoy: qty_available no se guarda y su caché no se
+            # invalida cuando cambia un quant en la misma transacción.
+            bom.bom_line_ids.product_id.invalidate_recordset(['qty_available'])
             missing = bom.bom_line_ids.filtered(lambda l: l.product_id.qty_available <= 0).mapped('product_id.display_name')
             if missing:
                 return 'no', "Sin existencia: %s" % ", ".join(missing)

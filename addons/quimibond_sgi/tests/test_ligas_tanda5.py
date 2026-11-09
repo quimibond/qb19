@@ -27,7 +27,7 @@ class TestLigasTanda5(TransactionCase):
         salida = Deliverable.create({'code': 'ZL5-OUT', 'name': 'Solicitud de compra (prueba)',
                                      'odoo_model_id': approval_model.id})
         process = self.env['sgi.process'].create({'code': 'ZL5', 'name': 'Proceso ligas'})
-        activity = self.env['sgi.process.activity'].create({
+        activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': process.id, 'number': 'ZL5.01', 'name': 'Pedir a Compras la materia prima',
             'output_deliverable_ids': [(6, 0, salida.ids)],
             'input_ids': [(0, 0, {'deliverable_id': entrada.id, 'max_days': 3})]})

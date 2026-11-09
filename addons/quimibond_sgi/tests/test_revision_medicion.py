@@ -21,7 +21,7 @@ class TestRevisionMedicion(TransactionCase):
         owner = cls.env['hr.employee'].create({'name': 'Dueño revisión', 'user_id': cls.owner_user.id})
         cls.process = cls.env['sgi.process'].create({
             'code': 'ZRV', 'name': 'Proceso revisión', 'owner_id': owner.id})
-        cls.act = cls.env['sgi.process.activity'].create({
+        cls.act = cls.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': cls.process.id, 'name': 'Dar de alta al cliente',
             'measure_method': 'odoo', 'measure_cadence': 'evento',
             'measure_model_id': cls.env['ir.model']._get('res.partner').id,

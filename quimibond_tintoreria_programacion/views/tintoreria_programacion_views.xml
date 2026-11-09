@@ -13,6 +13,7 @@
                 <field name="banda"/>
                 <field name="n_banos" sum="Baños"/>
                 <field name="kg_bano"/>
+                <field name="kg_crudo_bano"/>
                 <field name="minutos_bano"/>
                 <field name="user_id" optional="show"/>
                 <field name="fecha" optional="show"/>
@@ -47,6 +48,8 @@
                             <field name="capacidad_kg"/>
                             <field name="n_banos"/>
                             <field name="kg_bano"/>
+                            <field name="kg_crudo"/>
+                            <field name="kg_crudo_bano"/>
                             <field name="minutos_bano"/>
                             <field name="origen_tiempo"/>
                         </group>

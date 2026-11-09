@@ -151,6 +151,19 @@ class TestProgramacionTintoreria(TransactionCase):
         with self.assertRaises(UserError):
             orden_trabajo.button_start(True, True)
 
+    def test_terminar_sin_programar_bloquea_igual_que_iniciar(self):
+        # 1.8.2: button_finish se saltaba la regla y dejaba la operación «hecha» sin programación.
+        mo = self._crear_mo(100.0)
+        orden_trabajo = mo.workorder_ids[:1]
+        self.assertTrue(mo.requiere_programacion_tintoreria)
+        self.assertFalse(mo.tintoreria_programada)
+        with self.assertRaises(UserError):
+            orden_trabajo.button_finish()
+        self.assertNotIn(orden_trabajo.state, ('done', 'cancel'))
+        # Una operación ya hecha no se vuelve a revisar (el cierre nativo vuelve a llamar button_finish).
+        orden_trabajo.state = 'done'
+        orden_trabajo.button_finish()
+
     def test_tiempos_por_jet_en_la_formula(self):
         """1.4.0: los minutos por jet se capturan en la propia fórmula."""
         formula = self.env['tintoreria.formula'].create({
@@ -197,14 +210,80 @@ class TestProgramacionTintoreria(TransactionCase):
             'parametro_ids': [Command.create({'code': 'tiempo_ciclo', 'name': 'Tiempo de ciclo', 'unit': 'h',
                                               'kind': 'num', 'ambito': 'articulo'})]})
         (self.htj1 | self.htj3).write({'ft_tipo_id': tipo.id})
-        self.htj1.ft_estado = 'montaje'
         self.env['ficha.tecnica.proceso'].create({'articulo': self.producto_kg.default_code,
                                                   'workcenter_id': self.htj3.id})
         self.bom.operation_ids.write({'time_mode': 'manual', 'time_cycle_manual': 0.5})
         mo = self._crear_mo(500.0)
         orden = mo._programar_tintoreria(self.htj1).production_ids
+        # 1.7.1: un jet que no opera ya no se programa; el caso real es que pase a montaje después de programado.
+        self.htj1.ft_estado = 'montaje'
         workorder = orden._workorder_tintoreria()
         self.assertTrue(workorder._ft_maquina_fija())
         orden.button_plan()
         self.assertEqual(workorder.workcenter_id, self.htj1, "Sin 1.6.0 se iría al HTJ3, el único con proceso")
         self.assertIn('en montaje', workorder.ft_aviso_maquina)
+
+    def test_cancelar_ordenes_cancela_la_programacion(self):
+        """1.6.2: al cancelar un baño la programación lo anota; con todos cancelados pasa a «Cancelada»."""
+        mo = self._crear_mo(1000.0)
+        programacion = mo._programar_tintoreria(self.htj1)
+        primera, segunda = programacion.production_ids.sorted('id')
+        primera.action_cancel()
+        self.assertEqual(programacion.state, 'programada')
+        self.assertTrue(programacion.message_ids.filtered(lambda m: 'siguen programadas' in (m.body or '')))
+        segunda.action_cancel()
+        self.assertEqual(programacion.state, 'cancelada')
+
+    def test_banos_con_kg_de_crudo(self):
+        """1.7.0: el jet se carga con el crudo. 550 kg de tela con 1.15 kg de crudo por kg son 632.5 kg en el jet:
+        en banda B (600 kg) son 2 baños de 275 kg de tela y 316.25 kg de crudo; con los kg de tela era 1 baño."""
+        categoria = self.env['product.category'].create({'name': 'TEJIDO PRUEBA PROGRAMACION'})
+        crudo = self._producto('WJ-CRUDO-TEST')
+        crudo.categ_id = categoria
+        producto = self._producto('IWJ-CRUDO-TEST')
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': producto.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'operation_ids': [Command.create({'name': 'Tintorería', 'workcenter_id': self.htj1.id})],
+            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': 1.15}),
+                             Command.create({'product_id': self.componente.id, 'product_qty': 0.1})],
+        })
+        mo = self.env['mrp.production'].create({
+            'product_id': producto.id, 'product_qty': 550.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+        mo.action_confirm()
+        plan = mo._calcular_plan_tintoreria(self.htj1)
+        self.assertEqual(plan['crudo_id'], crudo.id)
+        self.assertAlmostEqual(plan['kg_crudo'], 632.5)
+        self.assertEqual(plan['n_banos'], 2, "Con los kg de tela (550) cabía en un baño de 600")
+        self.assertAlmostEqual(plan['kg_crudo_bano'], 316.25)
+        self.assertFalse(plan['aviso_crudo'])
+        programacion = mo._programar_tintoreria(self.htj1)
+        self.assertEqual(sorted(programacion.production_ids.mapped('product_qty')), [275.0, 275.0])
+        self.assertAlmostEqual(programacion.kg_crudo, 632.5)
+        self.assertAlmostEqual(programacion.kg_crudo_bano, 316.25)
+        self.assertTrue(all(any('316.25 kg de crudo' in (m.body or '') for m in orden.message_ids)
+                            for orden in programacion.production_ids))
+
+    def test_sin_componente_de_tejido_usa_los_kg_de_la_orden(self):
+        """1.7.0: sin componente de una categoría de tejido, los baños salen de los kg de la orden, con aviso."""
+        mo = self._crear_mo(1000.0)
+        plan = mo._calcular_plan_tintoreria(self.htj1)
+        self.assertFalse(plan['crudo_id'])
+        self.assertAlmostEqual(plan['kg_crudo'], 1000.0)
+        self.assertEqual(plan['n_banos'], 2)
+        self.assertTrue(plan['aviso_crudo'])
+
+    def test_jet_que_no_opera_no_se_programa(self):
+        """1.7.1: un jet en montaje (o en pruebas, o fuera de servicio) no se programa: el asistente lo avisa y no
+        confirma. Ronda 10 en main: TINTORERIA 5, en montaje, se dejaba programar sin aviso."""
+        self.htj5.ft_estado = 'montaje'
+        mo = self._crear_mo(1000.0)
+        with self.assertRaisesRegex(UserError, 'no está operando'):
+            mo._calcular_plan_tintoreria(self.htj5)
+        wizard = self.env['tintoreria.programacion.wizard'].create({
+            'line_ids': [Command.create({'production_id': mo.id, 'workcenter_id': self.htj5.id})]})
+        self.assertIn('no está operando', wizard.line_ids.advertencia)
+        with self.assertRaises(UserError):
+            wizard.action_confirmar()
+        self.assertFalse(mo.tintoreria_programada)
+        self.htj5.ft_estado = 'operando'
+        self.assertEqual(mo._calcular_plan_tintoreria(self.htj5)['n_banos'], 1)

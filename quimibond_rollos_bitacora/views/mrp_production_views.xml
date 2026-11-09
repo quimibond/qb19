@@ -21,44 +21,135 @@
             <xpath expr="(//button[@name='action_generate_serial'])[2]" position="attributes">
                 <attribute name="invisible" add="es_pesaje_rollos" separator="or"/>
             </xpath>
+            <!-- 3.12.0 (A3.3): Clasificación final en Empaque, desde la orden en metros. -->
+            <xpath expr="//header" position="inside">
+                <field name="clasificacion_empaque_pendiente" invisible="1"/>
+                <button name="action_clasificar_empaque" type="object" string="CLASIFICAR EN EMPAQUE"
+                        class="btn-primary" icon="fa-tags" invisible="not clasificacion_empaque_pendiente"/>
+                <button name="action_pesar_desperdicio_empaque" type="object" string="PESAR DESPERDICIO"
+                        class="btn-secondary" icon="fa-trash" invisible="not clasificacion_empaque_pendiente"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="Rollos" name="rollos_bitacora">
-                    <group>
+                <!-- 3.3.8 (Dirección, 2026-11-05): la pestaña cuenta el proceso en orden: resumen, Rama, Inspección.
+                     Solo en órdenes que pesan en Rama; las de Tejido no la ven. -->
+                <page string="Rollos" name="rollos_bitacora"
+                      invisible="not es_pesaje_rollos and not rollo_bitacora_ids and not rollo_final_kg_ids">
+                    <div class="text-muted mb-2">
+                        Rama pesa y etiqueta cada rollo. Inspección lo convierte en uno o varios rollos finales con su
+                        calidad. Nada entra a inventario hasta cerrar la orden.
+                    </div>
+                    <group string="Resumen del baño">
                         <group>
+                            <label for="numero_bano"/>
+                            <div class="o_row">
+                                <field name="numero_bano"/>
+                                <button name="action_asignar_numero_bano" type="object" string="Asignar número"
+                                        class="btn-link" invisible="numero_bano or state in ('done', 'cancel')"/>
+                            </div>
+                            <field name="rollos_rama_count"/>
+                            <field name="rollos_rama_kg"/>
+                            <field name="rollos_rama_metros"/>
+                            <field name="rollos_rama_pct"/>
+                            <field name="desperdicio_kg" string="Desperdicio de Rama (kg)"/>
+                            <field name="rollos_pendientes_count"
+                                   decoration-warning="rollos_pendientes_count &gt; 0"/>
+                        </group>
+                        <group>
+                            <field name="rollos_final_count"/>
+                            <field name="rollos_final_kg"/>
+                            <field name="rollos_final_metros"/>
+                            <field name="rollos_merma_kg"/>
+                            <field name="rollos_merma_pct"/>
+                            <field name="rollos_por_calidad"/>
                             <field name="es_desarrollo" readonly="state in ('done', 'cancel')"/>
                         </group>
-                        <group string="Desperdicio Tejido (Rama)">
-                            <field name="desperdicio_kg"/>
-                            <field name="desperdicio_operador"/>
-                            <field name="desperdicio_fecha"/>
-                            <field name="desperdicio_manual"/>
-                            <field name="desperdicio_motivo" invisible="not desperdicio_manual"/>
-                        </group>
                     </group>
+                    <separator string="1. Rama: rollos pesados"/>
                     <field name="rollo_bitacora_ids" readonly="1">
-                        <list>
-                            <field name="secuencia"/>
-                            <field name="lot_id"/>
-                            <field name="kg_bruto_rama"/>
-                            <field name="tara_rama"/>
-                            <field name="kg_rama" sum="Total kg"/>
-                            <field name="estado_inspeccion" widget="badge"/>
-                            <field name="clasificacion_inicial"/>
-                            <field name="metros_insp"/>
+                        <list decoration-muted="estado_inspeccion == 'inspeccionado'">
+                            <field name="secuencia" string="No."/>
+                            <field name="lot_id" string="Lote"/>
+                            <field name="workcenter_rama_id"/>
+                            <field name="fecha_registro_rama" string="Fecha"/>
+                            <field name="operador_rama" string="Operador"/>
+                            <field name="kg_bruto_rama" string="Bruto (kg)"/>
+                            <field name="tara_rama" string="Tara (kg)"/>
+                            <field name="kg_rama" string="Neto (kg)" sum="Total kg"/>
+                            <field name="metros_rama" string="Metros" sum="Total m"/>
+                            <field name="motivo_sin_metros_rama" string="Sin metros" optional="hide"/>
+                            <field name="captura_manual_rama" string="Manual" optional="show"/>
+                            <field name="motivo_manual_rama" string="Motivo" optional="hide"/>
+                            <field name="estado_inspeccion" widget="badge"
+                                   decoration-success="estado_inspeccion == 'inspeccionado'"
+                                   decoration-warning="estado_inspeccion == 'pendiente'"/>
+                            <button name="action_imprimir_etiqueta_rama" type="object" icon="fa-tag"
+                                    title="Etiqueta de Rama (68 x 38 mm)"/>
                         </list>
                     </field>
-                    <separator string="Rollos finales (Inspección)"/>
+                    <group string="Desperdicio de Rama" invisible="not desperdicio_kg">
+                        <group>
+                            <field name="desperdicio_kg" string="Kg"/>
+                            <field name="desperdicio_fecha" string="Fecha"/>
+                        </group>
+                        <group>
+                            <field name="desperdicio_operador" string="Operador"/>
+                            <field name="desperdicio_manual" string="Captura manual"/>
+                            <field name="desperdicio_motivo" string="Motivo" invisible="not desperdicio_manual"/>
+                        </group>
+                    </group>
+                    <group string="Desperdicio de Empaque" invisible="not desperdicio_empaque_kg">
+                        <group>
+                            <field name="desperdicio_empaque_kg" string="Kg"/>
+                            <field name="desperdicio_empaque_fecha" string="Fecha"/>
+                        </group>
+                        <group>
+                            <field name="desperdicio_empaque_operador" string="Operador"/>
+                            <field name="desperdicio_empaque_manual" string="Captura manual"/>
+                            <field name="desperdicio_empaque_motivo" string="Motivo"
+                                   invisible="not desperdicio_empaque_manual"/>
+                        </group>
+                    </group>
+                    <separator string="2. Inspección: rollos finales"/>
                     <field name="rollo_final_kg_ids" readonly="1">
                         <list>
-                            <field name="name"/>
-                            <field name="bitacora_ids" widget="many2many_tags"/>
-                            <field name="clasificacion"/>
-                            <field name="kg_neto" sum="Total kg"/>
+                            <field name="name" string="Lote"/>
+                            <field name="clasificacion" widget="badge"
+                                   decoration-success="clasificacion == 'PQ'"
+                                   decoration-info="clasificacion == 'FE'"
+                                   decoration-warning="clasificacion == 'SEGUNDA'"
+                                   decoration-danger="clasificacion == 'DESP'"/>
+                            <field name="bitacora_ids" widget="many2many_tags" string="De los rollos de Rama"/>
+                            <field name="kg_bruto" string="Bruto (kg)"/>
+                            <field name="tara" string="Tara (kg)"/>
+                            <field name="kg_neto" string="Neto (kg)" sum="Total kg"/>
                             <field name="metros" sum="Total m"/>
-                            <field name="estado" widget="badge"/>
+                            <field name="siglas_defectos" string="Defectos"/>
+                            <field name="workcenter_id"/>
+                            <field name="operador" string="Operador"/>
+                            <field name="fecha" string="Fecha"/>
+                            <field name="captura_manual" string="Manual" optional="hide"/>
+                            <field name="estado" widget="badge"
+                                   decoration-success="estado == 'registrado'"
+                                   decoration-info="estado == 'inspeccionado'"/>
+                            <button name="action_imprimir_etiqueta_preliminar" type="object" icon="fa-tag"
+                                    title="Etiqueta preliminar (68 x 38 mm)"/>
+                            <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
+                                    title="Etiqueta final (76 x 102 mm)"/>
                         </list>
                     </field>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 3.5.0: buscar la orden por número de baño (el que traen los lotes y las etiquetas). -->
+    <record id="view_mrp_production_filter_numero_bano" model="ir.ui.view">
+        <field name="name">mrp.production.select.numero_bano</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.view_mrp_production_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="numero_bano"/>
             </xpath>
         </field>
     </record>

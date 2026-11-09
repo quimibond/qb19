@@ -26,7 +26,69 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El producto en kg debe estar ligado a una **ficha de acabado** (`product_proceso_id`) y esa ficha a una **ficha de tejido** con peso y ancho (de ahí sale el rendimiento). Sin ficha de acabado la orden **no** requiere programación y el asistente responde «Selecciona órdenes pendientes de programar Tintorería».
 - El campo se calcula al **crear** la orden: si la ficha se liga después, las órdenes ya creadas no se recalculan solas.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
-- El asistente ofrece los centros de trabajo cuyo nombre empieza con «Tintoreria» (HTJ1 a HTJ5).
+- El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
+
+## Cambios 19.0.1.8.2 (revisión, 2026-11-08)
+
+- Si la orden en metros no se puede dividir entre los baños (la abastecen varias órdenes, ya empezó, ya no está
+  confirmada o también la abastece otra orden en kg), se queda como estaba, pero ahora deja nota en los baños y en la
+  orden en metros. Antes no avisaba. Cada baño registra sus metros en ella y deja pendiente para los que siguen
+  (rollos 3.3.0). Prueba 74 de rollos.
+- Volver a programar no es posible: una orden ya programada se cancela y se vuelve a crear (sin cambio).
+- Terminar una operación (`button_finish`) exige la misma Programación de Tintorería confirmada que iniciarla. Antes se
+  podía terminar Devanado, Tintorería o Abridora sin iniciar (botón de terminar, Shop Floor o RPC): quedaban «hechas»
+  con duración 0, la orden pasaba a «iniciada» y ya no se podía programar (hallazgo de la prueba de punta a punta en
+  qbtesting, 2026-11-08).
+
+## Cambios 19.0.1.8.1 (ronda 13 en main, 2026-11-06)
+
+Al dividir la orden en metros se vuelven a ligar **todos** los terminados de cada baño, no solo el del acabado: el
+desperdicio de Rama (subproducto en cero de la lista en kg) quedaba ligado a las dos partes de la orden en metros. Por eso
+el cierre del primer baño dejaba un pendiente (TL/OP-M/00035-003) y cancelar un baño no cancelaba su orden en metros.
+La revisión de cancelación cuenta solo los terminados del acabado.
+
+## Cambios 19.0.1.8.0 (Dirección, 2026-11-06): un baño = una orden en metros
+
+Al dividir la orden en kg en baños, la programación divide también, en la misma proporción, la orden en metros que la
+consume (MTO), con la división nativa de Odoo, y liga cada parte a su baño. Cada baño cierra su propia orden en metros
+con sus metros reales: ya no queda una orden en metros a medias con un pendiente calculado con el factor de la lista,
+ni se reparte la demanda de kg entre baños. Motivo: en la ronda 12 en main la orden de 9,040 m cerró en 10,763 m y el
+reparto hizo nacer una orden en kg que nadie pidió (corregido también en rollos 3.6.2).
+
+- La orden en metros original queda como la del primer baño; las demás nacen con el sufijo nativo (`…-002`).
+- La entrega del pedido queda ligada a todas las partes (la división nativa conserva el destino del terminado).
+- No divide si la orden en metros ya empezó o la abastece otra orden en kg además de estos baños; en ese caso sigue el
+  flujo de varios baños para una orden en metros (rollos 3.3.0).
+- Un baño sin primera ni FE cancela solo su orden en metros (rollos 3.2.0); la de los otros baños no cambia.
+- Cancelar un baño (antes de Rama) cancela también su orden en metros; la de los otros baños no cambia.
+- Solo divide con `quimibond_rollos_bitacora` instalado: sin su cierre, cada orden en metros habría que cerrarla a mano.
+- Si la división no da una parte por baño, no se programa nada (error).
+
+## Cambios 19.0.1.7.1 (ronda 10 en main, 2026-11-06)
+
+- **No se programa en un jet que no está operando.** El asistente dejaba escoger TINTORERIA 5, en montaje, sin aviso;
+  como el jet programado queda fijo, la orden se quedaba en una máquina que no trabaja. Ahora el asistente solo ofrece
+  jets operando y, si el renglón ya traía uno que no opera, muestra la advertencia y no confirma.
+
+## Cambios 19.0.1.7.0 (auditoría del flujo, 2026-11-06)
+
+- **El número de baños sale de los kg de crudo que entran al jet**, no de los kg de tela terminada de la orden. El
+  crudo es el componente en peso de una categoría de tejido con más kg planeados (la misma regla con la que
+  `quimibond_rollos_bitacora` valida el crudo al cerrar). En IWJ038Q22JNT160 entran 1.1505 kg de crudo por kg de
+  tela: en TINTORERIA 1 (banda B, 600 kg) una orden de 550 kg de tela cabía en 1 baño, que cargaba 633 kg de crudo;
+  ahora son 2 baños de 316 kg (ronda 8 en main, 2026-11-06). La orden se sigue repartiendo en kg de tela, en baños
+  iguales.
+- El cálculo del crudo (`_kg_carga_jet`) vive en `quimibond_tintoreria_dosificacion` 1.4.0, que con los mismos kg
+  dosifica los químicos (g/L × relación de baño) y los colorantes (% sobre el peso cargado).
+- El asistente, la programación y la nota de cada orden muestran los kg de crudo por baño. Sin componente de tejido
+  se usan los kg de la orden, como antes, y queda un aviso en el chatter.
+- La capacidad del jet se toma como kg de crudo cargado: en el flujo anterior la orden de Tintorería consume el crudo
+  1 a 1 (TL/OP-TIN/06736: 404.44 kg de WJ035Q22HNT200 para 404.44 kg), y con ese flujo se fijaron las capacidades.
+
+## Cambios 19.0.1.6.2 (ronda 5 de pruebas en main, 2026-11-05)
+
+- Cancelar una orden de una programación lo anota en la programación; si ya no le queda ninguna orden viva, la
+  programación pasa a «Cancelada» (antes se quedaba «Programada»).
 
 ## Cambios 19.0.1.6.1 (revisión de Consolti, 2026-10-30)
 

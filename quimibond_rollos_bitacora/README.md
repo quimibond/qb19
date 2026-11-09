@@ -27,7 +27,32 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
-## Clasificación final (3.0)
+## Desperdicio sin metros sin alerta de metros (3.16.1, prueba piloto en main, 2026-11-09)
+
+Un rollo final de Desperdicio puede ir sin metros (3.6.2), pero la estación de Inspección le marcaba la «Alerta de metros»
+al guardarlo, porque comparaba 0 m contra los metros teóricos de la ficha (en la prueba del 9 de noviembre, el
+J00005-001-0006: 0 m contra 61.41). Ahora la alerta se calcula solo cuando se capturaron metros, igual que el aviso de la
+pantalla. Prueba: `test_48_desperdicio_sin_metros`.
+
+## Segunda en metros y etiqueta del desperdicio (3.15.0, José, 2026-11-08)
+
+Alinea el módulo con el diseño técnico (§2, §8 paso 13 y §16), que la decisión D5 del spec del 3-nov había cambiado a kg:
+
+- **Segunda es la tela en metros.** Al registrar la orden en metros, PQ, FE y Segunda entran como el mismo producto en metros, cada rollo con su lote, a 14, 15 y 16. Solo el **Desperdicio** sigue siendo subproducto en kg (SALDO TEJIDO D, ubicación 17). Un baño sin primera ni FE pero con Segunda ya no cancela la orden en metros: la cierra con la Segunda. La Segunda entra con el costo normal del producto (ya no a costo cero); el desperdicio sigue a costo cero.
+- **Baño para venta en kg** (sin orden en metros): no cambia; la Segunda sigue saliendo como saldo en kg, porque no hay producto en metros donde registrarla.
+- **Etiqueta del desperdicio de Empaque:** al pesar el desperdicio sale una etiqueta (ZPL, 68 x 38 mm, el tamaño de la preliminar) con fecha, producto, nombre, número de lote (el del mes), cantidad con su unidad y el código de barras del lote.
+- Sin migración de datos: lo ya registrado no cambia.
+
+## Retiro del esquema anterior y de su interruptor (3.16.0, A3.5, José, 2026-11-08)
+
+La Clasificación final en Empaque (3.11.0 a 3.15.0) queda **siempre activa**, como el diseño técnico (§8 paso 13, §16):
+
+- Se quita el parámetro `quimibond_rollos_bitacora.clasificacion_empaque` (la migración lo borra). Al cerrar la orden en kg, sus rollos pasan siempre a la orden en metros y esta los registra al cerrarse; el baño para venta en kg (sin orden en metros) no cambia.
+- Se retira el asistente anterior `rollo.clasificacion.wizard` (y su acceso), el campo `production_b_id` de la bitácora, `rollo_final_ids` de la orden y el cierre de la orden en metros que dependía de ellos. El botón CLASIFICAR de la operación abre la estación de Empaque.
+- La etiqueta final de la bitácora (`action_report_etiqueta_final`, botón «Reimprimir etiqueta final») se retira: solo la llenaba el asistente anterior. La información definitiva de cada rollo y su etiqueta final viven en el **rollo final** (`mrp.rollo.final`, reporte `action_report_etiqueta_rollo_final`).
+- Los demás campos «finales» de la bitácora (pestaña Clasificación final) se quedan sin cambio. La migración borra las columnas huérfanas `production_b_id` y `zpl_etiqueta_final`.
+
+## Clasificación final (3.0) — histórico, retirado en 3.16.0
 - Botón **CLASIFICAR** en la lista de operaciones de la MO en metros (operación en centro EMPAQUE).
 - Se escanea el lote-serie del rollo de A (debe estar inspeccionado, tener existencia en el origen del consumo
   —Ubic. 10— y no haber sido clasificado). Segundo pesaje con la tara de «Clasificación final» (kg finales =
@@ -132,6 +157,280 @@ Decisiones de Dirección del mismo día:
 
 Pruebas de integración con `quimibond_tintoreria_programacion` (21 y 22, se saltan si no está instalado): la
 programación divide la orden en kg en baños con la división nativa y cada baño cierra su parte de la orden en metros.
+
+## Consumo de crudo al cerrar (3.3.2, 2026-11-05)
+
+La revalidación en main mostró que, con el consumo flexible, un baño cerraba aunque no hubiera crudo en existencia (19 y
+0 kg consumidos) y el kg de la tela salía casi gratis. Ahora la orden en kg con rollos de Rama **no cierra si el crudo
+consumido es menor que los kg que pesó Rama** (la tela teñida no puede pesar más que el crudo que entró). El crudo es el
+componente en peso con más kg planeados. Con el parámetro `quimibond_rollos_bitacora.crudo_minimo_pct` capturado,
+además pide ese porcentaje del crudo planeado; vacío, no aplica (prueba 27).
+
+## Orden en metros cancelada y dos crudos (3.14.1, revisión de código, 2026-11-08)
+
+- **Orden en metros cancelada después de inspeccionar** (pedido cancelado, o cerrada por fuera): el baño ya no se queda
+  sin poder cerrar («no hay orden en metros abierta»). Al cerrar, se crea otra orden en metros de la misma tela y lista
+  de materiales, sin abastecer, y el baño se registra en ella como siempre: la tela queda en metros. Nota en el baño y en
+  la orden nueva. Prueba 72.
+- **Dos crudos en un baño:** todos los componentes de una categoría de tejido cuentan como crudo para validar el cierre
+  (antes solo el de más kg, y el otro se trataba como químico y se le borraban las reservas sin lote). Prueba 73. Con
+  dosificación 1.4.2, la carga del jet también suma los dos.
+
+## Solo el acabado abastece la orden en metros (3.6.4, ronda 13 en main, 2026-11-06)
+
+Las órdenes que abastecen una orden en metros (`_ordenes_previas`) se cuentan solo por los movimientos del acabado en kg
+que no están cancelados. El desperdicio de Rama de cada baño (subproducto en cero) también queda ligado al consumo y hacía
+creer que otro baño seguía abasteciendo: el cierre dejaba un pendiente que nadie iba a cubrir. Las pruebas de
+programación ahora llevan ese subproducto.
+
+## Un baño = una orden en metros (3.6.3, con programación 1.8.0, 2026-11-06)
+
+Con la programación de Tintorería 1.8.0, cada baño tiene su propia orden en metros desde que se programa, así que al
+cerrar no hay otros baños que la abastezcan: se registra completa con los metros reales del baño. Las pruebas 21 y 22
+cambian a ese caso (cada baño cierra su orden; el baño sin primera ni FE cancela solo la suya). El cierre con varios
+baños para una orden en metros (3.3.0) se conserva para las órdenes que no se dividen (pruebas 15, 16 y 23).
+
+## Último baño sin orden fantasma y Desperdicio sin metros (3.6.2, rondas 11 y 12 en main, 2026-11-06)
+
+- **Orden en kg fantasma.** Al cerrar el último baño de una orden en metros, el cierre iguala la demanda del acabado en kg
+  a lo que pesó Rama. Cuando ese baño pesaba más que la parte que Odoo le había dejado al pendiente (Odoo reparte la
+  demanda entre el cierre y el pendiente por metros, no por kg), Odoo abastecía la diferencia con una orden en kg nueva
+  que nadie pidió (ronda 12: TL/OP-KG/00066, 20.6 kg, con crudo reservado). El ajuste de la demanda ya no abastece
+  (`no_procurement`); los baños que la cubren ya existen (prueba 47).
+- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedazos u orillas
+  sin metros: Inspección ya no los pide en Desperdicio. Primera, FE y Segunda siguen pidiéndolos (prueba 48).
+- Formación de baños valida que lo escaneado sea igual a la demanda (`mrp_caja_surtido`, Consolti). No se cambia: en
+  producción la demanda del baño formado es lo producido por su orden de Tejido, así que con sus 12 rollos cuadra exacto;
+  es el control de que entren todos. Solo falla si el baño formado se crea a mano.
+
+## Baño sin rollos pesados (3.6.1, prueba de Dirección en main, 2026-11-06)
+
+En la prueba de Dirección se dio «Hecho» a las 5 operaciones de un baño sin pesar ningún rollo y Odoo lo dejó pasar: las
+revisiones de rollos e Inspección solo corren cuando ya hay rollos, así que la orden habría cerrado con los kg planeados,
+sin pesaje ni clasificación. Ahora, en una orden del tipo «Fabricación Tela en kg» (código de secuencia `OP-KG`) con
+operación de Rama, **Rama no termina y la orden no cierra sin al menos un rollo pesado en Rama**. Si el baño no llegó a
+Rama (se echó a perder antes), la orden se cancela: sin rollos la cancela cualquiera (3.5.2). Las órdenes de otros tipos
+con Rama (flujo viejo en metros, pruebas de costeo) no cambian.
+
+## Metros del cuentametros en Rama (3.6.0, Dirección, 2026-11-06)
+
+- La Rama tiene un cuentametros al final y hoy todo se registra en metros: para no perder ese dato, «PESAR ROLLO» pide
+  los **metros del cuentametros** junto con el peso. Son obligatorios; si no se pudieron leer, el rollo se registra con
+  el motivo («Motivo sin metros»), igual que la captura manual del peso.
+- Quedan en el rollo de Rama (`metros_rama`, `motivo_sin_metros_rama`), con su rendimiento en Rama
+  (`rendimiento_rama` = metros entre kg netos), en la etiqueta preliminar de Rama («M:» debajo de los kg), en la
+  lista de rollos de Rama de la pestaña Rollos y en el resumen del baño (`rollos_rama_metros`).
+- No cambian el inventario ni el cierre: la orden sigue en kg; los metros son el dato de proceso de la Rama.
+- Prueba: `test_45_metros_de_rama_obligatorios_con_motivo`.
+
+## Operador inexistente en Rama (3.5.3, ronda 7 de pruebas, 2026-11-05)
+
+Rama y el desperdicio de Rama registraban el rollo con «EMPLEADO NO ENCONTRADO» cuando el número tecleado no existía;
+Inspección ya lo rechazaba. Ahora las tres estaciones usan la misma regla (`hr.employee._qb_operador_requerido`): si el
+número no corresponde a nadie, no se registra y el mensaje pide la referencia completa si es de otra nómina.
+
+## Cancelar una orden en kg (3.5.2, ronda 5 de pruebas, 2026-11-05)
+
+Una orden en kg con rollos o desperdicio pesados en Rama **no se cancela**: la tela ya existe, cancelar la saca del
+inventario y deja la bitácora pendiente, y regresar a medio baño descuadra el inventario (plan de regreso). Se termina
+el baño; lo que no sirva sale como Segunda o Desperdicio. Solo un administrador de Fabricación la cancela (rollos
+pesados en la orden equivocada), y queda una nota con los lotes y los kg. Si el baño abastecía una orden en metros,
+esa orden recibe la nota de que se quedó sin abasto. Los rollos de una orden cancelada ya no salen en «Pendientes de
+inspección». En la programación de tintorería (1.6.2), cancelar sus órdenes lo anota y, sin órdenes vivas, la
+programación pasa a «Cancelada».
+
+## Operador por referencia de nómina (3.5.1, Dirección 2026-11-05)
+
+El número de trabajador se repite entre nóminas (85 es Lorena Santiago, S, y Franco Huerta, Q; 34 es un operador de
+Abridora y el director de Operaciones). La «Referencia de empleado» con prefijo es única. En Rama, desperdicio,
+Inspección y Clasificación el operador teclea **solo su número**, como en Tejido, y Odoo lo busca como **S-<número>**
+(toda la planta es nómina semanal); alguien de otra nómina teclea su referencia completa (Q-7, C-26, también «q7»).
+Sin referencia, cae al número de trabajador solo si un único empleado activo lo tiene. La búsqueda va con sudo: un
+operador sin permisos de RH busca en `hr.employee.public`, que no tiene esos campos (lo detectó la prueba 28).
+Tejido (`pesaje_rollos_tejido`, de José) sigue con su búsqueda por número y puesto.
+
+**Crudo por categoría (3.5.1, Ingeniería 2026-11-05).** Para validar el consumo de crudo al cerrar, el crudo es el componente
+en kg de una categoría de tejido («Producto en Proceso / Tejido Circular»), si lo hay; si no, el de más kg como antes.
+En IWJ032Q22JNT155 y JNT160 el LAVADO001 (detergente que se aplica en la abridora, «Aux. acabado») va a 2.2 kg por kg y
+se tomaba como crudo: la orden no podía cerrar. Ahora cuenta como componente (si falta, avisa y no detiene).
+
+## Número de baño y lotes (3.5.0, Dirección 2026-11-05)
+
+El folio de la tarjeta viajera (serie del 21 mil, impresa por bloques; el «21244» de «21244I1» y «21244 J1») daba
+nombre a los lotes de tintorería y acabado, tecleado a mano. La tarjeta se deja de usar con los centros de trabajo, así
+que **Odoo asigna el número de baño**:
+
+- **`numero_bano`** en la orden en kg (3.7.0): el nombre de la orden sin el prefijo del tipo de operación
+  (`TL/OP-KG/J00001` → `J00001`; en un baño dividido por la programación, `J00001-001`). La «J» y el consecutivo
+  (5 cifras, **desde 00001**) vienen de la secuencia de cada tipo de operación (OP-KG y OP-M), que el módulo deja con
+  prefijo `…/J` al instalar o actualizar (`hooks.py`; idempotente, no reinicia si ya termina en «J»). Antes (3.5.0)
+  era una secuencia aparte. Único, no se copia al duplicar. Si otra orden vieja ya tiene ese número, se usa el nombre
+  completo con guiones.
+- **Cuándo se asigna:** cuando el baño ya es definitivo, porque la programación de tintorería divide la orden después
+  de confirmarla. Al empezar la primera operación de una orden con Rama (Tintorería lo usa al cargar el jet), al abrir
+  el pesaje de Rama o la estación de Inspección, o con «Asignar número» en la pestaña Rollos. Un baño cancelado deja
+  su número sin usar.
+- **Lotes (3.7.0):** Rama e Inspección `<baño>-0001` (p. ej. `J00001-0001`; en un baño dividido `J00001-001-0001`). Son
+  de productos distintos (el «I…» y el B), como pide el diseño; el de Inspección es el que queda en inventario y llega al cliente (antes `<orden>-NNNN`, `M<orden en metros>-NNNN` y `K<orden en kg>-NNNN`). Sin I ni
+  número de rama: la tintorería, la rama y la inspección son la misma orden, el jet queda en la programación y la rama
+  en la bitácora del rollo.
+- **Cada baño su serie:** los rollos finales numeran por baño desde 0001, aunque varios baños abastezcan una orden en
+  metros (antes compartían el consecutivo de la orden en metros).
+- **Ubicación «Químicos-Colorantes Piso» (3.8.0):** `Toluca/Stock/Químicos-Colorantes Piso`. El engomado, los químicos y
+  los colorantes se surten (requisición automática, como antes) al Piso de Tintorería y la orden en kg los consume de
+  ahí; el crudo sigue en la Ubic. 2. La migración (`hooks.configurar_piso`, idempotente) crea la ubicación si no existe,
+  guarda su id en el parámetro `quimibond_rollos_bitacora.ubicacion_piso` y en las rutas «Surtido Engomado» y «Surtido
+  Químicos y Colorantes» pone el Piso de destino en la regla que surte y de origen en la de consumo (tipo OP-KG). Un
+  producto consume del Piso si tiene —por producto (engomado) o por categoría (químicos y colorantes)— una ruta con una
+  regla que sale del Piso. Solo cuentan los componentes que la lista de materiales pone al crear la orden. Si la base no
+  tiene `Toluca/Stock`, no hace nada. Las órdenes que ya existen conservan sus movimientos.
+- **Sobrante del Piso (3.9.0):** al cerrar la orden en kg, lo que se surtió al Piso para un componente y no se consumió
+  (surtido menos consumido, por lote, sin pasar de lo que hay en el Piso) regresa a la ubicación exacta de donde salió con
+  una transferencia interna que queda en el chatter de la orden. Se apoya en los movimientos de la requisición ligados al
+  consumo; si un componente no tiene requisición ligada no se devuelve nada. Si la devolución falla, el cierre no se
+  deshace: queda una nota para hacerla a mano. Para lo que ya no sirve, el botón de scrap nativo.
+- **Clasificación final en Empaque (3.10.0, A3.1):** el rollo final guarda, además de la calidad preliminar de Inspección, la
+  definitiva de Empaque (`clasificacion_final`), su peso (`kg_neto_final`, manda sobre el de Inspección si existe), sus metros
+  y defectos, el operador y la fecha, y el estado pasa por «Clasificado en Empaque» antes de «Registrado». Los campos «de
+  registro» (`clasificacion_registro`, `kg_registro`, `metros_registro`) valen lo de Empaque si ya clasificó y, si no, lo de
+  Inspección; con ellos registrará la orden en metros (A3.2). Esta versión solo agrega campos y vistas.
+- **Registro en la orden en metros (3.11.0, A3.2):** parámetro `quimibond_rollos_bitacora.clasificacion_empaque`. En «1», al
+  cerrar la orden en kg los rollos finales pasan a la orden en metros (nota en las dos) sin tocar inventario, y la orden en
+  metros los registra al cerrarse (PQ y FE a 14 y 15 en metros, Segunda y Desperdicio a 16 y 17 en kg) con la calidad, el
+  peso y los metros de registro. Si ningún rollo queda en primera ni FE, se cancela la orden en metros y los saldos salen en
+  una orden aparte (como en 3.2.0). Exige un baño por orden en metros y el baño cerrado. Sin el parámetro (por defecto), el
+  cierre de la orden en kg registra y cierra la orden en metros como siempre; el baño para venta en kg no cambia. La estación
+  de Empaque que llena los campos definitivos viene en A3.3.
+- **Estación de Clasificación final en Empaque (3.12.0, A3.3):** con el parámetro en «1», la orden en metros con rollos por
+  clasificar muestra el botón **CLASIFICAR EN EMPAQUE** (y la operación CLASIFICAR de la orden lo abre). El operador teclea
+  su número, escanea el lote de la etiqueta preliminar y confirma o cambia la calidad (con defectos en Segunda y FE) y los
+  metros; un cambio pide motivo. El peso es opcional: si Empaque pesa, usa la misma tara que Inspección (operación
+  «Clasificación final») y ese peso manda; si no, el de Inspección. Al confirmar el rollo queda «Clasificado en Empaque»
+  (`clasificacion_final`, `metros_final`, `kg_neto_final`, operador, centro y fecha) y **sale siempre la etiqueta final**
+  con lo definitivo (Inspección imprime la preliminar). La orden en metros **no cierra con rollos sin clasificar**. Todo
+  esto solo con el parámetro encendido; el desperdicio de la orden en metros (se pesa en Empaque) viene en A3.3b y la
+  operación CLASIFICACION en las listas de materiales en A3.4 (fichas 2.28.0 y rollos 3.14.0). La etiqueta final conserva «Operador inspección» (sin
+  decisión de Dirección sobre las siglas del operador de Empaque).
+- **Desperdicio de la orden en metros (3.13.0, A3.3b):** el botón **PESAR DESPERDICIO** de la orden en metros (mismo
+  momento que CLASIFICAR EN EMPAQUE) pesa neto, sin tara, el SALDO TEJIDO D de Empaque (diseño §16). Queda en campos propios
+  de la orden (`desperdicio_empaque_*`, no los de Rama) y se puede volver a pesar mientras la orden siga abierta (el último
+  peso sustituye al anterior y queda nota). Al cerrar la orden, **se suma** al saldo Desperdicio de los rollos que
+  Inspección clasificó como tal (mismo producto y movimiento, ubicación 17), con un lote del mes como el desperdicio de
+  Rama; si Inspección no clasificó ninguno, sale solo ese peso. Si el baño es de puros saldos (la orden en metros se
+  cancela), el desperdicio sale en la orden de saldos. No exige que la lista en metros traiga el subproducto: si falta, se
+  agrega al cerrar.
+- **Operación CLASIFICACION en la orden en metros (3.14.0, A3.4b):** cuando la lista en metros trae la operación
+  CLASIFICACION en el centro EMPAQUE (`quimibond_ficha_tecnica_tela` 2.28.0), la operación de la orden en metros muestra
+  **CLASIFICAR** y **PESAR DESPERDICIO** (las mismas estaciones del botón de la orden) mientras la orden tiene rollos que
+  le pasó un baño. La operación **no termina con rollos por clasificar**; al cerrar la orden en metros termina con ella y
+  registra la tela. Sin el interruptor encendido nada cambia.
+- La etiqueta final imprime el número de baño como «Lote de producción» y en el código de barras
+  (metros;kg;baño;rollo). La orden se busca por número de baño.
+
+## Etiquetas preliminares de 68 x 38 mm (3.4.0, Dirección 2026-11-05)
+
+Hay dos etiquetas preliminares, una de Rama y otra de Inspección, de **68 mm de ancho x 38 mm de alto**
+(544 x 304 puntos a 203 dpi). La **final** sigue en 76 x 102 mm (3.3.7) y es la que lleva código, color, ancho,
+metros, yardas, kilos y libras. Acomodo común en `mrp.rollo.bitacora._zpl_preliminar_acomodo` (escala si se cambia el
+tamaño en Ajustes).
+
+| Etiqueta | Lleva |
+|---|---|
+| Preliminar de Rama | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la Rama), **kg** netos y el código de barras del lote con su texto (el lote ya lleva el número de rollo) |
+| Preliminar de Inspección | Artículo, orden de trabajo, fecha y hora, centro de trabajo (la revisadora), **kg** y **metros** del rollo final, la **calidad** (PQ, FE, 2DA, DESP) en un recuadro y el código de barras del lote `M…`/`K…` |
+
+- **Qué sale al confirmar en la revisadora:** la preliminar (por defecto). En Ajustes («Etiqueta al confirmar en la
+  revisadora», parámetro `quimibond_rollos_bitacora.inspeccion_imprime`) se cambia a la final. La otra se imprime
+  con su botón en el rollo final, con los íconos de cada renglón en la pestaña Rollos de la orden, o desde Imprimir
+  en la lista de rollos finales (varios a la vez). Las dos se guardan al confirmar.
+- La preliminar de Rama se reimprime con el ícono de su renglón en la pestaña Rollos.
+- Los tamaños por defecto pasan a 544 x 304 en Rama y en la preliminar de Inspección; ninguna base tenía guardado otro
+  valor (verificado en main), así que no hay migración.
+
+## Captura manual sin báscula (3.3.9, Dirección 2026-11-05)
+
+En planta el peso se captura a mano, en Tejido, Rama e Inspección. Mientras no haya báscula IoT registrada
+(`iot.device` de tipo báscula), PESAR ROLLO, PESAR DESPERDICIO e INSPECCIONAR abren en captura manual con el motivo
+«Sin báscula IoT» ya escrito, así que no se pide nada extra en cada rollo y queda el rastro. Con una báscula registrada
+vuelven a abrir en automático, y capturar a mano pide motivo, como antes. No toca `iot_scale_common` ni Tejido.
+
+## Historial de Pesaje y pestaña Rollos (3.3.8, Dirección 2026-11-05)
+
+- **Historial de Pesaje:** cada pesada de Rama (rollo y desperdicio) y de Inspección (rollo final) deja una copia en la
+  pestaña «Historial de Pesaje» de la orden (`mrp.weighing.log`, de `pesaje_rollos_tejido`), con fecha, lote, operador,
+  bruto, tara, neto y máquina, para ver en un solo lugar lo pesado en Tejido, Rama e Inspección. Es copia de consulta:
+  la fuente sigue siendo la pestaña Rollos. Al anular un rollo final, su pesada sale del historial. Sin ese módulo no
+  hace nada.
+- **No toca Tejido:** el cierre de Tejido depende de su contador `roll_count`, que solo sube al pesar en Tejido (las
+  órdenes en kg lo dejan en 0); el número de rollo circular queda en 0, que su validación ignora; el ritmo de Tejido
+  (`qb_tejido_ritmo` 1.0.3) lee solo órdenes con `roll_count > 0`. El reporte resumen de la orden imprime el historial
+  de esa orden, así que el de una orden en kg muestra sus pesadas de Rama e Inspección.
+- **Pestaña Rollos rediseñada:** resumen del baño arriba (rollos y kg de Rama, porcentaje contra lo planeado,
+  desperdicio, rollos por inspeccionar, rollos finales con kg y metros, merma de Inspección y kg por calidad) y dos
+  secciones en el orden del proceso: 1. Rama (máquina, fecha, operador, bruto, tara, neto, captura manual y estado de
+  inspección) y 2. Inspección (lote, calidad con color, rollos de Rama de origen, pesos, metros, defectos, revisadora,
+  operador y estado). Solo aparece en órdenes que pesan en Rama.
+
+## Tamaño real de las etiquetas (3.3.7, Sistemas 2026-11-05)
+
+Impresora Zebra ZD230 de 203 dpi (8 puntos = 1 mm). Los tamaños se cambian en Ajustes de Manufactura → Rollos de
+tela acabada.
+
+- **Rama**: 63 mm de ancho x 38 mm de alto = 504 x 304 puntos (antes 406 x 203), solo el código de barras del
+  lote-serie. Desde 3.4.0, 68 x 38 mm con datos.
+- **Final del rollo** (PQ / PNC, la que imprime la estación de Inspección): 76 mm de ancho x 102 mm de alto =
+  608 x 816 puntos (antes 812 x 1218). Acomodo nuevo compartido por el rollo final y la bitácora
+  (`mrp.rollo.bitacora._zpl_final_acomodo`): metros/yardas, neto/bruto y kilos/libras en dos columnas, y escala si
+  se cambia el tamaño en Ajustes (nuevo par «Etiqueta final del rollo»).
+- **Código de barras**: Code 128 con los subconjuntos explícitos (`_code128_zpl`: los dígitos seguidos van de dos en
+  dos), para que `metros;kg;orden;rollo` quepa en 76 mm con barras de 2 puntos aun con metros de 4 cifras y rollo
+  de 2 cifras. Lo que lee el escáner es el mismo dato.
+- La **preliminar de Inspección** no se imprimía en la estación única (3.1.0). Desde 3.4.0 sí, en 68 x 38 mm.
+- Pendiente: probar con las impresoras y básculas que llegan el viernes 7-nov (lectura del código con el escáner
+  de Almacén).
+
+## Reserva sin lote de un químico (3.3.6, 2026-11-05)
+
+En la prueba de main, dos órdenes en kg no cerraban con «Debe proporcionar un número de lote para ENGOMADO002»: Odoo
+había apartado engomado de un registro sin lote y sin existencia en 2 PRODUCCIÓN. Al cerrar, esas líneas sin lote de
+un componente con lote (químicos, colorantes, engomado; no el crudo, que se captura con su lote) se quitan y la
+cantidad queda como faltante, con la nota y la actividad de 3.3.4.
+
+## Propuesta de Consolti que se adopta (3.3.5, 2026-11-05)
+
+De la propuesta de José Sacramento (Consolti) del 5-nov se toma lo que sirve al diseño vigente (estación única):
+
+- **Desarrollos a la 31.** La primera y la FE de una orden marcada «Orden de Desarrollo» (en la orden en metros o en la
+  orden en kg) van a «31 DESARROLLOS TOLUCA» (parámetro `quimibond_rollos_bitacora.ubicacion_desarrollo`); los saldos
+  en kg siguen a 16 y 17. El campo existía pero ningún ruteo lo leía: en la prueba de main los desarrollos entraron a 14.
+- **Número de rollo final consecutivo, sin huecos.** Al anular un rollo de en medio, el siguiente que se inspecciona
+  toma su número (el anulado no tiene lote: el lote nace al cerrar el baño).
+- **Inspección en paralelo a Rama.** En cuanto Rama pesó un rollo, la operación de Inspección pasa sola a «Por hacer»
+  y ese rollo ya se puede inspeccionar (antes del primer pesaje sigue «Bloqueada»). Inspección no termina mientras Rama
+  siga abierta, y la orden en kg no cierra con rollos sin inspeccionar (como antes). Probado en main el 5-nov.
+- **Una sola tara por artículo para el rollo final.** Ya era así: Inspección usa la tara «Clasificación final» de la
+  tabla de taras (Rama tiene la suya). No cambia nada.
+- **No se captura en una orden cerrada o cancelada.** Los asistentes de Rama y de Inspección lo rechazan aunque estén
+  abiertos (en la prueba de main se capturó un rollo final en una orden cancelada).
+
+Lo que no se adopta (dos estaciones, lotes J, ubicación nueva de químicos, quitar el registro automático, los varios
+baños y la venta en kg) queda como está por decisión de Dirección.
+
+## Faltante de componentes al cerrar (3.3.3 → 3.3.4, 2026-11-05)
+
+Decisión de Dirección para el piloto: los químicos se quedan en 2 PRODUCCIÓN, se surten por requisición de tambo cuando
+se acaban y la orden en kg consume la cantidad teórica de la fórmula (sin orden de Cocina Tintorería para las telas del
+flujo nuevo). Su existencia en Odoo es una estimación: el agua no se mide (Almacén le suma 2,000,000 L por ajuste cada
+2 o 3 semanas) y el engomado tiene reservas sin existencia. Por eso un faltante **no detiene el cierre**:
+
+- La 3.3.3 bloqueaba el cierre si a un químico, colorante, engomado o agua le faltaba existencia. La 3.3.4 lo cambia por
+  un aviso: la orden en kg con rollos de Rama consume lo que sí está apartado (también lo parcial, que Odoo cancelaba) y
+  cierra; deja en la orden una nota con cada faltante y una actividad «Faltante de componentes» para el usuario del
+  parámetro `quimibond_rollos_bitacora.usuario_faltantes` (login; vacío = el responsable de la orden). El conteo
+  periódico corrige la diferencia (pruebas 29 y 30).
+- **Solo el crudo bloquea** (3.3.2): son rollos reales con lote y el costo grande.
+- Recomendación de configuración: el agua (costo 0, sin medidor) como producto sin inventario (consumible), para que
+  siga en la fórmula sin descontarse.
 
 ## Pendiente (siguientes entregas)
 Ruteo a 14/15/16/17/31 al cerrar la MO de B, Quality Points, QC de laboratorio, Saldo Tejido D, captura de las

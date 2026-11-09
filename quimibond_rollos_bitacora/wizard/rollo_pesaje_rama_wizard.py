@@ -2,6 +2,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+
 
 class RolloPesajeRamaWizard(models.TransientModel):
     """Pesaje y registro de un rollo en Rama (diseño §8, puntos 8 y 9; §12.1; §13).
@@ -31,16 +33,22 @@ class RolloPesajeRamaWizard(models.TransientModel):
     tara_faltante = fields.Boolean(compute='_compute_pesos')
     kg_neto = fields.Float('Peso neto (kg)', digits=(12, 4), compute='_compute_pesos')
     motivo_manual = fields.Char('Motivo de la captura manual',
-                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §8.8 y §13).')
+                                help='3.3.0: obligatorio cuando el peso se captura a mano (v5.4 §8.8 y §13).',
+                                default=lambda self: motivo_por_defecto(self))
+    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
+    metros_rama = fields.Float(
+        'Metros (cuentametros)', digits=(12, 2),
+        help='3.6.0: lo que marca el cuentametros al final de la Rama cuando sale el rollo. Obligatorio; si no se pudo '
+             'leer, se captura el motivo.')
+    motivo_sin_metros = fields.Char('Motivo sin metros', help='3.6.0: solo si no se pudieron leer los metros.')
 
     @api.depends('empleado_numero')
     def _compute_empleado_nombre(self):
         Empleado = self.env['hr.employee']
-        campo = 'x_studio_nmero_de_trabajador'
         for wiz in self:
             nombre = False
-            if wiz.empleado_numero and campo in Empleado._fields:
-                emp = Empleado.search([(campo, '=', wiz.empleado_numero)], limit=1)
+            if wiz.empleado_numero:
+                emp = Empleado._qb_operador(wiz.empleado_numero)  # 3.5.1: número = referencia S-<número>
                 nombre = emp.name if emp else _('EMPLEADO NO ENCONTRADO')
             wiz.empleado_nombre = nombre
 
@@ -51,10 +59,11 @@ class RolloPesajeRamaWizard(models.TransientModel):
         return (ultimo.secuencia or 0) + 1
 
     def _nombre_lote(self, secuencia):
-        """Lote-serie = Orden de Fabricación + No. de rollo (§12.4): mismo formato que
-        pesaje_rollos_tejido (último segmento de la MO, para que quepa en la etiqueta pequeña)."""
+        """Lote del rollo de Rama = número de baño + No. de rollo: «J00001-0001» (3.7.0; en 3.5.0 llevaba «J» aparte). El
+        rollo final de Inspección se llama igual, pero es de otro producto (el B), como en el diseño. Sin número todavía,
+        solo la vista previa."""
         self.ensure_one()
-        return '%s-%04d' % (self.production_id.name.split('/')[-1], secuencia)
+        return '%s-%04d' % (self.production_id.numero_bano or _('(baño)'), secuencia)
 
     @api.depends('production_id')
     def _compute_secuencia(self):
@@ -78,8 +87,12 @@ class RolloPesajeRamaWizard(models.TransientModel):
     def action_confirmar(self):
         self.ensure_one()
         produccion = self.production_id
+        if produccion.state in ('done', 'cancel'):
+            # 3.3.5: un asistente abierto no registra rollos en una orden cerrada o cancelada.
+            raise UserError(_('La orden %s ya está cerrada o cancelada: no se pesan rollos.', produccion.name))
         if self.kg_bruto <= 0:
             raise UserError(_('Captura el peso bruto del rollo.'))
+        self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)  # 3.5.3
         if self.tara_faltante:
             raise UserError(_(
                 'No hay tara de Rama para el artículo %s. Captúrala en Manufactura → Configuración → Taras '
@@ -89,11 +102,19 @@ class RolloPesajeRamaWizard(models.TransientModel):
         manual = self.weighing_mode == 'manual'
         if manual and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
+        # 3.6.0 (Dirección, 2026-11-06): los metros del cuentametros de la Rama son obligatorios; sin ellos, el motivo.
+        if self.metros_rama < 0:
+            raise UserError(_('Los metros del cuentametros no pueden ser negativos.'))
+        sin_metros = (self.motivo_sin_metros or '').strip()
+        if not self.metros_rama and not sin_metros:
+            raise UserError(_(
+                'Captura los metros que marca el cuentametros de la Rama o, si no se pudieron leer, el motivo.'))
         if produccion.product_id.tracking != 'lot':
             raise UserError(_(
                 'El artículo %s debe tener seguimiento por lote para registrar rollos.',
                 produccion.product_id.display_name))
 
+        produccion._asignar_numero_bano()
         secuencia = self._siguiente_secuencia()
         lote_name = self._nombre_lote(secuencia)
         if self.env['stock.lot'].search_count([
@@ -117,31 +138,20 @@ class RolloPesajeRamaWizard(models.TransientModel):
             'kg_bruto_rama': self.kg_bruto,
             'tara_rama': self.tara_kg,
             'kg_rama': kg_neto,
+            'metros_rama': self.metros_rama,
+            'motivo_sin_metros_rama': sin_metros or False if not self.metros_rama else False,
             'captura_manual_rama': manual,
             'motivo_manual_rama': (self.motivo_manual or '').strip() or False if manual else False,
             'operador_rama': ' - '.join(filter(None, [self.empleado_numero, self.empleado_nombre])),
             'fecha_registro_rama': ahora,
             'fecha_etiqueta_rama': ahora,
         })
-        rollo.zpl_etiqueta_rama = self._zpl_etiqueta_rama(lote_name)
+        rollo.zpl_etiqueta_rama = rollo._zpl_etiqueta_rama()
         produccion._rama_registrar_movimiento(lote, kg_neto, self.workorder_id)
+        produccion._historial_pesaje(self.workcenter_id, lote_name, self.kg_bruto, self.tara_kg, kg_neto,
+                                     rollo.operador_rama, lot=lote, fecha=ahora)
         # Cierra la ventana de pesaje al descargar/imprimir la etiqueta: los rollos salen de Rama
         # espaciados en el tiempo, cada uno se pesa abriendo de nuevo PESAR ROLLO.
         accion = rollo.action_imprimir_etiqueta_rama()
         accion.update({'close_on_report_download': True})
         return accion
-
-    def _zpl_etiqueta_rama(self, lote_name):
-        """Etiqueta pequeña de Rama: solo el código de barras del lote-serie (§12.1).
-
-        El tamaño sale de Ajustes (puntos ZPL; 406x203 = 5x2.5 cm a 203 dpi, provisional) y el ancho de
-        módulo se elige el mayor que deja el código completo dentro de la etiqueta.
-        """
-        params = self.env['ir.config_parameter'].sudo()
-        ancho = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_ancho', 406))
-        alto = int(params.get_param('quimibond_rollos_bitacora.etiqueta_rama_alto', 203))
-        modulos = (len(lote_name) + 3) * 11 + 2  # Code 128: inicio + datos + control + paro
-        modulo = next((m for m in (3, 2, 1) if modulos * m <= ancho - 20), 1)
-        x = max((ancho - modulos * modulo) // 2, 0)
-        return '^XA^PW%d^LL%d^CI28\n^BY%d,3,%d^FO%d,%d^BCN,%d,N,N,N^FD%s^FS\n^XZ' % (
-            ancho, alto, modulo, alto - 60, x, 30, alto - 60, lote_name)

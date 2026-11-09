@@ -7,6 +7,7 @@ from datetime import date
 
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
@@ -74,7 +75,7 @@ class TestExcelMigration(TransactionCase):
         self.assertAlmostEqual(sheet.amount_total, line.amount)
         with self.assertRaises(ValidationError):
             line.write({'attendance_pct': 6.0})
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
             self.env['sgi.staff.efficiency.line'].create({'sheet_id': sheet.id, 'employee_id': self.employee.id})
         sheet.action_compute_efficiency()  # sin órdenes de trabajo: no truena ni cambia el %
         self.assertAlmostEqual(line.efficiency_pct, 1.0)

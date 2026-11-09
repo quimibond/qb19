@@ -152,7 +152,12 @@ class TestFormatMapVarios(TransactionCase):
         html = str(self.env['ir.qweb']._render(
             'quimibond_sgi.sgi_format_footer', {'sgi_rec': mo}))
         self.assertIn('F-IT-P-P01-02-02', html)
-        self.assertTrue(self.env.ref('quimibond_sgi.report_mrporder_sgi'))
+        # 57.198.0: ni el PDF ni el formulario de la orden muestran el formato.
+        self.assertFalse(self.env['ir.model.data'].search_count([
+            ('module', '=', 'quimibond_sgi'),
+            ('name', 'in', ('report_mrporder_sgi', 'sgi_format_banner_mrp_production'))]))
+        arch = self.env['mrp.production'].get_view(view_type='form')['arch']
+        self.assertNotIn('Formato controlado', arch)
 
     def test_10_get_for_model_da_el_general(self):
         self.Map.create({

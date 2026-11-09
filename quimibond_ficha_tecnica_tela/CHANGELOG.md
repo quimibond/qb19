@@ -8,6 +8,133 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.28.0 — 2026-11-06
+
+**Clasificación final en Empaque (A3.4, Dirección General: el diseño de la Clasificación final en Empaque sustituye al
+de la Inspección única de 2.24.0).** La lista en metros vuelve a llevar una operación, CLASIFICACION, en el centro
+EMPAQUE; Inspección sigue pesando y clasificando de forma preliminar en la orden en kg y Empaque confirma o cambia la
+clasificación de cada rollo en la orden en metros (`quimibond_rollos_bitacora` 3.12.0 y siguientes, con el interruptor
+`clasificacion_empaque`).
+
+**Agregado**
+- El paso «Clasificación final» vuelve a las rutas por familia, siempre en EMPAQUE (el centro se crea con ese nombre
+  si no existe y se reactiva si está archivado). «Armar rutas desde listas» lo agrega a las rutas que no lo tienen y
+  el resumen de la ruta lo muestra.
+- «Generar listas» pone la operación CLASIFICACION en la lista en metros archivada y da de alta la capacidad de la
+  tela en metros en EMPAQUE. **Provisional (Dirección, 2026-11-07): 400 m por hora** = capacidad de 400 m por ciclo
+  con ciclo de 60 min (así divide Odoo y así lo lee el costeo). Calidad aún no mide cuánto tarda en dictaminar. Una
+  capacidad ya capturada no se pisa.
+- Al activar una lista en metros del flujo (visto bueno de Ingeniería) se completa sola la operación si faltaba.
+- Botón «Clasificación en Empaque» en la lista de materiales: pone la operación y la capacidad en una lista en
+  metros **ya activa** (decisión explícita de Ingeniería; sin paso en la ruta avisa y no quita nada).
+
+**Clasificación final: tiempos y capacidad de lo que ya existía.** Los pasos y las operaciones CLASIFICACION que traían
+«0.05 min por metro» (menos de 1) pasan a 60 min por ciclo de 400 m, y toda tela en metros con la operación, tenga o no
+ficha de acabado, queda con su capacidad de 400 m en EMPAQUE (sin capacidad, Odoo toma 1 m por ciclo y 60 min por metro).
+La función `_ft_poner_clasificacion_rutas` devuelve también `tiempos` (prueba 06h).
+
+**Migración 2.28.0** (`post-migrate-clasificacion-empaque.py`, una vez al pasar de una versión anterior; en una base que ya está en 2.28.0 se corre a mano: `env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()`): el paso en las rutas que no lo tienen, la operación en las listas en metros
+**archivadas** del flujo y la capacidad en EMPAQUE de cada tela en metros con ficha. Las listas activas no se tocan.
+
+**Cambiado**
+- «Tiempo fijo» del paso pasa a minutos **por ciclo** (antes decía por unidad; la operación siempre lo tomó por ciclo).
+
+**Cambia (Dirección)**
+- **El recálculo nocturno propone el rendimiento; ya no lo escribe en la ficha.** Lo medido (rollos de Inspección,
+  conversiones a kg o estimado) queda en campos aparte: «Rendimiento medido», su fuente, sus muestras y su estado
+  («Igual al de la ficha», «Por aprobar» o «Fuera del teórico»). El rendimiento de la ficha, que usan la lista en metros,
+  los tiempos de rama e inspección y el costeo (`qb_costeo`), cambia solo cuando Ingeniería da **«Usar el medido»**;
+  **«Marcar revisado»** se queda con el de la ficha. Motivo: la revisión del 2026-11-06 encontró que el estimado
+  escribía números imposibles en la ficha (WD038Q46JNG166 a 32.1 m/kg, WC090Q11JNT162 a 36.7) que el costeo habría
+  tomado sin que nadie los viera.
+- **Tope contra el teórico.** Lo medido que se aleja más de 25 % (parámetro `tope_teorico_pct`) del rendimiento teórico
+  de la ficha, 1000 ÷ (peso en g/m² × ancho de venta en m), es un dato malo: no se propone, «Usar el medido» no lo
+  aplica y la revisión deja el pendiente «Lo fabricado da un rendimiento fuera del teórico».
+- El «Rendimiento forzado» ya no hace falta para protegerlo: queda como marca de que Ingeniería lo escribió a mano.
+- Pruebas 8, 9, 14 y 19.
+
+**Corregido**
+- **Avisos y cargas por jet en kg de crudo.** Tintorería confirmó (2026-11-06) que la capacidad del jet y la relación de
+  baño de las fichas son por **kg de crudo cargado**. Programación 1.7.0 y dosificación 1.4.0 ya contaban así, pero el
+  aviso de la orden de trabajo, la pestaña «Cargas por jet» de la orden y el aviso de la orden comparaban la capacidad
+  contra los kg de la orden (tela terminada): con 1.15 kg de crudo por kg de tela, una orden de 100 kg decía «1 carga» en
+  un jet de 105 kg cuando lleva 115 kg de crudo y son 2. Ahora usan `mrp.production._ft_kg_carga_jet()`, gancho que aquí
+  devuelve los kg de la orden y que `quimibond_tintoreria_dosificacion` 1.4.1 sobreescribe con el crudo de la lista de
+  materiales (ficha no depende de dosificación). El texto dice «kg de crudo» y la pestaña indica sobre cuántos kg se
+  calcula. Sin dosificación instalada o sin tejido en la lista, como antes.
+- Pendiente (no incluido): las líneas de capacidad por producto (`mrp.workcenter.capacity`) y la conversión de
+  `capacidad_conversion.py` siguen expresadas por kg de la lista (tela terminada); alinearlas al crudo cambia los ciclos
+  que Odoo cuenta en las listas y el costeo, y se decide aparte.
+
+## 19.0.2.27.1 — 2026-11-05
+
+**Corregido**
+- **El estimado contaba mal los kilos (revisión independiente, 2026-11-06).** En main, WD038Q46JNG166 quedó en 32.10
+  m/kg (antes 15.17; lo esperado ≈ 16) y WC090Q11JNT162 en 36.71, y 51 de 111 fichas usaban el estimado. Dos errores:
+  los kg de reproceso (códigos con punto al final, `WD038Q46ING163.`) no contaban como tela, y los kg de la tela acabada
+  en kg (el «I…» que consume la orden en metros del flujo nuevo) se multiplicaban por el consumo de crudo como si fueran
+  crudo. Ahora el estimado es metros ÷ (kg de tela acabada en kg + kg de crudo o teñido ÷ consumo de crudo − saldos);
+  con crudo o teñido y sin consumo capturado no se estima (pruebas 1, 7 y 17).
+- **Las conversiones de metros a metros no cuentan en el estimado.** Una orden que fabrica la tela consumiendo otra
+  tela ya en metros (conversión de artículo TL/CONV-ART) suma metros sin kilos: WC090Q11JNT162 seguía en 36.7 m/kg
+  después de la corrección anterior (1,471 m contra 45.9 kg en 12 meses). Ahora solo cuentan las órdenes que
+  consumieron tela en kg (prueba 18).
+- **Pocas muestras ya no pisan la ficha.** Con 1 o 2 rollos o conversiones y sin estimado, el rendimiento se queda el de
+  la ficha (antes las escribía: NK100Q46JNT155 y WJ038Q22JCO160 con una sola conversión, XJ140Q21JNT162 con dos).
+- **Conversiones raras y pocas muestras.** Al correr 2.27.0 en main, las telas con muchas conversiones quedaron igual que
+  las listas de empaque (WJ038 15.73 contra 15.79; WD038Q46JNT163 15.51 contra 15.52), pero una sola conversión movía
+  todo: XJ140Q21JNT165 tenía cinco entre 4.35 y 4.48 m/kg y dos de 0.81 y 2.07 (juntaban kg de otra fuente) y quedó en
+  3.74; WJ060Q21JNT165 tomó una sola conversión (12.05 contra 9.77 real). Ahora una conversión o rollo a más de 15 % de la
+  mediana de su tela no cuenta, y lo medido se usa con al menos 3 muestras buenas; con menos, el estimado, y si tampoco
+  hay, el de la ficha (corregido el 2026-11-06; antes esas pocas muestras).
+- **Los rollos de Inspección le ganan a las conversiones.** Con 3 o más rollos finales registrados (primera y FE) el
+  rendimiento sale solo de ellos (kg neto pesado en la estación); las conversiones a kg (kg neto de la lista de empaque,
+  sin tara; confirmado por Almacén el 2026-11-05) quedan como puente mientras la tela no tiene rollos. Antes se sumaban
+  juntas.
+- **Los rollos de prueba no cuentan.** Parámetro `quimibond_ficha_tecnica_tela.rendimiento_rollos_desde` (AAAA-MM-DD,
+  vacío = 12 meses): los rollos de Inspección cuentan desde el arranque del flujo en esa base. En main, los 95 rollos
+  finales de las pruebas de punta a punta del 5-nov (baños 99001 y 99002, kg sacados del factor) habían dado el
+  rendimiento a WJ038Q22JNT160, WJ053Q22JNT160 y WJ070Q66JBL205; con el parámetro en 2026-11-06 vuelven a
+  conversiones o estimado.
+
+**Nuevo**
+- **«Rendimiento forzado» en la ficha de acabado** (campo `rendimiento_manual`, como en la ficha de tejido). Si
+  Ingeniería escribe el rendimiento a mano queda forzado: el recálculo nocturno no lo pisa con conversiones ni con el
+  estimado (que sale 3 a 12 % arriba con el consumo de crudo actual), solo con 3 o más rollos de Inspección, y entonces
+  avisa si se movió más que la alerta. Escribirlo cuenta como revisado (quita el aviso). Desmarcarlo lo recalcula en
+  ese momento. La importación desde Excel no lo fuerza.
+
+## 19.0.2.27.0 — 2026-11-05
+
+Excepción a la regla de una versión arriba: 2.26.0 sigue sin desplegarse a producción y esta versión la incluye. Se
+sube porque trae un campo nuevo y main tiene que actualizarse antes del piloto del 6-nov.
+
+**Corregido**
+- **El rendimiento de la ficha es por kg de tela terminada** (Dirección General, 2026-11-05). El recálculo nocturno de
+  2.24.0 dividía los metros fabricados entre los kilos de tela que **entran** a la orden (crudo o teñido), que pesan más
+  que la tela acabada: el rendimiento salía ≈10 % abajo. WJ038Q22JNT160: 14.19 m/kg contra 15.79 de las listas de empaque
+  de 2026 (1,800 rollos pesados). Todos los que lo usan lo necesitan por kg de tela acabada (el producto «I»): la
+  conversión kg → m de la lista en metros y del costeo, los tiempos de rama e inspección y la alerta de metros de
+  Inspección (`quimibond_rollos_bitacora`), que con el número viejo saltaba en casi todos los rollos.
+- Ahora, en orden: **tela terminada** (metros ÷ kg de las conversiones de metros a kg de los últimos 12 meses, cuyo kg es
+  el pesado de la lista de empaque, más los rollos finales registrados de Inspección del flujo nuevo, primera y FE);
+  **estimado** si no hay (metros por kg que entró × el consumo de crudo de la ficha); y si tampoco, se queda el de la
+  ficha. Campo nuevo `rendimiento_fuente` en la ficha («De dónde sale el rendimiento»).
+- El primer recálculo mueve el rendimiento de casi todas las telas ≈10 %: quedan con el aviso «El rendimiento cambió con
+  lo fabricado» (2.26.0) para que Ingeniería lo revise. Las listas no cambian solas: los tiempos nuevos de rama e
+  inspección pasan a la lista con «Usar el tiempo de la ficha».
+
+## 19.0.2.26.0 — 2026-11-05
+
+**Agregado**
+- **Aviso cuando el rendimiento nocturno cambia mucho** (propuesta de Consolti, 2026-11-05: que las telas del piloto no
+  cambien sin aviso). El recálculo de cada noche (2.24.0) sigue escribiendo el rendimiento con lo fabricado, pero si se
+  mueve más que la alerta (parámetro `quimibond_ficha_tecnica_tela.alerta_rendimiento_pct`, 5 % si no está) la ficha
+  guarda el rendimiento anterior y la fecha, muestra el aviso en la pestaña del rendimiento con el botón «Marcar
+  revisado», y la revisión de listas le pone a la tela el pendiente de Ingeniería «El rendimiento cambió con lo
+  fabricado» hasta que alguien lo marca revisado. El número no se detiene: cambia la conversión kg → m, la lista J y los
+  tiempos de rama e inspección, por eso se avisa.
+
 ## 19.0.2.25.0 — 2026-11-04
 
 ### Saldos en la lista en metros
