@@ -1136,9 +1136,13 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaisesRegex(UserError, 'Captura los metros del rollo final'):
             self._inspeccionar(orden_kg, wo, rollos, 30.5, 0.0, termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, termina=False)
-        self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
+        Wizard = type(self.env['rollo.inspeccion.estacion.wizard'])
+        with patch.object(Wizard, '_rendimiento_acabado', return_value=11.8):
+            self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
         desp = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
         self.assertEqual(desp.metros, 0.0)
+        self.assertTrue(desp.metros_teoricos, "La ficha da metros teóricos")
+        self.assertFalse(desp.alerta_metros, "3.16.1: sin metros capturados no hay alerta de metros (prueba del 9-nov)")
         self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)

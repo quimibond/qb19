@@ -27,6 +27,13 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Desperdicio sin metros sin alerta de metros (3.16.1, prueba piloto en main, 2026-11-09)
+
+Un rollo final de Desperdicio puede ir sin metros (3.6.2), pero la estación de Inspección le marcaba la «Alerta de metros»
+al guardarlo, porque comparaba 0 m contra los metros teóricos de la ficha (en la prueba del 9 de noviembre, el
+J00005-001-0006: 0 m contra 61.41). Ahora la alerta se calcula solo cuando se capturaron metros, igual que el aviso de la
+pantalla. Prueba: `test_48_desperdicio_sin_metros`.
+
 ## Segunda en metros y etiqueta del desperdicio (3.15.0, José, 2026-11-08)
 
 Alinea el módulo con el diseño técnico (§2, §8 paso 13 y §16), que la decisión D5 del spec del 3-nov había cambiado a kg:
