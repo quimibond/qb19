@@ -21,6 +21,25 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Lector de Woodbridge y bandeja de releases (19.0.3.16.0, 2026-11-09)
+
+Diseño v3, 2.10.4 y 2.10.5.
+
+- **Lector «Woodbridge — PDF»** (`release/woodbridge_pdf.py`, prueba pura en
+  `tests_puros/ventas_presupuesto/test_release_woodbridge.py`): el «Supplier Release Planning
+  Schedule» de Saltillo Lamination (Saltillo y León). Lee el PDF con el lector de Odoo (pypdf) y
+  toma por parte la OC abierta (Blanket P/O 6700 / 6600319), el release, la unidad (MTR, LY, YD),
+  el acumulado recibido y las semanas con su autorización (Firm y Fabrication = firme; Forecast =
+  planeado). Descarta las páginas viejas que arrastra el PDF de León (más de 180 días antes de la
+  más reciente) y **no lee el release de una planta en el perfil de la otra** (el número de
+  proveedor del PDF, 130551 o 130551L, tiene que ser el del perfil).
+- **Releases por revisar** (Pronóstico): los recibidos, por revisar, leídos o revisados que aún no
+  se aplican, agrupados por estado. Filtro «Revisados sin aplicar».
+- **Aviso:** cron diario; un release recibido, por revisar o leído hace más de 2 días deja una
+  actividad al responsable de Ventas del perfil (una por release).
+
+Después del update: cambiar el lector de los perfiles de Saltillo y León a «Woodbridge — PDF».
+
 ## Ajustar pedidos confirmados (19.0.3.15.2, 2026-11-09)
 
 «Crear o actualizar cotizaciones» daba «Está prohibido modificar … en una orden bloqueada:

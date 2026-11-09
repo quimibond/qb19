@@ -31,6 +31,9 @@
     <menuitem id="menu_sale_qb_order_proposal" name="Proponer pedidos"
               parent="menu_sale_qb_grupo_pronostico" action="qb_order_proposal_action" sequence="35"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+    <!-- 3.16.0 -->
+    <menuitem id="menu_sale_qb_release_inbox" name="Releases por revisar"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_release_inbox_action" sequence="38"/>
     <menuitem id="menu_sale_qb_release" name="Releases de clientes"
               parent="menu_sale_qb_grupo_pronostico" action="qb_release_action" sequence="40"/>
     <!-- 3.1.0: captura de los clientes sin lector de release. -->

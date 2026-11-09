@@ -18,12 +18,13 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from ..release import fxi_sum, generic_table, lear_aiag, units
+from ..release import fxi_sum, generic_table, lear_aiag, units, woodbridge_pdf
 
 _READERS = [
     ('lear_aiag', "Lear — texto AIAG (Supplier Schedule / Material Release)"),
     ('fxi_sum', "FXI — Excel SUM (reporte SAP)"),
     ('generic_table', "Excel / CSV genérico (parte × fecha)"),
+    ('woodbridge_pdf', "Woodbridge — PDF «Supplier Release Planning Schedule» (Saltillo, León)"),
 ]
 
 
@@ -237,7 +238,45 @@ class QbRelease(models.Model):
                 'uom': profile.generic_uom.strip().upper(),
                 'lines': [{'date': ln['date'], 'qty': ln['qty'], 'line_type': 'P'} for ln in p['lines']],
             } for p in data['parts']]
+        if reader == 'woodbridge_pdf':
+            return self._qb_parse_woodbridge(content)
         raise ValueError("El perfil no tiene un lector conocido.")
+
+    @staticmethod
+    def _qb_pdf_reader_cls():
+        """Lector de PDF que trae Odoo (pypdf o PyPDF2, según la versión)."""
+        try:
+            from odoo.tools.pdf import PdfReader
+            return PdfReader
+        except ImportError:  # pragma: no cover - versiones con PyPDF2
+            from odoo.tools.pdf import PdfFileReader
+            return PdfFileReader
+
+    def _qb_parse_woodbridge(self, content):
+        """3.16.0: release de Woodbridge (Saltillo Lamination) en PDF o en su texto. El número de
+        proveedor del archivo tiene que ser el del perfil (130551 Saltillo, 130551L León): así un
+        release de una planta no se aplica sobre la otra."""
+        if content[:4] == b'%PDF' or (self.filename or '').lower().endswith('.pdf'):
+            try:
+                text = woodbridge_pdf.pdf_text(content, self._qb_pdf_reader_cls())
+            except Exception as exc:  # pypdf lanza muchos tipos distintos con PDF dañados
+                raise ValueError("No se pudo leer el PDF: %s" % exc) from exc
+        else:
+            text = content.decode('utf-8', errors='replace')
+        data = woodbridge_pdf.parse_text(text)
+        code = (self.profile_id.supplier_code or '').strip().upper()
+        if code and data['vendor'] and data['vendor'] != code:
+            raise ValueError("El release es del proveedor %s y el perfil %s es del %s: súbalo en el perfil "
+                             "de esa planta." % (data['vendor'], self.profile_id.name, code))
+        return [{
+            'release_ref': p['release_ref'], 'release_date': p['release_date'],
+            'customer_part': p['customer_part'], 'description': p.get('description'),
+            'customer_po': p.get('customer_po'), 'uom': p['uom'],
+            'cum_received': p.get('cum_received', 0.0),
+            'lines': [{'date': ln['date'], 'qty': ln['qty'],
+                       'line_type': 'F' if ln['authorization'] in ('Firm', 'Fabrication') else 'P',
+                       'cum_req': ln['cum'], 'net_req': ln['qty']} for ln in p['lines']],
+        } for p in data['parts']]
 
     @staticmethod
     def _qb_eml_body(text):
@@ -372,6 +411,26 @@ class QbRelease(models.Model):
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'type': 'success' if Catalog else 'warning', 'sticky': False,
             'message': "Partes confirmadas: %d." % len(Catalog)}}
+
+    @api.model
+    def cron_qb_release_reminders(self, days=2):
+        """3.16.0 (diseño v3, 2.9): un release recibido, por revisar o leído hace más de ``days`` días
+        deja una actividad al responsable de Ventas del perfil (una sola por release)."""
+        limit = fields.Datetime.now() - timedelta(days=days)
+        todo = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        late = self.search([('state', 'in', ('recibido', 'por_revisar', 'leido')), ('create_date', '<', limit)])
+        done = 0
+        for release in late:
+            user = release.profile_id.sales_user_id
+            summary = "Revisar el release %s" % release.name
+            if not user or release.activity_ids.filtered(lambda a: a.summary == summary):
+                continue
+            release.activity_schedule(
+                activity_type_id=todo.id if todo else False, summary=summary, user_id=user.id,
+                note="Lleva más de %d días sin revisar (%s). Léalo, confirme las partes, márquelo revisado y "
+                     "aplíquelo al pronóstico." % (days, dict(self._fields['state'].selection)[release.state]))
+            done += 1
+        return done
 
     def action_mark_reviewed(self):
         for release in self:
