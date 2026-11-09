@@ -8,7 +8,7 @@ class TestMedicionManualMotivo(TransactionCase):
 
     def test_01_el_motivo_quita_el_aviso(self):
         process = self.env['sgi.process'].create({'code': 'ZMM', 'name': 'Proceso manual'})
-        activity = self.env['sgi.process.activity'].create({
+        activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': process.id, 'number': 'ZMM.01',
             'name': 'Revisar cada mes la balanza', 'exec_channel': 'odoo',
             'measure_method': 'manual'})

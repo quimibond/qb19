@@ -43,7 +43,7 @@ class TestRutasAbren(TransactionCase):
     def test_03_mis_pendientes_ir_a_hacerlo(self):
         process = self.env['sgi.process'].create({'code': 'ZRA1', 'name': 'Proceso rutas'})
         menu = self.env.ref('quimibond_sgi.menu_sgi_nc')
-        activity = self.env['sgi.process.activity'].create({
+        activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': process.id, 'name': 'Actividad rutas', 'odoo_menu_id': menu.id})
         row = self.env['sgi.my.pending'].sudo().create({
             'user_id': self.env.user.id, 'kind': 'actividad', 'name': 'Hacer rutas',
@@ -97,7 +97,7 @@ class TestRutasAbren(TransactionCase):
         menu = self.env['ir.ui.menu'].create({
             'name': 'Reporte ZRA', 'parent_id': root.id, 'action': 'ir.actions.client,%d' % client.id})
         process = self.env['sgi.process'].create({'code': 'ZRA3', 'name': 'Proceso reporte'})
-        activity = self.env['sgi.process.activity'].create({
+        activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': process.id, 'name': 'Ver el reporte', 'odoo_menu_id': menu.id})
         user = new_test_user(self.env, login='zra_emp', groups='base.group_user,quimibond_sgi.group_sgi_user')
         result = activity.with_user(user).action_open_odoo()

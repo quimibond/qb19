@@ -14,6 +14,23 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.198.1 — 2026-11-09
+
+Fallas del suite del SGI en el build de desarrollo (`--test-tags /quimibond_sgi`, 9-nov-2026).
+
+**Corregido**
+- **Árbol de menús** (`_sgi_menu_tree_offenders`): una carpeta del raíz archivada en su lugar (Administración desde
+  57.183.0, en `SGI_MENU_ARCHIVED`) y lo que cuelga de ella ya no cuentan como menús sueltos.
+- **Factibilidad, materia prima** (`_sgi_dev_auto_answer`): la existencia se relee al volver a cargar el checklist;
+  `qty_available` no se guarda y su caché no se invalidaba al cambiar un quant en la misma transacción.
+
+**Pruebas**
+- `test_aprobaciones_asunto` 02 y `test_dev_buttons`: el «Ejecuta» es de otro puesto (quien ejecuta no aprueba).
+- `test_dev_analysis` 03 pone la existencia en el almacén de la compañía activa; `test_dev_characteristics` 05: el
+  límite del control interno cuenta como dentro (1.62 cumple, 1.63 es desviación).
+- Las pruebas que crean actividades sin importar quién las ejecuta usan `sgi_skip_role_check`, como las demás.
+
+
 ## 19.0.57.198.0 — 2026-11-08
 
 **Retirado**

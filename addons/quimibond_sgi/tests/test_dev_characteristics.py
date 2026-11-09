@@ -129,7 +129,10 @@ class TestDevCharacteristics(TransactionCase):
         self.assertEqual(line.run_count, 1)
         self.assertEqual(line.run_result, 'no_conforme')
         self.assertEqual(self.project.sgi_dev_out_of_spec_count, 1)
+        # El límite cuenta como dentro (_within): 1.62 es el máximo del control interno.
         line.write({'sample_value': 1.62})
+        self.assertEqual(line.sample_result, 'cumple')
+        line.write({'sample_value': 1.63})
         self.assertEqual(line.sample_result, 'desviacion')
         # El control interno no puede ser más abierto que el del cliente.
         with self.assertRaises(ValidationError):

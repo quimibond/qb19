@@ -21,9 +21,12 @@ class TestDevButtons(TransactionCase):
         cls.env['hr.employee'].create({'name': 'Director Botones', 'job_id': cls.job_dir.id,
                                        'user_id': cls.director.id})
         process = cls.env['sgi.process'].create({'code': 'ZBTN', 'name': 'Proceso Botones ZZ'})
+        # Un solo «Ejecuta» (_sgi_check_roles), de otro puesto: quien ejecuta no aprueba.
+        job_exec = cls.env['hr.job'].create({'name': 'DISEÑO BOTONES ZZ'})
         cls.activity = cls.env['sgi.process.activity'].create({
             'process_id': process.id, 'name': 'Aprobar algo de prueba', 'number': '9.9',
-            'role_ids': [(0, 0, {'role': 'aprueba', 'job_id': cls.job_dir.id,
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job_exec.id}),
+                         (0, 0, {'role': 'aprueba', 'job_id': cls.job_dir.id,
                                  'approval_kind': 'boton', 'approval_method': 'zz_btn_metodo',
                                  'approval_model_id': cls.env['ir.model']._get('project.project').id})]})
         cls.project = cls.env['project.project'].create({'name': 'Proyecto botones ZZ'})

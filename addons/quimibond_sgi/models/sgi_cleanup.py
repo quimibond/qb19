@@ -140,6 +140,12 @@ class SgiMenuCleanup(models.Model):
             menu = self.env.ref(xmlid, raise_if_not_found=False)
             if menu:
                 allowed |= menu
+        # 57.183.0: una carpeta del raíz archivada en su lugar (Administración)
+        # no se ve, ni lo que quedó colgado de ella: no es un menú suelto.
+        for xmlid in SGI_MENU_ARCHIVED:
+            menu = self.env.ref(xmlid, raise_if_not_found=False)
+            if menu and not menu.active and menu.parent_id == root:
+                allowed |= menu
         menus = self.sudo().with_context(active_test=False).search(
             [('parent_id', 'child_of', root.id), ('id', '!=', root.id)])
         offenders = self.browse()
