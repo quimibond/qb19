@@ -77,7 +77,9 @@ def default_mercado(env, partner):
     confección (es el único mercado que se presupuesta sin cliente); si no, industrial."""
     if not partner:
         return 'confeccion'
-    return team_mercado(env, partner.commercial_partner_id.team_id or partner.team_id) or 'industrial'
+    # 3.14.1: en Odoo 19 res.partner no tiene team_id; el equipo sale de pedidos, facturas o vendedor.
+    from .qb_forecast import team_of_partner  # import local: qb_forecast va después
+    return team_mercado(env, team_of_partner(partner)) or 'industrial'
 
 
 def _convert_qty(qty, from_uom, to_uom):

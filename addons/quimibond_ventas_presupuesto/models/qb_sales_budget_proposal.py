@@ -336,11 +336,12 @@ class QbSalesBudgetProposal(models.TransientModel):
                 skipped['sin_consumo'] += 1
                 continue
             partner = dev.partner_id.commercial_partner_id
+            from .qb_forecast import team_of_partner  # import local: qb_forecast va después
             price = self._qb_dev_price(dev, product, partner)
             for month in range(first_month, 13):
                 vals = {
                     'budget_id': budget.id, 'dev_project_id': dev.id,
-                    'mercado': proyecto_mercado(self.env, dev.sgi_dev_team_id or partner.team_id),
+                    'mercado': proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(partner)),
                     'partner_id': partner.id or False, 'product_id': product.id or False,
                     # Sin código, el nombre del desarrollo (lleva el folio): dos desarrollos del
                     # mismo cliente con la misma tela no chocan en el mismo mes.

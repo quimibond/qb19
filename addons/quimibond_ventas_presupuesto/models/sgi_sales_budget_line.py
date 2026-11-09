@@ -373,8 +373,9 @@ class SgiSalesBudgetLine(models.Model):
             self.proyecto_gramaje = self.proyecto_gramaje or gramaje
             self.proyecto_ancho_cm = self.proyecto_ancho_cm or ancho_cm
         if self.mercado not in PROYECTO_MERCADOS:
-            from .qb_sales_project import proyecto_mercado  # import local: el módulo va después
-            self.mercado = proyecto_mercado(self.env, dev.sgi_dev_team_id or dev.partner_id.team_id)
+            from .qb_forecast import team_of_partner  # import local: los módulos van después
+            from .qb_sales_project import proyecto_mercado
+            self.mercado = proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(dev.partner_id))
 
     @api.model
     def _qb_dev_dimensions(self, dev):
@@ -950,8 +951,9 @@ class SgiSalesBudgetLine(models.Model):
                     vals['proyecto_gramaje'] = vals.get('proyecto_gramaje') or gramaje
                     vals['proyecto_ancho_cm'] = vals.get('proyecto_ancho_cm') or ancho_cm
                 if vals.get('mercado') not in PROYECTO_MERCADOS:
-                    from .qb_sales_project import proyecto_mercado  # import local: el módulo va después
-                    vals['mercado'] = proyecto_mercado(self.env, dev.sgi_dev_team_id or dev.partner_id.team_id)
+                    from .qb_forecast import team_of_partner  # import local: los módulos van después
+                    from .qb_sales_project import proyecto_mercado
+                    vals['mercado'] = proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(dev.partner_id))
             if not vals.get('mercado'):
                 vals['mercado'] = default_mercado(self.env, Partner.browse(vals.get('partner_id')))
             if not vals.get('product_id') and vals.get('price_input') and not vals.get('price_origen'):
