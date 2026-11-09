@@ -101,3 +101,23 @@ class TestSalesActual(TransactionCase):
         mine = Missing.search([('kind', '=', 'venta_sin_mercado'), ('partner_id', '=', self.client.id)])
         self.assertEqual(len(mine), 1)
         self.assertAlmostEqual(mine.amount, 10.0, places=2)
+
+    def test_05_ve02_sin_saldos(self):
+        """3.12.0: el VE-02 y el presupuesto miden la venta sin saldos ni desperdicio; los demás
+        indicadores de venta siguen igual."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.kpi_company_id', self.env.company.id)
+        self._invoice(date(2069, 6, 10), [(self.product, 100.0, 2.0), (self.saldo, 10.0, 3.0)])
+        Indicator = self.env['sgi.indicator']
+        start, end = date(2069, 6, 1), date(2069, 6, 30)
+        self.assertAlmostEqual(Indicator._sgi_net_invoiced(start, end), 230.0, places=2,
+                               msg="Sin el contexto, como siempre (VE-01 y los demás)")
+        self.assertAlmostEqual(Indicator.with_context(qb_sin_saldos=True)._sgi_net_invoiced(start, end),
+                               200.0, places=2)
+        self.assertAlmostEqual(Indicator._qb_saldo_amount(start, end), 30.0, places=2)
+        budget = self.env['sgi.sales.budget'].create({'year': 2070})
+        self.assertAlmostEqual(budget._qb_company_net_invoiced(start, end), 200.0, places=2,
+                               msg="La base del año anterior del presupuesto, sin saldos")
+        # La venta real cuadra con el VE-02 por construcción.
+        self.Actual.action_qb_rebuild(start, end)
+        rows = self.Actual.search([('partner_id', '=', self.client.id), ('es_saldo', '=', False)])
+        self.assertAlmostEqual(sum(rows.mapped('amount')), 200.0, places=2)

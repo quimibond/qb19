@@ -21,6 +21,26 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## VE-02 sobre la venta real (19.0.3.12.0, E2, 2026-11-09)
+
+Diseño v3, 2.7; decisión de Jose (4-nov): **los saldos y el desperdicio no cuentan en el
+cumplimiento**. Van a la misma cuenta 401 que la tela; el VE-02 los sumaba y el cierre del
+Excel no (0.19 % de la venta ene–oct 2026).
+
+- El **VE-02** («Cumplimiento de presupuesto de ventas») mide la misma venta que «Venta real»:
+  las líneas de venta de siempre (cuentas 401/402, compañía del KPI) **sin los productos de
+  saldo o desperdicio**. Se calcula directo de las facturas con la misma regla, no de la tabla,
+  así que no depende de que la venta real esté reconstruida. La nota de la medición dice
+  cuánto quedó fuera.
+- En el presupuesto: **Venta al corte** y **Cumplimiento al corte**, y la **base del año
+  anterior** (objetivo y mínimo), también sin saldos.
+- Los demás indicadores de venta (VE-01, cartera, DSO…) no cambian: el filtro va por contexto
+  (`qb_sin_saldos`) solo desde el VE-02 y el presupuesto (`models/sgi_indicator.py`, herencia
+  de `sgi.indicator` en este módulo; el SGI no se toca).
+- **Las mediciones ya guardadas no cambian**; las de 2026 se pueden volver a medir para que
+  queden sin saldos. La base del año anterior de un presupuesto se recalcula al enviarlo a
+  revisión o con «Actualizar base».
+
 ## Venta real, comparativo y reportes (19.0.3.11.0, E2, 2026-11-09)
 
 Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Reportes**.
@@ -52,10 +72,7 @@ Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Rep
   registro. Se recalcula cada noche y con «Actualizar».
 - **Migración:** primera carga de la venta real y los faltantes.
 
-**Pendiente:** el VE-02 sigue leyendo sus líneas de factura (incluye saldos) y no esta tabla;
-cambiarlo (decisión de Jose del 4-nov: los saldos fuera del cumplimiento) toca el SGI y su
-prueba de aceptación mes por mes, y va aparte. También el PDF «Cierre de ventas general» con
-correo desde el cierre.
+**Pendiente:** el PDF «Cierre de ventas general» con correo desde el cierre.
 
 ## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
 
@@ -132,7 +149,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: el VE-02 sobre la venta real, el PDF del cierre, el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
+Sigue en E2: el PDF del cierre, el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
 de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
 

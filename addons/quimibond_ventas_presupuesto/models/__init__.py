@@ -22,3 +22,4 @@ from . import qb_forecast_paste
 from . import qb_price_check
 from . import qb_reports
 from . import qb_sales_actual
+from . import sgi_indicator
