@@ -23,8 +23,6 @@ presupuesta fuera de Proyectos.
 Sin equipos falsos y sin marcar el producto: el mercado del proyecto sale del equipo del
 desarrollo o del cliente.
 """
-from collections import defaultdict
-
 from markupsafe import Markup
 
 from odoo import api, fields, models
