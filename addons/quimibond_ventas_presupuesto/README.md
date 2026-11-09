@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Aplicar un release reemplaza la misma tela en otro código (19.0.3.15.1, 2026-11-09)
+
+La primera aplicación real (Shawmut W45, 9-nov) **duplicó** 62 semanas: el forecast de Excel
+tenía a Shawmut en WJ (metros) y el release viene en IWJ (kilos); «Aplicar» buscaba la semana por
+producto exacto y creó otra al lado. Ahora busca por **artículo**: la semana de la misma tela en
+otro código se reemplaza (toma el producto del release) y las de esa tela que el release ya no
+trae se quitan. En producción, las 62 semanas del Excel se archivaron a mano (recuperables) y la
+Demanda se reconstruyó.
+
 ## Pedidos desde el pronóstico (19.0.3.15.0, E3, 2026-11-09)
 
 Decisiones de Jose (9-nov): **un pedido por OC y semana de embarque**, creado como
