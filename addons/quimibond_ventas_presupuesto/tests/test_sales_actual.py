@@ -121,3 +121,35 @@ class TestSalesActual(TransactionCase):
         self.Actual.action_qb_rebuild(start, end)
         rows = self.Actual.search([('partner_id', '=', self.client.id), ('es_saldo', '=', False)])
         self.assertAlmostEqual(sum(rows.mapped('amount')), 200.0, places=2)
+
+    def test_06_cierre_de_ventas_del_mes(self):
+        """3.13.0: el cierre por mercado (mes y acumulado) contra el presupuesto aprobado, el PDF y
+        el correo con el PDF adjunto."""
+        budget = self.env['sgi.sales.budget'].create({'year': 2069})
+        Line = self.env['sgi.sales.budget.line']
+        for month, qty in ((2, 50.0), (3, 120.0)):
+            Line.create({'budget_id': budget.id, 'product_id': self.product.id, 'partner_id': self.client.id,
+                         'mercado': 'industrial', 'date': date(2069, month, 1), 'uom_id': self.uom_m.id,
+                         'qty_budget': qty, 'price_input': 2.0,
+                         'price_currency_id': self.env.company.currency_id.id})
+        budget.state = 'aprobado'
+        self._invoice(date(2069, 2, 10), [(self.product, 40.0, 2.0)])
+        self._invoice(date(2069, 3, 10), [(self.product, 100.0, 2.0), (self.saldo, 10.0, 1.0)])
+        budget._qb_close_refresh(date(2069, 3, 1))
+        data = budget.with_context(qb_close_month='2069-03-01')._qb_close_data()
+        ind = next(r for r in data['rows'] if r['label'] == 'Industrial')
+        self.assertAlmostEqual(ind['bud_m'], 240.0, places=2)
+        self.assertAlmostEqual(ind['real_m'], 200.0, places=2, msg="Sin el saldo")
+        self.assertAlmostEqual(ind['pct_m'], 83.3, places=1)
+        self.assertAlmostEqual(ind['bud_y'], 340.0, places=2)
+        self.assertAlmostEqual(ind['real_y'], 280.0, places=2)
+        self.assertAlmostEqual(data['saldos'], 10.0, places=2)
+        self.assertEqual(data['month_label'], "marzo 2069")
+        name, content = budget._qb_close_pdf(date(2069, 3, 1))
+        self.assertTrue(content)
+        self.assertIn("marzo 2069", name)
+        wizard = self.env['qb.sales.close'].create({'budget_id': budget.id, 'month': date(2069, 3, 15)})
+        action = wizard.action_send()
+        self.assertEqual(action['res_model'], 'mail.compose.message')
+        self.assertEqual(len(action['context']['default_attachment_ids']), 1)
+        self.assertEqual(wizard.action_print()['type'], 'ir.actions.report')

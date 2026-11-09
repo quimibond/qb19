@@ -64,6 +64,8 @@
               parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_annual_server" sequence="20"/>
     <menuitem id="menu_sale_qb_compare_client" name="Cliente y artículo"
               parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_client_server" sequence="30"/>
+    <menuitem id="menu_sale_qb_sales_close" name="Cierre de ventas (PDF)"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_close_action" sequence="15"/>
     <menuitem id="menu_sale_qb_sales_actual" name="Venta real"
               parent="menu_sale_qb_grupo_reportes" action="qb_sales_actual_action" sequence="40"/>
     <menuitem id="menu_sale_qb_sales_missing" name="Faltantes"

@@ -21,6 +21,24 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Cierre de ventas general (19.0.3.13.0, E2, 2026-11-09)
+
+Diseño v3, 2.8 y 2.9. Sustituye la hoja MENSUAL del Excel.
+
+- **PDF «Cierre de ventas general <mes>»** (hoja horizontal): por mercado, el presupuesto, la
+  venta, la diferencia y el cumplimiento **del mes** y **del acumulado del año**, y la venta del
+  mismo periodo del año anterior con su crecimiento; al pie, la venta del año anterior, el
+  objetivo y el mínimo, y la justificación del incumplimiento si la hay. La venta es la de
+  «Venta real» (sin saldos ni desperdicio; el PDF dice cuánto quedó fuera).
+- **Dónde:** botón **Cierre de ventas** en el presupuesto, o Reportes → **Cierre de ventas
+  (PDF)**. El asistente pide el presupuesto (por omisión, el aprobado del año) y el mes (por
+  omisión, el último cerrado) y tiene **Imprimir PDF** y **Enviar por correo** (abre el
+  redactor del presupuesto con el PDF adjunto y el resumen en el cuerpo).
+- Antes de calcular se reconstruye la venta real del año hasta el fin del mes y el mismo
+  periodo del año anterior: no depende del cron nocturno.
+- **Cierre de mes del SGI:** al cerrar cada mes, el PDF queda en el chatter del presupuesto
+  aprobado del año. El aviso de cierre por debajo del umbral también mide sin saldos.
+
 ## VE-02 sobre la venta real (19.0.3.12.0, E2, 2026-11-09)
 
 Diseño v3, 2.7; decisión de Jose (4-nov): **los saldos y el desperdicio no cuentan en el
@@ -72,7 +90,6 @@ Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Rep
   registro. Se recalcula cada noche y con «Actualizar».
 - **Migración:** primera carga de la venta real y los faltantes.
 
-**Pendiente:** el PDF «Cierre de ventas general» con correo desde el cierre.
 
 ## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
 
@@ -149,7 +166,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: el PDF del cierre, el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
+Sigue en E2: el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
 de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
 

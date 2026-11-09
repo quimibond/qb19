@@ -75,3 +75,5 @@ access_qb_sales_compare_salesman,qb.sales.compare.salesman,model_qb_sales_compar
 access_qb_sales_missing_sgi_user,qb.sales.missing.sgi.user,model_qb_sales_missing,quimibond_sgi.group_sgi_user,1,0,0,0
 access_qb_sales_missing_salesman,qb.sales.missing.salesman,model_qb_sales_missing,sales_team.group_sale_salesman,1,0,0,0
 access_qb_sales_missing_manager,qb.sales.missing.manager,model_qb_sales_missing,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_close_sgi_user,qb.sales.close.sgi.user,model_qb_sales_close,quimibond_sgi.group_sgi_user,1,1,1,1
+access_qb_sales_close_salesman,qb.sales.close.salesman,model_qb_sales_close,sales_team.group_sale_salesman,1,1,1,1
