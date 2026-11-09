@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.15.0',
+    'version': '19.0.3.16.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -41,6 +41,8 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
 * 3.11.0 (Dirección, 2026-11-07): con el parámetro ``clasificacion_empaque`` = 1, el cierre de la orden en kg ya no registra ni
   cierra la orden en metros: sus rollos finales pasan a ella y se registran al cerrar la orden en metros, con la calidad,
   el peso y los metros definitivos de Empaque si los hay (A3.2). Apagado (por defecto) todo funciona como en 3.10.0.
+* 3.16.0 (Dirección, 2026-11-08, A3.5): se retira el esquema de clasificación anterior (asistente ``rollo.clasificacion.wizard``,
+  ``production_b_id``, etiqueta final de la bitácora) y el interruptor ``clasificacion_empaque``: Empaque siempre activo.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -65,7 +67,6 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'views/res_config_settings_views.xml',
         'views/hr_employee_views.xml',
         'wizard/rollo_pesaje_rama_wizard_views.xml',
-        'wizard/rollo_clasificacion_wizard_views.xml',
         'wizard/rollo_inspeccion_wizard_views.xml',
         'wizard/rollo_desperdicio_rama_wizard_views.xml',
         'wizard/rollo_inspeccion_estacion_wizard_views.xml',

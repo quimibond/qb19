@@ -77,6 +77,15 @@ class TestInspeccionEstacion(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.crudo, orden_kg.location_src_id, planeado)
         orden_kg.action_assign()
 
+    def _cerrar_bano(self, orden_kg, usuario=None):
+        """Cierra el baño como en planta (3.16.0, Empaque siempre activo): cierra la orden en kg, que pasa sus rollos a la
+        orden en metros; Empaque confirma lo que Inspección clasificó y la orden en metros se registra al cerrarse."""
+        (orden_kg.with_user(usuario) if usuario else orden_kg).button_mark_done()
+        for orden_m in orden_kg.rollo_final_kg_ids.production_m_id.filtered(
+                lambda o: o.state not in ('done', 'cancel') and o._insp_orden_m_en_empaque()):
+            self._empaque_confirma_todos(orden_m)
+            orden_m.button_mark_done()
+
     def _bano(self, rollos_kg=(50.0,), en_kg=False, con_crudo=True):
         """Orden en metros (2,000 m) y la orden en kg que la abastece, ligadas como el MTO, con rollos pesados en Rama."""
         orden_m = self.env['mrp.production']
@@ -138,7 +147,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertIn('METROS: 585.00', final.zpl_etiqueta)
         self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
         self.assertEqual(final.estado, 'inspeccionado')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual((orden_kg.state, orden_m.state), ('done', 'done'))
         self.assertEqual(final.estado, 'registrado')
         self.assertAlmostEqual(orden_m.qty_produced, 585.0)
@@ -154,7 +163,7 @@ class TestInspeccionEstacion(TransactionCase):
         wiz = self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
         self.assertAlmostEqual(wiz.kg_ya_cortados, 25.0)
         self.assertAlmostEqual(wiz.merma_kg, 40.0 - 25.0 - 11.9)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 250.0)
         segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
         self.assertEqual(segunda.product_id, self.prod_m)
@@ -168,7 +177,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos[0], 41.0, 460.0, 'FE')
         self._inspeccionar(orden_kg, wo, rollos[1], 30.5, 340.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos[1], 1.5 + 0.8, 5.0, 'DESP')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE']), 460.0)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 340.0)
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 0.8)
@@ -182,7 +191,7 @@ class TestInspeccionEstacion(TransactionCase):
         _orden_m2, orden_kg2, wo2, rollos2 = self._bano((10.0,))
         with self.assertRaisesRegex(UserError, 'mismo baño'):
             self._inspeccionar(orden_kg2, wo2, rollos2 | rollos[:1], 20.0, 200.0)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
         self.assertAlmostEqual(consumo.quantity, 21.0, msg="Los dos rollos de Rama se consumen")
 
@@ -201,7 +210,7 @@ class TestInspeccionEstacion(TransactionCase):
             orden_kg.button_mark_done()
         self._inspeccionar(orden_kg, wo, rollos[1], 21.3, 228.0)
         self.assertTrue(orden_kg.inspeccion_completa_sin_cerrar)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_m.state, 'done')
         self.assertFalse(orden_kg.inspeccion_completa_sin_cerrar)
 
@@ -226,12 +235,14 @@ class TestInspeccionEstacion(TransactionCase):
         self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.ubicacion_segunda', 'ZZ951 NO EXISTE')
         # 3.3.0: assertRaises (no assertRaisesRegex) abre un savepoint y lo revierte, como la transacción de la pantalla;
         # assertRaisesRegex de unittest no revierte nada y la prueba fallaba aunque el cierre sí es atómico.
+        orden_kg.button_mark_done()  # 3.16.0: el registro ocurre al cerrar la orden en metros, tras Empaque
+        self._empaque_confirma_todos(orden_m)
         with self.assertRaises(UserError) as error:
-            orden_kg.button_mark_done()
+            orden_m.button_mark_done()
         self.assertIn('No existe la ubicación', str(error.exception))
         self.env.invalidate_all()
-        self.assertNotEqual(orden_kg.state, 'done')
         self.assertNotEqual(orden_m.state, 'done')
+        self.assertEqual(set(orden_kg.rollo_final_kg_ids.mapped('estado')), {'clasificado'})
 
     def test_12_no_cortar_y_juntar_a_la_vez(self):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
@@ -248,7 +259,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos[1], 10.5, 110.0, 'SEGUNDA')
         primero = orden_kg.rollo_final_kg_ids.sorted('secuencia')[:1]
         self.assertEqual(primero.name, '%s-0001' % orden_kg.numero_bano)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(orden_kg.qty_produced, 39.5 + 19.0, msg="La orden en kg cierra con el peso real de PQ y FE")
         self.assertAlmostEqual(self._cantidad(self.prod_kg, self.ubic['PQ'], primero.name), 39.5)
@@ -262,7 +273,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
         self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertEqual(orden_m.state, 'cancel')
         finales = orden_kg.rollo_final_kg_ids
@@ -308,12 +319,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_15_dos_banos_una_orden_en_metros(self):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
         self._inspeccionar(kg_a, wo_a, rollos_a, 40.6, 460.0)
-        # 3.5.0: cada baño tiene su número y su serie de lotes, aunque abastezcan la misma orden en metros.
-        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
-        self.assertNotEqual(kg_a.numero_bano, kg_b.numero_bano)
-        self.assertEqual(kg_b.rollo_final_kg_ids.name, '%s-0001' % kg_b.numero_bano)
-
-        kg_a.button_mark_done()
+        self._cerrar_bano(kg_a)
         self.assertEqual(kg_a.state, 'done')
         self.assertEqual(orden_m.state, 'done', "El primer baño cierra su parte de la orden en metros")
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
@@ -324,7 +330,11 @@ class TestInspeccionEstacion(TransactionCase):
                                msg="El pendiente es lo planeado del segundo baño")
         self.assertIn(kg_b, pendiente._ordenes_previas(), "El segundo baño abastece al pendiente")
 
-        kg_b.button_mark_done()
+        # 3.5.0: cada baño tiene su número y su serie de lotes, aunque abastezcan la misma orden en metros.
+        self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
+        self.assertNotEqual(kg_a.numero_bano, kg_b.numero_bano)
+        self.assertEqual(kg_b.rollo_final_kg_ids.name, '%s-0001' % kg_b.numero_bano)
+        self._cerrar_bano(kg_b)
         self.assertEqual(kg_b.state, 'done', "El segundo baño ya puede cerrar")
         self.assertEqual(pendiente.state, 'done')
         self.assertAlmostEqual(pendiente.qty_produced, 455.0)
@@ -338,12 +348,12 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
         self._inspeccionar(kg_a, wo_a, rollos_a, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(kg_a, wo_a, rollos_a, 9.0, 80.0, 'DESP')
-        kg_a.button_mark_done()
+        self._cerrar_bano(kg_a)
         self.assertEqual(kg_a.state, 'done')
         self.assertNotEqual(orden_m.state, 'cancel', "El otro baño la sigue abasteciendo")
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 36.5)
         self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
-        kg_b.button_mark_done()
+        self._cerrar_bano(kg_b)
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 455.0)
 
@@ -359,7 +369,7 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaisesRegex(UserError, 'sin inspeccionar'):
             orden_kg.button_mark_done()
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'FE')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_m.state, 'done')
         with self.assertRaisesRegex(UserError, 'registrado'):
             orden_kg.rollo_final_kg_ids[:1].action_anular()
@@ -425,7 +435,7 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaisesRegex(UserError, 'mínimo'):
             orden_kg.button_mark_done()
         self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.cierre_minimo_pct', '')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertTrue(orden_kg.message_ids.filtered(lambda m: 'kg planeados' in (m.body or '')))
 
@@ -569,14 +579,14 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
         self._inspeccionar(kg_a, wo_a, rollos_a, 30.6, 345.0, 'PQ', termina=False)
         self._inspeccionar(kg_a, wo_a, rollos_a, 9.9, 100.0, 'SEGUNDA')
-        kg_a.button_mark_done()
+        self._cerrar_bano(kg_a)
         self.assertEqual(orden_m.state, 'done')
         pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
         saldos = self.env['mrp.rollo.final']._productos_saldo()
         movs = pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos and m.state not in ('done', 'cancel'))
         self.assertFalse(movs.move_line_ids, "El pendiente no hereda líneas de saldo")
         self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
-        kg_b.button_mark_done()
+        self._cerrar_bano(kg_b)
         self.assertEqual(kg_b.state, 'done')
         self.assertEqual(pendiente.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 800.0)
@@ -600,7 +610,7 @@ class TestInspeccionEstacion(TransactionCase):
         antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
         self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertEqual(orden_m.state, 'cancel')
         nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
@@ -621,7 +631,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         orden_s = orden_kg.rollo_final_kg_ids.production_saldo_id
         self.assertEqual(orden_s.state, 'done')
@@ -657,7 +667,7 @@ class TestInspeccionEstacion(TransactionCase):
         stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
         self.env['stock.quant']._update_available_quantity(self.crudo, stock, 500.0)
         orden_kg.action_assign()
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertEqual(orden_m.state, 'done')
         # Con el parámetro, además pide un porcentaje del crudo planeado.
@@ -689,18 +699,18 @@ class TestInspeccionEstacion(TransactionCase):
         segunda = kg_a.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
         with self.assertRaises(UserError):
             segunda.with_user(operador).action_anular()
-        kg_a.with_user(operador).button_mark_done()
+        self._cerrar_bano(kg_a, operador)
         self.assertEqual(kg_a.state, 'done')
         Wizard.create(dict(base, production_id=kg_b.id, workorder_id=wo_b.id, rollo_codigos=rollos_b.name,
                            kg_bruto=40.5, metros=455.0, clasificacion='PQ', termina_rollo=True)).action_confirmar()
-        kg_b.with_user(operador).button_mark_done()
+        self._cerrar_bano(kg_b, operador)
         self.assertEqual(kg_b.state, 'done')
         self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
         # Baño de solo saldos (orden de saldos) también con el operador.
         orden_m2, orden_kg2, wo2, rollos2 = self._bano((40.0,))
         Wizard.create(dict(base, production_id=orden_kg2.id, workorder_id=wo2.id, rollo_codigos=rollos2.name,
                            kg_bruto=40.5, metros=400.0, clasificacion='DESP', termina_rollo=True)).action_confirmar()
-        orden_kg2.with_user(operador).button_mark_done()
+        self._cerrar_bano(orden_kg2, operador)
         self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
 
     def test_29_quimico_faltante_avisa_y_no_bloquea(self):
@@ -715,7 +725,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         orden_kg.action_assign()
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done', "El faltante de químico no detiene el cierre")
         self.assertEqual(orden_m.state, 'done')
         consumo = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico and m.state == 'done')
@@ -736,7 +746,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         orden_kg.action_assign()
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertFalse(orden_kg.message_ids.filtered(lambda m: 'Faltante de componentes' in (m.subject or '')))
 
@@ -752,7 +762,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m.es_desarrollo = True
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_m.state, 'done')
         pq = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'PQ')
         self.assertAlmostEqual(self._cantidad(self.prod_m, desarrollos, pq.name), 250.0)
@@ -808,7 +818,7 @@ class TestInspeccionEstacion(TransactionCase):
             'location_id': movimiento.location_id.id, 'location_dest_id': movimiento.location_dest_id.id})
         self.assertTrue(movimiento.move_line_ids.filtered(lambda ml: not ml.lot_id))
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done', "La línea sin lote no detiene el cierre")
         hechos = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == quimico and m.state == 'done')
         self.assertAlmostEqual(sum(hechos.mapped('quantity')), 2.0, delta=0.01, msg="Solo se consume lo del lote")
@@ -1107,13 +1117,13 @@ class TestInspeccionEstacion(TransactionCase):
         antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
         # El primer baño rinde mucho (700 m con 40 kg): al pendiente le toca menos demanda de la que pesará el segundo.
         self._inspeccionar(kg_a, wo_a, rollos_a, 41.5, 700.0)
-        kg_a.button_mark_done()
+        self._cerrar_bano(kg_a)
         pendiente = orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
         self.assertEqual(len(pendiente), 1)
         self.assertLess(pendiente._clasif_move_a().product_uom_qty, 90.0, "El pendiente quedó con menos kg de los pesados")
         self._inspeccionar(kg_b, wo_b, rollos_b[:1], 45.5, 600.0)
         self._inspeccionar(kg_b, wo_b, rollos_b[1:], 45.5, 600.0)
-        kg_b.button_mark_done()
+        self._cerrar_bano(kg_b)
         self.assertEqual(kg_b.state, 'done')
         self.assertEqual(pendiente.state, 'done')
         self.assertAlmostEqual(pendiente.qty_produced, 1200.0)
@@ -1129,7 +1139,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
         desp = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
         self.assertEqual(desp.metros, 0.0)
-        orden_kg.button_mark_done()
+        self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)
 
@@ -1278,9 +1288,6 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(rollo.reetiquetado, "Empaque cambió la calidad: hay que reimprimir la etiqueta final")
 
     # ------------------------------------------------------------------ 3.11.0: Clasificación final en Empaque
-    def _empaque(self, valor='1'):
-        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.clasificacion_empaque', valor)
-
     def _clasificar_en_empaque(self, orden_m, rollo, calidad=None, metros=None, motivo=None, pesar=False,
                                kg_bruto=0.0, defectos=True):
         """Estación de Empaque (3.12.0): el rollo se escanea por su lote y se confirma o se cambia."""
@@ -1308,7 +1315,6 @@ class TestInspeccionEstacion(TransactionCase):
     def test_54_empaque_activo_el_cierre_de_kg_no_registra_la_orden_en_metros(self):
         """A3.2: con el parámetro en 1 el cierre de la orden en kg pasa los rollos a la orden en metros sin registrarlos;
         la orden en metros los registra al cerrar, con la calidad, el peso y los metros de registro."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
@@ -1331,7 +1337,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_55_empaque_cambia_calidad_y_metros_antes_de_cerrar_la_orden_en_metros(self):
         """A3.2: Empaque reclasifica un rollo de primera a FE con otros metros; la orden en metros lo registra en 15."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
@@ -1345,7 +1350,6 @@ class TestInspeccionEstacion(TransactionCase):
     def test_56_empaque_rescata_un_bano_que_inspeccion_dejo_en_saldos(self):
         """A3.2: Inspección lo deja todo en Segunda, pero Empaque lo confirma como primera: la orden en metros no se
         cancela, se registra la tela."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
         self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA')
         final = orden_kg.rollo_final_kg_ids
@@ -1359,7 +1363,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_57_empaque_activo_sin_primera_ni_fe_saca_los_saldos_al_cerrar_la_orden_en_metros(self):
         """A3.2: si Empaque confirma que todo es desperdicio, al cerrar la orden en metros se cancela y sale el desperdicio."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
         self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
@@ -1374,7 +1377,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_58_empaque_peso_de_empaque_manda_en_segunda(self):
         """A3.2 (3.15.0): la Segunda sale en metros; el peso de Empaque, si pesó, queda como referencia (kg_registro)."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
@@ -1389,7 +1391,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_59_orden_en_metros_no_cierra_con_el_bano_abierto(self):
         """A3.2: con Empaque activo, la orden en metros no registra mientras la orden en kg sigue abierta."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         # Un rollo ya ligado a la orden en metros sin que el baño haya cerrado (caso de datos mal capturados).
@@ -1399,7 +1400,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     # ------------------------------------------------------------------ 3.12.0: estación de Empaque (A3.3)
     def _bano_en_empaque(self, kg=50.6, metros=585.0, calidad='PQ'):
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, kg, metros, calidad)
         orden_kg.button_mark_done()
@@ -1469,13 +1469,13 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaises(UserError):
             registrado.action_confirmar()
 
-    def test_64_boton_de_la_orden_y_parametro_apagado(self):
-        """A3.3: el botón abre la estación solo con el parámetro encendido y rollos por clasificar."""
+    def test_64_boton_de_la_orden_con_rollos_por_clasificar(self):
+        """A3.3: el botón abre la estación solo con rollos por clasificar (sin interruptor desde 3.16.0)."""
         orden_m, orden_kg, final = self._bano_en_empaque()
         accion = orden_m.action_clasificar_empaque()
         self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
         self.assertEqual(accion['context']['default_production_id'], orden_m.id)
-        self._empaque('0')
+        orden_m.action_cancel()
         self.assertFalse(orden_m.clasificacion_empaque_pendiente)
         with self.assertRaises(UserError):
             orden_m.action_clasificar_empaque()
@@ -1489,7 +1489,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_65_desperdicio_de_empaque_se_suma_al_de_inspeccion(self):
         """A3.3b: el peso de Empaque se suma al saldo Desperdicio de los rollos que Inspección clasificó como tal."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 30.6, 320.0, 'PQ', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 40.0, 'DESP')
@@ -1516,7 +1515,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_67_desperdicio_de_empaque_con_un_bano_de_puros_saldos(self):
         """A3.3b: si todo el baño es desperdicio, la orden en metros se cancela y el desperdicio sale en la orden de saldos."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
         self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP')
         orden_kg.button_mark_done()
@@ -1536,10 +1534,6 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(orden_m.desperdicio_empaque_kg, 2.4)
         self.assertIn('antes 2.000', ' '.join(orden_m.message_ids.mapped('body')))
         self.assertTrue(orden_m.action_pesar_desperdicio_empaque())
-        self._empaque('0')
-        with self.assertRaises(UserError):
-            self._pesar_desperdicio_empaque(orden_m, 1.0)
-        self.assertAlmostEqual(orden_m._insp_extra_desperdicio(), 0.0, msg="Apagado el parámetro no se registra")
 
     # ------------------------------------------------------------------ 3.14.0: operación CLASIFICACION (A3.4b)
     def _con_operacion_clasificacion(self):
@@ -1552,7 +1546,6 @@ class TestInspeccionEstacion(TransactionCase):
     def test_69_botones_de_empaque_en_la_operacion_de_la_orden_en_metros(self):
         """A3.4b: con la operación CLASIFICACION en la orden en metros, CLASIFICAR y PESAR DESPERDICIO abren las
         estaciones de Empaque desde la operación, solo mientras hay rollos por clasificar."""
-        self._empaque()
         self._con_operacion_clasificacion()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         wo_c = orden_m.workorder_ids
@@ -1574,7 +1567,6 @@ class TestInspeccionEstacion(TransactionCase):
     def test_70_la_operacion_no_termina_sin_clasificar_y_la_orden_cierra(self):
         """A3.4b: la operación CLASIFICACION no termina con rollos por clasificar; clasificados, la orden en metros
         cierra con su operación y registra la tela."""
-        self._empaque()
         self._con_operacion_clasificacion()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
@@ -1593,17 +1585,6 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(wo_c.empaque_pendiente)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
 
-    def test_71_sin_el_flujo_de_empaque_la_operacion_usa_el_asistente_anterior(self):
-        """A3.4b: con el interruptor apagado, CLASIFICAR sigue abriendo el asistente de siempre y no hay estación."""
-        self._empaque('0')
-        self._con_operacion_clasificacion()
-        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
-        wo_c = orden_m.workorder_ids
-        self.assertFalse(wo_c.empaque_pendiente)
-        wo_c.state = 'ready'
-        accion = wo_c.action_clasificar_rollo()
-        self.assertEqual(accion['res_model'], 'rollo.clasificacion.wizard')
-
     def test_72_orden_en_metros_cancelada_registra_en_una_nueva(self):
         """3.14.1 (revisión de código, 2026-11-06): si la orden en metros se cancela después de inspeccionar (pedido
         cancelado), el baño cierra y registra la tela en una orden en metros nueva, en metros; antes no cerraba nunca."""
@@ -1618,6 +1599,9 @@ class TestInspeccionEstacion(TransactionCase):
         nueva = final.production_m_id
         self.assertTrue(nueva and nueva != orden_m)
         self.assertEqual(nueva.product_id, self.prod_m)
+        self.assertEqual(final.estado, 'inspeccionado', "3.16.0: la orden nueva espera a Empaque")
+        self._empaque_confirma_todos(nueva)
+        nueva.button_mark_done()
         self.assertEqual(nueva.state, 'done')
         self.assertEqual(final.estado, 'registrado')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
@@ -1658,6 +1642,8 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
+        self._empaque_confirma_todos(orden_m)
+        orden_m.button_mark_done()
         self.assertEqual(orden_m.state, 'done', "La Segunda es tela en metros: la orden en metros no se cancela")
         segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
         self.assertEqual(segunda.product_id, self.prod_m)
@@ -1668,7 +1654,6 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_76_empaque_cambia_a_segunda_y_entra_en_metros_a_16(self):
         """3.15.0: Inspección clasifica PQ y Empaque lo cambia a Segunda: al cerrar la orden en metros entra en metros a 16."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         orden_kg.button_mark_done()
@@ -1682,7 +1667,6 @@ class TestInspeccionEstacion(TransactionCase):
     def test_76b_etiqueta_del_desperdicio_de_empaque(self):
         """3.15.0 (José 2026-11-08): la etiqueta del desperdicio lleva fecha, producto, nombre, lote, cantidad con su unidad
         y el código de barras del lote; sale al pesar."""
-        self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         orden_kg.button_mark_done()

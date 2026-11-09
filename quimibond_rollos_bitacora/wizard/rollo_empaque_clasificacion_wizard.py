@@ -130,8 +130,6 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
         orden = self.production_id
         if orden.state in ('done', 'cancel'):
             raise UserError(_('La orden %s ya está cerrada o cancelada: no se clasifican rollos.', orden.name))
-        if not orden._insp_empaque_activo():
-            raise UserError(_('La Clasificación final en Empaque no está activa.'))
         if self.codigo_error:
             raise UserError(_('El rollo %(c)s no está en %(o)s. Revisa que sea de un baño que ya cerró y que esa orden '
                               'en metros lo haya recibido.', c=self.codigo_error, o=orden.name))

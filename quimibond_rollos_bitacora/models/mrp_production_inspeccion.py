@@ -35,7 +35,6 @@ PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 # 3.11.0 (A3.2): con el parámetro en «1», el cierre de la orden en kg ya no registra ni cierra la orden en metros: los rollos
 # finales pasan a ella clasificados por Inspección (preliminar) y se registran al cerrar la orden en metros, ya con la
 # clasificación definitiva de Empaque. Sin el parámetro (por defecto) todo funciona como en 3.10.0.
-PARAM_CLASIFICACION_EMPAQUE = 'quimibond_rollos_bitacora.clasificacion_empaque'
 # Rollos finales que aún no se registran en inventario: recién inspeccionados o ya clasificados en Empaque.
 ESTADOS_SIN_REGISTRAR = ('inspeccionado', 'clasificado')
 
@@ -174,7 +173,9 @@ class MrpProductionInspeccion(models.Model):
             modo = orden._insp_modo()
             if not modo:
                 continue
-            if modo in ('metros', 'saldos') and orden._insp_difiere_a_empaque():
+            # Con orden en metros (aunque se haya cancelado: 3.14.1 crea otra), los rollos pasan a Empaque y la orden en
+            # metros los registra al cerrar; sin ella (baño para venta en kg) el baño se registra solo.
+            if modo in ('metros', 'saldos') and orden.rollo_final_kg_ids.production_m_id:
                 modo = 'empaque'
             orden._validar_rollos_inspeccionados()
             avisos[orden.id] = orden._insp_aviso_cierre(orden.product_qty)
@@ -199,25 +200,16 @@ class MrpProductionInspeccion(models.Model):
         return res
 
     # ------------------------------------------------------------ Clasificación final en Empaque (3.11.0, A3.2)
-    @api.model
-    def _insp_empaque_activo(self):
-        """El parámetro ``clasificacion_empaque`` en «1» enciende el flujo con Empaque; apagado (por defecto), el cierre de
-        la orden en kg registra y cierra la orden en metros como siempre."""
-        return (self.env['ir.config_parameter'].sudo().get_param(PARAM_CLASIFICACION_EMPAQUE) or '').strip() == '1'
-
-    def _insp_difiere_a_empaque(self):
-        """Orden en kg: ¿sus rollos finales pasan a la orden en metros sin registrarse? Solo si el flujo con Empaque está
-        activo y hay orden en metros abierta; un baño para venta en kg (sin orden en metros) cierra como siempre."""
-        self.ensure_one()
-        return self._insp_empaque_activo() and bool(self._insp_orden_metros())
-
     def _insp_pasar_a_orden_m(self):
         """Cierre de la orden en kg con el flujo de Empaque: los rollos finales (clasificados por Inspección) quedan ligados a
         la orden en metros, sin movimientos de inventario; ahí Empaque los confirma o cambia y la orden los registra al
         cerrar."""
         self.ensure_one()
         finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
-        orden_m = self._insp_orden_metros()
+        orden_m = self._insp_orden_metros() or self._insp_orden_metros_reemplazo(finales)
+        if not orden_m:
+            raise UserError(_('No se puede cerrar el baño %s: no hay orden en metros abierta a la que pasar sus rollos.',
+                              self.name))
         if orden_m.state == 'draft':
             orden_m.action_confirm()
         finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
@@ -248,7 +240,7 @@ class MrpProductionInspeccion(models.Model):
         """Kg de desperdicio que Empaque pesó en esta orden en metros: se suman al saldo Desperdicio de los rollos que
         Inspección clasificó como tal (mismo producto, ubicación 17), al registrar."""
         self.ensure_one()
-        return (self.desperdicio_empaque_kg or 0.0) if self._insp_empaque_activo() else 0.0
+        return self.desperdicio_empaque_kg or 0.0
 
     def _zpl_etiqueta_desperdicio_empaque(self):
         """Etiqueta del desperdicio pesado en Empaque (3.15.0, José 2026-11-08): fecha, producto (código), nombre, número de
@@ -295,9 +287,6 @@ class MrpProductionInspeccion(models.Model):
     def action_clasificar_empaque(self):
         """Abre la estación de Clasificación final (Empaque) de esta orden en metros (3.12.0, A3.3)."""
         self.ensure_one()
-        if not self._insp_empaque_activo():
-            raise UserError(_('La Clasificación final en Empaque no está activa (parámetro '
-                              '«quimibond_rollos_bitacora.clasificacion_empaque»).'))
         if self.state in ('done', 'cancel'):
             raise UserError(_('La orden %s ya está cerrada o cancelada.', self.name))
         if not self._insp_orden_m_en_empaque():
@@ -317,7 +306,7 @@ class MrpProductionInspeccion(models.Model):
     def _insp_orden_m_en_empaque(self):
         """Orden en metros abierta con rollos finales que le pasó un baño y todavía no se registran."""
         self.ensure_one()
-        if self.state in ('done', 'cancel') or not self._insp_empaque_activo():
+        if self.state in ('done', 'cancel'):
             return False
         return bool(self.rollo_final_m_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR))
 

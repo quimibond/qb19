@@ -33,8 +33,6 @@
                             invisible="not zpl_etiqueta_rama"/>
                     <button name="action_imprimir_etiqueta_preliminar" type="object"
                             string="Reimprimir etiqueta preliminar" invisible="not zpl_etiqueta_preliminar"/>
-                    <button name="action_imprimir_etiqueta_final" type="object"
-                            string="Reimprimir etiqueta final" invisible="not zpl_etiqueta_final"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -109,12 +107,10 @@
                         <page string="Clasificación final" name="clasificacion_final">
                             <group>
                                 <group string="Clasificación">
-                                    <field name="production_b_id"/>
                                     <field name="workcenter_final_id"/>
                                     <field name="operador_final"/>
                                     <field name="siglas_operador_final"/>
                                     <field name="fecha_registro_final"/>
-                                    <field name="zpl_etiqueta_final" invisible="1"/>
                                     <field name="qc_laboratorio_aplica"/>
                                     <field name="clasificacion_final"/>
                                     <field name="reetiquetado"/>
