@@ -21,6 +21,14 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pedidos confirmados no se tocan (19.0.3.15.2, 2026-11-09)
+
+«Crear o actualizar cotizaciones» daba «Está prohibido modificar … en una orden bloqueada:
+Cantidad»: producción bloquea el pedido al confirmarlo y la propuesta le cambiaba la cantidad.
+Ahora un pedido confirmado **no se modifica**: si el pronóstico sube, la diferencia va a una
+cotización de la misma OC y semana; si baja y alcanza con quitar de cotizaciones, se quita de ahí;
+si hay que bajar un pedido confirmado, queda **por autorizar**.
+
 ## Aplicar un release reemplaza la misma tela en otro código (19.0.3.15.1, 2026-11-09)
 
 La primera aplicación real (Shawmut W45, 9-nov) **duplicó** 62 semanas: el forecast de Excel

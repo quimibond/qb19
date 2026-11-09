@@ -99,3 +99,34 @@ class TestOrderProposal(TransactionCase):
         self._fl(self.week, 10.0, '123')
         proposal = self._propose()
         self.assertEqual(proposal.line_ids.action, 'no_entra')
+
+    def test_05_pedido_confirmado_no_se_toca(self):
+        """3.15.2: producción bloquea el pedido al confirmar; si el pronóstico sube, la diferencia va a
+        una cotización de la misma OC y semana."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 1})
+        fl = self._fl(self.week, 100.0, '555')
+        action = self._propose().action_apply()
+        order = self.env['sale.order'].browse(action['domain'][0][2])
+        order.action_confirm()
+        if 'locked' in order._fields:
+            order.locked = True
+        fl.qty_origen = 160.0
+        again = self._propose()
+        self.assertEqual(again.line_ids.action, 'aumenta')
+        action = again.action_apply()
+        quote = self.env['sale.order'].browse(action['domain'][0][2])
+        self.assertNotEqual(quote, order)
+        self.assertEqual(quote.state, 'draft')
+        self.assertEqual(quote.client_order_ref, '555')
+        self.assertEqual(quote.order_line.product_uom_qty, 60.0, "Solo la diferencia")
+        self.assertEqual(order.order_line.product_uom_qty, 100.0, "El confirmado no cambia")
+        # Baja que alcanza con la cotización: se aplica sobre ella.
+        fl.qty_origen = 120.0
+        third = self._propose()
+        self.assertEqual((third.line_ids.action, third.line_ids.apply), ('baja', True))
+        third.action_apply()
+        self.assertEqual(quote.order_line.product_uom_qty, 20.0)
+        # Baja por debajo de lo confirmado: por autorizar.
+        fl.qty_origen = 80.0
+        fourth = self._propose()
+        self.assertEqual(fourth.line_ids.action, 'por_autorizar')
