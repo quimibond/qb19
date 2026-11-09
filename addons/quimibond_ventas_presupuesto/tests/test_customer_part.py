@@ -3,6 +3,7 @@
 conversión de unidades. Partes y códigos inventados."""
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
@@ -109,7 +110,7 @@ class TestCustomerPart(TransactionCase):
     def test_06_unique_per_customer_and_plant(self):
         self._part()
         self._part(ship_to_id=self.plant.id)  # otra planta: se vale
-        with self.assertRaises(Exception), self.cr.savepoint():
+        with self.assertRaises(Exception), mute_logger('odoo.sql_db'), self.cr.savepoint():
             self._part()
 
     def test_07_invoice_note_links_part(self):

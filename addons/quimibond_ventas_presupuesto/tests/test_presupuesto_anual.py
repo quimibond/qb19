@@ -470,3 +470,45 @@ class TestPresupuestoAnual(TransactionCase):
             active_model='sgi.sales.budget', active_id=budget.id).create({})
         self.assertEqual(wizard.budget_id, budget)
         self.assertFalse(wizard.line_ids)  # ya no queda ninguno sin cliente
+
+    def test_22_propuesta_del_anio_siguiente(self):
+        """3.7.0: la propuesta sale de lo vendido: Industrial por cliente con crecimiento,
+        Confección sin cliente; el precio, el real del periodo base si la lista no lo tiene."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        otro = self.env['res.partner'].create({'name': 'Maquila propuesta', 'is_company': True})
+        saldo = self.env['product.product'].create({
+            'name': 'SALDO propuesta', 'default_code': 'SALDO-P', 'type': 'consu', 'uom_id': self.uom_m.id})
+
+        def invoice(partner, team, when, lines):
+            move = self.env['account.move'].create({
+                'move_type': 'out_invoice', 'partner_id': partner.id, 'invoice_date': when,
+                'team_id': team.id,
+                'invoice_line_ids': [(0, 0, {
+                    'product_id': product.id, 'quantity': qty, 'price_unit': price,
+                    'account_id': income.id, 'tax_ids': [(6, 0, [])]}) for product, qty, price in lines]})
+            move.action_post()
+
+        invoice(self.client, self.team_ind, date(2016, 3, 10), [(self.product, 100.0, 2.0)])
+        invoice(otro, self.team_conf, date(2016, 5, 10), [(self.product, 50.0, 3.0), (saldo, 10.0, 1.0)])
+        budget_id = self.Budget.action_qb_build_proposal(
+            2017, growth={'industrial': 10.0}, base='anio', include_dev=False)
+        budget = self.Budget.browse(budget_id)
+        self.assertEqual(budget.year, 2017)
+        self.assertEqual(budget.state, 'borrador')
+        self.assertEqual(len(budget.line_ids), 2)  # el saldo no entra
+        ind = budget.line_ids.filtered(lambda l: l.mercado == 'industrial')
+        conf = budget.line_ids.filtered(lambda l: l.mercado == 'confeccion')
+        self.assertEqual(ind.partner_id, self.client)
+        self.assertEqual(ind.date, date(2017, 3, 1))
+        self.assertAlmostEqual(ind.qty_budget, 110.0, places=2)
+        self.assertAlmostEqual(ind.price_input, 2.0, places=4)
+        self.assertEqual(ind.price_origen, 'historico')
+        self.assertFalse(conf.partner_id)
+        self.assertEqual(conf.date, date(2017, 5, 1))
+        self.assertAlmostEqual(conf.qty_budget, 50.0, places=2)
+        self.assertAlmostEqual(conf.price_input, 3.0, places=4)
+        self.assertEqual(budget.no_client_count, 0)
+        # Con renglones, no se vuelve a armar encima.
+        with self.assertRaises(UserError):
+            self.Budget.action_qb_build_proposal(2017, base='anio')

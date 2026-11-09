@@ -77,7 +77,9 @@ def default_mercado(env, partner):
     confección (es el único mercado que se presupuesta sin cliente); si no, industrial."""
     if not partner:
         return 'confeccion'
-    return team_mercado(env, partner.commercial_partner_id.team_id or partner.team_id) or 'industrial'
+    # 3.14.1: en Odoo 19 res.partner no tiene team_id; el equipo sale de pedidos, facturas o vendedor.
+    from .qb_forecast import team_of_partner  # import local: qb_forecast va después
+    return team_mercado(env, team_of_partner(partner)) or 'industrial'
 
 
 def _convert_qty(qty, from_uom, to_uom):
@@ -190,7 +192,7 @@ class SgiSalesBudget(models.Model):
     amount_sales_to_date = fields.Monetary(
         string="Venta al corte", compute='_compute_fulfillment',
         help="Venta neta de los equipos de los mercados (cuentas de ventas, la regla del VE-02) del "
-             "1 de enero al corte.")
+             "1 de enero al corte, sin saldos ni desperdicio.")
     fulfillment_pct = fields.Float(
         string="Cumplimiento al corte (%)", compute='_compute_fulfillment', digits=(16, 1),
         help="Venta al corte entre presupuesto al corte, por 100.")
@@ -321,9 +323,11 @@ class SgiSalesBudget(models.Model):
             budget.amount_by_mercado_text = " · ".join(parts)
 
     def _qb_company_net_invoiced(self, date_from, date_to):
-        """Venta neta de la compañía en el rango, con la misma regla que el VE-02."""
+        """Venta neta de la compañía en el rango, con la misma regla que el VE-02 (3.12.0: sin
+        saldos ni desperdicio)."""
         self.ensure_one()
-        indicator = self.env['sgi.indicator'].sudo().with_company(self.company_id)
+        indicator = self.env['sgi.indicator'].sudo().with_company(self.company_id).with_context(
+            qb_sin_saldos=True)
         return indicator._sgi_net_invoiced(date_from, date_to)
 
     def action_qb_update_base(self):
@@ -467,6 +471,9 @@ class SgiSalesBudget(models.Model):
             sold_budget_rate = defaultdict(float)
             company_ccy = budget.currency_id
             for aml in budget._qb_sales_lines(date_to=cutoff):
+                # 3.12.0: los saldos y el desperdicio no cuentan en el cumplimiento (como el VE-02).
+                if aml.product_id and self._qb_is_saldo(aml.product_id):
+                    continue
                 mercado = team_mercado(self.env, aml.move_id.team_id)
                 sold[mercado] -= aml.balance
                 factor = 0.0
@@ -955,7 +962,28 @@ class SgiSalesBudget(models.Model):
             for old in previous:
                 old.message_post(body="Reemplazado por %s al aprobarse." % budget.name)
             budget.sudo().state = 'aprobado'
+            budget.sudo()._qb_graduate_projects()
         return True
+
+    def _qb_graduate_projects(self):
+        """3.8.0 (diseño v3, 2.6.3): un proyecto comercial vigente de un año anterior que
+        este presupuesto pone en línea (mismo cliente y producto, fuera de Proyectos) pasa a
+        línea al aprobarse."""
+        self.ensure_one()
+        Project = self.env['qb.sales.project']
+        line_lines = self.line_ids.filtered(
+            lambda l: l.product_id and l.mercado not in PROYECTO_MERCADOS)
+        keys = {(l.partner_id.commercial_partner_id.id, l.product_id.id) for l in line_lines}
+        if not keys:
+            return
+        candidates = Project.search([
+            ('state', '=', 'vigente'), ('company_id', '=', self.company_id.id),
+            ('product_id', 'in', list({k[1] for k in keys})),
+            ('date_from', '<', fields.Date.to_date('%s-01-01' % self.year))])
+        for project in candidates:
+            if (project.partner_id.commercial_partner_id.id, project.product_id.id) in keys:
+                project.action_qb_graduate()
+                project.message_post(body="%s lo presupuesta en línea." % self.name)
 
     def action_set_borrador(self):
         self.write({'state': 'borrador'})
