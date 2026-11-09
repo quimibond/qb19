@@ -193,3 +193,33 @@ class TestSalesProject(TransactionCase):
         # Sin desarrollos: nada de él.
         other = self.Budget.browse(self.Budget.action_qb_build_proposal(2067, base='anio', include_dev=False))
         self.assertFalse(other.line_ids.filtered(lambda l: l.dev_project_id == dev))
+
+    def test_13_pronostico_y_demanda_marcan_el_articulo_en_desarrollo(self):
+        """3.10.0: el pronóstico y la Demanda por cliente dicen el estado de desarrollo del
+        artículo (del producto o, si no lo tiene, de su artículo)."""
+        tela = self.env['product.product'].create({
+            'name': 'Tela en desarrollo', 'default_code': 'WDESA160', 'type': 'consu',
+            'uom_id': self.uom_m.id, 'sgi_dev_state': 'desarrollo'})
+        tela_kg = self.env['product.product'].create({
+            'name': 'Tela en desarrollo kg', 'default_code': 'IWDESA160', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id, 'qb_articulo_id': tela.id})
+        Forecast = self.env['qb.forecast.line']
+        line = Forecast.create({'partner_id': self.client.id, 'product_id': tela.id,
+                                'week': date(2068, 3, 5), 'qty_origen': 100.0})
+        line_kg = Forecast.create({'partner_id': self.client.id, 'product_id': tela_kg.id,
+                                   'week': date(2068, 3, 5), 'qty_origen': 10.0})
+        self.assertEqual(line.dev_state, 'desarrollo')
+        self.assertEqual(line_kg.dev_state, 'desarrollo', "Sin estado propio: el de su artículo")
+        self.assertIn(line, Forecast.search([('dev_state', 'in', ('desarrollo', 'archivado'))]))
+        Demand = self.env['qb.demand.line']
+        Demand.action_qb_rebuild()
+        row = Demand.search([('forecast_line_id', '=', line.id)])
+        self.assertEqual(row.dev_state, 'desarrollo')
+        tela.product_tmpl_id.sgi_dev_state = 'pilotaje'
+        self.assertEqual(line.dev_state, 'pilotaje', "Cambia con el artículo")
+        self.assertEqual(line_kg.dev_state, 'pilotaje')
+        tela.product_tmpl_id.sgi_dev_state = 'liberado'
+        self.assertEqual(line.dev_state, 'liberado')
+        plain = Forecast.create({'partner_id': self.client.id, 'product_id': self.product.id,
+                                 'week': date(2068, 3, 5), 'qty_origen': 1.0})
+        self.assertFalse(plain.dev_state, "Producto de línea: sin marca")

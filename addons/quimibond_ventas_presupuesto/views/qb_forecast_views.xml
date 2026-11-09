@@ -7,12 +7,17 @@
         <field name="arch" type="xml">
             <list string="Pronóstico vigente" multi_edit="1" default_order="week, partner_id, product_id"
                   decoration-muted="zona == 'pasado'" decoration-info="zona == 'firme'"
-                  decoration-danger="not conv_ok">
+                  decoration-danger="not conv_ok"
+                  decoration-warning="dev_state in ('desarrollo', 'pilotaje', 'archivado')">
                 <field name="week"/>
                 <field name="partner_id"/>
                 <field name="plant" optional="show"/>
                 <field name="product_id"/>
                 <field name="articulo_id" optional="hide"/>
+                <field name="dev_state" optional="show" widget="badge"
+                       decoration-warning="dev_state == 'pilotaje'"
+                       decoration-danger="dev_state in ('desarrollo', 'archivado')"
+                       invisible="dev_state not in ('desarrollo', 'pilotaje', 'archivado')"/>
                 <field name="customer_part" optional="show"/>
                 <field name="qty_origen"/>
                 <field name="uom_origen"/>
@@ -39,6 +44,15 @@
         <field name="arch" type="xml">
             <form string="Semana del pronóstico">
                 <sheet>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="dev_state not in ('desarrollo', 'archivado')">
+                        El artículo está en desarrollo (o archivado): Planeación lo ve venir, pero el
+                        pedido no se confirma hasta que el cliente apruebe la muestra (pilotaje).
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="dev_state != 'pilotaje'">
+                        El artículo está en pilotaje: se vende con aviso; los tres primeros lotes del
+                        primer pedido son el pilotaje del desarrollo.
+                    </div>
                     <div class="alert alert-warning" role="alert" invisible="conv_ok or not product_id">
                         Falta el rendimiento o el ancho para pasar esta cantidad a la unidad de venta del
                         producto. Revise la ficha técnica del artículo.
@@ -50,6 +64,7 @@
                             <field name="plant"/>
                             <field name="product_id"/>
                             <field name="articulo_id"/>
+                            <field name="dev_state"/>
                             <field name="customer_part"/>
                             <field name="customer_part_id"/>
                             <field name="mercado"/>
@@ -145,6 +160,10 @@
                 <filter name="sin_pedido" string="Sin pedido" domain="[('qty_neta', '&gt;', 0)]"/>
                 <filter name="sin_conversion" string="Sin conversión" domain="[('conv_ok', '=', False)]"/>
                 <filter name="muestras" string="Muestras" domain="[('tag', 'ilike', 'muestra')]"/>
+                <filter name="en_desarrollo" string="Artículo en desarrollo"
+                        domain="[('dev_state', 'in', ('desarrollo', 'archivado'))]"/>
+                <filter name="en_pilotaje" string="Artículo en pilotaje"
+                        domain="[('dev_state', '=', 'pilotaje')]"/>
                 <separator/>
                 <filter name="origen_excel" string="Del forecast de Excel" domain="[('origen', '=', 'excel')]"/>
                 <filter name="origen_release" string="De release" domain="[('origen', '=', 'release')]"/>

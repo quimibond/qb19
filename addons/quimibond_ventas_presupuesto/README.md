@@ -21,6 +21,23 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.4. El **pronóstico vigente** y la **Demanda por cliente** traen el **Estado del
+artículo** (`dev_state`): el estado de desarrollo del producto (`sgi_dev_state` de Desarrollo de
+producto) o, si no lo tiene, el de su artículo (el código en kilos de un desarrollo nuevo puede
+no llevarlo).
+
+- **En desarrollo o archivado:** se puede pronosticar (Planeación lo ve venir), pero el pedido
+  no se confirma hasta pilotaje. Renglón en amarillo, etiqueta roja y aviso en la ficha.
+- **En pilotaje:** se vende con aviso (los tres primeros lotes del primer pedido son el
+  pilotaje). Etiqueta amarilla y aviso en la ficha.
+- **Liberado o sin estado:** de línea, sin marca.
+- Filtros «Artículo en desarrollo» y «Artículo en pilotaje» en los dos. En el pronóstico se
+  recalcula solo cuando cambia el estado del artículo; la Demanda lo toma al reconstruirse (la
+  migración la reconstruye una vez).
+- La propuesta de pedidos de la E3 no propondrá un artículo en desarrollo; eso va con la E3.
+
 ## Desarrollos en la propuesta del año (19.0.3.9.0, E2, 2026-11-09)
 
 Diseño v3, 2.11.3. «Armar propuesta del año» trae ahora, con **Traer desarrollos** (activo por
@@ -79,8 +96,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: la marca de artículo en desarrollo en
-el pronóstico, el real `qb.sales.actual` con los reportes (Faltantes: «proyecto perdido con
+Sigue en E2: el real `qb.sales.actual` con los reportes (Faltantes: «proyecto perdido con
 presupuesto»), el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
 de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
