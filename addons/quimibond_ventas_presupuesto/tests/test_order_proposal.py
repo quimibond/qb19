@@ -80,6 +80,12 @@ class TestOrderProposal(TransactionCase):
         with self.assertRaises(ValidationError):
             self.Rule.create({'partner_id': self.client.id, 'plant': 'Otra', 'po_mode': 'abierta'})
 
+    def _manager(self):
+        return self.env['res.users'].create({
+            'name': 'Admin ventas pedido', 'login': 'admin_ventas_pedido',
+            'group_ids': [(6, 0, [self.env.ref('sales_team.group_sale_manager').id,
+                                  self.env.ref('quimibond_sgi.group_sgi_user').id])]})
+
     def test_03_release_sin_oc_y_baja_confirmada(self):
         self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release_sin_oc', 'so_weeks': 1})
         self._fl(self.week, 40.0)
@@ -90,9 +96,12 @@ class TestOrderProposal(TransactionCase):
         order = self.env['sale.order'].browse(action['domain'][0][2])
         order.action_confirm()
         self.Forecast.search([('partner_id', '=', self.client.id), ('week', '=', self.week)]).qty_origen = 25.0
-        again = self._propose()
-        self.assertEqual(again.line_ids.action, 'por_autorizar')
-        self.assertFalse(again.line_ids.apply, "Una baja en un pedido confirmado no se aplica sola")
+        manager = self._manager()
+        again = self.env['qb.order.proposal'].with_user(manager).create({
+            'partner_ids': [(6, 0, self.client.ids)], 'date_from': self.week})
+        again.action_build()
+        self.assertEqual((again.line_ids.action, again.line_ids.adjust_confirmed), ('baja', True))
+        self.assertFalse(again.line_ids.apply, "Una baja en un pedido confirmado viene desmarcada")
 
     def test_04_sin_regla_o_manual_no_propone(self):
         self.Rule.create({'partner_id': self.client.id, 'po_mode': 'manual', 'so_weeks': 2})
@@ -100,33 +109,36 @@ class TestOrderProposal(TransactionCase):
         proposal = self._propose()
         self.assertEqual(proposal.line_ids.action, 'no_entra')
 
-    def test_05_pedido_confirmado_no_se_toca(self):
-        """3.15.2: producción bloquea el pedido al confirmar; si el pronóstico sube, la diferencia va a
-        una cotización de la misma OC y semana."""
+    def test_05_ajustar_pedido_confirmado_y_bloqueado(self):
+        """3.15.2 (opción B): el administrador de ventas ajusta el pedido confirmado y bloqueado como a
+        mano: se desbloquea, se cambia, se vuelve a bloquear y queda nota. Otro usuario: por autorizar."""
         self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 1})
         fl = self._fl(self.week, 100.0, '555')
         action = self._propose().action_apply()
         order = self.env['sale.order'].browse(action['domain'][0][2])
         order.action_confirm()
-        if 'locked' in order._fields:
-            order.locked = True
+        has_lock = 'locked' in order._fields
+        if has_lock:
+            order.action_lock()
         fl.qty_origen = 160.0
-        again = self._propose()
-        self.assertEqual(again.line_ids.action, 'aumenta')
-        action = again.action_apply()
-        quote = self.env['sale.order'].browse(action['domain'][0][2])
-        self.assertNotEqual(quote, order)
-        self.assertEqual(quote.state, 'draft')
-        self.assertEqual(quote.client_order_ref, '555')
-        self.assertEqual(quote.order_line.product_uom_qty, 60.0, "Solo la diferencia")
-        self.assertEqual(order.order_line.product_uom_qty, 100.0, "El confirmado no cambia")
-        # Baja que alcanza con la cotización: se aplica sobre ella.
-        fl.qty_origen = 120.0
-        third = self._propose()
-        self.assertEqual((third.line_ids.action, third.line_ids.apply), ('baja', True))
-        third.action_apply()
-        self.assertEqual(quote.order_line.product_uom_qty, 20.0)
-        # Baja por debajo de lo confirmado: por autorizar.
-        fl.qty_origen = 80.0
-        fourth = self._propose()
-        self.assertEqual(fourth.line_ids.action, 'por_autorizar')
+        manager = self._manager()
+        proposal = self.env['qb.order.proposal'].with_user(manager).create({
+            'partner_ids': [(6, 0, self.client.ids)], 'date_from': self.week})
+        proposal.action_build()
+        line = proposal.line_ids
+        self.assertEqual((line.action, line.apply, line.adjust_confirmed), ('aumenta', True, True))
+        proposal.action_apply()
+        self.assertEqual(order.order_line.product_uom_qty, 160.0, "Un solo pedido por OC y semana")
+        if has_lock:
+            self.assertTrue(order.locked, "Queda bloqueado otra vez")
+        self.assertTrue(order.message_ids.filtered(lambda m: '160' in (m.body or '')))
+        salesman = self.env['res.users'].create({
+            'name': 'Vendedor pedido', 'login': 'vendedor_pedido',
+            'group_ids': [(6, 0, [self.env.ref('sales_team.group_sale_salesman_all_leads').id,
+                                  self.env.ref('quimibond_sgi.group_sgi_user').id])]})
+        fl.qty_origen = 200.0
+        # Sin derechos sobre el asistente, con sudo: lo que cuenta es que no es administrador de ventas.
+        other = self.env['qb.order.proposal'].with_user(salesman).sudo().create({
+            'partner_ids': [(6, 0, self.client.ids)], 'date_from': self.week})
+        other.action_build()
+        self.assertEqual((other.line_ids.action, other.line_ids.apply), ('por_autorizar', False))
