@@ -33,15 +33,18 @@
                           decoration-danger="not bom_id or operation_count == 0 or product_qty &lt;= 0">
                         <field name="sequence" column_invisible="1"/>
                         <field name="product_tmpl_id" column_invisible="1"/>
-                        <field name="stage" readonly="1"/>
-                        <field name="product_id" readonly="1"/>
+                        <!-- 57.198.2: force_save. El cliente web no manda los campos de solo lectura al
+                             guardar el asistente; sin él, el renglón llegaba sin artículo ni etapa
+                             («Falta el valor requerido para el campo 'Artículo'», C1, 9-nov-2026). -->
+                        <field name="stage" readonly="1" force_save="1"/>
+                        <field name="product_id" readonly="1" force_save="1"/>
                         <field name="bom_id" options="{'no_create': True}"/>
                         <field name="operation_count"/>
                         <field name="product_qty"/>
                         <field name="product_uom_id"/>
                         <field name="picking_type_id" options="{'no_create': True}"/>
                         <field name="location_dest_id" options="{'no_create': True}"/>
-                        <field name="qty_note" optional="show"/>
+                        <field name="qty_note" optional="show" force_save="1"/>
                     </list>
                 </field>
                 <field name="suggestion_note" readonly="1" nolabel="1"/>
