@@ -14,6 +14,17 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.198.2 — 2026-11-09
+
+Solo este arreglo pasa a producción (desde 57.197.0); 57.198.0 y 57.198.1 siguen en `main`.
+
+### Corregido
+- «Pedir corrida de muestra» (C1): «Crear las órdenes de muestra» fallaba con «Falta el valor requerido
+  para el campo 'Artículo' (product_id)» en `sgi.dev.sample.wizard.line`. Artículo y Etapa son de solo
+  lectura en la lista y el cliente web no los mandaba al guardar; ahora van con `force_save` (también
+  «Cómo se calculó», que se copia al chatter de la orden).
+
+
 ## 19.0.57.197.0 — 2026-11-04
 
 Dirección General (2026-11-04), a raíz de lo que reportó Jessica Francisco: el 3-nov Diseño presionó «Aprobar
