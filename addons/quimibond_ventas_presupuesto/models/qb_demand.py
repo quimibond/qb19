@@ -137,6 +137,12 @@ class QbDemandLine(models.Model):
             self.sudo().create(rows)
         return True
 
+    def action_qb_rebuild_button(self):
+        """Botón «Actualizar» de la lista (3.14.2): el cliente manda los ids de la lista, que
+        ``action_qb_rebuild`` (@api.model, la llaman crons y migraciones) no recibe."""
+        self.env['qb.demand.line'].action_qb_rebuild()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
+
     def action_qb_open(self):
         """Abre la Demanda por cliente (después de reconstruirla)."""
         self.action_qb_rebuild()
