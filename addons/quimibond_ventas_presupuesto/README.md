@@ -21,6 +21,42 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Venta real, comparativo y reportes (19.0.3.11.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Reportes**.
+
+- **Venta real** (`qb.sales.actual`): una fila por línea de factura de cliente publicada en
+  las cuentas de venta del VE-02, con cliente comercial, producto, artículo, mercado, venta en
+  pesos (la nota de crédito resta), importe y moneda de la factura, tipo de cambio, cantidad con
+  signo, metros y kilos, y las marcas **saldo o desperdicio** y **nota genérica o servicio**.
+  - **Mercado:** el del equipo de la factura (el mismo con que el presupuesto mide su real y se
+    arma la propuesta); si el cliente y el artículo tienen un proyecto comercial en la fecha de
+    la factura, «Proyectos» de ese mercado; sin equipo de mercado, «Sin mercado».
+  - **Desviación del diseño:** es una tabla que se reconstruye, no una vista SQL (como la
+    Demanda), porque la regla de cuentas del VE-02 y la conversión a metros y kilos viven en
+    Python. Cron nocturno (año en curso y anterior; parámetro
+    `quimibond_ventas_presupuesto.actual_years`, 2 por omisión); «Actualizar» y los reportes del
+    menú refrescan el mes en curso y el anterior al abrirse.
+- **Comparativo** (`qb.sales.compare`, vista SQL sobre tablas propias): presupuesto (cada
+  revisión no obsoleta), pronóstico vigente y venta real **sin saldos ni desperdicio**, por
+  cliente comercial, artículo, mercado y mes. Filtro «Presupuesto aprobado vigente» por omisión
+  (sin él se suman revisiones: agrupe por Revisión para comparar REV0 y REV1).
+  - **Cierre mensual por mercado:** presupuesto, venta y diferencia por mercado y mes.
+  - **Anual:** lo mismo por año; con «Hasta el mes pasado», lo presupuestado a la fecha.
+  - **Cliente y artículo:** presupuesto, pronóstico y venta en pesos, metros y kilos.
+  - La **variación** por volumen, precio y tipo de cambio sigue en los renglones del
+    presupuesto (3.6.2).
+- **Faltantes** (`qb.sales.missing`): ventas del año sin mercado, productos vendidos sin
+  conversión, renglones que cuentan 0, partes del cliente sin producto, proyectos perdidos con
+  presupuesto y proyectos de producto nuevo sin desarrollo, cada uno con su botón para abrir el
+  registro. Se recalcula cada noche y con «Actualizar».
+- **Migración:** primera carga de la venta real y los faltantes.
+
+**Pendiente:** el VE-02 sigue leyendo sus líneas de factura (incluye saldos) y no esta tabla;
+cambiarlo (decisión de Jose del 4-nov: los saldos fuera del cumplimiento) toca el SGI y su
+prueba de aceptación mes por mes, y va aparte. También el PDF «Cierre de ventas general» con
+correo desde el cierre.
+
 ## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
 
 Diseño v3, 2.11.4. El **pronóstico vigente** y la **Demanda por cliente** traen el **Estado del
@@ -96,8 +132,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: el real `qb.sales.actual` con los reportes (Faltantes: «proyecto perdido con
-presupuesto»), el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
+Sigue en E2: el VE-02 sobre la venta real, el PDF del cierre, el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
 de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
 
@@ -647,6 +682,7 @@ cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
 pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
-Desarrollo de producto): corren en el build de Odoo.sh con
+Desarrollo de producto) y `tests/test_sales_actual.py` (venta real, comparativo y
+faltantes): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

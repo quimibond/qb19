@@ -55,6 +55,20 @@
     <menuitem id="menu_sale_qb_price_check" name="Comparación de precios"
               parent="menu_sale_qb_grupo_presupuesto" action="qb_price_check_action" sequence="30"/>
 
+    <!-- 3.11.0: reportes sobre la venta real y el comparativo (diseño v3, 2.7 y 2.8). -->
+    <menuitem id="menu_sale_qb_grupo_reportes" name="Reportes"
+              parent="menu_sale_sgi_planning" sequence="25"/>
+    <menuitem id="menu_sale_qb_compare_monthly" name="Cierre mensual por mercado"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_monthly_server" sequence="10"/>
+    <menuitem id="menu_sale_qb_compare_annual" name="Anual"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_annual_server" sequence="20"/>
+    <menuitem id="menu_sale_qb_compare_client" name="Cliente y artículo"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_client_server" sequence="30"/>
+    <menuitem id="menu_sale_qb_sales_actual" name="Venta real"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_actual_action" sequence="40"/>
+    <menuitem id="menu_sale_qb_sales_missing" name="Faltantes"
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_missing_action" sequence="50"/>
+
     <menuitem id="menu_sale_qb_grupo_config" name="Configuración"
               parent="menu_sale_sgi_planning" sequence="90"/>
     <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
