@@ -262,7 +262,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             'siglas_operador': emp.siglas or False,
             'fecha': ahora,
             'metros_teoricos': self.metros_teoricos,
-            'alerta_metros': bool(self.metros_teoricos) and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
+            # 3.16.1: sin metros capturados (Desperdicio, 3.6.2) no hay contra qué comparar: sin alerta.
+            'alerta_metros': bool(self.metros_teoricos and self.metros)
+            and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
             * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()
