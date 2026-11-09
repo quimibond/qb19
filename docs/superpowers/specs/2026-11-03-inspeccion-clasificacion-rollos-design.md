@@ -16,7 +16,7 @@ taras, bitácora, defectos y restricciones de Inspección se respetan tal cual.
 | D2 | Se inspecciona **en cuanto el rollo sale de rama**, con la orden en kg abierta. |
 | D3 | **El corte se hace en la revisadora** (Inspección). |
 | D4 | Cada rollo que sale es un **rollo final con lote nuevo**; al final cada uno tiene sus kg y sus metros. |
-| D5 | **Segundas y desperdicio se venden en kg**; primera y FE en metros. |
+| D5 | ~~**Segundas y desperdicio se venden en kg**; primera y FE en metros.~~ **Sustituida el 2026-11-08 (José; módulo 3.15.0):** Segunda es tela en metros (ubicación 16, como dice el diseño técnico §2, §8 y §16); solo el desperdicio es saldo en kg (17). Sin orden en metros (venta en kg) la Segunda sigue como saldo en kg. |
 | D6 | **Solo se juntan rollos del mismo baño.** |
 | D7 | **No se entrega nada hasta que se cierre la orden en kg completa** (el baño). No hay cierre parcial. |
 | D8 | **Una sola estación: Inspección pesa, clasifica y etiqueta.** No hay operación de Clasificación final en Empaque. Inspección tiene báscula. |

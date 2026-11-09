@@ -10,15 +10,16 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 from .mrp_rollo_bitacora import (
-    CALIDAD_CORTA, CLASIFICACIONES, COLORES, LIBRAS_POR_KG, PARAM_INSPECCION_IMPRIME, PARAM_PRELIM_ALTO,
+    CALIDAD_CORTA, CALIDADES_EN_METROS, CLASIFICACIONES, COLORES, LIBRAS_POR_KG, PARAM_INSPECCION_IMPRIME, PARAM_PRELIM_ALTO,
     PARAM_PRELIM_ANCHO, SUFIJO_CODIGO, YARDAS_POR_METRO)
 
-# Calidad → (parámetro de la ubicación, nombre por defecto, unidad en que sale). Primera y FE en metros (la tela);
-# segundas y desperdicio en kg (los saldos), D5 y §4.3.
+# Calidad → (parámetro de la ubicación, nombre por defecto, unidad en que sale). 3.15.0 (José, 2026-11-08; diseño §2, §8
+# paso 13 y §16): PQ, FE y Segunda son la tela en metros (14, 15 y 16); solo el desperdicio es subproducto en kg (17).
+# Sustituye a D5 del spec 2026-11-03 («segundas y desperdicio en kg»).
 DESTINO_CALIDAD = {
     'PQ': ('quimibond_rollos_bitacora.ubicacion_pq', '14 PRODUCTO TERMINADO PQ', 'm'),
     'FE': ('quimibond_rollos_bitacora.ubicacion_fe', '15 PRODUCTO TERMINADO FE', 'm'),
-    'SEGUNDA': ('quimibond_rollos_bitacora.ubicacion_segunda', '16 PRODUCTO TERMINADO SEGUNDAS', 'kg'),
+    'SEGUNDA': ('quimibond_rollos_bitacora.ubicacion_segunda', '16 PRODUCTO TERMINADO SEGUNDAS', 'm'),
     'DESP': ('quimibond_rollos_bitacora.ubicacion_desperdicio', '17 PRODUCTO TERMINADO DESPERDICIO', 'kg'),
 }
 # Saldos en kg: los mismos parámetros que usan las fichas para ponerlos de subproducto en la lista en metros.
@@ -75,7 +76,7 @@ class MrpRolloFinal(models.Model):
                                ('clasificado', 'Clasificado en Empaque'), ('registrado', 'Registrado')],
                               'Estado', default='inspeccionado', required=True, readonly=True)
     product_id = fields.Many2one('product.product', 'Producto registrado', readonly=True,
-                                 help='La tela (PQ y FE, en metros) o el saldo (Segunda y Desperdicio, en kg).')
+                                 help='La tela (PQ, FE y Segunda, en metros) o el saldo (Desperdicio, en kg).')
     lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
     location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
 
