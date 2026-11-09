@@ -21,6 +21,13 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Botones de encabezado (19.0.3.14.2, 2026-11-09)
+
+«Actualizar» de la Demanda por cliente y «Comparar con forecast.xlsx» de la Comparación de
+precios daban `TypeError ... takes 1 positional argument but 2 were given`: el botón del
+encabezado de una lista manda los ids de la lista y los métodos eran `@api.model`. La Demanda
+usa ahora `action_qb_rebuild_button` y la comparación ya no es `@api.model`.
+
 ## Corrección del build (19.0.3.14.1, 2026-11-09)
 
 El build de `main` se cayó en la migración 3.8.0: el mercado de un proyecto nuevo leía

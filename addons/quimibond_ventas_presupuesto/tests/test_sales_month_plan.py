@@ -98,3 +98,12 @@ class TestSalesMonthPlan(TransactionCase):
             plan.line_ids.filtered(lambda l: l.mercado == 'industrial').with_user(salesman).qty = 1.0
         with self.assertRaises(UserError):
             plan.with_user(salesman).rate = 20.0
+
+    def test_05_botones_de_encabezado_con_ids(self):
+        """3.14.2: los botones del encabezado de una lista reciben los ids de la lista."""
+        Demand = self.env['qb.demand.line']
+        Demand.action_qb_rebuild()
+        rows = Demand.search([], limit=3)
+        self.assertEqual(rows.action_qb_rebuild_button()['tag'], 'reload')
+        checks = self.env['qb.price.check'].search([], limit=2)
+        self.assertEqual(checks.action_open_wizard()['res_model'], 'qb.price.check.wizard')
