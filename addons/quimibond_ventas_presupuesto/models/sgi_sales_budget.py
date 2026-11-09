@@ -955,7 +955,28 @@ class SgiSalesBudget(models.Model):
             for old in previous:
                 old.message_post(body="Reemplazado por %s al aprobarse." % budget.name)
             budget.sudo().state = 'aprobado'
+            budget.sudo()._qb_graduate_projects()
         return True
+
+    def _qb_graduate_projects(self):
+        """3.8.0 (diseño v3, 2.6.3): un proyecto comercial vigente de un año anterior que
+        este presupuesto pone en línea (mismo cliente y producto, fuera de Proyectos) pasa a
+        línea al aprobarse."""
+        self.ensure_one()
+        Project = self.env['qb.sales.project']
+        line_lines = self.line_ids.filtered(
+            lambda l: l.product_id and l.mercado not in PROYECTO_MERCADOS)
+        keys = {(l.partner_id.commercial_partner_id.id, l.product_id.id) for l in line_lines}
+        if not keys:
+            return
+        candidates = Project.search([
+            ('state', '=', 'vigente'), ('company_id', '=', self.company_id.id),
+            ('product_id', 'in', list({k[1] for k in keys})),
+            ('date_from', '<', fields.Date.to_date('%s-01-01' % self.year))])
+        for project in candidates:
+            if (project.partner_id.commercial_partner_id.id, project.product_id.id) in keys:
+                project.action_qb_graduate()
+                project.message_post(body="%s lo presupuesta en línea." % self.name)
 
     def action_set_borrador(self):
         self.write({'state': 'borrador'})

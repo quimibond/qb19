@@ -21,6 +21,46 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Proyectos ligados a Desarrollo de producto (19.0.3.8.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.6 y 2.11. Presupuesto → **Proyectos comerciales** (`qb.sales.project`):
+un cliente y un artículo en arranque. Mientras está vigente, su presupuesto va en «Proyectos
+industrial» o «Proyectos confección».
+
+- **Nace del desarrollo:** cuando un desarrollo de producto (C1) llega a Cotización o más
+  adelante con cliente y artículo (el acabado del desarrollo, o el artículo de línea si el
+  análisis dijo «Producto de línea»), se crea su proyecto comercial, con «Desde» = la fecha en
+  que entró a Cotización. El mercado sale del equipo del desarrollo (Confección → Proyectos
+  confección; lo demás → Proyectos industrial). Si Ventas o el presupuesto ya lo tenían dado
+  de alta sin desarrollo (mismo cliente y producto), se liga en lugar de duplicarse.
+- **Se pierde con el desarrollo:** cerrado sin producto o no factible → **perdido**; si el
+  desarrollo vuelve a una etapa abierta, se reabre. Sus renglones se ven en los renglones del
+  presupuesto con el filtro **Proyecto perdido**.
+- **Renglón de Proyectos:** al crearlo (o pasarlo a Proyectos) crea o liga su proyecto
+  comercial: el de su desarrollo si lo eligió; si no, el vigente del mismo cliente y producto
+  (o descripción). Un renglón con **Desarrollo de producto** toma de él cliente, producto y,
+  sin código, descripción, gramaje y ancho (masa y ancho nominales de la tabla de
+  características). Filtro **Proyecto sin desarrollo**.
+- **El renglón sin código toma el producto** cuando el desarrollo genera el suyo, solo en
+  presupuestos en borrador o revisado (uno aprobado es evidencia; el proyecto avisa en el
+  chatter qué renglones se quedaron sin producto y por qué).
+- **Pasa a línea** a mano («Pasar a línea») o solo al aprobarse un presupuesto de un año
+  posterior que lo presupuesta fuera de Proyectos con el mismo cliente y producto.
+- **El desarrollo ve su venta:** botón **Presupuesto y venta** en la ficha del desarrollo (se
+  ancla en la caja de botones nativa de Proyectos): abre el proyecto comercial con sus
+  renglones de presupuesto, las semanas del pronóstico vigente y lo facturado al cliente de
+  los códigos del artículo (metros, kilos y m²) desde que arrancó.
+- **Migración:** crea los proyectos de los desarrollos que ya están en Cotización o más
+  adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
+  importes ni productos de renglones aprobados.
+
+Sigue en E2: el origen «desarrollo» en «Armar propuesta del año» (volumen del desarrollo con
+`qb_convertir`, precio de la cotización o el objetivo), la marca de artículo en desarrollo en
+el pronóstico, el real `qb.sales.actual` con los reportes (Faltantes: «proyecto perdido con
+presupuesto»), el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
+PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
+de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
+
 ## Propuesta del presupuesto del año siguiente (19.0.3.7.0, 2026-11-05)
 
 Presupuesto → **Armar propuesta del año** arma el borrador del presupuesto (para 2027 hace falta
@@ -566,6 +606,7 @@ cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 `tests/test_customer_part.py`, `tests/test_release.py` (catálogo de partes y
 releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
-pronósticos viejos): corren en el build de Odoo.sh con
+pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
+Desarrollo de producto): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

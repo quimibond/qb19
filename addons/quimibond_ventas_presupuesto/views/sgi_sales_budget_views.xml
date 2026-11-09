@@ -14,6 +14,9 @@
                 <field name="partner_id" optional="show"/>
                 <field name="product_id"/>
                 <field name="proyecto_descripcion" optional="show"/>
+                <field name="qb_project_id" optional="hide"/>
+                <field name="dev_project_id" optional="hide"/>
+                <field name="qb_project_state" optional="hide"/>
                 <field name="date"/>
                 <field name="uom_id"/>
                 <!-- 1.2.0 (V-M10): totales al pie de cantidad e importe. -->
@@ -74,6 +77,10 @@
                             <field name="proyecto_descripcion" invisible="product_id"/>
                             <field name="proyecto_gramaje" invisible="product_id"/>
                             <field name="proyecto_ancho_cm" invisible="product_id"/>
+                            <field name="dev_project_id"
+                                   invisible="mercado not in ('proyectos_industrial', 'proyectos_confeccion') and not dev_project_id"/>
+                            <field name="qb_project_id" readonly="1" invisible="not qb_project_id"/>
+                            <field name="qb_project_state" invisible="not qb_project_id"/>
                             <field name="date"/>
                         </group>
                         <group string="Cantidad y precio">
@@ -206,6 +213,10 @@
                         domain="[('price_problem', '!=', False)]"/>
                 <filter name="proyectos" string="Proyectos"
                         domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
+                <filter name="proyecto_perdido" string="Proyecto perdido"
+                        domain="[('qb_project_id.state', '=', 'perdido')]"/>
+                <filter name="proyecto_sin_desarrollo" string="Proyecto sin desarrollo"
+                        domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion')), ('dev_project_id', '=', False)]"/>
                 <group>
                     <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
                     <filter name="group_team" string="Equipo" context="{'group_by': 'team_id'}"/>
@@ -383,6 +394,8 @@
                                     <field name="partner_id" optional="show"/>
                                     <field name="product_id"/>
                                     <field name="proyecto_descripcion" optional="show"/>
+                                    <field name="dev_project_id" optional="hide"/>
+                                    <field name="qb_project_state" optional="hide"/>
                                     <field name="date"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget" sum="Total"/>

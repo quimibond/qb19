@@ -60,3 +60,10 @@ access_qb_sales_budget_set_partner_sale_mgr,qb.sales.budget.set.partner.sale.mgr
 access_qb_sales_budget_set_partner_manager,qb.sales.budget.set.partner.manager,model_qb_sales_budget_set_partner,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_sales_budget_proposal_sale_mgr,qb.sales.budget.proposal.sale.mgr,model_qb_sales_budget_proposal,sales_team.group_sale_manager,1,1,1,1
 access_qb_sales_budget_proposal_manager,qb.sales.budget.proposal.manager,model_qb_sales_budget_proposal,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_project_sgi_user,qb.sales.project.sgi.user,model_qb_sales_project,quimibond_sgi.group_sgi_user,1,0,0,0
+access_qb_sales_project_salesman,qb.sales.project.salesman,model_qb_sales_project,sales_team.group_sale_salesman,1,0,0,0
+access_qb_sales_project_project_user,qb.sales.project.project.user,model_qb_sales_project,project.group_project_user,1,0,0,0
+access_qb_sales_project_planeacion,qb.sales.project.planeacion,model_qb_sales_project,group_qb_planeacion,1,0,0,0
+access_qb_sales_project_sale_mgr,qb.sales.project.sale.mgr,model_qb_sales_project,sales_team.group_sale_manager,1,1,1,0
+access_qb_sales_project_manager,qb.sales.project.manager,model_qb_sales_project,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_project_auditor,qb.sales.project.auditor,model_qb_sales_project,quimibond_sgi.group_sgi_auditor,1,0,0,0
