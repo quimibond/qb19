@@ -21,6 +21,181 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Presupuesto del mes (19.0.3.14.0, E2, 2026-11-09)
+
+Diseño v3, 2.5. Sustituye el F-P-A28-14 de Excel. Presupuesto → **Presupuesto del mes** y
+**Armar presupuesto del mes** (`qb.sales.month.plan`, uno por compañía y mes).
+
+- **Armar** (por omisión, el mes siguiente): una **foto del pronóstico vigente** del mes, un
+  renglón por cliente comercial, planta y producto (las semanas del mes sumadas), en la unidad
+  de venta, metros y kilos.
+  - **Precio:** el del renglón del presupuesto anual aprobado del mismo cliente, producto y mes;
+    si no hay, el de la lista del cliente (la regla del anual); si no, cuenta 0 y sale en rojo.
+  - **Tipo de cambio del mes:** el del presupuesto anual aprobado (o el de Ajustes), editable.
+  - **Mercado:** el del pronóstico; con proyecto comercial vigente, «Proyectos».
+- **Ajustes antes de enviar:** cantidad y precio por renglón; no tocan el pronóstico. «Pronóstico
+  al armar» guarda la cantidad original. «Volver a armar» rehace los renglones del pronóstico y
+  conserva los capturados a mano.
+- **Confección:** los vendedores agregan sus renglones (sin cliente) en el mismo documento; una
+  regla de registro solo les deja crear, cambiar o borrar renglones de Confección y Proyectos
+  confección, y la cabecera (mes, tipo de cambio) es del administrador de ventas.
+- **Totales:** por mercado, y **productos de línea / proyectos** (los dos números del correo).
+- **Enviar a Dirección:** congela el documento (solo el administrador del SGI lo regresa a
+  borrador), genera el PDF F-P-A28-14 (resumen línea / proyectos y detalle por mercado) y abre el
+  correo con el PDF y los totales.
+
+**Pendiente:** el comparativo (`qb.sales.compare`) todavía no trae la foto del presupuesto del mes
+(diseño 2.8) para medir cuánto se movió el pronóstico contra lo presupuestado en el mes.
+
+## Cierre de ventas general (19.0.3.13.0, E2, 2026-11-09)
+
+Diseño v3, 2.8 y 2.9. Sustituye la hoja MENSUAL del Excel.
+
+- **PDF «Cierre de ventas general <mes>»** (hoja horizontal): por mercado, el presupuesto, la
+  venta, la diferencia y el cumplimiento **del mes** y **del acumulado del año**, y la venta del
+  mismo periodo del año anterior con su crecimiento; al pie, la venta del año anterior, el
+  objetivo y el mínimo, y la justificación del incumplimiento si la hay. La venta es la de
+  «Venta real» (sin saldos ni desperdicio; el PDF dice cuánto quedó fuera).
+- **Dónde:** botón **Cierre de ventas** en el presupuesto, o Reportes → **Cierre de ventas
+  (PDF)**. El asistente pide el presupuesto (por omisión, el aprobado del año) y el mes (por
+  omisión, el último cerrado) y tiene **Imprimir PDF** y **Enviar por correo** (abre el
+  redactor del presupuesto con el PDF adjunto y el resumen en el cuerpo).
+- Antes de calcular se reconstruye la venta real del año hasta el fin del mes y el mismo
+  periodo del año anterior: no depende del cron nocturno.
+- **Cierre de mes del SGI:** al cerrar cada mes, el PDF queda en el chatter del presupuesto
+  aprobado del año. El aviso de cierre por debajo del umbral también mide sin saldos.
+
+## VE-02 sobre la venta real (19.0.3.12.0, E2, 2026-11-09)
+
+Diseño v3, 2.7; decisión de Jose (4-nov): **los saldos y el desperdicio no cuentan en el
+cumplimiento**. Van a la misma cuenta 401 que la tela; el VE-02 los sumaba y el cierre del
+Excel no (0.19 % de la venta ene–oct 2026).
+
+- El **VE-02** («Cumplimiento de presupuesto de ventas») mide la misma venta que «Venta real»:
+  las líneas de venta de siempre (cuentas 401/402, compañía del KPI) **sin los productos de
+  saldo o desperdicio**. Se calcula directo de las facturas con la misma regla, no de la tabla,
+  así que no depende de que la venta real esté reconstruida. La nota de la medición dice
+  cuánto quedó fuera.
+- En el presupuesto: **Venta al corte** y **Cumplimiento al corte**, y la **base del año
+  anterior** (objetivo y mínimo), también sin saldos.
+- Los demás indicadores de venta (VE-01, cartera, DSO…) no cambian: el filtro va por contexto
+  (`qb_sin_saldos`) solo desde el VE-02 y el presupuesto (`models/sgi_indicator.py`, herencia
+  de `sgi.indicator` en este módulo; el SGI no se toca).
+- **Las mediciones ya guardadas no cambian**; las de 2026 se pueden volver a medir para que
+  queden sin saldos. La base del año anterior de un presupuesto se recalcula al enviarlo a
+  revisión o con «Actualizar base».
+
+## Venta real, comparativo y reportes (19.0.3.11.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Reportes**.
+
+- **Venta real** (`qb.sales.actual`): una fila por línea de factura de cliente publicada en
+  las cuentas de venta del VE-02, con cliente comercial, producto, artículo, mercado, venta en
+  pesos (la nota de crédito resta), importe y moneda de la factura, tipo de cambio, cantidad con
+  signo, metros y kilos, y las marcas **saldo o desperdicio** y **nota genérica o servicio**.
+  - **Mercado:** el del equipo de la factura (el mismo con que el presupuesto mide su real y se
+    arma la propuesta); si el cliente y el artículo tienen un proyecto comercial en la fecha de
+    la factura, «Proyectos» de ese mercado; sin equipo de mercado, «Sin mercado».
+  - **Desviación del diseño:** es una tabla que se reconstruye, no una vista SQL (como la
+    Demanda), porque la regla de cuentas del VE-02 y la conversión a metros y kilos viven en
+    Python. Cron nocturno (año en curso y anterior; parámetro
+    `quimibond_ventas_presupuesto.actual_years`, 2 por omisión); «Actualizar» y los reportes del
+    menú refrescan el mes en curso y el anterior al abrirse.
+- **Comparativo** (`qb.sales.compare`, vista SQL sobre tablas propias): presupuesto (cada
+  revisión no obsoleta), pronóstico vigente y venta real **sin saldos ni desperdicio**, por
+  cliente comercial, artículo, mercado y mes. Filtro «Presupuesto aprobado vigente» por omisión
+  (sin él se suman revisiones: agrupe por Revisión para comparar REV0 y REV1).
+  - **Cierre mensual por mercado:** presupuesto, venta y diferencia por mercado y mes.
+  - **Anual:** lo mismo por año; con «Hasta el mes pasado», lo presupuestado a la fecha.
+  - **Cliente y artículo:** presupuesto, pronóstico y venta en pesos, metros y kilos.
+  - La **variación** por volumen, precio y tipo de cambio sigue en los renglones del
+    presupuesto (3.6.2).
+- **Faltantes** (`qb.sales.missing`): ventas del año sin mercado, productos vendidos sin
+  conversión, renglones que cuentan 0, partes del cliente sin producto, proyectos perdidos con
+  presupuesto y proyectos de producto nuevo sin desarrollo, cada uno con su botón para abrir el
+  registro. Se recalcula cada noche y con «Actualizar».
+- **Migración:** primera carga de la venta real y los faltantes.
+
+
+## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.4. El **pronóstico vigente** y la **Demanda por cliente** traen el **Estado del
+artículo** (`dev_state`): el estado de desarrollo del producto (`sgi_dev_state` de Desarrollo de
+producto) o, si no lo tiene, el de su artículo (el código en kilos de un desarrollo nuevo puede
+no llevarlo).
+
+- **En desarrollo o archivado:** se puede pronosticar (Planeación lo ve venir), pero el pedido
+  no se confirma hasta pilotaje. Renglón en amarillo, etiqueta roja y aviso en la ficha.
+- **En pilotaje:** se vende con aviso (los tres primeros lotes del primer pedido son el
+  pilotaje). Etiqueta amarilla y aviso en la ficha.
+- **Liberado o sin estado:** de línea, sin marca.
+- Filtros «Artículo en desarrollo» y «Artículo en pilotaje» en los dos. En el pronóstico se
+  recalcula solo cuando cambia el estado del artículo; la Demanda lo toma al reconstruirse (la
+  migración la reconstruye una vez).
+- La propuesta de pedidos de la E3 no propondrá un artículo en desarrollo; eso va con la E3.
+
+## Desarrollos en la propuesta del año (19.0.3.9.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.3. «Armar propuesta del año» trae ahora, con **Traer desarrollos** (activo por
+omisión), un renglón de Proyectos por mes para cada desarrollo abierto (de Cotización a
+Pilotaje):
+
+- **Cantidad:** el consumo anual del desarrollo entre 12 (las yardas pasan a metros) o, si no
+  hay, el volumen mensual de la solicitud, por el **% del consumo** del asistente (100 por
+  omisión). En la unidad de venta del producto (con el rendimiento del artículo, así que el
+  consumo en kg ya se convierte); sin código, en metros o kilos, con la descripción del
+  desarrollo (lleva el folio).
+- **Meses:** desde el mes de la fecha requerida si cae en el año; sin fecha, los 12; con fecha
+  posterior al año, no entra.
+- **Precio:** el de la última cotización abierta (borrador o enviada) al cliente con ese
+  producto; si no hay, el precio objetivo de la solicitud, por metro o por kilo; si no, el de
+  la lista. Origen del precio «Cotización o precio objetivo del desarrollo».
+- **No entra** si su producto ya se vendió en el periodo base (ya viene en la venta) o si sus
+  renglones ya vienen del presupuesto de proyectos que se trae (que ahora copia también el
+  desarrollo).
+- Cada renglón guarda **Origen de la cantidad** (venta del periodo base, presupuesto de
+  proyectos o consumo del desarrollo), la **Cantidad propuesta** y la etapa del desarrollo;
+  Jessica decide cuánto entra. Filtro «Propuestos desde un desarrollo». El chatter del
+  presupuesto resume cuántos desarrollos entraron y por qué no entraron los demás.
+- Para MCP: `action_qb_build_proposal(..., include_dev=True, dev_pct=100.0)`.
+
+## Proyectos ligados a Desarrollo de producto (19.0.3.8.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.6 y 2.11. Presupuesto → **Proyectos comerciales** (`qb.sales.project`):
+un cliente y un artículo en arranque. Mientras está vigente, su presupuesto va en «Proyectos
+industrial» o «Proyectos confección».
+
+- **Nace del desarrollo:** cuando un desarrollo de producto (C1) llega a Cotización o más
+  adelante con cliente y artículo (el acabado del desarrollo, o el artículo de línea si el
+  análisis dijo «Producto de línea»), se crea su proyecto comercial, con «Desde» = la fecha en
+  que entró a Cotización. El mercado sale del equipo del desarrollo (Confección → Proyectos
+  confección; lo demás → Proyectos industrial). Si Ventas o el presupuesto ya lo tenían dado
+  de alta sin desarrollo (mismo cliente y producto), se liga en lugar de duplicarse.
+- **Se pierde con el desarrollo:** cerrado sin producto o no factible → **perdido**; si el
+  desarrollo vuelve a una etapa abierta, se reabre. Sus renglones se ven en los renglones del
+  presupuesto con el filtro **Proyecto perdido**.
+- **Renglón de Proyectos:** al crearlo (o pasarlo a Proyectos) crea o liga su proyecto
+  comercial: el de su desarrollo si lo eligió; si no, el vigente del mismo cliente y producto
+  (o descripción). Un renglón con **Desarrollo de producto** toma de él cliente, producto y,
+  sin código, descripción, gramaje y ancho (masa y ancho nominales de la tabla de
+  características). Filtro **Proyecto sin desarrollo**.
+- **El renglón sin código toma el producto** cuando el desarrollo genera el suyo, solo en
+  presupuestos en borrador o revisado (uno aprobado es evidencia; el proyecto avisa en el
+  chatter qué renglones se quedaron sin producto y por qué).
+- **Pasa a línea** a mano («Pasar a línea») o solo al aprobarse un presupuesto de un año
+  posterior que lo presupuesta fuera de Proyectos con el mismo cliente y producto.
+- **El desarrollo ve su venta:** botón **Presupuesto y venta** en la ficha del desarrollo (se
+  ancla en la caja de botones nativa de Proyectos): abre el proyecto comercial con sus
+  renglones de presupuesto, las semanas del pronóstico vigente y lo facturado al cliente de
+  los códigos del artículo (metros, kilos y m²) desde que arrancó.
+- **Migración:** crea los proyectos de los desarrollos que ya están en Cotización o más
+  adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
+  importes ni productos de renglones aprobados.
+
+Sigue en E2: la carga de la REV0/REV1 (que crea los 33 proyectos de
+PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
+de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
+
 ## Propuesta del presupuesto del año siguiente (19.0.3.7.0, 2026-11-05)
 
 Presupuesto → **Armar propuesta del año** arma el borrador del presupuesto (para 2027 hace falta
@@ -566,6 +741,8 @@ cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 `tests/test_customer_part.py`, `tests/test_release.py` (catálogo de partes y
 releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
-pronósticos viejos): corren en el build de Odoo.sh con
+pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
+Desarrollo de producto), `tests/test_sales_actual.py` (venta real, comparativo, faltantes,
+VE-02 y cierre) y `tests/test_sales_month_plan.py` (presupuesto del mes): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

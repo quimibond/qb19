@@ -105,7 +105,9 @@ class SgiCronSalesBudget(models.AbstractModel):
             if not budgeted:
                 return
             # 3.5.4: la venta de los equipos de los mercados, la misma del cumplimiento de la ficha.
-            real = -sum(budget._qb_sales_lines(date_to=last_prev).mapped('balance'))
+            # 3.12.0: sin saldos ni desperdicio, como el VE-02 y el cumplimiento de la ficha.
+            real = -sum(budget._qb_sales_lines(date_to=last_prev).filtered(
+                lambda l: not (l.product_id and budget._qb_is_saldo(l.product_id))).mapped('balance'))
             achieved = real / budgeted * 100.0
             # Justificación del incumplimiento (P-A28 4.3.6.1): si va por debajo del
             # mínimo y AÚN no hay justificación capturada, se pide al Admin de ventas.
