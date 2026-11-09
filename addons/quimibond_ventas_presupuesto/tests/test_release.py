@@ -4,7 +4,7 @@
 
 Release inventado con el layout de Lear (sin datos reales)."""
 import base64
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -145,6 +145,32 @@ class TestRelease(TransactionCase):
             ('partner_id', '=', self.customer.id), ('week', '=', date(2040, 12, 31)),
             ('qty_after', '=', 0)])
         self.assertTrue(removed, "La semana quitada queda en la bitácora.")
+
+    def test_08_apply_reemplaza_la_misma_tela_en_otro_codigo(self):
+        """3.15.1: el Excel traía la tela en metros (W…) y el release en kilos (IW…): misma tela,
+        la semana se reemplaza y no se suma (producción, Shawmut W45, 9-nov)."""
+        en_metros = self.env['product.product'].create({
+            'name': 'Tela release en metros', 'default_code': 'ZZRW045Q22JNT160', 'type': 'consu',
+            'uom_id': self.uom_m.id})
+        self.product.qb_articulo_id = en_metros
+        Line = self.env['qb.forecast.line']
+        excel = Line.create({'partner_id': self.customer.id, 'product_id': en_metros.id,
+                             'week': date(2040, 12, 17), 'qty_origen': 999.0, 'origen': 'excel'})
+        stale = Line.create({'partner_id': self.customer.id, 'product_id': en_metros.id,
+                             'week': date(2040, 12, 31) + timedelta(weeks=2), 'qty_origen': 5.0,
+                             'origen': 'excel'})
+        release = self._release()
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        lines = self._forecast()
+        self.assertEqual(len(lines.filtered(lambda l: l.week == date(2040, 12, 17))), 1,
+                         "Una sola semana: la del release reemplaza a la del Excel")
+        self.assertEqual(excel.product_id, self.product)
+        self.assertEqual(excel.qty_venta, 100)
+        self.assertEqual(excel.origen, 'release')
+        self.assertFalse(stale.exists(), "La semana de esa tela que el release ya no trae se quita")
 
     def test_06_apply_keeps_weeks_before_the_release_and_other_plants(self):
         Line = self.env['qb.forecast.line']

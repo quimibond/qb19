@@ -21,6 +21,39 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Aplicar un release reemplaza la misma tela en otro código (19.0.3.15.1, 2026-11-09)
+
+La primera aplicación real (Shawmut W45, 9-nov) **duplicó** 62 semanas: el forecast de Excel
+tenía a Shawmut en WJ (metros) y el release viene en IWJ (kilos); «Aplicar» buscaba la semana por
+producto exacto y creó otra al lado. Ahora busca por **artículo**: la semana de la misma tela en
+otro código se reemplaza (toma el producto del release) y las de esa tela que el release ya no
+trae se quitan. En producción, las 62 semanas del Excel se archivaron a mano (recuperables) y la
+Demanda se reconstruyó.
+
+## Pedidos desde el pronóstico (19.0.3.15.0, E3, 2026-11-09)
+
+Decisiones de Jose (9-nov): **un pedido por OC y semana de embarque**, creado como
+**cotización**; los modos por cliente los propone Claude con los datos de producción.
+
+- **Regla única:** una semana del pronóstico se vuelve pedido cuando está dentro de las
+  **semanas a pedido** del cliente (desde la semana en curso) y **tiene OC**. Lo demás sigue como
+  pronóstico.
+- **Cómo pide cada cliente** (Configuración, `qb.order.rule`, por cliente y, si hace falta,
+  planta): **OC en el release** (cada semana trae su OC), **OC abierta + release** (la OC de la
+  regla, con vigencia), **Release sin OC** (la referencia es `REL-<release>`; con «Exige OC para
+  facturar» el pedido no se factura hasta capturar la OC) o **Sin release** (a mano; no se propone).
+- **La OC del pronóstico se limpia** (`release/oc.py`): viene del Excel como «6700/PV17173»
+  (OC y pedido de Odoo), «PO/14792», «PO 70152» o con el encabezado «PO» / «No.parte cliente»,
+  que no son OC.
+- **Pronóstico → Proponer pedidos:** por cliente, OC, semana y producto, la cantidad del pronóstico
+  contra la de las cotizaciones y pedidos abiertos de esa OC y semana: **nuevo**, **aumenta**,
+  **baja**, **sin cambio**, **baja por autorizar** (pedido ya confirmado: no se aplica sola) o
+  **no entra** con su motivo (sin OC, OC abierta vencida, sin precio en la lista, artículo en
+  desarrollo). «Crear o actualizar cotizaciones» aplica los renglones marcados: un pedido por OC y
+  semana (fecha compromiso = la entrega del cliente o el lunes de la semana), la OC en «Referencia
+  del cliente», el precio de la lista del cliente, y en cada línea la semana, el release y la parte
+  del cliente. Nunca baja de lo entregado.
+
 ## Botones de encabezado (19.0.3.14.2, 2026-11-09)
 
 «Actualizar» de la Demanda por cliente y «Comparar con forecast.xlsx» de la Comparación de
@@ -760,6 +793,7 @@ releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
 pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
 Desarrollo de producto), `tests/test_sales_actual.py` (venta real, comparativo, faltantes,
-VE-02 y cierre) y `tests/test_sales_month_plan.py` (presupuesto del mes): corren en el build de Odoo.sh con
+VE-02 y cierre) y `tests/test_sales_month_plan.py` (presupuesto del mes) y `tests/test_order_proposal.py` (pedidos desde
+el pronóstico): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).
