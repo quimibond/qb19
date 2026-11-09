@@ -11,7 +11,6 @@ access_calidad_defecto_tela_manager,calidad.defecto.tela manager,model_calidad_d
 access_mrp_inspeccion_restriccion_user,mrp.inspeccion.restriccion user,model_mrp_inspeccion_restriccion,mrp.group_mrp_user,1,0,0,0
 access_mrp_inspeccion_restriccion_manager,mrp.inspeccion.restriccion manager,model_mrp_inspeccion_restriccion,mrp.group_mrp_manager,1,1,1,1
 access_rollo_inspeccion_wizard_user,rollo.inspeccion.wizard user,model_rollo_inspeccion_wizard,mrp.group_mrp_user,1,1,1,1
-access_rollo_clasificacion_wizard_user,rollo.clasificacion.wizard user,model_rollo_clasificacion_wizard,mrp.group_mrp_user,1,1,1,1
 access_rollo_desperdicio_rama_wizard_user,rollo.desperdicio.rama.wizard user,model_rollo_desperdicio_rama_wizard,mrp.group_mrp_user,1,1,1,1
 access_mrp_rollo_final_user,mrp.rollo.final user,model_mrp_rollo_final,mrp.group_mrp_user,1,1,1,0
 access_mrp_rollo_final_manager,mrp.rollo.final manager,model_mrp_rollo_final,mrp.group_mrp_manager,1,1,1,1

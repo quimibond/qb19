@@ -30,7 +30,6 @@ class MrpProduction(models.Model):
         help='Marca la orden en metros como de Desarrollo: sus rollos terminados van al Almacén 31 en vez '
              'de los almacenes 14/15/16/17. La orden en kg que la abastece (MTO) la hereda.')
     rollo_bitacora_ids = fields.One2many('mrp.rollo.bitacora', 'production_id', 'Rollos')
-    rollo_final_ids = fields.One2many('mrp.rollo.bitacora', 'production_b_id', 'Rollos clasificados (m)')
     es_clasificacion_final = fields.Boolean(
         'Orden de Clasificación final', compute='_compute_es_clasificacion_final',
         help='La orden tiene operación de Clasificación final (centro Empaque): su terminado son metros.')
@@ -291,21 +290,6 @@ class MrpProduction(models.Model):
         return pendientes.filtered(lambda m: m.product_id.default_code == codigo_a)[:1] \
             or pendientes.filtered(lambda m: m.product_id.tracking == 'lot')[:1]
 
-    def _clasif_validar_rollo_disponible(self, rollo):
-        """El rollo de A debe estar físicamente en la ubicación de origen del consumo (Ubic. 10)."""
-        self.ensure_one()
-        raw = self._clasif_move_a()
-        if not raw:
-            raise UserError(_('La orden %s no tiene consumo pendiente del Producto A.', self.name))
-        if rollo.product_id != raw.product_id:
-            raise UserError(_('El rollo %(rollo)s es de %(a)s, no de %(b)s, que es el componente de esta orden.',
-                              rollo=rollo.name, a=rollo.product_id.display_name, b=raw.product_id.display_name))
-        if not self._clasif_ubicacion_rollo(rollo, raw):
-            raise UserError(_(
-                'El rollo %(rollo)s no tiene existencia en inventario. Verifica que la orden %(of)s ya esté '
-                'cerrada y que el rollo no se haya clasificado antes.',
-                rollo=rollo.name, of=rollo.production_id.name))
-
     def _clasif_ubicacion_rollo(self, rollo, raw):
         """Ubicación interna donde está el lote de A (Ubic. 10 al cerrar la MO de A). Se prefiere la de
         origen del consumo; si el movimiento nació con otro origen (p. ej. 2 PRODUCCIÓN), se usa la real."""
@@ -314,13 +298,6 @@ class MrpProduction(models.Model):
             ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)])
         en_origen = quants.filtered(lambda q: q.location_id.parent_path.startswith(raw.location_id.parent_path))
         return (en_origen or quants)[:1].location_id
-
-    def _clasif_registrar_rollo(self, rollo, lote_b, workorder):
-        """Registra el rollo clasificado: terminado B (lote B, metros finales) y consumo del kg real
-        del lote de A. La demanda de la lista de materiales es teórica; la diferencia es variación."""
-        self.ensure_one()
-        self._registrar_rollo_terminado(lote_b, rollo.metros_final, workorder)
-        self._clasif_asegurar_consumo(rollo)
 
     def _clasif_asegurar_consumo(self, rollos):
         """Línea de consumo con el lote de A y su kg real (neto de Rama), marcada como picked. Se deja
@@ -617,35 +594,8 @@ class MrpProduction(models.Model):
             if float_compare(total, 0, precision_rounding=orden.product_id.uom_id.rounding) > 0:
                 orden.write({'product_qty': total, 'qty_producing': total})
                 finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': total})
-        for orden in self.filtered('rollo_final_ids'):
-            orden._clasif_cierre_metros()
         res = super().button_mark_done()
         # 3.9.0: el sobrante del Piso regresa a su origen cuando la orden en kg ya cerró (el core puede devolver una
         # acción y dejarla abierta; en ese caso se hará al cerrarla).
         self.filtered(lambda o: o.state == 'done')._devolver_sobrante_piso()
         return res
-
-    def _clasif_cierre_metros(self):
-        """Cierre de la MO en metros: igual que en kg, la cantidad de la MO es la suma de los rollos
-        clasificados, y el consumo de A es el kg real de cada lote (la demanda teórica se iguala a él)."""
-        self.ensure_one()
-        finished_move = self.move_finished_ids.filtered(
-            lambda m: m.product_id == self.product_id and m.state not in ('done', 'cancel'))[:1]
-        raw = self._clasif_move_a()
-        rollos = self.rollo_final_ids
-        if raw:
-            self._clasif_asegurar_consumo(rollos)
-            (raw.move_line_ids - raw.move_line_ids.filtered(lambda ml: ml.lot_id in rollos.lot_id)).unlink()
-            total_kg = sum(rollos.mapped('kg_rama'))
-            # 3.6.2: igualar la demanda a lo pesado no abastece (ver _insp_registrar_metros).
-            raw.with_context(do_not_unreserve=True, no_procurement=True).write({'product_uom_qty': total_kg})
-        if finished_move:
-            self._rama_unlink_lines_without_lot(finished_move)
-            lineas_rollo = finished_move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.lot_name)
-            lineas_rollo.filtered('picked').write({'picked': False})
-            total = self.product_id.uom_id.round(sum(lineas_rollo.mapped('quantity')))
-            if float_compare(total, 0, precision_rounding=self.product_id.uom_id.rounding) > 0:
-                self.write({'product_qty': total, 'qty_producing': total})
-                finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': total})
-                # write de qty_producing reescala líneas del core: se repite el consumo explícito.
-                self._clasif_asegurar_consumo(rollos)

@@ -39,15 +39,11 @@ class MrpWorkorder(models.Model):
                 or 'CLASIFIC' in (wo.name or '').upper()
 
     def action_clasificar_rollo(self):
-        if self.env['mrp.production']._insp_empaque_activo():
-            # 3.12.0: con el flujo de Empaque la operación abre la estación de Clasificación final de la orden en metros.
-            self.ensure_one()
-            if not self.es_clasificacion:
-                raise UserError(_('Esta operación no es de Clasificación final.'))
-            return self.production_id.with_context(default_workorder_id=self.id).action_clasificar_empaque()
-        return self._abrir_ventana_operacion(
-            self.es_clasificacion, 'rollo.clasificacion.wizard', _('Clasificar rollo (Clasificación final)'),
-            'Clasificación final')
+        """Clasificación final = estación de Empaque de la orden en metros (3.12.0)."""
+        self.ensure_one()
+        if not self.es_clasificacion:
+            raise UserError(_('Esta operación no es de Clasificación final.'))
+        return self.production_id.with_context(default_workorder_id=self.id).action_clasificar_empaque()
 
     def action_pesar_desperdicio_empaque(self):
         """3.14.0 (A3.4b): PESAR DESPERDICIO de Empaque desde la operación CLASIFICACION de la orden en metros."""
@@ -66,8 +62,7 @@ class MrpWorkorder(models.Model):
                 'La operación de %s de %s no está lista (estado actual: %s). Termina primero las operaciones '
                 'anteriores.', nombre_operacion, self.production_id.name,
                 dict(self._fields['state'].selection).get(self.state)))
-        if modelo != 'rollo.clasificacion.wizard':  # 3.5.0: los lotes del baño llevan su número
-            self.production_id._asignar_numero_bano()
+        self.production_id._asignar_numero_bano()  # 3.5.0: los lotes del baño llevan su número
         return {
             'type': 'ir.actions.act_window',
             'name': titulo,

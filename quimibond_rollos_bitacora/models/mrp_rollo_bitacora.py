@@ -121,12 +121,10 @@ class MrpRolloBitacora(models.Model):
     diferencia_kg = fields.Float('Kg Rama − kg finales', compute='_compute_alertas', store=True, digits=(12, 4))
     reetiquetado = fields.Boolean('Reetiquetado', compute='_compute_alertas', store=True)
     fecha_etiqueta_final = fields.Datetime('Etiqueta final impresa')
-    production_b_id = fields.Many2one('mrp.production', 'Orden (m)', readonly=True, index=True, copy=False)
     workcenter_final_id = fields.Many2one('mrp.workcenter', 'Centro de Clasificación final', readonly=True)
     operador_final = fields.Char('Operador de Clasificación final', readonly=True)
     siglas_operador_final = fields.Char('Siglas del operador (etiqueta)', readonly=True)
     fecha_registro_final = fields.Datetime('Registro en Clasificación final', readonly=True)
-    zpl_etiqueta_final = fields.Text('ZPL etiqueta final', readonly=True, copy=False)
 
     _unique_rollo = models.Constraint(
         'unique(production_id, secuencia)', 'Ese número de rollo ya existe en la orden.')
@@ -266,27 +264,6 @@ class MrpRolloBitacora(models.Model):
             raise UserError(_('Este rollo no tiene etiqueta preliminar.'))
         return self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_preliminar').report_action(self)
 
-    # ------------------------------------------------------------ etiquetas finales
-    def _datos_etiqueta_final(self):
-        """Datos del producto B para la etiqueta final. Ancho de la ficha de acabado (si no hay, posiciones
-        12-14 del código, DAT P-D02-01); color decodificado de las posiciones 10-11 del código."""
-        self.ensure_one()
-        producto = self.production_b_id.product_id
-        codigo = producto.default_code or ''
-        Ficha = self.env.get('ficha.tecnica.acabado')
-        ficha = None
-        if Ficha is not None:
-            ficha = Ficha.search([('product_acabado_id', '=', producto.id)], order='id desc', limit=1) \
-                or Ficha.search([('product_proceso_id', '=', self.product_id.id)], order='id desc', limit=1)
-        ancho = ficha.ancho_acabado if ficha and 'ancho_acabado' in ficha._fields else 0
-        if not ancho and codigo[11:14].isdigit():
-            ancho = int(codigo[11:14])
-        return {
-            'codigo': codigo,
-            'color': COLORES.get(codigo[9:11].upper(), codigo[9:11]),
-            'ancho': ancho,
-        }
-
     @api.model
     def _code128_zpl(self, dato):
         """Code 128 con los subconjuntos explícitos de ZPL (>: inicio B, >; inicio C, >5 a C, >6 a B): los dígitos
@@ -371,42 +348,6 @@ class MrpRolloBitacora(models.Model):
             y += p(120)
         zpl.append('^XZ')
         return '\n'.join(zpl)
-
-    def _zpl_etiqueta_final(self):
-        """Etiquetas finales (§12.3). PQ: neto/bruto del segundo pesaje y un código de barras
-        (Metros;Peso Neto;OF;No. Rollo). FE / SEGUNDA / DESP (PNC): kilos y libras, siglas de defectos y un
-        segundo código (No. Rollo + siglas). Acomodo y tamaño en `_zpl_final_acomodo` (76 x 102 mm)."""
-        self.ensure_one()
-        datos = self._datos_etiqueta_final()
-        clasif = self.clasificacion_final
-        pnc = clasif != 'PQ'
-        fecha = fields.Datetime.context_timestamp(self, self.fecha_registro_final or fields.Datetime.now())
-        lote = self.lot_id.name or self.name
-        of = lote.rsplit('-', 1)[0]
-        metros, kg, bruto = self.metros_final, self.kg_final, self.kg_bruto_final
-        renglones = [
-            'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
-            'COLOR: %s' % datos['color'],
-            'ANCHO (cm): %g' % datos['ancho'],
-            ('METROS: %.2f' % metros, 'YARDAS: %.2f' % (metros * YARDAS_POR_METRO)),
-            ('KILOS: %.2f' % kg, 'LIBRAS: %.2f' % (kg * LIBRAS_POR_KG)) if pnc
-            else ('PESO NETO: %.2f' % kg, 'PESO BRUTO: %.2f' % bruto),
-            'LOTE DE PRODUCCIÓN: %s' % of,
-            'NO. DE ROLLO: %s' % self.secuencia,
-            'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador_final or ''),
-            'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
-        ]
-        codigos = ['%.2f;%.3f;%s;%s' % (metros, kg, of, self.secuencia)]
-        if pnc:
-            renglones.append('DEFECTOS: %s' % (self.siglas_defectos or ''))
-            codigos.append(('%s %s' % (self.secuencia, self.siglas_defectos or '')).strip())
-        return self._zpl_final_acomodo(clasif, renglones, codigos)
-
-    def action_imprimir_etiqueta_final(self):
-        self.ensure_one()
-        if not self.zpl_etiqueta_final:
-            raise UserError(_('Este rollo no tiene etiqueta final.'))
-        return self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_final').report_action(self)
 
     def action_imprimir_etiqueta_rama(self):
         self.ensure_one()
