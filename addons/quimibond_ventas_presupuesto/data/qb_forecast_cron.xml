@@ -21,4 +21,15 @@
         <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- 3.16.0: aviso de releases sin revisar (más de 2 días). -->
+    <record id="cron_qb_release_reminders" model="ir.cron">
+        <field name="name">Releases de clientes: aviso de releases sin revisar</field>
+        <field name="model_id" ref="model_qb_release"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_qb_release_reminders()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
