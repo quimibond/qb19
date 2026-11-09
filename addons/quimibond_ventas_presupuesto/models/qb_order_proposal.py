@@ -21,15 +21,16 @@ La OC del pronóstico se limpia con ``release/oc.py`` (viene del Excel como «67
 
 **Qué propone por OC, semana y producto:** la cantidad del pronóstico contra la de las
 cotizaciones y pedidos abiertos de esa OC y semana: **nuevo**, **aumenta**, **baja** o **sin
-cambio**. Un pedido confirmado **no se modifica** (producción lo bloquea al confirmar): si el
-pronóstico sube, la diferencia va a una cotización de la misma OC y semana; si baja, queda **por
-autorizar** (3.15.2). Nunca baja de lo entregado. No se propone: sin precio en la lista del cliente, artículo en desarrollo
+cambio**. Un pedido confirmado (producción lo bloquea al confirmar) lo ajusta el **administrador
+de ventas** como se hace a mano: se desbloquea, se cambia la cantidad, se vuelve a bloquear y queda
+nota en el chatter (3.15.2). Los aumentos vienen marcados; las bajas en confirmados, desmarcadas.
+Para otro usuario quedan **por autorizar**. Nunca baja de lo entregado. No se propone: sin precio en la lista del cliente, artículo en desarrollo
 o archivado, ni lo que no tiene OC (cada caso queda en la lista con su motivo).
 
 **Facturar sin OC:** con «Exige OC para facturar» en la regla, un pedido cuya referencia es un
 release (``REL-…``) no se factura hasta capturar la OC.
 """
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from datetime import datetime, time, timedelta
 
 from markupsafe import Markup
@@ -230,6 +231,7 @@ class QbOrderProposal(models.TransientModel):
                 group['release'] = group['release'] or fl.release_id
                 group['part'] = group['part'] or fl.customer_part
         vals_list = []
+        is_manager = self.env.user.has_group('sales_team.group_sale_manager')
         for group in groups.values():
             product, partner = group['product'], group['partner']
             existing = self._qb_existing(company, partner, group['ref'], group['week'], product) \
@@ -256,15 +258,20 @@ class QbOrderProposal(models.TransientModel):
                 vals.update(action='nuevo', apply=target > 0)
             elif abs(target - qty_existing) < 1e-6:
                 vals.update(action='sin_cambio', apply=False)
-            elif target > qty_existing:
-                vals.update(action='aumenta', apply=True)
             else:
-                # Baja: se aplica si alcanza con quitar de cotizaciones; si hay que bajar un pedido
-                # confirmado (bloqueado), se autoriza a mano.
-                confirmed = sum(existing.filtered(lambda s: s.order_id.state == 'sale').mapped('product_uom_qty'))
-                locked = target < confirmed - 1e-6
-                vals.update(action='por_autorizar' if locked else 'baja', apply=not locked,
-                            reason="Hay que bajar un pedido confirmado: se autoriza a mano" if locked else False)
+                # 3.15.2 (opción B de Jose, 9-nov): un pedido confirmado se ajusta como lo hace Ventas a
+                # mano (desbloquear, cambiar, volver a bloquear), solo el administrador de ventas. Los
+                # aumentos vienen marcados y las bajas desmarcadas (puede quedar material sin pedido).
+                confirmed = existing.filtered(lambda s: s.order_id.state == 'sale')
+                up = target > qty_existing
+                if confirmed and not is_manager:
+                    vals.update(action='por_autorizar', apply=False, adjust_confirmed=True,
+                                reason="Pedido confirmado: lo ajusta el administrador de ventas")
+                elif confirmed:
+                    vals.update(action='aumenta' if up else 'baja', apply=up, adjust_confirmed=True,
+                                reason=False if up else "Baja en un pedido confirmado: márquela si procede")
+                else:
+                    vals.update(action='aumenta' if up else 'baja', apply=True)
             vals_list.append(vals)
         self.env['qb.order.proposal.line'].create(vals_list)
         return self._qb_reopen()
@@ -275,36 +282,22 @@ class QbOrderProposal(models.TransientModel):
 
     # --- Aplicar ----------------------------------------------------------------
     def action_apply(self):
-        """Crea o actualiza las cotizaciones de los renglones marcados (uno por OC y semana)."""
+        """Crea o actualiza los pedidos de los renglones marcados (uno por OC y semana): una cotización
+        se cambia directo; un pedido confirmado lo ajusta el administrador de ventas (se desbloquea,
+        se cambia y se vuelve a bloquear, con nota en el chatter)."""
         self.ensure_one()
-        Order = self.env['sale.order']
-        touched = Order
-        by_order = defaultdict(lambda: self.env['qb.order.proposal.line'])
-        for line in self.line_ids.filtered(lambda l: l.apply and l.action in ('nuevo', 'aumenta', 'baja')):
-            by_order[(line.partner_id.id, line.ship_to_id.id, line.customer_po, line.week)] |= line
-        for (_p, _s, ref, week), lines in by_order.items():
-            first = lines[0]
-            # 3.15.2: un pedido confirmado no se toca (producción los bloquea al confirmar): lo que
-            # falta va a una cotización de la misma OC y semana.
-            order = lines.sale_line_ids.order_id.filtered(lambda o: o.state in ('draft', 'sent'))[:1]
-            created = False
-            if not order and any(line._qb_missing_qty() > 0 for line in lines):
-                order = self._qb_find_order(first)
-                if not order:
-                    order = Order.create(self._qb_order_vals(first))
-                    created = True
-            for line in lines:
-                line._qb_apply_to(order)
-            if order and (created or order.order_line):
-                touched |= order
-            elif order and not order.order_line and order.qb_from_forecast:
-                order.unlink()
-        if touched:
-            for order in touched:
-                order.message_post(body=Markup("Actualizado desde el pronóstico por %s.") % self.env.user.name)
-            return {'type': 'ir.actions.act_window', 'name': "Pedidos desde el pronóstico",
-                    'res_model': 'sale.order', 'view_mode': 'list,form', 'domain': [('id', 'in', touched.ids)]}
-        raise UserError("No hay renglones marcados para aplicar.")
+        lines = self.line_ids.filtered(lambda l: l.apply and l.action in ('nuevo', 'aumenta', 'baja'))
+        if not lines:
+            raise UserError("No hay renglones marcados para aplicar.")
+        if lines.filtered('adjust_confirmed') and not self.env.user.has_group('sales_team.group_sale_manager'):
+            raise UserError("Solo el administrador de ventas ajusta pedidos confirmados.")
+        touched = self.env['sale.order']
+        for line in lines:
+            touched |= line._qb_apply()
+        for order in touched:
+            order.message_post(body=Markup("Actualizado desde el pronóstico por %s.") % self.env.user.name)
+        return {'type': 'ir.actions.act_window', 'name': "Pedidos desde el pronóstico",
+                'res_model': 'sale.order', 'view_mode': 'list,form', 'domain': [('id', 'in', touched.ids)]}
 
     def _qb_find_order(self, line):
         """Una cotización o pedido abierto del cliente con esa OC y semana (aunque no tenga el producto)."""
@@ -353,34 +346,79 @@ class QbOrderProposalLine(models.TransientModel):
     action = fields.Selection(PROPOSAL_ACTIONS, string="Qué pasa", readonly=True)
     reason = fields.Char(string="Motivo", readonly=True)
     apply = fields.Boolean(string="Aplicar")
+    adjust_confirmed = fields.Boolean(string="Ajusta un pedido confirmado", readonly=True,
+                                      help="El pedido de esa OC y semana ya está confirmado: se desbloquea, se "
+                                           "cambia y se vuelve a bloquear (solo el administrador de ventas).")
     sale_line_ids = fields.Many2many('sale.order.line', string="Líneas de pedido", readonly=True)
 
-    def _qb_confirmed_qty(self):
-        return sum(self.sale_line_ids.filtered(lambda s: s.order_id.state == 'sale').mapped('product_uom_qty'))
-
-    def _qb_missing_qty(self):
-        """Lo que el pronóstico pide por encima de lo ya confirmado (va en cotización)."""
+    def _qb_order_for(self, allow_confirmed=True):
+        """El pedido de la OC y semana del renglón donde va lo nuevo: una cotización si hay; si no, el
+        pedido confirmado (si el renglón ajusta confirmados); si no, una cotización nueva."""
         self.ensure_one()
-        return round(max(self.qty_forecast, self.qty_delivered) - self._qb_confirmed_qty(), 6)
+        proposal = self.proposal_id
+        orders = self.sale_line_ids.order_id
+        order = orders.filtered(lambda o: o.state in ('draft', 'sent'))[:1] or proposal._qb_find_order(self)
+        if not order and self.adjust_confirmed and allow_confirmed:
+            order = orders.filtered(lambda o: o.state == 'sale')[:1]
+        return order or self.env['sale.order'].create(proposal._qb_order_vals(self))
 
-    def _qb_apply_to(self, order):
-        """Deja en la cotización ``order`` lo que el pronóstico pide por encima de los pedidos
-        confirmados de esa OC y semana (que no se tocan). Sin cotización y sin faltante, nada."""
+    @staticmethod
+    def _qb_open_qty(sol):
+        """Lo que aún se puede cambiar de una línea: si su entrega ya se surtió completa, nada."""
+        return any(move.state not in ('done', 'cancel') for move in sol.move_ids) or sol.order_id.state != 'sale'
+
+    def _qb_write_qty(self, sol, qty, note):
+        """Cambia la cantidad de ``sol``; en un pedido confirmado y bloqueado, lo desbloquea, la cambia,
+        lo vuelve a bloquear y deja nota (lo que Ventas hace a mano)."""
+        order = sol.order_id
+        was_locked = bool(order._fields.get('locked') and order.locked)
+        before = sol.product_uom_qty
+        if was_locked:
+            order.action_unlock()
+        sol.write({'product_uom_qty': qty})
+        if was_locked:
+            order.action_lock()
+        if order.state == 'sale':
+            order.message_post(body=Markup("Cantidad de %s: %s → %s (%s).") % (
+                sol.product_id.display_name, '{:,.2f}'.format(before), '{:,.2f}'.format(qty), note))
+
+    def _qb_apply(self):
+        """Deja en los pedidos de la OC y semana la cantidad del pronóstico del producto, nunca menos de
+        lo entregado. Devuelve los pedidos que tocó."""
         self.ensure_one()
-        need = max(self._qb_missing_qty(), 0.0)
-        drafts = self.sale_line_ids.filtered(lambda s: s.order_id.state in ('draft', 'sent'))
-        if order:
-            drafts |= order.order_line.filtered(lambda s: s.product_id == self.product_id)
-        if drafts:
-            first, rest = drafts[0], drafts[1:]
-            keep = max(need - sum(rest.mapped('product_uom_qty')), 0.0)
-            if keep > 0:
-                first.write({'product_uom_qty': keep})
-            else:
+        note = "release %s" % self.release_id.name if self.release_id else "pronóstico de la semana %s" % self.week
+        target = max(self.qty_forecast, self.qty_delivered)
+        sols = self.sale_line_ids.filtered(
+            lambda s: s.order_id.state in ('draft', 'sent') or (self.adjust_confirmed and s.order_id.state == 'sale'))
+        fixed = self.sale_line_ids - sols
+        editable = sols.filtered(self._qb_open_qty)
+        frozen = (sols - editable) | fixed
+        need = target - sum(frozen.mapped('product_uom_qty'))
+        touched = self.env['sale.order']
+        if editable:
+            first, rest = editable[0], editable[1:]
+            qty = max(need - sum(rest.mapped('product_uom_qty')), first.qty_delivered, 0.0)
+            if qty <= 0 and first.order_id.state in ('draft', 'sent'):
+                touched |= first.order_id
                 first.unlink()
-            return
-        if need > 0 and order:
+            else:
+                self._qb_write_qty(first, qty, note)
+                touched |= first.order_id
+            return touched
+        if need > 0:
+            # Sin línea que se pueda cambiar (nueva, o la entrega ya se surtió): va a la cotización de la
+            # OC y semana, o al pedido confirmado si el renglón lo ajusta.
+            # Si la entrega del confirmado ya se surtió completa, lo que se pide de más va a un pedido
+            # nuevo (cotización), no al surtido.
+            order = self._qb_order_for(allow_confirmed=not (sols - editable))
+            was_locked = bool(order._fields.get('locked') and order.locked)
+            if was_locked:
+                order.action_unlock()
             self.env['sale.order.line'].create({
                 'order_id': order.id, 'product_id': self.product_id.id, 'product_uom_qty': need,
                 'qb_forecast_week': self.week, 'qb_release_id': self.release_id.id or False,
                 'qb_customer_part': self.customer_part or False})
+            if was_locked:
+                order.action_lock()
+            touched |= order
+        return touched

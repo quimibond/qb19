@@ -55,8 +55,10 @@
                 <sheet>
                     <div class="alert alert-info" role="status">
                         Una semana del pronóstico se vuelve pedido (cotización) cuando está dentro de las semanas a
-                        pedido del cliente y tiene OC. Un pedido por OC y semana de embarque. Las bajas en un
-                        pedido confirmado quedan por autorizar; nunca se baja de lo entregado.
+                        pedido del cliente y tiene OC. Un pedido por OC y semana de embarque. Un pedido confirmado
+                        lo ajusta el administrador de ventas: se desbloquea, se cambia y se vuelve a bloquear, con
+                        nota. Los aumentos vienen marcados; las bajas en confirmados, desmarcadas. Nunca se baja de
+                        lo entregado.
                     </div>
                     <group>
                         <group>
@@ -85,6 +87,7 @@
                             <field name="qty_existing" sum="Total"/>
                             <field name="qty_delivered" optional="show"/>
                             <field name="price_unit" optional="show"/>
+                            <field name="adjust_confirmed" optional="show"/>
                             <field name="reason"/>
                             <field name="po_mode" optional="hide"/>
                             <field name="release_id" optional="hide"/>
