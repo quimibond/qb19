@@ -2,6 +2,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+# 3.15.0: calidades que salen como la tela en metros; el resto (Desperdicio) es saldo en kg.
+CALIDADES_EN_METROS = ('PQ', 'FE', 'SEGUNDA')
 CLASIFICACIONES = [('PQ', 'PQ'), ('FE', 'FE'), ('SEGUNDA', 'Segunda'), ('DESP', 'Desperdicio')]
 
 # DAT P-D02-01 rev. 05, posiciones 10-11 del código (sin el prefijo «I»).
