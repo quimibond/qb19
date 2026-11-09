@@ -195,9 +195,12 @@ class TestPieFormato(_Case):
             if 't-call="quimibond_sgi.sgi_format_page_footer"' in arch:
                 self.assertEqual(view.key, 'quimibond_sgi.sgi_report_layout')
         for xmlid in ('report_saleorder_document_sgi', 'report_purchaseorder_document_sgi',
-                      'report_delivery_document_sgi', 'report_mrporder_sgi'):
+                      'report_delivery_document_sgi'):
             arch = self.env.ref('quimibond_sgi.' + xmlid).arch_db
             self.assertIn('t-call="quimibond_sgi.sgi_format_footer"', arch, xmlid)
+        # 57.198.0: la orden de fabricación ya no lleva pie de formato controlado.
+        self.assertFalse(self.env['ir.model.data'].search_count([
+            ('module', '=', 'quimibond_sgi'), ('name', '=', 'report_mrporder_sgi')]))
 
     def test_06_diagnostico_lista_reportes_sin_mapeo(self):
         news = self.env.ref('quimibond_sgi.action_report_news').name

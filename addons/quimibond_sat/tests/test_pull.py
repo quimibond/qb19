@@ -4,6 +4,7 @@ siguiente, y la entrada pública action_pull_period (la que usa MCP)."""
 from unittest.mock import patch
 
 from odoo.tests import tagged
+from odoo.tools import mute_logger
 
 from .common import RFC_CLIENTE, RFC_QUIMIBOND, SatCommon, syntage_invoice
 
@@ -14,6 +15,11 @@ ENTITY = 'a13aaec4-e56d-48c6-8f74-038d8ff6c1e5'
 
 @tagged('post_install', '-at_install', 'quimibond_sat')
 class TestSatPull(SatCommon):
+
+    def setUp(self):
+        super().setUp()
+        # La fila 'sin-uuid' del fixture es mala a propósito; su aviso no es ruido del build.
+        self.enterContext(mute_logger('odoo.addons.quimibond_sat.models.syntage_client'))
 
     def _fake_request(self, calls):
         def _request(client, method, path, params=None, json=None, headers=None, timeout=60):

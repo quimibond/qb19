@@ -2,6 +2,7 @@
 import json
 
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import mute_logger
 
 from ..models.senales import base
 from ..models.supabase_client import SupabaseError
@@ -68,8 +69,10 @@ class TestPushSenales(TransactionCase):
     def test_error_en_una_senal_no_detiene_las_demas_pero_deja_error(self):
         c = ClienteFalso([x for x in self.config if x['senal'] in ('_a', '_boom', '_b')], fallar_en=('_a',))
         # No usar assertRaises: el de Odoo envuelve el bloque en un savepoint y deshace el sync.log que aquí se verifica.
+        # Las dos fallas (HTTP 500 y 1 / 0) se registran a propósito con _logger.exception.
         try:
-            self.sync._push_senales(c)
+            with mute_logger('odoo.addons.quimibond_intelligence.models.sync_push_senales'):
+                self.sync._push_senales(c)
             self.fail('debió levantar SupabaseError')
         except SupabaseError:
             pass

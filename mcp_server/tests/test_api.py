@@ -211,6 +211,7 @@ class TestMCPObjectController(HttpCase):
         self.assertEqual(cm.exception.faultCode, 403)
         self.assertIn("MCP Server is disabled globally", cm.exception.faultString)
 
+    @mute_logger("odoo.addons.mcp_server.controllers.api")  # el aviso lo provoca la prueba
     def test_object_controller_non_execute_kw_method(self):
         """Test rejection of non-execute_kw methods."""
         from ..controllers import utils
@@ -234,6 +235,7 @@ class TestMCPObjectController(HttpCase):
         self.assertIn("400", response.text)
         self.assertIn("Unsupported method", response.text)
 
+    @mute_logger("odoo.addons.mcp_server.controllers.api")  # el aviso lo provoca la prueba
     def test_object_controller_insufficient_params(self):
         """Test handling of insufficient parameters."""
         from ..controllers import utils
@@ -257,6 +259,7 @@ class TestMCPObjectController(HttpCase):
         self.assertIn("400", response.text)
         self.assertIn("Insufficient parameters", response.text)
 
+    @mute_logger("odoo.addons.mcp_server.controllers.api")  # el aviso lo provoca la prueba
     def test_mcp_object_dispatch_non_execute_kw(self):
         """Test _mcp_object_dispatch rejects non-execute_kw methods."""
         with self.assertRaises(xmlrpclib.Fault) as cm:

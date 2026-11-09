@@ -635,6 +635,9 @@ class TestBandeja(TransactionCase):
             "El renglón sale en el momento.")
 
     def test_32_documento_sigue_vigente_o_pide_cambio(self):
+        # Un procedimiento vigente exige que cada actividad tenga método de
+        # medición (_sgi_measure_problems).
+        self.activity.measure_method = 'manual'
         doc = self.env['documents.document'].create({
             'name': 'Procedimiento revisión 8A', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A69', 'sgi_state': 'vigente',
@@ -670,7 +673,7 @@ class TestBandeja(TransactionCase):
         self.assertEqual(len(row), 1)
         self.assertTrue(row.with_user(self.user).can_done)
         # Otra persona no aprueba con el renglón ajeno.
-        with self.assertRaises((UserError, AccessError)):
+        with self.assertRaises(UserError):  # AccessError hereda de UserError
             row.with_user(self.boss_user).action_request_approve()
         result = row.with_user(self.user).action_done()
         self.assertEqual(result['tag'], 'display_notification')
@@ -696,7 +699,7 @@ class TestBandeja(TransactionCase):
         theirs = self.Pending.with_user(self.boss_user)._sgi_build(self.boss).filtered(
             lambda r: r.kind == 'acuse' and r.res_id == ack.id)
         self.assertEqual(len(theirs), 1)
-        with self.assertRaises((UserError, AccessError)):
+        with self.assertRaises(UserError):  # AccessError hereda de UserError
             theirs.with_user(self.user).action_sign_ack_selected()
         self.assertEqual(ack.state, 'pendiente')
 

@@ -14,6 +14,26 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.198.0 — 2026-11-08
+
+**Retirado**
+- **Aviso «Formato controlado del SGI» en las órdenes de fabricación**: se quitan la herencia del formulario
+  (`sgi_format_banner_mrp_production`) y el pie del PDF de la orden (`report_mrporder_sgi`). Los demás documentos
+  (cotización, OC, remisión, orden de mantenimiento, lote/CoA) conservan su aviso. El mapeo de `mrp.production` sigue
+  para las claves por operación. Al actualizar, Odoo borra las dos vistas (sus xmlid ya no están en el módulo).
+
+**Corregido**
+- **Mis pendientes al registrar una evaluación legal** (`_sgi_refresh_for`): los usuarios se leen antes de rearmar la
+  lista; `_sgi_build` borra y vuelve a crear los renglones, y leer uno borrado reventaba con `MissingError`.
+
+**Pruebas**
+- `test_aprobaciones_asunto`, `test_autovalidacion`, `test_bandeja` 32 y 33 al día con las reglas vigentes: la
+  actividad nace con su «Ejecuta», las mediciones de pendientes con periodo ya vencido, la actividad de un
+  procedimiento vigente con método de medición y `assertRaises(UserError)` (el de Odoo no acepta tuplas;
+  `AccessError` hereda de `UserError`). `test_audit_hardening` y `test_excel_migration` silencian los errores que
+  provocan a propósito.
+
+
 ## 19.0.57.197.0 — 2026-11-04
 
 Dirección General (2026-11-04), a raíz de lo que reportó Jessica Francisco: el 3-nov Diseño presionó «Aprobar

@@ -3,6 +3,7 @@ import json
 import time
 
 from odoo.tests import HttpCase, tagged
+from odoo.tools import mute_logger
 
 from ..syntage_signature import compute_signature
 from .common import RFC_QUIMIBOND, syntage_invoice
@@ -41,7 +42,8 @@ class TestSatWebhook(HttpCase):
         self.assertTrue(resp.json().get('ok'))
 
     def test_invalid_signature_is_rejected(self):
-        resp = self._post(self._event(), secret='otro')
+        with mute_logger('odoo.addons.quimibond_sat.controllers.main'):
+            resp = self._post(self._event(), secret='otro')
         self.assertEqual(resp.status_code, 401)
         self.assertFalse(self.env['sat.webhook.event'].search([('event_id', '=', 'evt_1')]))
 

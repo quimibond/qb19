@@ -321,7 +321,7 @@ class TestMCPLogging(TransactionCase):
         """Test that log creation errors are handled gracefully."""
         with patch.object(
             type(self.MCPLog), "create", side_effect=Exception("Database error")
-        ):
+        ), mute_logger("odoo.addons.mcp_server.models.mcp_log"):
             # Should not raise exception, just return empty recordset
             log = self.MCPLog.log_event("auth_success", user_id=self.test_user.id)
             self.assertFalse(log)

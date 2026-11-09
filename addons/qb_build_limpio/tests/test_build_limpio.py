@@ -27,7 +27,9 @@ class TestBuildLimpio(TransactionCase):
         base.update(vals)
         # Studio crea campos así; Odoo avisa de la etiqueta repetida al
         # reflejarlos. El aviso se silencia para que la prueba no ensucie el log.
-        with mute_logger('odoo.addons.base.models.ir_model'):
+        # Un relacionado que pasa por un calculado sin búsqueda deja además un
+        # UserWarning («should be searchable»): es justo lo que se reproduce.
+        with mute_logger('odoo.addons.base.models.ir_model', 'py.warnings'):
             return self.Fields.create(base)
 
     def _etiqueta(self, name):
@@ -75,7 +77,8 @@ class TestBuildLimpio(TransactionCase):
 
         # Al recargar el registro el campo calculado da lo mismo que daba el relacionado
         self.Fields.invalidate_model()
-        self.registry._setup_models__(self.env.cr, ['res.partner'])
+        with mute_logger('py.warnings'):
+            self.registry._setup_models__(self.env.cr, ['res.partner'])
         campo = self.env['res.partner']._fields['x_qbl_rel']
         self.assertFalse(campo.related)
         self.assertEqual(tuple(self.registry.field_depends[campo]), ('parent_id',))

@@ -29,7 +29,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
-from .mrp_rollo_bitacora import CLASIFICACIONES
+from .mrp_rollo_bitacora import CALIDADES_EN_METROS, CLASIFICACIONES, PARAM_PRELIM_ALTO, PARAM_PRELIM_ANCHO
 
 PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 # 3.11.0 (A3.2): con el parámetro en «1», el cierre de la orden en kg ya no registra ni cierra la orden en metros: los rollos
@@ -153,7 +153,10 @@ class MrpProductionInspeccion(models.Model):
         finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
         if not finales:
             return False
-        if not finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')):
+        # 3.15.0: con orden en metros, la Segunda también es tela en metros; el baño para venta en kg (sin orden en metros)
+        # sigue sacándola como saldo en kg, porque no hay producto en metros donde registrarla.
+        calidades = CALIDADES_EN_METROS if finales.production_m_id else ('PQ', 'FE')
+        if not finales.filtered(lambda r: r.clasificacion_registro in calidades):
             return 'saldos'
         return 'metros' if finales.production_m_id else 'kg'
 
@@ -247,6 +250,31 @@ class MrpProductionInspeccion(models.Model):
         self.ensure_one()
         return (self.desperdicio_empaque_kg or 0.0) if self._insp_empaque_activo() else 0.0
 
+    def _zpl_etiqueta_desperdicio_empaque(self):
+        """Etiqueta del desperdicio pesado en Empaque (3.15.0, José 2026-11-08): fecha, producto (código), nombre, número de
+        lote, cantidad con su unidad de medida y el código de barras del número de lote. El producto es el subproducto de
+        desperdicio (SALDO TEJIDO D) y el lote el del mes, el mismo con que se registra al cerrar. Tamaño: el de la
+        preliminar (68 x 38 mm, ajustable en Ajustes de la etiqueta preliminar)."""
+        self.ensure_one()
+        if not self.desperdicio_empaque_kg:
+            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Empaque.', self.name))
+        producto = self.env['mrp.rollo.final']._producto_saldo('DESP')
+        lote = self._lote_desperdicio(producto)
+        fecha = fields.Datetime.context_timestamp(self, self.desperdicio_empaque_fecha or fields.Datetime.now())
+        return self.env['mrp.rollo.bitacora']._zpl_preliminar_acomodo(
+            PARAM_PRELIM_ANCHO, PARAM_PRELIM_ALTO, [
+                'PRODUCTO: %s' % (producto.default_code or ''),
+                'NOMBRE: %s' % producto.name,
+                'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
+                'LOTE: %s' % lote.name,
+            ], ['CANTIDAD: %.2f %s' % (self.desperdicio_empaque_kg, producto.uom_id.name)], lote.name)
+
+    def action_imprimir_etiqueta_desperdicio_empaque(self):
+        self.ensure_one()
+        accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_empaque').report_action(self)
+        accion.update({'close_on_report_download': True})
+        return accion
+
     def action_pesar_desperdicio_empaque(self):
         """Abre el pesaje del desperdicio de Empaque de esta orden en metros (3.13.0, A3.3b)."""
         self.ensure_one()
@@ -318,7 +346,7 @@ class MrpProductionInspeccion(models.Model):
                 raise UserError(_('El baño %(b)s sigue abierto: cierra primero la orden en kg antes de cerrar %(m)s.',
                                   b=banos.name, m=orden_m.name))
             registrar = banos.with_context(qb_insp_desde_empaque=True)
-            if finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE')):
+            if finales.filtered(lambda r: r.clasificacion_registro in CALIDADES_EN_METROS):
                 registrar._insp_registrar_metros()
             else:
                 registrar._insp_registrar_saldos()
@@ -514,7 +542,7 @@ class MrpProductionInspeccion(models.Model):
         if not producto:
             return self.env['mrp.production']
         rama = finales.bitacora_ids
-        primeras = finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE'))
+        primeras = finales.filtered(lambda r: r.clasificacion_registro in CALIDADES_EN_METROS)
         metros = producto.uom_id.round(sum(primeras.mapped('metros_registro'))) or anterior.product_qty
         quant = self.env['stock.quant'].sudo().search([
             ('lot_id', 'in', rama.lot_id.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
@@ -556,13 +584,13 @@ class MrpProductionInspeccion(models.Model):
         finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
         Final = self.env['mrp.rollo.final']
         rama = finales.bitacora_ids
-        primeras = finales.filtered(lambda r: r.clasificacion_registro in ('PQ', 'FE'))
+        primeras = finales.filtered(lambda r: r.clasificacion_registro in CALIDADES_EN_METROS)  # 3.15.0: con Segunda
         saldos = finales - primeras
         uom_m = orden_m.product_id.uom_id
         total_m = uom_m.round(sum(primeras.mapped('metros_registro')))
         if float_is_zero(total_m, precision_rounding=uom_m.rounding):
             raise UserError(_(
-                'El baño %s no tiene rollos de primera ni FE: la orden en metros %s no puede cerrar en cero. Revisa la '
+                'El baño %s no tiene rollos de primera, FE ni Segunda: la orden en metros %s no puede cerrar en cero. Revisa la '
                 'clasificación en Inspección.', self.name, orden_m.name))
         raw = orden_m._clasif_move_a()
         if not raw:
@@ -598,7 +626,7 @@ class MrpProductionInspeccion(models.Model):
         # diferencia con una orden en kg nueva (ronda 12 en main, TL/OP-KG/00066).
         raw.with_context(do_not_unreserve=True, no_procurement=True).write({'product_uom_qty': kg_demanda})
 
-        # 3. La tela en metros: un lote por rollo final, PQ a 14 y FE a 15.
+        # 3. La tela en metros: un lote por rollo final, PQ a 14, FE a 15 y Segunda a 16 (3.15.0).
         terminado = orden_m.move_finished_ids.filtered(
             lambda m: m.product_id == orden_m.product_id and m.state not in ('done', 'cancel'))[:1]
         if not terminado:
@@ -616,7 +644,7 @@ class MrpProductionInspeccion(models.Model):
                 'location_dest_id': destino.id, 'production_id': orden_m.id})
             rollo.write({'product_id': orden_m.product_id.id, 'lot_id': lote.id, 'location_dest_id': destino.id})
 
-        # 4. Los saldos en kg (subproductos de la lista en metros, cantidad 0 en la lista; la real es el peso). Si la
+        # 4. El desperdicio en kg (subproductos de la lista en metros, cantidad 0 en la lista; la real es el peso). Si la
         #    lista no los trae, se agregan a la orden (3.2.0).
         extra_desp = orden_m._insp_extra_desperdicio()
         for clasificacion in ('SEGUNDA', 'DESP'):
@@ -659,8 +687,8 @@ class MrpProductionInspeccion(models.Model):
             saldos_prod = Final._productos_saldo()
             pendiente._insp_limpiar_saldos(pendiente.move_finished_ids.filtered(lambda m: m.product_id in saldos_prod))
         self.message_post(body=_(
-            'Baño cerrado: %(n)s rollos finales registrados en %(m)s (%(mts).2f m de primera y FE; %(kg).2f kg de '
-            'saldos).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_registro')),
+            'Baño cerrado: %(n)s rollos finales registrados en %(m)s (%(mts).2f m de primera, FE y Segunda; %(kg).2f kg '
+            'de desperdicio).%(p)s', n=len(finales), m=orden_m.name, mts=total_m, kg=sum(saldos.mapped('kg_registro')),
             p=(_(' Queda pendiente %s para los baños %s.', pendiente[:1].name, ', '.join(otros.mapped('name')))
                if pendiente else '')))
 

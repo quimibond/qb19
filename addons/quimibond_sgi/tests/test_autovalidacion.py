@@ -63,8 +63,10 @@ class TestAutovalidacion(TransactionCase):
 
     def test_04_al_pasar_a_oficial(self):
         indicator = self._indicator('ZAV-4', status='prueba')
-        green = self._measure(indicator, 95.0)
-        red = self._measure(indicator, 10.0, period=date(2040, 2, 1))
+        # Periodos ya vencidos: «Mis pendientes» solo lista mediciones con
+        # periodo de hoy o antes (un periodo futuro todavía no se valida).
+        green = self._measure(indicator, 95.0, period=date(2020, 1, 1))
+        red = self._measure(indicator, 10.0, period=date(2020, 2, 1))
         indicator.action_set_official()
         self.assertEqual((green.state, red.state), ('validado', 'capturado'),
                          "Lo verde capturado en prueba se valida al pasar a oficial; el rojo, no.")

@@ -65,4 +65,5 @@ class RolloEmpaqueDesperdicioWizard(models.TransientModel):
             'Desperdicio de Empaque: %(kg).3f kg%(a)s, pesado por %(o)s. Se registra como Saldo Desperdicio al cerrar la '
             'orden.', kg=self.kg_desperdicio, o=operador,
             a=_(' (antes %.3f kg)', anterior) if anterior else ''))
-        return {'type': 'ir.actions.act_window_close'}
+        # 3.15.0: la etiqueta del desperdicio sale al pesar (fecha, producto, nombre, lote, cantidad y código de barras).
+        return orden.action_imprimir_etiqueta_desperdicio_empaque()

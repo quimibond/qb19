@@ -27,6 +27,15 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Segunda en metros y etiqueta del desperdicio (3.15.0, José, 2026-11-08)
+
+Alinea el módulo con el diseño técnico (§2, §8 paso 13 y §16), que la decisión D5 del spec del 3-nov había cambiado a kg:
+
+- **Segunda es la tela en metros.** Al registrar la orden en metros, PQ, FE y Segunda entran como el mismo producto en metros, cada rollo con su lote, a 14, 15 y 16. Solo el **Desperdicio** sigue siendo subproducto en kg (SALDO TEJIDO D, ubicación 17). Un baño sin primera ni FE pero con Segunda ya no cancela la orden en metros: la cierra con la Segunda. La Segunda entra con el costo normal del producto (ya no a costo cero); el desperdicio sigue a costo cero.
+- **Baño para venta en kg** (sin orden en metros): no cambia; la Segunda sigue saliendo como saldo en kg, porque no hay producto en metros donde registrarla.
+- **Etiqueta del desperdicio de Empaque:** al pesar el desperdicio sale una etiqueta (ZPL, 68 x 38 mm, el tamaño de la preliminar) con fecha, producto, nombre, número de lote (el del mes), cantidad con su unidad y el código de barras del lote.
+- Sin migración de datos: lo ya registrado no cambia.
+
 ## Clasificación final (3.0)
 - Botón **CLASIFICAR** en la lista de operaciones de la MO en metros (operación en centro EMPAQUE).
 - Se escanea el lote-serie del rollo de A (debe estar inspeccionado, tener existencia en el origen del consumo

@@ -10,10 +10,13 @@ motivo de la captura manual en Rama y en el desperdicio, lote reutilizable y mí
 """
 from unittest.mock import patch
 
+from psycopg2 import IntegrityError
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install', 'quimibond_rollos_bitacora')
@@ -144,7 +147,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(consumo.quantity, 50.0, msg="Consume el rollo de Rama completo")
 
     def test_02_corte_primera_y_segunda(self):
-        """Caso 2: 250 m de primera y 120 m de segunda; la segunda sale en kg como saldo, a 16."""
+        """Caso 2: 250 m de primera y 120 m de segunda; 3.15.0: la segunda es la tela en metros, con su lote, a 16 (diseño §8)."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
         self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con pedazos pendientes, el rollo sigue sin inspeccionar")
@@ -154,9 +157,10 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 250.0)
         segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
-        self.assertEqual(segunda.product_id, self.saldo_2)
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA'], segunda.name), 11.9)
-        self.assertAlmostEqual(orden_m.qty_produced, 250.0, msg="La orden en metros cierra con los metros de primera")
+        self.assertEqual(segunda.product_id, self.prod_m)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], segunda.name), 120.0)
+        self.assertFalse(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), "La Segunda ya no sale como saldo en kg")
+        self.assertAlmostEqual(orden_m.qty_produced, 370.0, msg="La orden en metros cierra con primera y Segunda")
 
     def test_03_04_fe_y_desperdicio(self):
         """Casos 3 y 4: FE en metros a 15; desperdicio en kg (saldo D) a 17."""
@@ -253,10 +257,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(set(orden_kg.rollo_final_kg_ids.mapped('estado')), {'registrado'})
 
     def test_14_bano_sin_primera_ni_fe(self):
-        """3.2.0: todo en segunda y desperdicio: la orden en metros se cancela y una orden de saldos saca los saldos en
-        kg, consumiendo los rollos de Rama completos."""
+        """3.2.0: todo desperdicio (3.15.0: la Segunda ya es tela en metros): la orden en metros se cancela y una orden
+        de saldos saca el desperdicio en kg, consumiendo los rollos de Rama completos."""
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
-        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
@@ -265,8 +269,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(set(finales.mapped('estado')), {'registrado'})
         orden_s = finales.production_saldo_id
         self.assertEqual(orden_s.state, 'done')
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 17.0)
-        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 1.5)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 18.5)
         consumo = orden_s.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
         self.assertAlmostEqual(consumo.quantity, 20.0)
 
@@ -333,12 +336,12 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_16_bano_de_saldos_no_cancela_con_otro_bano_abierto(self):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
-        self._inspeccionar(kg_a, wo_a, rollos_a, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(kg_a, wo_a, rollos_a, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(kg_a, wo_a, rollos_a, 9.0, 80.0, 'DESP')
         kg_a.button_mark_done()
         self.assertEqual(kg_a.state, 'done')
         self.assertNotEqual(orden_m.state, 'cancel', "El otro baño la sigue abasteciendo")
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 29.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 36.5)
         self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
         kg_b.button_mark_done()
         self.assertEqual(orden_m.state, 'done')
@@ -540,16 +543,16 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(nuevas, "Cerrar los baños no crea órdenes en kg: %s" % nuevas.mapped('name'))
 
     def test_22_programacion_cierre_en_orden_inverso_y_bano_de_saldos(self):
-        """Programación 1.8.0: el segundo baño sale todo Segunda y Desperdicio y cierra primero: cancela solo su orden en
+        """Programación 1.8.0: el segundo baño sale todo Desperdicio y cierra primero: cancela solo su orden en
         metros y saca los saldos aparte; el primer baño cierra la suya."""
         orden_m, (bano_1, bano_2) = self._programar_dos_banos()
         m2 = bano_2._insp_orden_metros()
-        self._rama_e_inspeccion(bano_2, 41.1, [(30.5, 320.0, 'SEGUNDA'), (9.0, 80.0, 'DESP')])
+        self._rama_e_inspeccion(bano_2, 41.1, [(30.5, 320.0, 'DESP'), (9.0, 80.0, 'DESP')])
         bano_2.button_mark_done()
         self.assertEqual(bano_2.state, 'done')
-        self.assertEqual(m2.state, 'cancel', "Sin primera ni FE se cancela la orden en metros de ese baño")
+        self.assertEqual(m2.state, 'cancel', "Sin tela en metros se cancela la orden en metros de ese baño")
         self.assertEqual(orden_m.state, 'confirmed', "La orden en metros del primer baño no cambia")
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 29.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 36.5)
         self.assertEqual(bano_1._insp_orden_metros(), orden_m)
         self._rama_e_inspeccion(bano_1, 41.1, [(26.6, 300.0, 'PQ'), (14.0, 150.0, 'FE')])
         bano_1.button_mark_done()
@@ -577,7 +580,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(kg_b.state, 'done')
         self.assertEqual(pendiente.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 800.0)
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 8.4)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA']), 100.0)
 
     def test_24_orden_de_saldos_no_lanza_abastecimiento(self):
         """E2: el consumo de la orden de saldos tomaba la regla bajo pedido de la ruta del producto en kg y creaba una orden
@@ -595,7 +598,7 @@ class TestInspeccionEstacion(TransactionCase):
         fabricar = self.env.ref('mrp.route_warehouse0_manufacture')
         self.prod_kg.route_ids = [Command.link(ruta.id), Command.link(fabricar.id)]
         antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
-        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
@@ -616,7 +619,7 @@ class TestInspeccionEstacion(TransactionCase):
         stock = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
         self.env['stock.quant']._update_available_quantity(self.crudo, stock, 500.0)
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
-        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertEqual(orden_kg.state, 'done')
@@ -626,8 +629,8 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertGreater(consumo, 0.0, "El baño tiene costo: sale del inventario de la tela en kg")
         terminados = orden_s.move_finished_ids.filtered(lambda m: m.state == 'done')
         self.assertTrue(terminados)
-        self.assertFalse(any(terminados.mapped('value')), "Segunda y Desperdicio entran a costo cero")
-        self.assertAlmostEqual(self.saldo_2.standard_price, 0.0)
+        self.assertFalse(any(terminados.mapped('value')), "El desperdicio entra a costo cero")
+        self.assertAlmostEqual(self.saldo_d.standard_price, 0.0)
 
     def test_26_segunda_y_fe_piden_defecto(self):
         """E12c: Segunda y FE necesitan al menos un defecto (evidencia de calidad); PQ y Desperdicio no."""
@@ -696,8 +699,7 @@ class TestInspeccionEstacion(TransactionCase):
         # Baño de solo saldos (orden de saldos) también con el operador.
         orden_m2, orden_kg2, wo2, rollos2 = self._bano((40.0,))
         Wizard.create(dict(base, production_id=orden_kg2.id, workorder_id=wo2.id, rollo_codigos=rollos2.name,
-                           kg_bruto=40.5, metros=400.0, clasificacion='SEGUNDA', termina_rollo=True,
-                           defecto_ids=[Command.set(self.defecto.ids)])).action_confirmar()
+                           kg_bruto=40.5, metros=400.0, clasificacion='DESP', termina_rollo=True)).action_confirmar()
         orden_kg2.with_user(operador).button_mark_done()
         self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
 
@@ -740,7 +742,7 @@ class TestInspeccionEstacion(TransactionCase):
 
     # ------------------------------------------------------------------ 3.3.5 (propuesta de Consolti, 2026-11-05)
     def test_31_desarrollo_va_a_la_31(self):
-        """La primera y la FE de una orden de desarrollo van al almacén de desarrollos; los saldos siguen a 16 y 17."""
+        """La primera y la FE de una orden de desarrollo van al almacén de desarrollos; la Segunda sigue a 16 y el desperdicio a 17."""
         stock = self.ubic['PQ'].location_id
         desarrollos = self.env['stock.location'].create({'name': 'ZZ951 DESARROLLOS', 'location_id': stock.id,
                                                          'usage': 'internal'})
@@ -755,7 +757,7 @@ class TestInspeccionEstacion(TransactionCase):
         pq = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'PQ')
         self.assertAlmostEqual(self._cantidad(self.prod_m, desarrollos, pq.name), 250.0)
         self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']), "Nada de desarrollo entra a 14")
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 11.9)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA']), 120.0)
 
     def test_32_consecutivo_sin_huecos_al_anular(self):
         orden_m, orden_kg, wo, rollos = self._bano((40.0, 41.0, 42.0))
@@ -914,7 +916,8 @@ class TestInspeccionEstacion(TransactionCase):
         otra = self._bano((30.0,))[1]
         otra._asignar_numero_bano()
         self.assertNotEqual(otra.numero_bano, numero)
-        with self.assertRaises(Exception), self.cr.savepoint():
+        # La llave única se viola a propósito: el ERROR de odoo.sql_db se silencia.
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'), self.cr.savepoint():
             otra.numero_bano = numero
             otra.flush_recordset()
         # Si el número del nombre ya lo tiene otra orden (una vieja numerada con la secuencia de 3.5.0), se usa el nombre
@@ -1355,10 +1358,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 200.0)
 
     def test_57_empaque_activo_sin_primera_ni_fe_saca_los_saldos_al_cerrar_la_orden_en_metros(self):
-        """A3.2: si Empaque confirma que todo es saldo, al cerrar la orden en metros se cancela y salen los saldos."""
+        """A3.2: si Empaque confirma que todo es desperdicio, al cerrar la orden en metros se cancela y sale el desperdicio."""
         self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
-        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP', termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 3.0, 20.0, 'DESP')
         orden_kg.button_mark_done()
         self.assertNotEqual(orden_m.state, 'cancel')
@@ -1367,11 +1370,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(orden_m.state, 'cancel')
         finales = orden_kg.rollo_final_kg_ids
         self.assertEqual(set(finales.mapped('estado')), {'registrado'})
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 17.0)
-        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 1.5)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 18.5)
 
     def test_58_empaque_peso_de_empaque_manda_en_segunda(self):
-        """A3.2: el peso de Empaque, si pesó, es el que sale como saldo en kg."""
+        """A3.2 (3.15.0): la Segunda sale en metros; el peso de Empaque, si pesó, queda como referencia (kg_registro)."""
         self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
@@ -1382,7 +1384,8 @@ class TestInspeccionEstacion(TransactionCase):
                        'estado': 'clasificado'})
         self._empaque_confirma_todos(orden_m)
         orden_m.button_mark_done()
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA'], segunda.name), 11.5)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], segunda.name), 120.0)
+        self.assertAlmostEqual(segunda.kg_registro, 11.5)
 
     def test_59_orden_en_metros_no_cierra_con_el_bano_abierto(self):
         """A3.2: con Empaque activo, la orden en metros no registra mientras la orden en kg sigue abierta."""
@@ -1512,17 +1515,16 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
 
     def test_67_desperdicio_de_empaque_con_un_bano_de_puros_saldos(self):
-        """A3.3b: si todo el baño es saldo, la orden en metros se cancela y el desperdicio sale en la orden de saldos."""
+        """A3.3b: si todo el baño es desperdicio, la orden en metros se cancela y el desperdicio sale en la orden de saldos."""
         self._empaque()
         orden_m, orden_kg, wo, rollos = self._bano((20.0,))
-        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'SEGUNDA')
+        self._inspeccionar(orden_kg, wo, rollos, 18.5, 200.0, 'DESP')
         orden_kg.button_mark_done()
         self._pesar_desperdicio_empaque(orden_m, 2.0)
         self._empaque_confirma_todos(orden_m)
         orden_m.button_mark_done()
         self.assertEqual(orden_m.state, 'cancel')
-        self.assertAlmostEqual(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']), 17.0)
-        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 2.0)
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 19.0)
 
     def test_68_validaciones_y_repesar_del_desperdicio_de_empaque(self):
         """A3.3b: sin peso no registra, un nuevo peso sustituye al anterior, solo con el parámetro y la orden abierta."""
@@ -1646,3 +1648,51 @@ class TestInspeccionEstacion(TransactionCase):
         for orden in orden_m | banos:
             self.assertTrue(any('No se dividió la orden en metros' in (m.body or '') for m in orden.message_ids),
                             "Sin nota en %s" % orden.name)
+
+    # ------------------------------------------------------------------ 3.15.0: Segunda en metros (José, 2026-11-08)
+    def test_75_bano_solo_segunda_y_desperdicio_registra_segunda_en_metros(self):
+        """3.15.0 (diseño §2, §8 paso 13 y §16): un baño sin primera ni FE pero con Segunda ya no se cancela: la orden en
+        metros cierra con la Segunda en metros, con su lote, a 16; el desperdicio sale en kg como subproducto a 17."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, 'SEGUNDA', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 80.0, 'DESP')
+        orden_kg.button_mark_done()
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertEqual(orden_m.state, 'done', "La Segunda es tela en metros: la orden en metros no se cancela")
+        segunda = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'SEGUNDA')
+        self.assertEqual(segunda.product_id, self.prod_m)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], segunda.name), 320.0)
+        self.assertFalse(self._cantidad(self.saldo_2, self.ubic['SEGUNDA']))
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)
+        self.assertFalse(orden_kg.rollo_final_kg_ids.production_saldo_id, "No hace falta orden de saldos")
+
+    def test_76_empaque_cambia_a_segunda_y_entra_en_metros_a_16(self):
+        """3.15.0: Inspección clasifica PQ y Empaque lo cambia a Segunda: al cerrar la orden en metros entra en metros a 16."""
+        self._empaque()
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        orden_kg.button_mark_done()
+        final = orden_kg.rollo_final_kg_ids
+        final.write({'clasificacion_final': 'SEGUNDA', 'metros_final': 580.0, 'estado': 'clasificado'})
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], final.name), 580.0)
+        self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
+
+    def test_76b_etiqueta_del_desperdicio_de_empaque(self):
+        """3.15.0 (José 2026-11-08): la etiqueta del desperdicio lleva fecha, producto, nombre, lote, cantidad con su unidad
+        y el código de barras del lote; sale al pesar."""
+        self._empaque()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        orden_kg.button_mark_done()
+        with self.assertRaises(UserError):
+            orden_m._zpl_etiqueta_desperdicio_empaque()
+        accion = self._pesar_desperdicio_empaque(orden_m, 2.5)
+        self.assertTrue(accion.get('type'), "El pesaje devuelve la acción de imprimir la etiqueta")
+        zpl = orden_m._zpl_etiqueta_desperdicio_empaque()
+        lote = orden_m._lote_desperdicio(self.saldo_d).name
+        for texto in ('PRODUCTO: %s' % self.saldo_d.default_code, 'NOMBRE: %s' % self.saldo_d.name, 'LOTE: %s' % lote,
+                      'CANTIDAD: 2.50 %s' % self.saldo_d.uom_id.name, '^BC'):
+            self.assertIn(texto, zpl)
+        self.assertRegex(zpl, r'FECHA: \d\d/\d\d/\d{4} \d\d:\d\d')
