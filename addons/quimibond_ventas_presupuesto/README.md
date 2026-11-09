@@ -21,6 +21,21 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ajustar pedidos confirmados (19.0.3.15.2, 2026-11-09)
+
+«Crear o actualizar cotizaciones» daba «Está prohibido modificar … en una orden bloqueada:
+Cantidad»: producción bloquea el pedido al confirmarlo. Decisión de Jose (opción B, la que Ventas
+hace hoy a mano): el **administrador de ventas** ajusta el pedido confirmado de la OC y semana:
+se **desbloquea, se cambia la cantidad y se vuelve a bloquear**, con nota en el chatter («Cantidad
+de … : antes → después (release …)»). Así sigue habiendo un pedido por OC y semana y Odoo ajusta
+la entrega pendiente.
+
+- Los **aumentos** vienen marcados; las **bajas** en un confirmado, **desmarcadas** (puede quedar
+  material sin pedido): se marcan a propósito. Columna «Ajusta un pedido confirmado».
+- Para quien no es administrador de ventas, quedan **por autorizar**.
+- Nunca baja de lo entregado. Si la entrega de la línea ya se surtió completa, lo que se pide de
+  más va a una cotización nueva de la misma OC y semana.
+
 ## Aplicar un release reemplaza la misma tela en otro código (19.0.3.15.1, 2026-11-09)
 
 La primera aplicación real (Shawmut W45, 9-nov) **duplicó** 62 semanas: el forecast de Excel
