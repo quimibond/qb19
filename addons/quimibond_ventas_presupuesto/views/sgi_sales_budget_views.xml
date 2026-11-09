@@ -17,8 +17,11 @@
                 <field name="qb_project_id" optional="hide"/>
                 <field name="dev_project_id" optional="hide"/>
                 <field name="qb_project_state" optional="hide"/>
+                <field name="dev_stage_id" optional="hide"/>
                 <field name="date"/>
                 <field name="uom_id"/>
+                <field name="qty_origen" optional="hide"/>
+                <field name="qty_sugerida" optional="hide"/>
                 <!-- 1.2.0 (V-M10): totales al pie de cantidad e importe. -->
                 <field name="qty_budget" sum="Total"/>
                 <field name="qty_m" readonly="1" optional="hide" sum="Total"/>
@@ -81,11 +84,14 @@
                                    invisible="mercado not in ('proyectos_industrial', 'proyectos_confeccion') and not dev_project_id"/>
                             <field name="qb_project_id" readonly="1" invisible="not qb_project_id"/>
                             <field name="qb_project_state" invisible="not qb_project_id"/>
+                            <field name="dev_stage_id" invisible="not dev_project_id"/>
                             <field name="date"/>
                         </group>
                         <group string="Cantidad y precio">
                             <field name="uom_id"/>
                             <field name="qty_budget"/>
+                            <field name="qty_origen" invisible="not qty_origen"/>
+                            <field name="qty_sugerida" invisible="not qty_origen"/>
                             <field name="qty_m" readonly="1"/>
                             <field name="qty_kg" readonly="1"/>
                             <field name="conv_origen" readonly="1"/>
@@ -215,6 +221,8 @@
                         domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
                 <filter name="proyecto_perdido" string="Proyecto perdido"
                         domain="[('qb_project_id.state', '=', 'perdido')]"/>
+                <filter name="de_desarrollo" string="Propuestos desde un desarrollo"
+                        domain="[('qty_origen', '=', 'desarrollo')]"/>
                 <filter name="proyecto_sin_desarrollo" string="Proyecto sin desarrollo"
                         domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion')), ('dev_project_id', '=', False)]"/>
                 <group>
@@ -396,7 +404,10 @@
                                     <field name="proyecto_descripcion" optional="show"/>
                                     <field name="dev_project_id" optional="hide"/>
                                     <field name="qb_project_state" optional="hide"/>
+                                    <field name="dev_stage_id" optional="hide"/>
                                     <field name="date"/>
+                                    <field name="qty_origen" optional="hide"/>
+                                    <field name="qty_sugerida" optional="hide"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget" sum="Total"/>
                                     <field name="qty_forecast" readonly="1" optional="hide"/>
@@ -583,8 +594,11 @@
                         Confección por producto y mes, sin cliente. La cantidad es la vendida ese
                         mes por el crecimiento del mercado; el precio, el de la lista o, si la
                         lista no tiene el producto, el real del periodo base. No entran saldos,
-                        desperdicio, notas de crédito genéricas ni servicios. Después se ajusta
-                        renglón por renglón.
+                        desperdicio, notas de crédito genéricas ni servicios. Con «Traer
+                        desarrollos», cada desarrollo abierto (de Cotización a Pilotaje) con
+                        consumo estimado suma renglones de Proyectos desde su fecha requerida, con
+                        el precio de su cotización o el objetivo. Después se ajusta renglón por
+                        renglón.
                     </div>
                     <group>
                         <group string="Periodo">
@@ -602,6 +616,10 @@
                             <field name="min_amount"/>
                             <field name="rate"/>
                             <field name="project_source_id"/>
+                        </group>
+                        <group string="Desarrollos de producto">
+                            <field name="include_dev"/>
+                            <field name="dev_pct" invisible="not include_dev"/>
                         </group>
                     </group>
                 </sheet>

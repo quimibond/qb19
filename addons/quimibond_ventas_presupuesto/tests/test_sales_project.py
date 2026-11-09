@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """19.0.3.8.0 — proyectos comerciales ligados a Desarrollo de producto (diseño v3, 2.6 y 2.11).
-Datos propios; años 2060–2069 para aislar."""
+19.0.3.9.0 — origen «desarrollo» en la propuesta del año. Datos propios; años 2060–2069 para
+aislar (en una copia de producción los desarrollos reales también entran a la propuesta: las
+pruebas miran solo los suyos)."""
 from datetime import date
 
 from odoo.exceptions import ValidationError
@@ -154,3 +156,40 @@ class TestSalesProject(TransactionCase):
             self.Project.create({'partner_id': self.client.id, 'product_id': self.product.id})
         with self.assertRaises(ValidationError):
             self.Project.create({'partner_id': self.client.id})  # sin producto ni descripción
+
+    def test_11_propuesta_trae_el_desarrollo_desde_la_fecha_requerida(self):
+        """3.9.0: un desarrollo en Cotización con consumo anual da un renglón de Proyectos por
+        mes desde su fecha requerida, con el precio objetivo y su origen."""
+        dev = self._dev(sgi_dev_product_id=self.product.id, sgi_dev_consumption_annual=12000.0,
+                        sgi_dev_consumption_uom='m', sgi_dev_required_date=date(2065, 10, 15),
+                        sgi_dev_target_price=40.0, sgi_dev_volume_uom='m')
+        dev.write({'stage_id': self.stage('cotizacion').id})
+        sin_consumo = self._dev(name='Sin consumo', sgi_dev_product_name='Sin consumo')
+        sin_consumo.write({'stage_id': self.stage('cotizacion').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2065, base='anio', dev_pct=50.0))
+        lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
+        self.assertEqual(sorted(lines.mapped('date')), [date(2065, 10, 1), date(2065, 11, 1), date(2065, 12, 1)])
+        self.assertEqual(set(lines.mapped('qty_budget')), {500.0}, "12,000 m al año × 50 % / 12 meses")
+        self.assertEqual(set(lines.mapped('qty_origen')), {'desarrollo'})
+        self.assertEqual(set(lines.mapped('qty_sugerida')), {500.0})
+        self.assertEqual(set(lines.mapped('mercado')), {'proyectos_industrial'})
+        self.assertEqual(lines.partner_id, self.client)
+        self.assertEqual(set(lines.mapped('price_input')), {40.0})
+        self.assertEqual(set(lines.mapped('price_origen')), {'desarrollo'})
+        self.assertEqual(lines.qb_project_id, self._sales_project(dev), "Ligados a su proyecto comercial.")
+        self.assertFalse(budget.line_ids.filtered(lambda l: l.dev_project_id == sin_consumo))
+
+    def test_12_propuesta_desarrollo_sin_codigo_en_kilos(self):
+        """Sin producto todavía: renglón de proyecto con la descripción del desarrollo, en kilos."""
+        dev = self._dev(sgi_dev_volume=300.0, sgi_dev_volume_uom='kg')
+        dev.write({'stage_id': self.stage('cotizacion').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2066, base='anio'))
+        lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
+        self.assertEqual(len(lines), 12, "Sin fecha requerida: los 12 meses.")
+        self.assertFalse(lines.product_id)
+        self.assertEqual(lines.uom_id, self.env.ref('uom.product_uom_kgm'))
+        self.assertEqual(set(lines.mapped('qty_budget')), {300.0})
+        self.assertTrue(all(lines.mapped('proyecto_descripcion')))
+        # Sin desarrollos: nada de él.
+        other = self.Budget.browse(self.Budget.action_qb_build_proposal(2067, base='anio', include_dev=False))
+        self.assertFalse(other.line_ids.filtered(lambda l: l.dev_project_id == dev))

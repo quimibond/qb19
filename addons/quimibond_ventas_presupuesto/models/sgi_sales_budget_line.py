@@ -28,7 +28,10 @@ from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS, MERCADO
 
 PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por kilo")]
 PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel', "Excel"),
-                 ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base")]
+                 ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base"),
+                 ('desarrollo', "Cotización o precio objetivo del desarrollo")]
+QTY_ORIGINS = [('venta', "Venta del periodo base"), ('proyecto', "Presupuesto de proyectos"),
+               ('desarrollo', "Consumo estimado del desarrollo")]
 PRICE_PROBLEMS = [('sin_precio', "Sin precio"), ('sin_tc', "Sin tipo de cambio"),
                   ('sin_conversion', "Sin conversión")]
 
@@ -76,6 +79,13 @@ class SgiSalesBudgetLine(models.Model):
         help="Combinación cliente–artículo en arranque. Un renglón de Proyectos la crea o la liga "
              "sola (por desarrollo, o por cliente y producto o descripción).")
     qb_project_state = fields.Selection(related='qb_project_id.state', string="Estado del proyecto")
+    # 3.9.0: de dónde salió la cantidad en «Armar propuesta del año» y cuánto se propuso.
+    qty_origen = fields.Selection(QTY_ORIGINS, string="Origen de la cantidad", readonly=True,
+                                  help="Vacío: capturada a mano o importada.")
+    qty_sugerida = fields.Float(string="Cantidad propuesta", digits='Product Unit', readonly=True,
+                                help="Lo que propuso el armado; la cantidad presupuestada es la que "
+                                     "queda después de ajustar.")
+    dev_stage_id = fields.Many2one(related='dev_project_id.stage_id', string="Etapa del desarrollo")
     dev_project_id = fields.Many2one(
         'project.project', string="Desarrollo de producto", index=True, ondelete='set null',
         domain="[('sgi_is_ft', '=', True)]",

@@ -21,6 +21,31 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Desarrollos en la propuesta del año (19.0.3.9.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.3. «Armar propuesta del año» trae ahora, con **Traer desarrollos** (activo por
+omisión), un renglón de Proyectos por mes para cada desarrollo abierto (de Cotización a
+Pilotaje):
+
+- **Cantidad:** el consumo anual del desarrollo entre 12 (las yardas pasan a metros) o, si no
+  hay, el volumen mensual de la solicitud, por el **% del consumo** del asistente (100 por
+  omisión). En la unidad de venta del producto (con el rendimiento del artículo, así que el
+  consumo en kg ya se convierte); sin código, en metros o kilos, con la descripción del
+  desarrollo (lleva el folio).
+- **Meses:** desde el mes de la fecha requerida si cae en el año; sin fecha, los 12; con fecha
+  posterior al año, no entra.
+- **Precio:** el de la última cotización abierta (borrador o enviada) al cliente con ese
+  producto; si no hay, el precio objetivo de la solicitud, por metro o por kilo; si no, el de
+  la lista. Origen del precio «Cotización o precio objetivo del desarrollo».
+- **No entra** si su producto ya se vendió en el periodo base (ya viene en la venta) o si sus
+  renglones ya vienen del presupuesto de proyectos que se trae (que ahora copia también el
+  desarrollo).
+- Cada renglón guarda **Origen de la cantidad** (venta del periodo base, presupuesto de
+  proyectos o consumo del desarrollo), la **Cantidad propuesta** y la etapa del desarrollo;
+  Jessica decide cuánto entra. Filtro «Propuestos desde un desarrollo». El chatter del
+  presupuesto resume cuántos desarrollos entraron y por qué no entraron los demás.
+- Para MCP: `action_qb_build_proposal(..., include_dev=True, dev_pct=100.0)`.
+
 ## Proyectos ligados a Desarrollo de producto (19.0.3.8.0, E2, 2026-11-09)
 
 Diseño v3, secciones 2.6 y 2.11. Presupuesto → **Proyectos comerciales** (`qb.sales.project`):
@@ -54,8 +79,7 @@ industrial» o «Proyectos confección».
   adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
   importes ni productos de renglones aprobados.
 
-Sigue en E2: el origen «desarrollo» en «Armar propuesta del año» (volumen del desarrollo con
-`qb_convertir`, precio de la cotización o el objetivo), la marca de artículo en desarrollo en
+Sigue en E2: la marca de artículo en desarrollo en
 el pronóstico, el real `qb.sales.actual` con los reportes (Faltantes: «proyecto perdido con
 presupuesto»), el presupuesto del mes y la carga de la REV0/REV1 (que crea los 33 proyectos de
 PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos

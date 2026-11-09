@@ -15,6 +15,15 @@ líneas de costo):
   en que se facturó («Precio real del periodo base»).
 - Tipo de cambio de los 12 meses: el presupuestal de Ajustes.
 - Opcional: las líneas de proyecto de otro presupuesto, movidas al año nuevo.
+- 3.9.0 (diseño v3, 2.11.3): origen **desarrollo**. Cada desarrollo abierto (de
+  Cotización a Pilotaje) con consumo anual (o volumen mensual de la solicitud) da un
+  renglón de Proyectos por mes desde la fecha requerida, en la unidad de venta del
+  producto (``qb_convertir``; el consumo en kg ya se convierte) o, sin código, en
+  metros o kilos con la descripción, gramaje y ancho del desarrollo. Precio: el de la
+  última cotización abierta al cliente del producto; si no hay, el precio objetivo de
+  la solicitud; si no, el de la lista. No entra si su producto ya se vendió en el
+  periodo base o si sus renglones ya vienen del presupuesto de proyectos. Cada
+  renglón dice su origen y su etapa; Jessica decide cuánto entra.
 
 No entran saldos ni desperdicio, notas de crédito genéricas ni servicios, ni lo
 de clientes o productos por debajo del mínimo anual que se elija. El resultado
@@ -30,12 +39,16 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_sales_budget import MERCADOS_CON_CLIENTE, _convert_qty, team_mercado
+from .qb_sales_project import proyecto_mercado
 
 BASES = [('ultimos12', "Últimos 12 meses cerrados"), ('anio', "Año anterior completo")]
 LABELS = {'industrial': "Industrial", 'confeccion': "Confección", 'especiales': "Especiales"}
 PROJECT_FIELDS = ('mercado', 'partner_id', 'product_id', 'proyecto_descripcion', 'proyecto_gramaje',
                   'proyecto_ancho_cm', 'uom_id', 'qty_budget', 'price_input', 'price_currency_id',
-                  'price_basis', 'price_origen')
+                  'price_basis', 'price_origen', 'dev_project_id')
+# Etapas del desarrollo que entran a la propuesta (abiertas, antes de Liberado).
+DEV_PROPOSAL_STAGES = ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje')
+YARD_M = 0.9144
 
 
 class QbSalesBudgetProposal(models.TransientModel):
@@ -61,6 +74,14 @@ class QbSalesBudgetProposal(models.TransientModel):
         domain="[('kind', '=', 'presupuesto'), ('state', '!=', 'obsoleto')]",
         help="Copia las líneas de proyecto (telas sin producto) de ese presupuesto al año nuevo, "
              "en los mismos meses.")
+    include_dev = fields.Boolean(
+        string="Traer desarrollos", default=True,
+        help="Agrega un renglón de Proyectos por mes para cada desarrollo de producto abierto (de "
+             "Cotización a Pilotaje) con consumo estimado, desde su fecha requerida.")
+    dev_pct = fields.Float(
+        string="Del consumo del desarrollo (%)", digits=(6, 1), default=100.0,
+        help="Qué parte del consumo estimado por el cliente entra a la propuesta. Después se "
+             "ajusta renglón por renglón.")
     rate = fields.Float(
         string="Tipo de cambio presupuestal", digits=(12, 4),
         default=lambda self: float(self.env['ir.config_parameter'].sudo().get_param(
@@ -186,7 +207,7 @@ class QbSalesBudgetProposal(models.TransientModel):
                 'budget_id': budget.id, 'mercado': row['mercado'], 'product_id': row['product'].id,
                 'partner_id': row['partner'].id if row['partner'] else False,
                 'date': date(self.year, row['month'], 1), 'uom_id': row['product'].uom_id.id,
-                'qty_budget': qty,
+                'qty_budget': qty, 'qty_sugerida': qty, 'qty_origen': 'venta',
             })
         lines = Line.create(vals_list)
 
@@ -211,16 +232,128 @@ class QbSalesBudgetProposal(models.TransientModel):
         if self.project_source_id:
             for src in self.project_source_id.line_ids.filtered('proyecto_descripcion'):
                 vals = {f: (src[f].id if hasattr(src[f], 'id') else src[f]) for f in PROJECT_FIELDS}
-                vals.update(budget_id=budget.id, date=src.date.replace(year=self.year))
+                vals.update(budget_id=budget.id, date=src.date.replace(year=self.year),
+                            qty_sugerida=src.qty_budget, qty_origen='proyecto')
                 Line.create(vals)
                 projects += 1
 
+        dev_lines = Line
+        dev_skipped = defaultdict(int)
+        if self.include_dev:
+            sold = {key[0] for key in rows}
+            dev_lines, dev_skipped = self._qb_dev_lines(budget, sold)
+
         budget.action_qb_update_base()
-        self._qb_post_summary(budget, lines, skipped, len(below), from_list, from_history, projects)
+        self._qb_post_summary(budget, lines, skipped, len(below), from_list, from_history, projects,
+                              dev_lines, dev_skipped)
         return {'type': 'ir.actions.act_window', 'res_model': 'sgi.sales.budget', 'res_id': budget.id,
                 'view_mode': 'form', 'target': 'current'}
 
-    def _qb_post_summary(self, budget, lines, skipped, below, from_list, from_history, projects):
+    # --- desarrollos ---------------------------------------------------------
+    def _qb_dev_projects(self, budget):
+        """Desarrollos abiertos de la compañía (de Cotización a Pilotaje), sin plantillas."""
+        stages = [self.env.ref('quimibond_sgi.sgi_dev_stage_%s' % key, raise_if_not_found=False)
+                  for key in DEV_PROPOSAL_STAGES]
+        stage_ids = [stage.id for stage in stages if stage]
+        if not stage_ids:
+            return self.env['project.project']
+        return self.env['project.project'].sudo().search([
+            ('sgi_is_ft', '=', True), ('is_template', '=', False), ('stage_id', 'in', stage_ids),
+            ('company_id', 'in', (budget.company_id.id, False))])
+
+    @api.model
+    def _qb_dev_monthly(self, dev):
+        """(cantidad mensual, unidad 'm' o 'kg') del desarrollo: el consumo anual entre 12 (las
+        yardas pasan a metros) o, si no hay, el volumen mensual de la solicitud. (0, '') sin dato."""
+        if dev.sgi_dev_consumption_annual > 0:
+            qty = dev.sgi_dev_consumption_annual / 12.0
+            unit = dev.sgi_dev_consumption_uom or 'm'
+            if unit == 'yd':
+                return qty * YARD_M, 'm'
+            return qty, unit
+        if dev.sgi_dev_volume > 0:
+            return dev.sgi_dev_volume, dev.sgi_dev_volume_uom or 'm'
+        return 0.0, ''
+
+    @api.model
+    def _qb_dev_price(self, dev, product, partner):
+        """{price_input, price_currency_id, price_basis, price_origen} del desarrollo: la última
+        cotización abierta del cliente con ese producto (en su unidad de venta); si no hay, el
+        precio objetivo de la solicitud (por metro o por kilo, la unidad de su volumen). {} si no."""
+        if product and partner:
+            sol = self.env['sale.order.line'].sudo().search([
+                ('order_id.state', 'in', ('draft', 'sent')), ('product_id', '=', product.id),
+                ('order_id.partner_id.commercial_partner_id', '=', partner.id),
+                ('price_unit', '>', 0)], order='id desc', limit=1)
+            if sol and (not sol.product_uom_id or sol.product_uom_id == product.uom_id):
+                return {'price_input': sol.price_unit, 'price_currency_id': sol.order_id.currency_id.id,
+                        'price_basis': 'venta', 'price_origen': 'desarrollo'}
+        if dev.sgi_dev_target_price > 0:
+            return {'price_input': dev.sgi_dev_target_price,
+                    'price_currency_id': (dev.sgi_dev_currency_id or self.env.company.currency_id).id,
+                    'price_basis': 'kg' if dev.sgi_dev_volume_uom == 'kg' else 'm',
+                    'price_origen': 'desarrollo'}
+        return {}
+
+    def _qb_dev_lines(self, budget, sold_product_ids):
+        """Renglones de Proyectos de los desarrollos abiertos. Devuelve (renglones, conteos de
+        lo que no entró)."""
+        Line = self.env['sgi.sales.budget.line']
+        uom = {'m': self.env.ref('uom.product_uom_meter'), 'kg': self.env.ref('uom.product_uom_kgm')}
+        skipped = defaultdict(int)
+        already = set(budget.line_ids.mapped('dev_project_id').ids)
+        vals_list = []
+        for dev in self._qb_dev_projects(budget):
+            if dev.id in already:
+                skipped['ya_en_proyectos'] += 1
+                continue
+            product = dev._qb_dev_product()
+            if product and product.id in sold_product_ids:
+                skipped['ya_se_vende'] += 1
+                continue
+            monthly, unit = self._qb_dev_monthly(dev)
+            monthly *= (self.dev_pct or 0.0) / 100.0
+            if monthly <= 0:
+                skipped['sin_consumo'] += 1
+                continue
+            required = dev.sgi_dev_required_date
+            if required and required.year > self.year:
+                skipped['fuera_del_anio'] += 1
+                continue
+            first_month = required.month if required and required.year == self.year else 1
+            if product:
+                qty = product.qb_convertir(monthly, unit, 'venta')
+                if qty is None and product.uom_id._has_common_reference(uom[unit]):
+                    qty = _convert_qty(monthly, uom[unit], product.uom_id)
+                if not qty:
+                    skipped['sin_conversion'] += 1
+                    continue
+                line_uom = product.uom_id
+            else:
+                qty, line_uom = monthly, uom[unit]
+            qty = round(qty, 0)
+            if qty <= 0:
+                skipped['sin_consumo'] += 1
+                continue
+            partner = dev.partner_id.commercial_partner_id
+            price = self._qb_dev_price(dev, product, partner)
+            for month in range(first_month, 13):
+                vals = {
+                    'budget_id': budget.id, 'dev_project_id': dev.id,
+                    'mercado': proyecto_mercado(self.env, dev.sgi_dev_team_id or partner.team_id),
+                    'partner_id': partner.id or False, 'product_id': product.id or False,
+                    # Sin código, el nombre del desarrollo (lleva el folio): dos desarrollos del
+                    # mismo cliente con la misma tela no chocan en el mismo mes.
+                    'proyecto_descripcion': False if product else dev.display_name,
+                    'date': date(self.year, month, 1), 'uom_id': line_uom.id,
+                    'qty_budget': qty, 'qty_sugerida': qty, 'qty_origen': 'desarrollo',
+                }
+                vals.update(price)
+                vals_list.append(vals)
+        return Line.create(vals_list), skipped
+
+    def _qb_post_summary(self, budget, lines, skipped, below, from_list, from_history, projects,
+                         dev_lines=None, dev_skipped=None):
         fmt = '{:,.0f}'.format
         per_market = []
         for base, label in LABELS.items():
@@ -248,6 +381,17 @@ class QbSalesBudgetProposal(models.TransientModel):
             notes.append("No entraron: %s." % "; ".join(out))
         if projects:
             notes.append("%d línea(s) de proyecto traídas de %s." % (projects, self.project_source_id.name))
+        if dev_lines:
+            notes.append("Desarrollos: %d con %d renglón(es) de Proyectos por %s (%s %% del consumo "
+                         "estimado)." % (len(dev_lines.dev_project_id), len(dev_lines),
+                                         fmt(sum(dev_lines.mapped('amount_budget'))), self.dev_pct))
+        dev_labels = {'ya_se_vende': "su producto ya se vende", 'ya_en_proyectos': "ya venían en los proyectos",
+                      'sin_consumo': "sin consumo estimado", 'fuera_del_anio': "fecha requerida después del año",
+                      'sin_conversion': "sin conversión a la unidad de venta"}
+        dev_out = ["%s: %d" % (label, (dev_skipped or {}).get(key)) for key, label in dev_labels.items()
+                   if (dev_skipped or {}).get(key)]
+        if dev_out:
+            notes.append("Desarrollos que no entraron (%s)." % "; ".join(dev_out))
         budget.message_post(body=Markup("<br/>").join(Markup("%s") % n for n in notes))
 
 
@@ -256,7 +400,7 @@ class SgiSalesBudgetProposal(models.Model):
 
     @api.model
     def action_qb_build_proposal(self, year, growth=None, base='ultimos12', min_amount=0.0,
-                                 project_source_id=False, rate=0.0):
+                                 project_source_id=False, rate=0.0, include_dev=True, dev_pct=100.0):
         """Para MCP: arma la propuesta del año ``year``; ``growth`` = {'industrial': 5, …}.
         Devuelve el id del presupuesto."""
         growth = growth or {}
@@ -264,7 +408,8 @@ class SgiSalesBudgetProposal(models.Model):
                 'project_source_id': project_source_id or False,
                 'growth_industrial': growth.get('industrial', 0.0),
                 'growth_confeccion': growth.get('confeccion', 0.0),
-                'growth_especiales': growth.get('especiales', 0.0)}
+                'growth_especiales': growth.get('especiales', 0.0),
+                'include_dev': include_dev, 'dev_pct': dev_pct}
         if rate:
             vals['rate'] = rate
         action = self.env['qb.sales.budget.proposal'].create(vals).action_build()
