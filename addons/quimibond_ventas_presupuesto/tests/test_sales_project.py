@@ -29,7 +29,7 @@ class TestSalesProject(TransactionCase):
         Param.set_param('quimibond_ventas_presupuesto.team_especiales', cls.team_ind.id)
         cls.uom_m = cls.env.ref('uom.product_uom_meter')
         cls.client = cls.env['res.partner'].create({
-            'name': 'Cliente proyecto', 'is_company': True, 'team_id': cls.team_ind.id})
+            'name': 'Cliente proyecto', 'is_company': True})
         cls.product = cls.env['product.product'].create({
             'name': 'Tela proyecto', 'default_code': 'WPROY160', 'type': 'consu',
             'uom_id': cls.uom_m.id})

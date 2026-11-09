@@ -21,6 +21,16 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Corrección del build (19.0.3.14.1, 2026-11-09)
+
+El build de `main` se cayó en la migración 3.8.0: el mercado de un proyecto nuevo leía
+`res.partner.team_id`, que no existe en Odoo 19. Ahora el equipo del cliente sale de
+`team_of_partner` (último pedido confirmado, última factura o el equipo del vendedor), también
+en el mercado por omisión de un renglón. Además: un segundo desarrollo del mismo cliente y
+artículo ya no choca con «un proyecto vigente por cliente y producto» (se queda con el que
+existe), y las migraciones 3.8.0, 3.10.0 y 3.11.0 trabajan registro por registro o con
+savepoint: lo que falle queda en el log y no detiene la actualización.
+
 ## Presupuesto del mes (19.0.3.14.0, E2, 2026-11-09)
 
 Diseño v3, 2.5. Sustituye el F-P-A28-14 de Excel. Presupuesto → **Presupuesto del mes** y
