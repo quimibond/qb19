@@ -10,7 +10,7 @@
                   decoration-danger="atrasado" decoration-muted="not conv_ok" decoration-bf="tipo == 'pedido'"
                   decoration-warning="dev_state in ('desarrollo', 'pilotaje', 'archivado')">
                 <header>
-                    <button name="action_qb_rebuild" type="object" string="Actualizar" display="always"/>
+                    <button name="action_qb_rebuild_button" type="object" string="Actualizar" display="always"/>
                 </header>
                 <field name="week"/>
                 <field name="tipo"/>

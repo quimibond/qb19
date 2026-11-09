@@ -86,3 +86,10 @@ access_qb_sales_month_plan_line_salesman,qb.sales.month.plan.line.salesman,model
 access_qb_sales_month_plan_line_manager,qb.sales.month.plan.line.manager,model_qb_sales_month_plan_line,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_sales_month_plan_build_sale_mgr,qb.sales.month.plan.build.sale.mgr,model_qb_sales_month_plan_build,sales_team.group_sale_manager,1,1,1,1
 access_qb_sales_month_plan_build_manager,qb.sales.month.plan.build.manager,model_qb_sales_month_plan_build,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_order_rule_salesman,qb.order.rule.salesman,model_qb_order_rule,sales_team.group_sale_salesman,1,0,0,0
+access_qb_order_rule_sale_mgr,qb.order.rule.sale.mgr,model_qb_order_rule,sales_team.group_sale_manager,1,1,1,1
+access_qb_order_rule_manager,qb.order.rule.manager,model_qb_order_rule,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_order_proposal_sale_mgr,qb.order.proposal.sale.mgr,model_qb_order_proposal,sales_team.group_sale_manager,1,1,1,1
+access_qb_order_proposal_manager,qb.order.proposal.manager,model_qb_order_proposal,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_order_proposal_line_sale_mgr,qb.order.proposal.line.sale.mgr,model_qb_order_proposal_line,sales_team.group_sale_manager,1,1,1,1
+access_qb_order_proposal_line_manager,qb.order.proposal.line.manager,model_qb_order_proposal_line,quimibond_sgi.group_sgi_manager,1,1,1,1
