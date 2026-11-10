@@ -21,6 +21,23 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## La lista del cliente es la fuente del precio (19.0.3.16.5, 2026-11-10)
+
+Decisión de Jose (10-nov): el precio del presupuesto del mes sale **del presupuesto anual aprobado o
+de la lista de precios del cliente**, nunca de una factura. Lo que la lista no tiene lo da de alta
+Ventas:
+
+- Al armar el presupuesto del mes y al pulsar **Completar precios**, cada cliente con productos que
+  su lista no tiene recibe **una actividad para su vendedor** (en la lista de precios del cliente;
+  si no tiene lista, en el cliente) con los productos, la cantidad del mes y, **solo de
+  referencia**, el último precio facturado (del mismo código o de la misma tela en otro código, por
+  kilo o por metro). Si ya hay una abierta de ese presupuesto del mes, se actualiza.
+- Cuando Ventas da de alta los precios, se pulsa otra vez «Completar precios».
+- Un renglón que tomó precio de una factura (3.16.2 a 3.16.4) se vuelve a evaluar: si la lista ya lo
+  tiene, toma ese; si no, queda sin precio y entra a la actividad.
+
+Lo de 3.16.2 y 3.16.4 sobre la «última factura» queda solo como referencia para Ventas.
+
 ## Precio de la misma tela facturada en otro código (19.0.3.16.4, 2026-11-10)
 
 En el presupuesto de noviembre de 2026 quedaban 9 renglones sin precio: FXI, Lear y Shawmut se
