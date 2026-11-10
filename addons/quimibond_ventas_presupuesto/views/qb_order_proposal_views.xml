@@ -75,7 +75,8 @@
                               decoration-muted="action in ('sin_cambio', 'no_entra')"
                               decoration-warning="action == 'por_autorizar'"
                               decoration-success="action == 'nuevo'">
-                            <field name="apply"/>
+                            <field name="apply" readonly="applied"/>
+                            <field name="applied" optional="show"/>
                             <field name="action"/>
                             <field name="partner_id"/>
                             <field name="plant" optional="show"/>
