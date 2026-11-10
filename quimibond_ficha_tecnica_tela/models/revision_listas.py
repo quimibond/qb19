@@ -204,11 +204,11 @@ class FichaTecnicaRevision(models.Model):
         if not produccion and self.env['ficha.tecnica.proceso'].search_count([
                 ('product_id', 'in', (acabado.product_proceso_id | acabado.product_acabado_id).ids),
                 ('workcenter_id.ft_tipo_id.code', '=', 'acabado')], limit=1):
-            # 2.30.0: la tela corre en rama pero le falta un dato del rendimiento de producción.
-            pendientes.append(dict(ing, tipo='datos_acabado', detalle='Rendimiento de producción (peso × ancho de '
-                                   'rama con merma): %s' % calculo))
+            # 2.30.0: la tela corre en rama pero le falta el peso o el ancho bajando de rama.
+            pendientes.append(dict(ing, tipo='datos_acabado', detalle='Rendimiento (peso × ancho bajando de rama): %s'
+                                   % calculo))
         if acabado.rendimiento_por_revisar and acabado.rendimiento_medido and produccion:
-            # 2.30.0: con rendimiento de producción lo medido es control: se aleja del teórico (sin merma).
+            # 2.30.0: con el rendimiento de peso y ancho de rama lo medido es control: se aleja del teórico.
             fuentes = dict(acabado._fields['rendimiento_medido_fuente']._description_selection(acabado.env))
             teorico = acabado.rendimiento_teorico
             pendientes.append(dict(ing, tipo='rendimiento_cambio', detalle='Lo fabricado da %.4f m/kg por kg de tela '

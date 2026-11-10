@@ -30,22 +30,22 @@ lista); el desorden estaba dentro del módulo y entre módulos.
 - **Programación de Tintorería 1.8.4** usa la regla de capacidad de la ficha (`_ft_regla_capacidad`) en lugar de su
   copia. **`quimibond_tintoreria_rendimiento` se retira del repo** (nunca se instaló en producción, main ni pruebas; su
   tabla de bandas era 3-6/7-10/11-15 y la vigente es 3-7/7-11/11-16).
-- **Rendimiento de producción (Ingeniería, Jessica Francisco, 10-nov-2026):** el rendimiento de la ficha sale del
-  peso de la tela y el ancho del rollo de rama con la merma sumada: 1000 ÷ (g/m² × ancho de rama m) × (1 − merma). La
-  merma de 10 % de la rama es la orilla, las muestras y la merma natural. Todo lo de producción lo usa (conversión
-  kg → m, tiempos de rama e inspección, costeo). Sustituye a 2.27.0 (por kg de tela terminada, sin orilla) y a 2.28.0
-  («Usar el medido»): las órdenes de acabado capturan los kg de tintorería con la orilla incluida, y el estimado
-  dividía esos kg entre el consumo de crudo (pérdida desde el crudo, no desde tintorería), así que salía 2 a 5 % arriba
-  del teórico. La noche (y el botón «Pasar el rendimiento de producción a la ficha») lo aplica y pone al día la
-  conversión de las listas en metros; lo medido queda como control contra el teórico sin merma. Una tela que corre en
-  rama sin ancho o merma queda con pendiente de Ingeniería. En producción, el 10-nov se regresaron a su valor anterior
-  las 25 fichas a las que se había aplicado «Usar el medido» ese día (el costeo las leía 10 a 17 % altas).
+- **Un solo rendimiento para el flujo nuevo (10-nov-2026):** el rendimiento de la ficha sale del peso de la tela y
+  el ancho del rollo de rama (Ingeniería, Jessica Francisco): 1000 ÷ (g/m² × ancho bajando de rama m). Sin merma: en el
+  flujo nuevo la orilla sale como desperdicio de Rama y los rollos se pesan netos, así que la merma (orilla, muestras y
+  merma natural) va en el consumo de crudo de la lista en kg. Lo usan la conversión kg → m, los tiempos de rama e
+  inspección, el costeo y la alerta de metros de Inspección. Sustituye a 2.27.0 y 2.28.0 («Usar el medido»): el
+  estimado de las órdenes del flujo anterior dividía los kg de tintorería (con orilla) entre el consumo de crudo y
+  salía 2 a 5 % arriba del teórico. La noche (y el botón «Usar el de peso y ancho de rama») lo aplica y pone al día la
+  conversión de las listas en metros; lo medido queda como control. Una tela que corre en rama sin ancho queda con
+  pendiente de Ingeniería. En producción, el 10-nov se regresaron a su valor anterior las 25 fichas a las que se había
+  aplicado «Usar el medido» ese día.
 - README: sección «Mapa de datos» (los dos rendimientos, la orilla, capacidad de la ficha contra la del centro, claves,
   unidades, lo que queda pendiente) y corregidas las secciones viejas de anchos y rendimiento.
 
 **Migración:** `migrations/19.0.2.30.0/post-migrate.py` pone a los parámetros de banda de los jets el nombre de la regla
-(en producción decían «rendimiento 3 a 6»; no cambia claves ni valores) y aplica el rendimiento de producción a las
-fichas activas que tienen peso, ancho de rama y merma (con la conversión de sus listas en metros). Pruebas: `test_auditoria_230`.
+(en producción decían «rendimiento 3 a 6»; no cambia claves ni valores) y aplica el rendimiento de peso y ancho de rama a
+las fichas que tienen los dos (con la conversión de sus listas en metros). Pruebas: `test_auditoria_230`.
 
 **Queda para después** (README, «Lo que la auditoría dejó para después»): merma en el tiempo de rama (fichas contra
 costeo), peso nativo del producto (2 decimales en producción), cambios a listas activas por ECO, puntos de control de

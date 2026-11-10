@@ -64,27 +64,29 @@ class TestAuditoria230(TiempoFichaCase):
             proceso._ft_set_value('ancho_rama', ancho)
         if merma:
             proceso._ft_set_value('merma', merma)
-        self.acabado.invalidate_recordset(['rendimiento_produccion', 'rendimiento_produccion_calculo'])
         return proceso
 
-    def test_06_rendimiento_de_produccion_con_peso_ancho_de_rama_y_merma(self):
-        """Ingeniería (10-nov-2026): 1000 ÷ (g/m² × ancho de rama) × (1 − merma), por kg que entra a acabado."""
+    def test_06_rendimiento_de_peso_y_ancho_de_rama(self):
+        """Flujo nuevo (10-nov-2026): un solo rendimiento, 1000 ÷ (g/m² × ancho bajando de rama), sin merma: la merma
+        sale como desperdicio de Rama y va en el consumo de crudo de la lista en kg."""
         self._rama_con(ancho=1.65, merma=10)
-        esperado = round(1000 / (53 * 1.65) * 0.9, 4)
-        self.assertAlmostEqual(self.acabado.rendimiento_produccion, esperado, places=4)
-        self.assertIn('1 − 10 %', self.acabado.rendimiento_produccion_calculo)
+        esperado = round(1000 / (53 * 1.65), 4)
+        valor, calculo = self.acabado._ft_rendimiento_produccion()[self.acabado]
+        self.assertAlmostEqual(valor, esperado, places=4, msg="La merma no entra al rendimiento")
+        self.assertIn('1.65 m', calculo)
         self.acabado.action_ft_calcular_rendimiento_produccion()
         self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, esperado, places=4)
         self.assertEqual(self.acabado.rendimiento_fuente, 'produccion')
         self.assertEqual(self.acabado.rendimiento_anterior, 8.0)
         self.assertFalse(self.acabado._ft_aplicar_rendimiento_produccion(), "Sin cambio no vuelve a escribir")
         self.acabado.rendimiento_medido = 12.0
-        with self.assertRaises(UserError, msg="Con rendimiento de producción lo medido es solo control"):
+        with self.assertRaises(UserError, msg="Con rendimiento de peso y ancho de rama lo medido es solo control"):
             self.acabado.action_ft_usar_rendimiento_medido()
 
-    def test_07_sin_merma_no_hay_rendimiento_de_produccion(self):
-        self._rama_con(ancho=1.65)
-        self.assertFalse(self.acabado.rendimiento_produccion)
-        self.assertIn('la merma de la rama', self.acabado.rendimiento_produccion_calculo)
+    def test_07_sin_ancho_de_rama_se_queda_el_de_la_ficha(self):
+        self._rama_con(merma=10)
+        valor, calculo = self.acabado._ft_rendimiento_produccion()[self.acabado]
+        self.assertFalse(valor)
+        self.assertIn('ancho bajando de rama', calculo)
         self.acabado.action_ft_calcular_rendimiento_produccion()
-        self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.0, "Sin todos los datos se queda el de la ficha")
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.0, "Sin ancho de rama se queda el de la ficha")

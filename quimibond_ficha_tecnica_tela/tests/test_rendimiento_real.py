@@ -415,7 +415,10 @@ class TestRendimientoReal(TiempoFichaCase):
                                msg="Promedio de las ramas con ancho; la que no lo tiene no cuenta")
         self.assertEqual(self.acabado.rendimiento_teorico_ancho, '1.67 m (bajando de rama)')
         # Lo medido de WJ045 (13.19 m/kg) queda a 0.9 % del teórico con rama; con el de venta quedaba a 5 %.
+        # 2.30.0 (flujo nuevo): con ancho de rama el rendimiento de la ficha es el teórico y lo medido es control.
         with self._con_terminado({self.acabado: (13190.0, 1000.0, 3)}):
-            self._recalcular_y_usar()
-        self.assertAlmostEqual(self.acabado.peso_real, 1000 / (13.19 * 1.67), places=1)
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertEqual(self.acabado.rendimiento_medido_estado, 'igual', "A menos de 5 % del teórico: sin aviso")
+        self.acabado.action_ft_calcular_rendimiento_produccion()
+        self.assertAlmostEqual(self.acabado.rendimiento_tela_acabada, round(1000 / (45 * 1.67), 4), places=4)
 
