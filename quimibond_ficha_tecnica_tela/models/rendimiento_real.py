@@ -43,6 +43,7 @@ consumo de crudo los kg de la tela acabada en kg; con menos de 3 muestras y sin 
 from datetime import timedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 DIAS_REAL = 365
 # 2.27.1: una conversión o un rollo que se aleja más que esto de la mediana de la tela no cuenta (conversiones que juntan
@@ -95,55 +96,79 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
 
     rendimiento_real_ordenes = fields.Integer(
         string='Órdenes del rendimiento', readonly=True,
-        help='Conversiones a kg y rollos de Inspección (o, estimado, órdenes terminadas) de los últimos 12 meses con '
-             'los que se calculó el rendimiento.')
+        help='Muestras con que se midió el rendimiento que tiene la ficha (rollos de Inspección, conversiones a kg u '
+             'órdenes del estimado, de los últimos 12 meses). Se copia de «Muestras de lo medido» al dar «Usar el '
+             'medido» y queda en 0 si Ingeniería escribe el rendimiento a mano o viene del Excel.')
     rendimiento_fuente = fields.Selection(
         [('rollos', 'Rollos de Inspección (metros y kg netos de cada rollo)'),
          ('terminado', 'Conversiones a kg (kg de la lista de empaque)'),
          ('estimado', 'Estimado (metros por kg que entró × consumo de crudo)'),
-         ('ficha', 'Capturado en la ficha')],
+         ('ficha', 'Capturado en la ficha'),
+         ('produccion', 'Peso de la ficha y ancho bajando de rama (flujo nuevo, 10-nov-2026)')],
         string='De dónde sale el rendimiento', readonly=True, copy=False,
-        help='El rendimiento es por kg de tela terminada. «Rollos de Inspección» es el dato medido en la estación y gana '
-             'a todo; «Conversiones a kg» se usa mientras la tela no tiene 3 rollos; «Estimado» cuando tampoco tiene '
-             'conversiones.')
+        help='De dónde salió el rendimiento de tela terminada que tiene la ficha. Se llena solo: con la fuente de lo '
+             'medido al dar «Usar el medido», o «Capturado en la ficha» si lo escribió Ingeniería o lo trajo el '
+             'importador de Excel.')
     rendimiento_manual = fields.Boolean(
         string='Rendimiento forzado', copy=False,
-        help='Ingeniería escribió el rendimiento a mano: el recálculo nocturno no lo cambia con conversiones ni con el '
-             'estimado, solo con 3 o más rollos de Inspección (y entonces avisa). Desmárquelo para volver al cálculo.')
+        help='Marca de que Ingeniería escribió el rendimiento a mano en la ficha → «Tela acabada» → Real: se pone sola '
+             'al escribirlo y «Usar el medido» la quita. Desde 2.28.0 no protege nada, porque el recálculo nocturno '
+             'nunca cambia la ficha (solo propone en «Rendimiento medido»); desmarcarla vuelve a medir en ese momento.')
     # 2.26.0: aviso cuando el recálculo nocturno mueve el rendimiento más que la alerta (propuesta de Consolti,
     # 2026-11-05: que las telas del piloto no cambien sin aviso). El número se escribe igual; el aviso queda como
     # pendiente de Ingeniería en la revisión de listas hasta que alguien lo marca revisado.
-    rendimiento_por_revisar = fields.Boolean(string='Rendimiento por revisar', readonly=True, copy=False)
-    rendimiento_anterior = fields.Float(string='Rendimiento anterior (m/kg)', digits=(12, 4), readonly=True,
-                                        copy=False)
-    rendimiento_cambio_fecha = fields.Datetime(string='Rendimiento cambió el', readonly=True, copy=False)
+    rendimiento_por_revisar = fields.Boolean(
+        string='Rendimiento por revisar', readonly=True, copy=False,
+        help='Se calcula cada noche: marcado cuando lo medido se aleja de la ficha más que la alerta (5 %, parámetro '
+             '«alerta_rendimiento_pct») y deja un pendiente de Ingeniería en la revisión de listas. Se quita con «Usar '
+             'el medido», «Marcar revisado» o escribiendo el rendimiento a mano.')
+    rendimiento_anterior = fields.Float(
+        string='Rendimiento anterior (m/kg)', digits=(12, 4), readonly=True, copy=False,
+        help='El rendimiento de tela terminada que tenía la ficha antes del último cambio («Usar el medido» o escrito '
+             'a mano). Se llena solo y se ve en la ficha → «Tela acabada» → Real.')
+    rendimiento_cambio_fecha = fields.Datetime(
+        string='Rendimiento cambió el', readonly=True, copy=False,
+        help='Se llena solo: cuándo el recálculo nocturno propuso el rendimiento medido que está por aprobar o '
+             'cuándo Ingeniería lo aplicó con «Usar el medido».')
     # 2.28.0 (Dirección, 2026-11-06): el recálculo nocturno PROPONE; el rendimiento de la ficha (el que usan la lista
     # en metros, los tiempos y el costeo) solo cambia cuando Ingeniería lo aprueba con «Usar el medido».
-    rendimiento_medido = fields.Float(string='Rendimiento medido (m/kg)', digits=(12, 4), readonly=True, copy=False)
+    rendimiento_medido = fields.Float(
+        string='Rendimiento medido (m/kg)', digits=(12, 4), readonly=True, copy=False,
+        help='Rendimiento de tela terminada que da lo fabricado en 12 meses: rollos de primera y FE de Inspección (3 o '
+             'más), si no conversiones a kg (3 o más), si no el estimado; no cuentan los que se alejan más de 15 % de '
+             'la mediana. Lo calcula el recálculo nocturno y solo propone: la ficha cambia con «Usar el medido».')
     rendimiento_medido_fuente = fields.Selection(
         [('rollos', 'Rollos de Inspección'), ('terminado', 'Conversiones a kg'), ('estimado', 'Estimado')],
-        string='De dónde sale lo medido', readonly=True, copy=False)
-    rendimiento_medido_ordenes = fields.Integer(string='Muestras de lo medido', readonly=True, copy=False)
+        string='De dónde sale lo medido', readonly=True, copy=False,
+        help='Se calcula cada noche: de qué datos salió el rendimiento medido (rollos de Inspección, conversiones a kg '
+             'con el kg de la lista de empaque, o estimado con el consumo de crudo de la ficha).')
+    rendimiento_medido_ordenes = fields.Integer(
+        string='Muestras de lo medido', readonly=True, copy=False,
+        help='Se calcula cada noche: cuántos rollos, conversiones u órdenes (estimado) entraron al rendimiento '
+             'medido.')
     rendimiento_medido_estado = fields.Selection(
         [('igual', 'Igual al de la ficha'), ('propuesto', 'Por aprobar'), ('fuera', 'Fuera del teórico')],
         string='Lo medido contra la ficha', readonly=True, copy=False,
-        help='«Por aprobar»: se aleja de la ficha más que la alerta; Ingeniería lo usa o lo marca revisado. «Fuera del '
-             'teórico»: se aleja más que el tope del teórico (peso y ancho): es un dato malo y no se propone.')
+        help='Se calcula cada noche. «Igual»: se aleja de la ficha menos que la alerta (5 %). «Por aprobar»: se aleja '
+             'más; Ingeniería lo usa o lo marca revisado. «Fuera del teórico»: se aleja más que el tope del teórico '
+             '(25 %, peso y ancho): es un dato malo y no se propone.')
     # Revisión 2026-11-10 (Ingeniería, 6-nov: «el cálculo del rendimiento para el acabado sale del peso de la tela y
     # el ancho rollo de la rama; el código solo es la venta»): el teórico y el peso real usan el ancho bajando de rama
     # del artículo cuando está capturado; el ancho de venta solo si falta. Con el de venta el teórico salía 2 a 6 %
     # arriba de lo medido (WJ045: 13.89 contra 13.19; con 1.67 m de rama da 13.31).
     rendimiento_teorico = fields.Float(
         string='Rendimiento teórico (m/kg)', digits=(12, 4), compute='_compute_rendimiento_teorico',
-        help='1000 ÷ (peso en g/m² × ancho en m). El ancho es el que baja de rama (el del proceso del artículo en las '
-             'ramas); si no está capturado, el ancho de venta.')
+        help='Se calcula: 1000 ÷ (peso de la ficha en g/m² × ancho en m). El ancho es el que baja de rama (parámetro '
+             'del proceso del artículo en las ramas, promedio); si no está capturado, el ancho de venta. Solo es '
+             'control: lo medido que se aleja más de 25 % no se propone.')
     rendimiento_teorico_ancho = fields.Char(
         string='Ancho del teórico', compute='_compute_rendimiento_teorico',
-        help='El ancho con que se calcularon el rendimiento teórico y el peso real, y de dónde sale.')
+        help='Se calcula: el ancho en metros con que salieron el rendimiento teórico y el peso real, y de dónde sale '
+             '(bajando de rama o, si falta, de venta).')
     peso_real = fields.Float(
         string='Peso real (g/m²)', digits=(12, 1), compute='_compute_peso_real',
-        help='El peso que da lo fabricado: 1000 ÷ (rendimiento × ancho en m), con el mismo ancho que el teórico '
-             '(bajando de rama; el de venta si falta).')
+        help='Se calcula: el peso que da lo fabricado, 1000 ÷ (rendimiento de la ficha × ancho en m), con el mismo '
+             'ancho que el teórico. Solo si el rendimiento de la ficha salió de lo medido («Usar el medido»).')
 
     def _ft_ancho_rama(self):
         """{ficha: ancho bajando de rama en m} con el promedio de lo capturado en los procesos del artículo (uno por
@@ -163,14 +188,76 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 res[ficha] = sum(valores) / len(valores)
         return res
 
+    def _ft_rendimiento_produccion(self):
+        """2.30.0 (flujo nuevo, 10-nov-2026): {ficha: (rendimiento, cálculo o lo que falta)}. Un solo rendimiento:
+        1000 ÷ (g/m² de la ficha × ancho bajando de rama en m), metros por kg de tela ya cortada en la Rama y pesada
+        en rollos. La merma (orilla, muestras y merma natural) no va aquí: sale como desperdicio de Rama en la orden
+        en kg y va en el consumo de crudo de la lista en kg; ponerla también aquí la contaría dos veces."""
+        from .unidades import _norm  # local: orden de carga de models/
+        ramas = self._ft_ancho_rama()
+        res = {}
+        for ficha in self:
+            gramaje = ficha.peso_acabado if _norm(ficha.peso_acabado_tol_unit) in UNIDADES_GRAMAJE else 0.0
+            ancho = ramas.get(ficha)
+            if not gramaje:
+                res[ficha] = (0.0, 'Falta el peso en g/m² de la ficha.')
+            elif not ancho:
+                res[ficha] = (0.0, 'Falta el ancho bajando de rama (Máquinas → Procesos por artículo → la tela en '
+                                   'la rama).')
+            else:
+                valor = round(1000.0 / (gramaje * ancho), 4)
+                res[ficha] = (valor, '1000 ÷ (%s g/m² × %s m) = %s m/kg' % (
+                    ('%.2f' % gramaje).rstrip('0').rstrip('.'), ('%.3f' % ancho).rstrip('0').rstrip('.'), valor))
+        return res
+
+    def _ft_aplicar_rendimiento_produccion(self):
+        """2.30.0: pasa el rendimiento de peso y ancho de rama a la ficha (y a la conversión de sus listas en metros)
+        donde se puede calcular y es otro. Devuelve las fichas que cambiaron."""
+        cambiadas = self.browse()
+        calculo = self._ft_rendimiento_produccion()
+        for ficha in self:
+            valor, texto = calculo.get(ficha, (0.0, False))
+            if not valor or abs(valor - (ficha.rendimiento_tela_acabada or 0.0)) < 1e-4:
+                continue
+            ficha.with_context(**{CTX_CALCULADO: True}).write({
+                'rendimiento_anterior': ficha.rendimiento_tela_acabada,
+                'rendimiento_tela_acabada': valor,
+                'rendimiento_fuente': 'produccion',
+                'rendimiento_real_ordenes': 0,
+                'rendimiento_manual': False,
+                'rendimiento_por_revisar': False,
+                'rendimiento_cambio_fecha': fields.Datetime.now(),
+            })
+            if hasattr(ficha, 'message_post'):  # el SGI le agrega el chatter a la ficha
+                ficha.message_post(body='Rendimiento de peso y ancho de rama: %s (antes %s).' % (texto, ficha.rendimiento_anterior))
+            ficha._ft_pasar_conversion_a_listas()
+            cambiadas |= ficha
+        return cambiadas
+
+    def action_ft_calcular_rendimiento_produccion(self):
+        """Botón de la ficha: aplica ya el rendimiento de peso y ancho de rama (la noche lo hace sola)."""
+        self._ft_aplicar_rendimiento_produccion()
+        return True
+
+    def _ft_ancho_venta_m(self):
+        """2.30.0: el ancho de venta en metros con su unidad del catálogo (cm, m, in); sin unidad, la regla de
+        siempre (más de 10 es cm)."""
+        self.ensure_one()
+        if not self.ancho_acabado:
+            return 0.0
+        unidad = self.ancho_acabado_tol_unit_id
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        factor = unidad._ft_factor_a(metro) if unidad and metro else 0.0
+        return self.ancho_acabado * factor if factor else ancho_en_m(self.ancho_acabado)
+
     def _ft_ancho_teorico(self):
         """{ficha: (ancho en m, True si es el de rama)}: el ancho bajando de rama o, si falta, el de venta."""
         rama = self._ft_ancho_rama()
-        return {ficha: (rama[ficha], True) if ficha in rama else (ancho_en_m(ficha.ancho_acabado), False)
+        return {ficha: (rama[ficha], True) if ficha in rama else (ficha._ft_ancho_venta_m(), False)
                 for ficha in self}
 
-    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado', 'product_proceso_id',
-                 'product_acabado_id')
+    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado', 'ancho_acabado_tol_unit_id',
+                 'product_proceso_id', 'product_acabado_id')
     def _compute_rendimiento_teorico(self):
         from .unidades import _norm  # local: orden de carga de models/
         anchos = self._ft_ancho_teorico()
@@ -182,8 +269,8 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 ('%.3f' % ancho).rstrip('0').rstrip('.'),
                 'bajando de rama' if de_rama else 'de venta: falta el ancho bajando de rama') if ancho else False
 
-    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado', 'product_proceso_id',
-                 'product_acabado_id')
+    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado', 'ancho_acabado_tol_unit_id',
+                 'product_proceso_id', 'product_acabado_id')
     def _compute_peso_real(self):
         anchos = self._ft_ancho_teorico()
         for ficha in self:
@@ -336,6 +423,7 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         datos = self._ft_fabricado(fichas.product_acabado_id, desde)
         limite = self._ft_alerta_rendimiento_pct()
         tope = self._ft_param_pct(PARAM_TOPE_TEORICO_PCT, TOPE_TEORICO_PCT)
+        produccion = fichas._ft_rendimiento_produccion()
         for ficha in fichas.with_context(**{CTX_CALCULADO: True}):
             nuevo, n, fuente = 0.0, 0, False
             m_r, kg_r, n_r = rollos.get(ficha, (0.0, 0.0, 0))
@@ -363,6 +451,10 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             if nuevo:
                 # 2.28.0: lo medido se propone; la ficha no cambia sola.
                 teorico, antes = ficha.rendimiento_teorico, ficha.rendimiento_tela_acabada
+                # 2.30.0: con el rendimiento de peso y ancho de rama lo medido es solo control: se compara contra el
+                # teórico (avisa si el peso o el ancho de la ficha no cuadran con lo fabricado).
+                if produccion.get(ficha, (0.0,))[0] and teorico:
+                    antes = teorico
                 if teorico and abs(nuevo - teorico) / teorico * 100.0 > tope:
                     vals['rendimiento_medido_estado'] = 'fuera'
                 elif not antes or abs(nuevo - antes) / antes * 100.0 > limite:
@@ -379,6 +471,11 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
     def action_ft_usar_rendimiento_medido(self):
         """2.28.0: Ingeniería aprueba lo medido: pasa a ser el rendimiento de la ficha (lista en metros, tiempos, costeo).
         Lo «fuera del teórico» no se aplica con este botón: hay que capturarlo a mano después de revisar los datos."""
+        con_produccion = [f.articulo for f, (valor, _t) in self._ft_rendimiento_produccion().items() if valor]
+        if con_produccion:
+            raise UserError('El rendimiento de %s sale del peso de la ficha y el ancho bajando de rama; lo medido es '
+                            'solo control. Si no cuadra, corrija el peso de la ficha o el ancho de la tela en la '
+                            'rama.' % ', '.join(con_produccion))
         for ficha in self.filtered(lambda f: f.rendimiento_medido and f.rendimiento_medido_estado != 'fuera'):
             ficha.with_context(**{CTX_CALCULADO: True}).write({
                 'rendimiento_anterior': ficha.rendimiento_tela_acabada,
@@ -432,6 +529,13 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             # Cuenta como revisado: quita el aviso de cambio.
             vals = dict(vals, rendimiento_manual=bool(vals['rendimiento_tela_acabada']), rendimiento_fuente='ficha',
                         rendimiento_real_ordenes=0, rendimiento_por_revisar=False)
+        if 'rendimiento_tela_acabada' in vals:
+            # 2.30.0: el rendimiento escrito a mano también guarda el anterior, como «Usar el medido».
+            for ficha in self.filtered(lambda f: f.rendimiento_tela_acabada
+                                       and abs(f.rendimiento_tela_acabada - (vals['rendimiento_tela_acabada'] or 0.0))
+                                       > 1e-9):
+                super(FichaTecnicaAcabadoRendimientoReal, ficha).write(
+                    {'rendimiento_anterior': ficha.rendimiento_tela_acabada})
         res = super().write(vals)
         if recalcular:
             self._ft_actualizar_rendimiento_real()
@@ -464,5 +568,8 @@ class FichaTecnicaRevisionRendimiento(models.Model):
     @api.model
     def _cron_ft_actualizar(self):
         # 2.24.0: primero el rendimiento (la revisión compara las listas contra él).
-        self.env['ficha.tecnica.acabado']._ft_actualizar_rendimiento_real()
+        Acabado = self.env['ficha.tecnica.acabado']
+        Acabado._ft_actualizar_rendimiento_real()
+        # 2.30.0: el rendimiento de peso y ancho de rama pasa a la ficha y a sus listas.
+        Acabado.search([('product_acabado_id', '!=', False)])._ft_aplicar_rendimiento_produccion()
         return super()._cron_ft_actualizar()

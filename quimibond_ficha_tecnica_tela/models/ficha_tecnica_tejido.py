@@ -42,43 +42,67 @@ class FichaTecnicaTejido(models.Model):
     # Encabezado
     # ------------------------------------------------------------------
     articulo = fields.Char(string='Artículo', required=True, index=True,
-                            help='Código del artículo de tejido, ej. WJ044Q22HNT235')
-    revision = fields.Char(string='Revisión', default='0')
-    active = fields.Boolean(default=True)
-    fecha_elaboracion = fields.Date(string='Fecha de elaboración')
+                           help='Código del crudo que describe la ficha, ej. WJ044Q22HNT235. Se captura en el título '
+                                'de la ficha de tejido o con la columna «Artículo» del Excel.')
+    revision = fields.Char(string='Revisión', default='0',
+                           help='Número de revisión de la ficha (bloque Ficha o columna «Revisión» del Excel; 0 si '
+                                'falta). Hay una ficha por artículo, revisión y máquina; de un producto vale la de '
+                                'revisión más alta.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcado, la ficha queda archivada: no se ofrece ni se coteja, pero se conserva.')
+    fecha_elaboracion = fields.Date(string='Fecha de elaboración',
+                                    help='Fecha en que se elaboró la ficha (bloque Ficha). Con ella y la máquina se '
+                                         'elige sola la configuración de la máquina vigente ese día.')
     # 2.9.0: las personas son empleados; el texto anterior queda como dato histórico (vacío en producción).
-    jefe_manufactura_id = fields.Many2one('hr.employee', string='Jefe de manufactura')
-    auxiliar_procesos_id = fields.Many2one('hr.employee', string='Auxiliar de procesos')
-    jefe_manufactura = fields.Char(string='Jefe de manufactura (texto anterior)')
-    auxiliar_procesos = fields.Char(string='Auxiliar de procesos (texto anterior)')
+    jefe_manufactura_id = fields.Many2one('hr.employee', string='Jefe de manufactura',
+                                          help='Empleado que elaboró o autorizó la ficha como jefe de manufactura. '
+                                               'Se elige en el bloque Ficha.')
+    auxiliar_procesos_id = fields.Many2one('hr.employee', string='Auxiliar de procesos',
+                                           help='Empleado auxiliar de procesos que participó en la ficha. Se elige en '
+                                                'el bloque Ficha.')
+    jefe_manufactura = fields.Char(string='Jefe de manufactura (texto anterior)',
+                                   help='Nombre capturado como texto antes de la versión 2.9.0. Solo es dato '
+                                        'histórico y se ve únicamente si tiene algo.')
+    auxiliar_procesos = fields.Char(string='Auxiliar de procesos (texto anterior)',
+                                    help='Nombre capturado como texto antes de la versión 2.9.0. Solo es dato '
+                                         'histórico y se ve únicamente si tiene algo.')
 
     # Vínculo con el producto semi-terminado (arquitectura de 2 productos)
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Tela en Proceso (kg)',
-        help='Producto semi-terminado que recorre Preparado/Devanado, Tintorería, Abridora y Rama.')
+        help='El crudo que produce la ficha: la tela tejida en kg (código con «H» en la posición 9). Se elige en el '
+             'bloque Crudo o con la columna «Producto Proceso» del Excel; su lista de materiales se coteja con los '
+             'hilos.')
     product_proceso_tmpl_id = fields.Many2one(related='product_proceso_id.product_tmpl_id',
-                                              string='Plantilla del crudo')
+                                              string='Plantilla del crudo',
+                                              help='La plantilla de producto del crudo. Se toma sola del crudo y sirve '
+                                                   'para ofrecer solo sus listas de materiales.')
     # 2.9.0: la lista de materiales con la que se cotejan los hilos (el crudo puede tener varias: alternativas
     # por hilo o por proveedor). Vacía: la principal del crudo.
     bom_id = fields.Many2one(
         'mrp.bom', string='Lista de materiales', domain="[('product_tmpl_id', '=', product_proceso_tmpl_id)]",
-        help='La lista de materiales del crudo que describe esta ficha. Vacía: la principal del crudo.')
+        help='La lista de materiales del crudo que describe esta ficha (bloque Crudo), cuando el crudo tiene varias. '
+             'Vacía: la principal del crudo.')
     bom_efectiva_id = fields.Many2one('mrp.bom', string='Lista de materiales que se coteja',
-                                      compute='_compute_bom_aviso')
+                                      compute='_compute_bom_aviso',
+                                      help='Se calcula: la lista elegida en la ficha o, si no hay, la principal del '
+                                           'crudo. Con ella se comparan los hilos y sus %.')
     bom_aviso = fields.Char(string='Aviso de hilos', compute='_compute_bom_aviso', search='_search_bom_aviso',
-                            help='Lo que no cuadra entre los hilos de la ficha y la lista de materiales del crudo: un '
-                                 'hilo sin producto, uno que falta o sobra, un %% que difiere más de %g puntos o '
-                                 'unos %% que no suman 100.' % BOM_TOLERANCIA_PCT)
-    hilo_pct_total = fields.Float(string='Suma de % de hilos', digits=(16, 2), compute='_compute_bom_aviso')
+                            help='Se calcula con la pestaña Hilos y la lista de materiales que se coteja. Avisa lo que '
+                                 'no cuadra: un hilo sin producto, uno que falta o sobra, un %% que difiere más de %g '
+                                 'puntos o unos %% que no suman 100.' % BOM_TOLERANCIA_PCT)
+    hilo_pct_total = fields.Float(string='Suma de % de hilos', digits=(16, 2), compute='_compute_bom_aviso',
+                                  help='Se calcula: la suma del % de los hilos de la pestaña Hilos. Debe dar 100.')
 
     # Fichas de acabado que usan esta ficha de tejido como base
     ficha_acabado_ids = fields.One2many(
         'ficha.tecnica.acabado', 'tejido_id',
         string='Fichas de Acabado basadas en este tejido',
-        help='Productos de tela acabada (uno o varios colores/variantes) '
-             'que se construyen a partir de esta ficha de tejido.')
+        help='Productos de tela acabada (uno o varios colores/variantes) que se construyen a partir de esta ficha de '
+             'tejido. Se ligan desde cada ficha de acabado, en su «Ficha Técnica de Tejido (base)».')
     ficha_acabado_count = fields.Integer(
-        string='No. de fichas de acabado', compute='_compute_ficha_acabado_count')
+        string='No. de fichas de acabado', compute='_compute_ficha_acabado_count',
+        help='Se calcula: cuántas fichas de acabado tienen esta ficha de tejido como base. El botón las abre.')
 
     def _compute_ficha_acabado_count(self):
         for rec in self:
@@ -91,7 +115,8 @@ class FichaTecnicaTejido(models.Model):
     # capturó como texto queda en maquina_tejido_texto (dato histórico).
     maquina_tejido = fields.Many2one(
         'mrp.workcenter', string='Máquina', index=True,
-        help='Centro de trabajo (máquina) en el que se teje el artículo.')
+        help='Centro de trabajo (circular) en el que se teje el artículo. Se elige en la pestaña Máquina o con la '
+             'columna «Máquina» del Excel; con la galga del artículo solo se ofrecen las circulares que hoy la corren.')
     maquina_tejido_texto = fields.Char(
         string='Máquina (texto anterior)',
         help='Lo que se capturó como texto antes de la versión 2.2.0, o lo que traía el Excel cuando no '
@@ -102,141 +127,291 @@ class FichaTecnicaTejido(models.Model):
     maquina_config_id = fields.Many2one(
         'ficha.tecnica.maquina.config', string='Configuración de la máquina', index=True,
         domain="[('workcenter_id', '=', maquina_tejido)]",
-        help='Configuración de la máquina vigente a la fecha de elaboración; se elige sola al poner la máquina '
-             'y la fecha. Los datos de máquina de la ficha salen de aquí.')
+        help='Configuración de la máquina vigente a la fecha de elaboración (Máquinas → Configuraciones por fecha); '
+             'se elige sola al poner la máquina y la fecha. Los datos de máquina de la ficha salen de aquí.')
     galga_requerida = fields.Float(
         string='Galga del artículo', digits=(16, 0),
-        help='La galga que pide el artículo. Con ella la lista de máquinas solo ofrece las que hoy corren esa '
-             'galga.')
-    velocidad_aviso = fields.Char(string='Aviso de velocidad', compute='_compute_velocidad_aviso')
+        help='La galga que pide el artículo (pestaña Máquina). Con ella la lista de máquinas solo ofrece las que hoy '
+             'corren esa galga. Vacía: se toma la galga de la máquina o la del código.')
+    velocidad_aviso = fields.Char(string='Aviso de velocidad', compute='_compute_velocidad_aviso',
+                                  help='Se calcula: avisa si la velocidad de la ficha (rpm) pasa de la «Velocidad '
+                                       'máxima» de la configuración de la máquina.')
     maquina_config_aviso = fields.Char(string='Aviso de configuración', compute='_compute_maquina_config_aviso',
-                                       help='Lo que impide ligar la ficha a la configuración vigente de su máquina.')
-    marca_maquina = fields.Char(string='Marca de máquina')
-    galga = fields.Float(string='Galga')
-    diametro = fields.Float(string='Diámetro (in)', digits=(16, 2))
-    no_agujas = fields.Integer(string='No. de agujas')
-    no_alimentadores = fields.Integer(string='No. de alimentadores')
-    velocidad = fields.Float(string='Velocidad (rpm/min)')
-    vueltas_por_rollo = fields.Integer(string='Vueltas por rollo')
+                                       help='Se calcula: lo que impide ligar la ficha a la configuración vigente de su '
+                                            'máquina (sin configuración o un dato de máquina distinto).')
+    marca_maquina = fields.Char(string='Marca de máquina',
+                                help='Copia de la marca del centro de trabajo, tomada al ligar la configuración de la '
+                                     'máquina. Con configuración no se edita; sin ella, a mano o con el Excel.')
+    galga = fields.Float(string='Galga',
+                         help='Galga de la circular, copiada de su configuración por fecha (Máquinas → '
+                              'Configuraciones por fecha). Con configuración no se edita; sin ella, a mano o con el '
+                              'Excel.')
+    diametro = fields.Float(string='Diámetro (in)', digits=(16, 2),
+                            help='Diámetro del cilindro en pulgadas, copiado de la configuración de la máquina. Con '
+                                 'configuración no se edita; sin ella, a mano o con el Excel.')
+    no_agujas = fields.Integer(string='No. de agujas',
+                               help='Agujas del cilindro, copiadas de la configuración de la máquina. Con '
+                                    'configuración no se edita; sin ella, a mano o con el Excel.')
+    no_alimentadores = fields.Integer(string='No. de alimentadores',
+                                      help='Alimentadores de la circular, copiados de la configuración de la máquina. '
+                                           'Con configuración no se edita; sin ella, a mano o con el Excel.')
+    velocidad = fields.Float(string='Velocidad (rpm)',
+                             help='Revoluciones por minuto de la circular con este artículo (pestaña Máquina o Excel). '
+                                  'Solo se muestra; el tope de la máquina es su «Velocidad máxima» en la '
+                                  'configuración por fecha.')
+    vueltas_por_rollo = fields.Integer(string='Vueltas por rollo',
+                                       help='Vueltas de la circular para completar un rollo de crudo. Se captura en la '
+                                            'pestaña Máquina o con el Excel.')
 
     # Hilos
     hilo_line_ids = fields.One2many('ficha.tecnica.tejido.hilo', 'ficha_id',
-                                     string='Disposición de hilos')
+                                    string='Disposición de hilos',
+                                    help='Los hilos del crudo con su %, polea, alimentadores, lote y proveedor. Se '
+                                         'capturan en la pestaña Hilos; el Excel trae hasta dos.')
 
     # ------------------------------------------------------------------
     # Especificaciones de tejido — Tabla 1: por polea/hilo (Polea 1 = Hilo
     # SET, Polea 2 = Hilo Stretch), con tolerancia compartida
     # ------------------------------------------------------------------
     # 2.16.1: tres decimales (0.205 ± 0.002 cm); sin digits la ficha mostraba 0.21 y la tolerancia +/- 0.00.
-    longitud_malla_polea1 = fields.Float(string='Longitud de malla — Polea 1', digits=(16, 3))
-    longitud_malla_polea2 = fields.Float(string='Longitud de malla — Polea 2', digits=(16, 3))
-    longitud_malla_tol = fields.Float(string='Tolerancia longitud de malla', digits=(16, 3))
-    longitud_malla_tol_unit = fields.Char(string='Unidad — Longitud de malla (texto)', default='cm')
+    longitud_malla_polea1 = fields.Float(
+        string='Longitud de malla — Polea 1', digits=(16, 3),
+        help='Longitud de malla del hilo de la polea 1 (hilo set), en su unidad (cm por omisión). Pestaña Ajustes de '
+             'tejido o Excel.')
+    longitud_malla_polea2 = fields.Float(
+        string='Longitud de malla — Polea 2', digits=(16, 3),
+        help='Longitud de malla del hilo de la polea 2 (hilo stretch), en su unidad (cm por omisión). Pestaña Ajustes '
+             'de tejido o Excel.')
+    longitud_malla_tol = fields.Float(
+        string='Tolerancia longitud de malla', digits=(16, 3),
+        help='± permitido en la longitud de malla, el mismo para las dos poleas y en la misma unidad. Pestaña Ajustes '
+             'de tejido o Excel.')
+    longitud_malla_tol_unit = fields.Char(
+        string='Unidad — Longitud de malla (texto)', default='cm',
+        help='Unidad de la longitud de malla (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    consumo_cm_vta_polea1 = fields.Float(string='Consumo cm/vta — Polea 1')
-    consumo_cm_vta_polea2 = fields.Float(string='Consumo cm/vta — Polea 2')
-    consumo_cm_vta_tol = fields.Float(string='Tolerancia consumo')
-    consumo_cm_vta_tol_unit = fields.Char(string='Unidad — Consumo cm/vta (texto)', default='cm')
+    consumo_cm_vta_polea1 = fields.Float(
+        string='Consumo cm/vta — Polea 1',
+        help='Centímetros de hilo de la polea 1 (hilo set) que consume cada vuelta de la máquina. Pestaña Ajustes de '
+             'tejido o Excel.')
+    consumo_cm_vta_polea2 = fields.Float(
+        string='Consumo cm/vta — Polea 2',
+        help='Centímetros de hilo de la polea 2 (hilo stretch) que consume cada vuelta de la máquina. Pestaña Ajustes '
+             'de tejido o Excel.')
+    consumo_cm_vta_tol = fields.Float(
+        string='Tolerancia consumo',
+        help='± permitido en el consumo por vuelta, el mismo para las dos poleas y en la misma unidad. Pestaña Ajustes '
+             'de tejido o Excel.')
+    consumo_cm_vta_tol_unit = fields.Char(
+        string='Unidad — Consumo cm/vta (texto)', default='cm',
+        help='Unidad del consumo por vuelta (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    polea_alimentacion_polea1 = fields.Float(string='Polea de alimentación — Polea 1')
-    polea_alimentacion_polea2 = fields.Float(string='Polea de alimentación — Polea 2')
-    polea_alimentacion_tol = fields.Float(string='Tolerancia polea de alimentación')
-    polea_alimentacion_tol_unit = fields.Char(string='Unidad — Polea de alimentación (texto)', default='gr')
+    polea_alimentacion_polea1 = fields.Float(
+        string='Polea de alimentación — Polea 1',
+        help='Ajuste de la polea de alimentación del hilo de la polea 1 (hilo set), en su unidad («gr» por omisión). '
+             'Pestaña Ajustes de tejido o Excel.')
+    polea_alimentacion_polea2 = fields.Float(
+        string='Polea de alimentación — Polea 2',
+        help='Ajuste de la polea de alimentación del hilo de la polea 2 (hilo stretch), en su unidad («gr» por '
+             'omisión). Pestaña Ajustes de tejido o Excel.')
+    polea_alimentacion_tol = fields.Float(
+        string='Tolerancia polea de alimentación',
+        help='± permitido en el ajuste de la polea de alimentación, el mismo para las dos poleas y en la misma unidad. '
+             'Pestaña Ajustes de tejido o Excel.')
+    polea_alimentacion_tol_unit = fields.Char(
+        string='Unidad — Polea de alimentación (texto)', default='gr',
+        help='Unidad del ajuste de la polea de alimentación (del valor; la tolerancia va en la misma), en texto. Se '
+             'llena sola al elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
     # ------------------------------------------------------------------
     # Especificaciones de tejido — Tabla 2: Dato / Valor / Tolerancia
     # ------------------------------------------------------------------
-    tension = fields.Char(string='Tensión')
-    tension_tol = fields.Float(string='Tolerancia tensión')
-    tension_tol_unit = fields.Char(string='Unidad — Tensión (texto)', default='PTO')
+    tension = fields.Char(string='Tensión',
+                          help='Ajuste de tensión del hilo en la circular, en su unidad (PTO por omisión). Se guarda '
+                               'como texto. Pestaña Ajustes de tejido o Excel.')
+    tension_tol = fields.Float(string='Tolerancia tensión',
+                               help='± permitido en la tensión, en la misma unidad. Pestaña Ajustes de tejido o Excel.')
+    tension_tol_unit = fields.Char(
+        string='Unidad — Tensión (texto)', default='PTO',
+        help='Unidad de la tensión (del valor; la tolerancia va en la misma), en texto. Se llena sola al elegir la '
+             'unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    punto_cilindro = fields.Char(string='Punto cilindro')
-    punto_cilindro_tol = fields.Float(string='Tolerancia punto cilindro')
-    punto_cilindro_tol_unit = fields.Char(string='Unidad — Punto cilindro (texto)', default='PTO')
+    punto_cilindro = fields.Char(string='Punto cilindro',
+                                 help='Ajuste del punto del cilindro de la circular, en su unidad (PTO por omisión). '
+                                      'Se guarda como texto. Pestaña Ajustes de tejido o Excel.')
+    punto_cilindro_tol = fields.Float(string='Tolerancia punto cilindro',
+                                      help='± permitido en el punto del cilindro, en la misma unidad. Pestaña Ajustes '
+                                           'de tejido o Excel.')
+    punto_cilindro_tol_unit = fields.Char(
+        string='Unidad — Punto cilindro (texto)', default='PTO',
+        help='Unidad del punto del cilindro (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    punto_plato = fields.Char(string='Punto plato')
-    punto_plato_tol = fields.Float(string='Tolerancia punto plato')
-    punto_plato_tol_unit = fields.Char(string='Unidad — Punto plato (texto)', default='PTO')
+    punto_plato = fields.Char(string='Punto plato',
+                              help='Ajuste del punto del plato de la circular, en su unidad (PTO por omisión). Se '
+                                   'guarda como texto. Pestaña Ajustes de tejido o Excel.')
+    punto_plato_tol = fields.Float(string='Tolerancia punto plato',
+                                   help='± permitido en el punto del plato, en la misma unidad. Pestaña Ajustes de '
+                                        'tejido o Excel.')
+    punto_plato_tol_unit = fields.Char(
+        string='Unidad — Punto plato (texto)', default='PTO',
+        help='Unidad del punto del plato (del valor; la tolerancia va en la misma), en texto. Se llena sola al elegir '
+             'la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    altura_plato = fields.Char(string='Altura plato')
-    altura_plato_tol = fields.Float(string='Tolerancia altura plato')
-    altura_plato_tol_unit = fields.Char(string='Unidad — Altura plato (texto)', default='PTO')
+    altura_plato = fields.Char(string='Altura plato',
+                               help='Ajuste de la altura del plato de la circular, en su unidad (PTO por omisión). Se '
+                                    'guarda como texto. Pestaña Ajustes de tejido o Excel.')
+    altura_plato_tol = fields.Float(string='Tolerancia altura plato',
+                                    help='± permitido en la altura del plato, en la misma unidad. Pestaña Ajustes de '
+                                         'tejido o Excel.')
+    altura_plato_tol_unit = fields.Char(
+        string='Unidad — Altura plato (texto)', default='PTO',
+        help='Unidad de la altura del plato (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    ancho_bastidor = fields.Float(string='Ancho de bastidor')
-    ancho_bastidor_tol = fields.Float(string='Tolerancia ancho de bastidor')
-    ancho_bastidor_tol_unit = fields.Char(string='Unidad — Ancho de bastidor (texto)', default='cm')
+    ancho_bastidor = fields.Float(string='Ancho de bastidor',
+                                  help='Ancho del bastidor de la circular (ajuste de la máquina), en su unidad (cm por '
+                                       'omisión). Pestaña Ajustes de tejido o Excel; no entra a ningún cálculo.')
+    ancho_bastidor_tol = fields.Float(string='Tolerancia ancho de bastidor',
+                                      help='± permitido en el ancho de bastidor, en la misma unidad. Pestaña Ajustes '
+                                           'de tejido o Excel.')
+    ancho_bastidor_tol_unit = fields.Char(
+        string='Unidad — Ancho de bastidor (texto)', default='cm',
+        help='Unidad del ancho de bastidor (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    estiraje = fields.Char(string='Estiraje')
-    estiraje_tol = fields.Float(string='Tolerancia estiraje')
-    estiraje_tol_unit = fields.Char(string='Unidad — Estiraje (texto)')
+    estiraje = fields.Char(string='Estiraje',
+                           help='Ajuste de estiraje de la circular, en su unidad (sin unidad por omisión). Se guarda '
+                                'como texto. Pestaña Ajustes de tejido o Excel.')
+    estiraje_tol = fields.Float(string='Tolerancia estiraje',
+                                help='± permitido en el estiraje, en la misma unidad. Pestaña Ajustes de tejido o '
+                                     'Excel.')
+    estiraje_tol_unit = fields.Char(
+        string='Unidad — Estiraje (texto)',
+        help='Unidad del estiraje (del valor; la tolerancia va en la misma), en texto. Se llena sola al elegir la '
+             'unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    ancho_rollo = fields.Float(string='Ancho de rollo de crudo', help='El rollo de crudo que sale de la circular.')
-    ancho_rollo_tol = fields.Float(string='Tolerancia ancho de rollo')
-    ancho_rollo_tol_unit = fields.Char(string='Unidad — Ancho de rollo (texto)', default='cm')
+    ancho_rollo = fields.Float(string='Ancho de rollo de crudo',
+                               help='Ancho del rollo de crudo que sale de la circular, en su unidad (cm por omisión). '
+                                    'Pestaña Ajustes de tejido o Excel; no entra a ningún cálculo.')
+    ancho_rollo_tol = fields.Float(string='Tolerancia ancho de rollo',
+                                   help='± permitido en el ancho del rollo de crudo, en la misma unidad. Pestaña '
+                                        'Ajustes de tejido o Excel.')
+    ancho_rollo_tol_unit = fields.Char(
+        string='Unidad — Ancho de rollo (texto)', default='cm',
+        help='Unidad del ancho de rollo (del valor; la tolerancia va en la misma), en texto. Se llena sola al elegir '
+             'la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
-    peso_promedio_rollo = fields.Float(string='Peso promedio de rollo')
-    peso_promedio_rollo_tol = fields.Float(string='Tolerancia peso de rollo')
-    peso_promedio_rollo_tol_unit = fields.Char(string='Unidad — Peso promedio de rollo (texto)', default='kg')
+    peso_promedio_rollo = fields.Float(string='Peso promedio de rollo',
+                                       help='Peso promedio de un rollo de crudo al salir de la circular, en su unidad '
+                                            '(kg por omisión). Pestaña Ajustes de tejido o Excel.')
+    peso_promedio_rollo_tol = fields.Float(string='Tolerancia peso de rollo',
+                                           help='± permitido en el peso del rollo de crudo, en la misma unidad. '
+                                                'Pestaña Ajustes de tejido o Excel.')
+    peso_promedio_rollo_tol_unit = fields.Char(
+        string='Unidad — Peso promedio de rollo (texto)', default='kg',
+        help='Unidad del peso promedio de rollo (del valor; la tolerancia va en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Ajustes de tejido o la escribe el Excel; la leen el SGI y Consolti.')
 
     # ------------------------------------------------------------------
     # Datos de tela acondicionada (post-tejido, pre-acabado)
     # ------------------------------------------------------------------
-    peso_acondicionado = fields.Float(string='Peso')
+    peso_acondicionado = fields.Float(string='Peso',
+                                      help='Peso del crudo acondicionado (relajado) en g/m². Pestaña Tela '
+                                           'acondicionada o Excel; con el ancho da el rendimiento de tejido.')
     peso_acondicionado_tol = fields.Float(
         string='Tolerancia peso (+)',
-        help=TOL_PLUS_HELP)
+        help='Peso del crudo acondicionado, pestaña Tela acondicionada o Excel. ' + TOL_PLUS_HELP)
     peso_acondicionado_tol_minus = fields.Float(
         string='Tolerancia peso (−)',
-        help=TOL_MINUS_HELP)
-    peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado (texto)', default='g/m2')
+        help='Peso del crudo acondicionado, pestaña Tela acondicionada o Excel. ' + TOL_MINUS_HELP)
+    peso_acondicionado_tol_unit = fields.Char(
+        string='Unidad — Peso acondicionado (texto)', default='g/m2',
+        help='Unidad del peso acondicionado (del valor; las tolerancias van en la misma), en texto. Se llena sola al '
+             'elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
-    ancho_acondicionado = fields.Float(string='Ancho de crudo relajado',
-                                       help='El crudo acondicionado (relajado), tubular o abierto según la circular.')
+    ancho_acondicionado = fields.Float(
+        string='Ancho de crudo relajado',
+        help='El crudo acondicionado (relajado), tubular o abierto según la circular, en su unidad (cm por omisión). '
+             'Pestaña Tela acondicionada o Excel; con el peso da el rendimiento de tejido.')
     ancho_acondicionado_tol = fields.Float(
         string='Tolerancia ancho (+)',
-        help=TOL_PLUS_HELP)
+        help='Ancho del crudo relajado, pestaña Tela acondicionada o Excel. ' + TOL_PLUS_HELP)
     ancho_acondicionado_tol_minus = fields.Float(
         string='Tolerancia ancho (−)',
-        help=TOL_MINUS_HELP)
-    ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado (texto)', default='cm')
+        help='Ancho del crudo relajado, pestaña Tela acondicionada o Excel. ' + TOL_MINUS_HELP)
+    ancho_acondicionado_tol_unit = fields.Char(
+        string='Unidad — Ancho acondicionado (texto)', default='cm',
+        help='Unidad del ancho de crudo relajado (del valor; las tolerancias van en la misma), en texto. Se llena sola '
+             'al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
     # 2.16.2: tres decimales (XJ145Q21HNT098: 0.022 ± 0.002 in se veía 0.02 ± 0.00).
-    espesor_acondicionado = fields.Float(string='Espesor', digits=(16, 3))
+    espesor_acondicionado = fields.Float(string='Espesor', digits=(16, 3),
+                                         help='Espesor del crudo acondicionado, en su unidad (in por omisión). '
+                                              'Pestaña Tela acondicionada o Excel.')
     espesor_acondicionado_tol = fields.Float(
         string='Tolerancia espesor (+)', digits=(16, 3),
-        help=TOL_PLUS_HELP)
+        help='Espesor del crudo acondicionado, pestaña Tela acondicionada o Excel. ' + TOL_PLUS_HELP)
     espesor_acondicionado_tol_minus = fields.Float(
         string='Tolerancia espesor (−)', digits=(16, 3),
-        help=TOL_MINUS_HELP)
-    espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado (texto)', default='in')
+        help='Espesor del crudo acondicionado, pestaña Tela acondicionada o Excel. ' + TOL_MINUS_HELP)
+    espesor_acondicionado_tol_unit = fields.Char(
+        string='Unidad — Espesor acondicionado (texto)', default='in',
+        help='Unidad del espesor acondicionado (del valor; las tolerancias van en la misma), en texto. Se llena sola '
+             'al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
-    columnas = fields.Integer(string='Columnas')
-    columnas_tol = fields.Float(string='Tolerancia columnas')
-    columnas_tol_unit = fields.Char(string='Unidad — Columnas (texto)', default='in')
+    columnas = fields.Integer(string='Columnas',
+                              help='Columnas por pulgada del crudo acondicionado. Pestaña Tela acondicionada o Excel.')
+    columnas_tol = fields.Float(string='Tolerancia columnas',
+                                help='± permitido en las columnas, en la misma unidad (por pulgada). Pestaña Tela '
+                                     'acondicionada o Excel.')
+    columnas_tol_unit = fields.Char(
+        string='Unidad — Columnas (texto)', default='in',
+        help='Unidad de las columnas (del valor; la tolerancia va en la misma), en texto: aquí «in» es por pulgada. '
+             'Se llena sola al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y '
+             'Consolti.')
 
-    mallas = fields.Integer(string='Mallas')
-    mallas_tol = fields.Float(string='Tolerancia mallas')
-    mallas_tol_unit = fields.Char(string='Unidad — Mallas (texto)', default='in')
+    mallas = fields.Integer(string='Mallas',
+                            help='Mallas por pulgada del crudo acondicionado. Pestaña Tela acondicionada o Excel.')
+    mallas_tol = fields.Float(string='Tolerancia mallas',
+                              help='± permitido en las mallas, en la misma unidad (por pulgada). Pestaña Tela '
+                                   'acondicionada o Excel.')
+    mallas_tol_unit = fields.Char(
+        string='Unidad — Mallas (texto)', default='in',
+        help='Unidad de las mallas (del valor; la tolerancia va en la misma), en texto: aquí «in» es por pulgada. Se '
+             'llena sola al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
-    elongacion_carga_largo = fields.Float(string='Elongación bajo carga — largo')
+    elongacion_carga_largo = fields.Float(string='Elongación bajo carga — largo',
+                                          help='Elongación del crudo acondicionado bajo carga, a lo largo, en su '
+                                               'unidad (% por omisión). Pestaña Tela acondicionada o Excel.')
     elongacion_carga_largo_tol = fields.Float(
         string='Tolerancia elongación largo (+)',
-        help=TOL_PLUS_HELP)
+        help='Elongación bajo carga a lo largo, pestaña Tela acondicionada o Excel. ' + TOL_PLUS_HELP)
     elongacion_carga_largo_tol_minus = fields.Float(
         string='Tolerancia elongación largo (−)',
-        help=TOL_MINUS_HELP)
-    elongacion_carga_largo_tol_unit = fields.Char(string='Unidad — Elongación carga largo (texto)', default='%')
+        help='Elongación bajo carga a lo largo, pestaña Tela acondicionada o Excel. ' + TOL_MINUS_HELP)
+    elongacion_carga_largo_tol_unit = fields.Char(
+        string='Unidad — Elongación carga largo (texto)', default='%',
+        help='Unidad de la elongación a lo largo (del valor; las tolerancias van en la misma), en texto. Se llena sola '
+             'al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
-    elongacion_carga_ancho = fields.Float(string='Elongación bajo carga — ancho')
+    elongacion_carga_ancho = fields.Float(string='Elongación bajo carga — ancho',
+                                          help='Elongación del crudo acondicionado bajo carga, a lo ancho, en su '
+                                               'unidad (% por omisión). Pestaña Tela acondicionada o Excel.')
     elongacion_carga_ancho_tol = fields.Float(
         string='Tolerancia elongación ancho (+)',
-        help=TOL_PLUS_HELP)
+        help='Elongación bajo carga a lo ancho, pestaña Tela acondicionada o Excel. ' + TOL_PLUS_HELP)
     elongacion_carga_ancho_tol_minus = fields.Float(
         string='Tolerancia elongación ancho (−)',
-        help=TOL_MINUS_HELP)
-    elongacion_carga_ancho_tol_unit = fields.Char(string='Unidad — Elongación carga ancho (texto)', default='%')
+        help='Elongación bajo carga a lo ancho, pestaña Tela acondicionada o Excel. ' + TOL_MINUS_HELP)
+    elongacion_carga_ancho_tol_unit = fields.Char(
+        string='Unidad — Elongación carga ancho (texto)', default='%',
+        help='Unidad de la elongación a lo ancho (del valor; las tolerancias van en la misma), en texto. Se llena sola '
+             'al elegir la unidad en Tela acondicionada o la escribe el Excel; la leen el SGI y Consolti.')
 
-    notas = fields.Text(string='Notas')
+    notas = fields.Text(string='Notas', help='Notas libres de la ficha. Pestaña Notas o columna «Notas» del Excel.')
 
     # 2.7.0: una ficha por artículo, revisión y máquina, como los formatos de la planta (F-IT-P-P01-08-05 de
     # 2017 y F-IT-P-P01-08-04 de 2025 llevan una hoja por máquina: los ajustes cambian de una a otra).
@@ -526,44 +701,83 @@ class FichaTecnicaTejidoHilo(models.Model):
     _order = 'numero'
 
     ficha_id = fields.Many2one('ficha.tecnica.tejido', string='Ficha técnica de tejido',
-                                required=True, ondelete='cascade')
-    numero = fields.Integer(string='No.')
+                               required=True, ondelete='cascade',
+                               help='La ficha de tejido a la que pertenece el renglón (se captura en su pestaña '
+                                    'Hilos).')
+    numero = fields.Integer(string='No.',
+                            help='Número del hilo en la ficha (1, 2…). Pestaña Hilos; el Excel pone 1 y 2 y con él '
+                                 'reemplaza el renglón al volver a importar.')
     product_id = fields.Many2one('product.product', string='Hilo', index=True, ondelete='restrict',
-                                 help='El producto del hilo en Inventario. Sus propiedades están en su ficha de '
-                                      'materia prima.')
+                                 help='El producto del hilo en Inventario (pestaña Hilos de la ficha de tejido). Sus '
+                                      'propiedades están en su ficha de materia prima.')
     material_id = fields.Many2one('ficha.tecnica.material', string='Ficha de materia prima',
-                                  compute='_compute_material_id')
-    material_resumen = fields.Char(string='Propiedades del hilo', compute='_compute_material_id')
-    composicion = fields.Char(string='Composición', compute='_compute_material_id')
-    tipo_hilo = fields.Char(string='Tipo de hilo (texto)')
-    titulo_hilo = fields.Char(string='Título de hilo (texto)')
-    torsion = fields.Char(string='Torsión (texto)')
-    porcentaje = fields.Float(string='% de hilo')
-    polea = fields.Integer(string='Polea', help='Polea (posición de alimentación) por la que entra el hilo.')
-    alimentadores = fields.Integer(string='No. de alimentadores', help='Cuántos alimentadores llevan este hilo.')
+                                  compute='_compute_material_id',
+                                  help='Se calcula: la ficha de materia prima del producto del hilo (Materias primas → '
+                                       'Fichas).')
+    material_resumen = fields.Char(string='Propiedades del hilo', compute='_compute_material_id',
+                                   help='Se calcula: el resumen de propiedades de la ficha de materia prima del hilo.')
+    composicion = fields.Char(string='Composición', compute='_compute_material_id',
+                              help='Se calcula: la composición en fibras de la ficha de materia prima del hilo.')
+    tipo_hilo = fields.Char(string='Tipo de hilo (texto)',
+                            help='Tipo de hilo como texto (set, stretch…), de antes de ligar el producto; lo trae la '
+                                 'columna «Hilo1 Tipo» del Excel. Sirve para buscar el producto; con producto es de '
+                                 'solo lectura.')
+    titulo_hilo = fields.Char(string='Título de hilo (texto)',
+                              help='Título del hilo como texto (ej. 75/36), de antes de ligar el producto; lo trae la '
+                                   'columna «Hilo1 Título» del Excel. Sirve para buscar el producto; con producto es '
+                                   'de solo lectura.')
+    torsion = fields.Char(string='Torsión (texto)',
+                          help='Torsión del hilo como texto (S o Z), de antes de ligar el producto; lo trae la columna '
+                               '«Hilo1 Torsión» del Excel. Sirve para buscar el producto; con producto es de solo '
+                               'lectura.')
+    porcentaje = fields.Float(string='% de hilo',
+                              help='Parte de este hilo en el crudo, en %. Pestaña Hilos o columna «Hilo1 Pct» del '
+                                   'Excel; al elegir el hilo se propone el % de la lista de materiales. Los hilos '
+                                   'deben sumar 100.')
+    polea = fields.Integer(string='Polea',
+                           help='Polea (posición de alimentación) por la que entra el hilo. Se captura en la pestaña '
+                                'Hilos.')
+    alimentadores = fields.Integer(string='No. de alimentadores',
+                                   help='Cuántos alimentadores de la circular llevan este hilo. Se captura en la '
+                                        'pestaña Hilos.')
     secuencia_alimentacion = fields.Char(string='Secuencia de alimentación',
                                          help='Cómo se reparte el hilo en los alimentadores (p. ej. «1 de cada 2», '
-                                              '«A-B-A-B»).')
-    consumo_cm_vta = fields.Float(string='Consumo (cm/vta)', help='Consumo de este hilo por vuelta de la máquina.')
+                                              '«A-B-A-B»). Se captura en la pestaña Hilos.')
+    consumo_cm_vta = fields.Float(string='Consumo (cm/vta)',
+                                  help='Centímetros de este hilo que consume cada vuelta de la máquina. Se captura en '
+                                       'la pestaña Hilos.')
     longitud_malla = fields.Float(string='Longitud de malla', digits=(16, 3),
-                                  help='Longitud de malla con este hilo (misma unidad que la ficha).')
-    lote = fields.Char(string='Lote (texto)')
+                                  help='Longitud de malla con este hilo, en la unidad de la longitud de malla de la '
+                                       'ficha (cm por omisión). Se captura en la pestaña Hilos.')
+    lote = fields.Char(string='Lote (texto)',
+                       help='Lote del hilo como texto, de la columna «Hilo1 Lote» del Excel. Con él, el ligado de '
+                            'hilos elige el lote de inventario del mismo nombre si hay uno solo.')
     lote_id = fields.Many2one('stock.lot', string='Lote', domain="[('product_id', '=', product_id)]",
-                              help='Lote de inventario del hilo con el que se elaboró la ficha.')
+                              help='Lote de inventario del hilo con el que se elaboró la ficha (pestaña Hilos).')
     proveedor_id = fields.Many2one(
         'res.partner', string='Proveedor',
         domain=[('supplier_rank', '>', 0)],
         help='Uno de los proveedores del hilo (pestaña Compra del producto) o, si el producto no tiene, un contacto '
-             'marcado como proveedor.')
+             'marcado como proveedor. Pestaña Hilos o columna «Hilo1 Proveedor» del Excel (nombre exacto).')
     proveedor_permitido_ids = fields.Many2many('res.partner', string='Proveedores del hilo',
-                                               compute='_compute_proveedor_permitido_ids')
+                                               compute='_compute_proveedor_permitido_ids',
+                                               help='Se calcula: los proveedores de la pestaña Compra del producto '
+                                                    'del hilo; limitan el campo Proveedor.')
     # 2.9.0: guardados para recorrer la cadena al revés (hilo → telas → máquinas) y la tabla dinámica.
-    articulo = fields.Char(related='ficha_id.articulo', store=True, string='Artículo')
-    crudo_id = fields.Many2one(related='ficha_id.product_proceso_id', store=True, string='Crudo')
-    workcenter_id = fields.Many2one(related='ficha_id.maquina_tejido', store=True, index=True, string='Máquina')
-    galga = fields.Float(related='ficha_id.galga', store=True, string='Galga')
-    ficha_active = fields.Boolean(related='ficha_id.active', store=True, string='Ficha activa')
-    bom_pct = fields.Float(string='% en la lista de materiales', digits=(16, 2), compute='_compute_bom_pct')
+    articulo = fields.Char(related='ficha_id.articulo', store=True, string='Artículo',
+                           help='Se toma de la ficha de tejido: el código del crudo. Sirve para buscar por tela en '
+                                'Materias primas → Hilos por tela y máquina.')
+    crudo_id = fields.Many2one(related='ficha_id.product_proceso_id', store=True, string='Crudo',
+                               help='Se toma de la ficha de tejido: el crudo (tela tejida en kg) que lleva este hilo.')
+    workcenter_id = fields.Many2one(related='ficha_id.maquina_tejido', store=True, index=True, string='Máquina',
+                                    help='Se toma de la ficha de tejido: la circular en la que se teje con este hilo.')
+    galga = fields.Float(related='ficha_id.galga', store=True, string='Galga',
+                         help='Se toma de la ficha de tejido: la galga de su circular.')
+    ficha_active = fields.Boolean(related='ficha_id.active', store=True, string='Ficha activa',
+                                  help='Se toma de la ficha de tejido: falso si la ficha está archivada.')
+    bom_pct = fields.Float(string='% en la lista de materiales', digits=(16, 2), compute='_compute_bom_pct',
+                           help='Se calcula: la parte de este hilo en la lista de materiales que se coteja, en % de la '
+                                'cantidad de sus componentes.')
 
     @api.depends('product_id')
     def _compute_material_id(self):

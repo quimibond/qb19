@@ -66,8 +66,9 @@ class TestProgramacionTintoreria(TransactionCase):
         # rendimiento de tejido y vínculo kg <-> metros.
         self.patch(self.env.registry['mrp.workcenter'], '_ft_config_at',
                    lambda wc, day=None: _Config(**configs[wc.id]) if wc.id in configs else False)
-        self.patch(self.env.registry['mrp.workcenter'], '_ft_capacidad_carga',
-                   lambda wc, rendimiento, day=None, product=None: (0.0, 'sin capacidad capturada'))
+        # 1.8.4: la capacidad sale de la regla de fichas (_ft_regla_capacidad); el artículo no tiene kg por carga.
+        self.patch(self.env.registry['mrp.workcenter'], '_ft_kg_carga_articulo',
+                   lambda wc, product=None: (0.0, False))
         self.patch(self.env.registry['product.product'], '_ft_rendimiento',
                    lambda producto: (self.rendimiento, 'prueba'))
         self.patch(self.env.registry['mrp.production'], '_es_producto_acabado_kg',
@@ -134,9 +135,8 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertTrue(plan['aviso'])
 
     def test_kg_por_carga_del_articulo_manda(self):
-        self.patch(self.env.registry['mrp.workcenter'], '_ft_capacidad_carga',
-                   lambda wc, rendimiento, day=None, product=None: (
-                       400.0, 'kg por carga del artículo en este jet'))
+        self.patch(self.env.registry['mrp.workcenter'], '_ft_kg_carga_articulo',
+                   lambda wc, product=None: (400.0, 'kg por carga del artículo en este jet'))
         mo = self._crear_mo(1000.0)
         plan = mo._calcular_plan_tintoreria(self.htj1)
         self.assertEqual(plan['capacidad_kg'], 400.0)

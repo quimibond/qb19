@@ -16,8 +16,8 @@ Primeros usos de la ficha de la máquina en la planta:
   tabla con la capacidad que aplica en cada jet y cuántas cargas son, y si
   se elige el jet de la orden, el aviso cuando la orden no cabe en una
   carga. La capacidad sale de la configuración vigente del jet: la del grupo
-  de rendimiento de la tela (A 3 a 6, B 7 a 10, C 11 a 15 m/kg; entre grupos
-  se toma el de abajo: 6.5 es A) y, si la tela no tiene rendimiento, la
+  de rendimiento de la tela (A de 3 a menos de 7, B de 7 a menos de 11, C de 11 a menos de 16 m/kg;
+  ``GRUPOS``) y, si la tela no tiene rendimiento, la
   capacidad general. El rendimiento sale de la ficha de tejido: 1000 /
   (peso g/m² × ancho m).
 
@@ -71,13 +71,14 @@ class FichaTecnicaTejidoUso(models.Model):
     rendimiento_tela_tejida = fields.Float(
         string='Rendimiento de tela tejida (m/kg)', digits=(12, 4), compute='_compute_rendimiento_tela_tejida',
         store=True, readonly=False,
-        help='1000 / (peso g/m² × ancho en m) de la tela acondicionada; el ancho se convierte con su unidad. 0 si '
-             'falta un dato o el ancho no es creíble (fuera de 0.3 a 4 m). Si se escribe a mano, queda fijo '
-             '(«Rendimiento forzado»).')
+        help='Rendimiento de tejido (del crudo), no el de tela terminada. Se calcula: 1000 ÷ (peso g/m² × ancho en m) '
+             'de la pestaña «Tela acondicionada», con el ancho en su unidad y al doble si se mide como tubo aplanado; '
+             '0 si falta un dato o el ancho no es creíble (fuera de 0.3 a 4 m). Decide la banda A/B/C del jet y los '
+             'tiempos de devanado y abridora; si se escribe a mano queda fijo («Rendimiento forzado»).')
     rendimiento_manual = fields.Boolean(
         string='Rendimiento forzado',
-        help='El rendimiento se escribió a mano: ya no se recalcula con el peso y el ancho. Desmárquelo para volver '
-             'al cálculo.')
+        help='El rendimiento de tejido se escribió a mano en la ficha de tejido (grupo «Crudo»): se marca solo y ya no '
+             'se recalcula con el peso y el ancho. Desmárquelo para volver al cálculo.')
     # 2.14.0 (Dirección General 2026-10-26): las circulares que entregan la tela en tubo dan en la ficha el ancho del
     # tubo aplanado (dos capas) y el rendimiento salía al doble: WD040Q46HNT098 (40 g/m², 98 cm) daba 25.51 m/kg y
     # la producción real da ~13.9 m/kg ya acabada (12.76 con el ancho abierto de 1.96 m). Tubular o abierta depende
@@ -89,12 +90,13 @@ class FichaTecnicaTejidoUso(models.Model):
     salida_tela_ficha = fields.Selection(
         SALIDA_TELA, string='Fijar medición del ancho',
         help='Solo si el artículo se mide distinto de lo que entrega su máquina (por ejemplo, tela abierta tejida en una '
-             'circular tubular). Vacío: sigue a la «Salida de la tela» de la máquina.')
+             'circular tubular). Se captura en la ficha de tejido, grupo «Crudo». Vacío: sigue a la «Salida de la '
+             'tela» de la máquina.')
     salida_tela = fields.Selection(
         SALIDA_TELA, string='Ancho medido como', compute='_compute_salida_tela', store=True,
-        help='Cómo está medido el ancho de la ficha: lo fijado en la ficha o, si no, la «Salida de la tela» de la '
-             'máquina con que se elaboró. Tubo aplanado: dos capas, el rendimiento usa el doble del ancho. Vacío: no '
-             'hay dato y el ancho se toma como abierto.')
+        help='Se calcula: cómo está medido el ancho de la ficha, lo fijado en la ficha o, si no, la «Salida de la '
+             'tela» de la configuración de la máquina con que se elaboró. Tubo aplanado: dos capas, el rendimiento usa '
+             'el doble del ancho. Vacío: no hay dato y el ancho se toma como abierto.')
 
     @api.depends('salida_tela_ficha', 'maquina_config_id.valor_ids.valor_texto',
                  'maquina_config_id.valor_ids.parametro_id')
@@ -342,9 +344,9 @@ class MrpWorkorderAviso(models.Model):
 
     ft_aviso_maquina = fields.Char(
         string='Aviso de máquina', compute='_compute_ft_aviso_maquina', search='_search_ft_aviso_maquina',
-        help='La circular corre una galga distinta de la que pide el artículo (según su ficha de tejido o su '
-             'código), la orden no cabe en una carga del jet o (2.20.0) la máquina no está operando o no tiene '
-             'proceso del artículo. Es aviso: la decisión es de la planta.')
+        help='Se calcula en la orden de trabajo: la circular corre una galga distinta de la que pide el artículo '
+             '(según su ficha de tejido o su código), la orden no cabe en una carga del jet (kg de crudo contra su '
+             'capacidad) o la máquina no está operando o no tiene proceso del artículo. Es aviso: decide la planta.')
 
     def _ft_aviso(self):
         """Aviso de la máquina de la orden de trabajo (galga en circular, carga en jet)."""
@@ -391,8 +393,9 @@ class StockPickingTypeTintoreria(models.Model):
 
     ft_cargas_jet = fields.Boolean(
         string='Calcular cargas por jet',
-        help='Las órdenes de fabricación de este tipo de operación son de tintorería: muestran la capacidad de '
-             'cada jet, cuántas cargas son y el aviso de carga del jet elegido.')
+        help='Se marca en el tipo de operación de fabricación (Inventario → Configuración → Tipos de operación): sus '
+             'órdenes son de tintorería y muestran la capacidad de cada jet, cuántas cargas son y el aviso de carga '
+             'del jet elegido.')
 
 
 class MrpProductionAviso(models.Model):
@@ -400,17 +403,28 @@ class MrpProductionAviso(models.Model):
 
     ft_es_tintoreria = fields.Boolean(
         string='Orden con teñido', compute='_compute_ft_es_tintoreria',
-        help='Orden de tintorería (su tipo de operación calcula cargas por jet) u orden con una orden de '
-             'trabajo en un jet (acabado en kg con la tintorería en su ruta, 2.6.0 y 2.13.0).')
+        help='Se calcula: orden de tintorería (su tipo de operación calcula cargas por jet) u orden con una orden de '
+             'trabajo en un jet (acabado en kg con la tintorería en su ruta). Muestra la pestaña «Cargas por jet».')
     ft_jet_wo_id = fields.Many2one('mrp.workcenter', string='Jet de la orden de trabajo',
-                                   compute='_compute_ft_es_tintoreria')
+                                   compute='_compute_ft_es_tintoreria',
+                                   help='Se calcula: el jet de la orden de trabajo de tintorería de la orden, si la '
+                                        'tiene; manda sobre el «Jet» elegido a mano.')
     ft_jet_id = fields.Many2one(
         'mrp.workcenter', string='Jet', tracking=True, domain="[('ft_tipo_id.code', '=', 'tintoreria')]",
-        help='Jet en el que se tiñe la orden. Con él Odoo avisa si la orden no cabe en una carga.')
-    ft_rendimiento = fields.Float(string='Rendimiento de la tela (m/kg)', digits=(16, 2),
-                                  compute='_compute_ft_cargas')
-    ft_cargas_html = fields.Html(string='Cargas por jet', compute='_compute_ft_cargas', sanitize=False)
-    ft_aviso_maquina = fields.Char(string='Aviso de máquina', compute='_compute_ft_cargas')
+        help='Jet en el que se tiñe la orden, cuando no tiene orden de trabajo en un jet. Se elige en la pestaña '
+             '«Cargas por jet» de la orden; con él Odoo avisa si la orden no cabe en una carga.')
+    ft_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(16, 2),
+                                  compute='_compute_ft_cargas',
+                                  help='Se calcula: el del crudo (ficha de tejido del producto o la base de su ficha '
+                                       'de acabado: 1000 ÷ g/m² × ancho acondicionado). Decide la banda A/B/C y la '
+                                       'capacidad de cada jet. No es el rendimiento de tela terminada.')
+    ft_cargas_html = fields.Html(string='Cargas por jet', compute='_compute_ft_cargas', sanitize=False,
+                                 help='Se calcula: cada jet con su capacidad para la tela, cuántas cargas son con los '
+                                      'kg de crudo de la orden y de dónde sale la capacidad. Pestaña «Cargas por '
+                                      'jet».')
+    ft_aviso_maquina = fields.Char(string='Aviso de máquina', compute='_compute_ft_cargas',
+                                   help='Se calcula: los avisos de las órdenes de trabajo y, con un jet elegido a mano, '
+                                        'si la orden no cabe en una carga o el jet no puede con la tela.')
 
     @api.depends('picking_type_id.ft_cargas_jet', 'workorder_ids.workcenter_id')
     def _compute_ft_es_tintoreria(self):

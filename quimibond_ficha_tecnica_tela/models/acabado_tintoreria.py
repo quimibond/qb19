@@ -29,8 +29,9 @@ class FichaTecnicaProcesoTintoreria(models.Model):
     _inherit = 'ficha.tecnica.proceso'
 
     ft_volumen_bano = fields.Float(string='Volumen de baño (L)', digits=(16, 1), compute='_compute_ft_volumen_bano',
-                                   help='Kg por carga × relación de baño (la del artículo en el jet o, si no tiene, '
-                                        'la de la máquina). Solo en jets.')
+                                   help='Se calcula: kg por carga × relación de baño (la del artículo en el jet o, si '
+                                        'no tiene, la de la máquina). Solo en jets; se ve en Tintorería → Artículos en '
+                                        'los jets y en la pestaña «Tintorería» de la ficha de acabado.')
 
     @api.depends('valor_ids.valor', 'workcenter_id', 'product_id')
     def _compute_ft_volumen_bano(self):
@@ -49,11 +50,22 @@ class FichaTecnicaAcabadoTintoreria(models.Model):
     _inherit = 'ficha.tecnica.acabado'
 
     tint_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones de tintorería',
-                                          compute='_compute_tintoreria', context={'active_test': False})
+                                          compute='_compute_tintoreria', context={'active_test': False},
+                                          help='Se calcula: las operaciones en jets (tipo Tintorería) de la lista de '
+                                               'la tela y sus intermedios, también archivadas. Se editan en la lista '
+                                               'de materiales.')
     tint_proceso_ids = fields.Many2many('ficha.tecnica.proceso', string='El artículo en los jets',
-                                        compute='_compute_tintoreria')
-    tint_linea_ids = fields.Many2many('mrp.bom.line', string='Fórmula y auxiliares', compute='_compute_tintoreria')
-    tint_aviso = fields.Char(string='Aviso de tintorería', compute='_compute_tintoreria')
+                                        compute='_compute_tintoreria',
+                                        help='Se calcula: los datos del artículo en cada jet (temperatura, tiempo de '
+                                             'ciclo, kg por carga, relación de baño…). Se capturan en Tintorería → '
+                                             'Artículos en los jets.')
+    tint_linea_ids = fields.Many2many('mrp.bom.line', string='Fórmula y auxiliares', compute='_compute_tintoreria',
+                                      help='Se calcula: los componentes de la lista asignados a la operación de '
+                                           'tintorería y, si el teñido es artículo aparte, los de su lista que no son '
+                                           'tela. Se capturan en la lista de materiales.')
+    tint_aviso = fields.Char(string='Aviso de tintorería', compute='_compute_tintoreria',
+                             help='Se calcula: avisa si no hay operación de tintorería ni fórmula, si la operación no '
+                                  'tiene componentes asignados o si el artículo no tiene datos en ningún jet.')
 
     def _ft_tintoreria(self):
         """(operaciones de tintorería, procesos del artículo en jets, renglones de la fórmula) de la cadena."""

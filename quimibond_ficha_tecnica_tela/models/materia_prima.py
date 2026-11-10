@@ -49,10 +49,14 @@ class FichaTecnicaFibra(models.Model):
     _description = 'Fibra (composición de materias primas)'
     _order = 'sequence, name, id'
 
-    sequence = fields.Integer(default=10)
-    code = fields.Char(string='Sigla', required=True, help='Sigla de la fibra según ISO 2076 (PES, CO, PA, EL, CV…).')
-    name = fields.Char(string='Fibra', required=True)
-    active = fields.Boolean(default=True)
+    sequence = fields.Integer(default=10, help='Orden de la fibra en las listas (Configuración → Fibras).')
+    code = fields.Char(string='Sigla', required=True,
+                       help='Sigla de la fibra según ISO 2076 (PES, CO, PA, EL, CV…). Se captura en Configuración → '
+                            'Fibras; con ella se propone la composición desde el nombre del producto.')
+    name = fields.Char(string='Fibra', required=True,
+                       help='Nombre de la fibra (poliéster, algodón…). Se captura en Configuración → Fibras.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcada, la fibra queda archivada y ya no se ofrece en la composición.')
 
     _code_uniq = models.Constraint('unique(code)', 'La sigla de la fibra debe ser única.')
 
@@ -68,31 +72,56 @@ class FichaTecnicaMaterial(models.Model):
     _order = 'default_code, id'
 
     product_id = fields.Many2one('product.product', string='Producto', required=True, index=True,
-                                 ondelete='restrict', help='La materia prima en Inventario (hilo, químico, colorante…).')
-    product_tmpl_id = fields.Many2one(related='product_id.product_tmpl_id', store=True, string='Plantilla')
-    default_code = fields.Char(related='product_id.default_code', store=True, string='Referencia')
-    categ_id = fields.Many2one(related='product_id.categ_id', store=True, string='Categoría')
+                                 ondelete='restrict',
+                                 help='La materia prima en Inventario (hilo, químico, colorante…); una ficha por '
+                                      'producto. Se crea en Materias primas → Fichas o con el botón «Ficha de materia '
+                                      'prima» del producto.')
+    product_tmpl_id = fields.Many2one(related='product_id.product_tmpl_id', store=True, string='Plantilla',
+                                      help='Se toma del producto: su plantilla.')
+    default_code = fields.Char(related='product_id.default_code', store=True, string='Referencia',
+                               help='Se toma del producto: su referencia interna.')
+    categ_id = fields.Many2one(related='product_id.categ_id', store=True, string='Categoría',
+                               help='Se toma del producto: su categoría (con ella se propone el tipo).')
     tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de materia prima', required=True,
                               index=True, domain="[('clase', '=', 'material')]",
                               compute='_compute_tipo_id', store=True, readonly=False, precompute=True,
                               help='Define qué propiedades se capturan. Se propone por la categoría del producto o '
-                                   'por su título (75/36 es filamento; 22/1, hilado).')
+                                   'por su título (75/36 es filamento; 22/1, hilado). No se cambia si ya hay '
+                                   'propiedades capturadas del tipo anterior.')
     valor_ids = fields.One2many('ficha.tecnica.material.valor', 'material_id', string='Propiedades',
-                                context={'active_test': False})
-    resumen = fields.Char(string='Resumen de propiedades', compute='_compute_resumen')
-    composicion_ids = fields.One2many('ficha.tecnica.material.composicion', 'material_id', string='Composición')
-    composicion = fields.Char(string='Composición (resumen)', compute='_compute_composicion')
-    composicion_aviso = fields.Char(string='Aviso de composición', compute='_compute_composicion')
-    reciclado_pct = fields.Float(string='Contenido reciclado (%)', digits=(16, 1), compute='_compute_composicion')
+                                context={'active_test': False},
+                                help='Un renglón por cada propiedad de su tipo (título, filamentos, torsión…); se '
+                                     'captura en la pestaña Propiedades. Un vacío es un dato que nadie ha dado. '
+                                     '«Proponer desde el nombre del producto» llena las vacías.')
+    resumen = fields.Char(string='Resumen de propiedades', compute='_compute_resumen',
+                          help='Se calcula: las propiedades capturadas con su unidad, en una línea.')
+    composicion_ids = fields.One2many('ficha.tecnica.material.composicion', 'material_id', string='Composición',
+                                      help='Las fibras de la materia prima con su porcentaje y si son recicladas '
+                                           '(pestaña Composición); deben sumar 100 %. «Proponer desde el nombre del '
+                                           'producto» la llena si está vacía.')
+    composicion = fields.Char(string='Composición (resumen)', compute='_compute_composicion',
+                              help='Se calcula: la composición en una línea (p. ej. «65 % PES · 35 % CO»).')
+    composicion_aviso = fields.Char(string='Aviso de composición', compute='_compute_composicion',
+                                    help='Se calcula: avisa si los porcentajes de la composición no suman 100 %.')
+    reciclado_pct = fields.Float(string='Contenido reciclado (%)', digits=(16, 1), compute='_compute_composicion',
+                                 help='Se calcula: suma de los porcentajes de las fibras marcadas como recicladas.')
     proveedor_ids = fields.Many2many('res.partner', string='Proveedores', compute='_compute_proveedor_ids',
-                                     help='Los proveedores del producto en Compras (pestaña Compra del producto).')
-    hilo_ids = fields.Many2many('ficha.tecnica.tejido.hilo', string='Dónde se usa', compute='_compute_uso')
-    tela_count = fields.Integer(string='No. de telas', compute='_compute_uso')
-    maquina_count = fields.Integer(string='No. de máquinas', compute='_compute_uso')
-    fecha = fields.Date(string='Fecha del dato', default=fields.Date.context_today)
+                                     help='Se toma de los proveedores del producto en Compras (pestaña Compra del '
+                                          'producto).')
+    hilo_ids = fields.Many2many('ficha.tecnica.tejido.hilo', string='Dónde se usa', compute='_compute_uso',
+                                help='Se calcula: los renglones de hilo de las fichas de tejido que usan este '
+                                     'producto, con su tela y su máquina (pestaña «Dónde se usa»).')
+    tela_count = fields.Integer(string='No. de telas', compute='_compute_uso',
+                                help='Se calcula: cuántas fichas de tejido usan este producto como hilo.')
+    maquina_count = fields.Integer(string='No. de máquinas', compute='_compute_uso',
+                                   help='Se calcula: en cuántas máquinas corre este producto, según las fichas de '
+                                        'tejido.')
+    fecha = fields.Date(string='Fecha del dato', default=fields.Date.context_today,
+                        help='Cuándo se dieron las propiedades. Se captura en la ficha; al crearla, la del día.')
     fuente = fields.Char(string='Fuente', help='De dónde salen las propiedades (ficha del proveedor, laboratorio…).')
-    notas = fields.Text(string='Notas')
-    active = fields.Boolean(default=True)
+    notas = fields.Text(string='Notas', help='Notas de la ficha (pestaña Notas). Solo informativo.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcada, la ficha queda archivada junto con sus propiedades.')
 
     _product_uniq = models.Constraint('unique(product_id)', 'Ese producto ya tiene ficha de materia prima.')
 
@@ -331,11 +360,14 @@ class FichaTecnicaMaterialValor(models.Model):
     _order = 'material_id, sequence, id'
 
     material_id = fields.Many2one('ficha.tecnica.material', string='Materia prima', required=True, index=True,
-                                  ondelete='cascade')
+                                  ondelete='cascade', help='Ficha de materia prima a la que pertenece la propiedad.')
     # Guardados para la tabla dinámica (material × propiedad) y los filtros.
-    product_id = fields.Many2one(related='material_id.product_id', store=True, index=True, string='Producto')
-    tipo_id = fields.Many2one(related='material_id.tipo_id', store=True, string='Tipo de materia prima')
-    active = fields.Boolean(related='material_id.active', store=True)
+    product_id = fields.Many2one(related='material_id.product_id', store=True, index=True, string='Producto',
+                                 help='Se toma de la ficha: el producto. Sirve para Materias primas → Propiedades.')
+    tipo_id = fields.Many2one(related='material_id.tipo_id', store=True, string='Tipo de materia prima',
+                              help='Se toma de la ficha: su tipo de materia prima.')
+    active = fields.Boolean(related='material_id.active', store=True,
+                            help='Se toma de la ficha: una ficha archivada archiva sus propiedades.')
 
     _material_parametro_uniq = models.Constraint('unique(material_id, parametro_id)',
                                                  'La propiedad ya está en esa ficha.')
@@ -356,10 +388,13 @@ class FichaTecnicaMaterialComposicion(models.Model):
     _order = 'material_id, sequence, id'
 
     material_id = fields.Many2one('ficha.tecnica.material', string='Materia prima', required=True, index=True,
-                                  ondelete='cascade')
-    sequence = fields.Integer(default=10)
-    fibra_id = fields.Many2one('ficha.tecnica.fibra', string='Fibra', required=True, ondelete='restrict')
-    porcentaje = fields.Float(string='%', digits=(16, 2))
+                                  ondelete='cascade', help='Ficha de materia prima a la que pertenece el renglón.')
+    sequence = fields.Integer(default=10, help='Orden del renglón; se cambia arrastrándolo en la pestaña Composición.')
+    fibra_id = fields.Many2one('ficha.tecnica.fibra', string='Fibra', required=True, ondelete='restrict',
+                               help='Fibra del catálogo ISO 2076 (Configuración → Fibras).')
+    porcentaje = fields.Float(string='%', digits=(16, 2),
+                              help='Porcentaje de esta fibra en la materia prima, mayor que 0 y hasta 100. Los '
+                                   'renglones de la composición deben sumar 100 %.')
     reciclado = fields.Boolean(string='Reciclado', help='La fibra es reciclada (p. ej. PET de botella).')
 
     @api.constrains('porcentaje')
@@ -373,11 +408,15 @@ class ProductProductMaterial(models.Model):
     _inherit = 'product.product'
 
     ft_material_id = fields.Many2one('ficha.tecnica.material', string='Ficha de materia prima',
-                                     compute='_compute_ft_material')
-    ft_material_count = fields.Integer(string='No. de fichas de materia prima', compute='_compute_ft_material')
-    ft_hilo_tela_count = fields.Integer(string='No. de telas que lo usan', compute='_compute_ft_material')
+                                     compute='_compute_ft_material',
+                                     help='Se calcula: la ficha de materia prima del producto (activa o archivada).')
+    ft_material_count = fields.Integer(string='No. de fichas de materia prima', compute='_compute_ft_material',
+                                       help='Se calcula: 1 si el producto tiene ficha de materia prima, 0 si no.')
+    ft_hilo_tela_count = fields.Integer(string='No. de telas que lo usan', compute='_compute_ft_material',
+                                        help='Se calcula: cuántas fichas de tejido usan este producto como hilo.')
     ft_material_sugerido = fields.Boolean(string='Puede tener ficha de materia prima', compute='_compute_ft_material',
-                                          help='Hay un tipo de materia prima para él (por su categoría o su título).')
+                                          help='Se calcula: ya tiene ficha o hay un tipo de materia prima para él (por '
+                                               'su categoría o su título).')
 
     def _compute_ft_material(self):
         Material = self.env['ficha.tecnica.material'].with_context(active_test=False)
@@ -445,9 +484,15 @@ class ProductProductMaterial(models.Model):
 class ProductTemplateMaterial(models.Model):
     _inherit = 'product.template'
 
-    ft_material_count = fields.Integer(string='No. de fichas de materia prima', compute='_compute_ft_material')
-    ft_hilo_tela_count = fields.Integer(string='No. de telas que lo usan', compute='_compute_ft_material')
-    ft_material_sugerido = fields.Boolean(string='Puede tener ficha de materia prima', compute='_compute_ft_material')
+    ft_material_count = fields.Integer(string='No. de fichas de materia prima', compute='_compute_ft_material',
+                                       help='Se calcula: cuántas variantes del producto tienen ficha de materia prima '
+                                            '(botón «Ficha de materia prima»).')
+    ft_hilo_tela_count = fields.Integer(string='No. de telas que lo usan', compute='_compute_ft_material',
+                                        help='Se calcula: suma, por variante, de las fichas de tejido que la usan como '
+                                             'hilo (botón «Telas que lo usan»).')
+    ft_material_sugerido = fields.Boolean(string='Puede tener ficha de materia prima', compute='_compute_ft_material',
+                                          help='Se calcula: alguna variante ya tiene ficha o hay un tipo de materia '
+                                               'prima para ella; muestra el botón «Ficha de materia prima».')
 
     def _compute_ft_material(self):
         for tmpl in self:
@@ -471,7 +516,9 @@ class ProductTemplateMaterial(models.Model):
 class MrpWorkcenterMaterial(models.Model):
     _inherit = 'mrp.workcenter'
 
-    ft_hilo_count = fields.Integer(string='No. de hilos que corre', compute='_compute_ft_hilo_count')
+    ft_hilo_count = fields.Integer(string='No. de hilos que corre', compute='_compute_ft_hilo_count',
+                                   help='Se calcula: cuántos hilos distintos corren en esta máquina según las fichas '
+                                        'de tejido (botón «Hilos» del centro de trabajo).')
 
     def _compute_ft_hilo_count(self):
         data = self.env['ficha.tecnica.tejido.hilo']._read_group(

@@ -84,10 +84,16 @@ class MrpWorkcenterCapacityFicha(models.Model):
 
     ft_capacidad_ficha = fields.Float(
         string='Capacidad de la ficha', digits=(16, 2), compute='_compute_ft_capacidad_ficha',
-        help='Kg por baño que dan las fichas (kg por carga del artículo en el jet o la banda de su rendimiento en la '
-             'configuración vigente), los mismos con que la Programación de Tintorería divide en baños. Solo jets.')
-    ft_capacidad_motivo = fields.Char(string='De dónde sale', compute='_compute_ft_capacidad_ficha')
-    ft_capacidad_difiere = fields.Boolean(string='Capacidad distinta de la ficha', compute='_compute_ft_capacidad_ficha')
+        help='Se calcula: kg de crudo por baño que dan las fichas para el producto en este jet: kg por carga del '
+             'artículo en el jet o, si no, la banda de su rendimiento de tejido (A, B, C) en la configuración vigente, '
+             'topada a la capacidad general. Es la misma regla con que la Programación de Tintorería divide en baños. '
+             'Solo jets.')
+    ft_capacidad_motivo = fields.Char(string='De dónde sale', compute='_compute_ft_capacidad_ficha',
+                                      help='Se calcula: de dónde sale la capacidad de la ficha (kg por carga del '
+                                           'artículo, banda o capacidad general) o por qué no hay.')
+    ft_capacidad_difiere = fields.Boolean(string='Capacidad distinta de la ficha', compute='_compute_ft_capacidad_ficha',
+                                          help='Se calcula: la capacidad capturada en el renglón se aleja más de 0.5 % '
+                                               'de la de la ficha. «Usar la capacidad de la ficha» la corrige.')
 
     @api.depends('product_id', 'capacity', 'workcenter_id.ft_tipo_id')
     def _compute_ft_capacidad_ficha(self):
@@ -127,13 +133,18 @@ class MrpBomConversionFicha(models.Model):
 
     ft_conversion_kg = fields.Float(
         string='Kg de la ficha', digits=(16, 4), compute='_compute_ft_conversion',
-        help='Lista en metros de la tela acabada: kg de acabado en proceso que pide la ficha de acabado para la '
-             'cantidad de la lista (metros ÷ rendimiento de tela acabada ÷ primera para planear de la tela, si '
-             'el costeo la tiene).')
-    ft_conversion_calculo = fields.Char(string='Conversión de la ficha', compute='_compute_ft_conversion')
+        help='Se calcula, en la lista en metros de la tela acabada: kg de acabado en proceso que pide la ficha para la '
+             'cantidad de la lista (metros ÷ rendimiento de tela terminada ÷ primera para planear de la tela, si el '
+             'costeo la tiene).')
+    ft_conversion_calculo = fields.Char(string='Conversión de la ficha', compute='_compute_ft_conversion',
+                                        help='Se calcula: la cuenta de la conversión kg → m con sus números, o el dato '
+                                             'que falta en la ficha o en la lista.')
     ft_conversion_difiere = fields.Boolean(
         string='Conversión distinta de la ficha', compute='_compute_ft_conversion',
-        search='_search_ft_conversion_difiere')
+        search='_search_ft_conversion_difiere',
+        help='Se calcula: el renglón del acabado en proceso (kg) de la lista en metros se aleja más de 0.5 % de los kg '
+             'de la ficha. Se corrige con «Usar los datos de la ficha»; filtro «Conversión kg → m distinta de la '
+             'ficha».')
 
     def _ft_conversion(self):
         """(línea del acabado en proceso, kg que da la ficha, texto). Vacío si la lista no es de una tela acabada en

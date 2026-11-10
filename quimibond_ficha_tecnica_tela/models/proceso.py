@@ -34,31 +34,53 @@ class FichaTecnicaProceso(models.Model):
     _order = 'articulo, workcenter_id'
 
     articulo = fields.Char(string='Artículo', required=True, index=True,
-                           help='Código del artículo tal como lo maneja la planta (referencia interna del producto).')
+                           help='Código del artículo tal como lo maneja la planta (referencia interna del producto). '
+                                'Se captura en Máquinas → Procesos por artículo, con el importador de procesos o desde '
+                                'la operación de la lista. El proceso con el código en kg vale también para la tela en '
+                                'metros (el mismo código sin la «I» al frente).')
     product_id = fields.Many2one('product.product', string='Producto', index=True,
                                  compute='_compute_product_id', store=True, readonly=False, precompute=True,
                                  help='Se liga solo cuando la referencia interna existe en un solo producto; si '
                                       'no, queda vacío y se puede elegir a mano.')
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', required=True, index=True,
-                                    ondelete='restrict', domain="[('ft_tipo_id', '!=', False)]")
-    tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True)
-    product_uom_id = fields.Many2one(related='product_id.uom_id', string='Unidad del producto')
+                                    ondelete='restrict', domain="[('ft_tipo_id', '!=', False)]",
+                                    help='Máquina (centro de trabajo con tipo de máquina) en que corre el artículo. '
+                                         'Que exista el proceso significa que el artículo corre ahí: en los tipos '
+                                         'con datos del artículo, el planificador solo usa esas máquinas.')
+    tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina', store=True,
+                              help='Se toma del tipo de la máquina; define qué parámetros del artículo se capturan.')
+    product_uom_id = fields.Many2one(related='product_id.uom_id', string='Unidad del producto',
+                                     help='Se toma del producto: kg en el acabado en proceso, metros en la tela '
+                                          'acabada.')
     ficha_acabado_id = fields.Many2one('ficha.tecnica.acabado', string='Ficha de acabado',
                                        compute='_compute_ficha_acabado_id',
-                                       help='2.19.0: la ficha de acabado del artículo (como acabado en proceso en kg o '
-                                            'como tela acabada en metros).')
+                                       help='Se calcula: la ficha de acabado del artículo (como acabado en proceso en '
+                                            'kg o como tela acabada en metros).')
     valor_ids = fields.One2many('ficha.tecnica.proceso.valor', 'proceso_id', string='Parámetros',
-                                context={'active_test': False})
-    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
+                                context={'active_test': False},
+                                help='Un renglón por cada parámetro «Del artículo en la máquina» del tipo (velocidad, '
+                                     'merma, ancho bajando de rama, velocidad de inspección, kg por carga, relación '
+                                     'de baño, tiempo de ciclo…); se captura aquí. Un vacío es un dato que no se ha '
+                                     'dado, no un cero.')
+    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen',
+                          help='Se calcula: los parámetros capturados con su unidad, en una línea.')
     metros_hora = fields.Float(string='m/hora', digits=(16, 1), compute='_compute_metros_hora',
-                               help='Velocidad (m/min) × 60.')
+                               help='Se calcula: velocidad (m/min) × 60. Queda en cero si el parámetro «velocidad» '
+                                    'no está en m/min.')
     metros_hora_neto = fields.Float(string='m/hora con merma', digits=(16, 1), compute='_compute_metros_hora',
-                                    help='m/hora × (1 − merma %). Igual a m/hora si no hay merma.')
+                                    help='Se calcula: m/hora × (1 − merma %); igual a m/hora si no hay merma. Es la '
+                                         'velocidad que usa el costeo para las horas de máquina del artículo.')
     fecha = fields.Date(string='Fecha del dato', default=fields.Date.context_today,
-                        help='Cuándo dio la planta este dato.')
-    fuente = fields.Char(string='Fuente', help='De dónde sale el dato (hoja, persona, prueba).')
-    notas = fields.Text(string='Notas')
-    active = fields.Boolean(default=True)
+                        help='Cuándo dio la planta este dato. Se captura en el proceso o lo llena el importador '
+                             '(columna «Fecha»); si no, la del día en que se creó.')
+    fuente = fields.Char(string='Fuente',
+                         help='De dónde sale el dato (hoja, persona, prueba). Lo llena el importador con su columna '
+                              '«Fuente» o con la que se da en el asistente.')
+    notas = fields.Text(string='Notas',
+                        help='Dudas sobre el dato o diferencias con la hoja de origen. Solo informativo.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcado, el proceso queda archivado: el artículo ya no cuenta como que corre en '
+                                 'esa máquina.')
 
     _articulo_workcenter_uniq = models.Constraint(
         'unique(articulo, workcenter_id)', 'Ese artículo ya tiene proceso en esa máquina.')
@@ -202,12 +224,17 @@ class FichaTecnicaProcesoValor(models.Model):
     _order = 'proceso_id, sequence, id'
 
     proceso_id = fields.Many2one('ficha.tecnica.proceso', string='Proceso', required=True, index=True,
-                                 ondelete='cascade')
+                                 ondelete='cascade',
+                                 help='Proceso (artículo en la máquina) al que pertenece el valor.')
     # Guardados para la tabla dinámica (artículo × máquina) y los filtros.
-    articulo = fields.Char(related='proceso_id.articulo', string='Artículo', store=True, index=True)
-    workcenter_id = fields.Many2one(related='proceso_id.workcenter_id', string='Máquina', store=True, index=True)
-    tipo_id = fields.Many2one(related='proceso_id.tipo_id', string='Tipo de máquina', store=True)
-    active = fields.Boolean(related='proceso_id.active', store=True)
+    articulo = fields.Char(related='proceso_id.articulo', string='Artículo', store=True, index=True,
+                           help='Se toma del proceso: código del artículo. Sirve para Máquinas → Comparativo.')
+    workcenter_id = fields.Many2one(related='proceso_id.workcenter_id', string='Máquina', store=True, index=True,
+                                    help='Se toma del proceso: la máquina. Sirve para Máquinas → Comparativo.')
+    tipo_id = fields.Many2one(related='proceso_id.tipo_id', string='Tipo de máquina', store=True,
+                              help='Se toma del proceso: el tipo de la máquina.')
+    active = fields.Boolean(related='proceso_id.active', store=True,
+                            help='Se toma del proceso: un proceso archivado archiva sus valores.')
 
     _proceso_parametro_uniq = models.Constraint('unique(proceso_id, parametro_id)',
                                                 'El parámetro ya está en ese proceso.')
@@ -227,11 +254,16 @@ class FichaTecnicaProcesoValor(models.Model):
 class MrpWorkcenterProceso(models.Model):
     _inherit = 'mrp.workcenter'
 
-    ft_proceso_ids = fields.One2many('ficha.tecnica.proceso', 'workcenter_id', string='Procesos por artículo')
-    ft_proceso_count = fields.Integer(string='Artículos', compute='_compute_ft_proceso')
+    ft_proceso_ids = fields.One2many('ficha.tecnica.proceso', 'workcenter_id', string='Procesos por artículo',
+                                     help='Los artículos que corren en esta máquina con sus parámetros (pestaña «Telas '
+                                          'que corren aquí» del centro de trabajo); son los mismos registros de '
+                                          'Máquinas → Procesos por artículo.')
+    ft_proceso_count = fields.Integer(string='Artículos', compute='_compute_ft_proceso',
+                                      help='Se calcula: cuántos artículos tienen proceso en esta máquina.')
     ft_proceso_promedios = fields.Char(string='Promedio entre sus artículos', compute='_compute_ft_proceso',
-                                       help='Promedio de cada parámetro numérico del artículo entre los artículos '
-                                            'que corren en la máquina y lo tienen capturado.')
+                                       help='Se calcula: promedio de cada parámetro numérico del artículo entre los '
+                                            'artículos que corren en la máquina y lo tienen capturado (entre '
+                                            'paréntesis, cuántos son).')
 
     @api.depends('ft_proceso_ids.valor_ids.valor')
     def _compute_ft_proceso(self):
@@ -255,7 +287,10 @@ class FichaTecnicaAcabadoProceso(models.Model):
     _inherit = 'ficha.tecnica.acabado'
 
     proceso_ids = fields.Many2many('ficha.tecnica.proceso', string='Procesos por máquina',
-                                   compute='_compute_proceso_ids')
+                                   compute='_compute_proceso_ids',
+                                   help='Se calcula: los procesos del artículo en todas las máquinas, por el código de '
+                                        'la ficha, el del acabado en proceso en kg y el de la tela acabada en metros '
+                                        '(pestaña «Ruta y máquinas»).')
 
     def _compute_proceso_ids(self):
         Proceso = self.env['ficha.tecnica.proceso']
@@ -268,7 +303,9 @@ class FichaTecnicaAcabadoProceso(models.Model):
 class ProductTemplateProceso(models.Model):
     _inherit = 'product.template'
 
-    ft_proceso_count = fields.Integer(string='Procesos por máquina', compute='_compute_ft_proceso_count')
+    ft_proceso_count = fields.Integer(string='Procesos por máquina', compute='_compute_ft_proceso_count',
+                                      help='Se calcula: cuántos procesos por máquina tiene el producto, por sus '
+                                           'variantes o por su código (y su par en kg o en metros).')
 
     def _ft_proceso_domain(self):
         self.ensure_one()

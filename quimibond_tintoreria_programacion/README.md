@@ -28,6 +28,13 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.8.4 (auditoría de fichas técnicas, 2026-11-10)
+
+- La capacidad del jet por baño sale de la regla de las fichas técnicas (`mrp.workcenter._ft_regla_capacidad`), la
+  misma que usan la capacidad por producto de los jets, los avisos de carga y el costeo. Antes este módulo tenía su
+  propia copia de la regla (kg por carga del artículo, bandas A/B/C topadas a la capacidad general). Los mensajes y
+  los bloqueos no cambian: programar sigue siendo más estricto que estimar.
+
 ## Cambios 19.0.1.8.2 (revisión, 2026-11-08)
 
 - Si la orden en metros no se puede dividir entre los baños (la abastecen varias órdenes, ya empezó, ya no está

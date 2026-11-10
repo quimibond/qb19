@@ -56,11 +56,17 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
 
     ft_tiempo_ficha = fields.Float(
         string='Tiempo de la ficha', digits=(16, 4), compute='_compute_ft_tiempo_ficha',
-        help='Minutos por ciclo de la máquina que dan la ficha y el proceso del artículo: rama, inspección, devanado '
-             'y abridora por kg × la capacidad del ciclo; tintorería por baño. Vacío si falta un dato.')
-    ft_tiempo_calculo = fields.Char(string='Cálculo del tiempo', compute='_compute_ft_tiempo_ficha')
+        help='Se calcula, en minutos por ciclo: rama = rendimiento de tela terminada ÷ velocidad; inspección = ese '
+             'rendimiento × 60 ÷ velocidad en m/h; devanado y abridora = metros de crudo (kg de crudo × rendimiento de '
+             'tejido) ÷ velocidad; por kg × la capacidad del ciclo. Tintorería: minutos por baño (tiempo de ciclo del '
+             'artículo en el jet o de la fórmula). Pasa a la operación solo con «Usar el tiempo de la ficha».')
+    ft_tiempo_calculo = fields.Char(string='Cálculo del tiempo', compute='_compute_ft_tiempo_ficha',
+                                    help='Se calcula: la cuenta del tiempo de la ficha con sus números, o qué dato '
+                                         'falta y en dónde.')
     ft_tiempo_difiere = fields.Boolean(string='Tiempo distinto de la ficha', compute='_compute_ft_tiempo_ficha',
-                                       search='_search_ft_tiempo_difiere')
+                                       search='_search_ft_tiempo_difiere',
+                                       help='Se calcula: el tiempo de la operación no es fijo o se aleja más de 0.5 % '
+                                            'del de la ficha. Filtro «Tiempo distinto de la ficha».')
 
     # ------------------------------------------------------------------
     # Datos comunes

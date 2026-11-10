@@ -71,6 +71,9 @@ jet, la lista o la ficha). También en la pestaña «Ficha técnica» del produc
 
 ## Rendimiento de tela acabada (2.27.0 a 2.28.0)
 
+> **Sustituido en 2.30.0** por el rendimiento de peso y ancho de rama (ver «Mapa de datos»). Lo medido que se describe
+> aquí sigue calculándose cada noche, pero como control.
+
 El rendimiento (m/kg) de la ficha es **por kg de tela terminada**. Lo usan la conversión kg → m (lista en metros y
 costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
 
@@ -91,8 +94,9 @@ Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo med
 | Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
 | Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho bajando de rama en m; el de venta solo si falta): dato malo, no se propone |
 
-Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
-Excel no lo fuerza (es el teórico).
+Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado; desde 2.30.0 guarda
+el anterior en «Rendimiento anterior», igual que «Usar el medido». La importación desde Excel no lo fuerza (es el
+teórico).
 
 ## Dónde se ve cada cosa
 
@@ -122,6 +126,70 @@ Excel no lo fuerza (es el teórico).
 | La tela en cada máquina (velocidad, merma, ancho bajando de rama, tiempo de ciclo, kg por carga…) | `ficha.tecnica.proceso` (por código de artículo y máquina) |
 | La máquina por fecha (galga, diámetro, capacidad y bandas de los jets, relación de baño…) | `ficha.tecnica.maquina.config` con los parámetros de su tipo |
 | Revisión de las listas | `ficha.tecnica.revision` y `.pendiente` (foto, se rehace) |
+
+## Mapa de datos (auditoría 2.30.0, 2026-11-10)
+
+**Fuente** es el único lugar donde se escribe el dato; lo demás son copias o cálculos. La ayuda de cada campo (el
+signo de interrogación junto a la etiqueta) dice qué es, dónde se captura y cómo se calcula.
+
+### Los dos rendimientos
+
+| | Rendimiento de tejido | Rendimiento de tela acabada |
+|---|---|---|
+| Qué es | Metros por kg del **crudo** acondicionado | Metros por kg de **tela acabada** ya cortada en la Rama y pesada en rollos |
+| Fuente | Ficha de tejido (`rendimiento_tela_tejida`): 1000 ÷ (g/m² × ancho acondicionado en m, ×2 si sale tubular); se puede forzar a mano | Ficha de acabado (`rendimiento_tela_acabada`): **1000 ÷ (peso de la ficha g/m² × ancho bajando de rama m)**; la noche lo pasa a la ficha |
+| Lo usan | Banda A/B/C y capacidad del jet; tiempos de devanado y abridora | Conversión kg → m de la lista en metros, tiempos de rama e inspección, costeo, alerta de metros de Inspección |
+| Se ve como | «Rendimiento de tejido» (orden de fabricación, producto) | «Rendimiento de tela acabada» (producto, ficha de acabado) |
+
+**Un solo rendimiento para el flujo nuevo (10-nov-2026).** Sale del peso de la tela y el ancho del rollo de rama
+(Ingeniería, Jessica Francisco). **La merma no va en el rendimiento**: en el flujo nuevo la orilla se corta en la Rama
+y sale de la orden en kg como desperdicio, y los rollos se pesan netos en Inspección, así que el acabado en kg («I…»)
+ya es tela sin orilla. La merma (orilla, muestras y merma natural, 10 % por lo general) va en el **consumo de crudo de
+la lista en kg** (crudo que entra por kg de «I…»). Ponerla también en el rendimiento la contaría dos veces. Sustituye
+a 2.27.0 y 2.28.0 (rendimiento medido con «Usar el medido»): el estimado de las órdenes del flujo anterior dividía los
+kg de tintorería (con orilla) entre el consumo de crudo y salía 2 a 5 % arriba del teórico.
+
+**Lo medido** (rollos de Inspección, conversiones a kg, estimado) queda como **control** contra este rendimiento: si
+se aleja más que la alerta, la revisión pide revisar el peso de la ficha o el ancho de la tela en la rama. «Usar el
+medido» ya no aplica a una tela con ancho de rama. Una tela que corre en rama sin ancho capturado queda con pendiente de
+Ingeniería y conserva el rendimiento capturado.
+
+### Capacidad: ficha contra centro de trabajo
+
+- **Proceso por artículo y configuración de la máquina** (fichas) son los datos: kg por carga de la tela en el jet,
+  capacidad general y por banda del jet. De ahí sale la capacidad con una sola regla (`_ft_regla_capacidad`), que usan
+  la Programación de Tintorería (desde 1.8.4), los avisos de carga y el costeo.
+- **Capacidad por producto del centro de trabajo** (nativa de Odoo) es lo que Odoo usa para contar ciclos al planear.
+  En los jets la llena la ficha con «Usar la capacidad de la ficha»; capturarla a mano solo hace que la revisión la
+  marque «capacidad distinta». En rama, inspección, devanadora y abridora no se captura: el tiempo es por kg y un
+  ciclo es 1 kg.
+
+### Claves de los parámetros
+
+Los cálculos leen los parámetros por su clave (`velocidad`, `merma`, `ancho_rama`, `velocidad_inspeccion`,
+`kg_carga`, `relacion_bano_articulo`, `tiempo_ciclo`, `capacidad`, `capacidad_grupo_a/b/c`, `relacion_bano`,
+`minimo_bano`, `galga`…; lista en `CODIGOS_DEL_CALCULO`, `models/maquina_config.py`). Desde 2.30.0 esas claves no se
+renombran, no cambian de tipo, no se archivan ni se borran; el nombre, la unidad y las notas sí se cambian. Los
+parámetros sin capturar se ven atenuados en Procesos por artículo y en la configuración de la máquina.
+
+### Unidades
+
+Cada medida de las fichas guarda su unidad dos veces: en texto (`*_tol_unit`, lo leen el SGI y el código de Consolti)
+y del catálogo (`*_tol_unit_id`, Configuración → Unidades). Se sincronizan solas al guardar. La unidad es la **del
+valor**, no de la tolerancia.
+
+### Lo que la auditoría dejó para después
+
+- **Merma en el consumo de crudo:** la revisión todavía no verifica que el consumo de crudo de la lista en kg traiga
+  la merma de la rama (orilla, muestras y merma natural).
+- **Merma en el tiempo de rama:** la ficha calcula rendimiento ÷ velocidad; el costeo calcula horas por metro vendido
+  con velocidad × 60 × (1 − merma). Revisar con Costos que den lo mismo.
+- **Peso nativo del producto:** Odoo guarda el peso con 2 decimales («Stock Weight» = 2 en producción): 0.0654 kg/m
+  quedaría en 0.07 (7 % de error). No se escribe hasta subir esa precisión.
+- **Cambios a listas activas por ECO de PLM** y **puntos de control de medida** en Inspección desde la especificación:
+  cambian cómo trabajan Ingeniería y Calidad; van en su propio cambio.
+- **Marca, modelo y serie de las máquinas en Mantenimiento** (`maintenance.equipment`) y quitar las etiquetas GALGA /
+  DIAMETRO que lee el costeo.
 
 ## Cálculos
 
@@ -223,16 +291,17 @@ diseño de tintorería y acabado de José Sacramento, 2026-10-21). Lo vigente:
 | **Ancho de bastidor** (ficha de tejido → Ajustes de tejido) | El bastidor de la circular (ajuste de la máquina) | Ficha de tejido | Ningún cálculo |
 | **Ancho de rollo de crudo** (`ancho_rollo`, ficha de tejido → Ajustes de tejido) | El rollo de crudo que sale de la circular | Ficha de tejido | Ningún cálculo |
 | **Ancho de crudo relajado** (`ancho_acondicionado`, ficha de tejido → Tela acondicionada) | El crudo acondicionado, tubular o abierto según la circular | Ficha de tejido | Rendimiento de tejido → devanado, abridora y banda del jet |
-| **Ancho de rollo en rama** (parámetro `ancho_rama` «Ancho bajando de rama», Procesos de la tela → rama) | El rollo que sale de la rama | Proceso del artículo `I…` en cada rama | Ningún cálculo desde 2.24.0 |
-| **Ancho de venta (especificación)** (`ancho_acabado`, ficha de acabado → Tela acabada) | El de especificación, el mismo del código (`…160` = 160 cm) | Ficha de acabado | Hoy: rendimiento de tela acabada (kg → m), peso por metro del costeo, especificación |
+| **Ancho bajando de rama** (parámetro `ancho_rama`, Máquinas → Procesos por artículo → la tela en cada rama) | El rollo que sale de la rama | Proceso de la tela en cada rama (promedio si hay varias) | Rendimiento teórico y peso real de la ficha de acabado (2.28.0); el tiempo de rama no lo usa |
+| **Ancho de venta (especificación)** (`ancho_acabado`, ficha de acabado → Tela acabada) | El de especificación, el mismo del código (`…160` = 160 cm); se convierte a metros con su unidad (2.30.0) | Ficha de acabado | Teórico si falta el de rama, peso por metro del costeo, etiqueta del rollo |
+| **Ancho de tela relajada** (renglón de características de la ficha de acabado, lo llena el SGI) | Medida de la especificación al cliente, en m | SGI (desarrollo de producto) | Especificación y certificado; ningún cálculo de la ficha |
 
-El ancho de rollo en rama ya no entra a ningún cálculo desde 2.24.0: la rama usa el rendimiento de tela acabada.
+El tiempo de rama usa el rendimiento de tela terminada, no el ancho.
 
 ## El rendimiento de tela acabada (2.24.0)
 
-**Uno solo** (Dirección General, 2026-11-03): metros de la tela acabada fabricados ÷ kilos de tela consumidos (crudo,
-teñido o acabado en kg; sin engomado ni químicos) en sus órdenes terminadas de los **últimos 12 meses**. Ya trae la
-merma y el peso real. Se recalcula cada noche, antes de la revisión de listas; sin órdenes, se queda el capturado.
+**Uno solo** (Dirección General, 2026-11-03). Desde 2.27.0 es **por kg de tela terminada** y desde 2.28.0 la noche
+solo lo propone (ver «Rendimiento de tela acabada (2.27.0 a 2.28.0)» arriba); este apartado guarda la decisión
+original.
 
 - Lo usan la conversión kg → m de la lista en metros (× la primera para planear) y los tiempos de rama (÷ velocidad) e
   inspección (× 60 ÷ velocidad). **Nunca cambia una lista solo**: la revisión marca las que ya no cuadran y se

@@ -131,7 +131,8 @@
                     </group>
                     <separator string="Parámetros"/>
                     <field name="valor_ids">
-                        <list editable="bottom" create="0" delete="0">
+                        <!-- 2.30.0: los parámetros sin capturar se ven atenuados (un vacío no es un cero). -->
+                        <list editable="bottom" create="0" delete="0" decoration-muted="not valor and not valor_texto">
                             <field name="parametro_id" readonly="1" force_save="1"/>
                             <field name="kind" column_invisible="1"/>
                             <field name="valor" invisible="kind == 'text'"/>

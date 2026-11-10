@@ -156,7 +156,10 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
                                         ondelete='restrict',
                                         help="Característica del catálogo. Al elegirla se llenan nombre, unidad, "
                                              "método y tipo de dato; un renglón sin catálogo se escribe libre.")
-    caracteristica_code = fields.Char(related='caracteristica_id.code', string="Clave", store=True)
+    caracteristica_code = fields.Char(related='caracteristica_id.code', string="Clave", store=True,
+                                      help="Se copia sola del catálogo: la clave de la característica del renglón "
+                                           "(«masa», «ancho»…). La leen el SGI y otros módulos para reconocer el "
+                                           "renglón.")
     name = fields.Char(string="Característica", required=True, compute='_compute_from_caracteristica', store=True,
                        readonly=False, precompute=True,
                        help="Nombre de la característica (sale del catálogo; se puede ajustar).")
@@ -386,7 +389,8 @@ class FichaTecnicaTejidoSpecs(models.Model):
 
     spec_line_ids = fields.One2many('ficha.tecnica.spec', 'tejido_id', string="Características",
                                     help="Características del tejido con la especificación del cliente y el "
-                                         "control interno.")
+                                         "control interno. Se capturan en la pestaña «Características» de la ficha "
+                                         "de tejido o pasan del proyecto de desarrollo del SGI.")
 
 
 class FichaTecnicaAcabadoSpecs(models.Model):
@@ -394,5 +398,6 @@ class FichaTecnicaAcabadoSpecs(models.Model):
 
     spec_line_ids = fields.One2many('ficha.tecnica.spec', 'acabado_id', string="Características",
                                     help="Características del producto acabado con la especificación del cliente "
-                                         "y el control interno. El certificado y las Especificaciones del producto "
-                                         "se imprimen contra la especificación del cliente.")
+                                         "y el control interno, en la pestaña «Características» de la ficha de "
+                                         "acabado (o desde el proyecto de desarrollo del SGI). El certificado y las "
+                                         "Especificaciones del producto se imprimen contra la del cliente.")
