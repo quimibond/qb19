@@ -8,6 +8,17 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.29.0 — 2026-11-10
+
+**Tolerancia hacia arriba y hacia abajo en todas las medidas de tela.** Ancho, espesor, encogimientos y elongaciones
+de la ficha de acabado, y ancho, espesor y elongaciones bajo carga de la de tejido, tienen ahora «+» y «−» como ya lo
+tenía el peso; antes solo admitían «± un número» y no se podía escribir, por ejemplo, un ancho +0 / −5. Cada lado
+vale lo que dice: el «−» en 0 ya no significa «igual que el +» (así cabe +5 / −0); para ± el mismo valor se escribe
+el mismo número en los dos. La migración copia el «+» al «−» donde estaba en 0 (peso) o donde la columna es nueva,
+así que ninguna ficha cambia de rango. La importación desde Excel acepta «+12 / -6» en todas esas columnas y un solo
+número vale para los dos lados. Las tolerancias de datos de máquina (tensión, puntos, estiraje…) y las de columnas y
+mallas siguen siendo ± un número. Pruebas: `test_tolerancias`.
+
 ## 19.0.2.28.0 — 2026-11-06
 
 **Revisión 2026-11-10: el rendimiento aprobado pasa a la lista en metros.** «Usar el medido» y el rendimiento que

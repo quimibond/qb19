@@ -61,6 +61,24 @@ class TestDevFabricSheet(TransactionCase):
         sheet.longitud_malla_polea1 = 31.0
         self.assertEqual(malla.result, 'ok', "El nominal se lee en vivo de la ficha")
 
+    def test_01b_tolerancia_de_un_solo_lado(self):
+        """57.200.0: ancho +0 / −5 y +5 / −0 (fichas 2.29.0); antes +0 salía «Sin tolerancia»."""
+        sheet = self._tejido(ancho_acondicionado=160.0, ancho_acondicionado_tol=0.0, ancho_acondicionado_tol_minus=5.0,
+                             espesor_acondicionado=0.5, espesor_acondicionado_tol=0.1,
+                             espesor_acondicionado_tol_minus=0.0)
+        ancho = sheet.sgi_reading_ids.filtered(lambda r: r.param_key == 'ancho_acondicionado')
+        espesor = sheet.sgi_reading_ids.filtered(lambda r: r.param_key == 'espesor_acondicionado')
+        self.assertEqual(ancho.tolerance, '+0 / −5')
+        ancho.real = 156.0
+        self.assertEqual(ancho.result, 'ok')
+        ancho.real = 160.5
+        self.assertEqual(ancho.result, 'fuera', "Nada hacia arriba")
+        self.assertEqual(espesor.tolerance, '+0.1 / −0')
+        espesor.real = 0.45
+        self.assertEqual(espesor.result, 'fuera', "Nada hacia abajo")
+        espesor.real = 0.55
+        self.assertEqual(espesor.result, 'ok')
+
     def test_02_proponer_y_validar(self):
         sheet = self._tejido()
         with self.assertRaises(UserError, msg="Primero propone Diseño de Procesos"):
@@ -166,3 +184,44 @@ class TestDevFabricSheet(TransactionCase):
                                                    'sgi_dev_project_id': otro.id})
         sheet.write({'production_id': ajena.id})
         self.assertEqual(ajena.sgi_dev_project_id, otro, "Una orden de otro proyecto no se toca")
+
+    def test_07_tolerancia_asimetrica_literal(self):
+        """57.200.0 (fichas 2.29.0): ancho, espesor, encogimientos y elongaciones tienen «−» propio y vale lo que dice:
+        +0 / −5 se evalúa (no «Sin tolerancia») y −0 no copia el «+»."""
+        sheet = self._tejido(ancho_acondicionado=180.0, ancho_acondicionado_tol=0.0, ancho_acondicionado_tol_minus=5.0,
+                             espesor_acondicionado=1.0, espesor_acondicionado_tol=0.2,
+                             espesor_acondicionado_tol_minus=0.0,
+                             elongacion_carga_largo=40.0, elongacion_carga_largo_tol=3.0,
+                             elongacion_carga_largo_tol_minus=3.0)
+        reading = {r.param_key: r for r in sheet.sgi_reading_ids}
+        ancho = reading['ancho_acondicionado']
+        self.assertEqual(ancho.tolerance, '+0 / −5')
+        ancho.real = 176.0
+        self.assertEqual(ancho.result, 'ok', "180 − 5 = 175: dentro")
+        ancho.real = 174.0
+        self.assertEqual(ancho.result, 'fuera')
+        ancho.real = 180.5
+        self.assertEqual(ancho.result, 'fuera', "+0: nada por arriba")
+        espesor = reading['espesor_acondicionado']
+        self.assertEqual(espesor.tolerance, '+0.2 / −0', "El «−» en 0 ya no es «igual que el +»")
+        espesor.real = 0.9
+        self.assertEqual(espesor.result, 'fuera')
+        espesor.real = 1.1
+        self.assertEqual(espesor.result, 'ok')
+        self.assertEqual(reading['elongacion_carga_largo'].tolerance, '± 3', "Los dos lados iguales siguen como ±")
+        sheet.ancho_acondicionado_tol_minus = 0.0
+        self.assertEqual(ancho.tolerance, '')
+        self.assertEqual(ancho.result, 'na', "+0 / −0: sin tolerancia")
+
+        acabado = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'WJFS01JNG170', 'tejido_id': sheet.id, 'product_acabado_id': self.acabado.id,
+            'project_id': self.dev.id, 'ancho_acabado': 150.0, 'ancho_acabado_tol': 0.0,
+            'ancho_acabado_tol_minus': 5.0, 'encogimiento_largo': 3.0, 'encogimiento_largo_tol': 2.0,
+            'encogimiento_largo_tol_minus': 0.0})
+        reading = {r.param_key: r for r in acabado.sgi_reading_ids}
+        self.assertEqual(reading['ancho_acabado'].tolerance, '+0 / −5')
+        reading['ancho_acabado'].real = 146.0
+        self.assertEqual(reading['ancho_acabado'].result, 'ok')
+        self.assertEqual(reading['encogimiento_largo'].tolerance, '+2 / −0')
+        reading['encogimiento_largo'].real = 2.5
+        self.assertEqual(reading['encogimiento_largo'].result, 'fuera')
