@@ -61,6 +61,24 @@ class TestDevFabricSheet(TransactionCase):
         sheet.longitud_malla_polea1 = 31.0
         self.assertEqual(malla.result, 'ok', "El nominal se lee en vivo de la ficha")
 
+    def test_01b_tolerancia_de_un_solo_lado(self):
+        """57.200.0: ancho +0 / −5 y +5 / −0 (fichas 2.29.0); antes +0 salía «Sin tolerancia»."""
+        sheet = self._tejido(ancho_acondicionado=160.0, ancho_acondicionado_tol=0.0, ancho_acondicionado_tol_minus=5.0,
+                             espesor_acondicionado=0.5, espesor_acondicionado_tol=0.1,
+                             espesor_acondicionado_tol_minus=0.0)
+        ancho = sheet.sgi_reading_ids.filtered(lambda r: r.param_key == 'ancho_acondicionado')
+        espesor = sheet.sgi_reading_ids.filtered(lambda r: r.param_key == 'espesor_acondicionado')
+        self.assertEqual(ancho.tolerance, '+0 / −5')
+        ancho.real = 156.0
+        self.assertEqual(ancho.result, 'ok')
+        ancho.real = 160.5
+        self.assertEqual(ancho.result, 'fuera', "Nada hacia arriba")
+        self.assertEqual(espesor.tolerance, '+0.1 / −0')
+        espesor.real = 0.45
+        self.assertEqual(espesor.result, 'fuera', "Nada hacia abajo")
+        espesor.real = 0.55
+        self.assertEqual(espesor.result, 'ok')
+
     def test_02_proponer_y_validar(self):
         sheet = self._tejido()
         with self.assertRaises(UserError, msg="Primero propone Diseño de Procesos"):

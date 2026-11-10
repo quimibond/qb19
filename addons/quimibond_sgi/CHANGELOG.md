@@ -14,6 +14,15 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.200.0 — 2026-11-10
+
+### Cambiado
+
+- Fichas de proceso del desarrollo: el valor real de ancho, espesor, encogimientos y elongaciones se compara contra
+  la tolerancia hacia arriba y hacia abajo de la ficha (`quimibond_ficha_tecnica_tela` 2.29.0), no solo la del peso.
+  El «−» vale lo que dice: +0 / −5 ya no sale «Sin tolerancia» y +5 / −0 ya no se lee como ± 5. Los parámetros sin
+  «−» (datos de máquina, columnas, mallas) siguen con ± el mismo valor.
+
 ## 19.0.57.199.0 — 2026-11-09
 
 Sube la versión para llevar a producción 57.198.0 y 57.198.1. Producción pasó de 57.197.0 a 57.198.2 solo con
