@@ -3,6 +3,7 @@
 OC según la regla del cliente. Semanas de 2072 para aislar."""
 from datetime import date, timedelta
 
+from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -203,3 +204,33 @@ class TestOrderProposal(TransactionCase):
         line = self._propose().line_ids
         self.assertEqual(line.action, 'no_entra')
         self.assertIn('WPED160', line.reason)
+
+    def test_09_baja_a_cero_y_cotizacion_vacia(self):
+        """3.16.6: si el release deja de pedir el producto (la semana se quita del pronóstico), la propuesta
+        lo baja a cero en el pedido del pronóstico y la cotización que se queda vacía se cancela."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 1})
+        fl = self._fl(self.week, 100.0, '6701')
+        fl.delivery_date = self.week + timedelta(days=9)
+        proposal = self._propose()
+        self.assertEqual(proposal.line_ids.delivery_date, self.week + timedelta(days=9))
+        order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
+        self.assertEqual(order.commitment_date.date(), self.week + timedelta(days=9))
+        fl.unlink()  # el release ya no trae el producto
+        dropped = self._propose()
+        self.assertEqual((dropped.line_ids.action, dropped.line_ids.qty_forecast, dropped.line_ids.apply),
+                         ('baja', 0.0, True))
+        dropped.action_apply()
+        self.assertEqual(order.state, 'cancel', "La cotización que se quedó sin productos se cancela")
+
+    def test_10_semana_atrasada_se_pide_para_hoy(self):
+        """3.16.6: una semana que ya pasó no deja la fecha de entrega en el pasado."""
+        today = fields.Date.context_today(self.env.user)
+        past = today - timedelta(days=today.weekday() + 14)
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 4})
+        self._fl(past, 30.0, '777')
+        proposal = self.env['qb.order.proposal'].create({'partner_ids': [(6, 0, self.client.ids)],
+                                                         'date_from': past})
+        proposal.action_build()
+        self.assertEqual(proposal.line_ids.delivery_date, today)
+        order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
+        self.assertEqual(order.commitment_date.date(), today)

@@ -21,6 +21,21 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Fecha de entrega y bajas a cero en «Proponer pedidos» (19.0.3.16.6, 2026-11-10)
+
+Primera corrida real (10-nov): los pedidos parecían «sin fecha de entrega» y no había cómo aplicar un
+release que deja de pedir un producto. (Los duplicados por la fecha de entrega ya los resolvió 3.16.1.)
+
+- **Fecha de entrega visible:** la propuesta muestra la columna «Fecha de entrega», la que lleva el
+  pedido: la entrega del release o, si no trae, el lunes de la semana de embarque. **Nunca en el
+  pasado:** una semana atrasada se pide para hoy (salían cotizaciones con entrega del 2, 3 y 9 de
+  noviembre). Al aplicar, la cotización del pronóstico toma la fecha vigente (el release pudo moverla).
+- **Baja a cero:** si el release deja de pedir un producto, la semana se quita del pronóstico y la
+  propuesta ya no la veía; ahora propone **bajarlo a cero** en el pedido que nació del pronóstico, con
+  las mismas reglas que cualquier baja (en una cotización viene marcada; en un pedido confirmado,
+  desmarcada y solo el administrador de ventas; nunca baja de lo entregado o facturado). La cotización
+  que se queda sin productos se cancela. Los pedidos capturados a mano no se tocan.
+
 ## La lista del cliente es la fuente del precio (19.0.3.16.5, 2026-11-10)
 
 Decisión de Jose (10-nov): el precio del presupuesto del mes sale **del presupuesto anual aprobado o
