@@ -86,10 +86,16 @@ class FichaTecnicaMaquinaTipo(models.Model):
     _description = 'Tipo de máquina (ficha de la máquina)'
     _order = 'sequence, name, id'
 
-    sequence = fields.Integer(default=10)
+    sequence = fields.Integer(default=10,
+                              help='Orden del tipo en las listas (Configuración → Tipos de máquina o Tipos de '
+                                   'materia prima).')
     code = fields.Char(string='Clave', required=True, index=True,
-                       help='Clave corta y estable del tipo (p. ej. «tejido_circular»).')
-    name = fields.Char(string='Tipo de máquina', required=True)
+                       help='Clave corta y estable del tipo (p. ej. «tejido_circular», «tintoreria», «acabado»). '
+                            'Los cálculos buscan sus parámetros con esta clave: cambiarla en un tipo en uso deja '
+                            'esos cálculos sin datos.')
+    name = fields.Char(string='Tipo de máquina', required=True,
+                       help='Nombre del tipo de máquina o de materia prima, como se ve en las máquinas y las fichas. '
+                            'Se captura en Configuración → Tipos de máquina o Tipos de materia prima.')
     clase = fields.Selection(TIPO_CLASES, string='Clase', required=True, default='maquina',
                              help='«Máquina»: lo llevan los centros de trabajo. «Materia prima»: lo llevan las fichas '
                                   'de materia prima (hilo de filamento, hilo hilado, químico…).')
@@ -97,10 +103,18 @@ class FichaTecnicaMaquinaTipo(models.Model):
                                  help='Solo materias primas: los productos de estas categorías (y sus hijas) proponen '
                                       'este tipo al crear su ficha.')
     parametro_ids = fields.One2many('ficha.tecnica.maquina.parametro', 'tipo_id', string='Parámetros',
-                                    context={'active_test': False})
-    workcenter_ids = fields.One2many('mrp.workcenter', 'ft_tipo_id', string='Máquinas')
-    workcenter_count = fields.Integer(string='No. de máquinas', compute='_compute_workcenter_count')
-    active = fields.Boolean(default=True)
+                                    context={'active_test': False},
+                                    help='Los datos que se capturan para este tipo (pestaña Parámetros): clave, '
+                                         'nombre, unidad, número o texto y ámbito (de la máquina, del artículo en '
+                                         'la máquina o de la materia prima).')
+    workcenter_ids = fields.One2many('mrp.workcenter', 'ft_tipo_id', string='Máquinas',
+                                     help='Centros de trabajo con este tipo (pestaña Máquinas). El tipo se asigna en '
+                                          'el centro de trabajo, pestaña «Ficha de la máquina».')
+    workcenter_count = fields.Integer(string='No. de máquinas', compute='_compute_workcenter_count',
+                                      help='Se calcula: cuántos centros de trabajo tienen este tipo.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcado, el tipo queda archivado y ya no se ofrece al elegir el tipo de una '
+                                 'máquina o de una materia prima.')
 
     _code_uniq = models.Constraint('unique(code)', 'La clave del tipo de máquina debe ser única.')
 
@@ -159,23 +173,39 @@ class FichaTecnicaMaquinaParametro(models.Model):
     _order = 'tipo_id, sequence, id'
 
     tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de máquina', required=True,
-                              index=True, ondelete='cascade')
-    sequence = fields.Integer(default=10)
+                              index=True, ondelete='cascade',
+                              help='Tipo de máquina o de materia prima al que pertenece el parámetro. Se da de alta '
+                                   'en la pestaña Parámetros del tipo (Configuración → Tipos de máquina).')
+    sequence = fields.Integer(default=10,
+                              help='Orden del parámetro al capturarlo; se cambia arrastrando el renglón en la '
+                                   'pestaña Parámetros del tipo.')
     code = fields.Char(string='Clave', required=True,
-                       help='Clave corta y estable dentro del tipo. En tejido, «galga», «diametro», «no_agujas», '
-                            '«no_alimentadores» y «velocidad_max» alimentan la ficha de tejido.')
-    name = fields.Char(string='Parámetro', required=True)
-    unit = fields.Char(string='Unidad', help='Unidad de medida (in, rpm, kg, m/min, °C…).')
-    kind = fields.Selection(PARAM_KINDS, string='Tipo de dato', required=True, default='num')
+                       help='Clave corta y estable dentro del tipo; los cálculos leen el dato por esta clave '
+                            '(velocidad, merma, kg_carga, tiempo_ciclo, galga…). Desde 2.30.0 las claves que usan los '
+                            'cálculos no se renombran, no se archivan y no se borran.')
+    name = fields.Char(string='Parámetro', required=True,
+                       help='Nombre del dato como se ve al capturarlo (p. ej. «Velocidad», «Kg por carga»). Se '
+                            'puede cambiar aunque lo use un cálculo.')
+    unit = fields.Char(string='Unidad',
+                       help='Símbolo de la unidad en texto (in, rpm, kg, m/min, °C…); se llena solo al elegir la '
+                            'unidad del catálogo. Hay cálculos que lo leen: m/hora solo sale con la velocidad en '
+                            '«m/min» y el tiempo de ciclo se toma en minutos si dice «min» (si no, en horas).')
+    kind = fields.Selection(PARAM_KINDS, string='Tipo de dato', required=True, default='num',
+                            help='Numérico: se captura en «Valor». Texto: en «Valor (texto)», libre o de la lista de '
+                                 'opciones. No se cambia en un parámetro que usan los cálculos.')
     ambito = fields.Selection(PARAM_AMBITOS, string='Ámbito', required=True, default='maquina',
-                              help='«De la máquina»: se captura en la configuración por fecha (galga, capacidad del '
-                                   'jet…). «Del artículo en la máquina»: se captura en el proceso de cada artículo en '
-                                   'cada máquina (velocidad del artículo en la rama, tiempo de ciclo…).')
+                              help='«De la máquina»: se captura en Máquinas → Configuraciones por fecha (galga, '
+                                   'capacidad del jet, relación de baño…). «Del artículo en la máquina»: en Máquinas → '
+                                   'Procesos por artículo (velocidad, merma, kg por carga, tiempo de ciclo…). «De la '
+                                   'materia prima»: en la ficha de materia prima. No cambia si ya tiene valores.')
     opciones = fields.Char(string='Opciones',
                            help='Solo texto: valores permitidos separados por coma (p. ej. «S, Z, Sin torsión»). '
                                 'Vacío: texto libre.')
-    notas = fields.Char(string='Cómo se mide', help='De dónde sale el dato o cómo se mide.')
-    active = fields.Boolean(default=True, help='Los parámetros archivados no se agregan a configuraciones nuevas.')
+    notas = fields.Char(string='Cómo se mide', help='De dónde sale el dato o cómo se mide. Solo informativo.')
+    active = fields.Boolean(default=True,
+                            help='Archivado, el parámetro ya no se agrega a configuraciones, procesos ni fichas de '
+                                 'materia prima; los valores capturados se quedan. Los que usan los cálculos no se '
+                                 'archivan.')
 
     _tipo_code_uniq = models.Constraint('unique(tipo_id, code)', 'Ese tipo de máquina ya tiene un parámetro '
                                                                    'con esa clave.')
@@ -235,14 +265,26 @@ class FichaTecnicaValorMixin(models.AbstractModel):
     _description = 'Valor de un parámetro de la ficha de la máquina'
 
     parametro_id = fields.Many2one('ficha.tecnica.maquina.parametro', string='Parámetro', required=True,
-                                   ondelete='restrict')
-    sequence = fields.Integer(related='parametro_id.sequence', store=True)
-    code = fields.Char(related='parametro_id.code')
-    kind = fields.Selection(related='parametro_id.kind')
-    unit = fields.Char(related='parametro_id.unit')
-    valor = fields.Float(string='Valor', digits=(16, 3))
-    valor_texto = fields.Char(string='Valor (texto)')
-    opciones = fields.Char(related='parametro_id.opciones')
+                                   ondelete='restrict',
+                                   help='El dato de este renglón. Los renglones salen solos de los parámetros del '
+                                        'tipo (Configuración → Tipos de máquina o Tipos de materia prima).')
+    sequence = fields.Integer(related='parametro_id.sequence', store=True,
+                              help='Se toma del orden del parámetro en su tipo.')
+    code = fields.Char(related='parametro_id.code',
+                       help='Se toma del parámetro: la clave con la que lo leen los cálculos.')
+    kind = fields.Selection(related='parametro_id.kind',
+                            help='Se toma del parámetro: numérico (se captura en «Valor») o texto (en «Valor '
+                                 '(texto)»).')
+    unit = fields.Char(related='parametro_id.unit',
+                       help='Se toma del parámetro: su unidad. Se cambia en el tipo, en Configuración.')
+    valor = fields.Float(string='Valor', digits=(16, 3),
+                         help='El dato numérico capturado, en la unidad del parámetro. Un cero se toma como dato que '
+                              'no se ha dado (el renglón se ve atenuado).')
+    valor_texto = fields.Char(string='Valor (texto)',
+                              help='El dato de texto capturado (solo parámetros de texto). Si el parámetro tiene '
+                                   'opciones, tiene que ser una de ellas.')
+    opciones = fields.Char(related='parametro_id.opciones',
+                           help='Se toma del parámetro: los valores de texto permitidos.')
 
     def _ft_normalizar_texto(self, vals):
         """2.9.0: con lista de opciones, el texto se guarda como la opción (sin importar mayúsculas ni espacios);
@@ -287,7 +329,9 @@ class FichaTecnicaMaquinaValor(models.Model):
     _order = 'config_id, sequence, id'
 
     config_id = fields.Many2one('ficha.tecnica.maquina.config', string='Configuración', required=True,
-                                index=True, ondelete='cascade')
+                                index=True, ondelete='cascade',
+                                help='Configuración por fecha de la máquina a la que pertenece el valor (Máquinas → '
+                                     'Configuraciones por fecha).')
 
     _config_parametro_uniq = models.Constraint('unique(config_id, parametro_id)',
                                                'El parámetro ya está en esa configuración.')
@@ -309,34 +353,61 @@ class FichaTecnicaMaquinaConfig(models.Model):
     _order = 'workcenter_id, date_from desc, id desc'
 
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', required=True, index=True,
-                                    ondelete='cascade', help='Centro de trabajo (máquina) de esta configuración.')
+                                    ondelete='cascade',
+                                    help='Centro de trabajo (máquina) de esta configuración. Se captura en Máquinas → '
+                                         'Configuraciones por fecha o en el centro de trabajo, pestaña «Ficha de la '
+                                         'máquina».')
     tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de máquina', required=True, index=True,
                               compute='_compute_tipo_id', store=True, readonly=False, precompute=True,
                               domain="[('clase', '=', 'maquina')]",
-                              help='Sale del tipo de la máquina; define qué parámetros se capturan.')
+                              help='Sale del tipo de la máquina; define qué parámetros se capturan. Si la máquina no '
+                                   'tenía tipo, toma el que se elija aquí.')
     date_from = fields.Date(string='Vigente desde', required=True, default=fields.Date.context_today,
                             help='Desde cuándo la máquina corre con esta configuración (p. ej. el cambio de '
                                  'cilindro). La vigente es la de fecha más reciente que ya empezó.')
     date_to = fields.Date(string='Vigente hasta', compute='_compute_date_to',
-                          help='Un día antes de la siguiente configuración de la máquina; vacío si es la última.')
-    valor_ids = fields.One2many('ficha.tecnica.maquina.valor', 'config_id', string='Parámetros')
-    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen')
+                          help='Se calcula: un día antes de la siguiente configuración de la máquina; vacío si es la '
+                               'última.')
+    valor_ids = fields.One2many('ficha.tecnica.maquina.valor', 'config_id', string='Parámetros',
+                                help='Un renglón por cada parámetro «De la máquina» de su tipo (galga, capacidad del '
+                                     'jet, relación de baño…); se captura aquí. Un vacío es un dato que no se ha '
+                                     'dado, no un cero.')
+    resumen = fields.Char(string='Resumen de parámetros', compute='_compute_resumen',
+                          help='Se calcula: los parámetros capturados con su unidad, en una línea.')
     diametro = fields.Float(string='Diámetro (in)', digits=(16, 2), compute='_compute_value_fields',
-                            inverse='_inverse_value_fields', store=True)
+                            inverse='_inverse_value_fields', store=True,
+                            help='Diámetro del cilindro de la circular, en pulgadas. Es el mismo dato que el '
+                                 'parámetro «diametro» de la configuración. Se copia a la ficha de tejido.')
     galga = fields.Float(string='Galga', digits=(16, 0), compute='_compute_value_fields',
-                         inverse='_inverse_value_fields', store=True)
+                         inverse='_inverse_value_fields', store=True,
+                         help='Galga del cilindro; es el mismo dato que el parámetro «galga» de la configuración. Se '
+                              'copia a la ficha de tejido y con ella se ofrecen las circulares de la galga requerida.')
     no_agujas = fields.Integer(string='No. de agujas', compute='_compute_value_fields',
-                               inverse='_inverse_value_fields', store=True)
+                               inverse='_inverse_value_fields', store=True,
+                               help='Número de agujas del cilindro; es el mismo dato que el parámetro «no_agujas» de '
+                                    'la configuración. Se copia a la ficha de tejido.')
     no_alimentadores = fields.Integer(string='No. de alimentadores', compute='_compute_value_fields',
-                                      inverse='_inverse_value_fields', store=True)
+                                      inverse='_inverse_value_fields', store=True,
+                                      help='Número de alimentadores de la circular; es el mismo dato que el parámetro '
+                                           '«no_alimentadores» de la configuración. Se copia a la ficha de tejido.')
     velocidad_max = fields.Float(string='Velocidad máxima (rpm)', digits=(16, 1), compute='_compute_value_fields',
                                  inverse='_inverse_value_fields', store=True,
-                                 help='Velocidad máxima de la máquina con esta configuración.')
+                                 help='Velocidad máxima de la circular con esta configuración, en rpm; es el mismo '
+                                      'dato que el parámetro «velocidad_max». La ficha de tejido avisa si su '
+                                      'velocidad la supera.')
     motivo = fields.Char(string='Motivo', help='Por qué cambió la configuración (cambio de cilindro, alta…).')
-    notas = fields.Text(string='Notas')
-    is_current = fields.Boolean(string='Vigente hoy', compute='_compute_is_current')
-    ficha_tejido_ids = fields.One2many('ficha.tecnica.tejido', 'maquina_config_id', string='Fichas de tejido')
-    ficha_tejido_count = fields.Integer(string='No. de fichas de tejido', compute='_compute_ficha_tejido_count')
+    notas = fields.Text(string='Notas',
+                        help='Notas de la configuración: de dónde salen los datos, observaciones. Solo informativo.')
+    is_current = fields.Boolean(string='Vigente hoy', compute='_compute_is_current',
+                                help='Se calcula: es la configuración que rige hoy en la máquina (la de fecha de '
+                                     'inicio más reciente que ya empezó).')
+    ficha_tejido_ids = fields.One2many('ficha.tecnica.tejido', 'maquina_config_id', string='Fichas de tejido',
+                                       help='Fichas de tejido elaboradas con esta configuración (la ficha la toma por '
+                                            'su máquina y su fecha de elaboración). Con fichas, la configuración no se '
+                                            'borra.')
+    ficha_tejido_count = fields.Integer(string='No. de fichas de tejido', compute='_compute_ficha_tejido_count',
+                                        help='Se calcula: cuántas fichas de tejido se elaboraron con esta '
+                                             'configuración.')
 
     _workcenter_date_uniq = models.Constraint(
         'unique(workcenter_id, date_from)',
@@ -485,20 +556,36 @@ class MrpWorkcenterFicha(models.Model):
 
     ft_tipo_id = fields.Many2one('ficha.tecnica.maquina.tipo', string='Tipo de máquina', index=True,
                                  domain="[('clase', '=', 'maquina')]",
-                                 help='Define qué parámetros lleva la ficha de la máquina.')
-    ft_marca = fields.Char(string='Marca de la máquina')
-    ft_modelo = fields.Char(string='Modelo de la máquina')
-    ft_config_ids = fields.One2many('ficha.tecnica.maquina.config', 'workcenter_id', string='Configuraciones')
+                                 help='Tipo de máquina (tejido circular, tintorería, acabado…); define qué parámetros '
+                                      'llevan su configuración por fecha y sus procesos por artículo. Se captura en la '
+                                      'pestaña «Ficha de la máquina» del centro de trabajo.')
+    ft_marca = fields.Char(string='Marca de la máquina',
+                           help='Marca de la máquina; se captura en la pestaña «Ficha de la máquina» del centro de '
+                                'trabajo y se copia a las fichas de tejido.')
+    ft_modelo = fields.Char(string='Modelo de la máquina',
+                            help='Modelo de la máquina; se captura en la pestaña «Ficha de la máquina» del centro de '
+                                 'trabajo.')
+    ft_config_ids = fields.One2many('ficha.tecnica.maquina.config', 'workcenter_id', string='Configuraciones',
+                                    help='Configuraciones por fecha de la máquina (pestaña «Ficha de la máquina» o '
+                                         'Máquinas → Configuraciones por fecha).')
     ft_config_id = fields.Many2one('ficha.tecnica.maquina.config', string='Configuración vigente',
-                                   compute='_compute_ft_current')
+                                   compute='_compute_ft_current',
+                                   help='Se calcula: la configuración que rige hoy, la de fecha de inicio más '
+                                        'reciente que ya empezó.')
     ft_galga = fields.Float(string='Galga vigente', digits=(16, 0), compute='_compute_ft_current',
-                            search='_search_ft_galga')
+                            search='_search_ft_galga',
+                            help='Se calcula: la galga de la configuración vigente hoy. Con ella la ficha de tejido '
+                                 'ofrece solo las circulares de la galga requerida.')
     # 2.5.0: calculados con la vigente (no «related» sobre ft_config_id, que no se puede buscar y dejaba
     # aviso en el build).
     ft_valor_ids = fields.Many2many('ficha.tecnica.maquina.valor', string='Parámetros vigentes',
-                                    compute='_compute_ft_current')
-    ft_resumen = fields.Char(string='Parámetros vigentes (resumen)', compute='_compute_ft_current')
-    ft_ficha_tejido_count = fields.Integer(string='Fichas de tejido', compute='_compute_ft_ficha_tejido_count')
+                                    compute='_compute_ft_current',
+                                    help='Se calcula: los parámetros de la configuración vigente hoy.')
+    ft_resumen = fields.Char(string='Parámetros vigentes (resumen)', compute='_compute_ft_current',
+                             help='Se calcula: los parámetros de la configuración vigente hoy, en una línea.')
+    ft_ficha_tejido_count = fields.Integer(string='Fichas de tejido', compute='_compute_ft_ficha_tejido_count',
+                                           help='Se calcula: cuántas fichas de tejido tienen esta máquina como '
+                                                'circular.')
 
     def _ft_config_at(self, day=None):
         """La configuración vigente en ``day`` (hoy si no se da): la de fecha de inicio más reciente que ya

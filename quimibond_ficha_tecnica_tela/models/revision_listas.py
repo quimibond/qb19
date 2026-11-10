@@ -64,23 +64,53 @@ class FichaTecnicaRevision(models.Model):
     _rec_name = 'articulo'
 
     acabado_id = fields.Many2one('ficha.tecnica.acabado', string='Ficha de acabado', required=True, index=True,
-                                 ondelete='cascade')
-    articulo = fields.Char(string='Artículo')
-    product_acabado_id = fields.Many2one('product.product', string='Tela acabada (m)')
-    product_proceso_id = fields.Many2one('product.product', string='Acabado en proceso (kg)')
-    bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg')
-    bom_kg_activa = fields.Boolean(string='Lista en kg activa')
-    bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros')
-    pendiente_ids = fields.One2many('ficha.tecnica.revision.pendiente', 'revision_id', string='Pendientes')
-    n_pendientes = fields.Integer(string='Núm. de pendientes')
-    listo = fields.Boolean(string='Lista', help='Sin pendientes: las listas cuadran con la ficha.')
-    areas = fields.Char(string='Áreas con pendientes')
-    pend_ingenieria = fields.Boolean(string='Pendiente de Ingeniería')
-    pend_tintoreria = fields.Boolean(string='Pendiente de Tintorería')
-    pend_acabado = fields.Boolean(string='Pendiente de Acabado')
-    pend_inspeccion = fields.Boolean(string='Pendiente de Inspección')
-    pend_manufactura = fields.Boolean(string='Pendiente de Manufactura')
-    fecha = fields.Datetime(string='Revisado el')
+                                 ondelete='cascade',
+                                 help='La ficha de acabado de la tela revisada (una fila por ficha). Lo llena la '
+                                      'revisión de listas, cada noche o con «Actualizar la revisión».')
+    articulo = fields.Char(string='Artículo',
+                           help='Copia del artículo de la ficha de acabado al hacer la revisión; no se edita.')
+    product_acabado_id = fields.Many2one('product.product', string='Tela acabada (m)',
+                                         help='Copia de la tela acabada en metros de la ficha al hacer la revisión.')
+    product_proceso_id = fields.Many2one('product.product', string='Acabado en proceso (kg)',
+                                         help='Copia del acabado en proceso en kg (código con «I» al frente) de la '
+                                              'ficha al hacer la revisión.')
+    bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg',
+                                help='La lista en kg del acabado en proceso que se revisó: la del flujo, aunque siga '
+                                     'archivada esperando el visto bueno de Ingeniería.')
+    bom_kg_activa = fields.Boolean(string='Lista en kg activa',
+                                   help='La lista en kg revisada estaba activa (Odoo ya fabrica con ella). Si no, '
+                                        'espera el visto bueno de Ingeniería.')
+    bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros',
+                               help='La lista en metros de la tela acabada que se revisó (Clasificación final, '
+                                    'conversión kg → m).')
+    pendiente_ids = fields.One2many('ficha.tecnica.revision.pendiente', 'revision_id', string='Pendientes',
+                                    help='Lo que no cuadra entre las listas y la ficha, uno por renglón con su área. '
+                                         'Lo llena la revisión de listas; se corrige donde abre «Resolver».')
+    n_pendientes = fields.Integer(string='Núm. de pendientes',
+                                  help='Se calcula en la revisión: cuántos pendientes tiene la tela. Con alguno, la '
+                                       'tela sale en rojo en Fichas técnicas → Artículos → Acabado.')
+    listo = fields.Boolean(string='Lista',
+                           help='Se calcula en la revisión: sin pendientes, las listas cuadran con la ficha (la tela '
+                                'sale en verde en Artículos → Acabado).')
+    areas = fields.Char(string='Áreas con pendientes',
+                        help='Se calcula en la revisión: las áreas que tienen algo que corregir en esta tela.')
+    pend_ingenieria = fields.Boolean(string='Pendiente de Ingeniería',
+                                     help='Se calcula en la revisión: hay al menos un pendiente de Ingeniería '
+                                          '(Innovación). Sirve para el filtro por área.')
+    pend_tintoreria = fields.Boolean(string='Pendiente de Tintorería',
+                                     help='Se calcula en la revisión: hay al menos un pendiente de Tintorería. Sirve '
+                                          'para el filtro por área.')
+    pend_acabado = fields.Boolean(string='Pendiente de Acabado',
+                                  help='Se calcula en la revisión: hay al menos un pendiente de Acabado (ramas). Sirve '
+                                       'para el filtro por área.')
+    pend_inspeccion = fields.Boolean(string='Pendiente de Inspección',
+                                     help='Se calcula en la revisión: hay al menos un pendiente de Inspección. Sirve '
+                                          'para el filtro por área.')
+    pend_manufactura = fields.Boolean(string='Pendiente de Manufactura',
+                                      help='Se calcula en la revisión: hay al menos un pendiente de Manufactura '
+                                           '(devanado y abridora). Sirve para el filtro por área.')
+    fecha = fields.Datetime(string='Revisado el',
+                            help='Fecha y hora de la última revisión de la tela (la de la noche o la del botón).')
 
     _acabado_uniq = models.Constraint('unique(acabado_id)', 'La tela ya tiene su revisión.')
 
@@ -314,14 +344,26 @@ class FichaTecnicaRevisionPendiente(models.Model):
     _order = 'area, articulo, tipo, id'
 
     revision_id = fields.Many2one('ficha.tecnica.revision', string='Tela', required=True, index=True,
-                                  ondelete='cascade')
-    articulo = fields.Char(related='revision_id.articulo', string='Artículo', store=True)
-    area = fields.Selection(AREAS, string='Área', required=True, index=True)
-    tipo = fields.Selection(TIPOS, string='Pendiente', required=True)
-    detalle = fields.Char(string='Detalle')
-    operation_id = fields.Many2one('mrp.routing.workcenter', string='Operación', ondelete='set null')
-    workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', ondelete='set null')
-    bom_id = fields.Many2one('mrp.bom', string='Lista de materiales', ondelete='set null')
+                                  ondelete='cascade',
+                                  help='La fila de la tela en la revisión de listas. Los pendientes los crea la '
+                                       'revisión (cada noche o con «Actualizar la revisión») y se rehacen cada vez.')
+    articulo = fields.Char(related='revision_id.articulo', string='Artículo', store=True,
+                           help='El artículo de la tela, tomado de su revisión.')
+    area = fields.Selection(AREAS, string='Área', required=True, index=True,
+                            help='Quién lo corrige: sale del tipo de la máquina de la operación (Tintorería, Acabado '
+                                 '= ramas, Inspección, Manufactura = devanado y abridora); lo de la lista o de la '
+                                 'ficha es de Ingeniería.')
+    tipo = fields.Selection(TIPOS, string='Pendiente', required=True,
+                            help='Qué no cuadra (falta una lista, tiempo distinto de la ficha, capacidad del jet…). '
+                                 '«Resolver» abre la pantalla donde se corrige.')
+    detalle = fields.Char(string='Detalle',
+                          help='La explicación con los números de la lista y de la ficha, o el dato que falta.')
+    operation_id = fields.Many2one('mrp.routing.workcenter', string='Operación', ondelete='set null',
+                                   help='La operación de la lista en kg a la que se refiere, si es de una operación.')
+    workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina', ondelete='set null',
+                                    help='La máquina (centro de trabajo) de esa operación.')
+    bom_id = fields.Many2one('mrp.bom', string='Lista de materiales', ondelete='set null',
+                             help='La lista de materiales donde está lo que no cuadra.')
 
     # 2.24.0 (Dirección General 2026-11-03): cada pendiente abre el lugar donde se corrige, para que nadie tenga que
     # saber en qué menú se captura cada dato.

@@ -92,15 +92,27 @@ class FichaTecnicaRuta(models.Model):
     _description = 'Ruta de una familia de telas (las del mismo crudo)'
     _order = 'name'
 
-    name = fields.Char(string='Familia', compute='_compute_name', store=True)
+    name = fields.Char(string='Familia', compute='_compute_name', store=True,
+                       help='Se calcula: el código del crudo de la familia.')
     crudo_id = fields.Many2one('product.product', string='Crudo de la familia', required=True, index=True,
-                               ondelete='restrict')
-    paso_ids = fields.One2many('ficha.tecnica.ruta.paso', 'ruta_id', string='Pasos', copy=True)
-    acabado_ids = fields.Many2many('ficha.tecnica.acabado', string='Telas de la familia', compute='_compute_acabados')
-    acabado_count = fields.Integer(string='Telas', compute='_compute_acabados')
-    resumen = fields.Char(string='Ruta', compute='_compute_resumen')
-    notas = fields.Text(string='Notas')
-    active = fields.Boolean(default=True)
+                               ondelete='restrict',
+                               help='El crudo que comparten las telas de la familia (una ruta por crudo). Se elige en '
+                                    'Fichas técnicas → Artículos → Rutas por familia; una tela entra a la familia por '
+                                    'el crudo de su ficha de tejido base.')
+    paso_ids = fields.One2many('ficha.tecnica.ruta.paso', 'ruta_id', string='Pasos', copy=True,
+                               help='Los pasos de la ruta en orden, cada uno con su máquina y cuándo aplica. Se '
+                                    'capturan en la ruta o los arma «Armar rutas desde las listas».')
+    acabado_ids = fields.Many2many('ficha.tecnica.acabado', string='Telas de la familia', compute='_compute_acabados',
+                                   help='Se calcula: las fichas de acabado cuya ficha de tejido base es de este crudo.')
+    acabado_count = fields.Integer(string='Telas', compute='_compute_acabados',
+                                   help='Se calcula: cuántas fichas de acabado tiene la familia.')
+    resumen = fields.Char(string='Ruta', compute='_compute_resumen',
+                          help='Se calcula: las máquinas de los pasos en orden; los pasos condicionados dicen cuándo '
+                               'aplican.')
+    notas = fields.Text(string='Notas',
+                        help='Texto libre en la ruta: por qué la familia lleva esta ruta y quién la confirmó.')
+    active = fields.Boolean(default=True,
+                            help='Desmarcado: la ruta está archivada y sus telas se quedan sin ruta de familia.')
 
     _crudo_uniq = models.Constraint('unique(crudo_id)', 'Ese crudo ya tiene su ruta de familia.')
 
@@ -338,16 +350,25 @@ class FichaTecnicaRutaPaso(models.Model):
     _description = 'Paso de la ruta de una familia de telas'
     _order = 'ruta_id, sequence, id'
 
-    ruta_id = fields.Many2one('ficha.tecnica.ruta', string='Ruta', required=True, index=True, ondelete='cascade')
-    sequence = fields.Integer(string='Orden', default=10)
-    paso = fields.Selection(PASOS, string='Paso', required=True)
+    ruta_id = fields.Many2one('ficha.tecnica.ruta', string='Ruta', required=True, index=True, ondelete='cascade',
+                              help='La ruta de la familia a la que pertenece el paso.')
+    sequence = fields.Integer(string='Orden', default=10,
+                              help='Orden del paso en la ruta. Se pone solo al elegir el paso (devanado 10, '
+                                   'tintorería 20, abridora 25, rama 30, inspección 40) y se puede mover.')
+    paso = fields.Selection(PASOS, string='Paso', required=True,
+                            help='Qué operación es. La Clasificación final va en la lista en metros; los demás, en la '
+                                 'lista en kg. Se captura en la ruta (Artículos → Rutas por familia).')
     workcenter_id = fields.Many2one('mrp.workcenter', string='Máquina',
-                                    help='Sin máquina, el paso no se genera y se avisa al generar las listas.')
-    condicion = fields.Selection(CONDICIONES, string='Cuándo', required=True, default='siempre')
+                                    help='La máquina con la que se genera la operación; la rama y el jet se pueden '
+                                         'cambiar para una tela en su ficha de acabado. Sin máquina, el paso no se '
+                                         'genera y se avisa al generar las listas.')
+    condicion = fields.Selection(CONDICIONES, string='Cuándo', required=True, default='siempre',
+                                 help='Siempre, solo si la tela se tiñe o solo si se lava. Teñido o lavado sale de la '
+                                      'tintorería de la ficha de acabado (el color del código o lo fijado ahí).')
     tiempo = fields.Float(string='Tiempo fijo (min por ciclo)', digits=(12, 4),
                           help='Solo para pasos cuyo tiempo no sale de la ficha (por ejemplo, la Clasificación final: '
-                               '60 min por ciclo de 400 m, la capacidad del centro). Los demás tiempos los calcula '
-                               '«Usar los datos de la ficha».')
+                               '60 min por ciclo de 400 m, la capacidad del centro). Se captura en el paso; los demás '
+                               'tiempos los calcula «Usar los datos de la ficha».')
 
     @api.onchange('paso')
     def _onchange_paso(self):
@@ -359,18 +380,31 @@ class FichaTecnicaAcabadoRutaFamilia(models.Model):
     _inherit = 'ficha.tecnica.acabado'
 
     ruta_familia_id = fields.Many2one('ficha.tecnica.ruta', string='Ruta de la familia',
-                                      compute='_compute_ruta_familia')
+                                      compute='_compute_ruta_familia',
+                                      help='Se calcula: la ruta (Artículos → Rutas por familia) del crudo de la ficha '
+                                           'de tejido base. Pestaña «Ruta y máquinas».')
     ruta_tintoreria_manual = fields.Selection(
         TINTORERIA, string='Tintorería (si no es la del código)',
-        help='Vacío: lavado si el color del código es NT, NN u OW; teñido en los demás (tabla de Innovación).')
-    ruta_tintoreria = fields.Selection(TINTORERIA, string='Tintorería', compute='_compute_ruta_familia')
+        help='Solo si la tela no sigue la regla del código. Vacío: lavado si el color del código es NT, NN u OW; '
+             'teñido en los demás (tabla de Innovación). Se captura en la pestaña «Ruta y máquinas» de la ficha de '
+             'acabado; «Sin tintorería» quita el paso del jet.')
+    ruta_tintoreria = fields.Selection(TINTORERIA, string='Tintorería', compute='_compute_ruta_familia',
+                                       help='Se calcula: lo fijado en «Tintorería (si no es la del código)» o, si está '
+                                            'vacío, el color del código (NT, NN u OW se lavan; los demás se tiñen).')
     ruta_rama_id = fields.Many2one('mrp.workcenter', string='Rama propia de la tela',
-                                   help='Solo si la tela no va a la rama de su familia.')
+                                   help='Solo si la tela no va a la rama de su familia. Se captura en la pestaña «Ruta '
+                                        'y máquinas» de la ficha de acabado; «Generar listas» la usa.')
     ruta_jet_id = fields.Many2one('mrp.workcenter', string='Jet propio de la tela',
-                                  help='Solo si la tela no va al jet de su familia (por ejemplo, los colores oscuros).')
+                                  help='Solo si la tela no va al jet de su familia (por ejemplo, los colores oscuros). '
+                                       'Se captura en la pestaña «Ruta y máquinas» de la ficha de acabado.')
     consumo_crudo = fields.Float(string='Consumo de crudo (kg por kg)', digits=(12, 4),
-                                 help='Kg de crudo por kg de acabado: el renglón del crudo en la lista en kg.')
-    ruta_resumen = fields.Char(string='Ruta que se genera', compute='_compute_ruta_familia')
+                                 help='Kg de crudo por kg de tela acabada en kg (con la orilla). Se captura en la '
+                                      'pestaña «Ruta y máquinas» (o lo toma «Armar rutas desde las listas»); «Generar '
+                                      'listas» lo pone en el renglón del crudo de la lista en kg y el estimado del '
+                                      'rendimiento medido lo usa.')
+    ruta_resumen = fields.Char(string='Ruta que se genera', compute='_compute_ruta_familia',
+                               help='Se calcula: las máquinas de la lista en kg que armaría «Generar listas» para esta '
+                                    'tela (la ruta de la familia con su rama, jet y tintorería).')
 
     @api.depends('tejido_id.product_proceso_id', 'ruta_tintoreria_manual', 'ruta_rama_id', 'ruta_jet_id',
                  'product_acabado_id.default_code', 'articulo')

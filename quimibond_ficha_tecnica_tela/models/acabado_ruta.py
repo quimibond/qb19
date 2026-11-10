@@ -43,26 +43,49 @@ def codigo_proceso(code):
 class FichaTecnicaAcabadoRuta(models.Model):
     _inherit = 'ficha.tecnica.acabado'
 
-    bom_id = fields.Many2one('mrp.bom', string='Lista de materiales del acabado', compute='_compute_ruta')
-    crudo_id = fields.Many2one('product.product', string='Crudo (de la lista de materiales)', compute='_compute_ruta')
-    crudo_aviso = fields.Char(string='Aviso del crudo', compute='_compute_ruta')
+    bom_id = fields.Many2one('mrp.bom', string='Lista de materiales del acabado', compute='_compute_ruta',
+                             help='Se calcula: la lista de materiales de la tela acabada en metros, la del flujo aunque '
+                                  'siga archivada (botón «Lista de la ruta»). De ella y de sus intermedios salen el '
+                                  'crudo, las operaciones y la tintorería de la ficha.')
+    crudo_id = fields.Many2one('product.product', string='Crudo (de la lista de materiales)', compute='_compute_ruta',
+                               help='Se calcula: el primer componente con ficha de tejido bajando por la lista de la '
+                                    'tela y sus intermedios (acabado en kg, teñido). Si no es el crudo de la ficha de '
+                                    'tejido base, la ficha lo avisa.')
+    crudo_aviso = fields.Char(string='Aviso del crudo', compute='_compute_ruta',
+                              help='Se calcula: avisa si la tela no tiene lista de materiales, si la lista no lleva un '
+                                   'crudo con ficha de tejido o si lleva otro crudo que el de la ficha de tejido base.')
     # 2.23.0: active_test en el campo; si no, al leerlo Odoo descarta las operaciones archivadas de la lista del flujo.
     operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Operaciones', compute='_compute_ruta',
-                                     context={'active_test': False})
-    operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta')
+                                     context={'active_test': False},
+                                     help='Se calcula: las operaciones de la lista de la tela y de sus intermedios (no '
+                                          'las del crudo), también las archivadas, con los datos del artículo en cada '
+                                          'máquina. Se editan en la lista de materiales.')
+    operacion_aviso = fields.Char(string='Aviso de operaciones', compute='_compute_ruta',
+                                  help='Se calcula: operaciones cuya máquina pide datos del artículo y no los tiene '
+                                       '(se capturan en Máquinas → Procesos por artículo).')
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Acabado en proceso (kg)', index=True,
         help='La tela en kg que sale de la orden de acabado (devanado, tintorería, abridora, rama e Inspección): el '
-             'código de la tela acabada con la «I» al frente (DAT P-D02-01, posición 1 = kilogramos). La '
-             'Clasificación final la pasa a metros medidos y entrega el Producto — Tela acabada; la que se vende '
-             'en kg sale del mismo producto desde Producto terminado.')
+             'código de la tela acabada con la «I» al frente (DAT P-D02-01). No es el crudo. Se liga solo por código '
+             'al crear la ficha o con «Usar el sugerido» («3. Acabado en proceso (kg)» del encabezado); la '
+             'Clasificación final lo pasa a metros y la venta en kg sale del mismo producto.')
     product_proceso_sugerido_id = fields.Many2one('product.product', string='Acabado en proceso sugerido',
-                                                  compute='_compute_proceso_aviso')
-    proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso')
+                                                  compute='_compute_proceso_aviso',
+                                                  help='Se calcula: el producto con el código de la tela acabada y la '
+                                                       '«I» al frente, si existe y la ficha no tiene acabado en '
+                                                       'proceso. «Usar el sugerido» lo liga.')
+    proceso_aviso = fields.Char(string='Aviso del acabado en proceso', compute='_compute_proceso_aviso',
+                                help='Se calcula: avisa si falta el acabado en proceso (kg), si no está en kg, si es '
+                                     'el mismo producto que la tela acabada, si es de otra ficha o si la lista en '
+                                     'metros no lo consume.')
     # 2.19.0: botones de la ficha a las listas de materiales de cada producto (también las archivadas: las
     # listas en kg nacen archivadas hasta que Ingeniería las revisa).
-    bom_proceso_count = fields.Integer(string='Listas en kg', compute='_compute_bom_counts')
-    bom_acabado_count = fields.Integer(string='Listas en metros', compute='_compute_bom_counts')
+    bom_proceso_count = fields.Integer(string='Listas en kg', compute='_compute_bom_counts',
+                                       help='Se calcula: cuántas listas de materiales, activas y archivadas, tiene el '
+                                            'acabado en proceso (kg). El botón las abre.')
+    bom_acabado_count = fields.Integer(string='Listas en metros', compute='_compute_bom_counts',
+                                       help='Se calcula: cuántas listas de materiales, activas y archivadas, tiene la '
+                                            'tela acabada en metros. El botón las abre.')
 
     def _ft_cadena(self):
         """(listas de materiales del acabado y sus intermedios, crudo): baja por la lista de materiales hasta el
@@ -217,11 +240,19 @@ class FichaTecnicaAcabadoRuta(models.Model):
 class MrpRoutingWorkcenterFicha(models.Model):
     _inherit = 'mrp.routing.workcenter'
 
-    ft_tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina')
+    ft_tipo_id = fields.Many2one(related='workcenter_id.ft_tipo_id', string='Tipo de máquina',
+                                 help='El tipo de máquina (rama, jet, inspección…) del centro de trabajo de la '
+                                      'operación; se captura en el centro de trabajo, pestaña «Ficha de la máquina».')
     ft_proceso_id = fields.Many2one('ficha.tecnica.proceso', string='Proceso del artículo',
-                                    compute='_compute_ft_proceso')
-    ft_proceso_resumen = fields.Char(string='Datos del artículo en la máquina', compute='_compute_ft_proceso')
-    ft_aviso = fields.Char(string='Aviso de proceso', compute='_compute_ft_proceso')
+                                    compute='_compute_ft_proceso',
+                                    help='Se calcula: los datos de la tela de la lista en la máquina de la operación '
+                                         '(Máquinas → Procesos por artículo).')
+    ft_proceso_resumen = fields.Char(string='Datos del artículo en la máquina', compute='_compute_ft_proceso',
+                                     help='Se calcula: resumen de los datos de la tela en esa máquina (velocidad, '
+                                          'merma, tiempo de ciclo, kg por carga…).')
+    ft_aviso = fields.Char(string='Aviso de proceso', compute='_compute_ft_proceso',
+                           help='Se calcula: la máquina de la operación pide datos del artículo y la tela no los '
+                                'tiene; se agregan con «Agregar los datos de la tela en esta máquina».')
 
     @api.depends('workcenter_id', 'bom_id.product_id', 'bom_id.product_tmpl_id')
     def _compute_ft_proceso(self):

@@ -46,15 +46,25 @@ class FichaTecnicaUnidad(models.Model):
     _description = 'Unidad técnica (fichas técnicas)'
     _order = 'sequence, name, id'
 
-    sequence = fields.Integer(default=10)
-    name = fields.Char(string='Símbolo', required=True, help='Como se escribe la unidad (g/m², cN/dtex, PTO…).')
-    descripcion = fields.Char(string='Descripción')
+    sequence = fields.Integer(default=10,
+                              help='Orden en que aparecen las unidades al elegirlas (Fichas técnicas → Configuración '
+                                   '→ Unidades).')
+    name = fields.Char(string='Símbolo', required=True,
+                       help='Como se escribe la unidad (g/m², cN/dtex, PTO…). Se captura en Configuración → '
+                            'Unidades; es lo que se copia al texto de la unidad en las fichas.')
+    descripcion = fields.Char(string='Descripción',
+                              help='Qué mide la unidad, en palabras (ej. «Punto (escala del ajuste en la máquina)»). '
+                                   'Se captura en Configuración → Unidades.')
     uom_id = fields.Many2one('uom.uom', string='Unidad de Inventario',
-                             help='La unidad de Odoo equivalente, cuando existe (cm, m, in, kg…): con ella se convierte.')
+                             help='La unidad de Odoo equivalente, cuando existe (cm, m, in, kg…): con ella se '
+                                  'convierte, por ejemplo el ancho a metros para el rendimiento. Las unidades '
+                                  'técnicas (rpm, PTO, %…) no llevan.')
     alias = fields.Char(string='También se escribe',
                         help='Otras formas en que llega el texto, separadas por coma (gr, g/m2, pto…). Con ellas se '
                              'ligan solos los textos de las fichas y de los Excel.')
-    active = fields.Boolean(default=True)
+    active = fields.Boolean(default=True,
+                            help='Desmarcada, la unidad ya no se ofrece al elegir, pero las fichas que la usan la '
+                                 'conservan y sus textos se siguen ligando.')
 
     _name_uniq = models.Constraint('unique(name)', 'Ya existe una unidad con ese símbolo.')
 
@@ -144,26 +154,100 @@ class FichaTecnicaTejidoUnidades(models.Model):
     _inherit = ['ficha.tecnica.tejido', 'ficha.tecnica.unidad.mixin']
     _ft_unidad_campos = TEJIDO_UNIDADES
 
-    longitud_malla_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Longitud de malla', ondelete='restrict')
-    consumo_cm_vta_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Consumo cm/vta', ondelete='restrict')
-    polea_alimentacion_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Polea de alimentación', ondelete='restrict')
-    tension_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Tensión', ondelete='restrict')
-    punto_cilindro_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Punto cilindro', ondelete='restrict')
-    punto_plato_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Punto plato', ondelete='restrict')
-    altura_plato_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Altura plato', ondelete='restrict')
-    ancho_bastidor_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Ancho de bastidor', ondelete='restrict')
-    estiraje_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Estiraje', ondelete='restrict')
-    ancho_rollo_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Ancho de rollo', ondelete='restrict')
-    peso_promedio_rollo_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Peso promedio de rollo', ondelete='restrict')
-    peso_acondicionado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Peso acondicionado', ondelete='restrict')
-    ancho_acondicionado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Ancho acondicionado', ondelete='restrict')
-    espesor_acondicionado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Espesor acondicionado', ondelete='restrict')
-    columnas_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Columnas', ondelete='restrict')
-    mallas_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Mallas', ondelete='restrict')
-    elongacion_carga_largo_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Elongación carga largo', ondelete='restrict')
-    elongacion_carga_ancho_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Elongación carga ancho', ondelete='restrict')
+    longitud_malla_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Longitud de malla', ondelete='restrict',
+        help='Unidad de la longitud de malla (polea 1 y 2) y de su tolerancia, del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo.')
+    consumo_cm_vta_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Consumo cm/vta', ondelete='restrict',
+        help='Unidad del consumo por vuelta (polea 1 y 2) y de su tolerancia, del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo.')
+    polea_alimentacion_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Polea de alimentación', ondelete='restrict',
+        help='Unidad del ajuste de la polea de alimentación y de su tolerancia, del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo.')
+    tension_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Tensión', ondelete='restrict',
+        help='Unidad de la tensión y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en Ficha de '
+             'tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel se liga '
+             'solo.')
+    punto_cilindro_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Punto cilindro', ondelete='restrict',
+        help='Unidad del punto del cilindro y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en '
+             'Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel '
+             'se liga solo.')
+    punto_plato_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Punto plato', ondelete='restrict',
+        help='Unidad del punto del plato y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en '
+             'Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel '
+             'se liga solo.')
+    altura_plato_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Altura plato', ondelete='restrict',
+        help='Unidad de la altura del plato y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en '
+             'Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel '
+             'se liga solo.')
+    ancho_bastidor_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Ancho de bastidor', ondelete='restrict',
+        help='Unidad del ancho de bastidor y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en '
+             'Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel '
+             'se liga solo.')
+    estiraje_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Estiraje', ondelete='restrict',
+        help='Unidad del estiraje y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en Ficha de '
+             'tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del Excel se liga '
+             'solo.')
+    ancho_rollo_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Ancho de rollo', ondelete='restrict',
+        help='Unidad del ancho de rollo de crudo y de su tolerancia, del catálogo (Configuración → Unidades). Se '
+             'elige en Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega '
+             'del Excel se liga solo.')
+    peso_promedio_rollo_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Peso promedio de rollo', ondelete='restrict',
+        help='Unidad del peso promedio de rollo y de su tolerancia, del catálogo (Configuración → Unidades). Se elige '
+             'en Ficha de tejido → Ajustes de tejido y escribe sola el texto de la unidad; el texto que llega del '
+             'Excel se liga solo.')
+    peso_acondicionado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Peso acondicionado', ondelete='restrict',
+        help='Unidad del peso acondicionado y de sus tolerancias (+ y −), del catálogo (Configuración → Unidades). Se '
+             'elige en Ficha de tejido → Tela acondicionada y escribe sola el texto de la unidad; el texto que llega '
+             'del Excel se liga solo. El rendimiento de tejido toma el peso en g/m².')
+    ancho_acondicionado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Ancho acondicionado', ondelete='restrict',
+        help='Unidad del ancho de crudo relajado y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de tejido → Tela acondicionada y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo. Con ella el ancho pasa a metros para el rendimiento de tejido.')
+    espesor_acondicionado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Espesor acondicionado', ondelete='restrict',
+        help='Unidad del espesor acondicionado y de sus tolerancias (+ y −), del catálogo (Configuración → Unidades). '
+             'Se elige en Ficha de tejido → Tela acondicionada y escribe sola el texto de la unidad; el texto que '
+             'llega del Excel se liga solo.')
+    columnas_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Columnas', ondelete='restrict',
+        help='Unidad de las columnas y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en Ficha '
+             'de tejido → Tela acondicionada y escribe sola el texto de la unidad; el texto que llega del Excel se '
+             'liga solo. Columnas y mallas se cuentan por pulgada (/in).')
+    mallas_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Mallas', ondelete='restrict',
+        help='Unidad de las mallas y de su tolerancia, del catálogo (Configuración → Unidades). Se elige en Ficha de '
+             'tejido → Tela acondicionada y escribe sola el texto de la unidad; el texto que llega del Excel se liga '
+             'solo. Columnas y mallas se cuentan por pulgada (/in).')
+    elongacion_carga_largo_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Elongación carga largo', ondelete='restrict',
+        help='Unidad de la elongación bajo carga a lo largo y de sus tolerancias (+ y −), del catálogo (Configuración '
+             '→ Unidades). Se elige en Ficha de tejido → Tela acondicionada y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo.')
+    elongacion_carga_ancho_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Elongación carga ancho', ondelete='restrict',
+        help='Unidad de la elongación bajo carga a lo ancho y de sus tolerancias (+ y −), del catálogo (Configuración '
+             '→ Unidades). Se elige en Ficha de tejido → Tela acondicionada y escribe sola el texto de la unidad; el '
+             'texto que llega del Excel se liga solo.')
     unidades_aviso = fields.Char(string='Aviso de unidades', compute='_compute_unidades_aviso',
-                                 help='Unidades en texto que no están en el catálogo (Configuración → Unidades).')
+                                 help='Se calcula: las unidades en texto de la ficha que no corresponden a ninguna '
+                                      'unidad del catálogo (Configuración → Unidades). Se corrige eligiendo la unidad '
+                                      'o agregando el texto como alias.')
 
     def _compute_unidades_aviso(self):
         for ficha in self:
@@ -176,15 +260,46 @@ class FichaTecnicaAcabadoUnidades(models.Model):
     _inherit = ['ficha.tecnica.acabado', 'ficha.tecnica.unidad.mixin']
     _ft_unidad_campos = ACABADO_UNIDADES
 
-    peso_acabado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Peso', ondelete='restrict')
-    ancho_acabado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Ancho', ondelete='restrict')
-    encogimiento_largo_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Encogimiento largo', ondelete='restrict')
-    encogimiento_ancho_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Encogimiento ancho', ondelete='restrict')
-    espesor_acabado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Espesor', ondelete='restrict')
-    elongacion_largo_acabado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Elongación largo', ondelete='restrict')
-    elongacion_ancho_acabado_tol_unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad — Elongación ancho', ondelete='restrict')
+    peso_acabado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Peso', ondelete='restrict',
+        help='Unidad del peso de especificación y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
+             'que llega del Excel se liga solo. El rendimiento teórico solo usa el peso si la unidad es de gramaje '
+             '(g/m²).')
+    ancho_acabado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Ancho', ondelete='restrict',
+        help='Unidad del ancho de venta y de sus tolerancias (+ y −), del catálogo (Configuración → Unidades). Se '
+             'elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto que llega del '
+             'Excel se liga solo. Con ella el ancho pasa a metros; sin unidad, más de 10 se toma como cm.')
+    encogimiento_largo_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Encogimiento largo', ondelete='restrict',
+        help='Unidad del encogimiento a lo largo y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
+             'que llega del Excel se liga solo.')
+    encogimiento_ancho_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Encogimiento ancho', ondelete='restrict',
+        help='Unidad del encogimiento a lo ancho y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
+             'que llega del Excel se liga solo.')
+    espesor_acabado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Espesor', ondelete='restrict',
+        help='Unidad del espesor y de sus tolerancias (+ y −), del catálogo (Configuración → Unidades). Se elige en '
+             'Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto que llega del Excel se '
+             'liga solo.')
+    elongacion_largo_acabado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Elongación largo', ondelete='restrict',
+        help='Unidad de la elongación a lo largo y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
+             'que llega del Excel se liga solo.')
+    elongacion_ancho_acabado_tol_unit_id = fields.Many2one(
+        'ficha.tecnica.unidad', string='Unidad — Elongación ancho', ondelete='restrict',
+        help='Unidad de la elongación a lo ancho y de sus tolerancias (+ y −), del catálogo (Configuración → '
+             'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
+             'que llega del Excel se liga solo.')
     unidades_aviso = fields.Char(string='Aviso de unidades', compute='_compute_unidades_aviso',
-                                 help='Unidades en texto que no están en el catálogo (Configuración → Unidades).')
+                                 help='Se calcula: las unidades en texto de la ficha que no corresponden a ninguna '
+                                      'unidad del catálogo (Configuración → Unidades). Se corrige eligiendo la unidad '
+                                      'o agregando el texto como alias.')
 
     def _compute_unidades_aviso(self):
         for ficha in self:
@@ -197,7 +312,11 @@ class FichaTecnicaParametroUnidades(models.Model):
     _inherit = ['ficha.tecnica.maquina.parametro', 'ficha.tecnica.unidad.mixin']
     _ft_unidad_campos = ('unit',)
 
-    unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad (catálogo)', ondelete='restrict')
+    unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad (catálogo)', ondelete='restrict',
+                              help='Unidad del parámetro, del catálogo (Configuración → Unidades). Se elige en la '
+                                   'pestaña Parámetros del tipo de máquina o de materia prima y escribe sola la unidad '
+                                   'en texto, que es la que leen los cálculos (m/min de la velocidad, min u h del '
+                                   'tiempo de ciclo).')
 
 
 class FichaTecnicaCaracteristicaUnidades(models.Model):
@@ -205,4 +324,7 @@ class FichaTecnicaCaracteristicaUnidades(models.Model):
     _inherit = ['ficha.tecnica.caracteristica', 'ficha.tecnica.unidad.mixin']
     _ft_unidad_campos = ('unit',)
 
-    unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad (catálogo)', ondelete='restrict')
+    unit_id = fields.Many2one('ficha.tecnica.unidad', string='Unidad (catálogo)', ondelete='restrict',
+                              help='Unidad de la característica, del catálogo (Configuración → Unidades). Se elige en '
+                                   'Configuración → Características y escribe sola la unidad en texto, que pasa a los '
+                                   'renglones de características de las fichas.')

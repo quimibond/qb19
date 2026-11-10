@@ -44,7 +44,8 @@ class FichaTecnicaMaquinaTipoAlternativas(models.Model):
         string='Alternativas entre sí',
         help='Las máquinas de este tipo son alternativas unas de otras: las alternativas de cada máquina (las que '
              'Odoo prueba al planear) son las demás de su tipo que estén operando, y se recalculan solas. Al '
-             'planear, de esas solo cuentan las que tienen proceso del artículo.')
+             'planear, de esas solo cuentan las que tienen proceso del artículo. Se marca en Configuración → Tipos '
+             'de máquina.')
 
     def _ft_sync_alternativas(self):
         """Alternativas nativas de cada máquina de los tipos con «Alternativas entre sí»: las demás de su tipo
@@ -79,11 +80,12 @@ class MrpWorkcenterAlternativas(models.Model):
     ft_estado = fields.Selection(
         ESTADOS_MAQUINA, string='Estado de la máquina', required=True, default='operando',
         help='Solo una máquina operando es alternativa de las demás de su tipo y se usa al planear. En montaje, en '
-             'pruebas o fuera de servicio: Odoo no le asigna órdenes de trabajo por su cuenta.')
+             'pruebas o fuera de servicio: Odoo no le asigna órdenes de trabajo por su cuenta. Se captura en la '
+             'pestaña «Ficha de la máquina» del centro de trabajo.')
     ft_alternativas_auto = fields.Boolean(
         related='ft_tipo_id.alternativas_por_tipo', string='Alternativas por tipo',
-        help='Las alternativas de esta máquina las arma su tipo de máquina («Alternativas entre sí»): las demás de '
-             'su tipo que estén operando.')
+        help='Se toma del tipo de máquina («Alternativas entre sí»). Marcado: las alternativas de esta máquina son '
+             'las demás de su tipo que estén operando, se recalculan solas y no se editan a mano.')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -175,9 +177,9 @@ class MrpRoutingWorkcenterAlternativas(models.Model):
 
     ft_maquinas_posibles = fields.Char(
         string='Máquinas posibles', compute='_compute_ft_maquinas_posibles',
-        help='La máquina de la operación y sus alternativas, como las ve el planificador: ✓ el artículo corre ahí, '
-             '✗ Odoo la usaría pero no hay proceso del artículo, ⚠ la máquina no está operando, ○ el artículo '
-             'corre en otra máquina del tipo que no es alternativa.')
+        help='Se calcula: la máquina de la operación y sus alternativas, como las ve el planificador: ✓ el artículo '
+             'corre ahí, ✗ Odoo la usaría pero no hay proceso del artículo, ⚠ la máquina no está operando, ○ el '
+             'artículo corre en otra máquina del tipo que no es alternativa.')
 
     @api.depends('workcenter_id', 'workcenter_id.alternative_workcenter_ids', 'workcenter_id.ft_estado',
                  'bom_id.product_id', 'bom_id.product_tmpl_id')
