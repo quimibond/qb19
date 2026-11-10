@@ -77,8 +77,11 @@ pesaje, taras, bitácora, defectos y el bloqueo de cierre se quedan igual.
   `rollo.inspeccion.estacion.wizard`: se escanea el rollo de Rama (o varios **del mismo baño** para juntarlos), se pesa
   el rollo final con la tara de Inspección (la de «Clasificación final» en la tabla de taras; báscula IoT o manual con
   motivo), se capturan metros, empalmes, calidad y defectos y se imprime la **etiqueta final** (PQ o PNC).
-- **Corte:** un registro por pedazo con «Último pedazo» apagado; el último lo cierra y el rollo de Rama queda
-  inspeccionado. No se corta y junta en la misma captura.
+- **Dividir un rollo en varios (3.16.2, antes «pedazos»):** un registro por rollo con «Último rollo de esta tela»
+  apagado; el último (con él encendido) cierra el rollo de Rama, que queda inspeccionado. La pedacería defectuosa que
+  se retira no se captura como rollo: queda como merma y se pesa después como desperdicio de la orden. Quitar el
+  defecto y dejar el rollo como PQ, o quitarlo y unirlo con otro rollo, son una sola captura (en la unión se escanean
+  los dos códigos). Un rollo de Rama que ya se dividió no se junta con otros en la misma captura.
 - **Rollo final** (`mrp.rollo.final`, Manufactura → Reportes → Rollos finales): lote `M<orden en metros>-NNNN`, kg,
   metros, calidad, rollos de Rama de los que sale. Merma del grupo (kg de Rama − kg de los rollos finales) con alerta
   por porcentaje antes de guardar (parámetro `quimibond_rollos_bitacora.alerta_merma_inspeccion_pct`, 3 %).
@@ -197,7 +200,7 @@ baños para una orden en metros (3.3.0) se conserva para las órdenes que no se 
   demanda entre el cierre y el pendiente por metros, no por kg), Odoo abastecía la diferencia con una orden en kg nueva
   que nadie pidió (ronda 12: TL/OP-KG/00066, 20.6 kg, con crudo reservado). El ajuste de la demanda ya no abastece
   (`no_procurement`); los baños que la cubren ya existen (prueba 47).
-- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedazos u orillas
+- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedacería u orillas
   sin metros: Inspección ya no los pide en Desperdicio. Primera, FE y Segunda siguen pidiéndolos (prueba 48).
 - Formación de baños valida que lo escaneado sea igual a la demanda (`mrp_caja_surtido`, Consolti). No se cambia: en
   producción la demanda del baño formado es lo producido por su orden de Tejido, así que con sus 12 rollos cuadra exacto;
