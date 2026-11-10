@@ -107,3 +107,35 @@ class TestSalesMonthPlan(TransactionCase):
         self.assertEqual(rows.action_qb_rebuild_button()['tag'], 'reload')
         checks = self.env['qb.price.check'].search([], limit=2)
         self.assertEqual(checks.action_open_wizard()['res_model'], 'qb.price.check.wizard')
+
+    def test_06_precio_de_otro_mes_y_de_la_ultima_factura(self):
+        """3.16.2: sin renglón del presupuesto en el mes, el precio es el del mes más cercano del
+        presupuesto; sin presupuesto ni lista, el de la última factura del cliente."""
+        otro = self.env['product.product'].create({
+            'name': 'Tela otro mes', 'default_code': 'WMES170', 'type': 'consu', 'uom_id': self.uom_m.id})
+        facturado = self.env['product.product'].create({
+            'name': 'Tela facturada', 'default_code': 'WMES180', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self.env['sgi.sales.budget.line'].sudo().with_context(sgi_bypass_lock=True).create({
+            'budget_id': self.budget.id, 'product_id': otro.id, 'partner_id': self.client.id,
+            'mercado': 'industrial', 'date': date(2071, 2, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1.0,
+            'price_input': 7.0, 'price_currency_id': self.env.company.currency_id.id})
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2071, 1, 15),
+            'invoice_line_ids': [(0, 0, {'product_id': facturado.id, 'quantity': 10.0, 'price_unit': 4.5,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        Forecast = self.env['qb.forecast.line']
+        for product in (otro, facturado):
+            Forecast.create({'partner_id': self.client.id, 'product_id': product.id, 'week': date(2071, 5, 18),
+                             'qty_origen': 10.0, 'mercado': 'industrial'})
+        plan = self._build()
+        line_otro = plan.line_ids.filtered(lambda l: l.product_id == otro)
+        line_fact = plan.line_ids.filtered(lambda l: l.product_id == facturado)
+        self.assertEqual((line_otro.price_input, line_otro.price_origen), (7.0, 'presupuesto'))
+        self.assertEqual((line_fact.price_input, line_fact.price_origen), (4.5, 'factura'))
+        # «Completar precios» llena lo que quedó en cero sin tocar lo que ya tiene precio.
+        line_fact.write({'price_input': 0.0, 'price_origen': False})
+        plan.action_qb_fill_prices()
+        self.assertEqual((line_fact.price_input, line_fact.price_origen), (4.5, 'factura'))
+        self.assertEqual(line_otro.price_input, 7.0)
