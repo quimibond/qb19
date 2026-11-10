@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Precios del presupuesto del mes (19.0.3.16.2, 2026-11-10)
+
+El presupuesto del mes de noviembre de 2026 salía con 11 renglones sin precio: el precio del
+presupuesto anual se buscaba solo en el mismo mes, y la REV2 casi no trae noviembre ni diciembre.
+Ahora el precio de cada renglón sale, en este orden, de:
+
+1. **El presupuesto anual aprobado**, del mismo cliente y producto, del mes o, si no está ese mes,
+   del mes más cercano.
+2. **La lista del cliente** (solo con regla del producto, como antes).
+3. **La última factura** de ese cliente y producto en los 12 meses anteriores, en la unidad de venta
+   y la moneda de la factura (origen «Última factura»).
+
+**Completar precios** (encabezado, en borrador) pone precio a los renglones que siguen en cero sin
+tocar cantidades ni los que ya tienen precio. Lo que siga sin precio no tiene presupuesto, lista ni
+factura: hay que darlo de alta en la lista del cliente.
+
 ## Proponer pedidos sin duplicar (19.0.3.16.1, 2026-11-10)
 
 Revisión de «Proponer pedidos» (3.15.x): había casos en que proponía otra vez lo ya pedido.
