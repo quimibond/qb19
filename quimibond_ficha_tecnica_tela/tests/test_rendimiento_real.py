@@ -398,3 +398,24 @@ class TestRendimientoReal(TiempoFichaCase):
         self.assertFalse(self.acabado._ft_pasar_conversion_a_listas(), "Sin cambio no escribe ni deja nota")
         self.assertAlmostEqual(self.bom.bom_line_ids.product_qty, 1.1, places=6, msg="La lista en kg no se toca")
 
+    def test_21_el_teorico_usa_el_ancho_bajando_de_rama(self):
+        """Revisión 2026-11-10 (Ingeniería, 6-nov): el teórico y el peso real salen del ancho que baja de rama (promedio
+        de las ramas del artículo); el ancho de venta solo cuando no está capturado."""
+        self.acabado.write({'peso_acabado': 45, 'peso_acabado_tol_unit': 'g/m2', 'ancho_acabado': 160})
+        self.assertAlmostEqual(self.acabado.rendimiento_teorico, round(1000 / (45 * 1.6), 4), places=4)
+        self.assertIn('de venta', self.acabado.rendimiento_teorico_ancho)
+        tipo = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
+        self._param(tipo, 'ancho_rama', 'm', 'articulo')
+        Proceso = self.env['ficha.tecnica.proceso']
+        for nombre, ancho in (('RAMA 931 prueba', 1.66), ('RAMA 932 prueba', 1.68), ('RAMA 933 prueba', 0)):
+            rama = self.env['mrp.workcenter'].create({'name': nombre, 'code': nombre[:8], 'ft_tipo_id': tipo.id})
+            Proceso.create({'articulo': 'IZZ931Q22JNT165', 'workcenter_id': rama.id})._ft_set_value('ancho_rama', ancho)
+        self.acabado.invalidate_recordset(['rendimiento_teorico', 'rendimiento_teorico_ancho', 'peso_real'])
+        self.assertAlmostEqual(self.acabado.rendimiento_teorico, round(1000 / (45 * 1.67), 4), places=4,
+                               msg="Promedio de las ramas con ancho; la que no lo tiene no cuenta")
+        self.assertEqual(self.acabado.rendimiento_teorico_ancho, '1.67 m (bajando de rama)')
+        # Lo medido de WJ045 (13.19 m/kg) queda a 0.9 % del teórico con rama; con el de venta quedaba a 5 %.
+        with self._con_terminado({self.acabado: (13190.0, 1000.0, 3)}):
+            self._recalcular_y_usar()
+        self.assertAlmostEqual(self.acabado.peso_real, 1000 / (13.19 * 1.67), places=1)
+

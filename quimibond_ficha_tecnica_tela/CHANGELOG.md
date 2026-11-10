@@ -20,6 +20,15 @@ primera para planear del costeo la lista queda como pendiente de Ingeniería en 
 inspección de la lista en kg se siguen poniendo al día con «Usar los datos de la ficha». Prueba
 `test_20_el_rendimiento_aprobado_pasa_a_la_lista_en_metros`.
 
+**Revisión 2026-11-10: el rendimiento teórico usa el ancho bajando de rama.** Ingeniería (revisión de las 31 telas,
+6-nov): «el cálculo del rendimiento para el acabado sale del peso de la tela y el ancho rollo de la rama; el código
+solo es la venta». El teórico (1000 ÷ peso × ancho) y el peso real de la ficha de acabado usaban el ancho de venta y
+salían 2 a 6 % arriba de lo medido; ahora usan el ancho bajando de rama del proceso del artículo en las ramas
+(promedio de las que lo tienen capturado) y el de venta solo si falta. Con rama, 7 de las 10 telas con dato quedan a
+±1.1 % de lo medido (WJ045Q22JNT160: 13.31 teórico contra 13.19 medido; con el de venta, 13.89). La ficha muestra el
+ancho usado y de dónde sale («Ancho del teórico»). El tope de 25 % contra el teórico usa el mismo número. Prueba
+`test_21_el_teorico_usa_el_ancho_bajando_de_rama`.
+
 **Clasificación final en Empaque (A3.4, Dirección General: el diseño de la Clasificación final en Empaque sustituye al
 de la Inspección única de 2.24.0).** La lista en metros vuelve a llevar una operación, CLASIFICACION, en el centro
 EMPAQUE; Inspección sigue pesando y clasificando de forma preliminar en la orden en kg y Empaque confirma o cambia la

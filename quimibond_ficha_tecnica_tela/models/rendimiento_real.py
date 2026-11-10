@@ -60,6 +60,7 @@ PARAM_ALERTA_RENDIMIENTO_PCT = 'quimibond_ficha_tecnica_tela.alerta_rendimiento_
 PARAM_ROLLOS_DESDE = 'quimibond_ficha_tecnica_tela.rendimiento_rollos_desde'
 ALERTA_RENDIMIENTO_PCT = 5.0
 # 2.28.0: lo medido que se aleja más que esto del teórico (1000 ÷ peso × ancho) no se propone: es un dato malo.
+# Revisión 2026-11-10: el ancho del teórico es el que baja de rama (el de venta solo si falta).
 PARAM_TOPE_TEORICO_PCT = 'quimibond_ficha_tecnica_tela.tope_teorico_pct'
 TOPE_TEORICO_PCT = 25.0
 UNIDADES_GRAMAJE = ('', 'g/m2', 'gr/m2', 'gsm', 'g', 'gr')
@@ -128,25 +129,65 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         string='Lo medido contra la ficha', readonly=True, copy=False,
         help='«Por aprobar»: se aleja de la ficha más que la alerta; Ingeniería lo usa o lo marca revisado. «Fuera del '
              'teórico»: se aleja más que el tope del teórico (peso y ancho): es un dato malo y no se propone.')
-    rendimiento_teorico = fields.Float(string='Rendimiento teórico (m/kg)', digits=(12, 4),
-                                       compute='_compute_rendimiento_teorico',
-                                       help='1000 ÷ (peso en g/m² × ancho de venta en m).')
+    # Revisión 2026-11-10 (Ingeniería, 6-nov: «el cálculo del rendimiento para el acabado sale del peso de la tela y
+    # el ancho rollo de la rama; el código solo es la venta»): el teórico y el peso real usan el ancho bajando de rama
+    # del artículo cuando está capturado; el ancho de venta solo si falta. Con el de venta el teórico salía 2 a 6 %
+    # arriba de lo medido (WJ045: 13.89 contra 13.19; con 1.67 m de rama da 13.31).
+    rendimiento_teorico = fields.Float(
+        string='Rendimiento teórico (m/kg)', digits=(12, 4), compute='_compute_rendimiento_teorico',
+        help='1000 ÷ (peso en g/m² × ancho en m). El ancho es el que baja de rama (el del proceso del artículo en las '
+             'ramas); si no está capturado, el ancho de venta.')
+    rendimiento_teorico_ancho = fields.Char(
+        string='Ancho del teórico', compute='_compute_rendimiento_teorico',
+        help='El ancho con que se calcularon el rendimiento teórico y el peso real, y de dónde sale.')
     peso_real = fields.Float(
         string='Peso real (g/m²)', digits=(12, 1), compute='_compute_peso_real',
-        help='El peso que da lo fabricado al ancho de venta: 1000 ÷ (rendimiento × ancho de venta en m).')
+        help='El peso que da lo fabricado: 1000 ÷ (rendimiento × ancho en m), con el mismo ancho que el teórico '
+             '(bajando de rama; el de venta si falta).')
 
-    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado')
+    def _ft_ancho_rama(self):
+        """{ficha: ancho bajando de rama en m} con el promedio de lo capturado en los procesos del artículo (uno por
+        rama; suelen ser iguales). Sin ancho capturado la ficha no aparece: un vacío no es un cero."""
+        products = self.product_proceso_id | self.product_acabado_id
+        if not products:
+            return {}
+        anchos = {}
+        for proceso in self.env['ficha.tecnica.proceso'].sudo().search([('product_id', 'in', products.ids)]):
+            ancho = proceso._ft_value('ancho_rama')
+            if ancho:
+                anchos.setdefault(proceso.product_id.id, []).append(ancho_en_m(ancho))
+        res = {}
+        for ficha in self:
+            valores = anchos.get(ficha.product_proceso_id.id, []) + anchos.get(ficha.product_acabado_id.id, [])
+            if valores:
+                res[ficha] = sum(valores) / len(valores)
+        return res
+
+    def _ft_ancho_teorico(self):
+        """{ficha: (ancho en m, True si es el de rama)}: el ancho bajando de rama o, si falta, el de venta."""
+        rama = self._ft_ancho_rama()
+        return {ficha: (rama[ficha], True) if ficha in rama else (ancho_en_m(ficha.ancho_acabado), False)
+                for ficha in self}
+
+    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado', 'product_proceso_id',
+                 'product_acabado_id')
     def _compute_rendimiento_teorico(self):
         from .unidades import _norm  # local: orden de carga de models/
+        anchos = self._ft_ancho_teorico()
         for ficha in self:
-            ancho = ancho_en_m(ficha.ancho_acabado)
+            ancho, de_rama = anchos[ficha]
             gramaje = ficha.peso_acabado if _norm(ficha.peso_acabado_tol_unit) in UNIDADES_GRAMAJE else 0.0
             ficha.rendimiento_teorico = round(1000.0 / (gramaje * ancho), 4) if gramaje and ancho else 0.0
+            ficha.rendimiento_teorico_ancho = '%s m (%s)' % (
+                ('%.3f' % ancho).rstrip('0').rstrip('.'),
+                'bajando de rama' if de_rama else 'de venta: falta el ancho bajando de rama') if ancho else False
 
-    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado')
+    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado', 'product_proceso_id',
+                 'product_acabado_id')
     def _compute_peso_real(self):
+        anchos = self._ft_ancho_teorico()
         for ficha in self:
-            ancho = ancho_en_m(ficha.ancho_acabado)
+            ancho = anchos[ficha][0]
             rend = ficha.rendimiento_tela_acabada if ficha.rendimiento_real_ordenes else 0.0
             ficha.peso_real = 1000.0 / (rend * ancho) if rend and ancho else 0.0
 

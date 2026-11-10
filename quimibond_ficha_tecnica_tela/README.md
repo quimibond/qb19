@@ -89,7 +89,7 @@ Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo med
 |---|---|
 | Igual al de la ficha | Se aleja menos que la alerta (5 %, `alerta_rendimiento_pct`): nada que hacer |
 | Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
-| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho de venta en m): dato malo, no se propone |
+| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho bajando de rama en m; el de venta solo si falta): dato malo, no se propone |
 
 Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
 Excel no lo fuerza (es el teórico).
