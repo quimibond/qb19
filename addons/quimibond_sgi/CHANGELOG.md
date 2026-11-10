@@ -14,6 +14,20 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.200.1 — 2026-11-10
+
+Fallas del suite del SGI en el build de desarrollo (10-nov-2026). Solo pruebas, al día con reglas que ya rigen.
+
+**Pruebas**
+- Los proyectos de prueba que arman su propia tabla de características se crean con `sgi_dev_no_autoload`; desde la
+  carga automática del tipo, el proyecto traía además masa y ancho sin valor (`test_dev_coa` 01 y 02,
+  `test_dev_tech_sheet`, `test_dev_pilot`, `test_dev_sample`, `test_dev_shipment`).
+- `test_dev_corrections` 01: escribir la lista de materiales es de Fabricación/Administrador; 04: la ficha de proceso
+  validada se prueba en `test_dev_fabric_sheet`, aquí solo la validación de la corrida.
+- `test_dev_customer` 01 y `test_dev_proceso` 06: antes de cotizar, Ventas aprueba el análisis (57.120.0); la prueba
+  lo deja aprobado o lleva el proyecto a pilotaje por migración antes de liberarlo.
+
+
 ## 19.0.57.200.0 — 2026-11-10
 
 ### Cambiado

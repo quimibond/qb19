@@ -76,7 +76,8 @@ class TestDevSample(TransactionCase):
         cls.car_ancho = Car.search([('code', '=', 'ancho')], limit=1)
 
     def _dev(self, approved=True, **vals):
-        dev = self.Project.create(dict({
+        # Sin la carga automática del tipo: la tabla es solo la de la prueba.
+        dev = self.Project.with_context(sgi_dev_no_autoload=True).create(dict({
             'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id, 'sgi_dev_product_name': 'Jersey muestra',
             'sgi_dev_product_id': self.tela.id, 'sgi_dev_product_crudo_id': self.crudo.id,
             'sgi_dev_sample_m': 20.0}, **vals))
