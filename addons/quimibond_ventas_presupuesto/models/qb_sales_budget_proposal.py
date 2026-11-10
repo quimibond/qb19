@@ -240,7 +240,9 @@ class QbSalesBudgetProposal(models.TransientModel):
         dev_lines = Line
         dev_skipped = defaultdict(int)
         if self.include_dev:
-            sold = {key[0] for key in rows}
+            # 3.16.3: lo que ya se vende es por producto Y cliente (un producto de línea para un
+            # cliente nuevo sí es proyecto); en Confección, sin cliente, por producto.
+            sold = {(key[0], key[1]) for key in rows}
             dev_lines, dev_skipped = self._qb_dev_lines(budget, sold)
 
         budget.action_qb_update_base()
@@ -295,22 +297,34 @@ class QbSalesBudgetProposal(models.TransientModel):
                     'price_origen': 'desarrollo'}
         return {}
 
-    def _qb_dev_lines(self, budget, sold_product_ids):
+    def _qb_dev_lines(self, budget, sold_pairs):
         """Renglones de Proyectos de los desarrollos abiertos. Devuelve (renglones, conteos de
         lo que no entró)."""
         Line = self.env['sgi.sales.budget.line']
         uom = {'m': self.env.ref('uom.product_uom_meter'), 'kg': self.env.ref('uom.product_uom_kgm')}
         skipped = defaultdict(int)
         already = set(budget.line_ids.mapped('dev_project_id').ids)
+        # Renglones que ya existen o que ya propuso otro desarrollo (mismo producto, cliente y
+        # descripción): dos desarrollos del mismo cliente y artículo no chocan con la restricción
+        # única ni tumban la propuesta entera.
+        taken = {(l.product_id.id or False, l.partner_id.commercial_partner_id.id or False,
+                  l.proyecto_descripcion or False) for l in budget.line_ids}
         vals_list = []
         for dev in self._qb_dev_projects(budget):
             if dev.id in already:
                 skipped['ya_en_proyectos'] += 1
                 continue
             product = dev._qb_dev_product()
-            if product and product.id in sold_product_ids:
+            partner = dev.partner_id.commercial_partner_id
+            if product and ((product.id, partner.id or False) in sold_pairs
+                            or (product.id, False) in sold_pairs):
                 skipped['ya_se_vende'] += 1
                 continue
+            key = (product.id or False, partner.id or False, False if product else dev.display_name)
+            if key in taken:
+                skipped['duplicado'] += 1
+                continue
+            taken.add(key)
             monthly, unit = self._qb_dev_monthly(dev)
             monthly *= (self.dev_pct or 0.0) / 100.0
             if monthly <= 0:
@@ -335,7 +349,6 @@ class QbSalesBudgetProposal(models.TransientModel):
             if qty <= 0:
                 skipped['sin_consumo'] += 1
                 continue
-            partner = dev.partner_id.commercial_partner_id
             from .qb_forecast import team_of_partner  # import local: qb_forecast va después
             price = self._qb_dev_price(dev, product, partner)
             for month in range(first_month, 13):
@@ -386,7 +399,9 @@ class QbSalesBudgetProposal(models.TransientModel):
             notes.append("Desarrollos: %d con %d renglón(es) de Proyectos por %s (%s %% del consumo "
                          "estimado)." % (len(dev_lines.dev_project_id), len(dev_lines),
                                          fmt(sum(dev_lines.mapped('amount_budget'))), self.dev_pct))
-        dev_labels = {'ya_se_vende': "su producto ya se vende", 'ya_en_proyectos': "ya venían en los proyectos",
+        dev_labels = {'ya_se_vende': "su producto ya se vende a ese cliente",
+                      'ya_en_proyectos': "ya venían en los proyectos",
+                      'duplicado': "otro desarrollo del mismo cliente y artículo ya está",
                       'sin_consumo': "sin consumo estimado", 'fuera_del_anio': "fecha requerida después del año",
                       'sin_conversion': "sin conversión a la unidad de venta"}
         dev_out = ["%s: %d" % (label, (dev_skipped or {}).get(key)) for key, label in dev_labels.items()

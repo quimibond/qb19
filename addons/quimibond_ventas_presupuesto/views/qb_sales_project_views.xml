@@ -34,7 +34,7 @@
                     <button name="action_qb_graduate" type="object" string="Pasar a línea"
                             class="btn-primary" invisible="state != 'vigente'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"
-                            confirm="Desde ahora su venta cuenta en el mercado base. ¿Continuar?"/>
+                            confirm="Desde mañana su venta cuenta en el mercado base en Venta real y en el cierre; los renglones del presupuesto no cambian de mercado. ¿Continuar?"/>
                     <button name="action_qb_lose" type="object" string="Marcar como perdido"
                             invisible="state != 'vigente'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
