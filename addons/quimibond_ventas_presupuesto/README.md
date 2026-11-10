@@ -21,6 +21,26 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Proponer pedidos sin duplicar (19.0.3.16.1, 2026-11-10)
+
+Revisión de «Proponer pedidos» (3.15.x): había casos en que proponía otra vez lo ya pedido.
+
+- **Semana del pedido:** un pedido se reconoce por la semana del pronóstico (`qb_forecast_week`),
+  no por la fecha compromiso, que puede ser la de entrega del cliente días después del embarque
+  (perfiles con días de tránsito). Un pedido capturado a mano, sin esa semana, se sigue
+  reconociendo por la fecha compromiso dentro de la semana.
+- **Release sin OC:** la referencia `REL-…` lleva el número del release, que cambia cada semana; el
+  pedido ya hecho con el release anterior se reconoce por el prefijo `REL-`.
+- **Plantas:** con dirección de entrega, solo cuentan los pedidos de esa dirección; las cotizaciones
+  nuevas de cada planta van con su dirección.
+- **Misma tela en otro código:** si la semana ya tiene pedido de la tela en metros y el pronóstico la
+  trae en kilos (o al revés), no se pide otra vez: queda «No entra» con el código del pedido.
+- **Lo facturado:** una cantidad nunca baja de lo entregado **ni de lo facturado**.
+- **Aplicar dos veces:** un renglón aplicado queda marcado y no se vuelve a aplicar; al aplicar se
+  vuelven a leer los pedidos, así que dos asistentes armados a la vez no piden dos veces lo mismo.
+- **Semanas sin regla** de la planta aparecen como «No entra» con su motivo, y «Exige OC para
+  facturar» respeta la regla de la planta del pedido.
+
 ## Lector de Woodbridge y bandeja de releases (19.0.3.16.0, 2026-11-09)
 
 Diseño v3, 2.10.4 y 2.10.5.
