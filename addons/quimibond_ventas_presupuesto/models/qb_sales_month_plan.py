@@ -154,25 +154,37 @@ class QbSalesMonthPlan(models.Model):
         return out
 
     def _qb_last_invoice_price(self, partner, product):
-        """(precio en la unidad de venta del producto, moneda) de la última factura de ese cliente y
-        producto en los 12 meses antes del mes; None si no hay."""
+        """(precio, moneda, base) de la última factura a ese cliente en los 12 meses antes del mes:
+        del mismo producto (base «venta», en su unidad); si no hay, de la misma tela en otro código
+        (3.16.4: FXI, Lear y Shawmut se facturan en kilos, IWD038…, y el pronóstico viene en metros,
+        WD038…), con la base de la unidad en que se facturó («kg» o «m»). None si no hay."""
         self.ensure_one()
         if not partner or not product:
             return None
-        date_from = self.month - relativedelta(months=12)
-        aml = self.env['account.move.line'].sudo().search([
+        AML = self.env['account.move.line'].sudo()
+        base_domain = [
             ('company_id', '=', self.company_id.id), ('parent_state', '=', 'posted'),
             ('move_id.move_type', '=', 'out_invoice'), ('display_type', '=', 'product'),
-            ('product_id', '=', product.id), ('partner_id', 'child_of', partner.commercial_partner_id.id),
-            ('move_id.invoice_date', '>=', date_from), ('price_unit', '>', 0)],
-            order='invoice_date desc, id desc', limit=1)
-        if not aml:
-            return None
-        price = aml.price_unit
-        if aml.product_uom_id and aml.product_uom_id != product.uom_id \
-                and aml.product_uom_id._has_common_reference(product.uom_id):
-            price = aml.product_uom_id._compute_price(price, product.uom_id)
-        return price, aml.currency_id or self.currency_id
+            ('partner_id', 'child_of', partner.commercial_partner_id.id),
+            ('move_id.invoice_date', '>=', self.month - relativedelta(months=12)), ('price_unit', '>', 0)]
+        order = 'invoice_date desc, id desc'
+        aml = AML.search(base_domain + [('product_id', '=', product.id)], order=order, limit=1)
+        if aml:
+            price = aml.price_unit
+            if aml.product_uom_id and aml.product_uom_id != product.uom_id \
+                    and aml.product_uom_id._has_common_reference(product.uom_id):
+                price = aml.product_uom_id._compute_price(price, product.uom_id)
+            return price, aml.currency_id or self.currency_id, 'venta'
+        articulo = product.qb_articulo_id or product
+        units = {self.env.ref('uom.product_uom_kgm'): 'kg', self.env.ref('uom.product_uom_meter'): 'm'}
+        for aml in AML.search(base_domain + [
+                ('product_id', '!=', product.id),
+                '|', ('product_id.qb_articulo_id', '=', articulo.id), ('product_id', '=', articulo.id)],
+                order=order, limit=20):
+            basis = units.get(aml.product_uom_id)
+            if basis:
+                return aml.price_unit, aml.currency_id or self.currency_id, basis
+        return None
 
     def _qb_price_vals(self, partner, product, qty, prices):
         """Precio de un renglón: el del presupuesto anual (cualquier mes), la lista del cliente o la
@@ -190,7 +202,7 @@ class QbSalesMonthPlan(models.Model):
                     'price_origen': 'lista'}
         last = self._qb_last_invoice_price(partner, product)
         if last:
-            return {'price_input': round(last[0], 4), 'price_currency_id': last[1].id, 'price_basis': 'venta',
+            return {'price_input': round(last[0], 4), 'price_currency_id': last[1].id, 'price_basis': last[2],
                     'price_origen': 'factura'}
         return {}
 

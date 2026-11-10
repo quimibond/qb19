@@ -139,3 +139,27 @@ class TestSalesMonthPlan(TransactionCase):
         plan.action_qb_fill_prices()
         self.assertEqual((line_fact.price_input, line_fact.price_origen), (4.5, 'factura'))
         self.assertEqual(line_otro.price_input, 7.0)
+
+    def test_07_precio_de_la_misma_tela_facturada_en_kilos(self):
+        """3.16.4: sin factura del mismo código, el precio de la última factura al cliente de la
+        misma tela en otro código (en kilos), con base «kg»."""
+        metros = self.env['product.product'].create({
+            'name': 'Tela metros', 'default_code': 'WMES190', 'type': 'consu', 'uom_id': self.uom_m.id})
+        metros.write({'qb_m_por_kg': 5.0, 'qb_conv_origen': 'codigo'})
+        kilos = self.env['product.product'].create({
+            'name': 'Tela kilos', 'default_code': 'IWMES190', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id})
+        kilos.qb_articulo_id = metros
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2071, 3, 10),
+            'invoice_line_ids': [(0, 0, {'product_id': kilos.id, 'quantity': 50.0, 'price_unit': 20.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        self.env['qb.forecast.line'].create({'partner_id': self.client.id, 'product_id': metros.id,
+                                             'week': date(2071, 5, 18), 'qty_origen': 100.0,
+                                             'mercado': 'industrial'})
+        plan = self._build()
+        line = plan.line_ids.filtered(lambda l: l.product_id == metros)
+        self.assertEqual((line.price_input, line.price_basis, line.price_origen), (20.0, 'kg', 'factura'))
+        self.assertAlmostEqual(line.amount, 400.0, places=2, msg="100 m = 20 kg × 20")

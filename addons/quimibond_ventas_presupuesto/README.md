@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Precio de la misma tela facturada en otro código (19.0.3.16.4, 2026-11-10)
+
+En el presupuesto de noviembre de 2026 quedaban 9 renglones sin precio: FXI, Lear y Shawmut se
+facturan **en kilos** (IWD038…, IWJ045…) y el pronóstico viene **en metros** (WD038…, WJ045…), así
+que no había factura del mismo código. Ahora, si no hay factura del mismo producto, el precio es el
+de la última factura al cliente de **la misma tela en otro código** (mismo artículo) en los 12 meses
+anteriores, con la base de la unidad en que se facturó: por kilo o por metro (el importe usa los
+kilos o metros del renglón con el rendimiento de la tela). Origen «Última factura».
+
 ## Proyectos comerciales: inicio, revisión y desarrollos repetidos (19.0.3.16.3, 2026-11-10)
 
 Revisión de los proyectos comerciales (3.8.0–3.10.0):
