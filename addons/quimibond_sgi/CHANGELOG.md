@@ -16,18 +16,22 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.200.0 — 2026-11-10
 
-Requiere `quimibond_ficha_tecnica_tela` 2.29.0 (quimibond/qb19#976) en la misma base: lee sus campos `*_tol_minus`.
-Se salta 57.199.0, que solo existe en `quimibond` (versión para desplegar 57.198.x).
-
 ### Cambiado
-- Hoja de control del desarrollo (renglones de la ficha de tejido y de acabado): ancho, espesor y elongación bajo
-  carga (tejido) y ancho, espesor, encogimientos y elongaciones (acabado) leen su tolerancia «−» de la ficha, como el
-  peso. El «−» es literal: en 0 vale 0, ya no «igual que el +» (la migración de fichas 2.29.0 copió el «+» al «−» en
-  los datos existentes). Sin campo «−» (datos de máquina, columnas, mallas) sigue siendo ± el «+».
 
-### Corregido
-- Una tolerancia +0 / −5 quedaba «Sin tolerancia»; ahora se evalúa (dentro de nominal − 5 a nominal) y se muestra
-  «+0 / −5». Solo +0 / −0 queda «Sin tolerancia».
+- Fichas de proceso del desarrollo: el valor real de ancho, espesor, encogimientos y elongaciones se compara contra
+  la tolerancia hacia arriba y hacia abajo de la ficha (`quimibond_ficha_tecnica_tela` 2.29.0), no solo la del peso.
+  El «−» vale lo que dice: +0 / −5 ya no sale «Sin tolerancia» y +5 / −0 ya no se lee como ± 5. Los parámetros sin
+  «−» (datos de máquina, columnas, mallas) siguen con ± el mismo valor.
+
+## 19.0.57.199.0 — 2026-11-09
+
+Sube la versión para llevar a producción 57.198.0 y 57.198.1. Producción pasó de 57.197.0 a 57.198.2 solo con
+el arreglo de «Crear las órdenes de muestra»; con el mismo número que `main`, el update de `quimibond` podía no
+aplicar lo demás. Sin cambios de código respecto de 57.198.2 en `main`.
+
+**Al desplegar:** Odoo borra las vistas `sgi_format_banner_mrp_production` y `report_mrporder_sgi` (sus xmlid ya
+no están en el módulo). Verificar en una orden de fabricación que no sale «Formato controlado del SGI».
+
 
 ## 19.0.57.198.2 — 2026-11-09
 

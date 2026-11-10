@@ -39,8 +39,6 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 # (campo del valor, tolerancia arriba, tolerancia abajo, unidad, etiqueta, sección)
-# Con campo «abajo» (fichas 2.29.0: peso, ancho, espesor, encogimientos y elongaciones) cada lado vale lo que dice:
-# −0 es 0, no «igual que el +». Sin campo «abajo» (datos de máquina, columnas, mallas) la tolerancia es ± el «arriba».
 TEJIDO_PARAMS = [
     ('velocidad', None, None, None, "Velocidad (rpm)", 'maquina'),
     ('longitud_malla_polea1', 'longitud_malla_tol', None, 'longitud_malla_tol_unit', "Longitud de malla, polea 1", 'maquina'),
@@ -299,7 +297,7 @@ class SgiDevProcessReading(models.Model):
         for key, tol, minus, unit, _label, _section in (sheet._sgi_params if sheet else []):
             if key == self.param_key:
                 up = _as_float(sheet[tol]) if tol else None
-                # 57.200.0 (fichas 2.29.0): el «−» es literal; solo sin campo «−» se toma el «+» para los dos lados.
+                # 57.200.0: el «−» de la ficha vale lo que dice (fichas 2.29.0); sin campo «−», ± el mismo valor.
                 down = _as_float(sheet[minus]) if minus else up
                 return sheet[key], up, down, (sheet[unit] if unit else '') or ''
         return False, None, None, ''
@@ -313,12 +311,12 @@ class SgiDevProcessReading(models.Model):
                 ('%g' % nominal_num) if isinstance(nominal, (int, float)) else str(nominal))
             up, down = up or 0.0, down or 0.0
             has_tol = bool(up or down)
-            if not has_tol:
-                reading.tolerance = ''
-            elif abs(up - down) < 1e-9:
+            if has_tol and abs(up - down) > 1e-9:
+                reading.tolerance = "+%g / −%g" % (up, down)
+            elif has_tol:
                 reading.tolerance = "± %g" % up
             else:
-                reading.tolerance = "+%g / −%g" % (up, down)
+                reading.tolerance = ''
             reading.unit = unit
             if not reading.captured:
                 reading.result = 'pendiente'

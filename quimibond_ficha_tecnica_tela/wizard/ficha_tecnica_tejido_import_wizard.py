@@ -122,13 +122,15 @@ FLOAT_FIELDS = {
     'hilo1_pct', 'hilo2_pct',
 }
 INT_FIELDS = {'no_agujas', 'no_alimentadores', 'vueltas_por_rollo', 'columnas', 'mallas'}
-# 2.2.0: tolerancias que eran texto y ahora son número; la de peso admite «+12 / -6» (arriba / abajo).
+# 2.2.0: tolerancias que eran texto y ahora son número. 2.29.0: las de medidas de tela admiten «+12 / -6»
+# (arriba / abajo); un solo número vale para los dos lados. Las de máquina siguen siendo ± un número.
 TOL_FIELDS = {
     'tension_tol', 'punto_cilindro_tol', 'punto_plato_tol', 'altura_plato_tol', 'estiraje_tol',
-    'ancho_acondicionado_tol', 'espesor_acondicionado_tol', 'columnas_tol', 'mallas_tol',
-    'elongacion_carga_largo_tol', 'elongacion_carga_ancho_tol',
+    'columnas_tol', 'mallas_tol',
 }
-ASYM_TOL_FIELDS = {'peso_acondicionado_tol': 'peso_acondicionado_tol_minus'}
+ASYM_TOL_FIELDS = {name: name + '_minus' for name in (
+    'peso_acondicionado_tol', 'ancho_acondicionado_tol', 'espesor_acondicionado_tol',
+    'elongacion_carga_largo_tol', 'elongacion_carga_ancho_tol')}
 
 
 class FichaTecnicaTejidoImportWizard(models.TransientModel):

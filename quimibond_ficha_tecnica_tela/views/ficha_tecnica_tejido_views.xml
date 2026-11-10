@@ -274,15 +274,19 @@
                                     <label for="ancho_acondicionado" string="Ancho de crudo relajado"/>
                                     <div class="o_row">
                                         <field name="ancho_acondicionado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="ancho_acondicionado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="ancho_acondicionado_tol_minus"/>
                                         <field name="ancho_acondicionado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="espesor_acondicionado" string="Espesor"/>
                                     <div class="o_row">
                                         <field name="espesor_acondicionado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="espesor_acondicionado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="espesor_acondicionado_tol_minus"/>
                                         <field name="espesor_acondicionado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                 </group>
@@ -304,15 +308,19 @@
                                     <label for="elongacion_carga_largo" string="Elongación bajo carga, largo"/>
                                     <div class="o_row">
                                         <field name="elongacion_carga_largo"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="elongacion_carga_largo_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="elongacion_carga_largo_tol_minus"/>
                                         <field name="elongacion_carga_largo_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="elongacion_carga_ancho" string="Elongación bajo carga, ancho"/>
                                     <div class="o_row">
                                         <field name="elongacion_carga_ancho"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="elongacion_carga_ancho_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="elongacion_carga_ancho_tol_minus"/>
                                         <field name="elongacion_carga_ancho_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                 </group>

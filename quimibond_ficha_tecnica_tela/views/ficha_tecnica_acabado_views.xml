@@ -103,15 +103,19 @@
                                     <label for="ancho_acabado" string="Ancho de venta (especificación)"/>
                                     <div class="o_row">
                                         <field name="ancho_acabado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="ancho_acabado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="ancho_acabado_tol_minus"/>
                                         <field name="ancho_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="espesor_acabado" string="Espesor"/>
                                     <div class="o_row">
                                         <field name="espesor_acabado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="espesor_acabado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="espesor_acabado_tol_minus"/>
                                         <field name="espesor_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                 </group>
@@ -119,29 +123,37 @@
                                     <label for="encogimiento_largo" string="Encogimiento a lo largo"/>
                                     <div class="o_row">
                                         <field name="encogimiento_largo"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="encogimiento_largo_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="encogimiento_largo_tol_minus"/>
                                         <field name="encogimiento_largo_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="encogimiento_ancho" string="Encogimiento a lo ancho"/>
                                     <div class="o_row">
                                         <field name="encogimiento_ancho"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="encogimiento_ancho_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="encogimiento_ancho_tol_minus"/>
                                         <field name="encogimiento_ancho_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="elongacion_largo_acabado" string="Elongación a lo largo"/>
                                     <div class="o_row">
                                         <field name="elongacion_largo_acabado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="elongacion_largo_acabado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="elongacion_largo_acabado_tol_minus"/>
                                         <field name="elongacion_largo_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <label for="elongacion_ancho_acabado" string="Elongación a lo ancho"/>
                                     <div class="o_row">
                                         <field name="elongacion_ancho_acabado"/>
-                                        <span class="text-muted">±</span>
+                                        <span class="text-muted">+</span>
                                         <field name="elongacion_ancho_acabado_tol"/>
+                                        <span class="text-muted">/ −</span>
+                                        <field name="elongacion_ancho_acabado_tol_minus"/>
                                         <field name="elongacion_ancho_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
                                     <field name="encogimiento_largo_dentro_norma"/>
