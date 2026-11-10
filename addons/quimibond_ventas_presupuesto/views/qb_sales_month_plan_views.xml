@@ -45,9 +45,9 @@
                 <sheet>
                     <div class="alert alert-danger" role="alert" invisible="no_price_count == 0">
                         <field name="no_price_count" class="oe_inline"/> renglón(es) cuentan 0 en el importe (sin
-                        precio, sin tipo de cambio o sin conversión). «Completar precios» busca el precio
-                        del presupuesto anual de cualquier mes, la lista del cliente y la última factura; lo
-                        que siga sin precio hay que darlo de alta en la lista del cliente.
+                        precio, sin tipo de cambio o sin conversión). El precio sale del presupuesto anual
+                        aprobado o de la lista del cliente: lo que la lista no tiene se le pide a Ventas con una
+                        actividad en la lista de cada cliente. Cuando lo den de alta, pulse «Completar precios».
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>

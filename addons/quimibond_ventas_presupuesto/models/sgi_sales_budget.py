@@ -982,7 +982,9 @@ class SgiSalesBudget(models.Model):
             ('date_from', '<', fields.Date.to_date('%s-01-01' % self.year))])
         for project in candidates:
             if (project.partner_id.commercial_partner_id.id, project.product_id.id) in keys:
-                project.action_qb_graduate()
+                # 3.16.3: pasa a línea al cierre del año anterior: lo que queda del año en curso
+                # sigue en Proyectos, como lo presupuestó el año en curso.
+                project.action_qb_graduate(date_to=fields.Date.to_date('%s-12-31' % (self.year - 1)))
                 project.message_post(body="%s lo presupuesta en línea." % self.name)
 
     def action_set_borrador(self):

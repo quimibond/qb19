@@ -220,6 +220,17 @@ class QbOrderProposal(models.TransientModel):
                ('product_id', '!=', product.id),
                '|', ('product_id.qb_articulo_id', '=', articulo.id), ('product_id', '=', articulo.id)])
 
+    @api.model
+    def _qb_delivery(self, delivery, week):
+        """Fecha de entrega del pedido: la del release; si no trae, el lunes de la semana de embarque.
+        Nunca en el pasado (3.16.6): una semana atrasada se pide para hoy."""
+        return max(delivery or week, fields.Date.context_today(self))
+
+    @staticmethod
+    def _qb_ref_key(ref):
+        """La OC como la reconoce ``_qb_order_domain``: todo release sin OC es «REL-»."""
+        return RELEASE_REF_PREFIX if (ref or '').upper().startswith(RELEASE_REF_PREFIX) else ref
+
     @staticmethod
     def _qb_floor(sols):
         """Lo que ya no se puede quitar de las líneas: lo entregado o lo facturado, lo que sea mayor."""
@@ -270,6 +281,9 @@ class QbOrderProposal(models.TransientModel):
                 group['qty'] += fl.qty_venta
                 group['release'] = group['release'] or fl.release_id
                 group['part'] = group['part'] or fl.customer_part
+                if fl.delivery_date and (not group['delivery'] or fl.delivery_date < group['delivery']):
+                    group['delivery'] = fl.delivery_date
+        self._qb_add_dropped(groups, rules, start)
         vals_list = []
         is_manager = self.env.user.has_group('sales_team.group_sale_manager')
         for group in groups.values():
@@ -288,7 +302,8 @@ class QbOrderProposal(models.TransientModel):
                     'customer_po': group['ref'], 'week': group['week'], 'product_id': product.id,
                     'qty_forecast': target, 'qty_existing': qty_existing, 'qty_delivered': delivered,
                     'price_unit': price, 'release_id': group['release'].id or False,
-                    'customer_part': group['part'] or False, 'delivery_date': group['delivery'],
+                    'customer_part': group['part'] or False,
+                    'delivery_date': self._qb_delivery(group['delivery'], group['week']),
                     'sale_line_ids': [(6, 0, existing.ids)]}
             reason = group['why']
             if not reason and group['dev_state'] in DEV_NO_SALE:
@@ -322,6 +337,43 @@ class QbOrderProposal(models.TransientModel):
         self.env['qb.order.proposal.line'].create(vals_list)
         return self._qb_reopen()
 
+    def _qb_add_dropped(self, groups, rules, start):
+        """3.16.6: agrega a ``groups`` (con cantidad 0) los productos que tienen pedido desde el pronóstico
+        en las semanas a pedido pero que el pronóstico ya no trae (el release los bajó a cero y la semana
+        se quitó). Sin esto la propuesta no los veía y el pedido se quedaba con la cantidad vieja. Solo
+        pedidos que nacieron del pronóstico: los capturados a mano no se tocan."""
+        Rule = self.env['qb.order.rule']
+        seen = {(g['partner'].id, self._qb_ref_key(g['ref']), g['week'], g['product'].id)
+                for g in groups.values() if g['ref']}
+        company = self.env.company
+        for partner in rules.partner_id:
+            partner_rules = rules.filtered(lambda r: r.partner_id == partner)
+            horizon = max(partner_rules.mapped('so_weeks') or [4])
+            sols = self.env['sale.order.line'].sudo().search([
+                ('order_id.company_id', '=', company.id),
+                ('order_id.partner_id', 'child_of', partner.id),
+                ('order_id.state', 'in', ('draft', 'sent', 'sale')),
+                ('order_id.qb_from_forecast', '=', True),
+                ('order_id.qb_forecast_week', '>=', start),
+                ('order_id.qb_forecast_week', '<', start + timedelta(weeks=horizon)),
+                ('display_type', '=', False), ('product_id', '!=', False)])
+            for sol in sols:
+                order = sol.order_id
+                ref = order.client_order_ref
+                key = (partner.id, self._qb_ref_key(ref), order.qb_forecast_week, sol.product_id.id)
+                if not ref or key in seen:
+                    continue
+                seen.add(key)
+                shipping = order.partner_shipping_id
+                plant = shipping.name if shipping and shipping != partner else False
+                groups[('baja',) + key] = {
+                    'rule': Rule._qb_rule_for(company, partner, plant) or partner_rules[:1],
+                    'partner': partner, 'plant': plant, 'ref': ref, 'why': '',
+                    'week': order.qb_forecast_week, 'product': sol.product_id, 'qty': 0.0,
+                    'ship_to': shipping, 'release': sol.qb_release_id, 'part': sol.qb_customer_part,
+                    'delivery': order.commitment_date and order.commitment_date.date(),
+                    'dev_state': False}
+
     def _qb_reopen(self):
         return {'type': 'ir.actions.act_window', 'res_model': self._name, 'res_id': self.id,
                 'view_mode': 'form', 'target': 'new', 'name': "Proponer pedidos"}
@@ -339,10 +391,26 @@ class QbOrderProposal(models.TransientModel):
         if lines.filtered('adjust_confirmed') and not self.env.user.has_group('sales_team.group_sale_manager'):
             raise UserError("Solo el administrador de ventas ajusta pedidos confirmados.")
         touched = self.env['sale.order']
+        dates = {}
         for line in lines:
-            touched |= line._qb_apply()
+            orders = line._qb_apply()
+            touched |= orders
             line.write({'applied': True, 'apply': False})
-        for order in touched:
+            for order in orders.exists().filtered(lambda o: o.state in ('draft', 'sent') and o.qb_from_forecast):
+                when = self._qb_delivery(line.delivery_date, line.week)
+                dates[order] = min(dates.get(order, when), when)
+        # 3.16.6: la cotización toma la fecha de entrega vigente (el release pudo moverla; nunca en el pasado).
+        for order, when in dates.items():
+            commitment = datetime.combine(when, time(18, 0))
+            if order.exists() and order.commitment_date != commitment:
+                order.commitment_date = commitment
+        # Una cotización del pronóstico que se quedó sin productos (el release bajó todo a cero) se cancela.
+        empty = touched.exists().filtered(
+            lambda o: o.state in ('draft', 'sent') and o.qb_from_forecast
+            and not o.order_line.filtered(lambda s: not s.display_type))
+        if empty:
+            empty._action_cancel()
+        for order in touched.exists():
             order.message_post(body=Markup("Actualizado desde el pronóstico por %s.") % self.env.user.name)
         return {'type': 'ir.actions.act_window', 'name': "Pedidos desde el pronóstico",
                 'res_model': 'sale.order', 'view_mode': 'list,form', 'domain': [('id', 'in', touched.ids)]}
@@ -355,7 +423,7 @@ class QbOrderProposal(models.TransientModel):
 
     def _qb_order_vals(self, line):
         partner = line.partner_id.commercial_partner_id
-        when = line.delivery_date or line.week
+        when = self._qb_delivery(line.delivery_date, line.week)
         vals = {'partner_id': partner.id, 'client_order_ref': line.customer_po,
                 'commitment_date': datetime.combine(when, time(18, 0)),
                 'origin': "Pronóstico %s" % (line.release_id.name or line.week.isoformat()),
@@ -380,7 +448,9 @@ class QbOrderProposalLine(models.TransientModel):
     ship_to_id = fields.Many2one('res.partner', string="Dirección de entrega", readonly=True)
     customer_po = fields.Char(string="OC / referencia", readonly=True)
     week = fields.Date(string="Semana", readonly=True)
-    delivery_date = fields.Date(string="Entrega del cliente", readonly=True)
+    delivery_date = fields.Date(string="Fecha de entrega", readonly=True,
+                                help="La que lleva el pedido: la entrega del release o, si no trae, el lunes de "
+                                     "la semana de embarque; una semana atrasada, hoy.")
     product_id = fields.Many2one('product.product', string="Producto", readonly=True)
     customer_part = fields.Char(string="Parte del cliente", readonly=True)
     release_id = fields.Many2one('qb.release', string="Release", readonly=True)

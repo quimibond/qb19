@@ -149,6 +149,8 @@ class TestSalesProject(TransactionCase):
                           'price_input': 1.0})
         budget.sudo()._qb_graduate_projects()
         self.assertEqual(project.state, 'graduado')
+        self.assertEqual(project.date_to, date(2063, 12, 31),
+                         "3.16.3: pasa a línea al cierre del año anterior, no el día que se aprueba")
 
     def test_10_un_vigente_por_cliente_y_producto(self):
         self.Project.create({'partner_id': self.client.id, 'product_id': self.product.id})
@@ -223,3 +225,53 @@ class TestSalesProject(TransactionCase):
         plain = Forecast.create({'partner_id': self.client.id, 'product_id': self.product.id,
                                  'week': date(2068, 3, 5), 'qty_origen': 1.0})
         self.assertFalse(plain.dev_state, "Producto de línea: sin marca")
+
+    def test_14_desarrollo_repetido_no_traba_la_etapa(self):
+        """3.16.3: si otro proyecto vigente ya es de ese cliente y artículo, el segundo desarrollo
+        que genera el mismo producto no queda trabado: su proyecto se queda sin producto y avisa."""
+        first = self._dev(sgi_dev_product_id=self.product.id)
+        first.write({'stage_id': self.stage('cotizacion').id})
+        second = self._dev(name='Segundo desarrollo', sgi_dev_product_name='Segundo')
+        budget = self.Budget.create({'year': 2069})
+        line = self.Line.create({'budget_id': budget.id, 'dev_project_id': second.id,
+                                 'date': date(2069, 4, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0})
+        project = line.qb_project_id
+        second.write({'stage_id': self.stage('cotizacion').id, 'sgi_dev_product_id': self.product.id})
+        self.assertFalse(project.product_id)
+        self.assertTrue(project.message_ids.filtered(lambda m: 'ya es el proyecto vigente' in (m.body or '')))
+
+    def test_15_presupuestado_no_suma_la_revision(self):
+        """3.16.3: «Presupuestado» toma un documento por año (el aprobado), no también su revisión."""
+        approved = self.Budget.create({'year': 2070})
+        vals = {'product_id': self.product.id, 'partner_id': self.client.id,
+                'mercado': 'proyectos_industrial', 'date': date(2070, 1, 1), 'uom_id': self.uom_m.id,
+                'qty_budget': 10.0, 'price_input': 2.0}
+        line = self.Line.create(dict(vals, budget_id=approved.id))
+        approved.sudo().write({'state': 'aprobado'})
+        draft = self.Budget.create({'year': 2070})
+        self.Line.create(dict(vals, budget_id=draft.id))
+        project = line.qb_project_id
+        self.assertEqual(project.budget_line_count, 2)
+        self.assertAlmostEqual(project.amount_budget, line.amount_budget, places=2)
+
+    def test_16_copia_conserva_el_mercado(self):
+        """3.16.3: un renglón con desarrollo que viene con mercado (copia, nueva revisión) lo conserva."""
+        dev = self._dev(sgi_dev_product_id=self.product.id)
+        budget = self.Budget.create({'year': 2071})
+        line = self.Line.create({'budget_id': budget.id, 'dev_project_id': dev.id, 'mercado': 'industrial',
+                                 'date': date(2071, 4, 1), 'uom_id': self.uom_m.id, 'qty_budget': 5.0})
+        self.assertEqual(line.mercado, 'industrial')
+        self.assertEqual(self.Line.create({'budget_id': budget.id, 'dev_project_id': dev.id,
+                                           'date': date(2071, 5, 1), 'uom_id': self.uom_m.id,
+                                           'qty_budget': 5.0}).mercado, 'proyectos_industrial',
+                         "Sin mercado, el de proyectos del desarrollo")
+
+    def test_17_propuesta_con_dos_desarrollos_iguales(self):
+        """3.16.3: dos desarrollos del mismo cliente y artículo no tumban la propuesta: entra uno."""
+        for name in ('Uno', 'Dos'):
+            dev = self._dev(name=name, sgi_dev_product_id=self.product.id, sgi_dev_consumption_annual=1200.0,
+                            sgi_dev_consumption_uom='m', sgi_dev_volume_uom='m', sgi_dev_target_price=10.0)
+            dev.write({'stage_id': self.stage('cotizacion').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2072, base='anio'))
+        lines = budget.line_ids.filtered(lambda l: l.product_id == self.product)
+        self.assertEqual(len(lines), 12, "Un renglón por mes, de uno solo de los dos desarrollos")
