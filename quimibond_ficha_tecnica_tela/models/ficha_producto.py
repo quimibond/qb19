@@ -53,85 +53,129 @@ class ProductTemplateFichaNativa(models.Model):
 
     # 2.23.0: todo calculado, nunca «related» a través de la ficha: la ficha del producto es un campo calculado sin
     # guardar y un related sobre él hace que Odoo busque por ese campo cada vez que cambia la ficha (y revienta).
-    ft_tiene_ficha = fields.Boolean(string='Tiene ficha técnica', compute='_compute_ft_ficha_nativa')
+    ft_tiene_ficha = fields.Boolean(string='Tiene ficha técnica', compute='_compute_ft_ficha_nativa',
+                                    help='Se calcula: el producto tiene ficha de acabado (tela o su acabado en kg) o '
+                                         'es crudo con ficha de tejido. Muestra la pestaña «Ficha técnica».')
     ft_es_tela = fields.Boolean(string='Es tela con ficha', compute='_compute_ft_ficha_nativa', search='_search_ft_es_tela',
-                                help='Tela acabada (en metros) o su acabado en proceso (kg) con ficha de acabado.')
+                                help='Se calcula: tela acabada (en metros) o su acabado en proceso (kg) con ficha de '
+                                     'acabado.')
     ft_es_crudo = fields.Boolean(string='Es crudo con ficha', compute='_compute_ft_ficha_nativa',
-                                 search='_search_ft_es_crudo', help='Crudo con ficha de tejido.')
+                                 search='_search_ft_es_crudo',
+                                 help='Se calcula: crudo con ficha de tejido (y sin ficha de acabado).')
     # La tela. 2.24.0 (Dirección General 2026-11-03): solo lectura en el producto; los datos se editan en el módulo
     # (ficha de acabado, ficha de tejido, procesos). Cada campo dice en su ayuda de dónde sale.
     ft_acabado_ficha_id = fields.Many2one(
         'ficha.tecnica.acabado', string='Ficha de acabado', compute='_compute_ft_ficha_nativa',
-        help='De aquí salen peso, ancho y rendimiento de la tela acabada y la especificación.')
+        help='Se calcula: la ficha de acabado de esta tela, sea el producto la tela en metros o su acabado en kg (la '
+             'misma que «Ficha técnica de acabado»). De aquí salen peso, ancho y rendimiento de la tela acabada y la '
+             'especificación.')
     ft_peso = fields.Float(
         string='Peso de especificación (g/m²)', compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → pestaña «Tela acabada» → Especificación → Peso.')
+        help='Copia de solo lectura. Se captura en Ficha de acabado → pestaña «Tela acabada» → Especificación → Peso.')
     ft_ancho = fields.Float(
         string='Ancho de venta (especificación, cm)', compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → pestaña «Tela acabada» → Ancho de venta: el de especificación, el mismo del código '
-             '(…155 = 155 cm). No es el ancho de tela relajada ni el ancho de rollo.')
+        help='Copia de solo lectura de Ficha de acabado → pestaña «Tela acabada» → Ancho de venta: el de '
+             'especificación, el mismo del código (…155 = 155 cm). No es el ancho de crudo relajado, el de rollo ni '
+             'el que baja de rama.')
     ft_rendimiento = fields.Float(
         string='Rendimiento de tela terminada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
         help='Copia del rendimiento de la ficha de acabado (metros por kg de tela terminada, sin orilla). Lo captura '
-             'Ingeniería en la ficha o lo aprueba con «Usar el medido». Lo usan la conversión kg → m de la lista en '
-             'metros y los tiempos de rama e inspección. No es el rendimiento de tejido (el del crudo).')
+             'Ingeniería en la ficha o lo aprueba con «Usar el medido»; el recálculo nocturno solo propone. Lo usan '
+             'la conversión kg → m de la lista en metros y los tiempos de rama e inspección. No es el rendimiento de '
+             'tejido (el del crudo).')
     ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
                                         compute='_compute_ft_ficha_nativa',
-                                        help='Ficha de acabado → «3. Acabado en proceso (kg)».')
+                                        help='Copia de Ficha de acabado → «3. Acabado en proceso (kg)»: el código de '
+                                             'la tela con «I» al frente.')
     ft_producto_m_id = fields.Many2one('product.product', string='Tela acabada (en metros)',
                                        compute='_compute_ft_ficha_nativa',
-                                       help='Ficha de acabado → «4. Tela acabada (m)».')
+                                       help='Copia de Ficha de acabado → «4. Tela acabada (m)».')
     ft_spec_ids = fields.Many2many('ficha.tecnica.spec', string='Especificación', compute='_compute_ft_ficha_nativa',
-                                   help='Ficha de acabado → pestaña «Características».')
+                                   help='Copia de solo lectura de Ficha de acabado → pestaña «Características».')
     # El crudo de la tela.
     ft_tejido_ficha_id = fields.Many2one(
         'ficha.tecnica.tejido', string='Ficha de tejido', compute='_compute_ft_ficha_nativa',
-        help='Ficha de acabado → «1. Ficha de tejido» (artículo, revisión y circular). De aquí salen los datos del '
-             'crudo.')
+        help='Se calcula en una tela: la ficha de tejido base de su ficha de acabado («1. Ficha de tejido»: artículo, '
+             'revisión y circular), de donde salen los datos del crudo. En un crudo va vacía; la ficha cuyo crudo es '
+             'el producto es «Ficha técnica de tejido».')
     ft_crudo_id = fields.Many2one('product.product', string='Crudo de la tela', compute='_compute_ft_ficha_nativa',
-                                  search='_search_ft_crudo_id', help='Ficha de tejido → Crudo.')
+                                  search='_search_ft_crudo_id',
+                                  help='Se calcula: el crudo de la ficha de tejido base de la ficha de acabado. La '
+                                       'lista en kg puede llevar otro; la ficha de acabado lo avisa.')
     ft_crudo_peso = fields.Float(string='Peso del crudo acondicionado (g/m²)', compute='_compute_ft_ficha_nativa',
-                                 help='Ficha de tejido → pestaña «Tela acondicionada» → Peso.')
+                                 help='Copia de solo lectura de Ficha de tejido → pestaña «Tela acondicionada» → '
+                                      'Peso.')
     ft_crudo_ancho = fields.Float(string='Ancho de crudo relajado (acondicionado)',
                                   compute='_compute_ft_ficha_nativa',
-                                  help='Ficha de tejido → pestaña «Tela acondicionada» → Ancho de crudo relajado: el '
-                                       'crudo acondicionado, tubular o abierto según la circular. No es el ancho de '
-                                       'rollo de crudo de «Ajustes de tejido».')
+                                  help='Copia de Ficha de tejido → pestaña «Tela acondicionada» → Ancho de crudo '
+                                       'relajado: el crudo acondicionado, tubular o abierto según la circular. No es '
+                                       'el ancho de rollo de crudo de «Ajustes de tejido».')
     ft_crudo_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(12, 4),
                                         compute='_compute_ft_ficha_nativa',
-                                        help='Ficha de tejido → Rendimiento de tela tejida: 1000 ÷ (peso × ancho) de '
-                                             'la tela acondicionada. Lo usan los tiempos de devanado y abridora y la '
-                                             'banda del jet en Tintorería.')
-    ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa')
+                                        help='Copia de Ficha de tejido → Rendimiento de tela tejida: 1000 ÷ (peso × '
+                                             'ancho) de la tela acondicionada. Lo usan los tiempos de devanado y '
+                                             'abridora y la banda del jet en Tintorería; no es el de tela terminada.')
+    ft_crudo_telas_count = fields.Integer(string='Telas con este crudo', compute='_compute_ft_ficha_nativa',
+                                          help='Se calcula: cuántas fichas de acabado se basan en el mismo crudo '
+                                               '(comparten su ruta de familia).')
     # La ruta y la revisión.
     ft_operacion_ids = fields.Many2many('mrp.routing.workcenter', string='Ruta (operaciones de sus listas)',
-                                        compute='_compute_ft_ficha_nativa', context={'active_test': False})
-    ft_bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg', compute='_compute_ft_ficha_nativa')
-    ft_bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros', compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa', context={'active_test': False},
+                                        help='Se calcula: las operaciones de la lista en kg y de la lista en metros, '
+                                             'con el tiempo de la lista contra el de la ficha. Se editan en la lista '
+                                             'de materiales.')
+    ft_bom_kg_id = fields.Many2one('mrp.bom', string='Lista en kg', compute='_compute_ft_ficha_nativa',
+                                   help='Se calcula: la lista del acabado en proceso (kg) que toma la revisión, la del '
+                                        'flujo aunque siga archivada.')
+    ft_bom_m_id = fields.Many2one('mrp.bom', string='Lista en metros', compute='_compute_ft_ficha_nativa',
+                                  help='Se calcula: la lista de la tela acabada en metros que toma la revisión '
+                                       '(Clasificación final).')
     ft_revision_id = fields.Many2one('ficha.tecnica.revision', string='Revisión de la tela',
-                                     compute='_compute_ft_ficha_nativa')
-    ft_revision_listo = fields.Boolean(string='Listas cuadran con la ficha', compute='_compute_ft_ficha_nativa')
-    ft_revision_n = fields.Integer(string='Pendientes de la tela', compute='_compute_ft_ficha_nativa')
+                                     compute='_compute_ft_ficha_nativa',
+                                     help='Se calcula: la fila de la tela en la revisión de listas (cada noche o con '
+                                          '«Volver a revisar»).')
+    ft_revision_listo = fields.Boolean(string='Listas cuadran con la ficha', compute='_compute_ft_ficha_nativa',
+                                       help='Se calcula con la última revisión: la tela no tiene pendientes (sale en '
+                                            'verde en Artículos → Acabado).')
+    ft_revision_n = fields.Integer(string='Pendientes de la tela', compute='_compute_ft_ficha_nativa',
+                                   help='Se calcula con la última revisión: cuántos pendientes tiene la tela; con '
+                                        'alguno sale en rojo en Fichas técnicas → Artículos → Acabado.')
     ft_pendiente_ids = fields.Many2many('ficha.tecnica.revision.pendiente', string='Pendientes por área',
-                                        compute='_compute_ft_ficha_nativa')
+                                        compute='_compute_ft_ficha_nativa',
+                                        help='Se calcula: los pendientes de la última revisión, con su área; '
+                                             '«Resolver» abre donde se corrige cada uno.')
     ft_estado = fields.Selection(FT_ESTADOS, string='Estado de la ficha', compute='_compute_ft_ficha_nativa',
                                  search='_search_ft_estado',
-                                 help='Sin revisar; con pendientes; lista para activar (las listas cuadran y la lista en '
-                                      'kg sigue archivada: la activa Ingeniería); activa con pendientes (Odoo ya '
-                                      'fabrica con ella y algo no cuadra); activa.')
-    ft_revision_areas = fields.Char(string='Áreas con pendientes', compute='_compute_ft_ficha_nativa')
+                                 help='Se calcula con la última revisión: sin revisar; con pendientes; lista para '
+                                      'activar (las listas cuadran y la lista en kg sigue archivada: la activa '
+                                      'Ingeniería); activa con pendientes (Odoo ya fabrica con ella y algo no cuadra); '
+                                      'activa.')
+    ft_revision_areas = fields.Char(string='Áreas con pendientes', compute='_compute_ft_ficha_nativa',
+                                    help='Se calcula con la última revisión: las áreas que tienen algo que corregir en '
+                                         'la tela.')
     ft_area_pendiente = fields.Selection(FT_AREAS, string='Área con pendientes', compute='_compute_ft_area_pendiente',
-                                         search='_search_ft_area_pendiente')
+                                         search='_search_ft_area_pendiente',
+                                         help='Solo para los filtros por área del concentrado (siempre se ve vacío); '
+                                              'las áreas de la tela están en «Áreas con pendientes».')
     # 2.23.0: un producto con código de tela, de acabado en kg o de crudo y sin ficha: la pestaña ofrece crearla.
     ft_tipo_codigo = fields.Selection([('tela', 'Tela acabada'), ('kg', 'Acabado en kg'), ('crudo', 'Crudo')],
-                                      string='Tipo por código', compute='_compute_ft_tipo_codigo')
+                                      string='Tipo por código', compute='_compute_ft_tipo_codigo',
+                                      help='Se calcula con la referencia interna (DAT P-D02-01): tela acabada (J en la '
+                                           'posición 9), acabado en kg (la tela con «I» al frente) o crudo (H). Sin '
+                                           'ficha, la pestaña ofrece crearla.')
     ft_tela_m_de_kg_id = fields.Many2one('product.product', string='Tela en metros de este acabado en kg',
-                                         compute='_compute_ft_tipo_codigo')
+                                         compute='_compute_ft_tipo_codigo',
+                                         help='Se calcula en un acabado en kg: el producto con el mismo código sin la '
+                                              '«I» del frente (la tela en metros).')
     # El crudo visto desde su propio producto.
     ft_tejido_ids = fields.Many2many('ficha.tecnica.tejido', string='Circulares donde se teje',
-                                     compute='_compute_ft_ficha_nativa')
+                                     compute='_compute_ft_ficha_nativa',
+                                     help='Se calcula en un crudo: sus fichas de tejido, una por circular. Se agregan '
+                                          'con «Agregar circular».')
     ft_tela_ids = fields.Many2many('ficha.tecnica.acabado', string='Telas que usan este crudo',
-                                   compute='_compute_ft_ficha_nativa')
+                                   compute='_compute_ft_ficha_nativa',
+                                   help='Se calcula en un crudo: las fichas de acabado cuya ficha de tejido base es de '
+                                        'este crudo.')
 
     @api.depends('product_variant_ids')
     def _compute_ft_tela_datos(self):
@@ -368,8 +412,9 @@ class MrpRoutingWorkcenterParametros(models.Model):
 
     ft_param_proceso_ids = fields.Many2many(
         'ficha.tecnica.proceso', string='Parámetros del proceso', compute='_compute_ft_param_proceso',
-        help='Los datos de la tela en la máquina de la operación y en sus alternativas (velocidad, merma, tiempo de '
-             'ciclo, kg por carga…). Cada renglón se abre para editarlo.')
+        help='Se calcula: los datos de la tela en la máquina de la operación y en sus alternativas (velocidad, merma, '
+             'tiempo de ciclo, kg por carga…). Se capturan en Máquinas → Procesos por artículo; cada renglón se abre '
+             'para editarlo.')
 
     @api.depends('workcenter_id', 'workcenter_id.alternative_workcenter_ids', 'bom_id.product_id',
                  'bom_id.product_tmpl_id')

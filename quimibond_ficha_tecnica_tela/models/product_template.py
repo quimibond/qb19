@@ -7,15 +7,22 @@ class ProductTemplate(models.Model):
 
     ficha_tecnica_tejido_id = fields.Many2one(
         'ficha.tecnica.tejido', compute='_compute_ficha_tecnica_tejido',
-        string='Ficha técnica de tejido')
+        string='Ficha técnica de tejido',
+        help='Se calcula: una ficha de tejido cuyo crudo es este producto; solo los crudos la tienen. No es la «Ficha '
+             'de tejido» de la pestaña Ficha técnica de una tela, que es la base de su ficha de acabado.')
     ficha_tecnica_tejido_count = fields.Integer(
-        string='No. de fichas de tejido', compute='_compute_ficha_tecnica_tejido')
+        string='No. de fichas de tejido', compute='_compute_ficha_tecnica_tejido',
+        help='Se calcula: 1 si el producto es crudo con ficha de tejido y 0 si no (no cuenta las circulares; están en '
+             '«Circulares donde se teje»).')
 
     ficha_tecnica_acabado_id = fields.Many2one(
         'ficha.tecnica.acabado', compute='_compute_ficha_tecnica_acabado',
-        string='Ficha técnica de acabado')
+        string='Ficha técnica de acabado',
+        help='Se calcula: la ficha de acabado de la que este producto es la tela acabada (m) o el acabado en proceso '
+             '(kg). Es la misma que «Ficha de acabado» de la pestaña Ficha técnica.')
     ficha_tecnica_acabado_count = fields.Integer(
-        string='No. de fichas de acabado', compute='_compute_ficha_tecnica_acabado')
+        string='No. de fichas de acabado', compute='_compute_ficha_tecnica_acabado',
+        help='Se calcula: 1 si el producto tiene ficha de acabado y 0 si no.')
 
     def _compute_ficha_tecnica_tejido(self):
         FichaTejido = self.env['ficha.tecnica.tejido']
