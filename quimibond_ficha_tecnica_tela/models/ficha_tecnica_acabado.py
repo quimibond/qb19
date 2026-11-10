@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 
+# 2.29.0: cada tolerancia de medida tiene su valor hacia arriba y hacia abajo, y cada uno vale lo que dice (antes solo
+# el peso; un «−» en 0 significaba «igual que el +»). Así cabe +0 / −5 y también +5 / −0.
+TOL_PLUS_HELP = 'Lo más que puede pasar del valor. Para ± el mismo número, escriba el mismo en las dos tolerancias.'
+TOL_MINUS_HELP = 'Lo más que puede faltar del valor. Puede ser distinta de la de arriba, también 0 (ej. +5 / −0).'
+
 
 class FichaTecnicaAcabado(models.Model):
     _name = 'ficha.tecnica.acabado'
@@ -41,38 +46,67 @@ class FichaTecnicaAcabado(models.Model):
     peso_acabado = fields.Float(string='Peso')
     peso_acabado_tol = fields.Float(
         string='Tolerancia peso (+)',
-        help='Tolerancia hacia arriba. Si la de abajo queda en 0, la tolerancia es ± este valor.')
+        help=TOL_PLUS_HELP)
     peso_acabado_tol_minus = fields.Float(
         string='Tolerancia peso (−)',
-        help='Tolerancia hacia abajo cuando es distinta de la de arriba (antes «+12 / -6»). En 0: la misma '
-             'que la de arriba.')
+        help=TOL_MINUS_HELP)
     peso_acabado_tol_unit = fields.Char(string='Unidad — Peso (texto)', default='g/m2')
 
     ancho_acabado = fields.Float(string='Ancho de venta (especificación)',
                                  help='El ancho de especificación, el mismo del código (…160 = 160 cm). No es el ancho '
                                       'de tela relajada ni el de rollo.')
-    ancho_acabado_tol = fields.Float(string='Tolerancia ancho')
+    ancho_acabado_tol = fields.Float(
+        string='Tolerancia ancho (+)',
+        help=TOL_PLUS_HELP)
+    ancho_acabado_tol_minus = fields.Float(
+        string='Tolerancia ancho (−)',
+        help=TOL_MINUS_HELP)
     ancho_acabado_tol_unit = fields.Char(string='Unidad — Ancho (texto)', default='cm')
 
     encogimiento_largo = fields.Float(string='Encogimiento a lo largo')
-    encogimiento_largo_tol = fields.Float(string='Tolerancia encogimiento largo')
+    encogimiento_largo_tol = fields.Float(
+        string='Tolerancia encogimiento largo (+)',
+        help=TOL_PLUS_HELP)
+    encogimiento_largo_tol_minus = fields.Float(
+        string='Tolerancia encogimiento largo (−)',
+        help=TOL_MINUS_HELP)
     encogimiento_largo_tol_unit = fields.Char(string='Unidad — Encogimiento largo (texto)', default='%')
 
     encogimiento_ancho = fields.Float(string='Encogimiento a lo ancho')
-    encogimiento_ancho_tol = fields.Float(string='Tolerancia encogimiento ancho')
+    encogimiento_ancho_tol = fields.Float(
+        string='Tolerancia encogimiento ancho (+)',
+        help=TOL_PLUS_HELP)
+    encogimiento_ancho_tol_minus = fields.Float(
+        string='Tolerancia encogimiento ancho (−)',
+        help=TOL_MINUS_HELP)
     encogimiento_ancho_tol_unit = fields.Char(string='Unidad — Encogimiento ancho (texto)', default='%')
 
     # 2.16.2: tres decimales, como el espesor de la ficha de tejido.
     espesor_acabado = fields.Float(string='Espesor', digits=(16, 3))
-    espesor_acabado_tol = fields.Float(string='Tolerancia espesor', digits=(16, 3))
+    espesor_acabado_tol = fields.Float(
+        string='Tolerancia espesor (+)', digits=(16, 3),
+        help=TOL_PLUS_HELP)
+    espesor_acabado_tol_minus = fields.Float(
+        string='Tolerancia espesor (−)', digits=(16, 3),
+        help=TOL_MINUS_HELP)
     espesor_acabado_tol_unit = fields.Char(string='Unidad — Espesor (texto)', default='in')
 
     elongacion_largo_acabado = fields.Float(string='Elongación largo')
-    elongacion_largo_acabado_tol = fields.Float(string='Tolerancia elongación largo')
+    elongacion_largo_acabado_tol = fields.Float(
+        string='Tolerancia elongación largo (+)',
+        help=TOL_PLUS_HELP)
+    elongacion_largo_acabado_tol_minus = fields.Float(
+        string='Tolerancia elongación largo (−)',
+        help=TOL_MINUS_HELP)
     elongacion_largo_acabado_tol_unit = fields.Char(string='Unidad — Elongación largo (texto)', default='%')
 
     elongacion_ancho_acabado = fields.Float(string='Elongación ancho')
-    elongacion_ancho_acabado_tol = fields.Float(string='Tolerancia elongación ancho')
+    elongacion_ancho_acabado_tol = fields.Float(
+        string='Tolerancia elongación ancho (+)',
+        help=TOL_PLUS_HELP)
+    elongacion_ancho_acabado_tol_minus = fields.Float(
+        string='Tolerancia elongación ancho (−)',
+        help=TOL_MINUS_HELP)
     elongacion_ancho_acabado_tol_unit = fields.Char(string='Unidad — Elongación ancho (texto)', default='%')
 
     encogimiento_largo_dentro_norma = fields.Boolean(
