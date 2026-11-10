@@ -39,6 +39,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 # (campo del valor, tolerancia arriba, tolerancia abajo, unidad, etiqueta, sección)
+# Con campo «abajo» (fichas 2.29.0: peso, ancho, espesor, encogimientos y elongaciones) cada lado vale lo que dice:
+# −0 es 0, no «igual que el +». Sin campo «abajo» (datos de máquina, columnas, mallas) la tolerancia es ± el «arriba».
 TEJIDO_PARAMS = [
     ('velocidad', None, None, None, "Velocidad (rpm)", 'maquina'),
     ('longitud_malla_polea1', 'longitud_malla_tol', None, 'longitud_malla_tol_unit', "Longitud de malla, polea 1", 'maquina'),
@@ -56,22 +58,22 @@ TEJIDO_PARAMS = [
     ('ancho_rollo', 'ancho_rollo_tol', None, 'ancho_rollo_tol_unit', "Ancho de rollo", 'maquina'),
     ('peso_promedio_rollo', 'peso_promedio_rollo_tol', None, 'peso_promedio_rollo_tol_unit', "Peso promedio de rollo", 'maquina'),
     ('peso_acondicionado', 'peso_acondicionado_tol', 'peso_acondicionado_tol_minus', 'peso_acondicionado_tol_unit', "Peso", 'tela'),
-    ('ancho_acondicionado', 'ancho_acondicionado_tol', None, 'ancho_acondicionado_tol_unit', "Ancho", 'tela'),
-    ('espesor_acondicionado', 'espesor_acondicionado_tol', None, 'espesor_acondicionado_tol_unit', "Espesor", 'tela'),
+    ('ancho_acondicionado', 'ancho_acondicionado_tol', 'ancho_acondicionado_tol_minus', 'ancho_acondicionado_tol_unit', "Ancho", 'tela'),
+    ('espesor_acondicionado', 'espesor_acondicionado_tol', 'espesor_acondicionado_tol_minus', 'espesor_acondicionado_tol_unit', "Espesor", 'tela'),
     ('columnas', 'columnas_tol', None, 'columnas_tol_unit', "Columnas", 'tela'),
     ('mallas', 'mallas_tol', None, 'mallas_tol_unit', "Mallas", 'tela'),
-    ('elongacion_carga_largo', 'elongacion_carga_largo_tol', None, 'elongacion_carga_largo_tol_unit', "Elongación bajo carga, largo", 'tela'),
-    ('elongacion_carga_ancho', 'elongacion_carga_ancho_tol', None, 'elongacion_carga_ancho_tol_unit', "Elongación bajo carga, ancho", 'tela'),
+    ('elongacion_carga_largo', 'elongacion_carga_largo_tol', 'elongacion_carga_largo_tol_minus', 'elongacion_carga_largo_tol_unit', "Elongación bajo carga, largo", 'tela'),
+    ('elongacion_carga_ancho', 'elongacion_carga_ancho_tol', 'elongacion_carga_ancho_tol_minus', 'elongacion_carga_ancho_tol_unit', "Elongación bajo carga, ancho", 'tela'),
 ]
 ACABADO_PARAMS = [
     ('rendimiento_tela_acabada', None, None, None, "Rendimiento de tela acabada (m/kg)", 'tela'),
     ('peso_acabado', 'peso_acabado_tol', 'peso_acabado_tol_minus', 'peso_acabado_tol_unit', "Peso", 'tela'),
-    ('ancho_acabado', 'ancho_acabado_tol', None, 'ancho_acabado_tol_unit', "Ancho", 'tela'),
-    ('encogimiento_largo', 'encogimiento_largo_tol', None, 'encogimiento_largo_tol_unit', "Encogimiento a lo largo", 'tela'),
-    ('encogimiento_ancho', 'encogimiento_ancho_tol', None, 'encogimiento_ancho_tol_unit', "Encogimiento a lo ancho", 'tela'),
-    ('espesor_acabado', 'espesor_acabado_tol', None, 'espesor_acabado_tol_unit', "Espesor", 'tela'),
-    ('elongacion_largo_acabado', 'elongacion_largo_acabado_tol', None, 'elongacion_largo_acabado_tol_unit', "Elongación largo", 'tela'),
-    ('elongacion_ancho_acabado', 'elongacion_ancho_acabado_tol', None, 'elongacion_ancho_acabado_tol_unit', "Elongación ancho", 'tela'),
+    ('ancho_acabado', 'ancho_acabado_tol', 'ancho_acabado_tol_minus', 'ancho_acabado_tol_unit', "Ancho", 'tela'),
+    ('encogimiento_largo', 'encogimiento_largo_tol', 'encogimiento_largo_tol_minus', 'encogimiento_largo_tol_unit', "Encogimiento a lo largo", 'tela'),
+    ('encogimiento_ancho', 'encogimiento_ancho_tol', 'encogimiento_ancho_tol_minus', 'encogimiento_ancho_tol_unit', "Encogimiento a lo ancho", 'tela'),
+    ('espesor_acabado', 'espesor_acabado_tol', 'espesor_acabado_tol_minus', 'espesor_acabado_tol_unit', "Espesor", 'tela'),
+    ('elongacion_largo_acabado', 'elongacion_largo_acabado_tol', 'elongacion_largo_acabado_tol_minus', 'elongacion_largo_acabado_tol_unit', "Elongación largo", 'tela'),
+    ('elongacion_ancho_acabado', 'elongacion_ancho_acabado_tol', 'elongacion_ancho_acabado_tol_minus', 'elongacion_ancho_acabado_tol_unit', "Elongación ancho", 'tela'),
 ]
 SECTIONS = [('maquina', "Datos de máquina"), ('tela', "Datos de tela")]
 
@@ -297,8 +299,9 @@ class SgiDevProcessReading(models.Model):
         for key, tol, minus, unit, _label, _section in (sheet._sgi_params if sheet else []):
             if key == self.param_key:
                 up = _as_float(sheet[tol]) if tol else None
-                down = _as_float(sheet[minus]) if minus else None
-                return sheet[key], up, (down or up), (sheet[unit] if unit else '') or ''
+                # 57.200.0 (fichas 2.29.0): el «−» es literal; solo sin campo «−» se toma el «+» para los dos lados.
+                down = _as_float(sheet[minus]) if minus else up
+                return sheet[key], up, down, (sheet[unit] if unit else '') or ''
         return False, None, None, ''
 
     @api.depends('param_key', 'real', 'captured', 'tejido_id', 'acabado_id', *_spec_depends())
@@ -308,16 +311,18 @@ class SgiDevProcessReading(models.Model):
             nominal_num = _as_float(nominal)
             reading.nominal = '' if nominal in (False, None) else (
                 ('%g' % nominal_num) if isinstance(nominal, (int, float)) else str(nominal))
-            if up and down and abs(up - down) > 1e-9:
-                reading.tolerance = "+%g / −%g" % (up, down)
-            elif up:
+            up, down = up or 0.0, down or 0.0
+            has_tol = bool(up or down)
+            if not has_tol:
+                reading.tolerance = ''
+            elif abs(up - down) < 1e-9:
                 reading.tolerance = "± %g" % up
             else:
-                reading.tolerance = ''
+                reading.tolerance = "+%g / −%g" % (up, down)
             reading.unit = unit
             if not reading.captured:
                 reading.result = 'pendiente'
-            elif nominal_num is None or not up:
+            elif nominal_num is None or not has_tol:
                 reading.result = 'na'
             else:
                 reading.result = 'ok' if nominal_num - down - 1e-9 <= reading.real <= nominal_num + up + 1e-9 else 'fuera'

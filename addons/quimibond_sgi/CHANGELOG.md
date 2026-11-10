@@ -14,6 +14,21 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.200.0 — 2026-11-10
+
+Requiere `quimibond_ficha_tecnica_tela` 2.29.0 (quimibond/qb19#976) en la misma base: lee sus campos `*_tol_minus`.
+Se salta 57.199.0, que solo existe en `quimibond` (versión para desplegar 57.198.x).
+
+### Cambiado
+- Hoja de control del desarrollo (renglones de la ficha de tejido y de acabado): ancho, espesor y elongación bajo
+  carga (tejido) y ancho, espesor, encogimientos y elongaciones (acabado) leen su tolerancia «−» de la ficha, como el
+  peso. El «−» es literal: en 0 vale 0, ya no «igual que el +» (la migración de fichas 2.29.0 copió el «+» al «−» en
+  los datos existentes). Sin campo «−» (datos de máquina, columnas, mallas) sigue siendo ± el «+».
+
+### Corregido
+- Una tolerancia +0 / −5 quedaba «Sin tolerancia»; ahora se evalúa (dentro de nominal − 5 a nominal) y se muestra
+  «+0 / −5». Solo +0 / −0 queda «Sin tolerancia».
+
 ## 19.0.57.198.2 — 2026-11-09
 
 ### Corregido
