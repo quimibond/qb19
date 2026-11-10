@@ -21,24 +21,106 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
-## Fecha de entrega y bajas en «Proponer pedidos» (19.0.3.16.1, 2026-11-10)
+## Fecha de entrega y bajas a cero en «Proponer pedidos» (19.0.3.16.6, 2026-11-10)
 
-Primera corrida real (10-nov): Jose vio los pedidos «sin fecha de entrega» y preguntó cómo se aplica
-un release que baja un producto.
+Primera corrida real (10-nov): los pedidos parecían «sin fecha de entrega» y no había cómo aplicar un
+release que deja de pedir un producto. (Los duplicados por la fecha de entrega ya los resolvió 3.16.1.)
 
 - **Fecha de entrega visible:** la propuesta muestra la columna «Fecha de entrega», la que lleva el
   pedido: la entrega del release o, si no trae, el lunes de la semana de embarque. **Nunca en el
-  pasado:** una semana atrasada se pide para hoy (antes salían cotizaciones con entrega del 2 o 3 de
+  pasado:** una semana atrasada se pide para hoy (salían cotizaciones con entrega del 2, 3 y 9 de
   noviembre). Al aplicar, la cotización del pronóstico toma la fecha vigente (el release pudo moverla).
-- **Sin pedidos duplicados:** el pedido de una OC y semana se reconoce por su semana de embarque
-  (`qb_forecast_week`), no por la fecha de entrega. Con la entrega del release (Saltillo, Lear) la
-  fecha caía en la semana siguiente y al volver a proponer se creaba otra cotización. Los pedidos
-  capturados a mano (sin semana) se siguen reconociendo por la fecha de entrega.
 - **Baja a cero:** si el release deja de pedir un producto, la semana se quita del pronóstico y la
-  propuesta ya no la veía; ahora propone **bajarlo a cero** en el pedido que nació del pronóstico (con
-  las mismas reglas: en una cotización viene marcada; en un pedido confirmado, desmarcada y solo el
-  administrador de ventas la aplica; nunca baja de lo entregado). La cotización que se queda sin
-  productos se cancela. Los pedidos capturados a mano no se tocan.
+  propuesta ya no la veía; ahora propone **bajarlo a cero** en el pedido que nació del pronóstico, con
+  las mismas reglas que cualquier baja (en una cotización viene marcada; en un pedido confirmado,
+  desmarcada y solo el administrador de ventas; nunca baja de lo entregado o facturado). La cotización
+  que se queda sin productos se cancela. Los pedidos capturados a mano no se tocan.
+
+## La lista del cliente es la fuente del precio (19.0.3.16.5, 2026-11-10)
+
+Decisión de Jose (10-nov): el precio del presupuesto del mes sale **del presupuesto anual aprobado o
+de la lista de precios del cliente**, nunca de una factura. Lo que la lista no tiene lo da de alta
+Ventas:
+
+- Al armar el presupuesto del mes y al pulsar **Completar precios**, cada cliente con productos que
+  su lista no tiene recibe **una actividad para su vendedor** (en la lista de precios del cliente;
+  si no tiene lista, en el cliente) con los productos, la cantidad del mes y, **solo de
+  referencia**, el último precio facturado (del mismo código o de la misma tela en otro código, por
+  kilo o por metro). Si ya hay una abierta de ese presupuesto del mes, se actualiza.
+- Cuando Ventas da de alta los precios, se pulsa otra vez «Completar precios».
+- Un renglón que tomó precio de una factura (3.16.2 a 3.16.4) se vuelve a evaluar: si la lista ya lo
+  tiene, toma ese; si no, queda sin precio y entra a la actividad.
+
+Lo de 3.16.2 y 3.16.4 sobre la «última factura» queda solo como referencia para Ventas.
+
+## Precio de la misma tela facturada en otro código (19.0.3.16.4, 2026-11-10)
+
+En el presupuesto de noviembre de 2026 quedaban 9 renglones sin precio: FXI, Lear y Shawmut se
+facturan **en kilos** (IWD038…, IWJ045…) y el pronóstico viene **en metros** (WD038…, WJ045…), así
+que no había factura del mismo código. Ahora, si no hay factura del mismo producto, el precio es el
+de la última factura al cliente de **la misma tela en otro código** (mismo artículo) en los 12 meses
+anteriores, con la base de la unidad en que se facturó: por kilo o por metro (el importe usa los
+kilos o metros del renglón con el rendimiento de la tela). Origen «Última factura».
+
+## Proyectos comerciales: inicio, revisión y desarrollos repetidos (19.0.3.16.3, 2026-11-10)
+
+Revisión de los proyectos comerciales (3.8.0–3.10.0):
+
+- **Inicio del proyecto:** la bitácora de etapas del desarrollo empezó en octubre de 2026; los
+  desarrollos de antes no tenían registro de Cotización y su proyecto tomó la fecha del día en que
+  se cargó (52 de 62 en noviembre de 2026), así que su venta anterior contaba como línea. Ahora el
+  inicio es la entrada a Cotización o la fecha de alta del desarrollo, la que sea anterior; la
+  migración lo corrige en los existentes y reconstruye la Venta real.
+- **Desarrollo repetido:** si un desarrollo genera el producto de un cliente y artículo que ya
+  tiene otro proyecto vigente, su proyecto no toma el producto y avisa en el chatter (antes el
+  desarrollo no podía cambiar de etapa).
+- **Pasar a línea:** el aviso dice lo que hace: la venta cuenta en línea en Venta real y en el
+  cierre; los renglones del presupuesto no cambian de mercado. Cuando lo gradúa el presupuesto del
+  año siguiente, pasa a línea al 31 de diciembre del año anterior (antes, el día de la
+  aprobación: el resto del año en curso salía de Proyectos).
+- **Presupuestado** del proyecto: un documento por año (el aprobado; si no hay, el abierto). Antes
+  sumaba el aprobado y su revisión en borrador.
+- **Mercado de un renglón con desarrollo:** solo se pone Proyectos si no viene mercado; una copia de
+  un renglón que Ventas pasó a Industrial ya no regresa a Proyectos.
+- **Propuesta del año:** un desarrollo de un producto de línea para un cliente que no lo compra sí
+  entra (antes se descartaba si el producto se vendía a cualquier cliente), y dos desarrollos del
+  mismo cliente y artículo dan un solo juego de renglones (antes la propuesta entera fallaba).
+
+## Precios del presupuesto del mes (19.0.3.16.2, 2026-11-10)
+
+El presupuesto del mes de noviembre de 2026 salía con 11 renglones sin precio: el precio del
+presupuesto anual se buscaba solo en el mismo mes, y la REV2 casi no trae noviembre ni diciembre.
+Ahora el precio de cada renglón sale, en este orden, de:
+
+1. **El presupuesto anual aprobado**, del mismo cliente y producto, del mes o, si no está ese mes,
+   del mes más cercano.
+2. **La lista del cliente** (solo con regla del producto, como antes).
+3. **La última factura** de ese cliente y producto en los 12 meses anteriores, en la unidad de venta
+   y la moneda de la factura (origen «Última factura»).
+
+**Completar precios** (encabezado, en borrador) pone precio a los renglones que siguen en cero sin
+tocar cantidades ni los que ya tienen precio. Lo que siga sin precio no tiene presupuesto, lista ni
+factura: hay que darlo de alta en la lista del cliente.
+
+## Proponer pedidos sin duplicar (19.0.3.16.1, 2026-11-10)
+
+Revisión de «Proponer pedidos» (3.15.x): había casos en que proponía otra vez lo ya pedido.
+
+- **Semana del pedido:** un pedido se reconoce por la semana del pronóstico (`qb_forecast_week`),
+  no por la fecha compromiso, que puede ser la de entrega del cliente días después del embarque
+  (perfiles con días de tránsito). Un pedido capturado a mano, sin esa semana, se sigue
+  reconociendo por la fecha compromiso dentro de la semana.
+- **Release sin OC:** la referencia `REL-…` lleva el número del release, que cambia cada semana; el
+  pedido ya hecho con el release anterior se reconoce por el prefijo `REL-`.
+- **Plantas:** con dirección de entrega, solo cuentan los pedidos de esa dirección; las cotizaciones
+  nuevas de cada planta van con su dirección.
+- **Misma tela en otro código:** si la semana ya tiene pedido de la tela en metros y el pronóstico la
+  trae en kilos (o al revés), no se pide otra vez: queda «No entra» con el código del pedido.
+- **Lo facturado:** una cantidad nunca baja de lo entregado **ni de lo facturado**.
+- **Aplicar dos veces:** un renglón aplicado queda marcado y no se vuelve a aplicar; al aplicar se
+  vuelven a leer los pedidos, así que dos asistentes armados a la vez no piden dos veces lo mismo.
+- **Semanas sin regla** de la planta aparecen como «No entra» con su motivo, y «Exige OC para
+  facturar» respeta la regla de la planta del pedido.
 
 ## Lector de Woodbridge y bandeja de releases (19.0.3.16.0, 2026-11-09)
 

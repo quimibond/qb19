@@ -107,3 +107,70 @@ class TestSalesMonthPlan(TransactionCase):
         self.assertEqual(rows.action_qb_rebuild_button()['tag'], 'reload')
         checks = self.env['qb.price.check'].search([], limit=2)
         self.assertEqual(checks.action_open_wizard()['res_model'], 'qb.price.check.wizard')
+
+    def _activity(self, plan):
+        return self.env['mail.activity'].search([('summary', '=', "Precios que faltan en la lista (%s)" % plan.name)])
+
+    def test_06_precio_de_otro_mes_y_lo_que_falta_se_pide_a_ventas(self):
+        """3.16.2: sin renglón del presupuesto en el mes, el precio del mes más cercano del
+        presupuesto. 3.16.5: sin presupuesto ni lista, el renglón queda sin precio y se le pide a
+        Ventas que lo dé de alta en la lista (el último facturado va solo de referencia)."""
+        otro = self.env['product.product'].create({
+            'name': 'Tela otro mes', 'default_code': 'WMES170', 'type': 'consu', 'uom_id': self.uom_m.id})
+        facturado = self.env['product.product'].create({
+            'name': 'Tela facturada', 'default_code': 'WMES180', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self.env['sgi.sales.budget.line'].sudo().with_context(sgi_bypass_lock=True).create({
+            'budget_id': self.budget.id, 'product_id': otro.id, 'partner_id': self.client.id,
+            'mercado': 'industrial', 'date': date(2071, 2, 1), 'uom_id': self.uom_m.id, 'qty_budget': 1.0,
+            'price_input': 7.0, 'price_currency_id': self.env.company.currency_id.id})
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2071, 1, 15),
+            'invoice_line_ids': [(0, 0, {'product_id': facturado.id, 'quantity': 10.0, 'price_unit': 4.5,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        Forecast = self.env['qb.forecast.line']
+        for product in (otro, facturado):
+            Forecast.create({'partner_id': self.client.id, 'product_id': product.id, 'week': date(2071, 5, 18),
+                             'qty_origen': 10.0, 'mercado': 'industrial'})
+        plan = self._build()
+        line_otro = plan.line_ids.filtered(lambda l: l.product_id == otro)
+        line_fact = plan.line_ids.filtered(lambda l: l.product_id == facturado)
+        self.assertEqual((line_otro.price_input, line_otro.price_origen), (7.0, 'presupuesto'))
+        self.assertEqual(line_fact.price_input, 0.0, "No se toma de la factura")
+        activity = self._activity(plan)
+        self.assertEqual(len(activity), 1, "Una actividad por cliente")
+        self.assertIn('WMES180', activity.note)
+        self.assertIn('4.50', activity.note, "El último facturado va de referencia")
+        # Volver a completar no duplica la actividad; un precio que vino de factura se vuelve a evaluar.
+        line_fact.write({'price_input': 4.5, 'price_origen': 'factura'})
+        plan.action_qb_fill_prices()
+        self.assertEqual(line_fact.price_input, 0.0)
+        self.assertEqual(line_otro.price_input, 7.0)
+        self.assertEqual(len(self._activity(plan)), 1)
+
+    def test_07_referencia_de_la_misma_tela_facturada_en_kilos(self):
+        """3.16.4/3.16.5: sin factura del mismo código, la referencia para Ventas es la última
+        factura al cliente de la misma tela en otro código (en kilos)."""
+        metros = self.env['product.product'].create({
+            'name': 'Tela metros', 'default_code': 'WMES190', 'type': 'consu', 'uom_id': self.uom_m.id})
+        metros.write({'qb_m_por_kg': 5.0, 'qb_conv_origen': 'codigo'})
+        kilos = self.env['product.product'].create({
+            'name': 'Tela kilos', 'default_code': 'IWMES190', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id})
+        kilos.qb_articulo_id = metros
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2071, 3, 10),
+            'invoice_line_ids': [(0, 0, {'product_id': kilos.id, 'quantity': 50.0, 'price_unit': 20.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        self.env['qb.forecast.line'].create({'partner_id': self.client.id, 'product_id': metros.id,
+                                             'week': date(2071, 5, 18), 'qty_origen': 100.0,
+                                             'mercado': 'industrial'})
+        plan = self._build()
+        line = plan.line_ids.filtered(lambda l: l.product_id == metros)
+        self.assertEqual(line.price_input, 0.0)
+        note = self._activity(plan).note
+        self.assertIn('IWMES190', note)
+        self.assertIn('por kg', note)

@@ -46,7 +46,9 @@ class TestDevShipment(TransactionCase):
         cls.evidence = {'response_file': base64.b64encode(b'ok'), 'response_filename': 'respuesta.pdf'}
 
     def _dev(self):
-        dev = self.Project.create({'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
+        # Sin la carga automática del tipo: la tabla es solo la de la prueba.
+        dev = self.Project.with_context(sgi_dev_no_autoload=True).create({
+            'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
                                    'sgi_dev_product_name': 'Jersey envío', 'sgi_dev_product_id': self.tela.id,
                                    'sgi_dev_contact_id': self.contact.id})
         self.tela.product_tmpl_id.write({'sgi_dev_project_id': dev.id, 'sgi_dev_state': 'desarrollo'})

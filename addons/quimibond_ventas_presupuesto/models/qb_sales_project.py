@@ -23,6 +23,8 @@ presupuesta fuera de Proyectos.
 Sin equipos falsos y sin marcar el producto: el mercado del proyecto sale del equipo del
 desarrollo o del cliente.
 """
+from datetime import timedelta
+
 from markupsafe import Markup
 
 from odoo import api, fields, models
@@ -93,8 +95,9 @@ class QbSalesProject(models.Model):
     budget_line_count = fields.Integer(string="Renglones", compute='_compute_budget')
     amount_budget = fields.Monetary(string="Presupuestado", compute='_compute_budget',
                                     currency_field='currency_id',
-                                    help="Importe de sus renglones en presupuestos abiertos o "
-                                         "aprobados (sin los reemplazados ni los obsoletos).")
+                                    help="Importe de sus renglones en el presupuesto de cada año: el "
+                                         "aprobado; si el año no tiene aprobado, el abierto. Una revisión "
+                                         "en borrador no se suma al aprobado.")
     amount_invoiced = fields.Monetary(string="Facturado", compute='_compute_sales',
                                       currency_field='currency_id',
                                       help="Venta neta al cliente de los códigos del artículo (metros, "
@@ -135,8 +138,16 @@ class QbSalesProject(models.Model):
     @api.depends('budget_line_ids.amount_budget', 'budget_line_ids.budget_id.state')
     def _compute_budget(self):
         for project in self:
-            lines = project.budget_line_ids.filtered(
+            # 3.16.3: un documento por año (el aprobado; si no hay, el abierto). Antes sumaba el
+            # aprobado y su revisión en borrador, que copia los mismos renglones (el doble).
+            live = project.budget_line_ids.filtered(
                 lambda l: l.budget_id.state in ('borrador', 'revisado', 'aprobado'))
+            budgets = live.budget_id
+            chosen = self.env['sgi.sales.budget']
+            for year in set(budgets.mapped('year')):
+                of_year = budgets.filtered(lambda b, y=year: b.year == y)
+                chosen |= of_year.filtered(lambda b: b.state == 'aprobado')[:1] or of_year[:1]
+            lines = live.filtered(lambda l: l.budget_id in chosen)
             project.budget_line_count = len(project.budget_line_ids)
             project.amount_budget = sum(lines.mapped('amount_budget'))
 
@@ -178,11 +189,14 @@ class QbSalesProject(models.Model):
             project.forecast_count = Forecast.search_count(f_domain)
 
     # --- Acciones ------------------------------------------------------------
-    def action_qb_graduate(self):
-        """Pasa a línea: desde ahora su venta cuenta en el mercado base."""
+    def action_qb_graduate(self, date_to=None):
+        """Pasa a línea: la venta después de ``date_to`` (hoy, si no se da) cuenta en el mercado
+        base en Venta real y en el cierre. Los renglones del presupuesto no cambian de mercado."""
+        when = date_to or fields.Date.context_today(self)
         for project in self.filtered(lambda p: p.state == 'vigente'):
-            project.write({'state': 'graduado', 'date_to': fields.Date.context_today(self)})
-            project.message_post(body="Pasó a línea.")
+            project.write({'state': 'graduado', 'date_to': max(when, project.date_from)})
+            project.message_post(body="Pasó a línea (su venta cuenta en línea desde el %s)." % (
+                max(when, project.date_from) + timedelta(days=1)))
         return True
 
     def action_qb_lose(self):
@@ -358,13 +372,17 @@ class ProjectProject(models.Model):
         return self.env['product.product']
 
     def _qb_dev_quote_date(self):
-        """Fecha en que el desarrollo entró a Cotización (hoy si no hay registro)."""
+        """Inicio del arranque: la fecha en que el desarrollo entró a Cotización, o su fecha de
+        alta si es anterior (3.16.3). La bitácora de etapas empezó en octubre de 2026: los
+        desarrollos de antes no tienen registro de Cotización y tomaban la fecha del día, con lo
+        que su venta anterior contaba como línea."""
         self.ensure_one()
         stage = self._sgi_dev_stage(DEV_FROM_STAGE)
         logs = self.sgi_dev_stage_log_ids.filtered(lambda l: l.stage_id == stage)
-        if logs:
-            return min(logs.mapped('date_start')).date()
-        return fields.Date.context_today(self)
+        dates = [min(logs.mapped('date_start')).date()] if logs else []
+        if self.create_date:
+            dates.append(self.create_date.date())
+        return min(dates) if dates else fields.Date.context_today(self)
 
     def _qb_create_sales_project(self, origen='desarrollo', line=None):
         self.ensure_one()
@@ -438,7 +456,19 @@ class ProjectProject(models.Model):
             product = dev._qb_dev_product()
             if project:
                 if product and not project.product_id:
-                    project.write({'product_id': product.id, 'descripcion': False})
+                    # 3.16.3: si otro proyecto vigente ya es de ese cliente y artículo, no se le pone
+                    # el producto (chocaría con «un proyecto vigente por cliente y producto» y el
+                    # desarrollo no podría cambiar de etapa): se avisa y se deja como está.
+                    twin = Sales.search([
+                        ('id', '!=', project.id), ('state', '=', 'vigente'),
+                        ('company_id', '=', project.company_id.id),
+                        ('partner_id', '=', project.partner_id.id), ('product_id', '=', product.id)], limit=1)
+                    if twin:
+                        project.message_post(body=Markup(
+                            "El desarrollo generó %s, pero %s ya es el proyecto vigente de ese cliente y "
+                            "artículo: revise si este se marca perdido.") % (product.display_name, twin.name))
+                    else:
+                        project.write({'product_id': product.id, 'descripcion': False})
                 continue
             if dev.sgi_dev_stage_seq >= from_seq and dev.partner_id and product:
                 dev._qb_create_sales_project()

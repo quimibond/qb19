@@ -35,6 +35,9 @@
                             invisible="state != 'borrador'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"
                             confirm="Los renglones del pronóstico se rehacen con el pronóstico vigente (se pierden sus ajustes); los capturados a mano se conservan. ¿Continuar?"/>
+                    <button name="action_qb_fill_prices" type="object" string="Completar precios"
+                            invisible="state != 'borrador' or no_price_count == 0"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_qb_set_draft" type="object" string="Regresar a borrador"
                             invisible="state != 'enviado'" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
@@ -42,7 +45,9 @@
                 <sheet>
                     <div class="alert alert-danger" role="alert" invisible="no_price_count == 0">
                         <field name="no_price_count" class="oe_inline"/> renglón(es) cuentan 0 en el importe (sin
-                        precio, sin tipo de cambio o sin conversión).
+                        precio, sin tipo de cambio o sin conversión). El precio sale del presupuesto anual
+                        aprobado o de la lista del cliente: lo que la lista no tiene se le pide a Ventas con una
+                        actividad en la lista de cada cliente. Cuando lo den de alta, pulse «Completar precios».
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>

@@ -4,6 +4,11 @@ import re
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+# 2.29.0: cada tolerancia de medida tiene su valor hacia arriba y hacia abajo, y cada uno vale lo que dice (antes solo
+# el peso; un «−» en 0 significaba «igual que el +»). Así cabe +0 / −5 y también +5 / −0.
+TOL_PLUS_HELP = 'Lo más que puede pasar del valor. Para ± el mismo número, escriba el mismo en las dos tolerancias.'
+TOL_MINUS_HELP = 'Lo más que puede faltar del valor. Puede ser distinta de la de arriba, también 0 (ej. +5 / −0).'
+
 # 2.3.0: datos de máquina que la ficha toma de la configuración de la máquina con la que se elaboró.
 MACHINE_CONFIG_FIELDS = ('galga', 'diametro', 'no_agujas', 'no_alimentadores')
 # 2.24.0: lo que no se copia al agregar otra circular (sale de la configuración de la máquina nueva).
@@ -179,21 +184,30 @@ class FichaTecnicaTejido(models.Model):
     peso_acondicionado = fields.Float(string='Peso')
     peso_acondicionado_tol = fields.Float(
         string='Tolerancia peso (+)',
-        help='Tolerancia hacia arriba. Si la de abajo queda en 0, la tolerancia es ± este valor.')
+        help=TOL_PLUS_HELP)
     peso_acondicionado_tol_minus = fields.Float(
         string='Tolerancia peso (−)',
-        help='Tolerancia hacia abajo cuando es distinta de la de arriba (antes «+12 / -6»). En 0: la misma '
-             'que la de arriba.')
+        help=TOL_MINUS_HELP)
     peso_acondicionado_tol_unit = fields.Char(string='Unidad — Peso acondicionado (texto)', default='g/m2')
 
     ancho_acondicionado = fields.Float(string='Ancho de crudo relajado',
                                        help='El crudo acondicionado (relajado), tubular o abierto según la circular.')
-    ancho_acondicionado_tol = fields.Float(string='Tolerancia ancho')
+    ancho_acondicionado_tol = fields.Float(
+        string='Tolerancia ancho (+)',
+        help=TOL_PLUS_HELP)
+    ancho_acondicionado_tol_minus = fields.Float(
+        string='Tolerancia ancho (−)',
+        help=TOL_MINUS_HELP)
     ancho_acondicionado_tol_unit = fields.Char(string='Unidad — Ancho acondicionado (texto)', default='cm')
 
     # 2.16.2: tres decimales (XJ145Q21HNT098: 0.022 ± 0.002 in se veía 0.02 ± 0.00).
     espesor_acondicionado = fields.Float(string='Espesor', digits=(16, 3))
-    espesor_acondicionado_tol = fields.Float(string='Tolerancia espesor', digits=(16, 3))
+    espesor_acondicionado_tol = fields.Float(
+        string='Tolerancia espesor (+)', digits=(16, 3),
+        help=TOL_PLUS_HELP)
+    espesor_acondicionado_tol_minus = fields.Float(
+        string='Tolerancia espesor (−)', digits=(16, 3),
+        help=TOL_MINUS_HELP)
     espesor_acondicionado_tol_unit = fields.Char(string='Unidad — Espesor acondicionado (texto)', default='in')
 
     columnas = fields.Integer(string='Columnas')
@@ -205,11 +219,21 @@ class FichaTecnicaTejido(models.Model):
     mallas_tol_unit = fields.Char(string='Unidad — Mallas (texto)', default='in')
 
     elongacion_carga_largo = fields.Float(string='Elongación bajo carga — largo')
-    elongacion_carga_largo_tol = fields.Float(string='Tolerancia elongación largo')
+    elongacion_carga_largo_tol = fields.Float(
+        string='Tolerancia elongación largo (+)',
+        help=TOL_PLUS_HELP)
+    elongacion_carga_largo_tol_minus = fields.Float(
+        string='Tolerancia elongación largo (−)',
+        help=TOL_MINUS_HELP)
     elongacion_carga_largo_tol_unit = fields.Char(string='Unidad — Elongación carga largo (texto)', default='%')
 
     elongacion_carga_ancho = fields.Float(string='Elongación bajo carga — ancho')
-    elongacion_carga_ancho_tol = fields.Float(string='Tolerancia elongación ancho')
+    elongacion_carga_ancho_tol = fields.Float(
+        string='Tolerancia elongación ancho (+)',
+        help=TOL_PLUS_HELP)
+    elongacion_carga_ancho_tol_minus = fields.Float(
+        string='Tolerancia elongación ancho (−)',
+        help=TOL_MINUS_HELP)
     elongacion_carga_ancho_tol_unit = fields.Char(string='Unidad — Elongación carga ancho (texto)', default='%')
 
     notas = fields.Text(string='Notas')

@@ -34,7 +34,8 @@ class TestDevCoa(TransactionCase):
                                                'company_id': cls.env.company.id})
 
     def _dev(self):
-        dev = self.env['project.project'].create({'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
+        # Sin la carga automática del tipo: la tabla es solo la de la prueba.
+        dev = self.env['project.project'].with_context(sgi_dev_no_autoload=True).create({'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
                                                   'sgi_dev_product_name': 'Jersey coa', 'sgi_dev_product_id': self.tela.id})
         Line = self.env['sgi.dev.characteristic']
         # masa: nominal 150 ± 5 % del cliente, control interno ± 2 %; corrida 156 (fuera del interno, dentro del cliente)
