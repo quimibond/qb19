@@ -10,6 +10,16 @@ agregan a esa misma sección sin volver a subirla.
 
 ## 19.0.2.28.0 — 2026-11-06
 
+**Revisión 2026-11-10: el rendimiento aprobado pasa a la lista en metros.** «Usar el medido» y el rendimiento que
+Ingeniería escribe a mano en la ficha ponen al día, en ese momento, la conversión kg → m de las listas en metros de la
+tela (archivadas o activas; en una activa solo cambia las órdenes nuevas) y dejan nota en la lista. Antes el botón
+decía que pasaba a la lista y no la tocaba: había que oprimir después «Usar los datos de la ficha», y en main 40 de
+las 45 listas del flujo estaban desfasadas cinco días después de regenerarlas (de −33 % a +13.5 % de kg). No cambia:
+el recálculo nocturno sigue proponiendo sin escribir, la importación desde Excel no toca listas, y cuando cambia la
+primera para planear del costeo la lista queda como pendiente de Ingeniería en la revisión. Los tiempos de rama e
+inspección de la lista en kg se siguen poniendo al día con «Usar los datos de la ficha». Prueba
+`test_20_el_rendimiento_aprobado_pasa_a_la_lista_en_metros`.
+
 **Clasificación final en Empaque (A3.4, Dirección General: el diseño de la Clasificación final en Empaque sustituye al
 de la Inspección única de 2.24.0).** La lista en metros vuelve a llevar una operación, CLASIFICACION, en el centro
 EMPAQUE; Inspección sigue pesando y clasificando de forma preliminar en la orden en kg y Empaque confirma o cambia la

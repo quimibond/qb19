@@ -349,7 +349,37 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 'rendimiento_medido_estado': 'igual',
                 'rendimiento_cambio_fecha': fields.Datetime.now(),
             })
+            ficha._ft_pasar_conversion_a_listas()
         return True
+
+    def _ft_pasar_conversion_a_listas(self):
+        """Revisión 2026-11-10 (en 2.28.0): el rendimiento de la ficha cambió por decisión de Ingeniería («Usar el
+        medido» o escrito a mano) y la conversión kg → m de las listas en metros de la tela se pone al día en ese
+        momento, también en las archivadas; en una lista activa solo cambia las órdenes nuevas. Antes la lista se
+        quedaba con el valor anterior hasta que alguien oprimía «Usar los datos de la ficha»: en main, 40 de las 45
+        listas del flujo estaban desfasadas el 10-nov, cinco días después de regenerarlas. Deja nota en cada lista
+        que cambia. La primera para planear del costeo no entra aquí: cuando cambia, la lista queda como pendiente de
+        Ingeniería en la revisión, igual que antes. Devuelve las listas que cambiaron."""
+        Bom = self.env['mrp.bom'].with_context(active_test=False)
+        cambiadas = Bom
+        for ficha in self:
+            tela = ficha.product_acabado_id
+            if not tela or not ficha.rendimiento_tela_acabada:
+                continue
+            boms = Bom.search([('type', '=', 'normal'), '|', ('product_id', '=', tela.id),
+                               '&', ('product_id', '=', False), ('product_tmpl_id', '=', tela.product_tmpl_id.id)])
+            # El aviso de la lista no depende del rendimiento de la ficha: sin esto se lee el de antes del cambio.
+            boms.invalidate_recordset(['ft_conversion_kg', 'ft_conversion_calculo', 'ft_conversion_difiere'])
+            for bom in boms.filtered('ft_conversion_difiere'):
+                line, _kg, calculo = bom._ft_conversion()
+                antes = line.product_qty
+                bom.action_ft_usar_conversion_ficha()
+                bom.message_post(body='Conversión a metros puesta al día con el rendimiento de la ficha %s: de %s a '
+                                 '%s %s por %s (%s).' % (
+                                     ficha.display_name, antes, line.product_qty, line.product_uom_id.name,
+                                     bom.product_uom_id.name, calculo))
+                cambiadas |= bom
+        return cambiadas
 
     def write(self, vals):
         """2.27.2: el rendimiento escrito a mano (Ingeniería en la ficha) queda forzado; el recálculo escribe con
@@ -364,6 +394,8 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
         res = super().write(vals)
         if recalcular:
             self._ft_actualizar_rendimiento_real()
+        if 'rendimiento_tela_acabada' in vals:
+            self._ft_pasar_conversion_a_listas()
         return res
 
     @api.model

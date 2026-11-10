@@ -371,3 +371,30 @@ class TestRendimientoReal(TiempoFichaCase):
         self.assertEqual(mo.state, 'done')
         self.assertEqual(self.env['ficha.tecnica.acabado']._ft_fabricado(self.tela_m, '2000-01-01'), {},
                          "Sin kilos de tela la orden no cuenta")
+
+    def test_20_el_rendimiento_aprobado_pasa_a_la_lista_en_metros(self):
+        """Revisión 2026-11-10: «Usar el medido» y el rendimiento escrito a mano ponen al día la conversión kg → m de la
+        lista en metros en ese momento (también archivada) y dejan nota; el recálculo que solo propone no la toca."""
+        linea = self.bom_m.bom_line_ids
+        self.bom_m.action_ft_usar_conversion_ficha()
+        self.assertAlmostEqual(linea.product_qty, self._kg_guardables(1 / 8.0), places=6)
+        self.bom_m.action_archive()
+        self.assertFalse(self.bom_m.ft_conversion_difiere)  # deja el aviso leído, como en una pantalla abierta
+        with self._con_terminado({self.acabado: (9000.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        self.assertAlmostEqual(linea.product_qty, self._kg_guardables(1 / 8.0), places=6,
+                               msg="Lo propuesto no cambia la lista")
+        notas = len(self.bom_m.message_ids)
+        self.acabado.action_ft_usar_rendimiento_medido()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 9.0)
+        self.assertAlmostEqual(linea.product_qty, self._kg_guardables(1 / 9.0), places=6,
+                               msg="Aprobar el medido pone al día la lista archivada")
+        self.assertEqual(len(self.bom_m.message_ids), notas + 1, "Queda nota en la lista")
+        self.env.invalidate_all()
+        self.assertFalse(self.bom_m.ft_conversion_difiere)
+        self.acabado.rendimiento_tela_acabada = 10.0
+        self.assertAlmostEqual(linea.product_qty, self._kg_guardables(1 / 10.0), places=6,
+                               msg="Escrito a mano por Ingeniería también")
+        self.assertFalse(self.acabado._ft_pasar_conversion_a_listas(), "Sin cambio no escribe ni deja nota")
+        self.assertAlmostEqual(self.bom.bom_line_ids.product_qty, 1.1, places=6, msg="La lista en kg no se toca")
+
