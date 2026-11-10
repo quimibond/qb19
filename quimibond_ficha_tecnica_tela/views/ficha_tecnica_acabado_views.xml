@@ -163,7 +163,17 @@
                             <separator string="Real"/>
                             <group>
                                 <group>
-                                    <field name="rendimiento_tela_acabada" string="Rendimiento de tela terminada (m/kg)"/>
+                                    <field name="rendimiento_tela_acabada"/>
+                                    <!-- 2.30.0 (Ingeniería, 10-nov-2026): el rendimiento de producción sale del peso, el
+                                         ancho de rama y la merma; la noche lo pasa a la ficha. -->
+                                    <field name="rendimiento_produccion" invisible="not rendimiento_produccion"/>
+                                    <field name="rendimiento_produccion_calculo" string="Cálculo"/>
+                                    <div colspan="2" invisible="not rendimiento_produccion">
+                                        <button name="action_ft_calcular_rendimiento_produccion" type="object"
+                                                string="Pasar el rendimiento de producción a la ficha"
+                                                class="btn btn-sm btn-secondary"
+                                                invisible="rendimiento_fuente == 'produccion' and rendimiento_produccion == rendimiento_tela_acabada"/>
+                                    </div>
                                     <field name="rendimiento_anterior" invisible="not rendimiento_anterior"/>
                                     <field name="rendimiento_manual" widget="boolean_toggle"/>
                                     <field name="rendimiento_fuente"/>
@@ -200,7 +210,7 @@
                                         <field name="rendimiento_cambio_fecha" class="oe_inline" readonly="1"/>). La ficha
                                         no cambia sola: úselo o quédese con el de la ficha.
                                         <button name="action_ft_usar_rendimiento_medido" type="object" string="Usar el medido"
-                                                class="btn btn-sm btn-primary ms-2"/>
+                                                class="btn btn-sm btn-primary ms-2" invisible="rendimiento_produccion"/>
                                         <button name="action_ft_rendimiento_revisado" type="object" string="Marcar revisado"
                                                 class="btn btn-sm btn-secondary ms-2"/>
                                     </div>

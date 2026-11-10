@@ -200,7 +200,26 @@ class FichaTecnicaRevision(models.Model):
             pendientes.append(dict(ing, tipo='datos_acabado', detalle='La ficha de acabado no tiene %s: sin eso no '
                                    'salen el tiempo de rama, el de inspección ni la conversión a metros.' % (
                                        ' ni '.join(faltan))))
-        if acabado.rendimiento_por_revisar and acabado.rendimiento_medido:
+        produccion, calculo = acabado._ft_rendimiento_produccion().get(acabado, (0.0, False))
+        if not produccion and self.env['ficha.tecnica.proceso'].search_count([
+                ('product_id', 'in', (acabado.product_proceso_id | acabado.product_acabado_id).ids),
+                ('workcenter_id.ft_tipo_id.code', '=', 'acabado')], limit=1):
+            # 2.30.0: la tela corre en rama pero le falta un dato del rendimiento de producción.
+            pendientes.append(dict(ing, tipo='datos_acabado', detalle='Rendimiento de producción (peso × ancho de '
+                                   'rama con merma): %s' % calculo))
+        if acabado.rendimiento_por_revisar and acabado.rendimiento_medido and produccion:
+            # 2.30.0: con rendimiento de producción lo medido es control: se aleja del teórico (sin merma).
+            fuentes = dict(acabado._fields['rendimiento_medido_fuente']._description_selection(acabado.env))
+            teorico = acabado.rendimiento_teorico
+            pendientes.append(dict(ing, tipo='rendimiento_cambio', detalle='Lo fabricado da %.4f m/kg por kg de tela '
+                                   'terminada (%s, %s muestras) y el peso y ancho de rama de la ficha dan %.4f (%+.1f '
+                                   '%%). Revise el peso de la ficha o el ancho de la tela en la rama, o «Marcar '
+                                   'revisado».' % (
+                                       acabado.rendimiento_medido,
+                                       (fuentes.get(acabado.rendimiento_medido_fuente) or '').lower(),
+                                       acabado.rendimiento_medido_ordenes, teorico,
+                                       (acabado.rendimiento_medido / teorico - 1) * 100.0 if teorico else 0.0)))
+        elif acabado.rendimiento_por_revisar and acabado.rendimiento_medido:
             # 2.28.0: lo medido se aleja de la ficha más que la alerta. La ficha no cambia sola: Ingeniería lo usa
             # («Usar el medido») o se queda con el de la ficha («Marcar revisado»).
             fuentes = dict(acabado._fields['rendimiento_medido_fuente']._description_selection(acabado.env))

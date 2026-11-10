@@ -78,11 +78,11 @@ class ProductTemplateFichaNativa(models.Model):
              'especificación, el mismo del código (…155 = 155 cm). No es el ancho de crudo relajado, el de rollo ni '
              'el que baja de rama.')
     ft_rendimiento = fields.Float(
-        string='Rendimiento de tela terminada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
-        help='Copia del rendimiento de la ficha de acabado (metros por kg de tela terminada, sin orilla). Lo captura '
-             'Ingeniería en la ficha o lo aprueba con «Usar el medido»; el recálculo nocturno solo propone. Lo usan '
-             'la conversión kg → m de la lista en metros y los tiempos de rama e inspección. No es el rendimiento de '
-             'tejido (el del crudo).')
+        string='Rendimiento de producción (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+        help='Copia del rendimiento de la ficha de acabado: metros por kg que entra a acabado, con la merma (orilla, '
+             'muestras y merma natural). Sale del peso de la ficha, el ancho de rama y la merma de la tela en la rama. '
+             'Lo usan la conversión kg → m de la lista en metros, los tiempos de rama e inspección y el costeo. No es '
+             'el rendimiento de tejido (el del crudo).')
     ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
                                         compute='_compute_ft_ficha_nativa',
                                         help='Copia de Ficha de acabado → «3. Acabado en proceso (kg)»: el código de '

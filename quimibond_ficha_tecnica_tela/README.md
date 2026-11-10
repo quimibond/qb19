@@ -71,6 +71,9 @@ jet, la lista o la ficha). También en la pestaña «Ficha técnica» del produc
 
 ## Rendimiento de tela acabada (2.27.0 a 2.28.0)
 
+> **Sustituido en 2.30.0** por el rendimiento de producción (peso, ancho de rama y merma; ver «Mapa de datos»). Lo
+> medido que se describe aquí sigue calculándose cada noche, pero como control.
+
 El rendimiento (m/kg) de la ficha es **por kg de tela terminada**. Lo usan la conversión kg → m (lista en metros y
 costeo), los tiempos de rama e inspección y la alerta de metros de Inspección.
 
@@ -131,18 +134,25 @@ signo de interrogación junto a la etiqueta) dice qué es, dónde se captura y c
 
 ### Los dos rendimientos
 
-| | Rendimiento de tejido | Rendimiento de tela terminada |
+| | Rendimiento de tejido | Rendimiento de producción |
 |---|---|---|
-| Qué es | Metros por kg del **crudo** acondicionado | Metros por kg de **tela terminada**, sin orilla |
-| Fuente | Ficha de tejido (`rendimiento_tela_tejida`): 1000 ÷ (g/m² × ancho acondicionado en m, ×2 si sale tubular); se puede forzar a mano | Ficha de acabado (`rendimiento_tela_acabada`): lo escribe Ingeniería o lo aprueba con «Usar el medido» |
-| Lo usan | Banda A/B/C y capacidad del jet; tiempos de devanado y abridora | Conversión kg → m de la lista en metros, tiempos de rama e inspección, costeo, alerta de metros de Inspección |
-| Se ve como | «Rendimiento de tejido» (orden de fabricación, producto) | «Rendimiento de tela terminada» (producto, ficha de acabado) |
+| Qué es | Metros por kg del **crudo** acondicionado | Metros por kg que **entra a acabado**, con la merma (orilla, muestras y merma natural) sumada |
+| Fuente | Ficha de tejido (`rendimiento_tela_tejida`): 1000 ÷ (g/m² × ancho acondicionado en m, ×2 si sale tubular); se puede forzar a mano | Ficha de acabado (`rendimiento_tela_acabada`): **1000 ÷ (peso de la ficha g/m² × ancho bajando de rama m) × (1 − merma de la rama)**; la noche lo pasa a la ficha |
+| Lo usan | Banda A/B/C y capacidad del jet; tiempos de devanado y abridora | Todo lo de producción: conversión kg → m de la lista en metros, tiempos de rama e inspección, costeo |
+| Se ve como | «Rendimiento de tejido» (orden de fabricación, producto) | «Rendimiento de producción» (producto, ficha de acabado) |
 
-**La orilla** no entra al rendimiento de tela terminada: los rollos de Inspección se pesan netos, ya sin orilla, y las
-conversiones a kg usan el kg de la lista de empaque. La orilla está en el **consumo de crudo** de la lista en kg (kg de
-crudo por kg de acabado) y sale de la orden como subproducto «Desperdicio Tejido». El rendimiento **estimado** (sin
-rollos ni conversiones) divide los kg que entraron entre ese consumo de crudo: si el consumo no es el real, el
-estimado sale mal.
+**Decisión de Ingeniería (Jessica Francisco, 10-nov-2026):** «El rendimiento para calcular la producción tiene que
+salir del peso de la tela y el ancho del rollo de la rama. La merma tiene que ir sumada en ese rendimiento. Todo lo que
+se calcule de producción tendrá que usar ese rendimiento.» La merma de 10 % de la rama es **la orilla, las muestras y
+la merma natural**. Sustituye a 2.27.0 («por kg de tela terminada, sin orilla») y a 2.28.0 («Usar el medido»): hoy las
+órdenes de acabado capturan los kg de tintorería consumidos con la orilla incluida, sin separarla, así que el
+rendimiento de producción es por kg que entra, con la merma.
+
+**Lo medido** (rollos de Inspección, conversiones a kg, estimado) queda como **control**: es por kg de tela terminada,
+sin merma, y se compara contra el teórico sin merma (1000 ÷ g/m² × ancho de rama). Si se aleja más que la alerta, la
+revisión pide revisar el peso de la ficha o el ancho de la tela en la rama. «Usar el medido» ya no aplica a una tela con
+rendimiento de producción. Una tela que corre en rama y no tiene ancho o merma capturados queda con pendiente de
+Ingeniería y conserva el rendimiento capturado.
 
 ### Capacidad: ficha contra centro de trabajo
 
@@ -170,9 +180,12 @@ valor**, no de la tolerancia.
 
 ### Lo que la auditoría dejó para después
 
-- **Merma en el tiempo de rama:** la ficha calcula rendimiento ÷ velocidad (sin merma: el rendimiento de lo fabricado
-  ya la trae, Dirección 2026-11-03); el costeo calcula horas por metro vendido con velocidad × 60 × (1 − merma). Son dos
-  preguntas distintas (minutos por kg de la lista contra horas por metro vendido); unificarlas es decisión de Costos.
+- **Merma en el tiempo de rama:** desde 2.30.0 la ficha calcula rendimiento de producción (ya con la merma) ÷
+  velocidad; el costeo calcula horas por metro vendido con velocidad × 60 × (1 − merma). Miden cosas distintas (minutos
+  por kg que entra contra horas por metro vendido); revisar con Costos que den lo mismo.
+- **Alerta de metros de Inspección** (`quimibond_rollos_bitacora`, de José Sacramento): compara los metros contra kg
+  netos de los rollos × el rendimiento de la ficha; con el rendimiento de producción (con merma) avisaría de más. Hay
+  que ajustarla a la decisión de Ingeniería.
 - **Peso nativo del producto:** Odoo guarda el peso con 2 decimales («Stock Weight» = 2 en producción): 0.0654 kg/m
   quedaría en 0.07 (7 % de error). No se escribe hasta subir esa precisión.
 - **Cambios a listas activas por ECO de PLM** y **puntos de control de medida** en Inspección desde la especificación:

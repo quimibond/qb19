@@ -56,13 +56,13 @@ class FichaTecnicaAcabado(models.Model):
     # Datos de Acabado
     # ------------------------------------------------------------------
     rendimiento_tela_acabada = fields.Float(
-        string='Rendimiento de tela terminada (m/kg)', digits=(12, 4),
-        help='Metros por kg de tela terminada (sin orilla: la orilla va en el consumo de crudo de la lista en kg). Lo '
-             'escribe Ingeniería en la ficha → «Tela acabada» → Real, lo aprueba con «Usar el medido» o lo trae el '
-             'importador de Excel; el recálculo nocturno nunca lo cambia, solo propone en «Rendimiento medido». Lo '
-             'usan la conversión kg → m de la lista en metros (se pone al día al cambiarlo a mano o con «Usar el '
-             'medido»), los tiempos de rama e inspección, el costeo y la alerta de metros de Inspección. No es el '
-             'rendimiento de tejido del crudo.')
+        string='Rendimiento de producción (m/kg)', digits=(12, 4),
+        help='Metros por kg que entra a acabado, con la merma (orilla, muestras y merma natural) sumada. Desde 2.30.0 '
+             '(Ingeniería, 10-nov-2026) sale del peso de la ficha, el ancho de rama y la merma de la tela en la rama: '
+             '1000 ÷ (g/m² × ancho m) × (1 − merma); la noche lo pasa aquí (o el botón «Pasar el rendimiento de '
+             'producción a la ficha»). Sin esos datos se queda el capturado a mano o del Excel. Lo usan la conversión '
+             'kg → m de la lista en metros (se pone al día al cambiar), los tiempos de rama e inspección y el costeo. '
+             'No es el rendimiento de tejido del crudo.')
 
     peso_acabado = fields.Float(
         string='Peso',
