@@ -71,9 +71,10 @@ class ProductTemplateFichaNativa(models.Model):
         help='Ficha de acabado → pestaña «Tela acabada» → Ancho de venta: el de especificación, el mismo del código '
              '(…155 = 155 cm). No es el ancho de tela relajada ni el ancho de rollo.')
     ft_rendimiento = fields.Float(
-        string='Rendimiento (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
-        help='Ficha de acabado → «Tela acabada» → Real: metros fabricados ÷ kilos consumidos de sus órdenes de 12 '
-             'meses (sin órdenes, el capturado). Lo usan la conversión kg → m y los tiempos de rama e inspección.')
+        string='Rendimiento de tela terminada (m/kg)', digits=(12, 4), compute='_compute_ft_tela_datos',
+        help='Copia del rendimiento de la ficha de acabado (metros por kg de tela terminada, sin orilla). Lo captura '
+             'Ingeniería en la ficha o lo aprueba con «Usar el medido». Lo usan la conversión kg → m de la lista en '
+             'metros y los tiempos de rama e inspección. No es el rendimiento de tejido (el del crudo).')
     ft_producto_kg_id = fields.Many2one('product.product', string='Producto en kg (proceso)',
                                         compute='_compute_ft_ficha_nativa',
                                         help='Ficha de acabado → «3. Acabado en proceso (kg)».')

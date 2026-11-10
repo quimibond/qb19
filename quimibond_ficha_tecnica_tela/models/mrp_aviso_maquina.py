@@ -16,8 +16,8 @@ Primeros usos de la ficha de la máquina en la planta:
   tabla con la capacidad que aplica en cada jet y cuántas cargas son, y si
   se elige el jet de la orden, el aviso cuando la orden no cabe en una
   carga. La capacidad sale de la configuración vigente del jet: la del grupo
-  de rendimiento de la tela (A 3 a 6, B 7 a 10, C 11 a 15 m/kg; entre grupos
-  se toma el de abajo: 6.5 es A) y, si la tela no tiene rendimiento, la
+  de rendimiento de la tela (A de 3 a menos de 7, B de 7 a menos de 11, C de 11 a menos de 16 m/kg;
+  ``GRUPOS``) y, si la tela no tiene rendimiento, la
   capacidad general. El rendimiento sale de la ficha de tejido: 1000 /
   (peso g/m² × ancho m).
 
@@ -407,8 +407,10 @@ class MrpProductionAviso(models.Model):
     ft_jet_id = fields.Many2one(
         'mrp.workcenter', string='Jet', tracking=True, domain="[('ft_tipo_id.code', '=', 'tintoreria')]",
         help='Jet en el que se tiñe la orden. Con él Odoo avisa si la orden no cabe en una carga.')
-    ft_rendimiento = fields.Float(string='Rendimiento de la tela (m/kg)', digits=(16, 2),
-                                  compute='_compute_ft_cargas')
+    ft_rendimiento = fields.Float(string='Rendimiento de tejido (m/kg)', digits=(16, 2),
+                                  compute='_compute_ft_cargas',
+                                  help='El del crudo (ficha de tejido: 1000 ÷ g/m² × ancho acondicionado). Decide la '
+                                       'banda A/B/C y la capacidad de cada jet. No es el rendimiento de tela terminada.')
     ft_cargas_html = fields.Html(string='Cargas por jet', compute='_compute_ft_cargas', sanitize=False)
     ft_aviso_maquina = fields.Char(string='Aviso de máquina', compute='_compute_ft_cargas')
 

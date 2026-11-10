@@ -163,14 +163,25 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 res[ficha] = sum(valores) / len(valores)
         return res
 
+    def _ft_ancho_venta_m(self):
+        """2.30.0: el ancho de venta en metros con su unidad del catálogo (cm, m, in); sin unidad, la regla de
+        siempre (más de 10 es cm)."""
+        self.ensure_one()
+        if not self.ancho_acabado:
+            return 0.0
+        unidad = self.ancho_acabado_tol_unit_id
+        metro = self.env.ref('uom.product_uom_meter', raise_if_not_found=False)
+        factor = unidad._ft_factor_a(metro) if unidad and metro else 0.0
+        return self.ancho_acabado * factor if factor else ancho_en_m(self.ancho_acabado)
+
     def _ft_ancho_teorico(self):
         """{ficha: (ancho en m, True si es el de rama)}: el ancho bajando de rama o, si falta, el de venta."""
         rama = self._ft_ancho_rama()
-        return {ficha: (rama[ficha], True) if ficha in rama else (ancho_en_m(ficha.ancho_acabado), False)
+        return {ficha: (rama[ficha], True) if ficha in rama else (ficha._ft_ancho_venta_m(), False)
                 for ficha in self}
 
-    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado', 'product_proceso_id',
-                 'product_acabado_id')
+    @api.depends('peso_acabado', 'peso_acabado_tol_unit', 'ancho_acabado', 'ancho_acabado_tol_unit_id',
+                 'product_proceso_id', 'product_acabado_id')
     def _compute_rendimiento_teorico(self):
         from .unidades import _norm  # local: orden de carga de models/
         anchos = self._ft_ancho_teorico()
@@ -182,8 +193,8 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
                 ('%.3f' % ancho).rstrip('0').rstrip('.'),
                 'bajando de rama' if de_rama else 'de venta: falta el ancho bajando de rama') if ancho else False
 
-    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado', 'product_proceso_id',
-                 'product_acabado_id')
+    @api.depends('rendimiento_tela_acabada', 'rendimiento_real_ordenes', 'ancho_acabado', 'ancho_acabado_tol_unit_id',
+                 'product_proceso_id', 'product_acabado_id')
     def _compute_peso_real(self):
         anchos = self._ft_ancho_teorico()
         for ficha in self:
@@ -432,6 +443,13 @@ class FichaTecnicaAcabadoRendimientoReal(models.Model):
             # Cuenta como revisado: quita el aviso de cambio.
             vals = dict(vals, rendimiento_manual=bool(vals['rendimiento_tela_acabada']), rendimiento_fuente='ficha',
                         rendimiento_real_ordenes=0, rendimiento_por_revisar=False)
+        if 'rendimiento_tela_acabada' in vals:
+            # 2.30.0: el rendimiento escrito a mano también guarda el anterior, como «Usar el medido».
+            for ficha in self.filtered(lambda f: f.rendimiento_tela_acabada
+                                       and abs(f.rendimiento_tela_acabada - (vals['rendimiento_tela_acabada'] or 0.0))
+                                       > 1e-9):
+                super(FichaTecnicaAcabadoRendimientoReal, ficha).write(
+                    {'rendimiento_anterior': ficha.rendimiento_tela_acabada})
         res = super().write(vals)
         if recalcular:
             self._ft_actualizar_rendimiento_real()

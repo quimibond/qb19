@@ -163,23 +163,24 @@
                             <separator string="Real"/>
                             <group>
                                 <group>
-                                    <field name="rendimiento_tela_acabada" string="Rendimiento (m/kg)"/>
+                                    <field name="rendimiento_tela_acabada" string="Rendimiento de tela terminada (m/kg)"/>
+                                    <field name="rendimiento_anterior" invisible="not rendimiento_anterior"/>
                                     <field name="rendimiento_manual" widget="boolean_toggle"/>
                                     <field name="rendimiento_fuente"/>
                                     <div colspan="2" class="text-muted small" invisible="not rendimiento_manual">
-                                        Escrito a mano por Ingeniería: el recálculo nocturno no lo cambia hasta que haya 3
-                                        rollos de Inspección. Desmarque «Rendimiento forzado» para volver al cálculo.
+                                        Escrito a mano por Ingeniería. El recálculo nocturno nunca cambia la ficha: lo que
+                                        mide queda en «Rendimiento medido» y se aplica con «Usar el medido».
                                     </div>
                                     <div colspan="2" class="text-muted small" invisible="rendimiento_fuente != 'rollos'">
                                         Metros ÷ kg netos de
                                         <field name="rendimiento_real_ordenes" class="oe_inline" readonly="1"/>
-                                        rollos de primera y FE pesados en Inspección en 12 meses; se recalcula cada noche.
+                                        rollos de primera y FE pesados en Inspección en 12 meses, aprobado por Ingeniería.
                                     </div>
                                     <div colspan="2" class="text-muted small" invisible="rendimiento_fuente != 'terminado'">
                                         Metros ÷ kg de tela terminada de
                                         <field name="rendimiento_real_ordenes" class="oe_inline" readonly="1"/>
                                         conversiones a kg (kg de la lista de empaque) en 12 meses, mientras la tela no
-                                        tenga 3 rollos de Inspección; se recalcula cada noche.
+                                        tenga 3 rollos de Inspección, aprobado por Ingeniería.
                                     </div>
                                     <div colspan="2" class="text-muted small" invisible="rendimiento_fuente != 'estimado'">
                                         Sin rollos de Inspección ni conversiones a kg: metros por kg que entró de

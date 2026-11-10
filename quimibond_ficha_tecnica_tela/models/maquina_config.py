@@ -59,6 +59,21 @@ VALOR_MODELS = {'maquina': 'ficha.tecnica.maquina.valor', 'articulo': 'ficha.tec
 # clave (las usan la ficha de tejido y la búsqueda de máquinas por galga).
 CONFIG_VALUE_FIELDS = ('diametro', 'galga', 'no_agujas', 'no_alimentadores', 'velocidad_max')
 INT_VALUE_FIELDS = ('no_agujas', 'no_alimentadores')
+# 2.30.0 (auditoría del 10-nov): claves que leen los cálculos de este módulo y de otros (Programación y Dosificación
+# de Tintorería, costeo, SGI). Se buscan por clave: renombrar, cambiar de tipo, archivar o borrar una deja el cálculo
+# en cero sin error, así que no se permite. (tipo de máquina, clave).
+CODIGOS_DEL_CALCULO = {
+    ('tejido_circular', 'diametro'), ('tejido_circular', 'galga'), ('tejido_circular', 'no_agujas'),
+    ('tejido_circular', 'no_alimentadores'), ('tejido_circular', 'velocidad_max'),
+    ('tejido_circular', 'salida_tela'),
+    ('tintoreria', 'capacidad'), ('tintoreria', 'capacidad_grupo_a'), ('tintoreria', 'capacidad_grupo_b'),
+    ('tintoreria', 'capacidad_grupo_c'), ('tintoreria', 'relacion_bano'), ('tintoreria', 'minimo_bano'),
+    ('tintoreria', 'kg_carga'), ('tintoreria', 'relacion_bano_articulo'), ('tintoreria', 'tiempo_ciclo'),
+    ('acabado', 'velocidad'), ('acabado', 'merma'), ('acabado', 'ancho_rama'),
+    ('inspeccion', 'velocidad_inspeccion'),
+    ('abridora', 'velocidad'), ('abridora', 'velocidad_tubular'), ('abridora', 'velocidad_abierta'),
+    ('devanadora', 'velocidad'),
+}
 
 
 def _fmt(value):
@@ -182,7 +197,29 @@ class FichaTecnicaMaquinaParametro(models.Model):
         self.ensure_one()
         return [o.strip() for o in (self.opciones or '').split(',') if o.strip()]
 
+    def _ft_es_del_calculo(self):
+        """2.30.0: True si un cálculo lee este parámetro por su clave (``CODIGOS_DEL_CALCULO``)."""
+        self.ensure_one()
+        return (self.tipo_id.code, self.code) in CODIGOS_DEL_CALCULO
+
+    def write(self, vals):
+        # 2.30.0: las claves de los cálculos no se renombran, no cambian de tipo ni de clase de dato, no se archivan.
+        if {'code', 'tipo_id', 'kind'} & set(vals) or vals.get('active') is False:
+            for param in self.filtered(lambda p: p._ft_es_del_calculo()):
+                cambia = (('code' in vals and vals['code'] != param.code)
+                          or ('tipo_id' in vals and vals['tipo_id'] != param.tipo_id.id)
+                          or ('kind' in vals and vals['kind'] != param.kind)
+                          or vals.get('active') is False)
+                if cambia:
+                    raise UserError('«%s» (%s) lo leen los cálculos de tiempos, capacidad o costeo por su clave '
+                                    '«%s»: no se renombra, no cambia de tipo y no se archiva. Puede cambiar el '
+                                    'nombre, la unidad y las notas.' % (param.name, param.tipo_id.name, param.code))
+        return super().write(vals)
+
     def unlink(self):
+        del_calculo = self.filtered(lambda p: p._ft_es_del_calculo())
+        if del_calculo:
+            raise UserError('«%s» lo leen los cálculos por su clave: no se borra.' % del_calculo[0].name)
         for model in VALOR_MODELS.values():
             lines = self.env[model].search([('parametro_id', 'in', self.ids)])
             if lines.filtered(lambda v: v.valor or v.valor_texto):

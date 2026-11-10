@@ -116,7 +116,9 @@ class FichaTecnicaTejido(models.Model):
     diametro = fields.Float(string='Diámetro (in)', digits=(16, 2))
     no_agujas = fields.Integer(string='No. de agujas')
     no_alimentadores = fields.Integer(string='No. de alimentadores')
-    velocidad = fields.Float(string='Velocidad (rpm/min)')
+    velocidad = fields.Float(string='Velocidad (rpm)',
+                             help='Revoluciones por minuto de la circular con este artículo. Solo se muestra; '
+                                  'el tope de la máquina es su «Velocidad máxima» en la configuración por fecha.')
     vueltas_por_rollo = fields.Integer(string='Vueltas por rollo')
 
     # Hilos

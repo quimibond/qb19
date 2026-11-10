@@ -38,10 +38,11 @@ class FichaTecnicaAcabado(models.Model):
     # Datos de Acabado
     # ------------------------------------------------------------------
     rendimiento_tela_acabada = fields.Float(
-        string='Rendimiento de tela acabada (mts/kg)', digits=(12, 4),
-        help='Metros por kg de tela terminada. Se recalcula cada noche con lo fabricado (rollos de Inspección, '
-             'conversiones a kg o estimado; ver «De dónde sale el rendimiento»). Si Ingeniería lo escribe a mano queda '
-             '«Rendimiento forzado» hasta que haya 3 rollos de Inspección.')
+        string='Rendimiento de tela terminada (m/kg)', digits=(12, 4),
+        help='Metros por kg de tela terminada (sin orilla: la orilla va en el consumo de crudo de la lista en kg). Lo '
+             'escribe Ingeniería a mano o lo aprueba con «Usar el medido»; el recálculo nocturno nunca lo cambia, solo '
+             'propone en «Rendimiento medido». Lo usan la conversión kg → m de la lista en metros, los tiempos de rama '
+             'e inspección, el costeo y la alerta de metros de Inspección.')
 
     peso_acabado = fields.Float(string='Peso')
     peso_acabado_tol = fields.Float(
