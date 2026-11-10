@@ -154,60 +154,131 @@ class QbSalesMonthPlan(models.Model):
         return out
 
     def _qb_last_invoice_price(self, partner, product):
-        """(precio en la unidad de venta del producto, moneda) de la última factura de ese cliente y
-        producto en los 12 meses antes del mes; None si no hay."""
+        """(precio, moneda, base) de la última factura a ese cliente en los 12 meses antes del mes:
+        del mismo producto (base «venta», en su unidad); si no hay, de la misma tela en otro código
+        (3.16.4: FXI, Lear y Shawmut se facturan en kilos, IWD038…, y el pronóstico viene en metros,
+        WD038…), con la base de la unidad en que se facturó («kg» o «m»). None si no hay."""
         self.ensure_one()
         if not partner or not product:
             return None
-        date_from = self.month - relativedelta(months=12)
-        aml = self.env['account.move.line'].sudo().search([
+        AML = self.env['account.move.line'].sudo()
+        base_domain = [
             ('company_id', '=', self.company_id.id), ('parent_state', '=', 'posted'),
             ('move_id.move_type', '=', 'out_invoice'), ('display_type', '=', 'product'),
-            ('product_id', '=', product.id), ('partner_id', 'child_of', partner.commercial_partner_id.id),
-            ('move_id.invoice_date', '>=', date_from), ('price_unit', '>', 0)],
-            order='invoice_date desc, id desc', limit=1)
-        if not aml:
-            return None
-        price = aml.price_unit
-        if aml.product_uom_id and aml.product_uom_id != product.uom_id \
-                and aml.product_uom_id._has_common_reference(product.uom_id):
-            price = aml.product_uom_id._compute_price(price, product.uom_id)
-        return price, aml.currency_id or self.currency_id
+            ('partner_id', 'child_of', partner.commercial_partner_id.id),
+            ('move_id.invoice_date', '>=', self.month - relativedelta(months=12)), ('price_unit', '>', 0)]
+        order = 'invoice_date desc, id desc'
+        aml = AML.search(base_domain + [('product_id', '=', product.id)], order=order, limit=1)
+        if aml:
+            price = aml.price_unit
+            if aml.product_uom_id and aml.product_uom_id != product.uom_id \
+                    and aml.product_uom_id._has_common_reference(product.uom_id):
+                price = aml.product_uom_id._compute_price(price, product.uom_id)
+            return price, aml.currency_id or self.currency_id, 'venta', aml
+        articulo = product.qb_articulo_id or product
+        units = {self.env.ref('uom.product_uom_kgm'): 'kg', self.env.ref('uom.product_uom_meter'): 'm'}
+        for aml in AML.search(base_domain + [
+                ('product_id', '!=', product.id),
+                '|', ('product_id.qb_articulo_id', '=', articulo.id), ('product_id', '=', articulo.id)],
+                order=order, limit=20):
+            basis = units.get(aml.product_uom_id)
+            if basis:
+                return aml.price_unit, aml.currency_id or self.currency_id, basis, aml
+        return None
 
-    def _qb_price_vals(self, partner, product, qty, prices):
-        """Precio de un renglón: el del presupuesto anual (cualquier mes), la lista del cliente o la
-        última factura, en ese orden. {} si no hay ninguno."""
-        price = prices.get((partner.id or False, product.id)) or prices.get((False, product.id))
-        if price:
-            return {'price_input': price[0], 'price_currency_id': price[1].id, 'price_basis': price[2],
-                    'price_origen': 'presupuesto'}
+    def _qb_list_price(self, partner, product, qty):
+        """(precio, moneda) de la regla de la lista del cliente para el producto; None si la lista
+        no tiene regla (o el cliente no tiene lista)."""
         probe = self.env['sgi.sales.budget.line'].new({
             'partner_id': partner.id or False, 'product_id': product.id, 'uom_id': product.uom_id.id,
             'qty_budget': qty or 1.0, 'date': self.month})
         _company_price, _src, list_ccy, raw, has_price = probe._sgi_pricelist_price()
-        if has_price and raw > 0:
-            return {'price_input': raw, 'price_currency_id': list_ccy.id, 'price_basis': 'venta',
+        return (raw, list_ccy) if has_price and raw > 0 else None
+
+    def _qb_price_vals(self, partner, product, qty, prices):
+        """Precio de un renglón: el del presupuesto anual aprobado (cualquier mes) o el de la lista
+        del cliente. 3.16.5 (Jose, 10-nov): **la lista del cliente es la fuente**; lo que no está ahí
+        no se toma de facturas: se le pide a Ventas que lo dé de alta (``_qb_request_list_prices``).
+        {} si no hay."""
+        price = prices.get((partner.id or False, product.id)) or prices.get((False, product.id))
+        if price:
+            return {'price_input': price[0], 'price_currency_id': price[1].id, 'price_basis': price[2],
+                    'price_origen': 'presupuesto'}
+        listed = self._qb_list_price(partner, product, qty)
+        if listed:
+            return {'price_input': listed[0], 'price_currency_id': listed[1].id, 'price_basis': 'venta',
                     'price_origen': 'lista'}
-        last = self._qb_last_invoice_price(partner, product)
-        if last:
-            return {'price_input': round(last[0], 4), 'price_currency_id': last[1].id, 'price_basis': 'venta',
-                    'price_origen': 'factura'}
         return {}
 
+    def _qb_request_list_prices(self):
+        """Una actividad por cliente para su vendedor, en la lista de precios del cliente, con los
+        productos del mes que la lista no tiene y, como referencia, el último precio facturado (del
+        mismo código o de la misma tela en otro código). Si ya hay una abierta de este presupuesto
+        del mes, se actualiza. Devuelve cuántos productos se pidieron."""
+        self.ensure_one()
+        todo = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        missing = {}
+        for line in self.line_ids.filtered(lambda l: l.product_id and l.partner_id):
+            partner = line.partner_id.commercial_partner_id
+            if self._qb_list_price(partner, line.product_id, line.qty):
+                continue
+            missing.setdefault(partner, {}).setdefault(line.product_id, 0.0)
+            missing[partner][line.product_id] += line.qty
+        summary = "Precios que faltan en la lista (%s)" % self.name
+        fmt = '{:,.2f}'.format
+        count = 0
+        for partner, products in missing.items():
+            rows = []
+            for product, qty in products.items():
+                last = self._qb_last_invoice_price(partner, product)
+                ref = "sin factura en 12 meses"
+                if last:
+                    aml = last[3]
+                    ref = "%s %s por %s (%s, %s)" % (
+                        fmt(last[0]), last[1].name, {'venta': product.uom_id.name, 'kg': 'kg', 'm': 'm'}[last[2]],
+                        aml.product_id.default_code or aml.product_id.name, aml.move_id.invoice_date)
+                rows.append(Markup("<li>%s — %s %s en el mes · último facturado: %s</li>") % (
+                    product.display_name, fmt(qty), product.uom_id.name, ref))
+                count += 1
+            pricelist = partner.property_product_pricelist
+            record = pricelist if pricelist and 'activity_ids' in pricelist._fields else partner
+            note = Markup("<p>Dé de alta en la lista de precios de %s el precio de:</p><ul>%s</ul>"
+                          "<p>Después, en %s, pulse «Completar precios».</p>") % (
+                partner.name, Markup('').join(rows), self.name)
+            user = partner.user_id or self.env.user
+            existing = self.env['mail.activity'].sudo().search([
+                ('res_model', '=', record._name), ('res_id', '=', record.id), ('summary', '=', summary)], limit=1)
+            if existing:
+                existing.write({'note': note, 'user_id': user.id})
+            else:
+                record.sudo().activity_schedule(
+                    activity_type_id=todo.id if todo else False, summary=summary, note=note,
+                    user_id=user.id, date_deadline=fields.Date.context_today(self) + relativedelta(days=3))
+        if missing:
+            self.message_post(body="Se pidió a Ventas dar de alta %d precio(s) en la lista de %s." % (
+                count, ", ".join(p.name for p in missing)))
+        return count
+
     def action_qb_fill_prices(self):
-        """Pone precio a los renglones que no tienen (sin tocar cantidades ni los que ya tienen)."""
+        """Pone precio a los renglones que no tienen (sin tocar cantidades ni los que ya tienen) y pide
+        a Ventas lo que falta en la lista de cada cliente. Un precio que salió de una factura (3.16.2 a
+        3.16.4) se vuelve a evaluar: si la lista ya lo tiene se toma; si no, queda sin precio."""
         for plan in self:
             if plan.state != 'borrador':
                 raise UserError("Los precios se completan en un presupuesto del mes en borrador.")
             prices = plan._qb_budget_prices()
             done = 0
-            for line in plan.line_ids.filtered(lambda l: l.product_id and l.price_input <= 0):
+            for line in plan.line_ids.filtered(
+                    lambda l: l.product_id and (l.price_input <= 0 or l.price_origen == 'factura')):
                 vals = plan._qb_price_vals(line.partner_id, line.product_id, line.qty, prices)
+                if not vals and line.price_origen == 'factura':
+                    vals = {'price_input': 0.0, 'price_origen': False}
                 if vals:
                     line.write(vals)
-                    done += 1
+                    done += bool(vals.get('price_input'))
             plan.message_post(body="Precios completados: %d renglón(es); %d siguen sin precio." % (
                 done, len(plan.line_ids.filtered(lambda l: l.product_id and l.price_input <= 0))))
+            plan._qb_request_list_prices()
         return True
 
     def action_qb_build(self):
@@ -249,6 +320,7 @@ class QbSalesMonthPlan(models.Model):
             plan.message_post(body="Armado con %d renglón(es) del pronóstico vigente; precios del %s."
                               % (len(vals_list), plan.budget_id.name or "presupuesto: sin aprobado del año, "
                                                                         "solo de la lista"))
+            plan._qb_request_list_prices()
         return True
 
     # --- Envío ------------------------------------------------------------------
