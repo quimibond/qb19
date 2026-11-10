@@ -950,7 +950,9 @@ class SgiSalesBudgetLine(models.Model):
                                                     or dev.sgi_dev_product_name or dev.name)
                     vals['proyecto_gramaje'] = vals.get('proyecto_gramaje') or gramaje
                     vals['proyecto_ancho_cm'] = vals.get('proyecto_ancho_cm') or ancho_cm
-                if vals.get('mercado') not in PROYECTO_MERCADOS:
+                # 3.16.3: solo si no viene mercado. Una copia (nueva revisión, «Traer renglones»)
+                # de un renglón que Ventas pasó a Industrial no regresa a Proyectos.
+                if not vals.get('mercado'):
                     from .qb_forecast import team_of_partner  # import local: los módulos van después
                     from .qb_sales_project import proyecto_mercado
                     vals['mercado'] = proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(dev.partner_id))

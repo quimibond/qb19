@@ -21,6 +21,30 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Proyectos comerciales: inicio, revisión y desarrollos repetidos (19.0.3.16.3, 2026-11-10)
+
+Revisión de los proyectos comerciales (3.8.0–3.10.0):
+
+- **Inicio del proyecto:** la bitácora de etapas del desarrollo empezó en octubre de 2026; los
+  desarrollos de antes no tenían registro de Cotización y su proyecto tomó la fecha del día en que
+  se cargó (52 de 62 en noviembre de 2026), así que su venta anterior contaba como línea. Ahora el
+  inicio es la entrada a Cotización o la fecha de alta del desarrollo, la que sea anterior; la
+  migración lo corrige en los existentes y reconstruye la Venta real.
+- **Desarrollo repetido:** si un desarrollo genera el producto de un cliente y artículo que ya
+  tiene otro proyecto vigente, su proyecto no toma el producto y avisa en el chatter (antes el
+  desarrollo no podía cambiar de etapa).
+- **Pasar a línea:** el aviso dice lo que hace: la venta cuenta en línea en Venta real y en el
+  cierre; los renglones del presupuesto no cambian de mercado. Cuando lo gradúa el presupuesto del
+  año siguiente, pasa a línea al 31 de diciembre del año anterior (antes, el día de la
+  aprobación: el resto del año en curso salía de Proyectos).
+- **Presupuestado** del proyecto: un documento por año (el aprobado; si no hay, el abierto). Antes
+  sumaba el aprobado y su revisión en borrador.
+- **Mercado de un renglón con desarrollo:** solo se pone Proyectos si no viene mercado; una copia de
+  un renglón que Ventas pasó a Industrial ya no regresa a Proyectos.
+- **Propuesta del año:** un desarrollo de un producto de línea para un cliente que no lo compra sí
+  entra (antes se descartaba si el producto se vendía a cualquier cliente), y dos desarrollos del
+  mismo cliente y artículo dan un solo juego de renglones (antes la propuesta entera fallaba).
+
 ## Precios del presupuesto del mes (19.0.3.16.2, 2026-11-10)
 
 El presupuesto del mes de noviembre de 2026 salía con 11 renglones sin precio: el precio del
