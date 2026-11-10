@@ -53,17 +53,18 @@ def clean_num(value):
 
 
 def parse_tolerance(value):
-    """2.2.0: tolerancia de la celda como (arriba, abajo). «0.5» → (0.5, 0.0) (± el mismo valor);
-    «+12 / -6» → (12.0, 6.0). Vacío → (0.0, 0.0)."""
+    """Tolerancia de la celda como (arriba, abajo). 2.29.0: un solo número vale para los dos lados
+    («0.5» → (0.5, 0.5)); «+12 / -6» → (12.0, 6.0); «+0 / -5» → (0.0, 5.0). Vacío → (0.0, 0.0)."""
     if value in (None, '', 'N/A', 'NA', 'n/a'):
         return 0.0, 0.0
     if isinstance(value, (int, float)):
-        return abs(float(value)), 0.0
+        return abs(float(value)), abs(float(value))
     text = str(value).replace(',', '.')
     if '/' in text:
         up, down = text.split('/', 1)
         return abs(clean_num(up)), abs(clean_num(down))
-    return abs(clean_num(text)), 0.0
+    num = abs(clean_num(text))
+    return num, num
 
 
 def row_is_empty(row_values):

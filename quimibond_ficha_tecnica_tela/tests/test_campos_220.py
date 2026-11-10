@@ -21,11 +21,13 @@ class TestCampos220(TransactionCase):
             self.assertEqual(Acabado._fields[name].type, 'float', name)
 
     def test_02_tolerancia_del_excel(self):
-        self.assertEqual(parse_tolerance('0.5'), (0.5, 0.0))
+        # 2.29.0: un solo número vale para los dos lados.
+        self.assertEqual(parse_tolerance('0.5'), (0.5, 0.5))
         self.assertEqual(parse_tolerance('+12 / -6'), (12.0, 6.0))
-        self.assertEqual(parse_tolerance(3), (3.0, 0.0))
+        self.assertEqual(parse_tolerance(3), (3.0, 3.0))
         self.assertEqual(parse_tolerance(None), (0.0, 0.0))
-        self.assertEqual(parse_tolerance('1,5'), (1.5, 0.0))
+        self.assertEqual(parse_tolerance('1,5'), (1.5, 1.5))
+        self.assertEqual(parse_tolerance('+0 / -5'), (0.0, 5.0))
 
     def test_03_maquina_del_excel(self):
         wc = self.env['mrp.workcenter'].create({'name': 'CIRCULAR 77 FT prueba'})

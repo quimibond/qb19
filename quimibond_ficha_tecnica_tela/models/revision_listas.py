@@ -184,9 +184,10 @@ class FichaTecnicaRevision(models.Model):
                                        (acabado.rendimiento_medido / ficha_r - 1) * 100.0 if ficha_r else 0.0)))
         if acabado.rendimiento_medido_estado == 'fuera':
             pendientes.append(dict(ing, tipo='rendimiento_fuera', detalle='Lo fabricado da %.4f m/kg y el teórico (peso '
-                                   'y ancho de la ficha) es %.4f: se aleja demasiado para proponerlo. Revisa el peso, '
-                                   'el ancho o las órdenes de la tela.' % (
-                                       acabado.rendimiento_medido, acabado.rendimiento_teorico)))
+                                   'de la ficha y ancho de %s) es %.4f: se aleja demasiado para proponerlo. Revisa el '
+                                   'peso, el ancho o las órdenes de la tela.' % (
+                                       acabado.rendimiento_medido, acabado.rendimiento_teorico_ancho or 'la ficha',
+                                       acabado.rendimiento_teorico)))
         tejido = acabado.tejido_id
         if tejido and not tejido.rendimiento_tela_tejida:
             pendientes.append(dict(ing, tipo='datos_tejido', detalle='La ficha de tejido %s no tiene rendimiento de '

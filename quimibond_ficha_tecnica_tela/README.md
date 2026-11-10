@@ -89,7 +89,7 @@ Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo med
 |---|---|
 | Igual al de la ficha | Se aleja menos que la alerta (5 %, `alerta_rendimiento_pct`): nada que hacer |
 | Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
-| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho de venta en m): dato malo, no se propone |
+| Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho bajando de rama en m; el de venta solo si falta): dato malo, no se propone |
 
 Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
 Excel no lo fuerza (es el teórico).
@@ -281,8 +281,9 @@ Plato`, `Altura Plato`, `Ancho Bastidor`, `Estiraje`, `Ancho Rollo`,
 Tela acondicionada: `Peso Acondicionado`, `Ancho Acondicionado`, `Espesor
 Acondicionado`, `Columnas`, `Mallas`, `Elongación Carga Largo`,
 `Elongación Carga Ancho` — cada uno con su columna `<Dato> Tolerancia` y
-`<Dato> Tolerancia Unidad` (el de Peso admite tolerancia asimétrica en
-texto libre, ej. "+12 / -6").
+`<Dato> Tolerancia Unidad` (desde 2.29.0 peso, ancho, espesor, encogimientos
+y elongaciones admiten tolerancia asimétrica en texto libre, ej. "+12 / -6"
+o "+0 / -5"; un solo número vale para los dos lados).
 
 Hasta 2 hilos por columnas `Hilo1 Tipo` / `Hilo1 Título` / `Hilo1
 Torsión` / `Hilo1 Pct` / `Hilo1 Lote` / `Hilo1 Proveedor` (e igual para
@@ -301,8 +302,9 @@ referencia interna o nombre del producto, debe existir ya en Odoo),
 Tabla de datos de tela acabada: `Peso`, `Ancho`, `Encogimiento a lo
 Largo`, `Encogimiento a lo Ancho`, `Espesor`, `Elongación Largo`,
 `Elongación Ancho` — cada uno con su columna `<Dato> Tolerancia` y
-`<Dato> Tolerancia Unidad` (el de Peso admite tolerancia asimétrica en
-texto libre, ej. "+12 / -6").
+`<Dato> Tolerancia Unidad` (desde 2.29.0 peso, ancho, espesor, encogimientos
+y elongaciones admiten tolerancia asimétrica en texto libre, ej. "+12 / -6"
+o "+0 / -5"; un solo número vale para los dos lados).
 
 Si una fila referencia un artículo de tejido o producto que no existe
 todavía en Odoo, esa fila se omite y se reporta en el resumen de avisos
