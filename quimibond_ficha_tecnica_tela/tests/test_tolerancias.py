@@ -31,7 +31,8 @@ class TestTolerancias(TransactionCase):
             for name in names:
                 self.assertEqual(fields_[name + '_minus'].type, 'float', name)
                 self.assertNotEqual(fields_[name].string, fields_[name + '_minus'].string, name)
-        self.assertEqual(self.env['ficha.tecnica.acabado']._fields['espesor_acabado_tol_minus'].digits, (16, 3))
+        espesor = self.env['ficha.tecnica.acabado']._fields['espesor_acabado_tol_minus']
+        self.assertEqual(espesor.get_digits(self.env), (16, 3))
         self.assertEqual(set(ASYM_ACABADO), set(ACABADO))
         self.assertEqual(set(ASYM_TEJIDO), set(TEJIDO))
 
