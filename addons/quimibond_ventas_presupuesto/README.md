@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ventas pone la fecha de entrega (19.0.3.16.7, 2026-11-10)
+
+Jose (10-nov): «en algún punto del proceso Jessica tiene que poder ponerle la fecha de entrega que
+nosotros pensamos que le vamos a entregar al cliente».
+
+- En «Proponer pedidos» hay dos columnas: **Pide el cliente** (la entrega del release o el lunes de la
+  semana, fija) y **Fecha de entrega**, la que comprometemos, **editable**. Viene la que ya tiene el
+  pedido (aunque se haya cambiado a mano) o, si no hay pedido, la que pide el cliente; nunca en el
+  pasado. Sale en rojo si es posterior a lo que pide el cliente.
+- Cambiarla **marca el renglón**, también uno «Sin cambio» (solo cambia la fecha, no la cantidad). Al
+  aplicar, el pedido toma esa fecha; en un pedido confirmado y bloqueado se desbloquea, se cambia y
+  se vuelve a bloquear con nota (solo el administrador de ventas).
+- La siguiente propuesta **respeta la fecha comprometida**: ya no la regresa a la del release.
+- También se puede cambiar directo en el pedido («Otra información» → «Fecha de entrega»); la
+  propuesta la toma de ahí.
+
 ## Fecha de entrega y bajas a cero en «Proponer pedidos» (19.0.3.16.6, 2026-11-10)
 
 Primera corrida real (10-nov): los pedidos parecían «sin fecha de entrega» y no había cómo aplicar un
