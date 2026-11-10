@@ -8,6 +8,39 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.30.0 — 2026-11-10
+
+**Auditoría del módulo: que se entienda cada campo y una sola regla por cálculo.** Se revisaron los 37 modelos y 522
+campos contra Odoo 19 nativo, contra los demás módulos del repo y contra los datos de producción. Con lo nativo casi no
+se duplica (la ficha calcula y escribe en el tiempo de la operación, la capacidad del centro y la cantidad de la
+lista); el desorden estaba dentro del módulo y entre módulos.
+
+- **Ayuda en todos los campos:** qué es, dónde se captura y cómo se calcula (antes 314 de 493 campos no tenían).
+  Etiquetas que confundían: «Rendimiento de tejido» (orden de fabricación) y «Rendimiento de tela terminada» (producto,
+  ficha de acabado) en lugar de «Rendimiento (m/kg)» para los dos; «Velocidad (rpm)» en la ficha de tejido (decía
+  «rpm/min»). Ayudas y textos que decían que el rendimiento «se recalcula cada noche» (desde 2.28.0 solo se propone).
+- **Claves de los parámetros protegidas** (`CODIGOS_DEL_CALCULO`): los cálculos de tiempos, capacidad, costeo y SGI
+  leen los parámetros por clave; renombrar, cambiar de tipo, archivar o borrar una dejaba el cálculo en cero sin error.
+  Ahora no se permite; nombre, unidad y notas sí se cambian.
+- **Ancho de venta con su unidad** en el rendimiento teórico y el peso real (antes «más de 10 es cm»). Todas las fichas
+  de producción y main tienen la unidad correcta; ninguna cambia.
+- **«Rendimiento anterior»** se ve en la ficha y también se guarda al escribir el rendimiento a mano.
+- **Parámetros sin capturar atenuados** en Procesos por artículo y en la configuración de la máquina (242 procesos de
+  jet tienen 11 parámetros y la mayoría vacíos).
+- **Programación de Tintorería 1.8.4** usa la regla de capacidad de la ficha (`_ft_regla_capacidad`) en lugar de su
+  copia. **`quimibond_tintoreria_rendimiento` se retira del repo** (nunca se instaló en producción, main ni pruebas; su
+  tabla de bandas era 3-6/7-10/11-15 y la vigente es 3-7/7-11/11-16).
+- README: sección «Mapa de datos» (los dos rendimientos, la orilla, capacidad de la ficha contra la del centro, claves,
+  unidades, lo que queda pendiente) y corregidas las secciones viejas de anchos y rendimiento.
+
+**Migración:** `migrations/19.0.2.30.0/post-migrate.py` pone a los parámetros de banda de los jets el nombre de la regla
+(en producción decían «rendimiento 3 a 6»); no cambia claves ni valores. Pruebas: `test_auditoria_230`.
+
+**Queda para después** (README, «Lo que la auditoría dejó para después»): merma en el tiempo de rama (fichas contra
+costeo), peso nativo del producto (2 decimales en producción), cambios a listas activas por ECO, puntos de control de
+medida en Inspección, datos de las máquinas en Mantenimiento.
+
+
 ## 19.0.2.29.0 — 2026-11-10
 
 **Tolerancia hacia arriba y hacia abajo en todas las medidas de tela.** Ancho, espesor, encogimientos y elongaciones
