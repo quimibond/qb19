@@ -303,8 +303,14 @@ class QbOrderProposal(models.TransientModel):
                     'qty_forecast': target, 'qty_existing': qty_existing, 'qty_delivered': delivered,
                     'price_unit': price, 'release_id': group['release'].id or False,
                     'customer_part': group['part'] or False,
-                    'delivery_date': self._qb_delivery(group['delivery'], group['week']),
+                    'customer_date': group['delivery'] or group['week'],
                     'sale_line_ids': [(6, 0, existing.ids)]}
+            # 3.16.7: la fecha de entrega que propone es la que ya tiene el pedido (la que comprometió
+            # Ventas, aunque la haya cambiado a mano); si no hay pedido, la que pide el cliente. Jessica la
+            # cambia en la propuesta. Nunca en el pasado.
+            promised = existing.order_id.filtered('commitment_date')[:1].commitment_date
+            vals['delivery_date'] = vals['delivery_date_proposed'] = self._qb_delivery(
+                promised.date() if promised else group['delivery'], group['week'])
             reason = group['why']
             if not reason and group['dev_state'] in DEV_NO_SALE:
                 reason = "Artículo en desarrollo o archivado: el pedido no se confirmaría"
@@ -385,25 +391,50 @@ class QbOrderProposal(models.TransientModel):
         se cambia y se vuelve a bloquear, con nota en el chatter)."""
         self.ensure_one()
         lines = self.line_ids.filtered(
-            lambda l: l.apply and not l.applied and l.action in ('nuevo', 'aumenta', 'baja'))
+            lambda l: l.apply and not l.applied and l.action in ('nuevo', 'aumenta', 'baja', 'sin_cambio'))
         if not lines:
             raise UserError("No hay renglones marcados para aplicar (o ya se aplicaron).")
         if lines.filtered('adjust_confirmed') and not self.env.user.has_group('sales_team.group_sale_manager'):
             raise UserError("Solo el administrador de ventas ajusta pedidos confirmados.")
+        if not self.env.user.has_group('sales_team.group_sale_manager') and lines.filtered(
+                lambda l: l.action == 'sin_cambio' and 'sale' in l.sale_line_ids.order_id.mapped('state')):
+            raise UserError("Solo el administrador de ventas cambia la fecha de entrega de un pedido confirmado.")
+        today = fields.Date.context_today(self)
+        late = lines.filtered(lambda l: l.delivery_date and l.delivery_date < today)
+        if late:
+            raise UserError("La fecha de entrega no puede quedar en el pasado: %s." % ", ".join(
+                "%s %s" % (l.customer_po or '', l.product_id.display_name) for l in late[:5]))
         touched = self.env['sale.order']
         dates = {}
         for line in lines:
-            orders = line._qb_apply()
+            if line.action == 'sin_cambio':
+                # Solo cambia la fecha de entrega (3.16.7): no se toca la cantidad.
+                orders = self._qb_existing(self.env.company, line.partner_id, line.customer_po, line.week,
+                                           line.product_id, line.ship_to_id).order_id
+            else:
+                orders = line._qb_apply()
             touched |= orders
             line.write({'applied': True, 'apply': False})
-            for order in orders.exists().filtered(lambda o: o.state in ('draft', 'sent') and o.qb_from_forecast):
-                when = self._qb_delivery(line.delivery_date, line.week)
+            when = line.delivery_date or self._qb_delivery(line.customer_date, line.week)
+            for order in orders.exists().filtered(lambda o: o.state in ('draft', 'sent', 'sale')):
                 dates[order] = min(dates.get(order, when), when)
-        # 3.16.6: la cotización toma la fecha de entrega vigente (el release pudo moverla; nunca en el pasado).
+        # 3.16.7: el pedido lleva la fecha de entrega de la propuesta: la que Jessica dejó (editada o la
+        # que ya tenía el pedido). En un pedido confirmado y bloqueado se desbloquea, se cambia y se vuelve
+        # a bloquear, con nota, como la cantidad.
         for order, when in dates.items():
             commitment = datetime.combine(when, time(18, 0))
-            if order.exists() and order.commitment_date != commitment:
-                order.commitment_date = commitment
+            if not order.exists() or order.commitment_date == commitment:
+                continue
+            before = order.commitment_date
+            was_locked = bool(order._fields.get('locked') and order.locked)
+            if was_locked:
+                order.action_unlock()
+            order.commitment_date = commitment
+            if was_locked:
+                order.action_lock()
+            if order.state == 'sale':
+                order.message_post(body=Markup("Fecha de entrega: %s → %s.") % (
+                    before.date() if before else "—", when))
         # Una cotización del pronóstico que se quedó sin productos (el release bajó todo a cero) se cancela.
         empty = touched.exists().filtered(
             lambda o: o.state in ('draft', 'sent') and o.qb_from_forecast
@@ -423,7 +454,7 @@ class QbOrderProposal(models.TransientModel):
 
     def _qb_order_vals(self, line):
         partner = line.partner_id.commercial_partner_id
-        when = self._qb_delivery(line.delivery_date, line.week)
+        when = line.delivery_date or self._qb_delivery(line.customer_date, line.week)
         vals = {'partner_id': partner.id, 'client_order_ref': line.customer_po,
                 'commitment_date': datetime.combine(when, time(18, 0)),
                 'origin': "Pronóstico %s" % (line.release_id.name or line.week.isoformat()),
@@ -448,9 +479,14 @@ class QbOrderProposalLine(models.TransientModel):
     ship_to_id = fields.Many2one('res.partner', string="Dirección de entrega", readonly=True)
     customer_po = fields.Char(string="OC / referencia", readonly=True)
     week = fields.Date(string="Semana", readonly=True)
-    delivery_date = fields.Date(string="Fecha de entrega", readonly=True,
-                                help="La que lleva el pedido: la entrega del release o, si no trae, el lunes de "
-                                     "la semana de embarque; una semana atrasada, hoy.")
+    customer_date = fields.Date(string="Pide el cliente", readonly=True,
+                                help="La entrega que pide el cliente en el release o, si no trae, el lunes de la "
+                                     "semana de embarque.")
+    delivery_date = fields.Date(string="Fecha de entrega",
+                                help="La que comprometemos con el cliente y lleva el pedido. Viene la que ya tiene "
+                                     "el pedido o, si no hay, la que pide el cliente (nunca en el pasado). Se puede "
+                                     "cambiar: el renglón se marca y al aplicar se escribe en el pedido.")
+    delivery_date_proposed = fields.Date(readonly=True)
     product_id = fields.Many2one('product.product', string="Producto", readonly=True)
     customer_part = fields.Char(string="Parte del cliente", readonly=True)
     release_id = fields.Many2one('qb.release', string="Release", readonly=True)
@@ -468,6 +504,14 @@ class QbOrderProposalLine(models.TransientModel):
                                       help="El pedido de esa OC y semana ya está confirmado: se desbloquea, se "
                                            "cambia y se vuelve a bloquear (solo el administrador de ventas).")
     sale_line_ids = fields.Many2many('sale.order.line', string="Líneas de pedido", readonly=True)
+
+    @api.onchange('delivery_date')
+    def _onchange_qb_delivery_date(self):
+        """Cambiar la fecha de entrega marca el renglón para aplicarlo (también uno «sin cambio»)."""
+        for line in self:
+            if line.delivery_date != line.delivery_date_proposed and line.action != 'no_entra' \
+                    and not line.applied and not (line.action == 'por_autorizar'):
+                line.apply = True
 
     def _qb_order_for(self, current, allow_confirmed=True):
         """El pedido de la OC y semana del renglón donde va lo nuevo: una cotización si hay; si no, el

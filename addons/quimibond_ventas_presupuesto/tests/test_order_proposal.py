@@ -234,3 +234,26 @@ class TestOrderProposal(TransactionCase):
         self.assertEqual(proposal.line_ids.delivery_date, today)
         order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
         self.assertEqual(order.commitment_date.date(), today)
+
+    def test_11_fecha_de_entrega_que_pone_ventas(self):
+        """3.16.7: Ventas pone en la propuesta la fecha de entrega que comprometemos; el pedido la toma, la
+        siguiente propuesta la respeta (no vuelve a la del cliente) y se puede cambiar solo la fecha."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 1})
+        fl = self._fl(self.week, 50.0, '8800')
+        fl.delivery_date = self.week + timedelta(days=2)
+        proposal = self._propose()
+        line = proposal.line_ids
+        self.assertEqual((line.customer_date, line.delivery_date), (self.week + timedelta(days=2),) * 2)
+        line.delivery_date = self.week + timedelta(days=4)
+        line._onchange_qb_delivery_date()
+        order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
+        self.assertEqual(order.commitment_date.date(), self.week + timedelta(days=4))
+        again = self._propose()
+        self.assertEqual((again.line_ids.action, again.line_ids.delivery_date),
+                         ('sin_cambio', self.week + timedelta(days=4)), "Respeta la fecha que puso Ventas")
+        again.line_ids.delivery_date = self.week + timedelta(days=5)
+        again.line_ids._onchange_qb_delivery_date()
+        self.assertTrue(again.line_ids.apply, "Cambiar la fecha marca el renglón")
+        again.action_apply()
+        self.assertEqual(order.commitment_date.date(), self.week + timedelta(days=5))
+        self.assertEqual(order.order_line.product_uom_qty, 50.0, "Solo cambió la fecha")
