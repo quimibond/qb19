@@ -108,9 +108,13 @@ class TestSalesMonthPlan(TransactionCase):
         checks = self.env['qb.price.check'].search([], limit=2)
         self.assertEqual(checks.action_open_wizard()['res_model'], 'qb.price.check.wizard')
 
-    def test_06_precio_de_otro_mes_y_de_la_ultima_factura(self):
-        """3.16.2: sin renglón del presupuesto en el mes, el precio es el del mes más cercano del
-        presupuesto; sin presupuesto ni lista, el de la última factura del cliente."""
+    def _activity(self, plan):
+        return self.env['mail.activity'].search([('summary', '=', "Precios que faltan en la lista (%s)" % plan.name)])
+
+    def test_06_precio_de_otro_mes_y_lo_que_falta_se_pide_a_ventas(self):
+        """3.16.2: sin renglón del presupuesto en el mes, el precio del mes más cercano del
+        presupuesto. 3.16.5: sin presupuesto ni lista, el renglón queda sin precio y se le pide a
+        Ventas que lo dé de alta en la lista (el último facturado va solo de referencia)."""
         otro = self.env['product.product'].create({
             'name': 'Tela otro mes', 'default_code': 'WMES170', 'type': 'consu', 'uom_id': self.uom_m.id})
         facturado = self.env['product.product'].create({
@@ -133,16 +137,21 @@ class TestSalesMonthPlan(TransactionCase):
         line_otro = plan.line_ids.filtered(lambda l: l.product_id == otro)
         line_fact = plan.line_ids.filtered(lambda l: l.product_id == facturado)
         self.assertEqual((line_otro.price_input, line_otro.price_origen), (7.0, 'presupuesto'))
-        self.assertEqual((line_fact.price_input, line_fact.price_origen), (4.5, 'factura'))
-        # «Completar precios» llena lo que quedó en cero sin tocar lo que ya tiene precio.
-        line_fact.write({'price_input': 0.0, 'price_origen': False})
+        self.assertEqual(line_fact.price_input, 0.0, "No se toma de la factura")
+        activity = self._activity(plan)
+        self.assertEqual(len(activity), 1, "Una actividad por cliente")
+        self.assertIn('WMES180', activity.note)
+        self.assertIn('4.50', activity.note, "El último facturado va de referencia")
+        # Volver a completar no duplica la actividad; un precio que vino de factura se vuelve a evaluar.
+        line_fact.write({'price_input': 4.5, 'price_origen': 'factura'})
         plan.action_qb_fill_prices()
-        self.assertEqual((line_fact.price_input, line_fact.price_origen), (4.5, 'factura'))
+        self.assertEqual(line_fact.price_input, 0.0)
         self.assertEqual(line_otro.price_input, 7.0)
+        self.assertEqual(len(self._activity(plan)), 1)
 
-    def test_07_precio_de_la_misma_tela_facturada_en_kilos(self):
-        """3.16.4: sin factura del mismo código, el precio de la última factura al cliente de la
-        misma tela en otro código (en kilos), con base «kg»."""
+    def test_07_referencia_de_la_misma_tela_facturada_en_kilos(self):
+        """3.16.4/3.16.5: sin factura del mismo código, la referencia para Ventas es la última
+        factura al cliente de la misma tela en otro código (en kilos)."""
         metros = self.env['product.product'].create({
             'name': 'Tela metros', 'default_code': 'WMES190', 'type': 'consu', 'uom_id': self.uom_m.id})
         metros.write({'qb_m_por_kg': 5.0, 'qb_conv_origen': 'codigo'})
@@ -161,5 +170,7 @@ class TestSalesMonthPlan(TransactionCase):
                                              'mercado': 'industrial'})
         plan = self._build()
         line = plan.line_ids.filtered(lambda l: l.product_id == metros)
-        self.assertEqual((line.price_input, line.price_basis, line.price_origen), (20.0, 'kg', 'factura'))
-        self.assertAlmostEqual(line.amount, 400.0, places=2, msg="100 m = 20 kg × 20")
+        self.assertEqual(line.price_input, 0.0)
+        note = self._activity(plan).note
+        self.assertIn('IWMES190', note)
+        self.assertIn('por kg', note)
