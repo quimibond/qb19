@@ -21,6 +21,25 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Fecha de entrega y bajas en «Proponer pedidos» (19.0.3.16.1, 2026-11-10)
+
+Primera corrida real (10-nov): Jose vio los pedidos «sin fecha de entrega» y preguntó cómo se aplica
+un release que baja un producto.
+
+- **Fecha de entrega visible:** la propuesta muestra la columna «Fecha de entrega», la que lleva el
+  pedido: la entrega del release o, si no trae, el lunes de la semana de embarque. **Nunca en el
+  pasado:** una semana atrasada se pide para hoy (antes salían cotizaciones con entrega del 2 o 3 de
+  noviembre). Al aplicar, la cotización del pronóstico toma la fecha vigente (el release pudo moverla).
+- **Sin pedidos duplicados:** el pedido de una OC y semana se reconoce por su semana de embarque
+  (`qb_forecast_week`), no por la fecha de entrega. Con la entrega del release (Saltillo, Lear) la
+  fecha caía en la semana siguiente y al volver a proponer se creaba otra cotización. Los pedidos
+  capturados a mano (sin semana) se siguen reconociendo por la fecha de entrega.
+- **Baja a cero:** si el release deja de pedir un producto, la semana se quita del pronóstico y la
+  propuesta ya no la veía; ahora propone **bajarlo a cero** en el pedido que nació del pronóstico (con
+  las mismas reglas: en una cotización viene marcada; en un pedido confirmado, desmarcada y solo el
+  administrador de ventas la aplica; nunca baja de lo entregado). La cotización que se queda sin
+  productos se cancela. Los pedidos capturados a mano no se tocan.
+
 ## Lector de Woodbridge y bandeja de releases (19.0.3.16.0, 2026-11-09)
 
 Diseño v3, 2.10.4 y 2.10.5.

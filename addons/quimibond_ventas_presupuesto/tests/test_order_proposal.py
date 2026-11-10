@@ -142,3 +142,40 @@ class TestOrderProposal(TransactionCase):
             'partner_ids': [(6, 0, self.client.ids)], 'date_from': self.week})
         other.action_build()
         self.assertEqual((other.line_ids.action, other.line_ids.apply), ('por_autorizar', False))
+
+    def test_06_entrega_en_otra_semana_y_baja_a_cero(self):
+        """3.16.1: la entrega del release cae en la semana siguiente y al volver a proponer se encuentra el
+        mismo pedido (por su semana, no por la fecha); si el release deja de pedir el producto, la
+        propuesta lo baja a cero y la cotización vacía se cancela."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 1})
+        fl = self._fl(self.week, 100.0, '6700')
+        fl.delivery_date = self.week + timedelta(days=9)  # entrega en la planta del cliente
+        proposal = self._propose()
+        self.assertEqual(proposal.line_ids.delivery_date, self.week + timedelta(days=9))
+        order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
+        self.assertEqual(order.commitment_date.date(), self.week + timedelta(days=9))
+        fl.qty_origen = 80.0
+        again = self._propose()
+        self.assertEqual(again.line_ids.action, 'baja', "Encuentra el pedido aunque la entrega sea otra semana")
+        again.action_apply()
+        self.assertEqual(self.env['sale.order'].search_count([('client_order_ref', '=', '6700'),
+                                                              ('qb_forecast_week', '=', self.week)]), 1)
+        self.assertEqual(order.order_line.product_uom_qty, 80.0)
+        fl.unlink()  # el release ya no trae el producto
+        dropped = self._propose()
+        self.assertEqual((dropped.line_ids.action, dropped.line_ids.qty_forecast, dropped.line_ids.apply),
+                         ('baja', 0.0, True))
+        dropped.action_apply()
+        self.assertEqual(order.state, 'cancel', "La cotización que se quedó sin productos se cancela")
+
+    def test_07_semana_atrasada_se_pide_para_hoy(self):
+        """3.16.1: una semana que ya pasó no deja la fecha de entrega en el pasado."""
+        past = date.today() - timedelta(days=date.today().weekday() + 14)
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 4})
+        self._fl(past, 30.0, '777')
+        proposal = self.env['qb.order.proposal'].create({'partner_ids': [(6, 0, self.client.ids)],
+                                                         'date_from': past})
+        proposal.action_build()
+        self.assertEqual(proposal.line_ids.delivery_date, date.today())
+        order = self.env['sale.order'].browse(proposal.action_apply()['domain'][0][2])
+        self.assertEqual(order.commitment_date.date(), date.today())
