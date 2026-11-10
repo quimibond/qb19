@@ -44,3 +44,12 @@ class TestAuditoria230(TiempoFichaCase):
         self.acabado.rendimiento_tela_acabada = 9.5
         self.assertEqual(self.acabado.rendimiento_anterior, 8.0)
         self.assertTrue(self.acabado.rendimiento_manual)
+
+    def test_05_clave_del_tipo_de_maquina_no_se_renombra(self):
+        tipo = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_inspeccion')
+        with self.assertRaises(UserError):
+            tipo.code = 'insp'
+        with self.assertRaises(UserError):
+            tipo.unlink()
+        tipo.name = 'Inspección (prueba 2.30.0)'
+        self.assertEqual(tipo.code, 'inspeccion')

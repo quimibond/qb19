@@ -118,6 +118,23 @@ class FichaTecnicaMaquinaTipo(models.Model):
 
     _code_uniq = models.Constraint('unique(code)', 'La clave del tipo de máquina debe ser única.')
 
+    def write(self, vals):
+        # 2.30.0: la clave de un tipo con parámetros de los cálculos (tintoreria, acabado, inspeccion…) no se renombra
+        # ni se archiva: los cálculos buscan (clave del tipo, clave del parámetro).
+        if ('code' in vals or vals.get('active') is False):
+            tipos_del_calculo = {tipo for tipo, _code in CODIGOS_DEL_CALCULO}
+            for tipo in self.filtered(lambda t: t.code in tipos_del_calculo):
+                if ('code' in vals and vals['code'] != tipo.code) or vals.get('active') is False:
+                    raise UserError('La clave «%s» del tipo «%s» la leen los cálculos de tiempos, capacidad o costeo: '
+                                    'no se renombra ni se archiva. Puede cambiar el nombre.' % (tipo.code, tipo.name))
+        return super().write(vals)
+
+    def unlink(self):
+        tipos_del_calculo = {tipo for tipo, _code in CODIGOS_DEL_CALCULO}
+        if self.filtered(lambda t: t.code in tipos_del_calculo):
+            raise UserError('Ese tipo de máquina lo leen los cálculos por su clave: no se borra.')
+        return super().unlink()
+
     @api.depends('workcenter_ids')
     def _compute_workcenter_count(self):
         for tipo in self:

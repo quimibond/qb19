@@ -265,7 +265,7 @@ class FichaTecnicaAcabadoUnidades(models.Model):
         help='Unidad del peso de especificación y de sus tolerancias (+ y −), del catálogo (Configuración → '
              'Unidades). Se elige en Ficha de acabado → Tela acabada y escribe sola el texto de la unidad; el texto '
              'que llega del Excel se liga solo. El rendimiento teórico solo usa el peso si la unidad es de gramaje '
-             '(g/m²).')
+             '(g/m²) o falta.')
     ancho_acabado_tol_unit_id = fields.Many2one(
         'ficha.tecnica.unidad', string='Unidad — Ancho', ondelete='restrict',
         help='Unidad del ancho de venta y de sus tolerancias (+ y −), del catálogo (Configuración → Unidades). Se '
