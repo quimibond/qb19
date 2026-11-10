@@ -177,6 +177,7 @@
                                     <field name="peso_real"/>
                                     <field name="rendimiento_por_revisar" invisible="1"/>
                                     <field name="rendimiento_teorico"/>
+                                    <field name="rendimiento_teorico_ancho"/>
                                     <field name="rendimiento_medido" invisible="not rendimiento_medido"/>
                                     <field name="rendimiento_medido_fuente" invisible="not rendimiento_medido"/>
                                     <field name="rendimiento_medido_ordenes" invisible="not rendimiento_medido"/>
