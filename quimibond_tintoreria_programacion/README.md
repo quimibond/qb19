@@ -28,6 +28,14 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.9.1 (2026-11-11): los rollos son los de la requisición
+
+- Prueba de Dirección (J00006): la requisición surtió el lote completo (12 rollos, 400.76 kg) pero la orden pedía 381 kg; Odoo
+  reservó 381 y recortó el último rollo (14.06 kg), y el asistente programó con 381 kg. Ahora los rollos salen de las líneas
+  **hechas de la requisición** (`move_orig_ids`), completos, y la orden queda con esa cantidad. Sin requisición (existencia
+  cargada directo en la Ubic. 2) se usan las líneas de la propia orden, como en 1.9.0.
+- Prueba nueva: `test_rollos_son_los_de_la_requisicion_no_lo_reservado`.
+
 ## Cambios 19.0.1.9.0 (Dirección, 2026-11-11): programar con rollos completos
 
 - **Flujo:** primero se surte el crudo (requisición Alm. 5 → Producción 2, con los lotes/rollos, p. ej. `H13850-0001…0012`) y
