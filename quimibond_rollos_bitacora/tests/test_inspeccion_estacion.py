@@ -1841,3 +1841,66 @@ class TestInspeccionEstacion(TransactionCase):
         lote = Produccion._insp_lote(self.prod_kg, final.name, self.env.company)
         final.lot_kg_id = lote
         self.assertEqual(Produccion._insp_consumo_lotes(final), [(lote, final.kg_neto)])
+
+    def test_80_programacion_por_rollos_divide_tambien_la_orden_en_metros(self):
+        """Programación 1.9.0 (Dirección, 2026-11-11): con el crudo ya surtido, cada baño lleva rollos completos y la orden en
+        metros se divide en proporción a los kg de los rollos de cada baño (el total de metros no cambia)."""
+        if 'tintoreria.programacion' not in self.env:
+            self.skipTest('quimibond_tintoreria_programacion no está instalado')
+        htj = self.env['mrp.workcenter'].create({'name': 'TINTORERIA ZZ980', 'code': 'TZZ980'})
+        categoria = self.env['product.category'].create({'name': 'TEJIDO ZZ980'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo ZZ980', 'default_code': 'ZZ980CRUDO', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id, 'categ_id': categoria.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.prod_kg.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'consumption': 'flexible', 'sequence': 1,
+            'operation_ids': [Command.create({'name': 'Tintorería', 'workcenter_id': htj.id, 'sequence': 10})],
+            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': 1.0})]})
+
+        class _Config:
+            def _ft_value(self, codigo):
+                return {'capacidad': 100.0}.get(codigo, 0.0)
+
+        prod_kg = self.prod_kg
+        Workcenter = self.env.registry['mrp.workcenter']
+        self.patch(Workcenter, '_ft_config_at', lambda wc, day=None: _Config() if wc.id == htj.id else False)
+        self.patch(Workcenter, '_ft_capacidad_carga',
+                   lambda wc, rendimiento, day=None, product=None: (0.0, 'sin capacidad capturada'))
+        self.patch(self.env.registry['product.product'], '_ft_rendimiento', lambda producto: (11.79, 'prueba'))
+        self.patch(self.env.registry['mrp.production'], '_es_producto_acabado_kg',
+                   lambda orden: orden.product_id == prod_kg)
+        self.patch(self.env.registry['mrp.production'], '_minutos_tintoreria',
+                   lambda orden, wc, kg_bano=None: (240.0, 'ficha', False))
+        orden_m = self.env['mrp.production'].create({
+            'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id, 'bom_id': self.bom_m.id})
+        orden_m.action_confirm()
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 160.0, 'bom_id': bom.id})
+        orden_kg.action_confirm()
+        orden_m._clasif_move_a().write({
+            'move_orig_ids': [Command.set(orden_kg.move_finished_ids.ids)], 'created_production_id': orden_kg.id})
+        # Surtido: 4 rollos de crudo, 169 kg (se pidieron 160).
+        movimiento = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+        for numero, kg in enumerate((40.0, 40.0, 45.0, 44.0), 1):
+            lote = self.env['stock.lot'].create({
+                'name': 'HZZ980-%04d' % numero, 'product_id': crudo.id, 'company_id': self.env.company.id})
+            self.env['stock.quant']._update_available_quantity(crudo, movimiento.location_id, kg, lot_id=lote)
+            self.env['stock.move.line'].create({
+                'move_id': movimiento.id, 'product_id': crudo.id, 'lot_id': lote.id, 'quantity': kg,
+                'product_uom_id': self.kg.id, 'location_id': movimiento.location_id.id,
+                'location_dest_id': movimiento.location_dest_id.id})
+        movimiento._recompute_state()
+        programacion = orden_kg._programar_tintoreria(htj)
+        banos = programacion.production_ids.sorted('id')
+        self.assertEqual(banos.mapped('product_qty'), [80.0, 89.0], "Rollos 1-2 y 3-4, sin cortar ninguno")
+        for bano, rollos in zip(banos, (('HZZ980-0001', 'HZZ980-0002'), ('HZZ980-0003', 'HZZ980-0004'))):
+            lineas = bano.move_raw_ids.filtered(lambda m: m.product_id == crudo).move_line_ids
+            self.assertEqual(sorted(lineas.lot_id.mapped('name')), list(rollos))
+        m1, m2 = banos[0]._insp_orden_metros(), banos[1]._insp_orden_metros()
+        self.assertEqual(m1, orden_m)
+        self.assertTrue(m2 and m2 != m1)
+        self.assertAlmostEqual(m1.product_qty, 2000.0 * 80.0 / 169.0, places=1)
+        self.assertAlmostEqual(m1.product_qty + m2.product_qty, 2000.0, places=2, msg="El total de metros no cambia")
+        self.assertEqual(m1._ordenes_previas(), banos[0])
+        self.assertEqual(m2._ordenes_previas(), banos[1])

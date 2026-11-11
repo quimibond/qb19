@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import math
+from collections import defaultdict
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_round
+from odoo.tools import float_compare, float_round
 
 from odoo.addons.quimibond_ficha_tecnica_tela.models.mrp_aviso_maquina import GRUPOS
 
@@ -17,6 +18,90 @@ def banda_rendimiento(rendimiento):
         if desde <= rendimiento < hasta:
             return grupo
     return False
+
+
+def clave_rollo(nombre):
+    """(lote del baño de tejido, número del rollo) de un lote de crudo: «H13850-0007» → («H13850», 7). Sin guion o sin
+    número al final, el nombre completo y 0."""
+    nombre = nombre or ''
+    partes = nombre.rsplit('-', 1)
+    if len(partes) == 2 and partes[1].isdigit():
+        return partes[0], int(partes[1])
+    return nombre, 0
+
+
+def rango_rollos(nombres):
+    """Texto de los rollos de un baño: «H13850 rollos 1-6»; con rollos salteados, «H13850 rollos 1, 3-4». Varios lotes de
+    tejido se separan con « / »."""
+    por_lote = defaultdict(list)
+    for nombre in nombres:
+        lote, numero = clave_rollo(nombre)
+        por_lote[lote].append((numero, nombre))
+    textos = []
+    for lote, rollos in por_lote.items():
+        rollos.sort()
+        if not rollos[0][0]:
+            textos.append(', '.join(nombre for _n, nombre in rollos))
+            continue
+        tramos, inicio, anterior = [], rollos[0][0], rollos[0][0]
+        for numero, _nombre in rollos[1:]:
+            if numero == anterior + 1:
+                anterior = numero
+                continue
+            tramos.append((inicio, anterior))
+            inicio = anterior = numero
+        tramos.append((inicio, anterior))
+        etiqueta = ', '.join('%s' % a if a == b else '%s-%s' % (a, b) for a, b in tramos)
+        textos.append('%s rollos %s' % (lote, etiqueta))
+    return ' / '.join(textos)
+
+
+def repartir_rollos(kgs, capacidad):
+    """1.9.0: reparte rollos completos y consecutivos en baños sin pasar la capacidad del jet y con los kg lo más parejos
+    posible. ``kgs`` son los kg de crudo de cada rollo en orden de número. Empieza con el mínimo de baños (kg totales ÷
+    capacidad) y sube uno si con rollos completos no cabe. Devuelve la lista de ``(inicio, fin)`` (fin excluido) de cada
+    baño. Criterio: primero el baño más cargado lo menor posible y, a igualdad, la menor suma de cuadrados."""
+    if not kgs:
+        raise UserError(_("No hay rollos que repartir."))
+    if capacidad <= 0:
+        raise UserError(_("La capacidad del jet debe ser mayor que cero."))
+    mayor = max(kgs)
+    if float_compare(mayor, capacidad, precision_digits=4) > 0:
+        raise UserError(_(
+            "Un rollo de crudo pesa %(kg)s kg y la capacidad del jet es de %(cap)s kg: los rollos no se cortan, así que "
+            "no cabe en ningún baño de ese jet.", kg=round(mayor, 3), cap=round(capacidad, 3)))
+    acumulado = [0.0]
+    for kg in kgs:
+        acumulado.append(acumulado[-1] + kg)
+    total, rollos = acumulado[-1], len(kgs)
+    n_min = max(1, math.ceil(round(total / capacidad, 6)))
+    for n in range(n_min, rollos + 1):
+        mejor = [[None] * (rollos + 1) for _i in range(n + 1)]
+        mejor[0][0] = (0.0, 0.0, None)
+        for baño in range(1, n + 1):
+            for fin in range(baño, rollos + 1):
+                candidato = None
+                for inicio in range(baño - 1, fin):
+                    previo = mejor[baño - 1][inicio]
+                    if previo is None:
+                        continue
+                    carga = acumulado[fin] - acumulado[inicio]
+                    valor = (round(max(previo[0], carga), 6), round(previo[1] + carga * carga, 6), inicio)
+                    if candidato is None or valor[:2] < candidato[:2]:
+                        candidato = valor
+                mejor[baño][fin] = candidato
+        final = mejor[n][rollos]
+        if final is None or float_compare(final[0], capacidad, precision_digits=4) > 0:
+            continue
+        cortes, fin = [], rollos
+        for baño in range(n, 0, -1):
+            inicio = mejor[baño][fin][2]
+            cortes.append((inicio, fin))
+            fin = inicio
+        return cortes[::-1]
+    raise UserError(_(
+        "Con rollos completos no cabe el crudo (%(kg)s kg en %(r)s rollos) en baños de %(cap)s kg.",
+        kg=round(total, 3), r=rollos, cap=round(capacidad, 3)))
 
 
 class MrpProduction(models.Model):
@@ -85,6 +170,45 @@ class MrpProduction(models.Model):
                 "y ancho, o que su ficha de acabado esté ligada a ella como «Acabado en proceso».",
                 self.product_id.display_name))
         return rendimiento
+
+    def _tintoreria_movs_crudo(self):
+        """Movimientos de consumo del crudo (componentes en kg de una categoría de tejido) de la orden."""
+        self.ensure_one()
+        kg = self._kg_uom()
+        return self.move_raw_ids.filtered(
+            lambda m: m.state != 'cancel' and m.product_uom._has_common_reference(kg) and self._es_tejido(m.product_id))
+
+    def _tintoreria_rollos_crudo(self):
+        """1.9.0 (Dirección, 2026-11-11): los rollos de crudo que ya se surtieron a la Ubic. 2 para esta orden, en orden de
+        lote y número de rollo: lista de ``{'lote', 'kg', 'move', 'ubicacion'}``. Son la base de la programación: los baños
+        se arman con rollos completos y los kg de cada baño son la suma de los suyos. Sin componente de tejido devuelve
+        una lista vacía (la programación sigue con los kg de la orden, como antes). Si el crudo todavía no se surte (la
+        requisición, REQ-MP, no está validada) o no trae lotes, bloquea."""
+        self.ensure_one()
+        kg = self._kg_uom()
+        rollos = []
+        for move in self._tintoreria_movs_crudo():
+            pendientes = move.move_orig_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
+            if pendientes:
+                raise UserError(_(
+                    "Falta surtir el crudo %(p)s de la orden %(o)s: valida primero la requisición %(r)s (de la Ubic. 5 a "
+                    "la Ubic. 2) con los rollos del baño. La programación se arma con los rollos surtidos.",
+                    p=move.product_id.display_name, o=self.name,
+                    r=', '.join(pendientes.picking_id.mapped('name')) or _('(sin requisición)')))
+            lineas = move.move_line_ids.filtered(lambda ml: ml.lot_id and ml.quantity > 0)
+            if not lineas:
+                raise UserError(_(
+                    "El crudo %(p)s de la orden %(o)s no tiene rollos (lotes) surtidos en %(u)s: surte los rollos del "
+                    "baño antes de programar.", p=move.product_id.display_name, o=self.name,
+                    u=move.location_id.display_name))
+            por_lote = {}
+            for linea in lineas:
+                datos = por_lote.setdefault(linea.lot_id, {
+                    'lote': linea.lot_id, 'kg': 0.0, 'move': move, 'ubicacion': linea.location_id})
+                datos['kg'] += linea.product_uom_id._compute_quantity(linea.quantity, kg, round=False)
+            rollos.extend(por_lote.values())
+        rollos.sort(key=lambda r: (r['move'].product_id.id,) + clave_rollo(r['lote'].name) + (r['lote'].name,))
+        return rollos
 
     def _capacidad_jet(self, workcenter, rendimiento):
         """(capacidad por baño en kg, banda, aviso) del jet para este producto.
@@ -213,12 +337,30 @@ class MrpProduction(models.Model):
         rendimiento = self._rendimiento_tejido()
         capacidad, banda, aviso = self._capacidad_jet(workcenter, rendimiento)
         kg_total = self.product_qty
-        kg_carga, crudo = self._kg_carga_jet()  # quimibond_tintoreria_dosificacion 1.4.0
-        n_banos = max(1, math.ceil(round(kg_carga / capacidad, 6)))
         uom = self.product_uom_id
-        kg_bano = uom.round(kg_total / n_banos)
-        montos = [kg_bano] * (n_banos - 1)
-        montos.append(uom.round(kg_total - sum(montos)))  # el redondeo se absorbe en el último baño
+        rollos = self._tintoreria_rollos_crudo()
+        banos = []
+        if rollos:
+            # 1.9.0: el baño se arma con rollos completos y consecutivos; sus kg son la suma de los suyos.
+            kgs = [r['kg'] for r in rollos]
+            for inicio, fin in repartir_rollos(kgs, capacidad):
+                grupo = rollos[inicio:fin]
+                kg_bano_real = uom.round(sum(r['kg'] for r in grupo))
+                banos.append({
+                    'rollos': grupo, 'n_rollos': len(grupo), 'kg': kg_bano_real,
+                    'texto': rango_rollos([r['lote'].name for r in grupo])})
+            n_banos = len(banos)
+            montos = [b['kg'] for b in banos]
+            kg_total = sum(montos)
+            kg_carga = kg_total
+            crudo = max(rollos, key=lambda r: r['kg'])['move'].product_id
+            kg_bano = uom.round(kg_total / n_banos)
+        else:
+            kg_carga, crudo = self._kg_carga_jet()  # quimibond_tintoreria_dosificacion 1.4.0
+            n_banos = max(1, math.ceil(round(kg_carga / capacidad, 6)))
+            kg_bano = uom.round(kg_total / n_banos)
+            montos = [kg_bano] * (n_banos - 1)
+            montos.append(uom.round(kg_total - sum(montos)))  # el redondeo se absorbe en el último baño
         # 1.5.0: después de repartir, porque el tiempo de la operación de la BoM va por kg del baño.
         minutos, origen_tiempo, aviso_tiempo = self._minutos_tintoreria(workcenter, kg_bano=max(montos))
         return {
@@ -227,7 +369,11 @@ class MrpProduction(models.Model):
             'capacidad_kg': capacidad,
             'n_banos': n_banos,
             'kg_bano': kg_bano,
+            'kg_total': kg_total,
             'montos': montos,
+            'banos': banos,
+            'lote_crudo': ' / '.join(dict.fromkeys(clave_rollo(r['lote'].name)[0] for r in rollos)),
+            'n_rollos': len(rollos),
             'kg_crudo': kg_carga,
             'kg_crudo_bano': float_round(kg_carga / n_banos, precision_digits=3),
             'crudo_id': crudo.id if crudo else False,
@@ -354,28 +500,82 @@ class MrpProduction(models.Model):
             pares.append((orden, orden_m))
         return pares
 
+    def _tintoreria_ajustar_cantidad(self, plan):
+        """1.9.0: la orden pasa de lo pedido a los kg de los rollos que se surtieron (394.70 en vez de 381). Los demás
+        componentes y los terminados se escalan con la misma proporción; el crudo no se escala: sus kg son los de los
+        rollos (``_tintoreria_asignar_rollos``). Los componentes dosificados los recalcula la dosificación al asignar el
+        HTJ con los kg de crudo reales. Lo que se surte de otra ubicación (engomado) sí propaga la diferencia a su
+        requisición, como cualquier cambio de cantidad de Odoo; los terminados no tocan inventario."""
+        self.ensure_one()
+        uom = self.product_uom_id
+        nuevo, anterior = plan['kg_total'], self.product_qty
+        if not anterior or not float_compare(nuevo, anterior, precision_rounding=uom.rounding):
+            return
+        factor = nuevo / anterior
+        crudos = self._tintoreria_movs_crudo()
+        for move in self.move_raw_ids.filtered(
+                lambda m: m.state not in ('done', 'cancel') and m not in crudos and not m.bom_line_id.dosificado):
+            move.write({'product_uom_qty': move.product_uom.round(move.product_uom_qty * factor)})
+        for move in self.move_finished_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            move.with_context(do_not_unreserve=True, no_procurement=True).write({
+                'product_uom_qty': move.product_uom.round(move.product_uom_qty * factor)})
+        self.with_context(skip_compute_move_raw_ids=True).product_qty = nuevo
+        self.message_post(body=_(
+            "Cantidad ajustada a los rollos de crudo surtidos: %(a)s → %(n)s %(u)s.", a=anterior, n=nuevo, u=uom.name))
+
+    def _tintoreria_asignar_rollos(self, plan):
+        """1.9.0 (Dirección, 2026-11-11): ``self`` son las órdenes de los baños, en el orden del plan. A cada una le deja
+        exactamente los rollos completos de su baño: su movimiento de crudo pide la suma de sus kg y trae solo sus lotes
+        (la división nativa reparte las líneas reservadas por cantidad y partía un rollo entre dos baños)."""
+        crudos = self.env['stock.move']
+        for orden in self:
+            crudos |= orden._tintoreria_movs_crudo()
+        crudos.move_line_ids.unlink()
+        for orden, bano in zip(self, plan['banos']):
+            for move in orden._tintoreria_movs_crudo():
+                rollos = [r for r in bano['rollos'] if r['move'].product_id == move.product_id]
+                kg = sum(r['kg'] for r in rollos)
+                move.with_context(do_not_unreserve=True, no_procurement=True).write({
+                    'product_uom_qty': move.product_uom._compute_quantity(kg, move.product_uom)})
+                for rollo in rollos:
+                    self.env['stock.move.line'].create({
+                        'move_id': move.id, 'product_id': move.product_id.id, 'lot_id': rollo['lote'].id,
+                        'quantity': move.product_uom._compute_quantity(rollo['kg'], move.product_uom),
+                        'product_uom_id': move.product_uom.id, 'location_id': rollo['ubicacion'].id,
+                        'location_dest_id': move.location_dest_id.id})
+                move._recompute_state()
+
     def _programar_tintoreria(self, workcenter):
-        """Asigna el HTJ, divide la MO en baños simétricos si hace falta y marca las órdenes como
-        programadas. Devuelve el registro tintoreria.programacion."""
+        """Asigna el HTJ, reparte los rollos de crudo surtidos en baños de rollos completos (una orden por baño) y marca
+        las órdenes como programadas. Devuelve el registro tintoreria.programacion. Sin componente de tejido, divide la
+        MO en baños simétricos de kg, como antes (1.8.x)."""
         self.ensure_one()
         self._check_programable()
         plan = self._calcular_plan_tintoreria(workcenter)
         nombre_origen = self.name
-        kg_total = self.product_qty
+        kg_pedido = self.product_qty
+        kg_total = plan['kg_total']
         producto = self.product_id
 
+        if plan['banos']:
+            self._tintoreria_ajustar_cantidad(plan)
         ordenes = self
         if plan['n_banos'] > 1:
             # División nativa de Odoo 19: conserva los enlaces MTO (move_dest_ids) hacia la MO de B
             # y reparte los consumos de manera proporcional.
             ordenes = self._split_productions({self: plan['montos']})
             ordenes._tintoreria_dividir_orden_metros()  # 1.8.0: un baño = una orden en metros
+        if plan['banos']:
+            ordenes._tintoreria_asignar_rollos(plan)
 
         programacion = self.env['tintoreria.programacion'].create({
             'name': nombre_origen,
             'product_id': producto.id,
             'workcenter_id': workcenter.id,
             'kg_total': kg_total,
+            'kg_pedido': kg_pedido,
+            'lote_crudo': plan['lote_crudo'],
+            'n_rollos': plan['n_rollos'],
             'rendimiento': plan['rendimiento'],
             'banda': plan['banda'],
             'capacidad_kg': plan['capacidad_kg'],
@@ -386,6 +586,10 @@ class MrpProduction(models.Model):
             'minutos_bano': plan['minutos'],
             'origen_tiempo': plan['origen_tiempo'],
         })
+        for numero, bano in enumerate(plan['banos'], 1):
+            self.env['tintoreria.programacion.bano'].create({
+                'programacion_id': programacion.id, 'production_id': ordenes[numero - 1].id, 'secuencia': numero,
+                'n_rollos': bano['n_rollos'], 'kg_crudo': bano['kg'], 'rollos': bano['texto']})
         for orden in ordenes:
             # Asignar el HTJ dispara el recálculo de la dosificación (quimibond_tintoreria_dosificacion).
             workorder = orden._workorder_tintoreria()
@@ -402,6 +606,12 @@ class MrpProduction(models.Model):
                 "(capacidad %(cap)s kg; orden de origen %(o)s).",
                 wc=workcenter.display_name, n=plan['n_banos'], kg=orden.product_qty, crudo=plan['kg_crudo_bano'],
                 cap=plan['capacidad_kg'], o=nombre_origen))
+            if plan['banos']:
+                bano = plan['banos'][list(ordenes).index(orden)]
+                orden.message_post(body=_(
+                    "Rollos de crudo de este baño: %(r)s (%(n)s rollos, %(kg)s kg), baño %(i)s de %(t)s.",
+                    r=bano['texto'], n=bano['n_rollos'], kg=bano['kg'], i=list(ordenes).index(orden) + 1,
+                    t=plan['n_banos']))
             if plan['aviso_crudo']:
                 orden.message_post(body=plan['aviso_crudo'])
             if plan['aviso']:
