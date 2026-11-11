@@ -195,7 +195,13 @@ class MrpProduction(models.Model):
                     "la Ubic. 2) con los rollos del baño. La programación se arma con los rollos surtidos.",
                     p=move.product_id.display_name, o=self.name,
                     r=', '.join(pendientes.picking_id.mapped('name')) or _('(sin requisición)')))
-            lineas = move.move_line_ids.filtered(lambda ml: ml.lot_id and ml.quantity > 0)
+            # Los rollos son los que la requisición surtió completos a la Ubic. 2, no lo que la orden alcanzó a reservar:
+            # si la requisición trajo el lote entero (p. ej. 400.76 kg) y la orden pidió 381 kg, Odoo reserva 381 y recorta
+            # el último rollo; programar con eso partiría un rollo. Sin requisición (existencia cargada directo) se usan las
+            # líneas de la propia orden.
+            surtidas = move.move_orig_ids.filtered(lambda m: m.state == 'done').move_line_ids.filtered(
+                lambda ml: ml.lot_id and ml.quantity > 0)
+            lineas = surtidas or move.move_line_ids.filtered(lambda ml: ml.lot_id and ml.quantity > 0)
             if not lineas:
                 raise UserError(_(
                     "El crudo %(p)s de la orden %(o)s no tiene rollos (lotes) surtidos en %(u)s: surte los rollos del "
@@ -204,7 +210,8 @@ class MrpProduction(models.Model):
             por_lote = {}
             for linea in lineas:
                 datos = por_lote.setdefault(linea.lot_id, {
-                    'lote': linea.lot_id, 'kg': 0.0, 'move': move, 'ubicacion': linea.location_id})
+                    'lote': linea.lot_id, 'kg': 0.0, 'move': move,
+                    'ubicacion': move.location_id if surtidas else linea.location_id})
                 datos['kg'] += linea.product_uom_id._compute_quantity(linea.quantity, kg, round=False)
             rollos.extend(por_lote.values())
         rollos.sort(key=lambda r: (r['move'].product_id.id,) + clave_rollo(r['lote'].name) + (r['lote'].name,))
