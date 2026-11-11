@@ -8,6 +8,8 @@
                 <field name="name"/>
                 <field name="product_id"/>
                 <field name="workcenter_id"/>
+                <field name="lote_crudo" optional="show"/>
+                <field name="n_rollos" optional="show"/>
                 <field name="kg_total" sum="kg"/>
                 <field name="rendimiento" optional="show"/>
                 <field name="banda"/>
@@ -42,6 +44,9 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group string="Tamaño de baño">
+                            <field name="lote_crudo"/>
+                            <field name="n_rollos"/>
+                            <field name="kg_pedido"/>
                             <field name="kg_total"/>
                             <field name="rendimiento"/>
                             <field name="banda"/>
@@ -54,6 +59,15 @@
                             <field name="origen_tiempo"/>
                         </group>
                     </group>
+                    <field name="bano_ids" readonly="1" invisible="not bano_ids">
+                        <list>
+                            <field name="secuencia"/>
+                            <field name="production_id"/>
+                            <field name="rollos"/>
+                            <field name="n_rollos" sum="Rollos"/>
+                            <field name="kg_crudo" sum="kg"/>
+                        </list>
+                    </field>
                     <field name="production_ids" readonly="1">
                         <list>
                             <field name="name"/>

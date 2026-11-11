@@ -24,7 +24,13 @@ class TintoreriaProgramacion(models.Model):
         'Estado', default='programada', required=True, tracking=True)
     product_id = fields.Many2one('product.product', 'Producto (kg)', required=True, readonly=True)
     workcenter_id = fields.Many2one('mrp.workcenter', 'HTJ', required=True, readonly=True)
-    kg_total = fields.Float('kg totales', digits=(16, 3), readonly=True)
+    kg_total = fields.Float('kg totales', digits=(16, 3), readonly=True,
+                            help='Con rollos surtidos (1.9.0): los kg de los rollos de crudo, que son los de las órdenes.')
+    kg_pedido = fields.Float('kg pedidos en la orden', digits=(16, 3), readonly=True,
+                             help='1.9.0: lo que pedía la orden antes de ajustarla a los rollos surtidos.')
+    lote_crudo = fields.Char('Lote de crudo (baño de tejido)', readonly=True)
+    n_rollos = fields.Integer('Rollos de crudo', readonly=True)
+    bano_ids = fields.One2many('tintoreria.programacion.bano', 'programacion_id', 'Baños y rollos', readonly=True)
     rendimiento = fields.Float('Rendimiento (m/kg)', digits=(12, 4), readonly=True)
     banda = fields.Selection(BANDAS, 'Banda de rendimiento', readonly=True)
     capacidad_kg = fields.Float('Capacidad por baño (kg)', digits=(16, 3), readonly=True)
@@ -40,3 +46,17 @@ class TintoreriaProgramacion(models.Model):
     user_id = fields.Many2one('res.users', 'Programó', default=lambda self: self.env.user, readonly=True)
     fecha = fields.Datetime('Fecha de programación', default=fields.Datetime.now, readonly=True)
     company_id = fields.Many2one('res.company', 'Compañía', default=lambda self: self.env.company, readonly=True)
+
+
+class TintoreriaProgramacionBano(models.Model):
+    """1.9.0: un baño de la programación: la orden, los rollos de crudo completos que lleva y sus kg."""
+    _name = 'tintoreria.programacion.bano'
+    _description = 'Baño de la Programación de Tintorería'
+    _order = 'programacion_id, secuencia'
+
+    programacion_id = fields.Many2one('tintoreria.programacion', required=True, ondelete='cascade', index=True)
+    production_id = fields.Many2one('mrp.production', 'Orden', readonly=True, ondelete='set null')
+    secuencia = fields.Integer('Baño', readonly=True)
+    rollos = fields.Char('Rollos de crudo', readonly=True)
+    n_rollos = fields.Integer('No. de rollos', readonly=True)
+    kg_crudo = fields.Float('kg de crudo', digits=(16, 3), readonly=True)

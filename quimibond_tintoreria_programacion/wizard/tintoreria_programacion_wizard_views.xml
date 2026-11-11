@@ -6,23 +6,28 @@
         <field name="arch" type="xml">
             <form string="Programar Tintorería">
                 <p class="text-muted">
-                    Asigna el HTJ de cada orden. Al confirmar se calcula el tamaño de baño con la capacidad
-                    del HTJ y el rendimiento del artículo; si los kg exceden la capacidad, la orden se divide
-                    en baños iguales en el mismo HTJ y se recalcula la dosificación.
+                    Asigna el HTJ de cada orden. La programación se arma con los rollos de crudo ya surtidos
+                    (requisición de la Ubic. 5 a la 2): al elegir el jet se calcula cuántos baños hacen falta con la
+                    capacidad del HTJ y el rendimiento del artículo, y cada baño lleva rollos completos y
+                    consecutivos (no se cortan). La cantidad de cada orden son los kg de crudo de sus rollos y con
+                    ellos se recalcula la dosificación.
                 </p>
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom" create="false" delete="false">
                         <field name="production_id" force_save="1"/>
                         <field name="product_id" optional="show"/>
-                        <field name="kg_total"/>
+                        <field name="lote_crudo"/>
+                        <field name="n_rollos"/>
+                        <field name="kg_rollos"/>
+                        <field name="kg_total" optional="hide"/>
                         <field name="rendimiento"/>
                         <field name="banda"/>
                         <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"
                                domain="[('ft_tipo_id.name', '=', 'Tintorería'), ('ft_estado', '=', 'operando')]" required="1"/>
                         <field name="capacidad_kg"/>
                         <field name="n_banos"/>
-                        <field name="kg_bano"/>
-                        <field name="kg_crudo_bano"/>
+                        <field name="kg_bano" string="kg por baño (prom.)"/>
+                        <field name="detalle_banos" widget="html"/>
                         <field name="minutos_bano"/>
                         <field name="origen_tiempo" optional="show"/>
                         <field name="advertencia" decoration-danger="advertencia"/>
