@@ -29,3 +29,6 @@ access_qb_rentabilidad_producto_user,qb.rentabilidad.producto user,model_qb_rent
 access_qb_ot_excepcion_user,qb.ot.excepcion user,model_qb_ot_excepcion,mrp.group_mrp_user,1,0,0,0
 access_qb_centro_banda_user,qb.centro.banda user,model_qb_centro_banda,mrp.group_mrp_user,1,0,0,0
 access_qb_centro_banda_manager,qb.centro.banda manager,model_qb_centro_banda,mrp.group_mrp_manager,1,1,1,1
+access_qb_capa_absorcion_user,qb.capa.absorcion user,model_qb_capa_absorcion,mrp.group_mrp_user,1,0,0,0
+access_qb_capa_absorcion_manager,qb.capa.absorcion manager,model_qb_capa_absorcion,mrp.group_mrp_manager,1,1,1,1
+access_qb_capa_absorcion_account,qb.capa.absorcion contabilidad,model_qb_capa_absorcion,account.group_account_manager,1,1,1,1
