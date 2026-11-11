@@ -3,6 +3,24 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.11.0 — 2026-11-11
+
+**Agregado**
+- **Capa de absorción** (Dirección General, cierre de inventario de
+  oct-2026). Solo los circulares de Tejido absorben conversión en Odoo;
+  Tintorería, Rama, Acabado, Inspección y los demás centros están en $0, así
+  que el inventario vale menos que su costo de producción. Por período, el
+  botón «Calcular capa de absorción» toma cada producto en existencia al
+  último día del mes (categorías de `capa_categorias`, menos las de
+  `capa_excluir_categorias`) y compara su valor en Odoo contra existencia ×
+  costo de producción del módulo. Lo que se capitaliza por producto es esa
+  diferencia acotada entre 0 y la conversión del módulo (existencia ×
+  fabricación): una diferencia de precio de la materia prima no se cuela
+  como conversión, y si Odoo ya vale más no se capitaliza nada. El total es
+  el saldo que debe tener la cuenta de conversión capitalizada al cierre; no
+  crea asientos. Modelo `qb.capa.absorcion`, menú Costos → Capa de
+  absorción, pestaña en el período.
+
 ## 19.0.1.10.1 — 2026-11-05
 
 **Corregido**

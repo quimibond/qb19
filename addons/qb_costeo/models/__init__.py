@@ -9,6 +9,7 @@ from . import rendimiento
 from . import mp
 from . import peso
 from . import costo
+from . import capa  # 1.11.0: después de costo (usa CALIDAD_SEL y qb.costo.unitario)
 from . import vista_sql  # 1.6.0: antes de las vistas que la heredan
 from . import rentabilidad  # 1.6.0: después de costo (usa QTY_DEDUP_SQL)
 from . import ot_excepcion  # 1.6.0
