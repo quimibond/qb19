@@ -27,6 +27,13 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## El traspaso del desperdicio de Rama 10 → 17 lo valida Almacén (3.19.2, 2026-11-11)
+
+- Al cerrar la orden en kg, la transferencia interna que pasa el desperdicio de Rama de la Ubic. 10 a la 17 ya **no se valida sola**:
+  queda *Lista* (reservada en la 10) y **Almacén la valida al recibir el desperdicio**; la orden deja nota en el chatter. Hasta
+  entonces el desperdicio sigue en la 10. Las demás transferencias (tela, saldos y el desperdicio de Empaque al cerrar la orden en
+  metros) se siguen validando al cerrar. `_traspasar_interno(..., validar=False)`. Prueba: `test_78`.
+
 ## Componentes con lote consumidos al cerrar (3.19.1, 2026-11-11)
 
 - Odoo 19 (build de feb-2026) detiene el cierre de la orden si un componente con seguimiento por lote no está marcado como

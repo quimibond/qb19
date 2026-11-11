@@ -1771,7 +1771,7 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_78_desperdicio_de_rama_entra_a_la_10_y_pasa_a_la_17(self):
         """3.18.0: el subproducto de desperdicio de Rama conserva el destino de la orden (Ubic. 10) y al cerrar la orden en
-        kg una transferencia lo pasa a la 17."""
+        kg una transferencia lo pasa a la 17; 3.19.2: queda sin validar y la valida Almacén al recibir."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
         salida = orden_kg.location_dest_id
@@ -1787,10 +1787,17 @@ class TestInspeccionEstacion(TransactionCase):
         producto = movimiento.product_id
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
         self._cerrar_bano(orden_kg)
+        # 3.19.2: la transferencia 10 → 17 queda lista y la valida Almacén al recibir; mientras tanto sigue en la 10.
+        traspaso = self.env['stock.picking'].search([
+            ('origin', 'ilike', orden_kg.name), ('location_dest_id', '=', self.ubic['DESP'].id)])
+        self.assertEqual(len(traspaso), 1)
+        self.assertEqual(traspaso.state, 'assigned', "Sin validar: Almacén la valida al recibir")
+        self.assertFalse(self._cantidad(producto, self.ubic['DESP']))
+        self.assertAlmostEqual(self._cantidad(producto, salida), 1.2)
+        traspaso.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        self.assertEqual(traspaso.state, 'done')
         self.assertAlmostEqual(self._cantidad(producto, self.ubic['DESP']), 1.2)
         self.assertFalse(self._cantidad(producto, salida))
-        self.assertTrue(self.env['stock.picking'].search_count([
-            ('origin', 'ilike', orden_kg.name), ('state', '=', 'done'), ('location_dest_id', '=', self.ubic['DESP'].id)]))
 
     def test_79_requisicion_de_quimicos_del_piso_a_la_2(self):
         """3.18.0: la requisición de químicos y colorantes (REQ-TIN) toma del Piso y surte a la Ubic. 2 (el destino del tipo);

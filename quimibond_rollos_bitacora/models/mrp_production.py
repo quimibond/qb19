@@ -191,10 +191,12 @@ class MrpProduction(models.Model):
             Markup('').join(Markup('<li>%s</li>') % linea for linea in lineas_nota)))
         return transferencias
 
-    def _traspasar_interno(self, origen, partidas, referencia):
+    def _traspasar_interno(self, origen, partidas, referencia, validar=True):
         """3.18.0 (Dirección, 2026-11-10): transferencias internas ya validadas de ``origen`` (la Ubic. 10) a la ubicación de
         cada calidad, ligadas a esta orden: una por destino. ``partidas`` es una lista de
-        ``(producto, lote, cantidad, destino)``. Si algo falla se levanta el error y el cierre no se hace."""
+        ``(producto, lote, cantidad, destino)``. Si algo falla se levanta el error y el cierre no se hace. Con
+        ``validar=False`` (3.19.2) la transferencia queda lista (reservada en el origen) para que Almacén la valide al
+        recibir."""
         self.ensure_one()
         por_destino = defaultdict(list)
         for producto, lote, cantidad, destino in partidas:
@@ -220,14 +222,19 @@ class MrpProduction(models.Model):
                         'location_dest_id': destino.id, 'company_id': self.company_id.id})],
                 }) for producto, lote, cantidad in lineas]})
             transferencia.action_confirm()
+            if not validar:
+                transferencia.action_assign()
+                transferencias |= transferencia
+                continue
             transferencia.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
             if transferencia.state != 'done':
                 raise UserError(_('No se pudo validar la transferencia %(t)s de %(o)s a %(d)s de la orden %(p)s.',
                                   t=transferencia.name, o=origen.display_name, d=destino.display_name, p=self.name))
             transferencias |= transferencia
         resumen = ', '.join('%s (%s)' % (t.name, t.location_dest_id.display_name) for t in transferencias)
-        self.message_post(body=_('%(r)s: transferencias de %(o)s a su ubicación de calidad: %(t)s.',
-                                 r=referencia, o=origen.display_name, t=resumen))
+        self.message_post(body=_(
+            '%(r)s: transferencias de %(o)s a su ubicación de calidad: %(t)s.', r=referencia, o=origen.display_name,
+            t=resumen) + ('' if validar else ' ' + _('Pendientes de validar por Almacén al recibir.')))
         return transferencias
 
     def _traspasar_desperdicio_rama(self):
@@ -245,7 +252,10 @@ class MrpProduction(models.Model):
             for linea in hecho.move_line_ids.filtered(lambda ml: ml.quantity > 0 and ml.location_dest_id != destino):
                 partidas.append((linea.product_id, linea.lot_id, linea.quantity, destino, linea.location_dest_id))
             for origen in {p[4] for p in partidas}:
-                orden._traspasar_interno(origen, [p[:4] for p in partidas if p[4] == origen], _('Desperdicio de Rama'))
+                # 3.19.2 (Dirección, 2026-11-11): la transferencia no se valida sola; Almacén la valida al recibir el
+                # desperdicio (mientras tanto sigue en la Ubic. 10, reservado).
+                orden._traspasar_interno(
+                    origen, [p[:4] for p in partidas if p[4] == origen], _('Desperdicio de Rama'), validar=False)
 
     def _numero_bano_del_nombre(self):
         """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una
