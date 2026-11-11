@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from psycopg2 import IntegrityError
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
@@ -144,7 +144,7 @@ class TestInspeccionEstacion(TransactionCase):
         final = orden_kg.rollo_final_kg_ids
         self.assertEqual(final.name, '%s-0001' % orden_kg.numero_bano)  # 3.5.0: número de baño + rollo
         self.assertAlmostEqual(final.kg_neto, 49.1)
-        self.assertIn('METROS: 585.00', final.zpl_etiqueta)
+        self.assertIn('585.00-', final.zpl_etiqueta)
         self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
         self.assertEqual(final.estado, 'inspeccionado')
         self._cerrar_bano(orden_kg)
@@ -1420,7 +1420,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(final.reetiquetado)
         self.assertFalse(final.motivo_ajuste_final)
         self.assertEqual(final.operador_final.split(' - ')[0], '1')
-        self.assertIn('METROS: 585.00', final.zpl_etiqueta)
+        self.assertIn('585.00-', final.zpl_etiqueta)
         self.assertTrue(accion, "Sale la etiqueta final")
 
     def test_61_cambio_de_calidad_pide_motivo_y_reetiqueta(self):
@@ -1435,8 +1435,9 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(final.reetiquetado)
         self.assertEqual(final.motivo_ajuste_final, 'Indicación de Calidad')
         self.assertEqual(final.defecto_final_ids, self.defecto)
-        self.assertIn('METROS: 580.00', final.zpl_etiqueta)
-        self.assertIn('DEFECTOS', final.zpl_etiqueta, "FE sale como PNC con sus defectos")
+        self.assertIn('580.00-', final.zpl_etiqueta)
+        self.assertIn('KILOS', final.zpl_etiqueta, "FE sale como PNC (kilos y libras) con el código de sus defectos")
+        self.assertEqual(final.zpl_etiqueta.count('^BCN'), 2)
         self.assertIn('Indicación de Calidad', ' '.join(orden_m.message_ids.mapped('body')))
         orden_m.button_mark_done()
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE'], final.name), 580.0)
@@ -1667,6 +1668,34 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], final.name), 580.0)
         self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
+
+    def test_76c_etiqueta_y_lote_del_desperdicio_de_rama(self):
+        """3.17.0 (Dirección, 2026-11-10): el desperdicio de Rama también imprime etiqueta con código de barras, y el lote de
+        los dos desperdicios lleva el número de la orden y el mes («J00002-11-2026»)."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        with self.assertRaises(UserError):
+            orden_kg._zpl_etiqueta_desperdicio_rama()
+        lote = orden_kg._lote_desperdicio(self.saldo_d)
+        numero = orden_kg.numero_bano or orden_kg.name.rsplit('/', 1)[-1]
+        self.assertRegex(lote.name, r'^%s-\d\d-\d{4}$' % numero)
+        self.assertEqual(orden_m._lote_desperdicio(self.saldo_d).name.rsplit('-', 2)[1:],
+                         lote.name.rsplit('-', 2)[1:], 'Mismo mes en los dos')
+        orden_kg.write({'desperdicio_kg': 1.2, 'desperdicio_lote_id': lote.id,
+                        'desperdicio_fecha': fields.Datetime.now()})
+        zpl = orden_kg._zpl_etiqueta_desperdicio_rama()
+        for texto in ('PRODUCTO: %s' % self.saldo_d.default_code, 'NOMBRE: %s' % self.saldo_d.name, 'LOTE: %s' % lote.name,
+                      'CANTIDAD: 1.20 %s' % self.saldo_d.uom_id.name, '^BC'):
+            self.assertIn(texto, zpl)
+        accion = orden_kg.action_imprimir_etiqueta_desperdicio_rama()
+        self.assertTrue(accion.get('type'))
+        self.assertIn('report_etiqueta_desperdicio_rama', str(accion))
+
+    def test_76d_anular_cierra_la_ventana_sin_recargar_el_rollo(self):
+        """3.17.0: el botón Anular captura cierra la ventana sin recargar el rollo ya borrado (si no, Odoo avisa que no
+        encuentra el registro aunque la captura sí se anuló)."""
+        vista = self.env['mrp.rollo.final'].get_view(view_type='form')['arch']
+        boton = vista[vista.index('name="action_anular"'):]
+        self.assertIn('close="1"', boton[:boton.index('/>') if '/>' in boton[:400] else 400])
 
     def test_76b_etiqueta_del_desperdicio_de_empaque(self):
         """3.15.0 (José 2026-11-08): la etiqueta del desperdicio lleva fecha, producto, nombre, lote, cantidad con su unidad

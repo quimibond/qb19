@@ -43,6 +43,7 @@ class MrpProduction(models.Model):
     desperdicio_fecha = fields.Datetime('Desperdicio pesado el', readonly=True, copy=False)
     desperdicio_manual = fields.Boolean('Desperdicio capturado manualmente', readonly=True, copy=False)
     desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
+    desperdicio_lote_id = fields.Many2one('stock.lot', 'Lote del desperdicio de Rama', readonly=True, copy=False)
     numero_bano = fields.Char(
         'No. de baño', readonly=True, copy=False, index=True, tracking=True,
         help='Nombre de la orden en kg sin el prefijo del tipo de operación («J00001», o «J00001-001» si la programación '
@@ -454,9 +455,11 @@ class MrpProduction(models.Model):
         return super()._post_inventory(cancel_backorder=cancel_backorder)
 
     def _lote_desperdicio(self, producto):
-        """Lote del Desperdicio Tejido: el que ya se usa en la planta, uno por mes («MM-AAAA», ej. 10-2026),
-        que se crea si todavía no existe."""
-        nombre = fields.Datetime.context_timestamp(self, fields.Datetime.now()).strftime('%m-%Y')
+        """Lote del subproducto de desperdicio (3.17.0, Dirección 2026-11-10): el número de la orden y el mes, como
+        «J00002-11-2026» (antes solo «11-2026»). Un lote por orden y mes; se crea si todavía no existe."""
+        mes = fields.Datetime.context_timestamp(self, fields.Datetime.now()).strftime('%m-%Y')
+        orden = self.numero_bano or (self.name or '').rsplit('/', 1)[-1]
+        nombre = '%s-%s' % (orden, mes) if orden else mes
         Lote = self.env['stock.lot']
         dominio = [('name', '=', nombre), ('product_id', '=', producto.id), ('company_id', '=', self.company_id.id)]
         return Lote.search(dominio, limit=1) or Lote.create({
@@ -542,6 +545,7 @@ class MrpProduction(models.Model):
             'desperdicio_operador': operador,
             'desperdicio_fecha': fields.Datetime.now(),
             'desperdicio_manual': manual,
+            'desperdicio_lote_id': lote.id or False,
         })
 
     # ------------------------------------------------------------ planeación

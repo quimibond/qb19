@@ -242,24 +242,43 @@ class MrpProductionInspeccion(models.Model):
         self.ensure_one()
         return self.desperdicio_empaque_kg or 0.0
 
-    def _zpl_etiqueta_desperdicio_empaque(self):
-        """Etiqueta del desperdicio pesado en Empaque (3.15.0, José 2026-11-08): fecha, producto (código), nombre, número de
-        lote, cantidad con su unidad de medida y el código de barras del número de lote. El producto es el subproducto de
-        desperdicio (SALDO TEJIDO D) y el lote el del mes, el mismo con que se registra al cerrar. Tamaño: el de la
+    def _zpl_etiqueta_desperdicio(self, producto, lote, kg, fecha):
+        """Etiqueta del desperdicio (3.15.0, José 2026-11-08; la de Rama desde 3.17.0): fecha, producto (código), nombre,
+        número de lote, cantidad con su unidad de medida y el código de barras del número de lote. Tamaño: el de la
         preliminar (68 x 38 mm, ajustable en Ajustes de la etiqueta preliminar)."""
-        self.ensure_one()
-        if not self.desperdicio_empaque_kg:
-            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Empaque.', self.name))
-        producto = self.env['mrp.rollo.final']._producto_saldo('DESP')
-        lote = self._lote_desperdicio(producto)
-        fecha = fields.Datetime.context_timestamp(self, self.desperdicio_empaque_fecha or fields.Datetime.now())
+        fecha = fields.Datetime.context_timestamp(self, fecha or fields.Datetime.now())
         return self.env['mrp.rollo.bitacora']._zpl_preliminar_acomodo(
             PARAM_PRELIM_ANCHO, PARAM_PRELIM_ALTO, [
                 'PRODUCTO: %s' % (producto.default_code or ''),
                 'NOMBRE: %s' % producto.name,
                 'FECHA: %s' % fecha.strftime('%d/%m/%Y %H:%M'),
                 'LOTE: %s' % lote.name,
-            ], ['CANTIDAD: %.2f %s' % (self.desperdicio_empaque_kg, producto.uom_id.name)], lote.name)
+            ], ['CANTIDAD: %.2f %s' % (kg, producto.uom_id.name)], lote.name)
+
+    def _zpl_etiqueta_desperdicio_empaque(self):
+        """Etiqueta del desperdicio pesado en Empaque: el producto es el subproducto de desperdicio (SALDO TEJIDO D) y el
+        lote el de la orden y el mes, el mismo con que se registra al cerrar."""
+        self.ensure_one()
+        if not self.desperdicio_empaque_kg:
+            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Empaque.', self.name))
+        producto = self.env['mrp.rollo.final']._producto_saldo('DESP')
+        return self._zpl_etiqueta_desperdicio(
+            producto, self._lote_desperdicio(producto), self.desperdicio_empaque_kg, self.desperdicio_empaque_fecha)
+
+    def _zpl_etiqueta_desperdicio_rama(self):
+        """3.17.0 (Dirección, 2026-11-10): etiqueta con código de barras del desperdicio de Rama (DESPERDICIO TEJIDO), con
+        el lote con que se registró al pesar."""
+        self.ensure_one()
+        lote = self.desperdicio_lote_id
+        if not self.desperdicio_kg or not lote:
+            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Rama.', self.name))
+        return self._zpl_etiqueta_desperdicio(lote.product_id, lote, self.desperdicio_kg, self.desperdicio_fecha)
+
+    def action_imprimir_etiqueta_desperdicio_rama(self):
+        self.ensure_one()
+        accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_rama').report_action(self)
+        accion.update({'close_on_report_download': True})
+        return accion
 
     def action_imprimir_etiqueta_desperdicio_empaque(self):
         self.ensure_one()
