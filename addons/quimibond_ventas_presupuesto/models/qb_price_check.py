@@ -57,8 +57,8 @@ class QbPriceCheck(models.Model):
     note = fields.Char(string="Nota", readonly=True)
     excel_row = fields.Integer(string="Renglón del Excel", readonly=True)
 
-    @api.model
     def action_open_wizard(self):
+        # 3.14.2: sin @api.model; el botón del encabezado de la lista manda los ids seleccionados.
         return {'type': 'ir.actions.act_window', 'name': "Comparar precios del forecast",
                 'res_model': 'qb.price.check.wizard', 'view_mode': 'form', 'target': 'new'}
 

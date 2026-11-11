@@ -15,7 +15,7 @@ class TestMedicionPorRevisar(TransactionCase):
         super().setUpClass()
         cls.process = cls.env['sgi.process'].create({'code': 'ZMR', 'name': 'Proceso medición'})
         cls.partner_model = cls.env['ir.model']._get('res.partner')
-        cls.act = cls.env['sgi.process.activity'].create({
+        cls.act = cls.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': cls.process.id, 'name': 'Dar de alta al proveedor',
             'measure_method': 'odoo', 'measure_cadence': 'evento',
             'measure_model_id': cls.partner_model.id, 'measure_user_field': 'create_uid',

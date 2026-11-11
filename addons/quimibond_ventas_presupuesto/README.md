@@ -21,6 +21,382 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ventas pone la fecha de entrega (19.0.3.16.7, 2026-11-10)
+
+Jose (10-nov): «en algún punto del proceso Jessica tiene que poder ponerle la fecha de entrega que
+nosotros pensamos que le vamos a entregar al cliente».
+
+- En «Proponer pedidos» hay dos columnas: **Pide el cliente** (la entrega del release o el lunes de la
+  semana, fija) y **Fecha de entrega**, la que comprometemos, **editable**. Viene la que ya tiene el
+  pedido (aunque se haya cambiado a mano) o, si no hay pedido, la que pide el cliente; nunca en el
+  pasado. Sale en rojo si es posterior a lo que pide el cliente.
+- Cambiarla **marca el renglón**, también uno «Sin cambio» (solo cambia la fecha, no la cantidad). Al
+  aplicar, el pedido toma esa fecha; en un pedido confirmado y bloqueado se desbloquea, se cambia y
+  se vuelve a bloquear con nota (solo el administrador de ventas).
+- La siguiente propuesta **respeta la fecha comprometida**: ya no la regresa a la del release.
+- También se puede cambiar directo en el pedido («Otra información» → «Fecha de entrega»); la
+  propuesta la toma de ahí.
+
+## Fecha de entrega y bajas a cero en «Proponer pedidos» (19.0.3.16.6, 2026-11-10)
+
+Primera corrida real (10-nov): los pedidos parecían «sin fecha de entrega» y no había cómo aplicar un
+release que deja de pedir un producto. (Los duplicados por la fecha de entrega ya los resolvió 3.16.1.)
+
+- **Fecha de entrega visible:** la propuesta muestra la columna «Fecha de entrega», la que lleva el
+  pedido: la entrega del release o, si no trae, el lunes de la semana de embarque. **Nunca en el
+  pasado:** una semana atrasada se pide para hoy (salían cotizaciones con entrega del 2, 3 y 9 de
+  noviembre). Al aplicar, la cotización del pronóstico toma la fecha vigente (el release pudo moverla).
+- **Baja a cero:** si el release deja de pedir un producto, la semana se quita del pronóstico y la
+  propuesta ya no la veía; ahora propone **bajarlo a cero** en el pedido que nació del pronóstico, con
+  las mismas reglas que cualquier baja (en una cotización viene marcada; en un pedido confirmado,
+  desmarcada y solo el administrador de ventas; nunca baja de lo entregado o facturado). La cotización
+  que se queda sin productos se cancela. Los pedidos capturados a mano no se tocan.
+
+## La lista del cliente es la fuente del precio (19.0.3.16.5, 2026-11-10)
+
+Decisión de Jose (10-nov): el precio del presupuesto del mes sale **del presupuesto anual aprobado o
+de la lista de precios del cliente**, nunca de una factura. Lo que la lista no tiene lo da de alta
+Ventas:
+
+- Al armar el presupuesto del mes y al pulsar **Completar precios**, cada cliente con productos que
+  su lista no tiene recibe **una actividad para su vendedor** (en la lista de precios del cliente;
+  si no tiene lista, en el cliente) con los productos, la cantidad del mes y, **solo de
+  referencia**, el último precio facturado (del mismo código o de la misma tela en otro código, por
+  kilo o por metro). Si ya hay una abierta de ese presupuesto del mes, se actualiza.
+- Cuando Ventas da de alta los precios, se pulsa otra vez «Completar precios».
+- Un renglón que tomó precio de una factura (3.16.2 a 3.16.4) se vuelve a evaluar: si la lista ya lo
+  tiene, toma ese; si no, queda sin precio y entra a la actividad.
+
+Lo de 3.16.2 y 3.16.4 sobre la «última factura» queda solo como referencia para Ventas.
+
+## Precio de la misma tela facturada en otro código (19.0.3.16.4, 2026-11-10)
+
+En el presupuesto de noviembre de 2026 quedaban 9 renglones sin precio: FXI, Lear y Shawmut se
+facturan **en kilos** (IWD038…, IWJ045…) y el pronóstico viene **en metros** (WD038…, WJ045…), así
+que no había factura del mismo código. Ahora, si no hay factura del mismo producto, el precio es el
+de la última factura al cliente de **la misma tela en otro código** (mismo artículo) en los 12 meses
+anteriores, con la base de la unidad en que se facturó: por kilo o por metro (el importe usa los
+kilos o metros del renglón con el rendimiento de la tela). Origen «Última factura».
+
+## Proyectos comerciales: inicio, revisión y desarrollos repetidos (19.0.3.16.3, 2026-11-10)
+
+Revisión de los proyectos comerciales (3.8.0–3.10.0):
+
+- **Inicio del proyecto:** la bitácora de etapas del desarrollo empezó en octubre de 2026; los
+  desarrollos de antes no tenían registro de Cotización y su proyecto tomó la fecha del día en que
+  se cargó (52 de 62 en noviembre de 2026), así que su venta anterior contaba como línea. Ahora el
+  inicio es la entrada a Cotización o la fecha de alta del desarrollo, la que sea anterior; la
+  migración lo corrige en los existentes y reconstruye la Venta real.
+- **Desarrollo repetido:** si un desarrollo genera el producto de un cliente y artículo que ya
+  tiene otro proyecto vigente, su proyecto no toma el producto y avisa en el chatter (antes el
+  desarrollo no podía cambiar de etapa).
+- **Pasar a línea:** el aviso dice lo que hace: la venta cuenta en línea en Venta real y en el
+  cierre; los renglones del presupuesto no cambian de mercado. Cuando lo gradúa el presupuesto del
+  año siguiente, pasa a línea al 31 de diciembre del año anterior (antes, el día de la
+  aprobación: el resto del año en curso salía de Proyectos).
+- **Presupuestado** del proyecto: un documento por año (el aprobado; si no hay, el abierto). Antes
+  sumaba el aprobado y su revisión en borrador.
+- **Mercado de un renglón con desarrollo:** solo se pone Proyectos si no viene mercado; una copia de
+  un renglón que Ventas pasó a Industrial ya no regresa a Proyectos.
+- **Propuesta del año:** un desarrollo de un producto de línea para un cliente que no lo compra sí
+  entra (antes se descartaba si el producto se vendía a cualquier cliente), y dos desarrollos del
+  mismo cliente y artículo dan un solo juego de renglones (antes la propuesta entera fallaba).
+
+## Precios del presupuesto del mes (19.0.3.16.2, 2026-11-10)
+
+El presupuesto del mes de noviembre de 2026 salía con 11 renglones sin precio: el precio del
+presupuesto anual se buscaba solo en el mismo mes, y la REV2 casi no trae noviembre ni diciembre.
+Ahora el precio de cada renglón sale, en este orden, de:
+
+1. **El presupuesto anual aprobado**, del mismo cliente y producto, del mes o, si no está ese mes,
+   del mes más cercano.
+2. **La lista del cliente** (solo con regla del producto, como antes).
+3. **La última factura** de ese cliente y producto en los 12 meses anteriores, en la unidad de venta
+   y la moneda de la factura (origen «Última factura»).
+
+**Completar precios** (encabezado, en borrador) pone precio a los renglones que siguen en cero sin
+tocar cantidades ni los que ya tienen precio. Lo que siga sin precio no tiene presupuesto, lista ni
+factura: hay que darlo de alta en la lista del cliente.
+
+## Proponer pedidos sin duplicar (19.0.3.16.1, 2026-11-10)
+
+Revisión de «Proponer pedidos» (3.15.x): había casos en que proponía otra vez lo ya pedido.
+
+- **Semana del pedido:** un pedido se reconoce por la semana del pronóstico (`qb_forecast_week`),
+  no por la fecha compromiso, que puede ser la de entrega del cliente días después del embarque
+  (perfiles con días de tránsito). Un pedido capturado a mano, sin esa semana, se sigue
+  reconociendo por la fecha compromiso dentro de la semana.
+- **Release sin OC:** la referencia `REL-…` lleva el número del release, que cambia cada semana; el
+  pedido ya hecho con el release anterior se reconoce por el prefijo `REL-`.
+- **Plantas:** con dirección de entrega, solo cuentan los pedidos de esa dirección; las cotizaciones
+  nuevas de cada planta van con su dirección.
+- **Misma tela en otro código:** si la semana ya tiene pedido de la tela en metros y el pronóstico la
+  trae en kilos (o al revés), no se pide otra vez: queda «No entra» con el código del pedido.
+- **Lo facturado:** una cantidad nunca baja de lo entregado **ni de lo facturado**.
+- **Aplicar dos veces:** un renglón aplicado queda marcado y no se vuelve a aplicar; al aplicar se
+  vuelven a leer los pedidos, así que dos asistentes armados a la vez no piden dos veces lo mismo.
+- **Semanas sin regla** de la planta aparecen como «No entra» con su motivo, y «Exige OC para
+  facturar» respeta la regla de la planta del pedido.
+
+## Lector de Woodbridge y bandeja de releases (19.0.3.16.0, 2026-11-09)
+
+Diseño v3, 2.10.4 y 2.10.5.
+
+- **Lector «Woodbridge — PDF»** (`release/woodbridge_pdf.py`, prueba pura en
+  `tests_puros/ventas_presupuesto/test_release_woodbridge.py`): el «Supplier Release Planning
+  Schedule» de Saltillo Lamination (Saltillo y León). Lee el PDF con el lector de Odoo (pypdf) y
+  toma por parte la OC abierta (Blanket P/O 6700 / 6600319), el release, la unidad (MTR, LY, YD),
+  el acumulado recibido y las semanas con su autorización (Firm y Fabrication = firme; Forecast =
+  planeado). Descarta las páginas viejas que arrastra el PDF de León (más de 180 días antes de la
+  más reciente) y **no lee el release de una planta en el perfil de la otra** (el número de
+  proveedor del PDF, 130551 o 130551L, tiene que ser el del perfil).
+- **Releases por revisar** (Pronóstico): los recibidos, por revisar, leídos o revisados que aún no
+  se aplican, agrupados por estado. Filtro «Revisados sin aplicar».
+- **Aviso:** cron diario; un release recibido, por revisar o leído hace más de 2 días deja una
+  actividad al responsable de Ventas del perfil (una por release).
+
+Después del update: cambiar el lector de los perfiles de Saltillo y León a «Woodbridge — PDF».
+
+## Ajustar pedidos confirmados (19.0.3.15.2, 2026-11-09)
+
+«Crear o actualizar cotizaciones» daba «Está prohibido modificar … en una orden bloqueada:
+Cantidad»: producción bloquea el pedido al confirmarlo. Decisión de Jose (opción B, la que Ventas
+hace hoy a mano): el **administrador de ventas** ajusta el pedido confirmado de la OC y semana:
+se **desbloquea, se cambia la cantidad y se vuelve a bloquear**, con nota en el chatter («Cantidad
+de … : antes → después (release …)»). Así sigue habiendo un pedido por OC y semana y Odoo ajusta
+la entrega pendiente.
+
+- Los **aumentos** vienen marcados; las **bajas** en un confirmado, **desmarcadas** (puede quedar
+  material sin pedido): se marcan a propósito. Columna «Ajusta un pedido confirmado».
+- Para quien no es administrador de ventas, quedan **por autorizar**.
+- Nunca baja de lo entregado. Si la entrega de la línea ya se surtió completa, lo que se pide de
+  más va a una cotización nueva de la misma OC y semana.
+
+## Aplicar un release reemplaza la misma tela en otro código (19.0.3.15.1, 2026-11-09)
+
+La primera aplicación real (Shawmut W45, 9-nov) **duplicó** 62 semanas: el forecast de Excel
+tenía a Shawmut en WJ (metros) y el release viene en IWJ (kilos); «Aplicar» buscaba la semana por
+producto exacto y creó otra al lado. Ahora busca por **artículo**: la semana de la misma tela en
+otro código se reemplaza (toma el producto del release) y las de esa tela que el release ya no
+trae se quitan. En producción, las 62 semanas del Excel se archivaron a mano (recuperables) y la
+Demanda se reconstruyó.
+
+## Pedidos desde el pronóstico (19.0.3.15.0, E3, 2026-11-09)
+
+Decisiones de Jose (9-nov): **un pedido por OC y semana de embarque**, creado como
+**cotización**; los modos por cliente los propone Claude con los datos de producción.
+
+- **Regla única:** una semana del pronóstico se vuelve pedido cuando está dentro de las
+  **semanas a pedido** del cliente (desde la semana en curso) y **tiene OC**. Lo demás sigue como
+  pronóstico.
+- **Cómo pide cada cliente** (Configuración, `qb.order.rule`, por cliente y, si hace falta,
+  planta): **OC en el release** (cada semana trae su OC), **OC abierta + release** (la OC de la
+  regla, con vigencia), **Release sin OC** (la referencia es `REL-<release>`; con «Exige OC para
+  facturar» el pedido no se factura hasta capturar la OC) o **Sin release** (a mano; no se propone).
+- **La OC del pronóstico se limpia** (`release/oc.py`): viene del Excel como «6700/PV17173»
+  (OC y pedido de Odoo), «PO/14792», «PO 70152» o con el encabezado «PO» / «No.parte cliente»,
+  que no son OC.
+- **Pronóstico → Proponer pedidos:** por cliente, OC, semana y producto, la cantidad del pronóstico
+  contra la de las cotizaciones y pedidos abiertos de esa OC y semana: **nuevo**, **aumenta**,
+  **baja**, **sin cambio**, **baja por autorizar** (pedido ya confirmado: no se aplica sola) o
+  **no entra** con su motivo (sin OC, OC abierta vencida, sin precio en la lista, artículo en
+  desarrollo). «Crear o actualizar cotizaciones» aplica los renglones marcados: un pedido por OC y
+  semana (fecha compromiso = la entrega del cliente o el lunes de la semana), la OC en «Referencia
+  del cliente», el precio de la lista del cliente, y en cada línea la semana, el release y la parte
+  del cliente. Nunca baja de lo entregado.
+
+## Botones de encabezado (19.0.3.14.2, 2026-11-09)
+
+«Actualizar» de la Demanda por cliente y «Comparar con forecast.xlsx» de la Comparación de
+precios daban `TypeError ... takes 1 positional argument but 2 were given`: el botón del
+encabezado de una lista manda los ids de la lista y los métodos eran `@api.model`. La Demanda
+usa ahora `action_qb_rebuild_button` y la comparación ya no es `@api.model`.
+
+## Corrección del build (19.0.3.14.1, 2026-11-09)
+
+El build de `main` se cayó en la migración 3.8.0: el mercado de un proyecto nuevo leía
+`res.partner.team_id`, que no existe en Odoo 19. Ahora el equipo del cliente sale de
+`team_of_partner` (último pedido confirmado, última factura o el equipo del vendedor), también
+en el mercado por omisión de un renglón. Además: un segundo desarrollo del mismo cliente y
+artículo ya no choca con «un proyecto vigente por cliente y producto» (se queda con el que
+existe), y las migraciones 3.8.0, 3.10.0 y 3.11.0 trabajan registro por registro o con
+savepoint: lo que falle queda en el log y no detiene la actualización.
+
+## Presupuesto del mes (19.0.3.14.0, E2, 2026-11-09)
+
+Diseño v3, 2.5. Sustituye el F-P-A28-14 de Excel. Presupuesto → **Presupuesto del mes** y
+**Armar presupuesto del mes** (`qb.sales.month.plan`, uno por compañía y mes).
+
+- **Armar** (por omisión, el mes siguiente): una **foto del pronóstico vigente** del mes, un
+  renglón por cliente comercial, planta y producto (las semanas del mes sumadas), en la unidad
+  de venta, metros y kilos.
+  - **Precio:** el del renglón del presupuesto anual aprobado del mismo cliente, producto y mes;
+    si no hay, el de la lista del cliente (la regla del anual); si no, cuenta 0 y sale en rojo.
+  - **Tipo de cambio del mes:** el del presupuesto anual aprobado (o el de Ajustes), editable.
+  - **Mercado:** el del pronóstico; con proyecto comercial vigente, «Proyectos».
+- **Ajustes antes de enviar:** cantidad y precio por renglón; no tocan el pronóstico. «Pronóstico
+  al armar» guarda la cantidad original. «Volver a armar» rehace los renglones del pronóstico y
+  conserva los capturados a mano.
+- **Confección:** los vendedores agregan sus renglones (sin cliente) en el mismo documento; una
+  regla de registro solo les deja crear, cambiar o borrar renglones de Confección y Proyectos
+  confección, y la cabecera (mes, tipo de cambio) es del administrador de ventas.
+- **Totales:** por mercado, y **productos de línea / proyectos** (los dos números del correo).
+- **Enviar a Dirección:** congela el documento (solo el administrador del SGI lo regresa a
+  borrador), genera el PDF F-P-A28-14 (resumen línea / proyectos y detalle por mercado) y abre el
+  correo con el PDF y los totales.
+
+**Pendiente:** el comparativo (`qb.sales.compare`) todavía no trae la foto del presupuesto del mes
+(diseño 2.8) para medir cuánto se movió el pronóstico contra lo presupuestado en el mes.
+
+## Cierre de ventas general (19.0.3.13.0, E2, 2026-11-09)
+
+Diseño v3, 2.8 y 2.9. Sustituye la hoja MENSUAL del Excel.
+
+- **PDF «Cierre de ventas general <mes>»** (hoja horizontal): por mercado, el presupuesto, la
+  venta, la diferencia y el cumplimiento **del mes** y **del acumulado del año**, y la venta del
+  mismo periodo del año anterior con su crecimiento; al pie, la venta del año anterior, el
+  objetivo y el mínimo, y la justificación del incumplimiento si la hay. La venta es la de
+  «Venta real» (sin saldos ni desperdicio; el PDF dice cuánto quedó fuera).
+- **Dónde:** botón **Cierre de ventas** en el presupuesto, o Reportes → **Cierre de ventas
+  (PDF)**. El asistente pide el presupuesto (por omisión, el aprobado del año) y el mes (por
+  omisión, el último cerrado) y tiene **Imprimir PDF** y **Enviar por correo** (abre el
+  redactor del presupuesto con el PDF adjunto y el resumen en el cuerpo).
+- Antes de calcular se reconstruye la venta real del año hasta el fin del mes y el mismo
+  periodo del año anterior: no depende del cron nocturno.
+- **Cierre de mes del SGI:** al cerrar cada mes, el PDF queda en el chatter del presupuesto
+  aprobado del año. El aviso de cierre por debajo del umbral también mide sin saldos.
+
+## VE-02 sobre la venta real (19.0.3.12.0, E2, 2026-11-09)
+
+Diseño v3, 2.7; decisión de Jose (4-nov): **los saldos y el desperdicio no cuentan en el
+cumplimiento**. Van a la misma cuenta 401 que la tela; el VE-02 los sumaba y el cierre del
+Excel no (0.19 % de la venta ene–oct 2026).
+
+- El **VE-02** («Cumplimiento de presupuesto de ventas») mide la misma venta que «Venta real»:
+  las líneas de venta de siempre (cuentas 401/402, compañía del KPI) **sin los productos de
+  saldo o desperdicio**. Se calcula directo de las facturas con la misma regla, no de la tabla,
+  así que no depende de que la venta real esté reconstruida. La nota de la medición dice
+  cuánto quedó fuera.
+- En el presupuesto: **Venta al corte** y **Cumplimiento al corte**, y la **base del año
+  anterior** (objetivo y mínimo), también sin saldos.
+- Los demás indicadores de venta (VE-01, cartera, DSO…) no cambian: el filtro va por contexto
+  (`qb_sin_saldos`) solo desde el VE-02 y el presupuesto (`models/sgi_indicator.py`, herencia
+  de `sgi.indicator` en este módulo; el SGI no se toca).
+- **Las mediciones ya guardadas no cambian**; las de 2026 se pueden volver a medir para que
+  queden sin saldos. La base del año anterior de un presupuesto se recalcula al enviarlo a
+  revisión o con «Actualizar base».
+
+## Venta real, comparativo y reportes (19.0.3.11.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.7 y 2.8. Menú nuevo **Presupuesto y pronóstico → Reportes**.
+
+- **Venta real** (`qb.sales.actual`): una fila por línea de factura de cliente publicada en
+  las cuentas de venta del VE-02, con cliente comercial, producto, artículo, mercado, venta en
+  pesos (la nota de crédito resta), importe y moneda de la factura, tipo de cambio, cantidad con
+  signo, metros y kilos, y las marcas **saldo o desperdicio** y **nota genérica o servicio**.
+  - **Mercado:** el del equipo de la factura (el mismo con que el presupuesto mide su real y se
+    arma la propuesta); si el cliente y el artículo tienen un proyecto comercial en la fecha de
+    la factura, «Proyectos» de ese mercado; sin equipo de mercado, «Sin mercado».
+  - **Desviación del diseño:** es una tabla que se reconstruye, no una vista SQL (como la
+    Demanda), porque la regla de cuentas del VE-02 y la conversión a metros y kilos viven en
+    Python. Cron nocturno (año en curso y anterior; parámetro
+    `quimibond_ventas_presupuesto.actual_years`, 2 por omisión); «Actualizar» y los reportes del
+    menú refrescan el mes en curso y el anterior al abrirse.
+- **Comparativo** (`qb.sales.compare`, vista SQL sobre tablas propias): presupuesto (cada
+  revisión no obsoleta), pronóstico vigente y venta real **sin saldos ni desperdicio**, por
+  cliente comercial, artículo, mercado y mes. Filtro «Presupuesto aprobado vigente» por omisión
+  (sin él se suman revisiones: agrupe por Revisión para comparar REV0 y REV1).
+  - **Cierre mensual por mercado:** presupuesto, venta y diferencia por mercado y mes.
+  - **Anual:** lo mismo por año; con «Hasta el mes pasado», lo presupuestado a la fecha.
+  - **Cliente y artículo:** presupuesto, pronóstico y venta en pesos, metros y kilos.
+  - La **variación** por volumen, precio y tipo de cambio sigue en los renglones del
+    presupuesto (3.6.2).
+- **Faltantes** (`qb.sales.missing`): ventas del año sin mercado, productos vendidos sin
+  conversión, renglones que cuentan 0, partes del cliente sin producto, proyectos perdidos con
+  presupuesto y proyectos de producto nuevo sin desarrollo, cada uno con su botón para abrir el
+  registro. Se recalcula cada noche y con «Actualizar».
+- **Migración:** primera carga de la venta real y los faltantes.
+
+
+## Artículo en desarrollo marcado en el pronóstico (19.0.3.10.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.4. El **pronóstico vigente** y la **Demanda por cliente** traen el **Estado del
+artículo** (`dev_state`): el estado de desarrollo del producto (`sgi_dev_state` de Desarrollo de
+producto) o, si no lo tiene, el de su artículo (el código en kilos de un desarrollo nuevo puede
+no llevarlo).
+
+- **En desarrollo o archivado:** se puede pronosticar (Planeación lo ve venir), pero el pedido
+  no se confirma hasta pilotaje. Renglón en amarillo, etiqueta roja y aviso en la ficha.
+- **En pilotaje:** se vende con aviso (los tres primeros lotes del primer pedido son el
+  pilotaje). Etiqueta amarilla y aviso en la ficha.
+- **Liberado o sin estado:** de línea, sin marca.
+- Filtros «Artículo en desarrollo» y «Artículo en pilotaje» en los dos. En el pronóstico se
+  recalcula solo cuando cambia el estado del artículo; la Demanda lo toma al reconstruirse (la
+  migración la reconstruye una vez).
+- La propuesta de pedidos de la E3 no propondrá un artículo en desarrollo; eso va con la E3.
+
+## Desarrollos en la propuesta del año (19.0.3.9.0, E2, 2026-11-09)
+
+Diseño v3, 2.11.3. «Armar propuesta del año» trae ahora, con **Traer desarrollos** (activo por
+omisión), un renglón de Proyectos por mes para cada desarrollo abierto (de Cotización a
+Pilotaje):
+
+- **Cantidad:** el consumo anual del desarrollo entre 12 (las yardas pasan a metros) o, si no
+  hay, el volumen mensual de la solicitud, por el **% del consumo** del asistente (100 por
+  omisión). En la unidad de venta del producto (con el rendimiento del artículo, así que el
+  consumo en kg ya se convierte); sin código, en metros o kilos, con la descripción del
+  desarrollo (lleva el folio).
+- **Meses:** desde el mes de la fecha requerida si cae en el año; sin fecha, los 12; con fecha
+  posterior al año, no entra.
+- **Precio:** el de la última cotización abierta (borrador o enviada) al cliente con ese
+  producto; si no hay, el precio objetivo de la solicitud, por metro o por kilo; si no, el de
+  la lista. Origen del precio «Cotización o precio objetivo del desarrollo».
+- **No entra** si su producto ya se vendió en el periodo base (ya viene en la venta) o si sus
+  renglones ya vienen del presupuesto de proyectos que se trae (que ahora copia también el
+  desarrollo).
+- Cada renglón guarda **Origen de la cantidad** (venta del periodo base, presupuesto de
+  proyectos o consumo del desarrollo), la **Cantidad propuesta** y la etapa del desarrollo;
+  Jessica decide cuánto entra. Filtro «Propuestos desde un desarrollo». El chatter del
+  presupuesto resume cuántos desarrollos entraron y por qué no entraron los demás.
+- Para MCP: `action_qb_build_proposal(..., include_dev=True, dev_pct=100.0)`.
+
+## Proyectos ligados a Desarrollo de producto (19.0.3.8.0, E2, 2026-11-09)
+
+Diseño v3, secciones 2.6 y 2.11. Presupuesto → **Proyectos comerciales** (`qb.sales.project`):
+un cliente y un artículo en arranque. Mientras está vigente, su presupuesto va en «Proyectos
+industrial» o «Proyectos confección».
+
+- **Nace del desarrollo:** cuando un desarrollo de producto (C1) llega a Cotización o más
+  adelante con cliente y artículo (el acabado del desarrollo, o el artículo de línea si el
+  análisis dijo «Producto de línea»), se crea su proyecto comercial, con «Desde» = la fecha en
+  que entró a Cotización. El mercado sale del equipo del desarrollo (Confección → Proyectos
+  confección; lo demás → Proyectos industrial). Si Ventas o el presupuesto ya lo tenían dado
+  de alta sin desarrollo (mismo cliente y producto), se liga en lugar de duplicarse.
+- **Se pierde con el desarrollo:** cerrado sin producto o no factible → **perdido**; si el
+  desarrollo vuelve a una etapa abierta, se reabre. Sus renglones se ven en los renglones del
+  presupuesto con el filtro **Proyecto perdido**.
+- **Renglón de Proyectos:** al crearlo (o pasarlo a Proyectos) crea o liga su proyecto
+  comercial: el de su desarrollo si lo eligió; si no, el vigente del mismo cliente y producto
+  (o descripción). Un renglón con **Desarrollo de producto** toma de él cliente, producto y,
+  sin código, descripción, gramaje y ancho (masa y ancho nominales de la tabla de
+  características). Filtro **Proyecto sin desarrollo**.
+- **El renglón sin código toma el producto** cuando el desarrollo genera el suyo, solo en
+  presupuestos en borrador o revisado (uno aprobado es evidencia; el proyecto avisa en el
+  chatter qué renglones se quedaron sin producto y por qué).
+- **Pasa a línea** a mano («Pasar a línea») o solo al aprobarse un presupuesto de un año
+  posterior que lo presupuesta fuera de Proyectos con el mismo cliente y producto.
+- **El desarrollo ve su venta:** botón **Presupuesto y venta** en la ficha del desarrollo (se
+  ancla en la caja de botones nativa de Proyectos): abre el proyecto comercial con sus
+  renglones de presupuesto, las semanas del pronóstico vigente y lo facturado al cliente de
+  los códigos del artículo (metros, kilos y m²) desde que arrancó.
+- **Migración:** crea los proyectos de los desarrollos que ya están en Cotización o más
+  adelante con cliente y artículo, y liga los renglones de Proyectos que ya existen. No cambia
+  importes ni productos de renglones aprobados.
+
+Sigue en E2: la carga de la REV0/REV1 (que crea los 33 proyectos de
+PRESUPUESTO PROYECTOS). Antes del 1-dic Diseño y Desarrollo liga a su desarrollo los proyectos
+de 2026 de producto nuevo y cierra los «FT-» viejos (diseño v3, 2.11.6).
+
 ## Propuesta del presupuesto del año siguiente (19.0.3.7.0, 2026-11-05)
 
 Presupuesto → **Armar propuesta del año** arma el borrador del presupuesto (para 2027 hace falta
@@ -566,6 +942,9 @@ cobertura corrido dos veces, que vivían en otras pruebas del SGI).
 `tests/test_customer_part.py`, `tests/test_release.py` (catálogo de partes y
 releases al pronóstico vigente) y `tests/test_forecast_e1.py` (artículo,
 pronóstico vigente, carga del Excel, Demanda, cobertura y el candado de los
-pronósticos viejos): corren en el build de Odoo.sh con
+pronósticos viejos) y `tests/test_sales_project.py` (proyectos comerciales y
+Desarrollo de producto), `tests/test_sales_actual.py` (venta real, comparativo, faltantes,
+VE-02 y cierre) y `tests/test_sales_month_plan.py` (presupuesto del mes) y `tests/test_order_proposal.py` (pedidos desde
+el pronóstico): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
 las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

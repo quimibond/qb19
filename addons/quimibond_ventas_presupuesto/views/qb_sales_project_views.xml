@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.8.0: proyectos comerciales ligados a Desarrollo de producto (diseño v3, 2.6 y 2.11). -->
+    <record id="qb_sales_project_view_list" model="ir.ui.view">
+        <field name="name">qb.sales.project.list</field>
+        <field name="model">qb.sales.project</field>
+        <field name="arch" type="xml">
+            <list string="Proyectos comerciales"
+                  decoration-muted="state == 'graduado'" decoration-danger="state == 'perdido'">
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="descripcion" optional="show"/>
+                <field name="mercado"/>
+                <field name="dev_project_id" optional="show"/>
+                <field name="dev_stage_id" optional="show"/>
+                <field name="origen" optional="hide"/>
+                <field name="date_from"/>
+                <field name="date_to" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'vigente'" decoration-danger="state == 'perdido'"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_budget" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_sales_project_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.project.form</field>
+        <field name="model">qb.sales.project</field>
+        <field name="arch" type="xml">
+            <form string="Proyecto comercial">
+                <header>
+                    <button name="action_qb_graduate" type="object" string="Pasar a línea"
+                            class="btn-primary" invisible="state != 'vigente'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"
+                            confirm="Desde mañana su venta cuenta en el mercado base en Venta real y en el cierre; los renglones del presupuesto no cambian de mercado. ¿Continuar?"/>
+                    <button name="action_qb_lose" type="object" string="Marcar como perdido"
+                            invisible="state != 'vigente'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_qb_reopen" type="object" string="Reabrir"
+                            invisible="state == 'vigente'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="vigente,graduado"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_qb_view_budget_lines" type="object" class="oe_stat_button"
+                                icon="fa-calculator">
+                            <field name="budget_line_count" widget="statinfo" string="Renglones"/>
+                        </button>
+                        <button name="action_qb_view_forecast" type="object" class="oe_stat_button"
+                                icon="fa-calendar" invisible="not product_id">
+                            <field name="forecast_count" widget="statinfo" string="Semanas pronosticadas"/>
+                        </button>
+                        <button name="action_qb_view_invoices" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not product_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="amount_invoiced" widget="monetary"
+                                           options="{'currency_field': 'currency_id'}"/>
+                                </span>
+                                <span class="o_stat_text">Facturado</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="state != 'perdido' or not budget_line_count">
+                        El proyecto se perdió y tiene renglones de presupuesto: revíselos.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Qué se vende">
+                            <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="articulo_id" invisible="not product_id"/>
+                            <field name="descripcion" invisible="product_id"
+                                   required="not product_id"/>
+                            <field name="mercado"/>
+                        </group>
+                        <group string="Arranque">
+                            <field name="dev_project_id"/>
+                            <field name="dev_stage_id" invisible="not dev_project_id"/>
+                            <field name="origen"/>
+                            <field name="date_from"/>
+                            <field name="date_to" invisible="state == 'vigente'"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_budget"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Presupuesto" name="presupuesto">
+                            <field name="budget_line_ids" readonly="1">
+                                <list>
+                                    <field name="budget_id"/>
+                                    <field name="date"/>
+                                    <field name="product_id"/>
+                                    <field name="proyecto_descripcion" optional="show"/>
+                                    <field name="uom_id"/>
+                                    <field name="qty_budget" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount_budget" sum="Total"/>
+                                    <field name="amount_real" sum="Total" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Nota" name="nota">
+                            <field name="note" nolabel="1"
+                                   placeholder="Contexto del arranque: programa del cliente, volumen esperado, quién lo sigue."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_sales_project_view_search" model="ir.ui.view">
+        <field name="name">qb.sales.project.search</field>
+        <field name="model">qb.sales.project</field>
+        <field name="arch" type="xml">
+            <search string="Proyectos comerciales">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="dev_project_id"/>
+                <filter name="vigentes" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <filter name="graduados" string="Pasaron a línea" domain="[('state', '=', 'graduado')]"/>
+                <filter name="perdidos" string="Perdidos" domain="[('state', '=', 'perdido')]"/>
+                <separator/>
+                <filter name="con_desarrollo" string="Con desarrollo"
+                        domain="[('dev_project_id', '!=', False)]"/>
+                <filter name="sin_desarrollo" string="Sin desarrollo"
+                        domain="[('dev_project_id', '=', False)]"/>
+                <filter name="sin_producto" string="Sin producto"
+                        domain="[('product_id', '=', False)]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_origen" string="Origen" context="{'group_by': 'origen'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_sales_project_action" model="ir.actions.act_window">
+        <field name="name">Proyectos comerciales</field>
+        <field name="res_model">qb.sales.project</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_vigentes': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin proyectos comerciales</p>
+            <p>
+                Un proyecto comercial es un cliente y un artículo en arranque. Nace solo cuando un
+                desarrollo de producto llega a Cotización con cliente y artículo, o cuando usted
+                presupuesta un renglón de Proyectos. Un producto de línea para un cliente nuevo se
+                da de alta aquí.
+            </p>
+        </field>
+    </record>
+
+    <!-- Ficha del desarrollo de producto: «Presupuesto y venta» (diseño v3, 2.11.5). Se ancla en
+         la caja de botones de la ficha nativa de Proyectos, no en la herencia del SGI. -->
+    <record id="project_view_form_qb_sales_project" model="ir.ui.view">
+        <field name="name">project.project.form.qb.sales.project</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <field name="sgi_is_ft" invisible="1"/>
+                <button name="action_qb_view_sales_project" type="object" class="oe_stat_button"
+                        icon="fa-line-chart" invisible="not sgi_is_ft">
+                    <field name="qb_sales_project_count" widget="statinfo" string="Presupuesto y venta"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

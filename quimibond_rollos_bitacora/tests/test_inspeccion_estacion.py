@@ -159,7 +159,7 @@ class TestInspeccionEstacion(TransactionCase):
         """Caso 2: 250 m de primera y 120 m de segunda; 3.15.0: la segunda es la tela en metros, con su lote, a 16 (diseño §8)."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
-        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con pedazos pendientes, el rollo sigue sin inspeccionar")
+        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con rollos pendientes, el rollo sigue sin inspeccionar")
         wiz = self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
         self.assertAlmostEqual(wiz.kg_ya_cortados, 25.0)
         self.assertAlmostEqual(wiz.merma_kg, 40.0 - 25.0 - 11.9)
@@ -247,7 +247,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_12_no_cortar_y_juntar_a_la_vez(self):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
         self._inspeccionar(orden_kg, wo, rollos[0], 10.0, 100.0, termina=False)
-        with self.assertRaisesRegex(UserError, 'cortar y juntar'):
+        with self.assertRaisesRegex(UserError, "ya se dividió"):
             self._inspeccionar(orden_kg, wo, rollos, 30.0, 300.0)
 
     def test_13_bano_para_venta_en_kg(self):
@@ -530,7 +530,7 @@ class TestInspeccionEstacion(TransactionCase):
         m2 = bano_2._insp_orden_metros()
         antes = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)])
         self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
-        bano_1.button_mark_done()
+        self._cerrar_bano(bano_1)
         self.assertEqual(bano_1.state, 'done')
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
@@ -541,7 +541,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(bano_1.numero_bano and bano_2.numero_bano and bano_1.numero_bano != bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-0001' % bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, m2)
-        bano_2.button_mark_done()
+        self._cerrar_bano(bano_2)
         self.assertEqual(bano_2.state, 'done')
         self.assertEqual(m2.state, 'done')
         self.assertAlmostEqual(m2.qty_produced, 455.0)
@@ -558,14 +558,14 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, (bano_1, bano_2) = self._programar_dos_banos()
         m2 = bano_2._insp_orden_metros()
         self._rama_e_inspeccion(bano_2, 41.1, [(30.5, 320.0, 'DESP'), (9.0, 80.0, 'DESP')])
-        bano_2.button_mark_done()
+        self._cerrar_bano(bano_2)
         self.assertEqual(bano_2.state, 'done')
         self.assertEqual(m2.state, 'cancel', "Sin tela en metros se cancela la orden en metros de ese baño")
         self.assertEqual(orden_m.state, 'confirmed', "La orden en metros del primer baño no cambia")
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 36.5)
         self.assertEqual(bano_1._insp_orden_metros(), orden_m)
         self._rama_e_inspeccion(bano_1, 41.1, [(26.6, 300.0, 'PQ'), (14.0, 150.0, 'FE')])
-        bano_1.button_mark_done()
+        self._cerrar_bano(bano_1)
         self.assertEqual(bano_1.state, 'done')
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 300.0)
@@ -1136,9 +1136,13 @@ class TestInspeccionEstacion(TransactionCase):
         with self.assertRaisesRegex(UserError, 'Captura los metros del rollo final'):
             self._inspeccionar(orden_kg, wo, rollos, 30.5, 0.0, termina=False)
         self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, termina=False)
-        self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
+        Wizard = type(self.env['rollo.inspeccion.estacion.wizard'])
+        with patch.object(Wizard, '_rendimiento_acabado', return_value=11.8):
+            self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
         desp = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
         self.assertEqual(desp.metros, 0.0)
+        self.assertTrue(desp.metros_teoricos, "La ficha da metros teóricos")
+        self.assertFalse(desp.alerta_metros, "3.16.1: sin metros capturados no hay alerta de metros (prueba del 9-nov)")
         self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)
@@ -1153,7 +1157,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(m2.state, 'cancel', "La orden en metros del baño cancelado no queda colgada")
         self.assertEqual(orden_m.state, 'confirmed')
         self._rama_e_inspeccion(bano_1, 41.1, [(40.6, 460.0, 'PQ')])
-        bano_1.button_mark_done()
+        self._cerrar_bano(bano_1)
         self.assertEqual(orden_m.state, 'done')
         self.assertAlmostEqual(orden_m.qty_produced, 460.0)
 

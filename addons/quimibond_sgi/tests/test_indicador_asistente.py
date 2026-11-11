@@ -62,7 +62,7 @@ class TestIndicadorAsistente(TransactionCase):
         self.assertEqual(records['res_model'], 'res.partner')
 
     def test_03_medicion_de_la_actividad_por_etiqueta(self):
-        activity = self.env['sgi.process.activity'].create({
+        activity = self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create({
             'process_id': self.process.id, 'name': 'Dar de alta al contacto',
             'measure_method': 'odoo', 'measure_cadence': 'evento',
             'measure_model_id': self.env['ir.model']._get('res.partner').id,

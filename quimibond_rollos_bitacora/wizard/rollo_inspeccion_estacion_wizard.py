@@ -3,8 +3,10 @@
 
 Por cada rollo final que sale de la revisadora: se escanea el rollo de Rama (o varios del mismo baño para juntarlos),
 se pesa con la tara de Inspección, se capturan metros, calidad y defectos, se le asigna su lote ``M…`` y se imprime la
-etiqueta final. Para cortar, se registra un rollo final por pedazo con «Último pedazo» apagado y el último con él
-encendido: entonces el rollo de Rama queda inspeccionado. No se mueve inventario (D7).
+etiqueta final. Para dividir un rollo de Rama en varios rollos, se registra cada rollo con «Último rollo de esta tela»
+apagado y el último con él encendido: entonces el rollo de Rama queda inspeccionado. La pedacería defectuosa que se
+retira no se captura: queda como merma y se pesa después como desperdicio de la orden (3.16.2). No se mueve
+inventario (D7).
 
 3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado), bloqueo de los rollos y de la orden mientras
 se registra (dos revisadoras a la vez) y el rollo escaneado se busca primero en este baño.
@@ -38,11 +40,12 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                                                        'escanea varios separados por espacio.')
     bitacora_ids = fields.Many2many('mrp.rollo.bitacora', compute='_compute_bitacora', string='Rollos de Rama')
     codigos_error = fields.Char(compute='_compute_bitacora')
-    termina_rollo = fields.Boolean('Último pedazo', default=True,
-                                   help='Apágalo si vas a cortar: el rollo de Rama queda pendiente hasta registrar el '
-                                        'último pedazo.')
+    termina_rollo = fields.Boolean('Último rollo de esta tela', default=True,
+                                   help='Apágalo solo si de este rollo de Rama va a salir otro rollo más: el rollo de '
+                                        'Rama queda pendiente hasta registrar el último. La pedacería defectuosa que '
+                                        'se retira no se captura aquí: se pesa después como desperdicio de la orden.')
     kg_rama = fields.Float('Kg de Rama', compute='_compute_bitacora', digits=(12, 4))
-    kg_ya_cortados = fields.Float('Kg de pedazos anteriores', compute='_compute_bitacora', digits=(12, 4))
+    kg_ya_cortados = fields.Float('Kg de rollos ya registrados', compute='_compute_bitacora', digits=(12, 4))
 
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
@@ -191,10 +194,11 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             raise UserError(_('El rollo %s ya fue inspeccionado.', ', '.join(hechos.mapped('name'))))
         if len(rollos) > 1:
             if rollos.rollo_final_insp_ids:
-                raise UserError(_('No se puede cortar y juntar en la misma captura: %s ya tiene pedazos.',
+                raise UserError(_('Un rollo de Rama que ya se dividió no se junta con otros en la misma captura: '
+                                  '%s ya tiene rollos registrados.',
                                   ', '.join(rollos.filtered('rollo_final_insp_ids').mapped('name'))))
             if not self.termina_rollo:
-                raise UserError(_('Al juntar rollos sale un solo rollo final: deja encendido «Último pedazo».'))
+                raise UserError(_('Al juntar rollos sale un solo rollo final: deja encendido «Último rollo de esta tela».'))
         if self.tara_faltante:
             raise UserError(_(
                 'No hay tara de Inspección para %s. Captúrala en Manufactura → Configuración → Taras por producto '
@@ -262,7 +266,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             'siglas_operador': emp.siglas or False,
             'fecha': ahora,
             'metros_teoricos': self.metros_teoricos,
-            'alerta_metros': bool(self.metros_teoricos) and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
+            # 3.16.1: sin metros capturados (Desperdicio, 3.6.2) no hay contra qué comparar: sin alerta.
+            'alerta_metros': bool(self.metros_teoricos and self.metros)
+            and abs(self.metros - self.metros_teoricos) > self.metros_teoricos
             * float(self.env['ir.config_parameter'].sudo().get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0)) / 100.0,
         })
         rollo.zpl_etiqueta = rollo._zpl_etiqueta()

@@ -21,3 +21,4 @@ from . import test_ficha_producto  # 2.23.0
 from . import test_ruta_familia  # 2.23.0
 from . import test_rendimiento_real  # 2.24.0
 from . import test_captura  # 2.24.0
+from . import test_tolerancias  # 2.29.0

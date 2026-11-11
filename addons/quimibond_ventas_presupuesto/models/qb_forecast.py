@@ -16,6 +16,8 @@ from datetime import date, datetime, timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.quimibond_sgi.models.sgi_dev_product import DEV_PRODUCT_STATES
+
 ORIGINS = [
     ('release', "Release del cliente"),
     ('captura', "Captura"),
@@ -39,6 +41,20 @@ DEFAULT_FIRM_WEEKS = 3
 # Especiales). Los proyectos se separan en E2 con qb.sales.project.
 TEAM_MARKET = {'INDUSTRIAL': 'industrial', 'CONFECCION': 'confeccion', 'CONFECCIÓN': 'confeccion',
                'ESPECIALES': 'especiales'}
+
+
+# 3.10.0 (diseño v3, 2.11.4): estados del artículo que el pronóstico marca. En desarrollo
+# o archivado no se vende (el pedido no se confirma); en pilotaje se vende con aviso.
+DEV_NO_SALE = ('desarrollo', 'archivado')
+DEV_MARKED = DEV_NO_SALE + ('pilotaje',)
+
+
+def dev_state_of(product):
+    """Estado de desarrollo del producto o, si no lo tiene, el de su artículo (el código en
+    kilos de un desarrollo nuevo puede no llevarlo). False si no nació de un desarrollo."""
+    if not product:
+        return False
+    return product.sgi_dev_state or product.qb_articulo_id.sgi_dev_state or False
 
 
 def monday_of(day):
@@ -146,10 +162,21 @@ class QbForecastLine(models.Model):
                             help="Firme: dentro de las semanas firmes (3 por omisión). La recalcula el cron "
                                  "diario.")
     active = fields.Boolean(default=True)
+    dev_state = fields.Selection(
+        DEV_PRODUCT_STATES, string="Estado del artículo", compute='_compute_dev_state', store=True,
+        index=True,
+        help="Estado de desarrollo del artículo (Desarrollo de producto). En desarrollo o archivado: "
+             "se pronostica para que Planeación lo vea venir, pero el pedido no se confirma. En "
+             "pilotaje: se vende con aviso. Vacío o liberado: de línea.")
 
     _line_uniq = models.Constraint(
         'unique nulls not distinct (company_id, partner_id, ship_to_id, plant, product_id, week)',
         "Ya hay pronóstico de ese cliente, planta, producto y semana.")
+
+    @api.depends('product_id.sgi_dev_state', 'product_id.qb_articulo_id.sgi_dev_state')
+    def _compute_dev_state(self):
+        for line in self:
+            line.dev_state = dev_state_of(line.product_id)
 
     @api.depends('week')
     def _compute_month(self):

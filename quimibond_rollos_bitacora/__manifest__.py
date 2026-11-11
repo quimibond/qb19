@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.16.0',
+    'version': '19.0.3.16.2',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -43,6 +43,8 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   el peso y los metros definitivos de Empaque si los hay (A3.2). Apagado (por defecto) todo funciona como en 3.10.0.
 * 3.16.0 (Dirección, 2026-11-08, A3.5): se retira el esquema de clasificación anterior (asistente ``rollo.clasificacion.wizard``,
   ``production_b_id``, etiqueta final de la bitácora) y el interruptor ``clasificacion_empaque``: Empaque siempre activo.
+* 3.16.2 (José, 2026-11-10): la estación de Inspección habla de rollos, no de «pedazos»: «Último rollo de esta tela»,
+  «Kg de rollos ya registrados» y mensajes acordes. Solo etiquetas y mensajes; la lógica no cambia.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',

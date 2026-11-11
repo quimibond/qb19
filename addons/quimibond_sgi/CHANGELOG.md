@@ -14,6 +14,65 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.200.1 — 2026-11-10
+
+Fallas del suite del SGI en el build de desarrollo (10-nov-2026). Solo pruebas, al día con reglas que ya rigen.
+
+**Pruebas**
+- Los proyectos de prueba que arman su propia tabla de características se crean con `sgi_dev_no_autoload`; desde la
+  carga automática del tipo, el proyecto traía además masa y ancho sin valor (`test_dev_coa` 01 y 02,
+  `test_dev_tech_sheet`, `test_dev_pilot`, `test_dev_sample`, `test_dev_shipment`).
+- `test_dev_corrections` 01: escribir la lista de materiales es de Fabricación/Administrador; 04: la ficha de proceso
+  validada se prueba en `test_dev_fabric_sheet`, aquí solo la validación de la corrida.
+- `test_dev_customer` 01 y `test_dev_proceso` 06: antes de cotizar, Ventas aprueba el análisis (57.120.0); la prueba
+  lo deja aprobado o lleva el proyecto a pilotaje por migración antes de liberarlo.
+
+
+## 19.0.57.200.0 — 2026-11-10
+
+### Cambiado
+
+- Fichas de proceso del desarrollo: el valor real de ancho, espesor, encogimientos y elongaciones se compara contra
+  la tolerancia hacia arriba y hacia abajo de la ficha (`quimibond_ficha_tecnica_tela` 2.29.0), no solo la del peso.
+  El «−» vale lo que dice: +0 / −5 ya no sale «Sin tolerancia» y +5 / −0 ya no se lee como ± 5. Los parámetros sin
+  «−» (datos de máquina, columnas, mallas) siguen con ± el mismo valor.
+
+## 19.0.57.199.0 — 2026-11-09
+
+Sube la versión para llevar a producción 57.198.0 y 57.198.1. Producción pasó de 57.197.0 a 57.198.2 solo con
+el arreglo de «Crear las órdenes de muestra»; con el mismo número que `main`, el update de `quimibond` podía no
+aplicar lo demás. Sin cambios de código respecto de 57.198.2 en `main`.
+
+**Al desplegar:** Odoo borra las vistas `sgi_format_banner_mrp_production` y `report_mrporder_sgi` (sus xmlid ya
+no están en el módulo). Verificar en una orden de fabricación que no sale «Formato controlado del SGI».
+
+
+## 19.0.57.198.2 — 2026-11-09
+
+### Corregido
+- «Pedir corrida de muestra» (C1): «Crear las órdenes de muestra» fallaba con «Falta el valor requerido
+  para el campo 'Artículo' (product_id)» en `sgi.dev.sample.wizard.line`. Artículo y Etapa son de solo
+  lectura en la lista y el cliente web no los mandaba al guardar; ahora van con `force_save` (también
+  «Cómo se calculó», que se copia al chatter de la orden).
+
+
+## 19.0.57.198.1 — 2026-11-09
+
+Fallas del suite del SGI en el build de desarrollo (`--test-tags /quimibond_sgi`, 9-nov-2026).
+
+**Corregido**
+- **Árbol de menús** (`_sgi_menu_tree_offenders`): una carpeta del raíz archivada en su lugar (Administración desde
+  57.183.0, en `SGI_MENU_ARCHIVED`) y lo que cuelga de ella ya no cuentan como menús sueltos.
+- **Factibilidad, materia prima** (`_sgi_dev_auto_answer`): la existencia se relee al volver a cargar el checklist;
+  `qty_available` no se guarda y su caché no se invalidaba al cambiar un quant en la misma transacción.
+
+**Pruebas**
+- `test_aprobaciones_asunto` 02 y `test_dev_buttons`: el «Ejecuta» es de otro puesto (quien ejecuta no aprueba).
+- `test_dev_analysis` 03 pone la existencia en el almacén de la compañía activa; `test_dev_characteristics` 05: el
+  límite del control interno cuenta como dentro (1.62 cumple, 1.63 es desviación).
+- Las pruebas que crean actividades sin importar quién las ejecuta usan `sgi_skip_role_check`, como las demás.
+
+
 ## 19.0.57.198.0 — 2026-11-08
 
 **Retirado**

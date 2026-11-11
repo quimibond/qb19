@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.15.0: pedidos desde el pronóstico (E3). -->
+    <record id="qb_order_rule_view_list" model="ir.ui.view">
+        <field name="name">qb.order.rule.list</field>
+        <field name="model">qb.order.rule</field>
+        <field name="arch" type="xml">
+            <list string="Cómo pide cada cliente" editable="bottom">
+                <field name="partner_id"/>
+                <field name="plant" optional="show"/>
+                <field name="po_mode"/>
+                <field name="open_po" required="po_mode == 'abierta'" readonly="po_mode != 'abierta'"/>
+                <field name="open_po_valid_to" optional="show" readonly="po_mode != 'abierta'"/>
+                <field name="so_weeks"/>
+                <field name="po_required_invoice" optional="show"/>
+                <field name="note" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_order_rule_view_search" model="ir.ui.view">
+        <field name="name">qb.order.rule.search</field>
+        <field name="model">qb.order.rule</field>
+        <field name="arch" type="xml">
+            <search string="Cómo pide cada cliente">
+                <field name="partner_id"/>
+                <field name="open_po"/>
+                <group>
+                    <filter name="group_mode" string="Cómo se pide" context="{'group_by': 'po_mode'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_order_rule_action" model="ir.actions.act_window">
+        <field name="name">Cómo pide cada cliente</field>
+        <field name="res_model">qb.order.rule</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin reglas de pedido</p>
+            <p>
+                Una regla por cliente (y planta, si pide distinto): de dónde sale la OC del pedido (la del
+                release, una OC abierta, el release mismo o a mano) y cuántas semanas del pronóstico se
+                proponen como pedido.
+            </p>
+        </field>
+    </record>
+
+    <record id="qb_order_proposal_view_form" model="ir.ui.view">
+        <field name="name">qb.order.proposal.form</field>
+        <field name="model">qb.order.proposal</field>
+        <field name="arch" type="xml">
+            <form string="Proponer pedidos">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Una semana del pronóstico se vuelve pedido (cotización) cuando está dentro de las semanas a
+                        pedido del cliente y tiene OC. Un pedido por OC y semana de embarque. Un pedido confirmado
+                        lo ajusta el administrador de ventas: se desbloquea, se cambia y se vuelve a bloquear, con
+                        nota. Los aumentos vienen marcados; las bajas en confirmados, desmarcadas. Nunca se baja de
+                        lo entregado.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_ids" widget="many2many_tags"/>
+                            <field name="date_from"/>
+                        </group>
+                        <group>
+                            <field name="count_apply"/>
+                            <field name="count_skip"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0" delete="0"
+                              decoration-muted="action in ('sin_cambio', 'no_entra')"
+                              decoration-warning="action == 'por_autorizar'"
+                              decoration-success="action == 'nuevo'">
+                            <field name="apply" readonly="applied"/>
+                            <field name="applied" optional="show"/>
+                            <field name="action"/>
+                            <field name="partner_id"/>
+                            <field name="plant" optional="show"/>
+                            <field name="customer_po"/>
+                            <field name="week"/>
+                            <field name="customer_date" optional="show"/>
+                            <field name="delivery_date" readonly="applied or action == 'no_entra'"
+                                   decoration-danger="customer_date and delivery_date and delivery_date &gt; customer_date"/>
+                            <field name="delivery_date_proposed" column_invisible="1"/>
+                            <field name="product_id"/>
+                            <field name="customer_part" optional="hide"/>
+                            <field name="qty_forecast" sum="Total"/>
+                            <field name="qty_existing" sum="Total"/>
+                            <field name="qty_delivered" optional="show"/>
+                            <field name="price_unit" optional="show"/>
+                            <field name="adjust_confirmed" optional="show"/>
+                            <field name="reason"/>
+                            <field name="po_mode" optional="hide"/>
+                            <field name="release_id" optional="hide"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_build" type="object" string="Armar propuesta" class="btn-primary"
+                            invisible="line_ids"/>
+                    <button name="action_build" type="object" string="Volver a armar" class="btn-secondary"
+                            invisible="not line_ids"/>
+                    <button name="action_apply" type="object" string="Crear o actualizar cotizaciones"
+                            class="btn-primary" invisible="not line_ids"
+                            confirm="Se crean o actualizan las cotizaciones de los renglones marcados. ¿Continuar?"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_order_proposal_action" model="ir.actions.act_window">
+        <field name="name">Proponer pedidos</field>
+        <field name="res_model">qb.order.proposal</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

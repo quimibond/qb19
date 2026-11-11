@@ -220,7 +220,7 @@ class TestMiidDatos(_Case):
                 {'code': 'zm_tipo', 'name': 'Tipo ZM', 'prefix_pattern': 'ZM-{seq:02d}'})),
             # 57.146.0: roles y actividades por cláusula (los plazos
             # documentales son del P-G01 desde 57.148.0: TestPg01Generado).
-            ('actividad', lambda: holder.update(activity=self.env['sgi.process.activity'].create(
+            ('actividad', lambda: holder.update(activity=self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create(
                 {'process_id': self.p1.id, 'number': 'ZM1.01', 'name': 'Actividad ZM'}))),
             ('rol', lambda: self.env['sgi.activity.role'].create(
                 {'activity_id': holder['activity'].id, 'role': 'ejecuta',
@@ -556,7 +556,7 @@ class TestMiidGenerado(_Case):
     archiva la siembra sin pisar lo editado."""
 
     def _activity(self, **vals):
-        return self.env['sgi.process.activity'].create(dict({
+        return self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create(dict({
             'process_id': self.p1.id, 'number': 'ZM1.07', 'name': 'Actividad ZM siete'}, **vals))
 
     def test_23_bloques_nuevos_en_la_foto_y_en_el_manual(self):

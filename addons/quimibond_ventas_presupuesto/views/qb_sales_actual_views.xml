@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.11.0: venta real, comparativo y faltantes (diseño v3, 2.7 y 2.8). -->
+
+    <!-- ============ VENTA REAL ============ -->
+    <record id="qb_sales_actual_view_list" model="ir.ui.view">
+        <field name="name">qb.sales.actual.list</field>
+        <field name="model">qb.sales.actual</field>
+        <field name="arch" type="xml">
+            <list string="Venta real" create="0" edit="0" delete="0"
+                  decoration-muted="es_saldo or es_ajuste" decoration-danger="mercado == 'otro'">
+                <header>
+                    <button name="action_qb_refresh_button" type="object" string="Actualizar mes en curso y anterior"
+                            display="always"/>
+                </header>
+                <field name="date"/>
+                <field name="move_id" optional="show"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="articulo_id" optional="hide"/>
+                <field name="mercado"/>
+                <field name="es_proyecto" optional="hide"/>
+                <field name="qty_venta" sum="Total" optional="show"/>
+                <field name="uom_venta" optional="show"/>
+                <field name="qty_m" sum="Total" optional="show"/>
+                <field name="qty_kg" sum="Total" optional="show"/>
+                <field name="amount" sum="Total"/>
+                <field name="amount_currency" optional="hide"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="rate" optional="hide"/>
+                <field name="team_id" optional="hide"/>
+                <field name="es_saldo" optional="hide"/>
+                <field name="es_ajuste" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_sales_actual_view_pivot" model="ir.ui.view">
+        <field name="name">qb.sales.actual.pivot</field>
+        <field name="model">qb.sales.actual</field>
+        <field name="arch" type="xml">
+            <pivot string="Venta real">
+                <field name="mercado" type="row"/>
+                <field name="month" interval="month" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="qb_sales_actual_view_search" model="ir.ui.view">
+        <field name="name">qb.sales.actual.search</field>
+        <field name="model">qb.sales.actual</field>
+        <field name="arch" type="xml">
+            <search string="Venta real">
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="articulo_id"/>
+                <field name="move_id"/>
+                <filter name="sin_saldos" string="Sin saldos ni desperdicio" domain="[('es_saldo', '=', False)]"/>
+                <separator/>
+                <filter name="este_anio" string="Este año"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filtro_fecha" string="Fecha de factura" date="date"/>
+                <separator/>
+                <filter name="proyectos" string="Proyectos" domain="[('es_proyecto', '=', True)]"/>
+                <filter name="sin_mercado" string="Sin mercado" domain="[('mercado', '=', 'otro')]"/>
+                <filter name="sin_conversion" string="Sin conversión" domain="[('conv_ok', '=', False)]"/>
+                <filter name="saldos" string="Saldos y desperdicio" domain="[('es_saldo', '=', True)]"/>
+                <filter name="ajustes" string="Notas genéricas y servicios" domain="[('es_ajuste', '=', True)]"/>
+                <group>
+                    <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_articulo" string="Artículo" context="{'group_by': 'articulo_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'month:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_sales_actual_action" model="ir.actions.act_window">
+        <field name="name">Venta real</field>
+        <field name="res_model">qb.sales.actual</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="context">{'search_default_sin_saldos': 1, 'search_default_este_anio': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin venta cargada</p>
+            <p>
+                Las líneas de factura de venta (las cuentas del VE-02) del año en curso y el anterior,
+                con su mercado, metros y kilos. Se reconstruye cada noche; «Actualizar» trae el mes en
+                curso y el anterior.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============ COMPARATIVO ============ -->
+    <record id="qb_sales_compare_view_pivot" model="ir.ui.view">
+        <field name="name">qb.sales.compare.pivot</field>
+        <field name="model">qb.sales.compare</field>
+        <field name="arch" type="xml">
+            <pivot string="Presupuesto y venta" disable_linking="1">
+                <field name="mercado" type="row"/>
+                <field name="month" interval="month" type="col"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_real" type="measure"/>
+                <field name="amount_diff" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="qb_sales_compare_view_graph" model="ir.ui.view">
+        <field name="name">qb.sales.compare.graph</field>
+        <field name="model">qb.sales.compare</field>
+        <field name="arch" type="xml">
+            <graph string="Presupuesto y venta" type="bar">
+                <field name="month" interval="month"/>
+                <field name="fuente"/>
+                <field name="amount_real" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="qb_sales_compare_view_search" model="ir.ui.view">
+        <field name="name">qb.sales.compare.search</field>
+        <field name="model">qb.sales.compare</field>
+        <field name="arch" type="xml">
+            <search string="Presupuesto y venta">
+                <field name="partner_id"/>
+                <field name="articulo_id"/>
+                <field name="product_id"/>
+                <field name="budget_id"/>
+                <filter name="vigente" string="Presupuesto aprobado vigente"
+                        domain="['|', ('fuente', '!=', 'presupuesto'), ('budget_state', '=', 'aprobado')]"/>
+                <filter name="abierto" string="Presupuesto en captura"
+                        domain="['|', ('fuente', '!=', 'presupuesto'), ('budget_state', 'in', ('borrador', 'revisado'))]"/>
+                <separator/>
+                <filter name="este_anio" string="Este año"
+                        domain="[('month', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d')),
+                                 ('month', '&lt;', (context_today().replace(month=1, day=1) + relativedelta(years=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="anio_anterior" string="Año anterior"
+                        domain="[('month', '&gt;=', (context_today().replace(month=1, day=1) - relativedelta(years=1)).strftime('%Y-%m-%d')),
+                                 ('month', '&lt;', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="a_la_fecha" string="Hasta el mes pasado"
+                        domain="[('month', '&lt;', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filtro_mes" string="Mes" date="month"/>
+                <separator/>
+                <filter name="sin_pronostico" string="Sin pronóstico" domain="[('fuente', '!=', 'pronostico')]"/>
+                <filter name="proyectos" string="Proyectos"
+                        domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
+                <filter name="linea" string="Línea"
+                        domain="[('mercado', 'not in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
+                <group>
+                    <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_articulo" string="Artículo" context="{'group_by': 'articulo_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'month:month'}"/>
+                    <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
+                    <filter name="group_budget" string="Revisión" context="{'group_by': 'budget_id'}"/>
+                    <filter name="group_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_sales_compare_monthly_action" model="ir.actions.act_window">
+        <field name="name">Cierre mensual por mercado</field>
+        <field name="res_model">qb.sales.compare</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="context">{'search_default_vigente': 1, 'search_default_este_anio': 1,
+                               'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['month:month'],
+                               'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
+        <field name="help" type="html">
+            <p>Presupuesto aprobado contra venta real (sin saldos ni desperdicio), por mercado y mes.</p>
+        </field>
+    </record>
+
+    <record id="qb_sales_compare_annual_action" model="ir.actions.act_window">
+        <field name="name">Anual</field>
+        <field name="res_model">qb.sales.compare</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="context">{'search_default_vigente': 1,
+                               'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['year'],
+                               'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
+        <field name="help" type="html">
+            <p>
+                Venta y presupuesto por año y mercado. Quite el filtro «Presupuesto aprobado vigente» y
+                agrupe por Revisión para comparar la REV0 con la REV1; «Hasta el mes pasado» da lo
+                presupuestado a la fecha.
+            </p>
+        </field>
+    </record>
+
+    <record id="qb_sales_compare_client_action" model="ir.actions.act_window">
+        <field name="name">Cliente y artículo</field>
+        <field name="res_model">qb.sales.compare</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="context">{'search_default_vigente': 1, 'search_default_este_anio': 1,
+                               'pivot_row_groupby': ['partner_id', 'articulo_id'], 'pivot_column_groupby': [],
+                               'pivot_measures': ['amount_budget', 'amount_real', 'qty_m_budget',
+                                                  'qty_m_forecast', 'qty_m_real', 'qty_kg_real']}</field>
+        <field name="help" type="html">
+            <p>Presupuesto anual contra pronóstico y venta real por cliente y artículo, en pesos, metros y kilos.</p>
+        </field>
+    </record>
+
+    <!-- Abren el reporte con el mes en curso y el anterior ya refrescados. -->
+    <record id="qb_sales_compare_monthly_server" model="ir.actions.server">
+        <field name="name">Cierre mensual por mercado</field>
+        <field name="model_id" ref="model_qb_sales_actual"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_qb_open_report('quimibond_ventas_presupuesto.qb_sales_compare_monthly_action')</field>
+    </record>
+    <record id="qb_sales_compare_annual_server" model="ir.actions.server">
+        <field name="name">Anual</field>
+        <field name="model_id" ref="model_qb_sales_actual"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_qb_open_report('quimibond_ventas_presupuesto.qb_sales_compare_annual_action')</field>
+    </record>
+    <record id="qb_sales_compare_client_server" model="ir.actions.server">
+        <field name="name">Cliente y artículo</field>
+        <field name="model_id" ref="model_qb_sales_actual"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_qb_open_report('quimibond_ventas_presupuesto.qb_sales_compare_client_action')</field>
+    </record>
+
+    <!-- ============ FALTANTES ============ -->
+    <record id="qb_sales_missing_view_list" model="ir.ui.view">
+        <field name="name">qb.sales.missing.list</field>
+        <field name="model">qb.sales.missing</field>
+        <field name="arch" type="xml">
+            <list string="Faltantes" create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_qb_rebuild_button" type="object" string="Actualizar" display="always"/>
+                </header>
+                <field name="kind"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="name"/>
+                <field name="count" sum="Total"/>
+                <field name="amount" sum="Total"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <button name="action_qb_open_record" type="object" icon="fa-external-link"
+                        string="Abrir" title="Abrir el registro"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_sales_missing_view_search" model="ir.ui.view">
+        <field name="name">qb.sales.missing.search</field>
+        <field name="model">qb.sales.missing</field>
+        <field name="arch" type="xml">
+            <search string="Faltantes">
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="name"/>
+                <group>
+                    <filter name="group_kind" string="Qué falta" context="{'group_by': 'kind'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_sales_missing_action" model="ir.actions.act_window">
+        <field name="name">Faltantes</field>
+        <field name="res_model">qb.sales.missing</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_kind': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin faltantes</p>
+            <p>
+                Lo que impide que el presupuesto y la venta cuadren: ventas sin mercado, productos sin
+                conversión, renglones que cuentan 0, partes sin producto y proyectos sin desarrollo o
+                perdidos. Se recalcula cada noche y con «Actualizar».
+            </p>
+        </field>
+    </record>
+</odoo>

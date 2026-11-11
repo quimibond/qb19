@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.13.0: Cierre de ventas general del mes (sustituye la hoja MENSUAL del Excel). El mes va en
+         el contexto (qb_close_month); sin él, el último mes cerrado. Se imprime desde el asistente
+         «Cierre de ventas», no desde el menú Imprimir. -->
+    <record id="action_report_sales_close" model="ir.actions.report">
+        <field name="name">Cierre de ventas general</field>
+        <field name="model">sgi.sales.budget</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_ventas_presupuesto.report_sales_close_document</field>
+        <field name="report_file">quimibond_ventas_presupuesto.report_sales_close_document</field>
+        <field name="print_report_name">'Cierre de ventas general'</field>
+        <field name="paperformat_id" ref="paperformat_qb_landscape"/>
+    </record>
+
+    <template id="report_sales_close_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="close" t-value="doc._qb_close_data()"/>
+                    <t t-set="ccy" t-value="doc.currency_id"/>
+                    <t t-set="money" t-value="close['money']"/>
+                    <t t-set="percent" t-value="close['percent']"/>
+                    <div class="page" style="font-size:10px;">
+                        <h3 class="text-center">
+                            Cierre de ventas general<br/>
+                            <small t-out="close['month_label']"/>
+                        </h3>
+                        <p class="text-muted text-center" style="font-size:9px;">
+                            Presupuesto <span t-out="doc.name"/> (<span t-out="dict(doc._fields['state'].selection).get(doc.state)"/>).
+                            Importes en <span t-out="ccy.name"/>. Venta: facturas y notas de crédito de cliente en
+                            las cuentas de venta, sin saldos ni desperdicio<t t-if="close['saldos']">
+                            (<span t-out="money(close['saldos'])"/> en el año, fuera del cumplimiento)</t>.
+                        </p>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr class="table-active">
+                                    <th rowspan="2">Mercado</th>
+                                    <th colspan="4" class="text-center" t-out="close['month_label'].capitalize()"/>
+                                    <th colspan="4" class="text-center">Acumulado del año</th>
+                                    <th colspan="2" class="text-center">Año anterior (<span t-out="close['prev_label']"/>)</th>
+                                </tr>
+                                <tr class="table-active">
+                                    <th class="text-end">Presupuesto</th>
+                                    <th class="text-end">Venta</th>
+                                    <th class="text-end">Diferencia</th>
+                                    <th class="text-end">Cumplimiento</th>
+                                    <th class="text-end">Presupuesto</th>
+                                    <th class="text-end">Venta</th>
+                                    <th class="text-end">Diferencia</th>
+                                    <th class="text-end">Cumplimiento</th>
+                                    <th class="text-end">Venta</th>
+                                    <th class="text-end">Crecimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="close['rows']" t-as="r">
+                                    <td t-out="r['label']"/>
+                                    <td class="text-end" t-out="money(r['bud_m'])"/>
+                                    <td class="text-end" t-out="money(r['real_m'])"/>
+                                    <td class="text-end" t-out="money(r['diff_m'])"/>
+                                    <td class="text-end" t-out="percent(r['pct_m'])"/>
+                                    <td class="text-end" t-out="money(r['bud_y'])"/>
+                                    <td class="text-end" t-out="money(r['real_y'])"/>
+                                    <td class="text-end" t-out="money(r['diff_y'])"/>
+                                    <td class="text-end" t-out="percent(r['pct_y'])"/>
+                                    <td class="text-end" t-out="money(r['prev_y'])"/>
+                                    <td class="text-end" t-out="percent(r['growth'])"/>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active fw-bold" t-if="close['total']">
+                                    <t t-set="t" t-value="close['total']"/>
+                                    <td>Total</td>
+                                    <td class="text-end" t-out="money(t['bud_m'])"/>
+                                    <td class="text-end" t-out="money(t['real_m'])"/>
+                                    <td class="text-end" t-out="money(t['diff_m'])"/>
+                                    <td class="text-end" t-out="percent(t['pct_m'])"/>
+                                    <td class="text-end" t-out="money(t['bud_y'])"/>
+                                    <td class="text-end" t-out="money(t['real_y'])"/>
+                                    <td class="text-end" t-out="money(t['diff_y'])"/>
+                                    <td class="text-end" t-out="percent(t['pct_y'])"/>
+                                    <td class="text-end" t-out="money(t['prev_y'])"/>
+                                    <td class="text-end" t-out="percent(t['growth'])"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <p t-if="doc.base_anio_anterior" style="font-size:9px;">
+                            Venta del año anterior <span t-out="money(doc.base_anio_anterior)"/>;
+                            objetivo (+<span t-out="'%.0f' % doc.objetivo_pct"/> %) <span t-out="money(close['objetivo'])"/>;
+                            mínimo (+<span t-out="'%.0f' % doc.minimo_pct"/> %) <span t-out="money(close['minimo'])"/>.
+                        </p>
+                        <p t-if="doc.nonfulfillment_note" style="font-size:9px;">
+                            <b>Justificación del incumplimiento (P-A28 4.3.6.1):</b>
+                            <span t-out="doc.nonfulfillment_note"/>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

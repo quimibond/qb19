@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.14.0: presupuesto del mes (diseño v3, 2.5; F-P-A28-14). -->
+    <record id="qb_sales_month_plan_view_list" model="ir.ui.view">
+        <field name="name">qb.sales.month.plan.list</field>
+        <field name="model">qb.sales.month.plan</field>
+        <field name="arch" type="xml">
+            <list string="Presupuesto del mes" decoration-muted="state == 'enviado'">
+                <field name="month"/>
+                <field name="name"/>
+                <field name="rate" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_linea" sum="Total"/>
+                <field name="amount_proyectos" sum="Total"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="no_price_count" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'enviado'"/>
+                <field name="sent_date" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_sales_month_plan_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.month.plan.form</field>
+        <field name="model">qb.sales.month.plan</field>
+        <field name="arch" type="xml">
+            <form string="Presupuesto del mes">
+                <header>
+                    <button name="action_qb_send" type="object" string="Enviar a Dirección" class="btn-primary"
+                            invisible="state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"
+                            confirm="Se congela el presupuesto del mes y se abre el correo a Dirección con el PDF. ¿Continuar?"/>
+                    <button name="action_qb_build" type="object" string="Volver a armar del pronóstico"
+                            invisible="state != 'borrador'"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"
+                            confirm="Los renglones del pronóstico se rehacen con el pronóstico vigente (se pierden sus ajustes); los capturados a mano se conservan. ¿Continuar?"/>
+                    <button name="action_qb_fill_prices" type="object" string="Completar precios"
+                            invisible="state != 'borrador' or no_price_count == 0"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_qb_set_draft" type="object" string="Regresar a borrador"
+                            invisible="state != 'enviado'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="no_price_count == 0">
+                        <field name="no_price_count" class="oe_inline"/> renglón(es) cuentan 0 en el importe (sin
+                        precio, sin tipo de cambio o sin conversión). El precio sale del presupuesto anual
+                        aprobado o de la lista del cliente: lo que la lista no tiene se le pide a Ventas con una
+                        actividad en la lista de cada cliente. Cuando lo den de alta, pulse «Completar precios».
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="month" readonly="id"/>
+                            <field name="rate" readonly="state != 'borrador'"/>
+                            <field name="budget_id"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="id"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_linea"/>
+                            <field name="amount_proyectos"/>
+                            <field name="amount_total"/>
+                            <field name="amount_by_mercado_text"/>
+                            <field name="sent_date" invisible="state != 'enviado'"/>
+                            <field name="sent_by_id" invisible="state != 'enviado'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Renglones" name="lineas">
+                            <field name="line_ids" readonly="state != 'borrador'">
+                                <list editable="bottom" decoration-danger="price_problem">
+                                    <field name="mercado"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="plant" optional="show"/>
+                                    <field name="product_id"/>
+                                    <field name="qty_forecast" optional="show"/>
+                                    <field name="qty" sum="Total"/>
+                                    <field name="uom_name"/>
+                                    <field name="qty_m" sum="Total" optional="show"/>
+                                    <field name="qty_kg" sum="Total" optional="show"/>
+                                    <field name="price_input"/>
+                                    <field name="price_currency_id" options="{'no_create': True}"/>
+                                    <field name="price_basis" optional="show"/>
+                                    <field name="price_origen" readonly="1" optional="hide"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="price_problem" optional="show"/>
+                                    <field name="from_forecast" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_sales_month_plan_view_search" model="ir.ui.view">
+        <field name="name">qb.sales.month.plan.search</field>
+        <field name="model">qb.sales.month.plan</field>
+        <field name="arch" type="xml">
+            <search string="Presupuesto del mes">
+                <field name="name"/>
+                <filter name="borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="enviado" string="Enviados" domain="[('state', '=', 'enviado')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_sales_month_plan_action" model="ir.actions.act_window">
+        <field name="name">Presupuesto del mes</field>
+        <field name="res_model">qb.sales.month.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin presupuestos del mes</p>
+            <p>
+                Use «Armar presupuesto del mes»: toma la foto del pronóstico vigente del mes con el precio
+                del presupuesto anual (o la lista del cliente) y el tipo de cambio del mes. Los vendedores de
+                Confección agregan sus renglones; después se envía a Dirección con el PDF F-P-A28-14.
+            </p>
+        </field>
+    </record>
+
+    <record id="qb_sales_month_plan_build_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.month.plan.build.form</field>
+        <field name="model">qb.sales.month.plan.build</field>
+        <field name="arch" type="xml">
+            <form string="Armar presupuesto del mes">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Arma (o vuelve a armar, si sigue en borrador) el presupuesto del mes con la foto del
+                        pronóstico vigente. Los renglones capturados a mano se conservan.
+                    </div>
+                    <group>
+                        <field name="month"/>
+                        <field name="rate"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_build" type="object" string="Armar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_sales_month_plan_build_action" model="ir.actions.act_window">
+        <field name="name">Armar presupuesto del mes</field>
+        <field name="res_model">qb.sales.month.plan.build</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

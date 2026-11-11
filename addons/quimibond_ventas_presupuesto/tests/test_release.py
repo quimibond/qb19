@@ -4,7 +4,7 @@
 
 Release inventado con el layout de Lear (sin datos reales)."""
 import base64
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -146,6 +146,32 @@ class TestRelease(TransactionCase):
             ('qty_after', '=', 0)])
         self.assertTrue(removed, "La semana quitada queda en la bitácora.")
 
+    def test_08_apply_reemplaza_la_misma_tela_en_otro_codigo(self):
+        """3.15.1: el Excel traía la tela en metros (W…) y el release en kilos (IW…): misma tela,
+        la semana se reemplaza y no se suma (producción, Shawmut W45, 9-nov)."""
+        en_metros = self.env['product.product'].create({
+            'name': 'Tela release en metros', 'default_code': 'ZZRW045Q22JNT160', 'type': 'consu',
+            'uom_id': self.uom_m.id})
+        self.product.qb_articulo_id = en_metros
+        Line = self.env['qb.forecast.line']
+        excel = Line.create({'partner_id': self.customer.id, 'product_id': en_metros.id,
+                             'week': date(2040, 12, 17), 'qty_origen': 999.0, 'origen': 'excel'})
+        stale = Line.create({'partner_id': self.customer.id, 'product_id': en_metros.id,
+                             'week': date(2040, 12, 31) + timedelta(weeks=2), 'qty_origen': 5.0,
+                             'origen': 'excel'})
+        release = self._release()
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        lines = self._forecast()
+        self.assertEqual(len(lines.filtered(lambda l: l.week == date(2040, 12, 17))), 1,
+                         "Una sola semana: la del release reemplaza a la del Excel")
+        self.assertEqual(excel.product_id, self.product)
+        self.assertEqual(excel.qty_venta, 100)
+        self.assertEqual(excel.origen, 'release')
+        self.assertFalse(stale.exists(), "La semana de esa tela que el release ya no trae se quita")
+
     def test_06_apply_keeps_weeks_before_the_release_and_other_plants(self):
         Line = self.env['qb.forecast.line']
         old = Line.create({'company_id': self.env.company.id, 'partner_id': self.customer.id,
@@ -257,3 +283,63 @@ class TestReleaseGeneric(TransactionCase):
         release.action_confirm_suggestions()
         self.assertEqual(catalog.state, 'sin_producto', "Sin producto no se confirma.")
         self.assertIn('SIN-PRODUCTO-XYZ', release.message_ids[0].body)
+
+
+WOODBRIDGE_TEXT = """SUPPLIER RELEASE PLANNING SCHEDULE Blanket P/O #: 9100 Release#: 2040306C Date: 12/10/40
+Vendor: 999001 Ship To:
+Part #: WB000001 Vendor Part #: WB000001 Model Year
+Tela prueba Standard Package: 1.00000 MTR
+Cum YTD Received: 100.00000
+Requirements Unit: MTR
+12/17/40 Week Firm 500.00 600.00000 .00 .00
+12/24/40 Week Forecast 250.00 850.00000 .00 .00
+Fabrication Cum: 850.00000 Material Cum: 850.00000
+"""
+
+
+@tagged('post_install', '-at_install')
+class TestReleaseWoodbridge(TransactionCase):
+    """3.16.0: lector del PDF de Woodbridge (Saltillo Lamination) y bandeja de releases."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.team = cls.env['crm.team'].create({'name': 'Industrial woodbridge'})
+        cls.customer = cls.env['res.partner'].create({'name': 'Cliente Woodbridge', 'is_company': True})
+        cls.profile = cls.env['qb.release.profile'].create({
+            'partner_id': cls.customer.id, 'team_id': cls.team.id, 'reader': 'woodbridge_pdf',
+            'supplier_code': '999001', 'sales_user_id': cls.env.user.id})
+
+    def _release(self, text=WOODBRIDGE_TEXT, profile=None):
+        return self.env['qb.release'].create({
+            'profile_id': (profile or self.profile).id, 'file': base64.b64encode(text.encode()),
+            'filename': 'release.txt'})
+
+    def test_01_lee_oc_unidad_y_semanas(self):
+        release = self._release()
+        release.action_read()
+        self.assertEqual(release.state, 'leido')
+        self.assertEqual(release.release_ref, '2040306C')
+        part = release.part_ids
+        self.assertEqual((part.customer_part, part.customer_po, part.customer_uom), ('WB000001', '9100', 'MTR'))
+        self.assertEqual(sorted(part.line_ids.mapped('qty_customer')), [250.0, 500.0])
+
+    def test_02_otra_planta_no_se_lee(self):
+        leon = self.env['qb.release.profile'].create({
+            'partner_id': self.customer.id, 'plant': 'LEON', 'team_id': self.team.id,
+            'reader': 'woodbridge_pdf', 'supplier_code': '999001L'})
+        release = self._release(profile=leon)
+        release.action_read()
+        self.assertEqual(release.state, 'por_revisar', "Un release de Saltillo no se lee en el perfil de León")
+        self.assertIn('999001', release.error_reason)
+
+    def test_03_aviso_de_release_sin_revisar(self):
+        release = self._release()
+        self.env.cr.execute("UPDATE qb_release SET create_date = now() - interval '3 days' WHERE id = %s",
+                            (release.id,))
+        release.invalidate_recordset(['create_date'])
+        Release = self.env['qb.release']
+        Release.cron_qb_release_reminders()
+        self.assertEqual(len(release.activity_ids), 1)
+        Release.cron_qb_release_reminders()
+        self.assertEqual(len(release.activity_ids), 1, "La segunda corrida no duplica")

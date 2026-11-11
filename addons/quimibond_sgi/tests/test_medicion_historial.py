@@ -18,7 +18,7 @@ class TestMedicionHistorial(TransactionCase):
         cls.Inspection = cls.env['sgi.csh.inspection']
 
     def _activity(self, **vals):
-        return self.env['sgi.process.activity'].create(dict({
+        return self.env['sgi.process.activity'].with_context(sgi_skip_role_check=True).create(dict({
             'process_id': self.process.id, 'number': 'ZMH.01', 'name': 'Cerrar el recorrido',
             'measure_method': 'odoo', 'measure_model_name': 'sgi.csh.inspection',
             'measure_domain': "[('area', '=', 'ZMH'), ('state', '=', 'cerrado')]",

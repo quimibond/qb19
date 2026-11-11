@@ -14,8 +14,14 @@
                 <field name="partner_id" optional="show"/>
                 <field name="product_id"/>
                 <field name="proyecto_descripcion" optional="show"/>
+                <field name="qb_project_id" optional="hide"/>
+                <field name="dev_project_id" optional="hide"/>
+                <field name="qb_project_state" optional="hide"/>
+                <field name="dev_stage_id" optional="hide"/>
                 <field name="date"/>
                 <field name="uom_id"/>
+                <field name="qty_origen" optional="hide"/>
+                <field name="qty_sugerida" optional="hide"/>
                 <!-- 1.2.0 (V-M10): totales al pie de cantidad e importe. -->
                 <field name="qty_budget" sum="Total"/>
                 <field name="qty_m" readonly="1" optional="hide" sum="Total"/>
@@ -74,11 +80,18 @@
                             <field name="proyecto_descripcion" invisible="product_id"/>
                             <field name="proyecto_gramaje" invisible="product_id"/>
                             <field name="proyecto_ancho_cm" invisible="product_id"/>
+                            <field name="dev_project_id"
+                                   invisible="mercado not in ('proyectos_industrial', 'proyectos_confeccion') and not dev_project_id"/>
+                            <field name="qb_project_id" readonly="1" invisible="not qb_project_id"/>
+                            <field name="qb_project_state" invisible="not qb_project_id"/>
+                            <field name="dev_stage_id" invisible="not dev_project_id"/>
                             <field name="date"/>
                         </group>
                         <group string="Cantidad y precio">
                             <field name="uom_id"/>
                             <field name="qty_budget"/>
+                            <field name="qty_origen" invisible="not qty_origen"/>
+                            <field name="qty_sugerida" invisible="not qty_origen"/>
                             <field name="qty_m" readonly="1"/>
                             <field name="qty_kg" readonly="1"/>
                             <field name="conv_origen" readonly="1"/>
@@ -206,6 +219,12 @@
                         domain="[('price_problem', '!=', False)]"/>
                 <filter name="proyectos" string="Proyectos"
                         domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion'))]"/>
+                <filter name="proyecto_perdido" string="Proyecto perdido"
+                        domain="[('qb_project_id.state', '=', 'perdido')]"/>
+                <filter name="de_desarrollo" string="Propuestos desde un desarrollo"
+                        domain="[('qty_origen', '=', 'desarrollo')]"/>
+                <filter name="proyecto_sin_desarrollo" string="Proyecto sin desarrollo"
+                        domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion')), ('dev_project_id', '=', False)]"/>
                 <group>
                     <filter name="group_mercado" string="Mercado" context="{'group_by': 'mercado'}"/>
                     <filter name="group_team" string="Equipo" context="{'group_by': 'team_id'}"/>
@@ -253,6 +272,11 @@
                         <button name="action_open_analysis" type="object"
                                 class="oe_stat_button" icon="fa-table"
                                 string="Análisis" invisible="kind != 'presupuesto'"/>
+                        <!-- 3.13.0 -->
+                        <button name="action_qb_open_close" type="object"
+                                class="oe_stat_button" icon="fa-file-pdf-o"
+                                string="Cierre de ventas"
+                                invisible="kind != 'presupuesto' or state == 'obsoleto'"/>
                     </div>
                     <widget name="web_ribbon" title="Obsoleto" bg_color="text-bg-secondary"
                             invisible="state != 'obsoleto'"/>
@@ -383,7 +407,12 @@
                                     <field name="partner_id" optional="show"/>
                                     <field name="product_id"/>
                                     <field name="proyecto_descripcion" optional="show"/>
+                                    <field name="dev_project_id" optional="hide"/>
+                                    <field name="qb_project_state" optional="hide"/>
+                                    <field name="dev_stage_id" optional="hide"/>
                                     <field name="date"/>
+                                    <field name="qty_origen" optional="hide"/>
+                                    <field name="qty_sugerida" optional="hide"/>
                                     <field name="uom_id"/>
                                     <field name="qty_budget" sum="Total"/>
                                     <field name="qty_forecast" readonly="1" optional="hide"/>
@@ -570,8 +599,11 @@
                         Confección por producto y mes, sin cliente. La cantidad es la vendida ese
                         mes por el crecimiento del mercado; el precio, el de la lista o, si la
                         lista no tiene el producto, el real del periodo base. No entran saldos,
-                        desperdicio, notas de crédito genéricas ni servicios. Después se ajusta
-                        renglón por renglón.
+                        desperdicio, notas de crédito genéricas ni servicios. Con «Traer
+                        desarrollos», cada desarrollo abierto (de Cotización a Pilotaje) con
+                        consumo estimado suma renglones de Proyectos desde su fecha requerida, con
+                        el precio de su cotización o el objetivo. Después se ajusta renglón por
+                        renglón.
                     </div>
                     <group>
                         <group string="Periodo">
@@ -590,6 +622,10 @@
                             <field name="rate"/>
                             <field name="project_source_id"/>
                         </group>
+                        <group string="Desarrollos de producto">
+                            <field name="include_dev"/>
+                            <field name="dev_pct" invisible="not include_dev"/>
+                        </group>
                     </group>
                 </sheet>
                 <footer>
@@ -599,6 +635,39 @@
                 </footer>
             </form>
         </field>
+    </record>
+
+    <!-- 3.13.0: Cierre de ventas general del mes (PDF y correo). -->
+    <record id="qb_sales_close_view_form" model="ir.ui.view">
+        <field name="name">qb.sales.close.form</field>
+        <field name="model">qb.sales.close</field>
+        <field name="arch" type="xml">
+            <form string="Cierre de ventas">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Por mercado: presupuesto, venta y cumplimiento del mes y del acumulado del año, y
+                        la venta del mismo periodo del año anterior. La venta es la de «Venta real» (sin
+                        saldos ni desperdicio); se recalcula antes de imprimir.
+                    </div>
+                    <group>
+                        <field name="budget_id"/>
+                        <field name="month"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_print" type="object" string="Imprimir PDF" class="btn-primary"/>
+                    <button name="action_send" type="object" string="Enviar por correo" class="btn-secondary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_sales_close_action" model="ir.actions.act_window">
+        <field name="name">Cierre de ventas (PDF)</field>
+        <field name="res_model">qb.sales.close</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
     </record>
 
     <record id="qb_sales_budget_proposal_action" model="ir.actions.act_window">

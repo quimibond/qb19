@@ -28,7 +28,10 @@ from .sgi_sales_budget import (_REAL_MOVE_TYPES, _convert_qty, MERCADOS, MERCADO
 
 PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por kilo")]
 PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel', "Excel"),
-                 ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base")]
+                 ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base"),
+                 ('desarrollo', "Cotización o precio objetivo del desarrollo")]
+QTY_ORIGINS = [('venta', "Venta del periodo base"), ('proyecto', "Presupuesto de proyectos"),
+               ('desarrollo', "Consumo estimado del desarrollo")]
 PRICE_PROBLEMS = [('sin_precio', "Sin precio"), ('sin_tc', "Sin tipo de cambio"),
                   ('sin_conversion', "Sin conversión")]
 
@@ -70,6 +73,24 @@ class SgiSalesBudgetLine(models.Model):
         string="Proyecto", help="Qué es el renglón de proyecto sin código (tela, cliente, uso).")
     proyecto_gramaje = fields.Float(string="Gramaje del proyecto (g/m²)")
     proyecto_ancho_cm = fields.Float(string="Ancho del proyecto (cm)")
+    # 3.8.0 (diseño v3, 2.6 y 2.11): proyecto comercial y desarrollo de producto.
+    qb_project_id = fields.Many2one(
+        'qb.sales.project', string="Proyecto comercial", index=True, ondelete='set null',
+        help="Combinación cliente–artículo en arranque. Un renglón de Proyectos la crea o la liga "
+             "sola (por desarrollo, o por cliente y producto o descripción).")
+    qb_project_state = fields.Selection(related='qb_project_id.state', string="Estado del proyecto")
+    # 3.9.0: de dónde salió la cantidad en «Armar propuesta del año» y cuánto se propuso.
+    qty_origen = fields.Selection(QTY_ORIGINS, string="Origen de la cantidad", readonly=True,
+                                  help="Vacío: capturada a mano o importada.")
+    qty_sugerida = fields.Float(string="Cantidad propuesta", digits='Product Unit', readonly=True,
+                                help="Lo que propuso el armado; la cantidad presupuestada es la que "
+                                     "queda después de ajustar.")
+    dev_stage_id = fields.Many2one(related='dev_project_id.stage_id', string="Etapa del desarrollo")
+    dev_project_id = fields.Many2one(
+        'project.project', string="Desarrollo de producto", index=True, ondelete='set null',
+        domain="[('sgi_is_ft', '=', True)]",
+        help="Desarrollo del que sale este renglón de Proyectos. Sin código todavía: cuando el "
+             "desarrollo genere su producto, el renglón lo toma (en presupuestos abiertos).")
     partner_id = fields.Many2one(
         'res.partner', string="Cliente", index=True,
         domain="[('is_company', '=', True)]",
@@ -333,6 +354,53 @@ class SgiSalesBudgetLine(models.Model):
     def _onchange_product_id(self):
         if self.product_id and not self.uom_id:
             self.uom_id = self.product_id.uom_id
+
+    @api.onchange('dev_project_id')
+    def _onchange_dev_project_id(self):
+        """Del desarrollo: cliente, producto y, sin producto, descripción, gramaje y ancho."""
+        dev = self.dev_project_id
+        if not dev:
+            return
+        if not self.partner_id and dev.partner_id:
+            self.partner_id = dev.partner_id.commercial_partner_id
+        product = dev._qb_dev_product()
+        if product and not self.product_id:
+            self.product_id = product
+            self.uom_id = product.uom_id
+        if not self.product_id:
+            self.proyecto_descripcion = self.proyecto_descripcion or dev.sgi_dev_product_name or dev.name
+            gramaje, ancho_cm = self._qb_dev_dimensions(dev)
+            self.proyecto_gramaje = self.proyecto_gramaje or gramaje
+            self.proyecto_ancho_cm = self.proyecto_ancho_cm or ancho_cm
+        if self.mercado not in PROYECTO_MERCADOS:
+            from .qb_forecast import team_of_partner  # import local: los módulos van después
+            from .qb_sales_project import proyecto_mercado
+            self.mercado = proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(dev.partner_id))
+
+    @api.model
+    def _qb_dev_dimensions(self, dev):
+        """(gramaje g/m², ancho cm) de la tabla de características del desarrollo (masa y
+        ancho nominales, los que usa el generador de código); 0 si no están."""
+        gramaje = ancho_cm = 0.0
+        for row in dev.sgi_dev_line_ids:
+            if row.caracteristica_code == 'masa' and row.spec_nominal:
+                gramaje = row.spec_nominal
+            elif row.caracteristica_code == 'ancho' and row.spec_nominal:
+                # El ancho se captura en metros (1.60); si viene en cm, se deja.
+                ancho_cm = row.spec_nominal * 100.0 if row.spec_nominal < 10 else row.spec_nominal
+        return gramaje, ancho_cm
+
+    def _qb_link_projects(self):
+        """Renglones de Proyectos sin proyecto comercial: lo crean o lo ligan. Un renglón que
+        sale de Proyectos conserva la liga (historia); el estado no cambia aquí."""
+        Project = self.env['qb.sales.project'].sudo()
+        for line in self.filtered(lambda l: l.kind == 'presupuesto'
+                                  and l.mercado in PROYECTO_MERCADOS and not l.qb_project_id):
+            project = Project._qb_for_budget_line(line)
+            vals = {'qb_project_id': project.id}
+            if project.dev_project_id and not line.dev_project_id:
+                vals['dev_project_id'] = project.dev_project_id.id
+            line.with_context(qb_project_link=True).write(vals)
 
     @api.onchange('partner_id')
     def _onchange_partner_mercado(self):
@@ -865,7 +933,29 @@ class SgiSalesBudgetLine(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         Partner = self.env['res.partner']
+        Project = self.env['project.project']
         for vals in vals_list:
+            # 3.8.0: un renglón que nace de un desarrollo toma de él lo que no traiga.
+            if vals.get('dev_project_id'):
+                dev = Project.browse(vals['dev_project_id'])
+                product = dev._qb_dev_product()
+                if not vals.get('partner_id') and dev.partner_id:
+                    vals['partner_id'] = dev.partner_id.commercial_partner_id.id
+                if not vals.get('product_id') and product and not vals.get('proyecto_descripcion'):
+                    vals['product_id'] = product.id
+                    vals['uom_id'] = vals.get('uom_id') or product.uom_id.id
+                if not vals.get('product_id'):
+                    gramaje, ancho_cm = self._qb_dev_dimensions(dev)
+                    vals['proyecto_descripcion'] = (vals.get('proyecto_descripcion')
+                                                    or dev.sgi_dev_product_name or dev.name)
+                    vals['proyecto_gramaje'] = vals.get('proyecto_gramaje') or gramaje
+                    vals['proyecto_ancho_cm'] = vals.get('proyecto_ancho_cm') or ancho_cm
+                # 3.16.3: solo si no viene mercado. Una copia (nueva revisión, «Traer renglones»)
+                # de un renglón que Ventas pasó a Industrial no regresa a Proyectos.
+                if not vals.get('mercado'):
+                    from .qb_forecast import team_of_partner  # import local: los módulos van después
+                    from .qb_sales_project import proyecto_mercado
+                    vals['mercado'] = proyecto_mercado(self.env, dev.sgi_dev_team_id or team_of_partner(dev.partner_id))
             if not vals.get('mercado'):
                 vals['mercado'] = default_mercado(self.env, Partner.browse(vals.get('partner_id')))
             if not vals.get('product_id') and vals.get('price_input') and not vals.get('price_origen'):
@@ -875,6 +965,8 @@ class SgiSalesBudgetLine(models.Model):
         lines = super().create(vals_list)
         # 3.5.0: precio sugerido de la lista donde no vino precio (presupuesto, no histórico).
         lines.filtered(lambda l: l.kind == 'presupuesto')._qb_suggest_price()
+        # 3.8.0: un renglón de Proyectos crea o liga su proyecto comercial.
+        lines._qb_link_projects()
         # Agregar líneas a un presupuesto 'revisado' lo regresa a borrador, para que
         # Dirección no apruebe contenido distinto al que revisó el Admin.
         lines._sgi_reopen_reviewed_parents(lines.budget_id)
@@ -919,6 +1011,13 @@ class SgiSalesBudgetLine(models.Model):
         # (gobernanza del revisado). Solo la edición de captura cuenta, no el refresh de la foto.
         if self._SGI_EDITABLE_FIELDS & set(vals):
             self._sgi_reopen_reviewed_parents(self.budget_id)
+        # 3.8.0: cambiar el mercado a Proyectos, o el desarrollo, liga su proyecto comercial.
+        if not self.env.context.get('qb_project_link') and {'mercado', 'dev_project_id'} & set(vals):
+            if 'dev_project_id' in vals:
+                self.filtered(lambda l: l.qb_project_id and l.dev_project_id
+                              and l.qb_project_id.dev_project_id != l.dev_project_id).with_context(
+                    qb_project_link=True).write({'qb_project_id': False})
+            self._qb_link_projects()
         return res
 
     def unlink(self):

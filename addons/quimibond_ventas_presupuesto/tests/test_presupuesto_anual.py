@@ -492,7 +492,7 @@ class TestPresupuestoAnual(TransactionCase):
         invoice(self.client, self.team_ind, date(2016, 3, 10), [(self.product, 100.0, 2.0)])
         invoice(otro, self.team_conf, date(2016, 5, 10), [(self.product, 50.0, 3.0), (saldo, 10.0, 1.0)])
         budget_id = self.Budget.action_qb_build_proposal(
-            2017, growth={'industrial': 10.0}, base='anio')
+            2017, growth={'industrial': 10.0}, base='anio', include_dev=False)
         budget = self.Budget.browse(budget_id)
         self.assertEqual(budget.year, 2017)
         self.assertEqual(budget.state, 'borrador')

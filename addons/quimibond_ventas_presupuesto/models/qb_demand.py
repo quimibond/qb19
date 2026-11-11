@@ -22,7 +22,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 
-from .qb_forecast import MARKETS, ZONES, market_of_partner, monday_of
+from .qb_forecast import DEV_PRODUCT_STATES, MARKETS, ZONES, dev_state_of, market_of_partner, monday_of
 
 FINISHING_WEEKS = 3
 # Pedidos atrasados que aún cuentan como demanda (más viejos son pedidos sin cerrar).
@@ -64,6 +64,9 @@ class QbDemandLine(models.Model):
     order_id = fields.Many2one('sale.order', string="Pedido", readonly=True)
     forecast_line_id = fields.Many2one('qb.forecast.line', string="Renglón del pronóstico", readonly=True)
     customer_po = fields.Char(string="OC del cliente", readonly=True)
+    dev_state = fields.Selection(DEV_PRODUCT_STATES, string="Estado del artículo", readonly=True,
+                                 help="Estado de desarrollo del artículo. En desarrollo o archivado no se "
+                                      "vende todavía; en pilotaje, sí, con aviso.")
 
     @api.model
     def _qb_cuts(self, week, today):
@@ -91,6 +94,7 @@ class QbDemandLine(models.Model):
             'conv_ok': qty_m is not None and qty_kg is not None,
             'corte_acabado': acabado, 'corte_tejido': tejido,
             'en_mps': product.id in mps_products or articulo.id in mps_products,
+            'dev_state': dev_state_of(product),
         }
         vals.update(extra)
         return vals
@@ -132,6 +136,12 @@ class QbDemandLine(models.Model):
         if rows:
             self.sudo().create(rows)
         return True
+
+    def action_qb_rebuild_button(self):
+        """Botón «Actualizar» de la lista (3.14.2): el cliente manda los ids de la lista, que
+        ``action_qb_rebuild`` (@api.model, la llaman crons y migraciones) no recibe."""
+        self.env['qb.demand.line'].action_qb_rebuild()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_qb_open(self):
         """Abre la Demanda por cliente (después de reconstruirla)."""
