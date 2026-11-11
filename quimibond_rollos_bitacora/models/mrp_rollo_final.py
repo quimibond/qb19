@@ -78,6 +78,10 @@ class MrpRolloFinal(models.Model):
     product_id = fields.Many2one('product.product', 'Producto registrado', readonly=True,
                                  help='La tela (PQ, FE y Segunda, en metros) o el saldo (Desperdicio, en kg).')
     lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
+    lot_kg_id = fields.Many2one(
+        'stock.lot', 'Lote en kg (Ubic. 10)', readonly=True, copy=False,
+        help='3.18.0: lote del acabado en kg con que este rollo entró a la Ubic. 10 al cerrar el baño; la orden en metros '
+             'consume ese lote con los kg de Inspección.')
     location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
 
     # 3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado de la ficha), guardada al capturar.
@@ -200,9 +204,10 @@ class MrpRolloFinal(models.Model):
 
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
-        """Lote del rollo final = número de baño + No. de rollo: «00001-0001» (3.5.0; antes M<orden en metros>-NNNN o
-        K<orden en kg>-NNNN). Es el que queda en inventario y va en la etiqueta final."""
-        return '%s-%04d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
+        """Lote del rollo final = número de baño + «F» + No. de rollo: «J00002-F001» (3.18.0; antes «J00002-001», igual que
+        el rollo de Rama). Es el que queda en inventario y va en la etiqueta final. La «F» lo distingue del lote del rollo
+        de Rama («J00002-0001»), que es del mismo producto."""
+        return '%s-F%03d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
 
     # ------------------------------------------------------------------ anular (3.3.0)
     def _revertir_rama(self):

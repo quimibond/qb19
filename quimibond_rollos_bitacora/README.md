@@ -27,6 +27,34 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Inventario de la cadena kg → metros: Ubic. 10, traspasos a calidad y requisición de químicos (3.18.0, 2026-11-10)
+
+Desviaciones de la misma prueba (J00002) que tocan inventario. **Aplicar después de 3.17.0.**
+
+- **La orden en metros consume los rollos finales, no los de Rama.** Al cerrar la orden en kg (flujo de Empaque) lo que entra
+  a la Ubic. 10 es un lote por rollo final, `<baño>-F001`, `-F002`… (la «F» lo distingue del lote de Rama `<baño>-0001`, que
+  es del mismo producto), con los **kg de Inspección** (`kg_neto`); el rollo final guarda ese lote en `lot_kg_id`. La orden
+  en metros consume exactamente esos lotes y kg (`_insp_consumo_lotes`). Los baños que ya cerraron antes de 3.18.0 (sus
+  rollos finales no tienen `lot_kg_id`) siguen consumiendo los rollos de Rama con sus kg de Rama. Los rollos finales nuevos se
+  llaman `J00002-F001`; los ya capturados conservan su nombre.
+- **Traspasos 10 → calidad al cerrar la orden en metros.** La tela (PQ, FE, Segunda), los saldos en kg y el desperdicio que
+  Empaque pesó entran a la Ubic. 10 y transferencias internas, ya validadas y ligadas a la orden (una por destino: 14, 15, 16,
+  17 o 31 en desarrollo), los pasan a su ubicación. Lo mismo en la orden de saldos de un baño sin primera ni FE. Si no se
+  puede crear o validar una transferencia no se cierra nada (como el resto del registro). El baño para venta en kg (sin
+  orden en metros) no cambia: sus rollos entran directo a 14/15.
+- **Desperdicio de Rama 10 → 17.** El subproducto ya no se fuerza a la 17 al pesarlo: entra a la 10 con el terminado y, al
+  cerrar la orden en kg, una transferencia lo pasa a la 17. Si el desperdicio ya estaba en la 17 (pesado antes de 3.18.0) no
+  se hace nada.
+- **Requisición de Tintorería (REQ-TIN) Piso → 2.** En la ruta «Surtido Químicos y Colorantes» la regla de surtido toma del
+  *Químicos-Colorantes Piso* y surte a la Ubic. 2 (el destino del tipo de operación; con «destino de la regla» apagado Odoo
+  ignora el destino de la regla), y la orden en kg consume de la 2. La ruta pasa a llamarse «(Piso → Ubic. 2)». El engomado
+  no cambia: sigue surtiéndose al Piso y consumiéndose de ahí. `_surte_desde_piso` solo cuenta reglas de consumo de la orden
+  en kg. Migración 3.18.0 (`hooks.configurar_requisicion_quimicos`), idempotente. Por consecuencia, el sobrante de químicos ya
+  no se devuelve desde el Piso: queda en la Ubic. 2 (el engomado sí se sigue devolviendo).
+
+Pruebas: `test_77`, `test_77b`, `test_77c`, `test_78`, `test_79`; `test_01`, `05_06`, `13`, `14`, `15`, `32`, `39` y `54`
+cambian al nombre `-F001` y a los kg de Inspección.
+
 ## Prueba de Dirección en el equipo local: etiquetas, anular y botones (3.17.0, 2026-11-10)
 
 Desviaciones de la prueba de punta a punta (órdenes J00002), validadas contra la base local:

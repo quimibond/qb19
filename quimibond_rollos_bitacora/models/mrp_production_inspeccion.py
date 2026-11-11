@@ -182,6 +182,8 @@ class MrpProductionInspeccion(models.Model):
             modos[orden.id] = modo
             if modo == 'kg':
                 orden._insp_preparar_kg()
+            elif modo == 'empaque':
+                orden._insp_preparar_empaque()
         res = super().button_mark_done()
         # 3.3.0: se decide por el estado. El core devuelve una acción tanto cuando pide confirmar algo (la orden sigue
         # abierta; al confirmar vuelve a llamar a este método) como cuando ya cerró (piso de producción, reporte).
@@ -387,6 +389,60 @@ class MrpProductionInspeccion(models.Model):
                 movimiento = self._insp_movimiento_saldo(clasificacion, terminado)
                 self._insp_lineas_saldo(movimiento, grupo)
 
+    def _insp_preparar_empaque(self):
+        """3.18.0 (Dirección, 2026-11-10): antes del cierre de un baño que pasa a Empaque, lo que entra a la Ubic. 10 son los
+        rollos finales (no los de Rama): una línea por rollo final del acabado en kg, con su lote propio («J00002-F001») y
+        los kg de Inspección. La orden en metros consume exactamente esos lotes. El cierre de José iguala la orden a la
+        suma de las líneas."""
+        self.ensure_one()
+        finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
+        terminado = self.move_finished_ids.filtered(
+            lambda m: m.product_id == self.product_id and m.state not in ('done', 'cancel'))[:1]
+        if not terminado:
+            raise UserError(_('La orden %s no tiene movimiento del acabado en kg pendiente.', self.name))
+        terminado.move_line_ids.unlink()
+        for rollo in finales.sorted('secuencia'):
+            lote = self._insp_lote(self.product_id, rollo.name, self.company_id)
+            self.env['stock.move.line'].create({
+                'move_id': terminado.id, 'product_id': self.product_id.id, 'lot_id': lote.id, 'lot_name': lote.name,
+                'quantity': rollo.kg_neto, 'location_id': terminado.location_id.id,
+                'location_dest_id': terminado.location_dest_id.id, 'production_id': self.id})
+            rollo.lot_kg_id = lote
+
+    @api.model
+    def _insp_consumo_lotes(self, finales):
+        """Lo que la orden en metros consume del acabado en kg para estos rollos finales: ``[(lote, kg)]``. Desde 3.18.0 son
+        los lotes de los rollos finales con los kg de Inspección; los baños que cerraron antes (sus rollos finales no
+        tienen lote en kg) siguen con los rollos de Rama y sus kg de Rama."""
+        if finales and all(f.lot_kg_id for f in finales):
+            return [(f.lot_kg_id, f.kg_neto) for f in finales.sorted('secuencia')]
+        return [(r.lot_id, r.kg_rama) for r in finales.bitacora_ids.sorted('id')]
+
+    def _insp_ubicacion_salida(self):
+        """Donde entra la tela terminada, antes de pasar a su calidad: la ubicación de destino del baño (Ubic. 10)."""
+        self.ensure_one()
+        return self.location_dest_id
+
+    def _insp_traspasar_calidad(self, orden, finales, producto_tela, extra_desp=0.0, orden_extra=None):
+        """3.18.0 (Dirección, 2026-11-10): lo que `orden` (la de metros o la de saldos) dejó en la Ubic. 10 pasa a la
+        ubicación de su calidad (14, 15, 16, 17 o 31) con transferencias internas. Salen los rollos finales (la tela en
+        metros de primera, FE y Segunda; los saldos en kg) y el desperdicio que Empaque pesó."""
+        self.ensure_one()
+        Final = self.env['mrp.rollo.final']
+        partidas = []
+        for rollo in finales.sorted('secuencia'):
+            if not rollo.lot_id:
+                continue
+            en_metros = rollo.clasificacion_registro in CALIDADES_EN_METROS and rollo.product_id == producto_tela
+            cantidad = rollo.metros_registro if en_metros else rollo.kg_registro
+            partidas.append((rollo.product_id, rollo.lot_id, cantidad, rollo.location_dest_id))
+        if extra_desp:
+            producto = Final._producto_saldo('DESP')
+            lote = (orden_extra or orden)._lote_desperdicio(producto) if producto.tracking != 'none' \
+                else self.env['stock.lot']
+            partidas.append((producto, lote, extra_desp, Final._ubicacion_calidad('DESP')))
+        return orden._traspasar_interno(self._insp_ubicacion_salida(), partidas, _('Registro del baño'))
+
     def _insp_movimiento_saldo(self, clasificacion, base):
         """Movimiento del saldo en esta orden: el subproducto de la lista si lo trae; si no, se agrega (cantidad real,
         sin costo, a la ubicación de la calidad)."""
@@ -411,27 +467,30 @@ class MrpProductionInspeccion(models.Model):
         movimientos.move_line_ids.unlink()
         movimientos.with_context(do_not_unreserve=True).write({'product_uom_qty': 0.0, 'picked': False})
 
-    def _insp_lineas_saldo(self, movimiento, grupo, extra_kg=0.0, clasificacion=False):
+    def _insp_lineas_saldo(self, movimiento, grupo, extra_kg=0.0, clasificacion=False, salida=None):
         """Líneas del saldo: una por rollo final del grupo y, con ``extra_kg`` (3.13.0: el desperdicio que Empaque pesó
-        en la orden en metros), una más con el lote del mes, como el desperdicio de Rama."""
+        en la orden en metros), una más con el lote del mes, como el desperdicio de Rama.
+        3.18.0: con ``salida`` (la Ubic. 10) las líneas entran ahí y una transferencia las pasa a la ubicación de su calidad
+        (``_insp_traspasar_calidad``); el rollo final guarda la ubicación de su calidad."""
         producto = movimiento.product_id
         destino = self.env['mrp.rollo.final']._ubicacion_calidad(grupo[:1].clasificacion_registro or clasificacion)
+        entrada = salida or destino
         movimiento.move_line_ids.unlink()
         movimiento.with_context(do_not_unreserve=True).write({
             'product_uom_qty': producto.uom_id.round(sum(grupo.mapped('kg_registro')) + extra_kg),
-            'location_dest_id': destino.id})
+            'location_dest_id': entrada.id})
         if extra_kg:
             lote_extra = self._lote_desperdicio(producto) if producto.tracking != 'none' else self.env['stock.lot']
             self.env['stock.move.line'].create({
                 'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': lote_extra.id or False,
-                'quantity': extra_kg, 'location_id': movimiento.location_id.id, 'location_dest_id': destino.id,
+                'quantity': extra_kg, 'location_id': movimiento.location_id.id, 'location_dest_id': entrada.id,
                 'production_id': movimiento.production_id.id})
         for rollo in grupo.sorted('secuencia'):
             lote = self._insp_lote(producto, rollo.name, self.company_id) if producto.tracking != 'none' \
                 else self.env['stock.lot']
             self.env['stock.move.line'].create({
                 'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': lote.id or False,
-                'quantity': rollo.kg_registro, 'location_id': movimiento.location_id.id, 'location_dest_id': destino.id,
+                'quantity': rollo.kg_registro, 'location_id': movimiento.location_id.id, 'location_dest_id': entrada.id,
                 'production_id': movimiento.production_id.id})
             rollo.write({'product_id': producto.id, 'lot_id': lote.id or False, 'location_dest_id': destino.id})
         movimiento.picked = True
@@ -455,15 +514,18 @@ class MrpProductionInspeccion(models.Model):
         completos y saca cada rollo final como saldo en kg, con su lote, a 16 o 17."""
         self.ensure_one()
         finales = self.rollo_final_kg_ids.filtered(lambda r: r.estado in ESTADOS_SIN_REGISTRAR)
-        rama = finales.bitacora_ids
+        consumos = self._insp_consumo_lotes(finales)
+        lotes_consumo = self.env['stock.lot'].union(*[lote for lote, _kg in consumos]) if consumos \
+            else self.env['stock.lot']
         Final = self.env['mrp.rollo.final']
+        salida = self._insp_ubicacion_salida()
         # 3.3.0: la orden en metros (si hay) ya no se cancela antes del cierre: al cerrar, el MTO le reservó estos rollos;
         # se le quitan para que la orden de saldos los consuma, y se cancela solo si ningún otro baño la abastece.
         orden_m = self._insp_orden_metros() or finales.production_m_id.filtered(
             lambda p: p.state not in ('done', 'cancel'))[:1]
         if orden_m:
             orden_m.move_raw_ids.move_line_ids.filtered(
-                lambda ml: ml.lot_id in rama.lot_id and ml.state not in ('done', 'cancel')).unlink()
+                lambda ml: ml.lot_id in lotes_consumo and ml.state not in ('done', 'cancel')).unlink()
         por_saldo = {c: finales.filtered(lambda r, c=c: r.clasificacion_registro == c) for c in ('SEGUNDA', 'DESP')}
         # 3.13.0: el desperdicio que Empaque pesó en la orden en metros (que aquí se cancela) sale en esta orden de saldos.
         extra_desp = orden_m._insp_extra_desperdicio() if orden_m else 0.0
@@ -475,16 +537,16 @@ class MrpProductionInspeccion(models.Model):
         tipo = Tipo.search([('code', '=', 'mrp_operation'), ('sequence_code', '=', 'OP-M'),
                             ('company_id', 'in', [self.company_id.id, False])], limit=1) or self.picking_type_id
         quant = self.env['stock.quant'].sudo().search([
-            ('lot_id', 'in', rama.lot_id.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
+            ('lot_id', 'in', lotes_consumo.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
         origen = quant.location_id or self.location_dest_id
         orden_s = self.create({
             'product_id': principal.id, 'product_qty': kg_principal, 'product_uom_id': principal.uom_id.id,
             'picking_type_id': tipo.id, 'location_src_id': origen.id,
-            'location_dest_id': Final._ubicacion_calidad(principal_c).id, 'origin': self.name,
+            'location_dest_id': salida.id, 'origin': self.name,
             'consumption': 'flexible', 'company_id': self.company_id.id,
             'move_raw_ids': [(0, 0, {
                 'product_id': self.product_id.id, 'product_uom': self.product_id.uom_id.id,
-                'product_uom_qty': sum(rama.mapped('kg_rama')), 'location_id': origen.id,
+                'product_uom_qty': sum(kg for _lote, kg in consumos), 'location_id': origen.id,
                 'location_dest_id': self.product_id.with_company(self.company_id).property_stock_production.id,
                 'company_id': self.company_id.id})]})
         # 3.3.1: el consumo de la orden de saldos sale de existencias (los rollos de Rama ya están en inventario); sin el
@@ -493,13 +555,13 @@ class MrpProductionInspeccion(models.Model):
         orden_s.write({'qty_producing': kg_principal})
         terminado = orden_s.move_finished_ids.filtered(lambda m: m.product_id == principal)[:1]
         orden_s._insp_lineas_saldo(terminado, por_saldo[principal_c], extra_kg=extra[principal_c],
-                                   clasificacion=principal_c)
+                                   clasificacion=principal_c, salida=salida)
         terminado.picked = False  # el terminado principal no va «picked» (patrón de José)
         otra = 'DESP' if principal_c == 'SEGUNDA' else 'SEGUNDA'
         if por_saldo[otra] or extra[otra]:
             orden_s._insp_lineas_saldo(orden_s._insp_movimiento_saldo(otra, terminado), por_saldo[otra],
-                                       extra_kg=extra[otra], clasificacion=otra)
-        orden_s._clasif_asegurar_consumo_saldos(rama)
+                                       extra_kg=extra[otra], clasificacion=otra, salida=salida)
+        orden_s._clasif_asegurar_consumo_saldos(consumos)
         # 3.3.1 (Dirección, 2026-11-05): los saldos entran a costo cero; sin tela que lo absorba, el costo del baño se
         # queda en la cuenta de la ubicación de producción como merma del periodo (no como inventario de saldo).
         resultado = orden_s.with_context(qb_insp_saldos_sin_costo=True).button_mark_done()
@@ -508,6 +570,9 @@ class MrpProductionInspeccion(models.Model):
                 'No se pudo registrar la orden de saldos del baño %(kg)s; no se cerró nada. Respuesta de Odoo: %(r)s',
                 kg=self.name, r=(resultado or {}).get('name') if isinstance(resultado, dict) else resultado))
         finales.write({'estado': 'registrado', 'production_saldo_id': orden_s.id})
+        # 3.18.0: los saldos entraron a la Ubic. 10; pasan a 16 y 17 con transferencias.
+        self._insp_traspasar_calidad(orden_s, finales, self.env['product.product'], extra_desp=extra_desp,
+                                     orden_extra=orden_s)
         self.message_post(body=_(
             'Baño cerrado sin primera ni FE: los saldos salen en kg en %(o)s.', o=orden_s.name))
         if orden_m and not self._insp_otros_banos(orden_m):
@@ -524,17 +589,18 @@ class MrpProductionInspeccion(models.Model):
             self.move_finished_ids.filtered(lambda m: m.state not in ('done', 'cancel')).write({'price_unit': 0.0})
         return res
 
-    def _clasif_asegurar_consumo_saldos(self, rama):
-        """Consumo de la orden de saldos: cada rollo de Rama completo, con su lote (picked)."""
+    def _clasif_asegurar_consumo_saldos(self, consumos):
+        """Consumo de la orden de saldos: cada lote del acabado en kg con sus kg, completo (picked). ``consumos`` es la lista
+        de ``(lote, kg)`` de ``_insp_consumo_lotes``."""
         self.ensure_one()
         raw = self.move_raw_ids.filtered(lambda m: m.state not in ('done', 'cancel'))[:1]
         raw.move_line_ids.unlink()
-        for rollo in rama:
+        for lote, kg in consumos:
             quant = self.env['stock.quant'].sudo().search([
-                ('lot_id', '=', rollo.lot_id.id), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
+                ('lot_id', '=', lote.id), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
             self.env['stock.move.line'].create({
-                'move_id': raw.id, 'product_id': raw.product_id.id, 'lot_id': rollo.lot_id.id,
-                'quantity': rollo.kg_rama, 'picked': True,
+                'move_id': raw.id, 'product_id': raw.product_id.id, 'lot_id': lote.id,
+                'quantity': kg, 'picked': True,
                 'location_id': (quant.location_id or raw.location_id).id, 'location_dest_id': raw.location_dest_id.id})
         raw.picked = True
 
@@ -549,11 +615,11 @@ class MrpProductionInspeccion(models.Model):
         producto = anterior.product_id
         if not producto:
             return self.env['mrp.production']
-        rama = finales.bitacora_ids
+        lotes_consumo = self.env['stock.lot'].union(*[lote for lote, _kg in self._insp_consumo_lotes(finales)])
         primeras = finales.filtered(lambda r: r.clasificacion_registro in CALIDADES_EN_METROS)
         metros = producto.uom_id.round(sum(primeras.mapped('metros_registro'))) or anterior.product_qty
         quant = self.env['stock.quant'].sudo().search([
-            ('lot_id', 'in', rama.lot_id.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
+            ('lot_id', 'in', lotes_consumo.ids), ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)], limit=1)
         origen = quant.location_id or self.location_dest_id
         nueva = self.create({
             'product_id': producto.id, 'product_qty': metros, 'product_uom_id': producto.uom_id.id,
@@ -591,7 +657,13 @@ class MrpProductionInspeccion(models.Model):
             orden_m.action_confirm()
         finales.filtered(lambda r: r.production_m_id != orden_m).write({'production_m_id': orden_m.id})
         Final = self.env['mrp.rollo.final']
-        rama = finales.bitacora_ids
+        # 3.18.0: lo que se consume son los lotes de los rollos finales que entraron a la Ubic. 10 (con los kg de
+        # Inspección); los baños cerrados antes de 3.18.0, los rollos de Rama.
+        consumos = self._insp_consumo_lotes(finales)
+        lotes_consumo = self.env['stock.lot'].union(*[lote for lote, _kg in consumos]) if consumos \
+            else self.env['stock.lot']
+        kg_consumo = sum(kg for _lote, kg in consumos)
+        salida = self._insp_ubicacion_salida()
         primeras = finales.filtered(lambda r: r.clasificacion_registro in CALIDADES_EN_METROS)  # 3.15.0: con Segunda
         saldos = finales - primeras
         uom_m = orden_m.product_id.uom_id
@@ -611,7 +683,7 @@ class MrpProductionInspeccion(models.Model):
         if otros:
             kg_por_m = orden_m._insp_kg_por_metro(raw)
             kg_otros = sum(otros.mapped('product_qty'))
-            kg_este = sum(rama.mapped('kg_rama'))
+            kg_este = kg_consumo
             if kg_por_m > 0:
                 pendiente_m = kg_otros / kg_por_m
             elif kg_este:
@@ -622,13 +694,13 @@ class MrpProductionInspeccion(models.Model):
         cantidad = total_m + pendiente_m
         orden_m.write({'product_qty': cantidad, 'qty_producing': total_m, 'consumption': 'flexible'})
 
-        # 2. Consumo: cada rollo de Rama completo, de donde esté (10 INSPECCIÓN al cerrar la orden en kg). Los rollos de
-        #    los otros baños no se tocan: siguen reservados y pasan al pendiente.
-        orden_m._clasif_asegurar_consumo(rama)
-        (raw.move_line_ids - raw.move_line_ids.filtered(lambda ml: ml.lot_id in rama.lot_id)).unlink()
+        # 2. Consumo: cada rollo final (su lote en kg) completo, de donde esté (10 INSPECCIÓN al cerrar la orden en kg).
+        #    Los rollos de los otros baños no se tocan: siguen reservados y pasan al pendiente.
+        orden_m._clasif_asegurar_consumo(consumos)
+        (raw.move_line_ids - raw.move_line_ids.filtered(lambda ml: ml.lot_id in lotes_consumo)).unlink()
         # Demanda: lo que consume este baño, más lo planeado de los otros cuando los hay (Odoo pasa al pendiente la parte
         # proporcional).
-        kg_demanda = sum(rama.mapped('kg_rama')) + (sum(otros.mapped('product_qty')) if otros else 0.0)
+        kg_demanda = kg_consumo + (sum(otros.mapped('product_qty')) if otros else 0.0)
         # 3.6.2: sin abastecer. La demanda solo se iguala a lo pesado; los baños que la cubren ya existen. Sin
         # no_procurement, cuando el último baño pesa más que la parte que Odoo le dejó al pendiente, Odoo abastecía la
         # diferencia con una orden en kg nueva (ronda 12 en main, TL/OP-KG/00066).
@@ -649,7 +721,7 @@ class MrpProductionInspeccion(models.Model):
             self.env['stock.move.line'].create({
                 'move_id': terminado.id, 'product_id': orden_m.product_id.id, 'lot_id': lote.id,
                 'quantity': rollo.metros_registro, 'location_id': terminado.location_id.id,
-                'location_dest_id': destino.id, 'production_id': orden_m.id})
+                'location_dest_id': salida.id, 'production_id': orden_m.id})
             rollo.write({'product_id': orden_m.product_id.id, 'lot_id': lote.id, 'location_dest_id': destino.id})
 
         # 4. El desperdicio en kg (subproductos de la lista en metros, cantidad 0 en la lista; la real es el peso). Si la
@@ -660,7 +732,7 @@ class MrpProductionInspeccion(models.Model):
             extra = extra_desp if clasificacion == 'DESP' else 0.0
             if grupo or extra:
                 orden_m._insp_lineas_saldo(orden_m._insp_movimiento_saldo(clasificacion, terminado), grupo,
-                                           extra_kg=extra, clasificacion=clasificacion)
+                                           extra_kg=extra, clasificacion=clasificacion, salida=salida)
             else:
                 # 3.3.1: un pendiente trae el saldo que heredó de un baño anterior; sin rollos de esa calidad, va en cero.
                 producto = Final._producto_saldo(clasificacion)
@@ -668,7 +740,7 @@ class MrpProductionInspeccion(models.Model):
 
         # 5. Se repite el consumo (escribir qty_producing reescala líneas del core) y se cierra; con otros baños, con
         #    pendiente nativo para lo que falta.
-        orden_m._clasif_asegurar_consumo(rama)
+        orden_m._clasif_asegurar_consumo(consumos)
         if otros:
             orden_cierre = orden_m.with_context(skip_backorder=True, mo_ids_to_backorder=orden_m.ids)
         else:
@@ -680,6 +752,9 @@ class MrpProductionInspeccion(models.Model):
                 'de Odoo: %(r)s', m=orden_m.name, kg=self.name,
                 r=(resultado or {}).get('name') if isinstance(resultado, dict) else resultado))
         finales.write({'estado': 'registrado'})
+        # 3.18.0 (Dirección, 2026-11-10): la tela y los saldos entraron a la Ubic. 10; pasan a 14, 15, 16, 17 o 31 con
+        # transferencias internas ligadas a la orden en metros.
+        self._insp_traspasar_calidad(orden_m, finales, orden_m.product_id, extra_desp=extra_desp, orden_extra=orden_m)
         hechos = orden_m.move_finished_ids.filtered(lambda m: m.state == 'done')
         if float_compare(sum(hechos.filtered(lambda m: m.product_id == orden_m.product_id).mapped('quantity')),
                          total_m, precision_rounding=uom_m.rounding):
