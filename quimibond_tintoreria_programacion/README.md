@@ -28,6 +28,12 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.9.2 (2026-11-11): metros enteros por baño
+
+- Al dividir la orden en metros entre los baños, cada baño (menos el último) lleva metros **enteros** (antes salían
+  3,003.8926 y 2,996.1074 de 6,000 m). El último toma lo que falta, así el total no cambia (6,000 → 3,004 + 2,996).
+- Los kg de cada baño no se redondean: son la suma de sus rollos.
+
 ## Cambios 19.0.1.9.1 (2026-11-11): los rollos son los de la requisición
 
 - Prueba de Dirección (J00006): la requisición surtió el lote completo (12 rollos, 400.76 kg) pero la orden pedía 381 kg; Odoo
