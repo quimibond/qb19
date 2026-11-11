@@ -56,4 +56,5 @@ class RolloDesperdicioRamaWizard(models.TransientModel):
                                              self.kg_desperdicio, 0.0, self.kg_desperdicio, operador)
         if manual:
             self.production_id.desperdicio_motivo = self.motivo_manual.strip()
-        return {'type': 'ir.actions.act_window_close'}
+        # 3.17.0: la etiqueta del desperdicio (con código de barras del lote) sale al pesar, como la de Empaque.
+        return self.production_id.action_imprimir_etiqueta_desperdicio_rama()
