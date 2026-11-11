@@ -6,3 +6,4 @@ from . import test_mp_rendimiento
 from . import test_costo
 from . import test_rentabilidad
 from . import test_flujo_kg
+from . import test_capa

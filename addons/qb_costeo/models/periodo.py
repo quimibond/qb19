@@ -63,6 +63,29 @@ class QbPeriodo(models.Model):
         help='Parte de las ventas del mes cuyo costo salió de horas medidas '
              'o estándar, sin validaciones abiertas. Es el indicador CO-04.')
     costos_n = fields.Integer(string='Productos costeados', readonly=True)
+    # 1.11.0: capa de absorción (conversión que le falta al inventario).
+    capa_ids = fields.One2many('qb.capa.absorcion', 'periodo_id',
+                               string='Capa de absorción')
+    capa_calculada_el = fields.Datetime(
+        string='Capa calculada el', readonly=True)
+    capa_valor_odoo = fields.Float(
+        string='Inventario en Odoo', readonly=True, digits=(16, 2),
+        help='Valor en Odoo, al último día del período, de los productos que '
+             'entran a la capa (parámetro capa_categorias).')
+    capa_valor_completo = fields.Float(
+        string='Inventario a costo completo', readonly=True, digits=(16, 2),
+        help='Lo mismo, a costo de producción del módulo, de los productos '
+             'que tienen costo.')
+    capa_total = fields.Float(
+        string='Conversión a capitalizar', readonly=True, digits=(16, 2),
+        help='Saldo que debe tener la cuenta de conversión capitalizada al '
+             'cierre del período: por producto, la diferencia contra Odoo '
+             'acotada entre 0 y la conversión del módulo.')
+    capa_sin_costo_valor = fields.Float(
+        string='Inventario sin costo del módulo', readonly=True,
+        digits=(16, 2),
+        help='Valor en Odoo de lo que no se pudo medir porque el módulo no '
+             'le calcula costo. Si es grande, la capa se queda corta.')
 
     suavizado_fijo_meses = fields.Integer(
         default=lambda self: int(self.env['qb.parametro'].get_float(
@@ -332,6 +355,35 @@ class QbPeriodo(models.Model):
                 rec._calcular()
             rec._calcular_costos()
         return True
+
+    def action_calcular_capa(self):
+        """1.11.0: capa de absorción del período con los costos ya
+        calculados. No crea asientos: el saldo lo registra Contabilidad. Se
+        puede recalcular con el período cerrado, porque no cambia tarifas ni
+        costos."""
+        for rec in self:
+            if not rec.costos_calculado_el:
+                raise UserError(
+                    'Calcule primero los costos del período %s.' % rec.period)
+            filas = self.env['qb.capa.absorcion'].calcular_periodo(rec)
+            con_costo = filas.filtered(lambda f: f.estado != 'sin_costo')
+            rec.write({
+                'capa_calculada_el': fields.Datetime.now(),
+                'capa_valor_odoo': sum(filas.mapped('valor_odoo')),
+                'capa_valor_completo': sum(con_costo.mapped('valor_completo')),
+                'capa_total': sum(filas.mapped('capitalizable')),
+                'capa_sin_costo_valor': sum(
+                    (filas - con_costo).mapped('valor_odoo')),
+            })
+        return True
+
+    def action_ver_capa(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'qb_costeo.action_qb_capa_absorcion')
+        action['domain'] = [('periodo_id', '=', self.id)]
+        action['context'] = {'search_default_group_categ': 1}
+        return action
 
     def _calcular_costos(self, refrescar=True):
         self.ensure_one()

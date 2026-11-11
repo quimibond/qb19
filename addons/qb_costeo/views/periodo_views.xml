@@ -70,6 +70,7 @@
                 <header>
                     <button name="action_calcular" type="object" string="Calcular tarifas" class="btn-primary" invisible="state == 'cerrado'"/>
                     <button name="action_calcular_costos" type="object" string="Calcular costos" class="btn-primary" invisible="state == 'cerrado' or not calculado_el"/>
+                    <button name="action_calcular_capa" type="object" string="Calcular capa de absorción" invisible="not costos_calculado_el"/>
                     <button name="action_cerrar" type="object" string="Cerrar período" invisible="state == 'cerrado'" confirm="Al cerrar, las tarifas se congelan y se publican a los centros de trabajo de Odoo. ¿Continuar?"/>
                     <button name="action_publicar_tarifas" type="object" string="Publicar tarifas a Odoo" invisible="state != 'cerrado'"/>
                     <button name="action_reabrir" type="object" string="Reabrir" invisible="state != 'cerrado'"/>
@@ -150,6 +151,20 @@
                                     <field name="semaforo"/>
                                 </list>
                             </field>
+                        </page>
+                        <page string="Capa de absorción" invisible="not capa_calculada_el">
+                            <group>
+                                <group>
+                                    <field name="capa_calculada_el"/>
+                                    <field name="capa_valor_odoo"/>
+                                    <field name="capa_valor_completo"/>
+                                </group>
+                                <group>
+                                    <field name="capa_total"/>
+                                    <field name="capa_sin_costo_valor"/>
+                                    <button name="action_ver_capa" type="object" string="Ver por producto" class="btn-link" colspan="2"/>
+                                </group>
+                            </group>
                         </page>
                         <page string="Reapertura" invisible="state != 'cerrado' and not reaperturas">
                             <group>

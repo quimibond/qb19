@@ -189,4 +189,18 @@
         <field name="value_float">1</field>
         <field name="help">Las órdenes de fabricación del mes que no tienen órdenes de trabajo en un centro aportan a sus horas reales el estándar de su receta (o las horas del producto) × lo producido. Con 0, un centro con alguna orden de trabajo cuenta solo esas, aunque sean pocas.</field>
     </record>
+    <record id="param_capa_categorias" model="qb.parametro">
+        <field name="key">capa_categorias</field>
+        <field name="name">Categorías de la capa de absorción</field>
+        <field name="tipo">text</field>
+        <field name="value_text">Producto Terminado,Producto en Proceso</field>
+        <field name="help">Comienzo del nombre completo de las categorías cuyo inventario se compara contra el costo de producción del módulo para calcular la conversión que le falta (capa de absorción). Separadas por comas.</field>
+    </record>
+    <record id="param_capa_excluir_categorias" model="qb.parametro">
+        <field name="key">capa_excluir_categorias</field>
+        <field name="name">Categorías fuera de la capa de absorción</field>
+        <field name="tipo">text</field>
+        <field name="value_text">Importado,Importación,Subproducto</field>
+        <field name="help">Si el nombre completo de la categoría contiene alguna de estas palabras, no entra a la capa: lo comprado y los subproductos no llevan conversión propia. Separadas por comas.</field>
+    </record>
 </odoo>
