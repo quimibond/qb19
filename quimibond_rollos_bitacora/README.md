@@ -27,12 +27,14 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
-## El traspaso del desperdicio de Rama 10 → 17 lo valida Almacén (3.19.2, 2026-11-11)
+## Los traspasos 10 → calidad los valida Almacén (3.19.2 y 3.19.3, 2026-11-11)
 
-- Al cerrar la orden en kg, la transferencia interna que pasa el desperdicio de Rama de la Ubic. 10 a la 17 ya **no se valida sola**:
-  queda *Lista* (reservada en la 10) y **Almacén la valida al recibir el desperdicio**; la orden deja nota en el chatter. Hasta
-  entonces el desperdicio sigue en la 10. Las demás transferencias (tela, saldos y el desperdicio de Empaque al cerrar la orden en
-  metros) se siguen validando al cerrar. `_traspasar_interno(..., validar=False)`. Prueba: `test_78`.
+- Las transferencias internas que pasan lo producido de la Ubic. 10 a su calidad (14, 15, 16, 17 o 31) ya **no se validan solas**:
+  quedan *Listas* (reservadas en la 10) y **Almacén las valida al recibir**; la orden deja una nota en el chatter. Aplica al
+  desperdicio de Rama al cerrar la orden en kg (3.19.2) y a la tela, los saldos y el desperdicio de Empaque al cerrar la orden en
+  metros (3.19.3). Hasta que Almacén valida, lo producido sigue en la 10.
+- Parámetro de sistema `quimibond_rollos_bitacora.validar_traspasos_calidad`: con `1` se validan solas al cerrar (como en 3.18.0);
+  sin el parámetro, las valida Almacén. Pruebas: `test_78` y `test_82` (el resto de las pruebas fija el parámetro en `1`).
 
 ## Componentes con lote consumidos al cerrar (3.19.1, 2026-11-11)
 

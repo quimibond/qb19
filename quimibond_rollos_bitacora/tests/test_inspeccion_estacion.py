@@ -25,6 +25,9 @@ class TestInspeccionEstacion(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # 3.19.3: por defecto Almacén valida las transferencias 10 → calidad; estas pruebas miden existencias en 14 a 17 al
+        # cerrar, así que las validan solas (las pruebas 78 y 82 prueban el modo por defecto).
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', '1')
         cls.kg = cls.env.ref('uom.product_uom_kgm')
         cls.metro = cls.env.ref('uom.product_uom_meter')
         cls.prod_kg = cls._producto('IZZ951Q22JNT160', cls.kg)
@@ -1772,6 +1775,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_78_desperdicio_de_rama_entra_a_la_10_y_pasa_a_la_17(self):
         """3.18.0: el subproducto de desperdicio de Rama conserva el destino de la orden (Ubic. 10) y al cerrar la orden en
         kg una transferencia lo pasa a la 17; 3.19.2: queda sin validar y la valida Almacén al recibir."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
         salida = orden_kg.location_dest_id
@@ -1946,3 +1950,23 @@ class TestInspeccionEstacion(TransactionCase):
         orden._marcar_componentes_con_lote_consumidos()
         self.assertTrue(con_lote.picked, "Con lote en todas sus líneas: queda consumido")
         self.assertFalse(sin.picked, "Con una línea sin lote se deja como está")
+
+    def test_82_traspasos_al_cerrar_la_orden_en_metros_quedan_para_almacen(self):
+        """3.19.3: por defecto las transferencias 10 → 14/15/16/17 de la orden en metros quedan listas, sin validar; la tela
+        sigue en la 10 hasta que Almacén las valide, y entonces llega a su ubicación."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        salida = orden_kg.location_dest_id
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self._cerrar_bano(orden_kg)
+        self.assertEqual(orden_m.state, 'done')
+        traspasos = self.env['stock.picking'].search([('origin', 'ilike', orden_m.name), ('picking_type_code', '=', 'internal')])
+        self.assertTrue(traspasos)
+        self.assertEqual(set(traspasos.mapped('state')), {'assigned'}, "Sin validar: las valida Almacén")
+        self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
+        self.assertAlmostEqual(self._cantidad(self.prod_m, salida), 460.0)
+        for traspaso in traspasos:
+            traspaso.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        self.assertEqual(set(traspasos.mapped('state')), {'done'})
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 460.0)
+        self.assertFalse(self._cantidad(self.prod_m, salida))

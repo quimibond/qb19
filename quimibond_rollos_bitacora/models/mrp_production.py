@@ -12,6 +12,8 @@ _logger = logging.getLogger(__name__)
 
 PARAM_CRUDO_MINIMO_PCT = 'quimibond_rollos_bitacora.crudo_minimo_pct'
 PARAM_USUARIO_FALTANTES = 'quimibond_rollos_bitacora.usuario_faltantes'
+# 3.19.3: con «1» las transferencias 10 → calidad se validan solas al cerrar; sin el parámetro las valida Almacén al recibir.
+PARAM_VALIDAR_TRASPASOS = 'quimibond_rollos_bitacora.validar_traspasos_calidad'
 # 3.7.0 (Dirección, 2026-11-06): el número de baño sale del nombre de la orden en kg («TL/OP-KG/J00001» → «J00001»;
 # una parte de la división en baños, «J00001-001»). La «J» viene del prefijo de la secuencia del tipo de operación
 # (hooks.configurar_secuencias_j). Antes era una secuencia aparte (3.5.0).
@@ -191,13 +193,17 @@ class MrpProduction(models.Model):
             Markup('').join(Markup('<li>%s</li>') % linea for linea in lineas_nota)))
         return transferencias
 
-    def _traspasar_interno(self, origen, partidas, referencia, validar=True):
+    def _traspasar_interno(self, origen, partidas, referencia, validar=None):
         """3.18.0 (Dirección, 2026-11-10): transferencias internas ya validadas de ``origen`` (la Ubic. 10) a la ubicación de
         cada calidad, ligadas a esta orden: una por destino. ``partidas`` es una lista de
-        ``(producto, lote, cantidad, destino)``. Si algo falla se levanta el error y el cierre no se hace. Con
-        ``validar=False`` (3.19.2) la transferencia queda lista (reservada en el origen) para que Almacén la valide al
-        recibir."""
+        ``(producto, lote, cantidad, destino)``. Si algo falla se levanta el error y el cierre no se hace.
+
+        3.19.2/3.19.3 (Dirección, 2026-11-11): por defecto las transferencias **no se validan**: quedan listas (reservadas en la
+        Ubic. 10) y Almacén las valida al recibir. Con el parámetro ``validar_traspasos_calidad`` = 1 (o ``validar=True``) se
+        validan al cerrar, como en 3.18.0."""
         self.ensure_one()
+        if validar is None:
+            validar = (self.env['ir.config_parameter'].sudo().get_param(PARAM_VALIDAR_TRASPASOS) or '').strip() == '1'
         por_destino = defaultdict(list)
         for producto, lote, cantidad, destino in partidas:
             if cantidad and destino and destino != origen:
@@ -252,10 +258,7 @@ class MrpProduction(models.Model):
             for linea in hecho.move_line_ids.filtered(lambda ml: ml.quantity > 0 and ml.location_dest_id != destino):
                 partidas.append((linea.product_id, linea.lot_id, linea.quantity, destino, linea.location_dest_id))
             for origen in {p[4] for p in partidas}:
-                # 3.19.2 (Dirección, 2026-11-11): la transferencia no se valida sola; Almacén la valida al recibir el
-                # desperdicio (mientras tanto sigue en la Ubic. 10, reservado).
-                orden._traspasar_interno(
-                    origen, [p[:4] for p in partidas if p[4] == origen], _('Desperdicio de Rama'), validar=False)
+                orden._traspasar_interno(origen, [p[:4] for p in partidas if p[4] == origen], _('Desperdicio de Rama'))
 
     def _numero_bano_del_nombre(self):
         """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una
