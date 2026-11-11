@@ -454,7 +454,9 @@ class MrpProduction(models.Model):
             return nada
         uom = orden_m.product_uom_id
         cantidad = orden_m.product_qty
-        montos = [uom.round(cantidad * b.product_qty / kg_total) for b in banos[:-1]]
+        # 1.9.2 (Dirección, 2026-11-11): metros enteros por baño (sin decimales sueltos como 3,003.8926); el último baño
+        # toma lo que falta, así el total de metros no cambia.
+        montos = [float_round(cantidad * b.product_qty / kg_total, precision_digits=0) for b in banos[:-1]]
         montos.append(uom.round(cantidad - sum(montos)))
         partes = orden_m._split_productions({orden_m: montos})
         if len(partes) != len(banos):
