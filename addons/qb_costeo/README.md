@@ -158,34 +158,40 @@ anterior; las señales `cliente_pierde`, `producto_pierde`,
 `tiempos_excepcion`, `familia_saturada` y `cotizacion_bajo_costo` de
 `quimibond_intelligence` los leen.
 
-## Capa de absorción (1.11.0)
+## Capa de absorción (1.11.0, en neto desde 1.11.1)
 
 Mientras solo Tejido tenga costo por hora en sus centros de trabajo, el costo
 unitario de Odoo no trae la conversión de Tintorería, Rama, Acabado,
-Inspección y los demás centros: el inventario vale menos que su costo de
-producción. La capa mide cuánto, producto por producto, al cierre del mes:
+Inspección y los demás centros. La capa mide, al cierre del mes, cuánta
+conversión le falta al inventario:
 
 ```
-valor_completo = existencia × costo de producción del módulo (MP + fabricación)
-faltante       = valor_completo − valor en Odoo
-capitalizable  = faltante acotado entre 0 y existencia × fabricación del módulo
+por producto:   valor_completo = existencia × costo vendible del módulo (producción ÷ rendimiento)
+                faltante       = valor_completo − valor en Odoo
+                tope           = existencia × fabricación del módulo ÷ rendimiento
+por categoría:  capitalizable  = Σ faltante acotado entre 0 y Σ tope
 ```
 
-- Entra el inventario de las categorías de `capa_categorias` (por defecto
-  Producto Terminado y Producto en Proceso), menos las que contienen una
-  palabra de `capa_excluir_categorias` (Importado, Importación, Subproducto).
-- El tope en la fabricación evita capitalizar como conversión una diferencia
-  de precio de la materia prima. Si Odoo ya vale más que el módulo, no se
-  capitaliza nada: esa valuación la iguala el cierre de inventario de Odoo.
-- Lo que no tiene costo del módulo se lista como «Sin costo del módulo» con
-  su valor en Odoo, para saber cuánto inventario quedó sin medir.
+- **En neto por categoría** (1.11.1): lo que les falta a unos productos se
+  compensa con lo que otros ya traen de más en Odoo. Sumar solo los
+  faltantes infla la capa.
+- **Con merma** (1.11.1): el costo de Odoo de la unidad buena trae la merma;
+  por eso se compara contra el costo vendible y no contra el de producción.
+- El tope en la conversión evita capitalizar como conversión una diferencia
+  de precio de la materia prima.
+- **Sin medir**: lo que no tiene costo del módulo, o al que el módulo no le
+  calcula fabricación (hoy los no tejidos), queda fuera del neto y se reporta
+  con su valor en Odoo en «Inventario sin medir».
+- Entra el inventario de `capa_categorias` (Producto Terminado y Producto en
+  Proceso) menos lo que contiene una palabra de `capa_excluir_categorias`
+  (Importado, Importación, Subproducto).
 - **El total es el saldo que debe tener la cuenta de conversión
   capitalizada** al cierre del mes. El módulo no crea el asiento: cada mes
-  Contabilidad registra la diferencia contra el saldo anterior. Esto sustituye
-  a la CAPA calculada sobre lo vendido.
-- Se usa con los costos del período ya calculados (botón «Calcular capa de
-  absorción» en el período, Costos → Capa de absorción). Se puede recalcular
-  con el período cerrado, porque no cambia tarifas ni costos.
+  Contabilidad registra la diferencia contra el saldo anterior. Sustituye a la
+  CAPA calculada sobre lo vendido.
+- Botón «Calcular capa de absorción» en el período (costos ya calculados);
+  Costos → Capa de absorción (por categoría) y … por producto. Se puede
+  recalcular con el período cerrado.
 
 Cuando Tintorería, Rama, Acabado e Inspección tengan tarifa publicada en sus
 centros de trabajo, Odoo absorbe la conversión en cada orden y la capa tiende

@@ -3,6 +3,27 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.11.1 — 2026-11-11
+
+**Corregido**
+- **La capa de absorción se mide en neto por categoría y con merma.** Al
+  correrla en producción (octubre 2026) sumaba solo los productos a los que
+  les faltaba conversión (2.60M) e ignoraba los que Odoo ya valúa arriba del
+  módulo: en conjunto Odoo valía 1.64M más que el módulo. Ahora, por
+  categoría, la diferencia neta (costo completo − Odoo) se capitaliza
+  acotada entre 0 y la conversión del módulo; el resumen queda en
+  `qb.capa.absorcion.categoria` (menú Costos → Capa de absorción y pestaña
+  del período) y el total del período sale de ahí.
+- **Costo vendible en lugar de costo de producción.** El costo de Odoo de la
+  unidad buena trae la merma; el del módulo de producción no. La capa compara
+  contra producción ÷ rendimiento (en lo semielaborado el rendimiento es 1) y
+  el tope de conversión también va ÷ rendimiento.
+- **Sin fabricación del módulo = sin medir.** Los productos a los que el
+  módulo no les calcula fabricación (hoy los no tejidos: sus horas no están)
+  ya no se comparan solo con su materia prima (daba −2.2M de ruido); quedan
+  como «Sin fabricación del módulo», fuera del neto, con su valor en Odoo en
+  «Inventario sin medir».
+
 ## 19.0.1.11.0 — 2026-11-11
 
 **Agregado**

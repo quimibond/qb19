@@ -4,7 +4,7 @@
         <field name="name">qb.capa.absorcion.list</field>
         <field name="model">qb.capa.absorcion</field>
         <field name="arch" type="xml">
-            <list create="false" edit="false" delete="false" decoration-muted="estado == 'sin_costo'" decoration-success="estado == 'capitaliza'">
+            <list create="false" edit="false" delete="false" decoration-muted="estado in ('sin_costo', 'sin_fabricacion')" decoration-success="estado == 'falta'">
                 <field name="periodo_id" optional="hide"/>
                 <field name="product_id"/>
                 <field name="categ_id"/>
@@ -15,11 +15,12 @@
                 <field name="costo_odoo_unit"/>
                 <field name="mp_unit" optional="hide"/>
                 <field name="fabricacion_unit" optional="hide"/>
-                <field name="costo_produccion"/>
+                <field name="costo_produccion" optional="hide"/>
+                <field name="rendimiento" optional="hide"/>
+                <field name="costo_vendible"/>
                 <field name="valor_completo" sum="Total"/>
                 <field name="faltante" sum="Total"/>
                 <field name="tope_conversion" sum="Total" optional="hide"/>
-                <field name="capitalizable" sum="Total"/>
                 <field name="calidad"/>
                 <field name="estado"/>
             </list>
@@ -34,9 +35,9 @@
                 <field name="product_id"/>
                 <field name="categ_id"/>
                 <field name="periodo_id"/>
-                <filter name="capitaliza" string="Se capitaliza" domain="[('estado', '=', 'capitaliza')]"/>
+                <filter name="falta" string="Le falta conversión" domain="[('estado', '=', 'falta')]"/>
                 <filter name="cubierto" string="Odoo ya lo cubre" domain="[('estado', '=', 'cubierto')]"/>
-                <filter name="sin_costo" string="Sin costo del módulo" domain="[('estado', '=', 'sin_costo')]"/>
+                <filter name="sin_medir" string="Sin medir" domain="[('estado', 'in', ('sin_costo', 'sin_fabricacion'))]"/>
                 <filter name="calidad_baja" string="Costo con dato bajo o dudoso" domain="[('calidad', 'in', ('baja', 'dudosa', 'ninguna'))]"/>
                 <group>
                     <filter name="group_categ" string="Categoría" context="{'group_by': 'categ_id'}"/>
@@ -56,7 +57,7 @@
                 <field name="categ_id" type="row"/>
                 <field name="valor_odoo" type="measure"/>
                 <field name="valor_completo" type="measure"/>
-                <field name="capitalizable" type="measure"/>
+                <field name="faltante" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -70,5 +71,48 @@
             <p class="o_view_nocontent_smiling_face">Todavía no se ha calculado la capa de ningún período.</p>
             <p>Abra un período con los costos ya calculados y use «Calcular capa de absorción». Por cada producto en existencia al cierre del mes verá cuánta conversión le falta al valor de Odoo.</p>
         </field>
+    </record>
+
+    <record id="view_qb_capa_absorcion_categoria_list" model="ir.ui.view">
+        <field name="name">qb.capa.absorcion.categoria.list</field>
+        <field name="model">qb.capa.absorcion.categoria</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false" decoration-success="capitalizable &gt; 0">
+                <field name="periodo_id" optional="hide"/>
+                <field name="categ_id"/>
+                <field name="cuenta_id" optional="hide"/>
+                <field name="n_medidos"/>
+                <field name="n_sin_medir"/>
+                <field name="valor_odoo" sum="Total"/>
+                <field name="valor_completo" sum="Total"/>
+                <field name="faltante_neto" sum="Total"/>
+                <field name="tope_conversion" sum="Total"/>
+                <field name="capitalizable" sum="Total"/>
+                <field name="valor_sin_medir" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_capa_absorcion_categoria_search" model="ir.ui.view">
+        <field name="name">qb.capa.absorcion.categoria.search</field>
+        <field name="model">qb.capa.absorcion.categoria</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="categ_id"/>
+                <field name="periodo_id"/>
+                <filter name="capitaliza" string="Capitaliza" domain="[('capitalizable', '&gt;', 0)]"/>
+                <group>
+                    <filter name="group_periodo_cat" string="Período" context="{'group_by': 'periodo_id'}"/>
+                    <filter name="group_cuenta_cat" string="Cuenta de inventario" context="{'group_by': 'cuenta_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_capa_absorcion_categoria" model="ir.actions.act_window">
+        <field name="name">Capa de absorción por categoría</field>
+        <field name="res_model">qb.capa.absorcion.categoria</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_periodo_cat': 1}</field>
     </record>
 </odoo>
