@@ -87,9 +87,12 @@ class MrpProduction(models.Model):
 
     def _surte_desde_piso(self, product, piso):
         """3.8.0: el producto va por el Piso si tiene (por producto o por categoría) una ruta con una regla que sale del
-        Piso, que es como la migración deja «Surtido Engomado» y «Surtido Químicos y Colorantes». El engomado lleva la
-        ruta en el producto y los químicos y colorantes en su categoría, así que no se decide por categoría."""
-        rutas = self.env['stock.rule'].sudo().search([('location_src_id', '=', piso.id)]).route_id
+        Piso, que es como la migración deja «Surtido Engomado». El engomado lleva la ruta en el producto, así que se
+        decide por ruta y no por categoría. Desde 3.18.0 los químicos y colorantes se consumen de la Ubic. 2."""
+        # 3.18.0: solo cuentan las reglas de consumo de la orden en kg; la requisición de químicos y colorantes ahora también
+        # sale del Piso (Piso → Ubic. 2), y esos productos se consumen de la Ubic. 2.
+        rutas = self.env['stock.rule'].sudo().search([
+            ('location_src_id', '=', piso.id), ('picking_type_id.sequence_code', '=', TIPO_FLUJO_KG)]).route_id
         return bool(rutas and (product.route_ids | product.categ_id.total_route_ids) & rutas)
 
     def _get_move_raw_values(self, product, product_uom_qty, product_uom, operation_id=False, bom_line=False):
@@ -187,6 +190,62 @@ class MrpProduction(models.Model):
             _('Sobrante del Piso devuelto a su ubicación de origen (%s):', ', '.join(transferencias.mapped('name'))),
             Markup('').join(Markup('<li>%s</li>') % linea for linea in lineas_nota)))
         return transferencias
+
+    def _traspasar_interno(self, origen, partidas, referencia):
+        """3.18.0 (Dirección, 2026-11-10): transferencias internas ya validadas de ``origen`` (la Ubic. 10) a la ubicación de
+        cada calidad, ligadas a esta orden: una por destino. ``partidas`` es una lista de
+        ``(producto, lote, cantidad, destino)``. Si algo falla se levanta el error y el cierre no se hace."""
+        self.ensure_one()
+        por_destino = defaultdict(list)
+        for producto, lote, cantidad, destino in partidas:
+            if cantidad and destino and destino != origen:
+                por_destino[destino].append((producto, lote, cantidad))
+        if not por_destino:
+            return self.env['stock.picking']
+        tipo = self.picking_type_id.warehouse_id.int_type_id
+        if not tipo:
+            raise UserError(_('El almacén de %s no tiene tipo de operación de transferencia interna.', self.name))
+        transferencias = self.env['stock.picking']
+        for destino, lineas in por_destino.items():
+            transferencia = self.env['stock.picking'].create({
+                'picking_type_id': tipo.id, 'location_id': origen.id, 'location_dest_id': destino.id,
+                'origin': '%s %s' % (referencia, self.name), 'company_id': self.company_id.id,
+                'move_ids': [Command.create({
+                    'product_id': producto.id, 'product_uom': producto.uom_id.id, 'product_uom_qty': cantidad,
+                    'location_id': origen.id, 'location_dest_id': destino.id, 'company_id': self.company_id.id,
+                    'picked': True,
+                    'move_line_ids': [Command.create({
+                        'product_id': producto.id, 'product_uom_id': producto.uom_id.id, 'quantity': cantidad,
+                        'lot_id': lote.id if lote else False, 'location_id': origen.id,
+                        'location_dest_id': destino.id, 'company_id': self.company_id.id})],
+                }) for producto, lote, cantidad in lineas]})
+            transferencia.action_confirm()
+            transferencia.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+            if transferencia.state != 'done':
+                raise UserError(_('No se pudo validar la transferencia %(t)s de %(o)s a %(d)s de la orden %(p)s.',
+                                  t=transferencia.name, o=origen.display_name, d=destino.display_name, p=self.name))
+            transferencias |= transferencia
+        resumen = ', '.join('%s (%s)' % (t.name, t.location_dest_id.display_name) for t in transferencias)
+        self.message_post(body=_('%(r)s: transferencias de %(o)s a su ubicación de calidad: %(t)s.',
+                                 r=referencia, o=origen.display_name, t=resumen))
+        return transferencias
+
+    def _traspasar_desperdicio_rama(self):
+        """3.18.0 (Dirección, 2026-11-10): al cerrar la orden en kg, el desperdicio de Rama (que entra a la Ubic. 10 con el
+        terminado) pasa a la 17 con una transferencia interna. Si ya entró a la 17 (orden pesada antes de 3.18.0) no hace
+        nada."""
+        Final = self.env['mrp.rollo.final']
+        for orden in self.filtered(lambda o: o.state == 'done' and o.desperdicio_kg):
+            hecho = orden.move_finished_ids.filtered(
+                lambda m: m.state == 'done' and m.product_id != orden.product_id and m.quantity > 0)
+            if not hecho:
+                continue
+            destino = Final._ubicacion_calidad('DESP')
+            partidas = []
+            for linea in hecho.move_line_ids.filtered(lambda ml: ml.quantity > 0 and ml.location_dest_id != destino):
+                partidas.append((linea.product_id, linea.lot_id, linea.quantity, destino, linea.location_dest_id))
+            for origen in {p[4] for p in partidas}:
+                orden._traspasar_interno(origen, [p[:4] for p in partidas if p[4] == origen], _('Desperdicio de Rama'))
 
     def _numero_bano_del_nombre(self):
         """3.7.0: el último tramo del nombre de la orden («TL/OP-KG/J00001» → «J00001»). Si otra orden ya lo tiene (una
@@ -291,25 +350,27 @@ class MrpProduction(models.Model):
         return pendientes.filtered(lambda m: m.product_id.default_code == codigo_a)[:1] \
             or pendientes.filtered(lambda m: m.product_id.tracking == 'lot')[:1]
 
-    def _clasif_ubicacion_rollo(self, rollo, raw):
+    def _clasif_ubicacion_rollo(self, lote, raw):
         """Ubicación interna donde está el lote de A (Ubic. 10 al cerrar la MO de A). Se prefiere la de
         origen del consumo; si el movimiento nació con otro origen (p. ej. 2 PRODUCCIÓN), se usa la real."""
         quants = self.env['stock.quant'].sudo().search([
-            ('product_id', '=', raw.product_id.id), ('lot_id', '=', rollo.lot_id.id),
+            ('product_id', '=', raw.product_id.id), ('lot_id', '=', lote.id),
             ('location_id.usage', '=', 'internal'), ('quantity', '>', 0)])
         en_origen = quants.filtered(lambda q: q.location_id.parent_path.startswith(raw.location_id.parent_path))
         return (en_origen or quants)[:1].location_id
 
-    def _clasif_asegurar_consumo(self, rollos):
-        """Línea de consumo con el lote de A y su kg real (neto de Rama), marcada como picked. Se deja
-        explícito (y se repite al cerrar) porque escribir qty_producing hace que el core reescale líneas."""
+    def _clasif_asegurar_consumo(self, consumos):
+        """Línea de consumo con el lote de A y su kg real, marcada como picked. ``consumos`` es una lista de
+        ``(lote, kg)`` (3.18.0: los rollos finales que entraron a la Ubic. 10 al cerrar el baño, con los kg de Inspección;
+        ver ``_insp_consumo_lotes``). Se deja explícito (y se repite al cerrar) porque escribir qty_producing hace que el
+        core reescale líneas."""
         self.ensure_one()
         raw = self._clasif_move_a()
         if not raw:
             return
-        for rollo in rollos:
-            linea = raw.move_line_ids.filtered(lambda ml: ml.lot_id == rollo.lot_id)[:1]
-            valores = {'quantity': rollo.kg_rama, 'picked': True}
+        for lote, kg in consumos:
+            linea = raw.move_line_ids.filtered(lambda ml: ml.lot_id == lote)[:1]
+            valores = {'quantity': kg, 'picked': True}
             if linea:
                 linea.write(valores)
             else:
@@ -317,8 +378,8 @@ class MrpProduction(models.Model):
                     valores,
                     move_id=raw.id,
                     product_id=raw.product_id.id,
-                    lot_id=rollo.lot_id.id,
-                    location_id=(self._clasif_ubicacion_rollo(rollo, raw) or raw.location_id).id,
+                    lot_id=lote.id,
+                    location_id=(self._clasif_ubicacion_rollo(lote, raw) or raw.location_id).id,
                     location_dest_id=raw.location_dest_id.id,
                 ))
 
@@ -518,15 +579,11 @@ class MrpProduction(models.Model):
             raise UserError(_('El subproducto %s no puede tener seguimiento por número de serie.',
                               producto.display_name))
         lote = self._lote_desperdicio(producto) if producto.tracking == 'lot' else self.env['stock.lot']
-        # El subproducto hereda el destino del terminado (Ubic. 10); el desperdicio va al Almacén 17 (§16).
-        destino = self.env['stock.location'].search(
-            [('complete_name', 'ilike', '17 PRODUCTO TERMINADO DESPERDICIO'), ('usage', '=', 'internal')], limit=1)
-        movimiento.with_context(do_not_unreserve=True).write(dict(
-            {'product_uom_qty': kg}, **({'location_dest_id': destino.id} if destino else {})))
+        # 3.18.0 (Dirección, 2026-11-10): el subproducto entra a la Ubic. 10 como el terminado y al cerrar la orden una
+        # transferencia lo pasa a la 17 (`_traspasar_desperdicio_rama`); antes se forzaba su destino a la 17.
+        movimiento.with_context(do_not_unreserve=True).write({'product_uom_qty': kg})
         lineas = movimiento.move_line_ids
         valores = {'quantity': kg, 'lot_id': lote.id or False}
-        if destino:
-            valores['location_dest_id'] = destino.id
         if lineas:
             lineas[:1].write(valores)
             (lineas - lineas[:1]).unlink()
@@ -602,4 +659,6 @@ class MrpProduction(models.Model):
         # 3.9.0: el sobrante del Piso regresa a su origen cuando la orden en kg ya cerró (el core puede devolver una
         # acción y dejarla abierta; en ese caso se hará al cerrarla).
         self.filtered(lambda o: o.state == 'done')._devolver_sobrante_piso()
+        # 3.18.0: el desperdicio de Rama pasa de la Ubic. 10 a la 17.
+        self.filtered(lambda o: o.state == 'done')._traspasar_desperdicio_rama()
         return res
