@@ -63,18 +63,22 @@ class TestClasificacionFinal(TransactionCase):
         zpl = self._final('PQ')
         self.assertIn('WJ038Q22JNT160', zpl)
         self.assertNotIn('WJ038Q22JNT160..', zpl)
-        self.assertIn('PESO NETO: 33.40', zpl)
-        self.assertIn('PESO BRUTO: 34.00', zpl)
-        self.assertIn('521.00;33.400;CLASTEST;1', zpl)
+        # 3.17.0: diseño «Etiqueta producto terminado PQ»: peso neto y bruto, lote y rollo, un código de barras.
+        for texto in ('PESO NETO', '33.40', 'PESO BRUTO', '34.00', 'LOTE: CLASTEST', 'ROLLO: 001', 'COLOR', 'ANCHO CM',
+                      'METROS', 'YARDAS', '521.00', 'FECHA DE FABRICACIÓN'):
+            self.assertIn(texto, zpl)
+        self.assertIn('521.00-33.40-CLASTEST-001', zpl)
+        self.assertNotIn('CLAVE', zpl, 'La etiqueta ya no lleva clave del producto')
         self.assertEqual(zpl.count('^BCN'), 1)
 
     def test_04_etiqueta_pnc_con_defectos(self):
         zpl = self._final('FE', defectos=('AD', 'AGU'))
         self.assertIn('WJ038Q22JNT160..', zpl)
-        self.assertIn('KILOS: 33.40', zpl)
-        self.assertIn('LIBRAS: 73.63', zpl)
-        self.assertIn('DEFECTOS: AD AGU', zpl)
-        self.assertIn('1 AD AGU', zpl)
+        for texto in ('KILOS', '33.40', 'LIBRAS', '73.63'):
+            self.assertIn(texto, zpl)
+        self.assertNotIn('PESO NETO', zpl)
+        self.assertIn('521.00-33.40-CLASTEST-001', zpl)
+        self.assertIn('001 AD AGU', zpl, 'Segundo código de barras: rollo y siglas de los defectos')
         self.assertEqual(zpl.count('^BCN'), 2)
         self.assertIn('WJ038Q22JNT160.', self._final('SEGUNDA'))
         self.assertIn('WJ038Q22JNT160*', self._final('DESP'))

@@ -33,6 +33,7 @@
                     <button name="action_imprimir_etiqueta_preliminar" type="object" string="Etiqueta preliminar"/>
                     <button name="action_imprimir_etiqueta" type="object" string="Etiqueta final"/>
                     <button name="action_anular" type="object" string="Anular captura" groups="mrp.group_mrp_manager"
+                            close="1"
                             invisible="estado != 'inspeccionado'"
                             confirm="Se borra este rollo final y sus rollos de Rama quedan pendientes para volver a inspeccionarlos. ¿Continuar?"/>
                     <field name="estado" widget="statusbar"/>

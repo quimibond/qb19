@@ -33,8 +33,6 @@ PARAM_PRELIM_ALTO = 'quimibond_rollos_bitacora.etiqueta_prelim_alto'
 PRELIM_ANCHO, PRELIM_ALTO = 544, 304
 PARAM_INSPECCION_IMPRIME = 'quimibond_rollos_bitacora.inspeccion_imprime'
 CALIDAD_CORTA = {'PQ': 'PQ', 'FE': 'FE', 'SEGUNDA': '2DA', 'DESP': 'DESP'}
-EMPRESA_ETIQUETA = 'PRODUCTORA DE NO TEJIDOS QUIMIBOND S.A. DE C.V.'
-LEYENDA_PNC = {'FE': 'FUERA DE ESPECIFICACIÓN', 'SEGUNDA': 'SEGUNDA', 'DESP': 'DESPERDICIO'}
 
 
 class MrpRolloBitacora(models.Model):
@@ -312,10 +310,16 @@ class MrpRolloBitacora(models.Model):
         return '^BY%d,3,%d^FO%d,%d^BCN,%d,Y,N,N^FD%s^FS' % (modulo, alto_barras, x, y, alto_barras, datos)
 
     @api.model
-    def _zpl_final_acomodo(self, clasif, renglones, codigos):
-        """Acomodo de la etiqueta final (§12.3) en el tamaño de Ajustes; el diseño es de 76 x 102 mm (608 x 816
-        puntos) y escala si se cambia. `renglones`: texto o (izquierda, derecha) en dos columnas; `codigos`: los
-        datos de 1 (PQ) o 2 (PNC) códigos de barras. La usan el rollo final y la bitácora."""
+    def _zpl_final_acomodo(self, clasif, datos):
+        """Etiqueta final de producto terminado (3.17.0, Dirección 2026-11-10), con el diseño de «Etiqueta producto
+        terminado PQ y FE»: banda negra con el código del producto; color y ancho; metros y yardas en grande; peso neto y
+        bruto (PQ) o kilos y libras (FE, Segunda, Desperdicio); lote y rollo; código de barras (en las defectivas, un
+        segundo con las siglas de los defectos); fecha de fabricación y siglas del operador. Sin título ni clave del
+        producto (Dirección: la etiqueta ya no lleva clave).
+
+        Tamaño de Ajustes: el diseño es de 76 x 102 mm (608 x 816 puntos a 203 dpi) y escala si se cambia. ``datos``:
+        codigo, color, ancho, metros, yardas, izq (rótulo, valor), der (rótulo, valor), lote, rollo, codigos (datos de 1 o
+        2 códigos de barras), fecha y siglas."""
         params = self.env['ir.config_parameter'].sudo()
         ancho = int(params.get_param(PARAM_FINAL_ANCHO, FINAL_ANCHO))
         alto = int(params.get_param(PARAM_FINAL_ALTO, FINAL_ALTO))
@@ -325,27 +329,64 @@ class MrpRolloBitacora(models.Model):
             return max(int(round(valor * escala)), 1)
 
         t = self._zpl_texto
-        pnc = clasif != 'PQ'
-        x, caja = p(20), ancho - 2 * p(20)
-        columna = ancho // 2 + p(4)
-        titulo = 'ETIQUETA DE PRODUCTO CON DEFECTIVA' if pnc else 'ETIQUETA DE PRODUCTO TERMINADO'
-        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto),
-               '^FO%d,%d^A0N,%d,%d^FB%d,1,0,C^FD%s^FS' % (x, p(16), p(22), p(20), caja, EMPRESA_ETIQUETA),
-               '^FO%d,%d^A0N,%d,%d^FB%d,1,0,C^FD%s^FS' % (x, p(46), p(24), p(24), caja, titulo)]
-        y = p(86)
-        if pnc:
-            zpl.append('^FO%d,%d^A0N,%d,%d^FB%d,1,0,C^FD%s^FS' % (x, y, p(36), p(36), caja, LEYENDA_PNC[clasif]))
-            y += p(48)
-        for renglon in renglones:
-            izquierda, derecha = renglon if isinstance(renglon, tuple) else (renglon, None)
-            zpl.append('^FO%d,%d^A0N,%d,%d^FD%s^FS' % (x, y, p(26), p(26), t(izquierda)))
-            if derecha:
-                zpl.append('^FO%d,%d^A0N,%d,%d^FD%s^FS' % (columna, y, p(26), p(26), t(derecha)))
-            y += p(38)
-        y += p(10)
-        for dato in codigos:
-            zpl.append(self._zpl_codigo_barras(dato, p(12), ancho, y, alto_barras=p(70)))
-            y += p(120)
+        margen = p(16)
+        caja = ancho - 2 * margen
+        mitad = caja // 2
+
+        def letra(texto, maximo, disponible):
+            """Alto de letra: el máximo que deja el texto dentro del ancho disponible (la fuente 0 es angosta: ~0.55)."""
+            return max(min(maximo, int(disponible / (max(len(texto), 1) * 0.55))), p(14))
+
+        def texto(x, y, valor, alto_letra, ancho_caja, alinea='C', invertido=False):
+            return '^FO%d,%d^A0N,%d,%d^FB%d,1,0,%s%s^FD%s^FS' % (
+                x, y, alto_letra, alto_letra, ancho_caja, alinea, '^FR' if invertido else '', t(valor))
+
+        def celda(x, y, valor, rotulo, maximo, alto_valor):
+            """Valor en grande y su rótulo debajo, centrados en media etiqueta."""
+            a = letra(valor, maximo, mitad - p(12))
+            return [texto(x, y + (maximo - a) // 2, valor, a, mitad), texto(x, y + alto_valor, rotulo, p(22), mitad)]
+
+        zpl = ['^XA^PW%d^LL%d^CI28' % (ancho, alto)]
+        # Banda negra con el código del producto en blanco.
+        zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (margen, p(16), caja, p(92), p(92)))
+        zpl.append(texto(margen, p(16) + (p(92) - letra(datos['codigo'], p(56), caja - p(16))) // 2, datos['codigo'],
+                         letra(datos['codigo'], p(56), caja - p(16)), caja, invertido=True))
+        x2 = margen + mitad
+        # Color | ancho.
+        y = p(120)
+        zpl.append(texto(margen, y, 'COLOR', p(26), mitad))
+        zpl.append(texto(x2, y, 'ANCHO CM', p(26), mitad))
+        zpl.append(texto(margen, y + p(32), datos['color'], letra(datos['color'], p(30), mitad - p(12)), mitad))
+        zpl.append(texto(x2, y + p(32), datos['ancho'], p(30), mitad))
+        zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (margen, p(198), caja, p(2), p(2)))
+        # Metros | yardas.
+        y = p(206)
+        zpl += celda(margen, y, datos['metros'], 'METROS', p(76), p(86))
+        zpl += celda(x2, y, datos['yardas'], 'YARDAS', p(76), p(86))
+        zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (margen, p(326), caja, p(2), p(2)))
+        # Peso neto | bruto (PQ) o kilos | libras (con defecto).
+        y = p(334)
+        zpl += celda(margen, y, datos['izq'][1], datos['izq'][0], p(52), p(60))
+        zpl += celda(x2, y, datos['der'][1], datos['der'][0], p(52), p(60))
+        zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (margen, p(430), caja, p(2), p(2)))
+        # Lote | rollo.
+        y = p(440)
+        zpl.append(texto(margen, y, 'LOTE: %s' % datos['lote'], letra('LOTE: %s' % datos['lote'], p(36), mitad - p(8)),
+                         mitad, 'C'))
+        zpl.append(texto(x2, y, 'ROLLO: %s' % datos['rollo'], p(36), mitad))
+        zpl.append('^FO%d,%d^GB%d,%d,%d^FS' % (x2, p(120), p(2), p(310), p(2)))  # divisor vertical
+        zpl.append(texto(margen, p(486), 'NUESTRAS ENTRETELAS NUNCA VAN SOLAS', p(20), caja))
+        # Códigos de barras (el segundo, en las defectivas, con las siglas de los defectos).
+        y = p(512)
+        alto_barras = p(64) if len(datos['codigos']) > 1 else p(84)
+        for dato in datos['codigos']:
+            zpl.append(self._zpl_codigo_barras(dato, p(12), ancho, y, alto_barras=alto_barras))
+            y += alto_barras + p(40)
+        # Fecha de fabricación y siglas del operador.
+        y = max(y, p(704)) if len(datos['codigos']) == 1 else y
+        zpl.append(texto(margen, y, 'FECHA DE FABRICACIÓN  %s' % datos['fecha'], p(22), caja - p(110), 'L'))
+        zpl.append(texto(margen + caja - p(100), y - p(6), datos['siglas'], p(34), p(100), 'R'))
+        zpl.append(texto(margen, alto - p(34), 'HECHO EN MÉXICO          MADE IN MEXICO', p(20), caja))
         zpl.append('^XZ')
         return '\n'.join(zpl)
 

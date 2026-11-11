@@ -264,9 +264,10 @@ class MrpRolloFinal(models.Model):
         return {'codigo': codigo, 'color': COLORES.get(codigo_tela[9:11].upper(), codigo_tela[9:11]), 'ancho': ancho}
 
     def _zpl_etiqueta(self):
-        """Etiqueta final de José (§12.3) con los datos del rollo final: PQ con neto/bruto; FE, Segunda y Desperdicio
-        (PNC) con kilos y libras, siglas de defectos y el segundo código. Código de barras: metros;kg;orden;rollo.
-        Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
+        """Etiqueta final con los datos del rollo final, con el diseño de «Etiqueta producto terminado PQ y FE» (3.17.0):
+        PQ con peso neto y bruto; FE, Segunda y Desperdicio con kilos y libras y las siglas de los defectos (el código del
+        producto lleva «..», «.» o «*»). Código de barras: metros-peso neto-lote-rollo; las defectivas, un segundo con el
+        rollo y las siglas. Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
         self.ensure_one()
         datos = self._datos_etiqueta()
         # 3.12.0: la etiqueta final lleva lo definitivo: lo que Empaque confirmó o cambió; sin clasificar, lo de Inspección.
@@ -278,23 +279,24 @@ class MrpRolloFinal(models.Model):
         pnc = clasif != 'PQ'
         fecha = fields.Datetime.context_timestamp(self, self.fecha or fields.Datetime.now())
         of = self.name.rsplit('-', 1)[0]
-        renglones = [
-            'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
-            'COLOR: %s' % datos['color'],
-            'ANCHO (cm): %g' % datos['ancho'],
-            ('METROS: %.2f' % metros, 'YARDAS: %.2f' % (metros * YARDAS_POR_METRO)),
-            ('KILOS: %.2f' % kg_neto, 'LIBRAS: %.2f' % (kg_neto * LIBRAS_POR_KG)) if pnc
-            else ('PESO NETO: %.2f' % kg_neto, 'PESO BRUTO: %.2f' % kg_bruto),
-            'LOTE DE PRODUCCIÓN: %s' % of,
-            'NO. DE ROLLO: %s' % self.secuencia,
-            'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador or ''),
-            'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
-        ]
-        codigos = ['%.2f;%.3f;%s;%s' % (metros, kg_neto, of, self.secuencia)]
+        rollo = '%03d' % self.secuencia
+        etiqueta = {
+            'codigo': '%s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
+            'color': datos['color'],
+            'ancho': '%.1f' % datos['ancho'],
+            'metros': '%.2f' % metros,
+            'yardas': '%.2f' % (metros * YARDAS_POR_METRO),
+            'izq': ('KILOS', '%.2f' % kg_neto) if pnc else ('PESO NETO', '%.2f' % kg_neto),
+            'der': ('LIBRAS', '%.2f' % (kg_neto * LIBRAS_POR_KG)) if pnc else ('PESO BRUTO', '%.2f' % kg_bruto),
+            'lote': of,
+            'rollo': rollo,
+            'codigos': ['%.2f-%.2f-%s-%s' % (metros, kg_neto, of, rollo)],
+            'fecha': fecha.strftime('%d/%m/%y  %I:%M %p'),
+            'siglas': self.siglas_operador or '',
+        }
         if pnc:
-            renglones.append('DEFECTOS: %s' % (siglas_defectos or ''))
-            codigos.append(('%s %s' % (self.secuencia, siglas_defectos or '')).strip())
-        return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, renglones, codigos)
+            etiqueta['codigos'].append(('%s %s' % (rollo, siglas_defectos or '')).strip())
+        return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, etiqueta)
 
     def _zpl_etiqueta_preliminar(self):
         """Etiqueta preliminar de Inspección (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, revisadora, kg,

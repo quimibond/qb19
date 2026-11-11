@@ -27,6 +27,22 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Prueba de Dirección en el equipo local: etiquetas, anular y botones (3.17.0, 2026-11-10)
+
+Desviaciones de la prueba de punta a punta (órdenes J00002), validadas contra la base local:
+
+- **Anular captura** ya no avisa «no encontramos el registro»: el botón lleva `close="1"` y la ventana se cierra sin
+  recargar el rollo que acaba de borrarse.
+- **Etiqueta del desperdicio de Rama**: sale al pesar (como la de Empaque) con fecha, producto, nombre, lote, cantidad y
+  código de barras del lote; botón «Imprimir etiqueta» en la pestaña Rollos (Rama y Empaque) para reimprimir.
+- **Lote del desperdicio con la orden**: `<orden>-MM-AAAA` (ej. `J00002-11-2026`), en Rama y en Empaque. Antes solo el mes.
+- **CLASIFICAR EN EMPAQUE y PESAR DESPERDICIO** ya no están en la orden en metros: solo en la operación CLASIFICACION del
+  resumen de los centros de trabajo, como los botones de la orden en kg.
+- **Etiqueta final PQ/FE/Segunda/Desperdicio** con el diseño de «Etiqueta producto terminado PQ y FE»: banda con el código
+  (con `..`, `.` o `*` según la calidad), color y ancho, metros y yardas, peso neto y bruto (PQ) o kilos y libras, lote y
+  rollo, código de barras `metros-neto-lote-rollo`, en las defectivas un segundo con el rollo y las siglas, fecha de
+  fabricación y siglas del operador. Sin título de empresa ni clave del producto (Dirección: ya no lleva clave).
+
 ## Desperdicio sin metros sin alerta de metros (3.16.1, prueba piloto en main, 2026-11-09)
 
 Un rollo final de Desperdicio puede ir sin metros (3.6.2), pero la estación de Inspección le marcaba la «Alerta de metros»
