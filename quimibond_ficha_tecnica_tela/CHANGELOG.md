@@ -10,6 +10,14 @@ agregan a esa misma sección sin volver a subirla.
 
 ## 19.0.2.29.0 — 2026-11-10
 
+**Revisión 2026-11-11: la lista del flujo que se activa queda primera.** Al activar una lista «Flujo en kg» o
+«Clasificación final», queda antes que las demás listas activas de su producto (secuencia menor). La lista anterior no
+se archiva al activar, y Odoo toma la primera por secuencia e id: en main, el 11 de noviembre, una orden nueva de
+WJ045Q22JNT160 del tipo «Fabricación Tela en m» tomó la lista anterior, sin operación de Empaque y con destino a la 10.
+En main se corrigió a mano en las 25 telas activas; con este cambio la activación lo hace sola (en producción todavía
+no hay listas activas del flujo). Una lista que ya va primero no se toca. Prueba
+`test_14_la_lista_activada_va_primero`.
+
 **Tolerancia hacia arriba y hacia abajo en todas las medidas de tela.** Ancho, espesor, encogimientos y elongaciones
 de la ficha de acabado, y ancho, espesor y elongaciones bajo carga de la de tejido, tienen ahora «+» y «−» como ya lo
 tenía el peso; antes solo admitían «± un número» y no se podía escribir, por ejemplo, un ancho +0 / −5. Cada lado

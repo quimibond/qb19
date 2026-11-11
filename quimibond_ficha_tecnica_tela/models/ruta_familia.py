@@ -692,10 +692,22 @@ class MrpBomDesperdicioRama(models.Model):
                     ('product_id.product_tmpl_id', '=', tmpl.id), ('route_id', '!=', ruta.id)])
                 planes.write({'route_id': ruta.id})
 
+    def _ft_poner_primero(self):
+        """Revisión 2026-11-11: la lista del flujo queda antes que las demás listas activas de su producto. La lista
+        anterior no se archiva al activar (queda de respaldo) y Odoo toma la primera por secuencia e id: en main una
+        orden nueva de WJ045Q22JNT160, del tipo «Fabricación Tela en m», tomó la lista anterior, sin operación de
+        Empaque y con destino a la 10. No toca la secuencia si la lista ya va primero."""
+        Bom = self.env['mrp.bom']
+        for bom in self:
+            otras = Bom.search([('product_tmpl_id', '=', bom.product_tmpl_id.id), ('type', '=', 'normal'),
+                                ('id', '!=', bom.id)])
+            if otras and min(otras.mapped('sequence')) <= bom.sequence:
+                bom.sequence = min(otras.mapped('sequence')) - 1
+
     def _ft_preparar_activacion(self):
         """2.25.0: al activar una lista del flujo (visto bueno de Ingeniería) se completa lo que la orden necesita: tipo
         de operación, consumo flexible, la ruta del flujo en el producto (y en su plan maestro) y, en la lista en kg, el
-        desperdicio de Rama."""
+        desperdicio de Rama. Revisión 2026-11-11: además queda primera entre las listas de su producto."""
         for bom in self:
             if bom.code == CODIGO_KG:
                 bom._ft_poner_tipo_operacion('kg')
@@ -709,6 +721,7 @@ class MrpBomDesperdicioRama(models.Model):
             else:
                 continue
             bom._ft_poner_consumo_flexible()
+            bom._ft_poner_primero()
 
     def write(self, vals):
         activando = self.filtered(lambda b: not b.active) if vals.get('active') else self.browse()
