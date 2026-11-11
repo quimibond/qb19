@@ -158,6 +158,39 @@ anterior; las señales `cliente_pierde`, `producto_pierde`,
 `tiempos_excepcion`, `familia_saturada` y `cotizacion_bajo_costo` de
 `quimibond_intelligence` los leen.
 
+## Capa de absorción (1.11.0)
+
+Mientras solo Tejido tenga costo por hora en sus centros de trabajo, el costo
+unitario de Odoo no trae la conversión de Tintorería, Rama, Acabado,
+Inspección y los demás centros: el inventario vale menos que su costo de
+producción. La capa mide cuánto, producto por producto, al cierre del mes:
+
+```
+valor_completo = existencia × costo de producción del módulo (MP + fabricación)
+faltante       = valor_completo − valor en Odoo
+capitalizable  = faltante acotado entre 0 y existencia × fabricación del módulo
+```
+
+- Entra el inventario de las categorías de `capa_categorias` (por defecto
+  Producto Terminado y Producto en Proceso), menos las que contienen una
+  palabra de `capa_excluir_categorias` (Importado, Importación, Subproducto).
+- El tope en la fabricación evita capitalizar como conversión una diferencia
+  de precio de la materia prima. Si Odoo ya vale más que el módulo, no se
+  capitaliza nada: esa valuación la iguala el cierre de inventario de Odoo.
+- Lo que no tiene costo del módulo se lista como «Sin costo del módulo» con
+  su valor en Odoo, para saber cuánto inventario quedó sin medir.
+- **El total es el saldo que debe tener la cuenta de conversión
+  capitalizada** al cierre del mes. El módulo no crea el asiento: cada mes
+  Contabilidad registra la diferencia contra el saldo anterior. Esto sustituye
+  a la CAPA calculada sobre lo vendido.
+- Se usa con los costos del período ya calculados (botón «Calcular capa de
+  absorción» en el período, Costos → Capa de absorción). Se puede recalcular
+  con el período cerrado, porque no cambia tarifas ni costos.
+
+Cuando Tintorería, Rama, Acabado e Inspección tengan tarifa publicada en sus
+centros de trabajo, Odoo absorbe la conversión en cada orden y la capa tiende
+a cero.
+
 ## Configuración mínima
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,

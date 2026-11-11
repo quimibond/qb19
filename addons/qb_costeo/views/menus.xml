@@ -3,6 +3,7 @@
     <!-- Manufactura → Costos -->
     <menuitem id="menu_qb_costeo_root" name="Costos" parent="mrp.menu_mrp_root" sequence="60"/>
     <menuitem id="menu_qb_costo_producto" name="Costo por producto" parent="menu_qb_costeo_root" action="action_qb_costo_producto" sequence="5"/>
+    <menuitem id="menu_qb_capa_absorcion" name="Capa de absorción" parent="menu_qb_costeo_root" action="action_qb_capa_absorcion" sequence="7"/>
     <menuitem id="menu_qb_periodo" name="Períodos" parent="menu_qb_costeo_root" action="action_qb_periodo" sequence="10"/>
     <menuitem id="menu_qb_tarifa" name="Tarifas por centro" parent="menu_qb_costeo_root" action="action_qb_tarifa" sequence="20"/>
     <menuitem id="menu_qb_validacion" name="Validaciones" parent="menu_qb_costeo_root" action="action_qb_producto_validacion" sequence="30"/>
