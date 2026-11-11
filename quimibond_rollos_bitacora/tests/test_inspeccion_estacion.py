@@ -539,7 +539,8 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(bano_2._insp_orden_metros(), m2)
         self._rama_e_inspeccion(bano_2, 41.1, [(40.5, 455.0, 'PQ')])
         self.assertTrue(bano_1.numero_bano and bano_2.numero_bano and bano_1.numero_bano != bano_2.numero_bano)
-        self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-0001' % bano_2.numero_bano)
+        # 3.18.0: el rollo final lleva «F» (el lote de Rama del mismo baño es <baño>-0001).
+        self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-F001' % bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, m2)
         self._cerrar_bano(bano_2)
         self.assertEqual(bano_2.state, 'done')
