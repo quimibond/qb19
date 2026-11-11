@@ -4,7 +4,8 @@ from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
-from odoo.addons.quimibond_tintoreria_programacion.models.mrp_production import banda_rendimiento
+from odoo.addons.quimibond_tintoreria_programacion.models.mrp_production import (
+    banda_rendimiento, clave_rollo, rango_rollos, repartir_rollos)
 
 
 class _Config:
@@ -20,6 +21,8 @@ class _Config:
 CONFIG_HTJ1 = dict(capacidad=1000.0, capacidad_grupo_a=900.0, capacidad_grupo_b=600.0, capacidad_grupo_c=450.0)
 CONFIG_HTJ3 = dict(capacidad=600.0, capacidad_grupo_a=600.0)   # bandas B y C: N/A
 CONFIG_HTJ5 = dict(capacidad=1200.0)                           # sin bandas: solo capacidad general
+# Baño de tejido H13850 de la prueba de Dirección (2026-11-11): 12 rollos, 394.70 kg.
+KGS_H13850 = [33.62, 33.42, 33.62, 33.62, 25.08, 33.82, 33.62, 33.62, 33.42, 33.62, 33.42, 33.82]
 
 
 @tagged('post_install', '-at_install', 'quimibond_tintoreria_programacion')
@@ -234,22 +237,52 @@ class TestProgramacionTintoreria(TransactionCase):
         segunda.action_cancel()
         self.assertEqual(programacion.state, 'cancelada')
 
-    def test_banos_con_kg_de_crudo(self):
-        """1.7.0: el jet se carga con el crudo. 550 kg de tela con 1.15 kg de crudo por kg son 632.5 kg en el jet:
-        en banda B (600 kg) son 2 baños de 275 kg de tela y 316.25 kg de crudo; con los kg de tela era 1 baño."""
-        categoria = self.env['product.category'].create({'name': 'TEJIDO PRUEBA PROGRAMACION'})
-        crudo = self._producto('WJ-CRUDO-TEST')
-        crudo.categ_id = categoria
-        producto = self._producto('IWJ-CRUDO-TEST')
+    def _crudo_con_rollos(self, kg_por_kg=1.0, kg_orden=381.0, kgs=None, prefijo='H13850', surtir=True, capacidad=None):
+        """Orden confirmada con un crudo de categoría de tejido (por lote) y, si ``surtir``, sus rollos ya en la Ubic. 2
+        (líneas con lote, como las deja la requisición REQ-MP validada). Devuelve (orden, crudo, rollos)."""
+        categoria = self.env['product.category'].search([('name', '=', 'TEJIDO PRUEBA PROGRAMACION')], limit=1) \
+            or self.env['product.category'].create({'name': 'TEJIDO PRUEBA PROGRAMACION'})
+        crudo = self.env['product.product'].create({
+            'name': 'WJ-CRUDO-%s' % prefijo, 'default_code': 'WJ-CRUDO-%s' % prefijo, 'type': 'consu',
+            'is_storable': True, 'tracking': 'lot', 'uom_id': self.kg.id, 'categ_id': categoria.id})
+        producto = self._producto('IWJ-%s' % prefijo)
         bom = self.env['mrp.bom'].create({
             'product_tmpl_id': producto.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
             'operation_ids': [Command.create({'name': 'Tintorería', 'workcenter_id': self.htj1.id})],
-            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': 1.15}),
+            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': kg_por_kg}),
                              Command.create({'product_id': self.componente.id, 'product_qty': 0.1})],
         })
         mo = self.env['mrp.production'].create({
-            'product_id': producto.id, 'product_qty': 550.0, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
+            'product_id': producto.id, 'product_qty': kg_orden, 'product_uom_id': self.kg.id, 'bom_id': bom.id})
         mo.action_confirm()
+        rollos = self.env['stock.lot']
+        if surtir:
+            kgs = kgs or KGS_H13850
+            move = mo.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+            for numero, kg in enumerate(kgs, 1):
+                lote = self.env['stock.lot'].create({
+                    'name': '%s-%04d' % (prefijo, numero), 'product_id': crudo.id, 'company_id': self.env.company.id})
+                self.env['stock.quant']._update_available_quantity(crudo, move.location_id, kg, lot_id=lote)
+                self.env['stock.move.line'].create({
+                    'move_id': move.id, 'product_id': crudo.id, 'lot_id': lote.id, 'quantity': kg,
+                    'product_uom_id': self.kg.id, 'location_id': move.location_id.id,
+                    'location_dest_id': move.location_dest_id.id})
+                rollos |= lote
+            move._recompute_state()
+        return mo, crudo, rollos
+
+    def _jet_de(self, capacidad):
+        jet = self.env['mrp.workcenter'].create({'name': 'Tintoreria TEST %s' % capacidad, 'code': 'HT%s' % capacidad})
+        self.configs[jet.id] = dict(capacidad=capacidad, capacidad_grupo_b=capacidad)
+        self.addCleanup(self.configs.pop, jet.id, None)
+        return jet
+
+    def test_banos_con_kg_de_crudo(self):
+        """1.7.0: el jet se carga con el crudo. 550 kg de tela con 1.15 kg de crudo por kg son 632.5 kg en el jet:
+        en banda B (600 kg) son 2 baños. 1.9.0: con los rollos surtidos (4 rollos, 632.5 kg), cada baño lleva rollos
+        completos y la orden queda con los kg de sus rollos (316 y 316.5)."""
+        mo, crudo, _rollos = self._crudo_con_rollos(
+            kg_por_kg=1.15, kg_orden=550.0, kgs=[158.0, 158.0, 158.5, 158.0], prefijo='H20000')
         plan = mo._calcular_plan_tintoreria(self.htj1)
         self.assertEqual(plan['crudo_id'], crudo.id)
         self.assertAlmostEqual(plan['kg_crudo'], 632.5)
@@ -257,11 +290,116 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertAlmostEqual(plan['kg_crudo_bano'], 316.25)
         self.assertFalse(plan['aviso_crudo'])
         programacion = mo._programar_tintoreria(self.htj1)
-        self.assertEqual(sorted(programacion.production_ids.mapped('product_qty')), [275.0, 275.0])
+        self.assertEqual(sorted(programacion.production_ids.mapped('product_qty')), [316.0, 316.5])
         self.assertAlmostEqual(programacion.kg_crudo, 632.5)
         self.assertAlmostEqual(programacion.kg_crudo_bano, 316.25)
         self.assertTrue(all(any('316.25 kg de crudo' in (m.body or '') for m in orden.message_ids)
                             for orden in programacion.production_ids))
+
+    def test_rollos_completos_en_dos_baños(self):
+        """1.9.0 (Dirección, 2026-11-11): un baño de tejido de 12 rollos (H13850, 394.70 kg) en un jet de 210 kg se reparte
+        en 2 órdenes de rollos completos: 1-6 (193.18 kg) y 7-12 (201.52 kg). Cada orden queda con los kg de sus rollos
+        y su crudo trae solo sus lotes, sin cortar ninguno; la dosificación se calcula sobre esos kg."""
+        mo, crudo, rollos = self._crudo_con_rollos()
+        jet = self._jet_de(210.0)
+        plan = mo._calcular_plan_tintoreria(jet)
+        self.assertEqual(plan['n_banos'], 2)
+        self.assertEqual([b['texto'] for b in plan['banos']], ['H13850 rollos 1-6', 'H13850 rollos 7-12'])
+        self.assertEqual([b['kg'] for b in plan['banos']], [193.18, 201.52])
+        self.assertEqual(plan['lote_crudo'], 'H13850')
+        self.assertEqual(plan['n_rollos'], 12)
+        programacion = mo._programar_tintoreria(jet)
+        primera, segunda = programacion.production_ids.sorted('name')
+        self.assertEqual([primera.product_qty, segunda.product_qty], [193.18, 201.52])
+        for orden, esperados in ((primera, rollos[:6]), (segunda, rollos[6:])):
+            movimiento = orden.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+            self.assertEqual(movimiento.move_line_ids.lot_id, esperados, "Solo los rollos de su baño")
+            self.assertEqual(movimiento.move_line_ids.mapped('quantity'),
+                             [KGS_H13850[int(n.name[-4:]) - 1] for n in movimiento.move_line_ids.lot_id],
+                             "Cada rollo completo, sin cortar")
+            self.assertAlmostEqual(movimiento.product_uom_qty, orden.product_qty)
+            self.assertEqual(movimiento.state, 'assigned')
+            self.assertAlmostEqual(orden._kg_carga_jet()[0], orden.product_qty)
+            self.assertTrue(orden.tintoreria_programada)
+        # El resto de los componentes sigue la cantidad de cada orden (0.1 kg por kg).
+        componente = primera.move_raw_ids.filtered(lambda m: m.product_id == self.componente)
+        self.assertAlmostEqual(componente.product_uom_qty, 19.318, places=2)
+        self.assertAlmostEqual(programacion.kg_total, 394.7)
+        self.assertAlmostEqual(programacion.kg_pedido, 381.0)
+        self.assertEqual((programacion.lote_crudo, programacion.n_rollos), ('H13850', 12))
+        self.assertEqual(programacion.bano_ids.mapped('rollos'), ['H13850 rollos 1-6', 'H13850 rollos 7-12'])
+        self.assertEqual(programacion.bano_ids.mapped('production_id'), primera | segunda)
+        self.assertTrue(any('H13850 rollos 7-12' in (m.body or '') for m in segunda.message_ids))
+
+    def test_rollos_completos_en_un_solo_jet(self):
+        """1.9.0: si el baño completo cabe en el jet, la orden queda con los 12 rollos y 394.70 kg (lo surtido, no los 381
+        pedidos)."""
+        mo, crudo, rollos = self._crudo_con_rollos()
+        programacion = mo._programar_tintoreria(self.htj1)
+        self.assertEqual(len(programacion.production_ids), 1)
+        orden = programacion.production_ids
+        self.assertEqual(orden, mo)
+        self.assertEqual(orden.product_qty, 394.7)
+        movimiento = orden.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+        self.assertEqual(movimiento.move_line_ids.lot_id, rollos)
+        self.assertAlmostEqual(movimiento.product_uom_qty, 394.7)
+        self.assertAlmostEqual(orden._kg_carga_jet()[0], 394.7)
+        self.assertEqual(programacion.bano_ids.rollos, 'H13850 rollos 1-12')
+
+    def test_sin_crudo_surtido_bloquea(self):
+        """1.9.0: la programación se arma con los rollos surtidos: sin rollos, o con la requisición pendiente, no se
+        programa y el aviso dice qué falta."""
+        mo, crudo, _rollos = self._crudo_con_rollos(surtir=False)
+        with self.assertRaisesRegex(UserError, 'no tiene rollos'):
+            mo._calcular_plan_tintoreria(self.htj1)
+        movimiento = mo.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+        origen = self.env['stock.move'].create({
+            'product_id': crudo.id, 'product_uom': self.kg.id, 'product_uom_qty': 381.0,
+            'location_id': movimiento.location_id.id, 'location_dest_id': movimiento.location_id.id,
+            'company_id': self.env.company.id})
+        origen._action_confirm()
+        movimiento.move_orig_ids = [Command.link(origen.id)]
+        with self.assertRaisesRegex(UserError, 'Falta surtir el crudo'):
+            mo._calcular_plan_tintoreria(self.htj1)
+        wizard = self.env['tintoreria.programacion.wizard'].create({
+            'line_ids': [Command.create({'production_id': mo.id, 'workcenter_id': self.htj1.id})]})
+        self.assertIn('Falta surtir', wizard.line_ids.advertencia)
+        with self.assertRaises(UserError):
+            wizard.action_confirmar()
+        self.assertFalse(mo.tintoreria_programada)
+
+    def test_asistente_muestra_lote_rollos_y_kg_por_baño(self):
+        """1.9.0: el asistente muestra el lote de crudo, los rollos y kg surtidos y, al elegir el jet, el rango de rollos y
+        los kg de cada baño."""
+        mo, _crudo, _rollos = self._crudo_con_rollos()
+        jet = self._jet_de(210.0)
+        wizard = self.env['tintoreria.programacion.wizard'].create({
+            'line_ids': [Command.create({'production_id': mo.id})]})
+        linea = wizard.line_ids
+        self.assertEqual((linea.lote_crudo, linea.n_rollos), ('H13850', 12))
+        self.assertAlmostEqual(linea.kg_rollos, 394.7)
+        self.assertFalse(linea.detalle_banos)
+        linea.workcenter_id = jet
+        self.assertEqual(linea.n_banos, 2)
+        detalle = str(linea.detalle_banos)
+        self.assertIn('193.18', detalle)
+        self.assertIn('H13850 rollos 1-6', detalle)
+        self.assertIn('201.52', detalle)
+        self.assertIn('H13850 rollos 7-12', detalle)
+
+    def test_repartir_rollos_y_rangos(self):
+        """1.9.0: reparto de rollos completos y consecutivos sin pasar la capacidad."""
+        self.assertEqual(repartir_rollos(KGS_H13850, 210.0), [(0, 6), (6, 12)])
+        self.assertEqual(repartir_rollos(KGS_H13850, 600.0), [(0, 12)])
+        # 200 kg no caben en un baño de 150: con 2 baños un rollo de 200 quedaría con otro; son 3.
+        self.assertEqual(repartir_rollos([100.0, 100.0, 100.0], 150.0), [(0, 1), (1, 2), (2, 3)])
+        with self.assertRaisesRegex(UserError, 'no se cortan'):
+            repartir_rollos([100.0, 260.0], 250.0)
+        self.assertEqual(clave_rollo('H13850-0007'), ('H13850', 7))
+        self.assertEqual(clave_rollo('SINNUMERO'), ('SINNUMERO', 0))
+        self.assertEqual(rango_rollos(['H13850-0003', 'H13850-0001', 'H13850-0002', 'H13850-0005']),
+                         'H13850 rollos 1-3, 5')
+        self.assertEqual(rango_rollos(['H1-0001', 'H2-0001']), 'H1 rollos 1 / H2 rollos 1')
 
     def test_sin_componente_de_tejido_usa_los_kg_de_la_orden(self):
         """1.7.0: sin componente de una categoría de tejido, los baños salen de los kg de la orden, con aviso."""

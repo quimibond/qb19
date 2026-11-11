@@ -11,7 +11,7 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
      1. si el artículo tiene «kg por carga» en ese jet, ese valor manda;
      2. jet con bandas capturadas: capacidad de la banda (no mayor que la capacidad general); se **bloquea** si la banda es N/A o el rendimiento cae fuera de las bandas;
      3. jet sin bandas capturadas (p. ej. HTJ5): capacidad general, con aviso en el chatter.
-   - `n = ceil(kg / capacidad)`; reparto **simétrico** `kg / n` (el redondeo cae en el último baño), todos en el mismo HTJ.
+   - `n = ceil(kg / capacidad)`; el reparto es **por rollos completos** (ver 1.9.0); sin componente de crudo de tejido se conserva el reparto simétrico `kg / n`, todos en el mismo HTJ.
    - Si `n > 1` se usa la división nativa `mrp.production._split_productions` (conserva los enlaces MTO hacia la MO en metros).
    - **Duración de Tintorería (por baño; cada orden es un baño):** se fija en la workorder de Tintorería de cada MO con el primer dato disponible: (1) *Tiempo de ciclo* del artículo en ese jet (proceso del artículo en la ficha técnica; la ficha lo guarda en **horas**, se convierte a minutos); (2) minutos de la fórmula de la BoM en ese HTJ (`tintoreria.formula.tiempo`, menú Fichas técnicas → Tintorería → Tiempos por fórmula y jet); (3) la operación de Tintorería de la BoM, con aviso en el chatter de cada orden: su tiempo es el de Odoo (manual o calculado por historial, 1.6.0), por unidad de la BoM (en las listas en kg, minutos por kg), y se multiplica por los kg del baño (1.5.0). Si no existe ninguno, la programación se bloquea. El asistente muestra los minutos y su origen antes de confirmar.
    - Se asigna el HTJ a la workorder de Tintorería de cada MO → `quimibond_tintoreria_dosificacion` recalcula g/L y % con la RB del HTJ.
@@ -27,6 +27,23 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El campo se calcula al **crear** la orden: si la ficha se liga después, las órdenes ya creadas no se recalculan solas.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
+
+## Cambios 19.0.1.9.0 (Dirección, 2026-11-11): programar con rollos completos
+
+- **Flujo:** primero se surte el crudo (requisición Alm. 5 → Producción 2, con los lotes/rollos, p. ej. `H13850-0001…0012`) y
+  después se programa. Si la orden tiene componente de tela cruda (categoría TEJIDO) y no está surtido, la programación se
+  **bloquea** con aviso que nombra la requisición pendiente (o «sin rollos surtidos»). Órdenes sin componente de tejido
+  siguen el cálculo aritmético de antes.
+- **Reparto:** se parten los rollos **consecutivos** sin cortar ninguno: n inicia en `ceil(kg / capacidad)` y sube si no
+  cabe; se minimiza el baño más cargado y luego la suma de cuadrados (kg lo más parejos). Un rollo mayor que la capacidad
+  bloquea. Cada baño queda con los lotes exactos de sus rollos.
+- **Cantidad:** la orden en kg de cada baño = suma de kg de sus rollos (la dosificación calcula sobre esa cantidad real).
+  Una sola máquina = baño completo (p. ej. 394.70 kg, rollos 1-12). La orden en metros se divide proporcional a los kg de
+  cada baño (total sin cambio).
+- **Asistente:** muestra lote de crudo, kg totales, rollos totales y, al elegir jet, el detalle «Baño N: kg · rango
+  (n rollos)». El registro de programación guarda `lote_crudo`, `n_rollos`, `kg_pedido` y `bano_ids`
+  (`tintoreria.programacion.bano`).
+- `kg_bano` y `kg_crudo_bano` ahora son promedios. Crear programaciones requiere permiso de gerente (igual que el modelo).
 
 ## Cambios 19.0.1.8.2 (revisión, 2026-11-08)
 
