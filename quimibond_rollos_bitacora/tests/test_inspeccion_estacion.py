@@ -1179,10 +1179,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00002'), "Ni reinicia el consecutivo")
 
     def test_51_piso_configuracion_y_consumo(self):
-        """3.8.0: configurar_piso crea «Químicos-Colorantes Piso», repunta las rutas de surtido y la orden en kg consume
-        de ahí el producto cuya ruta sale del Piso; el crudo (sin esa ruta) sigue en la Ubic. 2. Idempotente."""
+        """3.8.0 / 3.19.0: configurar_piso crea «Químicos-Colorantes Piso» y la requisición de Engomado sale del Piso a la
+        Ubic. 2; la orden en kg consume el engomado de la Ubic. 2, igual que el crudo. Idempotente."""
         from odoo.addons.quimibond_rollos_bitacora.hooks import (
-            configurar_piso, NOMBRE_PISO, PARAM_UBICACION_PISO)
+            configurar_piso, NOMBRE_PISO, NOMBRE_RUTA_ENGOMADO, PARAM_UBICACION_PISO)
         almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
         tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ967', 'sequence_code': 'OP-KG'})
         ubic2 = self.env['stock.location'].create({'name': 'ZZ2 PRODUCCIÓN', 'usage': 'internal',
@@ -1192,8 +1192,10 @@ class TestInspeccionEstacion(TransactionCase):
         produccion_virtual = self.env['stock.location'].search([
             ('usage', '=', 'production'), ('company_id', 'in', [compania, False])], limit=1)
         self.assertTrue(produccion_virtual, "La base de prueba tiene una ubicación virtual de producción")
+        tipo_req = almacen.int_type_id.copy({
+            'name': 'Requisición ZZ967', 'sequence_code': 'ZZREQ967', 'default_location_dest_id': ubic2.id})
         regla_surte = self.env['stock.rule'].create({
-            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': almacen.in_type_id.id,
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_req.id,
             'company_id': compania,
             'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': ubic2.id})
         regla_consumo = self.env['stock.rule'].create({
@@ -1210,9 +1212,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(piso.name, NOMBRE_PISO)
         self.assertEqual(piso.location_id, padre)
         self.assertEqual(self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO), str(piso.id))
-        self.assertEqual(regla_surte.location_dest_id, piso)
-        self.assertEqual(regla_consumo.location_src_id, piso)
-        self.assertIn('→ Piso)', ruta.name)
+        self.assertEqual(regla_surte.location_src_id, piso, "La requisición de Engomado sale del Piso")
+        self.assertEqual(regla_surte.location_dest_id, ubic2)
+        self.assertEqual(regla_consumo.location_src_id, ubic2, "La orden en kg consume de la Ubic. 2")
+        self.assertEqual(ruta.name, NOMBRE_RUTA_ENGOMADO)
         self.assertEqual(configurar_piso(self.env), piso, "Idempotente: no crea otra ubicación")
         engomado = self.env['product.product'].create({
             'name': 'Engomado ZZ967', 'default_code': 'ENGZZ967', 'type': 'consu', 'is_storable': True,
@@ -1221,7 +1224,7 @@ class TestInspeccionEstacion(TransactionCase):
             'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
             'picking_type_id': tipo_kg.id})
         datos = orden_kg._get_move_raw_values(engomado, 1.0, self.kg)
-        self.assertEqual(datos['location_id'], piso.id, "El engomado sale del Piso")
+        self.assertNotEqual(datos['location_id'], piso.id, "El engomado ya no se consume del Piso")
         crudo = orden_kg._get_move_raw_values(self.prod_kg, 1.0, self.kg)
         self.assertNotEqual(crudo['location_id'], piso.id, "Lo que no pasa por el Piso sigue en la ubicación de la orden")
 
@@ -1791,7 +1794,7 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_79_requisicion_de_quimicos_del_piso_a_la_2(self):
         """3.18.0: la requisición de químicos y colorantes (REQ-TIN) toma del Piso y surte a la Ubic. 2 (el destino del tipo);
-        la orden en kg los consume de la 2, y solo el engomado sigue saliendo del Piso. Idempotente."""
+        la orden en kg los consume de la 2. Idempotente. (3.19.0: el engomado hace lo mismo; ver la prueba 51.)"""
         from odoo.addons.quimibond_rollos_bitacora.hooks import NOMBRE_RUTA_QUIMICOS, configurar_piso
         almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
         compania = almacen.company_id.id

@@ -27,6 +27,16 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Requisición de Engomado Piso → 2 (3.19.0, 2026-11-11)
+
+- La ruta «Surtido Engomado» queda igual que la de químicos y colorantes: la requisición (REQ-MP) toma del *Químicos-Colorantes
+  Piso* y surte a la Ubic. 2 (destino del tipo de operación), y la orden en kg consume el engomado de la Ubic. 2. La ruta pasa
+  a llamarse «Surtido Engomado (Piso → Ubic. 2)». Antes salía de la Ubic. 1 y la orden lo consumía del Piso.
+- `hooks.configurar_requisicion_surtido` (antes `configurar_requisicion_quimicos`, que queda como alias) procesa las dos rutas;
+  `configurar_piso` ya no repunta el engomado por su cuenta. Migración 3.19.0, idempotente. No toca la ruta de tela cruda.
+- Consecuencia: el sobrante de engomado ya no se devuelve desde el Piso (queda en la Ubic. 2), igual que los químicos.
+- Pruebas: `test_51` (cambia a la nueva configuración) y `test_79`.
+
 ## Inventario de la cadena kg → metros: Ubic. 10, traspasos a calidad y requisición de químicos (3.18.0, 2026-11-10)
 
 Desviaciones de la misma prueba (J00002) que tocan inventario. **Aplicar después de 3.17.0.**
