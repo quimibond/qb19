@@ -277,6 +277,32 @@ class TestProgramacionTintoreria(TransactionCase):
         self.addCleanup(self.configs.pop, jet.id, None)
         return jet
 
+    def test_rollos_son_los_de_la_requisicion_no_lo_reservado(self):
+        """La requisición surtió el lote completo (4 rollos, 169 kg) pero la orden pidió 160 y Odoo reservó 160, recortando el
+        último rollo. Programar usa los rollos completos de la requisición y deja la orden con 169 kg."""
+        mo, crudo, _rollos = self._crudo_con_rollos(kg_orden=160.0, kgs=[40.0, 40.0, 45.0, 35.0], prefijo='HREQ')
+        movimiento = mo.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+        origen = self.env['stock.location'].create({
+            'name': 'Origen REQ prueba', 'usage': 'internal', 'location_id': movimiento.location_id.location_id.id})
+        requisicion = self.env['stock.move'].create({
+            'product_id': crudo.id, 'product_uom_qty': 160.0, 'product_uom': self.kg.id,
+            'location_id': origen.id, 'location_dest_id': movimiento.location_id.id,
+            'move_dest_ids': [Command.link(movimiento.id)]})
+        requisicion._action_confirm()
+        for lote, kg in zip(('HREQ-0001', 'HREQ-0002', 'HREQ-0003', 'HREQ-0004'), (40.0, 40.0, 45.0, 44.0)):
+            registro = self.env['stock.lot'].search([('name', '=', lote), ('product_id', '=', crudo.id)])
+            self.env['stock.quant']._update_available_quantity(crudo, origen, kg, lot_id=registro)
+            self.env['stock.move.line'].create({
+                'move_id': requisicion.id, 'product_id': crudo.id, 'lot_id': registro.id, 'quantity': kg,
+                'product_uom_id': self.kg.id, 'location_id': origen.id, 'location_dest_id': movimiento.location_id.id})
+        requisicion.picked = True
+        requisicion._action_done()
+        rollos = mo._tintoreria_rollos_crudo()
+        self.assertEqual(sorted(r['kg'] for r in rollos), [40.0, 40.0, 44.0, 45.0], "Rollos completos, no el recorte")
+        self.assertEqual(sum(r['kg'] for r in rollos), 169.0)
+        plan = mo._calcular_plan_tintoreria(self._jet_de(200.0))
+        self.assertEqual((plan['n_banos'], plan['kg_total']), (1, 169.0))
+
     def test_banos_con_kg_de_crudo(self):
         """1.7.0: el jet se carga con el crudo. 550 kg de tela con 1.15 kg de crudo por kg son 632.5 kg en el jet:
         en banda B (600 kg) son 2 baños. 1.9.0: con los rollos surtidos (4 rollos, 632.5 kg), cada baño lleva rollos
