@@ -87,10 +87,10 @@ class MrpProduction(models.Model):
 
     def _surte_desde_piso(self, product, piso):
         """3.8.0: el producto va por el Piso si tiene (por producto o por categoría) una ruta con una regla que sale del
-        Piso, que es como la migración deja «Surtido Engomado». El engomado lleva la ruta en el producto, así que se
-        decide por ruta y no por categoría. Desde 3.18.0 los químicos y colorantes se consumen de la Ubic. 2."""
-        # 3.18.0: solo cuentan las reglas de consumo de la orden en kg; la requisición de químicos y colorantes ahora también
-        # sale del Piso (Piso → Ubic. 2), y esos productos se consumen de la Ubic. 2.
+        Piso. Desde 3.18.0 (químicos y colorantes) y 3.19.0 (engomado) las requisiciones salen del Piso a la Ubic. 2 y la
+        orden en kg consume de la Ubic. 2, así que con la migración aplicada ningún producto cumple esto; se conserva para
+        las bases que aún no la tienen."""
+        # Solo cuentan las reglas de consumo de la orden en kg que toman del Piso.
         rutas = self.env['stock.rule'].sudo().search([
             ('location_src_id', '=', piso.id), ('picking_type_id.sequence_code', '=', TIPO_FLUJO_KG)]).route_id
         return bool(rutas and (product.route_ids | product.categ_id.total_route_ids) & rutas)
