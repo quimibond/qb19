@@ -121,7 +121,7 @@ class MrpRolloFinal(models.Model):
 
     _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
-    # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedazos, orillas); Primera, FE y Segunda sí los llevan.
+    # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedacería, orillas); Primera, FE y Segunda sí los llevan.
     _check_metros = models.Constraint("CHECK(metros > 0 OR (clasificacion = 'DESP' AND metros >= 0))",
                                       'Los metros del rollo final deben ser mayores a cero (salvo en Desperdicio).')
 
@@ -215,7 +215,7 @@ class MrpRolloFinal(models.Model):
 
     def action_anular(self):
         """3.3.0: corrige una captura de Inspección antes de cerrar el baño. Borra el rollo final y deja pendientes sus
-        rollos de Rama (con sus otros pedazos, si los hay) para volver a inspeccionarlos. Solo el responsable de
+        rollos de Rama (con sus otros rollos registrados, si los hay) para volver a inspeccionarlos. Solo el responsable de
         Manufactura; un rollo ya registrado no se anula (ya está en inventario)."""
         if not self.env.user.has_group('mrp.group_mrp_manager'):
             raise UserError(_('Solo el responsable de Manufactura anula un rollo final.'))
@@ -231,7 +231,7 @@ class MrpRolloFinal(models.Model):
                 'Rollo final %(r)s anulado por %(u)s (%(c)s, %(kg).2f kg, %(m).2f m); sus rollos de Rama %(rama)s quedan '
                 'pendientes de inspección.', r=rollo.name, u=self.env.user.name, c=rollo.clasificacion,
                 kg=rollo.kg_neto, m=rollo.metros, rama=', '.join(rollo.bitacora_ids.mapped('name'))))
-        # Al anular un pedazo, el rollo de Rama queda abierto y sus otros pedazos siguen capturados.
+        # Al anular un rollo de una división, el rollo de Rama queda abierto y sus otros rollos siguen capturados.
         self.unlink()
         return {'type': 'ir.actions.act_window_close'}
 

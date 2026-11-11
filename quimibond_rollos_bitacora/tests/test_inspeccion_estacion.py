@@ -159,7 +159,7 @@ class TestInspeccionEstacion(TransactionCase):
         """Caso 2: 250 m de primera y 120 m de segunda; 3.15.0: la segunda es la tela en metros, con su lote, a 16 (diseño §8)."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
-        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con pedazos pendientes, el rollo sigue sin inspeccionar")
+        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con rollos pendientes, el rollo sigue sin inspeccionar")
         wiz = self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
         self.assertAlmostEqual(wiz.kg_ya_cortados, 25.0)
         self.assertAlmostEqual(wiz.merma_kg, 40.0 - 25.0 - 11.9)
@@ -247,7 +247,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_12_no_cortar_y_juntar_a_la_vez(self):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
         self._inspeccionar(orden_kg, wo, rollos[0], 10.0, 100.0, termina=False)
-        with self.assertRaisesRegex(UserError, 'cortar y juntar'):
+        with self.assertRaisesRegex(UserError, "ya se dividió"):
             self._inspeccionar(orden_kg, wo, rollos, 30.0, 300.0)
 
     def test_13_bano_para_venta_en_kg(self):
