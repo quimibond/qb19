@@ -633,9 +633,25 @@ class MrpProduction(models.Model):
             resultado = super(MrpProduction, orden)._plan_workorders(replan)
         return resultado
 
+    def _marcar_componentes_con_lote_consumidos(self):
+        """3.19.1 (Dirección, 2026-11-11): al cerrar, Odoo exige que los componentes con seguimiento por lote estén marcados
+        como consumidos («picked»); si no, detiene el cierre con «Debe proporcionar el número de lote o serie para los
+        productos y "consumirlos"», aunque ya tengan su lote surtido (J00006-002: crudo, engomado, químicos y colorantes).
+        Aquí se marcan los que ya traen lote en todas sus líneas; los que tienen una línea sin lote se dejan como están y
+        el core pide el lote. La orden consume lo surtido completo (la diferencia contra los kg netos es merma)."""
+        for orden in self.filtered('rollo_bitacora_ids'):
+            for movimiento in orden.move_raw_ids:
+                if movimiento.state in ('done', 'cancel') or movimiento.picked or not movimiento.product_uom_qty \
+                        or movimiento.has_tracking not in ('lot', 'serial'):
+                    continue
+                lineas = movimiento.move_line_ids.filtered('quantity')
+                if lineas and all(linea.lot_id for linea in lineas):
+                    movimiento.picked = True
+
     def button_mark_done(self):
         self._validar_rollos_pesados()
         self._validar_rollos_inspeccionados()
+        self._marcar_componentes_con_lote_consumidos()
         """Cierre de la MO en kg con rollos de la bitácora.
 
         Igual que en pesaje_rollos_tejido: la demanda del terminado se dejó en 0 al pesar; antes del

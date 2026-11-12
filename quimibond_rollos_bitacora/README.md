@@ -27,6 +27,17 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Componentes con lote consumidos al cerrar (3.19.1, 2026-11-11)
+
+- Odoo 19 (build de feb-2026) detiene el cierre de la orden si un componente con seguimiento por lote no está marcado como
+  consumido, con «Debe proporcionar el número de lote o serie para los productos y "consumirlos"», aunque ya tenga su lote
+  surtido (J00006-002: crudo, engomado, químicos y colorantes). `button_mark_done` marca como consumidos los componentes cuyas
+  líneas ya traen lote (`_marcar_componentes_con_lote_consumidos`); uno con una línea sin lote se deja como está y el core
+  pide el lote. Se consume lo surtido completo; la diferencia contra los kg netos es merma. Prueba: `test_81`.
+- Si la lista de materiales tiene el consumo en «Advertencia» (el valor por defecto de Odoo) y se cierra con una cantidad
+  distinta de la planeada, Odoo muestra el aviso de consumo; se acepta con «Confirmar». Para que no salga, la lista A se
+  pone en consumo «Flexible» (dato, no código).
+
 ## Requisición de Engomado Piso → 2 (3.19.0, 2026-11-11)
 
 - La ruta «Surtido Engomado» queda igual que la de químicos y colorantes: la requisición (REQ-MP) toma del *Químicos-Colorantes

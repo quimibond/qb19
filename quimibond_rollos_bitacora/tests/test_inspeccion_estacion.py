@@ -1908,3 +1908,34 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(m1.product_qty + m2.product_qty, 2000.0, places=2, msg="El total de metros no cambia")
         self.assertEqual(m1._ordenes_previas(), banos[0])
         self.assertEqual(m2._ordenes_previas(), banos[1])
+
+    def test_81_componentes_con_lote_se_marcan_consumidos_al_cerrar(self):
+        """3.19.1: los componentes con seguimiento por lote que ya traen lote en todas sus líneas se marcan como consumidos
+        antes de cerrar (Odoo 19 de feb-2026 detiene el cierre si no); el que tiene una línea sin lote se deja como está."""
+        categoria_lote = self.env['product.product'].create({
+            'name': 'Químico ZZ981 con lote', 'default_code': 'QZZ981', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id})
+        sin_lote = self.env['product.product'].create({
+            'name': 'Químico ZZ981 sin lote', 'default_code': 'QZZ981B', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.prod_kg.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'consumption': 'flexible', 'sequence': 1,
+            'bom_line_ids': [Command.create({'product_id': categoria_lote.id, 'product_qty': 0.1}),
+                             Command.create({'product_id': sin_lote.id, 'product_qty': 0.1})]})
+        orden = self.env['mrp.production'].create({'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': bom.id})
+        orden.action_confirm()
+        lote = self.env['stock.lot'].create({
+            'name': 'LZZ981', 'product_id': categoria_lote.id, 'company_id': self.env.company.id})
+        con_lote = orden.move_raw_ids.filtered(lambda m: m.product_id == categoria_lote)
+        sin = orden.move_raw_ids.filtered(lambda m: m.product_id == sin_lote)
+        ubicacion = con_lote.location_id
+        for movimiento, producto, registro in ((con_lote, categoria_lote, lote), (sin, sin_lote, self.env['stock.lot'])):
+            self.env['stock.move.line'].create({
+                'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': registro.id or False, 'quantity': 10.0,
+                'product_uom_id': self.kg.id, 'location_id': ubicacion.id, 'location_dest_id': movimiento.location_dest_id.id})
+        self.assertFalse(con_lote.picked)
+        self.env['mrp.rollo.bitacora'].create({'production_id': orden.id, 'secuencia': 1, 'kg_rama': 10.0})
+        orden._marcar_componentes_con_lote_consumidos()
+        self.assertTrue(con_lote.picked, "Con lote en todas sus líneas: queda consumido")
+        self.assertFalse(sin.picked, "Con una línea sin lote se deja como está")
