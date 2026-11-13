@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.19.3',
+    'version': '19.0.3.20.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -45,6 +45,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   ``production_b_id``, etiqueta final de la bitácora) y el interruptor ``clasificacion_empaque``: Empaque siempre activo.
 * 3.16.2 (José, 2026-11-10): la estación de Inspección habla de rollos, no de «pedazos»: «Último rollo de esta tela»,
   «Kg de rollos ya registrados» y mensajes acordes. Solo etiquetas y mensajes; la lógica no cambia.
+* 3.20.0 (José, 2026-11-12): liberación de laboratorio para Empaque. En la orden en metros con rollos PQ por revisar,
+  laboratorio libera con su número de empleado («LIBERAR PARA EMPAQUE» en la operación CLASIFICACION); mientras tanto
+  CLASIFICAR no abre y la orden no cierra. Sin rollos PQ no hay liberación.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -74,6 +77,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'wizard/rollo_inspeccion_estacion_wizard_views.xml',
         'wizard/rollo_empaque_clasificacion_wizard_views.xml',
         'wizard/rollo_empaque_desperdicio_wizard_views.xml',
+        'wizard/rollo_liberacion_lab_wizard_views.xml',
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],

@@ -1299,9 +1299,16 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(rollo.reetiquetado, "Empaque cambió la calidad: hay que reimprimir la etiqueta final")
 
     # ------------------------------------------------------------------ 3.11.0: Clasificación final en Empaque
+    def _liberar_lab(self, orden_m):
+        """3.20.0: con rollos PQ por revisar, laboratorio libera la orden en metros antes de que Empaque clasifique."""
+        if orden_m.liberacion_lab_pendiente:
+            self.env['rollo.liberacion.lab.wizard'].create(
+                {'production_id': orden_m.id, 'empleado_numero': '1'}).action_confirmar()
+
     def _clasificar_en_empaque(self, orden_m, rollo, calidad=None, metros=None, motivo=None, pesar=False,
                                kg_bruto=0.0, defectos=True):
         """Estación de Empaque (3.12.0): el rollo se escanea por su lote y se confirma o se cambia."""
+        self._liberar_lab(orden_m)
         wiz = self.env['rollo.empaque.clasificacion.wizard'].create({
             'production_id': orden_m.id, 'empleado_numero': '1', 'codigo': rollo.name,
             'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'pesar': pesar, 'kg_bruto': kg_bruto})
@@ -1335,6 +1342,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(final.estado, 'inspeccionado')
         self.assertEqual(final.production_m_id, orden_m)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 0.0)
+        self._liberar_lab(orden_m)
         with self.assertRaisesRegex(UserError, 'por clasificar'):
             orden_m.button_mark_done()
         self._clasificar_en_empaque(orden_m, final)
@@ -1484,6 +1492,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_64_boton_de_la_orden_con_rollos_por_clasificar(self):
         """A3.3: el botón abre la estación solo con rollos por clasificar (sin interruptor desde 3.16.0)."""
         orden_m, orden_kg, final = self._bano_en_empaque()
+        self._liberar_lab(orden_m)
         accion = orden_m.action_clasificar_empaque()
         self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
         self.assertEqual(accion['context']['default_production_id'], orden_m.id)
@@ -1567,6 +1576,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         orden_kg.button_mark_done()
         self.assertTrue(wo_c.empaque_pendiente)
+        self._liberar_lab(orden_m)
         accion = wo_c.action_clasificar_rollo()
         self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
         self.assertEqual(accion['context']['default_workorder_id'], wo_c.id)
@@ -1585,6 +1595,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         wo_c = orden_m.workorder_ids
         final = orden_kg.rollo_final_kg_ids
+        self._liberar_lab(orden_m)
         with self.assertRaisesRegex(UserError, 'por clasificar'):
             wo_c.button_finish()
         self.assertEqual(wo_c.state not in ('done', 'cancel'), True)

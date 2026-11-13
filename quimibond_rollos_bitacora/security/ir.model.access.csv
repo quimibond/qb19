@@ -17,3 +17,4 @@ access_mrp_rollo_final_manager,mrp.rollo.final manager,model_mrp_rollo_final,mrp
 access_rollo_inspeccion_estacion_wizard_user,rollo.inspeccion.estacion.wizard user,model_rollo_inspeccion_estacion_wizard,mrp.group_mrp_user,1,1,1,1
 access_rollo_empaque_clasificacion_wizard_user,rollo.empaque.clasificacion.wizard user,model_rollo_empaque_clasificacion_wizard,mrp.group_mrp_user,1,1,1,1
 access_rollo_empaque_desperdicio_wizard_user,rollo.empaque.desperdicio.wizard user,model_rollo_empaque_desperdicio_wizard,mrp.group_mrp_user,1,1,1,1
+access_rollo_liberacion_lab_wizard_user,rollo.liberacion.lab.wizard user,model_rollo_liberacion_lab_wizard,mrp.group_mrp_user,1,1,1,1

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.20.0: laboratorio libera la orden en metros para Empaque con su número de empleado (como en los pesajes). -->
+    <record id="view_rollo_liberacion_lab_wizard_form" model="ir.ui.view">
+        <field name="name">rollo.liberacion.lab.wizard.form</field>
+        <field name="model">rollo.liberacion.lab.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Liberar para Empaque">
+                <sheet>
+                    <group>
+                        <field name="empleado_numero" password="True" default_focus="1"
+                               readonly="empleado_numero != False" force_save="1"/>
+                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                    </group>
+                    <div invisible="not empleado_numero">
+                        <group>
+                            <field name="production_id"/>
+                            <field name="workorder_id" invisible="not workorder_id"/>
+                            <field name="rollos_pq_count"/>
+                            <field name="rollos_pq"/>
+                        </group>
+                        <div class="alert alert-info" role="status">
+                            Al liberar confirmas que laboratorio revisó los rollos PQ de esta orden en el libro de
+                            Inspección. Empaque ya podrá clasificarlos.
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" type="object" string="LIBERAR PARA EMPAQUE"
+                            class="btn-primary btn-lg" invisible="not empleado_numero"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
