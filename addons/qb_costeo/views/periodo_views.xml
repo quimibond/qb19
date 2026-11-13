@@ -163,8 +163,22 @@
                                     <field name="capa_total"/>
                                     <field name="capa_sin_costo_valor"/>
                                     <button name="action_ver_capa" type="object" string="Ver por producto" class="btn-link" colspan="2"/>
+                                    <button name="action_ver_capa_categoria" type="object" string="Ver por categoría" class="btn-link" colspan="2"/>
                                 </group>
                             </group>
+                            <field name="capa_categoria_ids" readonly="1">
+                                <list>
+                                    <field name="categ_id"/>
+                                    <field name="n_medidos"/>
+                                    <field name="n_sin_medir"/>
+                                    <field name="valor_odoo" sum="Total"/>
+                                    <field name="valor_completo" sum="Total"/>
+                                    <field name="faltante_neto" sum="Total"/>
+                                    <field name="tope_conversion" sum="Total"/>
+                                    <field name="capitalizable" sum="Total"/>
+                                    <field name="valor_sin_medir" sum="Total"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="Reapertura" invisible="state != 'cerrado' and not reaperturas">
                             <group>

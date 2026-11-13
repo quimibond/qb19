@@ -63,9 +63,13 @@ class QbPeriodo(models.Model):
         help='Parte de las ventas del mes cuyo costo salió de horas medidas '
              'o estándar, sin validaciones abiertas. Es el indicador CO-04.')
     costos_n = fields.Integer(string='Productos costeados', readonly=True)
-    # 1.11.0: capa de absorción (conversión que le falta al inventario).
+    # 1.11.0: capa de absorción (conversión que le falta al inventario);
+    # 1.11.1: en neto por categoría.
     capa_ids = fields.One2many('qb.capa.absorcion', 'periodo_id',
                                string='Capa de absorción')
+    capa_categoria_ids = fields.One2many(
+        'qb.capa.absorcion.categoria', 'periodo_id',
+        string='Capa por categoría')
     capa_calculada_el = fields.Datetime(
         string='Capa calculada el', readonly=True)
     capa_valor_odoo = fields.Float(
@@ -73,19 +77,18 @@ class QbPeriodo(models.Model):
         help='Valor en Odoo, al último día del período, de los productos que '
              'entran a la capa (parámetro capa_categorias).')
     capa_valor_completo = fields.Float(
-        string='Inventario a costo completo', readonly=True, digits=(16, 2),
-        help='Lo mismo, a costo de producción del módulo, de los productos '
-             'que tienen costo.')
+        string='Inventario medido a costo completo', readonly=True,
+        digits=(16, 2),
+        help='Lo que el módulo puede medir, a costo vendible del módulo.')
     capa_total = fields.Float(
         string='Conversión a capitalizar', readonly=True, digits=(16, 2),
         help='Saldo que debe tener la cuenta de conversión capitalizada al '
-             'cierre del período: por producto, la diferencia contra Odoo '
-             'acotada entre 0 y la conversión del módulo.')
+             'cierre del período: por categoría, la diferencia neta contra '
+             'Odoo acotada entre 0 y la conversión del módulo.')
     capa_sin_costo_valor = fields.Float(
-        string='Inventario sin costo del módulo', readonly=True,
-        digits=(16, 2),
-        help='Valor en Odoo de lo que no se pudo medir porque el módulo no '
-             'le calcula costo. Si es grande, la capa se queda corta.')
+        string='Inventario sin medir', readonly=True, digits=(16, 2),
+        help='Valor en Odoo de lo que el módulo no puede medir (sin costo o '
+             'sin fabricación). Si es grande, la capa se queda corta.')
 
     suavizado_fijo_meses = fields.Integer(
         default=lambda self: int(self.env['qb.parametro'].get_float(
@@ -366,14 +369,16 @@ class QbPeriodo(models.Model):
                 raise UserError(
                     'Calcule primero los costos del período %s.' % rec.period)
             filas = self.env['qb.capa.absorcion'].calcular_periodo(rec)
-            con_costo = filas.filtered(lambda f: f.estado != 'sin_costo')
+            medidas = filas.filtered(
+                lambda f: f.estado in ('falta', 'cubierto'))
             rec.write({
                 'capa_calculada_el': fields.Datetime.now(),
                 'capa_valor_odoo': sum(filas.mapped('valor_odoo')),
-                'capa_valor_completo': sum(con_costo.mapped('valor_completo')),
-                'capa_total': sum(filas.mapped('capitalizable')),
+                'capa_valor_completo': sum(medidas.mapped('valor_completo')),
+                'capa_total': sum(self.env['qb.capa.absorcion.categoria'].search(
+                    [('periodo_id', '=', rec.id)]).mapped('capitalizable')),
                 'capa_sin_costo_valor': sum(
-                    (filas - con_costo).mapped('valor_odoo')),
+                    (filas - medidas).mapped('valor_odoo')),
             })
         return True
 
@@ -383,6 +388,13 @@ class QbPeriodo(models.Model):
             'qb_costeo.action_qb_capa_absorcion')
         action['domain'] = [('periodo_id', '=', self.id)]
         action['context'] = {'search_default_group_categ': 1}
+        return action
+
+    def action_ver_capa_categoria(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'qb_costeo.action_qb_capa_absorcion_categoria')
+        action['domain'] = [('periodo_id', '=', self.id)]
         return action
 
     def _calcular_costos(self, refrescar=True):
