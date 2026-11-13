@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_hoja_calidad_plantilla_view_list" model="ir.ui.view">
+        <field name="name">mrp.hoja.calidad.plantilla.list</field>
+        <field name="model">mrp.hoja.calidad.plantilla</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="articulo"/>
+                <field name="producto_id" optional="show"/>
+                <field name="tipo"/>
+                <field name="plantilla_id"/>
+                <field name="carpeta_id"/>
+                <field name="libros_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mrp_hoja_calidad_plantilla_view_form" model="ir.ui.view">
+        <field name="name">mrp.hoja.calidad.plantilla.form</field>
+        <field name="model">mrp.hoja.calidad.plantilla</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="producto_id" options="{'no_create': True}"/>
+                        <field name="articulo"/>
+                        <field name="tipo"/>
+                        <field name="plantilla_id"/>
+                        <field name="carpeta_id"/>
+                    </group>
+                    <field name="libro_ids">
+                        <list create="0" delete="0">
+                            <field name="numero"/>
+                            <field name="fecha_apertura"/>
+                            <field name="fecha_cierre"/>
+                            <field name="active"/>
+                            <button name="action_abrir" type="object" string="Abrir" icon="fa-table"/>
+                            <button name="action_cerrar_y_abrir_nuevo" type="object" icon="fa-archive"
+                                    string="Cerrar libro y abrir uno nuevo" invisible="not active"
+                                    groups="mrp.group_mrp_manager"
+                                    confirm="Se cierra este libro y se abre uno nuevo en blanco. ¿Continuar?"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_hoja_calidad_plantilla_action" model="ir.actions.act_window">
+        <field name="name">Plantillas de libros de calidad</field>
+        <field name="res_model">mrp.hoja.calidad.plantilla</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="mrp_hoja_calidad_plantilla_menu" name="Plantillas de libros de calidad"
+              parent="mrp.menu_mrp_configuration" action="mrp_hoja_calidad_plantilla_action"
+              groups="mrp.group_mrp_manager" sequence="90"/>
+</odoo>
