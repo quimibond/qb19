@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_hoja_calidad_plantilla_user,mrp.hoja.calidad.plantilla user,model_mrp_hoja_calidad_plantilla,mrp.group_mrp_user,1,0,0,0
+access_mrp_hoja_calidad_plantilla_manager,mrp.hoja.calidad.plantilla manager,model_mrp_hoja_calidad_plantilla,mrp.group_mrp_manager,1,1,1,1
+access_mrp_hoja_calidad_user,mrp.hoja.calidad user,model_mrp_hoja_calidad,mrp.group_mrp_user,1,0,0,0
+access_mrp_hoja_calidad_manager,mrp.hoja.calidad manager,model_mrp_hoja_calidad,mrp.group_mrp_manager,1,1,1,1
