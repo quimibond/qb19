@@ -35,7 +35,7 @@ class MrpHojaCalidadPlantilla(models.Model):
         'documents.document', 'Carpeta de los libros', domain=[('type', '=', 'folder')],
         help='Carpeta de Documentos donde se guardan los libros de este artículo. Sin carpeta, quedan sin carpeta.')
     libro_ids = fields.One2many('mrp.hoja.calidad', 'plantilla_id', 'Libros')
-    libros_count = fields.Integer('Libros', compute='_compute_libros_count')
+    libros_count = fields.Integer('No. de libros', compute='_compute_libros_count')
     name = fields.Char(compute='_compute_name')
 
     @api.depends('producto_id')
