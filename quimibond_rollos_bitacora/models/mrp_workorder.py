@@ -14,6 +14,10 @@ class MrpWorkorder(models.Model):
         help='Con la Clasificación final en Empaque activa, la orden en metros tiene rollos que le pasó un baño y '
              'todavía no se registran: Empaque los clasifica y pesa el desperdicio desde esta operación.')
 
+    liberacion_pendiente = fields.Boolean(
+        'Pendiente de liberación de laboratorio', related='production_id.liberacion_lab_pendiente',
+        help='3.20.0: la orden en metros tiene rollos PQ por revisar y laboratorio todavía no la libera para Empaque.')
+
     @api.depends('workcenter_id.name', 'workcenter_id.ft_tipo_id.name')
     def _compute_es_rama(self):
         """Rama = centro de tipo de máquina «Acabado» (fichas técnicas, §3) o, si no tiene tipo,
@@ -44,6 +48,13 @@ class MrpWorkorder(models.Model):
         if not self.es_clasificacion:
             raise UserError(_('Esta operación no es de Clasificación final.'))
         return self.production_id.with_context(default_workorder_id=self.id).action_clasificar_empaque()
+
+    def action_liberar_empaque(self):
+        """3.20.0: laboratorio libera la orden en metros para Empaque desde la operación CLASIFICACION."""
+        self.ensure_one()
+        if not self.es_clasificacion:
+            raise UserError(_('Esta operación no es de Clasificación final.'))
+        return self.production_id.with_context(default_workorder_id=self.id).action_liberar_empaque()
 
     def action_pesar_desperdicio_empaque(self):
         """3.14.0 (A3.4b): PESAR DESPERDICIO de Empaque desde la operación CLASIFICACION de la orden en metros."""
@@ -107,6 +118,7 @@ class MrpWorkorder(models.Model):
             orden = wo.production_id
             if not orden._insp_orden_m_en_empaque():
                 continue
+            orden._validar_liberacion_lab()  # 3.20.0
             sin_clasificar = orden.rollo_final_m_ids.filtered(lambda r: r.estado == 'inspeccionado')
             if sin_clasificar:
                 raise UserError(_(
