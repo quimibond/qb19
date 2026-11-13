@@ -12,10 +12,3 @@ class MrpWorkorder(models.Model):
         if not self.es_rama:
             raise UserError(_('Esta operación no es de Rama.'))
         return self.env['mrp.hoja.calidad']._abrir(self.production_id.product_id, 'rama')
-
-    def action_revision_tela_acabada(self):
-        """REVISIÓN TELA ACABADA: laboratorio abre el libro de Inspección del artículo de la orden en metros."""
-        self.ensure_one()
-        if not self.es_clasificacion:
-            raise UserError(_('Esta operación no es de Clasificación final.'))
-        return self.env['mrp.hoja.calidad']._abrir(self.production_id.product_id, 'inspeccion')

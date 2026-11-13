@@ -3,3 +3,10 @@ access_mrp_hoja_calidad_plantilla_user,mrp.hoja.calidad.plantilla user,model_mrp
 access_mrp_hoja_calidad_plantilla_manager,mrp.hoja.calidad.plantilla manager,model_mrp_hoja_calidad_plantilla,mrp.group_mrp_manager,1,1,1,1
 access_mrp_hoja_calidad_user,mrp.hoja.calidad user,model_mrp_hoja_calidad,mrp.group_mrp_user,1,0,0,0
 access_mrp_hoja_calidad_manager,mrp.hoja.calidad manager,model_mrp_hoja_calidad,mrp.group_mrp_manager,1,1,1,1
+access_mrp_hoja_calidad_calidad,mrp.hoja.calidad calidad,model_mrp_hoja_calidad,quality.group_quality_user,1,0,0,0
+access_mrp_hoja_revision_wizard_calidad,mrp.hoja.revision.wizard calidad,model_mrp_hoja_revision_wizard,quality.group_quality_user,1,1,1,1
+access_mrp_hoja_calidad_plantilla_calidad,mrp.hoja.calidad.plantilla calidad,model_mrp_hoja_calidad_plantilla,quality.group_quality_user,1,0,0,0
+access_rollo_liberacion_lab_wizard_calidad,rollo.liberacion.lab.wizard calidad,quimibond_rollos_bitacora.model_rollo_liberacion_lab_wizard,quality.group_quality_user,1,1,1,1
+access_mrp_production_calidad,mrp.production lectura calidad,mrp.model_mrp_production,quality.group_quality_user,1,0,0,0
+access_mrp_workorder_calidad,mrp.workorder lectura calidad,mrp.model_mrp_workorder,quality.group_quality_user,1,0,0,0
+access_mrp_rollo_final_calidad,mrp.rollo.final lectura calidad,quimibond_rollos_bitacora.model_mrp_rollo_final,quality.group_quality_user,1,0,0,0

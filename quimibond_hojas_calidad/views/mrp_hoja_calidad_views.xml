@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="articulo"/>
+                <field name="producto_id" optional="show"/>
                 <field name="tipo"/>
                 <field name="plantilla_id"/>
                 <field name="carpeta_id"/>
@@ -21,6 +22,7 @@
             <form>
                 <sheet>
                     <group>
+                        <field name="producto_id" options="{'no_create': True}"/>
                         <field name="articulo"/>
                         <field name="tipo"/>
                         <field name="plantilla_id"/>

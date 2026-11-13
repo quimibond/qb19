@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- REGISTRO RAMA junto a PESAR ROLLO / PESAR DESPERDICIO; REVISIÓN TELA ACABADA junto a LIBERAR PARA EMPAQUE. -->
+    <!-- REGISTRO RAMA junto a PESAR ROLLO / PESAR DESPERDICIO (Rama sigue en la lista de operaciones). -->
     <record id="mrp_workorder_view_tree_hojas_calidad" model="ir.ui.view">
         <field name="name">mrp.workorder.view.list.hojas.calidad</field>
         <field name="model">mrp.workorder</field>
@@ -10,11 +10,6 @@
                 <button name="action_registro_rama" type="object" string="REGISTRO RAMA"
                         class="btn-info" icon="fa-table"
                         invisible="not es_rama or state not in ('ready', 'progress')"/>
-            </xpath>
-            <xpath expr="//button[@name='action_liberar_empaque']" position="after">
-                <button name="action_revision_tela_acabada" type="object" string="REVISIÓN TELA ACABADA"
-                        class="btn-info" icon="fa-table"
-                        invisible="not es_clasificacion or state in ('done', 'cancel')"/>
             </xpath>
         </field>
     </record>

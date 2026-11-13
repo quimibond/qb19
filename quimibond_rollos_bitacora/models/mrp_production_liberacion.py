@@ -30,6 +30,17 @@ class MrpProduction(models.Model):
             orden.liberacion_lab_pendiente = bool(
                 not orden.liberada_lab and orden._insp_orden_m_en_empaque() and orden._rollos_pq_por_revisar())
 
+    @api.model
+    def _ordenes_clasificacion(self, solo_liberacion_pendiente=False):
+        """Órdenes en metros abiertas con operación de Clasificación final (las que laboratorio revisa y libera). Con
+        ``solo_liberacion_pendiente``, solo las que tienen rollos PQ por revisar sin liberar."""
+        operaciones = self.env['mrp.workorder'].search([
+            ('state', 'not in', ('done', 'cancel')), ('production_id.state', 'not in', ('done', 'cancel'))])
+        ordenes = operaciones.filtered('es_clasificacion').production_id
+        if solo_liberacion_pendiente:
+            ordenes = ordenes.filtered('liberacion_lab_pendiente')
+        return ordenes
+
     def _rollos_pq_por_revisar(self):
         """Rollos finales que Inspección clasificó como PQ y Empaque todavía no clasifica: son los que revisa laboratorio.
         Los que Empaque ya clasificó no cuentan (órdenes en curso al desplegar esta versión)."""

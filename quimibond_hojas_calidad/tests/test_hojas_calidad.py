@@ -62,7 +62,8 @@ class TestHojasCalidad(TransactionCase):
         self.assertEqual(self.env['mrp.hoja.calidad'].search_count([('tipo', '=', 'rama')]), 1)
 
     def test_04_revision_usa_el_libro_de_inspeccion(self):
-        accion = self.wo_clas.action_revision_tela_acabada()
+        wiz = self.env['mrp.hoja.revision.wizard'].create({'production_id': self.orden_m.id})
+        accion = wiz.action_abrir()
         libro = self.env['mrp.hoja.calidad'].search([('tipo', '=', 'inspeccion')])
         self.assertEqual(accion['params']['spreadsheet_id'], libro.documento_id.id)
         self.assertEqual(self.env['mrp.hoja.calidad'].search_count([('tipo', '=', 'rama')]), 0)
@@ -81,8 +82,6 @@ class TestHojasCalidad(TransactionCase):
     def test_06_botones_solo_en_su_operacion(self):
         with self.assertRaises(UserError):
             self.wo_clas.action_registro_rama()
-        with self.assertRaises(UserError):
-            self.wo_rama.action_revision_tela_acabada()
 
     def test_07_cerrar_y_abrir_nuevo(self):
         self.wo_rama.action_registro_rama()
@@ -105,3 +104,26 @@ class TestHojasCalidad(TransactionCase):
                 self.env.ref('base.group_user').id, self.env.ref('mrp.group_mrp_user').id])]})
         accion = self.wo_rama.with_user(user).action_registro_rama()
         self.assertEqual(accion['tag'], 'action_open_spreadsheet')
+
+    def test_09_articulo_desde_el_producto_del_catalogo(self):
+        for prod in (self.prod_m, self.prod_kg):
+            pl = self.env['mrp.hoja.calidad.plantilla'].new({'producto_id': prod.id, 'tipo': 'rama'})
+            pl._compute_articulo()
+            self.assertEqual(pl.articulo, 'WJ038Q22JNT160')
+        nueva = self.env['mrp.hoja.calidad.plantilla'].create({
+            'producto_id': self.prod_otro.id, 'tipo': 'rama', 'plantilla_id': self.blanco_rama.id})
+        self.assertEqual(nueva.articulo, 'XX999')
+
+    def test_10_menu_calidad_ordenes_y_usuario_de_calidad(self):
+        user = self.env['res.users'].create({
+            'name': 'Laboratorista HC', 'login': 'lab_hc', 'group_ids': [Command.set([
+                self.env.ref('base.group_user').id, self.env.ref('quality.group_quality_user').id])]})
+        wiz = self.env['mrp.hoja.revision.wizard'].with_user(user).create({'production_id': self.orden_m.id})
+        # solo ofrece órdenes en metros con CLASIFICACION abierta
+        self.assertIn(self.orden_m, wiz.production_domain_ids)
+        self.assertNotIn(self.orden_kg, wiz.production_domain_ids)
+        self.assertEqual(wiz.producto_id, self.prod_m)
+        accion = wiz.action_abrir()
+        self.assertEqual(accion['tag'], 'action_open_spreadsheet')
+        self.assertTrue(self.env.ref('quimibond_hojas_calidad.menu_liberar_empaque'))
+        self.assertTrue(self.env.ref('quimibond_hojas_calidad.menu_revision_tela_acabada'))

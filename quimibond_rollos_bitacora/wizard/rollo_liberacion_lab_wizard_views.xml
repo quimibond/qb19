@@ -8,16 +8,19 @@
             <form string="Liberar para Empaque">
                 <sheet>
                     <group>
-                        <field name="empleado_numero" password="True" default_focus="1"
-                               readonly="empleado_numero != False" force_save="1"/>
-                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                        <field name="production_domain_ids" invisible="1"/>
+                        <field name="production_id" default_focus="1" readonly="empleado_numero != False"
+                               force_save="1" options="{'no_create': True, 'no_open': True}"
+                               domain="[('id', 'in', production_domain_ids)]"/>
                     </group>
-                    <div invisible="not empleado_numero">
+                    <div invisible="not production_id">
                         <group>
-                            <field name="production_id"/>
-                            <field name="workorder_id" invisible="not workorder_id"/>
+                            <field name="workorder_id" invisible="1"/>
                             <field name="rollos_pq_count"/>
                             <field name="rollos_pq"/>
+                            <field name="empleado_numero" password="True"
+                                   readonly="empleado_numero != False" force_save="1"/>
+                            <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
                         </group>
                         <div class="alert alert-info" role="status">
                             Al liberar confirmas que laboratorio revisó los rollos PQ de esta orden en el libro de

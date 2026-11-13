@@ -19,7 +19,14 @@ class MrpHojaCalidadPlantilla(models.Model):
     _description = 'Plantilla de libro de calidad'
     _order = 'articulo, tipo'
 
-    articulo = fields.Char('Artículo', required=True, help='Código del artículo en metros, p. ej. WJ038Q22JNT160.')
+    producto_id = fields.Many2one(
+        'product.product', 'Producto del catálogo', index=True,
+        domain=[('categ_id.complete_name', '=like', 'Producto Terminado / Tejido Circular / Industrial%')],
+        help='Producto de la categoría Producto Terminado / Tejido Circular / Industrial. Al elegirlo se llena el '
+             'artículo con su código (sin la «I» inicial si es el producto en kg).')
+    articulo = fields.Char(
+        'Artículo', required=True, compute='_compute_articulo', store=True, readonly=False,
+        help='Código del artículo en metros, p. ej. WJ038Q22JNT160. Se toma del producto; también se puede teclear.')
     tipo = fields.Selection(TIPOS, 'Proceso', required=True)
     plantilla_id = fields.Many2one(
         'documents.document', 'Libro en blanco', required=True, domain=[('handler', '=', 'spreadsheet')],
@@ -30,6 +37,11 @@ class MrpHojaCalidadPlantilla(models.Model):
     libro_ids = fields.One2many('mrp.hoja.calidad', 'plantilla_id', 'Libros')
     libros_count = fields.Integer('Libros', compute='_compute_libros_count')
     name = fields.Char(compute='_compute_name')
+
+    @api.depends('producto_id')
+    def _compute_articulo(self):
+        for rec in self.filtered('producto_id'):
+            rec.articulo = codigo_articulo(rec.producto_id).upper()
 
     @api.constrains('articulo', 'tipo')
     def _check_unico(self):
@@ -51,6 +63,8 @@ class MrpHojaCalidadPlantilla(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if not vals.get('articulo') and vals.get('producto_id'):
+                vals['articulo'] = codigo_articulo(self.env['product.product'].browse(vals['producto_id']))
             if vals.get('articulo'):
                 vals['articulo'] = vals['articulo'].strip().upper()
         return super().create(vals_list)

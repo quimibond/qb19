@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Laboratorio de tela acabada dentro de la app Calidad. -->
+    <menuitem id="menu_laboratorio_tela_acabada" name="Laboratorio tela acabada"
+              parent="quality_control.menu_quality_root" sequence="22"
+              groups="quality.group_quality_user"/>
+    <menuitem id="menu_revision_tela_acabada" name="Revisión tela acabada"
+              parent="menu_laboratorio_tela_acabada" action="mrp_hoja_revision_wizard_action" sequence="10"/>
+    <menuitem id="menu_liberar_empaque" name="Liberar para Empaque"
+              parent="menu_laboratorio_tela_acabada" action="rollo_liberacion_lab_menu_action" sequence="20"/>
+</odoo>

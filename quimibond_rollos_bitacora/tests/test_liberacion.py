@@ -134,3 +134,15 @@ class TestLiberacionLab(TransactionCase):
         final.write({'estado': 'clasificado'})
         self.orden_b.invalidate_recordset()
         self.assertFalse(self.orden_b.liberacion_lab_pendiente)
+
+    def test_11_el_wizard_ofrece_solo_ordenes_pendientes_y_toma_la_operacion(self):
+        wiz = self.env['rollo.liberacion.lab.wizard'].create({'production_id': self.orden_b.id, 'empleado_numero': '1'})
+        self.assertNotIn(self.orden_b, wiz.production_domain_ids)  # sin rollos PQ
+        self._final(1, 'PQ')
+        wiz = self.env['rollo.liberacion.lab.wizard'].create({'production_id': self.orden_b.id, 'empleado_numero': '1'})
+        self.assertIn(self.orden_b, wiz.production_domain_ids)
+        self.assertNotIn(self.orden_a, wiz.production_domain_ids)
+        self.assertEqual(wiz.workorder_id, self.workorder)
+        self._liberar()
+        wiz = self.env['rollo.liberacion.lab.wizard'].create({'production_id': self.orden_b.id, 'empleado_numero': '1'})
+        self.assertNotIn(self.orden_b, wiz.production_domain_ids)  # ya liberada
