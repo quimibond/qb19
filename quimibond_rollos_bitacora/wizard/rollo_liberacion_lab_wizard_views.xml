@@ -9,20 +9,21 @@
                 <sheet>
                     <group>
                         <field name="production_domain_ids" invisible="1"/>
-                        <field name="production_id" default_focus="1" readonly="empleado_numero != False"
+                        <field name="production_id" default_focus="1" readonly="empleado_ok"
                                force_save="1" options="{'no_create': True, 'no_open': True}"
                                domain="[('id', 'in', production_domain_ids)]"/>
                     </group>
                     <div invisible="not production_id">
                         <group>
                             <field name="workorder_id" invisible="1"/>
+                            <field name="empleado_ok" invisible="1"/>
                             <field name="empleado_numero" password="True"
-                                   readonly="empleado_numero != False" force_save="1"/>
+                                   readonly="empleado_ok" force_save="1"/>
                             <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
                         </group>
-                        <field name="linea_ids" nolabel="1" readonly="not empleado_numero">
+                        <field name="linea_ids" nolabel="1" readonly="not empleado_ok">
                             <list editable="bottom" create="0" delete="0">
-                                <field name="rollo_id"/>
+                                <field name="rollo_id" force_save="1"/>
                                 <field name="clasificacion_insp"/>
                                 <field name="metros"/>
                                 <field name="clasificacion"/>

@@ -18,6 +18,7 @@ class RolloLiberacionLabWizard(models.TransientModel):
     workorder_id = fields.Many2one('mrp.workorder', 'Operación', compute='_compute_workorder_id', store=False)
     empleado_numero = fields.Char('Número de empleado', required=True)
     empleado_nombre = fields.Char('Laboratorista', compute='_compute_empleado_nombre')
+    empleado_ok = fields.Boolean(compute='_compute_empleado_nombre')
     rollos_pq_count = fields.Integer('Rollos PQ revisados', compute='_compute_rollos_pq')
     rollos_pq = fields.Char('Rollos', compute='_compute_rollos_pq')
     linea_ids = fields.One2many('rollo.liberacion.lab.linea', 'wizard_id', 'Calidad final de los rollos PQ',
@@ -47,11 +48,13 @@ class RolloLiberacionLabWizard(models.TransientModel):
         Empleado = self.env['hr.employee']
         for wiz in self:
             nombre = False
+            emp = Empleado.browse()
             if wiz.empleado_numero:
                 emp = Empleado.sudo()._qb_operador(wiz.empleado_numero)
                 nombre = emp.name if emp else (
                     Empleado._qb_aviso_numero_repetido(wiz.empleado_numero) or _('EMPLEADO NO ENCONTRADO'))
             wiz.empleado_nombre = nombre
+            wiz.empleado_ok = bool(emp)
 
     @api.depends('production_id')
     def _compute_rollos_pq(self):
