@@ -60,12 +60,30 @@ class HrEmployee(models.Model):
         return self.browse()
 
     @api.model
+    def _qb_aviso_numero_repetido(self, numero):
+        """Aviso cuando un número de trabajador solo lo tienen varios empleados activos de distintas nóminas (Junta de
+        Calidad, 2026-11-13: el 20 es Q-20 y C-20, sin S-20). Lista las referencias para que el usuario teclee la suya.
+        Vacío si no aplica."""
+        texto = (numero or '').strip()
+        if not texto.isdigit() or CAMPO_NUMERO not in self._fields or self._qb_operador(texto):
+            return False
+        candidatos = self.sudo().search([(CAMPO_NUMERO, '=', texto)])
+        if len(candidatos) < 2:
+            return False
+        referencias = [e[CAMPO_REFERENCIA] for e in candidatos if CAMPO_REFERENCIA in self._fields and e[CAMPO_REFERENCIA]]
+        return _('Hay %(n)s empleados con el número %(t)s: teclea tu referencia completa%(r)s.',
+                 n=len(candidatos), t=texto, r=' (%s)' % ', '.join(sorted(referencias)) if referencias else '')
+
+    @api.model
     def _qb_operador_requerido(self, numero):
         """3.5.3 (ronda 7 de pruebas en main, 2026-11-05): el empleado del número tecleado, o error. Rama y el desperdicio
         de Rama registraban «EMPLEADO NO ENCONTRADO» con un número que no existe; Inspección ya lo rechazaba. Solo se
         exige donde existe el número de trabajador (la base de Quimibond), como en Inspección."""
         emp = self._qb_operador(numero)
         if not emp and CAMPO_NUMERO in self._fields:
+            aviso = self._qb_aviso_numero_repetido(numero)
+            if aviso:
+                raise UserError(aviso)
             raise UserError(_('No existe el empleado %s. Se busca por la referencia de nómina (S-85); si es de otra '
                               'nómina, teclea la referencia completa (Q-7, C-26).', numero))
         return emp

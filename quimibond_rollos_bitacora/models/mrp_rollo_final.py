@@ -112,6 +112,17 @@ class MrpRolloFinal(models.Model):
     operador_final = fields.Char('Operador de Clasificación final', readonly=True, copy=False)
     siglas_operador_final = fields.Char('Siglas del operador de Empaque', readonly=True, copy=False)
     fecha_final = fields.Datetime('Clasificado en Empaque el', readonly=True, copy=False)
+    # 3.21.0 (Junta de Calidad, 2026-11-13): al liberar la orden, control de calidad registra la calidad final de cada
+    # rollo PQ que revisó. Empaque la ve junto a la de Inspección y arranca con ella (puede cambiarla).
+    clasificacion_lab = fields.Selection(
+        CLASIFICACIONES, 'Calidad final (laboratorio)', readonly=True, copy=False,
+        help='Calidad con la que control de calidad liberó el rollo PQ. Vacía si no pasó por liberación.')
+    defecto_lab_ids = fields.Many2many(
+        'calidad.defecto.tela', 'mrp_rollo_final_defecto_lab_rel', 'final_id', 'defecto_id',
+        'Defectos (laboratorio)', readonly=True, copy=False)
+    motivo_lab = fields.Char('Causa del cambio (laboratorio)', readonly=True, copy=False)
+    operador_lab = fields.Char('Liberó (laboratorio)', readonly=True, copy=False)
+    fecha_lab = fields.Datetime('Liberado por laboratorio el', readonly=True, copy=False)
     reetiquetado = fields.Boolean(
         'Reetiquetado', compute='_compute_valores_registro', store=True,
         help='Empaque cambió la calidad que Inspección había puesto: hay que reimprimir la etiqueta final.')
