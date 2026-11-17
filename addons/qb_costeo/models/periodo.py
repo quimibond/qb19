@@ -337,8 +337,12 @@ class QbPeriodo(models.Model):
             })
 
         # 4. Operación como % de ventas.
-        meses_op = int(self.env['qb.parametro'].get_float(
-            'suavizado_operacion_meses', 12)) or 1
+        P = self.env['qb.parametro']
+        meses_op = int(P.get_float('suavizado_operacion_meses', 12)) or 1
+        if P.get_float('suavizado_operacion_anio', 1.0):
+            # 1.13.0: solo los meses del año del período (el cierre del año
+            # anterior no pesa sobre los márgenes de este).
+            meses_op = min(meses_op, self.period.month)
         suav = self._suavizado(meses_op)
         ventas = sum(v for (b, _c), v in suav.items() if b == 'ventas')
         operacion = sum(v for (b, _c), v in suav.items() if b == 'operacion')
@@ -658,6 +662,7 @@ class QbTarifa(models.Model):
         ('mixta', 'Órdenes de trabajo + estándar de las órdenes sin ellas'),
         ('producto', 'Horas del producto × producido'),
         ('unidad', 'Unidades producidas en el mes'),
+        ('estimada', 'Producción × horas por unidad medidas después'),
         ('ninguna', 'Sin datos')], readonly=True)
     utilizacion_pct = fields.Float(compute='_compute_utilizacion',
                                    digits=(6, 1))

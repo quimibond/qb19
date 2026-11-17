@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """1.12.0: absorción por unidad producida (kg o m del departamento)."""
-from datetime import date
+from datetime import date, datetime
 
 from odoo.exceptions import ValidationError
 from odoo.tests import tagged
@@ -122,3 +122,48 @@ class TestAbsorcionUnidad(CosteoCase):
         self.producir(300, '2026-10-02 10:00:00')   # fuera de septiembre
         self.assertAlmostEqual(self.c_aca.produccion_unidades(
             date(2026, 9, 1), date(2026, 10, 1)), 700.0, 2)
+
+    def test_horas_estimadas_antes_de_la_fecha(self):
+        """1.13.0: un centro por horas con «Horas reales desde» estima las
+        horas de los meses anteriores con lo producido × las horas por
+        unidad medidas desde la fecha, sin leer sus órdenes de trabajo."""
+        from dateutil.relativedelta import relativedelta
+        from odoo import fields
+        mes = fields.Date.context_today(self.c_tin).replace(day=1)
+        desde = mes - relativedelta(months=1)       # mes pasado: horas reales
+        antes = mes - relativedelta(months=2)       # mes sin horas reales
+        self.c_tin.write({'unidad_tipo_ids': [(6, 0, [self.tipo_aca.id])],
+                          'horas_desde': desde})
+        self.producir(500, '%s 10:00:00' % (desde + relativedelta(days=4)))
+        self.workorder_done(self.wc_tin, 50, fecha=datetime.combine(
+            desde + relativedelta(days=5), datetime.min.time()))
+        self.producir(1000, '%s 10:00:00' % (antes + relativedelta(days=4)))
+        # Una orden de trabajo «teórica» del mes viejo no debe contar.
+        self.workorder_done(self.wc_tin, 999, fecha=datetime.combine(
+            antes + relativedelta(days=5), datetime.min.time()))
+        self.env.flush_all()
+        self.assertAlmostEqual(self.c_tin._horas_por_unidad_medidas(), 0.1, 4)
+        horas, fuente = self.c_tin.horas_reales(antes, desde)
+        self.assertEqual(fuente, 'estimada')
+        self.assertAlmostEqual(horas, 100.0, 2)
+        horas, fuente = self.c_tin.horas_reales(desde, mes)
+        self.assertNotEqual(fuente, 'estimada')
+        self.assertAlmostEqual(horas, 50.0, 2)
+
+    def test_horas_desde_exige_tipos(self):
+        with self.assertRaises(ValidationError):
+            self.c_tin.write({'horas_desde': date(2026, 5, 1)})
+
+    def test_operacion_del_anio(self):
+        """1.13.0: el % de operación promedia desde enero del año del
+        período; el gasto del año anterior no entra."""
+        P = self.env['qb.parametro']
+        P.set_float('suavizado_operacion_meses', 12)
+        self.venta(100000)                                   # sep-2026
+        self.gasto(self.acc_admin, 10000)                    # sep-2026
+        self.gasto(self.acc_admin, 500000, fecha=date(2025, 12, 15))
+        self.periodo.action_calcular()
+        self.assertAlmostEqual(self.periodo.op_pct, 0.10, 4)
+        P.set_float('suavizado_operacion_anio', 0)
+        self.periodo.action_calcular()
+        self.assertAlmostEqual(self.periodo.op_pct, 5.10, 4)
