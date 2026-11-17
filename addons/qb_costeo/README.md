@@ -197,6 +197,31 @@ Cuando Tintorería, Rama, Acabado e Inspección tengan tarifa publicada en sus
 centros de trabajo, Odoo absorbe la conversión en cada orden y la capa tiende
 a cero.
 
+## Absorción por unidad producida (1.12.0)
+
+Los centros de trabajo solo se usan de verdad en Tejido. En los demás
+departamentos, repartir por horas estándar deja gasto fuera del producto, y
+donde no hay horas (Entretelas, Inspección) lo manda todo a ociosidad. Cada
+centro directo escoge «Cómo absorbe el gasto»:
+
+```
+por horas    tarifa = pool ÷ horas            (Tejido: horas reales)
+por unidad   tarifa = pool ÷ kg o m producidos (Tintorería, Acabado, Entretelas, Inspección)
+```
+
+- **Producción del centro**: lo terminado en las órdenes de fabricación de sus
+  «Tipos de operación que produce» (todos en la misma unidad). Inspección no
+  tiene órdenes propias: usa los tipos de Acabado.
+- **Capacidad normal**: promedio mensual de producción de los últimos
+  `absorcion_unidad_meses` (12). Tarifa fija = gasto promedio ÷ producción
+  promedio; un mes flojo deja ociosidad, uno bueno absorbe todo.
+- **Por producto**: el que sale de esos tipos carga 1 unidad; lo demás la
+  hereda por receta (los kg teñidos que lleva un metro de tela, los metros
+  acabados que lleva una entretela).
+- **Reparto del gasto común**: con centros por unidad, lo que no trae centro y
+  los indirectos con llave «horas» se reparten por nómina directa.
+- La tarifa por unidad no se publica como costo por hora.
+
 ## Configuración mínima
 
 1. **Centros** (Manufactura → Costos → Configuración): código, naturaleza,

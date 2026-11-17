@@ -3,6 +3,35 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.12.0 — 2026-11-17
+
+**Agregado**
+- **Absorción por unidad producida** (Dirección General, recosteo de
+  noviembre 2026). Los centros de trabajo solo se usan de verdad en Tejido;
+  en Tintorería, Acabado, Entretelas e Inspección las horas son estándar o
+  no existen, y el módulo dejaba fuera del producto 2.6 M de conversión en
+  sep–oct 2026 (Entretelas e Inspección mandaban todo su gasto a ociosidad).
+  Cada centro directo dice ahora «Cómo absorbe el gasto»:
+  - *Por horas* (como siempre; Tejido).
+  - *Por unidad producida*: el gasto del centro entre lo que produjeron las
+    órdenes de fabricación de sus «Tipos de operación que produce». La tarifa
+    queda en $ por kg o por m; cada producto hecho en esos tipos carga 1
+    unidad (fuente «Unidad producida en el centro», calidad alta) y lo que se
+    fabrica con él la hereda por receta.
+- **Capacidad normal = promedio de producción.** En un centro por unidad, la
+  capacidad normal es el promedio mensual de lo producido en los últimos
+  meses (parámetro `absorcion_unidad_meses`, 12), no el calendario: la tarifa
+  fija es gasto promedio ÷ producción promedio, y lo que un mes flojo no
+  absorbe queda como ociosidad del mes.
+
+**Cambiado**
+- Con al menos un centro por unidad, el gasto sin centro y el de los centros
+  indirectos con llave «horas» se reparten por **nómina directa**: las horas
+  normales de unos centros y los kg o m de otros no son comparables.
+- Un centro por unidad no publica tarifa a Odoo (es $ por unidad, no por
+  hora), no entra a la conciliación de mano de obra y no presta su tarifa
+  fija a centros dependientes (su gasto ya lo absorben sus unidades).
+
 ## 19.0.1.11.1 — 2026-11-11
 
 **Corregido**
