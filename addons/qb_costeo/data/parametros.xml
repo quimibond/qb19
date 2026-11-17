@@ -91,6 +91,13 @@
         <field name="value_float">12</field>
         <field name="help">Centros que absorben por unidad producida: su capacidad normal es el promedio mensual de lo que produjeron en estos meses (hasta el fin del período). Lo que un mes flojo no alcanza a absorber queda como ociosidad del mes.</field>
     </record>
+    <record id="param_suavizado_operacion_anio" model="qb.parametro">
+        <field name="key">suavizado_operacion_anio</field>
+        <field name="name">Operación y ventas: solo meses del año en curso (1 = sí)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">1</field>
+        <field name="help">Con 1, el % de operación de un período promedia desde enero de su año (hasta los meses de suavizado), no los meses del año anterior. Con 0, la ventana completa hacia atrás.</field>
+    </record>
     <record id="param_receta_ventana_dias" model="qb.parametro">
         <field name="key">receta_ventana_dias</field>
         <field name="name">Días para elegir la receta vigente</field>

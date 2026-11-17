@@ -197,6 +197,16 @@ Cuando Tintorería, Rama, Acabado e Inspección tengan tarifa publicada en sus
 centros de trabajo, Odoo absorbe la conversión en cada orden y la capa tiende
 a cero.
 
+## Horas reales desde y operación del año (1.13.0)
+
+- **Horas reales desde** (ficha del centro, solo centros por horas): las
+  órdenes de trabajo de Tejido traen tiempo capturado desde mayo de 2026; antes
+  se cerraban con el tiempo teórico. Con la fecha puesta y los «Tipos de
+  operación que produce», las horas de un mes anterior son lo producido × las
+  horas por unidad medidas desde la fecha.
+- **% de operación del año**: `suavizado_operacion_anio` = 1 promedia
+  administración y ventas ÷ ventas desde enero del año del período.
+
 ## Absorción por unidad producida (1.12.0)
 
 Los centros de trabajo solo se usan de verdad en Tejido. En los demás

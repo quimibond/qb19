@@ -3,6 +3,24 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.13.0 — 2026-11-17
+
+**Agregado**
+- **«Horas reales desde»** en los centros por horas (Dirección General,
+  recosteo enero–octubre 2026). Las órdenes de trabajo de Tejido solo traen
+  tiempo capturado desde mayo de 2026; antes se cerraban solas con el tiempo
+  teórico (duración = esperada) y el módulo veía 1,863 h en enero y 17,998 h
+  en marzo para ~110 t al mes. Los meses anteriores a la fecha no usan sus
+  órdenes de trabajo: horas = lo producido en «Tipos de operación que
+  produce» × las horas por unidad medidas desde la fecha (fuente «Producción
+  × horas por unidad medidas después»).
+
+**Cambiado**
+- **% de operación con los meses del año del período** (parámetro
+  `suavizado_operacion_anio`, 1 por defecto). El promedio de 12 meses metía
+  el cierre del año anterior: 16–19 % de la venta en 2026 contra ~14 % real.
+  Con 0, la ventana completa como antes.
+
 ## 19.0.1.12.0 — 2026-11-17
 
 **Agregado**

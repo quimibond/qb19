@@ -32,7 +32,8 @@
                             <field name="publica_tarifa" invisible="nature != 'directo'"/>
                             <field name="tarifa_de_id" invisible="nature != 'directo'" options="{'no_create': True}"/>
                             <field name="absorcion" invisible="nature != 'directo'"/>
-                            <field name="unidad_tipo_ids" widget="many2many_tags" invisible="absorcion != 'unidad'" required="absorcion == 'unidad'" options="{'no_create': True}"/>
+                            <field name="horas_desde" invisible="nature != 'directo' or absorcion != 'horas'"/>
+                            <field name="unidad_tipo_ids" widget="many2many_tags" invisible="absorcion != 'unidad' and not horas_desde" required="absorcion == 'unidad' or horas_desde" options="{'no_create': True}"/>
                             <field name="active"/>
                         </group>
                         <group string="Capacidad">

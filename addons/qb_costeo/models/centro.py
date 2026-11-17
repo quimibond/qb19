@@ -91,6 +91,14 @@ class QbCentro(models.Model):
              'receta a lo que se fabrica con él. La capacidad normal es el '
              'promedio mensual de producción de los últimos meses '
              '(parámetro «absorcion_unidad_meses»), no el calendario.')
+    horas_desde = fields.Date(
+        string='Horas reales desde',
+        help='1.13.0: centros por horas cuyas órdenes de trabajo solo traen '
+             'tiempo capturado desde esta fecha (Tejido: mayo de 2026; antes '
+             'se cerraban solas con el tiempo teórico). Los meses anteriores '
+             'no usan sus órdenes de trabajo: sus horas se estiman con lo '
+             'producido en «Tipos de operación que produce» × las horas por '
+             'unidad medidas desde esta fecha.')
     unidad_tipo_ids = fields.Many2many(
         'stock.picking.type', 'qb_costeo_centro_tipo_rel', 'centro_id',
         'tipo_id', string='Tipos de operación que produce',
@@ -150,9 +158,16 @@ class QbCentro(models.Model):
         return self.sudo().search([('nature', '=', 'directo')]).company_id
 
     @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo',
-                    'tarifa_de_id', 'absorcion', 'unidad_tipo_ids')
+                    'tarifa_de_id', 'absorcion', 'unidad_tipo_ids',
+                    'horas_desde')
     def _check_consistencia(self):
         for rec in self:
+            if (rec.horas_desde and rec.absorcion == 'horas'
+                    and not rec.unidad_tipo_ids):
+                raise ValidationError(
+                    'El centro %s tiene «Horas reales desde»: diga qué tipos '
+                    'de operación son su producción, para estimar las horas '
+                    'de los meses anteriores.' % rec.code)
             if rec.absorcion == 'unidad':
                 if rec.nature != 'directo' or rec.tarifa_de_id:
                     raise ValidationError(
@@ -250,6 +265,12 @@ class QbCentro(models.Model):
         wcs = self.workcenter_ids.ids
         if not wcs:
             return 0.0, 'ninguna'
+        if (self.horas_desde and self.unidad_tipo_ids
+                and fields.Date.to_date(date_to) <= self.horas_desde):
+            # 1.13.0: mes anterior a las horas capturadas.
+            horas = (self.produccion_unidades(date_from, date_to)
+                     * self._horas_por_unidad_medidas())
+            return horas, ('estimada' if horas else 'ninguna')
         self.env.flush_all()
         self.env.cr.execute("""
             SELECT COALESCE(SUM(wo.duration), 0) / 60.0
@@ -303,6 +324,23 @@ class QbCentro(models.Model):
         else:
             fuente = 'operacion' if h_std else 'producto'
         return total, fuente
+
+    def _horas_por_unidad_medidas(self):
+        """1.13.0: horas por unidad producida del centro, medidas desde
+        «Horas reales desde» (hasta `horas_historia_meses` meses completos,
+        sin pasar del mes en curso)."""
+        self.ensure_one()
+        n = int(self.env['qb.parametro'].get_float(
+            'horas_historia_meses', 12)) or 12
+        desde = self.horas_desde
+        hasta = min(desde + relativedelta(months=n),
+                    fields.Date.context_today(self).replace(day=1))
+        if hasta <= desde:
+            return 0.0
+        unidades = self.produccion_unidades(desde, hasta)
+        if not unidades:
+            return 0.0
+        return self.horas_reales(desde, hasta)[0] / unidades
 
     def produccion_unidades(self, date_from, date_to):
         """1.12.0, absorción por unidad: lo que el centro produjo en la
