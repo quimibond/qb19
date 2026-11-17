@@ -63,9 +63,13 @@ class QbPeriodo(models.Model):
         help='Parte de las ventas del mes cuyo costo salió de horas medidas '
              'o estándar, sin validaciones abiertas. Es el indicador CO-04.')
     costos_n = fields.Integer(string='Productos costeados', readonly=True)
-    # 1.11.0: capa de absorción (conversión que le falta al inventario).
+    # 1.11.0: capa de absorción (conversión que le falta al inventario);
+    # 1.11.1: en neto por categoría.
     capa_ids = fields.One2many('qb.capa.absorcion', 'periodo_id',
                                string='Capa de absorción')
+    capa_categoria_ids = fields.One2many(
+        'qb.capa.absorcion.categoria', 'periodo_id',
+        string='Capa por categoría')
     capa_calculada_el = fields.Datetime(
         string='Capa calculada el', readonly=True)
     capa_valor_odoo = fields.Float(
@@ -73,19 +77,18 @@ class QbPeriodo(models.Model):
         help='Valor en Odoo, al último día del período, de los productos que '
              'entran a la capa (parámetro capa_categorias).')
     capa_valor_completo = fields.Float(
-        string='Inventario a costo completo', readonly=True, digits=(16, 2),
-        help='Lo mismo, a costo de producción del módulo, de los productos '
-             'que tienen costo.')
+        string='Inventario medido a costo completo', readonly=True,
+        digits=(16, 2),
+        help='Lo que el módulo puede medir, a costo vendible del módulo.')
     capa_total = fields.Float(
         string='Conversión a capitalizar', readonly=True, digits=(16, 2),
         help='Saldo que debe tener la cuenta de conversión capitalizada al '
-             'cierre del período: por producto, la diferencia contra Odoo '
-             'acotada entre 0 y la conversión del módulo.')
+             'cierre del período: por categoría, la diferencia neta contra '
+             'Odoo acotada entre 0 y la conversión del módulo.')
     capa_sin_costo_valor = fields.Float(
-        string='Inventario sin costo del módulo', readonly=True,
-        digits=(16, 2),
-        help='Valor en Odoo de lo que no se pudo medir porque el módulo no '
-             'le calcula costo. Si es grande, la capa se queda corta.')
+        string='Inventario sin medir', readonly=True, digits=(16, 2),
+        help='Valor en Odoo de lo que el módulo no puede medir (sin costo o '
+             'sin fabricación). Si es grande, la capa se queda corta.')
 
     suavizado_fijo_meses = fields.Integer(
         default=lambda self: int(self.env['qb.parametro'].get_float(
@@ -223,6 +226,11 @@ class QbPeriodo(models.Model):
             hr, hr_fuente = c.horas_reales(self.date_from, self.date_to)
             horas_dep[c.id] = (hn, hn_fuente, hr, hr_fuente)
         directos -= dependientes
+        # 1.12.0: un centro que absorbe por unidad producida cobra por kg o
+        # por m; las horas de sus dependientes no le suman capacidad ni
+        # absorben su gasto, y con centros en unidades distintas las horas
+        # normales ya no sirven de llave de reparto: se usa la nómina directa.
+        por_unidad = {c.id for c in directos if c.absorcion == 'unidad'}
 
         # Horas y nómina por centro directo (llaves de reparto).
         datos = {}
@@ -244,8 +252,9 @@ class QbPeriodo(models.Model):
             for cid, p in pesos.items():
                 datos[cid][destino] += monto * p / total
 
+        llave_horas = 'nomina' if por_unidad else 'horas_normales'
         llave_default = {
-            'horas': 'horas_normales', 'nomina': 'nomina',
+            'horas': llave_horas, 'nomina': 'nomina',
             'partes_iguales': 'partes_iguales'}
         # 1. Gasto con centro. Fijo y nómina vienen suavizados; la energía,
         #    del mes real. Lo que trae centro directo va directo; lo que trae
@@ -267,11 +276,11 @@ class QbPeriodo(models.Model):
                 elif bucket == 'nomina':
                     repartir(monto, 'nomina', 'fijo')
                 else:
-                    repartir(monto, 'horas_normales', destino)
+                    repartir(monto, llave_horas, destino)
         # 2. Indirectos → directos con la llave de cada centro.
         for cid, monto in pools_indirectos.items():
             centro = Centro.browse(cid)
-            repartir(monto, llave_default.get(centro.reparto_llave, 'horas_normales'),
+            repartir(monto, llave_default.get(centro.reparto_llave, llave_horas),
                      'indirecto')
 
         # 3. Tarifas.
@@ -287,11 +296,13 @@ class QbPeriodo(models.Model):
             # El gasto fijo es de todas sus máquinas: con calendario, la
             # capacidad normal suma la de sus dependientes (la capturada ya
             # es la del grupo).
+            deps = [h for cid, h in horas_dep.items()
+                    if padre_de[cid] == c.id and c.id not in por_unidad]
             if d['horas_fuente'] == 'calendario':
-                hn += sum(h[0] for cid, h in horas_dep.items() if padre_de[cid] == c.id)
+                hn += sum(h[0] for h in deps)
             # Lo que trabajan sus centros dependientes absorbe la misma tarifa
             # fija: cuenta para la capacidad superada y no es ociosidad.
-            hr_abs = hr + sum(h[2] for cid, h in horas_dep.items() if padre_de[cid] == c.id)
+            hr_abs = hr + sum(h[2] for h in deps)
             superada = bool(hn) and hr_abs > hn
             if superada:
                 hn = hr_abs
@@ -319,7 +330,8 @@ class QbPeriodo(models.Model):
                 'pool_fijo': 0.0, 'pool_variable': 0.0, 'nomina_llave': 0.0,
                 'horas_normales': hn, 'horas_fuente': hn_fuente,
                 'horas_reales': hr, 'horas_reales_fuente': hr_fuente,
-                'tarifa_fija': tarifa_fija_de.get(padre_de[c.id], 0.0),
+                'tarifa_fija': (0.0 if padre_de[c.id] in por_unidad
+                                else tarifa_fija_de.get(padre_de[c.id], 0.0)),
                 'tarifa_variable': 0.0, 'ociosidad': 0.0,
                 'capacidad_superada': False,
             })
@@ -366,14 +378,16 @@ class QbPeriodo(models.Model):
                 raise UserError(
                     'Calcule primero los costos del período %s.' % rec.period)
             filas = self.env['qb.capa.absorcion'].calcular_periodo(rec)
-            con_costo = filas.filtered(lambda f: f.estado != 'sin_costo')
+            medidas = filas.filtered(
+                lambda f: f.estado in ('falta', 'cubierto'))
             rec.write({
                 'capa_calculada_el': fields.Datetime.now(),
                 'capa_valor_odoo': sum(filas.mapped('valor_odoo')),
-                'capa_valor_completo': sum(con_costo.mapped('valor_completo')),
-                'capa_total': sum(filas.mapped('capitalizable')),
+                'capa_valor_completo': sum(medidas.mapped('valor_completo')),
+                'capa_total': sum(self.env['qb.capa.absorcion.categoria'].search(
+                    [('periodo_id', '=', rec.id)]).mapped('capitalizable')),
                 'capa_sin_costo_valor': sum(
-                    (filas - con_costo).mapped('valor_odoo')),
+                    (filas - medidas).mapped('valor_odoo')),
             })
         return True
 
@@ -383,6 +397,13 @@ class QbPeriodo(models.Model):
             'qb_costeo.action_qb_capa_absorcion')
         action['domain'] = [('periodo_id', '=', self.id)]
         action['context'] = {'search_default_group_categ': 1}
+        return action
+
+    def action_ver_capa_categoria(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'qb_costeo.action_qb_capa_absorcion_categoria')
+        action['domain'] = [('periodo_id', '=', self.id)]
         return action
 
     def _calcular_costos(self, refrescar=True):
@@ -483,6 +504,7 @@ class QbPeriodo(models.Model):
             JOIN qb_costeo_centro_workcenter_rel rel ON rel.workcenter_id = wo.workcenter_id
             JOIN qb_centro c ON c.id = rel.centro_id
             WHERE wo.state = 'done' AND c.nature = 'directo' AND c.company_id = %s
+              AND c.absorcion != 'unidad'
               AND wo.date_finished >= %s AND wo.date_finished < %s
             ORDER BY wo.id, c.id
         """, (self.company_id.id, self.date_from, self.date_to))
@@ -555,7 +577,8 @@ class QbPeriodo(models.Model):
         self.ensure_one()
         lineas = []
         for t in self.tarifa_ids.filtered(
-                lambda t: t.centro_id.publica_tarifa):
+                lambda t: t.centro_id.publica_tarifa
+                and t.centro_id.absorcion != 'unidad'):
             for wc in t.centro_id.workcenter_ids:
                 antes = wc.costs_hour
                 wc.costs_hour = round(t.tarifa, 2)
@@ -625,13 +648,16 @@ class QbTarifa(models.Model):
     horas_normales = fields.Float(digits=(16, 2))
     horas_fuente = fields.Selection([
         ('calendario', 'Calendario de Odoo × eficiencia'),
-        ('capturada', 'Capturada en el centro')], readonly=True)
+        ('capturada', 'Capturada en el centro'),
+        ('promedio', 'Promedio mensual de producción (unidades)')],
+        readonly=True)
     horas_reales = fields.Float(digits=(16, 2))
     horas_reales_fuente = fields.Selection([
         ('workorder', 'Órdenes de trabajo'),
         ('operacion', 'Estándar de la receta × producido'),
         ('mixta', 'Órdenes de trabajo + estándar de las órdenes sin ellas'),
         ('producto', 'Horas del producto × producido'),
+        ('unidad', 'Unidades producidas en el mes'),
         ('ninguna', 'Sin datos')], readonly=True)
     utilizacion_pct = fields.Float(compute='_compute_utilizacion',
                                    digits=(6, 1))

@@ -84,6 +84,13 @@
         <field name="value_float">12</field>
         <field name="help">Ventana de órdenes de trabajo que se promedian para las horas por unidad de un producto, y para los promedios por galga y por centro.</field>
     </record>
+    <record id="param_absorcion_unidad_meses" model="qb.parametro">
+        <field name="key">absorcion_unidad_meses</field>
+        <field name="name">Meses para la producción normal (absorción por unidad)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">Centros que absorben por unidad producida: su capacidad normal es el promedio mensual de lo que produjeron en estos meses (hasta el fin del período). Lo que un mes flojo no alcanza a absorber queda como ociosidad del mes.</field>
+    </record>
     <record id="param_receta_ventana_dias" model="qb.parametro">
         <field name="key">receta_ventana_dias</field>
         <field name="name">Días para elegir la receta vigente</field>
