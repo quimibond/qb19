@@ -4,6 +4,8 @@
     <menuitem id="menu_laboratorio_tela_acabada" name="Laboratorio tela acabada"
               parent="quality_control.menu_quality_root" sequence="22"
               groups="quality.group_quality_user"/>
+    <menuitem id="menu_registro_rama" name="Registro Rama"
+              parent="menu_laboratorio_tela_acabada" action="mrp_hoja_rama_wizard_action" sequence="5"/>
     <menuitem id="menu_revision_tela_acabada" name="Revisión tela acabada"
               parent="menu_laboratorio_tela_acabada" action="mrp_hoja_revision_wizard_action" sequence="10"/>
     <menuitem id="menu_liberar_empaque" name="Liberar para Empaque"

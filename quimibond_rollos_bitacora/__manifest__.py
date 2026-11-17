@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.20.1',
+    'version': '19.0.3.21.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -50,6 +50,9 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   CLASIFICAR no abre y la orden no cierra. Sin rollos PQ no hay liberación.
 * 3.20.1 (José, 2026-11-12): el botón LIBERAR PARA EMPAQUE sale de la lista de operaciones; el wizard pide la orden y se
   abre desde el menú de Calidad (quimibond_hojas_calidad). La lista solo muestra «Pend. liberación lab».
+* 3.21.0 (Junta de Calidad, 2026-11-13): al liberar, control de calidad registra la calidad final de cada rollo PQ (PQ, FE
+  o Segunda; FE y Segunda piden defectos y causa del cambio). Empaque ve la calidad de Inspección y la de laboratorio y
+  arranca con la de laboratorio; puede cambiarla antes de confirmar.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
