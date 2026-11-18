@@ -31,14 +31,17 @@ class MrpProduction(models.Model):
                 not orden.liberada_lab and orden._insp_orden_m_en_empaque() and orden._rollos_pq_por_revisar())
 
     @api.model
-    def _ordenes_clasificacion(self, solo_liberacion_pendiente=False):
-        """Órdenes en metros abiertas con operación de Clasificación final (las que laboratorio revisa y libera). Con
-        ``solo_liberacion_pendiente``, solo las que tienen rollos PQ por revisar sin liberar."""
+    def _ordenes_clasificacion(self, solo_liberacion_pendiente=False, solo_no_liberadas=False):
+        """Órdenes en metros abiertas con operación de Clasificación final (las que laboratorio revisa y libera).
+        ``solo_liberacion_pendiente``: solo las que tienen rollos PQ por revisar sin liberar (Liberar para Empaque).
+        ``solo_no_liberadas``: las que laboratorio aún no libera (Revisión tela acabada, Junta de Calidad 2026-11-13)."""
         operaciones = self.env['mrp.workorder'].search([
             ('state', 'not in', ('done', 'cancel')), ('production_id.state', 'not in', ('done', 'cancel'))])
         ordenes = operaciones.filtered('es_clasificacion').production_id
         if solo_liberacion_pendiente:
             ordenes = ordenes.filtered('liberacion_lab_pendiente')
+        if solo_no_liberadas:
+            ordenes = ordenes.filtered(lambda o: not o.liberada_lab)
         return ordenes
 
     def _rollos_pq_por_revisar(self):
