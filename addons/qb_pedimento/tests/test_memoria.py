@@ -4,7 +4,6 @@
 y que no se repitan ni pisen archivos."""
 from unittest.mock import patch
 
-from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from .common import PedimentoCommon
@@ -55,45 +54,36 @@ class TestMemoria(PedimentoCommon):
         return patch.multiple(Ped, _memoria_get=lambda s, t, p: self._get(t, p),
                               _memoria_descargar=lambda s, sp: self._descargar(sp))
 
-    def test_un_expediente_abre_la_carga_clasificada(self):
+    def test_guarda_clasificado_y_sin_repetidos(self):
         ped = self._pedimento(numero='26 16 3774 6001184', fecha_pago='2026-11-13')
         with self._patch():
-            action = ped.action_traer_memoria()
-        carga = self.env['qb.pedimento.carga'].browse(action['res_id'])
-        self.assertEqual(sorted(carga.linea_ids.mapped('nombre')),
-                         ['37741606001184NORMAL_PAGADO.PDF', 'Doda6001184.PDF'])
-        linea = carga.linea_ids.filtered(lambda l: l.nombre.startswith('3774'))
-        self.assertIn(self.env.ref('qb_pedimento.doc_pedimento'), linea.tipo_ids)
-        self.assertTrue(ped.memoria_fecha)
-        # La búsqueda va por el consecutivo y dentro de la ventana de fechas.
-        tsv = [p for t, p in self.consultas if 'texto_tsv' in p][0]
-        self.assertEqual(tsv['texto_tsv'], 'fts(simple).6001184')
-
-    def test_varios_guardan_solos_y_no_repiten(self):
-        ped = self._pedimento(numero='26 16 3774 6001184', fecha_pago='2026-11-13')
-        otro = self._pedimento(numero='26 16 3774 6001154', fecha_pago='2026-10-31')
-        with self._patch():
-            (ped | otro).action_traer_memoria()
+            self.assertEqual(ped._memoria_guardar_solo(), 2)
+        adjuntos = self.env['ir.attachment'].search([('res_model', '=', 'qb.pedimento'), ('res_id', '=', ped.id)])
+        self.assertEqual(sorted(adjuntos.mapped('name')), ['37741606001184NORMAL_PAGADO.PDF', 'Doda6001184.PDF'])
         doc = ped.documento_ids.filtered(lambda d: d.tipo_id == self.env.ref('qb_pedimento.doc_pedimento'))
         self.assertTrue(doc.cumplido)
-        # En «otro» los nombres traen el pedimento 6001184: se dejan fuera.
+        self.assertTrue(ped.memoria_fecha)
+        # La búsqueda va por el consecutivo.
+        tsv = [p for t, p in self.consultas if 'texto_tsv' in p][0]
+        self.assertEqual(tsv['texto_tsv'], 'fts(simple).6001184')
+        # Otra vuelta no duplica lo que ya está.
+        with self._patch():
+            self.assertEqual(ped._memoria_guardar_solo(), 0)
+        self.assertEqual(len(adjuntos), self.env['ir.attachment'].search_count(
+            [('res_model', '=', 'qb.pedimento'), ('res_id', '=', ped.id)]))
+
+    def test_deja_fuera_los_de_otro_pedimento(self):
+        otro = self._pedimento(numero='26 16 3774 6001154', fecha_pago='2026-10-31')
+        with self._patch():
+            self.assertEqual(otro._memoria_guardar_solo(), 0)
         self.assertFalse(self.env['ir.attachment'].search([('res_model', '=', 'qb.pedimento'),
                                                            ('res_id', '=', otro.id)]))
-        # Otra vuelta no duplica lo que ya está.
-        antes = self.env['ir.attachment'].search_count([('res_model', '=', 'qb.pedimento'), ('res_id', '=', ped.id)])
-        with self._patch(), self.assertRaisesRegex(UserError, 'no tiene archivos nuevos'):
-            ped.action_traer_memoria()
-        despues = self.env['ir.attachment'].search_count([('res_model', '=', 'qb.pedimento'), ('res_id', '=', ped.id)])
-        self.assertEqual(antes, despues)
 
     def test_cron_marca_la_busqueda(self):
         ped = self._pedimento(numero='26 16 3774 6001184', fecha_pago='2026-11-13')
+        sin_numero = self._pedimento()
         with self._patch():
             self.env['qb.pedimento']._cron_traer_memoria()
         self.assertTrue(ped.memoria_fecha)
+        self.assertFalse(sin_numero.memoria_fecha)
         self.assertTrue(self.env['ir.attachment'].search([('res_model', '=', 'qb.pedimento'), ('res_id', '=', ped.id)]))
-
-    def test_sin_numero(self):
-        ped = self._pedimento()
-        with self._patch(), self.assertRaisesRegex(UserError, 'número de pedimento'):
-            ped.action_traer_memoria()

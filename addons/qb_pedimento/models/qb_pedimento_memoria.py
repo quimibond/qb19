@@ -6,9 +6,10 @@ demás documentos por correo a Logística, Contabilidad y CxC. La memoria ya
 guarda cada adjunto en Storage (bucket ``email-attachments``) con su texto.
 Aquí se buscan los correos del pedimento (el consecutivo en el asunto o en
 el texto de un adjunto, cerca de sus fechas), se bajan sus adjuntos
-y se pasan por el mismo asistente de «Cargar expediente»: un expediente a la
-vez se revisa antes de guardar; varios a la vez se guardan solos, sin pisar
-nada y dejando fuera los archivos que nombran otro pedimento.
+y se pasan por el mismo asistente de «Cargar expediente», que los clasifica y
+guarda solos, sin pisar nada y dejando fuera los archivos que nombran otro
+pedimento. Lo hace la tarea programada; no hay botón (decisión de Dirección,
+2026-11-18).
 
 La URL y la llave de servicio son las de quimibond_intelligence
 (``ir.config_parameter``); el módulo no depende de él.
@@ -39,10 +40,9 @@ RUIDO = re.compile(r'^(image\d*|outlook-|logo|~)|\.(eml|ics|vcf|htm|html)$', re.
 IMAGEN = re.compile(r'\.(png|jpe?g|gif|bmp)$', re.I)
 
 
-# Expedientes por corrida del cron y por selección en la lista: cada uno son
-# cuatro consultas y varias descargas, y la petición web tiene tiempo límite.
+# Expedientes por corrida del cron: cada uno son cuatro consultas y varias
+# descargas, y la corrida tiene tiempo límite.
 LOTE_CRON = 10
-LOTE_LISTA = 20
 # Un expediente abierto se vuelve a buscar cada semana (llegan papeles tarde).
 DIAS_REVISAR = 7
 
@@ -174,23 +174,6 @@ class QbPedimentoMemoria(models.Model):
         guardados = len(carga.linea_ids.filtered(lambda linea: not linea.omitir))
         carga.action_guardar()
         return guardados
-
-    def action_traer_memoria(self):
-        """Uno: abre la carga ya clasificada para revisarla. Varios: guarda solo."""
-        if len(self) == 1:
-            carga = self._memoria_preparar_carga()
-            self.memoria_fecha = fields.Datetime.now()
-            if not carga:
-                raise UserError(_('La memoria de correo no tiene archivos nuevos del pedimento %s.', self.name))
-            return carga._reabrir()
-        if len(self) > LOTE_LISTA:
-            raise UserError(_('Seleccione hasta %s pedimentos a la vez; el resto lo va trayendo solo la tarea '
-                              'programada «Pedimentos - Traer archivos de la memoria».', LOTE_LISTA))
-        guardados = sum(rec._memoria_guardar_solo() for rec in self.filtered('numero'))
-        return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
-            'type': 'success' if guardados else 'warning', 'sticky': False,
-            'message': _('Se trajeron %s archivos de la memoria de correo.', guardados) if guardados
-            else _('La memoria de correo no tiene archivos nuevos de estos pedimentos.')}}
 
     def _cron_traer_memoria(self):
         """Llena poco a poco los expedientes: primero los que nunca se buscaron,
