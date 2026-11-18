@@ -9,85 +9,75 @@
                 <sheet>
                     <field name="scale_read_url" invisible="1"/>
                     <field name="tara_faltante" invisible="1"/>
-                    <field name="codigo_error" invisible="1"/>
-                    <field name="bitacora_id" invisible="1"/>
+                    <field name="estacion_id" invisible="1"/>
+                    <field name="workorder_id" invisible="1"/>
+                    <field name="workcenter_id" invisible="1"/>
+                    <field name="empleado_numero" invisible="1"/>
+                    <div class="alert alert-info" role="status" groups="mrp.group_mrp_manager">
+                        <group col="4">
+                            <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
+                            <field name="iot_device_id" invisible="weighing_mode != 'iot'"
+                                   required="weighing_mode == 'iot'"/>
+                        </group>
+                    </div>
                     <group>
-                        <field name="empleado_numero" password="True" default_focus="1"
-                               readonly="empleado_numero != False" force_save="1"/>
-                        <field name="empleado_nombre" readonly="1" invisible="not empleado_numero"/>
+                        <group>
+                            <field name="production_id"/>
+                            <field name="bitacora_id"/>
+                            <field name="empleado_nombre"/>
+                        </group>
+                        <group>
+                            <field name="kg_rama"/>
+                            <field name="kg_rollo"/>
+                            <field name="kg_ya_cortados"/>
+                            <field name="kg_tramos"/>
+                            <field name="kg_disponibles" style="font-weight: bold;"/>
+                        </group>
                     </group>
-                    <div invisible="not empleado_numero">
-                        <div class="alert alert-info" role="status" groups="mrp.group_mrp_manager">
-                            <group col="4">
-                                <field name="weighing_mode" widget="radio" options="{'horizontal': true}"/>
-                                <field name="iot_device_id" invisible="weighing_mode != 'iot'"
-                                       required="weighing_mode == 'iot'"/>
-                            </group>
-                        </div>
-                        <group>
-                            <group>
-                                <field name="production_id"/>
-                                <field name="product_id"/>
-                            </group>
-                            <group>
-                                <field name="workcenter_id" options="{'no_create': True, 'no_open': True}"/>
-                                <field name="tramos_pendientes"/>
-                                <field name="kg_tramos_pendientes"/>
-                            </group>
-                        </group>
-                        <group>
-                            <field name="rollo_codigo" placeholder="Escanea la etiqueta de Rama del rollo"
-                                   style="font-size: 1.5em; font-weight: bold;"/>
-                        </group>
-                        <div class="alert alert-danger" role="alert" invisible="not codigo_error">
-                            No existe el rollo de Rama <field name="codigo_error" readonly="1" class="oe_inline"/> en este baño.
-                        </div>
-                        <div class="alert alert-danger" role="alert" invisible="not tara_faltante">
-                            No hay tara de Inspección para este artículo. Captúrala en Manufactura → Configuración →
-                            Taras por producto antes de pesar.
-                        </div>
-                        <div class="text-center mt-3 mb-3 p-4 border rounded bg-light">
-                            <div class="row">
-                                <div class="col-4">
-                                    <label for="kg_bruto" string="PESO BRUTO"/><br/>
-                                    <field name="kg_bruto" widget="peso_bascula" options="{'digits': [12, 4]}"
-                                           readonly="weighing_mode == 'iot'" force_save="1"
-                                           style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
-                                </div>
-                                <div class="col-4">
-                                    <label for="tara_kg" string="TARA DE INSPECCIÓN"/><br/>
-                                    <field name="tara_kg" readonly="1"
-                                           style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
-                                </div>
-                                <div class="col-4">
-                                    <label for="kg_neto" string="PESO NETO"/><br/>
-                                    <field name="kg_neto" readonly="1"
-                                           style="font-size: 3em; font-weight: bold; text-align: center;"/>
-                                </div>
+                    <div class="alert alert-danger" role="alert" invisible="not tara_faltante">
+                        No hay tara de Inspección para este artículo. Captúrala en Manufactura → Configuración →
+                        Taras por producto antes de pesar.
+                    </div>
+                    <div class="text-center mt-3 mb-3 p-4 border rounded bg-light">
+                        <div class="row">
+                            <div class="col-4">
+                                <label for="kg_bruto" string="PESO BRUTO DEL TRAMO"/><br/>
+                                <field name="kg_bruto" widget="peso_bascula" options="{'digits': [12, 4]}"
+                                       readonly="weighing_mode == 'iot'" force_save="1"
+                                       style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
                             </div>
-                            <span style="font-size: 1.6em; font-weight: bold;">KG</span>
+                            <div class="col-4">
+                                <label for="tara_kg" string="TARA DE INSPECCIÓN"/><br/>
+                                <field name="tara_kg" readonly="1"
+                                       style="font-size: 2.5em; font-weight: bold; text-align: center;"/>
+                            </div>
+                            <div class="col-4">
+                                <label for="kg_neto" string="PESO NETO DEL TRAMO"/><br/>
+                                <field name="kg_neto" readonly="1"
+                                       style="font-size: 3em; font-weight: bold; text-align: center;"/>
+                            </div>
                         </div>
+                        <span style="font-size: 1.6em; font-weight: bold;">KG</span>
+                    </div>
+                    <group>
                         <group>
-                            <group>
-                                <field name="motivo_manual" invisible="weighing_mode != 'manual'"
-                                       required="weighing_mode == 'manual'"/>
-                                <field name="metros"/>
-                                <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                            </group>
-                            <group>
-                                <field name="kg_rama"/>
-                                <field name="kg_ya_cortados"/>
-                                <field name="kg_tramos"/>
-                                <field name="kg_disponibles"/>
-                            </group>
+                            <field name="motivo_manual" invisible="weighing_mode != 'manual'"
+                                   required="weighing_mode == 'manual'"/>
+                            <field name="metros"/>
                         </group>
+                        <group>
+                            <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert" invisible="not alertas">
+                        <field name="alertas" readonly="1"/>
                     </div>
                 </sheet>
                 <footer>
-                    <button name="action_confirmar" type="object" string="REGISTRAR TRAMO"
-                            class="btn-primary btn-lg"
-                            invisible="not empleado_numero or tara_faltante or not bitacora_id"/>
-                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                    <button name="action_confirmar" type="object" string="GUARDAR TRAMO"
+                            class="btn-primary btn-lg" invisible="tara_faltante"/>
+                    <button name="action_volver" type="object" string="VOLVER A INSPECCIÓN"
+                            class="btn-secondary btn-lg"/>
                 </footer>
             </form>
         </field>

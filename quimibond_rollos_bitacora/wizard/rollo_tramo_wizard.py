@@ -10,7 +10,7 @@ peso ya sin el tramo y el rollo de tramos entra a su calidad al cerrar el baño,
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+from .pesaje_manual import TOLERANCIA_KG, modo_por_defecto, motivo_por_defecto
 from ..models.mrp_rollo_bitacora import CLASIFICACIONES_CAPTURA, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
@@ -18,26 +18,29 @@ CALIDADES_TRAMOS = [c for c in CLASIFICACIONES_CAPTURA if c[0] in ('FE', 'SEGUND
 
 
 class RolloTramoWizard(models.TransientModel):
+    """Quitar tramo, desde la ventana INSPECCIONAR (ajuste de tramos, 2026-11-16): el rollo ya está pesado en la
+    estación; lo que le falta para llegar al peso de Rama es el peso inicial del tramo, que el operador pesa de nuevo,
+    con sus metros y defectos. El tramo se guarda sin etiqueta y se regresa a la misma ventana INSPECCIONAR."""
     _name = 'rollo.tramo.wizard'
     _inherit = ['scale.wizard.mixin']
     _description = 'Inspección: quitar un tramo a un rollo'
 
+    estacion_id = fields.Many2one('rollo.inspeccion.estacion.wizard', 'Ventana de Inspección', required=True,
+                                  readonly=True, ondelete='cascade')
     production_id = fields.Many2one('mrp.production', 'Orden (kg)', required=True, readonly=True)
     workorder_id = fields.Many2one('mrp.workorder', 'Operación de Inspección', required=True, readonly=True)
     product_id = fields.Many2one(related='production_id.product_id', string='Artículo')
-    workcenter_id = fields.Many2one(
-        'mrp.workcenter', 'Revisadora', required=True, default=lambda self: self._default_workcenter(),
-        domain="[('ft_tipo_id.name', '=', 'Inspección')]")
-    empleado_numero = fields.Char('Número de empleado', required=True)
+    workcenter_id = fields.Many2one('mrp.workcenter', 'Revisadora', required=True, readonly=True)
+    empleado_numero = fields.Char('Número de empleado', required=True, readonly=True)
     empleado_nombre = fields.Char('Operador', compute='_compute_empleado')
 
-    rollo_codigo = fields.Char('Código de Rama', help='Escanea la etiqueta de Rama del rollo al que se le quita el tramo.')
-    bitacora_id = fields.Many2one('mrp.rollo.bitacora', 'Rollo de Rama', compute='_compute_bitacora')
-    codigo_error = fields.Char(compute='_compute_bitacora')
-    kg_rama = fields.Float('Kg de Rama', compute='_compute_bitacora', digits=(12, 4))
-    kg_ya_cortados = fields.Float('Kg de rollos ya registrados', compute='_compute_bitacora', digits=(12, 4))
-    kg_tramos = fields.Float('Kg de tramos ya quitados', compute='_compute_bitacora', digits=(12, 4))
-    kg_disponibles = fields.Float('Kg que le quedan al rollo', compute='_compute_bitacora', digits=(12, 4))
+    bitacora_id = fields.Many2one('mrp.rollo.bitacora', 'Rollo de Rama', required=True, readonly=True)
+    kg_rama = fields.Float('Kg de Rama', related='bitacora_id.kg_rama', digits=(12, 4))
+    kg_rollo = fields.Float('Kg netos del rollo (ya pesado)', readonly=True, digits=(12, 4))
+    kg_ya_cortados = fields.Float('Kg de rollos ya registrados', readonly=True, digits=(12, 4))
+    kg_tramos = fields.Float('Kg de tramos ya quitados', readonly=True, digits=(12, 4))
+    kg_disponibles = fields.Float('Kg que le faltan al rollo', compute='_compute_disponibles', digits=(12, 4),
+                                  help='Rama − rollo pesado − registrados − tramos ya quitados: el máximo del tramo.')
 
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
@@ -48,12 +51,7 @@ class RolloTramoWizard(models.TransientModel):
     metros = fields.Float('Metros del tramo', digits=(12, 2))
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_tramo_wizard_defecto_rel', 'wizard_id', 'defecto_id',
                                    'Defectos', domain="[('tipo_tela', '=', 'tejido_acabado')]")
-    tramos_pendientes = fields.Integer('Tramos sin juntar', compute='_compute_tramos_pendientes')
-    kg_tramos_pendientes = fields.Float('Kg de tramos sin juntar', compute='_compute_tramos_pendientes', digits=(12, 4))
-
-    @api.model
-    def _default_workcenter(self):
-        return self.env['mrp.workorder'].browse(self.env.context.get('default_workorder_id')).workcenter_id.id or False
+    alertas = fields.Text('Alertas', compute='_compute_disponibles')
 
     @api.depends('empleado_numero')
     def _compute_empleado(self):
@@ -61,26 +59,13 @@ class RolloTramoWizard(models.TransientModel):
             emp = self.env['hr.employee']._qb_operador(wiz.empleado_numero)
             wiz.empleado_nombre = emp.name if emp else (_('EMPLEADO NO ENCONTRADO') if wiz.empleado_numero else False)
 
-    @api.depends('rollo_codigo', 'production_id')
-    def _compute_bitacora(self):
-        Bitacora = self.env['mrp.rollo.bitacora']
+    @api.depends('kg_rama', 'kg_rollo', 'kg_ya_cortados', 'kg_tramos', 'kg_neto')
+    def _compute_disponibles(self):
         for wiz in self:
-            codigo = (wiz.rollo_codigo or '').strip()
-            rollo = Bitacora.search([('name', '=', codigo), ('production_id', '=', wiz.production_id.id)], limit=1) \
-                if codigo else Bitacora
-            wiz.bitacora_id = rollo
-            wiz.codigo_error = codigo if codigo and not rollo else False
-            wiz.kg_rama = rollo.kg_rama
-            wiz.kg_ya_cortados = sum(rollo.rollo_final_insp_ids.mapped('kg_neto'))
-            wiz.kg_tramos = sum(rollo.tramo_ids.mapped('kg_neto'))
-            wiz.kg_disponibles = rollo.kg_rama - wiz.kg_ya_cortados - wiz.kg_tramos if rollo else 0.0
-
-    @api.depends('production_id')
-    def _compute_tramos_pendientes(self):
-        for wiz in self:
-            pendientes = wiz.production_id.tramo_ids.filtered(lambda t: not t.rollo_final_id)
-            wiz.tramos_pendientes = len(pendientes)
-            wiz.kg_tramos_pendientes = sum(pendientes.mapped('kg_neto'))
+            wiz.kg_disponibles = max(wiz.kg_rama - wiz.kg_rollo - wiz.kg_ya_cortados - wiz.kg_tramos, 0.0)
+            wiz.alertas = _('El tramo pesa %(t).2f kg y solo quedan %(d).2f kg por asignar del rollo de Rama.',
+                            t=wiz.kg_neto, d=wiz.kg_disponibles) \
+                if wiz.kg_neto and wiz.kg_neto > wiz.kg_disponibles + TOLERANCIA_KG else False
 
     @api.depends('product_id', 'kg_bruto')
     def _compute_pesos(self):
@@ -96,11 +81,7 @@ class RolloTramoWizard(models.TransientModel):
         self.ensure_one()
         if self.production_id.state in ('done', 'cancel'):
             raise UserError(_('La orden %s ya está cerrada o cancelada: no se quitan tramos.', self.production_id.name))
-        if self.codigo_error:
-            raise UserError(_('No existe el rollo de Rama %s en este baño.', self.codigo_error))
         rollo = self.bitacora_id
-        if not rollo:
-            raise UserError(_('Escanea la etiqueta de Rama del rollo.'))
         if rollo.estado_inspeccion == 'inspeccionado':
             raise UserError(_('El rollo %s ya fue inspeccionado: el tramo se quita antes de registrar su último rollo.',
                               rollo.name))
@@ -119,19 +100,27 @@ class RolloTramoWizard(models.TransientModel):
             raise UserError(_('Captura los metros del tramo.'))
         if not self.defecto_ids:
             raise UserError(_('Captura al menos un defecto: el tramo se quitó por una causa.'))
-        if self.kg_neto > self.kg_disponibles:
+        if self.kg_neto > self.kg_disponibles + TOLERANCIA_KG:
             raise UserError(_(
-                'El tramo pesa %(t).2f kg y al rollo %(r)s solo le quedan %(d).2f kg (Rama %(k).2f kg, ya registrados '
-                '%(f).2f kg y tramos %(tr).2f kg).', t=self.kg_neto, r=rollo.name, d=self.kg_disponibles,
-                k=self.kg_rama, f=self.kg_ya_cortados, tr=self.kg_tramos))
+                'El rollo pesa %(p).2f kg y el tramo %(t).2f kg: juntos pasan de los %(k).2f kg del rollo de Rama %(r)s '
+                '(ya registrados %(f).2f kg y tramos anteriores %(tr).2f kg). Solo caben %(d).2f kg.',
+                p=self.kg_rollo, t=self.kg_neto, k=self.kg_rama, r=rollo.name, f=self.kg_ya_cortados,
+                tr=self.kg_tramos, d=self.kg_disponibles))
         emp = self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
         self.env['mrp.inspeccion.restriccion']._validar_centro(self.workcenter_id, self.product_id)
         return emp
 
+    def _volver(self):
+        """Regresa a la misma ventana INSPECCIONAR, con lo que ya tenía capturado."""
+        return self.estacion_id._reabrir()
+
+    def action_volver(self):
+        self.ensure_one()
+        return self._volver()
+
     def action_confirmar(self):
         self.ensure_one()
-        if self.bitacora_id:
-            self.env.cr.execute('SELECT id FROM mrp_rollo_bitacora WHERE id = %s FOR UPDATE', [self.bitacora_id.id])
+        self.env.cr.execute('SELECT id FROM mrp_rollo_bitacora WHERE id = %s FOR UPDATE', [self.bitacora_id.id])
         self.env.invalidate_all()
         emp = self._validar()
         operador = ' - '.join(filter(None, [self.empleado_numero, emp.name or False]))
@@ -152,7 +141,7 @@ class RolloTramoWizard(models.TransientModel):
             'Tramo de %(kg).2f kg y %(m).2f m quitado al rollo %(r)s por %(o)s (defectos: %(d)s). Queda pendiente de '
             'juntar en un rollo de FE o Segunda.', kg=tramo.kg_neto, m=tramo.metros, r=self.bitacora_id.name, o=operador,
             d=tramo.siglas_defectos or '-'))
-        return {'type': 'ir.actions.act_window_close'}
+        return self._volver()
 
 
 class RolloTramosJuntarWizard(models.TransientModel):
@@ -256,6 +245,11 @@ class RolloTramosJuntarWizard(models.TransientModel):
         orden = self.production_id
         if orden.state in ('done', 'cancel'):
             raise UserError(_('La orden %s ya está cerrada o cancelada: no se juntan tramos.', orden.name))
+        sin_inspeccionar = orden.rollo_bitacora_ids.filtered(lambda r: r.estado_inspeccion != 'inspeccionado')
+        if sin_inspeccionar:
+            raise UserError(_(
+                'Faltan rollos de Rama por inspeccionar (%(n)s): los tramos se juntan cuando todos los rollos del baño '
+                'están inspeccionados.', n=', '.join(sin_inspeccionar.mapped('name'))))
         if not self.tramo_ids:
             raise UserError(_('No hay tramos por juntar: quita primero el tramo de un rollo con defectos.'))
         ajenos = self.tramo_ids.filtered(lambda t: t.production_id != orden or t.rollo_final_id)

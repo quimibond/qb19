@@ -34,11 +34,8 @@
                 <button name="action_inspeccionar_rollo" type="object" string="INSPECCIONAR"
                         class="btn-primary" icon="fa-search"
                         invisible="not es_inspeccion or state not in ('ready', 'progress')"/>
-                <!-- 3.22.0 (Junta con el cliente, 2026-11-13): tramos que se le quitan a un rollo con defectos y se
-                     juntan al final en un rollo de FE o Segunda. -->
-                <button name="action_quitar_tramo" type="object" string="QUITAR TRAMO"
-                        class="btn-secondary" icon="fa-scissors"
-                        invisible="not es_inspeccion or state not in ('ready', 'progress')"/>
+                <!-- 3.22.0: «QUITAR TRAMO» vive dentro de INSPECCIONAR (3.22.1); aquí solo se juntan al final los tramos
+                     de todos los rollos en un rollo de FE o Segunda, sin rollo de Rama. -->
                 <button name="action_juntar_tramos" type="object" string="JUNTAR TRAMOS"
                         class="btn-secondary" icon="fa-compress"
                         invisible="not es_inspeccion or not tramos_pendientes or state not in ('ready', 'progress')"/>

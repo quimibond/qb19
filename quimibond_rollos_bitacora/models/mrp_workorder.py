@@ -115,10 +115,6 @@ class MrpWorkorder(models.Model):
         return self._abrir_ventana_operacion(
             self.es_inspeccion, 'rollo.inspeccion.estacion.wizard', _('Inspeccionar rollo'), 'Inspección')
 
-    def action_quitar_tramo(self):
-        # 3.22.0: le quita un tramo a un rollo con defectos (se acumula por baño).
-        return self._abrir_ventana_operacion(self.es_inspeccion, 'rollo.tramo.wizard', _('Quitar tramo'), 'Inspección')
-
     def action_juntar_tramos(self):
         # 3.22.0: junta los tramos del baño en un rollo nuevo de FE o Segunda.
         return self._abrir_ventana_operacion(

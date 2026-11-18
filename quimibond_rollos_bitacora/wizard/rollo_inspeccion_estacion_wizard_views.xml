@@ -11,6 +11,7 @@
                     <field name="tara_faltante" invisible="1"/>
                     <field name="codigos_error" invisible="1"/>
                     <field name="bitacora_ids" invisible="1"/>
+                    <field name="sin_tramo_alerta" invisible="1"/>
                     <group>
                         <field name="empleado_numero" password="True" default_focus="1"
                                readonly="empleado_numero != False" force_save="1"/>
@@ -91,12 +92,18 @@
                         <div class="alert alert-warning" role="alert" invisible="not alertas">
                             <field name="alertas" readonly="1"/>
                         </div>
+                        <group invisible="not sin_tramo_alerta">
+                            <field name="confirma_sin_tramo" widget="boolean_toggle"/>
+                        </group>
                     </div>
                 </sheet>
                 <footer>
                     <button name="action_confirmar" type="object" string="REGISTRAR E IMPRIMIR ETIQUETA"
                             class="btn-primary btn-lg"
                             invisible="not empleado_numero or tara_faltante or not bitacora_ids"/>
+                    <button name="action_quitar_tramo" type="object" string="QUITAR TRAMO"
+                            class="btn-secondary btn-lg" icon="fa-scissors"
+                            invisible="not empleado_numero or tara_faltante or not bitacora_ids or not kg_neto"/>
                     <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
                 </footer>
             </form>

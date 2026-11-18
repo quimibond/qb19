@@ -16,7 +16,7 @@ import re
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from .pesaje_manual import modo_por_defecto, motivo_por_defecto
+from .pesaje_manual import TOLERANCIA_KG, modo_por_defecto, motivo_por_defecto
 
 from ..models.mrp_rollo_bitacora import CLASIFICACIONES, CLASIFICACIONES_CAPTURA, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
@@ -69,6 +69,11 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     merma_kg = fields.Float('Merma (kg)', compute='_compute_merma', digits=(12, 4))
     merma_pct = fields.Float('Merma (%)', compute='_compute_merma', digits=(12, 2))
     alertas = fields.Text('Alertas', compute='_compute_merma')
+    sin_tramo_alerta = fields.Boolean('Hay diferencia sin tramo', compute='_compute_merma')
+    confirma_sin_tramo = fields.Boolean(
+        'Sí, registrar así', default=False,
+        help='Ajuste de tramos (2026-11-16): el rollo pesa menos que lo que vino de Rama y no se quitó ningún tramo. '
+             'Por defecto NO: márcalo solo si la diferencia es merma y quieres registrar el rollo así.')
     pendientes = fields.Integer('Rollos de Rama sin inspeccionar', compute='_compute_pendientes')
 
     @api.model
@@ -139,7 +144,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         ficha = Ficha.search([('product_proceso_id', '=', self.product_id.id)], order='id desc', limit=1)
         return ficha.rendimiento_tela_acabada or 0.0
 
-    @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'kg_tramos', 'termina_rollo', 'metros', 'kg_bruto')
+    @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'kg_tramos', 'termina_rollo', 'metros', 'kg_bruto', 'confirma_sin_tramo')
     def _compute_merma(self):
         """Merma del grupo (rollos de Rama ↔ rollos finales, §4.6), con alerta por porcentaje antes de guardar. 3.3.0:
         alerta 2 del v5.4 §9.1, metros contra kg netos × rendimiento de la ficha (parámetro de Ajustes, 3 %)."""
@@ -148,7 +153,16 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         limite_metros = float(params.get_param(PARAM_ALERTA_DIFERENCIA_PCT, 3.0))
         for wiz in self:
             avisos = []
-            rendimiento = wiz._rendimiento_acabado() if wiz.kg_neto > 0 else 0.0
+            # 3.22.1: sin rollo pesado no hay nada que calcular: todo en cero (antes quedaba la diferencia de Rama contra
+            # los rollos ya registrados, que parecía merma de rollos previos).
+            wiz.metros_teoricos = 0.0
+            wiz.merma_kg = 0.0
+            wiz.merma_pct = 0.0
+            wiz.sin_tramo_alerta = False
+            wiz.alertas = False
+            if not (wiz.kg_rama and wiz.kg_neto > 0):
+                continue
+            rendimiento = wiz._rendimiento_acabado()
             wiz.metros_teoricos = wiz.kg_neto * rendimiento if rendimiento else 0.0
             if wiz.metros_teoricos and wiz.metros and \
                     abs(wiz.metros - wiz.metros_teoricos) > wiz.metros_teoricos * limite_metros / 100.0:
@@ -156,13 +170,20 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                                 'revisa los metros o el peso.', m=wiz.metros, t=wiz.metros_teoricos, kg=wiz.kg_neto,
                                 r=rendimiento))
             salida = wiz.kg_ya_cortados + wiz.kg_tramos + wiz.kg_neto
-            wiz.merma_kg = wiz.kg_rama - salida if wiz.kg_rama else 0.0
-            wiz.merma_pct = wiz.merma_kg / wiz.kg_rama * 100.0 if wiz.kg_rama else 0.0
-            if wiz.kg_rama and wiz.kg_neto:
-                if salida > wiz.kg_rama:
-                    avisos.append(_('Los rollos finales pesan %(s).2f kg y los de Rama %(r).2f kg: sale más de lo que '
-                                    'entró.', s=salida, r=wiz.kg_rama))
-                elif wiz.termina_rollo and wiz.merma_pct > limite:
+            wiz.merma_kg = wiz.kg_rama - salida
+            wiz.merma_pct = wiz.merma_kg / wiz.kg_rama * 100.0
+            if salida > wiz.kg_rama + TOLERANCIA_KG:
+                avisos.append(_('El rollo (%(n).2f kg) con lo ya registrado y los tramos suma %(s).2f kg y el rollo de '
+                                'Rama pesó %(r).2f kg: sale más de lo que entró.', n=wiz.kg_neto, s=salida,
+                                r=wiz.kg_rama))
+            elif wiz.termina_rollo and wiz.merma_pct > limite:
+                if not wiz.kg_tramos:
+                    wiz.sin_tramo_alerta = True
+                    avisos.append(_('La cantidad inspeccionada (%(n).2f kg) es menor a la de Rama (%(r).2f kg) y no se ha '
+                                    'quitado ningún tramo: diferencia de %(kg).2f kg (%(p).1f %%). Si procede así, marca '
+                                    '«Sí, registrar así»; si es un tramo, usa «QUITAR TRAMO».',
+                                    n=wiz.kg_neto, r=wiz.kg_rama, kg=wiz.merma_kg, p=wiz.merma_pct))
+                else:
                     avisos.append(_('Merma de %(kg).2f kg (%(p).1f %%), arriba del límite de %(l).1f %%.',
                                     kg=wiz.merma_kg, p=wiz.merma_pct, l=limite))
             wiz.alertas = '\n'.join(avisos) or False
@@ -172,6 +193,64 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         for wiz in self:
             wiz.pendientes = len(wiz.production_id.rollo_bitacora_ids.filtered(
                 lambda r: r.estado_inspeccion != 'inspeccionado'))
+
+    # ------------------------------------------------------------------ quitar tramo
+    def _reabrir(self):
+        """Vuelve a abrir esta misma ventana (conserva empleado, rollo y peso capturados)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Inspeccionar rollo'), 'res_model': self._name,
+            'res_id': self.id, 'view_mode': 'form', 'views': [(False, 'form')], 'target': 'new',
+        }
+
+    def action_quitar_tramo(self):
+        """Ajuste de tramos (2026-11-16): con el rollo ya pesado, lo que le falta para el peso de Rama es el peso
+        inicial del tramo; se pesa, se capturan metros y defectos y se guarda sin etiqueta."""
+        self.ensure_one()
+        if self.production_id.state in ('done', 'cancel'):
+            raise UserError(_('La orden %s ya está cerrada o cancelada: no se quitan tramos.', self.production_id.name))
+        if self.codigos_error:
+            raise UserError(_('No existe el rollo de Rama %s.', self.codigos_error))
+        if len(self.bitacora_ids) != 1:
+            raise UserError(_('El tramo se quita a un solo rollo de Rama: escanea uno.'))
+        rollo = self.bitacora_ids
+        if rollo.production_id != self.production_id:
+            raise UserError(_('El rollo %(r)s es de %(o)s y esta orden es %(kg)s.', r=rollo.name,
+                              o=rollo.production_id.name, kg=self.production_id.name))
+        if rollo.estado_inspeccion == 'inspeccionado':
+            raise UserError(_('El rollo %s ya fue inspeccionado.', rollo.name))
+        if self.tara_faltante:
+            raise UserError(_(
+                'No hay tara de Inspección para %s. Captúrala en Manufactura → Configuración → Taras por producto '
+                '(operación «Clasificación final»); el pesaje no asume tara 0.', self.product_id.display_name))
+        if self.kg_neto <= 0:
+            raise UserError(_('Primero pesa el rollo: el peso inicial del tramo es lo que le falta al rollo para llegar '
+                              'al peso de Rama.'))
+        faltan = self.kg_rama - self.kg_ya_cortados - self.kg_tramos - self.kg_neto
+        if faltan <= TOLERANCIA_KG:
+            raise UserError(_('El rollo pesa %(n).2f kg y el rollo de Rama %(r).2f kg: no hay diferencia que quitar como '
+                              'tramo.', n=self.kg_neto, r=self.kg_rama))
+        self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
+        tramo = self.env['rollo.tramo.wizard'].create({
+            'estacion_id': self.id,
+            'production_id': self.production_id.id,
+            'workorder_id': self.workorder_id.id,
+            'workcenter_id': self.workcenter_id.id,
+            'empleado_numero': self.empleado_numero,
+            'bitacora_id': rollo.id,
+            'kg_rollo': self.kg_neto,
+            'kg_ya_cortados': self.kg_ya_cortados,
+            'kg_tramos': self.kg_tramos,
+            # Peso inicial: lo que falta (neto) más la tara, para que el neto propuesto sea la diferencia.
+            'kg_bruto': round(faltan + self.tara_kg, 4),
+            'weighing_mode': self.weighing_mode,
+            'iot_device_id': self.iot_device_id.id,
+            'motivo_manual': self.motivo_manual,
+        })
+        return {
+            'type': 'ir.actions.act_window', 'name': _('Quitar tramo'), 'res_model': tramo._name, 'res_id': tramo.id,
+            'view_mode': 'form', 'views': [(False, 'form')], 'target': 'new',
+        }
 
     # ------------------------------------------------------------------ registro
     def _validar(self):
@@ -215,6 +294,17 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
         if self.metros <= 0:
             raise UserError(_('Captura los metros del rollo final.'))
+        salida = self.kg_ya_cortados + self.kg_tramos + self.kg_neto
+        if self.kg_rama and salida > self.kg_rama + TOLERANCIA_KG:
+            raise UserError(_(
+                'Lo que pesó el rollo (%(n).2f kg) más lo ya registrado (%(f).2f kg) y los tramos (%(t).2f kg) suma '
+                '%(s).2f kg y no puede ser mayor a los %(r).2f kg del rollo de Rama.',
+                n=self.kg_neto, f=self.kg_ya_cortados, t=self.kg_tramos, s=salida, r=self.kg_rama))
+        if self.sin_tramo_alerta and not self.confirma_sin_tramo:
+            raise UserError(_(
+                'La cantidad inspeccionada (%(n).2f kg) es menor a la de Rama (%(r).2f kg) y no se ha quitado ningún '
+                'tramo. Si es un tramo, usa «QUITAR TRAMO»; si procede así, marca «Sí, registrar así» y registra de '
+                'nuevo.', n=self.kg_neto, r=self.kg_rama))
         if not self.clasificacion:
             raise UserError(_('Elige la calidad del rollo final: PQ, FE o Segunda.'))
         if self.clasificacion in ('SEGUNDA', 'FE') and not self.defecto_ids:

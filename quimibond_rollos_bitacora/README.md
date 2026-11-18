@@ -28,11 +28,19 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
 ## Tramos y calidades PQ, FE y Segunda (3.22.0, Junta con el cliente, 2026-11-13)
-- **Quitar tramo** (botón QUITAR TRAMO en la operación de Inspección): a un rollo con defectos se le quita una cantidad y se
-  aparta. Se escanea el rollo de Rama, se pesa el tramo con la tara de Inspección, se capturan metros y al menos un defecto
-  (`rollo.tramo.wizard`, modelo `mrp.rollo.tramo`). El tramo no puede pesar más de lo que le queda al rollo (kg de Rama menos
-  rollos finales ya registrados y tramos anteriores). Los tramos se acumulan por baño y salen en la pestaña Rollos de la orden.
-- **Juntar tramos** (botón JUNTAR TRAMOS, aparece con tramos pendientes): junta todos los tramos pendientes del baño en un
+- **Quitar tramo** (3.22.1, ajuste del 2026-11-16: vive **dentro de INSPECCIONAR**, ya no hay botón aparte). La ventana tiene
+  dos botones: REGISTRAR E IMPRIMIR ETIQUETA y QUITAR TRAMO. Primero se escanea el rollo de Rama y se **pesa el rollo**; lo que le
+  falta para llegar al peso de Rama (Rama − rollo − ya registrados − tramos anteriores) es el peso inicial del tramo. Con QUITAR
+  TRAMO se abre `rollo.tramo.wizard` con ese peso: se pesa el tramo, se capturan sus metros y al menos un defecto y GUARDAR TRAMO
+  lo registra **sin etiqueta** (`mrp.rollo.tramo`) y regresa a la misma ventana INSPECCIONAR, con lo que ya se había capturado.
+  Rollo + tramo no pueden pesar más que el rollo de Rama (error; tolerancia de 0.005 kg de la báscula). REGISTRAR imprime solo la
+  etiqueta del rollo que quedó sin el tramo.
+- **Alerta sin tramo** (3.22.1): al registrar, si el rollo pesa menos que Rama más que el límite de merma (parámetro, 3 %) y no se
+  quitó ningún tramo, la ventana avisa y pide confirmar con «Sí, registrar así» (por defecto **No**). Los tramos cuentan en la merma
+  de la estación y de la orden. Con el rollo sin pesar, merma, metros teóricos y alertas arrancan en cero (antes mostraban la
+  diferencia de rollos previos).
+- **Juntar tramos** (botón JUNTAR TRAMOS **fuera de Inspección**, en la operación; solo aparece con tramos pendientes y no se
+  confirma hasta que todos los rollos de Rama del baño estén inspeccionados): junta todos los tramos pendientes del baño en un
   rollo nuevo de **FE o Segunda** (`rollo.tramos.juntar.wizard`). Se pesa el rollo armado con la tara de Inspección, se miden
   sus metros (propone la suma de los tramos) y se eligen la calidad y los defectos (propone la unión de los de los tramos). Avisa,
   sin bloquear, si el peso o los metros se apartan de la suma de los tramos más del límite de merma (parámetro, 3 %). El
@@ -44,7 +52,7 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
   FE y Segunda, y los metros son obligatorios en las tres. Los rollos que ya traen «Desperdicio» conservan su valor (historial,
   etiquetas, traspaso a la ubicación 17), pero Empaque pide elegir PQ, FE o Segunda para clasificarlos. El pesaje de desperdicio
   de Rama y de Empaque (subproductos DESPERDICIO TEJIDO y SALDO TEJIDO D) no cambia.
-- Sin migración. Pruebas 83 a 86 nuevas (tramos, validaciones, calidades, anular); las pruebas que capturaban Desperdicio
+- Sin migración. Pruebas 83 a 88 (tramos desde Inspección, validaciones, alerta sin tramo, calidades, anular); las pruebas que capturaban Desperdicio
   desde la pantalla ahora crean el rollo como Segunda y lo dejan como Desperdicio, para seguir cubriendo el historial.
 
 ## Los traspasos 10 → calidad los valida Almacén (3.19.2 y 3.19.3, 2026-11-11)
