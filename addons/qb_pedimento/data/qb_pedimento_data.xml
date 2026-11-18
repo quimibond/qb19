@@ -98,6 +98,7 @@
             <field name="sequence">70</field>
             <field name="operacion">importacion</field>
             <field name="required" eval="True"/>
+            <field name="pide_vigencia" eval="True"/>
         </record>
         <record id="doc_carta_318" model="qb.pedimento.documento.tipo">
             <field name="name">Carta 3.1.8</field>
@@ -128,6 +129,7 @@
             <field name="sequence">120</field>
             <field name="operacion">importacion</field>
             <field name="required" eval="False"/>
+            <field name="pide_vigencia" eval="True"/>
         </record>
         <record id="doc_doda_imp" model="qb.pedimento.documento.tipo">
             <field name="name">DODA</field>
@@ -160,6 +162,7 @@
             <field name="operacion">exportacion</field>
             <field name="required" eval="True"/>
             <field name="excepto_virtual" eval="True"/>
+            <field name="pide_vigencia" eval="True"/>
         </record>
         <record id="doc_carta_porte" model="qb.pedimento.documento.tipo">
             <field name="name">Carta porte</field>

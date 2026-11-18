@@ -103,6 +103,11 @@ class TestCarga(PedimentoCommon):
         carga = self._carga(ped, self._adjunto('EXPEDIENTE 83272.pdf'), expediente_unico=True)
         carga.action_clasificar()
         carga.action_guardar()
+        # La carta encomienda tiene vigencia: el archivo no basta sin «Vigente hasta».
+        encomienda = ped.documento_ids.filtered(lambda d: d.tipo_id == self._tipo('doc_carta_encomienda'))
+        self.assertEqual(ped.documentos_faltantes, 1)
+        self.assertFalse(encomienda.cumplido)
+        encomienda.fecha_vigencia = '2099-12-31'
         self.assertTrue(ped.documentos_completos)
         self.assertEqual(ped.documentos_faltantes, 0)
 

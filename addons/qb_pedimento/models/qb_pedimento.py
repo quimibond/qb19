@@ -383,8 +383,17 @@ class QbPedimento(models.Model):
         if not self.fecha_entrega:
             motivos.append(_('falta la fecha de entrega en planta o de cruce'))
         faltan = self.documento_ids.filtered(lambda d: d.required and not d.cumplido)
-        if faltan:
-            motivos.append(_('faltan documentos: %s', ', '.join(faltan.tipo_id.mapped('name'))))
+        vencidos = faltan.filtered('vencido')
+        sin_vigencia = (faltan - vencidos).filtered(
+            lambda d: d.pide_vigencia and d.attachment_ids and not d.fecha_vigencia)
+        if faltan - vencidos - sin_vigencia:
+            motivos.append(_('faltan documentos: %s',
+                             ', '.join((faltan - vencidos - sin_vigencia).tipo_id.mapped('name'))))
+        if vencidos:
+            motivos.append(_('documentos vencidos: %s', ', '.join(vencidos.tipo_id.mapped('name'))))
+        if sin_vigencia:
+            motivos.append(_('falta la fecha «Vigente hasta» de: %s',
+                             ', '.join(sin_vigencia.tipo_id.mapped('name'))))
         if not self.cuenta_gastos_total and not self.gasto_move_ids:
             motivos.append(_('falta la cuenta de gastos (total o factura de la agencia)'))
         return motivos
