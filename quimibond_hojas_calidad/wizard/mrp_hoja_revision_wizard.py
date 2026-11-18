@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class MrpHojaRevisionWizard(models.TransientModel):
@@ -13,10 +14,14 @@ class MrpHojaRevisionWizard(models.TransientModel):
 
     @api.depends_context('uid')
     def _compute_production_domain_ids(self):
-        ordenes = self.env['mrp.production'].sudo()._ordenes_clasificacion()
+        ordenes = self.env['mrp.production'].sudo()._ordenes_clasificacion(solo_no_liberadas=True)
         for wiz in self:
             wiz.production_domain_ids = ordenes
 
     def action_abrir(self):
         self.ensure_one()
+        orden = self.production_id.sudo()
+        if orden not in self.env['mrp.production'].sudo()._ordenes_clasificacion(solo_no_liberadas=True):
+            raise UserError(_('La orden %s ya no está abierta o laboratorio ya la liberó: no se revisa tela acabada.',
+                              orden.name))
         return self.env['mrp.hoja.calidad']._abrir(self.production_id.sudo().product_id, 'inspeccion')

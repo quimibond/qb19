@@ -46,6 +46,8 @@
                         <group invisible="not rollo_id">
                             <group string="Lo que dijo Inspección">
                                 <field name="clasificacion_insp"/>
+                                <field name="clasificacion_lab" invisible="not clasificacion_lab"/>
+                                <field name="motivo_lab" invisible="not motivo_lab"/>
                                 <field name="metros_insp"/>
                                 <field name="kg_insp"/>
                                 <field name="estado_rollo"/>
