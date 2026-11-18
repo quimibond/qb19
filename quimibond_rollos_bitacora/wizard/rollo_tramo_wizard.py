@@ -20,7 +20,7 @@ CALIDADES_TRAMOS = [c for c in CLASIFICACIONES_CAPTURA if c[0] in ('FE', 'SEGUND
 class RolloTramoWizard(models.TransientModel):
     """Quitar tramo, desde la ventana INSPECCIONAR (ajuste de tramos, 2026-11-16): el rollo ya está pesado en la
     estación; lo que le falta para llegar al peso de Rama es el peso inicial del tramo, que el operador pesa de nuevo,
-    con sus metros y defectos. El tramo se guarda sin etiqueta y se regresa a la misma ventana INSPECCIONAR."""
+    con sus metros y defectos. El tramo queda capturado en INSPECCIONAR y se guarda sin etiqueta junto con el registro del rollo."""
     _name = 'rollo.tramo.wizard'
     _inherit = ['scale.wizard.mixin']
     _description = 'Inspección: quitar un tramo a un rollo'
@@ -40,7 +40,7 @@ class RolloTramoWizard(models.TransientModel):
     kg_ya_cortados = fields.Float('Kg de rollos ya registrados', readonly=True, digits=(12, 4))
     kg_tramos = fields.Float('Kg de tramos ya quitados', readonly=True, digits=(12, 4))
     kg_disponibles = fields.Float('Kg que le faltan al rollo', compute='_compute_disponibles', digits=(12, 4),
-                                  help='Rama − rollo pesado − registrados − tramos ya quitados: el máximo del tramo.')
+                                  help='Rama − rollo pesado − registrados − tramos ya guardados: lo máximo que cabe como tramo.')
 
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
@@ -119,28 +119,18 @@ class RolloTramoWizard(models.TransientModel):
         return self._volver()
 
     def action_confirmar(self):
+        """Pasa el tramo a la ventana INSPECCIONAR; NO lo guarda: se guarda junto con el rollo, al registrarlo."""
         self.ensure_one()
-        self.env.cr.execute('SELECT id FROM mrp_rollo_bitacora WHERE id = %s FOR UPDATE', [self.bitacora_id.id])
         self.env.invalidate_all()
-        emp = self._validar()
-        operador = ' - '.join(filter(None, [self.empleado_numero, emp.name or False]))
-        tramo = self.env['mrp.rollo.tramo'].create({
-            'production_id': self.production_id.id,
-            'bitacora_id': self.bitacora_id.id,
-            'kg_bruto': self.kg_bruto,
-            'tara': self.tara_kg,
-            'kg_neto': self.kg_neto,
-            'captura_manual': self.weighing_mode == 'manual',
-            'motivo_manual': (self.motivo_manual or False) if self.weighing_mode == 'manual' else False,
-            'metros': self.metros,
-            'defecto_ids': [(6, 0, self.defecto_ids.ids)],
-            'workcenter_id': self.workcenter_id.id,
-            'operador': operador,
+        self._validar()
+        self.estacion_id.write({
+            'tramo_bitacora_id': self.bitacora_id.id,
+            'tramo_kg_bruto': self.kg_bruto,
+            'tramo_metros': self.metros,
+            'tramo_defecto_ids': [(6, 0, self.defecto_ids.ids)],
+            'tramo_captura_manual': self.weighing_mode == 'manual',
+            'tramo_motivo_manual': self.motivo_manual if self.weighing_mode == 'manual' else False,
         })
-        self.production_id.message_post(body=_(
-            'Tramo de %(kg).2f kg y %(m).2f m quitado al rollo %(r)s por %(o)s (defectos: %(d)s). Queda pendiente de '
-            'juntar en un rollo de FE o Segunda.', kg=tramo.kg_neto, m=tramo.metros, r=self.bitacora_id.name, o=operador,
-            d=tramo.siglas_defectos or '-'))
         return self._volver()
 
 

@@ -29,10 +29,11 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 
 ## Tramos y calidades PQ, FE y Segunda (3.22.0, Junta con el cliente, 2026-11-13)
 - **Quitar tramo** (3.22.1, ajuste del 2026-11-16: vive **dentro de INSPECCIONAR**, ya no hay botón aparte). La ventana tiene
-  dos botones: REGISTRAR E IMPRIMIR ETIQUETA y QUITAR TRAMO. Primero se escanea el rollo de Rama y se **pesa el rollo**; lo que le
-  falta para llegar al peso de Rama (Rama − rollo − ya registrados − tramos anteriores) es el peso inicial del tramo. Con QUITAR
-  TRAMO se abre `rollo.tramo.wizard` con ese peso: se pesa el tramo, se capturan sus metros y al menos un defecto y GUARDAR TRAMO
-  lo registra **sin etiqueta** (`mrp.rollo.tramo`) y regresa a la misma ventana INSPECCIONAR, con lo que ya se había capturado.
+  dos botones: REGISTRAR E IMPRIMIR ETIQUETA y QUITAR TRAMO. Primero se escanea el rollo de Rama y se **pesa el rollo**; el peso inicial del
+  tramo es **el peso de Rama menos el peso neto de ese rollo**. Con QUITAR TRAMO se abre `rollo.tramo.wizard` con ese peso: se pesa
+  el tramo, se capturan sus metros y al menos un defecto y ACEPTAR TRAMO regresa a la misma ventana INSPECCIONAR. **El tramo no se
+  guarda solo** (3.22.2): queda capturado en la ventana y se crea (`mrp.rollo.tramo`, sin etiqueta) junto con el rollo al pulsar
+  REGISTRAR E IMPRIMIR ETIQUETA; si se cancela la ventana no queda ningún tramo.
   Rollo + tramo no pueden pesar más que el rollo de Rama (error; tolerancia de 0.005 kg de la báscula). REGISTRAR imprime solo la
   etiqueta del rollo que quedó sin el tramo.
 - **Alerta sin tramo** (3.22.1): al registrar, si el rollo pesa menos que Rama más que el límite de merma (parámetro, 3 %) y no se

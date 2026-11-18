@@ -74,7 +74,7 @@
                     </div>
                 </sheet>
                 <footer>
-                    <button name="action_confirmar" type="object" string="GUARDAR TRAMO"
+                    <button name="action_confirmar" type="object" string="ACEPTAR TRAMO"
                             class="btn-primary btn-lg" invisible="tara_faltante"/>
                     <button name="action_volver" type="object" string="VOLVER A INSPECCIÓN"
                             class="btn-secondary btn-lg"/>
