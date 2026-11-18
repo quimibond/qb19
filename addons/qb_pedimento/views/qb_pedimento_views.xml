@@ -56,6 +56,8 @@
                             invisible="state != 'entregado'"/>
                     <button name="action_cargar_expediente" type="object" string="Cargar expediente"
                             invisible="state == 'cancelado'"/>
+                    <button name="action_traer_memoria" type="object" string="Traer de la memoria"
+                            invisible="state == 'cancelado' or not numero"/>
                     <button name="action_crear_costo_destino" type="object" string="Crear costo en destino"
                             invisible="operacion != 'importacion' or state in ('preparacion', 'cancelado')"
                             groups="stock.group_stock_manager"/>
@@ -119,6 +121,7 @@
                             <field name="fecha_cierre"/>
                             <field name="dias_cierre" invisible="not fecha_cierre"/>
                             <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="memoria_fecha" invisible="not memoria_fecha"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
@@ -127,6 +130,9 @@
                             <button name="action_cargar_expediente" type="object" class="btn-secondary mb-2"
                                     icon="fa-upload" string="Cargar expediente completo (varios archivos o ZIP)"
                                     invisible="state == 'cancelado'"/>
+                            <button name="action_traer_memoria" type="object" class="btn-secondary mb-2 ms-2"
+                                    icon="fa-envelope-o" string="Traer de la memoria de correo"
+                                    invisible="state == 'cancelado' or not numero"/>
                             <field name="documento_ids">
                                 <list editable="bottom" create="false" delete="false"
                                       decoration-success="cumplido" decoration-danger="vencido or (required and not cumplido)">
@@ -408,4 +414,12 @@
         </field>
     </record>
 
+    <record id="action_qb_pedimento_traer_memoria" model="ir.actions.server">
+        <field name="name">Traer archivos de la memoria de correo</field>
+        <field name="model_id" ref="model_qb_pedimento"/>
+        <field name="binding_model_id" ref="model_qb_pedimento"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_traer_memoria()</field>
+    </record>
 </odoo>

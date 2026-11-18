@@ -36,6 +36,21 @@ En el expediente, botón **Cargar expediente**. También está arriba de la pest
 
 Los patrones se ajustan en Configuración → Documentos del expediente, columna «Patrón del nombre de archivo» (expresión regular). Una actualización del módulo no pisa lo editado.
 
+## Traer los archivos de la memoria de correo
+
+Las agencias mandan el pedimento pagado, el DODA y lo demás por correo a Logística, Contabilidad y CxC, y la
+memoria de correo (Supabase) guarda cada adjunto. El botón **Traer de la memoria** (encabezado del expediente
+y pestaña Documentos) busca los correos que traen el consecutivo del pedimento en el asunto o en el texto de
+un adjunto, entre 60 días antes y 120 días después de sus fechas, baja sus adjuntos (sin firmas, imágenes
+chicas ni correos reenviados, sin repetidos) y abre el mismo asistente de «Cargar expediente» ya clasificado
+para revisarlo y guardar. No vuelve a traer un archivo que el expediente ya tiene.
+
+- Desde la lista, la acción «Traer archivos de la memoria de correo» hace hasta 20 expedientes y guarda sin
+  revisión; los archivos cuyo nombre trae otro pedimento se dejan fuera.
+- La tarea «Pedimentos - Traer archivos de la memoria» corre cada hora con 10 expedientes: primero los que
+  nunca se buscaron, después los abiertos cada semana. «Última búsqueda en la memoria» dice cuándo fue.
+- Usa `quimibond_intelligence.supabase_url` y `supabase_service_key` (los mismos parámetros del push).
+
 ## Etapas
 
 `Preparación → En tránsito → En aduana → Despachado → Entregado / Cruzado → Cerrado`.
