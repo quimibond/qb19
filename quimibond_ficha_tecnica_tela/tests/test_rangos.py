@@ -13,8 +13,9 @@ class TestRangos(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.tejido = cls.env['ficha.tecnica.tejido'].create({'articulo': 'WJ997Q22HNT160'})
+        product = cls.env['product.product'].create({'name': 'Tela prueba rangos'})
         cls.acabado = cls.env['ficha.tecnica.acabado'].create({
-            'articulo': 'WJ997Q22JNT160', 'tejido_id': cls.tejido.id})
+            'articulo': 'WJ997Q22JNT160', 'tejido_id': cls.tejido.id, 'product_acabado_id': product.id})
         cls.Spec = cls.env['ficha.tecnica.spec']
 
     def test_01_funcion(self):
