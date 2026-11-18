@@ -249,3 +249,33 @@ class TestAbsorcionUnidad(CosteoCase):
         self.assertEqual(Horas._bom_vigente(self.tela), self.bom_tela)
         par.value_text = '0'
         self.assertEqual(Horas._bom_vigente(self.tela), cambio)
+
+    def test_horas_estandar_de_lo_producido(self):
+        """1.16.0: el centro reparte su gasto entre las horas estándar de lo
+        que produjo (cantidad × horas por unidad), no entre las de reloj."""
+        self.env['qb.parametro'].set_float('absorcion_unidad_meses', 1)
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1)
+        tipo_tej = self.env['stock.picking.type'].create({
+            'name': 'Tejido prueba', 'code': 'mrp_operation',
+            'sequence_code': 'QBTEJ', 'warehouse_id': wh.id})
+        self.c_tin.write({'absorcion': 'estandar',
+                          'unidad_tipo_ids': [(6, 0, [tipo_tej.id])]})
+        self.env['qb.producto.horas'].create({
+            'product_id': self.tela.id, 'centro_id': self.c_tin.id,
+            'horas_propias': 0.5, 'horas_unidad': 0.5, 'fuente': 'manual',
+            'horas_manual': 0.5, 'manual_motivo': 'prueba'})
+        self.producir(100, '2026-09-12 10:00:00', tipo=tipo_tej)
+        self.assertAlmostEqual(self.c_tin.horas_estandar_producidas(
+            date(2026, 9, 1), date(2026, 10, 1)), 50.0, 4)
+        self.gasto(self.acc_luz, 10000)             # energía de TIN
+        self.periodo.action_calcular()
+        tin = self._tarifa(self.c_tin)
+        self.assertEqual(tin.horas_reales_fuente, 'estandar_producido')
+        self.assertEqual(tin.horas_fuente, 'promedio')
+        self.assertAlmostEqual(tin.horas_reales, 50.0, 2)
+        self.assertAlmostEqual(tin.tarifa_variable, 200.0, 2)
+
+    def test_estandar_exige_tipos(self):
+        with self.assertRaises(ValidationError):
+            self.c_tin.write({'absorcion': 'estandar'})

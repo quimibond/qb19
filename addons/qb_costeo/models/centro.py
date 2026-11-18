@@ -82,6 +82,7 @@ class QbCentro(models.Model):
     absorcion = fields.Selection([
         ('horas', 'Por horas (órdenes de trabajo o estándar)'),
         ('unidad', 'Por unidad producida (kg o m del departamento)'),
+        ('estandar', 'Por horas estándar de lo producido'),
     ], string='Cómo absorbe el gasto', default='horas', required=True,
         help='1.12.0: «Por horas» reparte el gasto del centro entre las horas '
              'de sus máquinas (sirve donde las horas son reales: Tejido). '
@@ -90,7 +91,12 @@ class QbCentro(models.Model):
              'hecho en sus tipos de operación carga 1 unidad y la hereda por '
              'receta a lo que se fabrica con él. La capacidad normal es el '
              'promedio mensual de producción de los últimos meses '
-             '(parámetro «absorcion_unidad_meses»), no el calendario.')
+             '(parámetro «absorcion_unidad_meses»), no el calendario. '
+             '1.16.0: «Por horas estándar de lo producido» reparte el gasto '
+             'entre las horas que suman los artículos que el centro produjo '
+             '(cantidad × horas por unidad de cada uno), no entre las horas '
+             'de reloj: las horas por unidad pesan cada artículo y lo cargado '
+             'cierra con el gasto real (Tejido cargaba 15 % de más).')
     horas_desde = fields.Date(
         string='Horas reales desde',
         help='1.13.0: centros por horas cuyas órdenes de trabajo solo traen '
@@ -168,6 +174,13 @@ class QbCentro(models.Model):
                     'El centro %s tiene «Horas reales desde»: diga qué tipos '
                     'de operación son su producción, para estimar las horas '
                     'de los meses anteriores.' % rec.code)
+            if rec.absorcion == 'estandar' and (
+                    rec.nature != 'directo' or rec.tarifa_de_id
+                    or not rec.unidad_tipo_ids):
+                raise ValidationError(
+                    'El centro %s absorbe por horas estándar de lo producido: '
+                    'debe ser directo, con gasto propio y con los tipos de '
+                    'operación que son su producción.' % rec.code)
             if rec.absorcion == 'unidad':
                 if rec.nature != 'directo' or rec.tarifa_de_id:
                     raise ValidationError(
@@ -231,6 +244,14 @@ class QbCentro(models.Model):
             hasta = fields.Date.to_date(date_to)
             desde = hasta - relativedelta(months=n)
             return self.produccion_unidades(desde, hasta) / n * meses, 'promedio'
+        if self.absorcion == 'estandar':
+            # 1.16.0: capacidad normal = promedio mensual de horas estándar.
+            n = int(self.env['qb.parametro'].get_float(
+                'absorcion_unidad_meses', 12)) or 12
+            hasta = fields.Date.to_date(date_to)
+            desde = hasta - relativedelta(months=n)
+            return (self.horas_estandar_producidas(desde, hasta) / n * meses,
+                    'promedio')
         if self.capacidad_h_mes:
             return self.capacidad_h_mes * meses, 'capturada'
         total = 0.0
@@ -262,6 +283,9 @@ class QbCentro(models.Model):
         if self.absorcion == 'unidad':
             unidades = self.produccion_unidades(date_from, date_to)
             return unidades, ('unidad' if unidades else 'ninguna')
+        if self.absorcion == 'estandar':
+            horas = self.horas_estandar_producidas(date_from, date_to)
+            return horas, ('estandar_producido' if horas else 'ninguna')
         wcs = self.workcenter_ids.ids
         if not wcs:
             return 0.0, 'ninguna'
@@ -341,6 +365,29 @@ class QbCentro(models.Model):
         if not unidades:
             return 0.0
         return self.horas_reales(desde, hasta)[0] / unidades
+
+    def horas_estandar_producidas(self, date_from, date_to):
+        """1.16.0: horas estándar de lo que el centro produjo en la ventana:
+        Σ de lo terminado en las órdenes de sus tipos de operación × las horas
+        propias por unidad del artículo en el centro (`qb.producto.horas`).
+        Un artículo sin horas no suma (ni carga)."""
+        self.ensure_one()
+        tipos = self.unidad_tipo_ids.ids
+        if not tipos:
+            return 0.0
+        self.env.flush_all()
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(sm.quantity * h.horas_propias), 0)
+            FROM stock_move sm
+            JOIN mrp_production mo ON mo.id = sm.production_id
+            JOIN qb_producto_horas h ON h.product_id = mo.product_id
+                 AND h.centro_id = %s AND h.company_id = mo.company_id
+            WHERE sm.state = 'done' AND sm.product_id = mo.product_id
+              AND mo.state = 'done' AND mo.company_id = %s
+              AND mo.picking_type_id IN %s
+              AND mo.date_finished >= %s AND mo.date_finished < %s
+        """, (self.id, self.company_id.id, tuple(tipos), date_from, date_to))
+        return self.env.cr.fetchone()[0] or 0.0
 
     def produccion_unidades(self, date_from, date_to):
         """1.12.0, absorción por unidad: lo que el centro produjo en la
