@@ -4,9 +4,9 @@
 Por cada rollo final que sale de la revisadora: se escanea el rollo de Rama (o varios del mismo baño para juntarlos),
 se pesa con la tara de Inspección, se capturan metros, calidad y defectos, se le asigna su lote ``M…`` y se imprime la
 etiqueta final. Para dividir un rollo de Rama en varios rollos, se registra cada rollo con «Último rollo de esta tela»
-apagado y el último con él encendido: entonces el rollo de Rama queda inspeccionado. La pedacería defectuosa que se
-retira no se captura: queda como merma y se pesa después como desperdicio de la orden (3.16.2). No se mueve
-inventario (D7).
+apagado y el último con él encendido: entonces el rollo de Rama queda inspeccionado. Lo defectuoso que se quita a un rollo se
+registra aparte como tramo (3.22.0: ``rollo.tramo.wizard``) y los tramos se juntan en un rollo de FE o Segunda
+(``rollo.tramos.juntar.wizard``). No se mueve inventario (D7).
 
 3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado), bloqueo de los rollos y de la orden mientras
 se registra (dos revisadoras a la vez) y el rollo escaneado se busca primero en este baño.
@@ -18,7 +18,7 @@ from odoo.exceptions import UserError
 
 from .pesaje_manual import modo_por_defecto, motivo_por_defecto
 
-from ..models.mrp_rollo_bitacora import CLASIFICACIONES, PARAM_ALERTA_DIFERENCIA_PCT
+from ..models.mrp_rollo_bitacora import CLASIFICACIONES, CLASIFICACIONES_CAPTURA, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
 
@@ -42,10 +42,12 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     codigos_error = fields.Char(compute='_compute_bitacora')
     termina_rollo = fields.Boolean('Último rollo de esta tela', default=True,
                                    help='Apágalo solo si de este rollo de Rama va a salir otro rollo más: el rollo de '
-                                        'Rama queda pendiente hasta registrar el último. La pedacería defectuosa que '
-                                        'se retira no se captura aquí: se pesa después como desperdicio de la orden.')
+                                        'Rama queda pendiente hasta registrar el último. Lo defectuoso que se quita al rollo '
+                                        'se registra con «QUITAR TRAMO».')
     kg_rama = fields.Float('Kg de Rama', compute='_compute_bitacora', digits=(12, 4))
     kg_ya_cortados = fields.Float('Kg de rollos ya registrados', compute='_compute_bitacora', digits=(12, 4))
+    kg_tramos = fields.Float('Kg de tramos quitados', compute='_compute_bitacora', digits=(12, 4),
+                             help='3.22.0: lo que se le quitó a estos rollos como tramo (va a un rollo de FE o Segunda).')
 
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
     tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
@@ -54,9 +56,9 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
     motivo_manual = fields.Char('Motivo de la captura manual', default=lambda self: motivo_por_defecto(self))
     weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))  # 3.3.9
     metros = fields.Float('Metros', digits=(12, 2),
-                          help='Obligatorio en Primera, FE y Segunda; el Desperdicio puede ir sin metros (3.6.2).')
+                          help='Obligatorios: PQ, FE y Segunda se registran en metros.')
     no_empalmes = fields.Integer('No. de empalmes')
-    clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad')
+    clasificacion = fields.Selection(CLASIFICACIONES_CAPTURA, 'Calidad')
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_insp_estacion_defecto_rel', 'wizard_id', 'defecto_id',
                                    'Defectos', domain="[('tipo_tela', '=', 'tejido_acabado')]")
 
@@ -104,6 +106,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             wiz.codigos_error = ', '.join(faltan) or False
             wiz.kg_rama = sum(rollos.mapped('kg_rama'))
             wiz.kg_ya_cortados = sum(rollos.rollo_final_insp_ids.mapped('kg_neto'))
+            wiz.kg_tramos = sum(rollos.tramo_ids.mapped('kg_neto'))
 
     @api.depends('product_id', 'kg_bruto')
     def _compute_pesos(self):
@@ -136,7 +139,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
         ficha = Ficha.search([('product_proceso_id', '=', self.product_id.id)], order='id desc', limit=1)
         return ficha.rendimiento_tela_acabada or 0.0
 
-    @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'termina_rollo', 'metros', 'kg_bruto')
+    @api.depends('kg_neto', 'kg_rama', 'kg_ya_cortados', 'kg_tramos', 'termina_rollo', 'metros', 'kg_bruto')
     def _compute_merma(self):
         """Merma del grupo (rollos de Rama ↔ rollos finales, §4.6), con alerta por porcentaje antes de guardar. 3.3.0:
         alerta 2 del v5.4 §9.1, metros contra kg netos × rendimiento de la ficha (parámetro de Ajustes, 3 %)."""
@@ -152,7 +155,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                 avisos.append(_('%(m).2f m contra %(t).2f m teóricos (%(kg).2f kg × %(r).4f m/kg de la ficha): '
                                 'revisa los metros o el peso.', m=wiz.metros, t=wiz.metros_teoricos, kg=wiz.kg_neto,
                                 r=rendimiento))
-            salida = wiz.kg_ya_cortados + wiz.kg_neto
+            salida = wiz.kg_ya_cortados + wiz.kg_tramos + wiz.kg_neto
             wiz.merma_kg = wiz.kg_rama - salida if wiz.kg_rama else 0.0
             wiz.merma_pct = wiz.merma_kg / wiz.kg_rama * 100.0 if wiz.kg_rama else 0.0
             if wiz.kg_rama and wiz.kg_neto:
@@ -210,11 +213,10 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                               t=self.tara_kg))
         if self.weighing_mode == 'manual' and not (self.motivo_manual or '').strip():
             raise UserError(_('Captura el motivo de la captura manual del peso.'))
-        if self.metros < 0 or (self.metros == 0 and self.clasificacion != 'DESP'):
-            # 3.6.2 (ronda 11 en main): el Desperdicio sale en kg y puede ir sin metros.
+        if self.metros <= 0:
             raise UserError(_('Captura los metros del rollo final.'))
         if not self.clasificacion:
-            raise UserError(_('Elige la calidad del rollo final.'))
+            raise UserError(_('Elige la calidad del rollo final: PQ, FE o Segunda.'))
         if self.clasificacion in ('SEGUNDA', 'FE') and not self.defecto_ids:
             # 3.3.1 (Dirección, 2026-11-05): sin defecto no queda evidencia de por qué bajó la calidad (ISO 9001).
             raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',

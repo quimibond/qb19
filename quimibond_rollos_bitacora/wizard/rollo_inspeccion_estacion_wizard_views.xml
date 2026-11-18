@@ -83,6 +83,7 @@
                                        required="clasificacion in ('SEGUNDA', 'FE')"/>
                                 <field name="kg_rama"/>
                                 <field name="kg_ya_cortados"/>
+                                <field name="kg_tramos" invisible="not kg_tramos"/>
                                 <field name="merma_kg"/>
                                 <field name="merma_pct"/>
                             </group>

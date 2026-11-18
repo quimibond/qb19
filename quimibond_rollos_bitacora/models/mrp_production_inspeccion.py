@@ -59,17 +59,26 @@ class MrpProductionInspeccion(models.Model):
                                    help='Kg de Rama de los rollos ya inspeccionados menos los kg de sus rollos finales.')
     rollos_merma_pct = fields.Float('Merma de Inspección (%)', digits=(12, 1), compute='_compute_resumen_rollos')
     rollos_por_calidad = fields.Char('Kg por calidad', compute='_compute_resumen_rollos')
+    tramo_ids = fields.One2many('mrp.rollo.tramo', 'production_id', 'Tramos quitados', readonly=True)
+    tramos_pendientes_count = fields.Integer('Tramos sin juntar', compute='_compute_tramos_pendientes', store=True,
+                                             help='3.22.0: tramos quitados a los rollos que aún no se juntan en un rollo '
+                                                  'de FE o Segunda. El baño no cierra mientras haya alguno.')
     inspeccion_completa_sin_cerrar = fields.Boolean(
         'Rollos inspeccionados, sin cerrar', compute='_compute_inspeccion_completa_sin_cerrar', store=True,
         help='Orden en kg abierta con todos sus rollos de Rama inspeccionados: el baño ya se puede cerrar. Sus rollos '
              'finales no están en inventario hasta que se cierre.')
 
-    @api.depends('state', 'rollo_bitacora_ids.estado_inspeccion')
+    @api.depends('tramo_ids.rollo_final_id')
+    def _compute_tramos_pendientes(self):
+        for orden in self:
+            orden.tramos_pendientes_count = len(orden.tramo_ids.filtered(lambda t: not t.rollo_final_id))
+
+    @api.depends('state', 'rollo_bitacora_ids.estado_inspeccion', 'tramos_pendientes_count')
     def _compute_inspeccion_completa_sin_cerrar(self):
         for orden in self:
             rollos = orden.rollo_bitacora_ids
             orden.inspeccion_completa_sin_cerrar = bool(rollos) and orden.state not in ('done', 'cancel') \
-                and all(r.estado_inspeccion == 'inspeccionado' for r in rollos)
+                and all(r.estado_inspeccion == 'inspeccionado' for r in rollos) and not orden.tramos_pendientes_count
 
     def _insp_orden_metros(self):
         """La orden en metros abierta que consume el acabado en kg de esta orden (destino MTO de su terminado). 3.3.0:
@@ -82,7 +91,7 @@ class MrpProductionInspeccion(models.Model):
     @api.depends('product_qty', 'rollo_bitacora_ids.kg_rama', 'rollo_bitacora_ids.metros_rama',
                  'rollo_bitacora_ids.estado_inspeccion',
                  'rollo_final_kg_ids.kg_neto', 'rollo_final_kg_ids.metros', 'rollo_final_kg_ids.clasificacion',
-                 'rollo_final_kg_ids.bitacora_ids')
+                 'rollo_final_kg_ids.bitacora_ids', 'tramo_ids.kg_neto', 'tramo_ids.bitacora_id')
     def _compute_resumen_rollos(self):
         """3.3.8: lo que la pestaña Rollos resume arriba. La merma se mide sobre los rollos de Rama ya inspeccionados y
         los rollos finales que salen solo de ellos, para no contar un rollo cortado a la mitad."""
@@ -101,7 +110,9 @@ class MrpProductionInspeccion(models.Model):
             inspeccionados = rama.filtered(lambda r: r.estado_inspeccion == 'inspeccionado')
             cerrados = finales.filtered(lambda f: f.bitacora_ids and not (f.bitacora_ids - inspeccionados))
             base = sum(inspeccionados.mapped('kg_rama'))
-            orden.rollos_merma_kg = base - sum(cerrados.mapped('kg_neto')) if base else 0.0
+            # 3.22.0: lo quitado como tramo a estos rollos salió de ellos y está en un rollo de tramos: no es merma.
+            tramos = orden.tramo_ids.filtered(lambda t: t.bitacora_id in inspeccionados)
+            orden.rollos_merma_kg = base - sum(cerrados.mapped('kg_neto')) - sum(tramos.mapped('kg_neto')) if base else 0.0
             orden.rollos_merma_pct = orden.rollos_merma_kg / base * 100.0 if base else 0.0
             partes = []
             for clave, _etiqueta in CLASIFICACIONES:

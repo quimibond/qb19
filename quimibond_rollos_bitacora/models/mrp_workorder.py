@@ -2,12 +2,16 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+# 3.22.0: asistentes de Inspección que se abren aunque la operación siga «bloqueada» con Rama pesando rollos.
+MODELOS_INSPECCION = ('rollo.inspeccion.estacion.wizard', 'rollo.tramo.wizard', 'rollo.tramos.juntar.wizard')
+
 
 class MrpWorkorder(models.Model):
     _inherit = 'mrp.workorder'
 
     es_rama = fields.Boolean('Es operación de Rama', compute='_compute_es_rama')
     es_inspeccion = fields.Boolean('Es operación de Inspección', compute='_compute_es_inspeccion')
+    tramos_pendientes = fields.Integer('Tramos sin juntar', related='production_id.tramos_pendientes_count')
     es_clasificacion = fields.Boolean('Es operación de Clasificación final', compute='_compute_es_clasificacion')
     empaque_pendiente = fields.Boolean(
         'Orden en metros en Clasificación final', related='production_id.clasificacion_empaque_pendiente',
@@ -89,7 +93,7 @@ class MrpWorkorder(models.Model):
         caso de una operación que siguiera bloqueada con rollos pendientes. La operación de Inspección no termina ni la
         orden cierra hasta que Rama terminó y todos sus rollos están inspeccionados (``button_finish``)."""
         self.ensure_one()
-        return (modelo == 'rollo.inspeccion.estacion.wizard' and es_tipo and self.state == 'blocked'
+        return (modelo in MODELOS_INSPECCION and es_tipo and self.state == 'blocked'
                 and self.production_id.state in ('confirmed', 'progress', 'to_close')
                 and any(r.estado_inspeccion != 'inspeccionado' for r in self.production_id.rollo_bitacora_ids))
 
@@ -110,6 +114,15 @@ class MrpWorkorder(models.Model):
         # 3.1.0: Inspección como estación única (diseño 2026-11-03): pesa, corta o junta, clasifica y etiqueta.
         return self._abrir_ventana_operacion(
             self.es_inspeccion, 'rollo.inspeccion.estacion.wizard', _('Inspeccionar rollo'), 'Inspección')
+
+    def action_quitar_tramo(self):
+        # 3.22.0: le quita un tramo a un rollo con defectos (se acumula por baño).
+        return self._abrir_ventana_operacion(self.es_inspeccion, 'rollo.tramo.wizard', _('Quitar tramo'), 'Inspección')
+
+    def action_juntar_tramos(self):
+        # 3.22.0: junta los tramos del baño en un rollo nuevo de FE o Segunda.
+        return self._abrir_ventana_operacion(
+            self.es_inspeccion, 'rollo.tramos.juntar.wizard', _('Juntar tramos'), 'Inspección')
 
     def _validar_clasificacion_empaque(self):
         """3.14.0 (A3.4b): la operación CLASIFICACION de la orden en metros no termina con rollos por clasificar en

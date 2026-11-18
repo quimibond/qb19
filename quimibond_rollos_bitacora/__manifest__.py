@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.21.1',
+    'version': '19.0.3.22.0',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -84,6 +84,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'wizard/rollo_empaque_clasificacion_wizard_views.xml',
         'wizard/rollo_empaque_desperdicio_wizard_views.xml',
         'wizard/rollo_liberacion_lab_wizard_views.xml',
+        'wizard/rollo_tramo_wizard_views.xml',
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],

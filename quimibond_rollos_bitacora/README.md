@@ -27,6 +27,26 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Tramos y calidades PQ, FE y Segunda (3.22.0, Junta con el cliente, 2026-11-13)
+- **Quitar tramo** (botón QUITAR TRAMO en la operación de Inspección): a un rollo con defectos se le quita una cantidad y se
+  aparta. Se escanea el rollo de Rama, se pesa el tramo con la tara de Inspección, se capturan metros y al menos un defecto
+  (`rollo.tramo.wizard`, modelo `mrp.rollo.tramo`). El tramo no puede pesar más de lo que le queda al rollo (kg de Rama menos
+  rollos finales ya registrados y tramos anteriores). Los tramos se acumulan por baño y salen en la pestaña Rollos de la orden.
+- **Juntar tramos** (botón JUNTAR TRAMOS, aparece con tramos pendientes): junta todos los tramos pendientes del baño en un
+  rollo nuevo de **FE o Segunda** (`rollo.tramos.juntar.wizard`). Se pesa el rollo armado con la tara de Inspección, se miden
+  sus metros (propone la suma de los tramos) y se eligen la calidad y los defectos (propone la unión de los de los tramos). Avisa,
+  sin bloquear, si el peso o los metros se apartan de la suma de los tramos más del límite de merma (parámetro, 3 %). El
+  rollo es un `mrp.rollo.final` normal (lote `<baño>-F###`, etiqueta preliminar y final, `es_tramos`), sin rollos de Rama propios.
+  Entra a su calidad al cerrar el baño y pasa por Empaque como cualquier otro rollo.
+- El baño **no cierra** con tramos sin juntar. Lo quitado como tramo no cuenta como merma en la estación ni en el resumen de la
+  orden. Anular el rollo de tramos (responsable de Manufactura) deja sus tramos pendientes otra vez; un tramo ya juntado no se borra.
+- **Desperdicio ya no es una calidad que se elija:** al capturar un rollo en Inspección y al clasificarlo en Empaque solo hay PQ,
+  FE y Segunda, y los metros son obligatorios en las tres. Los rollos que ya traen «Desperdicio» conservan su valor (historial,
+  etiquetas, traspaso a la ubicación 17), pero Empaque pide elegir PQ, FE o Segunda para clasificarlos. El pesaje de desperdicio
+  de Rama y de Empaque (subproductos DESPERDICIO TEJIDO y SALDO TEJIDO D) no cambia.
+- Sin migración. Pruebas 83 a 86 nuevas (tramos, validaciones, calidades, anular); las pruebas que capturaban Desperdicio
+  desde la pantalla ahora crean el rollo como Segunda y lo dejan como Desperdicio, para seguir cubriendo el historial.
+
 ## Los traspasos 10 → calidad los valida Almacén (3.19.2 y 3.19.3, 2026-11-11)
 
 - Las transferencias internas que pasan lo producido de la Ubic. 10 a su calidad (14, 15, 16, 17 o 31) ya **no se validan solas**:
