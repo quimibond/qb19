@@ -136,6 +136,10 @@ class TestDevProceso(TransactionCase):
                                                          'product_acabado_id': acabado.id})
         self.env['ficha.tecnica.spec'].create({'acabado_id': ficha.id, 'caracteristica_id': ancho.id,
                                                'spec_nominal': 1.55})
+        # Las reglas de cotizar y de la aprobación del cliente se prueban aparte: el proyecto llega a
+        # pilotaje por migración y se libera normal (la liberación es lo que se prueba aquí).
+        dev.with_context(sgi_dev_migration=True).write(
+            {'stage_id': self.env.ref('quimibond_sgi.sgi_dev_stage_pilotaje').id})
         dev.write({'stage_id': self.env.ref('quimibond_sgi.sgi_dev_stage_liberado').id})
         spec = ficha.spec_line_ids
         self.assertEqual(len(spec.filtered(lambda s: s.caracteristica_id == masa)), 1, "La masa pasó a la ficha")

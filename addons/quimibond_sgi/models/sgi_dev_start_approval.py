@@ -319,7 +319,10 @@ class ProjectProjectDevStartApproval(models.Model):
             else:
                 nominal = _num(line.spec_nominal, 3) if line.spec_nominal else ''
                 pct = ' %' if line.spec_tol_pct else ''
-                if line.spec_limit == 'max':
+                if line.spec_limit == 'range':
+                    # 57.201.0: rango de mínimo a máximo (fichas 2.30.0): los dos extremos, sin tolerancia aparte.
+                    nominal = "%s – %s" % (_num(line.spec_min, 3), _num(line.spec_max, 3))
+                elif line.spec_limit == 'max':
                     tolerance = L['max']
                 elif line.spec_limit == 'min':
                     tolerance = L['min']

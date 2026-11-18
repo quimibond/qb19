@@ -429,3 +429,36 @@ class TestRutaFamilia(TiempoFichaCase):
         pendiente = Revision._ft_actualizar(ficha).pendiente_ids.filtered(
             lambda p: p.tipo == 'ruta_mto' and p.bom_id == bom_m)
         self.assertTrue(pendiente, "Lista en metros activa sin la ruta: pendiente de Ingeniería")
+
+    def test_14_la_lista_activada_va_primero(self):
+        """Revisión 2026-11-11: al activar la lista en metros del flujo, queda antes que la lista anterior del producto
+        (que sigue activa, de respaldo): una orden nueva toma la del flujo. Activarla otra vez no mueve la secuencia."""
+        self._armar()
+        Product = self.env['product.product']
+        Bom = self.env['mrp.bom']
+        kg = Product.create({'name': 'Tela 939 prueba (kg)', 'default_code': 'IZZ939Q22JNG165', 'uom_id': self.kg.id,
+                             'is_storable': True})
+        tela_m = Product.create({'name': 'Tela 939 prueba (m)', 'default_code': 'ZZ939Q22JNG165',
+                                 'uom_id': self.meter.id, 'is_storable': True})
+        anterior = Bom.create({'product_tmpl_id': tela_m.product_tmpl_id.id, 'product_id': tela_m.id, 'product_qty': 1,
+                               'product_uom_id': self.meter.id, 'sequence': 0, 'bom_line_ids': [
+                                   (0, 0, {'product_id': self.crudo.id, 'product_qty': 0.1})]})
+        ficha = self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'ZZ939Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+        ficha.action_ft_generar_listas()
+        bom_m = Bom.with_context(active_test=False).search([
+            ('product_tmpl_id', '=', tela_m.product_tmpl_id.id), ('code', '=', 'Clasificación final (borrador)')])
+        self.assertEqual(len(bom_m), 1)
+        self.assertFalse(bom_m.active, "Lo generado nace archivado")
+        self.assertEqual(Bom._bom_find(tela_m, bom_type='normal')[tela_m], anterior)
+        bom_m.action_unarchive()
+        self.assertTrue(anterior.active, "La lista anterior sigue activa, de respaldo")
+        self.assertLess(bom_m.sequence, anterior.sequence)
+        self.assertEqual(Bom._bom_find(tela_m, bom_type='normal')[tela_m], bom_m,
+                         "Una orden nueva toma la lista del flujo")
+        secuencia = bom_m.sequence
+        bom_m.action_archive()
+        bom_m.action_unarchive()
+        self.assertEqual(bom_m.sequence, secuencia, "Si ya va primero no se mueve")
+

@@ -34,7 +34,9 @@ class TestDevTechSheet(TransactionCase):
         cls.cuidado = cls.env['sgi.dev.option'].create({'kind': 'cuidado', 'name': 'No planchar', 'name_en': 'Do not iron'})
 
     def _dev(self):
-        dev = self.env['project.project'].create({'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
+        # Sin la carga automática del tipo: la tabla es solo la de la prueba.
+        dev = self.env['project.project'].with_context(sgi_dev_no_autoload=True).create({
+            'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
                                                   'sgi_dev_product_name': 'Jersey ficha', 'sgi_dev_product_id': self.tela.id,
                                                   'sgi_dev_use': 'Forro de calzado'})
         Line = self.env['sgi.dev.characteristic']
