@@ -330,7 +330,12 @@ class QbCostoProducto(models.Model):
                 'fabricacion_total': fab * qty_ef, 'op_total': op * qty_ef,
                 'costo_total_periodo': total * qty_ef,
                 'margen_neto_total': revenue - total * qty_ef if precio else 0.0,
-                'linea_ids': [(5, 0, 0)] + lineas,
+                'linea_ids': [(5, 0, 0)] + [
+                    (0, 0, dict(
+                        ln[2],
+                        horas_vendidas=ln[2]['horas_unidad'] * qty_ef / rend,
+                        cargado_ventas=ln[2]['costo_unit'] * qty_ef / rend))
+                    for ln in lineas],
             }
             rec = existentes.pop(p.id, None)
             if rec:
@@ -357,5 +362,17 @@ class QbCostoProductoCentro(models.Model):
     tarifa = fields.Float(digits=(16, 4))
     tarifa_variable = fields.Float(digits=(16, 4))
     costo_unit = fields.Float(digits=(16, 4), string='$/u')
+    periodo_id = fields.Many2one(related='costo_id.periodo_id', store=True,
+                                 index=True)
+    horas_vendidas = fields.Float(
+        digits=(16, 2), string='Horas o unidades en lo vendido',
+        help='1.15.0: horas (o unidades) del centro que lleva lo vendido en '
+             'el mes, con la merma: horas por unidad × cantidad vendida ÷ '
+             'rendimiento. Se compara con las horas reales del centro.')
+    cargado_ventas = fields.Float(
+        digits=(16, 2), string='Cargado a lo vendido $',
+        help='1.15.0: gasto del centro que el costo le carga a lo vendido en '
+             'el mes ($/u × cantidad vendida ÷ rendimiento). Se compara con '
+             'el gasto del centro menos su ociosidad.')
     fuente = fields.Char()
     calidad = fields.Char()
