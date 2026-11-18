@@ -53,11 +53,13 @@ FUENTES = [
     ('galga', 'Máquinas de la misma galga'),
     ('estimado', 'Promedio del centro'),
     ('driver', 'Configuración del centro'),
+    ('unidad', 'Unidad producida en el centro'),
     ('ninguna', 'Sin dato'),
 ]
 # Orden de calidad: menor = mejor.
 RANGO = {'manual': 0, 'pesaje': 1, 'medido': 1, 'estandar': 1, 'ficha': 1,
-         'hermano': 2, 'galga': 2, 'estimado': 3, 'driver': 3, 'ninguna': 4}
+         'hermano': 2, 'galga': 2, 'estimado': 3, 'driver': 3, 'unidad': 1,
+         'ninguna': 4}
 CALIDAD = {0: 'alta', 1: 'alta', 2: 'media', 3: 'baja', 4: 'ninguna'}
 
 # Nomenclatura DAT P-D02-01: 14 caracteres sin el prefijo de unidad.
@@ -721,6 +723,11 @@ class QbProductoHoras(models.Model):
         externas = self._fuentes_externas(products, centros, desde, hasta)
         prom, prom_galga = self._promedios_centro(centros, desde, hasta)
         fichas = self._ficha_procesos(centros)
+        # 1.12.0: centros que absorben por unidad producida. Sus productos
+        # (los que salen de sus tipos de operación) cargan 1 unidad; lo demás
+        # lo hereda por receta.
+        unidad = {c.id: c.productos_unidad(desde, hasta)
+                  for c in centros if c.absorcion == 'unidad'}
         hoy = fields.Date.today()
 
         # Hermanos: por raíz de nomenclatura, los productos con dato medido.
@@ -747,6 +754,10 @@ class QbProductoHoras(models.Model):
                     propias[(p.id, c.id)] = (
                         rec.horas_manual, 'manual',
                         'Manual: %s' % (rec.manual_motivo or ''), 0)
+                    continue
+                if c.absorcion == 'unidad':
+                    if p.id in unidad[c.id]:
+                        propias[(p.id, c.id)] = self._propia_unidad(p, c)
                     continue
                 # 1.7.0: la operación real de la lista manda. Si la receta
                 # vigente tiene operaciones y ninguna en este centro, el
@@ -832,7 +843,7 @@ class QbProductoHoras(models.Model):
                 # Producto fuera del lote (componente): calcula propias al vuelo.
                 own = self._propias_al_vuelo(prod, bom, Centro.browse(cid),
                                              medido, hermanos, prom, prom_galga,
-                                             fichas)
+                                             fichas, unidad)
                 propias[key] = own
             h = own[0] if own else 0.0
             rango = RANGO[own[1]] if own else 4
@@ -962,8 +973,18 @@ class QbProductoHoras(models.Model):
         return bool(drivers) and centro.driver in drivers
 
     @api.model
+    def _propia_unidad(self, product, centro):
+        return (1.0, 'unidad', 'Producido en %s: carga 1 %s por %s'
+                % (centro.code, product.uom_id.name, product.uom_id.name), 0)
+
+    @api.model
     def _propias_al_vuelo(self, product, bom, centro, medido, hermanos, prom,
-                          prom_galga, fichas=None):
+                          prom_galga, fichas=None, unidad=None):
+        if centro.absorcion == 'unidad':
+            ids = (unidad or {}).get(centro.id)
+            if ids is None:
+                ids = centro.productos_unidad(*self._ventana())
+            return self._propia_unidad(product, centro) if product.id in ids else None
         if self._ops_fuera(bom, centro):
             return None
         if not (bom and bom.operation_ids) and self._es_clasificacion(product, bom):

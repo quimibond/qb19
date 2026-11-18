@@ -32,3 +32,6 @@ access_qb_centro_banda_manager,qb.centro.banda manager,model_qb_centro_banda,mrp
 access_qb_capa_absorcion_user,qb.capa.absorcion user,model_qb_capa_absorcion,mrp.group_mrp_user,1,0,0,0
 access_qb_capa_absorcion_manager,qb.capa.absorcion manager,model_qb_capa_absorcion,mrp.group_mrp_manager,1,1,1,1
 access_qb_capa_absorcion_account,qb.capa.absorcion contabilidad,model_qb_capa_absorcion,account.group_account_manager,1,1,1,1
+access_qb_capa_absorcion_categoria_user,qb.capa.absorcion.categoria user,model_qb_capa_absorcion_categoria,mrp.group_mrp_user,1,0,0,0
+access_qb_capa_absorcion_categoria_manager,qb.capa.absorcion.categoria manager,model_qb_capa_absorcion_categoria,mrp.group_mrp_manager,1,1,1,1
+access_qb_capa_absorcion_categoria_account,qb.capa.absorcion.categoria account,model_qb_capa_absorcion_categoria,account.group_account_manager,1,1,1,1

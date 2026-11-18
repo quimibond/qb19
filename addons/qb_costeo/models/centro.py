@@ -7,6 +7,8 @@ mantenimiento, limpieza) no carga horas: su gasto se reparte entre los
 directos con una llave. Entretela, importados e inspección no son casos
 especiales del código: son centros con su driver.
 """
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -77,6 +79,34 @@ class QbCentro(models.Model):
              'su tarifa variable es 0; sus horas no entran a la tarifa variable '
              'del otro centro. Su capacidad normal se suma a la del otro si este '
              'usa calendario (la capturada se entiende como la del grupo).')
+    absorcion = fields.Selection([
+        ('horas', 'Por horas (órdenes de trabajo o estándar)'),
+        ('unidad', 'Por unidad producida (kg o m del departamento)'),
+    ], string='Cómo absorbe el gasto', default='horas', required=True,
+        help='1.12.0: «Por horas» reparte el gasto del centro entre las horas '
+             'de sus máquinas (sirve donde las horas son reales: Tejido). '
+             '«Por unidad producida» lo reparte entre lo que el departamento '
+             'produjo: la tarifa queda en $ por kg o por m, cada producto '
+             'hecho en sus tipos de operación carga 1 unidad y la hereda por '
+             'receta a lo que se fabrica con él. La capacidad normal es el '
+             'promedio mensual de producción de los últimos meses '
+             '(parámetro «absorcion_unidad_meses»), no el calendario.')
+    horas_desde = fields.Date(
+        string='Horas reales desde',
+        help='1.13.0: centros por horas cuyas órdenes de trabajo solo traen '
+             'tiempo capturado desde esta fecha (Tejido: mayo de 2026; antes '
+             'se cerraban solas con el tiempo teórico). Los meses anteriores '
+             'no usan sus órdenes de trabajo: sus horas se estiman con lo '
+             'producido en «Tipos de operación que produce» × las horas por '
+             'unidad medidas desde esta fecha.')
+    unidad_tipo_ids = fields.Many2many(
+        'stock.picking.type', 'qb_costeo_centro_tipo_rel', 'centro_id',
+        'tipo_id', string='Tipos de operación que produce',
+        domain="[('code', '=', 'mrp_operation')]",
+        help='Absorción por unidad: las órdenes de fabricación de estos tipos '
+             'son la producción del centro (Tintorería: teñido en kg; '
+             'Acabado e Inspección: acabado en m). Todos deben producir en '
+             'la misma unidad.')
     capacidad_h_mes = fields.Float(
         string='Capacidad normal capturada (h/mes)', digits=(16, 2),
         help='Déjelo en 0 para que salga del calendario de los centros de '
@@ -127,9 +157,27 @@ class QbCentro(models.Model):
         compañía sin centros tumbaba el cálculo de las demás)."""
         return self.sudo().search([('nature', '=', 'directo')]).company_id
 
-    @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo', 'tarifa_de_id')
+    @api.constrains('nature', 'driver', 'capacidad_h_mes', 'capacidad_motivo',
+                    'tarifa_de_id', 'absorcion', 'unidad_tipo_ids',
+                    'horas_desde')
     def _check_consistencia(self):
         for rec in self:
+            if (rec.horas_desde and rec.absorcion == 'horas'
+                    and not rec.unidad_tipo_ids):
+                raise ValidationError(
+                    'El centro %s tiene «Horas reales desde»: diga qué tipos '
+                    'de operación son su producción, para estimar las horas '
+                    'de los meses anteriores.' % rec.code)
+            if rec.absorcion == 'unidad':
+                if rec.nature != 'directo' or rec.tarifa_de_id:
+                    raise ValidationError(
+                        'El centro %s absorbe por unidad producida: debe ser '
+                        'directo y con gasto propio (sin «Tarifa fija de»).'
+                        % rec.code)
+                if not rec.unidad_tipo_ids:
+                    raise ValidationError(
+                        'El centro %s absorbe por unidad producida: diga qué '
+                        'tipos de operación son su producción.' % rec.code)
             if rec.nature == 'directo' and not rec.driver:
                 raise ValidationError(
                     'El centro %s es directo: diga cómo mide horas.'
@@ -176,6 +224,13 @@ class QbCentro(models.Model):
         de trabajo × eficiencia, o la capturada (prorrateada por mes)."""
         self.ensure_one()
         meses = _meses(date_from, date_to)
+        if self.absorcion == 'unidad':
+            # 1.12.0: capacidad normal = promedio mensual de producción.
+            n = int(self.env['qb.parametro'].get_float(
+                'absorcion_unidad_meses', 12)) or 12
+            hasta = fields.Date.to_date(date_to)
+            desde = hasta - relativedelta(months=n)
+            return self.produccion_unidades(desde, hasta) / n * meses, 'promedio'
         if self.capacidad_h_mes:
             return self.capacidad_h_mes * meses, 'capturada'
         total = 0.0
@@ -204,9 +259,18 @@ class QbCentro(models.Model):
         Fuente: «workorder», «operacion» (estándar), «producto» (horas del
         producto), «mixta» (órdenes de trabajo y estándar) o «ninguna»."""
         self.ensure_one()
+        if self.absorcion == 'unidad':
+            unidades = self.produccion_unidades(date_from, date_to)
+            return unidades, ('unidad' if unidades else 'ninguna')
         wcs = self.workcenter_ids.ids
         if not wcs:
             return 0.0, 'ninguna'
+        if (self.horas_desde and self.unidad_tipo_ids
+                and fields.Date.to_date(date_to) <= self.horas_desde):
+            # 1.13.0: mes anterior a las horas capturadas.
+            horas = (self.produccion_unidades(date_from, date_to)
+                     * self._horas_por_unidad_medidas())
+            return horas, ('estimada' if horas else 'ninguna')
         self.env.flush_all()
         self.env.cr.execute("""
             SELECT COALESCE(SUM(wo.duration), 0) / 60.0
@@ -260,6 +324,68 @@ class QbCentro(models.Model):
         else:
             fuente = 'operacion' if h_std else 'producto'
         return total, fuente
+
+    def _horas_por_unidad_medidas(self):
+        """1.13.0: horas por unidad producida del centro, medidas desde
+        «Horas reales desde» (hasta `horas_historia_meses` meses completos,
+        sin pasar del mes en curso)."""
+        self.ensure_one()
+        n = int(self.env['qb.parametro'].get_float(
+            'horas_historia_meses', 12)) or 12
+        desde = self.horas_desde
+        hasta = min(desde + relativedelta(months=n),
+                    fields.Date.context_today(self).replace(day=1))
+        if hasta <= desde:
+            return 0.0
+        unidades = self.produccion_unidades(desde, hasta)
+        if not unidades:
+            return 0.0
+        return self.horas_reales(desde, hasta)[0] / unidades
+
+    def produccion_unidades(self, date_from, date_to):
+        """1.12.0, absorción por unidad: lo que el centro produjo en la
+        ventana, en la unidad de sus productos: Σ de lo terminado (producto
+        principal, sin subproductos) en las órdenes de fabricación hechas de
+        sus tipos de operación."""
+        self.ensure_one()
+        tipos = self.unidad_tipo_ids.ids
+        if not tipos:
+            return 0.0
+        self.env.flush_all()
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(sm.quantity), 0)
+            FROM stock_move sm
+            JOIN mrp_production mo ON mo.id = sm.production_id
+            WHERE sm.state = 'done' AND sm.product_id = mo.product_id
+              AND mo.state = 'done' AND mo.company_id = %s
+              AND mo.picking_type_id IN %s
+              AND mo.date_finished >= %s AND mo.date_finished < %s
+        """, (self.company_id.id, tuple(tipos), date_from, date_to))
+        return self.env.cr.fetchone()[0] or 0.0
+
+    def productos_unidad(self, date_from, date_to):
+        """Ids de los productos que el centro produce: los terminados en
+        órdenes de sus tipos de operación en la ventana y los que tienen
+        receta activa de esos tipos (aunque aún no se hayan fabricado)."""
+        self.ensure_one()
+        tipos = self.unidad_tipo_ids.ids
+        if not tipos:
+            return set()
+        self.env.flush_all()
+        self.env.cr.execute("""
+            SELECT DISTINCT mo.product_id FROM mrp_production mo
+            WHERE mo.state = 'done' AND mo.company_id = %s
+              AND mo.picking_type_id IN %s
+              AND mo.date_finished >= %s AND mo.date_finished < %s
+        """, (self.company_id.id, tuple(tipos), date_from, date_to))
+        ids = {r[0] for r in self.env.cr.fetchall()}
+        boms = self.env['mrp.bom'].search([
+            ('picking_type_id', 'in', tipos), ('type', '=', 'normal'),
+            ('company_id', 'in', (False, self.company_id.id))])
+        ids |= set(boms.mapped('product_id').ids)
+        ids |= set(boms.filtered(lambda b: not b.product_id).mapped(
+            'product_tmpl_id.product_variant_ids').ids)
+        return ids
 
     def nomina_mensual(self):
         """Σ sueldo mensual (hr.version vigente) de los empleados activos de
