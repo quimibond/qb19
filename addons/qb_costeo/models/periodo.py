@@ -662,6 +662,7 @@ class QbTarifa(models.Model):
         ('mixta', 'Órdenes de trabajo + estándar de las órdenes sin ellas'),
         ('producto', 'Horas del producto × producido'),
         ('unidad', 'Unidades producidas en el mes'),
+        ('estandar_producido', 'Horas estándar de lo producido en el mes'),
         ('estimada', 'Producción × horas por unidad medidas después'),
         ('ninguna', 'Sin datos')], readonly=True)
     utilizacion_pct = fields.Float(compute='_compute_utilizacion',

@@ -3,6 +3,20 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.16.0 — 2026-11-18
+
+**Agregado**
+- **Absorción por horas estándar de lo producido** (tercera opción de «Cómo
+  absorbe el gasto»). Enero–octubre 2026, con el desglose de 1.15.0: lo
+  vendido llevaba 127,079 h de Tejido contra 110,279 h trabajadas (+15.2 %,
+  3.76 M de más), mientras Tintorería, Acabado, Inspección y Entretelas
+  cerraban a ±0.5 %. Las horas por kg de las telas crudas (promedio por galga
+  0.119, pesaje 0.153) están arriba de las 0.110 h/kg reales. Con esta opción
+  el gasto del centro se reparte entre las horas que suman los artículos que
+  produjo (cantidad × horas por unidad), y la capacidad normal es el promedio
+  mensual de esas horas: las horas por unidad quedan como peso relativo y lo
+  cargado cierra con el gasto real.
+
 ## 19.0.1.15.0 — 2026-11-18
 
 **Agregado**
