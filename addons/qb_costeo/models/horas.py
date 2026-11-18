@@ -757,7 +757,8 @@ class QbProductoHoras(models.Model):
                     continue
                 if c.absorcion == 'unidad':
                     if p.id in unidad[c.id]:
-                        propias[(p.id, c.id)] = self._propia_unidad(p, c)
+                        propias[(p.id, c.id)] = self._propia_unidad(
+                            p, c, unidad[c.id][p.id])
                     continue
                 # 1.7.0: la operación real de la lista manda. Si la receta
                 # vigente tiene operaciones y ninguna en este centro, el
@@ -973,9 +974,15 @@ class QbProductoHoras(models.Model):
         return bool(drivers) and centro.driver in drivers
 
     @api.model
-    def _propia_unidad(self, product, centro):
-        return (1.0, 'unidad', 'Producido en %s: carga 1 %s por %s'
-                % (centro.code, product.uom_id.name, product.uom_id.name), 0)
+    def _propia_unidad(self, product, centro, fraccion=1.0):
+        u = product.uom_id.name
+        if fraccion >= 0.999999:
+            return (1.0, 'unidad', 'Producido en %s: carga 1 %s por %s'
+                    % (centro.code, u, u), 0)
+        return (fraccion, 'unidad',
+                'Producido en %s: %.2f %% de su producción pasa por aquí '
+                '(carga %.4f %s por %s)'
+                % (centro.code, fraccion * 100, fraccion, u, u), 0)
 
     @api.model
     def _propias_al_vuelo(self, product, bom, centro, medido, hermanos, prom,
@@ -984,7 +991,8 @@ class QbProductoHoras(models.Model):
             ids = (unidad or {}).get(centro.id)
             if ids is None:
                 ids = centro.productos_unidad(*self._ventana())
-            return self._propia_unidad(product, centro) if product.id in ids else None
+            return (self._propia_unidad(product, centro, ids[product.id])
+                    if product.id in ids else None)
         if self._ops_fuera(bom, centro):
             return None
         if not (bom and bom.operation_ids) and self._es_clasificacion(product, bom):
