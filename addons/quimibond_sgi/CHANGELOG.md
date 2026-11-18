@@ -14,6 +14,14 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.201.0 — 2026-11-18
+
+Rango de mínimo a máximo en las características (fichas 2.30.0, pedido de Jose del 18-nov-2026).
+
+- **Cambiado:** en las características del proyecto de desarrollo, con límite «Rango (mín. a máx.)» se escriben el
+  mínimo y el máximo del cliente (en la ficha de la característica y como columnas en la tabla del proyecto); en los
+  demás límites siguen de lectura. La solicitud de arranque imprime el rango como «50 – 70».
+
 ## 19.0.57.200.1 — 2026-11-10
 
 Fallas del suite del SGI en el build de desarrollo (10-nov-2026). Solo pruebas, al día con reglas que ya rigen.

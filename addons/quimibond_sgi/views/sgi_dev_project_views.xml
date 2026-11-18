@@ -239,6 +239,8 @@
                                     <field name="spec_nominal" readonly="kind != 'num'"/>
                                     <field name="spec_tol_minus" string="Tol. −" readonly="kind != 'num' or spec_limit != 'tol'"/>
                                     <field name="spec_tol_plus" string="Tol. +" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_min" optional="show" readonly="kind != 'num' or spec_limit != 'range'"/>
+                                    <field name="spec_max" optional="show" readonly="kind != 'num' or spec_limit != 'range'"/>
                                     <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
                                     <field name="spec_text" optional="show" readonly="kind != 'text'"/>
                                     <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>

@@ -86,8 +86,8 @@
                                 <span>%</span>
                             </div>
                             <field name="spec_label" readonly="1"/>
-                            <field name="spec_min" invisible="kind != 'num' or spec_limit == 'max'"/>
-                            <field name="spec_max" invisible="kind != 'num' or spec_limit == 'min'"/>
+                            <field name="spec_min" invisible="kind != 'num' or spec_limit == 'max'" readonly="spec_limit != 'range'"/>
+                            <field name="spec_max" invisible="kind != 'num' or spec_limit == 'min'" readonly="spec_limit != 'range'"/>
                         </group>
                     </group>
                     <group invisible="kind != 'num'">

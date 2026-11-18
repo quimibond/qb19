@@ -32,7 +32,9 @@ from odoo.exceptions import ValidationError
 DIRECTIONS = [('na', "—"), ('largo', "Largo"), ('ancho', "Ancho")]
 POSITIONS = [('na', "—"), ('izquierda', "Izquierda"), ('centro', "Centro"), ('derecha', "Derecha")]
 KINDS = [('num', "Numérica"), ('text', "Cualitativa"), ('bool', "Sí / no")]
-LIMITS = [('tol', "Nominal ± tolerancia"), ('max', "Máximo"), ('min', "Mínimo")]
+# 2.30.0: «Rango» se captura con mínimo y máximo; por dentro queda nominal ± tolerancias en unidades (nunca en %),
+# así que el SGI, el certificado y las lecturas lo comparan igual que «Nominal ± tolerancia».
+LIMITS = [('tol', "Nominal ± tolerancia"), ('range', "Rango (mín. a máx.)"), ('max', "Máximo"), ('min', "Mínimo")]
 RESULTS = [('cumple', "Cumple"), ('desviacion', "Fuera del control interno"), ('no_conforme', "No conforme")]
 CODE_KINDS = [
     ('composicion', "Composición (posición 1)"),
@@ -178,8 +180,8 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
     spec_nominal = fields.Float(string="Nominal", digits=(16, 3),
                                 help="Valor que pide el cliente. Con límite «Máximo» o «Mínimo» es el tope.")
     spec_limit = fields.Selection(LIMITS, string="Límite", default='tol', required=True,
-                                  help="Cómo se lee la especificación: nominal con tolerancia, un máximo que no "
-                                       "se rebasa o un mínimo que se alcanza.")
+                                  help="Cómo se lee la especificación: nominal con tolerancia, un rango de mínimo "
+                                       "a máximo, un máximo que no se rebasa o un mínimo que se alcanza.")
     spec_tol_minus = fields.Float(string="Tol. −", digits=(16, 3),
                                   help="Cuánto puede quedar por debajo del nominal (en la unidad o en %, según "
                                        "la casilla).")
@@ -187,10 +189,15 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
                                  help="Cuánto puede quedar por encima del nominal (en la unidad o en %).")
     spec_tol_pct = fields.Boolean(string="Tolerancia en %",
                                   help="Las tolerancias son porcentaje del nominal, no unidades.")
+    # 2.30.0: con «Rango» se escriben aquí y calculan nominal y tolerancias; en los demás límites son de lectura.
     spec_min = fields.Float(string="Mín. cliente", compute='_compute_limits', store=True, digits=(16, 3),
-                            help="Límite inferior que acepta el cliente (calculado).")
+                            readonly=False, inverse='_inverse_spec_range',
+                            help="Límite inferior que acepta el cliente. Con límite «Rango» se escribe; en los "
+                                 "demás se calcula.")
     spec_max = fields.Float(string="Máx. cliente", compute='_compute_limits', store=True, digits=(16, 3),
-                            help="Límite superior que acepta el cliente (calculado).")
+                            readonly=False, inverse='_inverse_spec_range',
+                            help="Límite superior que acepta el cliente. Con límite «Rango» se escribe; en los "
+                                 "demás se calcula.")
     spec_text = fields.Char(string="Especificación (texto)",
                             help="Solo para características cualitativas: lo que pide el cliente en palabras "
                                  "(tacto suave, color natural).")
@@ -246,6 +253,8 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
             return None, nominal
         if limit == 'min':
             return nominal, None
+        if limit == 'range':
+            pct = False  # el rango va siempre en unidades
         base = abs(nominal) if pct else 1.0
         factor = 0.01 if pct else 1.0
         return nominal - base * tol_minus * factor, nominal + base * tol_plus * factor
@@ -267,6 +276,55 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
             line.ctrl_min = clo if clo is not None else 0.0
             line.ctrl_max = chi if chi is not None else 0.0
 
+    def _apply_spec_range(self, strict):
+        """Con límite «Rango», pasa el mínimo y el máximo escritos a nominal y tolerancias en unidades."""
+        from .rangos import EPS, rango_a_tolerancias  # local: rangos extiende tejido y acabado (va después)
+        for line in self.filtered(lambda l: l.spec_limit == 'range'):
+            lo, hi = line.spec_min, line.spec_max
+            if (not line.spec_tol_pct and abs(lo - (line.spec_nominal - line.spec_tol_minus)) < EPS
+                    and abs(hi - (line.spec_nominal + line.spec_tol_plus)) < EPS):
+                continue
+            values = rango_a_tolerancias(line.spec_nominal, lo, hi)
+            if values is None:
+                if strict:
+                    raise ValidationError("El rango de «%s» está al revés: el mínimo (%s) es mayor que el máximo "
+                                          "(%s)." % (line.name, self._fmt(lo), self._fmt(hi)))
+                continue
+            nominal, plus, minus = values
+            line.update({'spec_nominal': nominal, 'spec_tol_plus': plus, 'spec_tol_minus': minus,
+                         'spec_tol_pct': False})
+
+    def _inverse_spec_range(self):
+        self._apply_spec_range(strict=True)
+
+    @api.onchange('spec_min', 'spec_max')
+    def _onchange_spec_range(self):
+        self._apply_spec_range(strict=False)
+
+    def _range_pct_to_units(self):
+        """Al pasar a «Rango», una tolerancia en % se convierte a unidades: el rango no cambia."""
+        for line in self.filtered(lambda l: l.spec_limit == 'range' and l.spec_tol_pct):
+            base = abs(line.spec_nominal) * 0.01
+            line.update({'spec_tol_minus': base * line.spec_tol_minus, 'spec_tol_plus': base * line.spec_tol_plus,
+                         'spec_tol_pct': False})
+
+    @api.onchange('spec_limit')
+    def _onchange_spec_limit_range(self):
+        self._range_pct_to_units()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._range_pct_to_units()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        # En la tabla las tolerancias quedan de lectura con «Rango»: la conversión se hace aquí, no solo en pantalla.
+        if 'spec_limit' in vals or 'spec_tol_pct' in vals:
+            self._range_pct_to_units()
+        return res
+
     def _limits(self, which):
         """(mín, máx) del cliente ('spec') o del control interno ('ctrl'), con None donde no aplica."""
         self.ensure_one()
@@ -281,7 +339,8 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
 
     def _has_spec(self):
         self.ensure_one()
-        return bool(self.spec_nominal or self.spec_tol_minus or self.spec_tol_plus or self.spec_limit != 'tol')
+        return bool(self.spec_nominal or self.spec_tol_minus or self.spec_tol_plus
+                    or self.spec_limit not in ('tol', 'range'))
 
     def _result_for(self, value):
         """Tres resultados: dentro del control interno, fuera del interno pero
@@ -314,6 +373,9 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
             return "≤ %s%s" % (n, unit)
         if self.spec_limit == 'min':
             return "≥ %s%s" % (n, unit)
+        if self.spec_limit == 'range':
+            lo, hi = self._bounds(self.spec_nominal, 'range', tol_minus, tol_plus, False)
+            return "%s a %s%s" % (self._fmt(lo), self._fmt(hi), unit)
         tu = '%' if self.spec_tol_pct else unit
         if not tol_minus and not tol_plus:
             return "%s%s" % (n, unit)
@@ -334,7 +396,7 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
         for line in self:
             if min(line.spec_tol_minus, line.spec_tol_plus, line.ctrl_tol_minus, line.ctrl_tol_plus) < 0:
                 raise ValidationError("Las tolerancias se capturan como cantidades positivas (%s)." % line.name)
-            if line.ctrl_defined and line.spec_limit == 'tol' and (
+            if line.ctrl_defined and line.spec_limit in ('tol', 'range') and (
                     line.ctrl_tol_minus > line.spec_tol_minus + 1e-9 or line.ctrl_tol_plus > line.spec_tol_plus + 1e-9):
                 raise ValidationError(
                     "El control interno de «%s» es más abierto que la tolerancia del cliente; debe ser igual o "

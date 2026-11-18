@@ -69,6 +69,19 @@ revisión de la noche avisa lo que no cuadra.
 **«Resolver»** en cada pendiente; abre el lugar donde se corrige (los datos de la tela en la máquina, la operación, el
 jet, la lista o la ficha). También en la pestaña «Ficha técnica» del producto.
 
+## Tolerancias como rango (2.30.0)
+
+Cada medida de la ficha (peso, ancho, espesor, encogimientos y elongaciones en acabado; peso, ancho, espesor y
+elongaciones en tejido) se puede capturar como **nominal + tolerancia (+) / (−)** o, en el renglón de abajo, como
+**rango de mínimo a máximo**. Es el mismo dato: lo que se guarda son el nominal y las dos tolerancias (de ahí leen el
+SGI, Inspección y la importación); el rango se calcula de ellos y, al escribirlo, los recalcula. El nominal se queda si
+cae dentro del rango (60 con 50 a 65 → 60 +5 / −10); si está vacío o fuera, pasa al centro (50 a 70 → 60 ± 10). Un
+rango con el mínimo arriba del máximo no se guarda.
+
+En **Características** el límite «Rango (mín. a máx.)» funciona igual: se escriben «Mín. cliente» y «Máx. cliente»,
+la especificación se imprime «50 a 70 %» y el control interno se captura como margen sobre el centro. Al pasar un
+renglón con tolerancia en % a «Rango», la tolerancia se convierte a unidades sin mover el rango.
+
 ## Rendimiento de tela acabada (2.27.0 a 2.28.0)
 
 El rendimiento (m/kg) de la ficha es **por kg de tela terminada**. Lo usan la conversión kg → m (lista en metros y
