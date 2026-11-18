@@ -89,7 +89,8 @@ de las 7:00 CDMX) y manda correo a los responsables de nómina (grupo
 `quimibond_nomina.sentinel_email`). **No revierte solo, a propósito**: esas
 reglas se editan deliberadamente y revertir por detrás sería peor que el
 problema. Cuando el cambio es querido, «Aceptar huella actual». Al instalar se
-siembra con las dos reglas y toma como línea base lo que esté vivo: el estado
+siembra con esas dos reglas y, desde 1.19.4, con `FAP`, `FAE` y `FA_EMPRESA`
+(sección 22), y toma como línea base lo que esté vivo: el estado
 ya verificado contra el despacho. Se pueden agregar más reglas a mano.
 
 ### 5. El nodo `nomina12:HorasExtra`
@@ -874,6 +875,41 @@ result = -(basico - float_round(basico - min(descuento, basico), precision_digit
 Fuera de los medios centavos da lo mismo que antes. Editada en `main` y en
 producción el 2026-11-06, bajo el centinela.
 
+### 22. Empleados sin fondo de ahorro (1.19.4)
+
+Las reglas del fondo de ahorro de «Paga regular» (`FAP` 517, `FAE` 518 y
+`FA_EMPRESA` 529) no tenían condición: cobraban 5 % (6.5 % la planta semanal)
+a todos. En la Quincena 22 CDMX, RH confirmó que **Luna Vázquez Verónica
+(556) y Hernández Hernández Juan Alberto (557) no tienen fondo de ahorro**;
+Odoo les descontaba 240.29 a cada uno y la corrida quedaba −481.13 contra NOI.
+
+Desde el 18-nov-2026 las tres reglas tienen la misma condición, editada en
+producción y en `qbtesting` (probada antes en pruebas):
+
+```python
+# No aplica a empleados sin fondo de ahorro (etiqueta de empleado «SIN FONDO DE AHORRO», la asigna RH).
+result = 'SIN FONDO DE AHORRO' not in employee.category_ids.mapped('name')
+```
+
+Para excluir a alguien basta con ponerle la etiqueta de empleado
+**«SIN FONDO DE AHORRO»**; no hay que tocar reglas. Las tres reglas se
+condicionan juntas para que el CFDI siga cuadrando (percepción P006 y sus dos
+deducciones D005/D006). Con eso la Q22 CDMX quedó en 109,909.83 contra
+109,910.38 de NOI (−0.55, redondeos).
+
+Lo que hace el módulo, sin escribir en `hr.salary.rule`:
+
+- `data/fondo_ahorro.xml` llama a `hr.employee.category.qb_nomina_ensure_sin_fondo_ahorro()`
+  en cada actualización: adopta la etiqueta que ya exista con ese nombre (en
+  producción es la id 29, creada a mano) o la crea, y le pone el xmlid
+  `quimibond_nomina.category_sin_fondo_ahorro`.
+- El centinela vigila las tres reglas (`SEED_CODES`, y
+  `migrations/19.0.1.19.4/post-migrate.py` las siembra en bases ya
+  instaladas). Si alguien les quita la condición, llega el aviso.
+
+**La etiqueta no se renombra:** la condición la busca por nombre porque
+`safe_eval` no tiene `env.ref`. Si se renombra, todos vuelven a pagar fondo.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -882,7 +918,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Qué | Cuándo | Registro |
 |---|---|---|
 | Campo `l10n_mx_employer_registration` en `hr.version` (y su reflejo en `hr.employee`) | al instalar | columna nueva, nace vacía: inerte hasta que alguien la llene |
-| Modelo `qb.nomina.rule.sentinel` (tabla nueva) y sus dos filas `SUBSIDY` / `INT_DAY_WAGE` | al instalar (`post_init_hook`) | sólo lee las reglas para sacar la huella; **nunca escribe en `hr.salary.rule`** |
+| Modelo `qb.nomina.rule.sentinel` (tabla nueva) y sus filas `SUBSIDY` / `INT_DAY_WAGE`, más `FAP` / `FAE` / `FA_EMPRESA` desde 1.19.4 | al instalar (`post_init_hook`) y al actualizar a 1.19.4 (las tres del fondo) | sólo lee las reglas para sacar la huella; **nunca escribe en `hr.salary.rule`** |
 | Cron «Nómina Quimibond - Centinela de reglas salariales» | al instalar | diario, 7:00 CDMX; manda correo, no modifica nada |
 | Tipo de entrada `HE_DIAS` (`hr.payslip.input.type`) | al instalar; en cada actualización se liga a la estructura `MX_REGULAR` (`struct_ids`) | registro propio del módulo (`noupdate`) |
 | Vista QWeb `cfdiv40_nomina_quimibond` y vista `cfdiv40_nomina_horas_extra` (herencias de la plantilla del CFDI) | al instalar; la segunda reescribe su propio `arch`/`active` en cada actualización | registros propios del módulo; la plantilla de Odoo no se modifica |
@@ -896,6 +932,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Modelos `qb.nomina.incidencias` y `qb.nomina.incidencias.linea` (tablas nuevas) y menú «Incidencias» en la raíz de Nómina (1.13.0) | al instalar y en cada actualización (menú) | nacen vacías |
 | Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
 | Campo `qb_dias_aguinaldo` en `hr.payroll.structure.type` (1.18.0) | al instalar y al actualizar a 1.18.0 | columna nueva; se siembra 16 en «Mexico: Employee» y 25 en los tipos semanales de México solo donde está en cero; nunca pisa lo capturado |
+| Etiqueta de empleado «SIN FONDO DE AHORRO» (`hr.employee.category`) y su xmlid `quimibond_nomina.category_sin_fondo_ahorro` (1.19.4) | al instalar y en cada actualización | adopta la que ya exista con ese nombre; si no hay, la crea. No asigna la etiqueta a nadie |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
@@ -924,7 +961,7 @@ campo) y no deja nada cambiado en registros de Odoo.
 2. **El campo aparece:** abrir un empleado de planta, pestaña de nómina: el
    campo *Registro patronal IMSS* debe estar junto a *Fondo de ahorro*.
 3. **El centinela arrancó:** Nómina → Configuración → Centinela de reglas
-   trae dos renglones (`SUBSIDY`, `INT_DAY_WAGE`) con huella aceptada y sin
+   trae cinco renglones (`SUBSIDY`, `INT_DAY_WAGE`, `FAP`, `FAE`, `FA_EMPRESA`) con huella aceptada y sin
    marca de cambio.
 4. **El CFDI sale bien.** En staging, sobre el recibo 4358 (semana 38, ya en
    estado `paid` con su póliza publicada, que es lo que el render exige):

@@ -9,3 +9,4 @@ from . import test_incidencias
 from . import test_calendario
 from . import test_aguinaldo
 from . import test_isr_semanal
+from . import test_fondo_ahorro

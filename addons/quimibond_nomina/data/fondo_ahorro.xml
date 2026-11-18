@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Etiqueta de empleado «SIN FONDO DE AHORRO»: las reglas FAP, FAE y
+         FA_EMPRESA no se calculan a quien la tenga (ver models/fondo_ahorro.py).
+         Se adopta la que ya exista con ese nombre; por eso es <function> y no
+         <record>. -->
+    <function model="hr.employee.category" name="qb_nomina_ensure_sin_fondo_ahorro"/>
+</odoo>

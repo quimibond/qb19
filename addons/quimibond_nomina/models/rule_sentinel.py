@@ -20,8 +20,9 @@ from odoo import _, api, fields, models
 _logger = logging.getLogger(__name__)
 
 # Reglas con las que se siembra el centinela al instalar, y la estructura
-# donde viven (id 4, «Paga regular»).
-SEED_CODES = ('SUBSIDY', 'INT_DAY_WAGE')
+# donde viven (id 4, «Paga regular»). Las del fondo de ahorro desde 1.19.4:
+# su condición excluye a los empleados «SIN FONDO DE AHORRO».
+SEED_CODES = ('SUBSIDY', 'INT_DAY_WAGE', 'FAP', 'FAE', 'FA_EMPRESA')
 SEED_STRUCT_CODE = 'MX_REGULAR'
 
 # Lo que entra a la huella: todo lo que decide si la regla aplica y cuánto vale.
