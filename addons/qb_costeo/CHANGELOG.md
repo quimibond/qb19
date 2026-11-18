@@ -3,6 +3,16 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.15.0 — 2026-11-18
+
+**Agregado**
+- **Por centro, lo cargado a lo vendido.** Cada línea «Por centro» del costo
+  guarda las horas (o unidades) del centro que lleva lo vendido en el mes y
+  el gasto que eso le carga, con la merma. Sirve para conciliar por centro:
+  lo cargado a lo vendido contra el gasto del centro menos su ociosidad
+  (enero–octubre 2026 cargaba 3.8 M de fabricación de más y no se podía ver
+  en qué departamento).
+
 ## 19.0.1.14.1 — 2026-11-18
 
 **Corregido**
