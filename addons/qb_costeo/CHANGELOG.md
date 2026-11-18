@@ -3,6 +3,19 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.14.0 — 2026-11-18
+
+**Corregido**
+- **Absorción por unidad: la fracción de la producción que pasa por el
+  centro.** Desde 1.12.0 bastaba una orden en un tipo de operación del centro
+  para cargarle al artículo la unidad entera. En producción, WJ053Q22JNT160
+  (1.37 millones de metros de Acabado en 12 meses) cargaba 1.61 $/m de
+  Entretelas por 30 órdenes de Estiramiento que suman 1,596 m; enero de 2026
+  salía con margen de −9 %. Ahora la carga es lo terminado en los tipos del
+  centro ÷ lo terminado en el tipo principal del artículo (tope 1): 0.12 %.
+  Un artículo sin producción en la ventana entra con 1 solo si no se fabricó
+  en ningún otro tipo y tiene receta activa de un tipo del centro.
+
 ## 19.0.1.13.0 — 2026-11-17
 
 **Agregado**

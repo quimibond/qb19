@@ -31,11 +31,11 @@ class TestAbsorcionUnidad(CosteoCase):
                          'unidad_tipo_ids': [(6, 0, [cls.tipo_aca.id])]})
         cls.env['qb.parametro'].set_float('absorcion_unidad_meses', 1)
 
-    def producir(self, qty, fecha):
+    def producir(self, qty, fecha, tipo=None):
         mo = self.env['mrp.production'].create({
             'product_id': self.tela.id, 'product_qty': qty,
             'product_uom_id': self.tela.uom_id.id, 'bom_id': self.bom_tela.id,
-            'picking_type_id': self.tipo_aca.id})
+            'picking_type_id': (tipo or self.tipo_aca).id})
         mo.action_confirm()
         mo.qty_producing = qty
         mo.button_mark_done()
@@ -167,3 +167,29 @@ class TestAbsorcionUnidad(CosteoCase):
         P.set_float('suavizado_operacion_anio', 0)
         self.periodo.action_calcular()
         self.assertAlmostEqual(self.periodo.op_pct, 5.10, 4)
+
+    def test_fraccion_de_la_produccion(self):
+        """1.14.0: unas órdenes sueltas en otro departamento no le cargan al
+        artículo la unidad entera de ese departamento, sino la parte de su
+        producción que pasó por ahí."""
+        from dateutil.relativedelta import relativedelta
+        from odoo import fields
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1)
+        tipo_est = self.env['stock.picking.type'].create({
+            'name': 'Estiramiento prueba', 'code': 'mrp_operation',
+            'sequence_code': 'QBEST', 'warehouse_id': wh.id})
+        self.c_tin.write({'absorcion': 'unidad',
+                          'unidad_tipo_ids': [(6, 0, [tipo_est.id])]})
+        hace = fields.Date.context_today(self.c_tin) - relativedelta(days=20)
+        self.producir(1000, '%s 10:00:00' % hace)
+        self.producir(10, '%s 12:00:00' % hace, tipo=tipo_est)
+        Horas = self.env['qb.producto.horas']
+        Horas.recalcular(self.tela)
+        h_aca = Horas.search([('product_id', '=', self.tela.id),
+                              ('centro_id', '=', self.c_aca.id)])
+        h_est = Horas.search([('product_id', '=', self.tela.id),
+                              ('centro_id', '=', self.c_tin.id)])
+        self.assertAlmostEqual(h_aca.horas_propias, 1.0, 6)
+        self.assertAlmostEqual(h_est.horas_propias, 0.01, 6)
+        self.assertEqual(h_est.fuente, 'unidad')
