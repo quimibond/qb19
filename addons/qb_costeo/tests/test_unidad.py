@@ -191,5 +191,61 @@ class TestAbsorcionUnidad(CosteoCase):
         h_est = Horas.search([('product_id', '=', self.tela.id),
                               ('centro_id', '=', self.c_tin.id)])
         self.assertAlmostEqual(h_aca.horas_propias, 1.0, 6)
-        self.assertAlmostEqual(h_est.horas_propias, 0.01, 6)
-        self.assertEqual(h_est.fuente, 'unidad')
+        # 1.14.1: la receta vigente es de Acabado; el otro centro no carga.
+        self.assertAlmostEqual(sum(h_est.mapped('horas_propias')), 0.0, 6)
+        # Sin receta, la fracción de la producción que pasó por el centro.
+        fr = self.c_tin.productos_unidad(
+            hace - relativedelta(days=5), hace + relativedelta(days=5))
+        self.assertAlmostEqual(fr[self.tela.id], 0.01, 6)
+        self.assertAlmostEqual(Horas._fraccion_unidad(
+            self.tela, self.env['mrp.bom'], self.c_tin, fr), 0.01, 6)
+
+    def test_cambio_de_articulo_no_duplica(self):
+        """1.14.1: un artículo cuya receta vigente es un cambio de artículo
+        (1 m de otra tela ya acabada) hereda el acabado de esa tela y no
+        carga además el suyo, aunque también tenga órdenes de Acabado."""
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1)
+        tipo_cambio = self.env['stock.picking.type'].create({
+            'name': 'Cambio de artículo prueba', 'code': 'mrp_operation',
+            'sequence_code': 'QBCAM', 'warehouse_id': wh.id})
+        otra = self.env['product.product'].create({
+            'name': 'Tela renombrada', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.tela.uom_id.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': otra.product_tmpl_id.id, 'product_qty': 1,
+            'product_uom_id': otra.uom_id.id,
+            'picking_type_id': tipo_cambio.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': self.tela.id, 'product_qty': 1,
+                'product_uom_id': self.tela.uom_id.id})]})
+        Horas = self.env['qb.producto.horas']
+        self.assertEqual(Horas._fraccion_unidad(
+            otra, bom, self.c_aca, {otra.id: 1.0}), 0.0)
+        Horas.recalcular(self.tela | otra)
+        h = Horas.search([('product_id', '=', otra.id),
+                          ('centro_id', '=', self.c_aca.id)])
+        self.assertAlmostEqual(h.horas_propias, 0.0, 6)
+        self.assertAlmostEqual(h.horas_unidad, 1.0, 6)
+
+    def test_receta_vigente_no_es_el_cambio_de_articulo(self):
+        """1.14.1: con una lista de Acabado y otra de cambio de artículo de
+        menor secuencia, la vigente es la de Acabado."""
+        wh = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1)
+        tipo_cambio = self.env['stock.picking.type'].create({
+            'name': 'Cambio de artículo prueba 2', 'code': 'mrp_operation',
+            'sequence_code': 'QBCA2', 'warehouse_id': wh.id})
+        par = self.env['qb.parametro'].search(
+            [('key', '=', 'tipos_reetiquetado')], limit=1)
+        par.value_text = str(tipo_cambio.id)
+        self.bom_tela.sequence = 6
+        cambio = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.tela.product_tmpl_id.id,
+            'product_id': self.tela.id, 'product_qty': 1, 'sequence': 0,
+            'product_uom_id': self.tela.uom_id.id,
+            'picking_type_id': tipo_cambio.id})
+        Horas = self.env['qb.producto.horas']
+        self.assertEqual(Horas._bom_vigente(self.tela), self.bom_tela)
+        par.value_text = '0'
+        self.assertEqual(Horas._bom_vigente(self.tela), cambio)

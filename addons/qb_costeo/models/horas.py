@@ -211,7 +211,13 @@ class QbProductoHoras(models.Model):
         if not boms:
             return Bom
         nuevos = self._tipos('tipos_flujo_nuevo', '409,410,411')
+        # 1.14.1: una lista de cambio de artículo, conversión de unidades o
+        # reproceso no es la ruta del artículo si tiene otra: van al final
+        # aunque su secuencia sea menor (WJ042Q22JNT160 se costeaba como
+        # WJ038 renombrado por 10 mil metros contra 1.56 millones de Acabado).
+        otros = self._tipos('tipos_reetiquetado', '77,147,78,106,107')
         return boms.sorted(lambda b: (b.picking_type_id.id not in nuevos,
+                                      b.picking_type_id.id in otros,
                                       b.sequence, not b.product_id, b.id))[:1]
 
     @api.model
@@ -756,9 +762,9 @@ class QbProductoHoras(models.Model):
                         'Manual: %s' % (rec.manual_motivo or ''), 0)
                     continue
                 if c.absorcion == 'unidad':
-                    if p.id in unidad[c.id]:
-                        propias[(p.id, c.id)] = self._propia_unidad(
-                            p, c, unidad[c.id][p.id])
+                    f = self._fraccion_unidad(p, bom, c, unidad[c.id])
+                    if f:
+                        propias[(p.id, c.id)] = self._propia_unidad(p, c, f)
                     continue
                 # 1.7.0: la operación real de la lista manda. Si la receta
                 # vigente tiene operaciones y ninguna en este centro, el
@@ -974,6 +980,19 @@ class QbProductoHoras(models.Model):
         return bool(drivers) and centro.driver in drivers
 
     @api.model
+    def _fraccion_unidad(self, product, bom, centro, fracciones):
+        """1.14.1: cuánto carga el artículo del centro por unidad producida.
+        La receta vigente manda, igual que en los centros por horas: si es de
+        un tipo de operación del centro, 1; si es de otro tipo (cambio de
+        artículo, conversión, otro departamento), nada propio: lo que le
+        toque lo hereda de sus componentes. Sin receta, la fracción de su
+        producción que pasó por el centro."""
+        if bom:
+            tipos = centro.unidad_tipo_ids.ids
+            return 1.0 if bom.picking_type_id.id in tipos else 0.0
+        return (fracciones or {}).get(product.id, 0.0)
+
+    @api.model
     def _propia_unidad(self, product, centro, fraccion=1.0):
         u = product.uom_id.name
         if fraccion >= 0.999999:
@@ -991,8 +1010,8 @@ class QbProductoHoras(models.Model):
             ids = (unidad or {}).get(centro.id)
             if ids is None:
                 ids = centro.productos_unidad(*self._ventana())
-            return (self._propia_unidad(product, centro, ids[product.id])
-                    if product.id in ids else None)
+            f = self._fraccion_unidad(product, bom, centro, ids)
+            return self._propia_unidad(product, centro, f) if f else None
         if self._ops_fuera(bom, centro):
             return None
         if not (bom and bom.operation_ids) and self._es_clasificacion(product, bom):
