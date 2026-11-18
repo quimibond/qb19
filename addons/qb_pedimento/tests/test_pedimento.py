@@ -96,8 +96,42 @@ class TestPedimento(PedimentoCommon):
 
     def test_no_aplica_cumple_el_documento(self):
         ped = self._pedimento()
-        ped.documento_ids.filtered('required').write({'no_aplica': True})
+        ped.documento_ids.filtered('required').write({'no_aplica': True, 'referencia': 'Courier, sin BL'})
         self.assertEqual(ped.documentos_faltantes, 0)
+
+    def test_no_aplica_obligatorio_pide_motivo(self):
+        ped = self._pedimento()
+        cove = ped.documento_ids.filtered(lambda d: d.tipo_id == self.env.ref('qb_pedimento.doc_cove'))
+        with self.assertRaisesRegex(ValidationError, 'motivo'):
+            cove.no_aplica = True
+        # Uno opcional sí se marca sin nota.
+        ped.documento_ids.filtered(
+            lambda d: d.tipo_id == self.env.ref('qb_pedimento.doc_especificaciones')).no_aplica = True
+
+    def test_documento_con_vigencia(self):
+        """La carta encomienda (encargo conferido) se reutiliza y vence: no
+        cuenta sin «Vigente hasta» ni si venció antes del pago."""
+        ped = self._pedimento(numero='26 16 3774 6000206', fecha_pago='2026-10-15')
+        carta = ped.documento_ids.filtered(lambda d: d.tipo_id == self.env.ref('qb_pedimento.doc_carta_encomienda'))
+        self.assertTrue(carta.pide_vigencia)
+        carta.attachment_ids = [(0, 0, {'name': 'carta encomienda JRH.pdf', 'raw': b'%PDF'})]
+        self.assertFalse(carta.cumplido)
+        carta.fecha_vigencia = '2026-09-30'
+        self.assertTrue(carta.vencido)
+        self.assertFalse(carta.cumplido)
+        ped.action_despachado()
+        ped.action_entregado()
+        self._completar_documentos(ped)
+        carta.fecha_vigencia = '2026-09-30'
+        ped.cuenta_gastos_total = 1000.0
+        with self.assertRaisesRegex(UserError, 'vencidos: Carta encomienda'):
+            ped.action_cerrar()
+        carta.fecha_vigencia = '2026-12-31'
+        self.assertFalse(carta.vencido)
+        self.assertTrue(carta.cumplido)
+        # Cambia la fecha de pago y la misma carta queda vencida.
+        ped.fecha_pago = '2027-01-05'
+        self.assertTrue(carta.vencido)
 
     def test_saldo_como_en_el_excel(self):
         """F-P-A-16-05, cuenta 83272: total 543,084.01, anticipo 587,000 → -43,915.99 a favor."""

@@ -38,3 +38,5 @@ class PedimentoCommon(AccountTestInvoicingCommon):
         attachment = self.env['ir.attachment'].create({'name': 'pedimento.pdf', 'raw': b'%PDF-1.4'})
         for doc in pedimento.documento_ids.filtered('required'):
             doc.attachment_ids = [(6, 0, attachment.ids)]
+            if doc.pide_vigencia:
+                doc.fecha_vigencia = '2099-12-31'
