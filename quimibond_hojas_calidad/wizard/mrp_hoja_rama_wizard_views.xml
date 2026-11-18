@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_hoja_rama_wizard_view_form" model="ir.ui.view">
+        <field name="name">mrp.hoja.rama.wizard.form</field>
+        <field name="model">mrp.hoja.rama.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registro Rama">
+                <sheet>
+                    <group>
+                        <field name="production_domain_ids" invisible="1"/>
+                        <field name="production_id" default_focus="1"
+                               options="{'no_create': True, 'no_open': True}"
+                               domain="[('id', 'in', production_domain_ids)]"/>
+                        <field name="producto_id" invisible="not production_id"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_abrir" type="object" string="ABRIR LIBRO DE RAMA"
+                            class="btn-primary btn-lg" invisible="not production_id"/>
+                    <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_hoja_rama_wizard_action" model="ir.actions.act_window">
+        <field name="name">Registro Rama</field>
+        <field name="res_model">mrp.hoja.rama.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

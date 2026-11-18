@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Libros de calidad (Rama e Inspección)',
-    'version': '19.0.2.0.0',
+    'version': '19.0.3.0.0',
     'category': 'Manufacturing',
-    'summary': 'Botones REGISTRO RAMA y REVISIÓN TELA ACABADA: abren el libro de hoja de cálculo del artículo en Documentos',
+    'summary': 'Calidad → Laboratorio tela acabada: Registro Rama y Revisión tela acabada abren el libro del artículo en Documentos',
     'description': """
 Libros de calidad — tela acabada
 ================================
@@ -13,9 +13,10 @@ genera una hoja por orden y aquí el libro es continuo.
 
 * **Plantillas:** una por artículo y proceso (Rama, Inspección). Se sube el .xlsx a Documentos, se abre con Odoo
   Spreadsheet, se deja en blanco y se elige en Manufactura → Configuración → Plantillas de libros de calidad.
-* **REGISTRO RAMA:** botón en la operación de Rama de la orden en kg. Abre el libro vigente del artículo; si no existe lo
+* **Calidad → Laboratorio tela acabada → Registro Rama:** lo hace control de calidad, no el operador de Rama. Pide la orden
+  en kg (abierta y con la operación de Rama en proceso o terminada) y abre el libro vigente del artículo; si no existe lo
   crea copiando la plantilla.
-* **Calidad → Laboratorio tela acabada → Revisión tela acabada:** pide la orden en metros (con CLASIFICACION abierta) y
+* **Calidad → Laboratorio tela acabada → Revisión tela acabada:** pide la orden en metros (abierta y aún no liberada) y
   abre el libro de Inspección del artículo.
 * **Calidad → Laboratorio tela acabada → Liberar para Empaque:** pide la orden y el número de empleado (wizard de
   ``quimibond_rollos_bitacora``, 3.20.x).
@@ -35,7 +36,7 @@ segunda etapa.
         'security/ir.model.access.csv',
         'views/mrp_hoja_calidad_views.xml',
         'wizard/mrp_hoja_revision_wizard_views.xml',
-        'views/mrp_workorder_views.xml',
+        'wizard/mrp_hoja_rama_wizard_views.xml',
         'views/menus.xml',
     ],
     'installable': True,

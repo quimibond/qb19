@@ -14,6 +14,7 @@ class TestLiberacionLab(TransactionCase):
         super().setUpClass()
         kg = cls.env.ref('uom.product_uom_kgm')
         metro = cls.env.ref('uom.product_uom_meter')
+        cls.defecto = cls.env['calidad.defecto.tela'].create({'clave': 'ZZ952', 'name': 'Defecto de prueba lab'})
         cls.prod_a = cls._producto('IWJ038Q22JNT160', kg)
         cls.prod_b = cls._producto('WJ038Q22JNT160', metro)
         bom_a = cls.env['mrp.bom'].create({
@@ -146,3 +147,104 @@ class TestLiberacionLab(TransactionCase):
         self._liberar()
         wiz = self.env['rollo.liberacion.lab.wizard'].create({'production_id': self.orden_b.id, 'empleado_numero': '1'})
         self.assertNotIn(self.orden_b, wiz.production_domain_ids)  # ya liberada
+
+    # ------------------------------------------------------------------ 3.21.0: calidad final de laboratorio
+    def _wizard_lab(self, numero='77'):
+        return self.env['rollo.liberacion.lab.wizard'].create(
+            {'production_id': self.orden_b.id, 'workorder_id': self.workorder.id, 'empleado_numero': numero})
+
+    def _linea(self, wiz, rollo):
+        return wiz.linea_ids.filtered(lambda l: l.rollo_id == rollo)
+
+    def test_12_una_linea_por_rollo_pq_con_pq_por_omision(self):
+        r1, r2 = self._final(1, 'PQ'), self._final(2, 'PQ')
+        self._final(3, 'FE')
+        wiz = self._wizard_lab()
+        self.assertEqual(wiz.linea_ids.rollo_id, r1 | r2)
+        self.assertEqual(set(wiz.linea_ids.mapped('clasificacion')), {'PQ'})
+
+    def test_13_confirmar_pq_registra_la_calidad_final(self):
+        r1 = self._final(1, 'PQ')
+        self._wizard_lab().action_confirmar()
+        self.assertEqual(r1.clasificacion_lab, 'PQ')
+        self.assertFalse(r1.defecto_lab_ids)
+        self.assertFalse(r1.motivo_lab)
+        self.assertTrue(r1.fecha_lab)
+        self.assertTrue(r1.operador_lab.startswith('77'))
+
+    def test_14_cambio_a_fe_o_segunda_pide_defectos_y_causa(self):
+        r1, r2 = self._final(1, 'PQ'), self._final(2, 'PQ')
+        wiz = self._wizard_lab()
+        self._linea(wiz, r1).write({'clasificacion': 'FE'})
+        with self.assertRaisesRegex(UserError, 'al menos un defecto'):
+            wiz.action_confirmar()
+        self._linea(wiz, r1).write({'defecto_ids': [Command.set(self.defecto.ids)]})
+        with self.assertRaisesRegex(UserError, 'causa del cambio'):
+            wiz.action_confirmar()
+        self.assertFalse(self.orden_b.liberada_lab, 'Un error no libera la orden')
+        self._linea(wiz, r1).write({'motivo': 'Barras en el ancho'})
+        self._linea(wiz, r2).write({'clasificacion': 'SEGUNDA', 'defecto_ids': [Command.set(self.defecto.ids)],
+                                    'motivo': 'Manchas'})
+        wiz.action_confirmar()
+        self.assertEqual((r1.clasificacion_lab, r2.clasificacion_lab), ('FE', 'SEGUNDA'))
+        self.assertEqual(r1.defecto_lab_ids, self.defecto)
+        self.assertEqual(r1.motivo_lab, 'Barras en el ancho')
+        self.assertEqual(r1.clasificacion, 'PQ', 'La calidad de Inspección no se toca')
+        self.assertIn('Barras en el ancho', self.orden_b.message_ids[0].body)
+        self.assertTrue(self.orden_b.liberada_lab)
+
+    def test_15_si_cambian_los_rollos_pendientes_se_pide_reabrir(self):
+        self._final(1, 'PQ')
+        wiz = self._wizard_lab()
+        self.assertEqual(len(wiz.linea_ids), 1)
+        self._final(2, 'PQ')
+        with self.assertRaisesRegex(UserError, 'cambiaron'):
+            wiz.action_confirmar()
+
+    def test_16_empaque_arranca_con_la_calidad_de_laboratorio(self):
+        r_fe, r_pq = self._final(1, 'PQ'), self._final(2, 'PQ')
+        wiz = self._wizard_lab()
+        self._linea(wiz, r_fe).write({'clasificacion': 'FE', 'defecto_ids': [Command.set(self.defecto.ids)],
+                                      'motivo': 'Barras'})
+        wiz.action_confirmar()
+        Empaque = self.env['rollo.empaque.clasificacion.wizard']
+        base = {'production_id': self.orden_b.id, 'empleado_numero': '77'}
+        e_fe = Empaque.create(dict(base, codigo=r_fe.name))
+        self.assertEqual(e_fe.clasificacion_insp, 'PQ')
+        self.assertEqual(e_fe.clasificacion_lab, 'FE')
+        self.assertEqual(e_fe.clasificacion, 'FE', 'Arranca con la calidad de laboratorio')
+        self.assertEqual(e_fe.defecto_ids, self.defecto)
+        self.assertEqual(e_fe.motivo_ajuste, 'Barras')
+        self.assertTrue(e_fe.cambia)
+        # Empaque puede cambiarla antes de confirmar
+        e_fe.clasificacion = 'SEGUNDA'
+        self.assertEqual(e_fe.clasificacion, 'SEGUNDA')
+        e_pq = Empaque.create(dict(base, codigo=r_pq.name))
+        self.assertEqual(e_pq.clasificacion_lab, 'PQ')
+        self.assertEqual(e_pq.clasificacion, 'PQ')
+        self.assertFalse(e_pq.motivo_ajuste)
+        self.assertFalse(e_pq.cambia)
+        # un rollo que no pasó por laboratorio arranca con la de Inspección
+        r_otro = self._final(3, 'FE')
+        e_otro = Empaque.create(dict(base, codigo=r_otro.name))
+        self.assertFalse(e_otro.clasificacion_lab)
+        self.assertEqual(e_otro.clasificacion, 'FE')
+
+    def test_17_numero_repetido_entre_nominas_avisa_las_referencias(self):
+        if not self.con_referencia:
+            self.skipTest('Sin referencia de empleado (Community sin nómina).')
+        Emp = self.env['hr.employee']
+        if 'x_studio_nmero_de_trabajador' not in Emp._fields:
+            self.skipTest('Sin número de trabajador (base sin Studio).')
+        Emp.create({'name': 'QUINCENAL PRUEBA', 'registration_number': 'Q-920', 'x_studio_nmero_de_trabajador': '920'})
+        Emp.create({'name': 'CONFIANZA PRUEBA', 'registration_number': 'C-920', 'x_studio_nmero_de_trabajador': '920'})
+        self._final(1, 'PQ')
+        wiz = self._wizard_lab('920')
+        self.assertIn('Q-920', wiz.empleado_nombre)
+        self.assertIn('C-920', wiz.empleado_nombre)
+        with self.assertRaisesRegex(UserError, 'teclea tu referencia'):
+            wiz.action_confirmar()
+        wiz.empleado_numero = 'Q-920'
+        self.assertEqual(wiz.empleado_nombre, 'QUINCENAL PRUEBA')
+        wiz.action_confirmar()
+        self.assertEqual(self.orden_b.liberada_lab_operador, 'Q-920 - QUINCENAL PRUEBA')
