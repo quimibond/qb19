@@ -98,6 +98,13 @@
         <field name="value_float">1</field>
         <field name="help">Con 1, el % de operación de un período promedia desde enero de su año (hasta los meses de suavizado), no los meses del año anterior. Con 0, la ventana completa hacia atrás.</field>
     </record>
+    <record id="param_tipos_reetiquetado" model="qb.parametro">
+        <field name="key">tipos_reetiquetado</field>
+        <field name="name">Tipos de operación que no son la ruta del artículo (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">77,147,78,106,107</field>
+        <field name="help">Conversión de unidades, cambio de artículo y reprocesos. Una lista de materiales de estos tipos solo es la receta vigente del artículo si no tiene otra.</field>
+    </record>
     <record id="param_receta_ventana_dias" model="qb.parametro">
         <field name="key">receta_ventana_dias</field>
         <field name="name">Días para elegir la receta vigente</field>

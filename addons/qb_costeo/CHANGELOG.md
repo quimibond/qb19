@@ -3,6 +3,24 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.14.1 — 2026-11-18
+
+**Corregido**
+- **Absorción por unidad: manda la receta vigente.** Con 1.14.0,
+  WJ042Q22JNT160 cargaba 2 m de Acabado y 2 de Inspección por metro: su
+  receta vigente es un cambio de artículo (1 m de WJ038, ya acabado e
+  inspeccionado) y además tiene órdenes propias de Acabado. El artículo
+  carga la unidad del centro solo si su receta vigente es de un tipo de
+  operación del centro; si es de otro tipo, lo hereda de sus componentes.
+  La fracción de producción de 1.14.0 queda para artículos sin receta.
+- **La receta vigente no es el cambio de artículo.** Entre las listas del
+  flujo viejo ganaba la de menor secuencia, y la de «Cambio de artículo» de
+  WJ042Q22JNT160 (secuencia 0; 10 mil metros en 12 meses) le ganaba a la de
+  Acabado (secuencia 6; 1.56 millones): la tela se costeaba, materia prima
+  incluida, como WJ038 renombrado. Las listas de los tipos del parámetro
+  `tipos_reetiquetado` (conversión de unidades, cambio de artículo,
+  reprocesos) solo son la vigente si el artículo no tiene otra.
+
 ## 19.0.1.14.0 — 2026-11-18
 
 **Corregido**
