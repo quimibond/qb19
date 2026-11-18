@@ -364,28 +364,67 @@ class QbCentro(models.Model):
         return self.env.cr.fetchone()[0] or 0.0
 
     def productos_unidad(self, date_from, date_to):
-        """Ids de los productos que el centro produce: los terminados en
-        órdenes de sus tipos de operación en la ventana y los que tienen
-        receta activa de esos tipos (aunque aún no se hayan fabricado)."""
+        """{product_id: fracción} de los productos que el centro produce.
+
+        1.14.0: la fracción es la parte de la producción del artículo que
+        pasó por el centro: lo terminado en órdenes de sus tipos de operación
+        ÷ lo terminado en el tipo de operación principal del artículo (el de
+        más cantidad en la ventana), con tope 1. Así 30 órdenes de
+        Estiramiento por 1,596 m de una tela con 1.37 millones de metros de
+        Acabado cargan 0.1 % de Entretelas y no el metro entero. Un artículo
+        sin producción en la ventana entra con 1 si su receta activa es de un
+        tipo del centro."""
         self.ensure_one()
         tipos = self.unidad_tipo_ids.ids
         if not tipos:
-            return set()
+            return {}
         self.env.flush_all()
-        self.env.cr.execute("""
-            SELECT DISTINCT mo.product_id FROM mrp_production mo
-            WHERE mo.state = 'done' AND mo.company_id = %s
-              AND mo.picking_type_id IN %s
+        cr = self.env.cr
+        cr.execute("""
+            SELECT mo.product_id, mo.picking_type_id, SUM(sm.quantity)
+            FROM stock_move sm
+            JOIN mrp_production mo ON mo.id = sm.production_id
+            WHERE sm.state = 'done' AND sm.product_id = mo.product_id
+              AND mo.state = 'done' AND mo.company_id = %s
               AND mo.date_finished >= %s AND mo.date_finished < %s
-        """, (self.company_id.id, tuple(tipos), date_from, date_to))
-        ids = {r[0] for r in self.env.cr.fetchall()}
+              AND mo.product_id IN (
+                  SELECT DISTINCT m2.product_id FROM mrp_production m2
+                  WHERE m2.state = 'done' AND m2.company_id = %s
+                    AND m2.picking_type_id IN %s
+                    AND m2.date_finished >= %s AND m2.date_finished < %s)
+            GROUP BY mo.product_id, mo.picking_type_id
+        """, (self.company_id.id, date_from, date_to,
+              self.company_id.id, tuple(tipos), date_from, date_to))
+        en_centro, principal = {}, {}
+        for pid, tipo, qty in cr.fetchall():
+            qty = qty or 0.0
+            if tipo in tipos:
+                en_centro[pid] = en_centro.get(pid, 0.0) + qty
+            principal[pid] = max(principal.get(pid, 0.0), qty)
+        res = {}
+        for pid, qty in en_centro.items():
+            if qty <= 0:
+                continue
+            res[pid] = min(1.0, qty / principal[pid]) if principal.get(pid) else 1.0
+        # Recetas activas de esos tipos sin producción en la ventana.
         boms = self.env['mrp.bom'].search([
             ('picking_type_id', 'in', tipos), ('type', '=', 'normal'),
             ('company_id', 'in', (False, self.company_id.id))])
-        ids |= set(boms.mapped('product_id').ids)
-        ids |= set(boms.filtered(lambda b: not b.product_id).mapped(
+        cand = set(boms.mapped('product_id').ids)
+        cand |= set(boms.filtered(lambda b: not b.product_id).mapped(
             'product_tmpl_id.product_variant_ids').ids)
-        return ids
+        cand -= set(res)
+        if cand:
+            cr.execute("""
+                SELECT DISTINCT mo.product_id FROM mrp_production mo
+                WHERE mo.state = 'done' AND mo.company_id = %s
+                  AND mo.product_id IN %s
+                  AND mo.date_finished >= %s AND mo.date_finished < %s
+            """, (self.company_id.id, tuple(cand), date_from, date_to))
+            cand -= {r[0] for r in cr.fetchall()}
+            for pid in cand:
+                res[pid] = 1.0
+        return res
 
     def nomina_mensual(self):
         """Σ sueldo mensual (hr.version vigente) de los empleados activos de
