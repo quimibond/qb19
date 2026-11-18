@@ -69,6 +69,19 @@ class TestRangos(TransactionCase):
         self.acabado.write({'espesor_acabado_min': 0.3, 'espesor_acabado_max': 0.4})
         self.assertEqual((self.acabado.peso_acabado_tol, self.acabado.peso_acabado_tol_minus), (6, 0))
 
+    def test_10_un_solo_extremo(self):
+        """Escribir solo el máximo deja el mínimo como estaba (CI 2026-11-18: el otro extremo se leía en 0)."""
+        self.acabado.write({'elongacion_largo_acabado': 60, 'elongacion_largo_acabado_tol': 10,
+                            'elongacion_largo_acabado_tol_minus': 10})
+        self.acabado.write({'elongacion_largo_acabado_max': 75})
+        a = self.acabado
+        self.assertEqual((a.elongacion_largo_acabado, a.elongacion_largo_acabado_tol,
+                          a.elongacion_largo_acabado_tol_minus), (60, 15, 10))
+        self.assertEqual((a.elongacion_largo_acabado_min, a.elongacion_largo_acabado_max), (50, 75))
+        with Form(self.acabado) as form:
+            form.elongacion_largo_acabado_min = 55
+        self.assertEqual((a.elongacion_largo_acabado_tol_minus, a.elongacion_largo_acabado_tol), (5, 15))
+
     def test_08_caracteristica_rango(self):
         line = self.Spec.create({'acabado_id': self.acabado.id, 'name': 'Elongación', 'unit': '%',
                                  'spec_limit': 'range', 'spec_min': 50, 'spec_max': 70})
