@@ -24,7 +24,9 @@ class TestDevPilot(TransactionCase):
         Car = cls.env['ficha.tecnica.caracteristica']
         cls.car_masa = Car.search([('code', '=', 'masa')], limit=1)
         cls.car_ancho = Car.search([('code', '=', 'ancho')], limit=1)
-        cls.dev = cls.env['project.project'].create({'name': 'x', 'sgi_is_ft': True, 'partner_id': cls.partner.id,
+        # Sin la carga automática del tipo: la tabla es solo la de la prueba.
+        cls.dev = cls.env['project.project'].with_context(sgi_dev_no_autoload=True).create({
+            'name': 'x', 'sgi_is_ft': True, 'partner_id': cls.partner.id,
                                                      'sgi_dev_product_name': 'Jersey pilotaje',
                                                      'sgi_dev_product_id': cls.tela.id})
         Line = cls.env['sgi.dev.characteristic']

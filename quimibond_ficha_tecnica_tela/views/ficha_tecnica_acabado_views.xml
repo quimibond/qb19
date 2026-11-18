@@ -100,6 +100,13 @@
                                         <field name="peso_acabado_tol_minus"/>
                                         <field name="peso_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="peso_acabado_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="peso_acabado_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="peso_acabado_max"/>
+                                    </div>
                                     <label for="ancho_acabado" string="Ancho de venta (especificación)"/>
                                     <div class="o_row">
                                         <field name="ancho_acabado"/>
@@ -109,6 +116,13 @@
                                         <field name="ancho_acabado_tol_minus"/>
                                         <field name="ancho_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="ancho_acabado_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="ancho_acabado_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="ancho_acabado_max"/>
+                                    </div>
                                     <label for="espesor_acabado" string="Espesor"/>
                                     <div class="o_row">
                                         <field name="espesor_acabado"/>
@@ -117,6 +131,13 @@
                                         <span class="text-muted">/ −</span>
                                         <field name="espesor_acabado_tol_minus"/>
                                         <field name="espesor_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
+                                    </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="espesor_acabado_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="espesor_acabado_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="espesor_acabado_max"/>
                                     </div>
                                 </group>
                                 <group string="Encogimiento y elongación">
@@ -129,6 +150,13 @@
                                         <field name="encogimiento_largo_tol_minus"/>
                                         <field name="encogimiento_largo_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="encogimiento_largo_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="encogimiento_largo_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="encogimiento_largo_max"/>
+                                    </div>
                                     <label for="encogimiento_ancho" string="Encogimiento a lo ancho"/>
                                     <div class="o_row">
                                         <field name="encogimiento_ancho"/>
@@ -137,6 +165,13 @@
                                         <span class="text-muted">/ −</span>
                                         <field name="encogimiento_ancho_tol_minus"/>
                                         <field name="encogimiento_ancho_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
+                                    </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="encogimiento_ancho_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="encogimiento_ancho_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="encogimiento_ancho_max"/>
                                     </div>
                                     <label for="elongacion_largo_acabado" string="Elongación a lo largo"/>
                                     <div class="o_row">
@@ -147,6 +182,13 @@
                                         <field name="elongacion_largo_acabado_tol_minus"/>
                                         <field name="elongacion_largo_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
                                     </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="elongacion_largo_acabado_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="elongacion_largo_acabado_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="elongacion_largo_acabado_max"/>
+                                    </div>
                                     <label for="elongacion_ancho_acabado" string="Elongación a lo ancho"/>
                                     <div class="o_row">
                                         <field name="elongacion_ancho_acabado"/>
@@ -155,6 +197,13 @@
                                         <span class="text-muted">/ −</span>
                                         <field name="elongacion_ancho_acabado_tol_minus"/>
                                         <field name="elongacion_ancho_acabado_tol_unit_id" options="{'no_create': True}" placeholder="Unidad"/>
+                                    </div>
+                                    <!-- 2.30.0: el mismo dato como rango; al escribirlo calcula nominal y tolerancias. -->
+                                    <label for="elongacion_ancho_acabado_min" string="Rango (mín. a máx.)" class="text-muted"/>
+                                    <div class="o_row">
+                                        <field name="elongacion_ancho_acabado_min"/>
+                                        <span class="text-muted">a</span>
+                                        <field name="elongacion_ancho_acabado_max"/>
                                     </div>
                                     <field name="encogimiento_largo_dentro_norma"/>
                                     <field name="encogimiento_ancho_dentro_norma"/>
@@ -324,6 +373,8 @@
                                     <field name="spec_nominal" readonly="kind != 'num'"/>
                                     <field name="spec_tol_minus" readonly="kind != 'num' or spec_limit != 'tol'"/>
                                     <field name="spec_tol_plus" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_min" optional="show" readonly="kind != 'num' or spec_limit != 'range'"/>
+                                    <field name="spec_max" optional="show" readonly="kind != 'num' or spec_limit != 'range'"/>
                                     <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
                                     <field name="spec_text" optional="show" readonly="kind != 'text'"/>
                                     <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>

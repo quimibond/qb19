@@ -21,6 +21,8 @@ class TestDevCustomerApproval(TransactionCase):
             dev.write({'stage_id': muestra.id})
         with self.assertRaises(UserError, msg="Faltan medio, fecha y evidencia"):
             dev.action_sgi_dev_register_customer_approval()
+        # Desde Cotización, Ventas tiene que haber aprobado el análisis (sgi_dev_analysis.write).
+        dev.with_context(sgi_dev_migration=True).write({'sgi_dev_review_state': 'aprobado'})
         dev.write({'sgi_dev_customer_approval_medium': 'oc', 'sgi_dev_customer_approval_date': '2026-10-08',
                    'sgi_dev_customer_approval_ref': 'OC-123',
                    'sgi_dev_customer_approval_file': base64.b64encode(b'oc'), 'sgi_dev_customer_approval_filename': 'oc.pdf'})

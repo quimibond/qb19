@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """57.127.0: correcciones de Jose a las mediciones de C1."""
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -13,7 +15,8 @@ class TestDevCorrections(TransactionCase):
         product = self.env['product.product'].create({'name': 'crudo ruta', 'type': 'consu', 'uom_id': kg.id})
         user = self.env['res.users'].with_context(no_reset_password=True).create({
             'name': 'Procesos ruta', 'login': 'sgi_ruta_yet',
-            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('mrp.group_mrp_user').id])]})
+            # Escribir listas de materiales es de Fabricación/Administrador.
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('mrp.group_mrp_manager').id])]})
         bom = self.env['mrp.bom'].create({'product_tmpl_id': product.product_tmpl_id.id, 'product_qty': 1,
                                           'product_uom_id': kg.id})
         self.assertFalse(bom.sgi_route_assigned_by_id, "Sin operaciones no hay ruta asignada")
@@ -73,7 +76,10 @@ class TestDevCorrections(TransactionCase):
         mo.action_confirm()
         self.assertEqual(mo.sgi_dev_issued_by_id, self.env.user, "Planeación emite = confirma")
         mo.write({'state': 'done'})
-        mo.action_sgi_dev_validate_run()
-        self.assertEqual(mo.sgi_dev_run_validated_by_id, self.env.user)
-        with self.assertRaises(UserError, msg="No se valida dos veces"):
+        # La exigencia de la ficha de proceso validada se prueba en test_dev_fabric_sheet; aquí solo
+        # la validación de la corrida.
+        with patch.object(type(mo), '_sgi_dev_run_sheet_problems', return_value=[]):
             mo.action_sgi_dev_validate_run()
+            self.assertEqual(mo.sgi_dev_run_validated_by_id, self.env.user)
+            with self.assertRaises(UserError, msg="No se valida dos veces"):
+                mo.action_sgi_dev_validate_run()
