@@ -67,6 +67,13 @@ Ajustes de 1.21.0, al comparar la semana 47 con lo que capturó RH:
   que entra sábado y domingo en la noche cobra 12, no 24.
 * **El turno de RH pesa más**: el del checador solo gana si explica la semana
   con más de un turno completo de diferencia (``MARGEN_RH`` = 12 horas).
+
+**Comida** (1.22.0): las checadas de en medio del turno (salida y regreso de
+comer) no cambian las horas; la comida va dentro de la jornada. La lista anota
+cuánto duró (el hueco más largo entre checadas intermedias, con cuatro o más
+checadas en el turno) y, si pasa de ``comida_max`` minutos (parámetro
+``quimibond_nomina.incidencias_comida_max``, 60 si no está), lo deja en
+Observaciones. **Solo se anota, no se descuenta** (Dirección, 19-nov-2026).
 """
 from datetime import datetime, time, timedelta
 from math import floor
@@ -77,6 +84,7 @@ DUPLICADA = timedelta(minutes=2)    # checó dos veces seguidas: es la misma che
 ENTRADAS_DEFAULT = (time(7, 0), time(19, 0))
 HORAS_CASTIGO_FALTA = 2          # lunes a jueves, como la lista de RH
 DIA_SIN_CASTIGO = 4              # viernes: la falta quita solo las horas del día
+COMIDA_MAX_DEFAULT = 60          # minutos de comida antes de anotar «comida larga»
 HE_DOBLES_TOPE = 9               # por semana (LFT art. 66-68)
 DOM_TOPE = 12.0                  # horas de prima dominical por semana, como las paga RH
 UN_MINUTO = timedelta(minutes=1)
@@ -145,6 +153,22 @@ def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
                 continue
         turnos.append([marca, marca, 1])
     return [tuple(t) for t in turnos]
+
+
+def comida(marcas, inicio, fin):
+    """``(salida, regreso)`` de la comida de un turno, o ``None``: el hueco más largo entre las checadas
+    de en medio (sin la primera ni la última). Hacen falta cuatro checadas o más; las repetidas en menos
+    de dos minutos cuentan una vez."""
+    dentro = []
+    for marca in sorted(m for m in marcas if inicio <= m <= fin):
+        if dentro and marca - dentro[-1] <= DUPLICADA:
+            dentro[-1] = marca
+        else:
+            dentro.append(marca)
+    if len(dentro) < 4:
+        return None
+    pares = [(dentro[i], dentro[i + 1]) for i in range(1, len(dentro) - 2)]
+    return max(pares, key=lambda p: p[1] - p[0])
 
 
 def entrada_referencia(inicio, entradas=ENTRADAS_DEFAULT):
@@ -220,7 +244,8 @@ def _fmt(horas):
 
 
 def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=None,
-                    contrato_hasta=None, hoy=None, entradas=ENTRADAS_DEFAULT, turno=None):
+                    contrato_hasta=None, hoy=None, entradas=ENTRADAS_DEFAULT, turno=None,
+                    comida_max=COMIDA_MAX_DEFAULT):
     """Una persona, una semana de nómina (lunes a domingo).
 
     ``programado``: ``{0..6: horas}`` del horario (la base de pago). ``marcas``:
@@ -228,7 +253,8 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
     con código ``I``, ``V``, ``P`` o ``SG``. ``hoy``: los días posteriores se
     proyectan con el horario (como hace RH al reportar el martes). ``turno``: el
     código de la semana (``'1'`` a ``'6'``) o sus jornadas (``TURNOS[código]``);
-    sin él, se mide contra el horario y las entradas de la planta, como antes."""
+    sin él, se mide contra el horario y las entradas de la planta, como antes.
+    ``comida_max``: minutos de comida a partir de los cuales se anota."""
     ausencias = ausencias or {}
     codigo_turno = turno if isinstance(turno, str) else None
     if codigo_turno:
@@ -239,7 +265,7 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
         'dias': [''] * 7, 'horas_base': 0.0, 'faltas': 0, 'falta_horas': 0.0, 'incap_dias': 0,
         'horas_sin_goce': 0.0, 'retardos': 0, 'retardo_min': 0, 'salidas_antes': 0,
         'salida_min': 0, 'extra_horas': 0.0, 'he_propuestas': 0, 'dias_con_extra': 0,
-        'dom_horas': 0.0, 'sin_checadas': False, 'proyectado': False, 'notas': [],
+        'dom_horas': 0.0, 'comida_min': 0, 'comidas_largas': 0, 'sin_checadas': False, 'proyectado': False, 'notas': [],
     }
 
     def en_contrato(dia):
@@ -364,6 +390,14 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
                 r['notas'].append('%s una sola checada (%s)' % (NOMBRES_DIA[i], inicio.strftime('%H:%M')))
                 continue
             horas = (fin - max(inicio, ref)).total_seconds() / 3600.0
+            hueco = comida(marcas, inicio, fin)
+            if hueco:
+                minutos = int((hueco[1] - hueco[0]).total_seconds() // 60)
+                r['comida_min'] += minutos
+                if comida_max and minutos > comida_max:
+                    r['comidas_largas'] += 1
+                    r['notas'].append('%s comida %d min (%s a %s)' % (
+                        NOMBRES_DIA[i], minutos, hueco[0].strftime('%H:%M'), hueco[1].strftime('%H:%M')))
             extra = max(0.0, horas - prog_extra)
             r['extra_horas'] += extra
             if floor(extra) >= 1:
