@@ -112,7 +112,7 @@
         <field name="name">qb.sales.compare.graph</field>
         <field name="model">qb.sales.compare</field>
         <field name="arch" type="xml">
-            <graph string="Presupuesto y venta" type="bar">
+            <graph string="Presupuesto y venta" type="bar" stacked="False">
                 <field name="month" interval="month"/>
                 <field name="fuente"/>
                 <field name="amount" type="measure"/>

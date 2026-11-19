@@ -130,20 +130,19 @@ class SgiSalesBudgetTablero(models.Model):
         return self._qb_compare_action("Por cliente", ['partner_id', 'articulo_id'], [])
 
     def action_qb_open_lines(self):
-        """Los renglones se abren aquí (lista agrupada por mercado y cliente, matriz, pivote)."""
+        """Los renglones se abren aquí (lista agrupada por mercado y cliente, pivote). Sin la matriz: en
+        Odoo 19 la vista grid sin periodos truena al cambiar a ella desde la lista."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
             'name': "Renglones — %s" % self.name,
             'res_model': 'sgi.sales.budget.line',
-            'view_mode': 'list,grid,pivot,form',
+            'view_mode': 'list,pivot,form',
             'views': [
                 (self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_view_list').id, 'list'),
-                (self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_grid_qty').id, 'grid'),
                 (self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_view_pivot').id, 'pivot'),
                 (self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_view_form').id, 'form')],
             'search_view_id': self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_line_view_search').id,
             'domain': [('budget_id', '=', self.id)],
-            'context': {'default_budget_id': self.id, 'group_by': ['mercado', 'partner_id'],
-                        'grid_anchor': fields.Date.to_string(date(self.year, 1, 1))},
+            'context': {'default_budget_id': self.id, 'group_by': ['mercado', 'partner_id']},
         }
