@@ -40,12 +40,18 @@ NATURAL_COLOR = 'NT'
 COLORED_YARN_CODES = ('B', 'R')
 GENERIC_SAMPLE_PREFIX = 'MUESTRA PILOTO'
 PARAM_BLOCK_GENERIC = 'quimibond_sgi.dev_block_generic_sample_from'
+# 57.202.0: árbol de categorías por línea y unidad (Dirección, 2026-11-18): el crudo va a «… / Tejido Circular / KG»
+# y el acabado en metros a «Producto Terminado / Tejido Circular / M», sin mercado (el mercado es el equipo de ventas
+# del cliente). Los nombres viejos quedan de respaldo mientras la base no tenga el árbol nuevo.
 CATEG_NAMES = {
-    'crudo': ("Producto en Proceso / Tejido Circular", "Producto en Proceso"),
+    'crudo': ("Producto en Proceso / Tejido Circular / KG", "Producto en Proceso / Tejido Circular",
+              "Producto en Proceso"),
     'tenido': ("Producto en Proceso / Teñido", "Producto en Proceso"),
-    'acabado_industrial': ("Producto Terminado / Tejido Circular / Industrial", "Producto Terminado / Tejido Circular",
+    'acabado_industrial': ("Producto Terminado / Tejido Circular / M",
+                           "Producto Terminado / Tejido Circular / Industrial", "Producto Terminado / Tejido Circular",
                            "Producto Terminado"),
-    'acabado_confeccion': ("Producto Terminado / Tejido Circular / Confección", "Producto Terminado / Tejido Circular",
+    'acabado_confeccion': ("Producto Terminado / Tejido Circular / M",
+                           "Producto Terminado / Tejido Circular / Confección", "Producto Terminado / Tejido Circular",
                            "Producto Terminado"),
 }
 

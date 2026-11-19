@@ -7,9 +7,9 @@
             <field name="inherit_id" ref="product.product_template_only_form_view"/>
             <field name="arch" type="xml">
                 <xpath expr="//page[@name='inventory']" position="inside">
-                    <field name="categ_name_static" invisible="1"/>
+                    <field name="revisado_es_crudo" invisible="1"/>
                     <group string="Control de Calidad (Tejido)" 
-                           invisible="categ_name_static != 'Producto en Proceso / Tejido Circular'">
+                           invisible="not revisado_es_crudo">
                         <field name="porcentaje_revision_standard" widget="percentage"/>
                     </group>
                 </xpath>
@@ -22,17 +22,17 @@
             <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='product_id']" position="after">
-                    <field name="product_id_category_name" invisible="1"/>
+                    <field name="revisado_es_crudo" invisible="1"/>
                     
                     <field name="rollos_revisados_count" string="Rollos Revisados" readonly="1"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'"/>
+                            invisible="not revisado_es_crudo"/>
                     <field name="rollos_requeridos_count" string="Meta de Revisión" readonly="1" decoration-info="1" widget="badge"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'"/>
+                            invisible="not revisado_es_crudo"/>
                 </xpath>
 
                 <xpath expr="//notebook" position="inside">
                     <page string="Log de Revisión" name="revision_log"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'">
+                            invisible="not revisado_es_crudo">
                         <field name="revision_log_ids" readonly="1">
                             <list>
                                 <field name="create_date" string="Fecha"/>
@@ -51,7 +51,7 @@
                     </page>
 
                     <page string="Última Etiqueta ZPL" name="zpl_label_debug"
-                            invisible="product_id_category_name != 'Producto en Proceso / Tejido Circular'">
+                            invisible="not revisado_es_crudo">
                         <group>
                             <field  name="last_zpl_label" 
                                     widget="ace" 
@@ -84,13 +84,13 @@
             <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='state']" position="after">
-                    <field name="product_id_category_name" column_invisible="1"/>
+                    <field name="revisado_es_crudo" column_invisible="1"/>
                     <button name="%(action_mrp_revisado_wizard)d" 
                             type="action" 
                             string="REVISAR CALIDAD" 
                             class="btn-warning" 
                             icon="fa-check-square-o"
-                            invisible="state not in ('ready', 'progress') or (product_id_category_name != 'Producto en Proceso / Tejido Circular')"
+                            invisible="state not in ('ready', 'progress') or (not revisado_es_crudo)"
                             context="{'default_production_id': production_id}"/>
                 </xpath>
             </field>
