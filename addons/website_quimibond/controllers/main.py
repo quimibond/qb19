@@ -147,6 +147,7 @@ class QuimibondSitio(http.Controller):
             'qb_tejidos': contenido.TEJIDOS,
             'qb_presentaciones': contenido.PRESENTACIONES,
             'qb_maquinaria': maquinaria,
+            'qb_disenador': contenido.DISENADOR,
         }
         valores.update(extra)
         return valores
@@ -255,6 +256,7 @@ class QuimibondSitio(http.Controller):
             })
         paginas = [
             {'codigo': '', 'titulo': 'Solicitar cotización o muestra', 'detalle': 'Ventas', 'categoria': 'Páginas', 'url': '/cotizar'},
+            {'codigo': '', 'titulo': 'Diseñe su tela', 'detalle': 'Diseñador interactivo', 'categoria': 'Páginas', 'url': '/disenar'},
             {'codigo': '', 'titulo': 'Planta y proceso', 'detalle': 'Capacidades', 'categoria': 'Páginas', 'url': '/planta'},
             {'codigo': '', 'titulo': 'Calidad y sustentabilidad', 'detalle': 'ISO 9001 · ISO 14001', 'categoria': 'Páginas', 'url': '/calidad'},
             {'codigo': '', 'titulo': 'Nosotros', 'detalle': 'Desde 1992', 'categoria': 'Páginas', 'url': '/nosotros'},
@@ -329,6 +331,17 @@ class QuimibondSitio(http.Controller):
             title='Solicitar cotización o muestra | Quimibond',
             website_meta_description='Solicite cotización o muestra de entretelas y textiles técnicos. '
                                      'Le responde un asesor de Ventas en un día hábil.',
+        ))
+
+    @http.route('/disenar', type='http', auth='public', website=True, sitemap=_sitemap_fijo(['/disenar']))
+    def disenar(self, **kw):
+        _exigir_activo()
+        return request.render('website_quimibond.disenar', self._valores_comunes(
+            asunto='',
+            mercado_sel='',
+            title='Diseñe su tela | Quimibond',
+            website_meta_description='Diseñe su tela en línea: construcción, galga, fibra, peso, color, tacto y '
+                                     'acabado. Vea la tela al momento y envíe el diseño a Ventas.',
         ))
 
     @http.route('/cotizar/gracias', type='http', auth='public', website=True, sitemap=False)

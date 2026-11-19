@@ -41,15 +41,21 @@ class TestSitioB2B(HttpCase):
         self.assertIn('data-qb="1"', portada.text)
         self.assertIn('qb-header', portada.text)
         self.assertIn('data-qb-anim="circular"', portada.text)
-        for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias',
+        for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
             self.assertEqual(self.url_open(ruta).status_code, 200, ruta)
         self.assertEqual(self.url_open('/mercados/no-existe').status_code, 404)
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
         for texto in ('Punto de una fontura', 'No tejido', 'Tejido tramado', 'jets de teñido', 'ramas',
-                      'V10 de espolvoreo', 'id="maquinaria"'):
+                      'Espolvoreo en línea', 'id="maquinaria"'):
             self.assertIn(texto, planta, texto)
+        for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
+            self.assertNotIn(marca, planta, marca)
+        disenar = self.url_open('/disenar').text
+        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'data-qb-anim="tela"',
+                      'name="description"'):
+            self.assertIn(texto, disenar, texto)
         catalogo = self.url_open('/catalogo')
         self.assertIn('ZQ9032BL152', catalogo.text)
         slug = self.env['ir.http']._slug
@@ -82,6 +88,11 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Marca Dos', portada)
         self.assertIn('Marca Uno', self.url_open('/mercados/automotriz').text)
         self.assertNotIn('qb-oem', self.url_open('/mercados/blancos').text)
+        self.website.qb_armadoras = 'Toyota\nMarca Dos'
+        self.assertEqual(self.website._qb_armadoras_con_logo(), [
+            {'nombre': 'Toyota', 'logo': '/website_quimibond/static/src/img/armadoras/toyota.svg'},
+            {'nombre': 'Marca Dos', 'logo': ''}])
+        self.assertIn('armadoras/toyota.svg', self.url_open('/').text)
 
     def test_maquinaria_sin_ficha_de_maquina(self):
         """Sin el módulo de fichas de máquina se sirve el texto fijo, completo."""
@@ -93,5 +104,5 @@ class TestSitioB2B(HttpCase):
         cifras = {c['etiqueta']: c['valor'] for c in planta.cifras(grupos)}
         self.assertEqual(cifras['Año de fundación'], 1992)
         self.assertTrue(cifras['Máquinas circulares'])
-        self.assertEqual(planta._lista(['Brückner', 'Unitech', 'Icomatex']), 'Brückner, Unitech e Icomatex')
+        self.assertEqual(planta._lista(['Tubular', 'abierta', 'invertida']), 'Tubular, abierta e invertida')
         self.assertEqual(planta._lista(['16', '18']), '16 y 18')

@@ -28,3 +28,8 @@ class Website(models.Model):
             if nombre and nombre.lower() not in [v.lower() for v in vistas]:
                 vistas.append(nombre)
         return vistas
+
+    def _qb_armadoras_con_logo(self):
+        """[{'nombre', 'logo'}]: el logotipo es la ruta del SVG, o '' si la marca no tiene archivo."""
+        from ..controllers.contenido import logo_armadora
+        return [{'nombre': nombre, 'logo': logo_armadora(nombre)} for nombre in self._qb_lista_armadoras()]

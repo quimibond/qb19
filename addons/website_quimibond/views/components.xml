@@ -125,7 +125,7 @@
     <!-- Armadoras (OEM): solo texto, sin logotipos ni clientes directos.
          La lista se captura en el sitio web (qb_armadoras). -->
     <template id="armadoras" name="Quimibond: armadoras">
-        <t t-set="qb_oems" t-value="website._qb_lista_armadoras()"/>
+        <t t-set="qb_oems" t-value="website._qb_armadoras_con_logo()"/>
         <section t-if="qb_oems" class="qb-oem" aria-label="Armadoras">
             <div class="qb-container">
                 <p class="qb-oem__titulo qb-reveal"><span class="qb-eyebrow">Automotriz</span>Nuestros materiales viajan en vehículos de</p>
@@ -134,13 +134,16 @@
                 <div class="qb-oem__pista" t-attf-style="animation-duration: #{max(24, len(qb_oems) * 5)}s">
                     <t t-foreach="[0, 1, 2, 3]" t-as="vuelta">
                         <ul class="qb-oem__grupo" t-att-aria-hidden="'true' if vuelta else None">
-                            <li t-foreach="qb_oems" t-as="oem"><span t-out="oem"/></li>
+                            <li t-foreach="qb_oems" t-as="oem" t-att-title="oem['nombre']">
+                                <img t-if="oem['logo']" t-att-src="oem['logo']" t-att-alt="oem['nombre']" width="44" height="44" loading="lazy"/>
+                                <span t-else="" t-out="oem['nombre']"/>
+                            </li>
                         </ul>
                     </t>
                 </div>
             </div>
             <div class="qb-container">
-                <p class="qb-oem__nota qb-reveal">A través de proveedores de la cadena automotriz. Las marcas pertenecen a sus dueños y se mencionan solo como referencia.</p>
+                <p class="qb-oem__nota qb-reveal">A través de proveedores de la cadena automotriz. Las marcas y los logotipos pertenecen a sus dueños y se muestran solo como referencia.</p>
             </div>
         </section>
     </template>

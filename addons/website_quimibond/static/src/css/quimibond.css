@@ -318,9 +318,11 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 .qb-oem__pista { display: flex; width: max-content; animation: qb-oem 40s linear infinite; }
 .qb-oem__cinta:hover .qb-oem__pista { animation-play-state: paused; }
 .qb .qb-oem__grupo { display: flex; align-items: center; gap: 12px; padding-right: 12px; }
-.qb-oem__grupo li { display: flex; align-items: center; justify-content: center; min-width: 190px; height: 76px; padding: 0 28px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); transition: background .2s, border-color .2s, color .2s; color: #52525b; }
+.qb-oem__grupo li { display: flex; align-items: center; justify-content: center; min-width: 132px; height: 84px; padding: 0 28px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); transition: background .2s, border-color .2s, color .2s; color: #52525b; }
 .qb-oem__grupo li:hover { background: var(--qb-bg); border-color: var(--qb-borde-fuerte); color: var(--qb-fg); }
 .qb-oem__grupo span { font-size: 1.35rem; font-weight: 600; letter-spacing: -.03em; white-space: nowrap; }
+.qb-oem__grupo img { width: 44px; height: 44px; object-fit: contain; opacity: .62; transition: opacity .2s, transform .25s; }
+.qb-oem__grupo li:hover img { opacity: 1; transform: scale(1.06); }
 .qb-oem__nota { text-align: center; font-size: .78rem; color: var(--qb-muted-fg); margin-top: 20px !important; }
 @keyframes qb-oem { to { transform: translateX(-25%); } }
 
@@ -628,4 +630,74 @@ a:hover .qb-muestra__puntos { opacity: .9; }
     .qb-maq, .qb-maq--tejido, .qb-maq--tintoreria, .qb-maq--inspeccion { grid-column: auto; }
     .qb-maq__datos > div { flex-direction: column; gap: 2px; }
     .qb-maq__datos dd { text-align: left; }
+}
+
+/* ---- Planta: cifras como franja ------------------------------------------ */
+.qb-sec--cifras { padding-top: 0; }
+.qb-sec--cifras .qb-cifras { margin-top: 0; }
+
+/* ---- Tela diseñada (lienzo) ---------------------------------------------- */
+.qb-tela-caja { display: block; position: relative; aspect-ratio: 4 / 3; border-radius: var(--qb-radio); overflow: hidden; border: 1px solid var(--qb-borde); background: #f5f5f2; box-shadow: var(--qb-sombra-lg); }
+.qb-tela-caja canvas { display: block; width: 100%; height: 100%; }
+.qb-tela-caja--grande { aspect-ratio: 3 / 2; }
+a.qb-tela-caja { transition: transform .3s, box-shadow .3s; }
+a.qb-tela-caja:hover { transform: translateY(-3px); }
+.qb-invita .qb-btn { margin-top: 28px; }
+
+/* ---- Diseñador de tela --------------------------------------------------- */
+.qb-dis { position: relative; }
+.qb-dis .qb-container { position: relative; z-index: 1; }
+.qb-dis__cuerpo { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px; align-items: start; }
+.qb-dis__vista { position: sticky; top: 88px; }
+.qb .qb-dis__grupo { border: 0; padding: 0 0 28px; margin: 0 0 28px; min-width: 0; border-bottom: 1px solid var(--qb-borde); }
+.qb .qb-dis__grupo:last-child { border-bottom: 0; margin-bottom: 0; }
+.qb-dis__grupo[hidden] { display: none; }
+.qb .qb-dis__grupo legend { float: none; width: 100%; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 1rem; font-weight: 600; letter-spacing: -.01em; margin: 0 0 14px; padding: 0; }
+.qb-dis__grupo legend .qb-mono { color: var(--qb-acento); }
+.qb-dis__grupo legend small { font-size: .8rem; font-weight: 400; color: var(--qb-muted-fg); }
+.qb-dis__valor { margin-left: auto; font-family: var(--qb-mono); font-size: .8rem; font-weight: 500; color: var(--qb-fg); padding: 2px 8px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); }
+.qb-dis__tarjetas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.qb-dis__tarjeta { position: relative; display: block; padding: 8px 8px 12px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); cursor: pointer; transition: border-color .15s, box-shadow .2s, transform .2s; }
+.qb-dis__tarjeta:hover { border-color: var(--qb-borde-fuerte); transform: translateY(-1px); }
+.qb-dis__tarjeta input, .qb-dis__chip input, .qb-dis__color input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.qb-dis__tarjeta:has(input:checked) { border-color: var(--qb-fg); box-shadow: 0 0 0 1px var(--qb-fg); }
+.qb-dis__tarjeta:has(input:focus-visible), .qb-dis__chip:has(input:focus-visible) span, .qb-dis__color:has(input:focus-visible) span { outline: 2px solid var(--qb-acento); outline-offset: 2px; }
+.qb-dis__tarjeta .qb-tipo__dib { margin-bottom: 10px; }
+.qb-dis__tarjeta strong { display: block; font-size: .86rem; font-weight: 600; line-height: 1.25; padding: 0 4px; }
+.qb-dis__tarjeta > span { display: block; font-size: .74rem; color: var(--qb-muted-fg); padding: 2px 4px 0; }
+.qb-dis__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qb-dis__chips + .qb-dis__chips { margin-top: 10px; }
+.qb-dis__chip { position: relative; cursor: pointer; }
+.qb-dis__chip span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); font-size: .88rem; color: #3f3f46; transition: all .15s; }
+.qb-dis__chip:hover span { border-color: var(--qb-borde-fuerte); }
+.qb-dis__chip input:checked + span { background: var(--qb-primario); border-color: var(--qb-primario); color: var(--qb-primario-fg); }
+.qb-dis__rango { width: 100%; accent-color: var(--qb-fg); height: 28px; }
+.qb-dis__escala { display: flex; justify-content: space-between; font-size: .76rem; color: var(--qb-muted-fg); }
+.qb-dis__colores { display: flex; flex-wrap: wrap; gap: 10px; }
+.qb-dis__color { position: relative; cursor: pointer; }
+.qb-dis__color span { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(9, 9, 11, .18); box-shadow: inset 0 0 0 2px var(--qb-bg); transition: transform .15s, box-shadow .15s; }
+.qb-dis__color:hover span { transform: scale(1.08); }
+.qb-dis__color input:checked + span, .qb-dis__color--libre.activo span { box-shadow: inset 0 0 0 2px var(--qb-bg), 0 0 0 2px var(--qb-fg); }
+.qb-dis__color--libre input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.qb-dis__color--libre span { background: conic-gradient(#e8590c, #f5c211, #0f9d7a, #2f54c8, #6b1f2e, #e8590c); color: #fff; font-size: .8rem; }
+.qb-dis__ancho { display: inline-flex; align-items: center; gap: 8px; font-size: .88rem; color: #3f3f46; margin-left: 4px; }
+.qb-dis__ancho input { width: 84px; height: 36px; padding: 0 10px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); font: inherit; background: var(--qb-bg); }
+.qb-dis__ancho input:focus { border-color: var(--qb-acento); box-shadow: 0 0 0 3px rgba(47, 84, 200, .15); outline: 0; }
+.qb .qb-dis__lupa { margin: 10px 0 0; text-align: right; }
+.qb .qb-dis__ficha { margin: 16px 0 0; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); overflow: hidden; }
+.qb-dis__ficha > div { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-bottom: 1px solid var(--qb-borde); font-size: .9rem; }
+.qb-dis__ficha > div:last-child { border-bottom: 0; }
+.qb-dis__ficha dt { font-weight: 400; color: var(--qb-muted-fg); }
+.qb-dis__ficha dd { margin: 0; font-weight: 500; text-align: right; }
+.qb-dis__acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.qb-dis__acciones .qb-btn--primario { flex: 1 1 auto; justify-content: center; }
+.qb .qb-nota { font-size: .85rem; color: var(--qb-muted-fg); margin-top: 20px; padding-left: 14px; border-left: 2px solid var(--qb-borde-fuerte); }
+@media (max-width: 991.98px) {
+    .qb-dis__cuerpo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .qb-dis__vista { display: contents; }
+    .qb-tela-caja--grande { order: -1; position: sticky; top: 72px; z-index: 5; aspect-ratio: 16 / 8; }
+    .qb-dis__lupa { display: none; }
+}
+@media (max-width: 575.98px) {
+    .qb-dis__tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

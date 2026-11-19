@@ -353,6 +353,342 @@
         });
     }
 
+    /* ---------------------------------------------------------------------
+       Tela diseñada: dibuja la construcción elegida (malla de una o doble
+       fontura, no tejido, tramado) con su color, peso y punto de adhesivo, y
+       la mueve como un lienzo según el tacto.
+       --------------------------------------------------------------------- */
+    var TELA_DEMO = [
+        { construccion: "una_fontura", galga: 24, peso: 150, color: "#f5f5f2", tacto: "Suave", fusionable: false },
+        { construccion: "doble_fontura", galga: 18, peso: 260, color: "#1f2a4a", tacto: "Semirrígido", fusionable: false },
+        { construccion: "no_tejido", galga: 24, peso: 60, color: "#e9e2d0", tacto: "Rígido", fusionable: true },
+        { construccion: "tramado", galga: 28, peso: 110, color: "#9a9aa2", tacto: "Suave", fusionable: true }
+    ];
+    var TELA_ONDA = { "Suave": 9, "Semirrígido": 4.5, "Rígido": 1.5 };
+
+    function rgb(hex) {
+        var m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+        var n = parseInt(m ? m[1] : "f5f5f2", 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function mezcla(a, b, p) {
+        return "rgb(" + [0, 1, 2].map(function (i) {
+            return Math.round(a[i] + (b[i] - a[i]) * p);
+        }).join(",") + ")";
+    }
+    function esClaro(c) {
+        return (c[0] * 299 + c[1] * 587 + c[2] * 114) / 1000 > 140;
+    }
+    function azar(semilla) {
+        var s = semilla || 1;
+        return function () {
+            s = (s * 16807) % 2147483647;
+            return (s - 1) / 2147483646;
+        };
+    }
+
+    function pintarTela(ctx, w, h, d) {
+        var base = rgb(d.color);
+        var claro = esClaro(base);
+        var hilo = mezcla(base, claro ? [20, 20, 28] : [255, 255, 255], claro ? 0.42 : 0.38);
+        var hilo2 = mezcla(base, claro ? [47, 84, 200] : [150, 175, 255], 0.6);
+        var peso = Math.max(20, Math.min(400, d.peso || 150));
+        var carga = (peso - 20) / 380;
+        ctx.fillStyle = mezcla(base, [255, 255, 255], 0);
+        ctx.fillRect(0, 0, w, h);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        function mallas(paso, dx, dy, color, alfa, grosor) {
+            var k = paso / 20;
+            var fila = 11 * k;
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = alfa;
+            ctx.lineWidth = grosor;
+            ctx.beginPath();
+            for (var y = dy - fila; y < h + fila; y += fila) {
+                for (var x = dx - paso; x < w + paso; x += paso) {
+                    ctx.moveTo(x, y + 10 * k);
+                    ctx.bezierCurveTo(x + 5 * k, y + 10 * k, x + 7 * k, y + 7 * k, x + 6 * k, y + 4 * k);
+                    ctx.bezierCurveTo(x + 5 * k, y - k, x + 15 * k, y - k, x + 14 * k, y + 4 * k);
+                    ctx.bezierCurveTo(x + 13 * k, y + 7 * k, x + 15 * k, y + 10 * k, x + 20 * k, y + 10 * k);
+                }
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            return fila;
+        }
+
+        var paso = Math.max(9, Math.min(26, 416 / (d.galga || 24)));
+        var grosor = (1 + carga * 2.4) * (paso / 17);
+        var fila;
+        if (d.construccion === "no_tejido") {
+            var r = azar(7 + Math.round(peso));
+            var n = Math.round(90 + carga * 520);
+            ctx.strokeStyle = hilo;
+            ctx.lineWidth = 0.9;
+            ctx.globalAlpha = 0.34 + carga * 0.2;
+            ctx.beginPath();
+            for (var i = 0; i < n; i++) {
+                var x0 = r() * w, y0 = r() * h, ang = r() * TAU, largo = 50 + r() * 150;
+                var x1 = x0 + Math.cos(ang) * largo, y1 = y0 + Math.sin(ang) * largo;
+                ctx.moveTo(x0, y0);
+                ctx.quadraticCurveTo((x0 + x1) / 2 + (r() - 0.5) * 70, (y0 + y1) / 2 + (r() - 0.5) * 70, x1, y1);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        } else if (d.construccion === "doble_fontura") {
+            fila = mallas(paso, paso / 2, 11 * paso / 40, hilo2, 0.5, grosor);
+            mallas(paso, 0, 0, hilo, 0.95, grosor);
+        } else if (d.construccion === "tramado") {
+            fila = mallas(paso, 0, 0, hilo, 0.5, grosor * 0.8);
+            ctx.strokeStyle = hilo2;
+            ctx.lineWidth = grosor * 1.5;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            for (var yt = fila * 0.85; yt < h + fila; yt += fila * 2) {
+                ctx.moveTo(-4, yt);
+                ctx.lineTo(w + 4, yt);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        } else {
+            mallas(paso, 0, 0, hilo, 0.95, grosor);
+        }
+        if (d.fusionable) {
+            ctx.fillStyle = claro ? "rgba(47, 84, 200, .55)" : "rgba(255, 255, 255, .6)";
+            for (var py = 9; py < h; py += 18) {
+                for (var px = ((py / 18) % 2 ? 18 : 9); px < w; px += 18) {
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.1, 0, TAU);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    function tela(canvas) {
+        var demo = canvas.hasAttribute("data-qb-demo");
+        var diseno = Object.assign({}, TELA_DEMO[0]);
+        var fuera = document.createElement("canvas");
+        var margen = 14;
+        var sucio = true;
+        var ultimo = null;
+        var turno = 0;
+
+        function preparar(w, h) {
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            fuera.width = Math.max(1, Math.round(w * dpr));
+            fuera.height = Math.max(1, Math.round((h + margen * 2) * dpr));
+            var c = fuera.getContext("2d");
+            c.setTransform(dpr, 0, 0, dpr, 0, 0);
+            pintarTela(c, w, h + margen * 2, diseno);
+            sucio = false;
+        }
+
+        function dibujar(ctx, w, h, t) {
+            if (!w || !h) {
+                return;
+            }
+            if (demo && !sinMovimiento) {
+                var ahora = Math.floor(t / 3.4) % TELA_DEMO.length;
+                if (ahora !== turno) {
+                    turno = ahora;
+                    diseno = Object.assign({}, TELA_DEMO[turno]);
+                    sucio = true;
+                }
+            }
+            if (sucio || !ultimo || ultimo.w !== w || ultimo.h !== h) {
+                preparar(w, h);
+            }
+            ultimo = { ctx: ctx, w: w, h: h };
+            var amp = Math.min(margen - 2, TELA_ONDA[diseno.tacto] === undefined ? 6 : TELA_ONDA[diseno.tacto]);
+            var tira = 3;
+            var esc = fuera.width / w;
+            ctx.clearRect(0, 0, w, h);
+            for (var x = 0; x < w; x += tira) {
+                var f = x * 0.012 + t * 0.9;
+                var g = x * 0.027 - t * 0.6;
+                var dy = amp * (Math.sin(f) * 0.7 + Math.sin(g) * 0.3);
+                var pend = Math.cos(f) * 0.7 + Math.cos(g) * 0.3;
+                ctx.drawImage(fuera, x * esc, 0, tira * esc, fuera.height, x, dy - margen, tira, h + margen * 2);
+                var sombra = pend * amp * 0.011;
+                if (sombra > 0.004) {
+                    ctx.fillStyle = "rgba(9, 9, 11, " + Math.min(0.2, sombra).toFixed(3) + ")";
+                    ctx.fillRect(x, 0, tira, h);
+                } else if (sombra < -0.004) {
+                    ctx.fillStyle = "rgba(255, 255, 255, " + Math.min(0.2, -sombra).toFixed(3) + ")";
+                    ctx.fillRect(x, 0, tira, h);
+                }
+            }
+        }
+
+        canvas.qbTela = function (nuevo) {
+            diseno = Object.assign({}, diseno, nuevo);
+            sucio = true;
+            if (sinMovimiento && ultimo) {
+                dibujar(ultimo.ctx, ultimo.w, ultimo.h, 0);
+            }
+        };
+        lienzo(canvas, dibujar);
+    }
+
+    /* --------------------------------------------------------------------- */
+    function disenador() {
+        var raizDis = document.querySelector("[data-qb-disenador]");
+        if (!raizDis) {
+            return;
+        }
+        var canvas = raizDis.querySelector('canvas[data-qb-anim="tela"]');
+        var ficha = raizDis.querySelector("[data-qb-ficha]");
+        var detalle = document.getElementById("qb_f_detalle");
+        var asunto = document.getElementById("qb_f_asunto");
+        var solicitud = document.getElementById("qb_f_solicitud");
+        var bloqueAnterior = "";
+        var asuntoAnterior = "";
+        var colorLibre = false;
+
+        function elegido(nombre) {
+            return raizDis.querySelector('input[name="' + nombre + '"]:checked');
+        }
+        function campo(nombre) {
+            return raizDis.querySelector('input[name="' + nombre + '"]');
+        }
+
+        function leer() {
+            var cons = elegido("qb_construccion");
+            var col = elegido("qb_color");
+            var libre = campo("qb_color_libre");
+            var ancho = parseInt(campo("qb_ancho").value, 10);
+            var acabados = [];
+            if (campo("qb_fusionable").checked) {
+                acabados.push("Fusionable");
+            }
+            if (campo("qb_termofijado").checked) {
+                acabados.push("Termofijada");
+            }
+            return {
+                construccion: cons ? cons.value : "una_fontura",
+                construccionNombre: cons ? cons.getAttribute("data-nombre") : "",
+                galga: parseInt((elegido("qb_galga") || {}).value, 10) || 24,
+                fibra: (elegido("qb_fibra") || {}).value || "",
+                peso: parseInt(campo("qb_peso").value, 10) || 150,
+                color: colorLibre || !col ? libre.value : col.value,
+                colorNombre: colorLibre || !col ? "Personalizado " + libre.value.toUpperCase() : col.getAttribute("data-nombre"),
+                tacto: (elegido("qb_tacto") || {}).value || "Suave",
+                fusionable: campo("qb_fusionable").checked,
+                acabados: acabados,
+                presentacion: (elegido("qb_presentacion") || {}).value || "",
+                ancho: ancho > 0 ? ancho : 0
+            };
+        }
+
+        function filas(d) {
+            var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
+            var f = [["Construcción", d.construccionNombre]];
+            if (punto) {
+                f.push(["Galga", String(d.galga)]);
+            }
+            f.push(["Fibra", d.fibra], ["Peso", d.peso + " g/m²"], ["Color", d.colorNombre], ["Tacto", d.tacto]);
+            if (d.acabados.length) {
+                f.push(["Acabado", d.acabados.join(", ")]);
+            }
+            f.push(["Presentación", d.presentacion + (d.ancho ? ", " + d.ancho + " cm de ancho" : "")]);
+            return f;
+        }
+
+        function aplicar() {
+            var d = leer();
+            var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
+            todos('[data-qb-solo="punto"]', raizDis).forEach(function (g) {
+                g.hidden = !punto;
+            });
+            var salidaPeso = raizDis.querySelector('[data-qb-salida="peso"]');
+            var salidaColor = raizDis.querySelector('[data-qb-salida="color"]');
+            salidaPeso.textContent = d.peso + " g/m²";
+            salidaColor.textContent = d.colorNombre;
+            raizDis.querySelector(".qb-dis__color--libre").classList.toggle("activo", colorLibre);
+            var lista = filas(d);
+            ficha.textContent = "";
+            lista.forEach(function (par) {
+                var div = document.createElement("div");
+                var dt = document.createElement("dt");
+                var dd = document.createElement("dd");
+                dt.textContent = par[0];
+                dd.textContent = par[1];
+                div.appendChild(dt);
+                div.appendChild(dd);
+                ficha.appendChild(div);
+            });
+            if (canvas && canvas.qbTela) {
+                canvas.qbTela(d);
+            }
+            // El diseño viaja a Ventas dentro de la especificación del formulario.
+            var bloque = "Diseño de tela (diseñador en línea)\n" + lista.map(function (par) {
+                return "- " + par[0] + ": " + par[1];
+            }).join("\n");
+            if (detalle) {
+                var resto = detalle.value;
+                if (bloqueAnterior && resto.indexOf(bloqueAnterior) === 0) {
+                    resto = resto.slice(bloqueAnterior.length).replace(/^\n+/, "");
+                }
+                detalle.value = bloque + "\n\n" + resto;
+                bloqueAnterior = bloque;
+            }
+            if (asunto) {
+                var nuevoAsunto = "Diseño de tela: " + d.construccionNombre + ", " + d.peso + " g/m²";
+                if (!asunto.value || asunto.value === asuntoAnterior) {
+                    asunto.value = nuevoAsunto;
+                }
+                asuntoAnterior = nuevoAsunto;
+            }
+        }
+
+        raizDis.addEventListener("input", function (e) {
+            if (e.target.name === "qb_color_libre") {
+                colorLibre = true;
+                todos('input[name="qb_color"]', raizDis).forEach(function (c) {
+                    c.checked = false;
+                });
+            } else if (e.target.name === "qb_color") {
+                colorLibre = false;
+            }
+            aplicar();
+        });
+        var botonAzar = raizDis.querySelector("[data-qb-azar]");
+        if (botonAzar) {
+            botonAzar.addEventListener("click", function () {
+                ["qb_construccion", "qb_galga", "qb_fibra", "qb_color", "qb_tacto"].forEach(function (nombre) {
+                    var ops = todos('input[name="' + nombre + '"]', raizDis);
+                    ops[Math.floor(Math.random() * ops.length)].checked = true;
+                });
+                colorLibre = false;
+                campo("qb_peso").value = 20 + Math.round(Math.random() * 76) * 5;
+                campo("qb_fusionable").checked = Math.random() < 0.4;
+                aplicar();
+            });
+        }
+        // El formulario de Odoo rellena sus campos al cargar: la solicitud se fija después,
+        // y solo mientras la persona no la cambie.
+        var solicitudTocada = false;
+        if (solicitud) {
+            solicitud.addEventListener("change", function () {
+                solicitudTocada = true;
+            });
+            var fijar = function () {
+                if (!solicitudTocada) {
+                    solicitud.value = "Desarrollo de producto";
+                }
+            };
+            fijar();
+            window.addEventListener("load", function () {
+                setTimeout(fijar, 400);
+            });
+            raizDis.addEventListener("input", fijar);
+        }
+        aplicar();
+    }
+
     /* --------------------------------------------------------------------- */
     function aparicion() {
         var els = todos(".qb-reveal");
@@ -669,6 +1005,8 @@
         }
         todos('canvas[data-qb-anim="circular"]').forEach(maquinaCircular);
         todos('canvas[data-qb-anim="fibras"]').forEach(fibras);
+        todos('canvas[data-qb-anim="tela"]').forEach(tela);
+        disenador();
         aparicion();
         cuentas();
         desplazamiento();

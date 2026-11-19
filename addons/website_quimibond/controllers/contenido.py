@@ -63,8 +63,10 @@ PRESENTACIONES = [
 
 # Maquinaria de la planta. Fuente: centros de trabajo y fichas de máquina de
 # Odoo (mrp.workcenter, ficha.tecnica.maquina.config) al 2026-11-19. Donde el
-# grupo trae «tipo», la cantidad (y en las circulares galgas, diámetros, salida
-# y marcas) se vuelve a leer de Odoo al servir la página (controllers/planta.py);
+# grupo trae «tipo», la cantidad (y en las circulares galgas, diámetros y
+# salida) se vuelve a leer de Odoo al servir la página (controllers/planta.py);
+# Va en términos generales (Dirección, 2026-11-19): sin marcas de máquinas ni
+# nombres internos de línea.
 # lo de aquí es el respaldo. No se publican capacidades que Odoo no tenga.
 MAQUINARIA = [
     {
@@ -80,7 +82,6 @@ MAQUINARIA = [
             ('Galgas', '16, 18, 24, 28 y 32'),
             ('Diámetros', '30, 32 y 38 pulgadas'),
             ('Salida de la tela', 'Tubular y abierta'),
-            ('Marcas', 'Vanguard, Pai Lung y Wellrich'),
         ],
     },
     {
@@ -106,8 +107,8 @@ MAQUINARIA = [
         'unidad': 'ramas',
         'texto': 'Secado, termofijado y acabado al ancho. Cada rollo se pesa y se mide al salir de la rama.',
         'datos': [
-            ('Marcas', 'Brückner, Unitech e Icomatex'),
-            ('Preparación', '4 abridoras y 3 devanadoras'),
+            ('Proceso', 'Secado, termofijado y acabado'),
+            ('Preparación', 'Abridoras y devanadoras'),
             ('Apoyo', 'Cocina de resinas'),
         ],
     },
@@ -117,11 +118,10 @@ MAQUINARIA = [
         'icono': 'fa-th',
         'cantidad': 0,
         'unidad': 'Línea completa',
-        'texto': 'De la fibra a la entretela fusionable: carda, líneas de entretela, espolvoreo de '
-                 'adhesivo y fusionado.',
+        'texto': 'De la fibra a la entretela fusionable: carda, espolvoreo de adhesivo y fusionado.',
         'datos': [
             ('Formación', 'Preparación de fibra y carda'),
-            ('Líneas', 'V10 de espolvoreo, V18 y V25'),
+            ('Adhesivo', 'Espolvoreo en línea'),
             ('Acabado', 'Estiramiento, termofijado y fusionadora'),
             ('Además', 'Tejido tramado, corte y perforado'),
         ],
@@ -141,6 +141,36 @@ MAQUINARIA = [
         ],
     },
 ]
+
+# Logotipo de cada armadora (static/src/img/armadoras/<archivo>.svg). Los que
+# hay vienen de Simple Icons (CC0). Una marca sin archivo sale con su nombre.
+# Para agregar uno: el SVG oficial en esa carpeta y su renglón aquí.
+LOGOS_ARMADORAS = {
+    'toyota': 'toyota', 'nissan': 'nissan', 'mazda': 'mazda', 'honda': 'honda',
+    'general motors': 'generalmotors', 'gm': 'generalmotors', 'ford': 'ford',
+    'volkswagen': 'volkswagen', 'vw': 'volkswagen', 'tesla': 'tesla', 'mitsubishi': 'mitsubishi',
+    'bmw': 'bmw',
+}
+
+
+def logo_armadora(nombre):
+    archivo = LOGOS_ARMADORAS.get((nombre or '').strip().lower())
+    return archivo and '/website_quimibond/static/src/img/armadoras/%s.svg' % archivo or ''
+
+
+# Opciones del diseñador de tela (/disenar). Son lo que el cliente pide, no una
+# promesa de fabricación: Ventas confirma la factibilidad de cada diseño.
+DISENADOR = {
+    'galgas': [16, 18, 24, 28, 32],
+    'fibras': ['Poliéster', 'Algodón', 'Poliamida', 'Mezcla'],
+    'colores': [
+        ('Blanco', '#f5f5f2'), ('Crudo', '#e9e2d0'), ('Beige', '#d6c4a4'), ('Gris', '#9a9aa2'),
+        ('Negro', '#1b1b1f'), ('Azul marino', '#1f2a4a'), ('Azul', '#2f54c8'), ('Vino', '#6b1f2e'),
+        ('Verde', '#1f5c48'), ('Naranja', '#e8590c'),
+    ],
+    'tactos': ['Suave', 'Semirrígido', 'Rígido'],
+    'presentaciones': ['Tela abierta', 'Tela tubular'],
+}
 
 MERCADOS = [
     {
