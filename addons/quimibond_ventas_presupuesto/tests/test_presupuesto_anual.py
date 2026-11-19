@@ -36,8 +36,13 @@ class TestPresupuestoAnual(TransactionCase):
             'name': 'Tela anual', 'default_code': 'WANUAL150', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 1.0})
         cls.product.write({'qb_m_por_kg': 5.0, 'qb_conv_origen': 'codigo'})
+        # En Odoo 19 res.partner no tiene team_id: el equipo del cliente sale del de su vendedor.
+        cls.seller_ind = cls.env['res.users'].create({
+            'name': 'Vendedor anual', 'login': 'vendedor_anual',
+            'group_ids': [(6, 0, [cls.env.ref('sales_team.group_sale_salesman').id])]})
+        cls.env['crm.team.member'].create({'crm_team_id': cls.team_ind.id, 'user_id': cls.seller_ind.id})
         cls.client = cls.env['res.partner'].create({
-            'name': 'Cliente anual', 'is_company': True, 'team_id': cls.team_ind.id})
+            'name': 'Cliente anual', 'is_company': True, 'user_id': cls.seller_ind.id})
         cls.manager = cls.env['res.users'].create({
             'name': 'MAST anual', 'login': 'mast_anual',
             'group_ids': [(6, 0, [cls.env.ref('quimibond_sgi.group_sgi_manager').id])]})
@@ -130,7 +135,7 @@ class TestPresupuestoAnual(TransactionCase):
             'product_tmpl_id': self.product.product_tmpl_id.id,
             'compute_price': 'fixed', 'fixed_price': 7.5})
         client = self.env['res.partner'].create({
-            'name': 'Cliente con lista anual', 'is_company': True, 'team_id': self.team_ind.id,
+            'name': 'Cliente con lista anual', 'is_company': True, 'user_id': self.seller_ind.id,
             'property_product_pricelist': pl.id})
         budget = self.Budget.create({'year': 2055})
         line = self._line(budget, partner_id=client.id)
@@ -415,7 +420,7 @@ class TestPresupuestoAnual(TransactionCase):
             'product_tmpl_id': self.product.product_tmpl_id.id,
             'compute_price': 'fixed', 'fixed_price': 2.0})
         client = self.env['res.partner'].create({
-            'name': 'Cliente USD 19', 'is_company': True, 'team_id': self.team_ind.id,
+            'name': 'Cliente USD 19', 'is_company': True, 'user_id': self.seller_ind.id,
             'property_product_pricelist': pl.id})
         budget = self.Budget.create({'year': 2025})
         line = self._line(budget, partner_id=client.id, price_input=36.0,
@@ -549,11 +554,20 @@ class TestPresupuestoAnual(TransactionCase):
             msg="Las partes suman la diferencia")
         self.assertIn('Industrial 96.4 %', budget.fulfillment_by_mercado_text)  # 1350 / 1400
         self.assertAlmostEqual(budget.amount_close_estimate, 1650.0, places=2, msg="Año cerrado: lo vendido")
-        self.assertIn('Cumplimiento', budget.qb_kpi_html)
-        self.assertIn('Industrial', budget.qb_mercado_html)
-        self.assertIn('Noviembre', budget.qb_month_html)
-        self.assertIn('Cliente anual', budget.qb_partner_html)
-        self.assertIn('Confección (sin cliente)', budget.qb_partner_html)
+        self.assertAlmostEqual(budget.fulfillment_industrial_pct, 96.4, places=1)
+        self.assertAlmostEqual(budget.fulfillment_confeccion_pct, 60.0, places=1)  # 300 / 500
+
+        # El comparativo trae el presupuesto del mes ligado a este presupuesto y la venta del año.
+        compare = budget.action_qb_compare_mercado()
+        self.assertEqual(compare['res_model'], 'qb.sales.compare')
+        self.assertEqual(compare['context']['pivot_row_groupby'], ['mercado'])
+        self.env.flush_all()  # la vista SQL lee los renglones ya guardados
+        rows = self.env['qb.sales.compare'].search(compare['domain'])
+        self.assertAlmostEqual(sum(rows.mapped('amount_budget')), 1900.0, places=2)
+        self.assertAlmostEqual(sum(rows.filtered(lambda r: r.fuente == 'presupuesto_mes').mapped('amount_budget')),
+                               400.0, places=2)
+        for action in (budget.action_qb_compare_mes(), budget.action_qb_compare_cliente()):
+            self.assertEqual(action['domain'], compare['domain'])
 
         lines = budget.action_qb_open_lines()
         self.assertEqual(lines['domain'], [('budget_id', '=', budget.id)])
@@ -573,5 +587,12 @@ class TestPresupuestoAnual(TransactionCase):
             'mercado': 'industrial', 'qty': 700.0, 'price_input': 1.0})
         budget.invalidate_recordset()
         self.assertFalse(budget._qb_month_plan_fill(), "Marzo ya trae Industrial en el anual")
+        # Marzo: el presupuesto del mes trae Industrial y manda; febrero no tiene, va el anual.
         self.assertAlmostEqual(budget.amount_close_estimate, 1000.0 + 700.0, places=2)
-        self.assertIn('Presupuesto del mes (borrador)', budget.qb_month_html)
+        # Un mercado que el presupuesto del mes no trae usa el anual.
+        conf = self.env['product.product'].create({'name': 'Entretela estimado', 'type': 'consu',
+                                                   'uom_id': self.uom_m.id})
+        self._line(budget, date=date(today.year + 1, 3, 1), product_id=conf.id, partner_id=False,
+                   mercado='confeccion', qty_budget=300.0, price_input=1.0)
+        budget.invalidate_recordset()
+        self.assertAlmostEqual(budget.amount_close_estimate, 1000.0 + 700.0 + 300.0, places=2)

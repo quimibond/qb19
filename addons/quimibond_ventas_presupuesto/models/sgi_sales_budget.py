@@ -198,6 +198,15 @@ class SgiSalesBudget(models.Model):
         help="Venta al corte entre presupuesto al corte, por 100.")
     fulfillment_by_mercado_text = fields.Char(string="Cumplimiento por mercado",
                                               compute='_compute_fulfillment')
+    # 3.23.0: el cumplimiento por mercado como campos (barra de avance en la ficha).
+    fulfillment_industrial_pct = fields.Float(
+        string="Industrial (%)", compute='_compute_fulfillment', digits=(16, 1),
+        help="Venta al corte del equipo de Industrial entre su presupuesto al corte (con Proyectos industrial).")
+    fulfillment_confeccion_pct = fields.Float(
+        string="Confección (%)", compute='_compute_fulfillment', digits=(16, 1),
+        help="Venta al corte del equipo de Confección entre su presupuesto al corte (con Proyectos confección).")
+    fulfillment_especiales_pct = fields.Float(
+        string="Especiales (%)", compute='_compute_fulfillment', digits=(16, 1))
     # 3.6.1: la misma venta a tipo de cambio presupuestal (lo vendido en dólares por el tipo
     # de cambio del mes del presupuesto): cumplimiento sin el efecto del tipo de cambio.
     amount_sales_budget_rate = fields.Monetary(
@@ -493,6 +502,8 @@ class SgiSalesBudget(models.Model):
                 budget.effects_by_mercado_text = False
                 budget.fulfillment_pct = budget.fulfillment_budget_rate_pct = 0.0
                 budget.fulfillment_by_mercado_text = False
+                budget.fulfillment_industrial_pct = budget.fulfillment_confeccion_pct = 0.0
+                budget.fulfillment_especiales_pct = 0.0
                 continue
             planned = defaultdict(float)
             for line in budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff):
@@ -558,6 +569,9 @@ class SgiSalesBudget(models.Model):
                 elif sold.get(base):
                     parts.append("%s sin presupuesto (%s vendidos)" % (labels[base], '{:,.0f}'.format(sold[base])))
             budget.fulfillment_by_mercado_text = " · ".join(parts)
+            for base in ('industrial', 'confeccion', 'especiales'):
+                budget['fulfillment_%s_pct' % base] = (
+                    round(sold.get(base, 0.0) / planned[base] * 100.0, 1) if planned.get(base) else 0.0)
 
     @api.depends('line_ids.qty_budget', 'line_ids.qty_real', 'line_ids.uom_id')
     def _compute_qty_texts(self):

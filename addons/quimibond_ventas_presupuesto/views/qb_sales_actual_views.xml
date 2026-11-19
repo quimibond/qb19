@@ -98,7 +98,7 @@
         <field name="name">qb.sales.compare.pivot</field>
         <field name="model">qb.sales.compare</field>
         <field name="arch" type="xml">
-            <pivot string="Presupuesto y venta" disable_linking="1">
+            <pivot string="Presupuesto y venta">
                 <field name="mercado" type="row"/>
                 <field name="month" interval="month" type="col"/>
                 <field name="amount_budget" type="measure"/>
@@ -112,11 +112,36 @@
         <field name="name">qb.sales.compare.graph</field>
         <field name="model">qb.sales.compare</field>
         <field name="arch" type="xml">
-            <graph string="Presupuesto y venta" type="bar">
+            <graph string="Presupuesto y venta" type="bar" stacked="False">
                 <field name="month" interval="month"/>
                 <field name="fuente"/>
-                <field name="amount_real" type="measure"/>
+                <field name="amount" type="measure"/>
             </graph>
+        </field>
+    </record>
+
+    <!-- 3.23.0: bajada al detalle desde el pivote y la gráfica. -->
+    <record id="qb_sales_compare_view_list" model="ir.ui.view">
+        <field name="name">qb.sales.compare.list</field>
+        <field name="model">qb.sales.compare</field>
+        <field name="arch" type="xml">
+            <list string="Presupuesto y venta" create="0" edit="0" delete="0">
+                <field name="month"/>
+                <field name="fuente"/>
+                <field name="mercado"/>
+                <field name="partner_id"/>
+                <field name="articulo_id"/>
+                <field name="product_id" optional="hide"/>
+                <field name="proyecto" optional="hide"/>
+                <field name="budget_id" optional="hide"/>
+                <field name="amount_budget" sum="Total"/>
+                <field name="amount_real" sum="Total"/>
+                <field name="amount_diff" sum="Total"/>
+                <field name="qty_m_budget" optional="hide" sum="Total"/>
+                <field name="qty_m_real" optional="hide" sum="Total"/>
+                <field name="qty_kg_budget" optional="hide" sum="Total"/>
+                <field name="qty_kg_real" optional="hide" sum="Total"/>
+            </list>
         </field>
     </record>
 
@@ -130,9 +155,9 @@
                 <field name="product_id"/>
                 <field name="budget_id"/>
                 <filter name="vigente" string="Presupuesto aprobado vigente"
-                        domain="['|', ('fuente', '!=', 'presupuesto'), ('budget_state', '=', 'aprobado')]"/>
+                        domain="['|', ('fuente', 'not in', ('presupuesto', 'presupuesto_mes')), ('budget_state', '=', 'aprobado')]"/>
                 <filter name="abierto" string="Presupuesto en captura"
-                        domain="['|', ('fuente', '!=', 'presupuesto'), ('budget_state', 'in', ('borrador', 'revisado'))]"/>
+                        domain="['|', ('fuente', 'not in', ('presupuesto', 'presupuesto_mes')), ('budget_state', 'in', ('borrador', 'revisado'))]"/>
                 <separator/>
                 <filter name="este_anio" string="Este año"
                         domain="[('month', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d')),
@@ -165,7 +190,7 @@
     <record id="qb_sales_compare_monthly_action" model="ir.actions.act_window">
         <field name="name">Presupuesto contra real</field>
         <field name="res_model">qb.sales.compare</field>
-        <field name="view_mode">pivot,graph</field>
+        <field name="view_mode">pivot,graph,list</field>
         <field name="context">{'search_default_vigente': 1, 'search_default_este_anio': 1,
                                'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['month:month'],
                                'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
@@ -178,7 +203,7 @@
     <record id="qb_sales_compare_annual_action" model="ir.actions.act_window">
         <field name="name">Anual</field>
         <field name="res_model">qb.sales.compare</field>
-        <field name="view_mode">pivot,graph</field>
+        <field name="view_mode">pivot,graph,list</field>
         <field name="context">{'search_default_vigente': 1,
                                'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['year'],
                                'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
@@ -194,7 +219,7 @@
     <record id="qb_sales_compare_client_action" model="ir.actions.act_window">
         <field name="name">Cliente y artículo</field>
         <field name="res_model">qb.sales.compare</field>
-        <field name="view_mode">pivot,graph</field>
+        <field name="view_mode">pivot,graph,list</field>
         <field name="context">{'search_default_vigente': 1, 'search_default_este_anio': 1,
                                'pivot_row_groupby': ['partner_id', 'articulo_id'], 'pivot_column_groupby': [],
                                'pivot_measures': ['amount_budget', 'amount_real', 'qty_m_budget',
