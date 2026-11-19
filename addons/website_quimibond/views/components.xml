@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="logo" name="Quimibond: logo">
+        <img t-if="website.logo" class="qb-logo__img" t-att-src="website.image_url(website, 'logo')" alt="" height="28"/>
+        <svg t-else="" class="qb-logo__marca" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+            <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M10 16c0-5 3-8 6-8s6 3 6 8-3 8-6 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M19 20l6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+    </template>
+
+    <!-- Muestra de tela dibujada: se usa cuando el producto no tiene foto. -->
+    <template id="muestra" name="Quimibond: muestra de tela">
+        <div t-attf-class="qb-muestra qb-muestra--#{construccion or 'notejido'} qb-muestra--#{(color or 'blanco').lower()} #{'qb-muestra--fusionable' if fusionable else ''}" aria-hidden="true">
+            <span class="qb-muestra__tela"/>
+            <span t-if="fusionable" class="qb-muestra__puntos"/>
+            <span class="qb-muestra__doblez"/>
+        </div>
+    </template>
+
+    <!-- Tarjeta de producto del catálogo -->
+    <template id="tarjeta_producto" name="Quimibond: tarjeta de producto">
+        <a t-attf-href="/catalogo/producto/#{slug(producto)}" class="qb-card qb-prod qb-spot qb-reveal"
+           t-att-data-qb-texto="(ficha['codigo'] + ' ' + ficha['titulo'] + ' ' + ficha['color'] + ' ' + ficha['tacto'] + ' ' + ficha['fusion']).lower()"
+           t-att-data-qb-fusion="ficha['fusion']" t-att-data-qb-tacto="ficha['tacto']" t-att-data-qb-color="ficha['color']">
+            <div class="qb-prod__img">
+                <img t-if="ficha['imagen']" t-att-src="ficha['imagen']" t-att-alt="ficha['titulo']" loading="lazy"/>
+                <t t-else="" t-call="website_quimibond.muestra">
+                    <t t-set="construccion" t-value="ficha['construccion']"/>
+                    <t t-set="color" t-value="ficha['color']"/>
+                    <t t-set="fusionable" t-value="ficha['fusion'] == 'Fusionable'"/>
+                </t>
+            </div>
+            <div class="qb-prod__cuerpo">
+                <span class="qb-mono qb-prod__codigo" t-out="ficha['codigo']"/>
+                <h3 t-out="ficha['titulo']"/>
+                <div class="qb-prod__datos">
+                    <span t-if="ficha['gramaje']" class="qb-badge" t-out="ficha['gramaje']"/>
+                    <span t-if="ficha['composicion']" class="qb-badge" t-out="ficha['composicion']"/>
+                    <span t-if="ficha['color']" class="qb-badge" t-out="ficha['color']"/>
+                    <span t-if="ficha['tacto']" class="qb-badge" t-out="ficha['tacto']"/>
+                </div>
+            </div>
+        </a>
+    </template>
+
+    <template id="encabezado_pagina" name="Quimibond: encabezado de página">
+        <section class="qb-phero">
+            <div class="qb-trama" aria-hidden="true"/>
+            <div class="qb-container">
+                <span t-if="etiqueta" class="qb-eyebrow qb-reveal" t-out="etiqueta"/>
+                <h1 class="qb-reveal" t-out="titulo"/>
+                <p t-if="resumen" class="qb-lead qb-reveal" t-out="resumen"/>
+                <t t-out="0"/>
+            </div>
+        </section>
+    </template>
+
+    <!-- Formulario de cotización: crea una oportunidad en CRM (crm.lead) -->
+    <template id="formulario_cotizacion" name="Quimibond: formulario de cotización">
+        <section class="s_website_form qb-form" data-vcss="001" data-snippet="s_website_form">
+            <form action="/website/form/" method="post" enctype="multipart/form-data" class="o_mark_required" data-mark="*"
+                  data-pre-fill="true" data-model_name="crm.lead" data-success-mode="redirect" data-success-page="/cotizar/gracias">
+                <div class="s_website_form_rows qb-form__rejilla">
+                    <div class="s_website_form_field s_website_form_required qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_nombre"><span class="s_website_form_label_content">Nombre</span><span class="s_website_form_mark"> *</span></label>
+                        <input id="qb_f_nombre" type="text" class="form-control s_website_form_input" name="contact_name" required="1" data-fill-with="name" autocomplete="name"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_required qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_empresa"><span class="s_website_form_label_content">Empresa</span><span class="s_website_form_mark"> *</span></label>
+                        <input id="qb_f_empresa" type="text" class="form-control s_website_form_input" name="partner_name" required="1" data-fill-with="commercial_company_name" autocomplete="organization"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_model_required qb-campo" data-type="email" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_correo"><span class="s_website_form_label_content">Correo de trabajo</span><span class="s_website_form_mark"> *</span></label>
+                        <input id="qb_f_correo" type="email" class="form-control s_website_form_input" name="email_from" required="1" data-fill-with="email" autocomplete="email"/>
+                    </div>
+                    <div class="s_website_form_field qb-campo" data-type="tel" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_tel"><span class="s_website_form_label_content">Teléfono</span></label>
+                        <input id="qb_f_tel" type="tel" class="form-control s_website_form_input" name="phone" data-fill-with="phone" autocomplete="tel"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_custom qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_mercado"><span class="s_website_form_label_content">Mercado</span></label>
+                        <select id="qb_f_mercado" class="form-select s_website_form_input" name="Mercado">
+                            <option value="">Seleccione…</option>
+                            <t t-foreach="qb_mercados" t-as="m">
+                                <option t-att-value="m['nombre']" t-att-selected="'selected' if mercado_sel == m['nombre'] else None" t-out="m['nombre']"/>
+                            </t>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="s_website_form_field s_website_form_custom qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_solicitud"><span class="s_website_form_label_content">¿Qué solicita?</span></label>
+                        <select id="qb_f_solicitud" class="form-select s_website_form_input" name="Solicitud">
+                            <option value="Cotización">Cotización</option>
+                            <option value="Muestra">Muestra</option>
+                            <option value="Desarrollo de producto">Desarrollo de producto</option>
+                            <option value="Ficha técnica">Ficha técnica</option>
+                        </select>
+                    </div>
+                    <div class="s_website_form_field s_website_form_custom qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_volumen"><span class="s_website_form_label_content">Volumen aproximado</span></label>
+                        <input id="qb_f_volumen" type="text" class="form-control s_website_form_input" name="Volumen aproximado" placeholder="Por ejemplo, 5,000 metros al mes"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_model_required qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_asunto"><span class="s_website_form_label_content">Asunto</span><span class="s_website_form_mark"> *</span></label>
+                        <input id="qb_f_asunto" type="text" class="form-control s_website_form_input" name="name" required="1" t-att-value="asunto or None" placeholder="Producto o aplicación"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_required qb-campo qb-campo--ancho" data-type="text" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_detalle"><span class="s_website_form_label_content">Especificación</span><span class="s_website_form_mark"> *</span></label>
+                        <textarea id="qb_f_detalle" class="form-control s_website_form_input" name="description" required="1" rows="5" placeholder="Aplicación, gramaje, ancho, color, tacto, norma o especificación de su cliente…"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_custom qb-campo qb-campo--ancho" data-type="binary" data-name="Field">
+                        <label class="s_website_form_label" for="qb_f_archivo"><span class="s_website_form_label_content">Plano o especificación (opcional)</span></label>
+                        <input id="qb_f_archivo" type="file" class="form-control s_website_form_input" name="Archivo"/>
+                    </div>
+                    <div class="s_website_form_submit qb-campo--ancho qb-form__enviar" data-name="Submit Button">
+                        <span id="s_website_form_result"/>
+                        <a href="#" role="button" class="qb-btn qb-btn--primario qb-btn--lg s_website_form_send">Enviar solicitud <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        <small>Su solicitud llega directo a Ventas. Respondemos en un día hábil.</small>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </template>
+</odoo>
