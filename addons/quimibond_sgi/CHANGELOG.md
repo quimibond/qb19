@@ -14,6 +14,15 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.0 — 2026-11-18
+
+Categorías nuevas por línea y unidad (pedido de Jose del 18-nov-2026).
+
+### Cambiado
+- Los artículos de un desarrollo nacen en el árbol nuevo si ya existe: el crudo en «Producto en Proceso / Tejido
+  Circular / KG» y el acabado en «Producto Terminado / Tejido Circular / M» (sin Industrial ni Confección: el
+  mercado es el equipo de ventas del cliente). Si la base no lo tiene, se usan las categorías de antes.
+
 ## 19.0.57.201.0 — 2026-11-18
 
 Rango de mínimo a máximo en las características (fichas 2.30.0, pedido de Jose del 18-nov-2026).

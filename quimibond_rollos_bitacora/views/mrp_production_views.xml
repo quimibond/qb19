@@ -21,14 +21,8 @@
             <xpath expr="(//button[@name='action_generate_serial'])[2]" position="attributes">
                 <attribute name="invisible" add="es_pesaje_rollos" separator="or"/>
             </xpath>
-            <!-- 3.12.0 (A3.3): Clasificación final en Empaque, desde la orden en metros. -->
-            <xpath expr="//header" position="inside">
-                <field name="clasificacion_empaque_pendiente" invisible="1"/>
-                <button name="action_clasificar_empaque" type="object" string="CLASIFICAR EN EMPAQUE"
-                        class="btn-primary" icon="fa-tags" invisible="not clasificacion_empaque_pendiente"/>
-                <button name="action_pesar_desperdicio_empaque" type="object" string="PESAR DESPERDICIO"
-                        class="btn-secondary" icon="fa-trash" invisible="not clasificacion_empaque_pendiente"/>
-            </xpath>
+            <!-- 3.17.0 (Dirección, 2026-11-10): CLASIFICAR y PESAR DESPERDICIO de Empaque ya no van en la orden en metros;
+                 están en la operación CLASIFICACION del resumen de los centros de trabajo, como los de la orden en kg. -->
             <xpath expr="//notebook" position="inside">
                 <!-- 3.3.8 (Dirección, 2026-11-05): la pestaña cuenta el proceso en orden: resumen, Rama, Inspección.
                      Solo en órdenes que pesan en Rama; las de Tejido no la ven. -->
@@ -96,6 +90,9 @@
                             <field name="desperdicio_manual" string="Captura manual"/>
                             <field name="desperdicio_motivo" string="Motivo" invisible="not desperdicio_manual"/>
                         </group>
+                        <field name="desperdicio_lote_id" invisible="1"/>
+                        <button name="action_imprimir_etiqueta_desperdicio_rama" type="object" icon="fa-tag"
+                                string="Imprimir etiqueta" class="btn-link" invisible="not desperdicio_lote_id"/>
                     </group>
                     <group string="Desperdicio de Empaque" invisible="not desperdicio_empaque_kg">
                         <group>
@@ -108,6 +105,8 @@
                             <field name="desperdicio_empaque_motivo" string="Motivo"
                                    invisible="not desperdicio_empaque_manual"/>
                         </group>
+                        <button name="action_imprimir_etiqueta_desperdicio_empaque" type="object" icon="fa-tag"
+                                string="Imprimir etiqueta" class="btn-link"/>
                     </group>
                     <separator string="2. Inspección: rollos finales"/>
                     <field name="rollo_final_kg_ids" readonly="1">

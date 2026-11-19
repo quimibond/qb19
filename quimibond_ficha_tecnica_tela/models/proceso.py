@@ -75,7 +75,8 @@ class FichaTecnicaProceso(models.Model):
 
     @api.depends('product_id')
     def _compute_ficha_acabado_id(self):
-        Acabado = self.env['ficha.tecnica.acabado']
+        # 2.31.1: solo fichas de acabado activas, aunque quien lee traiga `active_test=False`.
+        Acabado = self.env['ficha.tecnica.acabado'].with_context(active_test=True)
         for proceso in self:
             proceso.ficha_acabado_id = Acabado.search(
                 ['|', ('product_proceso_id', '=', proceso.product_id.id),
@@ -149,9 +150,10 @@ class FichaTecnicaProceso(models.Model):
         if not articulo or not workcenter:
             return self.browse()
         for code in self._ft_codigos(articulo):
-            proceso = self.search([('articulo', '=', code), ('workcenter_id', '=', workcenter.id)], limit=1)
+            proceso = self.with_context(active_test=True).search(
+                [('articulo', '=', code), ('workcenter_id', '=', workcenter.id)], limit=1)
             if proceso:
-                return proceso
+                return proceso.with_env(self.env)
         return self.browse()
 
     def action_ft_editar(self):

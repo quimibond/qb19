@@ -27,6 +27,80 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## Los traspasos 10 → calidad los valida Almacén (3.19.2 y 3.19.3, 2026-11-11)
+
+- Las transferencias internas que pasan lo producido de la Ubic. 10 a su calidad (14, 15, 16, 17 o 31) ya **no se validan solas**:
+  quedan *Listas* (reservadas en la 10) y **Almacén las valida al recibir**; la orden deja una nota en el chatter. Aplica al
+  desperdicio de Rama al cerrar la orden en kg (3.19.2) y a la tela, los saldos y el desperdicio de Empaque al cerrar la orden en
+  metros (3.19.3). Hasta que Almacén valida, lo producido sigue en la 10.
+- Parámetro de sistema `quimibond_rollos_bitacora.validar_traspasos_calidad`: con `1` se validan solas al cerrar (como en 3.18.0);
+  sin el parámetro, las valida Almacén. Pruebas: `test_78` y `test_82` (el resto de las pruebas fija el parámetro en `1`).
+
+## Componentes con lote consumidos al cerrar (3.19.1, 2026-11-11)
+
+- Odoo 19 (build de feb-2026) detiene el cierre de la orden si un componente con seguimiento por lote no está marcado como
+  consumido, con «Debe proporcionar el número de lote o serie para los productos y "consumirlos"», aunque ya tenga su lote
+  surtido (J00006-002: crudo, engomado, químicos y colorantes). `button_mark_done` marca como consumidos los componentes cuyas
+  líneas ya traen lote (`_marcar_componentes_con_lote_consumidos`); uno con una línea sin lote se deja como está y el core
+  pide el lote. Se consume lo surtido completo; la diferencia contra los kg netos es merma. Prueba: `test_81`.
+- Si la lista de materiales tiene el consumo en «Advertencia» (el valor por defecto de Odoo) y se cierra con una cantidad
+  distinta de la planeada, Odoo muestra el aviso de consumo; se acepta con «Confirmar». Para que no salga, la lista A se
+  pone en consumo «Flexible» (dato, no código).
+
+## Requisición de Engomado Piso → 2 (3.19.0, 2026-11-11)
+
+- La ruta «Surtido Engomado» queda igual que la de químicos y colorantes: la requisición (REQ-MP) toma del *Químicos-Colorantes
+  Piso* y surte a la Ubic. 2 (destino del tipo de operación), y la orden en kg consume el engomado de la Ubic. 2. La ruta pasa
+  a llamarse «Surtido Engomado (Piso → Ubic. 2)». Antes salía de la Ubic. 1 y la orden lo consumía del Piso.
+- `hooks.configurar_requisicion_surtido` (antes `configurar_requisicion_quimicos`, que queda como alias) procesa las dos rutas;
+  `configurar_piso` ya no repunta el engomado por su cuenta. Migración 3.19.0, idempotente. No toca la ruta de tela cruda.
+- Consecuencia: el sobrante de engomado ya no se devuelve desde el Piso (queda en la Ubic. 2), igual que los químicos.
+- Pruebas: `test_51` (cambia a la nueva configuración) y `test_79`.
+
+## Inventario de la cadena kg → metros: Ubic. 10, traspasos a calidad y requisición de químicos (3.18.0, 2026-11-10)
+
+Desviaciones de la misma prueba (J00002) que tocan inventario. **Aplicar después de 3.17.0.**
+
+- **La orden en metros consume los rollos finales, no los de Rama.** Al cerrar la orden en kg (flujo de Empaque) lo que entra
+  a la Ubic. 10 es un lote por rollo final, `<baño>-F001`, `-F002`… (la «F» lo distingue del lote de Rama `<baño>-0001`, que
+  es del mismo producto), con los **kg de Inspección** (`kg_neto`); el rollo final guarda ese lote en `lot_kg_id`. La orden
+  en metros consume exactamente esos lotes y kg (`_insp_consumo_lotes`). Los baños que ya cerraron antes de 3.18.0 (sus
+  rollos finales no tienen `lot_kg_id`) siguen consumiendo los rollos de Rama con sus kg de Rama. Los rollos finales nuevos se
+  llaman `J00002-F001`; los ya capturados conservan su nombre.
+- **Traspasos 10 → calidad al cerrar la orden en metros.** La tela (PQ, FE, Segunda), los saldos en kg y el desperdicio que
+  Empaque pesó entran a la Ubic. 10 y transferencias internas, ya validadas y ligadas a la orden (una por destino: 14, 15, 16,
+  17 o 31 en desarrollo), los pasan a su ubicación. Lo mismo en la orden de saldos de un baño sin primera ni FE. Si no se
+  puede crear o validar una transferencia no se cierra nada (como el resto del registro). El baño para venta en kg (sin
+  orden en metros) no cambia: sus rollos entran directo a 14/15.
+- **Desperdicio de Rama 10 → 17.** El subproducto ya no se fuerza a la 17 al pesarlo: entra a la 10 con el terminado y, al
+  cerrar la orden en kg, una transferencia lo pasa a la 17. Si el desperdicio ya estaba en la 17 (pesado antes de 3.18.0) no
+  se hace nada.
+- **Requisición de Tintorería (REQ-TIN) Piso → 2.** En la ruta «Surtido Químicos y Colorantes» la regla de surtido toma del
+  *Químicos-Colorantes Piso* y surte a la Ubic. 2 (el destino del tipo de operación; con «destino de la regla» apagado Odoo
+  ignora el destino de la regla), y la orden en kg consume de la 2. La ruta pasa a llamarse «(Piso → Ubic. 2)». El engomado
+  no cambia: sigue surtiéndose al Piso y consumiéndose de ahí. `_surte_desde_piso` solo cuenta reglas de consumo de la orden
+  en kg. Migración 3.18.0 (`hooks.configurar_requisicion_quimicos`), idempotente. Por consecuencia, el sobrante de químicos ya
+  no se devuelve desde el Piso: queda en la Ubic. 2 (el engomado sí se sigue devolviendo).
+
+Pruebas: `test_77`, `test_77b`, `test_77c`, `test_78`, `test_79`; `test_01`, `05_06`, `13`, `14`, `15`, `32`, `39` y `54`
+cambian al nombre `-F001` y a los kg de Inspección.
+
+## Prueba de Dirección en el equipo local: etiquetas, anular y botones (3.17.0, 2026-11-10)
+
+Desviaciones de la prueba de punta a punta (órdenes J00002), validadas contra la base local:
+
+- **Anular captura** ya no avisa «no encontramos el registro»: el botón lleva `close="1"` y la ventana se cierra sin
+  recargar el rollo que acaba de borrarse.
+- **Etiqueta del desperdicio de Rama**: sale al pesar (como la de Empaque) con fecha, producto, nombre, lote, cantidad y
+  código de barras del lote; botón «Imprimir etiqueta» en la pestaña Rollos (Rama y Empaque) para reimprimir.
+- **Lote del desperdicio con la orden**: `<orden>-MM-AAAA` (ej. `J00002-11-2026`), en Rama y en Empaque. Antes solo el mes.
+- **CLASIFICAR EN EMPAQUE y PESAR DESPERDICIO** ya no están en la orden en metros: solo en la operación CLASIFICACION del
+  resumen de los centros de trabajo, como los botones de la orden en kg.
+- **Etiqueta final PQ/FE/Segunda/Desperdicio** con el diseño de «Etiqueta producto terminado PQ y FE»: banda con el código
+  (con `..`, `.` o `*` según la calidad), color y ancho, metros y yardas, peso neto y bruto (PQ) o kilos y libras, lote y
+  rollo, código de barras `metros-neto-lote-rollo`, en las defectivas un segundo con el rollo y las siglas, fecha de
+  fabricación y siglas del operador. Sin título de empresa ni clave del producto (Dirección: ya no lleva clave).
+
 ## Desperdicio sin metros sin alerta de metros (3.16.1, prueba piloto en main, 2026-11-09)
 
 Un rollo final de Desperdicio puede ir sin metros (3.6.2), pero la estación de Inspección le marcaba la «Alerta de metros»
@@ -77,8 +151,11 @@ pesaje, taras, bitácora, defectos y el bloqueo de cierre se quedan igual.
   `rollo.inspeccion.estacion.wizard`: se escanea el rollo de Rama (o varios **del mismo baño** para juntarlos), se pesa
   el rollo final con la tara de Inspección (la de «Clasificación final» en la tabla de taras; báscula IoT o manual con
   motivo), se capturan metros, empalmes, calidad y defectos y se imprime la **etiqueta final** (PQ o PNC).
-- **Corte:** un registro por pedazo con «Último pedazo» apagado; el último lo cierra y el rollo de Rama queda
-  inspeccionado. No se corta y junta en la misma captura.
+- **Dividir un rollo en varios (3.16.2, antes «pedazos»):** un registro por rollo con «Último rollo de esta tela»
+  apagado; el último (con él encendido) cierra el rollo de Rama, que queda inspeccionado. La pedacería defectuosa que
+  se retira no se captura como rollo: queda como merma y se pesa después como desperdicio de la orden. Quitar el
+  defecto y dejar el rollo como PQ, o quitarlo y unirlo con otro rollo, son una sola captura (en la unión se escanean
+  los dos códigos). Un rollo de Rama que ya se dividió no se junta con otros en la misma captura.
 - **Rollo final** (`mrp.rollo.final`, Manufactura → Reportes → Rollos finales): lote `M<orden en metros>-NNNN`, kg,
   metros, calidad, rollos de Rama de los que sale. Merma del grupo (kg de Rama − kg de los rollos finales) con alerta
   por porcentaje antes de guardar (parámetro `quimibond_rollos_bitacora.alerta_merma_inspeccion_pct`, 3 %).
@@ -197,7 +274,7 @@ baños para una orden en metros (3.3.0) se conserva para las órdenes que no se 
   demanda entre el cierre y el pendiente por metros, no por kg), Odoo abastecía la diferencia con una orden en kg nueva
   que nadie pidió (ronda 12: TL/OP-KG/00066, 20.6 kg, con crudo reservado). El ajuste de la demanda ya no abastece
   (`no_procurement`); los baños que la cubren ya existen (prueba 47).
-- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedazos u orillas
+- **Desperdicio sin metros.** El Desperdicio sale en kg («con I es kg, sin I es metros») y puede ser pedacería u orillas
   sin metros: Inspección ya no los pide en Desperdicio. Primera, FE y Segunda siguen pidiéndolos (prueba 48).
 - Formación de baños valida que lo escaneado sea igual a la demanda (`mrp_caja_surtido`, Consolti). No se cambia: en
   producción la demanda del baño formado es lo producido por su orden de Tejido, así que con sus 12 rollos cuadra exacto;

@@ -2,10 +2,25 @@
 from odoo import models, fields, api, _, tools
 from odoo.exceptions import UserError
 
+CATEG_CRUDO = 'Producto en Proceso / Tejido Circular'
+
+
+def es_categ_crudo(categ):
+    """1.5: el crudo de tejido es la categoría «Producto en Proceso / Tejido Circular» o cualquiera debajo
+    (el árbol nuevo la divide por unidad: «… / KG»). Antes las vistas comparaban el nombre exacto."""
+    name = (categ.complete_name or '') if categ else ''
+    return name == CATEG_CRUDO or name.startswith(CATEG_CRUDO + ' / ')
+
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
     
     categ_name_static = fields.Char(related='categ_id.complete_name', string="Categoría", store=False)
+    revisado_es_crudo = fields.Boolean(string="Crudo de tejido (revisado)", compute='_compute_revisado_es_crudo')
+
+    @api.depends('categ_id.complete_name')
+    def _compute_revisado_es_crudo(self):
+        for tmpl in self:
+            tmpl.revisado_es_crudo = es_categ_crudo(tmpl.categ_id)
     porcentaje_revision_standard = fields.Float(string='% Revisión Estándar', default=0.1)
 
 class MrpProduction(models.Model):
@@ -13,6 +28,12 @@ class MrpProduction(models.Model):
 
     # Agregamos este campo para que coincida con lo que pide tu vista XML
     needs_review = fields.Boolean(string="Necesita Revisión", default=False)
+    revisado_es_crudo = fields.Boolean(string="Crudo de tejido (revisado)", compute='_compute_revisado_es_crudo')
+
+    @api.depends('product_id.categ_id.complete_name')
+    def _compute_revisado_es_crudo(self):
+        for rec in self:
+            rec.revisado_es_crudo = es_categ_crudo(rec.product_id.categ_id)
 
     # El conteo de revisados sí se almacena para reportes y velocidad
     rollos_revisados_count = fields.Integer(
@@ -111,6 +132,12 @@ class MrpWorkorder(models.Model):
         string="Categoria de Producto",
         readonly=True
     )
+    revisado_es_crudo = fields.Boolean(string="Crudo de tejido (revisado)", compute='_compute_revisado_es_crudo')
+
+    @api.depends('production_id.product_id.categ_id.complete_name')
+    def _compute_revisado_es_crudo(self):
+        for wo in self:
+            wo.revisado_es_crudo = es_categ_crudo(wo.production_id.product_id.categ_id)
 
     def button_finish(self):
         """ Validación de cierre de la Orden de Trabajo (Tableta/Lista) """

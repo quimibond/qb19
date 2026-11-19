@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from psycopg2 import IntegrityError
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
@@ -25,6 +25,9 @@ class TestInspeccionEstacion(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # 3.19.3: por defecto Almacén valida las transferencias 10 → calidad; estas pruebas miden existencias en 14 a 17 al
+        # cerrar, así que las validan solas (las pruebas 78 y 82 prueban el modo por defecto).
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', '1')
         cls.kg = cls.env.ref('uom.product_uom_kgm')
         cls.metro = cls.env.ref('uom.product_uom_meter')
         cls.prod_kg = cls._producto('IZZ951Q22JNT160', cls.kg)
@@ -142,9 +145,9 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, orden_kg, wo, rollos = self._bano((50.0,))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
-        self.assertEqual(final.name, '%s-0001' % orden_kg.numero_bano)  # 3.5.0: número de baño + rollo
+        self.assertEqual(final.name, '%s-F001' % orden_kg.numero_bano)  # 3.18.0: número de baño + F + rollo
         self.assertAlmostEqual(final.kg_neto, 49.1)
-        self.assertIn('METROS: 585.00', final.zpl_etiqueta)
+        self.assertIn('585.00-', final.zpl_etiqueta)
         self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
         self.assertEqual(final.estado, 'inspeccionado')
         self._cerrar_bano(orden_kg)
@@ -153,13 +156,13 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(orden_m.qty_produced, 585.0)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
         consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
-        self.assertAlmostEqual(consumo.quantity, 50.0, msg="Consume el rollo de Rama completo")
+        self.assertAlmostEqual(consumo.quantity, 49.1, msg="3.18.0: consume el rollo final con los kg de Inspección")
 
     def test_02_corte_primera_y_segunda(self):
         """Caso 2: 250 m de primera y 120 m de segunda; 3.15.0: la segunda es la tela en metros, con su lote, a 16 (diseño §8)."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         self._inspeccionar(orden_kg, wo, rollos, 26.5, 250.0, 'PQ', termina=False)
-        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con pedazos pendientes, el rollo sigue sin inspeccionar")
+        self.assertEqual(rollos.estado_inspeccion, 'pendiente', "Con rollos pendientes, el rollo sigue sin inspeccionar")
         wiz = self._inspeccionar(orden_kg, wo, rollos, 13.4, 120.0, 'SEGUNDA')
         self.assertAlmostEqual(wiz.kg_ya_cortados, 25.0)
         self.assertAlmostEqual(wiz.merma_kg, 40.0 - 25.0 - 11.9)
@@ -193,7 +196,7 @@ class TestInspeccionEstacion(TransactionCase):
             self._inspeccionar(orden_kg2, wo2, rollos2 | rollos[:1], 20.0, 200.0)
         self._cerrar_bano(orden_kg)
         consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
-        self.assertAlmostEqual(consumo.quantity, 21.0, msg="Los dos rollos de Rama se consumen")
+        self.assertAlmostEqual(consumo.quantity, 20.9, msg="3.18.0: consume los rollos finales con los kg de Inspección")
 
     def test_07_08_sin_cerrar_no_hay_existencia_y_bloqueo(self):
         """Caso 7: antes de cerrar, el rollo final no existe en inventario; caso 8: con un rollo sin inspeccionar no
@@ -247,7 +250,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_12_no_cortar_y_juntar_a_la_vez(self):
         orden_m, orden_kg, wo, rollos = self._bano((20.0, 20.0))
         self._inspeccionar(orden_kg, wo, rollos[0], 10.0, 100.0, termina=False)
-        with self.assertRaisesRegex(UserError, 'cortar y juntar'):
+        with self.assertRaisesRegex(UserError, "ya se dividió"):
             self._inspeccionar(orden_kg, wo, rollos, 30.0, 300.0)
 
     def test_13_bano_para_venta_en_kg(self):
@@ -258,7 +261,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos[1], 20.5, 230.0, 'FE', termina=False)
         self._inspeccionar(orden_kg, wo, rollos[1], 10.5, 110.0, 'SEGUNDA')
         primero = orden_kg.rollo_final_kg_ids.sorted('secuencia')[:1]
-        self.assertEqual(primero.name, '%s-0001' % orden_kg.numero_bano)
+        self.assertEqual(primero.name, '%s-F001' % orden_kg.numero_bano)
         self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
         self.assertAlmostEqual(orden_kg.qty_produced, 39.5 + 19.0, msg="La orden en kg cierra con el peso real de PQ y FE")
@@ -282,7 +285,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(orden_s.state, 'done')
         self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 18.5)
         consumo = orden_s.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
-        self.assertAlmostEqual(consumo.quantity, 20.0)
+        self.assertAlmostEqual(consumo.quantity, 18.5, msg="3.18.0: los kg de Inspección")
 
     # ------------------------------------------------------------------ 3.3.0
     def _dos_banos(self, kg_a=(40.0,), kg_b=(40.0,)):
@@ -333,7 +336,7 @@ class TestInspeccionEstacion(TransactionCase):
         # 3.5.0: cada baño tiene su número y su serie de lotes, aunque abastezcan la misma orden en metros.
         self._inspeccionar(kg_b, wo_b, rollos_b, 40.5, 455.0)
         self.assertNotEqual(kg_a.numero_bano, kg_b.numero_bano)
-        self.assertEqual(kg_b.rollo_final_kg_ids.name, '%s-0001' % kg_b.numero_bano)
+        self.assertEqual(kg_b.rollo_final_kg_ids.name, '%s-F001' % kg_b.numero_bano)
         self._cerrar_bano(kg_b)
         self.assertEqual(kg_b.state, 'done', "El segundo baño ya puede cerrar")
         self.assertEqual(pendiente.state, 'done')
@@ -539,7 +542,8 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(bano_2._insp_orden_metros(), m2)
         self._rama_e_inspeccion(bano_2, 41.1, [(40.5, 455.0, 'PQ')])
         self.assertTrue(bano_1.numero_bano and bano_2.numero_bano and bano_1.numero_bano != bano_2.numero_bano)
-        self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-0001' % bano_2.numero_bano)
+        # 3.18.0: el rollo final lleva «F» (el lote de Rama del mismo baño es <baño>-0001).
+        self.assertEqual(bano_2.rollo_final_kg_ids.name, '%s-F001' % bano_2.numero_bano)
         self.assertEqual(bano_2.rollo_final_kg_ids.production_m_id, m2)
         self._cerrar_bano(bano_2)
         self.assertEqual(bano_2.state, 'done')
@@ -777,7 +781,7 @@ class TestInspeccionEstacion(TransactionCase):
         segundo.action_anular()
         self._inspeccionar(orden_kg, wo, rollos[1], 42.5, 410.0)
         self.assertEqual(sorted(orden_kg.rollo_final_kg_ids.mapped('secuencia')), [1, 2, 3])
-        self.assertIn('%s-0002' % orden_kg.numero_bano, orden_kg.rollo_final_kg_ids.mapped('name'))
+        self.assertIn('%s-F002' % orden_kg.numero_bano, orden_kg.rollo_final_kg_ids.mapped('name'))
 
     def test_33_inspeccion_en_paralelo_a_rama(self):
         """Inspección se abre con Rama todavía abierta si hay rollos por inspeccionar; no termina hasta que Rama termina."""
@@ -914,7 +918,7 @@ class TestInspeccionEstacion(TransactionCase):
 
     def test_39_numero_de_bano(self):
         """3.7.0: el número de baño es el nombre de la orden sin el prefijo («TL/OP-KG/J00001» → «J00001»); se fija una sola
-        vez, no se copia al duplicar, es único y da nombre a los lotes: Rama e Inspección «<baño>-0001»."""
+        vez, no se copia al duplicar, es único y da nombre a los lotes: Rama «<baño>-0001» e Inspección «<baño>-F001»."""
         _m, orden_kg, wo, rollos = self._bano((40.0,))
         self.assertFalse(orden_kg.numero_bano)
         orden_kg._asignar_numero_bano()
@@ -938,7 +942,7 @@ class TestInspeccionEstacion(TransactionCase):
         tercera._asignar_numero_bano()
         self.assertEqual(tercera.numero_bano, tercera.name.replace('/', '-'))
         self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
-        self.assertEqual(orden_kg.rollo_final_kg_ids.name, '%s-0001' % numero)
+        self.assertEqual(orden_kg.rollo_final_kg_ids.name, '%s-F001' % numero)
         # Empezar una operación del baño le asigna el número (Tintorería lo usa al cargar el jet).
         bano = self._bano((30.0,))[1]
         self.assertFalse(bano.numero_bano)
@@ -1178,10 +1182,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(tipo.sequence_id.next_by_id().endswith('/J00002'), "Ni reinicia el consecutivo")
 
     def test_51_piso_configuracion_y_consumo(self):
-        """3.8.0: configurar_piso crea «Químicos-Colorantes Piso», repunta las rutas de surtido y la orden en kg consume
-        de ahí el producto cuya ruta sale del Piso; el crudo (sin esa ruta) sigue en la Ubic. 2. Idempotente."""
+        """3.8.0 / 3.19.0: configurar_piso crea «Químicos-Colorantes Piso» y la requisición de Engomado sale del Piso a la
+        Ubic. 2; la orden en kg consume el engomado de la Ubic. 2, igual que el crudo. Idempotente."""
         from odoo.addons.quimibond_rollos_bitacora.hooks import (
-            configurar_piso, NOMBRE_PISO, PARAM_UBICACION_PISO)
+            configurar_piso, NOMBRE_PISO, NOMBRE_RUTA_ENGOMADO, PARAM_UBICACION_PISO)
         almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
         tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ967', 'sequence_code': 'OP-KG'})
         ubic2 = self.env['stock.location'].create({'name': 'ZZ2 PRODUCCIÓN', 'usage': 'internal',
@@ -1191,8 +1195,10 @@ class TestInspeccionEstacion(TransactionCase):
         produccion_virtual = self.env['stock.location'].search([
             ('usage', '=', 'production'), ('company_id', 'in', [compania, False])], limit=1)
         self.assertTrue(produccion_virtual, "La base de prueba tiene una ubicación virtual de producción")
+        tipo_req = almacen.int_type_id.copy({
+            'name': 'Requisición ZZ967', 'sequence_code': 'ZZREQ967', 'default_location_dest_id': ubic2.id})
         regla_surte = self.env['stock.rule'].create({
-            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': almacen.in_type_id.id,
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_req.id,
             'company_id': compania,
             'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': ubic2.id})
         regla_consumo = self.env['stock.rule'].create({
@@ -1209,9 +1215,10 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(piso.name, NOMBRE_PISO)
         self.assertEqual(piso.location_id, padre)
         self.assertEqual(self.env['ir.config_parameter'].sudo().get_param(PARAM_UBICACION_PISO), str(piso.id))
-        self.assertEqual(regla_surte.location_dest_id, piso)
-        self.assertEqual(regla_consumo.location_src_id, piso)
-        self.assertIn('→ Piso)', ruta.name)
+        self.assertEqual(regla_surte.location_src_id, piso, "La requisición de Engomado sale del Piso")
+        self.assertEqual(regla_surte.location_dest_id, ubic2)
+        self.assertEqual(regla_consumo.location_src_id, ubic2, "La orden en kg consume de la Ubic. 2")
+        self.assertEqual(ruta.name, NOMBRE_RUTA_ENGOMADO)
         self.assertEqual(configurar_piso(self.env), piso, "Idempotente: no crea otra ubicación")
         engomado = self.env['product.product'].create({
             'name': 'Engomado ZZ967', 'default_code': 'ENGZZ967', 'type': 'consu', 'is_storable': True,
@@ -1220,7 +1227,7 @@ class TestInspeccionEstacion(TransactionCase):
             'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id,
             'picking_type_id': tipo_kg.id})
         datos = orden_kg._get_move_raw_values(engomado, 1.0, self.kg)
-        self.assertEqual(datos['location_id'], piso.id, "El engomado sale del Piso")
+        self.assertNotEqual(datos['location_id'], piso.id, "El engomado ya no se consume del Piso")
         crudo = orden_kg._get_move_raw_values(self.prod_kg, 1.0, self.kg)
         self.assertNotEqual(crudo['location_id'], piso.id, "Lo que no pasa por el Piso sigue en la ubicación de la orden")
 
@@ -1292,9 +1299,16 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(rollo.reetiquetado, "Empaque cambió la calidad: hay que reimprimir la etiqueta final")
 
     # ------------------------------------------------------------------ 3.11.0: Clasificación final en Empaque
+    def _liberar_lab(self, orden_m):
+        """3.20.0: con rollos PQ por revisar, laboratorio libera la orden en metros antes de que Empaque clasifique."""
+        if orden_m.liberacion_lab_pendiente:
+            self.env['rollo.liberacion.lab.wizard'].create(
+                {'production_id': orden_m.id, 'empleado_numero': '1'}).action_confirmar()
+
     def _clasificar_en_empaque(self, orden_m, rollo, calidad=None, metros=None, motivo=None, pesar=False,
                                kg_bruto=0.0, defectos=True):
         """Estación de Empaque (3.12.0): el rollo se escanea por su lote y se confirma o se cambia."""
+        self._liberar_lab(orden_m)
         wiz = self.env['rollo.empaque.clasificacion.wizard'].create({
             'production_id': orden_m.id, 'empleado_numero': '1', 'codigo': rollo.name,
             'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'pesar': pesar, 'kg_bruto': kg_bruto})
@@ -1328,6 +1342,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(final.estado, 'inspeccionado')
         self.assertEqual(final.production_m_id, orden_m)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 0.0)
+        self._liberar_lab(orden_m)
         with self.assertRaisesRegex(UserError, 'por clasificar'):
             orden_m.button_mark_done()
         self._clasificar_en_empaque(orden_m, final)
@@ -1337,7 +1352,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(orden_m.qty_produced, 585.0)
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], final.name), 585.0)
         consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg)
-        self.assertAlmostEqual(consumo.quantity, 50.0, msg="Consume el rollo de Rama completo")
+        self.assertAlmostEqual(consumo.quantity, 49.1, msg="3.18.0: consume el rollo final con los kg de Inspección")
 
     def test_55_empaque_cambia_calidad_y_metros_antes_de_cerrar_la_orden_en_metros(self):
         """A3.2: Empaque reclasifica un rollo de primera a FE con otros metros; la orden en metros lo registra en 15."""
@@ -1420,7 +1435,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(final.reetiquetado)
         self.assertFalse(final.motivo_ajuste_final)
         self.assertEqual(final.operador_final.split(' - ')[0], '1')
-        self.assertIn('METROS: 585.00', final.zpl_etiqueta)
+        self.assertIn('585.00-', final.zpl_etiqueta)
         self.assertTrue(accion, "Sale la etiqueta final")
 
     def test_61_cambio_de_calidad_pide_motivo_y_reetiqueta(self):
@@ -1435,8 +1450,9 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertTrue(final.reetiquetado)
         self.assertEqual(final.motivo_ajuste_final, 'Indicación de Calidad')
         self.assertEqual(final.defecto_final_ids, self.defecto)
-        self.assertIn('METROS: 580.00', final.zpl_etiqueta)
-        self.assertIn('DEFECTOS', final.zpl_etiqueta, "FE sale como PNC con sus defectos")
+        self.assertIn('580.00-', final.zpl_etiqueta)
+        self.assertIn('KILOS', final.zpl_etiqueta, "FE sale como PNC (kilos y libras) con el código de sus defectos")
+        self.assertEqual(final.zpl_etiqueta.count('^BCN'), 2)
         self.assertIn('Indicación de Calidad', ' '.join(orden_m.message_ids.mapped('body')))
         orden_m.button_mark_done()
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['FE'], final.name), 580.0)
@@ -1476,6 +1492,7 @@ class TestInspeccionEstacion(TransactionCase):
     def test_64_boton_de_la_orden_con_rollos_por_clasificar(self):
         """A3.3: el botón abre la estación solo con rollos por clasificar (sin interruptor desde 3.16.0)."""
         orden_m, orden_kg, final = self._bano_en_empaque()
+        self._liberar_lab(orden_m)
         accion = orden_m.action_clasificar_empaque()
         self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
         self.assertEqual(accion['context']['default_production_id'], orden_m.id)
@@ -1559,6 +1576,7 @@ class TestInspeccionEstacion(TransactionCase):
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         orden_kg.button_mark_done()
         self.assertTrue(wo_c.empaque_pendiente)
+        self._liberar_lab(orden_m)
         accion = wo_c.action_clasificar_rollo()
         self.assertEqual(accion['res_model'], 'rollo.empaque.clasificacion.wizard')
         self.assertEqual(accion['context']['default_workorder_id'], wo_c.id)
@@ -1577,6 +1595,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_kg.button_mark_done()
         wo_c = orden_m.workorder_ids
         final = orden_kg.rollo_final_kg_ids
+        self._liberar_lab(orden_m)
         with self.assertRaisesRegex(UserError, 'por clasificar'):
             wo_c.button_finish()
         self.assertEqual(wo_c.state not in ('done', 'cancel'), True)
@@ -1668,6 +1687,34 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], final.name), 580.0)
         self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
 
+    def test_76c_etiqueta_y_lote_del_desperdicio_de_rama(self):
+        """3.17.0 (Dirección, 2026-11-10): el desperdicio de Rama también imprime etiqueta con código de barras, y el lote de
+        los dos desperdicios lleva el número de la orden y el mes («J00002-11-2026»)."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        with self.assertRaises(UserError):
+            orden_kg._zpl_etiqueta_desperdicio_rama()
+        lote = orden_kg._lote_desperdicio(self.saldo_d)
+        numero = orden_kg.numero_bano or orden_kg.name.rsplit('/', 1)[-1]
+        self.assertRegex(lote.name, r'^%s-\d\d-\d{4}$' % numero)
+        self.assertEqual(orden_m._lote_desperdicio(self.saldo_d).name.rsplit('-', 2)[1:],
+                         lote.name.rsplit('-', 2)[1:], 'Mismo mes en los dos')
+        orden_kg.write({'desperdicio_kg': 1.2, 'desperdicio_lote_id': lote.id,
+                        'desperdicio_fecha': fields.Datetime.now()})
+        zpl = orden_kg._zpl_etiqueta_desperdicio_rama()
+        for texto in ('PRODUCTO: %s' % self.saldo_d.default_code, 'NOMBRE: %s' % self.saldo_d.name, 'LOTE: %s' % lote.name,
+                      'CANTIDAD: 1.20 %s' % self.saldo_d.uom_id.name, '^BC'):
+            self.assertIn(texto, zpl)
+        accion = orden_kg.action_imprimir_etiqueta_desperdicio_rama()
+        self.assertTrue(accion.get('type'))
+        self.assertIn('report_etiqueta_desperdicio_rama', str(accion))
+
+    def test_76d_anular_cierra_la_ventana_sin_recargar_el_rollo(self):
+        """3.17.0: el botón Anular captura cierra la ventana sin recargar el rollo ya borrado (si no, Odoo avisa que no
+        encuentra el registro aunque la captura sí se anuló)."""
+        vista = self.env['mrp.rollo.final'].get_view(view_type='form')['arch']
+        boton = vista[vista.index('name="action_anular"'):]
+        self.assertIn('close="1"', boton[:boton.index('/>') if '/>' in boton[:400] else 400])
+
     def test_76b_etiqueta_del_desperdicio_de_empaque(self):
         """3.15.0 (José 2026-11-08): la etiqueta del desperdicio lleva fecha, producto, nombre, lote, cantidad con su unidad
         y el código de barras del lote; sale al pesar."""
@@ -1684,3 +1731,253 @@ class TestInspeccionEstacion(TransactionCase):
                       'CANTIDAD: 2.50 %s' % self.saldo_d.uom_id.name, '^BC'):
             self.assertIn(texto, zpl)
         self.assertRegex(zpl, r'FECHA: \d\d/\d\d/\d{4} \d\d:\d\d')
+
+    # ------------------------------------------------------------------ 3.18.0: cadena por la Ubic. 10 y traspasos
+    def test_77_finales_a_la_10_consumo_y_traspasos_a_calidad(self):
+        """3.18.0 (Dirección, 2026-11-10): al cerrar la orden en kg los rollos finales entran a la Ubic. 10 con su lote
+        («J…-F001») y los kg de Inspección; la orden en metros consume esos lotes; al cerrarla, la tela y los saldos entran
+        a la Ubic. 10 y transferencias internas los pasan a 14 / 17."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 30.6, 320.0, 'PQ', termina=False)
+        self._inspeccionar(orden_kg, wo, rollos, 9.0, 40.0, 'DESP')
+        salida = orden_kg.location_dest_id
+        orden_kg.button_mark_done()
+        pq, desp = orden_kg.rollo_final_kg_ids.sorted('secuencia')
+        self.assertEqual((pq.name, desp.name), ('%s-F001' % orden_kg.numero_bano, '%s-F002' % orden_kg.numero_bano))
+        self.assertEqual(pq.lot_kg_id.name, pq.name)
+        self.assertEqual(pq.lot_kg_id.product_id, self.prod_kg)
+        # Los rollos finales (no los de Rama) están en la Ubic. 10 con los kg de Inspección.
+        self.assertAlmostEqual(self._cantidad(self.prod_kg, salida, pq.name), pq.kg_neto)
+        self.assertAlmostEqual(self._cantidad(self.prod_kg, salida, desp.name), desp.kg_neto)
+        self.assertFalse(self._cantidad(self.prod_kg, salida, rollos.lot_id.name), "El lote de Rama ya no entra a la 10")
+        self._empaque_confirma_todos(orden_m)
+        self._pesar_desperdicio_empaque(orden_m, 2.5)
+        orden_m.button_mark_done()
+        self.assertEqual(orden_m.state, 'done')
+        consumo = orden_m.move_raw_ids.filtered(lambda m: m.product_id == self.prod_kg).move_line_ids
+        self.assertEqual(sorted(consumo.mapped('lot_id.name')), sorted([pq.name, desp.name]))
+        self.assertAlmostEqual(sum(consumo.mapped('quantity')), pq.kg_neto + desp.kg_neto)
+        # La tela y el desperdicio quedaron en su calidad y la 10 sin saldo de lo producido.
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ'], pq.name), 320.0)
+        self.assertFalse(self._cantidad(self.prod_m, salida))
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), desp.kg_neto + 2.5)
+        self.assertFalse(self._cantidad(self.saldo_d, salida))
+        traspasos = self.env['stock.picking'].search([('origin', 'ilike', orden_m.name), ('state', '=', 'done')])
+        self.assertEqual(sorted(traspasos.mapped('location_dest_id').ids), sorted([self.ubic['PQ'].id, self.ubic['DESP'].id]))
+        self.assertEqual(set(traspasos.mapped('location_id').ids), {salida.id})
+        self.assertEqual(set(traspasos.picking_type_id.mapped('code')), {'internal'})
+
+    def test_77b_saldos_pasan_por_la_10_y_a_su_ubicacion(self):
+        """3.18.0: el baño sin primera ni FE (orden de saldos) también entra a la Ubic. 10 y pasa al 17 con transferencia."""
+        orden_m, orden_kg, wo, rollos = self._bano((20.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 20.5, 100.0, 'DESP')
+        salida = orden_kg.location_dest_id
+        self._cerrar_bano(orden_kg)
+        desp = orden_kg.rollo_final_kg_ids
+        self.assertEqual(desp.estado, 'registrado')
+        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), desp.kg_neto)
+        self.assertFalse(self._cantidad(self.saldo_d, salida))
+        orden_s = desp.production_saldo_id
+        consumo = orden_s.move_raw_ids.move_line_ids
+        self.assertEqual(consumo.mapped('lot_id.name'), [desp.name])
+        self.assertTrue(self.env['stock.picking'].search_count([
+            ('origin', 'ilike', orden_s.name), ('state', '=', 'done'), ('location_dest_id', '=', self.ubic['DESP'].id)]))
+
+    def test_78_desperdicio_de_rama_entra_a_la_10_y_pasa_a_la_17(self):
+        """3.18.0: el subproducto de desperdicio de Rama conserva el destino de la orden (Ubic. 10) y al cerrar la orden en
+        kg una transferencia lo pasa a la 17; 3.19.2: queda sin validar y la valida Almacén al recibir."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        salida = orden_kg.location_dest_id
+        # Como en la planta: la lista trae el subproducto de desperdicio con cantidad 0 y destino el de la orden.
+        self.env['stock.move'].create({
+            'product_id': self.saldo_d.id, 'product_uom': self.saldo_d.uom_id.id, 'product_uom_qty': 0.0,
+            'location_id': orden_kg.move_finished_ids[:1].location_id.id, 'location_dest_id': salida.id,
+            'production_id': orden_kg.id, 'company_id': orden_kg.company_id.id, 'origin': orden_kg.name,
+            'cost_share': 0.0})._action_confirm()
+        orden_kg._rama_registrar_desperdicio(wo_rama, 1.2, 'Operador', False)
+        movimiento = orden_kg.move_finished_ids.filtered(lambda m: m.product_id != self.prod_kg and m.quantity)
+        self.assertEqual(movimiento.location_dest_id, salida, "Entra a la 10, no se fuerza la 17")
+        producto = movimiento.product_id
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self._cerrar_bano(orden_kg)
+        # 3.19.2: la transferencia 10 → 17 queda lista y la valida Almacén al recibir; mientras tanto sigue en la 10.
+        traspaso = self.env['stock.picking'].search([
+            ('origin', 'ilike', orden_kg.name), ('location_dest_id', '=', self.ubic['DESP'].id)])
+        self.assertEqual(len(traspaso), 1)
+        self.assertEqual(traspaso.state, 'assigned', "Sin validar: Almacén la valida al recibir")
+        self.assertFalse(self._cantidad(producto, self.ubic['DESP']))
+        self.assertAlmostEqual(self._cantidad(producto, salida), 1.2)
+        traspaso.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        self.assertEqual(traspaso.state, 'done')
+        self.assertAlmostEqual(self._cantidad(producto, self.ubic['DESP']), 1.2)
+        self.assertFalse(self._cantidad(producto, salida))
+
+    def test_79_requisicion_de_quimicos_del_piso_a_la_2(self):
+        """3.18.0: la requisición de químicos y colorantes (REQ-TIN) toma del Piso y surte a la Ubic. 2 (el destino del tipo);
+        la orden en kg los consume de la 2. Idempotente. (3.19.0: el engomado hace lo mismo; ver la prueba 51.)"""
+        from odoo.addons.quimibond_rollos_bitacora.hooks import NOMBRE_RUTA_QUIMICOS, configurar_piso
+        almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+        compania = almacen.company_id.id
+        padre = self.env['stock.location'].search([('complete_name', '=', 'Toluca/Stock')], limit=1)
+        if not padre:
+            padre = almacen.lot_stock_id
+            padre.name = 'Stock'
+            padre.location_id.name = 'Toluca'
+        ubic2 = self.env['stock.location'].create({'name': 'ZZ979 PRODUCCIÓN', 'usage': 'internal', 'location_id': padre.id})
+        tipo_req = almacen.int_type_id.copy({
+            'name': 'Requisición ZZ979', 'sequence_code': 'ZZREQ', 'default_location_dest_id': ubic2.id})
+        tipo_kg = almacen.manu_type_id.copy({'name': 'Fabricación Tela en kg ZZ979', 'sequence_code': 'OP-KG'})
+        produccion_virtual = self.env['stock.location'].search([
+            ('usage', '=', 'production'), ('company_id', 'in', [compania, False])], limit=1)
+        ruta = self.env['stock.route'].create({'name': 'Surtido Químicos y Colorantes ZZ979 (Ubic. 1 → Piso)'})
+        regla_surte = self.env['stock.rule'].create({
+            'name': 'ZZ surte', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_req.id,
+            'company_id': compania, 'location_src_id': almacen.lot_stock_id.id, 'location_dest_id': padre.id,
+            'location_dest_from_rule': True})
+        regla_consumo = self.env['stock.rule'].create({
+            'name': 'ZZ consumo', 'route_id': ruta.id, 'action': 'pull', 'picking_type_id': tipo_kg.id,
+            'company_id': compania, 'location_src_id': padre.id, 'location_dest_id': produccion_virtual.id})
+        piso = configurar_piso(self.env)
+        self.assertEqual(regla_surte.location_src_id, piso, "La requisición sale del Piso")
+        self.assertEqual(regla_surte.location_dest_id, ubic2)
+        self.assertFalse(regla_surte.location_dest_from_rule, "El destino del movimiento es el del tipo (Ubic. 2)")
+        self.assertEqual(regla_consumo.location_src_id, ubic2, "La orden en kg consume de la Ubic. 2")
+        self.assertEqual(ruta.name, NOMBRE_RUTA_QUIMICOS)
+        configurar_piso(self.env)  # idempotente
+        self.assertEqual((regla_surte.location_src_id, regla_consumo.location_src_id), (piso, ubic2))
+        quimico = self.env['product.product'].create({
+            'name': 'Químico ZZ979', 'default_code': 'QZZ979', 'type': 'consu', 'is_storable': True,
+            'uom_id': self.kg.id, 'route_ids': [Command.link(ruta.id)]})
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': self.bom_kg.id, 'picking_type_id': tipo_kg.id})
+        datos = orden_kg._get_move_raw_values(quimico, 1.0, self.kg)
+        self.assertNotEqual(datos['location_id'], piso.id, "El químico ya no se consume del Piso")
+
+    def test_77c_banos_anteriores_a_3_18_0_siguen_con_los_rollos_de_rama(self):
+        """3.18.0: un baño que cerró antes (sus rollos finales no tienen lote en kg) sigue consumiendo los rollos de Rama con
+        sus kg de Rama; con lote en kg, los lotes de los rollos finales con los kg de Inspección."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        final = orden_kg.rollo_final_kg_ids
+        Produccion = self.env['mrp.production']
+        self.assertEqual(Produccion._insp_consumo_lotes(final), [(rollos.lot_id, 40.0)])
+        lote = Produccion._insp_lote(self.prod_kg, final.name, self.env.company)
+        final.lot_kg_id = lote
+        self.assertEqual(Produccion._insp_consumo_lotes(final), [(lote, final.kg_neto)])
+
+    def test_80_programacion_por_rollos_divide_tambien_la_orden_en_metros(self):
+        """Programación 1.9.0 (Dirección, 2026-11-11): con el crudo ya surtido, cada baño lleva rollos completos y la orden en
+        metros se divide en proporción a los kg de los rollos de cada baño (el total de metros no cambia)."""
+        if 'tintoreria.programacion' not in self.env:
+            self.skipTest('quimibond_tintoreria_programacion no está instalado')
+        htj = self.env['mrp.workcenter'].create({'name': 'TINTORERIA ZZ980', 'code': 'TZZ980'})
+        categoria = self.env['product.category'].create({'name': 'TEJIDO ZZ980'})
+        crudo = self.env['product.product'].create({
+            'name': 'Crudo ZZ980', 'default_code': 'ZZ980CRUDO', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id, 'categ_id': categoria.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.prod_kg.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'consumption': 'flexible', 'sequence': 1,
+            'operation_ids': [Command.create({'name': 'Tintorería', 'workcenter_id': htj.id, 'sequence': 10})],
+            'bom_line_ids': [Command.create({'product_id': crudo.id, 'product_qty': 1.0})]})
+
+        class _Config:
+            def _ft_value(self, codigo):
+                return {'capacidad': 100.0}.get(codigo, 0.0)
+
+        prod_kg = self.prod_kg
+        Workcenter = self.env.registry['mrp.workcenter']
+        self.patch(Workcenter, '_ft_config_at', lambda wc, day=None: _Config() if wc.id == htj.id else False)
+        self.patch(Workcenter, '_ft_capacidad_carga',
+                   lambda wc, rendimiento, day=None, product=None: (0.0, 'sin capacidad capturada'))
+        self.patch(self.env.registry['product.product'], '_ft_rendimiento', lambda producto: (11.79, 'prueba'))
+        self.patch(self.env.registry['mrp.production'], '_es_producto_acabado_kg',
+                   lambda orden: orden.product_id == prod_kg)
+        self.patch(self.env.registry['mrp.production'], '_minutos_tintoreria',
+                   lambda orden, wc, kg_bano=None: (240.0, 'ficha', False))
+        orden_m = self.env['mrp.production'].create({
+            'product_id': self.prod_m.id, 'product_qty': 2000, 'product_uom_id': self.metro.id, 'bom_id': self.bom_m.id})
+        orden_m.action_confirm()
+        orden_kg = self.env['mrp.production'].create({
+            'product_id': self.prod_kg.id, 'product_qty': 160.0, 'bom_id': bom.id})
+        orden_kg.action_confirm()
+        orden_m._clasif_move_a().write({
+            'move_orig_ids': [Command.set(orden_kg.move_finished_ids.ids)], 'created_production_id': orden_kg.id})
+        # Surtido: 4 rollos de crudo, 169 kg (se pidieron 160).
+        movimiento = orden_kg.move_raw_ids.filtered(lambda m: m.product_id == crudo)
+        for numero, kg in enumerate((40.0, 40.0, 45.0, 44.0), 1):
+            lote = self.env['stock.lot'].create({
+                'name': 'HZZ980-%04d' % numero, 'product_id': crudo.id, 'company_id': self.env.company.id})
+            self.env['stock.quant']._update_available_quantity(crudo, movimiento.location_id, kg, lot_id=lote)
+            self.env['stock.move.line'].create({
+                'move_id': movimiento.id, 'product_id': crudo.id, 'lot_id': lote.id, 'quantity': kg,
+                'product_uom_id': self.kg.id, 'location_id': movimiento.location_id.id,
+                'location_dest_id': movimiento.location_dest_id.id})
+        movimiento._recompute_state()
+        programacion = orden_kg._programar_tintoreria(htj)
+        banos = programacion.production_ids.sorted('id')
+        self.assertEqual(banos.mapped('product_qty'), [80.0, 89.0], "Rollos 1-2 y 3-4, sin cortar ninguno")
+        for bano, rollos in zip(banos, (('HZZ980-0001', 'HZZ980-0002'), ('HZZ980-0003', 'HZZ980-0004'))):
+            lineas = bano.move_raw_ids.filtered(lambda m: m.product_id == crudo).move_line_ids
+            self.assertEqual(sorted(lineas.lot_id.mapped('name')), list(rollos))
+        m1, m2 = banos[0]._insp_orden_metros(), banos[1]._insp_orden_metros()
+        self.assertEqual(m1, orden_m)
+        self.assertTrue(m2 and m2 != m1)
+        self.assertEqual(m1.product_qty, 947.0, "Metros enteros: 2000 × 80 / 169 = 946.75")
+        self.assertEqual(m2.product_qty, 1053.0)
+        self.assertAlmostEqual(m1.product_qty + m2.product_qty, 2000.0, places=2, msg="El total de metros no cambia")
+        self.assertEqual(m1._ordenes_previas(), banos[0])
+        self.assertEqual(m2._ordenes_previas(), banos[1])
+
+    def test_81_componentes_con_lote_se_marcan_consumidos_al_cerrar(self):
+        """3.19.1: los componentes con seguimiento por lote que ya traen lote en todas sus líneas se marcan como consumidos
+        antes de cerrar (Odoo 19 de feb-2026 detiene el cierre si no); el que tiene una línea sin lote se deja como está."""
+        categoria_lote = self.env['product.product'].create({
+            'name': 'Químico ZZ981 con lote', 'default_code': 'QZZ981', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id})
+        sin_lote = self.env['product.product'].create({
+            'name': 'Químico ZZ981 sin lote', 'default_code': 'QZZ981B', 'type': 'consu', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': self.kg.id})
+        bom = self.env['mrp.bom'].create({
+            'product_tmpl_id': self.prod_kg.product_tmpl_id.id, 'product_qty': 1, 'product_uom_id': self.kg.id,
+            'consumption': 'flexible', 'sequence': 1,
+            'bom_line_ids': [Command.create({'product_id': categoria_lote.id, 'product_qty': 0.1}),
+                             Command.create({'product_id': sin_lote.id, 'product_qty': 0.1})]})
+        orden = self.env['mrp.production'].create({'product_id': self.prod_kg.id, 'product_qty': 100.0, 'bom_id': bom.id})
+        orden.action_confirm()
+        lote = self.env['stock.lot'].create({
+            'name': 'LZZ981', 'product_id': categoria_lote.id, 'company_id': self.env.company.id})
+        con_lote = orden.move_raw_ids.filtered(lambda m: m.product_id == categoria_lote)
+        sin = orden.move_raw_ids.filtered(lambda m: m.product_id == sin_lote)
+        ubicacion = con_lote.location_id
+        for movimiento, producto, registro in ((con_lote, categoria_lote, lote), (sin, sin_lote, self.env['stock.lot'])):
+            self.env['stock.move.line'].create({
+                'move_id': movimiento.id, 'product_id': producto.id, 'lot_id': registro.id or False, 'quantity': 10.0,
+                'product_uom_id': self.kg.id, 'location_id': ubicacion.id, 'location_dest_id': movimiento.location_dest_id.id})
+        self.assertFalse(con_lote.picked)
+        self.env['mrp.rollo.bitacora'].create({'production_id': orden.id, 'secuencia': 1, 'kg_rama': 10.0})
+        orden._marcar_componentes_con_lote_consumidos()
+        self.assertTrue(con_lote.picked, "Con lote en todas sus líneas: queda consumido")
+        self.assertFalse(sin.picked, "Con una línea sin lote se deja como está")
+
+    def test_82_traspasos_al_cerrar_la_orden_en_metros_quedan_para_almacen(self):
+        """3.19.3: por defecto las transferencias 10 → 14/15/16/17 de la orden en metros quedan listas, sin validar; la tela
+        sigue en la 10 hasta que Almacén las valide, y entonces llega a su ubicación."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        salida = orden_kg.location_dest_id
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self._cerrar_bano(orden_kg)
+        self.assertEqual(orden_m.state, 'done')
+        traspasos = self.env['stock.picking'].search([('origin', 'ilike', orden_m.name), ('picking_type_code', '=', 'internal')])
+        self.assertTrue(traspasos)
+        self.assertEqual(set(traspasos.mapped('state')), {'assigned'}, "Sin validar: las valida Almacén")
+        self.assertFalse(self._cantidad(self.prod_m, self.ubic['PQ']))
+        self.assertAlmostEqual(self._cantidad(self.prod_m, salida), 460.0)
+        for traspaso in traspasos:
+            traspaso.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        self.assertEqual(set(traspasos.mapped('state')), {'done'})
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 460.0)
+        self.assertFalse(self._cantidad(self.prod_m, salida))

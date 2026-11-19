@@ -35,6 +35,8 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
     codigo_error = fields.Char(compute='_compute_rollo')
     estado_rollo = fields.Selection(related='rollo_id.estado', string='Estado del rollo')
     clasificacion_insp = fields.Selection(related='rollo_id.clasificacion', string='Calidad de Inspección')
+    clasificacion_lab = fields.Selection(related='rollo_id.clasificacion_lab', string='Calidad final (laboratorio)')
+    motivo_lab = fields.Char(related='rollo_id.motivo_lab', string='Causa del cambio (laboratorio)')
     metros_insp = fields.Float('Metros de Inspección', related='rollo_id.metros', digits=(12, 2))
     kg_insp = fields.Float('Kg de Inspección', related='rollo_id.kg_neto', digits=(12, 4))
 
@@ -52,7 +54,7 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_empaque_clasif_defecto_rel', 'wizard_id', 'defecto_id',
                                    'Defectos', compute='_compute_valores', store=True, readonly=False,
                                    domain="[('tipo_tela', '=', 'tejido_acabado')]")
-    motivo_ajuste = fields.Char('Motivo del cambio')
+    motivo_ajuste = fields.Char('Motivo del cambio', compute='_compute_valores', store=True, readonly=False)
     cambia = fields.Boolean('Cambia la calidad o los metros', compute='_compute_alertas')
     alertas = fields.Text('Alertas', compute='_compute_alertas')
     pendientes = fields.Integer('Rollos por clasificar', compute='_compute_pendientes')
@@ -80,18 +82,31 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
 
     @api.depends('rollo_id')
     def _compute_valores(self):
-        """Propone lo que ya tiene el rollo: lo de Empaque si ya lo clasificó (se puede corregir), si no lo de Inspección."""
+        """Propone lo que ya tiene el rollo: lo de Empaque si ya lo clasificó (se puede corregir); si no, la calidad final
+        de laboratorio si liberó el rollo (3.21.0, Junta de Calidad 2026-11-13; con sus defectos y su causa si pasó a FE o
+        Segunda); si no, lo de Inspección. Empaque puede cambiar cualquiera antes de confirmar."""
         for wiz in self:
             rollo = wiz.rollo_id
             if not rollo:
                 wiz.metros = 0.0
                 wiz.clasificacion = False
                 wiz.defecto_ids = False
+                wiz.motivo_ajuste = False
                 continue
             clasificado = bool(rollo.clasificacion_final)
+            lab = rollo.clasificacion_lab
             wiz.metros = rollo.metros_final if clasificado else rollo.metros
-            wiz.clasificacion = rollo.clasificacion_final or rollo.clasificacion
-            wiz.defecto_ids = rollo.defecto_final_ids if clasificado else rollo.defecto_ids
+            wiz.clasificacion = rollo.clasificacion_final or lab or rollo.clasificacion
+            if clasificado:
+                wiz.defecto_ids = rollo.defecto_final_ids
+                wiz.motivo_ajuste = False
+            elif lab:
+                cambio_lab = lab in ('FE', 'SEGUNDA')
+                wiz.defecto_ids = rollo.defecto_lab_ids if cambio_lab else rollo.defecto_ids
+                wiz.motivo_ajuste = rollo.motivo_lab if cambio_lab else False
+            else:
+                wiz.defecto_ids = rollo.defecto_ids
+                wiz.motivo_ajuste = False
 
     @api.depends('product_id', 'kg_bruto', 'pesar')
     def _compute_pesos(self):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Taras y Bitácora de Rollos (Tela Acabada)',
-    'version': '19.0.3.16.1',
+    'version': '19.0.3.21.1',
     'category': 'Manufacturing',
     'summary': 'Tabla de taras por producto y operación, bitácora de rollos y pesaje en Rama de la MO en kg',
     'description': """
@@ -43,6 +43,17 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
   el peso y los metros definitivos de Empaque si los hay (A3.2). Apagado (por defecto) todo funciona como en 3.10.0.
 * 3.16.0 (Dirección, 2026-11-08, A3.5): se retira el esquema de clasificación anterior (asistente ``rollo.clasificacion.wizard``,
   ``production_b_id``, etiqueta final de la bitácora) y el interruptor ``clasificacion_empaque``: Empaque siempre activo.
+* 3.16.2 (José, 2026-11-10): la estación de Inspección habla de rollos, no de «pedazos»: «Último rollo de esta tela»,
+  «Kg de rollos ya registrados» y mensajes acordes. Solo etiquetas y mensajes; la lógica no cambia.
+* 3.20.0 (José, 2026-11-12): liberación de laboratorio para Empaque. En la orden en metros con rollos PQ por revisar,
+  laboratorio libera con su número de empleado («LIBERAR PARA EMPAQUE» en la operación CLASIFICACION); mientras tanto
+  CLASIFICAR no abre y la orden no cierra. Sin rollos PQ no hay liberación.
+* 3.20.1 (José, 2026-11-12): el botón LIBERAR PARA EMPAQUE sale de la lista de operaciones; el wizard pide la orden y se
+  abre desde el menú de Calidad (quimibond_hojas_calidad). La lista solo muestra «Pend. liberación lab».
+* 3.21.1: Liberar para Empaque: el número de empleado solo se bloquea cuando ya se encontró al empleado (con un número repetido, como 20, se puede corregir sin cancelar); las líneas de rollos se guardan completas (force_save en Rollo) y ya no marca «Missing required value rollo_id».
+* 3.21.0 (Junta de Calidad, 2026-11-13): al liberar, control de calidad registra la calidad final de cada rollo PQ (PQ, FE
+  o Segunda; FE y Segunda piden defectos y causa del cambio). Empaque ve la calidad de Inspección y la de laboratorio y
+  arranca con la de laboratorio; puede cambiarla antes de confirmar.
 """,
     'author': 'Jose Sacramento Consolti',
     'license': 'LGPL-3',
@@ -72,6 +83,7 @@ Diseño técnico v5.4, §8, §9, §12.1 y §13.
         'wizard/rollo_inspeccion_estacion_wizard_views.xml',
         'wizard/rollo_empaque_clasificacion_wizard_views.xml',
         'wizard/rollo_empaque_desperdicio_wizard_views.xml',
+        'wizard/rollo_liberacion_lab_wizard_views.xml',
         'report/report_etiqueta_rama.xml',
         'views/menus.xml',
     ],

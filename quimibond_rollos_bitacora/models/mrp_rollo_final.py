@@ -78,6 +78,10 @@ class MrpRolloFinal(models.Model):
     product_id = fields.Many2one('product.product', 'Producto registrado', readonly=True,
                                  help='La tela (PQ, FE y Segunda, en metros) o el saldo (Desperdicio, en kg).')
     lot_id = fields.Many2one('stock.lot', 'Lote registrado', readonly=True, copy=False)
+    lot_kg_id = fields.Many2one(
+        'stock.lot', 'Lote en kg (Ubic. 10)', readonly=True, copy=False,
+        help='3.18.0: lote del acabado en kg con que este rollo entró a la Ubic. 10 al cerrar el baño; la orden en metros '
+             'consume ese lote con los kg de Inspección.')
     location_dest_id = fields.Many2one('stock.location', 'Ubicación', readonly=True)
 
     # 3.3.0: alerta 2 del v5.4 §9.1 (metros contra kg × rendimiento de acabado de la ficha), guardada al capturar.
@@ -108,6 +112,17 @@ class MrpRolloFinal(models.Model):
     operador_final = fields.Char('Operador de Clasificación final', readonly=True, copy=False)
     siglas_operador_final = fields.Char('Siglas del operador de Empaque', readonly=True, copy=False)
     fecha_final = fields.Datetime('Clasificado en Empaque el', readonly=True, copy=False)
+    # 3.21.0 (Junta de Calidad, 2026-11-13): al liberar la orden, control de calidad registra la calidad final de cada
+    # rollo PQ que revisó. Empaque la ve junto a la de Inspección y arranca con ella (puede cambiarla).
+    clasificacion_lab = fields.Selection(
+        CLASIFICACIONES, 'Calidad final (laboratorio)', readonly=True, copy=False,
+        help='Calidad con la que control de calidad liberó el rollo PQ. Vacía si no pasó por liberación.')
+    defecto_lab_ids = fields.Many2many(
+        'calidad.defecto.tela', 'mrp_rollo_final_defecto_lab_rel', 'final_id', 'defecto_id',
+        'Defectos (laboratorio)', readonly=True, copy=False)
+    motivo_lab = fields.Char('Causa del cambio (laboratorio)', readonly=True, copy=False)
+    operador_lab = fields.Char('Liberó (laboratorio)', readonly=True, copy=False)
+    fecha_lab = fields.Datetime('Liberado por laboratorio el', readonly=True, copy=False)
     reetiquetado = fields.Boolean(
         'Reetiquetado', compute='_compute_valores_registro', store=True,
         help='Empaque cambió la calidad que Inspección había puesto: hay que reimprimir la etiqueta final.')
@@ -121,7 +136,7 @@ class MrpRolloFinal(models.Model):
 
     _unique_nombre = models.Constraint('unique(name, company_id)', 'Ese rollo final ya existe.')
     _check_kg = models.Constraint('CHECK(kg_neto > 0)', 'Los kg netos del rollo final deben ser mayores a cero.')
-    # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedazos, orillas); Primera, FE y Segunda sí los llevan.
+    # 3.6.2: el Desperdicio sale en kg y puede no tener metros (pedacería, orillas); Primera, FE y Segunda sí los llevan.
     _check_metros = models.Constraint("CHECK(metros > 0 OR (clasificacion = 'DESP' AND metros >= 0))",
                                       'Los metros del rollo final deben ser mayores a cero (salvo en Desperdicio).')
 
@@ -200,9 +215,10 @@ class MrpRolloFinal(models.Model):
 
     @api.model
     def _nombre_lote(self, orden_m, secuencia, orden_kg=None):
-        """Lote del rollo final = número de baño + No. de rollo: «00001-0001» (3.5.0; antes M<orden en metros>-NNNN o
-        K<orden en kg>-NNNN). Es el que queda en inventario y va en la etiqueta final."""
-        return '%s-%04d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
+        """Lote del rollo final = número de baño + «F» + No. de rollo: «J00002-F001» (3.18.0; antes «J00002-001», igual que
+        el rollo de Rama). Es el que queda en inventario y va en la etiqueta final. La «F» lo distingue del lote del rollo
+        de Rama («J00002-0001»), que es del mismo producto."""
+        return '%s-F%03d' % ((orden_kg.numero_bano if orden_kg else False) or _('(baño)'), secuencia)
 
     # ------------------------------------------------------------------ anular (3.3.0)
     def _revertir_rama(self):
@@ -215,7 +231,7 @@ class MrpRolloFinal(models.Model):
 
     def action_anular(self):
         """3.3.0: corrige una captura de Inspección antes de cerrar el baño. Borra el rollo final y deja pendientes sus
-        rollos de Rama (con sus otros pedazos, si los hay) para volver a inspeccionarlos. Solo el responsable de
+        rollos de Rama (con sus otros rollos registrados, si los hay) para volver a inspeccionarlos. Solo el responsable de
         Manufactura; un rollo ya registrado no se anula (ya está en inventario)."""
         if not self.env.user.has_group('mrp.group_mrp_manager'):
             raise UserError(_('Solo el responsable de Manufactura anula un rollo final.'))
@@ -231,7 +247,7 @@ class MrpRolloFinal(models.Model):
                 'Rollo final %(r)s anulado por %(u)s (%(c)s, %(kg).2f kg, %(m).2f m); sus rollos de Rama %(rama)s quedan '
                 'pendientes de inspección.', r=rollo.name, u=self.env.user.name, c=rollo.clasificacion,
                 kg=rollo.kg_neto, m=rollo.metros, rama=', '.join(rollo.bitacora_ids.mapped('name'))))
-        # Al anular un pedazo, el rollo de Rama queda abierto y sus otros pedazos siguen capturados.
+        # Al anular un rollo de una división, el rollo de Rama queda abierto y sus otros rollos siguen capturados.
         self.unlink()
         return {'type': 'ir.actions.act_window_close'}
 
@@ -264,9 +280,10 @@ class MrpRolloFinal(models.Model):
         return {'codigo': codigo, 'color': COLORES.get(codigo_tela[9:11].upper(), codigo_tela[9:11]), 'ancho': ancho}
 
     def _zpl_etiqueta(self):
-        """Etiqueta final de José (§12.3) con los datos del rollo final: PQ con neto/bruto; FE, Segunda y Desperdicio
-        (PNC) con kilos y libras, siglas de defectos y el segundo código. Código de barras: metros;kg;orden;rollo.
-        Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
+        """Etiqueta final con los datos del rollo final, con el diseño de «Etiqueta producto terminado PQ y FE» (3.17.0):
+        PQ con peso neto y bruto; FE, Segunda y Desperdicio con kilos y libras y las siglas de los defectos (el código del
+        producto lleva «..», «.» o «*»). Código de barras: metros-peso neto-lote-rollo; las defectivas, un segundo con el
+        rollo y las siglas. Acomodo y tamaño (76 x 102 mm) en `mrp.rollo.bitacora._zpl_final_acomodo`."""
         self.ensure_one()
         datos = self._datos_etiqueta()
         # 3.12.0: la etiqueta final lleva lo definitivo: lo que Empaque confirmó o cambió; sin clasificar, lo de Inspección.
@@ -278,23 +295,24 @@ class MrpRolloFinal(models.Model):
         pnc = clasif != 'PQ'
         fecha = fields.Datetime.context_timestamp(self, self.fecha or fields.Datetime.now())
         of = self.name.rsplit('-', 1)[0]
-        renglones = [
-            'CÓDIGO: %s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
-            'COLOR: %s' % datos['color'],
-            'ANCHO (cm): %g' % datos['ancho'],
-            ('METROS: %.2f' % metros, 'YARDAS: %.2f' % (metros * YARDAS_POR_METRO)),
-            ('KILOS: %.2f' % kg_neto, 'LIBRAS: %.2f' % (kg_neto * LIBRAS_POR_KG)) if pnc
-            else ('PESO NETO: %.2f' % kg_neto, 'PESO BRUTO: %.2f' % kg_bruto),
-            'LOTE DE PRODUCCIÓN: %s' % of,
-            'NO. DE ROLLO: %s' % self.secuencia,
-            'OPERADOR INSPECCIÓN: %s' % (self.siglas_operador or ''),
-            'FECHA: %s' % fecha.strftime('%d/%m/%Y'),
-        ]
-        codigos = ['%.2f;%.3f;%s;%s' % (metros, kg_neto, of, self.secuencia)]
+        rollo = '%03d' % self.secuencia
+        etiqueta = {
+            'codigo': '%s%s' % (datos['codigo'], SUFIJO_CODIGO.get(clasif, '')),
+            'color': datos['color'],
+            'ancho': '%.1f' % datos['ancho'],
+            'metros': '%.2f' % metros,
+            'yardas': '%.2f' % (metros * YARDAS_POR_METRO),
+            'izq': ('KILOS', '%.2f' % kg_neto) if pnc else ('PESO NETO', '%.2f' % kg_neto),
+            'der': ('LIBRAS', '%.2f' % (kg_neto * LIBRAS_POR_KG)) if pnc else ('PESO BRUTO', '%.2f' % kg_bruto),
+            'lote': of,
+            'rollo': rollo,
+            'codigos': ['%.2f-%.2f-%s-%s' % (metros, kg_neto, of, rollo)],
+            'fecha': fecha.strftime('%d/%m/%y  %I:%M %p'),
+            'siglas': self.siglas_operador or '',
+        }
         if pnc:
-            renglones.append('DEFECTOS: %s' % (siglas_defectos or ''))
-            codigos.append(('%s %s' % (self.secuencia, siglas_defectos or '')).strip())
-        return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, renglones, codigos)
+            etiqueta['codigos'].append(('%s %s' % (rollo, siglas_defectos or '')).strip())
+        return self.env['mrp.rollo.bitacora']._zpl_final_acomodo(clasif, etiqueta)
 
     def _zpl_etiqueta_preliminar(self):
         """Etiqueta preliminar de Inspección (68 x 38 mm, 3.4.0): artículo, orden de trabajo, fecha, revisadora, kg,

@@ -20,9 +20,12 @@
                      en metros, mientras la orden tiene rollos que le pasó un baño (Clasificación final en Empaque). -->
                 <field name="es_clasificacion" column_invisible="1"/>
                 <field name="empaque_pendiente" column_invisible="1"/>
+                <!-- 3.20.1: laboratorio libera desde Calidad → Liberar para Empaque; aquí solo se ve que falta. -->
+                <field name="liberacion_pendiente" string="Pend. liberación lab" optional="show"
+                       invisible="not es_clasificacion or state in ('done', 'cancel')"/>
                 <button name="action_clasificar_rollo" type="object" string="CLASIFICAR"
                         class="btn-primary" icon="fa-tags"
-                        invisible="not es_clasificacion or not empaque_pendiente or state in ('done', 'cancel')"/>
+                        invisible="not es_clasificacion or not empaque_pendiente or liberacion_pendiente or state in ('done', 'cancel')"/>
                 <button name="action_pesar_desperdicio_empaque" type="object" string="PESAR DESPERDICIO"
                         class="btn-secondary" icon="fa-trash"
                         invisible="not es_clasificacion or not empaque_pendiente or state in ('done', 'cancel')"/>
