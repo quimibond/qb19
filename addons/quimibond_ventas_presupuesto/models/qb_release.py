@@ -193,6 +193,8 @@ class QbRelease(models.Model):
         lectores). Levanta ValueError (LearReleaseError / FxiReleaseError) si no
         se puede leer."""
         self.ensure_one()
+        if not self.profile_id:
+            raise ValueError("Elija el perfil del cliente y dé «Leer».")
         if not self.file:
             raise ValueError("El release no tiene archivo.")
         content = base64.b64decode(self.file)
@@ -467,7 +469,9 @@ class QbRelease(models.Model):
         for release in late:
             user = release.profile_id.sales_user_id
             summary = "Revisar el release %s" % release.name
-            if not user or release.activity_ids.filtered(lambda a: a.summary == summary):
+            # 3.30.0: el que llegó por correo ya tiene su actividad «Aprobar release».
+            if not user or release.activity_ids.filtered(
+                    lambda a: a.summary == summary or (a.summary or '').startswith("Aprobar release")):
                 continue
             release.activity_schedule(
                 activity_type_id=todo.id if todo else False, summary=summary, user_id=user.id,
