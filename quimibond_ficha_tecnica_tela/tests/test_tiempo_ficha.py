@@ -220,3 +220,40 @@ class TestTiempoFicha(TiempoFichaCase):
         self.assertAlmostEqual(self.op_insp.time_cycle_manual, 0.8, places=4)
         self.assertEqual(self.op_tint.time_cycle_manual, 240.0, "La capacidad va antes que el tiempo por baño")
         self.assertAlmostEqual(self.bom_m.bom_line_ids.product_qty, self._kg_guardables(0.125), places=6)
+
+    def test_08_ficha_de_tejido_archivada_no_cuenta(self):
+        """2.31.0: una ficha de tejido archivada del crudo no da el rendimiento, ni con `active_test=False` (que
+        traen «Usar los datos de la ficha» y el filtro «Tiempo distinto de la ficha»). Caso real de main
+        (WN048Q66HNT098): la ficha de otra circular de la misma revisión, sin salida de tela, con id mayor y
+        archivada, ganaba con 20.4 m/kg en lugar de 10.2 y doblaba devanado y abridora."""
+        Tejido = self.env['ficha.tecnica.tejido']
+        archivada = Tejido.create({
+            'articulo': 'ZZ931Q22HNT200', 'product_proceso_id': self.crudo.id, 'revision': self.tejido.revision,
+            'fecha_elaboracion': date(2030, 1, 1)})
+        archivada.rendimiento_tela_tejida = 20.0
+        archivada.action_archive()
+        # Con la archivada activa ganaría (misma revisión, elaboración más reciente): la prueba sí la distingue.
+        self.assertEqual(Tejido._ft_de_producto(self.crudo), self.tejido)
+        sin_filtro = Tejido.with_context(active_test=False)
+        self.assertEqual(sin_filtro._ft_de_producto(self.crudo), self.tejido)
+        self.assertFalse(sin_filtro._ft_de_producto(self.crudo).env.context.get('active_test', True),
+                         "Devuelve la ficha con el contexto de quien llama")
+
+        Op = self.env['mrp.routing.workcenter']
+        for env_op in (self.op_dev, self.op_dev.with_context(active_test=False)):
+            self.env.invalidate_all()
+            self.assertAlmostEqual(env_op.ft_tiempo_ficha, 0.22, places=4, msg="1.1 kg × 10 m/kg ÷ 50 m/min")
+        self.bom.action_archive()
+        self.bom.action_ft_datos_ficha()
+        self.assertAlmostEqual(self.op_dev.time_cycle_manual, 0.22, places=4, msg="No 0.44 (20 m/kg)")
+        self.assertAlmostEqual(self.op_abr.time_cycle_manual, 0.44, places=4, msg="No 0.88 (20 m/kg)")
+        self.env.invalidate_all()
+        distintas = Op.search([('ft_tiempo_difiere', '=', True)])
+        self.assertNotIn(self.op_dev, distintas, "El filtro tampoco lee la archivada")
+        self.assertNotIn(self.op_abr, distintas)
+
+        # Sin ninguna ficha activa no hay rendimiento: no se toma la archivada como respaldo.
+        self.tejido.action_archive()
+        self.env.invalidate_all()
+        self.assertFalse(sin_filtro._ft_de_producto(self.crudo))
+        self.assertFalse(self.op_dev.with_context(active_test=False).ft_tiempo_ficha)
