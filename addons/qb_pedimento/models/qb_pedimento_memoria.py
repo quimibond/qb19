@@ -39,6 +39,11 @@ MAX_BYTES_ARCHIVO = 15 * 1024 * 1024
 # Firmas, logotipos y correos reenviados no son documentos del expediente.
 RUIDO = re.compile(r'^(image\d*|outlook-|logo|~)|\.(eml|ics|vcf|htm|html)$', re.I)
 IMAGEN = re.compile(r'\.(png|jpe?g|gif|bmp)$', re.I)
+# Las hojas de control de Logística (F-P-A-16-05/06, «IMPORTACIONES 2025.xlsx»)
+# listan todos los pedimentos: no son del expediente y su texto no sirve para
+# encontrar los correos de uno (traían esas hojas a casi todos).
+CONTROL = re.compile(r'^(F-P-A-16|IMPORTACIONES|EXPORTACIONES)', re.I)
+HOJA = re.compile(r'\.(xlsx?|xlsm|csv)$', re.I)
 
 
 # Expedientes por corrida del cron (Dirección, 2026-11-19: llenar los 132 de
@@ -115,8 +120,8 @@ class QbPedimentoMemoria(models.Model):
         # Texto del adjunto: índice GIN (texto_tsv). El nombre del archivo no
         # se busca con ilike: recorre toda la tabla y pasa del tiempo límite.
         por_texto = self._memoria_get('email_attachments', [
-            ('select', 'email_id'), ('texto_tsv', 'fts(simple).%s' % consecutivo), ('limit', '200')])
-        ids = {a['email_id'] for a in por_texto}
+            ('select', 'email_id,filename'), ('texto_tsv', 'fts(simple).%s' % consecutivo), ('limit', '200')])
+        ids = {a['email_id'] for a in por_texto if not HOJA.search(a.get('filename') or '')}
         if ids:
             ids = {c['id'] for c in self._memoria_get('emails', [
                 ('select', 'id'), ('id', 'in.(%s)' % ','.join(str(i) for i in sorted(ids)))] + rango)}
@@ -132,7 +137,7 @@ class QbPedimentoMemoria(models.Model):
         for fila in filas:
             nombre = fila.get('filename') or ''
             tam = fila.get('size_bytes') or 0
-            if RUIDO.search(nombre) or (IMAGEN.search(nombre) and tam < 50 * 1024) or tam > MAX_BYTES_ARCHIVO:
+            if RUIDO.search(nombre) or CONTROL.search(nombre) or (IMAGEN.search(nombre) and tam < 50 * 1024) or tam > MAX_BYTES_ARCHIVO:
                 continue
             clave = fila.get('sha256') or fila['storage_path']
             if clave in vistos:

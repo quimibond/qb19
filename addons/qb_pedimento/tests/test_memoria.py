@@ -27,7 +27,9 @@ class TestMemoria(PedimentoCommon):
         self.consultas.append((tabla, dict(params)))
         params = dict(params)
         if tabla == 'email_attachments' and 'texto_tsv' in params:
-            return [{'email_id': 10}, {'email_id': 11}]
+            # El 12 solo lo nombra la hoja de control de Logística: no cuenta.
+            return [{'email_id': 10, 'filename': 'a.pdf'}, {'email_id': 11, 'filename': 'b.pdf'},
+                    {'email_id': 12, 'filename': 'F-P-A-16-05 IMPORTACIONES.xlsx'}]
         if tabla == 'emails' and 'id' in params:
             return [{'id': 10}, {'id': 11}]
         if tabla == 'emails':
@@ -42,6 +44,8 @@ class TestMemoria(PedimentoCommon):
              'size_bytes': 30000, 'sha256': 'b', 'storage_path': 'b.pdf'},
             {'id': 4, 'filename': 'image001.png', 'mime_type': 'image/png',
              'size_bytes': 9000, 'sha256': 'c', 'storage_path': 'c.png'},
+            {'id': 6, 'filename': 'IMPORTACIONES 2025.xlsx', 'mime_type': 'application/vnd.ms-excel',
+             'size_bytes': 44000, 'sha256': 'e', 'storage_path': 'e.xlsx'},
             {'id': 5, 'filename': 'RE: embarque.eml', 'mime_type': 'message/rfc822',
              'size_bytes': 90000, 'sha256': 'd', 'storage_path': 'd.eml'},
         ]
@@ -66,6 +70,8 @@ class TestMemoria(PedimentoCommon):
         # La búsqueda va por el consecutivo.
         tsv = [p for t, p in self.consultas if 'texto_tsv' in p][0]
         self.assertEqual(tsv['texto_tsv'], 'fts(simple).6001184')
+        ventana = [p for t, p in self.consultas if t == 'emails' and 'id' in p][0]
+        self.assertEqual(ventana['id'], 'in.(10,11)')
         # Otra vuelta no duplica lo que ya está.
         with self._patch():
             self.assertEqual(ped._memoria_guardar_solo(), 0)
