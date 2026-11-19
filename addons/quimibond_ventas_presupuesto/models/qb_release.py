@@ -667,6 +667,9 @@ class QbRelease(models.Model):
                 qty = ln.qty_venta if ln.product_id == product else ln.product_id.qb_convertir(
                     ln.qty_venta, 'venta', product._qb_sale_unit())
                 programado[ln.week] += qty or 0.0
+            # 3.28.0 (Jose, 19-nov): en las congeladas manda lo ya pedido (pedidos confirmados de esa semana).
+            ordered = self._qb_frozen_orders(articulo, current, frozen, product) if frozen else {}
+            programado.update(ordered)
 
             def round_up(qty, product=product, roll=roll, roll_uom=roll_uom):
                 in_roll = product.qb_convertir(qty, 'venta', roll_uom)
@@ -677,7 +680,7 @@ class QbRelease(models.Model):
             weeks, week_notes = reglas.aplicar_reglas(
                 asks, dict(programado), current, congeladas=frozen, agrupar=group,
                 inicio_bloques=_monday(terms.group_start) if terms.group_start else None,
-                redondear=round_up if roll else None)
+                redondear=round_up if roll else None, con_pedido=set(ordered))
             sample = next(iter(info[(product, w)] for w in asks))
             for week, qty in weeks.items():
                 result[(product, week)] = qty
@@ -685,6 +688,29 @@ class QbRelease(models.Model):
                 if week in week_notes:
                     notes[(product, week)] = week_notes[week]
         return result, notes
+
+    def _qb_frozen_orders(self, articulo, current, frozen, product):
+        """{lunes: cantidad pedida} de las semanas congeladas que tienen pedido confirmado, en la unidad de
+        venta de ``product``. Solo cuando los pedidos se pueden atribuir a este perfil: con dirección de
+        entrega, los de esa dirección; sin ella, si el cliente no tiene otro perfil (Saltillo y León
+        comparten cliente y no se distinguen)."""
+        self.ensure_one()
+        profile = self.profile_id
+        if not profile.ship_to_id and self.env['qb.release.profile'].search_count([
+                ('partner_id', '=', profile.partner_id.id), ('company_id', '=', self.company_id.id),
+                ('id', '!=', profile.id)]):
+            return {}
+        weeks = {current + timedelta(weeks=i) for i in range(frozen)}
+        ordered = self.env['qb.forecast.line']._qb_ordered_by_week(
+            self.company_id, profile.partner_id, articulo, profile.ship_to_id or None, weeks)
+        out = {}
+        for week, qty in ordered.items():
+            if qty and qty > 1e-6:
+                if product != articulo:
+                    qty = articulo.qb_convertir(qty, 'venta', product._qb_sale_unit())
+                if qty:
+                    out[week] = qty
+        return out
 
 
 class QbReleasePart(models.Model):

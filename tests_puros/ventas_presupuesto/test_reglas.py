@@ -102,3 +102,12 @@ def test_dias_habiles_sin_fines_de_semana():
     assert reglas.restar_dias_habiles(date(2026, 11, 25), 2) == date(2026, 11, 23)
     assert reglas.restar_dias_habiles(date(2026, 11, 25), 3) == date(2026, 11, 20)
     assert reglas.restar_dias_habiles(date(2026, 11, 21), 0) == date(2026, 11, 20)
+
+
+def test_congelada_con_pedido_se_marca():
+    """3.28.0: el programado de una congelada con pedido es lo pedido (lo pone el modelo); la nota lo dice."""
+    pide = {w(0): 100.0, w(1): 250.0, w(2): 300.0, w(3): 400.0}
+    prog = {w(0): 100.0, w(1): 400.0, w(2): 300.0}
+    result, notes = reglas.aplicar_reglas(pide, prog, HOY, congeladas=3, con_pedido={w(1)})
+    assert [result[w(i)] for i in range(4)] == [100.0, 400.0, 300.0, 250.0]
+    assert notes[w(1)].startswith("Congelada con pedido")

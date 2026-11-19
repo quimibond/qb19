@@ -25,11 +25,13 @@ def _week(monday, n):
 
 
 def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, inicio_bloques=None,
-                   redondear=None):
+                   redondear=None, con_pedido=()):
     """Devuelve ``(semanas, notas)``.
 
     ``pide``: {lunes: cantidad} del release. ``programado``: {lunes: cantidad} que ya tenía el
     pronóstico (para las congeladas). ``redondear``: función cantidad → cantidad redondeada (o None).
+    ``con_pedido``: semanas congeladas cuyo ``programado`` es lo ya pedido (3.28.0, Jose 19-nov: en las
+    congeladas manda el pedido confirmado).
     ``semanas``: {lunes: cantidad} a escribir; ``notas``: {lunes: texto} de lo que hizo cada regla.
     Las semanas anteriores a la semana en curso quedan como las manda el cliente.
     """
@@ -51,7 +53,8 @@ def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, ini
             if week in pide or week in programado:
                 result[week] = kept
                 if abs(asked - kept) > EPS:
-                    note(week, "Congelada: el cliente pide %s, se queda %s" % (_fmt(asked), _fmt(kept)))
+                    note(week, "Congelada%s: el cliente pide %s, se queda %s" % (
+                        " con pedido" if week in con_pedido else "", _fmt(asked), _fmt(kept)))
         if delta > EPS:
             result[target] = result.get(target, 0.0) + delta
             note(target, "Recibe +%s de las semanas congeladas" % _fmt(delta))

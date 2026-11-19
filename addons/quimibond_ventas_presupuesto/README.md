@@ -21,6 +21,20 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## En las congeladas manda el pedido (19.0.3.28.0, 2026-11-19)
+
+Jose (19-nov, Zwisstex CW47): «lo que está congelado de las 3 semanas no lo mueve, eso está mal». La congelada
+se quedaba con el pronóstico anterior aunque ya hubiera pedido confirmado (JNT160: 5,500 m pedidos para el 23-nov
+y el pronóstico los mandaba al 7-dic). Decisión de Jose: **en las semanas congeladas manda el pedido confirmado**.
+
+- Al aplicar un release, una semana congelada con pedido confirmado (completo, lo entregado también cuenta) se
+  queda con lo pedido; la diferencia con lo que pide el cliente pasa a la semana 4 como antes («Congelada con
+  pedido»). Sin pedido, se queda el pronóstico anterior. Los pedidos se atribuyen al perfil por su dirección de
+  entrega; un cliente con varios perfiles sin dirección (Saltillo y León) sigue con el pronóstico anterior.
+- La semana de un pedido es la de embarque con que nació de «Proponer pedidos» (`qb_forecast_week`) o la de su
+  fecha compromiso. Si esa semana no tiene pronóstico, el pedido se liga a la semana con pronóstico más cercana
+  (hasta 3 semanas; `LINK_WEEKS`). Lejos de todo pronóstico entra como semana «Pedido del cliente» (3.21.0).
+
 ## El PDF de COPO se lee con el pypdf de Odoo.sh (19.0.3.27.1, 2026-11-19)
 
 En producción el primer release de COPO quedó «por revisar»: el pypdf de Odoo.sh no tiene el modo `layout`. Sin

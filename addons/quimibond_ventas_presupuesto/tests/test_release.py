@@ -443,6 +443,53 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertIn("Recibe +50", by_week[weeks[3]].regla_nota)
         self.assertFalse(by_week[weeks[3]].ajustado, "Lo que hace una regla no es un ajuste de Ventas")
 
+    def _order(self, day, qty):
+        from datetime import datetime, time
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id, 'client_order_ref': 'OC-CONGELADA',
+            'commitment_date': datetime.combine(day + timedelta(days=2), time(18, 0)),
+            'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': qty})]})
+        order.action_confirm()
+        return order
+
+    def test_11b_en_las_congeladas_manda_el_pedido(self):
+        """3.28.0 (Jose, 19-nov): en una semana congelada con pedido confirmado se queda lo pedido; la
+        diferencia con lo que pide el cliente pasa a la semana 4."""
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        w0 = today - timedelta(days=today.weekday())
+        weeks = [w0 + timedelta(weeks=i) for i in range(5)]
+        Line = self.env['qb.forecast.line']
+        for day, qty in zip(weeks[:3], (100, 200, 300)):
+            Line.create({'partner_id': self.customer.id, 'product_id': self.product.id, 'week': day,
+                         'qty_origen': qty, 'origen': 'excel'})
+        self._order(weeks[1], 400)
+        self._terms({'frozen_weeks': 3})
+        release = self._release(self._lear_text(list(zip(weeks, (100, 250, 300, 400, 500)))))
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        by_week = {ln.week: ln for ln in self._forecast()}
+        self.assertEqual([by_week[d].qty_venta for d in weeks], [100, 400, 300, 250, 500],
+                         "La semana 2 se queda con lo pedido (400); -150 se descuentan de la semana 4")
+        self.assertIn("Congelada con pedido", by_week[weeks[1]].regla_nota)
+        self.assertIn("Descuenta 150", by_week[weeks[3]].regla_nota)
+
+    def test_11c_pedido_sin_pronostico_en_su_semana(self):
+        """3.28.0: el pedido se liga a la semana con pronóstico más cercana."""
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        w0 = today - timedelta(days=today.weekday())
+        line = self.env['qb.forecast.line'].create({
+            'partner_id': self.customer.id, 'product_id': self.product.id, 'week': w0 + timedelta(weeks=3),
+            'qty_origen': 500, 'origen': 'excel'})
+        self._order(w0 + timedelta(weeks=2), 300)
+        line.action_qb_refresh()
+        self.assertEqual((line.qty_pedido, line.qty_neta), (300, 200))
+        self.assertFalse(self._forecast().filtered(lambda l: l.origen == 'pedido'),
+                         "Con pronóstico cerca, el pedido no crea otra semana")
+
     def test_12_embarques_cada_n_semanas(self):
         from odoo import fields as odoo_fields
         today = odoo_fields.Date.context_today(self.env.user)

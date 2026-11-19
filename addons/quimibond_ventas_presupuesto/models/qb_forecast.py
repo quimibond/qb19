@@ -62,6 +62,10 @@ def _qb_fmt(qty):
     return ("%.2f" % (qty or 0.0)).rstrip('0').rstrip('.')
 
 
+# 3.28.0: un pedido se liga al pronóstico de su semana o, si no hay, al más cercano hasta estas semanas.
+LINK_WEEKS = 3
+
+
 def monday_of(day):
     return day - timedelta(days=day.weekday()) if day else day
 
@@ -485,6 +489,48 @@ class QbForecastLine(models.Model):
         when = order.commitment_date or order.expected_date or order.date_order
         return monday_of(fields.Datetime.to_datetime(when).date()) if when else False
 
+    @staticmethod
+    def _qb_sol_forecast_week(sol):
+        """3.28.0: semana del pronóstico de una línea de pedido: la de embarque con que nació de «Proponer
+        pedidos» (``qb_forecast_week``) o, si se capturó a mano, el lunes de su fecha compromiso."""
+        week = sol.order_id.qb_forecast_week
+        return week or QbForecastLine._qb_sol_week(sol)
+
+    @staticmethod
+    def _qb_nearest_week(week, weeks, window=LINK_WEEKS):
+        """3.28.0 (Jose, 19-nov): un pedido cuya semana no tiene pronóstico se liga a la semana con
+        pronóstico más cercana (hasta ``window`` semanas; a igual distancia, la anterior). None si no hay."""
+        if not week:
+            return None
+        if week in weeks:
+            return week
+        near = [w for w in weeks if abs((w - week).days) <= window * 7]
+        return min(near, key=lambda w: (abs((w - week).days), w)) if near else None
+
+    @api.model
+    def _qb_ordered_by_week(self, company, partner, articulo, ship_to=None, weeks=()):
+        """3.28.0: lo pedido (confirmado, completo: lo ya entregado también cuenta) del artículo para el
+        cliente, por semana del pronóstico, en la unidad de venta de ``articulo``. Con dirección de entrega,
+        solo los pedidos de esa dirección."""
+        domain = [('order_id.state', '=', 'sale'), ('company_id', '=', company.id),
+                  ('order_id.partner_id', 'child_of', partner.commercial_partner_id.id),
+                  ('display_type', '=', False),
+                  '|', ('product_id', '=', articulo.id), ('product_id.qb_articulo_id', '=', articulo.id)]
+        if ship_to:
+            domain.append(('order_id.partner_shipping_id', '=', ship_to.id))
+        out = defaultdict(float)
+        for sol in self.env['sale.order.line'].sudo().search(domain):
+            week = self._qb_sol_forecast_week(sol)
+            if not week or (weeks and week not in weeks):
+                continue
+            qty = sol.product_uom_qty
+            if sol.product_uom_id and sol.product_uom_id._has_common_reference(sol.product_id.uom_id):
+                qty = sol.product_uom_id._compute_quantity(qty, sol.product_id.uom_id, round=False)
+            if sol.product_id != articulo:
+                qty = sol.product_id.qb_convertir(qty, 'venta', articulo._qb_sale_unit())
+            out[week] += qty or 0.0
+        return dict(out)
+
     @api.model
     def _qb_sol_pending(self, sol, product):
         """Pendiente de entregar de una línea de pedido, en la unidad de venta de ``product``."""
@@ -519,7 +565,7 @@ class QbForecastLine(models.Model):
         info = {}
         markets = {}
         for sol in self.env['sale.order.line'].sudo().search(domain):
-            week = self._qb_sol_week(sol)
+            week = self._qb_sol_forecast_week(sol)
             if not week or week < current:
                 continue
             partner = sol.order_id.partner_id.commercial_partner_id
@@ -544,7 +590,11 @@ class QbForecastLine(models.Model):
             line_domain.append(('partner_id', 'in', list({k[0] for k in wanted})))
         lines = self.sudo().search(line_domain)
         own = lines.filtered(lambda l: l.origen != 'pedido')
-        forecasted = {(l.partner_id.id, (l.articulo_id or l.product_id).id) for l in own}
+        # 3.28.0: el pedido no se agrega si el cliente pronostica ese artículo cerca de su semana (se liga a
+        # esa semana en «Actualizar pedidos»); lejos de todo pronóstico, entra como semana de pedido.
+        forecasted = defaultdict(set)
+        for l in own:
+            forecasted[(l.partner_id.id, (l.articulo_id or l.product_id).id)].add(l.week)
         current_lines = {(l.partner_id.id, l.product_id.id, l.week): l for l in lines - own}
         Product = self.env['product.product'].sudo()
         Sync = self.sudo().with_context(qb_pedido_sync=True)
@@ -553,7 +603,8 @@ class QbForecastLine(models.Model):
         for key, qty in wanted.items():
             partner_id, product_id, week = key
             product = Product.browse(product_id)
-            if (partner_id, (product.qb_articulo_id or product).id) in forecasted or qty <= 1e-6:
+            near = forecasted.get((partner_id, (product.qb_articulo_id or product).id))
+            if (near and self._qb_nearest_week(week, near) is not None) or qty <= 1e-6:
                 continue
             line = current_lines.pop(key, None)
             vals = dict(info[key], qty_origen=round(qty, 4), uom_origen=False)
@@ -595,14 +646,20 @@ class QbForecastLine(models.Model):
             partners = company_lines.partner_id
             firm_by_partner = self._qb_firm_by_partner(company)
             default_firm = self._qb_firm_weeks()
-            pedidos = defaultdict(list)
-            for sol in self._qb_open_sale_lines(company, partners):
-                key = (sol.order_id.partner_id.commercial_partner_id.id,
-                       (sol.product_id.qb_articulo_id or sol.product_id).id, self._qb_sol_week(sol))
-                pedidos[key].append(sol)
             groups = defaultdict(lambda: self.browse())
             for line in company_lines:
                 groups[(line.partner_id.id, (line.articulo_id or line.product_id).id, line.week)] |= line
+            weeks_of = defaultdict(set)
+            for partner_id, articulo_id, week in groups:
+                weeks_of[(partner_id, articulo_id)].add(week)
+            pedidos = defaultdict(list)
+            for sol in self._qb_open_sale_lines(company, partners):
+                pa = (sol.order_id.partner_id.commercial_partner_id.id,
+                      (sol.product_id.qb_articulo_id or sol.product_id).id)
+                # 3.28.0: semana de embarque del pedido y, si ahí no hay pronóstico, la más cercana.
+                week = self._qb_nearest_week(self._qb_sol_forecast_week(sol), weeks_of.get(pa, ()))
+                if week:
+                    pedidos[pa + (week,)].append(sol)
             for key, group in groups.items():
                 # 3.21.0: la semana que vino de un pedido va al final (recibe lo que sobre del pedido).
                 group = group.sorted(
