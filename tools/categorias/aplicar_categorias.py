@@ -82,13 +82,34 @@ for sub in Categ.search([('complete_name', '=like', CRUDO + ' / %')]):
                 print('No se pudo borrar', sub.complete_name, '(queda vacía):', e)
 print('Crudo regresado a', CRUDO + ':', regresados)
 
+# 2026-11-19, revisión por código (DAT P-D02-01: posición 9 H crudo, I teñido, J acabado en m; «I» al frente = kg;
+# entretelas: «.n/n» perforado = Perfoquim, «T11»/«T31» = Tramado).
+PT, PEP = 'Producto Terminado', 'Producto en Proceso'
+CORREGIR = {
+    17160: CRUDO,                                    # XP210Q21HNT114, crudo (H) que estaba en Tramado
+    15869: PEP + ' / Teñido',                        # WJ047Q21INT112, teñido (I) que estaba en Tramado
+    16090: PT + ' / Tejido Circular / KG',           # IWJ042Q22JNG160, acabado en kg
+    11095: PT + ' / Tejido Circular / M',            # WB038Q46JBE166, acabado (J) en m
+    12355: PT + ' / Tejido Circular / M',            # WN040Q46JBL170, acabado (J) en m
+    10597: PT + ' / No Tejido / Tramado / M',        # A70T31BL152
+    12326: PT + ' / No Tejido / Tramado / M',        # A70T31BL155
+    8591: PT + ' / No Tejido / Tramado / M',         # A70T31BL152IN
+    17945: PT + ' / No Tejido / No Fusionable / M',  # A40BL145, sin perforado en el código
+    13139: PT + ' / No Tejido / No Fusionable / M',  # A55BL140/C, sin perforado en el código
+}
+for _pid, _path in CORREGIR.items():
+    DATA['mover'].setdefault(str(_pid), _path)
+
 movidos, saltados = 0, []
 for pid, path in DATA['mover'].items():
     p = Product.browse(int(pid)).exists()
     if not p:
         saltados.append((pid, 'no existe')); continue
-    if path == CRUDO or path.startswith(CRUDO + ' / ') or es_crudo(p.categ_id):
-        continue
+    path = CORREGIR.get(int(pid), path)
+    if es_crudo(p.categ_id):
+        continue  # lo que ya está en crudo no se toca
+    if path.startswith(CRUDO + ' / '):
+        path = CRUDO  # crudo (H) fuera de su categoría: va a la de siempre, sin «/ KG»
     dest = asegurar(path)
     o, d = p.categ_id, dest
     cambia = (o.property_stock_valuation_account_id != d.property_stock_valuation_account_id
