@@ -90,3 +90,15 @@ def test_las_congeladas_no_se_redondean():
                                            redondear=up)
     assert result[w(0)] == 120.0
     assert result[w(3)] == 1000.0
+
+
+def test_dias_habiles_sin_fines_de_semana():
+    # Lunes 23-nov menos 5 hábiles = lunes 16-nov; jueves 26 = jueves 19.
+    assert reglas.restar_dias_habiles(date(2026, 11, 23), 5) == date(2026, 11, 16)
+    assert reglas.restar_dias_habiles(date(2026, 11, 26), 5) == date(2026, 11, 19)
+    # Domingo 22-nov: se cuenta desde el viernes 20 → viernes 13.
+    assert reglas.restar_dias_habiles(date(2026, 11, 22), 5) == date(2026, 11, 13)
+    # Miércoles 25 menos 2 = lunes 23; menos 3 = viernes 20 (salta el fin de semana).
+    assert reglas.restar_dias_habiles(date(2026, 11, 25), 2) == date(2026, 11, 23)
+    assert reglas.restar_dias_habiles(date(2026, 11, 25), 3) == date(2026, 11, 20)
+    assert reglas.restar_dias_habiles(date(2026, 11, 21), 0) == date(2026, 11, 20)

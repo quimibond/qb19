@@ -21,6 +21,25 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pedidos fuera del pronóstico y días hábiles (19.0.3.21.0, 2026-11-19)
+
+Respuestas de Jose del 19-nov:
+
+- **Los pedidos de productos que el cliente no pronostica entran al pronóstico** (producto de línea de
+  otro cliente, proyecto, muestra), porque también van al presupuesto. Al actualizar pedidos (cron
+  diario, al aplicar un release, al capturar) cada pedido confirmado desde la semana en curso deja una
+  semana con origen «Pedido del cliente» (filtro «De pedido»): cliente, producto, semana de compromiso,
+  la OC y la cantidad pedida (no la pendiente, para que lo entregado siga en el mes). No se agrega si el
+  cliente ya pronostica ese artículo (el pronóstico manda), si el pedido nació de «Proponer pedidos» o
+  si el cliente es de Confección (pronostica sin cliente). Si el pedido cambia, la semana cambia; si se
+  cancela, se quita; si Ventas la corrige, pasa a «Captura» y el pedido ya no la toca. No cuenta como
+  pronóstico sin pedido en la Demanda y «Proponer pedidos» no la propone otra vez. Las semanas pasadas
+  no se tocan.
+- **Días hábiles de adelanto**: los días de adelanto de las condiciones de entrega se cuentan sin
+  sábados ni domingos (5 = una semana) y la fecha de embarque nunca cae en fin de semana. Los días de
+  tránsito del perfil del release siguen siendo naturales. Aplica a los releases que se lean desde
+  ahora.
+
 ## Menús recortados (19.0.3.20.0, 2026-11-19)
 
 Jose (19-nov): «siento que ya hay muchísimos menús… quitar lo que no sirve… no porque tenga datos

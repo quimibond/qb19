@@ -262,7 +262,9 @@ class QbOrderProposal(models.TransientModel):
             horizon = max(rules.filtered(lambda r: r.partner_id == partner).mapped('so_weeks') or [4])
             lines = Forecast.search([
                 ('company_id', '=', company.id), ('partner_id.commercial_partner_id', '=', partner.id),
-                ('week', '>=', start), ('week', '<', start + timedelta(weeks=horizon))],
+                ('week', '>=', start), ('week', '<', start + timedelta(weeks=horizon)),
+                # 3.21.0: una semana que vino de un pedido ya tiene su pedido.
+                ('origen', '!=', 'pedido')],
                 order='week, product_id')
             for fl in lines:
                 plant = fl.plant or fl.ship_to_id.name or False
