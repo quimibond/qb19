@@ -39,10 +39,10 @@ class QbDeliveryTerms(models.Model):
         help="Día de la semana en que se embarca o el cliente recoge. Es la fecha de entrega del pedido "
              "dentro de la semana de embarque.")
     lead_days = fields.Integer(
-        string="Días de adelanto", tracking=True,
-        help="Días antes de la fecha en que el cliente necesita el material en su planta que se embarca "
-             "(una semana = 7). Lo usa el release cuando sus fechas son de entrega en planta y el perfil no "
-             "trae días de tránsito.")
+        string="Días hábiles de adelanto", tracking=True,
+        help="Días hábiles (sin sábados ni domingos) antes de la fecha en que el cliente necesita el "
+             "material en su planta que se embarca (una semana = 5). Lo usa el release cuando sus fechas "
+             "son de entrega en planta y el perfil no trae días de tránsito.")
     buffer_days = fields.Integer(
         string="Colchón (días)", default=1, tracking=True,
         help="Sin día de recolección, la fecha de entrega del pedido es la del cliente menos estos días: "

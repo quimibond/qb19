@@ -102,6 +102,23 @@ def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, ini
     return result, notes
 
 
+def restar_dias_habiles(fecha, dias):
+    """``fecha`` menos ``dias`` hábiles, sin contar sábados ni domingos (Jose, 19-nov-2026: «5 días y
+    descartar los fines de semana»). El resultado nunca cae en fin de semana; con 0 días, una fecha en
+    sábado o domingo pasa al viernes anterior."""
+    if not fecha:
+        return fecha
+    day = fecha
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    left = max(int(dias or 0), 0)
+    while left:
+        day -= timedelta(days=1)
+        if day.weekday() < 5:
+            left -= 1
+    return day
+
+
 def redondear_arriba(qty, rollo):
     """``qty`` al múltiplo de ``rollo`` hacia arriba (con tolerancia para no subir 1000.0000001)."""
     if not rollo or rollo <= 0 or qty <= EPS:

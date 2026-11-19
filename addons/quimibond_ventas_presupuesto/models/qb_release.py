@@ -717,10 +717,15 @@ class QbReleaseLine(models.Model):
         for line in self:
             profile = line.release_part_id.release_id.profile_id
             ship = line.date_customer
-            # 3.19.0: sin días de tránsito en el perfil, los días de adelanto de las condiciones de entrega.
-            days = profile.transit_days or (profile._qb_terms().lead_days if profile else 0)
-            if ship and profile.date_basis == 'entrega' and days:
-                ship = ship - timedelta(days=days)
+            if ship and profile.date_basis == 'entrega':
+                if profile.transit_days:
+                    ship = ship - timedelta(days=profile.transit_days)
+                else:
+                    # 3.19.0: sin días de tránsito en el perfil, los días de adelanto de las condiciones
+                    # de entrega; 3.21.0: hábiles, sin sábados ni domingos (Jose, 19-nov).
+                    lead = profile._qb_terms().lead_days
+                    if lead:
+                        ship = reglas.restar_dias_habiles(ship, lead)
             line.date_ship = ship
             line.week = _monday(ship) if ship else False
 
