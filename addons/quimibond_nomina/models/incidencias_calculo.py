@@ -53,6 +53,20 @@ confirmación; con el turno, ``calcular_semana`` mide contra él:
   día, y todo lo trabajado en un día que no es del turno. Las 12 horas del turno
   de noche ya no salen como 2 de extra diarias.
 * **Prima dominical**: igual que sin turno.
+
+Ajustes de 1.21.0, al comparar la semana 47 con lo que capturó RH:
+
+* **Turno 3**: cuatro días de 12 horas entre lunes y viernes; un día que no vino
+  se repone con otro (casi siempre el viernes) y no es falta. Solo falta si
+  trabajó menos de cuatro (``TURNOS_DIAS``).
+* **Tiempo extra de los turnos 3 y 4**: se mide contra las horas del horario
+  ese día (10 de lunes a jueves, 8 el viernes), como lo paga RH (9 dobles y el
+  resto sencillas). Los turnos 5 y 6 no llevan extra dentro de su turno
+  (``EXTRA_SOBRE_HORARIO``). Pendiente de confirmar con RH la regla exacta.
+* **Prima dominical**: a lo más 12 horas por semana (``DOM_TOPE``); el turno 6
+  que entra sábado y domingo en la noche cobra 12, no 24.
+* **El turno de RH pesa más**: el del checador solo gana si explica la semana
+  con más de un turno completo de diferencia (``MARGEN_RH`` = 12 horas).
 """
 from datetime import datetime, time, timedelta
 from math import floor
@@ -64,6 +78,7 @@ ENTRADAS_DEFAULT = (time(7, 0), time(19, 0))
 HORAS_CASTIGO_FALTA = 2          # lunes a jueves, como la lista de RH
 DIA_SIN_CASTIGO = 4              # viernes: la falta quita solo las horas del día
 HE_DOBLES_TOPE = 9               # por semana (LFT art. 66-68)
+DOM_TOPE = 12.0                  # horas de prima dominical por semana, como las paga RH
 UN_MINUTO = timedelta(minutes=1)
 CODIGOS_INCAPACIDAD = ('I',)
 CODIGOS_PAGADOS = ('V', 'P')
@@ -77,15 +92,19 @@ TURNOS = {
           4: (time(7, 0), 8.0)},
     '2': {0: (time(8, 0), 10.0), 1: (time(8, 0), 10.0), 2: (time(8, 0), 10.0), 3: (time(8, 0), 10.0),
           4: (time(8, 0), 8.0)},
-    '3': {d: (time(7, 0), 12.0) for d in range(4)},
+    '3': {d: (time(7, 0), 12.0) for d in range(5)},
     '4': {d: (time(19, 0), 12.0) for d in range(4)},
     '5': {1: (time(19, 0), 12.0), 2: (time(19, 0), 12.0), 3: (time(19, 0), 12.0), 6: (time(7, 0), 12.0)},
     '6': {5: (time(19, 0), 12.0), 6: (time(19, 0), 12.0), 0: (time(19, 0), 12.0)},
 }
+# Turnos que no trabajan todos sus días: cuántos de 12 horas les tocan a la semana.
+TURNOS_DIAS = {'3': 4}
+# Turnos cuyo tiempo extra se mide contra el horario del día y no contra las horas del turno.
+EXTRA_SOBRE_HORARIO = ('3', '4')
 TURNOS_NOMBRE = [
     ('1', "1 · 07:00 a 17:00, lunes a viernes"),
     ('2', "2 · 08:00 a 18:00, lunes a viernes"),
-    ('3', "3 · 07:00 a 19:00, lunes a jueves"),
+    ('3', "3 · 07:00 a 19:00, cuatro días de lunes a viernes"),
     ('4', "4 · 19:00 a 07:00, lunes a jueves"),
     ('5', "5 · 19:00 a 07:00, martes a jueves, y domingo 07:00 a 19:00"),
     ('6', "6 · 19:00 a 07:00, sábado a lunes"),
@@ -93,7 +112,7 @@ TURNOS_NOMBRE = [
 ENTRADAS_TURNOS = (time(7, 0), time(8, 0), time(19, 0))
 VENTANA_TURNO = timedelta(hours=4)      # la checada de entrada más lejos que esto no es de ese turno
 MEDIA_CHECADA = timedelta(hours=4)      # una checada sola cuenta como 8 h alrededor (para reconocer el turno)
-MARGEN_RH = 2.0                         # horas de puntaje con las que el turno de RH gana al del checador
+MARGEN_RH = 12.0                        # horas de puntaje con las que el turno de RH gana al del checador
 
 
 def leer_entradas(texto):
@@ -179,12 +198,16 @@ def inferir_turno(lunes, marcas, ausencias=None, contrato_desde=None, contrato_h
 
     puntajes = {}
     for codigo, turno in TURNOS.items():
-        dentro = faltante = 0.0
+        dentro = 0.0
+        faltantes = []
         for dia, j0, j1, horas in _jornadas_turno(lunes, turno, semanas=(0,)):
             cubierto = sum(_traslape(i, f, j0, j1) for i, f in trabajado)
             dentro += cubierto
             if cuenta(dia):
-                faltante += max(0.0, horas - cubierto)
+                faltantes.append(max(0.0, horas - cubierto))
+        # El turno 3 no trabaja todos sus días: los que le sobran no cuentan como faltantes.
+        libres = len(turno) - TURNOS_DIAS.get(codigo, len(turno))
+        faltante = sum(sorted(faltantes)[:len(faltantes) - libres] if libres else faltantes)
         puntajes[codigo] = round(dentro - faltante - 0.5 * max(0.0, total - dentro), 2)
     mejor = max(sorted(puntajes), key=lambda c: puntajes[c])
     if preferido in puntajes and puntajes[preferido] >= puntajes[mejor] - margen:
@@ -204,9 +227,13 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
     checadas en hora local. ``ausencias``: ``{date: (código, horas_sin_goce)}``
     con código ``I``, ``V``, ``P`` o ``SG``. ``hoy``: los días posteriores se
     proyectan con el horario (como hace RH al reportar el martes). ``turno``: el
-    de la semana (``TURNOS[código]``); sin él, se mide contra el horario y las
-    entradas de la planta, como antes."""
+    código de la semana (``'1'`` a ``'6'``) o sus jornadas (``TURNOS[código]``);
+    sin él, se mide contra el horario y las entradas de la planta, como antes."""
     ausencias = ausencias or {}
+    codigo_turno = turno if isinstance(turno, str) else None
+    if codigo_turno:
+        turno = TURNOS.get(codigo_turno)
+    extra_sobre_horario = codigo_turno in EXTRA_SOBRE_HORARIO
     domingo = lunes + timedelta(days=6)
     r = {
         'dias': [''] * 7, 'horas_base': 0.0, 'faltas': 0, 'falta_horas': 0.0, 'incap_dias': 0,
@@ -240,11 +267,28 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             turnos_dia.setdefault(dia, []).append((ref, inicio, fin, n, horas_turno))
     hay_checadas = bool(turnos_dia)
 
+    # Turno 3: de sus cinco días le tocan cuatro; el que no vino (empezando por el viernes) no es falta.
+    libres = set()
+    sobran = len(turno) - TURNOS_DIAS.get(codigo_turno, len(turno)) if turno else 0
+    if sobran > 0:
+        # Si trabajó más días que los suyos, los últimos son extra: sin retardo y todas sus horas extra.
+        trabajados = [i for i in sorted(turno) if turnos_dia.get(lunes + timedelta(days=i))]
+        for i in trabajados[len(turno) - sobran:]:
+            libres.add(i)
+            dia = lunes + timedelta(days=i)
+            turnos_dia[dia] = [(t[0], t[1], t[2], t[3], 0.0) for t in turnos_dia[dia]]
+        for i in sorted(turno, reverse=True):
+            dia = lunes + timedelta(days=i)
+            if len(libres) >= sobran:
+                break
+            if not turnos_dia.get(dia) and en_contrato(dia) and dia not in ausencias and not (hoy and dia > hoy):
+                libres.add(i)
+
     # Días: lo que va en las columnas de la lista.
     for i in range(7):
         dia = lunes + timedelta(days=i)
         prog = programado.get(i, 0.0)
-        del_turno = turno.get(i) if turno else None
+        del_turno = turno.get(i) if turno and i not in libres else None
         if not en_contrato(dia):
             r['dias'][i] = '—'
             continue
@@ -308,6 +352,8 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             prog = prog_dia if horas_turno is None else horas_turno
             if incapacitado or not en_contrato(dia):
                 prog = 0.0
+            # Turnos 3 y 4: el extra es lo que pasa del horario del día (RH paga sus 12 horas con extra).
+            prog_extra = prog_dia if horas_turno and extra_sobre_horario else prog
             tarde = inicio - ref
             if prog and tarde >= UN_MINUTO:
                 minutos = int(tarde.total_seconds() // 60)
@@ -318,7 +364,7 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
                 r['notas'].append('%s una sola checada (%s)' % (NOMBRES_DIA[i], inicio.strftime('%H:%M')))
                 continue
             horas = (fin - max(inicio, ref)).total_seconds() / 3600.0
-            extra = max(0.0, horas - prog)
+            extra = max(0.0, horas - prog_extra)
             r['extra_horas'] += extra
             if floor(extra) >= 1:
                 r['he_propuestas'] += floor(extra)
@@ -334,6 +380,7 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             if i >= 5:
                 r['dias'][i] = _fmt(round(horas))
     r['horas_base'] = max(r['horas_base'], 0.0)
+    r['dom_horas'] = min(r['dom_horas'], DOM_TOPE)
 
     if r['sin_checadas']:
         r['notas'].insert(0, 'Sin checadas en la semana: no se marcan faltas')
