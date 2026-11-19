@@ -21,6 +21,65 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Condiciones de entrega por cliente (19.0.3.19.0, 2026-11-19)
+
+Jose (19-nov): «¿no crees que necesitamos una parte en algún lado en donde podamos poner la
+presentación de entrega de los clientes?… también agrega número de empalmes y todo eso». Las reglas de
+3.18.0 vivían en el perfil de release, que solo tienen los clientes con release; ahora hay una ficha por
+cliente y planta, tenga o no release: **Ventas → Presupuesto y pronóstico → Configuración → Condiciones
+de entrega** (`qb.delivery.terms`).
+
+- **Cuándo se embarca:** día de recolección, días de adelanto (embarcar antes de la fecha en planta del
+  cliente; el release los usa si su perfil no trae días de tránsito), colchón en días (sin día de
+  recolección, la fecha del pedido es la del cliente menos el colchón; 1 por omisión) y capacidad
+  asignada por semana (informativa).
+- **Al aplicar el release:** semanas congeladas, semanas por embarque y su primer embarque, y «Manda
+  cantidades cerradas» (no redondea). Las reglas de 3.18.0 leen de aquí.
+- **Presentación:** rollo y empalmes máximos del cliente, y por producto (`qb.delivery.terms.line`): largo
+  del rollo y si se redondea, ancho, tubo / core, empalmes máximos, tramo mínimo entre empalmes, peso
+  máximo, rollos por tarima, empaque, etiqueta y notas. Documentos del embarque y etiquetado en su
+  pestaña.
+- **Proponer pedidos:** la fecha de entrega de un pedido nuevo es el día de recolección de la semana de
+  embarque o, sin él, la fecha del cliente menos el colchón.
+- Migración: una ficha por perfil de release con 3 semanas congeladas; en `main` (3.18.0) pasan las
+  semanas congeladas, los embarques y el rollo del perfil, y el rollo de cada parte del cliente. Se
+  quitan esos campos del perfil y de la parte.
+
+**Siguiente:** que Inspección avise si un rollo final pasa los empalmes máximos del cliente
+(`quimibond_rollos_bitacora` ya cuenta los empalmes) y los acumulados de Saltillo.
+
+## Reglas del release por cliente (19.0.3.18.0, 2026-11-19)
+
+Jose (19-nov) describió lo que hacía a mano después de subir cada release, cliente por cliente, y pidió
+que fuera **escalable**: nada de código por cliente. Las reglas son configuración del **perfil de
+release** («Al aplicar el release») y de la **parte del cliente**; el motor es Python puro
+(`release/reglas.py`, pruebas en `tests_puros/ventas_presupuesto/test_reglas.py`).
+
+- **Semanas congeladas** (perfil, 3 por omisión): las semanas desde la semana en curso que Planeación ya
+  programó se quedan como estaban. Lo que el cliente sube en ellas entra en la semana siguiente (la 4);
+  lo que baja se resta de la 4 y, si no alcanza, de la 5 y las demás, sin dejar ninguna bajo cero.
+  0 = sin congelar (Blancos y Pieles, que mueven semanas congeladas, no tienen release).
+- **Semanas por embarque** (perfil): la demanda de cada bloque de N semanas se suma en la primera
+  semana del bloque (FXI Juárez: 4). Los bloques se cuentan desde «Primer embarque de los bloques»
+  para que no se recorran cada semana.
+- **Rollo** (perfil, y la parte del cliente gana): cada semana después de las congeladas se sube al
+  múltiplo del rollo (505 yd con rollos de 500 → 1000). Shawmut: 500 yd en el perfil; FXI:
+  WD038Q46JNT163 1000 yd y WD038Q46JNG163 500 yd en sus partes. 0 = cantidades cerradas.
+- «Pide el cliente» guarda lo del release tal cual; la columna **Reglas del release** dice qué hizo
+  cada regla en la semana («Congelada: el cliente pide 250, se queda 200», «Recibe +50 de las semanas
+  congeladas», «Junta la semana del…», «Redondeado de 450 a 600»). Lo que hace una regla **no** es un
+  ajuste de Ventas: el siguiente release lo vuelve a calcular. Un ajuste de Ventas (3.17.0) sigue
+  ganando sobre las reglas.
+- **Capacidad semanal** (Pronóstico y Fabricación → Capacidad semanal): metros del pronóstico vigente
+  de cada semana, de todos los clientes, contra la capacidad de venta que da Producción (parámetro
+  `quimibond_ventas_presupuesto.forecast_capacity_m`, 250,000 m), editable por semana porque cambia.
+  En rojo si se pasa, en amarillo arriba de 90 %. Solo avisa.
+- Al actualizar, todos los perfiles quedan con 3 semanas congeladas, un embarque por semana y sin
+  rollo.
+
+**Siguiente:** acumulados (restar lo enviado que el release del cliente todavía no ve: Saltillo), día
+de recolección por cliente y el colchón de un día en la fecha de entrega.
+
 ## Ventas ajusta las semanas del release (19.0.3.17.0, 2026-11-18)
 
 Jose (18-nov): «necesito poder modificar las semanas una vez que suba los releases de los clientes

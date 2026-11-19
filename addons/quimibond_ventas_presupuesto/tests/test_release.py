@@ -402,3 +402,91 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertEqual((week.qty_release, week.release_cambio), (0, True))
         week.action_qb_volver_release()
         self.assertFalse(week.exists(), "Volver al release quita lo que el cliente ya no pide")
+
+    # --- 3.18.0: reglas del perfil al aplicar (Jose, 19-nov) -----------------------
+    @staticmethod
+    def _lear_text(weeks, ref='000950'):
+        """Release con el layout de Lear para las semanas dadas [(lunes, cantidad)]."""
+        fmt = lambda d: d.strftime('%m/%d/%y')  # noqa: E731
+        rows, cum = [], 1000
+        for index, (day, qty) in enumerate(weeks):
+            cum += qty
+            rows.append("%s %s P %d %d %d" % ("Weekly" if index == 0 else "        ", fmt(day), qty, cum, qty))
+        return "\n".join(LEAR_TEXT.split("\n")[:10]).replace("000901", ref).replace(
+            "12/17/40", fmt(weeks[0][0])) + "\n         Prior 0 1,000\n" + "\n".join(rows) + "\n" + \
+            "Fab Authorization Cum Qty: %d Thru: %s\n" % (cum, fmt(weeks[-1][0])) + \
+            "Raw Authorization Cum Qty: %d Thru: %s" % (cum, fmt(weeks[-1][0]))
+
+    def _terms(self, vals):
+        return self.env['qb.delivery.terms'].create(dict(vals, partner_id=self.customer.id))
+
+    def test_11_semanas_congeladas_y_redondeo_a_rollos(self):
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        w0 = today - timedelta(days=today.weekday())
+        weeks = [w0 + timedelta(weeks=i) for i in range(5)]
+        Line = self.env['qb.forecast.line']
+        for day, qty in zip(weeks[:3], (100, 200, 300)):
+            Line.create({'partner_id': self.customer.id, 'product_id': self.product.id, 'week': day,
+                         'qty_origen': qty, 'origen': 'excel'})
+        self._terms({'frozen_weeks': 3, 'roll_qty': 200, 'roll_uom': 'm'})
+        release = self._release(self._lear_text(list(zip(weeks, (100, 250, 300, 400, 500)))))
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        by_week = {ln.week: ln for ln in self._forecast()}
+        self.assertEqual([by_week[d].qty_venta for d in weeks], [100, 200, 300, 600, 600],
+                         "Las congeladas se quedan; +50 a la semana 4 (450) y todo a rollos de 200")
+        self.assertEqual(by_week[weeks[1]].qty_release, 250, "Pide el cliente se guarda tal cual")
+        self.assertIn("Congelada", by_week[weeks[1]].regla_nota)
+        self.assertIn("Recibe +50", by_week[weeks[3]].regla_nota)
+        self.assertFalse(by_week[weeks[3]].ajustado, "Lo que hace una regla no es un ajuste de Ventas")
+
+    def test_12_embarques_cada_n_semanas(self):
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        w0 = today - timedelta(days=today.weekday())
+        weeks = [w0 + timedelta(weeks=i) for i in range(4, 8)]
+        self._terms({'frozen_weeks': 0, 'group_weeks': 2, 'group_start': weeks[0]})
+        release = self._release(self._lear_text(list(zip(weeks, (10, 20, 30, 40)))))
+        release.action_read()
+        self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        by_week = {ln.week: ln.qty_venta for ln in self._forecast()}
+        self.assertEqual(by_week, {weeks[0]: 30, weeks[2]: 70}, "Un embarque cada 2 semanas")
+
+    def test_13_capacidad_semanal(self):
+        from odoo import fields as odoo_fields
+        today = odoo_fields.Date.context_today(self.env.user)
+        monday = today - timedelta(days=today.weekday()) + timedelta(weeks=30)
+        line = self.env['qb.forecast.line'].create({
+            'partner_id': self.customer.id, 'product_id': self.product.id, 'week': monday,
+            'qty_origen': 1000.0})
+        week = line.week_id
+        week.capacidad_m = 800
+        self.assertGreaterEqual(week.qty_m, 1000)
+        self.assertTrue(week.excedida)
+        week.capacidad_m = 10 ** 9
+        self.assertFalse(week.excedida)
+
+    # --- 3.19.0: condiciones de entrega -----------------------------------------------
+    def test_14_condiciones_de_entrega(self):
+        terms = self._terms({'roll_qty': 500, 'roll_uom': 'yd', 'buffer_days': 1,
+                             'line_ids': [(0, 0, {'product_id': self.product.id, 'roll_qty': 1000,
+                                                  'roll_uom': 'm', 'max_splices': 2, 'core': '3" cartón'})]})
+        Terms = self.env['qb.delivery.terms']
+        self.assertEqual(Terms._qb_for(self.customer, plant='Cualquier planta'), terms,
+                         "Sin ficha de la planta, la del cliente")
+        self.assertEqual(terms._qb_roll_for(self.product), (1000, 'm'), "El renglón del producto gana")
+        otro = self.env['product.product'].create({'name': 'Otra tela', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self.assertEqual(terms._qb_roll_for(otro), (500, 'yd'), "Sin renglón, el rollo del cliente")
+        terms.closed_qty = True
+        self.assertEqual(terms._qb_roll_for(self.product), (0.0, False), "Cantidades cerradas: no redondea")
+        monday = date(2040, 12, 17)
+        self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 19),
+                         "Sin día de recolección: la del cliente menos el colchón")
+        terms.pickup_weekday = '4'
+        self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 21),
+                         "Con día de recolección: ese día de la semana de embarque")

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.19.0: condiciones de entrega por cliente y planta (Jose, 19-nov). -->
+    <record id="qb_delivery_terms_view_list" model="ir.ui.view">
+        <field name="name">qb.delivery.terms.list</field>
+        <field name="model">qb.delivery.terms</field>
+        <field name="arch" type="xml">
+            <list string="Condiciones de entrega">
+                <field name="partner_id"/>
+                <field name="ship_to_id" optional="show"/>
+                <field name="plant" optional="show"/>
+                <field name="pickup_weekday"/>
+                <field name="lead_days"/>
+                <field name="frozen_weeks"/>
+                <field name="group_weeks"/>
+                <field name="roll_qty"/>
+                <field name="roll_uom"/>
+                <field name="closed_qty"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_delivery_terms_view_form" model="ir.ui.view">
+        <field name="name">qb.delivery.terms.form</field>
+        <field name="model">qb.delivery.terms</field>
+        <field name="arch" type="xml">
+            <form string="Condiciones de entrega">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Cliente">
+                            <field name="partner_id"/>
+                            <field name="ship_to_id"/>
+                            <field name="plant"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Cuándo se embarca">
+                            <field name="pickup_weekday"/>
+                            <field name="lead_days"/>
+                            <field name="buffer_days" invisible="pickup_weekday"/>
+                            <field name="capacity_m"/>
+                        </group>
+                        <group string="Al aplicar el release">
+                            <field name="frozen_weeks"/>
+                            <field name="group_weeks"/>
+                            <field name="group_start" invisible="group_weeks &lt;= 1"/>
+                            <field name="closed_qty"/>
+                        </group>
+                        <group string="Presentación (todos sus productos)">
+                            <label for="roll_qty"/>
+                            <div class="o_row">
+                                <field name="roll_qty"/>
+                                <field name="roll_uom" invisible="not roll_qty"/>
+                            </div>
+                            <field name="max_splices"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Presentación por producto" name="lineas">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="customer_part" optional="show"/>
+                                    <field name="roll_qty"/>
+                                    <field name="roll_uom"/>
+                                    <field name="round_up"/>
+                                    <field name="width_m" optional="show"/>
+                                    <field name="core" optional="show"/>
+                                    <field name="max_splices"/>
+                                    <field name="min_piece" optional="show"/>
+                                    <field name="max_weight_kg" optional="show"/>
+                                    <field name="rolls_per_pallet" optional="show"/>
+                                    <field name="packaging" optional="show"/>
+                                    <field name="label" optional="hide"/>
+                                    <field name="notes" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Embarque y etiquetado" name="embarque">
+                            <group>
+                                <field name="required_docs"/>
+                                <field name="label_notes"/>
+                                <field name="notes"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_delivery_terms_view_search" model="ir.ui.view">
+        <field name="name">qb.delivery.terms.search</field>
+        <field name="model">qb.delivery.terms</field>
+        <field name="arch" type="xml">
+            <search string="Condiciones de entrega">
+                <field name="partner_id"/>
+                <field name="plant"/>
+                <field name="line_ids" string="Producto" filter_domain="[('line_ids.product_id', 'ilike', self)]"/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_delivery_terms_action" model="ir.actions.act_window">
+        <field name="name">Condiciones de entrega</field>
+        <field name="res_model">qb.delivery.terms</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre cómo se le entrega a cada cliente</p>
+            <p>Día de recolección, días de adelanto, semanas congeladas, embarques cada N semanas y la
+               presentación de cada producto (rollo, ancho, tubo, empalmes, empaque). Las reglas del release
+               y la fecha de entrega de los pedidos salen de aquí.</p>
+        </field>
+    </record>
+</odoo>

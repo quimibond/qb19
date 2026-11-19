@@ -23,6 +23,9 @@
     <menuitem id="menu_sale_qb_forecast_grid" name="Captura semanal"
               parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_grid_action" sequence="15"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+    <!-- 3.18.0 -->
+    <menuitem id="menu_sale_qb_forecast_capacity" name="Capacidad semanal"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_week_capacity_action" sequence="17"/>
     <menuitem id="menu_sale_qb_demand_line" name="Demanda por cliente"
               parent="menu_sale_qb_grupo_pronostico" action="qb_demand_line_action" sequence="20"/>
     <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
@@ -88,6 +91,9 @@
               parent="menu_sale_sgi_planning" sequence="90"/>
     <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
               parent="menu_sale_qb_grupo_config" action="qb_release_profile_action" sequence="10"/>
+    <!-- 3.19.0 -->
+    <menuitem id="menu_sale_qb_delivery_terms" name="Condiciones de entrega"
+              parent="menu_sale_qb_grupo_config" action="qb_delivery_terms_action" sequence="12"/>
     <menuitem id="menu_sale_qb_order_rule" name="Cómo pide cada cliente"
               parent="menu_sale_qb_grupo_config" action="qb_order_rule_action" sequence="15"/>
     <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
@@ -114,6 +120,8 @@
               parent="menu_mrp_qb_planeacion_ventas" action="qb_demand_line_action" sequence="10"/>
     <menuitem id="menu_mrp_qb_forecast_line" name="Pronóstico vigente"
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_line_action" sequence="20"/>
+    <menuitem id="menu_mrp_qb_forecast_capacity" name="Capacidad semanal"
+              parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_week_capacity_action" sequence="25"/>
     <menuitem id="menu_mrp_qb_forecast_change" name="Cambios del pronóstico"
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_change_action" sequence="30"/>
     <menuitem id="menu_mrp_qb_forecast_print" name="Imprimir o descargar"
