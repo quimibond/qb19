@@ -296,6 +296,8 @@ class QbOrderProposal(models.TransientModel):
             twin = self._qb_same_fabric(company, partner, group['ref'], group['week'], product, ship_to) \
                 if group['ref'] and not existing else self.env['sale.order.line']
             target = round(group['qty'], 2)
+            if target <= 0 and not existing:
+                continue  # 3.17.0: semana ajustada a cero por Ventas y sin pedido: no hay nada que pedir
             price, has_price = self._qb_price(partner, product, target)
             vals = {'proposal_id': self.id, 'rule_id': group['rule'].id or False, 'partner_id': partner.id,
                     'plant': group['plant'], 'ship_to_id': group['ship_to'].id or False,

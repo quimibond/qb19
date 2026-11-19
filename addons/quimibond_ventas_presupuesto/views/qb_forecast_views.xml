@@ -8,7 +8,13 @@
             <list string="Pronóstico vigente" multi_edit="1" default_order="week, partner_id, product_id"
                   decoration-muted="zona == 'pasado'" decoration-info="zona == 'firme'"
                   decoration-danger="not conv_ok"
-                  decoration-warning="dev_state in ('desarrollo', 'pilotaje', 'archivado')">
+                  decoration-warning="dev_state in ('desarrollo', 'pilotaje', 'archivado') or release_cambio">
+                <header>
+                    <button name="action_qb_volver_release" type="object" string="Volver al release"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_qb_conservar_ajuste" type="object" string="Conservar el ajuste"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                </header>
                 <field name="week"/>
                 <field name="partner_id"/>
                 <field name="plant" optional="show"/>
@@ -23,6 +29,9 @@
                 <field name="uom_origen"/>
                 <field name="qty_venta" readonly="1"/>
                 <field name="uom_venta" optional="show"/>
+                <field name="qty_release" optional="show"/>
+                <field name="ajustado" widget="boolean_toggle" readonly="1" optional="show"/>
+                <field name="release_cambio" optional="show" widget="boolean" readonly="1"/>
                 <field name="qty_m" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_kg" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_pedido" optional="show"/>
@@ -43,7 +52,23 @@
         <field name="model">qb.forecast.line</field>
         <field name="arch" type="xml">
             <form string="Semana del pronóstico">
+                <header>
+                    <button name="action_qb_volver_release" type="object" string="Volver al release"
+                            invisible="not ajustado"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_qb_conservar_ajuste" type="object" string="Conservar el ajuste"
+                            class="btn-primary" invisible="not release_cambio"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                </header>
                 <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not release_cambio">
+                        El cliente cambió lo que pide en un release posterior a su ajuste (o ya no trae la
+                        semana). Corrija la cantidad, conserve el ajuste o vuelva al release.
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="not ajustado or release_cambio">
+                        Semana ajustada por Ventas: el siguiente release no cambia la cantidad, solo
+                        «Pide el cliente».
+                    </div>
                     <div class="alert alert-danger" role="alert"
                          invisible="dev_state not in ('desarrollo', 'archivado')">
                         El artículo está en desarrollo (o archivado): Planeación lo ve venir, pero el
@@ -76,6 +101,10 @@
                             <field name="uom_origen"/>
                             <field name="qty_venta"/>
                             <field name="uom_venta"/>
+                            <field name="qty_release" invisible="not release_id"/>
+                            <field name="qty_diferencia" invisible="not ajustado"/>
+                            <field name="ajustado" invisible="not release_id"/>
+                            <field name="release_cambio" invisible="1"/>
                             <field name="qty_m"/>
                             <field name="qty_kg"/>
                             <field name="conv_origen"/>
@@ -169,6 +198,9 @@
                 <filter name="origen_release" string="De release" domain="[('origen', '=', 'release')]"/>
                 <filter name="origen_captura" string="Capturado" domain="[('origen', '=', 'captura')]"/>
                 <separator/>
+                <filter name="ajustadas" string="Ajustadas por Ventas" domain="[('ajustado', '=', True)]"/>
+                <filter name="cliente_cambio" string="El cliente cambió" domain="[('release_cambio', '=', True)]"/>
+                <separator/>
                 <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
@@ -208,7 +240,9 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin pronóstico en las próximas semanas</p>
             <p>Escriba la cantidad en la unidad del cliente: la semana se crea, cambia o se quita (en cero) y
-               queda en Cambios del pronóstico. Para un producto nuevo use «Pegar semanas desde Excel».</p>
+               queda en Cambios del pronóstico. Una semana que vino de un release queda «Ajustada por
+               Ventas» (en cero no se quita) y el siguiente release no la cambia. Para un producto nuevo use
+               «Pegar semanas desde Excel».</p>
         </field>
     </record>
 
