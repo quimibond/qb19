@@ -40,7 +40,7 @@ Los patrones se ajustan en Configuración → Documentos del expediente, columna
 
 Las agencias mandan el pedimento pagado, el DODA y lo demás por correo a Logística, Contabilidad y CxC, y la
 memoria de correo (Supabase) guarda cada adjunto. La tarea «Pedimentos - Traer archivos de la memoria» corre
-cada hora con 10 expedientes (primero los que nunca se buscaron, después los abiertos cada semana): busca los
+cada hora con 50 expedientes (primero los que nunca se buscaron, después los abiertos cada semana): busca los
 correos que traen el consecutivo del pedimento en el asunto o en el texto de un adjunto, entre 60 días antes
 y 120 días después de sus fechas, baja sus adjuntos (sin firmas, imágenes chicas ni correos reenviados, sin
 repetidos), los clasifica como «Cargar expediente» y los guarda. Deja fuera los archivos cuyo nombre trae
