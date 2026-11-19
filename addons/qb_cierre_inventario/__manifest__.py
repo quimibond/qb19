@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Cierre de inventario',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'category': 'Inventory/Inventory',
     'summary': 'Casilla «No valuar en el cierre» en la categoría de producto: el cierre y el reporte de valuación de Odoo 19 ignoran esas categorías (refacciones, activo fijo).',
@@ -15,7 +15,7 @@ gasto al comprarse) y el activo fijo (que ya está en 153), y reclasifica años
 de consumos de esas categorías.
 
 Este módulo agrega en la categoría de producto la casilla **No valuar en el
-cierre**. Una categoría marcada, con todas sus subcategorías:
+cierre**. Una categoría marcada (cada subcategoría se marca aparte):
 
 * no entra al valor del almacén del cierre ni del reporte de valuación;
 * no entra a la reclasificación por ubicación (merma, desecho, consumo);
