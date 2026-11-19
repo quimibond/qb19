@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.30.0 (Jose, 19-nov): buzón de releases. Lo que llega a releases@<dominio de Odoo> crea el release, lo
+         lee y deja la actividad «Aprobar release» al Responsable en Ventas del perfil; nunca se aplica solo. -->
+    <data noupdate="1">
+        <record id="mail_alias_qb_release" model="mail.alias">
+            <field name="alias_name">releases</field>
+            <field name="alias_model_id" ref="model_qb_release"/>
+            <field name="alias_contact">everyone</field>
+            <field name="alias_defaults">{}</field>
+        </record>
+    </data>
+</odoo>

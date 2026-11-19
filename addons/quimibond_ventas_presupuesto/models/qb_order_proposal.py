@@ -39,6 +39,7 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from ..release import plantas
 from ..release.oc import separa_oc
 from .qb_delivery_terms import WEEKDAYS
 from .qb_forecast import DEV_NO_SALE, monday_of
@@ -97,10 +98,13 @@ class QbOrderRule(models.Model):
     @api.model
     def _qb_rule_for(self, company, partner, plant):
         """La regla de la planta si existe; si no, la del cliente sin planta."""
-        rules = self.search([('company_id', '=', company.id),
-                             ('partner_id', '=', partner.commercial_partner_id.id)])
-        return rules.filtered(lambda r: plant and (r.plant or '').strip().lower() == plant.strip().lower())[:1] \
-            or rules.filtered(lambda r: not r.plant)[:1]
+        commercial = partner.commercial_partner_id
+        rules = self.search([('company_id', '=', company.id), ('partner_id', '=', commercial.id)])
+        # 3.30.0: «SALTILLO LAMINATION LEON» del perfil es «LEÓN» aquí; se compara por palabras.
+        index = plantas.elegir(plant, [r.plant or '' for r in rules], commercial.name) if plant else None
+        if index is not None:
+            return rules[index]
+        return rules.filtered(lambda r: not r.plant)[:1]
 
 
 class SaleOrderForecast(models.Model):

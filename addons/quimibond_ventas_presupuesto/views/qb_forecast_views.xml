@@ -209,6 +209,8 @@
                 <filter name="planeado" string="Planeado" domain="[('zona', '=', 'planeado')]"/>
                 <separator/>
                 <filter name="sin_pedido" string="Sin pedido" domain="[('qty_neta', '&gt;', 0)]"/>
+                <filter name="por_pedir_4" string="Por pedir (próximas 4 semanas)"
+                        domain="[('qty_neta', '&gt;', 0), ('week', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')), ('week', '&lt;', (context_today() + relativedelta(weeks=4)).strftime('%Y-%m-%d'))]"/>
                 <filter name="sin_conversion" string="Sin conversión" domain="[('conv_ok', '=', False)]"/>
                 <filter name="muestras" string="Muestras" domain="[('tag', 'ilike', 'muestra')]"/>
                 <filter name="en_desarrollo" string="Artículo en desarrollo"

@@ -15,6 +15,8 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..release import plantas
+
 WEEKDAYS = [('0', "Lunes"), ('1', "Martes"), ('2', "Miércoles"), ('3', "Jueves"), ('4', "Viernes"),
             ('5', "Sábado"), ('6', "Domingo")]
 ROLL_UNITS = [('m', "m"), ('yd', "yd"), ('kg', "kg"), ('m2', "m²")]
@@ -136,15 +138,26 @@ class QbDeliveryTerms(models.Model):
             return self.browse()
         commercial = partner.commercial_partner_id
         company = company or self.env.company
-        base = [('partner_id', '=', commercial.id), ('company_id', '=', company.id)]
-        terms = self.browse()
+        candidates = self.search([('partner_id', '=', commercial.id), ('company_id', '=', company.id)])
         if ship_to:
-            terms = self.search(base + [('ship_to_id', '=', ship_to.id)], limit=1)
-        if not terms and plant:
-            terms = self.search(base + [('ship_to_id', '=', False), ('plant', '=ilike', plant)], limit=1)
-        if not terms:
-            terms = self.search(base + [('ship_to_id', '=', False), ('plant', '=', False)], limit=1)
-        return terms
+            exact = candidates.filtered(lambda t: t.ship_to_id == ship_to)[:1]
+            if exact:
+                return exact
+        # 3.30.0 (Jose, 19-nov): la planta se escribe distinto en el perfil y aquí («Silao» con dirección
+        # de entrega, «FXI CD JUAREZ»); se compara por palabras (release/plantas.py), con o sin dirección.
+        if plant:
+            index = plantas.elegir(plant, [t.plant or t.ship_to_id.name or '' for t in candidates],
+                                   commercial.name)
+            if index is not None:
+                return candidates[index]
+        generic = candidates.filtered(lambda t: not t.ship_to_id and not t.plant)[:1]
+        if generic:
+            return generic
+        # Un cliente con una sola condición (Lear: con su dirección de entrega) la usa aunque el perfil no
+        # diga planta.
+        if not plant and len(candidates) == 1:
+            return candidates
+        return self.browse()
 
     def _qb_line_for(self, product):
         """Renglón del producto (o de su artículo: la misma tela en metros o kilos)."""
