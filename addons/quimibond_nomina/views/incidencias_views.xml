@@ -65,6 +65,8 @@
                             <field name="registro"/>
                             <field name="employee_id" readonly="1"/>
                             <field name="department_id" optional="hide"/>
+                            <field name="turno" readonly="1" optional="show"/>
+                            <field name="turno_rh" readonly="1" optional="hide"/>
                             <field name="dia_0" readonly="1"/>
                             <field name="dia_1" readonly="1"/>
                             <field name="dia_2" readonly="1"/>
