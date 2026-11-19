@@ -8,6 +8,15 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.31.1 — 2026-11-19
+
+**Lo mismo para fichas de acabado y procesos archivados.** Al aplicar 2.31.0 en producción (19-nov-2026) el filtro
+«Tiempo distinto de la ficha» marcó 10 operaciones de Rama con el rendimiento de una ficha de **acabado** archivada
+(con el contexto normal decían «Falta la ficha de acabado»); «Usar los datos de la ficha» lo habría escrito. Ahora
+los dos usan `active_test=False` solo para alcanzar las operaciones de listas archivadas y calculan con el contexto
+normal, y la ficha de acabado del proceso y el proceso de la operación salen siempre de los activos. Prueba:
+`test_tiempo_ficha.test_09`.
+
 ## 19.0.2.31.0 — 2026-11-19
 
 **«Usar los datos de la ficha» y el filtro «Tiempo distinto de la ficha» ya no leen fichas de tejido archivadas**
