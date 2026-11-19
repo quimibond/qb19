@@ -21,6 +21,65 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Releases en PDF con tabla (19.0.3.27.0, 2026-11-19)
+
+Jose (19-nov): «COPO manda un PDF y eso no hay cómo meterlo en los perfiles de release». Lector nuevo **«PDF
+genérico con tabla (parte × fecha: COPO)»** (`release/pdf_table.py`): lee el PDF con el acomodo del texto (pypdf,
+`extraction_mode='layout'`), arma la tabla por la posición de las columnas (las semanas vacías no recorren las
+cantidades) y la pasa por el lector genérico, con los mismos campos del perfil (unidad, encabezados de parte, OC y
+descripción, orden de las fechas). Junta encabezados y descripciones de dos renglones y corta en las notas al pie.
+De cada parte toma su OC, la última factura considerada (en «Último packing slip») y lo recibido («Llegadas», en
+«CUM recibido»); del encabezado, «Release No.» y la fecha. Fechas con el mes en letra (16-Nov-26, 7-dic-2026).
+COPO: sus fechas son de material listo para recolección en nuestra planta (EXW) → «Fecha de embarque».
+
+## La presentación sale de la ficha técnica (19.0.3.26.0, 2026-11-19)
+
+Jose (19-nov): «muchos de los datos de la preparación del producto deberían de salir del módulo de ficha técnica…
+y ya en ventas lo hacemos por cliente». Tres niveles:
+
+1. **Especificación** (ancho de venta, peso, espesor y sus tolerancias): la de la ficha de acabado. Condiciones de
+   entrega la muestra en «Especificación (ficha)», de solo lectura; se quitó el «Ancho» que se capturaba ahí
+   (estaba vacío en todas las fichas).
+2. **Presentación estándar**: pestaña **Presentación** nueva en la ficha de acabado (largo de rollo, tubo, empalmes,
+   tramo mínimo, peso máximo, rollos por tarima, empaque), agregada desde este módulo
+   (`models/qb_ficha_presentacion.py`) para no tocar el de la ficha. Condiciones de entrega la muestra en
+   «Presentación de la ficha».
+3. **Por cliente**: lo que pide distinto. Vacío (0 o −1) = el del cliente en el encabezado y, si tampoco, el de la
+   ficha. Para el redondeo a rollos: renglón → cliente → ficha. «Tolerancia del cliente» abre ancho y peso mínimo y
+   máximo cuando el cliente exige otra tolerancia.
+
+## Varios días de recolección (19.0.3.25.0, 2026-11-19)
+
+Jose (19-nov): «qué sucede si un cliente tiene más de una fecha de recolección, como Lear, que recolecta
+martes y viernes». Desde septiembre Ventas captura a mano dos pedidos por semana de Lear, martes y viernes,
+por partes iguales; la ficha solo aceptaba un día.
+
+- **Recolección** (Jose, 19-nov: «¿no es mejor preguntar si el cliente tiene recolección fija?»): *Sin día
+  fijo* (la fecha del pedido es la del cliente menos el colchón, un pedido por semana), *Un día a la semana*
+  o *Varios días a la semana*; con día fijo aparecen los **Días de recolección** (etiquetas, `qb.weekday`).
+  Las fichas que tenían día quedan en «Un día a la semana» con ese día.
+- Con varios días, «Proponer pedidos» reparte la semana **por partes iguales** (por rollos completos si el
+  rollo está en la unidad del producto; si no, por unidades enteras; lo que sobra va al primer día) y sale
+  un renglón y un pedido por OC, semana y día (`sale.order.qb_pickup_weekday`).
+- Al volver a proponer, cada día se compara con su pedido: el que se creó para ese día o, si se capturó a
+  mano, el de la fecha compromiso más cercana a ese día.
+
+## Una OC abierta por producto (19.0.3.24.0, 2026-11-19)
+
+Jose (19-nov): «qué pasa si un mismo cliente tiene más de una orden abierta, eso sucede con Zwisstex… para
+Shawmut y Saltillo no, me dan una sola OC abierta para todos sus productos y cambia de acuerdo a su planta».
+La OC abierta vivía solo en la regla de «Cómo pide el cliente» (una por cliente y planta), y Zwisstex tiene
+una OC por producto (14792, 15486, 15862…).
+
+- La presentación por producto de **Condiciones de entrega** trae **OC abierta** y **Vigencia de la OC**.
+  Cada cambio queda en el historial de la ficha.
+- «Proponer pedidos» toma la OC así: en «OC abierta + release», la del producto y, si no tiene, la de la
+  regla (la OC que trae el release se sigue ignorando, como antes); en «OC en el release» y «Release sin
+  OC», la de la semana y, si no trae, la del producto. Vencida la del producto, ese producto no entra.
+- La regla en «OC abierta + release» ya puede ir sin OC: los productos sin OC propia quedan «No entra» con
+  el motivo «Sin OC abierta para el producto en Condiciones de entrega».
+- Shawmut y Saltillo no cambian: su OC sigue en la regla de cada planta.
+
 ## Ficha del presupuesto anual con vistas nativas (19.0.3.23.0, 2026-11-19)
 
 Jose no quiso el tablero de la 3.22.0 (tablas en HTML hechas a mano): «lo necesito lo más nativo de Odoo

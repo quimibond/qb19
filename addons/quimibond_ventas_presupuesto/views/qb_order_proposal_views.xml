@@ -82,6 +82,7 @@
                             <field name="plant" optional="show"/>
                             <field name="customer_po"/>
                             <field name="week"/>
+                            <field name="pickup_weekday" optional="show"/>
                             <field name="customer_date" optional="show"/>
                             <field name="delivery_date" readonly="applied or action == 'no_entra'"
                                    decoration-danger="customer_date and delivery_date and delivery_date &gt; customer_date"/>
