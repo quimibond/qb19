@@ -36,8 +36,13 @@ class TestPresupuestoAnual(TransactionCase):
             'name': 'Tela anual', 'default_code': 'WANUAL150', 'type': 'consu',
             'uom_id': cls.uom_m.id, 'list_price': 1.0})
         cls.product.write({'qb_m_por_kg': 5.0, 'qb_conv_origen': 'codigo'})
+        # En Odoo 19 res.partner no tiene team_id: el equipo del cliente sale del de su vendedor.
+        cls.seller_ind = cls.env['res.users'].create({
+            'name': 'Vendedor anual', 'login': 'vendedor_anual',
+            'group_ids': [(6, 0, [cls.env.ref('sales_team.group_sale_salesman').id])]})
+        cls.env['crm.team.member'].create({'crm_team_id': cls.team_ind.id, 'user_id': cls.seller_ind.id})
         cls.client = cls.env['res.partner'].create({
-            'name': 'Cliente anual', 'is_company': True, 'team_id': cls.team_ind.id})
+            'name': 'Cliente anual', 'is_company': True, 'user_id': cls.seller_ind.id})
         cls.manager = cls.env['res.users'].create({
             'name': 'MAST anual', 'login': 'mast_anual',
             'group_ids': [(6, 0, [cls.env.ref('quimibond_sgi.group_sgi_manager').id])]})
@@ -130,7 +135,7 @@ class TestPresupuestoAnual(TransactionCase):
             'product_tmpl_id': self.product.product_tmpl_id.id,
             'compute_price': 'fixed', 'fixed_price': 7.5})
         client = self.env['res.partner'].create({
-            'name': 'Cliente con lista anual', 'is_company': True, 'team_id': self.team_ind.id,
+            'name': 'Cliente con lista anual', 'is_company': True, 'user_id': self.seller_ind.id,
             'property_product_pricelist': pl.id})
         budget = self.Budget.create({'year': 2055})
         line = self._line(budget, partner_id=client.id)
@@ -415,7 +420,7 @@ class TestPresupuestoAnual(TransactionCase):
             'product_tmpl_id': self.product.product_tmpl_id.id,
             'compute_price': 'fixed', 'fixed_price': 2.0})
         client = self.env['res.partner'].create({
-            'name': 'Cliente USD 19', 'is_company': True, 'team_id': self.team_ind.id,
+            'name': 'Cliente USD 19', 'is_company': True, 'user_id': self.seller_ind.id,
             'property_product_pricelist': pl.id})
         budget = self.Budget.create({'year': 2025})
         line = self._line(budget, partner_id=client.id, price_input=36.0,
