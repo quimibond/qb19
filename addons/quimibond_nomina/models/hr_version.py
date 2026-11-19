@@ -9,6 +9,8 @@ campo vive en ``hr.version`` (el contrato en Odoo 19) y se refleja en el
 empleado como hacen los demás campos de la localización."""
 from odoo import fields, models
 
+from .incidencias_calculo import TURNOS_NOMBRE
+
 
 class HrVersion(models.Model):
     _inherit = 'hr.version'
@@ -30,3 +32,11 @@ class HrEmployee(models.Model):
         readonly=False,
         groups='hr.group_hr_user',
     )
+
+    qb_turno = fields.Selection(
+        TURNOS_NOMBRE, string="Turno (RH)", groups='hr.group_hr_user',
+        help="El turno en que RH tiene a la persona (archivo de turnos del mes). La lista de incidencias "
+             "reconoce el turno de cada semana desde las checadas y usa este como confirmación.")
+    qb_turno_fijo = fields.Boolean(
+        string="Turno fijo", groups='hr.group_hr_user',
+        help="No rota cada 15 días. Si el checador ve otro turno, la lista lo anota.")

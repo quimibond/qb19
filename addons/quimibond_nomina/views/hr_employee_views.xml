@@ -18,6 +18,8 @@
                 <field name="qb_apellido_paterno"/>
                 <field name="qb_apellido_materno"/>
                 <field name="qb_nombres"/>
+                <field name="qb_turno"/>
+                <field name="qb_turno_fijo" invisible="not qb_turno"/>
             </xpath>
         </field>
     </record>

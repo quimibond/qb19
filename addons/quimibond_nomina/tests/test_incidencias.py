@@ -27,6 +27,16 @@ def _dia(d, entrada, salida, comida=True):
     return marcas
 
 
+def _noches(dias):
+    """Turnos de 19:00 a 07:00 que entran esos días de octubre, con comida a la 01:00."""
+    marcas = []
+    for d in dias:
+        entrada = dt(2026, 10, d, 18, 50)
+        marcas += [entrada, entrada + timedelta(hours=6, minutes=10), entrada + timedelta(hours=6, minutes=40),
+                   entrada + timedelta(hours=12, minutes=12)]
+    return marcas
+
+
 def _semana_normal():
     return (_dia(12, (6, 55), (17, 2)) + _dia(13, (7, 0), (17, 0)) + _dia(14, (7, 3), (17, 0))
             + _dia(15, (6, 50), (17, 0)) + _dia(16, (6, 58), (15, 1)))
@@ -147,6 +157,96 @@ class TestIncidenciasCalculo(TransactionCase):
         self.assertEqual(calc.premio_asistencia(0, 1), 4.5, 'un retardo: 4.5 mientras RH no diga otra cosa')
         self.assertEqual(calc.premio_asistencia(0, 1, pct_un_retardo=5.5), 5.5)
 
+    # ------------------------------------------------------------------
+    # Turnos de RH (1.20.0)
+    # ------------------------------------------------------------------
+    def test_noche_lunes_a_jueves_no_falta_el_viernes(self):
+        marcas = _noches((12, 13, 14, 15))
+        turno, _p = calc.inferir_turno(LUNES, marcas, hoy=HOY)
+        self.assertEqual(turno, '4')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS[turno])
+        self.assertEqual(r['faltas'], 0, 'el viernes no es de su turno: se paga')
+        self.assertEqual(r['dias'][:5], ['10', '10', '10', '10', '8'])
+        self.assertEqual(r['horas_base'], 48.0)
+        self.assertEqual(r['he_propuestas'], 0, 'las 12 horas del turno no son extra')
+        self.assertEqual(r['retardos'], 0)
+        # Sin turno (como antes): falta el viernes y 2 horas de extra cada noche.
+        antes = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY)
+        self.assertEqual(antes['faltas'], 1)
+        self.assertEqual(antes['he_propuestas'], 8)
+
+    def test_noche_de_fin_de_semana(self):
+        marcas = _noches((12, 17, 18))
+        turno, _p = calc.inferir_turno(LUNES, marcas, hoy=HOY)
+        self.assertEqual(turno, '6')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS[turno])
+        self.assertEqual(r['faltas'], 0)
+        self.assertEqual(r['horas_base'], 48.0, 'la base de pago no cambia')
+        self.assertEqual(r['dias'][5:], ['12', '12'])
+        self.assertEqual(r['dom_horas'], 24.0, 'entra sábado y domingo en la noche: prima en las dos')
+        self.assertEqual(r['he_propuestas'], 0)
+
+    def test_falta_en_sabado_del_turno_quita_sus_horas(self):
+        marcas = _noches((12, 18))
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS['6'])
+        self.assertEqual(r['dias'][5], '0')
+        self.assertEqual(r['faltas'], 1)
+        self.assertEqual(r['falta_horas'], 12.0)
+        self.assertEqual(r['horas_base'], 36.0)
+
+    def test_turno_cinco_con_domingo_de_dia(self):
+        marcas = _noches((13, 14, 15)) + _dia(18, (6, 55), (19, 0))
+        turno, _p = calc.inferir_turno(LUNES, marcas, hoy=HOY)
+        self.assertEqual(turno, '5')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS[turno])
+        self.assertEqual(r['faltas'], 0, 'lunes y viernes no son de su turno')
+        self.assertEqual(r['dom_horas'], 12.0)
+        self.assertEqual(r['he_propuestas'], 0)
+
+    def test_dia_de_doce_que_trabaja_el_viernes(self):
+        marcas = []
+        for d in (12, 13, 14, 15):
+            marcas += _dia(d, (6, 50), (19, 2))
+        marcas += _dia(16, (9, 44), (15, 2), comida=False)
+        turno, _p = calc.inferir_turno(LUNES, marcas, hoy=HOY)
+        self.assertEqual(turno, '3')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS[turno])
+        self.assertEqual(r['retardos'], 0, 'el viernes no es de su turno: llegar 09:44 no es retardo')
+        self.assertEqual(r['he_propuestas'], 5, 'todo lo del viernes es extra')
+
+    def test_turno_dos_entra_a_las_ocho(self):
+        marcas = []
+        for d in (12, 13, 14, 15):
+            marcas += _dia(d, (7, 44), (18, 1))
+        marcas += _dia(16, (7, 50), (16, 0))
+        self.assertEqual(calc.inferir_turno(LUNES, marcas, hoy=HOY, preferido='2')[0], '2')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS['2'])
+        self.assertEqual(r['retardos'], 0)
+        antes = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY)
+        self.assertEqual(antes['retardos'], 5, 'contra las 07:00 de la planta eran cinco retardos')
+        # Turno 1 en RH, llega 07:44 y sale a las 17:00: el de RH se respeta y sí son retardos.
+        tarde = []
+        for d in (12, 13, 14, 15):
+            tarde += _dia(d, (7, 44), (17, 0))
+        tarde += _dia(16, (7, 44), (15, 0))
+        self.assertEqual(calc.inferir_turno(LUNES, tarde, hoy=HOY, preferido='1')[0], '1')
+        r1 = calc.calcular_semana(LUNES, HORARIO, tarde, hoy=HOY, turno=calc.TURNOS['1'])
+        self.assertEqual(r1['retardos'], 5)
+
+    def test_el_checador_gana_si_rh_tiene_otro_turno(self):
+        marcas = _noches((12, 13, 14, 15))
+        self.assertEqual(calc.inferir_turno(LUNES, marcas, hoy=HOY, preferido='3')[0], '4')
+
+    def test_falta_en_dia_del_turno_y_sin_checadas(self):
+        marcas = _noches((12, 13, 15))
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=calc.TURNOS['4'])
+        self.assertEqual((r['faltas'], r['falta_horas']), (1, 12.0))
+        self.assertEqual(r['dias'][2], '0')
+        self.assertEqual(calc.inferir_turno(LUNES, [], hoy=HOY), (None, {}))
+        sin = calc.calcular_semana(LUNES, HORARIO, [], hoy=HOY, turno=calc.TURNOS['4'])
+        self.assertEqual(sin['faltas'], 0)
+        self.assertTrue(sin['sin_checadas'])
+
     def test_entradas_del_parametro(self):
         self.assertEqual(calc.leer_entradas('06:00, 18:00'), (dt(1, 1, 1, 6).time(), dt(1, 1, 1, 18).time()))
         self.assertEqual(calc.leer_entradas('basura'), calc.ENTRADAS_DEFAULT)
@@ -166,7 +266,7 @@ class TestIncidenciasGenerar(TransactionCase):
                         'hour_to': 17.0 if d < 4 else 15.0, 'day_period': 'morning'})
                 for d in range(5)],
         })
-        liberar_referencias(env, 'Q-901', 'Q-902')
+        liberar_referencias(env, 'Q-901', 'Q-902', 'Q-903')
         cls.empleado = env['hr.employee'].create({'name': 'Prueba Incidencias', 'registration_number': 'Q-901'})
         cls.empleado.version_id.write({
             'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),
@@ -202,6 +302,24 @@ class TestIncidenciasGenerar(TransactionCase):
         lista.action_generar()
         self.assertEqual(linea.he_autorizadas, 4)
         self.assertEqual(linea.he_dobles, 4)
+
+    def test_generar_por_turno_de_noche(self):
+        otro = self.env['hr.employee'].create({'name': 'Prueba Turno Noche', 'registration_number': 'Q-903',
+                                               'qb_turno': '3'})
+        otro.version_id.write({'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),
+                               'resource_calendar_id': self.calendario.id})
+        self.env['qb.checada'].create([{
+            'equipo_id': self.equipo.id, 'pin': '2903', 'employee_id': otro.id,
+            'timestamp': m + timedelta(hours=6), 'state': 'emparejada',
+        } for m in _noches((12, 13, 14, 15))])
+        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES})
+        lista.action_generar()
+        linea = lista.linea_ids.filtered(lambda l: l.employee_id == otro)
+        self.assertEqual(linea.turno, '4', 'el checador lo vio de noche')
+        self.assertEqual(linea.turno_rh, '3')
+        self.assertEqual(linea.faltas, 0)
+        self.assertEqual(linea.he_propuestas, 0)
+        self.assertIn('Turno 4 según checador', linea.observaciones)
 
     def test_semanas_que_paga_el_mes(self):
         Incidencias = self.env['qb.nomina.incidencias']
