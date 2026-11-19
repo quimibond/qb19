@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- El encabezado y el pie del sitio B2B sustituyen a los de Odoo solo en
+         los sitios con la casilla «Diseño B2B de Quimibond». -->
+    <template id="layout_qb" name="Quimibond: encabezado y pie B2B" inherit_id="website.layout" priority="90">
+        <xpath expr="//html" position="before">
+            <t t-set="qb_activo" t-value="bool(website and website.qb_diseno_b2b)"/>
+            <t t-if="qb_activo" t-set="nothing" t-value="html_data.update({'data-qb': '1'})"/>
+        </xpath>
+        <xpath expr="//header" position="before">
+            <t t-set="qb_header" t-value="qb_activo and not no_header"/>
+            <t t-set="qb_footer" t-value="qb_activo and not no_footer"/>
+            <t t-set="no_header" t-value="no_header or qb_activo"/>
+            <t t-set="no_footer" t-value="no_footer or qb_activo"/>
+            <t t-if="qb_header" t-call="website_quimibond.header"/>
+        </xpath>
+        <xpath expr="//footer" position="after">
+            <t t-if="qb_footer" t-call="website_quimibond.footer"/>
+        </xpath>
+    </template>
+
+    <template id="header" name="Quimibond: encabezado">
+        <div class="qb-hilo" aria-hidden="true"><span/></div>
+        <header class="qb qb-header" id="qb_top">
+            <div class="qb-container qb-header__in">
+                <a href="/" class="qb-logo" aria-label="Quimibond, inicio">
+                    <t t-call="website_quimibond.logo"/>
+                    <span>Quimibond</span>
+                </a>
+                <nav class="qb-nav" aria-label="Principal">
+                    <div class="qb-nav__item qb-nav__item--menu">
+                        <a href="/catalogo" class="qb-nav__link">Productos <i class="fa fa-angle-down" aria-hidden="true"/></a>
+                        <div class="qb-mega">
+                            <a href="/disenar" class="qb-mega__card">
+                                <strong>Diseñe su tela</strong>
+                                <span>Elija construcción, galga, color y tacto, y véala al momento.</span>
+                            </a>
+                            <a href="/catalogo" class="qb-mega__card">
+                                <strong>Catálogo técnico</strong>
+                                <span>Entretelas fusionables, no tejidos y tejido circular con sus datos técnicos.</span>
+                            </a>
+                            <a href="/cotizar" class="qb-mega__card">
+                                <strong>Muestras y desarrollos</strong>
+                                <span>Pida una muestra o un desarrollo contra su especificación.</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="qb-nav__item qb-nav__item--menu">
+                        <a href="/#mercados" class="qb-nav__link">Mercados <i class="fa fa-angle-down" aria-hidden="true"/></a>
+                        <div class="qb-mega">
+                            <a href="/mercados/automotriz" class="qb-mega__card"><strong>Automotriz</strong><span>México, Estados Unidos y Canadá.</span></a>
+                            <a href="/mercados/blancos" class="qb-mega__card"><strong>Blancos</strong><span>Colchonería y hogar.</span></a>
+                            <a href="/mercados/confeccion" class="qb-mega__card"><strong>Confección</strong><span>Camisería, uniformes y prendas.</span></a>
+                        </div>
+                    </div>
+                    <a href="/planta" class="qb-nav__link">Planta</a>
+                    <a href="/calidad" class="qb-nav__link">Calidad</a>
+                    <a href="/nosotros" class="qb-nav__link">Nosotros</a>
+                    <a href="/jobs" class="qb-nav__link">Empleos</a>
+                </nav>
+                <div class="qb-header__acciones">
+                    <button type="button" class="qb-kbd-btn" data-qb-buscar="1" aria-label="Buscar en el sitio">
+                        <i class="fa fa-search" aria-hidden="true"/>
+                        <span>Buscar…</span>
+                        <kbd>⌘K</kbd>
+                    </button>
+                    <a t-if="request.env.user._is_public()" href="/web/login" class="qb-btn qb-btn--ghost qb-solo-escritorio">Portal de clientes</a>
+                    <a t-else="" href="/my" class="qb-btn qb-btn--ghost qb-solo-escritorio">Mi portal</a>
+                    <a href="/cotizar" class="qb-btn qb-btn--primario">Cotizar</a>
+                    <button type="button" class="qb-menu-btn" data-qb-menu="1" aria-label="Abrir menú" aria-expanded="false">
+                        <span/><span/>
+                    </button>
+                </div>
+            </div>
+            <div class="qb-movil" data-qb-movil="1">
+                <a href="/catalogo">Productos</a>
+                <a href="/disenar">Diseñe su tela</a>
+                <a href="/mercados/automotriz">Automotriz</a>
+                <a href="/mercados/blancos">Blancos</a>
+                <a href="/mercados/confeccion">Confección</a>
+                <a href="/planta">Planta</a>
+                <a href="/calidad">Calidad</a>
+                <a href="/nosotros">Nosotros</a>
+                <a href="/jobs">Empleos</a>
+                <a href="/my">Portal de clientes</a>
+                <a href="/cotizar" class="qb-btn qb-btn--primario">Solicitar cotización</a>
+            </div>
+        </header>
+        <!-- Buscador tipo paleta de comandos (⌘K): productos, mercados y páginas -->
+        <div class="qb qb-cmd" data-qb-cmd="1" hidden="hidden" role="dialog" aria-modal="true" aria-label="Buscar">
+            <div class="qb-cmd__caja">
+                <div class="qb-cmd__entrada">
+                    <i class="fa fa-search" aria-hidden="true"/>
+                    <input type="text" placeholder="Busque un código, gramaje, color o página…" autocomplete="off" aria-label="Buscar"/>
+                    <kbd>Esc</kbd>
+                </div>
+                <div class="qb-cmd__lista" role="listbox"/>
+                <div class="qb-cmd__pie"><span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>↵</kbd> abrir</span></div>
+            </div>
+        </div>
+    </template>
+
+    <template id="footer" name="Quimibond: pie">
+        <footer class="qb qb-footer">
+            <div class="qb-container">
+                <div class="qb-footer__cta qb-reveal">
+                    <div>
+                        <h2>¿Tiene una especificación? La fabricamos.</h2>
+                        <p>Envíenos gramaje, ancho, color y aplicación. Un asesor de Ventas le responde en un día hábil.</p>
+                    </div>
+                    <a href="/cotizar" class="qb-btn qb-btn--claro qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                </div>
+                <div class="qb-footer__cols">
+                    <div class="qb-footer__marca">
+                        <a href="/" class="qb-logo"><t t-call="website_quimibond.logo"/><span>Quimibond</span></a>
+                        <p>Entretelas y textiles técnicos fabricados en México desde 1992.</p>
+                        <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span></p>
+                    </div>
+                    <div>
+                        <h3>Productos</h3>
+                        <a href="/disenar">Diseñe su tela</a>
+                        <a href="/catalogo">Catálogo técnico</a>
+                        <a href="/mercados/automotriz">Automotriz</a>
+                        <a href="/mercados/blancos">Blancos</a>
+                        <a href="/mercados/confeccion">Confección</a>
+                    </div>
+                    <div>
+                        <h3>Empresa</h3>
+                        <a href="/nosotros">Nosotros</a>
+                        <a href="/planta">Planta y proceso</a>
+                        <a href="/calidad">Calidad y sustentabilidad</a>
+                        <a href="/jobs">Empleos</a>
+                    </div>
+                    <div>
+                        <h3>Clientes</h3>
+                        <a href="/cotizar">Solicitar cotización</a>
+                        <a href="/my">Portal de clientes</a>
+                        <a href="/helpdesk">Reporte de calidad</a>
+                        <a t-if="website.social_linkedin" t-att-href="website.social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
+                    </div>
+                    <div>
+                        <h3>Planta</h3>
+                        <address>
+                            <span t-out="res_company.street"/><br/>
+                            <span t-out="res_company.city"/><t t-if="res_company.zip">, C.P. <span t-out="res_company.zip"/></t><br/>
+                            <span t-out="res_company.country_id.name"/>
+                        </address>
+                        <a t-if="res_company.phone" t-attf-href="tel:#{res_company.phone}" t-out="res_company.phone"/>
+                    </div>
+                </div>
+                <div class="qb-footer__legal">
+                    <span>© <t t-out="datetime.date.today().year"/> Productora de No Tejidos Quimibond S.A. de C.V.</span>
+                    <span class="qb-footer__idiomas">
+                        <t t-foreach="frontend_languages.values() if frontend_languages else []" t-as="lg">
+                            <a t-att-href="url_localized(lang_code=lg.code)" t-att-class="'activo' if lg.code == lang else ''" t-out="lg.code.split('_')[0].upper()"/>
+                        </t>
+                    </span>
+                </div>
+            </div>
+        </footer>
+    </template>
+</odoo>
