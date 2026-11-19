@@ -116,7 +116,7 @@ class SgiSalesBudgetLine(models.Model):
                                    store=True)
     # PRECIO PRESUPUESTAL (3.5.0): se captura; al crear se sugiere de la lista.
     price_input = fields.Float(
-        string="Precio", digits=(16, 4),
+        string="Precio", digits=(16, 4), aggregator=None,  # 3.23.0: los precios no se suman al agrupar
         help="Precio presupuestal en la moneda y la base indicadas. Al crear el renglón se "
              "sugiere el de la lista del cliente; vacío = cuenta 0 («sin precio»).")
     price_currency_id = fields.Many2one(

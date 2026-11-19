@@ -2,111 +2,77 @@
 <odoo>
     <!-- Ventas → Presupuesto y pronóstico. Vivían en quimibond_sgi/views/sgi_menus.xml;
          mismos XML IDs, así que en producción conservan su id (E-002: documentos y
-         actividades apuntan a ellos).
+         actividades apuntan a ellos). «menu_sale_sgi_sales_forecast» abre el pronóstico
+         vigente: el documento F-P-A28-13 del SGI apunta a ese XML ID.
 
-         3.0.0 (limpieza, diseño v3): cuatro grupos.
-         - Pronóstico: lo que se usa cada semana (vigente, demanda, cambios, releases).
-         - Presupuesto: el anual y su análisis.
-         - Configuración: perfiles, partes, hojas del forecast y la carga única del Excel.
-         - Histórico: los documentos de pronóstico por cliente y año (solo lectura).
-         «menu_sale_sgi_sales_forecast» ahora abre el pronóstico vigente: el documento
-         F-P-A28-13 del SGI apunta a ese XML ID y debe llevar al pronóstico que se usa. -->
+         3.20.0 (Jose, 2026-11-19: «hay muchísimos menús… quitar lo que no sirve»): revisión de
+         cada menú contra su uso en producción. De 36 entradas a 20. Se quitaron (solo el menú;
+         modelos, acciones y datos se quedan):
+         - Comparación de precios, Hojas del forecast, Cargar forecast de Excel: dependen del
+           forecast.xlsx, que ya no se mantiene (la comparación corrió una vez, el 4-nov).
+         - Pronósticos anteriores (grupo Histórico): 21 documentos obsoletos.
+         - Releases por revisar: misma lista que Releases con otro filtro (Releases abre en lo pendiente).
+         - Anual, Cliente y artículo, Análisis: la misma tabla que «Presupuesto contra real»
+           agrupada distinto; quedan como favoritos (Análisis además es botón de la ficha).
+         - Venta real: líneas de factura en bruto; el comparativo trae lo real en $, m y kg.
+         - Cierre de ventas (PDF): botón de la ficha del presupuesto.
+         - Capacidad semanal y Demanda por cliente en Ventas: son de Planeación (Fabricación).
+         - Pegar semanas, Imprimir o descargar, Armar presupuesto del mes: botones arriba de su lista. -->
     <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
               parent="sale.sale_menu_root" sequence="6"
               groups="quimibond_sgi.group_sgi_user"/>
 
+    <!-- Pronóstico -->
     <menuitem id="menu_sale_qb_grupo_pronostico" name="Pronóstico"
               parent="menu_sale_sgi_planning" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronóstico vigente"
               parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_action" sequence="10"/>
-    <!-- 3.2.0: matriz semanal. -->
     <menuitem id="menu_sale_qb_forecast_grid" name="Captura semanal"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_grid_action" sequence="15"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_line_grid_action" sequence="20"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sale_qb_demand_line" name="Demanda por cliente"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_demand_line_action" sequence="20"/>
-    <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_change_action" sequence="30"/>
-    <!-- 3.15.0 -->
+    <menuitem id="menu_sale_qb_release" name="Releases"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_release_action" sequence="30"/>
     <menuitem id="menu_sale_qb_order_proposal" name="Proponer pedidos"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_order_proposal_action" sequence="35"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-    <!-- 3.16.0 -->
-    <menuitem id="menu_sale_qb_release_inbox" name="Releases por revisar"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_release_inbox_action" sequence="38"/>
-    <menuitem id="menu_sale_qb_release" name="Releases de clientes"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_release_action" sequence="40"/>
-    <!-- 3.1.0: captura de los clientes sin lector de release. -->
-    <menuitem id="menu_sale_qb_forecast_paste" name="Pegar semanas desde Excel"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_paste_action" sequence="50"
+              parent="menu_sale_qb_grupo_pronostico" action="qb_order_proposal_action" sequence="40"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
 
-    <!-- 3.6.0 -->
-    <menuitem id="menu_sale_qb_forecast_print" name="Imprimir o descargar"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_forecast_print_action" sequence="60"/>
-
+    <!-- Presupuesto -->
     <menuitem id="menu_sale_qb_grupo_presupuesto" name="Presupuesto"
               parent="menu_sale_sgi_planning" sequence="20"/>
-    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
+    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuesto anual"
               parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_budget_action" sequence="10"/>
-    <!-- 3.7.0 -->
-    <menuitem id="menu_sale_qb_budget_proposal" name="Armar propuesta del año"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_budget_proposal_action" sequence="15"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-    <!-- 3.8.0 -->
-    <menuitem id="menu_sale_qb_sales_project" name="Proyectos comerciales"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_project_action" sequence="17"/>
-    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_qb_grupo_presupuesto" action="sgi_sales_analysis_mercado_action" sequence="20"/>
-    <!-- 3.14.0 -->
     <menuitem id="menu_sale_qb_month_plan" name="Presupuesto del mes"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_action" sequence="12"/>
-    <menuitem id="menu_sale_qb_month_plan_build" name="Armar presupuesto del mes"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_build_action" sequence="13"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_action" sequence="20"/>
+    <menuitem id="menu_sale_qb_sales_project" name="Proyectos comerciales"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_project_action" sequence="30"/>
+    <menuitem id="menu_sale_qb_budget_proposal" name="Armar propuesta del año"
+              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_budget_proposal_action" sequence="40"
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-    <!-- 3.4.0 -->
-    <menuitem id="menu_sale_qb_price_check" name="Comparación de precios"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_price_check_action" sequence="30"/>
 
-    <!-- 3.11.0: reportes sobre la venta real y el comparativo (diseño v3, 2.7 y 2.8). -->
+    <!-- Reportes -->
     <menuitem id="menu_sale_qb_grupo_reportes" name="Reportes"
               parent="menu_sale_sgi_planning" sequence="25"/>
-    <menuitem id="menu_sale_qb_compare_monthly" name="Cierre mensual por mercado"
+    <menuitem id="menu_sale_qb_compare_monthly" name="Presupuesto contra real"
               parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_monthly_server" sequence="10"/>
-    <menuitem id="menu_sale_qb_compare_annual" name="Anual"
-              parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_annual_server" sequence="20"/>
-    <menuitem id="menu_sale_qb_compare_client" name="Cliente y artículo"
-              parent="menu_sale_qb_grupo_reportes" action="qb_sales_compare_client_server" sequence="30"/>
-    <menuitem id="menu_sale_qb_sales_close" name="Cierre de ventas (PDF)"
-              parent="menu_sale_qb_grupo_reportes" action="qb_sales_close_action" sequence="15"/>
-    <menuitem id="menu_sale_qb_sales_actual" name="Venta real"
-              parent="menu_sale_qb_grupo_reportes" action="qb_sales_actual_action" sequence="40"/>
+    <menuitem id="menu_sale_qb_forecast_change" name="Cambios del pronóstico"
+              parent="menu_sale_qb_grupo_reportes" action="qb_forecast_change_action" sequence="20"/>
     <menuitem id="menu_sale_qb_sales_missing" name="Faltantes"
-              parent="menu_sale_qb_grupo_reportes" action="qb_sales_missing_action" sequence="50"/>
+              parent="menu_sale_qb_grupo_reportes" action="qb_sales_missing_action" sequence="30"/>
 
+    <!-- Configuración -->
     <menuitem id="menu_sale_qb_grupo_config" name="Configuración"
               parent="menu_sale_sgi_planning" sequence="90"/>
-    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
-              parent="menu_sale_qb_grupo_config" action="qb_release_profile_action" sequence="10"/>
     <menuitem id="menu_sale_qb_order_rule" name="Cómo pide cada cliente"
-              parent="menu_sale_qb_grupo_config" action="qb_order_rule_action" sequence="15"/>
+              parent="menu_sale_qb_grupo_config" action="qb_order_rule_action" sequence="10"/>
+    <menuitem id="menu_sale_qb_delivery_terms" name="Condiciones de entrega"
+              parent="menu_sale_qb_grupo_config" action="qb_delivery_terms_action" sequence="20"/>
     <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
-              parent="menu_sale_qb_grupo_config" action="qb_customer_part_action" sequence="20"/>
-    <menuitem id="menu_sale_qb_forecast_sheet" name="Hojas del forecast"
-              parent="menu_sale_qb_grupo_config" action="qb_forecast_sheet_action" sequence="30"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
-    <!-- 2.0.1 (Jose, 2026-11-05): el Excel se carga una sola vez; después el pronóstico vive en
-         Odoo (releases y captura). El menú queda solo para el administrador del SGI. -->
-    <menuitem id="menu_sale_qb_forecast_import" name="Cargar forecast de Excel"
-              parent="menu_sale_qb_grupo_config" action="qb_forecast_import_action" sequence="40"
-              groups="quimibond_sgi.group_sgi_manager"/>
+              parent="menu_sale_qb_grupo_config" action="qb_customer_part_action" sequence="30"/>
+    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
+              parent="menu_sale_qb_grupo_config" action="qb_release_profile_action" sequence="40"/>
 
-    <menuitem id="menu_sale_qb_grupo_historico" name="Histórico"
-              parent="menu_sale_sgi_planning" sequence="95"/>
-    <menuitem id="menu_sale_qb_forecast_line" name="Pronósticos anteriores"
-              parent="menu_sale_qb_grupo_historico" action="sgi_sales_forecast_action" sequence="10"/>
-
-    <!-- Planeación lo consulta desde Fabricación, sin entrar a Ventas. -->
+    <!-- Planeación lo consulta desde Fabricación, sin entrar a Ventas. Imprimir o descargar
+         es botón de la lista del pronóstico vigente desde 3.20.0. -->
     <menuitem id="menu_mrp_qb_planeacion_ventas" name="Pronóstico de ventas"
               parent="mrp.menu_mrp_root" sequence="35"
               groups="group_qb_planeacion,mrp.group_mrp_user"/>
@@ -114,8 +80,8 @@
               parent="menu_mrp_qb_planeacion_ventas" action="qb_demand_line_action" sequence="10"/>
     <menuitem id="menu_mrp_qb_forecast_line" name="Pronóstico vigente"
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_line_action" sequence="20"/>
+    <menuitem id="menu_mrp_qb_forecast_capacity" name="Capacidad semanal"
+              parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_week_capacity_action" sequence="25"/>
     <menuitem id="menu_mrp_qb_forecast_change" name="Cambios del pronóstico"
               parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_change_action" sequence="30"/>
-    <menuitem id="menu_mrp_qb_forecast_print" name="Imprimir o descargar"
-              parent="menu_mrp_qb_planeacion_ventas" action="qb_forecast_print_action" sequence="40"/>
 </odoo>

@@ -21,6 +21,186 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ficha del presupuesto anual con vistas nativas (19.0.3.23.0, 2026-11-19)
+
+Jose no quiso el tablero de la 3.22.0 (tablas en HTML hechas a mano): «lo necesito lo más nativo de Odoo
+posible; asegura que las vistas y la navegación funcionen perfecto». Se quitaron los campos HTML. La ficha
+queda con elementos estándar:
+
+- **Campos** «Al corte» (presupuesto, venta, diferencia, cumplimiento con barra de avance) y «Año»
+  (presupuesto del año, lo que pone el presupuesto del mes, cierre estimado y su % con barra), y
+  **cumplimiento por mercado** (Industrial, Confección, Especiales y a tipo de cambio presupuestal) con barra.
+- **Botones inteligentes:** Renglones (lista agrupada por mercado y cliente, pivote), **Por mercado**,
+  **Por mes** (gráfica de presupuesto contra venta por mes) y **Por cliente** (cliente y artículo), que abren
+  el comparativo `qb.sales.compare` filtrado a este presupuesto y la venta del año, en pivote, gráfica y
+  lista; Variaciones (volumen, precio, tipo de cambio por renglón) y Cierre de ventas.
+- **Pestañas:** Renglones (de nuevo en la ficha, como antes), Diferencia, Objetivo, Tipo de cambio y
+  Justificación.
+- El comparativo gana la fuente **«Presupuesto del mes»** (los renglones del presupuesto del mes en los
+  meses y mercados sin renglones del anual, ligados al presupuesto vigente o en captura), la medida
+  **Importe** (presupuesto o venta, para graficarlos juntos por fuente), una **lista** y la bajada al detalle
+  desde el pivote (antes estaba apagada).
+- **Cierre estimado por mercado:** en un mes con presupuesto del mes, cada mercado que ese documento no trae
+  (Confección y Especiales mientras los vendedores no capturan) usa el anual.
+- **Probado navegando** en el build de la rama con datos de prueba (presupuesto 2026, facturas de enero a
+  octubre, presupuesto del mes de noviembre). Se corrigió lo que salió: la gráfica por mes va con barras
+  lado a lado (apiladas sumaba presupuesto y venta), el año sin separador de miles («2026», no «2,026»; en Odoo 19 la opción es `enable_formatting`),
+  el precio de los renglones no se suma al agrupar, y Renglones abre sin la matriz (en Odoo 19 la vista
+  grid sin periodos truena al cambiar a ella).
+- **Pruebas:** las del presupuesto anual no corrían en Odoo 19 (el cliente de prueba usaba
+  `res.partner.team_id`, que ya no existe; ahora toma el equipo de su vendedor), y la prueba del
+  comparativo guarda los renglones antes de leer la vista SQL.
+
+## Ficha del presupuesto anual con tablero (19.0.3.22.0, 2026-11-19)
+
+Reemplazada por la 3.23.0 (arriba). Jose (19-nov) pidió mejorar la vista del presupuesto anual y eligió todas las propuestas. La ficha era una
+pared de textos («Industrial 115,318,254 · …») con 854 renglones abajo; ahora (`models/sgi_sales_budget_tablero.py`):
+
+- **Tablero arriba:** presupuesto del año, al corte, vendido al corte, cumplimiento con semáforo (verde desde
+  90 %, ámbar desde el mínimo de Ajustes) y **cierre estimado**.
+- **Pestañas Por mercado, Por mes y Por cliente** (tablas de solo lectura) con un botón que abre el análisis
+  agrupado igual para bajar al renglón. Por mercado separa la diferencia en volumen, precio, tipo de cambio,
+  presupuesto del mes y venta sin renglón, con los proyectos debajo de su mercado. Por mes trae presupuesto,
+  facturado, pedido de los renglones, acumulados y el estimado: lo vendido en los meses cerrados; en los que
+  faltan, el presupuesto del mes (la foto del pronóstico vigente con precio) o, si no hay, el anual; si ya se
+  vendió más, lo vendido. Por cliente: los 15 principales, otros, Confección (sin cliente) y la venta a
+  clientes sin presupuesto. La venta es la del cumplimiento (regla del VE-02, sin saldos), así que cuadra.
+- **Renglones fuera de la ficha:** botón «Renglones» que abre la lista agrupada por mercado y cliente, con la
+  matriz y el pivote. Objetivo, cantidades y lo demás pasan a la pestaña «Objetivo y detalle».
+- **Meses sin renglones del presupuesto del mes:** la REV2 de 2026 no trae Industrial ni Proyectos en
+  noviembre y diciembre. Un mes y mercado sin ningún renglón en el anual toma lo que pone el presupuesto del
+  mes de ese mes (borrador o enviado; donde el anual trae algo, manda el anual): suma al presupuesto del año,
+  al presupuesto al corte, al cumplimiento, al crecimiento contra el año anterior, al aviso de cierre de mes y
+  al cierre de ventas (PDF). En la diferencia aparece como «presupuesto del mes», así que las partes siguen
+  sumando. El total de los renglones (`amount_budget_total`) no cambia.
+
+## Pedidos fuera del pronóstico y días hábiles (19.0.3.21.0, 2026-11-19)
+
+Respuestas de Jose del 19-nov:
+
+- **Los pedidos de productos que el cliente no pronostica entran al pronóstico** (producto de línea de
+  otro cliente, proyecto, muestra), porque también van al presupuesto. Al actualizar pedidos (cron
+  diario, al aplicar un release, al capturar) cada pedido confirmado desde la semana en curso deja una
+  semana con origen «Pedido del cliente» (filtro «De pedido»): cliente, producto, semana de compromiso,
+  la OC y la cantidad pedida (no la pendiente, para que lo entregado siga en el mes). No se agrega si el
+  cliente ya pronostica ese artículo (el pronóstico manda), si el pedido nació de «Proponer pedidos» o
+  si el cliente es de Confección (pronostica sin cliente). Si el pedido cambia, la semana cambia; si se
+  cancela, se quita; si Ventas la corrige, pasa a «Captura» y el pedido ya no la toca. No cuenta como
+  pronóstico sin pedido en la Demanda y «Proponer pedidos» no la propone otra vez. Las semanas pasadas
+  no se tocan.
+- **Días hábiles de adelanto**: los días de adelanto de las condiciones de entrega se cuentan sin
+  sábados ni domingos (5 = una semana) y la fecha de embarque nunca cae en fin de semana. Los días de
+  tránsito del perfil del release siguen siendo naturales. Aplica a los releases que se lean desde
+  ahora.
+
+## Menús recortados (19.0.3.20.0, 2026-11-19)
+
+Jose (19-nov): «siento que ya hay muchísimos menús… quitar lo que no sirve… no porque tenga datos
+significa que funciona». Se revisó cada menú contra su uso en producción (quién lo usó y cuándo, si duplica
+otra vista). Ventas → Presupuesto y pronóstico pasa de 36 entradas a 20 (mismos XML IDs):
+
+- **Pronóstico:** Pronóstico vigente (botones arriba de la lista: «Pegar desde Excel», solo gerentes, e
+  «Imprimir o descargar»), Captura semanal, Releases (un solo menú; abre con lo pendiente agrupado por
+  estado), Proponer pedidos.
+- **Presupuesto:** Presupuesto anual (Análisis y Cierre de ventas son botones de la ficha), Presupuesto del
+  mes (botón «Armar presupuesto del mes» arriba de la lista), Proyectos comerciales, Armar propuesta del año.
+- **Reportes:** Presupuesto contra real (antes «Cierre mensual por mercado»; favoritos compartidos «Por año
+  y mercado» y «Por cliente y artículo», que eran los menús «Anual» y «Cliente y artículo»), Cambios del
+  pronóstico, Faltantes.
+- **Configuración:** Cómo pide cada cliente, Condiciones de entrega, Partes del cliente, Perfiles de release.
+
+Menús quitados (los modelos, acciones y datos se quedan): Comparación de precios, Hojas del forecast y
+Cargar forecast de Excel (dependen del forecast.xlsx, que ya no se mantiene; la comparación corrió una vez,
+el 4-nov), Pronósticos anteriores y su grupo Histórico (21 documentos obsoletos), Releases por revisar,
+Análisis, Anual, Cliente y artículo, Venta real (el comparativo trae lo real en pesos, metros y kilos),
+Cierre de ventas (PDF), y en Ventas Capacidad semanal y Demanda por cliente (son de Planeación; en las 56
+semanas nadie había capturado capacidad). Fabricación → Pronóstico de ventas queda con Demanda por
+cliente, Pronóstico vigente, Capacidad semanal y Cambios del pronóstico.
+
+## Condiciones de entrega por cliente (19.0.3.19.0, 2026-11-19)
+
+Jose (19-nov): «¿no crees que necesitamos una parte en algún lado en donde podamos poner la
+presentación de entrega de los clientes?… también agrega número de empalmes y todo eso». Las reglas de
+3.18.0 vivían en el perfil de release, que solo tienen los clientes con release; ahora hay una ficha por
+cliente y planta, tenga o no release: **Ventas → Presupuesto y pronóstico → Configuración → Condiciones
+de entrega** (`qb.delivery.terms`).
+
+- **Cuándo se embarca:** día de recolección, días de adelanto (embarcar antes de la fecha en planta del
+  cliente; el release los usa si su perfil no trae días de tránsito), colchón en días (sin día de
+  recolección, la fecha del pedido es la del cliente menos el colchón; 1 por omisión) y capacidad
+  asignada por semana (informativa).
+- **Al aplicar el release:** semanas congeladas, semanas por embarque y su primer embarque, y «Manda
+  cantidades cerradas» (no redondea). Las reglas de 3.18.0 leen de aquí.
+- **Presentación:** rollo y empalmes máximos del cliente, y por producto (`qb.delivery.terms.line`): largo
+  del rollo y si se redondea, ancho, tubo / core, empalmes máximos, tramo mínimo entre empalmes, peso
+  máximo, rollos por tarima, empaque, etiqueta y notas. Documentos del embarque y etiquetado en su
+  pestaña.
+- **Proponer pedidos:** la fecha de entrega de un pedido nuevo es el día de recolección de la semana de
+  embarque o, sin él, la fecha del cliente menos el colchón.
+- Migración: una ficha por perfil de release con 3 semanas congeladas; en `main` (3.18.0) pasan las
+  semanas congeladas, los embarques y el rollo del perfil, y el rollo de cada parte del cliente. Se
+  quitan esos campos del perfil y de la parte.
+
+**Siguiente:** que Inspección avise si un rollo final pasa los empalmes máximos del cliente
+(`quimibond_rollos_bitacora` ya cuenta los empalmes) y los acumulados de Saltillo.
+
+## Reglas del release por cliente (19.0.3.18.0, 2026-11-19)
+
+Jose (19-nov) describió lo que hacía a mano después de subir cada release, cliente por cliente, y pidió
+que fuera **escalable**: nada de código por cliente. Las reglas son configuración del **perfil de
+release** («Al aplicar el release») y de la **parte del cliente**; el motor es Python puro
+(`release/reglas.py`, pruebas en `tests_puros/ventas_presupuesto/test_reglas.py`).
+
+- **Semanas congeladas** (perfil, 3 por omisión): las semanas desde la semana en curso que Planeación ya
+  programó se quedan como estaban. Lo que el cliente sube en ellas entra en la semana siguiente (la 4);
+  lo que baja se resta de la 4 y, si no alcanza, de la 5 y las demás, sin dejar ninguna bajo cero.
+  0 = sin congelar (Blancos y Pieles, que mueven semanas congeladas, no tienen release).
+- **Semanas por embarque** (perfil): la demanda de cada bloque de N semanas se suma en la primera
+  semana del bloque (FXI Juárez: 4). Los bloques se cuentan desde «Primer embarque de los bloques»
+  para que no se recorran cada semana.
+- **Rollo** (perfil, y la parte del cliente gana): cada semana después de las congeladas se sube al
+  múltiplo del rollo (505 yd con rollos de 500 → 1000). Shawmut: 500 yd en el perfil; FXI:
+  WD038Q46JNT163 1000 yd y WD038Q46JNG163 500 yd en sus partes. 0 = cantidades cerradas.
+- «Pide el cliente» guarda lo del release tal cual; la columna **Reglas del release** dice qué hizo
+  cada regla en la semana («Congelada: el cliente pide 250, se queda 200», «Recibe +50 de las semanas
+  congeladas», «Junta la semana del…», «Redondeado de 450 a 600»). Lo que hace una regla **no** es un
+  ajuste de Ventas: el siguiente release lo vuelve a calcular. Un ajuste de Ventas (3.17.0) sigue
+  ganando sobre las reglas.
+- **Capacidad semanal** (Pronóstico y Fabricación → Capacidad semanal): metros del pronóstico vigente
+  de cada semana, de todos los clientes, contra la capacidad de venta que da Producción (parámetro
+  `quimibond_ventas_presupuesto.forecast_capacity_m`, 250,000 m), editable por semana porque cambia.
+  En rojo si se pasa, en amarillo arriba de 90 %. Solo avisa.
+- Al actualizar, todos los perfiles quedan con 3 semanas congeladas, un embarque por semana y sin
+  rollo.
+
+**Siguiente:** acumulados (restar lo enviado que el release del cliente todavía no ve: Saltillo), día
+de recolección por cliente y el colchón de un día en la fecha de entrega.
+
+## Ventas ajusta las semanas del release (19.0.3.17.0, 2026-11-18)
+
+Jose (18-nov): «necesito poder modificar las semanas una vez que suba los releases de los clientes
+[…] así como planeación va metiendo el plan maestro». Las semanas ya se podían cambiar (Captura
+semanal, o la semana en Pronóstico vigente), pero el siguiente release volvía a poner lo que pedía el
+cliente y la corrección se perdía. Decisión de Jose (18-nov): **conservar el ajuste y avisar**.
+
+- Cada semana del release guarda **Pide el cliente** (`qty_release`, unidad de venta) aparte de la
+  cantidad del pronóstico, que es la que Ventas decide enviar.
+- Si Ventas cambia la cantidad (matriz, lista o ficha), la semana queda **Ajustada por Ventas**. En la
+  matriz, una semana del release en cero **no se quita**: queda en cero («no enviamos esa semana»).
+- **Aplicar** un release ya no pisa una semana ajustada: actualiza «Pide el cliente», el release, la
+  OC y la fecha del cliente, y si el cliente cambió su número (o ya no trae la semana) la marca **El
+  cliente cambió** (en amarillo, con su filtro) y lo anota en Cambios del pronóstico y en el chatter del
+  release. Lo no ajustado sigue al release como antes.
+- En la lista y en la ficha: **Volver al release** (la semana regresa a lo que pide el cliente; si ya
+  no lo pide, se quita) y **Conservar el ajuste** (quita la marca).
+- El presupuesto anual, el presupuesto del mes («Volver a armar»), la Demanda de Planeación y
+  «Proponer pedidos» leen la cantidad ajustada. Una semana ajustada a cero sin pedido no se propone.
+- Si el release trae la misma tela en otro código (metros / kilos) que la semana ajustada, gana el
+  release (no se puede conservar una cantidad de otra unidad).
+- Migración: las semanas del release toman su cantidad como «Pide el cliente»; las que Ventas ya había
+  corregido después de un release quedan ajustadas con lo que pedía ese release (Shawmut, semana del
+  9-nov: pide 245.68, ajustada a 5 kg).
+
 ## Ventas pone la fecha de entrega (19.0.3.16.7, 2026-11-10)
 
 Jose (10-nov): «en algún punto del proceso Jessica tiene que poder ponerle la fecha de entrega que

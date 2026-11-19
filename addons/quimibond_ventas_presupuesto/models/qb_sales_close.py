@@ -69,6 +69,13 @@ class SgiSalesBudgetClose(models.Model):
             row['bud_y'] += line.amount_budget
             if line.date >= month:
                 row['bud_m'] += line.amount_budget
+        # 3.22.0: los meses y mercados sin renglones toman el presupuesto del mes.
+        for (fill_month, mercado), amount in self._qb_month_plan_fill().items():
+            if fill_month <= month_end:
+                row = rows[mercado if mercado in rows else 'otro']
+                row['bud_y'] += amount
+                if fill_month >= month:
+                    row['bud_m'] += amount
         Actual = self.env['qb.sales.actual'].sudo()
         base = [('company_id', '=', self.company_id.id), ('es_saldo', '=', False)]
         for mercado, start, amount in Actual._read_group(

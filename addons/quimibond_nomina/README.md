@@ -538,6 +538,52 @@ Miguel y Lorena del 20 y 21 de octubre de 2026:
 - **Sin ninguna checada** en la semana: «?» y no se marcan faltas (aún no
   registra su huella). Días posteriores a hoy: se proyectan con el horario.
 
+**Por turno (1.20.0).** Todo el personal semanal tiene el mismo horario en el
+contrato (lunes a jueves 10, viernes 8), pero la planta trabaja 6 turnos (archivo
+«TURNOS NOVIEMBRE 2026» de RH, 11-nov-2026; rotan cada 15 días salvo los de
+turno fijo): 1 07–17 L–V, 2 08–18 L–V, 3 07–19 L–J, 4 19–07 L–J, 5 19–07 Ma–J y
+domingo 07–19, 6 19–07 Sá–Lu. Medido contra el horario, el paralelo de la semana
+47 dio 104 faltas contra 6 de RH (los de noche y fin de semana salían con falta
+los días que no les tocan) y 543 horas extra dobles contra 385 (las 12 horas del
+turno salían como 2 de extra diarias). Ahora:
+
+- La ficha del empleado tiene **Turno (RH)** y **Turno fijo** (pestaña de
+  nómina, junto a los datos del IMSS). Se llenan del archivo de turnos de RH.
+- Cada semana, `inferir_turno` reconoce de las checadas cuál de los 6 turnos
+  trabajó la persona (horas dentro de sus jornadas, menos lo que faltó de
+  cubrir, menos la mitad de lo trabajado fuera). El de RH gana si queda a menos
+  de 12 horas del mejor (2 hasta 1.20.0) (así se separan el 1 y el 2). Si el checador ve otro,
+  se usa el del checador y queda en Observaciones («Turno 4 según checador;
+  RH lo tiene en el 3»). Sin checadas, el de RH; sin nada, el horario como antes.
+- Con el turno: **faltas** solo en sus días (los del horario que no son del
+  turno se pagan; una falta en sábado o domingo del turno quita sus 12 horas);
+  **retardos y salidas antes** contra su entrada y duración; **tiempo extra**
+  lo que pasa de las horas del turno ese día y todo lo trabajado en un día que
+  no es del turno. La **base de pago no cambia** (48 horas) ni la prima dominical.
+- El renglón muestra «Turno de la semana» (y «Turno según RH», oculto por
+  defecto).
+
+Supuesto por confirmar con RH: el viernes de los turnos 1 y 2 es de 8 horas
+(07:00–15:00 y 08:00–16:00), como el horario de la planta.
+
+**Ajustes de 1.21.0** (semana 47 en producción contra lo capturado por RH,
+19-nov-2026: con 1.20.0 salían 25 días de falta contra 12, 195 horas dobles
+contra 385 y 296 horas de prima dominical contra 180):
+
+- **Turno 3** son cuatro días de 12 horas entre lunes y viernes: quien no vino
+  un día y repuso otro (casi siempre el viernes) no tiene falta. Falta solo si
+  trabajó menos de cuatro; el quinto día trabajado es todo extra.
+- **Tiempo extra de los turnos 3 y 4**: lo que pasa de las horas del horario
+  ese día (10 de lunes a jueves, 8 el viernes), como lo paga RH. Los turnos 5
+  y 6 no llevan extra dentro de su turno.
+- **Prima dominical**: 12 horas por semana como máximo (el turno 6 que entra
+  sábado y domingo en la noche cobraba 24).
+- **El turno de RH pesa más**: el del checador gana solo con más de 12 horas
+  de diferencia (antes 2), así un día faltante no cambia el turno 3 por el 1.
+
+Pendiente de confirmar con RH (correo del 19-nov-2026): la regla exacta del
+tiempo extra de los turnos 3 y 4 y los días del turno 3.
+
 «Marcar revisada» y «Pasar a recibos» (elegir la corrida) escriben `FALTAS`,
 `HE_DOBLE`, `H_SENCILLA`, `DOM` y `HE_DIAS` en los recibos en borrador o por
 verificar de esa persona (borra antes las suyas de esos tipos) y los

@@ -198,6 +198,15 @@ class SgiSalesBudget(models.Model):
         help="Venta al corte entre presupuesto al corte, por 100.")
     fulfillment_by_mercado_text = fields.Char(string="Cumplimiento por mercado",
                                               compute='_compute_fulfillment')
+    # 3.23.0: el cumplimiento por mercado como campos (barra de avance en la ficha).
+    fulfillment_industrial_pct = fields.Float(
+        string="Industrial (%)", compute='_compute_fulfillment', digits=(16, 1),
+        help="Venta al corte del equipo de Industrial entre su presupuesto al corte (con Proyectos industrial).")
+    fulfillment_confeccion_pct = fields.Float(
+        string="Confección (%)", compute='_compute_fulfillment', digits=(16, 1),
+        help="Venta al corte del equipo de Confección entre su presupuesto al corte (con Proyectos confección).")
+    fulfillment_especiales_pct = fields.Float(
+        string="Especiales (%)", compute='_compute_fulfillment', digits=(16, 1))
     # 3.6.1: la misma venta a tipo de cambio presupuestal (lo vendido en dólares por el tipo
     # de cambio del mes del presupuesto): cumplimiento sin el efecto del tipo de cambio.
     amount_sales_budget_rate = fields.Monetary(
@@ -221,6 +230,13 @@ class SgiSalesBudget(models.Model):
         string="Venta sin presupuesto", compute='_compute_fulfillment',
         help="Lo que queda: venta que no cae en ningún renglón (otro mes, otro cliente, producto o "
              "cliente sin presupuesto), a TC presupuestal. Detalle en «Conciliar facturado».")
+    # 3.22.0: lo que el presupuesto del mes pone en los meses y mercados que el anual no trae (la REV2
+    # de 2026 no trae Industrial ni Proyectos en noviembre y diciembre). Suma al presupuesto al corte con
+    # signo contrario, para que las partes sigan sumando la diferencia.
+    effect_month_plan = fields.Monetary(
+        string="Presupuesto del mes (meses sin renglones)", compute='_compute_fulfillment',
+        help="Menos lo que el presupuesto del mes agrega al presupuesto al corte en los meses y mercados "
+             "que el anual no trae.")
     effects_by_mercado_text = fields.Text(string="Diferencia por mercado", compute='_compute_fulfillment')
     fulfillment_budget_rate_pct = fields.Float(
         string="Cumplimiento a TC presupuestal (%)", compute='_compute_fulfillment', digits=(16, 1))
@@ -306,7 +322,10 @@ class SgiSalesBudget(models.Model):
             base = budget.base_anio_anterior
             budget.objetivo_amount = base * (1 + budget.objetivo_pct / 100.0)
             budget.minimo_amount = base * (1 + budget.minimo_pct / 100.0)
-            budget.growth_pct = ((budget.amount_budget_total / base - 1) * 100.0) if base else 0.0
+            # 3.22.0: contra el año completo (con lo que el presupuesto del mes pone en los meses sin
+            # renglones); con solo los renglones de la REV2 de 2026 salía −7.4 %.
+            full = budget.amount_budget_total + sum(budget._qb_month_plan_fill().values())
+            budget.growth_pct = ((full / base - 1) * 100.0) if base else 0.0
 
     @api.depends('line_ids.amount_budget', 'line_ids.mercado')
     def _compute_amount_by_mercado(self):
@@ -446,6 +465,26 @@ class SgiSalesBudget(models.Model):
         first = today.replace(day=1)
         return None if first.month == 1 else first - relativedelta(days=1)
 
+    def _qb_month_plan_fill(self):
+        """{(primer día del mes, mercado): importe} que los presupuestos del mes (``qb.sales.month.plan``,
+        borrador o enviado) ponen en los meses y mercados del año **sin ningún renglón** en este
+        presupuesto anual (3.22.0). Donde el anual trae algo, manda el anual. Vacío en un pronóstico o
+        un documento obsoleto."""
+        self.ensure_one()
+        if self.kind != 'presupuesto' or self.state == 'obsoleto' or not self.year \
+                or 'qb.sales.month.plan' not in self.env:
+            return {}
+        covered = {(line.date.replace(day=1), line.mercado) for line in self.line_ids if line.date}
+        out = defaultdict(float)
+        plans = self.env['qb.sales.month.plan'].sudo().search([
+            ('company_id', '=', self.company_id.id),
+            ('month', '>=', date(self.year, 1, 1)), ('month', '<=', date(self.year, 12, 31))])
+        for plan in plans:
+            for line in plan.line_ids:
+                if line.mercado in MERCADO_BASE and (plan.month, line.mercado) not in covered:
+                    out[(plan.month, line.mercado)] += line.amount
+        return dict(out)
+
     @api.depends('line_ids.amount_budget', 'line_ids.date', 'line_ids.mercado', 'year', 'kind', 'state')
     def _compute_fulfillment(self):
         labels = {'industrial': "Industrial", 'confeccion': "Confección", 'especiales': "Especiales"}
@@ -459,14 +498,21 @@ class SgiSalesBudget(models.Model):
                 budget.amount_budget_to_date = budget.amount_sales_to_date = 0.0
                 budget.amount_sales_budget_rate = budget.fx_effect = 0.0
                 budget.amount_difference = budget.effect_volume = budget.effect_price = 0.0
-                budget.effect_unbudgeted = 0.0
+                budget.effect_unbudgeted = budget.effect_month_plan = 0.0
                 budget.effects_by_mercado_text = False
                 budget.fulfillment_pct = budget.fulfillment_budget_rate_pct = 0.0
                 budget.fulfillment_by_mercado_text = False
+                budget.fulfillment_industrial_pct = budget.fulfillment_confeccion_pct = 0.0
+                budget.fulfillment_especiales_pct = 0.0
                 continue
             planned = defaultdict(float)
             for line in budget.line_ids.filtered(lambda l: l.date and l.date <= cutoff):
                 planned[MERCADO_BASE.get(line.mercado)] += line.amount_budget
+            fill = defaultdict(float)
+            for (month, mercado), amount in budget._qb_month_plan_fill().items():
+                if month <= cutoff:
+                    fill[MERCADO_BASE[mercado]] += amount
+                    planned[MERCADO_BASE[mercado]] += amount
             sold = defaultdict(float)
             sold_budget_rate = defaultdict(float)
             company_ccy = budget.currency_id
@@ -494,24 +540,27 @@ class SgiSalesBudget(models.Model):
             budget.amount_difference = budget.amount_sales_to_date - to_date
             budget.effect_volume = sum(lines.mapped('effect_volume'))
             budget.effect_price = sum(lines.mapped('effect_price'))
+            budget.effect_month_plan = -sum(fill.values())
             budget.effect_unbudgeted = (budget.amount_difference - budget.effect_volume
-                                        - budget.effect_price - budget.fx_effect)
+                                        - budget.effect_price - budget.fx_effect - budget.effect_month_plan)
             # 3.6.3: cada mercado suma exacto como el total: el TC es el de toda su venta
             # (también la que no tiene renglón) y lo que queda es venta sin presupuesto.
             rows = []
             fmt = '{:,.0f}'.format
             for base in ('industrial', 'confeccion', 'especiales'):
                 mine = lines.filtered(lambda l, b=base: MERCADO_BASE.get(l.mercado) == b)
-                if not mine and not sold.get(base):
+                if not mine and not sold.get(base) and not fill.get(base):
                     continue
                 diff = sold.get(base, 0.0) - planned.get(base, 0.0)
                 volume = sum(mine.mapped('effect_volume'))
                 price = sum(mine.mapped('effect_price'))
                 fx = sold.get(base, 0.0) - sold_budget_rate.get(base, 0.0)
+                month_plan = -fill.get(base, 0.0)
                 rows.append("%s: venta − presupuesto %s = volumen %s + precio %s + TC %s"
-                            " + sin presupuesto %s" % (
+                            "%s + sin presupuesto %s" % (
                                 labels[base], fmt(diff), fmt(volume), fmt(price), fmt(fx),
-                                fmt(diff - volume - price - fx)))
+                                (" + presupuesto del mes %s" % fmt(month_plan)) if month_plan else "",
+                                fmt(diff - volume - price - fx - month_plan)))
             budget.effects_by_mercado_text = "\n".join(rows)
             parts = []
             for base in ('industrial', 'confeccion', 'especiales'):
@@ -520,6 +569,9 @@ class SgiSalesBudget(models.Model):
                 elif sold.get(base):
                     parts.append("%s sin presupuesto (%s vendidos)" % (labels[base], '{:,.0f}'.format(sold[base])))
             budget.fulfillment_by_mercado_text = " · ".join(parts)
+            for base in ('industrial', 'confeccion', 'especiales'):
+                budget['fulfillment_%s_pct' % base] = (
+                    round(sold.get(base, 0.0) / planned[base] * 100.0, 1) if planned.get(base) else 0.0)
 
     @api.depends('line_ids.qty_budget', 'line_ids.qty_real', 'line_ids.uom_id')
     def _compute_qty_texts(self):
@@ -1071,7 +1123,9 @@ class SgiSalesBudget(models.Model):
                 (self.env.ref(
                     'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_list').id, 'list')],
             'domain': [('budget_id', '=', self.id)],
-            'context': {'pivot_row_groupby': ['partner_id']},
+            # 3.22.0: los botones de las pestañas Por mercado, Por mes y Por cliente dicen cómo agrupar.
+            'context': {'pivot_row_groupby': self.env.context.get('qb_pivot_rows') or ['partner_id'],
+                        'pivot_column_groupby': ['date:month']},
         }
 
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------

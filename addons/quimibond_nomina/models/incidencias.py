@@ -18,6 +18,11 @@ lista pero **no** van al recibo como incidencia: el recibo ya las descuenta por
 su entrada de trabajo (``IMSS_DISABLE``, ``DIS_ABSENCE``) y se descontarían dos
 veces. Por eso ``INCAP`` no se escribe ni se borra.
 
+El turno de cada semana sale de las checadas (``calc.inferir_turno``) con el
+turno de RH de la ficha del empleado (``qb_turno``) como confirmación; si el
+reloj dice otro, se usa el del reloj y se anota. Sin checadas ni turno de RH,
+se mide contra el horario del contrato como antes.
+
 Mientras la nómina siga saliendo del Excel de RH, la lista sirve para comparar
 persona por persona antes de cambiar."""
 import logging
@@ -197,6 +202,23 @@ class QbNominaIncidencias(models.Model):
                 dia += timedelta(days=1)
         return ausencias
 
+    def _turno_semana(self, empleado, version, marcas, ausencias, hoy):
+        """``(código, nota)``: el turno con que se mide la semana. El del checador, con el de RH como
+        confirmación; si no coinciden gana el del checador y queda la nota. Sin checadas, el de RH."""
+        rh = empleado.sudo().qb_turno or None
+        codigo, _puntajes = calc.inferir_turno(
+            self.fecha_inicio, marcas, ausencias, version.contract_date_start, version.contract_date_end,
+            hoy, preferido=rh)
+        if not codigo:
+            return rh, None
+        if rh and codigo != rh:
+            fijo = _(" (turno fijo)") if empleado.sudo().qb_turno_fijo else ""
+            return codigo, _("Turno %(c)s según checador; RH lo tiene en el %(r)s%(f)s",
+                             c=codigo, r=rh, f=fijo)
+        if not rh:
+            return codigo, _("Turno %(c)s según checador; RH no le tiene turno", c=codigo)
+        return codigo, None
+
     def action_generar(self):
         for rec in self:
             if rec.state == 'pasada':
@@ -220,12 +242,16 @@ class QbNominaIncidencias(models.Model):
         Linea = self.env['qb.nomina.incidencias.linea']
         for version in contratos:
             emp = version.employee_id
+            turno, nota_turno = self._turno_semana(emp, version, marcas.get(emp.id, []),
+                                                   ausencias.get(emp.id, {}), hoy)
             r = calc.calcular_semana(
                 self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
-                hoy, entradas)
+                hoy, entradas, turno=turno if turno in calc.TURNOS else None)
+            if nota_turno:
+                r['notas'].insert(0, nota_turno)
             vals = {
-                'version_id': version.id,
+                'version_id': version.id, 'turno': turno or False, 'turno_rh': emp.sudo().qb_turno or False,
                 'dia_0': r['dias'][0], 'dia_1': r['dias'][1], 'dia_2': r['dias'][2], 'dia_3': r['dias'][3],
                 'dia_4': r['dias'][4], 'dia_5': r['dias'][5], 'dia_6': r['dias'][6],
                 'horas_base': r['horas_base'], 'faltas': r['faltas'], 'falta_horas': r['falta_horas'],
@@ -381,6 +407,11 @@ class QbNominaIncidenciasLinea(models.Model):
     version_id = fields.Many2one('hr.version', string="Contrato")
     registro = fields.Char(string="Referencia", related='employee_id.registration_number', store=True)
     department_id = fields.Many2one(related='employee_id.department_id', string="Área", store=True)
+    turno = fields.Selection(calc.TURNOS_NOMBRE, string="Turno de la semana",
+                             help="Con el que se midieron faltas, retardos y tiempo extra: el que reconoce el "
+                                  "checador, con el de RH como confirmación. Vacío: contra el horario del contrato.")
+    turno_rh = fields.Selection(calc.TURNOS_NOMBRE, string="Turno según RH",
+                                help="El de la ficha del empleado al generar la lista.")
     dia_0 = fields.Char(string="Lu")
     dia_1 = fields.Char(string="Ma")
     dia_2 = fields.Char(string="Mi")

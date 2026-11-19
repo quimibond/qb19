@@ -119,6 +119,7 @@
                             <field name="fecha_cierre"/>
                             <field name="dias_cierre" invisible="not fecha_cierre"/>
                             <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="memoria_fecha" invisible="not memoria_fecha"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
@@ -129,11 +130,15 @@
                                     invisible="state == 'cancelado'"/>
                             <field name="documento_ids">
                                 <list editable="bottom" create="false" delete="false"
-                                      decoration-success="cumplido" decoration-danger="required and not cumplido">
+                                      decoration-success="cumplido" decoration-danger="vencido or (required and not cumplido)">
                                     <field name="sequence" column_invisible="1"/>
                                     <field name="tipo_id" readonly="1"/>
                                     <field name="required"/>
                                     <field name="attachment_ids" widget="many2many_binary"/>
+                                    <field name="pide_vigencia" column_invisible="1"/>
+                                    <field name="fecha_vigencia" invisible="not pide_vigencia"
+                                           required="pide_vigencia and attachment_ids"/>
+                                    <field name="vencido" column_invisible="1"/>
                                     <field name="referencia"/>
                                     <field name="no_aplica"/>
                                     <field name="cumplido"/>

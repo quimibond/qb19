@@ -269,9 +269,24 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <!-- 3.23.0 (Jose, 19-nov: «lo más nativo de Odoo posible»): el comparativo en
+                             pivote, gráfica y lista, con bajada al detalle. -->
+                        <button name="action_qb_open_lines" type="object"
+                                class="oe_stat_button" icon="fa-list">
+                            <field name="line_count" widget="statinfo" string="Renglones"/>
+                        </button>
+                        <button name="action_qb_compare_mercado" type="object"
+                                class="oe_stat_button" icon="fa-pie-chart" string="Por mercado"
+                                invisible="kind != 'presupuesto'"/>
+                        <button name="action_qb_compare_mes" type="object"
+                                class="oe_stat_button" icon="fa-bar-chart" string="Por mes"
+                                invisible="kind != 'presupuesto'"/>
+                        <button name="action_qb_compare_cliente" type="object"
+                                class="oe_stat_button" icon="fa-users" string="Por cliente"
+                                invisible="kind != 'presupuesto'"/>
                         <button name="action_open_analysis" type="object"
                                 class="oe_stat_button" icon="fa-table"
-                                string="Análisis" invisible="kind != 'presupuesto'"/>
+                                string="Variaciones" invisible="kind != 'presupuesto'"/>
                         <!-- 3.13.0 -->
                         <button name="action_qb_open_close" type="object"
                                 class="oe_stat_button" icon="fa-file-pdf-o"
@@ -311,7 +326,7 @@
                         Este presupuesto aprobado va por <b>debajo del umbral de
                         cumplimiento</b> (Ajustes → «Cumplimiento mínimo del
                         presupuesto»). Capture la <b>justificación del incumplimiento</b>
-                        (P-A28 4.3.6.1) abajo. No bloquea nada: es evidencia del
+                        (P-A28 4.3.6.1) en la pestaña Justificación. No bloquea nada: es evidencia del
                         análisis, no un candado.
                     </div>
                     <div class="oe_title">
@@ -324,7 +339,7 @@
                     <group>
                         <group>
                             <field name="kind" invisible="1"/>
-                            <field name="year"/>
+                            <field name="year" options="{'enable_formatting': false}"/>
                             <field name="revision"/>
                             <field name="revision_label" invisible="1"/>
                             <field name="revision_date"/>
@@ -332,71 +347,33 @@
                         <group>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id"/>
-                            <field name="line_count"/>
+                            <field name="cutoff_date" invisible="not cutoff_date"/>
                         </group>
                     </group>
-                    <group string="Contra el año anterior">
-                        <group>
-                            <label for="base_anio_anterior"/>
-                            <div class="o_row">
-                                <field name="base_anio_anterior"/>
-                                <button name="action_qb_update_base" type="object" string="Actualizar base"
-                                        class="btn-link" invisible="state not in ('borrador', 'revisado')"/>
-                            </div>
-                            <field name="objetivo_pct"/>
-                            <field name="objetivo_amount"/>
-                            <field name="minimo_pct"/>
-                            <field name="minimo_amount"/>
-                        </group>
-                        <group>
-                            <field name="amount_budget_total"/>
-                            <field name="growth_pct"/>
-                            <field name="amount_by_mercado_text"/>
-                            <field name="amount_currency_text"/>
-                        </group>
-                    </group>
-                    <group string="Cumplimiento (importe en moneda de la compañía)">
-                        <group>
-                            <field name="cutoff_date"/>
+                    <!-- 3.23.0: las cifras como campos, con barra de avance. -->
+                    <group invisible="kind != 'presupuesto'">
+                        <group string="Al corte">
                             <field name="amount_budget_to_date"/>
                             <field name="amount_sales_to_date"/>
-                            <field name="fulfillment_pct"/>
-                            <field name="fulfillment_by_mercado_text"/>
-                            <field name="amount_sales_budget_rate"/>
-                            <field name="fulfillment_budget_rate_pct"/>
-                            <field name="fx_effect"/>
-                        </group>
-                        <group>
-                            <field name="amount_real_total"/>
-                            <field name="amount_real_unbudgeted"/>
-                            <field name="amount_ordered_total"/>
-                        </group>
-                    </group>
-                    <!-- 3.6.2: por qué la venta no da el presupuesto (al corte), la práctica de análisis de
-                         variaciones: volumen, precio (en la moneda de venta), tipo de cambio y venta sin
-                         presupuesto. Suman la diferencia venta − presupuesto. -->
-                    <group string="Diferencia contra el presupuesto al corte">
-                        <group>
                             <field name="amount_difference"/>
-                            <field name="effect_volume"/>
-                            <field name="effect_price"/>
-                            <field name="fx_effect"/>
-                            <field name="effect_unbudgeted"/>
+                            <field name="fulfillment_pct" widget="progressbar"/>
                         </group>
-                        <group>
-                            <field name="effects_by_mercado_text"/>
-                        </group>
-                    </group>
-                    <group string="Cantidades">
-                        <group>
-                            <field name="qty_budget_text"/>
-                            <field name="qty_real_text"/>
+                        <group string="Año">
+                            <field name="amount_year_full"/>
+                            <field name="amount_month_plan_fill" invisible="not amount_month_plan_fill"/>
+                            <field name="amount_close_estimate"/>
+                            <field name="close_estimate_pct" widget="progressbar"/>
                         </group>
                     </group>
-                    <group string="Justificación de incumplimiento (P-A28 4.3.6.1)"
-                           invisible="state not in ('aprobado', 'reemplazado')">
-                        <field name="nonfulfillment_note" nolabel="1"
-                               placeholder="Análisis del porqué del incumplimiento del presupuesto (contexto de mercado, causas, acciones). No es candado: es evidencia."/>
+                    <group string="Cumplimiento por mercado" invisible="not cutoff_date">
+                        <group>
+                            <field name="fulfillment_industrial_pct" widget="progressbar"/>
+                            <field name="fulfillment_confeccion_pct" widget="progressbar"/>
+                            <field name="fulfillment_especiales_pct" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="fulfillment_budget_rate_pct" widget="progressbar"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="Renglones" name="lineas">
@@ -427,6 +404,47 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Diferencia" name="diferencia" invisible="not cutoff_date">
+                            <group>
+                                <group string="Venta − presupuesto al corte">
+                                    <field name="effect_volume"/>
+                                    <field name="effect_price"/>
+                                    <field name="fx_effect"/>
+                                    <field name="effect_month_plan" invisible="not effect_month_plan"/>
+                                    <field name="effect_unbudgeted"/>
+                                </group>
+                                <group string="Venta">
+                                    <field name="amount_sales_budget_rate"/>
+                                    <field name="amount_real_total"/>
+                                    <field name="amount_real_unbudgeted"/>
+                                    <field name="amount_ordered_total"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Objetivo" name="objetivo">
+                            <group>
+                                <group string="Contra el año anterior">
+                                    <label for="base_anio_anterior"/>
+                                    <div class="o_row">
+                                        <field name="base_anio_anterior"/>
+                                        <button name="action_qb_update_base" type="object" string="Actualizar base"
+                                                class="btn-link" invisible="state not in ('borrador', 'revisado')"/>
+                                    </div>
+                                    <field name="objetivo_pct"/>
+                                    <field name="objetivo_amount"/>
+                                    <field name="minimo_pct"/>
+                                    <field name="minimo_amount"/>
+                                    <field name="growth_pct"/>
+                                </group>
+                                <group string="Presupuesto">
+                                    <field name="amount_budget_total"/>
+                                    <field name="amount_by_mercado_text"/>
+                                    <field name="amount_currency_text"/>
+                                    <field name="qty_budget_text"/>
+                                    <field name="qty_real_text"/>
+                                </group>
+                            </group>
+                        </page>
                         <page string="Tipo de cambio" name="tipo_cambio">
                             <p class="text-muted">
                                 Pesos por dólar de cada mes. Un mes sin tipo de cambio usa el
@@ -448,6 +466,11 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Justificación" name="justificacion"
+                              invisible="state not in ('aprobado', 'reemplazado')">
+                            <field name="nonfulfillment_note" nolabel="1"
+                                   placeholder="Análisis del porqué del incumplimiento del presupuesto (contexto de mercado, causas, acciones). No es candado: es evidencia (P-A28 4.3.6.1)."/>
+                        </page>
                     </notebook>
                 </sheet>
                 <chatter/>
@@ -463,7 +486,7 @@
                   decoration-muted="state in ('obsoleto', 'reemplazado')"
                   decoration-success="state == 'aprobado'">
                 <field name="folio"/>
-                <field name="year"/>
+                <field name="year" options="{'enable_formatting': false}"/>
                 <field name="revision_label" string="Revisión"/>
                 <field name="revision_date" optional="show"/>
                 <field name="amount_budget_total" optional="show"/>
@@ -607,7 +630,7 @@
                     </div>
                     <group>
                         <group string="Periodo">
-                            <field name="year"/>
+                            <field name="year" options="{'enable_formatting': false}"/>
                             <field name="base"/>
                             <field name="date_from"/>
                             <field name="date_to"/>
@@ -805,7 +828,7 @@
                     <group>
                         <group>
                             <field name="partner_id" readonly="1"/>
-                            <field name="year" readonly="1"/>
+                            <field name="year" options="{'enable_formatting': false}" readonly="1"/>
                         </group>
                         <group>
                             <field name="folio" readonly="1"/>
@@ -839,7 +862,7 @@
                     <t t-name="card">
                         <div class="row">
                             <div class="col-8">
-                                <strong><field name="year"/></strong> ·
+                                <strong><field name="year" options="{'enable_formatting': false}"/></strong> ·
                                 <field name="revision_label"/>
                             </div>
                             <div class="col-4 text-end">

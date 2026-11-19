@@ -250,6 +250,7 @@ class QbOrderProposal(models.TransientModel):
         self.ensure_one()
         Rule = self.env['qb.order.rule']
         Forecast = self.env['qb.forecast.line'].sudo()
+        Terms = self.env['qb.delivery.terms'].sudo()
         company = self.env.company
         rules = Rule.search([('company_id', '=', company.id)]
                             + ([('partner_id', 'in', self.partner_ids.commercial_partner_id.ids)]
@@ -261,7 +262,9 @@ class QbOrderProposal(models.TransientModel):
             horizon = max(rules.filtered(lambda r: r.partner_id == partner).mapped('so_weeks') or [4])
             lines = Forecast.search([
                 ('company_id', '=', company.id), ('partner_id.commercial_partner_id', '=', partner.id),
-                ('week', '>=', start), ('week', '<', start + timedelta(weeks=horizon))],
+                ('week', '>=', start), ('week', '<', start + timedelta(weeks=horizon)),
+                # 3.21.0: una semana que vino de un pedido ya tiene su pedido.
+                ('origen', '!=', 'pedido')],
                 order='week, product_id')
             for fl in lines:
                 plant = fl.plant or fl.ship_to_id.name or False
@@ -296,6 +299,8 @@ class QbOrderProposal(models.TransientModel):
             twin = self._qb_same_fabric(company, partner, group['ref'], group['week'], product, ship_to) \
                 if group['ref'] and not existing else self.env['sale.order.line']
             target = round(group['qty'], 2)
+            if target <= 0 and not existing:
+                continue  # 3.17.0: semana ajustada a cero por Ventas y sin pedido: no hay nada que pedir
             price, has_price = self._qb_price(partner, product, target)
             vals = {'proposal_id': self.id, 'rule_id': group['rule'].id or False, 'partner_id': partner.id,
                     'plant': group['plant'], 'ship_to_id': group['ship_to'].id or False,
@@ -309,8 +314,12 @@ class QbOrderProposal(models.TransientModel):
             # Ventas, aunque la haya cambiado a mano); si no hay pedido, la que pide el cliente. Jessica la
             # cambia en la propuesta. Nunca en el pasado.
             promised = existing.order_id.filtered('commitment_date')[:1].commitment_date
+            # 3.19.0: sin pedido, la fecha sale de las condiciones de entrega del cliente (día de
+            # recolección de la semana de embarque, o la del cliente menos el colchón).
+            terms = Terms._qb_for(partner, ship_to, group['plant'], company)
             vals['delivery_date'] = vals['delivery_date_proposed'] = self._qb_delivery(
-                promised.date() if promised else group['delivery'], group['week'])
+                promised.date() if promised else terms._qb_delivery_date(group['delivery'], group['week']),
+                group['week'])
             reason = group['why']
             if not reason and group['dev_state'] in DEV_NO_SALE:
                 reason = "Artículo en desarrollo o archivado: el pedido no se confirmaría"

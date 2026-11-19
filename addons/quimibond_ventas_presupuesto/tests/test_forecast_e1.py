@@ -225,3 +225,54 @@ class TestForecastE1(TransactionCase):
         Demand.action_qb_rebuild()
         self.assertFalse(Demand.search([('order_id', '=', order.id)]),
                          "Sin entrega abierta ya no es demanda, aunque falte cantidad en la línea.")
+
+    def test_10_pedido_de_producto_sin_pronostico_entra_al_pronostico(self):
+        """3.21.0 (Jose, 19-nov): un pedido de un producto que el cliente no pronostica (de línea de otro
+        cliente o de un proyecto) entra al pronóstico, porque también va al presupuesto."""
+        Line = self.env['qb.forecast.line']
+        otra = self.env['product.product'].create({
+            'name': 'Tela de línea E1', 'default_code': 'ZJ050Q22JNT150', 'type': 'consu',
+            'uom_id': self.uom_m.id, 'sale_ok': True})
+        otra.action_qb_actualizar_articulo()
+        pronostico = Line.create({'partner_id': self.customer.id, 'product_id': self.tela_m.id,
+                                  'week': date(2040, 5, 7), 'qty_origen': 1000.0})
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id, 'commitment_date': datetime(2040, 5, 9, 12, 0),
+            'client_order_ref': 'OC-PROYECTO-1',
+            'order_line': [(0, 0, {'product_id': otra.id, 'product_uom_qty': 300.0}),
+                           (0, 0, {'product_id': self.tela_kg.id, 'product_uom_qty': 5.0})]})
+        order.action_confirm()
+        pronostico.action_qb_refresh()
+        nueva = Line.search([('partner_id', '=', self.customer.id), ('product_id', '=', otra.id)])
+        self.assertEqual(len(nueva), 1)
+        self.assertEqual((nueva.origen, nueva.week, nueva.customer_po), ('pedido', date(2040, 5, 7),
+                                                                         'OC-PROYECTO-1'))
+        self.assertAlmostEqual(nueva.qty_venta, 300.0)
+        self.assertAlmostEqual(nueva.qty_neta, 0.0, msg="No es pronóstico sin pedido: ya es pedido")
+        self.assertFalse(Line.search([('partner_id', '=', self.customer.id), ('origen', '=', 'pedido'),
+                                      ('product_id', '=', self.tela_kg.id)]),
+                         "La misma tela que el cliente ya pronostica (en metros) no se agrega")
+        # El pedido sube: la semana sigue al pedido.
+        order.order_line.filtered(lambda l: l.product_id == otra).product_uom_qty = 450.0
+        pronostico.action_qb_refresh()
+        self.assertAlmostEqual(nueva.qty_venta, 450.0)
+        # Ventas la corrige: ya es suya y el pedido no la pisa.
+        nueva.qty_origen = 500.0
+        self.assertEqual(nueva.origen, 'captura')
+        pronostico.action_qb_refresh()
+        self.assertAlmostEqual(nueva.qty_venta, 500.0)
+        self.assertEqual(Line.search_count([('partner_id', '=', self.customer.id),
+                                            ('product_id', '=', otra.id)]), 1)
+
+    def test_11_pedido_cancelado_sale_del_pronostico(self):
+        Line = self.env['qb.forecast.line']
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id, 'commitment_date': datetime(2040, 6, 6, 12, 0),
+            'order_line': [(0, 0, {'product_id': self.tela_m.id, 'product_uom_qty': 200.0})]})
+        order.action_confirm()
+        Line.action_qb_refresh()
+        line = Line.search([('partner_id', '=', self.customer.id), ('origen', '=', 'pedido')])
+        self.assertAlmostEqual(line.qty_venta, 200.0)
+        order._action_cancel()
+        Line.action_qb_refresh()
+        self.assertFalse(line.exists(), "Sin pedido, la semana que venía de él se quita")

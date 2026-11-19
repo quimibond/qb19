@@ -18,7 +18,12 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from ..release import fxi_sum, generic_table, lear_aiag, units, woodbridge_pdf
+from ..release import fxi_sum, generic_table, lear_aiag, reglas, units, woodbridge_pdf
+
+
+def _qb_fmt(qty):
+    return ("%.2f" % (qty or 0.0)).rstrip('0').rstrip('.')
+
 
 _READERS = [
     ('lear_aiag', "Lear — texto AIAG (Supplier Schedule / Material Release)"),
@@ -104,6 +109,12 @@ class QbReleaseProfile(models.Model):
     _profile_uniq = models.Constraint(
         'unique nulls not distinct (company_id, partner_id, ship_to_id, plant)',
         "Ya hay un perfil de release para ese cliente y planta.")
+
+    def _qb_terms(self):
+        """Condiciones de entrega del cliente y planta del perfil (3.19.0)."""
+        self.ensure_one()
+        return self.env['qb.delivery.terms']._qb_for(self.partner_id, self.ship_to_id, self.plant,
+                                                     self.company_id)
 
     @api.depends('partner_id', 'ship_to_id', 'plant')
     def _compute_name(self):
@@ -494,6 +505,9 @@ class QbRelease(models.Model):
                                       'delivery_date': line.date_customer})
             start = min(week for (_p, week) in demand)
             products = release.line_ids.product_id
+            current = _monday(fields.Date.context_today(self))
+            terms = profile._qb_terms()
+            lower = min(start, current) if terms.frozen_weeks > 0 else start
             # 3.15.1: por ARTÍCULO, no por producto. El forecast de Excel traía a Shawmut en WJ (metros)
             # y el release viene en IWJ (kilos): son la misma tela y la semana se reemplaza, no se suma
             # (el 9-nov la primera aplicación duplicó 62 semanas).
@@ -502,16 +516,43 @@ class QbRelease(models.Model):
                 ('company_id', '=', release.company_id.id), ('partner_id', '=', partner.id),
                 ('ship_to_id', '=', ship_to.id or False), ('plant', '=', plant),
                 '|', ('product_id', 'in', products.ids), ('articulo_id', 'in', articulos.ids),
-                ('week', '>=', start)])
+                ('week', '>=', lower)])
+            asked = dict(demand)
+            demand, rule_notes = release._qb_apply_rules(demand, info, existing, current, terms)
             by_key = {(ln.product_id, ln.week): ln for ln in existing}
             by_articulo = defaultdict(list)
             for ln in existing:
                 by_articulo[(ln.product_id.qb_articulo_id or ln.product_id, ln.week)].append(ln)
-            created = changed = 0
+            created = changed = kept = moved = 0
             to_create = []
+            notes = []
+            Apply = Line.with_context(qb_release_apply=True)
             for (product, week), qty in demand.items():
+                ask = asked.get((product, week), 0.0)
                 vals = dict(info[(product, week)], qty_origen=qty, uom_origen=False,
-                            origen='release', release_id=release.id)
+                            origen='release', release_id=release.id, qty_release=ask,
+                            ajustado=False, release_cambio=False,
+                            regla_nota=rule_notes.get((product, week), False))
+                line = by_key.get((product, week))
+                if line and line.ajustado:
+                    by_key.pop((product, week))
+                    qty = ask
+                    # 3.17.0 (Jose, 18-nov): el ajuste de Ventas se conserva; solo cambia lo que pide
+                    # el cliente y, si cambió, la semana queda marcada.
+                    differs = abs(qty - line.qty_release) > 1e-6
+                    if differs:
+                        moved += 1
+                        notes.append(line._qb_change_vals(
+                            line.qty_venta, line.qty_venta,
+                            note="El cliente ahora pide %s (antes %s); se conserva el ajuste de Ventas" % (
+                                _qb_fmt(qty), _qb_fmt(line.qty_release))))
+                    keep = dict(info[(product, week)], qty_release=qty, release_id=release.id,
+                                release_cambio=line.release_cambio or differs)
+                    Apply.browse(line.id).write(keep)
+                    kept += 1
+                    continue
+                if qty <= 1e-9:
+                    continue  # 3.18.0: la regla la dejó en cero (se juntó o se descontó): se quita
                 line = by_key.pop((product, week), None)
                 if not line:
                     # La misma tela en otro código (metros / kilos): se cambia a la del release.
@@ -521,7 +562,7 @@ class QbRelease(models.Model):
                             vals['product_id'] = product.id
                             break
                 if line:
-                    line.write(vals)
+                    Apply.browse(line.id).write(vals)
                     changed += 1
                 else:
                     vals.update(company_id=release.company_id.id, partner_id=partner.id,
@@ -530,9 +571,24 @@ class QbRelease(models.Model):
                     to_create.append(vals)
             new_lines = Line.create(to_create)
             created = len(new_lines)
-            stale = Line.browse([ln.id for ln in by_key.values()])
+            # Lo anterior a la primera semana del release (las congeladas que el release ya no trae)
+            # no se toca.
+            stale = Line.browse([ln.id for ln in by_key.values() if ln.week >= start])
+            # 3.17.0: una semana ajustada que el release ya no trae se queda, marcada.
+            stale_kept = stale.filtered('ajustado')
+            for line in stale_kept:
+                notes.append(line._qb_change_vals(
+                    line.qty_venta, line.qty_venta,
+                    note="El release ya no trae la semana (antes pedía %s); se conserva el ajuste de "
+                         "Ventas" % _qb_fmt(line.qty_release)))
+            stale_kept.write({'qty_release': 0.0, 'release_cambio': True})
+            stale -= stale_kept
+            kept += len(stale_kept)
+            moved += len(stale_kept)
             removed = len(stale)
             stale.unlink()
+            if notes:
+                self.env['qb.forecast.change'].sudo().create(notes)
             previous = self.search([
                 ('profile_id', '=', profile.id),
                 ('state', '=', 'aplicado'), ('id', '!=', release.id)])
@@ -542,11 +598,60 @@ class QbRelease(models.Model):
                 'applied_date': fields.Datetime.now(), 'applied_by_id': self.env.user.id,
             })
             Line.search([('release_id', '=', release.id)]).action_qb_refresh()
-            release.message_post(
-                body="Aplicado al pronóstico vigente: %d semana(s) nueva(s), %d cambiada(s) y "
-                     "%d quitada(s) (ya no venían en el release)." % (created, changed, removed))
+            body = "Aplicado al pronóstico vigente: %d semana(s) nueva(s), %d cambiada(s) y " \
+                   "%d quitada(s) (ya no venían en el release)." % (created, changed, removed)
+            if kept:
+                body += " %d semana(s) ajustada(s) por Ventas se conservan; en %d el cliente cambió " \
+                        "lo que pide (filtro «El cliente cambió» del pronóstico)." % (kept, moved)
+            release.message_post(body=body)
         self.env['qb.demand.line'].action_qb_rebuild()
         return True
+
+
+    def _qb_apply_rules(self, demand, info, existing, current, terms):
+        """3.18.0: semanas congeladas, embarques cada N semanas y redondeo a rollos (release/reglas.py),
+        por producto, según las condiciones de entrega del cliente (3.19.0). Devuelve ({(producto, lunes): cantidad},
+        {(producto, lunes): nota}); agrega a ``info`` las semanas nuevas (la semana 4 que recibe lo de
+        las congeladas, las congeladas que el release ya no trae)."""
+        self.ensure_one()
+        frozen = max(terms.frozen_weeks or 0, 0)
+        group = terms.group_weeks if (terms.group_weeks or 0) > 1 else 0
+        by_product = defaultdict(dict)
+        for (product, week), qty in demand.items():
+            by_product[product][week] = qty
+        result, notes = {}, {}
+        for product, asks in by_product.items():
+            roll, roll_uom = terms._qb_roll_for(product)
+            if not (frozen or group or roll):
+                result.update({(product, week): qty for week, qty in asks.items()})
+                continue
+            articulo = product.qb_articulo_id or product
+            programado = defaultdict(float)
+            for ln in existing:
+                if (ln.product_id.qb_articulo_id or ln.product_id) != articulo or \
+                        not current <= ln.week < current + timedelta(weeks=frozen):
+                    continue
+                qty = ln.qty_venta if ln.product_id == product else ln.product_id.qb_convertir(
+                    ln.qty_venta, 'venta', product._qb_sale_unit())
+                programado[ln.week] += qty or 0.0
+
+            def round_up(qty, product=product, roll=roll, roll_uom=roll_uom):
+                in_roll = product.qb_convertir(qty, 'venta', roll_uom)
+                if in_roll is None:
+                    return None
+                return product.qb_convertir(reglas.redondear_arriba(in_roll, roll), roll_uom, 'venta')
+
+            weeks, week_notes = reglas.aplicar_reglas(
+                asks, dict(programado), current, congeladas=frozen, agrupar=group,
+                inicio_bloques=_monday(terms.group_start) if terms.group_start else None,
+                redondear=round_up if roll else None)
+            sample = next(iter(info[(product, w)] for w in asks))
+            for week, qty in weeks.items():
+                result[(product, week)] = qty
+                info.setdefault((product, week), {k: v for k, v in sample.items() if k != 'delivery_date'})
+                if week in week_notes:
+                    notes[(product, week)] = week_notes[week]
+        return result, notes
 
 
 class QbReleasePart(models.Model):
@@ -612,8 +717,15 @@ class QbReleaseLine(models.Model):
         for line in self:
             profile = line.release_part_id.release_id.profile_id
             ship = line.date_customer
-            if ship and profile.date_basis == 'entrega' and profile.transit_days:
-                ship = ship - timedelta(days=profile.transit_days)
+            if ship and profile.date_basis == 'entrega':
+                if profile.transit_days:
+                    ship = ship - timedelta(days=profile.transit_days)
+                else:
+                    # 3.19.0: sin días de tránsito en el perfil, los días de adelanto de las condiciones
+                    # de entrega; 3.21.0: hábiles, sin sábados ni domingos (Jose, 19-nov).
+                    lead = profile._qb_terms().lead_days
+                    if lead:
+                        ship = reglas.restar_dias_habiles(ship, lead)
             line.date_ship = ship
             line.week = _monday(ship) if ship else False
 

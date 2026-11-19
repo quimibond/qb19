@@ -9,3 +9,4 @@ from . import res_config_settings
 from . import res_partner
 from . import documents
 from . import qb_pedimento_carga
+from . import qb_pedimento_memoria

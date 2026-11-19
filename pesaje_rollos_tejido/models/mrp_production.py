@@ -4,6 +4,16 @@ from odoo.exceptions import UserError, ValidationError
 import datetime
 from odoo.tools import float_round, float_compare
 
+
+CATEG_CRUDO = 'Producto en Proceso / Tejido Circular'
+
+
+def es_categ_crudo(categ):
+    """1.6.0: el crudo de tejido es la categoría «Producto en Proceso / Tejido Circular» o cualquiera debajo
+    (el árbol nuevo la divide por unidad: «… / KG»). Antes las vistas comparaban el nombre exacto."""
+    name = (categ.complete_name or '') if categ else ''
+    return name == CATEG_CRUDO or name.startswith(CATEG_CRUDO + ' / ')
+
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
@@ -15,6 +25,14 @@ class MrpProduction(models.Model):
         string="Categoría del Producto", 
         store=False
     )
+    pesaje_es_crudo = fields.Boolean(
+        string="Crudo de tejido (pesaje)", compute='_compute_pesaje_es_crudo',
+        help="El producto es crudo de tejido (categoría «Producto en Proceso / Tejido Circular» o debajo).")
+
+    @api.depends('product_id.categ_id.complete_name')
+    def _compute_pesaje_es_crudo(self):
+        for rec in self:
+            rec.pesaje_es_crudo = es_categ_crudo(rec.product_id.categ_id)
 
     roll_count = fields.Integer(string="Contador de Rollos", default=0, copy=False)
     last_zpl_label = fields.Text(string="Última Etiqueta ZPL", readonly=True, copy=False)

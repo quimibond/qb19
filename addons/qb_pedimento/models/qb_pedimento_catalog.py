@@ -116,6 +116,11 @@ class QbPedimentoDocumentoTipo(models.Model):
         'Patrón del nombre de archivo',
         help='Expresión regular (sin distinguir mayúsculas) que reconoce el documento por el nombre del archivo '
              'al cargar el expediente completo. Ej.: NORMAL_PAGADO|SIMPDEC para el pedimento pagado.')
+    pide_vigencia = fields.Boolean(
+        'Tiene vigencia',
+        help='Documento que vence y se reutiliza entre pedimentos (encargo conferido / carta encomienda, '
+             'certificación de origen T-MEC por periodo). Se pide la fecha «Vigente hasta» y no cuenta como '
+             'cumplido si venció antes del pago del pedimento.')
     active = fields.Boolean(default=True)
 
     @api.constrains('patron_archivo')
