@@ -44,7 +44,7 @@ queda con elementos estándar:
   (Confección y Especiales mientras los vendedores no capturan) usa el anual.
 - **Probado navegando** en el build de la rama con datos de prueba (presupuesto 2026, facturas de enero a
   octubre, presupuesto del mes de noviembre). Se corrigió lo que salió: la gráfica por mes va con barras
-  lado a lado (apiladas sumaba presupuesto y venta), el año sin separador de miles («2026», no «2,026»),
+  lado a lado (apiladas sumaba presupuesto y venta), el año sin separador de miles («2026», no «2,026»; en Odoo 19 la opción es `enable_formatting`),
   el precio de los renglones no se suma al agrupar, y Renglones abre sin la matriz (en Odoo 19 la vista
   grid sin periodos truena al cambiar a ella).
 - **Pruebas:** las del presupuesto anual no corrían en Odoo 19 (el cliente de prueba usaba
