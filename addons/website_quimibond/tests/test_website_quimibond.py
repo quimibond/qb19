@@ -53,7 +53,8 @@ class TestSitioB2B(HttpCase):
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
-        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_hilo"', 'Poliéster reciclado', 'name="qb_fibra"', 'Polipropileno', 'data-qb-anim="tela"',
+        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_aplicacion"', 'data-qb-tela=', 'Asiento de automóvil', 'name="qb_requisito"',
+                      'name="qb_volumen"', 'data-qb-copiar', 'name="qb_hilo"', 'Poliéster reciclado', 'name="qb_fibra"', 'Polipropileno', 'data-qb-anim="tela"',
                       'name="description"'):
             self.assertIn(texto, disenar, texto)
         catalogo = self.url_open('/catalogo')

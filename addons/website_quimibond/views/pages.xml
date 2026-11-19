@@ -532,7 +532,16 @@
                         <div class="qb-dis__cuerpo">
                             <div class="qb-dis__opciones">
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono">01</span> Construcción</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> ¿Para qué es la tela? <small>le proponemos una tela de partida y usted la ajusta</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['aplicaciones']" t-as="ap">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-att-value="ap['nombre']" t-att-data-mercado="ap['mercado']" t-att-data-qb-tela="json.dumps(ap['tela'])"/><span><i t-attf-class="fa #{ap['icono']}" aria-hidden="true"/> <t t-out="ap['nombre']"/></span></label>
+                                        </t>
+                                        <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" value="Otra aplicación"/><span>Otra</span></label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Construcción</legend>
                                     <div class="qb-dis__tarjetas">
                                         <t t-foreach="qb_tejidos" t-as="t">
                                             <label class="qb-dis__tarjeta">
@@ -547,7 +556,7 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
-                                    <legend><span class="qb-mono">02</span> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['galgas']" t-as="g">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_galga" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/><span t-out="g"/></label>
@@ -555,7 +564,7 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura tramado">
-                                    <legend><span class="qb-mono">03</span> Hilo</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['hilos']" t-as="hi">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_hilo" t-att-value="hi" t-att-checked="'checked' if hi_first else None"/><span t-out="hi"/></label>
@@ -572,7 +581,7 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="no_tejido">
-                                    <legend><span class="qb-mono">03</span> Fibra</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Fibra</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['fibras']" t-as="f">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_fibra" t-att-value="f" t-att-checked="'checked' if f_first else None"/><span t-out="f"/></label>
@@ -580,12 +589,12 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono">04</span> Peso <output class="qb-dis__valor" data-qb-salida="peso">150 g/m²</output></legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Peso <output class="qb-dis__valor" data-qb-salida="peso">150 g/m²</output></legend>
                                     <input type="range" class="qb-dis__rango" name="qb_peso" min="20" max="400" step="5" value="150" aria-label="Peso en gramos por metro cuadrado"/>
                                     <div class="qb-dis__escala"><span>Ligera</span><span>Media</span><span>Pesada</span></div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono">05</span> Color <output class="qb-dis__valor" data-qb-salida="color">Blanco</output></legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Color <output class="qb-dis__valor" data-qb-salida="color">Blanco</output></legend>
                                     <div class="qb-dis__colores">
                                         <t t-foreach="qb_disenador['colores']" t-as="c">
                                             <label class="qb-dis__color" t-att-title="c[0]">
@@ -600,7 +609,7 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono">06</span> Tacto y acabado</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Tacto y acabado</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['tactos']" t-as="ta">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_tacto" t-att-value="ta" t-att-checked="'checked' if ta_first else None"/><span t-out="ta"/></label>
@@ -612,12 +621,31 @@
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono">07</span> Presentación</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Presentación</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['presentaciones']" t-as="pr">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_presentacion" t-att-value="pr" t-att-checked="'checked' if pr_first else None"/><span t-out="pr"/></label>
                                         </t>
                                         <label class="qb-dis__ancho">Ancho <input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric"/> cm</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Requisitos <small>lo que su cliente o su norma le pide</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['requisitos']" t-as="rq">
+                                            <label class="qb-dis__chip"><input type="checkbox" name="qb_requisito" t-att-value="rq"/><span t-out="rq"/></label>
+                                        </t>
+                                    </div>
+                                    <label class="qb-dis__linea">Norma o especificación <input type="text" name="qb_norma" maxlength="80" placeholder="Por ejemplo, la norma de su cliente"/></label>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Volumen y fecha</legend>
+                                    <div class="qb-dis__chips">
+                                        <label class="qb-dis__linea">Volumen <input type="number" name="qb_volumen" min="1" step="1" placeholder="5000" inputmode="numeric"/></label>
+                                        <select name="qb_unidad" class="qb-dis__select" aria-label="Unidad del volumen">
+                                            <option t-foreach="qb_disenador['unidades']" t-as="un" t-att-value="un" t-out="un"/>
+                                        </select>
+                                        <label class="qb-dis__linea">Lo necesita para <input type="date" name="qb_fecha"/></label>
                                     </div>
                                 </fieldset>
                             </div>
@@ -629,6 +657,10 @@
                                     <a href="#qb_enviar" class="qb-btn qb-btn--primario qb-btn--lg" data-qb-enviar="1">Enviar diseño a Ventas <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                                     <button type="button" class="qb-btn qb-btn--contorno qb-btn--lg" data-qb-azar="1"><i class="fa fa-random" aria-hidden="true"/> Sorpréndame</button>
                                 </div>
+                                <div class="qb-dis__acciones qb-dis__acciones--sec">
+                                    <button type="button" class="qb-btn qb-btn--ghost" data-qb-copiar="1"><i class="fa fa-link" aria-hidden="true"/> <span>Copiar enlace del diseño</span></button>
+                                    <button type="button" class="qb-btn qb-btn--ghost" data-qb-imprimir="1"><i class="fa fa-print" aria-hidden="true"/> Imprimir o guardar en PDF</button>
+                                </div>
                             </aside>
                         </div>
                     </div>
@@ -638,7 +670,7 @@
                         <div>
                             <span class="qb-eyebrow qb-reveal">Ventas</span>
                             <h2 class="qb-reveal">Envíe su diseño</h2>
-                            <p class="qb-lead qb-reveal">Su diseño ya está escrito en la especificación. Agregue aplicación, norma o volumen y un asesor le responde en un día hábil.</p>
+                            <p class="qb-lead qb-reveal">Su diseño ya está escrito en la especificación. Si tiene una muestra, una foto o la ficha técnica de la tela que quiere igualar, adjúntela aquí mismo. Un asesor le responde en un día hábil.</p>
                             <p class="qb-nota qb-reveal">El diseñador es una guía para platicar su proyecto. Ventas e Ingeniería confirman la factibilidad, el gramaje final y el tiempo de entrega.</p>
                         </div>
                         <div class="qb-card qb-card--form qb-reveal">

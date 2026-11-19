@@ -110,7 +110,7 @@
                         <textarea id="qb_f_detalle" class="form-control s_website_form_input" name="description" required="1" rows="5" placeholder="Aplicación, gramaje, ancho, color, tacto, norma o especificación de su cliente…"/>
                     </div>
                     <div class="s_website_form_field s_website_form_custom qb-campo qb-campo--ancho" data-type="binary" data-name="Field">
-                        <label class="s_website_form_label" for="qb_f_archivo"><span class="s_website_form_label_content">Plano o especificación (opcional)</span></label>
+                        <label class="s_website_form_label" for="qb_f_archivo"><span class="s_website_form_label_content">Foto, ficha técnica o especificación (opcional)</span></label>
                         <input id="qb_f_archivo" type="file" class="form-control s_website_form_input" name="Archivo"/>
                     </div>
                     <div class="s_website_form_submit qb-campo--ancho qb-form__enviar" data-name="Submit Button">

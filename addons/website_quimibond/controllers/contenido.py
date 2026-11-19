@@ -185,6 +185,37 @@ DISENADOR = {
         ('Verde', '#1f5c48'), ('Naranja', '#e8590c'),
     ],
     'tactos': ['Suave', 'Semirrígido', 'Rígido'],
+    # Aplicaciones: cada una propone una tela de partida que la persona ajusta.
+    # No son productos del catálogo ni promesas: son un punto de arranque.
+    'aplicaciones': [
+        {'nombre': 'Asiento de automóvil', 'mercado': 'Automotriz', 'icono': 'fa-car',
+         'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 280, 'color': '#9a9aa2', 'tacto': 'Semirrígido'}},
+        {'nombre': 'Toldo y pilares', 'mercado': 'Automotriz', 'icono': 'fa-car',
+         'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 160, 'color': '#d6c4a4', 'tacto': 'Suave'}},
+        {'nombre': 'Colchón', 'mercado': 'Blancos', 'icono': 'fa-bed',
+         'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 220, 'color': '#f5f5f2', 'tacto': 'Suave'}},
+        {'nombre': 'Almohada y protector', 'mercado': 'Blancos', 'icono': 'fa-bed',
+         'tela': {'construccion': 'una_fontura', 'galga': 24, 'hilo': 'Mezcla poliéster y algodón',
+                  'peso': 130, 'color': '#f5f5f2', 'tacto': 'Suave'}},
+        {'nombre': 'Cuello y puño de camisa', 'mercado': 'Confección', 'icono': 'fa-scissors',
+         'tela': {'construccion': 'no_tejido', 'fibra': 'Poliéster', 'peso': 50, 'color': '#f5f5f2',
+                  'tacto': 'Rígido', 'fusionable': True}},
+        {'nombre': 'Frente de saco', 'mercado': 'Confección', 'icono': 'fa-scissors',
+         'tela': {'construccion': 'tramado', 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado', 'peso': 90,
+                  'color': '#1b1b1f', 'tacto': 'Semirrígido', 'fusionable': True}},
+        {'nombre': 'Uniforme y ropa deportiva', 'mercado': 'Confección', 'icono': 'fa-scissors',
+         'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Microfibra',
+                  'peso': 150, 'color': '#1f2a4a', 'tacto': 'Suave'}},
+    ],
+    # Requisitos que el cliente puede pedir; Ventas e Ingeniería los evalúan.
+    'requisitos': [
+        'Solidez del color', 'Resistencia al pilling', 'Resistencia a la abrasión', 'Estabilidad dimensional',
+        'Flamabilidad', 'Lavado en agua', 'Lavado en seco',
+    ],
+    'unidades': ['metros al mes', 'kilos al mes'],
     'presentaciones': ['Tela abierta', 'Tela tubular'],
 }
 

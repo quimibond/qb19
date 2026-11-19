@@ -575,6 +575,14 @@
                 hilo: (elegido("qb_hilo") || {}).value || "",
                 hiloTipo: (elegido("qb_hilo_tipo") || {}).value || "",
                 elastano: !!(campo("qb_elastano") && campo("qb_elastano").checked),
+                aplicacion: (elegido("qb_aplicacion") || {}).value || "",
+                requisitos: todos('input[name="qb_requisito"]:checked', raizDis).map(function (r) {
+                    return r.value;
+                }),
+                norma: (campo("qb_norma").value || "").trim(),
+                volumen: parseInt(campo("qb_volumen").value, 10) || 0,
+                unidad: raizDis.querySelector('select[name="qb_unidad"]').value,
+                fecha: campo("qb_fecha").value || "",
                 peso: parseInt(campo("qb_peso").value, 10) || 150,
                 color: colorLibre || !col ? libre.value : col.value,
                 colorNombre: colorLibre || !col ? "Personalizado " + libre.value.toUpperCase() : col.getAttribute("data-nombre"),
@@ -588,7 +596,11 @@
 
         function filas(d) {
             var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
-            var f = [["Construcción", d.construccionNombre]];
+            var f = [];
+            if (d.aplicacion) {
+                f.push(["Aplicación", d.aplicacion]);
+            }
+            f.push(["Construcción", d.construccionNombre]);
             if (punto) {
                 f.push(["Galga", String(d.galga)]);
             }
@@ -606,6 +618,18 @@
                 f.push(["Acabado", d.acabados.join(", ")]);
             }
             f.push(["Presentación", d.presentacion + (d.ancho ? ", " + d.ancho + " cm de ancho" : "")]);
+            if (d.requisitos.length) {
+                f.push(["Requisitos", d.requisitos.join(", ")]);
+            }
+            if (d.norma) {
+                f.push(["Norma", d.norma]);
+            }
+            if (d.volumen) {
+                f.push(["Volumen", d.volumen.toLocaleString("es-MX") + " " + d.unidad]);
+            }
+            if (d.fecha) {
+                f.push(["Lo necesita para", d.fecha.split("-").reverse().join("/")]);
+            }
             return f;
         }
 
@@ -647,18 +671,156 @@
                     resto = resto.slice(bloqueAnterior.length).replace(/^\n+/, "");
                 }
                 detalle.value = bloque + "\n\n" + resto;
+                detalle.defaultValue = detalle.value;
                 bloqueAnterior = bloque;
             }
             if (asunto) {
                 var nuevoAsunto = "Diseño de tela: " + d.construccionNombre + ", " + d.peso + " g/m²";
                 if (!asunto.value || asunto.value === asuntoAnterior) {
                     asunto.value = nuevoAsunto;
+                    asunto.defaultValue = nuevoAsunto;
                 }
                 asuntoAnterior = nuevoAsunto;
+            }
+            var volForm = document.getElementById("qb_f_volumen");
+            if (volForm && d.volumen) {
+                volForm.value = d.volumen.toLocaleString("es-MX") + " " + d.unidad;
+            }
+            guardarEnlace();
+        }
+
+        // Nombres de los controles en el enlace del diseño (cortos, sin datos personales).
+        var CLAVES = {
+            ap: "qb_aplicacion", c: "qb_construccion", g: "qb_galga", h: "qb_hilo", ht: "qb_hilo_tipo",
+            f: "qb_fibra", t: "qb_tacto", pr: "qb_presentacion"
+        };
+        var CASILLAS = { e: "qb_elastano", fu: "qb_fusionable", te: "qb_termofijado" };
+        var TEXTOS = { p: "qb_peso", a: "qb_ancho", n: "qb_norma", v: "qb_volumen", fe: "qb_fecha" };
+
+        function marcar(nombre, valor) {
+            var hecho = false;
+            todos('input[name="' + nombre + '"]', raizDis).forEach(function (o) {
+                if (o.value === String(valor)) {
+                    o.checked = true;
+                    hecho = true;
+                }
+            });
+            return hecho;
+        }
+        function ponerColor(hex) {
+            if (!/^#[0-9a-f]{6}$/i.test(hex || "")) {
+                return;
+            }
+            colorLibre = !marcar("qb_color", hex.toLowerCase());
+            if (colorLibre) {
+                todos('input[name="qb_color"]', raizDis).forEach(function (c) {
+                    c.checked = false;
+                });
+                campo("qb_color_libre").value = hex.toLowerCase();
+            }
+        }
+        // Tela de partida de una aplicación: lo que no trae vuelve a su valor neutro.
+        function ponerTela(tela) {
+            marcar("qb_construccion", tela.construccion);
+            marcar("qb_galga", tela.galga || 24);
+            if (tela.hilo) {
+                marcar("qb_hilo", tela.hilo);
+            }
+            if (tela.hiloTipo) {
+                marcar("qb_hilo_tipo", tela.hiloTipo);
+            }
+            if (tela.fibra) {
+                marcar("qb_fibra", tela.fibra);
+            }
+            marcar("qb_tacto", tela.tacto || "Suave");
+            campo("qb_peso").value = tela.peso || 150;
+            campo("qb_fusionable").checked = !!tela.fusionable;
+            campo("qb_termofijado").checked = !!tela.termofijado;
+            if (campo("qb_elastano")) {
+                campo("qb_elastano").checked = !!tela.elastano;
+            }
+            ponerColor(tela.color);
+        }
+        function guardarEnlace() {
+            if (!window.URLSearchParams || !window.history || !history.replaceState || location.protocol === "file:") {
+                return;
+            }
+            var q = new URLSearchParams();
+            Object.keys(CLAVES).forEach(function (k) {
+                var o = elegido(CLAVES[k]);
+                if (o) {
+                    q.set(k, o.value);
+                }
+            });
+            Object.keys(CASILLAS).forEach(function (k) {
+                if (campo(CASILLAS[k]) && campo(CASILLAS[k]).checked) {
+                    q.set(k, "1");
+                }
+            });
+            Object.keys(TEXTOS).forEach(function (k) {
+                if (campo(TEXTOS[k]).value) {
+                    q.set(k, campo(TEXTOS[k]).value);
+                }
+            });
+            var d = leer();
+            q.set("col", d.color);
+            if (d.requisitos.length) {
+                q.set("r", d.requisitos.join("|"));
+            }
+            if (d.volumen) {
+                q.set("u", d.unidad);
+            }
+            try {
+                history.replaceState(null, "", location.pathname + "?" + q.toString() + location.hash);
+            } catch (err) {
+                // Sin historial (vista previa incrustada): el diseño sigue funcionando.
+            }
+        }
+        function leerEnlace() {
+            if (!window.URLSearchParams || !location.search) {
+                return;
+            }
+            var q = new URLSearchParams(location.search);
+            Object.keys(CLAVES).forEach(function (k) {
+                if (q.has(k)) {
+                    marcar(CLAVES[k], q.get(k));
+                }
+            });
+            Object.keys(CASILLAS).forEach(function (k) {
+                if (campo(CASILLAS[k])) {
+                    campo(CASILLAS[k]).checked = q.get(k) === "1";
+                }
+            });
+            Object.keys(TEXTOS).forEach(function (k) {
+                if (q.has(k)) {
+                    campo(TEXTOS[k]).value = q.get(k).slice(0, 80);
+                }
+            });
+            if (q.has("col")) {
+                ponerColor(q.get("col"));
+            }
+            if (q.has("r")) {
+                var pedidos = q.get("r").split("|");
+                todos('input[name="qb_requisito"]', raizDis).forEach(function (r) {
+                    r.checked = pedidos.indexOf(r.value) >= 0;
+                });
+            }
+            if (q.has("u")) {
+                raizDis.querySelector('select[name="qb_unidad"]').value = q.get("u");
             }
         }
 
         raizDis.addEventListener("input", function (e) {
+            if (e.target.name === "qb_aplicacion") {
+                var tela = e.target.getAttribute("data-qb-tela");
+                if (tela) {
+                    ponerTela(JSON.parse(tela));
+                }
+                var mercadoForm = document.getElementById("qb_f_mercado");
+                if (mercadoForm) {
+                    mercadoForm.value = e.target.getAttribute("data-mercado") || "Otro";
+                }
+            }
             if (e.target.name === "qb_color_libre") {
                 colorLibre = true;
                 todos('input[name="qb_color"]', raizDis).forEach(function (c) {
@@ -692,15 +854,62 @@
             var fijar = function () {
                 if (!solicitudTocada) {
                     solicitud.value = "Desarrollo de producto";
+                    todos("option", solicitud).forEach(function (o) {
+                        o.defaultSelected = o.value === "Desarrollo de producto";
+                    });
                 }
             };
             fijar();
-            window.addEventListener("load", function () {
-                setTimeout(fijar, 400);
-            });
             raizDis.addEventListener("input", fijar);
         }
+        var botonCopiar = raizDis.querySelector("[data-qb-copiar]");
+        if (botonCopiar) {
+            botonCopiar.addEventListener("click", function () {
+                var texto = botonCopiar.querySelector("span");
+                var original = texto.textContent;
+                var listoCopia = function () {
+                    texto.textContent = "Enlace copiado";
+                    setTimeout(function () {
+                        texto.textContent = original;
+                    }, 2200);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(location.href).then(listoCopia, function () {
+                        window.prompt("Copie el enlace de su diseño:", location.href);
+                    });
+                } else {
+                    window.prompt("Copie el enlace de su diseño:", location.href);
+                }
+            });
+        }
+        var botonImprimir = raizDis.querySelector("[data-qb-imprimir]");
+        if (botonImprimir) {
+            botonImprimir.addEventListener("click", function () {
+                window.print();
+            });
+        }
+        raizDis.addEventListener("change", function (e) {
+            if (e.target.name === "qb_unidad") {
+                aplicar();
+            }
+        });
+        leerEnlace();
         aplicar();
+        // El formulario de Odoo se inicia después y vacía sus campos: el diseño se vuelve a
+        // escribir al terminar la carga y al ir a enviarlo.
+        setTimeout(aplicar, 600);
+        setTimeout(aplicar, 2000);
+        var botonEnviar = raizDis.querySelector("[data-qb-enviar]");
+        if (botonEnviar) {
+            botonEnviar.addEventListener("click", aplicar);
+        }
+        if (detalle) {
+            detalle.addEventListener("focus", function () {
+                if (detalle.value.indexOf(bloqueAnterior) !== 0) {
+                    aplicar();
+                }
+            });
+        }
     }
 
     /* --------------------------------------------------------------------- */

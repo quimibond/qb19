@@ -96,6 +96,16 @@ texturizado, stretch o microfibra; el no tejido ofrece las fibras de
 en `DISENADOR` de `controllers/contenido.py`; son lo que el cliente pide, no
 una promesa de fabricación: Ventas confirma la factibilidad.
 
+Desde 1.4.0 el diseñador empieza por la aplicación (asiento, toldo, colchón,
+cuello de camisa…): cada una propone una tela de partida (`aplicaciones` en
+`DISENADOR`) que la persona ajusta, y fija el mercado del formulario. Además
+pide requisitos (solidez, pilling, flamabilidad…), norma, volumen y fecha;
+guarda el diseño en la dirección de la página (parámetros cortos, sin datos
+personales) para copiar el enlace y compartirlo; e imprime la ficha o la
+guarda en PDF (hoja de estilos de impresión). El formulario acepta una foto o
+ficha técnica de referencia. El formulario de Odoo se reinicia al cargar, por
+eso el diseño se escribe también como valor por defecto de sus campos.
+
 ## Textos
 
 Los mercados, los pasos del proceso, la historia y las cifras están en
