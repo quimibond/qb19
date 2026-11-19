@@ -21,6 +21,30 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Menús recortados (19.0.3.20.0, 2026-11-19)
+
+Jose (19-nov): «siento que ya hay muchísimos menús… quitar lo que no sirve… no porque tenga datos
+significa que funciona». Se revisó cada menú contra su uso en producción (quién lo usó y cuándo, si duplica
+otra vista). Ventas → Presupuesto y pronóstico pasa de 36 entradas a 20 (mismos XML IDs):
+
+- **Pronóstico:** Pronóstico vigente (botones arriba de la lista: «Pegar desde Excel», solo gerentes, e
+  «Imprimir o descargar»), Captura semanal, Releases (un solo menú; abre con lo pendiente agrupado por
+  estado), Proponer pedidos.
+- **Presupuesto:** Presupuesto anual (Análisis y Cierre de ventas son botones de la ficha), Presupuesto del
+  mes (botón «Armar presupuesto del mes» arriba de la lista), Proyectos comerciales, Armar propuesta del año.
+- **Reportes:** Presupuesto contra real (antes «Cierre mensual por mercado»; favoritos compartidos «Por año
+  y mercado» y «Por cliente y artículo», que eran los menús «Anual» y «Cliente y artículo»), Cambios del
+  pronóstico, Faltantes.
+- **Configuración:** Cómo pide cada cliente, Condiciones de entrega, Partes del cliente, Perfiles de release.
+
+Menús quitados (los modelos, acciones y datos se quedan): Comparación de precios, Hojas del forecast y
+Cargar forecast de Excel (dependen del forecast.xlsx, que ya no se mantiene; la comparación corrió una vez,
+el 4-nov), Pronósticos anteriores y su grupo Histórico (21 documentos obsoletos), Releases por revisar,
+Análisis, Anual, Cliente y artículo, Venta real (el comparativo trae lo real en pesos, metros y kilos),
+Cierre de ventas (PDF), y en Ventas Capacidad semanal y Demanda por cliente (son de Planeación; en las 56
+semanas nadie había capturado capacidad). Fabricación → Pronóstico de ventas queda con Demanda por
+cliente, Pronóstico vigente, Capacidad semanal y Cambios del pronóstico.
+
 ## Condiciones de entrega por cliente (19.0.3.19.0, 2026-11-19)
 
 Jose (19-nov): «¿no crees que necesitamos una parte en algún lado en donde podamos poner la

@@ -14,6 +14,10 @@
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_qb_conservar_ajuste" type="object" string="Conservar el ajuste"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <!-- 3.20.0: antes eran menús. -->
+                    <button name="action_qb_open_paste" type="object" string="Pegar desde Excel" display="always"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_qb_open_print" type="object" string="Imprimir o descargar" display="always"/>
                 </header>
                 <field name="week"/>
                 <field name="partner_id"/>
