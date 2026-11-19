@@ -102,6 +102,9 @@ class SgiCronSalesBudget(models.AbstractModel):
         def _process(budget):
             budgeted = sum(budget.line_ids.filtered(
                 lambda l: l.date and l.date <= last_prev).mapped('amount_budget'))
+            # 3.22.0: más lo que el presupuesto del mes pone en los meses sin renglones.
+            budgeted += sum(amount for (month, _mercado), amount in budget._qb_month_plan_fill().items()
+                            if month <= last_prev)
             if not budgeted:
                 return
             # 3.5.4: la venta de los equipos de los mercados, la misma del cumplimiento de la ficha.
