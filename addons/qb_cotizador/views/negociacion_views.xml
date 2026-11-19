@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.8.0: Negociaciones de precio con clientes existentes. -->
+    <record id="view_qb_cotizador_negociacion_linea_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.negociacion.linea.form</field>
+        <field name="model">qb.cotizador.negociacion.linea</field>
+        <field name="arch" type="xml">
+            <form string="Producto de la negociación">
+                <header>
+                    <button name="action_actualizar" type="object" string="Actualizar precio, volumen y costo" icon="fa-refresh"
+                            invisible="estado != 'borrador' or not id"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not precio_alerta">
+                        <field name="precio_alerta" readonly="1" class="oe_inline"/>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="semaforo != 'rojo'">
+                        Algún precio queda debajo del costo variable: solo «Autoriza precio bajo piso» aprueba la negociación.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="semaforo != 'ambar'">
+                        Algún precio o tramo queda debajo del costo completo (piso a planta llena): aporta a fijos pero no los cubre.
+                    </div>
+                    <group>
+                        <group string="Producto y precio">
+                            <field name="estado" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="product_id" readonly="estado != 'borrador'"/>
+                            <field name="uom_name"/>
+                            <field name="tipo" readonly="estado != 'borrador'"/>
+                            <field name="precio_actual" readonly="estado != 'borrador'"/>
+                            <field name="precio_actual_fuente"/>
+                            <field name="precio_nuevo" invisible="tipo != 'precio_nuevo'" readonly="estado != 'borrador'"/>
+                            <field name="rebaja_pct" invisible="tipo != 'rebaja_pct'" readonly="estado != 'borrador'"/>
+                            <field name="precio_base" invisible="tipo != 'escalera_incremental'" readonly="estado != 'borrador'"/>
+                            <field name="precio_resultante"/>
+                            <field name="semaforo"/>
+                            <field name="precio_minimo" invisible="tipo != 'escalera_incremental'"/>
+                        </group>
+                        <group string="Volumen y costo">
+                            <field name="volumen_12m"/>
+                            <field name="volumen_mensual"/>
+                            <field name="volumen_pronostico" readonly="estado != 'borrador'"/>
+                            <field name="sim_volumenes" readonly="estado != 'borrador'"/>
+                            <field name="periodo_costo_id"/>
+                            <field name="costo_id" invisible="not costo_id"/>
+                            <field name="costo_variable"/>
+                            <field name="costo_completo"/>
+                        </group>
+                    </group>
+                    <group string="Escalera incremental" invisible="tipo != 'escalera_incremental'">
+                        <group>
+                            <field name="periodo" readonly="estado != 'borrador'"/>
+                            <field name="solo_pagadas_en_plazo" readonly="estado != 'borrador'"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" colspan="2">Los tramos van en unidades por mes. El descuento de cada tramo aplica solo a las unidades que caen dentro de él; trimestral multiplica los umbrales × 3 y anual × 12. «Hasta» en 0 es sin límite.</div>
+                        </group>
+                    </group>
+                    <field name="tramo_ids" invisible="tipo != 'escalera_incremental'" readonly="estado != 'borrador'">
+                        <list editable="bottom">
+                            <field name="desde"/>
+                            <field name="hasta"/>
+                            <field name="descuento_pct"/>
+                            <field name="precio"/>
+                            <field name="semaforo" decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'" decoration-success="semaforo == 'verde'" widget="badge"/>
+                        </list>
+                    </field>
+                    <group string="Tramos que pide el cliente (contrapropuesta)">
+                        <div class="text-muted" colspan="2">Opcional. Se descuentan sobre el precio actual menos la rebaja pareja que pide el cliente (en la negociación) y se comparan en el simulador.</div>
+                    </group>
+                    <field name="cliente_tramo_ids" readonly="estado != 'borrador'">
+                        <list editable="bottom">
+                            <field name="de_cliente" column_invisible="1"/>
+                            <field name="desde"/>
+                            <field name="hasta"/>
+                            <field name="descuento_pct"/>
+                            <field name="precio"/>
+                        </list>
+                    </field>
+                    <group string="En la tarifa" invisible="not pricelist_item_id">
+                        <field name="pricelist_item_id"/>
+                        <field name="item_cerrado_ids" widget="many2many_tags"/>
+                        <field name="acuerdo_id" invisible="not acuerdo_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_negociacion_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.negociacion.form</field>
+        <field name="model">qb.cotizador.negociacion</field>
+        <field name="arch" type="xml">
+            <form string="Negociación de precio">
+                <header>
+                    <button name="action_simular" type="object" string="Simular" class="btn-primary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_actualizar_datos" type="object" string="Actualizar datos del cliente" icon="fa-refresh"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_enviar_aprobacion" type="object" string="Enviar a aprobación" class="btn-primary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_aprobar" type="object" string="Aprobar y presentar" class="btn-primary"
+                            invisible="state != 'por_aprobar' or not puede_aprobar"/>
+                    <button name="action_regresar" type="object" string="Regresar a recotizar"
+                            invisible="state != 'por_aprobar' or not puede_aprobar"/>
+                    <button name="action_volver_a_borrador" type="object" string="Retirar"
+                            invisible="state != 'por_aprobar' or puede_aprobar"/>
+                    <button name="action_ganar" type="object" string="Ganada" class="btn-success"
+                            invisible="state not in ('presentada', 'vencida')"/>
+                    <button name="action_perder" type="object" string="Perdida"
+                            invisible="state not in ('presentada', 'vencida', 'por_aprobar')"/>
+                    <button name="action_print_cliente" type="object" string="Carta para el cliente" icon="fa-print"
+                            invisible="state in ('borrador', 'por_aprobar', 'reemplazada')"/>
+                    <button name="action_print_interna" type="object" string="Comparación interna" icon="fa-file-text-o"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,por_aprobar,presentada,ganada"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_acuerdos" type="object" class="oe_stat_button" icon="fa-handshake-o"
+                                invisible="not acuerdo_count">
+                            <div class="o_stat_info"><span class="o_stat_value"><field name="acuerdo_count"/></span><span class="o_stat_text">Acuerdos</span></div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Vencida" bg_color="text-bg-warning" invisible="state != 'vencida'"/>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="alert alert-info" role="status" invisible="state != 'por_aprobar'">
+                        Esperando aprobación de <field name="aprobador_job_id" readonly="1" class="oe_inline fw-bold"/>.
+                        Sin aprobación no se imprime la carta al cliente.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="semaforo != 'rojo'">
+                        Algún precio o tramo queda debajo del costo variable: solo «Autoriza precio bajo piso» la puede aprobar.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="semaforo != 'ambar'">
+                        Algún precio o tramo queda debajo del costo completo (piso a planta llena).
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="state != 'ganada' or cliente_aprobo">
+                        Ganada: los precios van a la tarifa del cliente al marcar «El cliente aprobó» con medio y fecha (pestaña Aprobación y cliente).
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1" placeholder="Nueva"/></h1>
+                        <h3><field name="name" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Cliente y vigencia">
+                            <field name="partner_id" readonly="state != 'borrador'"/>
+                            <field name="contacto_id" readonly="state not in ('borrador', 'por_aprobar', 'presentada')"/>
+                            <field name="atencion_a"/>
+                            <field name="fecha_inicio" readonly="state != 'borrador'"/>
+                            <field name="fecha_fin" readonly="state != 'borrador'"/>
+                            <field name="validez_hasta" readonly="state in ('ganada', 'perdida', 'reemplazada')"/>
+                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                            <field name="puede_aprobar" invisible="1"/>
+                            <field name="es_divisa" invisible="1"/>
+                        </group>
+                        <group string="Moneda y resultado">
+                            <field name="currency_id" readonly="state != 'borrador'"/>
+                            <field name="fx_rate" readonly="state != 'borrador'" invisible="not es_divisa"/>
+                            <field name="compra_12m"/>
+                            <field name="datos_al"/>
+                            <field name="semaforo"/>
+                            <field name="descuento_pronostico"/>
+                            <field name="descuento_pct_pronostico"/>
+                            <field name="descuento_pct_compra"/>
+                            <field name="simulado_el"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Productos" name="productos">
+                            <field name="linea_ids" readonly="state != 'borrador'">
+                                <list decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="tipo"/>
+                                    <field name="precio_actual"/>
+                                    <field name="rebaja_pct" optional="show"/>
+                                    <field name="precio_resultante"/>
+                                    <field name="periodo" optional="show"/>
+                                    <field name="volumen_mensual"/>
+                                    <field name="volumen_pronostico"/>
+                                    <field name="costo_variable" optional="hide"/>
+                                    <field name="costo_completo"/>
+                                    <field name="precio_minimo" optional="hide"/>
+                                    <field name="semaforo" widget="badge" decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'" decoration-success="semaforo == 'verde'"/>
+                                    <field name="pricelist_item_id" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Simulador" name="simulador">
+                            <group>
+                                <group>
+                                    <field name="sim_variacion_pct" readonly="state != 'borrador'"/>
+                                </group>
+                                <group>
+                                    <div class="text-muted" colspan="2">«Simular» corre cada producto al volumen de los últimos 12 meses, al pronóstico, al pronóstico ± la variación y a los volúmenes libres de cada producto. El descuento se mide contra el precio actual; la contribución, contra el costo variable y el completo del último período de costeo.</div>
+                                </group>
+                            </group>
+                            <separator string="Total del cliente"/>
+                            <field name="simulacion_global_ids">
+                                <list decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'">
+                                    <field name="escenario"/>
+                                    <field name="venta_actual"/>
+                                    <field name="descuento"/>
+                                    <field name="pct_efectivo"/>
+                                    <field name="pct_compra_total"/>
+                                    <field name="venta_neta"/>
+                                    <field name="contrib_variable"/>
+                                    <field name="contrib_completa"/>
+                                    <field name="semaforo" widget="badge" decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'" decoration-success="semaforo == 'verde'"/>
+                                    <field name="con_contrapropuesta" column_invisible="1"/>
+                                    <field name="cliente_descuento" optional="show"/>
+                                    <field name="cliente_venta_neta" optional="hide"/>
+                                    <field name="cliente_contrib_completa" optional="show"/>
+                                    <field name="diferencia_cliente" optional="show"/>
+                                </list>
+                            </field>
+                            <separator string="Por producto"/>
+                            <field name="simulacion_ids">
+                                <list decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'">
+                                    <field name="product_id"/>
+                                    <field name="escenario"/>
+                                    <field name="volumen_anual"/>
+                                    <field name="venta_actual" optional="hide"/>
+                                    <field name="descuento"/>
+                                    <field name="pct_efectivo"/>
+                                    <field name="pct_compra_total" optional="show"/>
+                                    <field name="venta_neta"/>
+                                    <field name="contrib_variable" optional="show"/>
+                                    <field name="contrib_completa"/>
+                                    <field name="precio_marginal" optional="show"/>
+                                    <field name="semaforo" widget="badge" decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'" decoration-success="semaforo == 'verde'"/>
+                                    <field name="cliente_descuento" optional="show"/>
+                                    <field name="cliente_contrib_completa" optional="hide"/>
+                                    <field name="diferencia_cliente" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Contrapropuesta del cliente" name="contrapropuesta">
+                            <group>
+                                <group>
+                                    <field name="contra_rebaja_pct" readonly="state != 'borrador'"/>
+                                </group>
+                                <group>
+                                    <div class="text-muted" colspan="2">Sus tramos, si los pidió, van en cada producto. El simulador y la comparación interna los ponen junto a la propuesta.</div>
+                                </group>
+                            </group>
+                            <field name="notas_cliente" placeholder="Lo que pidió el cliente: correo, programa, fecha…"/>
+                        </page>
+                        <page string="Aprobación y cliente" name="aprobacion">
+                            <group>
+                                <group string="Aprobación interna">
+                                    <field name="solicitada_por_id"/>
+                                    <field name="solicitada_el"/>
+                                    <field name="approved_by_id"/>
+                                    <field name="approved_date"/>
+                                    <field name="regreso_motivo_id"/>
+                                    <field name="regreso_count"/>
+                                </group>
+                                <group string="Presentación">
+                                    <field name="presented_by_id"/>
+                                    <field name="presented_date"/>
+                                    <field name="seguimiento_fecha"/>
+                                    <field name="seguimiento_hecho"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Aprobación del cliente">
+                                    <field name="cliente_aprobo" string="El cliente aceptó"/>
+                                    <field name="cliente_medio" required="cliente_aprobo"/>
+                                    <field name="cliente_fecha" required="cliente_aprobo"/>
+                                    <field name="cliente_evidencia" filename="cliente_evidencia_nombre"/>
+                                    <field name="cliente_evidencia_nombre" invisible="1"/>
+                                </group>
+                                <group string="Resultado">
+                                    <field name="ganada_date"/>
+                                    <field name="aplicada_el"/>
+                                    <field name="perdida_motivo_id"/>
+                                    <field name="perdida_nota"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_negociacion_list" model="ir.ui.view">
+        <field name="name">qb.cotizador.negociacion.list</field>
+        <field name="model">qb.cotizador.negociacion</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="semaforo == 'rojo'" decoration-warning="state == 'vencida' or semaforo == 'ambar'" decoration-muted="state == 'perdida'" decoration-success="state == 'ganada'">
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+                <field name="currency_id"/>
+                <field name="descuento_pronostico" sum="Total"/>
+                <field name="descuento_pct_pronostico"/>
+                <field name="descuento_pct_compra" optional="show"/>
+                <field name="semaforo"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'por_aprobar'" decoration-success="state == 'ganada'" decoration-warning="state == 'vencida'"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+                <field name="company_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_negociacion_search" model="ir.ui.view">
+        <field name="name">qb.cotizador.negociacion.search</field>
+        <field name="model">qb.cotizador.negociacion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="linea_ids" string="Producto" filter_domain="[('linea_ids.product_id', 'ilike', self)]"/>
+                <field name="user_id"/>
+                <filter name="vivas" string="Vivas" domain="[('state', 'in', ('borrador', 'por_aprobar', 'presentada', 'vencida'))]"/>
+                <filter name="por_aprobar" string="Por aprobar" domain="[('state', '=', 'por_aprobar')]"/>
+                <filter name="ganadas" string="Ganadas" domain="[('state', '=', 'ganada')]"/>
+                <filter name="perdidas" string="Perdidas" domain="[('state', '=', 'perdida')]"/>
+                <separator/>
+                <filter name="rojo" string="Debajo del costo variable" domain="[('semaforo', '=', 'rojo')]"/>
+                <filter name="mias" string="Mías" domain="[('user_id', '=', uid)]"/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_inicio" string="Vigencia" context="{'group_by': 'fecha_inicio:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_cotizador_negociacion" model="ir.actions.act_window">
+        <field name="name">Negociaciones de precio</field>
+        <field name="res_model">qb.cotizador.negociacion</field>
+        <field name="view_mode">list,form,activity</field>
+        <field name="search_view_id" ref="view_qb_cotizador_negociacion_search"/>
+        <field name="context">{'search_default_vivas': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Negocie el precio de un cliente que ya le compra</p>
+            <p>Renovación anual, rebaja que pide el cliente o escalera por volumen. El precio actual, el volumen de 12 meses y el costo se llenan solos; al ganar, el precio va a la tarifa del cliente con la vigencia de la negociación.</p>
+        </field>
+    </record>
+</odoo>

@@ -18,7 +18,11 @@ def _habilitar_mcp(env):
         return
     Enabled = env['mcp.enabled.model'].sudo()
     for model in ('qb.cotizador.cotizacion', 'qb.cotizador.tramo',
-                  'qb.cotizador.motivo'):
+                  'qb.cotizador.motivo',
+                  # 1.8.0
+                  'qb.cotizador.negociacion', 'qb.cotizador.negociacion.linea',
+                  'qb.cotizador.negociacion.tramo', 'qb.cotizador.negociacion.simulacion',
+                  'qb.cotizador.acuerdo.volumen', 'qb.cotizador.acuerdo.liquidacion'):
         ir_model = env['ir.model']._get(model)
         if not ir_model or Enabled.with_context(active_test=False).search(
                 [('model_id', '=', ir_model.id)], limit=1):
