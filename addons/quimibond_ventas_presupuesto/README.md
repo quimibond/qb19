@@ -35,6 +35,12 @@ para comprobar que se haga correctamente y que ella tenga el control» (`models/
   «Marcar revisado» y «Aplicar al pronóstico» solo los hace ese responsable o un administrador.
 - Si le tocan varios perfiles o ninguno, queda «Por revisar» sin perfil (se elige el perfil y «Leer»); un
   correo sin archivo de release (firmas, PPAP, OC) queda descartado; el mismo archivo otra vez no crea otro.
+- **La planta escrita distinto** (`release/plantas.py`): el perfil decía «Silao», «FXI CD JUAREZ» o nada (Lear)
+  y Condiciones de entrega tenía la dirección de entrega o «CIUDAD JUAREZ»; «Cómo pide cada cliente» dice
+  «LEÓN» o «SALTILLO». Ahora se comparan por palabras (sin acentos, sin el nombre del cliente, «cd» =
+  «ciudad») con o sin dirección, y un cliente con una sola condición la usa aunque el perfil no diga planta.
+  Antes los releases de Shawmut Silao, FXI Juárez y Lear se aplicaban sin congeladas, rollos ni días de
+  recolección, y Saltillo, León y FXI Juárez sin su OC (Jose, 19-nov).
 - **Semanas por pedir**: al aplicar, si hay semanas sin pedido dentro de «Semanas a pedido» del perfil, queda
   la actividad «Crear pedidos …» y el botón «Por pedir» del release abre esas semanas en el Pronóstico
   vigente, donde está «Crear pedido». Filtro nuevo «Por pedir (próximas 4 semanas)».
