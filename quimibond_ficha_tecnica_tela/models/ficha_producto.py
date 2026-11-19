@@ -151,7 +151,8 @@ class ProductTemplateFichaNativa(models.Model):
         for tmpl in self:
             variantes = tmpl._ft_variantes()
             acabado = tmpl.ficha_tecnica_acabado_id
-            tejidos = Tejido.search([('product_proceso_id', 'in', variantes.ids)]) if variantes else Tejido
+            tejidos = Tejido.with_context(active_test=True).search(
+                [('product_proceso_id', 'in', variantes.ids)]).with_env(self.env) if variantes else Tejido
             crudo_ficha = acabado.tejido_id
             crudo = crudo_ficha.product_proceso_id
             tmpl.ft_es_tela = bool(acabado)

@@ -146,13 +146,16 @@ class FichaTecnicaTejidoUso(models.Model):
     def _ft_de_producto(self, product):
         """La ficha de tejido de referencia de un producto: la que lo tiene como tela en proceso o la que lleva
         su código como artículo. 2.11.0: la de revisión más alta (activa); entre máquinas de la misma revisión,
-        la de elaboración más reciente. En producción el peso y el ancho no cambian de una máquina a otra."""
+        la de elaboración más reciente. En producción el peso y el ancho no cambian de una máquina a otra.
+        2.31.0: solo fichas activas, aunque quien llama traiga `active_test=False` (`action_ft_datos_ficha` y el
+        filtro «Tiempo distinto de la ficha» lo traen para alcanzar listas archivadas): una ficha archivada de
+        revisión igual y id mayor ganaba y doblaba devanado y abridora."""
         if not product:
             return self.browse()
         domain = [('product_proceso_id', '=', product.id)]
         if product.default_code:
             domain = ['|', ('articulo', '=', product.default_code)] + domain
-        fichas = self.search(domain)
+        fichas = self.with_context(active_test=True).search(domain).with_env(self.env)
         if not fichas:
             return fichas
 
