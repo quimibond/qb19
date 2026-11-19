@@ -107,6 +107,16 @@ class TestCustomerPart(TransactionCase):
         part = self._part(customer_part='LX3', product_id=tela.id, customer_uom='MT')
         self.assertAlmostEqual(part.to_product_qty(100), 100 / rendimiento, 4)
 
+    def test_05c_manda_el_rendimiento_de_la_ficha(self):
+        """3.30.1: yardas → kilos con el rendimiento de la ficha (13.09 m/kg), no con el del código
+        (1000 ÷ 42 ÷ 1.6 = 14.88). Release de Shawmut CW47: 10 486 LY."""
+        tela = self.env['product.product'].create({
+            'name': 'Tela 42 kg', 'default_code': 'IWJ042Q22JNT160', 'type': 'consu',
+            'uom_id': self.uom_kg.id, 'sale_ok': True})
+        tela.write({'qb_m_por_kg': 13.0907, 'qb_ancho_m': 1.6})
+        part = self._part(customer_part='LX4', product_id=tela.id, customer_uom='LY')
+        self.assertAlmostEqual(part.to_product_qty(10486), 10486 * 0.9144 / 13.0907, 2)
+
     def test_06_unique_per_customer_and_plant(self):
         self._part()
         self._part(ship_to_id=self.plant.id)  # otra planta: se vale
