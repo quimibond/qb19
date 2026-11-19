@@ -584,6 +584,16 @@ contra 385 y 296 horas de prima dominical contra 180):
 Pendiente de confirmar con RH (correo del 19-nov-2026): la regla exacta del
 tiempo extra de los turnos 3 y 4 y los días del turno 3.
 
+**Comida (1.22.0).** Las checadas de salida y regreso de comer no cambian las
+horas (la comida va dentro de la jornada). La lista ahora anota cuánto duró:
+el hueco más largo entre las checadas de en medio del turno, con cuatro o más
+checadas (repetidas en menos de 2 minutos cuentan una). «Comida (min)» suma la
+semana y «Comidas largas» cuenta los días que pasaron del límite, con la nota
+en Observaciones («Mi comida 85 min (13:00 a 14:25)»). El límite es el
+parámetro `quimibond_nomina.incidencias_comida_max` en minutos (60 si no
+está). **Solo se anota, no se descuenta** (Dirección, 19-nov-2026). Pendiente
+que RH diga cuánto dura la comida permitida en cada turno.
+
 «Marcar revisada» y «Pasar a recibos» (elegir la corrida) escriben `FALTAS`,
 `HE_DOBLE`, `H_SENCILLA`, `DOM` y `HE_DIAS` en los recibos en borrador o por
 verificar de esa persona (borra antes las suyas de esos tipos) y los
