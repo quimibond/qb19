@@ -21,6 +21,38 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Reglas del release por cliente (19.0.3.18.0, 2026-11-19)
+
+Jose (19-nov) describió lo que hacía a mano después de subir cada release, cliente por cliente, y pidió
+que fuera **escalable**: nada de código por cliente. Las reglas son configuración del **perfil de
+release** («Al aplicar el release») y de la **parte del cliente**; el motor es Python puro
+(`release/reglas.py`, pruebas en `tests_puros/ventas_presupuesto/test_reglas.py`).
+
+- **Semanas congeladas** (perfil, 3 por omisión): las semanas desde la semana en curso que Planeación ya
+  programó se quedan como estaban. Lo que el cliente sube en ellas entra en la semana siguiente (la 4);
+  lo que baja se resta de la 4 y, si no alcanza, de la 5 y las demás, sin dejar ninguna bajo cero.
+  0 = sin congelar (Blancos y Pieles, que mueven semanas congeladas, no tienen release).
+- **Semanas por embarque** (perfil): la demanda de cada bloque de N semanas se suma en la primera
+  semana del bloque (FXI Juárez: 4). Los bloques se cuentan desde «Primer embarque de los bloques»
+  para que no se recorran cada semana.
+- **Rollo** (perfil, y la parte del cliente gana): cada semana después de las congeladas se sube al
+  múltiplo del rollo (505 yd con rollos de 500 → 1000). Shawmut: 500 yd en el perfil; FXI:
+  WD038Q46JNT163 1000 yd y WD038Q46JNG163 500 yd en sus partes. 0 = cantidades cerradas.
+- «Pide el cliente» guarda lo del release tal cual; la columna **Reglas del release** dice qué hizo
+  cada regla en la semana («Congelada: el cliente pide 250, se queda 200», «Recibe +50 de las semanas
+  congeladas», «Junta la semana del…», «Redondeado de 450 a 600»). Lo que hace una regla **no** es un
+  ajuste de Ventas: el siguiente release lo vuelve a calcular. Un ajuste de Ventas (3.17.0) sigue
+  ganando sobre las reglas.
+- **Capacidad semanal** (Pronóstico y Fabricación → Capacidad semanal): metros del pronóstico vigente
+  de cada semana, de todos los clientes, contra la capacidad de venta que da Producción (parámetro
+  `quimibond_ventas_presupuesto.forecast_capacity_m`, 250,000 m), editable por semana porque cambia.
+  En rojo si se pasa, en amarillo arriba de 90 %. Solo avisa.
+- Al actualizar, todos los perfiles quedan con 3 semanas congeladas, un embarque por semana y sin
+  rollo.
+
+**Siguiente:** acumulados (restar lo enviado que el release del cliente todavía no ve: Saltillo), día
+de recolección por cliente y el colchón de un día en la fecha de entrega.
+
 ## Ventas ajusta las semanas del release (19.0.3.17.0, 2026-11-18)
 
 Jose (18-nov): «necesito poder modificar las semanas una vez que suba los releases de los clientes

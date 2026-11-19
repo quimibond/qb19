@@ -13,6 +13,10 @@ from datetime import timedelta
 from odoo import api, fields, models
 
 GRID_WEEKS = 13
+# 3.18.0 (Jose, 19-nov): capacidad de venta semanal que da Producción; cambia por ausencias o fallas,
+# así que cada semana la puede tener propia.
+PARAM_CAPACITY = 'quimibond_ventas_presupuesto.forecast_capacity_m'
+DEFAULT_CAPACITY = 250000.0
 MONTHS = ('ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic')
 
 
@@ -31,7 +35,44 @@ class QbForecastWeek(models.Model):
     iso_year = fields.Integer(string="Año ISO", required=True)
     iso_week = fields.Integer(string="Número de semana", required=True)
 
+    capacidad_m = fields.Float(
+        string="Capacidad de venta (m)", digits=(16, 0),
+        help="Metros que Producción puede entregar esa semana. Vacío = la de Ajustes (250,000 m).")
+    capacidad_efectiva = fields.Float(string="Capacidad (m)", digits=(16, 0), compute='_compute_carga')
+    qty_m = fields.Float(string="Pronóstico (m)", digits=(16, 0), compute='_compute_carga')
+    disponible_m = fields.Float(string="Disponible (m)", digits=(16, 0), compute='_compute_carga')
+    uso_pct = fields.Float(string="Uso (%)", digits=(16, 1), compute='_compute_carga')
+    excedida = fields.Boolean(string="Se pasa", compute='_compute_carga')
+
     _monday_uniq = models.Constraint('unique (monday)', "Ya existe esa semana.")
+
+    @api.model
+    def _qb_default_capacity(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(PARAM_CAPACITY)
+        try:
+            return float(value) if value else DEFAULT_CAPACITY
+        except ValueError:
+            return DEFAULT_CAPACITY
+
+    @api.depends('capacidad_m')
+    @api.depends_context('allowed_company_ids')
+    def _compute_carga(self):
+        """Metros del pronóstico vigente de la semana (todas las compañías activas) contra la capacidad."""
+        totals = {}
+        if self.ids:
+            groups = self.env['qb.forecast.line']._read_group(
+                [('week_id', 'in', self.ids), ('company_id', 'in', self.env.companies.ids)],
+                ['week_id'], ['qty_m:sum'])
+            totals = {week.id: qty for week, qty in groups}
+        default = self._qb_default_capacity()
+        for week in self:
+            capacity = week.capacidad_m or default
+            qty = totals.get(week.id, 0.0)
+            week.capacidad_efectiva = capacity
+            week.qty_m = qty
+            week.disponible_m = capacity - qty
+            week.uso_pct = qty / capacity * 100.0 if capacity else 0.0
+            week.excedida = qty > capacity + 1e-6
 
     @api.model
     def _qb_get(self, mondays):
