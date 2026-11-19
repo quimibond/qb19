@@ -86,35 +86,18 @@
 
                 <t t-call="website_quimibond.armadoras"/>
 
-                <!-- Líneas de producto, leídas de las categorías del sitio en Odoo -->
-                <section t-if="categorias" class="qb-sec qb-sec--suave">
+                <!-- Lo que fabricamos: tipos de tela según la maquinaria de la planta -->
+                <section class="qb-sec qb-sec--suave" id="telas">
                     <div class="qb-container">
                         <div class="qb-sec__cab qb-sec__cab--fila">
                             <div>
-                                <span class="qb-eyebrow qb-reveal">Catálogo técnico</span>
-                                <h2 class="qb-reveal">Líneas de producto</h2>
-                                <p class="qb-lead qb-reveal"><span t-out="total_productos"/> productos con código, gramaje, composición y tacto. Sin registro.</p>
+                                <span class="qb-eyebrow qb-reveal">Lo que fabricamos</span>
+                                <h2 class="qb-reveal">Cuatro construcciones, una sola planta.</h2>
+                                <p class="qb-lead qb-reveal">Tejido circular de una y doble fontura, no tejido y tejido tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables.</p>
                             </div>
-                            <a href="/catalogo" class="qb-btn qb-btn--contorno qb-reveal">Ver todo el catálogo <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                            <a href="/planta#maquinaria" class="qb-btn qb-btn--contorno qb-reveal">Ver la maquinaria <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
-                        <div class="qb-grid qb-grid--3">
-                            <t t-foreach="categorias" t-as="item">
-                                <a t-attf-href="/catalogo/#{slug(item['categoria'])}" class="qb-card qb-linea qb-spot qb-reveal">
-                                    <t t-call="website_quimibond.muestra">
-                                        <t t-set="construccion" t-value="item['construccion']"/>
-                                        <t t-set="color" t-value="'blanco'"/>
-                                        <t t-set="fusionable" t-value="item['fusionable']"/>
-                                    </t>
-                                    <div class="qb-linea__cuerpo">
-                                        <h3 t-out="item['categoria'].name"/>
-                                        <p class="qb-mono"><span t-out="item['total']"/> productos</p>
-                                        <ul t-if="item['hijos']">
-                                            <li t-foreach="item['hijos'][:5]" t-as="h" t-out="h['categoria'].name"/>
-                                        </ul>
-                                    </div>
-                                </a>
-                            </t>
-                        </div>
+                        <t t-call="website_quimibond.tipos_tejido"/>
                     </div>
                 </section>
 
@@ -300,7 +283,7 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Planta y proceso'"/>
                     <t t-set="titulo" t-value="'Del hilo al rollo terminado, en Toluca.'"/>
-                    <t t-set="resumen" t-value="'Tejido, tintorería, rama, inspección y laboratorio en una sola planta. Cada rollo sale pesado, medido, clasificado y con su lote.'"/>
+                    <t t-set="resumen" t-value="'Tejido circular de una y doble fontura, línea de no tejidos, jets, ramas e inspección en una sola planta. Cada rollo sale pesado, medido, clasificado y con su lote.'"/>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container qb-dos qb-dos--centro">
@@ -310,6 +293,26 @@
                             <h2 class="qb-reveal">Cada vuelta del cilindro es una pasada de tela.</h2>
                             <p class="qb-lead qb-reveal">Las agujas suben y bajan alrededor del cilindro, toman el hilo de los alimentadores y forman la malla. De ahí sale el tubo de tela que después se tiñe y se acaba.</p>
                         </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave" id="telas">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Tipos de tela</span>
+                            <h2 class="qb-reveal">Punto, no tejido y tramado.</h2>
+                            <p class="qb-lead qb-reveal">Cada construcción sale de su propia línea de máquinas y todas comparten tintorería, acabado e inspección.</p>
+                        </div>
+                        <t t-call="website_quimibond.tipos_tejido"/>
+                    </div>
+                </section>
+                <section class="qb-sec" id="maquinaria">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Maquinaria</span>
+                            <h2 class="qb-reveal">Lo que hay en el piso de la planta.</h2>
+                            <p class="qb-lead qb-reveal">Las cantidades salen de nuestro sistema de producción, no de un folleto.</p>
+                        </div>
+                        <t t-call="website_quimibond.maquinaria"/>
                     </div>
                 </section>
                 <section class="qb-sec qb-sec--suave">

@@ -8,7 +8,7 @@ from odoo.tools import html2plaintext
 
 from odoo.addons.website.controllers.main import Website
 
-from . import contenido
+from . import contenido, planta
 
 
 # ---------------------------------------------------------------------------
@@ -137,12 +137,16 @@ class QuimibondSitio(http.Controller):
         return Job.search(dominio, limit=6)
 
     def _valores_comunes(self, **extra):
+        maquinaria = planta.maquinaria(request.env, request.website.company_id)
         valores = {
             'qb_mercados': contenido.MERCADOS,
-            'qb_cifras': contenido.CIFRAS,
+            'qb_cifras': planta.cifras(maquinaria),
             'qb_proceso': contenido.PROCESO,
             'qb_historia': contenido.HISTORIA,
             'qb_sustentabilidad': contenido.SUSTENTABILIDAD,
+            'qb_tejidos': contenido.TEJIDOS,
+            'qb_presentaciones': contenido.PRESENTACIONES,
+            'qb_maquinaria': maquinaria,
         }
         valores.update(extra)
         return valores
@@ -290,8 +294,8 @@ class QuimibondSitio(http.Controller):
         _exigir_activo()
         return request.render('website_quimibond.planta', self._valores_comunes(
             title='Planta y proceso | Quimibond',
-            website_meta_description='Del hilo al rollo terminado: tejido, tintorería, rama, inspección y laboratorio '
-                                     'en nuestra planta de Toluca, México.',
+            website_meta_description='Tejido circular de una y doble fontura, jets de teñido, ramas, línea de '
+                                     'no tejidos e inspección rollo por rollo en nuestra planta de Toluca.',
         ))
 
     @http.route('/calidad', type='http', auth='public', website=True, sitemap=_sitemap_fijo(['/calidad']))

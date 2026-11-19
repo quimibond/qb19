@@ -45,6 +45,11 @@ class TestSitioB2B(HttpCase):
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
             self.assertEqual(self.url_open(ruta).status_code, 200, ruta)
         self.assertEqual(self.url_open('/mercados/no-existe').status_code, 404)
+        self.assertIn('Punto de doble fontura', portada.text)
+        planta = self.url_open('/planta').text
+        for texto in ('Punto de una fontura', 'No tejido', 'Tejido tramado', 'jets de teñido', 'ramas',
+                      'V10 de espolvoreo', 'id="maquinaria"'):
+            self.assertIn(texto, planta, texto)
         catalogo = self.url_open('/catalogo')
         self.assertIn('ZQ9032BL152', catalogo.text)
         slug = self.env['ir.http']._slug
@@ -77,3 +82,16 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Marca Dos', portada)
         self.assertIn('Marca Uno', self.url_open('/mercados/automotriz').text)
         self.assertNotIn('qb-oem', self.url_open('/mercados/blancos').text)
+
+    def test_maquinaria_sin_ficha_de_maquina(self):
+        """Sin el módulo de fichas de máquina se sirve el texto fijo, completo."""
+        from odoo.addons.website_quimibond.controllers import contenido, planta
+        grupos = planta.maquinaria(self.env, self.env.company)
+        self.assertEqual([g['clave'] for g in grupos], [g['clave'] for g in contenido.MAQUINARIA])
+        if 'mrp.workcenter' not in self.env or 'ft_tipo_id' not in self.env['mrp.workcenter']._fields:
+            self.assertEqual(grupos, contenido.MAQUINARIA)
+        cifras = {c['etiqueta']: c['valor'] for c in planta.cifras(grupos)}
+        self.assertEqual(cifras['Año de fundación'], 1992)
+        self.assertTrue(cifras['Máquinas circulares'])
+        self.assertEqual(planta._lista(['Brückner', 'Unitech', 'Icomatex']), 'Brückner, Unitech e Icomatex')
+        self.assertEqual(planta._lista(['16', '18']), '16 y 18')

@@ -8,8 +8,138 @@ cifras de la empresa, para tenerlos en un solo lugar.
 CIFRAS = [
     {'valor': 1992, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Año de fundación', 'sin_miles': True},
     {'valor': 150, 'prefijo': '+', 'sufijo': '', 'etiqueta': 'Colaboradores'},
-    {'valor': 60, 'prefijo': '+', 'sufijo': '', 'etiqueta': 'Máquinas de fabricación'},
-    {'valor': 5, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Líneas de producto'},
+    {'valor': 37, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Máquinas circulares', 'tipo': 'tejido_circular'},
+    {'valor': 5, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Jets de tintorería', 'tipo': 'tintoreria'},
+]
+
+# Armadoras confirmadas por Jose el 2026-11-19 («mete todas»). Se cargan al
+# instalar en el campo del sitio web (qb_armadoras); después se editan ahí.
+# Son las armadoras finales, nunca los clientes directos.
+ARMADORAS = [
+    'Toyota', 'Nissan', 'Mazda', 'Honda', 'General Motors', 'Ford',
+    'Volkswagen', 'Stellantis', 'Tesla', 'Mitsubishi', 'Mercedes-Benz', 'BMW',
+]
+
+# Tipos de tela que salen de la planta. Corresponden a la maquinaria de
+# MAQUINARIA; no se toman del catálogo publicado.
+TEJIDOS = [
+    {
+        'clave': 'una_fontura',
+        'nombre': 'Punto de una fontura',
+        'etiqueta': 'Tejido circular',
+        'texto': 'Un juego de agujas en el cilindro. Tela ligera, con cara y revés distintos y '
+                 'elasticidad natural a lo ancho.',
+        'construccion': 'punto',
+    },
+    {
+        'clave': 'doble_fontura',
+        'nombre': 'Punto de doble fontura',
+        'etiqueta': 'Tejido circular',
+        'texto': 'Dos juegos de agujas, cilindro y plato. Tela con más cuerpo y estabilidad '
+                 'dimensional.',
+        'construccion': 'punto',
+    },
+    {
+        'clave': 'no_tejido',
+        'nombre': 'No tejido',
+        'etiqueta': 'Línea de no tejidos',
+        'texto': 'Fibra abierta en carda y consolidada en velo, sin pasar por hilo. Es la base de '
+                 'nuestras entretelas.',
+        'construccion': 'notejido',
+    },
+    {
+        'clave': 'tramado',
+        'nombre': 'Tejido tramado',
+        'etiqueta': 'Entretelas',
+        'texto': 'Base con hilos de trama para entretelas que piden estabilidad y recuperación.',
+        'construccion': 'tejido',
+    },
+]
+
+PRESENTACIONES = [
+    'Tela tubular', 'Tela abierta', 'Teñida en jet', 'Termofijada en rama', 'Fusionable por espolvoreo',
+    'Cortada y perforada',
+]
+
+# Maquinaria de la planta. Fuente: centros de trabajo y fichas de máquina de
+# Odoo (mrp.workcenter, ficha.tecnica.maquina.config) al 2026-11-19. Donde el
+# grupo trae «tipo», la cantidad (y en las circulares galgas, diámetros, salida
+# y marcas) se vuelve a leer de Odoo al servir la página (controllers/planta.py);
+# lo de aquí es el respaldo. No se publican capacidades que Odoo no tenga.
+MAQUINARIA = [
+    {
+        'clave': 'tejido',
+        'nombre': 'Tejido circular',
+        'icono': 'fa-circle-o-notch',
+        'tipo': 'tejido_circular',
+        'cantidad': 37,
+        'unidad': 'máquinas circulares',
+        'texto': 'Circulares de una fontura y de doble fontura, con salida de tela tubular o abierta.',
+        'datos': [
+            ('Fonturas', 'Una fontura y doble fontura'),
+            ('Galgas', '16, 18, 24, 28 y 32'),
+            ('Diámetros', '30, 32 y 38 pulgadas'),
+            ('Salida de la tela', 'Tubular y abierta'),
+            ('Marcas', 'Vanguard, Pai Lung y Wellrich'),
+        ],
+    },
+    {
+        'clave': 'tintoreria',
+        'nombre': 'Tintorería',
+        'icono': 'fa-tint',
+        'tipo': 'tintoreria',
+        'cantidad': 5,
+        'unidad': 'jets de teñido',
+        'texto': 'Jets de teñido con cocina de colores propia. Cada baño lleva su número y su fórmula.',
+        'datos': [
+            ('Carga por jet', 'De 300 a 1,200 kg'),
+            ('Relación de baño', 'Desde 1:6'),
+            ('Apoyo', 'Cocina de colores'),
+        ],
+    },
+    {
+        'clave': 'acabado',
+        'nombre': 'Ramas y acabado',
+        'icono': 'fa-fire',
+        'tipo': 'acabado',
+        'cantidad': 3,
+        'unidad': 'ramas',
+        'texto': 'Secado, termofijado y acabado al ancho. Cada rollo se pesa y se mide al salir de la rama.',
+        'datos': [
+            ('Marcas', 'Brückner, Unitech e Icomatex'),
+            ('Preparación', '4 abridoras y 3 devanadoras'),
+            ('Apoyo', 'Cocina de resinas'),
+        ],
+    },
+    {
+        'clave': 'no_tejidos',
+        'nombre': 'No tejidos y entretelas',
+        'icono': 'fa-th',
+        'cantidad': 0,
+        'unidad': 'Línea completa',
+        'texto': 'De la fibra a la entretela fusionable: carda, líneas de entretela, espolvoreo de '
+                 'adhesivo y fusionado.',
+        'datos': [
+            ('Formación', 'Preparación de fibra y carda'),
+            ('Líneas', 'V10 de espolvoreo, V18 y V25'),
+            ('Acabado', 'Estiramiento, termofijado y fusionadora'),
+            ('Además', 'Tejido tramado, corte y perforado'),
+        ],
+    },
+    {
+        'clave': 'inspeccion',
+        'nombre': 'Inspección y laboratorio',
+        'icono': 'fa-search',
+        'tipo': 'inspeccion',
+        'cantidad': 6,
+        'unidad': 'máquinas de inspección',
+        'texto': 'Inspección rollo por rollo con peso, metros, defectos y clasificación. Laboratorio '
+                 'en planta y empaque.',
+        'datos': [
+            ('Registro', 'Etiqueta con código de barras por rollo'),
+            ('Trazabilidad', 'Del baño de teñido al rollo terminado'),
+        ],
+    },
 ]
 
 MERCADOS = [

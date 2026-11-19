@@ -51,6 +51,28 @@ una marca por línea. Salen como texto, sin logotipos, en la portada y en
 `/mercados/automotriz`. Son las armadoras finales, nunca los clientes directos.
 Vacío = la sección no aparece.
 
+Al instalar se carga la lista que confirmó Dirección el 2026-11-19 (12 marcas)
+en los sitios que no tengan una.
+
+## Maquinaria y tipos de tela
+
+`/planta` (y la portada) muestran los tipos de tela (una fontura, doble
+fontura, no tejido, tejido tramado) y la maquinaria por área. Los textos están
+en `controllers/contenido.py` (`TEJIDOS`, `PRESENTACIONES`, `MAQUINARIA`) y
+salieron de los centros de trabajo de Odoo el 2026-11-19.
+
+Con `quimibond_ficha_tecnica_tela` instalado, `controllers/planta.py` vuelve a
+leer de Odoo, cada vez que se sirve la página, la cantidad de máquinas por tipo
+(`mrp.workcenter.ft_tipo_id`: circulares, jets, ramas, inspección) y, de las
+circulares, galgas, diámetros, salida de la tela y marcas de la ficha vigente.
+Dar de alta una circular en Odoo cambia la cifra del sitio. Sin ese módulo, o
+si la lectura falla, se sirve el texto fijo.
+
+No se publica lo que Odoo no tiene: cuántas circulares son de una fontura y
+cuántas de doble, y la descripción de las líneas V10, V18 y V25. El catálogo
+(`/catalogo`) sigue leyendo los productos publicados, pero ya no se anuncia en
+la portada: los productos publicados se corrigen en un segundo paso.
+
 ## Textos
 
 Los mercados, los pasos del proceso, la historia y las cifras están en
