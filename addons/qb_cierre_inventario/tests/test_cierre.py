@@ -35,9 +35,11 @@ class TestCierreInventario(TransactionCase):
         cls.broca = Product.create({'name': 'Broca prueba', 'is_storable': True, 'categ_id': cls.refacciones_sub.id, 'standard_price': 10})
         cls.hilo = Product.create({'name': 'Hilo prueba', 'is_storable': True, 'categ_id': cls.mp.id, 'standard_price': 20})
         stock = cls.env['stock.warehouse'].search([('company_id', '=', cls.company.id)], limit=1).lot_stock_id
-        Quant = cls.env['stock.quant']
-        Quant._update_available_quantity(cls.broca, stock, 5)
-        Quant._update_available_quantity(cls.hilo, stock, 7)
+        # Ajuste de inventario aplicado: deja existencia y un movimiento terminado por producto.
+        Quant = cls.env['stock.quant'].with_context(inventory_mode=True)
+        for producto, cantidad in ((cls.broca, 5), (cls.hilo, 7)):
+            Quant.create({'product_id': producto.id, 'location_id': stock.id,
+                          'inventory_quantity': cantidad}).action_apply_inventory()
 
     def _productos_del_cierre(self):
         return self.env['product.product'].search(self.company._get_valuation_product_domain())
