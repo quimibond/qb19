@@ -93,6 +93,8 @@
                             <field name="dias_con_extra" readonly="1" optional="hide"/>
                             <field name="he_dias" optional="hide"/>
                             <field name="dom_horas" sum="Prima dominical"/>
+                            <field name="comida_min" readonly="1" optional="hide"/>
+                            <field name="comidas_largas" readonly="1" sum="Comidas largas" optional="show"/>
                             <field name="sin_checadas" readonly="1" optional="hide"/>
                             <field name="proyectado" readonly="1" optional="hide"/>
                             <field name="observaciones" optional="show"/>
@@ -154,6 +156,7 @@
                 <field name="retardos" sum="Retardos"/>
                 <field name="he_autorizadas" sum="HE autorizadas"/>
                 <field name="dom_horas" sum="Prima dominical"/>
+                <field name="comidas_largas" sum="Comidas largas" optional="show"/>
                 <field name="observaciones" optional="show"/>
             </list>
         </field>

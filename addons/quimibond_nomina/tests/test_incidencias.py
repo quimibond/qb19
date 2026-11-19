@@ -275,6 +275,24 @@ class TestIncidenciasCalculo(TransactionCase):
         r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='3')
         self.assertEqual(r['faltas'], 0)
 
+    def test_comida_se_anota_sin_descontar(self):
+        marcas = [dt(2026, 10, 12, 6, 55), dt(2026, 10, 12, 13, 0), dt(2026, 10, 12, 14, 25),
+                  dt(2026, 10, 12, 17, 0)]
+        marcas += _dia(13, (6, 55), (17, 0))                      # 30 min de comida
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='1')
+        self.assertEqual(r['comida_min'], 85 + 30)
+        self.assertEqual(r['comidas_largas'], 1)
+        self.assertIn('Lu comida 85 min (13:00 a 14:25)', r['notas'])
+        self.assertEqual(r['he_propuestas'], 0, 'la comida no cambia las horas')
+        sin_limite = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='1', comida_max=90)
+        self.assertEqual(sin_limite['comidas_largas'], 0)
+        # Con solo entrada y salida (o tres checadas) no se sabe la comida.
+        self.assertIsNone(calc.comida(_dia(14, (7, 0), (17, 0), comida=False), dt(2026, 10, 14, 7), dt(2026, 10, 14, 17)))
+        # Checada repetida: cuenta una vez.
+        dobles = _dia(15, (7, 0), (17, 0)) + [dt(2026, 10, 15, 13, 1)]
+        self.assertEqual(calc.comida(dobles, dt(2026, 10, 15, 7), dt(2026, 10, 15, 17)),
+                         (dt(2026, 10, 15, 13, 1), dt(2026, 10, 15, 13, 30)))
+
     def test_entradas_del_parametro(self):
         self.assertEqual(calc.leer_entradas('06:00, 18:00'), (dt(1, 1, 1, 6).time(), dt(1, 1, 1, 18).time()))
         self.assertEqual(calc.leer_entradas('basura'), calc.ENTRADAS_DEFAULT)

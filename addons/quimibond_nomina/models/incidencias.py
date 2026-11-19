@@ -38,6 +38,7 @@ from . import incidencias_calculo as calc
 _logger = logging.getLogger(__name__)
 
 PARAM_ENTRADAS = 'quimibond_nomina.incidencias_entradas'
+PARAM_COMIDA_MAX = 'quimibond_nomina.incidencias_comida_max'
 PARAM_PREMIO_UN_RETARDO = 'quimibond_nomina.premio_asistencia_un_retardo'   # % con un solo retardo
 TZ_DEFAULT = 'America/Mexico_City'
 ESTADOS_CHECADA_FUERA = ('ignorada', 'sin_empleado', 'error')
@@ -118,6 +119,13 @@ class QbNominaIncidencias(models.Model):
     def _entradas(self):
         valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_ENTRADAS)
         return calc.leer_entradas(valor)
+
+    def _comida_max(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_COMIDA_MAX)
+        try:
+            return int(valor) if valor not in (None, False, '') else calc.COMIDA_MAX_DEFAULT
+        except (TypeError, ValueError):
+            return calc.COMIDA_MAX_DEFAULT
 
     def _contratos(self):
         """Un contrato vigente por persona de la nómina semanal en la semana."""
@@ -236,6 +244,7 @@ class QbNominaIncidencias(models.Model):
         marcas = self._marcas(empleados, zona)
         ausencias = self._ausencias(empleados, programado)
         entradas = self._entradas()
+        comida_max = self._comida_max()
         hoy = fields.Date.context_today(self)
         previas = {l.employee_id.id: l for l in self.linea_ids}
         vistos = set()
@@ -247,7 +256,8 @@ class QbNominaIncidencias(models.Model):
             r = calc.calcular_semana(
                 self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
-                hoy, entradas, turno=turno if turno in calc.TURNOS else None)
+                hoy, entradas, turno=turno if turno in calc.TURNOS else None,
+                comida_max=comida_max)
             if nota_turno:
                 r['notas'].insert(0, nota_turno)
             vals = {
@@ -260,6 +270,7 @@ class QbNominaIncidencias(models.Model):
                 'salidas_antes': r['salidas_antes'], 'salida_min': r['salida_min'],
                 'extra_checador': round(r['extra_horas'], 2), 'he_propuestas': r['he_propuestas'],
                 'dias_con_extra': r['dias_con_extra'], 'dom_horas': r['dom_horas'],
+                'comida_min': r['comida_min'], 'comidas_largas': r['comidas_largas'],
                 'sin_checadas': r['sin_checadas'], 'proyectado': r['proyectado'],
                 'observaciones': '\n'.join(r['notas']) or False,
             }
@@ -445,6 +456,12 @@ class QbNominaIncidenciasLinea(models.Model):
     dias_con_extra = fields.Integer(string="Días con extra")
     he_dias = fields.Integer(string="Días con tiempo extra", compute='_compute_recibo', store=True)
     dom_horas = fields.Float(string="Prima dominical (h)", digits=(6, 1))
+    comida_min = fields.Integer(string="Comida (min)",
+                                help="Minutos de comida de la semana según el checador (salida y regreso de comer). "
+                                     "Solo se anota: no se descuenta.")
+    comidas_largas = fields.Integer(string="Comidas largas",
+                                    help="Días en que la comida pasó del límite (parámetro "
+                                         "quimibond_nomina.incidencias_comida_max, 60 minutos si no está).")
     sin_checadas = fields.Boolean(string="Sin checadas")
     proyectado = fields.Boolean(string="Con días proyectados")
     observaciones = fields.Text(string="Observaciones")
