@@ -44,7 +44,9 @@ cada hora con 50 expedientes (primero los que nunca se buscaron, después los ab
 correos que traen el consecutivo del pedimento en el asunto o en el texto de un adjunto, entre 60 días antes
 y 120 días después de sus fechas, baja sus adjuntos (sin firmas, imágenes chicas ni correos reenviados, sin
 repetidos), los clasifica como «Cargar expediente» y los guarda. Deja fuera los archivos cuyo nombre trae
-otro pedimento y no vuelve a traer uno que el expediente ya tiene. «Última búsqueda en la memoria» dice
+otro pedimento y no vuelve a traer uno que el expediente ya tiene. Las hojas de control de Logística
+(F-P-A-16-05/06, «IMPORTACIONES 2025.xlsx») listan todos los pedimentos: no se traen, y el texto de una hoja
+de cálculo no basta para ligar un correo al pedimento (desde 1.3.1). «Última búsqueda en la memoria» dice
 cuándo fue. Usa `quimibond_intelligence.supabase_url` y `supabase_service_key` (los parámetros del push).
 
 ## Etapas
