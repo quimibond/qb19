@@ -339,7 +339,7 @@
                     <group>
                         <group>
                             <field name="kind" invisible="1"/>
-                            <field name="year" options="{'format': false}"/>
+                            <field name="year" options="{'enable_formatting': false}"/>
                             <field name="revision"/>
                             <field name="revision_label" invisible="1"/>
                             <field name="revision_date"/>
@@ -486,7 +486,7 @@
                   decoration-muted="state in ('obsoleto', 'reemplazado')"
                   decoration-success="state == 'aprobado'">
                 <field name="folio"/>
-                <field name="year" options="{'format': false}"/>
+                <field name="year" options="{'enable_formatting': false}"/>
                 <field name="revision_label" string="Revisión"/>
                 <field name="revision_date" optional="show"/>
                 <field name="amount_budget_total" optional="show"/>
@@ -630,7 +630,7 @@
                     </div>
                     <group>
                         <group string="Periodo">
-                            <field name="year" options="{'format': false}"/>
+                            <field name="year" options="{'enable_formatting': false}"/>
                             <field name="base"/>
                             <field name="date_from"/>
                             <field name="date_to"/>
@@ -828,7 +828,7 @@
                     <group>
                         <group>
                             <field name="partner_id" readonly="1"/>
-                            <field name="year" options="{'format': false}" readonly="1"/>
+                            <field name="year" options="{'enable_formatting': false}" readonly="1"/>
                         </group>
                         <group>
                             <field name="folio" readonly="1"/>
@@ -862,7 +862,7 @@
                     <t t-name="card">
                         <div class="row">
                             <div class="col-8">
-                                <strong><field name="year" options="{'format': false}"/></strong> ·
+                                <strong><field name="year" options="{'enable_formatting': false}"/></strong> ·
                                 <field name="revision_label"/>
                             </div>
                             <div class="col-4 text-end">

@@ -561,6 +561,7 @@ class TestPresupuestoAnual(TransactionCase):
         compare = budget.action_qb_compare_mercado()
         self.assertEqual(compare['res_model'], 'qb.sales.compare')
         self.assertEqual(compare['context']['pivot_row_groupby'], ['mercado'])
+        self.env.flush_all()  # la vista SQL lee los renglones ya guardados
         rows = self.env['qb.sales.compare'].search(compare['domain'])
         self.assertAlmostEqual(sum(rows.mapped('amount_budget')), 1900.0, places=2)
         self.assertAlmostEqual(sum(rows.filtered(lambda r: r.fuente == 'presupuesto_mes').mapped('amount_budget')),
