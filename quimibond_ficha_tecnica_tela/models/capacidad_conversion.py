@@ -213,8 +213,10 @@ class MrpBomConversionFicha(models.Model):
     def action_ft_datos_ficha(self):
         """«Usar los datos de la ficha» en estas listas (también las archivadas): capacidad de los jets, tiempos de
         las operaciones y conversión kg → m. La capacidad va primero: el tiempo de tintorería por baño la necesita."""
-        boms = self.with_context(active_test=False)
-        boms.operation_ids._ft_sincronizar_capacidad()
-        boms.operation_ids.action_ft_usar_tiempo_ficha()
-        boms.action_ft_usar_conversion_ficha()
+        # 2.31.1: `active_test=False` solo para alcanzar las operaciones archivadas; los cálculos corren con el
+        # contexto normal para que ninguna ficha, proceso o fórmula archivada entre en ellos.
+        ops = self.with_context(active_test=False).operation_ids.with_context(active_test=True)
+        ops._ft_sincronizar_capacidad()
+        ops.action_ft_usar_tiempo_ficha()
+        self.with_context(active_test=True).action_ft_usar_conversion_ficha()
         return True

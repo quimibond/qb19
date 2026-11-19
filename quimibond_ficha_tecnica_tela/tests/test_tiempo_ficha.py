@@ -257,3 +257,27 @@ class TestTiempoFicha(TiempoFichaCase):
         self.env.invalidate_all()
         self.assertFalse(sin_filtro._ft_de_producto(self.crudo))
         self.assertFalse(self.op_dev.with_context(active_test=False).ft_tiempo_ficha)
+
+    def test_09_ficha_de_acabado_y_proceso_archivados_no_cuentan(self):
+        """2.31.1: tampoco una ficha de acabado ni un proceso archivados, con `active_test=False`. En producción
+        (19-nov-2026) el filtro marcaba 10 operaciones de Rama con el rendimiento de una ficha de acabado archivada,
+        y «Usar los datos de la ficha» lo habría escrito."""
+        Op = self.env['mrp.routing.workcenter']
+        self.acabado.action_archive()
+        self.p_dev.action_archive()
+        for op in (self.op_insp, self.op_insp.with_context(active_test=False)):
+            self.env.invalidate_all()
+            self.assertFalse(op.ft_tiempo_ficha, "Sin ficha de acabado activa no hay rendimiento")
+            self.assertIn('la ficha de acabado', op.ft_tiempo_calculo)
+        for op in (self.op_dev, self.op_dev.with_context(active_test=False)):
+            self.env.invalidate_all()
+            self.assertFalse(op.ft_tiempo_ficha, "El proceso archivado no da la velocidad")
+        self.env.invalidate_all()
+        distintas = Op.search([('ft_tiempo_difiere', '=', True)])
+        self.assertNotIn(self.op_insp, distintas)
+        self.assertNotIn(self.op_dev, distintas)
+        self.bom.action_archive()
+        self.bom.action_ft_datos_ficha()
+        self.assertAlmostEqual(self.op_insp.time_cycle_manual, 0.1, places=4, msg="No se escribe con la archivada")
+        self.assertAlmostEqual(self.op_dev.time_cycle_manual, 0.1, places=4)
+        self.assertAlmostEqual(self.op_abr.time_cycle_manual, 0.44, places=4, msg="Lo que sí tiene datos se escribe")
