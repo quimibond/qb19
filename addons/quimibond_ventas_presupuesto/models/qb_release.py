@@ -73,27 +73,6 @@ class QbReleaseProfile(models.Model):
         string="Semanas a pedido", default=4, tracking=True,
         help="Semanas de la zona firme que se proponen como pedido de venta (E2). "
              "El resto queda como pronóstico / autorización.")
-    # 3.18.0 (Jose, 19-nov): lo que Ventas hacía a mano después de aplicar el release, como
-    # configuración del perfil (sin código por cliente). Ver release/reglas.py.
-    frozen_weeks = fields.Integer(
-        string="Semanas congeladas", default=3, tracking=True,
-        help="Semanas desde la semana en curso que Planeación ya programó: al aplicar el release se "
-             "quedan como estaban. Lo que el cliente sube o baja en ellas pasa a la semana siguiente "
-             "(la 4 con 3 congeladas); una baja que no cabe sigue a la 5 y las demás. 0 = sin congelar.")
-    group_weeks = fields.Integer(
-        string="Semanas por embarque", default=1, tracking=True,
-        help="Embarques cada N semanas: la demanda de cada bloque de N semanas se suma en la primera "
-             "semana del bloque (FXI Juárez: 4). 1 = un embarque por semana.")
-    group_start = fields.Date(
-        string="Primer embarque de los bloques", tracking=True,
-        help="Lunes de una semana con embarque. Los bloques se cuentan desde aquí para que no se "
-             "recorran cada semana. Vacío = la primera semana después de las congeladas.")
-    roll_qty = fields.Float(
-        string="Rollo", tracking=True,
-        help="Las cantidades se suben al múltiplo del rollo (505 con rollos de 500 → 1000). La parte "
-             "del cliente puede tener su propio rollo. 0 = el cliente manda cantidades cerradas.")
-    roll_uom = fields.Selection([('m', "m"), ('yd', "yd"), ('kg', "kg"), ('m2', "m²")],
-                                string="Unidad del rollo", default='yd', tracking=True)
     ack_required = fields.Boolean(string="Exige acuse", tracking=True)
     ack_hours = fields.Integer(string="Plazo del acuse (h)", default=24)
     cum_managed = fields.Boolean(string="Maneja acumulados (CUM)", tracking=True)
@@ -130,6 +109,12 @@ class QbReleaseProfile(models.Model):
     _profile_uniq = models.Constraint(
         'unique nulls not distinct (company_id, partner_id, ship_to_id, plant)',
         "Ya hay un perfil de release para ese cliente y planta.")
+
+    def _qb_terms(self):
+        """Condiciones de entrega del cliente y planta del perfil (3.19.0)."""
+        self.ensure_one()
+        return self.env['qb.delivery.terms']._qb_for(self.partner_id, self.ship_to_id, self.plant,
+                                                     self.company_id)
 
     @api.depends('partner_id', 'ship_to_id', 'plant')
     def _compute_name(self):
@@ -521,7 +506,8 @@ class QbRelease(models.Model):
             start = min(week for (_p, week) in demand)
             products = release.line_ids.product_id
             current = _monday(fields.Date.context_today(self))
-            lower = min(start, current) if profile.frozen_weeks > 0 else start
+            terms = profile._qb_terms()
+            lower = min(start, current) if terms.frozen_weeks > 0 else start
             # 3.15.1: por ARTÍCULO, no por producto. El forecast de Excel traía a Shawmut en WJ (metros)
             # y el release viene en IWJ (kilos): son la misma tela y la semana se reemplaza, no se suma
             # (el 9-nov la primera aplicación duplicó 62 semanas).
@@ -532,7 +518,7 @@ class QbRelease(models.Model):
                 '|', ('product_id', 'in', products.ids), ('articulo_id', 'in', articulos.ids),
                 ('week', '>=', lower)])
             asked = dict(demand)
-            demand, rule_notes = release._qb_apply_rules(demand, info, existing, current)
+            demand, rule_notes = release._qb_apply_rules(demand, info, existing, current, terms)
             by_key = {(ln.product_id, ln.week): ln for ln in existing}
             by_articulo = defaultdict(list)
             for ln in existing:
@@ -622,30 +608,20 @@ class QbRelease(models.Model):
         return True
 
 
-    def _qb_roll_for(self, product):
-        """(rollo, unidad) del producto: el de la parte del cliente o el del perfil; (0, False) si no."""
-        self.ensure_one()
-        for part in self.part_ids.filtered(lambda p: p.product_id == product):
-            if part.catalog_part_id.roll_qty > 0:
-                return part.catalog_part_id.roll_qty, part.catalog_part_id.roll_uom or 'yd'
-        profile = self.profile_id
-        return (profile.roll_qty, profile.roll_uom or 'yd') if profile.roll_qty > 0 else (0.0, False)
-
-    def _qb_apply_rules(self, demand, info, existing, current):
+    def _qb_apply_rules(self, demand, info, existing, current, terms):
         """3.18.0: semanas congeladas, embarques cada N semanas y redondeo a rollos (release/reglas.py),
-        por producto, según el perfil y la parte del cliente. Devuelve ({(producto, lunes): cantidad},
+        por producto, según las condiciones de entrega del cliente (3.19.0). Devuelve ({(producto, lunes): cantidad},
         {(producto, lunes): nota}); agrega a ``info`` las semanas nuevas (la semana 4 que recibe lo de
         las congeladas, las congeladas que el release ya no trae)."""
         self.ensure_one()
-        profile = self.profile_id
-        frozen = max(profile.frozen_weeks or 0, 0)
-        group = profile.group_weeks if (profile.group_weeks or 0) > 1 else 0
+        frozen = max(terms.frozen_weeks or 0, 0)
+        group = terms.group_weeks if (terms.group_weeks or 0) > 1 else 0
         by_product = defaultdict(dict)
         for (product, week), qty in demand.items():
             by_product[product][week] = qty
         result, notes = {}, {}
         for product, asks in by_product.items():
-            roll, roll_uom = self._qb_roll_for(product)
+            roll, roll_uom = terms._qb_roll_for(product)
             if not (frozen or group or roll):
                 result.update({(product, week): qty for week, qty in asks.items()})
                 continue
@@ -667,7 +643,7 @@ class QbRelease(models.Model):
 
             weeks, week_notes = reglas.aplicar_reglas(
                 asks, dict(programado), current, congeladas=frozen, agrupar=group,
-                inicio_bloques=_monday(profile.group_start) if profile.group_start else None,
+                inicio_bloques=_monday(terms.group_start) if terms.group_start else None,
                 redondear=round_up if roll else None)
             sample = next(iter(info[(product, w)] for w in asks))
             for week, qty in weeks.items():
@@ -741,8 +717,10 @@ class QbReleaseLine(models.Model):
         for line in self:
             profile = line.release_part_id.release_id.profile_id
             ship = line.date_customer
-            if ship and profile.date_basis == 'entrega' and profile.transit_days:
-                ship = ship - timedelta(days=profile.transit_days)
+            # 3.19.0: sin días de tránsito en el perfil, los días de adelanto de las condiciones de entrega.
+            days = profile.transit_days or (profile._qb_terms().lead_days if profile else 0)
+            if ship and profile.date_basis == 'entrega' and days:
+                ship = ship - timedelta(days=days)
             line.date_ship = ship
             line.week = _monday(ship) if ship else False
 
