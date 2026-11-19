@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Catálogo técnico: productos publicados (product.template) por
+         categoría del sitio (product.public.category). Sin precios. -->
+    <template id="catalogo" name="Quimibond: catálogo">
+        <t t-call="website.layout">
+            <t t-set="title" t-value="(categoria.name + ' | ' if categoria else '') + 'Catálogo técnico | Quimibond'"/>
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Catálogo técnico'"/>
+                    <t t-set="titulo" t-value="categoria.name if categoria else 'Entretelas, no tejidos y tejido circular'"/>
+                    <t t-set="resumen" t-value="'Código, gramaje, composición, color y tacto de cada producto. Pida cotización o muestra desde la ficha.'"/>
+                </t>
+                <section class="qb-sec qb-sec--pegada">
+                    <div class="qb-container qb-cat">
+                        <aside class="qb-cat__lado">
+                            <div class="qb-buscar">
+                                <i class="fa fa-search" aria-hidden="true"/>
+                                <input type="search" data-qb-filtro="1" t-att-value="busqueda or None" placeholder="Filtrar por código, gramaje, color…" aria-label="Filtrar productos"/>
+                            </div>
+                            <nav class="qb-cat__nav" aria-label="Categorías">
+                                <a href="/catalogo" t-att-class="'activo' if not categoria else ''">Todos los productos</a>
+                                <t t-foreach="categorias" t-as="item">
+                                    <a t-attf-href="/catalogo/#{slug(item['categoria'])}" t-att-class="'activo' if categoria and categoria.id == item['categoria'].id else ''">
+                                        <span t-out="item['categoria'].name"/><em t-out="item['total']"/>
+                                    </a>
+                                    <t t-foreach="item['hijos']" t-as="h">
+                                        <a t-attf-href="/catalogo/#{slug(h['categoria'])}" t-attf-class="sub #{'activo' if categoria and categoria.id == h['categoria'].id else ''}">
+                                            <span t-out="h['categoria'].name"/><em t-out="h['total']"/>
+                                        </a>
+                                    </t>
+                                </t>
+                            </nav>
+                            <div class="qb-chips" data-qb-chips="1">
+                                <button type="button" class="qb-chip" data-campo="fusion" data-valor="Fusionable">Fusionable</button>
+                                <button type="button" class="qb-chip" data-campo="fusion" data-valor="No fusionable">No fusionable</button>
+                                <button type="button" class="qb-chip" data-campo="tacto" data-valor="Rígido">Rígido</button>
+                                <button type="button" class="qb-chip" data-campo="tacto" data-valor="Semirrígido">Semirrígido</button>
+                                <button type="button" class="qb-chip" data-campo="tacto" data-valor="Suave">Suave</button>
+                            </div>
+                        </aside>
+                        <div>
+                            <p class="qb-mono qb-cat__cuenta"><span data-qb-cuenta-filtro="1" t-out="len(productos)"/> productos</p>
+                            <div class="qb-grid qb-grid--3 qb-cat__rejilla" data-qb-rejilla="1">
+                                <t t-foreach="productos" t-as="par">
+                                    <t t-set="producto" t-value="par[0]"/>
+                                    <t t-set="ficha" t-value="par[1]"/>
+                                    <t t-call="website_quimibond.tarjeta_producto"/>
+                                </t>
+                            </div>
+                            <div class="qb-vacio" data-qb-vacio="1" t-att-hidden="'hidden' if productos else None">
+                                <h3>No encontramos ese producto</h3>
+                                <p>Fabricamos sobre especificación. Cuéntenos qué necesita.</p>
+                                <a href="/cotizar" class="qb-btn qb-btn--primario">Solicitar desarrollo</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="producto" name="Quimibond: ficha de producto">
+        <t t-call="website.layout">
+            <t t-set="title" t-value="ficha['codigo'] + ' · ' + ficha['titulo'] + ' | Quimibond'"/>
+            <t t-set="website_meta_description" t-value="ficha['titulo'] + '. Solicite cotización o muestra a Quimibond.'"/>
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-ficha">
+                    <div class="qb-container">
+                        <nav class="qb-migas" aria-label="Ruta">
+                            <a href="/catalogo">Catálogo</a>
+                            <t t-foreach="producto.public_categ_ids[:1]" t-as="c">
+                                <i class="fa fa-angle-right" aria-hidden="true"/>
+                                <a t-attf-href="/catalogo/#{slug(c)}" t-out="c.name"/>
+                            </t>
+                            <i class="fa fa-angle-right" aria-hidden="true"/>
+                            <span t-out="ficha['codigo']"/>
+                        </nav>
+                        <div class="qb-dos qb-ficha__in">
+                            <div class="qb-ficha__img qb-reveal">
+                                <img t-if="ficha['imagen']" t-attf-src="/web/image/product.template/#{producto.id}/image_1024" t-att-alt="ficha['titulo']"/>
+                                <t t-else="" t-call="website_quimibond.muestra">
+                                    <t t-set="construccion" t-value="ficha['construccion']"/>
+                                    <t t-set="color" t-value="ficha['color']"/>
+                                    <t t-set="fusionable" t-value="ficha['fusion'] == 'Fusionable'"/>
+                                </t>
+                            </div>
+                            <div>
+                                <span class="qb-mono qb-ficha__codigo qb-reveal" t-out="ficha['codigo']"/>
+                                <h1 class="qb-reveal" t-out="ficha['titulo']"/>
+                                <table class="qb-tabla qb-reveal">
+                                    <tbody>
+                                        <tr t-if="ficha['gramaje']"><th>Gramaje</th><td t-out="ficha['gramaje']"/></tr>
+                                        <tr t-if="ficha['composicion']"><th>Composición</th><td t-out="ficha['composicion']"/></tr>
+                                        <tr t-if="ficha['fusion']"><th>Tipo</th><td t-out="ficha['fusion']"/></tr>
+                                        <tr t-if="ficha['color']"><th>Color</th><td t-out="ficha['color']"/></tr>
+                                        <tr t-if="ficha['tacto']"><th>Tacto</th><td t-out="ficha['tacto']"/></tr>
+                                        <tr t-if="producto.uom_id"><th>Unidad de venta</th><td t-out="producto.uom_id.name"/></tr>
+                                        <tr t-if="producto.public_categ_ids"><th>Línea</th><td t-out="', '.join(producto.public_categ_ids.mapped('name'))"/></tr>
+                                    </tbody>
+                                </table>
+                                <div class="qb-hero__cta qb-reveal">
+                                    <a t-attf-href="/cotizar?producto=#{ficha['codigo']}" class="qb-btn qb-btn--primario qb-btn--lg">Cotizar este producto <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                                    <a t-attf-href="/cotizar?producto=Muestra #{ficha['codigo']}" class="qb-btn qb-btn--contorno qb-btn--lg">Pedir muestra</a>
+                                </div>
+                                <p class="qb-hero__nota qb-reveal"><i class="fa fa-info-circle" aria-hidden="true"/> ¿Necesita otro gramaje, ancho o color? Lo desarrollamos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section t-if="relacionados" class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab"><h2 class="qb-reveal">De la misma línea</h2></div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="relacionados" t-as="par">
+                                <t t-set="producto" t-value="par[0]"/>
+                                <t t-set="ficha" t-value="par[1]"/>
+                                <t t-call="website_quimibond.tarjeta_producto"/>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+</odoo>
