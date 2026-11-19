@@ -259,6 +259,11 @@ class QbSalesMonthPlan(models.Model):
                 count, ", ".join(p.name for p in missing)))
         return count
 
+    def action_qb_open_build(self):
+        """Botón de la lista (3.20.0; antes menú «Armar presupuesto del mes»)."""
+        return self.env['ir.actions.act_window']._for_xml_id(
+            'quimibond_ventas_presupuesto.qb_sales_month_plan_build_action')
+
     def action_qb_fill_prices(self):
         """Pone precio a los renglones que no tienen (sin tocar cantidades ni los que ya tienen) y pide
         a Ventas lo que falta en la lista de cada cliente. Un precio que salió de una factura (3.16.2 a

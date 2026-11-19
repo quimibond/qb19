@@ -163,14 +163,15 @@
     </record>
 
     <record id="qb_sales_compare_monthly_action" model="ir.actions.act_window">
-        <field name="name">Cierre mensual por mercado</field>
+        <field name="name">Presupuesto contra real</field>
         <field name="res_model">qb.sales.compare</field>
         <field name="view_mode">pivot,graph</field>
         <field name="context">{'search_default_vigente': 1, 'search_default_este_anio': 1,
                                'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['month:month'],
                                'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
         <field name="help" type="html">
-            <p>Presupuesto aprobado contra venta real (sin saldos ni desperdicio), por mercado y mes.</p>
+            <p>Presupuesto aprobado contra venta real (sin saldos ni desperdicio), por mercado y mes.
+               En Favoritos: «Por año y mercado» y «Por cliente y artículo».</p>
         </field>
     </record>
 
@@ -205,7 +206,7 @@
 
     <!-- Abren el reporte con el mes en curso y el anterior ya refrescados. -->
     <record id="qb_sales_compare_monthly_server" model="ir.actions.server">
-        <field name="name">Cierre mensual por mercado</field>
+        <field name="name">Presupuesto contra real</field>
         <field name="model_id" ref="model_qb_sales_actual"/>
         <field name="state">code</field>
         <field name="code">action = model.action_qb_open_report('quimibond_ventas_presupuesto.qb_sales_compare_monthly_action')</field>
@@ -221,6 +222,29 @@
         <field name="model_id" ref="model_qb_sales_actual"/>
         <field name="state">code</field>
         <field name="code">action = model.action_qb_open_report('quimibond_ventas_presupuesto.qb_sales_compare_client_action')</field>
+    </record>
+
+    <!-- 3.20.0: los menús «Anual» y «Cliente y artículo» abrían la misma tabla con otra agrupación;
+         quedan como favoritos de «Presupuesto contra real» (sin usuario: los ven todos). -->
+    <record id="qb_sales_compare_filter_annual" model="ir.filters">
+        <field name="name">Por año y mercado</field>
+        <field name="model_id">qb.sales.compare</field>
+        <field name="action_id" ref="qb_sales_compare_monthly_action"/>
+        <field name="user_ids" eval="[(5, 0, 0)]"/>
+        <field name="domain">['|', ('fuente', '!=', 'presupuesto'), ('budget_state', '=', 'aprobado')]</field>
+        <field name="context">{'group_by': [], 'pivot_row_groupby': ['mercado'], 'pivot_column_groupby': ['year'],
+                               'pivot_measures': ['amount_budget', 'amount_real', 'amount_diff']}</field>
+    </record>
+    <record id="qb_sales_compare_filter_client" model="ir.filters">
+        <field name="name">Por cliente y artículo</field>
+        <field name="model_id">qb.sales.compare</field>
+        <field name="action_id" ref="qb_sales_compare_monthly_action"/>
+        <field name="user_ids" eval="[(5, 0, 0)]"/>
+        <field name="domain">['|', ('fuente', '!=', 'presupuesto'), ('budget_state', '=', 'aprobado')]</field>
+        <field name="context">{'group_by': [], 'pivot_row_groupby': ['partner_id', 'articulo_id'],
+                               'pivot_column_groupby': [],
+                               'pivot_measures': ['amount_budget', 'amount_real', 'qty_m_budget',
+                                                  'qty_m_forecast', 'qty_m_real', 'qty_kg_real']}</field>
     </record>
 
     <!-- ============ FALTANTES ============ -->

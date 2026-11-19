@@ -6,6 +6,12 @@
         <field name="model">qb.sales.month.plan</field>
         <field name="arch" type="xml">
             <list string="Presupuesto del mes" decoration-muted="state == 'enviado'">
+                <!-- 3.20.0: antes era el menú «Armar presupuesto del mes». -->
+                <header>
+                    <button name="action_qb_open_build" type="object" string="Armar presupuesto del mes"
+                            display="always" class="btn-primary"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                </header>
                 <field name="month"/>
                 <field name="name"/>
                 <field name="rate" optional="show"/>
