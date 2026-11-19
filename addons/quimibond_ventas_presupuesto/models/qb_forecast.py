@@ -288,6 +288,14 @@ class QbForecastLine(models.Model):
         return res
 
     # --- Ajustes de Ventas sobre el release (3.17.0) ------------------------------
+    def action_qb_open_paste(self):
+        """Botón de la lista (3.20.0; antes menú «Pegar semanas desde Excel»)."""
+        return self.env['ir.actions.act_window']._for_xml_id('quimibond_ventas_presupuesto.qb_forecast_paste_action')
+
+    def action_qb_open_print(self):
+        """Botón de la lista (3.20.0; antes menú «Imprimir o descargar»)."""
+        return self.env['ir.actions.act_window']._for_xml_id('quimibond_ventas_presupuesto.qb_forecast_print_action')
+
     def action_qb_volver_release(self):
         """Deshace el ajuste: la semana vuelve a lo que pide el cliente. Si el release ya no la trae
         (pide 0), se quita."""
