@@ -81,6 +81,7 @@ class TestSalesActual(TransactionCase):
         self._invoice(date(2069, 3, 10), [(self.product, 100.0, 2.0), (self.saldo, 10.0, 1.0)])
         self._rebuild()
         Compare = self.env['qb.sales.compare']
+        self.env.flush_all()  # la vista SQL lee los renglones ya guardados
         Compare.invalidate_model()
         rows = Compare.search([('partner_id', '=', self.client.id), ('year', '=', 2069),
                                '|', ('fuente', '!=', 'presupuesto'), ('budget_state', '=', 'aprobado')])
