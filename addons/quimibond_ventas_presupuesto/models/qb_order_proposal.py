@@ -12,7 +12,8 @@ la Demanda y el consumo del pronóstico ya leen los pedidos por esa fecha.
 **De dónde sale la OC** (`qb.order.rule.po_mode`, una regla por cliente y, si hace falta, planta):
 
 - ``release``: la OC de cada semana del pronóstico (TQ-1, Contitech, FXI…); sin OC, no se pide.
-- ``abierta``: la OC abierta de la regla, mientras esté vigente (Lear, Shawmut, Saltillo…).
+- ``abierta``: la OC abierta de la regla, mientras esté vigente (Lear, Shawmut, Saltillo…); si el
+  producto tiene su OC abierta en Condiciones de entrega (3.24.0, Zwisstex), esa.
 - ``release_sin_oc``: el release es la autorización; la referencia es ``REL-<release>``.
 - ``manual``: no se propone; los pedidos se capturan a mano.
 
@@ -36,7 +37,7 @@ from datetime import datetime, time, timedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 from ..release.oc import separa_oc
 from .qb_forecast import DEV_NO_SALE, monday_of
@@ -70,7 +71,9 @@ class QbOrderRule(models.Model):
                              "pronóstico), solo para esa; gana sobre la regla sin planta.")
     po_mode = fields.Selection(PO_MODES, string="Cómo se pide", required=True, default='release', tracking=True)
     open_po = fields.Char(string="OC abierta", tracking=True,
-                          help="Solo en «OC abierta + release»: la OC que cubre las entregas del release.")
+                          help="Solo en «OC abierta + release»: la OC que cubre las entregas del release. Si el cliente "
+                               "tiene una OC por producto, va en la presentación de Condiciones de entrega "
+                               "(gana sobre esta); vacía = solo esas.")
     open_po_valid_to = fields.Date(string="Vigencia de la OC abierta", tracking=True,
                                    help="Vacío: sin fecha de fin. Vencida, las semanas ya no se proponen.")
     so_weeks = fields.Integer(string="Semanas a pedido", default=4, tracking=True,
@@ -89,12 +92,6 @@ class QbOrderRule(models.Model):
     def _compute_name(self):
         for rule in self:
             rule.name = "%s — %s" % (rule.partner_id.name, rule.plant) if rule.plant else rule.partner_id.name
-
-    @api.constrains('po_mode', 'open_po')
-    def _check_open_po(self):
-        for rule in self:
-            if rule.po_mode == 'abierta' and not (rule.open_po or '').strip():
-                raise ValidationError("«OC abierta + release» lleva el número de la OC abierta.")
 
     @api.model
     def _qb_rule_for(self, company, partner, plant):
@@ -156,23 +153,36 @@ class QbOrderProposal(models.TransientModel):
             proposal.count_skip = len(proposal.line_ids.filtered(lambda l: l.action == 'no_entra'))
 
     # --- Armado ---------------------------------------------------------------
-    def _qb_reference(self, rule, fl):
-        """(referencia, motivo si no hay) de la semana ``fl`` según el modo de la regla."""
+    def _qb_reference(self, rule, fl, terms=None):
+        """(referencia, motivo si no hay) de la semana ``fl`` según el modo de la regla.
+
+        3.24.0: la OC abierta del producto en Condiciones de entrega (un cliente con varias OC
+        abiertas, una por producto: Zwisstex) gana sobre la OC abierta de la regla; en «OC en el
+        release» y «Release sin OC» se usa cuando la semana no trae OC."""
         oc, _pv = separa_oc(fl.customer_po)
+        product_po, expired = (terms or self.env['qb.delivery.terms'])._qb_open_po_for(fl.product_id, fl.week)
+        if rule.po_mode == 'manual':
+            return '', "El cliente pide a mano (sin release)"
+        if expired and not (oc and rule.po_mode != 'abierta'):
+            return '', expired
         if rule.po_mode == 'abierta':
+            if product_po:
+                return product_po, ''
+            if not (rule.open_po or '').strip():
+                return '', "Sin OC abierta para el producto en Condiciones de entrega"
             if rule.open_po_valid_to and fl.week > rule.open_po_valid_to:
                 return '', "La OC abierta %s venció el %s" % (rule.open_po, rule.open_po_valid_to)
             return rule.open_po.strip(), ''
+        if oc:
+            return oc, ''
+        if product_po:
+            return product_po, ''
         if rule.po_mode == 'release':
-            return (oc, '') if oc else ('', "La semana no trae OC")
-        if rule.po_mode == 'release_sin_oc':
-            if oc:
-                return oc, ''
-            release = fl.release_id.release_ref or fl.release_id.name
-            if release:
-                return "%s%s" % (RELEASE_REF_PREFIX, release), ''
-            return "%s%s" % (RELEASE_REF_PREFIX, fl.week.isoformat()), ''
-        return '', "El cliente pide a mano (sin release)"
+            return '', "La semana no trae OC"
+        release = fl.release_id.release_ref or fl.release_id.name
+        if release:
+            return "%s%s" % (RELEASE_REF_PREFIX, release), ''
+        return "%s%s" % (RELEASE_REF_PREFIX, fl.week.isoformat()), ''
 
     @api.model
     def _qb_week_bounds(self, week):
@@ -272,7 +282,8 @@ class QbOrderProposal(models.TransientModel):
                 if rule and fl.week >= start + timedelta(weeks=rule.so_weeks or 0):
                     continue
                 if rule:
-                    ref, why = self._qb_reference(rule, fl)
+                    ref, why = self._qb_reference(
+                        rule, fl, Terms._qb_for(partner, fl.ship_to_id, plant, company))
                 else:
                     ref, why = '', "Sin regla de pedido para la planta %s" % (plant or "(sin planta)")
                 key = (partner.id, plant, ref or why, fl.week, fl.product_id.id)

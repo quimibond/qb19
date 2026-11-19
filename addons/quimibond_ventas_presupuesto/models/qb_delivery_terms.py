@@ -9,6 +9,8 @@ toma de aquí la fecha de entrega. Nada está escrito por cliente en el código.
 """
 from datetime import timedelta
 
+from markupsafe import Markup
+
 from odoo import api, fields, models
 
 WEEKDAYS = [('0', "Lunes"), ('1', "Martes"), ('2', "Miércoles"), ('3', "Jueves"), ('4', "Viernes"),
@@ -116,6 +118,18 @@ class QbDeliveryTerms(models.Model):
         return exact[:1] or self.line_ids.filtered(
             lambda l: (l.product_id.qb_articulo_id or l.product_id) == articulo)[:1]
 
+    def _qb_open_po_for(self, product, week):
+        """(OC abierta del producto, motivo si venció) — 3.24.0: un cliente con una OC abierta por
+        producto (Zwisstex). ('', '') si el producto no tiene OC propia: manda la regla del cliente."""
+        line = self._qb_line_for(product) if self else self.browse()
+        po = (line.open_po or '').strip() if line else ''
+        if not po:
+            return '', ''
+        if line.open_po_valid_to and week and week > line.open_po_valid_to:
+            return '', "La OC abierta %s de %s venció el %s" % (
+                po, product.default_code or product.display_name, line.open_po_valid_to)
+        return po, ''
+
     def _qb_roll_for(self, product):
         """(rollo, unidad) para redondear ese producto; (0, False) si no se redondea."""
         if not self or self.closed_qty:
@@ -162,7 +176,39 @@ class QbDeliveryTermsLine(models.Model):
     packaging = fields.Char(string="Empaque", help="Emplayado, bolsa, tarima, esquineros…")
     label = fields.Char(string="Etiqueta")
     notes = fields.Char(string="Notas")
+    open_po = fields.Char(
+        string="OC abierta",
+        help="Para el cliente que tiene una OC abierta por producto (Zwisstex): los pedidos de este "
+             "producto llevan esta OC. Vacía = la OC de la regla del cliente o de la planta.")
+    open_po_valid_to = fields.Date(string="Vigencia de la OC",
+                                   help="Vacía = sin fecha de fin. Vencida, el producto ya no se pide.")
     company_id = fields.Many2one(related='terms_id.company_id', store=True)
 
     _line_uniq = models.Constraint('unique (terms_id, product_id)',
                                    "Ese producto ya tiene su presentación en estas condiciones.")
+
+    _PO_FIELDS = ('open_po', 'open_po_valid_to')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        for line in lines.filtered('open_po'):
+            line._qb_post_po(False, False)
+        return lines
+
+    def write(self, vals):
+        before = {line.id: (line.open_po, line.open_po_valid_to) for line in self} \
+            if any(f in vals for f in self._PO_FIELDS) else {}
+        res = super().write(vals)
+        for line in self.filtered(lambda l: l.id in before):
+            old_po, old_to = before[line.id]
+            if (old_po or False, old_to or False) != (line.open_po or False, line.open_po_valid_to or False):
+                line._qb_post_po(old_po, old_to)
+        return res
+
+    def _qb_post_po(self, old_po, old_to):
+        """El cambio de OC queda en el historial de las condiciones (el renglón no tiene chatter)."""
+        def show(po, to):
+            return "%s%s" % (po or "—", " (vigente al %s)" % to if to else "")
+        self.terms_id.message_post(body=Markup("OC abierta de %s: %s → %s.") % (
+            self.product_id.display_name, show(old_po, old_to), show(self.open_po, self.open_po_valid_to)))

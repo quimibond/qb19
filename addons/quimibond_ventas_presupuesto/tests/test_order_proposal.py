@@ -4,7 +4,7 @@ OC según la regla del cliente. Semanas de 2072 para aislar."""
 from datetime import date, timedelta
 
 from odoo import fields
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -78,8 +78,55 @@ class TestOrderProposal(TransactionCase):
         action = proposal.action_apply()
         orders = self.env['sale.order'].browse(action['domain'][0][2])
         self.assertEqual(len(orders), 2, "Un pedido por OC y semana")
-        with self.assertRaises(ValidationError):
-            self.Rule.create({'partner_id': self.client.id, 'plant': 'Otra', 'po_mode': 'abierta'})
+
+    def test_02b_oc_abierta_por_producto(self):
+        """3.24.0 (Zwisstex): una OC abierta por producto en Condiciones de entrega gana sobre la regla;
+        sin la del producto ni la de la regla, no entra; vencida, no entra; el cambio queda en el historial."""
+        other = self.env['product.product'].create({
+            'name': 'Tela pedido 2', 'default_code': 'WPED170', 'type': 'consu', 'uom_id': self.uom_m.id,
+            'sale_ok': True})
+        self.pricelist.item_ids = [(0, 0, {'applied_on': '0_product_variant', 'product_id': other.id,
+                                           'compute_price': 'fixed', 'fixed_price': 10.0})]
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'abierta', 'so_weeks': 2})
+        terms = self.env['qb.delivery.terms'].create({
+            'partner_id': self.client.id,
+            'line_ids': [(0, 0, {'product_id': self.product.id, 'open_po': '14792'})]})
+        self._fl(self.week, 10.0, '999')  # la OC del release no se usa en «OC abierta»
+        self.Forecast.create({'partner_id': self.client.id, 'product_id': other.id, 'week': self.week,
+                              'qty_origen': 5.0})
+        proposal = self._propose()
+        mine = proposal.line_ids.filtered(lambda l: l.product_id == self.product)
+        self.assertEqual((mine.customer_po, mine.action), ('14792', 'nuevo'))
+        sin = proposal.line_ids.filtered(lambda l: l.product_id == other)
+        self.assertEqual(sin.action, 'no_entra')
+        self.assertIn("Sin OC abierta", sin.reason)
+        # Cada producto con su OC: un pedido por OC.
+        terms.line_ids = [(0, 0, {'product_id': other.id, 'open_po': '15486'})]
+        proposal = self._propose()
+        self.assertEqual(set(proposal.line_ids.mapped('customer_po')), {'14792', '15486'})
+        action = proposal.action_apply()
+        orders = self.env['sale.order'].browse(action['domain'][0][2])
+        self.assertEqual(sorted(orders.mapped('client_order_ref')), ['14792', '15486'])
+        # La OC cambia: queda en el historial; vencida, el producto no entra.
+        line = terms.line_ids.filtered(lambda l: l.product_id == other)
+        line.write({'open_po': '15862', 'open_po_valid_to': self.week - timedelta(days=1)})
+        self.assertIn('15486', terms.message_ids[:1].body)
+        self.assertIn('15862', terms.message_ids[:1].body)
+        proposal = self._propose()
+        vencida = proposal.line_ids.filtered(lambda l: l.product_id == other)
+        self.assertEqual(vencida.action, 'no_entra')
+        self.assertIn("venció", vencida.reason)
+
+    def test_02c_oc_del_producto_si_el_release_no_trae(self):
+        """3.24.0: en «OC en el release», la OC de la semana gana; sin ella, la del producto."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 2})
+        self.env['qb.delivery.terms'].create({
+            'partner_id': self.client.id,
+            'line_ids': [(0, 0, {'product_id': self.product.id, 'open_po': '5555'})]})
+        self._fl(self.week, 10.0, '4444')
+        self._fl(self.week + timedelta(weeks=1), 20.0, 'PO')
+        proposal = self._propose()
+        self.assertEqual(proposal.line_ids.sorted('week').mapped('customer_po'), ['4444', '5555'])
 
     def _manager(self):
         return self.env['res.users'].create({

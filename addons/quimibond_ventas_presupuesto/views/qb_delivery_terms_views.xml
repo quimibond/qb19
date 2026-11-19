@@ -65,6 +65,8 @@
                                 <list editable="bottom">
                                     <field name="product_id"/>
                                     <field name="customer_part" optional="show"/>
+                                    <field name="open_po" optional="show"/>
+                                    <field name="open_po_valid_to" optional="show"/>
                                     <field name="roll_qty"/>
                                     <field name="roll_uom"/>
                                     <field name="round_up"/>

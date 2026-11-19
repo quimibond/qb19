@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Una OC abierta por producto (19.0.3.24.0, 2026-11-19)
+
+Jose (19-nov): «qué pasa si un mismo cliente tiene más de una orden abierta, eso sucede con Zwisstex… para
+Shawmut y Saltillo no, me dan una sola OC abierta para todos sus productos y cambia de acuerdo a su planta».
+La OC abierta vivía solo en la regla de «Cómo pide el cliente» (una por cliente y planta), y Zwisstex tiene
+una OC por producto (14792, 15486, 15862…).
+
+- La presentación por producto de **Condiciones de entrega** trae **OC abierta** y **Vigencia de la OC**.
+  Cada cambio queda en el historial de la ficha.
+- «Proponer pedidos» toma la OC así: en «OC abierta + release», la del producto y, si no tiene, la de la
+  regla (la OC que trae el release se sigue ignorando, como antes); en «OC en el release» y «Release sin
+  OC», la de la semana y, si no trae, la del producto. Vencida la del producto, ese producto no entra.
+- La regla en «OC abierta + release» ya puede ir sin OC: los productos sin OC propia quedan «No entra» con
+  el motivo «Sin OC abierta para el producto en Condiciones de entrega».
+- Shawmut y Saltillo no cambian: su OC sigue en la regla de cada planta.
+
 ## Ficha del presupuesto anual con vistas nativas (19.0.3.23.0, 2026-11-19)
 
 Jose no quiso el tablero de la 3.22.0 (tablas en HTML hechas a mano): «lo necesito lo más nativo de Odoo
