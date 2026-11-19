@@ -21,6 +21,29 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ficha del presupuesto anual con tablero (19.0.3.22.0, 2026-11-19)
+
+Jose (19-nov) pidió mejorar la vista del presupuesto anual y eligió todas las propuestas. La ficha era una
+pared de textos («Industrial 115,318,254 · …») con 854 renglones abajo; ahora (`models/sgi_sales_budget_tablero.py`):
+
+- **Tablero arriba:** presupuesto del año, al corte, vendido al corte, cumplimiento con semáforo (verde desde
+  90 %, ámbar desde el mínimo de Ajustes) y **cierre estimado**.
+- **Pestañas Por mercado, Por mes y Por cliente** (tablas de solo lectura) con un botón que abre el análisis
+  agrupado igual para bajar al renglón. Por mercado separa la diferencia en volumen, precio, tipo de cambio,
+  presupuesto del mes y venta sin renglón, con los proyectos debajo de su mercado. Por mes trae presupuesto,
+  facturado, pedido de los renglones, acumulados y el estimado: lo vendido en los meses cerrados; en los que
+  faltan, el presupuesto del mes (la foto del pronóstico vigente con precio) o, si no hay, el anual; si ya se
+  vendió más, lo vendido. Por cliente: los 15 principales, otros, Confección (sin cliente) y la venta a
+  clientes sin presupuesto. La venta es la del cumplimiento (regla del VE-02, sin saldos), así que cuadra.
+- **Renglones fuera de la ficha:** botón «Renglones» que abre la lista agrupada por mercado y cliente, con la
+  matriz y el pivote. Objetivo, cantidades y lo demás pasan a la pestaña «Objetivo y detalle».
+- **Meses sin renglones del presupuesto del mes:** la REV2 de 2026 no trae Industrial ni Proyectos en
+  noviembre y diciembre. Un mes y mercado sin ningún renglón en el anual toma lo que pone el presupuesto del
+  mes de ese mes (borrador o enviado; donde el anual trae algo, manda el anual): suma al presupuesto del año,
+  al presupuesto al corte, al cumplimiento, al crecimiento contra el año anterior, al aviso de cierre de mes y
+  al cierre de ventas (PDF). En la diferencia aparece como «presupuesto del mes», así que las partes siguen
+  sumando. El total de los renglones (`amount_budget_total`) no cambia.
+
 ## Pedidos fuera del pronóstico y días hábiles (19.0.3.21.0, 2026-11-19)
 
 Respuestas de Jose del 19-nov:
