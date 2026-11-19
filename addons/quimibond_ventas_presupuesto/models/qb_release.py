@@ -20,6 +20,11 @@ from odoo.exceptions import UserError
 
 from ..release import fxi_sum, generic_table, lear_aiag, units, woodbridge_pdf
 
+
+def _qb_fmt(qty):
+    return ("%.2f" % (qty or 0.0)).rstrip('0').rstrip('.')
+
+
 _READERS = [
     ('lear_aiag', "Lear — texto AIAG (Supplier Schedule / Material Release)"),
     ('fxi_sum', "FXI — Excel SUM (reporte SAP)"),
@@ -507,12 +512,30 @@ class QbRelease(models.Model):
             by_articulo = defaultdict(list)
             for ln in existing:
                 by_articulo[(ln.product_id.qb_articulo_id or ln.product_id, ln.week)].append(ln)
-            created = changed = 0
+            created = changed = kept = moved = 0
             to_create = []
+            notes = []
+            Apply = Line.with_context(qb_release_apply=True)
             for (product, week), qty in demand.items():
                 vals = dict(info[(product, week)], qty_origen=qty, uom_origen=False,
-                            origen='release', release_id=release.id)
+                            origen='release', release_id=release.id, qty_release=qty,
+                            ajustado=False, release_cambio=False)
                 line = by_key.pop((product, week), None)
+                if line and line.ajustado:
+                    # 3.17.0 (Jose, 18-nov): el ajuste de Ventas se conserva; solo cambia lo que pide
+                    # el cliente y, si cambió, la semana queda marcada.
+                    differs = abs(qty - line.qty_release) > 1e-6
+                    if differs:
+                        moved += 1
+                        notes.append(line._qb_change_vals(
+                            line.qty_venta, line.qty_venta,
+                            note="El cliente ahora pide %s (antes %s); se conserva el ajuste de Ventas" % (
+                                _qb_fmt(qty), _qb_fmt(line.qty_release))))
+                    keep = dict(info[(product, week)], qty_release=qty, release_id=release.id,
+                                release_cambio=line.release_cambio or differs)
+                    Apply.browse(line.id).write(keep)
+                    kept += 1
+                    continue
                 if not line:
                     # La misma tela en otro código (metros / kilos): se cambia a la del release.
                     for candidate in by_articulo.get((product.qb_articulo_id or product, week), []):
@@ -521,7 +544,7 @@ class QbRelease(models.Model):
                             vals['product_id'] = product.id
                             break
                 if line:
-                    line.write(vals)
+                    Apply.browse(line.id).write(vals)
                     changed += 1
                 else:
                     vals.update(company_id=release.company_id.id, partner_id=partner.id,
@@ -531,8 +554,21 @@ class QbRelease(models.Model):
             new_lines = Line.create(to_create)
             created = len(new_lines)
             stale = Line.browse([ln.id for ln in by_key.values()])
+            # 3.17.0: una semana ajustada que el release ya no trae se queda, marcada.
+            stale_kept = stale.filtered('ajustado')
+            for line in stale_kept:
+                notes.append(line._qb_change_vals(
+                    line.qty_venta, line.qty_venta,
+                    note="El release ya no trae la semana (antes pedía %s); se conserva el ajuste de "
+                         "Ventas" % _qb_fmt(line.qty_release)))
+            stale_kept.write({'qty_release': 0.0, 'release_cambio': True})
+            stale -= stale_kept
+            kept += len(stale_kept)
+            moved += len(stale_kept)
             removed = len(stale)
             stale.unlink()
+            if notes:
+                self.env['qb.forecast.change'].sudo().create(notes)
             previous = self.search([
                 ('profile_id', '=', profile.id),
                 ('state', '=', 'aplicado'), ('id', '!=', release.id)])
@@ -542,9 +578,12 @@ class QbRelease(models.Model):
                 'applied_date': fields.Datetime.now(), 'applied_by_id': self.env.user.id,
             })
             Line.search([('release_id', '=', release.id)]).action_qb_refresh()
-            release.message_post(
-                body="Aplicado al pronóstico vigente: %d semana(s) nueva(s), %d cambiada(s) y "
-                     "%d quitada(s) (ya no venían en el release)." % (created, changed, removed))
+            body = "Aplicado al pronóstico vigente: %d semana(s) nueva(s), %d cambiada(s) y " \
+                   "%d quitada(s) (ya no venían en el release)." % (created, changed, removed)
+            if kept:
+                body += " %d semana(s) ajustada(s) por Ventas se conservan; en %d el cliente cambió " \
+                        "lo que pide (filtro «El cliente cambió» del pronóstico)." % (kept, moved)
+            release.message_post(body=body)
         self.env['qb.demand.line'].action_qb_rebuild()
         return True
 

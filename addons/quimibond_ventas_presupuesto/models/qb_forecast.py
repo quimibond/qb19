@@ -57,6 +57,10 @@ def dev_state_of(product):
     return product.sgi_dev_state or product.qb_articulo_id.sgi_dev_state or False
 
 
+def _qb_fmt(qty):
+    return ("%.2f" % (qty or 0.0)).rstrip('0').rstrip('.')
+
+
 def monday_of(day):
     return day - timedelta(days=day.weekday()) if day else day
 
@@ -161,6 +165,24 @@ class QbForecastLine(models.Model):
     zona = fields.Selection(ZONES, string="Zona", readonly=True,
                             help="Firme: dentro de las semanas firmes (3 por omisión). La recalcula el cron "
                                  "diario.")
+    # 3.17.0 (Jose, 18-nov): lo que pide el cliente en el release va aparte de lo que Ventas decide
+    # enviar, como Planeación con el plan maestro. Una semana del release que Ventas corrige queda
+    # «Ajustada» y el siguiente release ya no la pisa: solo actualiza «Pide el cliente» y la marca.
+    qty_release = fields.Float(
+        string="Pide el cliente", digits='Product Unit', readonly=True, aggregator='sum',
+        help="Lo que pide el cliente en el último release, en la unidad de venta. La cantidad del "
+             "pronóstico es la que Ventas decide enviar; si la corrige, queda «Ajustada».")
+    ajustado = fields.Boolean(
+        string="Ajustada por Ventas", readonly=True, index=True,
+        help="Ventas corrigió la semana que vino de un release. El siguiente release conserva el "
+             "ajuste: solo actualiza «Pide el cliente» y avisa si cambió.")
+    release_cambio = fields.Boolean(
+        string="El cliente cambió", readonly=True, index=True,
+        help="Un release posterior al ajuste pide otra cantidad (o ya no trae la semana). Revise el "
+             "ajuste: corríjalo, consérvelo o vuelva al release.")
+    qty_diferencia = fields.Float(
+        string="Ajuste contra el release", digits='Product Unit', compute='_compute_qty_diferencia',
+        help="Cantidad del pronóstico − lo que pide el cliente, en la unidad de venta.")
     active = fields.Boolean(default=True)
     dev_state = fields.Selection(
         DEV_PRODUCT_STATES, string="Estado del artículo", compute='_compute_dev_state', store=True,
@@ -177,6 +199,11 @@ class QbForecastLine(models.Model):
     def _compute_dev_state(self):
         for line in self:
             line.dev_state = dev_state_of(line.product_id)
+
+    @api.depends('qty_venta', 'qty_release', 'ajustado')
+    def _compute_qty_diferencia(self):
+        for line in self:
+            line.qty_diferencia = line.qty_venta - line.qty_release if line.ajustado else 0.0
 
     @api.depends('week')
     def _compute_month(self):
@@ -236,13 +263,43 @@ class QbForecastLine(models.Model):
             vals['week_id'] = self.env['qb.forecast.week']._qb_get([vals['week']])[vals['week']].id
         tracked = {'qty_origen', 'uom_origen', 'product_id'} & set(vals)
         before = {line.id: line.qty_venta for line in self} if tracked else {}
+        # 3.17.0: un cambio de cantidad que no viene de aplicar un release es un ajuste de Ventas.
+        manual = bool({'qty_origen', 'uom_origen'} & set(vals)) and not self.env.context.get('qb_release_apply')
         res = super().write(vals)
+        if manual:
+            for line in self.filtered('release_id'):
+                ajustado = abs(line.qty_venta - line.qty_release) > 1e-6
+                flags = {'ajustado': ajustado, 'release_cambio': False}
+                if any(line[k] != v for k, v in flags.items()):
+                    super(QbForecastLine, line).write(flags)
         if tracked:
-            changes = [line._qb_change_vals(before[line.id], line.qty_venta)
-                       for line in self if abs(before[line.id] - line.qty_venta) > 1e-6]
+            changes = [line._qb_change_vals(
+                before[line.id], line.qty_venta,
+                note="Ajuste de Ventas (pide el cliente: %s)" % _qb_fmt(line.qty_release)
+                if manual and line.ajustado else False)
+                for line in self if abs(before[line.id] - line.qty_venta) > 1e-6]
             if changes:
                 self.env['qb.forecast.change'].sudo().create(changes)
         return res
+
+    # --- Ajustes de Ventas sobre el release (3.17.0) ------------------------------
+    def action_qb_volver_release(self):
+        """Deshace el ajuste: la semana vuelve a lo que pide el cliente. Si el release ya no la trae
+        (pide 0), se quita."""
+        lines = self.filtered('ajustado')
+        gone = lines.filtered(lambda l: l.qty_release <= 1e-9)
+        keep = lines - gone
+        for line in keep:
+            line.with_context(qb_release_apply=True).write({'qty_origen': line.qty_release, 'uom_origen': False})
+        keep.write({'ajustado': False, 'release_cambio': False})
+        gone.unlink()
+        keep.action_qb_refresh()
+        return True
+
+    def action_qb_conservar_ajuste(self):
+        """Ventas revisó el cambio del cliente y se queda con su ajuste: quita la marca."""
+        self.filtered('release_cambio').write({'release_cambio': False})
+        return True
 
     def unlink(self):
         changes = [line._qb_change_vals(line.qty_venta, 0.0, note="Semana quitada") for line in self
@@ -337,7 +394,13 @@ class QbForecastLine(models.Model):
         if lines:
             line = lines[0]
             new = line.qty_origen + value
-            if new <= 1e-9:
+            if line.release_id:
+                # 3.17.0: una semana del release se ajusta, no se quita: en cero queda «no enviamos»
+                # y el siguiente release no la vuelve a poner.
+                line.write({'qty_origen': max(new, 0.0)})
+                (lines - line).unlink()
+                line.action_qb_refresh()
+            elif new <= 1e-9:
                 lines.unlink()
             else:
                 line.write({'qty_origen': new, 'origen': 'captura'})

@@ -21,6 +21,31 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ventas ajusta las semanas del release (19.0.3.17.0, 2026-11-18)
+
+Jose (18-nov): «necesito poder modificar las semanas una vez que suba los releases de los clientes
+[…] así como planeación va metiendo el plan maestro». Las semanas ya se podían cambiar (Captura
+semanal, o la semana en Pronóstico vigente), pero el siguiente release volvía a poner lo que pedía el
+cliente y la corrección se perdía. Decisión de Jose (18-nov): **conservar el ajuste y avisar**.
+
+- Cada semana del release guarda **Pide el cliente** (`qty_release`, unidad de venta) aparte de la
+  cantidad del pronóstico, que es la que Ventas decide enviar.
+- Si Ventas cambia la cantidad (matriz, lista o ficha), la semana queda **Ajustada por Ventas**. En la
+  matriz, una semana del release en cero **no se quita**: queda en cero («no enviamos esa semana»).
+- **Aplicar** un release ya no pisa una semana ajustada: actualiza «Pide el cliente», el release, la
+  OC y la fecha del cliente, y si el cliente cambió su número (o ya no trae la semana) la marca **El
+  cliente cambió** (en amarillo, con su filtro) y lo anota en Cambios del pronóstico y en el chatter del
+  release. Lo no ajustado sigue al release como antes.
+- En la lista y en la ficha: **Volver al release** (la semana regresa a lo que pide el cliente; si ya
+  no lo pide, se quita) y **Conservar el ajuste** (quita la marca).
+- El presupuesto anual, el presupuesto del mes («Volver a armar»), la Demanda de Planeación y
+  «Proponer pedidos» leen la cantidad ajustada. Una semana ajustada a cero sin pedido no se propone.
+- Si el release trae la misma tela en otro código (metros / kilos) que la semana ajustada, gana el
+  release (no se puede conservar una cantidad de otra unidad).
+- Migración: las semanas del release toman su cantidad como «Pide el cliente»; las que Ventas ya había
+  corregido después de un release quedan ajustadas con lo que pedía ese release (Shawmut, semana del
+  9-nov: pide 245.68, ajustada a 5 kg).
+
 ## Ventas pone la fecha de entrega (19.0.3.16.7, 2026-11-10)
 
 Jose (10-nov): «en algún punto del proceso Jessica tiene que poder ponerle la fecha de entrega que
