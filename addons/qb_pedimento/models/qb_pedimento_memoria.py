@@ -24,6 +24,7 @@ import requests
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -176,6 +177,11 @@ class QbPedimentoMemoria(models.Model):
         carga.action_guardar()
         return guardados
 
+    def _memoria_en_prueba(self):
+        # Odoo 19 ya no trae ``registry.in_test_mode``; en pruebas no se confirma.
+        en_prueba = getattr(self.env.registry, 'in_test_mode', None)
+        return bool((en_prueba and en_prueba()) or config['test_enable'])
+
     def _cron_traer_memoria(self):
         """Llena poco a poco los expedientes: primero los que nunca se buscaron,
         luego los abiertos cuya última búsqueda tiene más de una semana."""
@@ -194,5 +200,5 @@ class QbPedimentoMemoria(models.Model):
             except UserError as exc:
                 _logger.warning('qb_pedimento: memoria de %s: %s', rec.name, exc)
                 rec.memoria_fecha = fields.Datetime.now()
-            if not self.env.registry.in_test_mode():
+            if not self._memoria_en_prueba():
                 self.env.cr.commit()  # pylint: disable=invalid-commit
