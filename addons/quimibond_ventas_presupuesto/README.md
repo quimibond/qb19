@@ -30,7 +30,7 @@ queda con elementos estándar:
 - **Campos** «Al corte» (presupuesto, venta, diferencia, cumplimiento con barra de avance) y «Año»
   (presupuesto del año, lo que pone el presupuesto del mes, cierre estimado y su % con barra), y
   **cumplimiento por mercado** (Industrial, Confección, Especiales y a tipo de cambio presupuestal) con barra.
-- **Botones inteligentes:** Renglones (lista agrupada por mercado y cliente, matriz, pivote), **Por mercado**,
+- **Botones inteligentes:** Renglones (lista agrupada por mercado y cliente, pivote), **Por mercado**,
   **Por mes** (gráfica de presupuesto contra venta por mes) y **Por cliente** (cliente y artículo), que abren
   el comparativo `qb.sales.compare` filtrado a este presupuesto y la venta del año, en pivote, gráfica y
   lista; Variaciones (volumen, precio, tipo de cambio por renglón) y Cierre de ventas.
@@ -42,6 +42,14 @@ queda con elementos estándar:
   desde el pivote (antes estaba apagada).
 - **Cierre estimado por mercado:** en un mes con presupuesto del mes, cada mercado que ese documento no trae
   (Confección y Especiales mientras los vendedores no capturan) usa el anual.
+- **Probado navegando** en el build de la rama con datos de prueba (presupuesto 2026, facturas de enero a
+  octubre, presupuesto del mes de noviembre). Se corrigió lo que salió: la gráfica por mes va con barras
+  lado a lado (apiladas sumaba presupuesto y venta), el año sin separador de miles («2026», no «2,026»),
+  el precio de los renglones no se suma al agrupar, y Renglones abre sin la matriz (en Odoo 19 la vista
+  grid sin periodos truena al cambiar a ella).
+- **Pruebas:** las del presupuesto anual no corrían en Odoo 19 (el cliente de prueba usaba
+  `res.partner.team_id`, que ya no existe; ahora toma el equipo de su vendedor), y la prueba del
+  comparativo guarda los renglones antes de leer la vista SQL.
 
 ## Ficha del presupuesto anual con tablero (19.0.3.22.0, 2026-11-19)
 
