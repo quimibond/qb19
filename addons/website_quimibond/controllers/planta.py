@@ -81,3 +81,25 @@ def cifras(grupos):
     """Las cifras de la empresa, con las que salen de la maquinaria ya leída de Odoo."""
     cantidades = {g['tipo']: g['cantidad'] for g in grupos if g.get('tipo')}
     return [dict(c, valor=cantidades.get(c.get('tipo')) or c['valor']) for c in contenido.CIFRAS]
+
+
+CATEGORIA_HILO = 'Materia Prima / Hilo'
+
+
+def disenador(env):
+    """Opciones del diseñador; los hilos, según las categorías de hilo de Odoo que tienen productos."""
+    opciones = copy.deepcopy(contenido.DISENADOR)
+    opciones['hilos'] = [nombre for _categoria, nombre in contenido.DISENADOR['hilos'] if _categoria != 'Bamboo']
+    opciones['elastano'] = True
+    try:
+        Categoria = env['product.category'].sudo()
+        raiz = Categoria.search([('complete_name', '=', CATEGORIA_HILO)], limit=1)
+        if raiz:
+            con_producto = {c.name for c in Categoria.search([('parent_id', '=', raiz.id)]) if c.product_count}
+            if con_producto:
+                opciones['hilos'] = [nombre for categoria, nombre in contenido.DISENADOR['hilos']
+                                     if categoria in con_producto]
+                opciones['elastano'] = contenido.DISENADOR['hilo_elastano'] in con_producto
+    except Exception:  # pylint: disable=broad-except
+        _logger.exception('website_quimibond: no se pudieron leer los hilos de Odoo')
+    return opciones

@@ -546,7 +546,7 @@
                                         </t>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo" data-qb-solo="punto">
+                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
                                     <legend><span class="qb-mono">02</span> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['galgas']" t-as="g">
@@ -554,7 +554,24 @@
                                         </t>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo">
+                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura tramado">
+                                    <legend><span class="qb-mono">03</span> Hilo</legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['hilos']" t-as="hi">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_hilo" t-att-value="hi" t-att-checked="'checked' if hi_first else None"/><span t-out="hi"/></label>
+                                        </t>
+                                    </div>
+                                    <div class="qb-dis__chips" data-qb-solo-hilo="Poliéster">
+                                        <span class="qb-dis__sub">Filamento</span>
+                                        <t t-foreach="qb_disenador['hilo_tipos']" t-as="ht">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_hilo_tipo" t-att-value="ht" t-att-checked="'checked' if ht_first else None"/><span t-out="ht"/></label>
+                                        </t>
+                                    </div>
+                                    <div t-if="qb_disenador['elastano']" class="qb-dis__chips">
+                                        <label class="qb-dis__chip"><input type="checkbox" name="qb_elastano"/><span>Con elastano, para más elasticidad</span></label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-solo="no_tejido">
                                     <legend><span class="qb-mono">03</span> Fibra</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['fibras']" t-as="f">

@@ -572,6 +572,9 @@
                 construccionNombre: cons ? cons.getAttribute("data-nombre") : "",
                 galga: parseInt((elegido("qb_galga") || {}).value, 10) || 24,
                 fibra: (elegido("qb_fibra") || {}).value || "",
+                hilo: (elegido("qb_hilo") || {}).value || "",
+                hiloTipo: (elegido("qb_hilo_tipo") || {}).value || "",
+                elastano: !!(campo("qb_elastano") && campo("qb_elastano").checked),
                 peso: parseInt(campo("qb_peso").value, 10) || 150,
                 color: colorLibre || !col ? libre.value : col.value,
                 colorNombre: colorLibre || !col ? "Personalizado " + libre.value.toUpperCase() : col.getAttribute("data-nombre"),
@@ -589,7 +592,16 @@
             if (punto) {
                 f.push(["Galga", String(d.galga)]);
             }
-            f.push(["Fibra", d.fibra], ["Peso", d.peso + " g/m²"], ["Color", d.colorNombre], ["Tacto", d.tacto]);
+            if (d.construccion === "no_tejido") {
+                f.push(["Fibra", d.fibra]);
+            } else {
+                var hilo = d.hilo;
+                if (hilo.indexOf("Poliéster") === 0 && d.hiloTipo) {
+                    hilo += " " + d.hiloTipo.toLowerCase();
+                }
+                f.push(["Hilo", hilo + (d.elastano ? " con elastano" : "")]);
+            }
+            f.push(["Peso", d.peso + " g/m²"], ["Color", d.colorNombre], ["Tacto", d.tacto]);
             if (d.acabados.length) {
                 f.push(["Acabado", d.acabados.join(", ")]);
             }
@@ -599,9 +611,11 @@
 
         function aplicar() {
             var d = leer();
-            var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
-            todos('[data-qb-solo="punto"]', raizDis).forEach(function (g) {
-                g.hidden = !punto;
+            todos("[data-qb-solo]", raizDis).forEach(function (g) {
+                g.hidden = g.getAttribute("data-qb-solo").split(" ").indexOf(d.construccion) < 0;
+            });
+            todos("[data-qb-solo-hilo]", raizDis).forEach(function (g) {
+                g.hidden = d.hilo.indexOf(g.getAttribute("data-qb-solo-hilo")) !== 0;
             });
             var salidaPeso = raizDis.querySelector('[data-qb-salida="peso"]');
             var salidaColor = raizDis.querySelector('[data-qb-salida="color"]');
@@ -658,7 +672,7 @@
         var botonAzar = raizDis.querySelector("[data-qb-azar]");
         if (botonAzar) {
             botonAzar.addEventListener("click", function () {
-                ["qb_construccion", "qb_galga", "qb_fibra", "qb_color", "qb_tacto"].forEach(function (nombre) {
+                ["qb_construccion", "qb_galga", "qb_fibra", "qb_hilo", "qb_hilo_tipo", "qb_color", "qb_tacto"].forEach(function (nombre) {
                     var ops = todos('input[name="' + nombre + '"]', raizDis);
                     ops[Math.floor(Math.random() * ops.length)].checked = true;
                 });

@@ -162,7 +162,23 @@ def logo_armadora(nombre):
 # promesa de fabricación: Ventas confirma la factibilidad de cada diseño.
 DISENADOR = {
     'galgas': [16, 18, 24, 28, 32],
-    'fibras': ['Poliéster', 'Algodón', 'Poliamida', 'Mezcla'],
+    # Hilos: (categoría de «Materia Prima / Hilo» en Odoo, nombre en el sitio).
+    # Con las categorías en la base, solo salen los hilos que tienen productos
+    # (controllers/planta.py); el elastano va aparte, como acompañante.
+    'hilos': [
+        ('Poliéster', 'Poliéster'),
+        ('PET', 'Poliéster reciclado'),
+        ('Mezcla (PES/CO)', 'Mezcla poliéster y algodón'),
+        ('Algodón', 'Algodón'),
+        ('Nylon', 'Nylon'),
+        ('Viscosa', 'Viscosa'),
+        ('Bamboo', 'Bambú'),
+    ],
+    'hilo_elastano': 'Elastano',
+    # Presentaciones del filamento de poliéster que se compran hoy.
+    'hilo_tipos': ['Texturizado', 'Stretch', 'Microfibra'],
+    # Fibras cortadas de la línea de no tejidos («Materia Prima / Fibra»).
+    'fibras': ['Poliéster', 'Poliamida', 'Polipropileno', 'Viscosa'],
     'colores': [
         ('Blanco', '#f5f5f2'), ('Crudo', '#e9e2d0'), ('Beige', '#d6c4a4'), ('Gris', '#9a9aa2'),
         ('Negro', '#1b1b1f'), ('Azul marino', '#1f2a4a'), ('Azul', '#2f54c8'), ('Vino', '#6b1f2e'),

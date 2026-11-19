@@ -87,7 +87,12 @@ acabado y presentación, y ve la tela en un lienzo que cambia al momento (la
 malla se hace más fina con la galga, el hilo engorda con el peso, el punto de
 adhesivo aparece con «fusionable» y la tela ondea más o menos según el tacto).
 El diseño se escribe solo en la «Especificación» del formulario de la misma
-página, que crea la oportunidad en CRM como en `/cotizar`. Las opciones están
+página, que crea la oportunidad en CRM como en `/cotizar`. Los hilos salen de
+las categorías de «Materia Prima / Hilo» de Odoo que tienen productos
+(poliéster, poliéster reciclado, mezcla poliéster y algodón, algodón, nylon,
+viscosa; el elastano va como acompañante), con el filamento de poliéster
+texturizado, stretch o microfibra; el no tejido ofrece las fibras de
+«Materia Prima / Fibra». Nunca se muestran títulos, proveedores ni códigos. Las opciones están
 en `DISENADOR` de `controllers/contenido.py`; son lo que el cliente pide, no
 una promesa de fabricación: Ventas confirma la factibilidad.
 

@@ -53,7 +53,7 @@ class TestSitioB2B(HttpCase):
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
-        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'data-qb-anim="tela"',
+        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_hilo"', 'Poliéster reciclado', 'name="qb_fibra"', 'Polipropileno', 'data-qb-anim="tela"',
                       'name="description"'):
             self.assertIn(texto, disenar, texto)
         catalogo = self.url_open('/catalogo')
@@ -106,3 +106,21 @@ class TestSitioB2B(HttpCase):
         self.assertTrue(cifras['Máquinas circulares'])
         self.assertEqual(planta._lista(['Tubular', 'abierta', 'invertida']), 'Tubular, abierta e invertida')
         self.assertEqual(planta._lista(['16', '18']), '16 y 18')
+
+    def test_hilos_del_disenador_segun_odoo(self):
+        """Con las categorías de hilo en la base, el diseñador ofrece solo las que tienen productos."""
+        from odoo.addons.website_quimibond.controllers import planta
+        Categoria = self.env['product.category']
+        if not Categoria.search([('complete_name', '=', planta.CATEGORIA_HILO)]):
+            self.assertIn('Algodón', planta.disenador(self.env)['hilos'])
+            materia = Categoria.create({'name': 'Materia Prima'})
+            hilo = Categoria.create({'name': 'Hilo', 'parent_id': materia.id})
+            for nombre in ('Poliéster', 'PET', 'Algodón', 'Elastano', 'Otra cosa'):
+                categoria = Categoria.create({'name': nombre, 'parent_id': hilo.id})
+                if nombre != 'Algodón':
+                    self.env['product.template'].create({'name': 'Hilo %s' % nombre, 'categ_id': categoria.id})
+        opciones = planta.disenador(self.env)
+        self.assertEqual(opciones['hilos'][:2], ['Poliéster', 'Poliéster reciclado'])
+        self.assertNotIn('Otra cosa', opciones['hilos'])
+        self.assertNotIn('Algodón', opciones['hilos'])
+        self.assertTrue(opciones['elastano'])

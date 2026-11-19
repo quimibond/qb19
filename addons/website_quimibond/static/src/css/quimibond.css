@@ -667,6 +667,8 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 .qb-dis__tarjeta > span { display: block; font-size: .74rem; color: var(--qb-muted-fg); padding: 2px 4px 0; }
 .qb-dis__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .qb-dis__chips + .qb-dis__chips { margin-top: 10px; }
+.qb-dis__chips[hidden] { display: none; }
+.qb-dis__sub { font-family: var(--qb-mono); font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--qb-muted-fg); margin-right: 4px; }
 .qb-dis__chip { position: relative; cursor: pointer; }
 .qb-dis__chip span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); font-size: .88rem; color: #3f3f46; transition: all .15s; }
 .qb-dis__chip:hover span { border-color: var(--qb-borde-fuerte); }

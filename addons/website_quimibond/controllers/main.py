@@ -147,7 +147,7 @@ class QuimibondSitio(http.Controller):
             'qb_tejidos': contenido.TEJIDOS,
             'qb_presentaciones': contenido.PRESENTACIONES,
             'qb_maquinaria': maquinaria,
-            'qb_disenador': contenido.DISENADOR,
+            'qb_disenador': planta.disenador(request.env),
         }
         valores.update(extra)
         return valores
