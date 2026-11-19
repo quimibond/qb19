@@ -203,6 +203,7 @@
                 <filter name="origen_excel" string="Del forecast de Excel" domain="[('origen', '=', 'excel')]"/>
                 <filter name="origen_release" string="De release" domain="[('origen', '=', 'release')]"/>
                 <filter name="origen_captura" string="Capturado" domain="[('origen', '=', 'captura')]"/>
+                <filter name="origen_pedido" string="De pedido" domain="[('origen', '=', 'pedido')]"/>
                 <separator/>
                 <filter name="ajustadas" string="Ajustadas por Ventas" domain="[('ajustado', '=', True)]"/>
                 <filter name="cliente_cambio" string="El cliente cambió" domain="[('release_cambio', '=', True)]"/>
