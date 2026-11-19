@@ -10,7 +10,7 @@ El diseño y la evidencia de cada decisión están en
 | Pestaña | Contenido |
 |---|---|
 | Encabezado | Número (`26 16 3774 6000206`, validado: año, aduana, patente, consecutivo), clave (A1, V1, V5, R1), aduana y patente (salen del número), proveedor o cliente, agencia, referencia de la agencia, fechas de cada etapa. |
-| Documentos | Checklist según la operación: importación, exportación o virtual. Cada documento se cumple con su archivo o con «No aplica». |
+| Documentos | Checklist según la operación: importación, exportación o virtual. Cada documento se cumple con su archivo o con «No aplica» (en uno obligatorio, con el motivo en «Folio / nota»). Los que vencen (carta encomienda, certificados de origen; columna «Tiene vigencia» en Configuración) piden «Vigente hasta» y no cuentan si vencieron antes del pago del pedimento. |
 | Ligado a | Compras, ventas, recepciones o entregas, facturas de la mercancía y facturas de la agencia (muchos a muchos). |
 | Contribuciones y partidas | Valor comercial y en aduana, tipo de cambio; DTA, IGI, IVA, PRV, IVA/PRV y multas; partidas con fracción arancelaria y tasa de IGI. |
 | Cuenta de gastos y garantías | Total de la cuenta de gastos, anticipo y saldo (negativo = a favor de Quimibond, como en el Excel); garantías navieras, depósitos y cuenta aduanera hasta que se devuelven. |
@@ -36,12 +36,23 @@ En el expediente, botón **Cargar expediente**. También está arriba de la pest
 
 Los patrones se ajustan en Configuración → Documentos del expediente, columna «Patrón del nombre de archivo» (expresión regular). Una actualización del módulo no pisa lo editado.
 
+## Archivos desde la memoria de correo
+
+Las agencias mandan el pedimento pagado, el DODA y lo demás por correo a Logística, Contabilidad y CxC, y la
+memoria de correo (Supabase) guarda cada adjunto. La tarea «Pedimentos - Traer archivos de la memoria» corre
+cada hora con 50 expedientes (primero los que nunca se buscaron, después los abiertos cada semana): busca los
+correos que traen el consecutivo del pedimento en el asunto o en el texto de un adjunto, entre 60 días antes
+y 120 días después de sus fechas, baja sus adjuntos (sin firmas, imágenes chicas ni correos reenviados, sin
+repetidos), los clasifica como «Cargar expediente» y los guarda. Deja fuera los archivos cuyo nombre trae
+otro pedimento y no vuelve a traer uno que el expediente ya tiene. «Última búsqueda en la memoria» dice
+cuándo fue. Usa `quimibond_intelligence.supabase_url` y `supabase_service_key` (los parámetros del push).
+
 ## Etapas
 
 `Preparación → En tránsito → En aduana → Despachado → Entregado / Cruzado → Cerrado`.
 
 - **Despachado** exige el número de pedimento.
-- **Cerrado** exige además la fecha de entrega o cruce, todos los documentos obligatorios y la cuenta de gastos (el total o la factura de la agencia).
+- **Cerrado** exige además la fecha de entrega o cruce, todos los documentos obligatorios vigentes a la fecha de pago y la cuenta de gastos (el total o la factura de la agencia).
 - «Días hábiles a cierre» mide el indicador C2-05 (meta: 5).
 
 ## Lo que hace solo

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Renglones del expediente: documentos del checklist y partidas."""
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class QbPedimentoDocumento(models.Model):
@@ -16,14 +17,37 @@ class QbPedimentoDocumento(models.Model):
         'ir.attachment', 'qb_pedimento_documento_attachment_rel', 'documento_id', 'attachment_id', 'Archivos')
     no_aplica = fields.Boolean('No aplica')
     referencia = fields.Char('Folio / nota', help='Folio del documento (COVE, DODA, Entry) o comentario.')
+    pide_vigencia = fields.Boolean(related='tipo_id.pide_vigencia')
+    fecha_vigencia = fields.Date(
+        'Vigente hasta', help='Fin de la vigencia del documento (encargo conferido, certificación de origen). '
+                              'Si venció antes del pago del pedimento, el documento no cuenta.')
+    vencido = fields.Boolean(
+        compute='_compute_cumplido', store=True,
+        help='El documento tiene vigencia y venció antes de la fecha del pedimento (pago; si no hay, arribo; '
+             'si no, alta del expediente).')
     cumplido = fields.Boolean(compute='_compute_cumplido', store=True)
 
     _tipo_uniq = models.Constraint('unique(pedimento_id, tipo_id)', 'Ese documento ya está en el expediente.')
 
-    @api.depends('attachment_ids', 'no_aplica')
+    @api.depends('attachment_ids', 'no_aplica', 'fecha_vigencia', 'tipo_id.pide_vigencia',
+                 'pedimento_id.fecha_pago', 'pedimento_id.fecha_arribo')
     def _compute_cumplido(self):
         for rec in self:
-            rec.cumplido = bool(rec.attachment_ids) or rec.no_aplica
+            ped = rec.pedimento_id
+            fecha_ref = ped.fecha_pago or ped.fecha_arribo or (ped.create_date and ped.create_date.date())
+            rec.vencido = bool(rec.tipo_id.pide_vigencia and rec.fecha_vigencia and fecha_ref
+                               and rec.fecha_vigencia < fecha_ref)
+            con_archivo = bool(rec.attachment_ids) and not rec.vencido and (
+                not rec.tipo_id.pide_vigencia or bool(rec.fecha_vigencia))
+            rec.cumplido = rec.no_aplica or con_archivo
+
+    @api.constrains('no_aplica', 'referencia')
+    def _check_no_aplica_con_motivo(self):
+        for rec in self:
+            if rec.no_aplica and rec.required and not (rec.referencia or '').strip():
+                raise ValidationError(_(
+                    '«%(doc)s» es obligatorio: para marcarlo «No aplica» escriba el motivo en «Folio / nota».',
+                    doc=rec.tipo_id.name))
 
 
 class QbPedimentoPartida(models.Model):
