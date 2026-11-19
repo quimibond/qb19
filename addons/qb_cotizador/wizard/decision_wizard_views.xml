@@ -6,7 +6,8 @@
         <field name="arch" type="xml">
             <form>
                 <group>
-                    <field name="cotizacion_id" readonly="1"/>
+                    <field name="cotizacion_id" readonly="1" invisible="not cotizacion_id"/>
+                    <field name="negociacion_id" readonly="1" invisible="not negociacion_id"/>
                     <field name="tipo" readonly="1"/>
                     <field name="motivo_id"/>
                     <field name="nota"/>

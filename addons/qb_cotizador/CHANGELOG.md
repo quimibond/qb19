@@ -4,6 +4,42 @@ Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
 
+## 19.0.1.8.0 — 2026-11-19
+
+**Negociaciones de precio** para clientes existentes (renovaciones anuales y peticiones de rebaja como el
+programa Blockbuster de ContiTech). Detalle en el README, «Negociaciones de precio».
+
+- **Ciclo compartido.** El ciclo y la aprobación por puesto salen de la cotización a un modelo abstracto
+  `qb.cotizador.aprobacion` (estado, solicitud, aprobación, regreso, presentación, seguimiento, vencimiento,
+  aprobación del cliente, ganada y perdida, `_tarifa_del_cliente`) que heredan la cotización y la negociación.
+  Mismos campos y columnas: no hay migración de datos. La cotización conserva sus ganchos
+  (`_validar_para_aprobacion`, `_sincronizar_tarifa`, el aviso de margen y de unidades); el asistente de regreso y
+  pérdida sirve a las dos (`negociacion_id`).
+- **`qb.cotizador.negociacion`** (folio `NEG-AAAA-NNNN`): cliente (empresa), moneda y TC, vigencia,
+  contrapropuesta del cliente (notas y rebaja pareja %). Líneas `qb.cotizador.negociacion.linea` de tipo precio
+  nuevo, rebaja % o escalera incremental (`qb.cotizador.negociacion.tramo`, en unidades por mes; periodo mensual,
+  trimestral o anual; solo pagadas en plazo). Al elegir el producto se llenan el precio vigente de la tarifa del
+  cliente, el volumen de 12 meses y el promedio mensual de las facturas publicadas (menos notas de crédito, con la
+  nota de una refacturación en la fecha de la factura que corrige y el triplete lista/descuento/neta del costeo) y
+  los pisos del último período de `qb_costeo` en la moneda de la negociación.
+- **Simulador en la ficha** (`qb.cotizador.negociacion.simulacion`): por producto y total, a 12 meses, pronóstico,
+  ± 15 % y volúmenes libres; descuento, % efectivo, % de la compra total, venta neta, contribución sobre costo
+  variable y completo, semáforo y la contrapropuesta del cliente lado a lado.
+- **PDF**: comparación interna y carta al cliente en español o inglés según el idioma del contacto.
+- **Al ganar** con la aprobación del cliente: en la tarifa propia del cliente se cierra el precio vigente un día
+  antes de la vigencia y se crea el nuevo (sin borrar nada). La escalera crea **`qb.cotizador.acuerdo.volumen`**.
+- **Liquidación del acuerdo**: «Calcular periodo» y el cron diario del cotizador (días de espera después del
+  cierre) suman las unidades netas del periodo, calculan el descuento por tramo, excluyen o marcan las facturas no
+  pagadas en plazo y crean una **nota de crédito en borrador** (nunca se publica ni se timbra) relacionada con las
+  facturas; la línea de historial `qb.cotizador.acuerdo.liquidacion` es una por periodo y no se duplica.
+  `account.move.qb_liquidacion_id` marca esas notas (no cuentan como venta del producto).
+- Menús Negociaciones de precio, Acuerdos de volumen y Liquidaciones de acuerdos; `post-migrate` expone los
+  modelos nuevos por MCP.
+- Pruebas `test_negociacion.py` con el caso ContiTech (US$91,368 al año, 4.6 % efectivo; US$20,304 y US$110,544 a
+  59,000 y 95,000 m/mes; US$22,842 el trimestre de 263,750 m; Crep 90 1.080 − 1 % = 1.0692 con cierre al
+  2026-12-31; una sola nota en borrador por trimestre).
+
+
 ## 19.0.1.7.1 — 2026-10-27
 
 - **Precio al cliente con 4 decimales.** `precio_objetivo` era `Monetary` y Odoo lo redondeaba a los 2 decimales

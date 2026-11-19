@@ -2,7 +2,7 @@
 {
     'name': 'Cotizador Quimibond',
     'summary': 'Cotizaciones de costo con aprobación por puesto, seguimiento, '
-               'vencimiento y precio en tarifa al ganar',
+               'vencimiento y precio en tarifa al ganar; negociaciones de precio y acuerdos de volumen',
     'description': """
 Cotizador de la segunda generación del costeo (spec
 docs/superpowers/specs/2026-10-06-qb-costeo-v2-diseno.md, §6 y §6.1).
@@ -15,14 +15,18 @@ el procedimiento C1: Borrador → Por aprobar (puesto que aprueba, con suplente)
 automático a Ventas, aprobación del cliente con evidencia y el precio en la
 tarifa del cliente al ganar. Las cotizaciones del cotizador anterior
 (`qb_capacidad_costeo`, retirado) ya están aquí con su `legacy_id`.
+
+Negociaciones de precio (1.8.0): renovaciones y rebajas de clientes existentes con precio fijo, rebaja % o
+escalera incremental por volumen; simulador en la ficha, carta al cliente, precio en la tarifa al ganar y acuerdo
+de volumen liquidado por periodo con nota de crédito en borrador.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.7.1',
+    'version': '19.0.1.8.0',
     'license': 'LGPL-3',
     'application': False,
-    'depends': ['qb_costeo', 'sale_management', 'hr', 'mail'],
+    'depends': ['qb_costeo', 'sale_management', 'account', 'hr', 'mail'],
     'data': [
         'security/groups.xml',
         'security/ir.model.access.csv',
@@ -30,8 +34,11 @@ tarifa del cliente al ganar. Las cotizaciones del cotizador anterior
         'data/motivos.xml',
         'data/ir_cron.xml',
         'report/report_cotizacion.xml',
+        'report/report_negociacion.xml',  # 1.8.0
         'wizard/decision_wizard_views.xml',
         'views/cotizacion_views.xml',
+        'views/negociacion_views.xml',  # 1.8.0
+        'views/acuerdo_views.xml',  # 1.8.0
         'views/res_partner_views.xml',  # 1.6.0
         'views/motivo_views.xml',
         'views/settings_views.xml',

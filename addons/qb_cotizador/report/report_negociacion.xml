@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.8.0: comparación interna (propuesta contra contrapropuesta) y carta al cliente (español o inglés según
+         el idioma del contacto). La carta solo sale por el botón, que exige la aprobación. -->
+    <record id="action_report_negociacion_interna" model="ir.actions.report">
+        <field name="name">Negociación: comparación interna</field>
+        <field name="model">qb.cotizador.negociacion</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_cotizador.report_negociacion_interna</field>
+        <field name="report_file">qb_cotizador.report_negociacion_interna</field>
+        <field name="print_report_name">'Negociacion interna %s' % (object.folio or '')</field>
+        <field name="binding_model_id" ref="model_qb_cotizador_negociacion"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_negociacion_cliente" model="ir.actions.report">
+        <field name="name">Negociación: carta al cliente</field>
+        <field name="model">qb.cotizador.negociacion</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_cotizador.report_negociacion_cliente</field>
+        <field name="report_file">qb_cotizador.report_negociacion_cliente</field>
+        <field name="print_report_name">'Propuesta de precios %s' % (object.folio or '')</field>
+    </record>
+
+    <template id="report_negociacion_interna">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.internal_layout">
+                    <div class="page" style="font-size:11px;">
+                        <h4>Negociación de precio <span t-out="o.folio"/> · <span t-out="o.partner_id.name"/></h4>
+                        <p>
+                            Vigencia <span t-field="o.fecha_inicio"/> a <span t-field="o.fecha_fin"/> ·
+                            Moneda <span t-out="o.currency_id.name"/>
+                            <t t-if="o.es_divisa"> (TC <span t-out="'%.4f' % o.fx_rate"/>)</t> ·
+                            Estado <span t-field="o.state"/> ·
+                            Compra del cliente 12 meses <span t-out="'{:,.2f}'.format(o.compra_12m)"/>
+                        </p>
+                        <p t-if="o.notas_cliente"><strong>Lo que pide el cliente:</strong> <span t-out="o.notas_cliente"/>
+                            <t t-if="o.contra_rebaja_pct"> · rebaja pareja <span t-out="'%.2f' % o.contra_rebaja_pct"/> %</t></p>
+
+                        <h5>Productos</h5>
+                        <table class="table table-sm">
+                            <thead><tr>
+                                <th>Producto</th><th>Tipo</th>
+                                <th class="text-end">Precio actual</th><th class="text-end">Precio en tarifa</th>
+                                <th class="text-end">Prom. mensual</th><th class="text-end">Pronóstico anual</th>
+                                <th class="text-end">Costo variable</th><th class="text-end">Costo completo</th>
+                                <th class="text-end">Precio más bajo</th><th>Semáforo</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.linea_ids" t-as="l">
+                                    <td><span t-out="l.product_id.default_code or l.product_id.name"/></td>
+                                    <td><span t-field="l.tipo"/><t t-if="l.tipo == 'rebaja_pct'"> <span t-out="'%.3f' % l.rebaja_pct"/> %</t>
+                                        <t t-if="l.tipo == 'escalera_incremental'"> (<span t-field="l.periodo"/>)</t></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.precio_actual"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.precio_resultante"/></td>
+                                    <td class="text-end"><span t-out="'{:,.0f}'.format(l.volumen_mensual)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.0f}'.format(l.volumen_pronostico)"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.costo_variable"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.costo_completo"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.precio_minimo"/></td>
+                                    <td><span t-field="l.semaforo"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-foreach="o.linea_ids.filtered(lambda l: l.tipo == 'escalera_incremental')" t-as="l">
+                            <h6>Tramos de <span t-out="l.product_id.default_code or l.product_id.name"/> (por mes; medido
+                                <span t-field="l.periodo"/>)</h6>
+                            <table class="table table-sm" style="width:70%;">
+                                <thead><tr><th>Propuesta</th><th class="text-end">Desde</th><th class="text-end">Hasta</th>
+                                    <th class="text-end">Descuento</th><th class="text-end">Precio</th><th>Semáforo</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="l.tramo_ids" t-as="t">
+                                        <td>Quimibond</td>
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.desde)"/></td>
+                                        <td class="text-end"><span t-out="t.hasta and '{:,.0f}'.format(t.hasta) or 'sin límite'"/></td>
+                                        <td class="text-end"><span t-out="'%.2f' % t.descuento_pct"/> %</td>
+                                        <td class="text-end"><span t-out="'%.4f' % t.precio"/></td>
+                                        <td><span t-field="t.semaforo"/></td>
+                                    </tr>
+                                    <tr t-foreach="l.cliente_tramo_ids" t-as="t">
+                                        <td>Cliente</td>
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.desde)"/></td>
+                                        <td class="text-end"><span t-out="t.hasta and '{:,.0f}'.format(t.hasta) or 'sin límite'"/></td>
+                                        <td class="text-end"><span t-out="'%.2f' % t.descuento_pct"/> %</td>
+                                        <td class="text-end"><span t-out="'%.4f' % t.precio"/></td>
+                                        <td/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <h5>Simulador: total del cliente</h5>
+                        <t t-set="con_cliente" t-value="any(o.simulacion_global_ids.mapped('con_contrapropuesta'))"/>
+                        <table class="table table-sm">
+                            <thead><tr>
+                                <th>Escenario</th><th class="text-end">Venta a precio actual</th>
+                                <th class="text-end">Descuento al año</th><th class="text-end">% efectivo</th>
+                                <th class="text-end">% de su compra</th><th class="text-end">Venta neta</th>
+                                <th class="text-end">Contrib. s/ variable</th><th class="text-end">Contrib. s/ completo</th>
+                                <th>Semáforo</th>
+                                <t t-if="con_cliente"><th class="text-end">Pide el cliente</th><th class="text-end">Contrib. s/ completo (cliente)</th>
+                                    <th class="text-end">Cliente − propuesta</th></t>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.simulacion_global_ids" t-as="s">
+                                    <td><span t-field="s.escenario"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.venta_actual)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.descuento)"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % s.pct_efectivo"/> %</td>
+                                    <td class="text-end"><span t-out="'%.2f' % s.pct_compra_total"/> %</td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.venta_neta)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.contrib_variable)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.contrib_completa)"/></td>
+                                    <td><span t-field="s.semaforo"/></td>
+                                    <t t-if="con_cliente">
+                                        <td class="text-end"><span t-out="'{:,.2f}'.format(s.cliente_descuento)"/></td>
+                                        <td class="text-end"><span t-out="'{:,.2f}'.format(s.cliente_contrib_completa)"/></td>
+                                        <td class="text-end"><span t-out="'{:,.2f}'.format(s.diferencia_cliente)"/></td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h5>Simulador por producto</h5>
+                        <table class="table table-sm">
+                            <thead><tr>
+                                <th>Producto</th><th>Escenario</th><th class="text-end">Volumen al año</th>
+                                <th class="text-end">Descuento al año</th><th class="text-end">% efectivo</th>
+                                <th class="text-end">Venta neta</th><th class="text-end">Contrib. s/ completo</th>
+                                <th class="text-end">Precio último tramo</th><th>Semáforo</th>
+                                <t t-if="con_cliente"><th class="text-end">Pide el cliente</th></t>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.simulacion_ids" t-as="s">
+                                    <td><span t-out="s.product_id.default_code or s.product_id.name"/></td>
+                                    <td><span t-field="s.escenario"/></td>
+                                    <td class="text-end"><span t-out="'{:,.0f}'.format(s.volumen_anual)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.descuento)"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % s.pct_efectivo"/> %</td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.venta_neta)"/></td>
+                                    <td class="text-end"><span t-out="'{:,.2f}'.format(s.contrib_completa)"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % s.precio_marginal"/></td>
+                                    <td><span t-field="s.semaforo"/></td>
+                                    <t t-if="con_cliente"><td class="text-end"><span t-out="'{:,.2f}'.format(s.cliente_descuento)"/></td></t>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="color:#888;">Descuento contra el precio actual de la tarifa del cliente. Costos del último
+                            período de costeo, en <span t-out="o.currency_id.name"/>. Semáforo: rojo debajo del costo
+                            variable, ámbar debajo del costo completo (piso a planta llena).</p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_negociacion_cliente">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="es" t-value="o._idioma_carta() == 'es'"/>
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size:12px;">
+                        <h4 t-out="es and 'PROPUESTA DE PRECIOS' or 'PRICE PROPOSAL'"/>
+                        <p>
+                            <strong t-out="es and 'Referencia:' or 'Reference:'"/> <span t-out="o.folio"/><br/>
+                            <strong t-out="es and 'Fecha:' or 'Date:'"/>
+                            <span t-out="(o.presented_date or o.create_date) and (o.presented_date or o.create_date).date()"/><br/>
+                            <t t-if="o.validez_hasta"><strong t-out="es and 'Válida hasta:' or 'Valid until:'"/> <span t-field="o.validez_hasta"/><br/></t>
+                            <strong t-out="es and 'Moneda:' or 'Currency:'"/> <span t-out="o.currency_id.name"/>
+                        </p>
+                        <p>
+                            <strong t-out="es and 'En atención a:' or 'Attention to:'"/>
+                            <span t-out="o.atencion_a or (o.contacto_id or o.partner_id).name"/><br/>
+                            <strong t-out="es and 'Empresa:' or 'Company:'"/> <span t-out="o.partner_id.name"/>
+                        </p>
+                        <p t-if="es">Agradecemos su preferencia. Con gusto le presentamos los precios que regirán del
+                            <span t-field="o.fecha_inicio"/> al <span t-field="o.fecha_fin"/>.</p>
+                        <p t-else="">Thank you for your business. We are pleased to present the prices that will apply from
+                            <span t-field="o.fecha_inicio"/> to <span t-field="o.fecha_fin"/>.</p>
+                        <table class="table table-sm">
+                            <thead><tr>
+                                <th t-out="es and 'Producto' or 'Item'"/>
+                                <th class="text-end" t-out="es and 'Precio actual' or 'Current price'"/>
+                                <th class="text-end" t-out="es and 'Precio nuevo' or 'New price'"/>
+                                <th t-out="es and 'Unidad' or 'Unit'"/>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.linea_ids" t-as="l">
+                                    <td><t t-if="l.product_id.default_code"><b t-out="l.product_id.default_code"/><br/></t><span t-out="l.product_id.name"/></td>
+                                    <td class="text-end"><span t-out="l.precio_actual and '%.4f' % l.precio_actual or '-'"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % l.precio_resultante"/></td>
+                                    <td><span t-out="l.uom_name"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <t t-foreach="o.linea_ids.filtered(lambda l: l.tipo == 'escalera_incremental')" t-as="l">
+                            <t t-set="unidad" t-value="l.uom_name or ''"/>
+                            <h6 t-if="es">Descuento por volumen: <span t-out="l.product_id.default_code or l.product_id.name"/></h6>
+                            <h6 t-else="">Volume discount: <span t-out="l.product_id.default_code or l.product_id.name"/></h6>
+                            <table class="table table-sm" style="width:75%;">
+                                <thead><tr>
+                                    <th class="text-end" t-out="es and ('Desde (%s/mes)' % unidad) or ('From (%s/month)' % unidad)"/>
+                                    <th class="text-end" t-out="es and ('Hasta (%s/mes)' % unidad) or ('To (%s/month)' % unidad)"/>
+                                    <th class="text-end" t-out="es and 'Descuento' or 'Discount'"/>
+                                    <th class="text-end" t-out="es and 'Precio en el tramo' or 'Price in tier'"/>
+                                </tr></thead>
+                                <tbody>
+                                    <tr t-foreach="l.tramo_ids" t-as="t">
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.desde)"/></td>
+                                        <td class="text-end"><span t-out="t.hasta and '{:,.0f}'.format(t.hasta) or (es and 'en adelante' or 'and above')"/></td>
+                                        <td class="text-end"><span t-out="'%.2f' % t.descuento_pct"/> %</td>
+                                        <td class="text-end"><span t-out="'%.4f' % t.precio"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <t t-set="meses" t-value="{'mensual': 1, 'trimestral': 3, 'anual': 12}.get(l.periodo, 1)"/>
+                            <p t-if="es">Se factura al precio base de <span t-out="'%.4f' % l.precio_base"/> <span t-out="o.currency_id.name"/>.
+                                Al cierre de cada <span t-out="{'mensual': 'mes', 'trimestral': 'trimestre', 'anual': 'año'}.get(l.periodo)"/>
+                                se suman las unidades facturadas<t t-if="meses &gt; 1"> (los límites de cada tramo se multiplican × <span t-out="meses"/>)</t>
+                                y el descuento de cada tramo aplica solo a las unidades que caen dentro de él; se entrega con una nota de crédito<t t-if="l.solo_pagadas_en_plazo">
+                                y cuentan solo las facturas pagadas en su plazo</t>.</p>
+                            <p t-else="">Invoiced at the base price of <span t-out="'%.4f' % l.precio_base"/> <span t-out="o.currency_id.name"/>.
+                                At the close of each <span t-out="{'mensual': 'month', 'trimestral': 'quarter', 'anual': 'year'}.get(l.periodo)"/>
+                                the invoiced units are added up<t t-if="meses &gt; 1"> (tier limits are multiplied by <span t-out="meses"/>)</t>
+                                and each tier's discount applies only to the units within that tier; it is issued as a credit note<t t-if="l.solo_pagadas_en_plazo">,
+                                counting only invoices paid within their terms</t>.</p>
+                        </t>
+                        <p t-if="es">Precios sin IVA. Las demás condiciones de venta no cambian.</p>
+                        <p t-else="">Prices exclude VAT. All other terms of sale remain unchanged.</p>
+                        <p style="margin-top:30px;" t-out="es and 'Atentamente,' or 'Sincerely,'"/>
+                        <p><span t-out="o.user_id.name"/><br/><span t-out="o.company_id.name"/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
