@@ -417,6 +417,9 @@ class TestReleaseWoodbridge(TransactionCase):
             "Fab Authorization Cum Qty: %d Thru: %s\n" % (cum, fmt(weeks[-1][0])) + \
             "Raw Authorization Cum Qty: %d Thru: %s" % (cum, fmt(weeks[-1][0]))
 
+    def _terms(self, vals):
+        return self.env['qb.delivery.terms'].create(dict(vals, partner_id=self.customer.id))
+
     def test_11_semanas_congeladas_y_redondeo_a_rollos(self):
         from odoo import fields as odoo_fields
         today = odoo_fields.Date.context_today(self.env.user)
@@ -426,7 +429,7 @@ class TestReleaseWoodbridge(TransactionCase):
         for day, qty in zip(weeks[:3], (100, 200, 300)):
             Line.create({'partner_id': self.customer.id, 'product_id': self.product.id, 'week': day,
                          'qty_origen': qty, 'origen': 'excel'})
-        self.profile.write({'frozen_weeks': 3, 'roll_qty': 200, 'roll_uom': 'm'})
+        self._terms({'frozen_weeks': 3, 'roll_qty': 200, 'roll_uom': 'm'})
         release = self._release(self._lear_text(list(zip(weeks, (100, 250, 300, 400, 500)))))
         release.action_read()
         self._confirm_part()
@@ -445,7 +448,7 @@ class TestReleaseWoodbridge(TransactionCase):
         today = odoo_fields.Date.context_today(self.env.user)
         w0 = today - timedelta(days=today.weekday())
         weeks = [w0 + timedelta(weeks=i) for i in range(4, 8)]
-        self.profile.write({'frozen_weeks': 0, 'group_weeks': 2, 'group_start': weeks[0]})
+        self._terms({'frozen_weeks': 0, 'group_weeks': 2, 'group_start': weeks[0]})
         release = self._release(self._lear_text(list(zip(weeks, (10, 20, 30, 40)))))
         release.action_read()
         self._confirm_part()
@@ -467,3 +470,23 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertTrue(week.excedida)
         week.capacidad_m = 10 ** 9
         self.assertFalse(week.excedida)
+
+    # --- 3.19.0: condiciones de entrega -----------------------------------------------
+    def test_14_condiciones_de_entrega(self):
+        terms = self._terms({'roll_qty': 500, 'roll_uom': 'yd', 'buffer_days': 1,
+                             'line_ids': [(0, 0, {'product_id': self.product.id, 'roll_qty': 1000,
+                                                  'roll_uom': 'm', 'max_splices': 2, 'core': '3" cartón'})]})
+        Terms = self.env['qb.delivery.terms']
+        self.assertEqual(Terms._qb_for(self.customer, plant='Cualquier planta'), terms,
+                         "Sin ficha de la planta, la del cliente")
+        self.assertEqual(terms._qb_roll_for(self.product), (1000, 'm'), "El renglón del producto gana")
+        otro = self.env['product.product'].create({'name': 'Otra tela', 'type': 'consu', 'uom_id': self.uom_m.id})
+        self.assertEqual(terms._qb_roll_for(otro), (500, 'yd'), "Sin renglón, el rollo del cliente")
+        terms.closed_qty = True
+        self.assertEqual(terms._qb_roll_for(self.product), (0.0, False), "Cantidades cerradas: no redondea")
+        monday = date(2040, 12, 17)
+        self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 19),
+                         "Sin día de recolección: la del cliente menos el colchón")
+        terms.pickup_weekday = '4'
+        self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 21),
+                         "Con día de recolección: ese día de la semana de embarque")

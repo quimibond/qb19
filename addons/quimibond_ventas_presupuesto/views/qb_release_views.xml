@@ -59,16 +59,6 @@
                             <field name="firm_weeks" invisible="firm_rule != 'semanas'"/>
                             <field name="so_weeks"/>
                         </group>
-                        <group string="Al aplicar el release">
-                            <field name="frozen_weeks"/>
-                            <field name="group_weeks"/>
-                            <field name="group_start" invisible="group_weeks &lt;= 1"/>
-                            <label for="roll_qty"/>
-                            <div class="o_row">
-                                <field name="roll_qty"/>
-                                <field name="roll_uom" invisible="not roll_qty"/>
-                            </div>
-                        </group>
                         <group string="Acuse y acumulados">
                             <field name="ack_required"/>
                             <field name="ack_hours" invisible="not ack_required"/>

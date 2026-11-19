@@ -250,6 +250,7 @@ class QbOrderProposal(models.TransientModel):
         self.ensure_one()
         Rule = self.env['qb.order.rule']
         Forecast = self.env['qb.forecast.line'].sudo()
+        Terms = self.env['qb.delivery.terms'].sudo()
         company = self.env.company
         rules = Rule.search([('company_id', '=', company.id)]
                             + ([('partner_id', 'in', self.partner_ids.commercial_partner_id.ids)]
@@ -311,8 +312,12 @@ class QbOrderProposal(models.TransientModel):
             # Ventas, aunque la haya cambiado a mano); si no hay pedido, la que pide el cliente. Jessica la
             # cambia en la propuesta. Nunca en el pasado.
             promised = existing.order_id.filtered('commitment_date')[:1].commitment_date
+            # 3.19.0: sin pedido, la fecha sale de las condiciones de entrega del cliente (día de
+            # recolección de la semana de embarque, o la del cliente menos el colchón).
+            terms = Terms._qb_for(partner, ship_to, group['plant'], company)
             vals['delivery_date'] = vals['delivery_date_proposed'] = self._qb_delivery(
-                promised.date() if promised else group['delivery'], group['week'])
+                promised.date() if promised else terms._qb_delivery_date(group['delivery'], group['week']),
+                group['week'])
             reason = group['why']
             if not reason and group['dev_state'] in DEV_NO_SALE:
                 reason = "Artículo en desarrollo o archivado: el pedido no se confirmaría"

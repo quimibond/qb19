@@ -94,3 +94,11 @@ access_qb_order_proposal_sale_mgr,qb.order.proposal.sale.mgr,model_qb_order_prop
 access_qb_order_proposal_manager,qb.order.proposal.manager,model_qb_order_proposal,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_order_proposal_line_sale_mgr,qb.order.proposal.line.sale.mgr,model_qb_order_proposal_line,sales_team.group_sale_manager,1,1,1,1
 access_qb_order_proposal_line_manager,qb.order.proposal.line.manager,model_qb_order_proposal_line,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_delivery_terms_salesman,qb.delivery.terms.salesman,model_qb_delivery_terms,sales_team.group_sale_salesman,1,0,0,0
+access_qb_delivery_terms_planeacion,qb.delivery.terms.planeacion,model_qb_delivery_terms,group_qb_planeacion,1,0,0,0
+access_qb_delivery_terms_sale_mgr,qb.delivery.terms.sale.mgr,model_qb_delivery_terms,sales_team.group_sale_manager,1,1,1,1
+access_qb_delivery_terms_manager,qb.delivery.terms.manager,model_qb_delivery_terms,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_delivery_terms_line_salesman,qb.delivery.terms.line.salesman,model_qb_delivery_terms_line,sales_team.group_sale_salesman,1,0,0,0
+access_qb_delivery_terms_line_planeacion,qb.delivery.terms.line.planeacion,model_qb_delivery_terms_line,group_qb_planeacion,1,0,0,0
+access_qb_delivery_terms_line_sale_mgr,qb.delivery.terms.line.sale.mgr,model_qb_delivery_terms_line,sales_team.group_sale_manager,1,1,1,1
+access_qb_delivery_terms_line_manager,qb.delivery.terms.line.manager,model_qb_delivery_terms_line,quimibond_sgi.group_sgi_manager,1,1,1,1

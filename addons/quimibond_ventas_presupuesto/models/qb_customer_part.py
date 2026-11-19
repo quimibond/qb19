@@ -60,12 +60,6 @@ class QbCustomerPart(models.Model):
         string="Factor fijo", digits=(16, 6), tracking=True,
         help="Unidades del producto por unidad del cliente. Solo con conversión "
              "'Factor fijo'.")
-    # 3.18.0: rollo de este producto para este cliente (gana sobre el del perfil del release).
-    roll_qty = fields.Float(string="Rollo", tracking=True,
-                            help="Múltiplo al que se redondea la cantidad del release (1000 yd). 0 = el del "
-                                 "perfil del cliente.")
-    roll_uom = fields.Selection([('m', "m"), ('yd', "yd"), ('kg', "kg"), ('m2', "m²")],
-                                string="Unidad del rollo", default='yd')
     state = fields.Selection([
         ('sin_producto', "Sin producto"),
         ('sugerido', "Sugerido"),
