@@ -1,0 +1,757 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================= -->
+    <!-- Portada                                                            -->
+    <!-- ================================================================= -->
+    <template id="portada" name="Quimibond: portada">
+        <t t-call="website.layout">
+            <t t-set="pageName" t-value="'homepage'"/>
+            <div id="wrap" class="qb">
+                <!-- Hero con la máquina de tejido circular -->
+                <section class="qb-hero">
+                    <div class="qb-trama" aria-hidden="true"/>
+                    <div class="qb-container qb-hero__in">
+                        <div class="qb-hero__texto">
+                            <a href="/calidad" class="qb-pill qb-reveal">
+                                <span class="qb-pill__punto"/> ISO 9001 · ISO 14001 <span class="qb-pill__sep"/> Hecho en México
+                                <i class="fa fa-angle-right" aria-hidden="true"/>
+                            </a>
+                            <h1 class="qb-reveal">Entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
+                            <p class="qb-lead qb-reveal">Tejemos, teñimos, acabamos e inspeccionamos en nuestra planta de Toluca. Fabricamos contra su especificación para la industria automotriz, blancos y confección.</p>
+                            <div class="qb-hero__cta qb-reveal">
+                                <a href="/cotizar" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                                <a href="/catalogo" class="qb-btn qb-btn--contorno qb-btn--lg">Ver catálogo técnico</a>
+                            </div>
+                            <p class="qb-hero__nota qb-reveal"><i class="fa fa-clock-o" aria-hidden="true"/> Respuesta de Ventas en un día hábil</p>
+                        </div>
+                        <div class="qb-hero__maquina qb-reveal" aria-hidden="true">
+                            <canvas data-qb-anim="circular"/>
+                            <div class="qb-hero__ficha qb-hero__ficha--a">
+                                <span class="qb-mono">TEJIDO CIRCULAR</span>
+                                <strong><span data-qb-rpm="1">0</span> rpm</strong>
+                            </div>
+                            <div class="qb-hero__ficha qb-hero__ficha--b">
+                                <span class="qb-mono">MALLAS TEJIDAS</span>
+                                <strong data-qb-mallas="1">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="qb-container">
+                        <dl class="qb-cifras qb-reveal">
+                            <t t-foreach="qb_cifras" t-as="c">
+                                <div>
+                                    <dd><t t-out="c['prefijo']"/><span data-qb-cuenta="1" t-att-data-valor="c['valor']" t-att-data-sin-miles="'1' if c.get('sin_miles') else None" t-out="c['valor']"/><t t-out="c['sufijo']"/></dd>
+                                    <dt t-out="c['etiqueta']"/>
+                                </div>
+                            </t>
+                        </dl>
+                    </div>
+                </section>
+
+                <!-- Cinta de aplicaciones -->
+                <section class="qb-cinta" aria-label="Aplicaciones">
+                    <div class="qb-cinta__pista">
+                        <t t-foreach="[0, 1]" t-as="vuelta">
+                            <div class="qb-cinta__grupo" t-att-aria-hidden="'true' if vuelta else None">
+                                <span>Camisería</span><i/><span>Uniformes</span><i/><span>Prendas ligeras</span><i/>
+                                <span>Frentes y refuerzos</span><i/><span>Blusas</span><i/><span>Tricots</span><i/>
+                                <span>Colchonería</span><i/><span>Automotriz</span><i/><span>No tejidos</span><i/>
+                                <span>Tejido circular</span><i/>
+                            </div>
+                        </t>
+                    </div>
+                </section>
+
+                <!-- Mercados -->
+                <section class="qb-sec" id="mercados">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Mercados</span>
+                            <h2 class="qb-reveal">Tres industrias, y la tela para cada aplicación.</h2>
+                            <p class="qb-lead qb-reveal">Empiece por su industria: dentro están las aplicaciones y la tela que proponemos para cada una.</p>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_mercados" t-as="m">
+                                <a t-attf-href="/mercados/#{m['clave']}" t-attf-class="qb-card qb-mercado qb-mercado--#{m['clave']} qb-spot qb-reveal">
+                                    <div class="qb-mercado__arte" aria-hidden="true"><span/><span/><span/></div>
+                                    <span class="qb-icono"><i t-attf-class="fa #{m['icono']}" aria-hidden="true"/></span>
+                                    <h3 t-out="m['nombre']"/>
+                                    <p t-out="m['frase']"/>
+                                    <ul class="qb-mercado__apps">
+                                        <li t-foreach="m['aplicaciones']" t-as="ap" t-out="ap['nombre']"/>
+                                    </ul>
+                                    <span class="qb-enlace">Ver aplicaciones y telas <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+
+                <t t-call="website_quimibond.armadoras"/>
+
+                <!-- Lo que fabricamos: tipos de tela según la maquinaria de la planta -->
+                <section class="qb-sec qb-sec--suave" id="telas">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab qb-sec__cab--fila">
+                            <div>
+                                <span class="qb-eyebrow qb-reveal">Lo que fabricamos</span>
+                                <h2 class="qb-reveal">Tejido y no tejido, en una sola planta.</h2>
+                                <p class="qb-lead qb-reveal">Tejido de punto circular, de una y doble fontura. No tejido, sencillo o tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables.</p>
+                            </div>
+                            <a href="/planta#maquinaria" class="qb-btn qb-btn--contorno qb-reveal">Ver la maquinaria <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <t t-call="website_quimibond.tipos_tejido"/>
+                    </div>
+                </section>
+
+                <!-- Proceso -->
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Planta integrada</span>
+                            <h2 class="qb-reveal">Del hilo al rollo, bajo un mismo techo.</h2>
+                            <p class="qb-lead qb-reveal">Controlamos cada etapa, por eso respondemos por cada rollo.</p>
+                        </div>
+                        <ol class="qb-proceso" data-qb-proceso="1">
+                            <li class="qb-proceso__hilo" aria-hidden="true"><span/></li>
+                            <t t-foreach="qb_proceso" t-as="p">
+                                <li class="qb-proceso__paso qb-reveal">
+                                    <span class="qb-proceso__nodo"><i t-attf-class="fa #{p['icono']}" aria-hidden="true"/></span>
+                                    <span class="qb-mono" t-out="p['paso']"/>
+                                    <h3 t-out="p['nombre']"/>
+                                    <p t-out="p['texto']"/>
+                                </li>
+                            </t>
+                        </ol>
+                        <p class="qb-centro qb-reveal"><a href="/planta" class="qb-enlace">Conozca la planta <i class="fa fa-long-arrow-right" aria-hidden="true"/></a></p>
+                    </div>
+                </section>
+
+                <!-- Diseñador de tela -->
+                <section class="qb-sec qb-sec--suave qb-invita">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
+                            <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
+                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
+                            <canvas data-qb-anim="tela" data-qb-demo="1"/>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Fusionables: fibras y puntos de adhesivo -->
+                <section class="qb-sec qb-oscuro">
+                    <canvas class="qb-oscuro__fondo" data-qb-anim="fibras" aria-hidden="true"/>
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Entretelas fusionables</span>
+                            <h2 class="qb-reveal">Fibra, punto de adhesivo y la prenda queda en su lugar.</h2>
+                            <p class="qb-lead qb-reveal">Una entretela es la parte que no se ve y que sostiene el cuello, el puño o el frente. La base define el tacto y el punto de adhesivo define cómo se fusiona y cómo resiste el lavado.</p>
+                            <a href="/mercados/confeccion" class="qb-btn qb-btn--claro qb-reveal">Entretelas para confección <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <ul class="qb-lista-oscura">
+                            <li class="qb-reveal"><strong>Base</strong><span>No tejido o tejido circular, según la caída y la elasticidad que pide la prenda.</span></li>
+                            <li class="qb-reveal"><strong>Adhesivo</strong><span>Para lavado en agua o lavado en seco.</span></li>
+                            <li class="qb-reveal"><strong>Tacto</strong><span>Rígido, semirrígido o suave.</span></li>
+                            <li class="qb-reveal"><strong>Asesoría</strong><span>Le acompañamos con las condiciones de fusionado en su planta.</span></li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Calidad y sustentabilidad -->
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-bento">
+                            <a href="/calidad" class="qb-card qb-bento__a qb-spot qb-reveal">
+                                <span class="qb-eyebrow">Calidad</span>
+                                <h3>Sistema de gestión integral certificado</h3>
+                                <p>Calidad y medio ambiente auditados cada año. Cada lote se libera en laboratorio antes de embarcar.</p>
+                                <div class="qb-sellos">
+                                    <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
+                                    <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                                </div>
+                            </a>
+                            <t t-foreach="qb_sustentabilidad" t-as="s">
+                                <div class="qb-card qb-spot qb-reveal">
+                                    <span class="qb-icono"><i t-attf-class="fa #{s['icono']}" aria-hidden="true"/></span>
+                                    <h3 t-out="s['titulo']"/>
+                                    <p t-out="s['texto']"/>
+                                </div>
+                            </t>
+                            <a href="/my" class="qb-card qb-bento__b qb-spot qb-reveal">
+                                <span class="qb-eyebrow">Portal de clientes</span>
+                                <h3>Sus pedidos, facturas y entregas en línea</h3>
+                                <p>Consulte el estado de sus pedidos y descargue sus documentos a cualquier hora.</p>
+                                <div class="qb-mini" aria-hidden="true">
+                                    <div><span class="qb-mono">Pedido</span><span class="qb-badge qb-badge--ok">En producción</span></div>
+                                    <div><span class="qb-mono">Entrega</span><span class="qb-badge">Programada</span></div>
+                                    <div><span class="qb-mono">Factura</span><span class="qb-badge">PDF · XML</span></div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Vacantes publicadas en Reclutamiento -->
+                <section t-if="vacantes" class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab qb-sec__cab--fila">
+                            <div>
+                                <span class="qb-eyebrow qb-reveal">Empleos</span>
+                                <h2 class="qb-reveal">Trabaje con nosotros</h2>
+                            </div>
+                            <a href="/jobs" class="qb-btn qb-btn--contorno qb-reveal">Ver vacantes <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <a t-foreach="vacantes" t-as="v" t-attf-href="/jobs/#{slug(v)}" class="qb-card qb-spot qb-reveal">
+                                <h3 t-out="v.name"/>
+                                <p t-if="v.department_id" class="qb-mono" t-out="v.department_id.name"/>
+                                <span class="qb-enlace">Postularse <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty" id="qb_portada_extra"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Mercado                                                            -->
+    <!-- ================================================================= -->
+    <template id="mercado" name="Quimibond: mercado">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Mercados · ' + mercado['nombre']"/>
+                    <t t-set="titulo" t-value="mercado['titulo']"/>
+                    <t t-set="resumen" t-value="mercado['resumen']"/>
+                    <div class="qb-hero__cta qb-reveal">
+                        <a t-attf-href="/cotizar?mercado=#{mercado['clave']}" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        <a href="#aplicaciones" class="qb-btn qb-btn--contorno qb-btn--lg">Ver aplicaciones</a>
+                    </div>
+                </t>
+                <section t-if="mercado['aplicaciones']" class="qb-sec" id="aplicaciones">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Aplicaciones</span>
+                            <h2 class="qb-reveal">Dónde va la tela y cuál proponemos.</h2>
+                            <p class="qb-lead qb-reveal">Cada aplicación parte de una tela propuesta. Ábrala en el diseñador y ajústela a su especificación.</p>
+                        </div>
+                        <div t-attf-class="qb-grid qb-grid--#{4 if len(mercado['aplicaciones']) == 4 else 3}">
+                            <t t-foreach="mercado['aplicaciones']" t-as="ap">
+                                <a t-att-href="ap['enlace']" class="qb-card qb-tipo qb-app qb-spot qb-reveal">
+                                    <t t-call="website_quimibond.dibujo_tejido">
+                                        <t t-set="clave" t-value="ap['construccion']"/>
+                                    </t>
+                                    <div class="qb-tipo__cuerpo">
+                                        <h3 t-out="ap['nombre']"/>
+                                        <p t-out="ap['texto']"/>
+                                        <dl class="qb-app__tela">
+                                            <dt t-out="ap['familia']"/>
+                                            <dd t-out="ap['tela']"/>
+                                        </dl>
+                                        <span class="qb-enlace">Diseñar esta tela <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                    </div>
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Cómo lo atendemos</span>
+                            <h2 class="qb-reveal">Lo que este mercado nos pide.</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--4">
+                            <t t-foreach="mercado['puntos']" t-as="punto">
+                                <div class="qb-card qb-spot qb-reveal">
+                                    <span class="qb-mono qb-num" t-out="'%02d' % (punto_index + 1)"/>
+                                    <p class="qb-card__fuerte" t-out="punto"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <t t-if="mercado['clave'] == 'automotriz'" t-call="website_quimibond.armadoras"/>
+                <section class="qb-sec">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Siguiente paso</span>
+                            <h2 class="qb-reveal">Cuéntenos su especificación</h2>
+                            <p class="qb-lead qb-reveal">Si ya tiene una norma o una muestra de referencia, adjúntela. Si no, le ayudamos a definirla.</p>
+                        </div>
+                        <div class="qb-card qb-reveal">
+                            <t t-set="mercado_sel" t-value="mercado['nombre']"/>
+                            <t t-set="asunto" t-value="''"/>
+                            <t t-call="website_quimibond.formulario_cotizacion"/>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Planta                                                             -->
+    <!-- ================================================================= -->
+    <template id="planta" name="Quimibond: planta">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Planta y proceso'"/>
+                    <t t-set="titulo" t-value="'Del hilo al rollo terminado, en Toluca.'"/>
+                    <t t-set="resumen" t-value="'Tejido circular de una y doble fontura, línea de no tejidos, jets, ramas e inspección en una sola planta. Cada rollo sale pesado, medido, clasificado y con su lote.'"/>
+                </t>
+                <section class="qb-sec">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div class="qb-maquina-caja qb-reveal" aria-hidden="true"><canvas data-qb-anim="circular"/></div>
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Tejido circular</span>
+                            <h2 class="qb-reveal">Cada vuelta del cilindro es una pasada de tela.</h2>
+                            <p class="qb-lead qb-reveal">Las agujas suben y bajan alrededor del cilindro, toman el hilo de los alimentadores y forman la malla. De ahí sale el tubo de tela que después se tiñe y se acaba.</p>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--cifras">
+                    <div class="qb-container">
+                        <dl class="qb-cifras qb-reveal">
+                            <t t-foreach="qb_cifras" t-as="c">
+                                <div>
+                                    <dd><t t-out="c['prefijo']"/><span data-qb-cuenta="1" t-att-data-valor="c['valor']" t-att-data-sin-miles="'1' if c.get('sin_miles') else None" t-out="c['valor']"/><t t-out="c['sufijo']"/></dd>
+                                    <dt t-out="c['etiqueta']"/>
+                                </div>
+                            </t>
+                        </dl>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave" id="telas">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Tipos de tela</span>
+                            <h2 class="qb-reveal">Dos familias: tejido y no tejido.</h2>
+                            <p class="qb-lead qb-reveal">El tejido sale de las máquinas circulares y el no tejido, de su propia línea, donde también se hace el tramado. Las dos familias comparten acabado e inspección.</p>
+                        </div>
+                        <t t-call="website_quimibond.tipos_tejido"/>
+                    </div>
+                </section>
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Proceso</span>
+                            <h2 class="qb-reveal">Cinco etapas, un solo responsable.</h2>
+                        </div>
+                        <ol class="qb-proceso" data-qb-proceso="1">
+                            <li class="qb-proceso__hilo" aria-hidden="true"><span/></li>
+                            <t t-foreach="qb_proceso" t-as="p">
+                                <li class="qb-proceso__paso qb-reveal">
+                                    <span class="qb-proceso__nodo"><i t-attf-class="fa #{p['icono']}" aria-hidden="true"/></span>
+                                    <span class="qb-mono" t-out="p['paso']"/>
+                                    <h3 t-out="p['nombre']"/>
+                                    <p t-out="p['texto']"/>
+                                </li>
+                            </t>
+                        </ol>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave" id="maquinaria">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Maquinaria</span>
+                            <h2 class="qb-reveal">Lo que hay en el piso de la planta.</h2>
+                            <p class="qb-lead qb-reveal">Las cantidades salen de nuestro sistema de producción, no de un folleto.</p>
+                        </div>
+                        <t t-call="website_quimibond.maquinaria"/>
+                    </div>
+                </section>
+                <!-- Diseñador de tela -->
+                <section class="qb-sec qb-invita">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
+                            <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
+                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
+                            <canvas data-qb-anim="tela" data-qb-demo="1"/>
+                        </a>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Calidad                                                            -->
+    <!-- ================================================================= -->
+    <template id="calidad" name="Quimibond: calidad">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
+                    <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
+                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015.'"/>
+                    <div class="qb-sellos qb-reveal">
+                        <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
+                        <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                    </div>
+                </t>
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Objetivos integrales</span>
+                            <h2 class="qb-reveal">A qué nos comprometemos</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">01</span>
+                                <h3>Clientes satisfechos</h3>
+                                <p>Adaptamos nuestras capacidades a sus necesidades y medimos su satisfacción cada año, con una meta de 90 % o más.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">02</span>
+                                <h3>Cuidado del medio ambiente</h3>
+                                <p>Identificamos nuestros aspectos ambientales significativos y aprovechamos los recursos: reciclaje, agua pluvial y energía solar.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">03</span>
+                                <h3>Calidad con eficiencia</h3>
+                                <p>Garantizamos la calidad del producto con indicadores mensuales de eficiencia y productividad en cada proceso.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Sustentabilidad</span>
+                            <h2 class="qb-reveal">Lo que hacemos en planta</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_sustentabilidad" t-as="s">
+                                <div class="qb-card qb-spot qb-reveal">
+                                    <span class="qb-icono"><i t-attf-class="fa #{s['icono']}" aria-hidden="true"/></span>
+                                    <h3 t-out="s['titulo']"/>
+                                    <p t-out="s['texto']"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Clientes</span>
+                            <h2 class="qb-reveal">¿Tiene una observación de calidad?</h2>
+                            <p class="qb-lead qb-reveal">Levante su reporte en línea. Lo recibe Atención a Clientes con el número de lote y le damos seguimiento hasta cerrarlo.</p>
+                        </div>
+                        <div class="qb-hero__cta qb-reveal">
+                            <a href="/helpdesk" class="qb-btn qb-btn--primario qb-btn--lg">Levantar reporte de calidad</a>
+                            <a href="/my" class="qb-btn qb-btn--contorno qb-btn--lg">Portal de clientes</a>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Nosotros                                                           -->
+    <!-- ================================================================= -->
+    <template id="nosotros" name="Quimibond: nosotros">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Nosotros'"/>
+                    <t t-set="titulo" t-value="'Fabricantes textiles mexicanos desde 1992.'"/>
+                    <t t-set="resumen" t-value="'Productora de No Tejidos Quimibond nació para fabricar entretelas de alta calidad. Hoy abastecemos a la confección, a blancos y a la industria automotriz.'"/>
+                </t>
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <ol class="qb-historia">
+                            <t t-foreach="qb_historia" t-as="h">
+                                <li class="qb-reveal">
+                                    <span class="qb-historia__anio qb-mono" t-out="h['anio']"/>
+                                    <div class="qb-card qb-spot">
+                                        <h3 t-out="h['titulo']"/>
+                                        <p t-out="h['texto']"/>
+                                    </div>
+                                </li>
+                            </t>
+                        </ol>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <dl class="qb-cifras qb-reveal">
+                            <t t-foreach="qb_cifras" t-as="c">
+                                <div>
+                                    <dd><t t-out="c['prefijo']"/><span data-qb-cuenta="1" t-att-data-valor="c['valor']" t-att-data-sin-miles="'1' if c.get('sin_miles') else None" t-out="c['valor']"/><t t-out="c['sufijo']"/></dd>
+                                    <dt t-out="c['etiqueta']"/>
+                                </div>
+                            </t>
+                        </dl>
+                    </div>
+                </section>
+                <section class="qb-sec">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Ubicación</span>
+                            <h2 class="qb-reveal">Parque Industrial Toluca 2000</h2>
+                            <address class="qb-lead qb-reveal">
+                                <span t-out="res_company.street"/><br/>
+                                <span t-out="res_company.city"/><t t-if="res_company.zip">, C.P. <span t-out="res_company.zip"/></t>, <span t-out="res_company.country_id.name"/>
+                            </address>
+                            <p class="qb-reveal" t-if="res_company.phone"><a class="qb-enlace" t-attf-href="tel:#{res_company.phone}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="res_company.phone"/></a></p>
+                        </div>
+                        <div class="qb-hero__cta qb-reveal">
+                            <a href="/cotizar" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización</a>
+                            <a href="/jobs" class="qb-btn qb-btn--contorno qb-btn--lg">Empleos</a>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Diseñador de tela                                                  -->
+    <!-- ================================================================= -->
+    <template id="disenar" name="Quimibond: diseñador de tela">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-dis" data-qb-disenador="1">
+                    <div class="qb-trama" aria-hidden="true"/>
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
+                            <h1 class="qb-reveal">Diseñe su tela</h1>
+                            <p class="qb-lead qb-reveal">Elija cada característica y vea la tela al momento. Al terminar, envíe el diseño a Ventas para recibir cotización y muestra.</p>
+                        </div>
+                        <div class="qb-dis__cuerpo">
+                            <div class="qb-dis__opciones">
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Mercado <small>¿para qué industria es la tela?</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_mercados" t-as="m">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_mercado" t-att-value="m['nombre']"/><span><i t-attf-class="fa #{m['icono']}" aria-hidden="true"/> <t t-out="m['nombre']"/></span></label>
+                                        </t>
+                                        <label class="qb-dis__chip"><input type="radio" name="qb_mercado" value="Otro"/><span>Otro</span></label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-aplicaciones="1" hidden="hidden">
+                                    <legend><span class="qb-mono qb-dis__num"/> Aplicación <small>le proponemos una tela de partida y usted la ajusta</small></legend>
+                                    <t t-foreach="qb_mercados" t-as="m">
+                                        <div class="qb-dis__chips" t-att-data-qb-mercado="m['nombre']" hidden="hidden">
+                                            <t t-foreach="qb_disenador['aplicaciones']" t-as="ap">
+                                                <label t-if="ap['mercado'] == m['nombre']" class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-att-value="ap['nombre']" t-att-data-mercado="ap['mercado']" t-att-data-qb-tela="json.dumps(ap['tela'])"/><span t-out="ap['nombre']"/></label>
+                                            </t>
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-attf-value="Otra en #{m['nombre'].lower()}" t-att-data-mercado="m['nombre']"/><span>Otra</span></label>
+                                        </div>
+                                    </t>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Construcción</legend>
+                                    <div class="qb-dis__familias">
+                                        <t t-foreach="qb_familias" t-as="fam">
+                                            <div class="qb-dis__familia">
+                                                <span class="qb-dis__sub" t-out="fam['nombre']"/>
+                                                <div class="qb-dis__tarjetas">
+                                                    <t t-foreach="fam['tejidos']" t-as="t">
+                                                        <label class="qb-dis__tarjeta">
+                                                            <input type="radio" name="qb_construccion" t-att-value="t['clave']" t-att-data-nombre="t['nombre']" t-att-checked="'checked' if fam_first and t_first else None"/>
+                                                            <t t-call="website_quimibond.dibujo_tejido">
+                                                                <t t-set="clave" t-value="t['clave']"/>
+                                                            </t>
+                                                            <strong t-out="t['nombre']"/>
+                                                            <span t-out="t['etiqueta']"/>
+                                                        </label>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
+                                    <legend><span class="qb-mono qb-dis__num"/> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['galgas']" t-as="g">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_galga" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/><span t-out="g"/></label>
+                                        </t>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
+                                    <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['hilos']" t-as="hi">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_hilo" t-att-value="hi" t-att-checked="'checked' if hi_first else None"/><span t-out="hi"/></label>
+                                        </t>
+                                    </div>
+                                    <div class="qb-dis__chips" data-qb-solo-hilo="Poliéster">
+                                        <span class="qb-dis__sub">Filamento</span>
+                                        <t t-foreach="qb_disenador['hilo_tipos']" t-as="ht">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_hilo_tipo" t-att-value="ht" t-att-checked="'checked' if ht_first else None"/><span t-out="ht"/></label>
+                                        </t>
+                                    </div>
+                                    <div t-if="qb_disenador['elastano']" class="qb-dis__chips">
+                                        <label class="qb-dis__chip"><input type="checkbox" name="qb_elastano"/><span>Con elastano, para más elasticidad</span></label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-solo="no_tejido tramado">
+                                    <legend><span class="qb-mono qb-dis__num"/> Fibra</legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['fibras']" t-as="f">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_fibra" t-att-value="f" t-att-checked="'checked' if f_first else None"/><span t-out="f"/></label>
+                                        </t>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Peso <output class="qb-dis__valor" data-qb-salida="peso">150 g/m²</output></legend>
+                                    <input type="range" class="qb-dis__rango" name="qb_peso" min="20" max="400" step="5" value="150" aria-label="Peso en gramos por metro cuadrado"/>
+                                    <div class="qb-dis__escala"><span>Ligera</span><span>Media</span><span>Pesada</span></div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Color <output class="qb-dis__valor" data-qb-salida="color">Blanco</output></legend>
+                                    <div class="qb-dis__colores">
+                                        <t t-foreach="qb_disenador['colores']" t-as="c">
+                                            <label class="qb-dis__color" t-att-title="c[0]">
+                                                <input type="radio" name="qb_color" t-att-value="c[1]" t-att-data-nombre="c[0]" t-att-checked="'checked' if c_first else None"/>
+                                                <span t-attf-style="background: #{c[1]}"/>
+                                            </label>
+                                        </t>
+                                        <label class="qb-dis__color qb-dis__color--libre" title="Otro color">
+                                            <input type="color" name="qb_color_libre" value="#2f54c8" aria-label="Otro color"/>
+                                            <span><i class="fa fa-eyedropper" aria-hidden="true"/></span>
+                                        </label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Tacto y acabado</legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['tactos']" t-as="ta">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_tacto" t-att-value="ta" t-att-checked="'checked' if ta_first else None"/><span t-out="ta"/></label>
+                                        </t>
+                                    </div>
+                                    <div class="qb-dis__chips">
+                                        <label class="qb-dis__chip"><input type="checkbox" name="qb_fusionable"/><span>Fusionable, con punto de adhesivo</span></label>
+                                        <label class="qb-dis__chip"><input type="checkbox" name="qb_termofijado"/><span>Termofijada</span></label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Presentación</legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['presentaciones']" t-as="pr">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_presentacion" t-att-value="pr" t-att-checked="'checked' if pr_first else None"/><span t-out="pr"/></label>
+                                        </t>
+                                        <label class="qb-dis__ancho">Ancho <input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric"/> cm</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Requisitos <small>lo que su cliente o su norma le pide</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <t t-foreach="qb_disenador['requisitos']" t-as="rq">
+                                            <label class="qb-dis__chip"><input type="checkbox" name="qb_requisito" t-att-value="rq"/><span t-out="rq"/></label>
+                                        </t>
+                                    </div>
+                                    <label class="qb-dis__linea">Norma o especificación <input type="text" name="qb_norma" maxlength="80" placeholder="Por ejemplo, la norma de su cliente"/></label>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Volumen y fecha</legend>
+                                    <div class="qb-dis__chips">
+                                        <label class="qb-dis__linea">Volumen <input type="number" name="qb_volumen" min="1" step="1" placeholder="5000" inputmode="numeric"/></label>
+                                        <select name="qb_unidad" class="qb-dis__select" aria-label="Unidad del volumen">
+                                            <option t-foreach="qb_disenador['unidades']" t-as="un" t-att-value="un" t-out="un"/>
+                                        </select>
+                                        <label class="qb-dis__linea">Lo necesita para <input type="date" name="qb_fecha"/></label>
+                                    </div>
+                                </fieldset>
+                            </div>
+                            <aside class="qb-dis__vista">
+                                <div class="qb-tela-caja qb-tela-caja--grande"><canvas data-qb-anim="tela" role="img" aria-label="Vista de la tela diseñada"/></div>
+                                <p class="qb-dis__lupa qb-mono">Vista ampliada, ilustrativa</p>
+                                <dl class="qb-dis__ficha" data-qb-ficha="1"/>
+                                <div class="qb-dis__acciones">
+                                    <a href="#qb_enviar" class="qb-btn qb-btn--primario qb-btn--lg" data-qb-enviar="1">Enviar diseño a Ventas <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                                    <button type="button" class="qb-btn qb-btn--contorno qb-btn--lg" data-qb-azar="1"><i class="fa fa-random" aria-hidden="true"/> Sorpréndame</button>
+                                </div>
+                                <div class="qb-dis__acciones qb-dis__acciones--sec">
+                                    <button type="button" class="qb-btn qb-btn--ghost" data-qb-copiar="1"><i class="fa fa-link" aria-hidden="true"/> <span>Copiar enlace del diseño</span></button>
+                                    <button type="button" class="qb-btn qb-btn--ghost" data-qb-imprimir="1"><i class="fa fa-print" aria-hidden="true"/> Imprimir o guardar en PDF</button>
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave" id="qb_enviar">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Ventas</span>
+                            <h2 class="qb-reveal">Envíe su diseño</h2>
+                            <p class="qb-lead qb-reveal">Su diseño ya está escrito en la especificación. Si tiene una muestra, una foto o la ficha técnica de la tela que quiere igualar, adjúntela aquí mismo. Un asesor le responde en un día hábil.</p>
+                            <p class="qb-nota qb-reveal">El diseñador es una guía para platicar su proyecto. Ventas e Ingeniería confirman la factibilidad, el gramaje final y el tiempo de entrega.</p>
+                        </div>
+                        <div class="qb-card qb-card--form qb-reveal">
+                            <t t-call="website_quimibond.formulario_cotizacion"/>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Cotizar                                                            -->
+    <!-- ================================================================= -->
+    <template id="cotizar" name="Quimibond: cotizar">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-cotizar">
+                    <div class="qb-trama" aria-hidden="true"/>
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Ventas</span>
+                            <h1 class="qb-reveal">Solicite una cotización o una muestra</h1>
+                            <p class="qb-lead qb-reveal">Entre más detalle nos dé, más rápido le respondemos con precio, tiempo de entrega y ficha técnica.</p>
+                            <ul class="qb-pasos">
+                                <li class="qb-reveal"><span class="qb-mono">01</span><div><strong>Envía su especificación</strong><span>Aplicación, gramaje, ancho, color y volumen.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">02</span><div><strong>Un asesor le contacta</strong><span>En un día hábil, de lunes a viernes de 9:00 a 18:00.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">03</span><div><strong>Recibe cotización y muestra</strong><span>Con ficha técnica para validar en su planta.</span></div></li>
+                            </ul>
+                            <p class="qb-reveal" t-if="res_company.phone"><a class="qb-enlace" t-attf-href="tel:#{res_company.phone}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="res_company.phone"/></a></p>
+                        </div>
+                        <div class="qb-card qb-card--form qb-reveal">
+                            <t t-call="website_quimibond.formulario_cotizacion"/>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <template id="gracias" name="Quimibond: gracias">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-gracias">
+                    <div class="qb-container qb-centro">
+                        <span class="qb-icono qb-icono--ok"><i class="fa fa-check" aria-hidden="true"/></span>
+                        <h1>Recibimos su solicitud</h1>
+                        <p class="qb-lead">Ya está con el equipo de Ventas. Le contactamos en un día hábil.</p>
+                        <div class="qb-hero__cta qb-hero__cta--centro">
+                            <a href="/catalogo" class="qb-btn qb-btn--primario">Ver catálogo</a>
+                            <a href="/" class="qb-btn qb-btn--contorno">Volver al inicio</a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+</odoo>
