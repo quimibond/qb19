@@ -21,6 +21,38 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Varios días de recolección (19.0.3.25.0, 2026-11-19)
+
+Jose (19-nov): «qué sucede si un cliente tiene más de una fecha de recolección, como Lear, que recolecta
+martes y viernes». Desde septiembre Ventas captura a mano dos pedidos por semana de Lear, martes y viernes,
+por partes iguales; la ficha solo aceptaba un día.
+
+- **Recolección** (Jose, 19-nov: «¿no es mejor preguntar si el cliente tiene recolección fija?»): *Sin día
+  fijo* (la fecha del pedido es la del cliente menos el colchón, un pedido por semana), *Un día a la semana*
+  o *Varios días a la semana*; con día fijo aparecen los **Días de recolección** (etiquetas, `qb.weekday`).
+  Las fichas que tenían día quedan en «Un día a la semana» con ese día.
+- Con varios días, «Proponer pedidos» reparte la semana **por partes iguales** (por rollos completos si el
+  rollo está en la unidad del producto; si no, por unidades enteras; lo que sobra va al primer día) y sale
+  un renglón y un pedido por OC, semana y día (`sale.order.qb_pickup_weekday`).
+- Al volver a proponer, cada día se compara con su pedido: el que se creó para ese día o, si se capturó a
+  mano, el de la fecha compromiso más cercana a ese día.
+
+## Una OC abierta por producto (19.0.3.24.0, 2026-11-19)
+
+Jose (19-nov): «qué pasa si un mismo cliente tiene más de una orden abierta, eso sucede con Zwisstex… para
+Shawmut y Saltillo no, me dan una sola OC abierta para todos sus productos y cambia de acuerdo a su planta».
+La OC abierta vivía solo en la regla de «Cómo pide el cliente» (una por cliente y planta), y Zwisstex tiene
+una OC por producto (14792, 15486, 15862…).
+
+- La presentación por producto de **Condiciones de entrega** trae **OC abierta** y **Vigencia de la OC**.
+  Cada cambio queda en el historial de la ficha.
+- «Proponer pedidos» toma la OC así: en «OC abierta + release», la del producto y, si no tiene, la de la
+  regla (la OC que trae el release se sigue ignorando, como antes); en «OC en el release» y «Release sin
+  OC», la de la semana y, si no trae, la del producto. Vencida la del producto, ese producto no entra.
+- La regla en «OC abierta + release» ya puede ir sin OC: los productos sin OC propia quedan «No entra» con
+  el motivo «Sin OC abierta para el producto en Condiciones de entrega».
+- Shawmut y Saltillo no cambian: su OC sigue en la regla de cada planta.
+
 ## Ficha del presupuesto anual con vistas nativas (19.0.3.23.0, 2026-11-19)
 
 Jose no quiso el tablero de la 3.22.0 (tablas en HTML hechas a mano): «lo necesito lo más nativo de Odoo

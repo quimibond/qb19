@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 3.25.0: días de recolección (varios por cliente: Lear martes y viernes). -->
+    <record id="qb_weekday_0" model="qb.weekday">
+        <field name="name">Lunes</field>
+        <field name="code">0</field>
+    </record>
+    <record id="qb_weekday_1" model="qb.weekday">
+        <field name="name">Martes</field>
+        <field name="code">1</field>
+    </record>
+    <record id="qb_weekday_2" model="qb.weekday">
+        <field name="name">Miércoles</field>
+        <field name="code">2</field>
+    </record>
+    <record id="qb_weekday_3" model="qb.weekday">
+        <field name="name">Jueves</field>
+        <field name="code">3</field>
+    </record>
+    <record id="qb_weekday_4" model="qb.weekday">
+        <field name="name">Viernes</field>
+        <field name="code">4</field>
+    </record>
+    <record id="qb_weekday_5" model="qb.weekday">
+        <field name="name">Sábado</field>
+        <field name="code">5</field>
+    </record>
+    <record id="qb_weekday_6" model="qb.weekday">
+        <field name="name">Domingo</field>
+        <field name="code">6</field>
+    </record>
+</odoo>

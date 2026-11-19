@@ -9,7 +9,8 @@
                 <field name="partner_id"/>
                 <field name="ship_to_id" optional="show"/>
                 <field name="plant" optional="show"/>
-                <field name="pickup_weekday"/>
+                <field name="pickup_mode"/>
+                <field name="pickup_day_ids" widget="many2many_tags"/>
                 <field name="lead_days"/>
                 <field name="frozen_weeks"/>
                 <field name="group_weeks"/>
@@ -39,9 +40,11 @@
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Cuándo se embarca">
-                            <field name="pickup_weekday"/>
+                            <field name="pickup_mode"/>
+                            <field name="pickup_day_ids" widget="many2many_tags" options="{'no_create': True}"
+                                   invisible="pickup_mode == 'libre'" required="pickup_mode != 'libre'"/>
                             <field name="lead_days"/>
-                            <field name="buffer_days" invisible="pickup_weekday"/>
+                            <field name="buffer_days" invisible="pickup_mode != 'libre'"/>
                             <field name="capacity_m"/>
                         </group>
                         <group string="Al aplicar el release">
@@ -65,6 +68,8 @@
                                 <list editable="bottom">
                                     <field name="product_id"/>
                                     <field name="customer_part" optional="show"/>
+                                    <field name="open_po" optional="show"/>
+                                    <field name="open_po_valid_to" optional="show"/>
                                     <field name="roll_qty"/>
                                     <field name="roll_uom"/>
                                     <field name="round_up"/>
