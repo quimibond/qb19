@@ -21,6 +21,24 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Release por correo con aprobación de Ventas (19.0.3.30.0, 2026-11-19)
+
+Jose (19-nov): «necesito que Jessica apruebe cada release nuevo en algún lugar, no que se integre automático,
+para comprobar que se haga correctamente y que ella tenga el control» (`models/qb_release_mail.py`).
+
+- **Buzón `releases@quimibond.odoo.com`** (alias de Odoo sobre `qb.release`, `data/qb_release_mail_data.xml`):
+  el release se manda o se reenvía ahí (a mano o con un filtro de reenvío en el correo de Ventas). Por cada
+  adjunto se busca el perfil con «Dominios del remitente» (también en el cuerpo, para los reenviados),
+  «Asunto del correo contiene» y «Archivo del release» (comodines; `release/correo.py`). Se crea el release
+  con el archivo y **se lee**; nunca se aplica solo.
+- **Aprobación**: el release deja la actividad «Aprobar release …» al Responsable en Ventas del perfil.
+  «Marcar revisado» y «Aplicar al pronóstico» solo los hace ese responsable o un administrador.
+- Si le tocan varios perfiles o ninguno, queda «Por revisar» sin perfil (se elige el perfil y «Leer»); un
+  correo sin archivo de release (firmas, PPAP, OC) queda descartado; el mismo archivo otra vez no crea otro.
+- **Semanas por pedir**: al aplicar, si hay semanas sin pedido dentro de «Semanas a pedido» del perfil, queda
+  la actividad «Crear pedidos …» y el botón «Por pedir» del release abre esas semanas en el Pronóstico
+  vigente, donde está «Crear pedido». Filtro nuevo «Por pedir (próximas 4 semanas)».
+
 ## Pedido y pronóstico ligados (19.0.3.29.0, 2026-11-19)
 
 Jose (19-nov): «quisiera poder generar el pedido desde ahí […] si hago un cambio de fecha que me mueva la captura
