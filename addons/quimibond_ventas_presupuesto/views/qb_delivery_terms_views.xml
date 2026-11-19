@@ -9,7 +9,7 @@
                 <field name="partner_id"/>
                 <field name="ship_to_id" optional="show"/>
                 <field name="plant" optional="show"/>
-                <field name="pickup_weekday"/>
+                <field name="pickup_day_ids" widget="many2many_tags"/>
                 <field name="lead_days"/>
                 <field name="frozen_weeks"/>
                 <field name="group_weeks"/>
@@ -39,9 +39,9 @@
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Cuándo se embarca">
-                            <field name="pickup_weekday"/>
+                            <field name="pickup_day_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="lead_days"/>
-                            <field name="buffer_days" invisible="pickup_weekday"/>
+                            <field name="buffer_days" invisible="pickup_day_ids"/>
                             <field name="capacity_m"/>
                         </group>
                         <group string="Al aplicar el release">

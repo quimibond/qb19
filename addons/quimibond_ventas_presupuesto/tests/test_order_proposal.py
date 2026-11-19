@@ -117,6 +117,49 @@ class TestOrderProposal(TransactionCase):
         self.assertEqual(vencida.action, 'no_entra')
         self.assertIn("venció", vencida.reason)
 
+    def test_02d_varios_dias_de_recoleccion(self):
+        """3.25.0 (Lear: martes y viernes): la semana se reparte por partes iguales, un pedido por día;
+        al volver a proponer, cada día se compara con su pedido (también uno capturado a mano)."""
+        self.Rule.create({'partner_id': self.client.id, 'po_mode': 'abierta', 'open_po': '1030782',
+                          'so_weeks': 1})
+        tuesday = self.env.ref('quimibond_ventas_presupuesto.qb_weekday_1')
+        friday = self.env.ref('quimibond_ventas_presupuesto.qb_weekday_4')
+        self.env['qb.delivery.terms'].create({'partner_id': self.client.id,
+                                              'pickup_day_ids': [(6, 0, (tuesday | friday).ids)]})
+        fl = self._fl(self.week, 325.0)
+        proposal = self._propose()
+        lines = proposal.line_ids.sorted('pickup_weekday')
+        self.assertEqual(lines.mapped('pickup_weekday'), ['1', '4'])
+        self.assertEqual(lines.mapped('qty_forecast'), [163.0, 162.0], "Lo que sobra va al primer día")
+        self.assertEqual(lines.mapped('delivery_date'),
+                         [self.week + timedelta(days=1), self.week + timedelta(days=4)])
+        action = proposal.action_apply()
+        orders = self.env['sale.order'].browse(action['domain'][0][2])
+        self.assertEqual(len(orders), 2, "Un pedido por día de recolección")
+        self.assertEqual(sorted(orders.mapped('qb_pickup_weekday')), ['1', '4'])
+        # Sin cambio: no se duplica.
+        again = self._propose()
+        self.assertEqual(set(again.line_ids.mapped('action')), {'sin_cambio'})
+        # Sube la semana: cada día con su pedido.
+        fl.qty_origen = 400.0
+        again = self._propose()
+        self.assertEqual(sorted(again.line_ids.mapped('qty_existing')), [162.0, 163.0])
+        again.action_apply()
+        self.assertEqual(sorted(orders.order_line.mapped('product_uom_qty')), [200.0, 200.0])
+        # Un pedido capturado a mano para el viernes de la semana siguiente se reconoce por su fecha.
+        week2 = self.week + timedelta(weeks=1)
+        self.env['sale.order'].create({
+            'partner_id': self.client.id, 'client_order_ref': '1030782',
+            'commitment_date': fields.Datetime.to_datetime(week2 + timedelta(days=4)).replace(hour=18),
+            'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 100.0})]})
+        self._fl(week2, 200.0)
+        proposal = self.env['qb.order.proposal'].create({'partner_ids': [(6, 0, self.client.ids)],
+                                                         'date_from': week2})
+        proposal.action_build()
+        by_day = {l.pickup_weekday: l for l in proposal.line_ids}
+        self.assertEqual((by_day['1'].action, by_day['1'].qty_forecast), ('nuevo', 100.0))
+        self.assertEqual((by_day['4'].action, by_day['4'].qty_existing), ('sin_cambio', 100.0))
+
     def test_02c_oc_del_producto_si_el_release_no_trae(self):
         """3.24.0: en «OC en el release», la OC de la semana gana; sin ella, la del producto."""
         self.Rule.create({'partner_id': self.client.id, 'po_mode': 'release', 'so_weeks': 2})

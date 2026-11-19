@@ -40,6 +40,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from ..release.oc import separa_oc
+from .qb_delivery_terms import WEEKDAYS
 from .qb_forecast import DEV_NO_SALE, monday_of
 
 PO_MODES = [
@@ -106,6 +107,10 @@ class SaleOrderForecast(models.Model):
     _inherit = 'sale.order'
 
     qb_from_forecast = fields.Boolean(string="Desde el pronóstico", readonly=True, copy=False)
+    qb_pickup_weekday = fields.Selection(
+        WEEKDAYS, string="Día de recolección (pronóstico)", readonly=True, copy=False,
+        help="Con varios días de recolección (Lear: martes y viernes), el día de la semana que cubre este "
+             "pedido.")
     qb_forecast_week = fields.Date(string="Semana de embarque (pronóstico)", readonly=True, copy=False)
 
     def _create_invoices(self, *args, **kwargs):
@@ -213,12 +218,31 @@ class QbOrderProposal(models.TransientModel):
             domain.append((p + 'partner_shipping_id', '=', ship_to.id))
         return domain
 
-    def _qb_existing(self, company, partner, ref, week, product, ship_to=None):
-        """Líneas de cotizaciones y pedidos abiertos del cliente con esa OC y semana, y del producto."""
-        return self.env['sale.order.line'].sudo().search(
+    def _qb_existing(self, company, partner, ref, week, product, ship_to=None, day=None, days=()):
+        """Líneas de cotizaciones y pedidos abiertos del cliente con esa OC y semana, y del producto.
+        Con varios días de recolección (3.25.0), solo las de los pedidos de ``day``."""
+        sols = self.env['sale.order.line'].sudo().search(
             self._qb_order_domain(company, partner, ref, week, ship_to, prefix='order_id.')
             + [('order_id.state', 'in', ('draft', 'sent', 'sale')),
                ('product_id', '=', product.id), ('display_type', '=', False)])
+        return self._qb_in_slot(sols, 'order_id', day, days)
+
+    @api.model
+    def _qb_order_slot(self, order, days):
+        """El día de recolección (de ``days``) que cubre ``order``: el que se le puso al crearlo o, si se
+        capturó a mano, el más cercano a su fecha compromiso (en la hora local)."""
+        if order.qb_pickup_weekday and int(order.qb_pickup_weekday) in days:
+            return int(order.qb_pickup_weekday)
+        when = order.commitment_date
+        weekday = fields.Datetime.context_timestamp(order, when).weekday() if when else days[0]
+        return min(days, key=lambda d: (abs(d - weekday), d))
+
+    def _qb_in_slot(self, records, order_field, day, days):
+        """De ``records`` (pedidos o líneas), los del día ``day``; sin varios días, todos."""
+        if day is None or len(days) < 2:
+            return records
+        return records.filtered(
+            lambda r: self._qb_order_slot(r[order_field] if order_field else r, days) == day)
 
     def _qb_same_fabric(self, company, partner, ref, week, product, ship_to=None):
         """Líneas de esa OC y semana con la misma tela en otro código (metros contra kilos): no se
@@ -300,10 +324,11 @@ class QbOrderProposal(models.TransientModel):
         self._qb_add_dropped(groups, rules, start)
         vals_list = []
         is_manager = self.env.user.has_group('sales_team.group_sale_manager')
-        for group in groups.values():
+        for group in self._qb_by_pickup_day(groups.values(), company):
             product, partner = group['product'], group['partner']
             ship_to = group['ship_to']
-            existing = self._qb_existing(company, partner, group['ref'], group['week'], product, ship_to) \
+            existing = self._qb_existing(company, partner, group['ref'], group['week'], product, ship_to,
+                                         group['day'], group['days']) \
                 if group['ref'] else self.env['sale.order.line']
             qty_existing = sum(existing.mapped('product_uom_qty'))
             delivered = self._qb_floor(existing)
@@ -320,6 +345,7 @@ class QbOrderProposal(models.TransientModel):
                     'price_unit': price, 'release_id': group['release'].id or False,
                     'customer_part': group['part'] or False,
                     'customer_date': group['delivery'] or group['week'],
+                    'pickup_weekday': str(group['day']) if group['day'] is not None else False,
                     'sale_line_ids': [(6, 0, existing.ids)]}
             # 3.16.7: la fecha de entrega que propone es la que ya tiene el pedido (la que comprometió
             # Ventas, aunque la haya cambiado a mano); si no hay pedido, la que pide el cliente. Jessica la
@@ -328,9 +354,13 @@ class QbOrderProposal(models.TransientModel):
             # 3.19.0: sin pedido, la fecha sale de las condiciones de entrega del cliente (día de
             # recolección de la semana de embarque, o la del cliente menos el colchón).
             terms = Terms._qb_for(partner, ship_to, group['plant'], company)
-            vals['delivery_date'] = vals['delivery_date_proposed'] = self._qb_delivery(
-                promised.date() if promised else terms._qb_delivery_date(group['delivery'], group['week']),
-                group['week'])
+            if promised:
+                proposed = promised.date()
+            elif group['day'] is not None:
+                proposed = group['week'] + timedelta(days=group['day'])
+            else:
+                proposed = terms._qb_delivery_date(group['delivery'], group['week'])
+            vals['delivery_date'] = vals['delivery_date_proposed'] = self._qb_delivery(proposed, group['week'])
             reason = group['why']
             if not reason and group['dev_state'] in DEV_NO_SALE:
                 reason = "Artículo en desarrollo o archivado: el pedido no se confirmaría"
@@ -362,6 +392,20 @@ class QbOrderProposal(models.TransientModel):
             vals_list.append(vals)
         self.env['qb.order.proposal.line'].create(vals_list)
         return self._qb_reopen()
+
+    def _qb_by_pickup_day(self, groups, company):
+        """3.25.0 (Jose, 19-nov): con varios días de recolección (Lear: martes y viernes), cada semana se
+        reparte por partes iguales entre los días y sale un renglón (y un pedido) por día. Un día sin
+        cantidad ni pedido no aparece."""
+        Terms = self.env['qb.delivery.terms'].sudo()
+        for group in groups:
+            terms = Terms._qb_for(group['partner'], group['ship_to'], group['plant'], company)
+            days = terms._qb_pickup_days()
+            if len(days) < 2 or not group['ref']:
+                yield dict(group, day=None, days=days)
+                continue
+            for day, qty in zip(days, terms._qb_split(group['product'], group['qty'], len(days))):
+                yield dict(group, qty=qty, day=day, days=days)
 
     def _qb_add_dropped(self, groups, rules, start):
         """3.16.6: agrega a ``groups`` (con cantidad 0) los productos que tienen pedido desde el pronóstico
@@ -430,7 +474,7 @@ class QbOrderProposal(models.TransientModel):
             if line.action == 'sin_cambio':
                 # Solo cambia la fecha de entrega (3.16.7): no se toca la cantidad.
                 orders = self._qb_existing(self.env.company, line.partner_id, line.customer_po, line.week,
-                                           line.product_id, line.ship_to_id).order_id
+                                           line.product_id, line.ship_to_id, *line._qb_slot()).order_id
             else:
                 orders = line._qb_apply()
             touched |= orders
@@ -467,10 +511,12 @@ class QbOrderProposal(models.TransientModel):
                 'res_model': 'sale.order', 'view_mode': 'list,form', 'domain': [('id', 'in', touched.ids)]}
 
     def _qb_find_order(self, line):
-        """Una cotización abierta del cliente con esa OC, semana y dirección (aunque no tenga el producto)."""
-        return self.env['sale.order'].search(
+        """Una cotización abierta del cliente con esa OC, semana, dirección y día de recolección (aunque no
+        tenga el producto)."""
+        orders = self.env['sale.order'].search(
             self._qb_order_domain(self.env.company, line.partner_id, line.customer_po, line.week,
-                                  line.ship_to_id) + [('state', 'in', ('draft', 'sent'))], limit=1)
+                                  line.ship_to_id) + [('state', 'in', ('draft', 'sent'))])
+        return self._qb_in_slot(orders, None, *line._qb_slot())[:1]
 
     def _qb_order_vals(self, line):
         partner = line.partner_id.commercial_partner_id
@@ -478,7 +524,8 @@ class QbOrderProposal(models.TransientModel):
         vals = {'partner_id': partner.id, 'client_order_ref': line.customer_po,
                 'commitment_date': datetime.combine(when, time(18, 0)),
                 'origin': "Pronóstico %s" % (line.release_id.name or line.week.isoformat()),
-                'qb_from_forecast': True, 'qb_forecast_week': line.week}
+                'qb_from_forecast': True, 'qb_forecast_week': line.week,
+                'qb_pickup_weekday': line.pickup_weekday or False}
         if line.ship_to_id:
             vals['partner_shipping_id'] = line.ship_to_id.id
         if partner.property_product_pricelist:
@@ -499,6 +546,8 @@ class QbOrderProposalLine(models.TransientModel):
     ship_to_id = fields.Many2one('res.partner', string="Dirección de entrega", readonly=True)
     customer_po = fields.Char(string="OC / referencia", readonly=True)
     week = fields.Date(string="Semana", readonly=True)
+    pickup_weekday = fields.Selection(WEEKDAYS, string="Día de recolección", readonly=True,
+                                      help="Con varios días de recolección, la parte de la semana de ese día.")
     customer_date = fields.Date(string="Pide el cliente", readonly=True,
                                 help="La entrega que pide el cliente en el release o, si no trae, el lunes de la "
                                      "semana de embarque.")
@@ -532,6 +581,15 @@ class QbOrderProposalLine(models.TransientModel):
             if line.delivery_date != line.delivery_date_proposed and line.action != 'no_entra' \
                     and not line.applied and not (line.action == 'por_autorizar'):
                 line.apply = True
+
+    def _qb_slot(self):
+        """(día, días de recolección) del renglón, para reconocer sus pedidos (3.25.0)."""
+        self.ensure_one()
+        if not self.pickup_weekday:
+            return None, ()
+        terms = self.env['qb.delivery.terms'].sudo()._qb_for(
+            self.partner_id, self.ship_to_id, self.plant, self.proposal_id.env.company)
+        return int(self.pickup_weekday), tuple(terms._qb_pickup_days())
 
     def _qb_order_for(self, current, allow_confirmed=True):
         """El pedido de la OC y semana del renglón donde va lo nuevo: una cotización si hay; si no, el
@@ -573,7 +631,7 @@ class QbOrderProposalLine(models.TransientModel):
         # pedido ya esa semana); lo que se compara es lo que hay ahora, no lo de la propuesta.
         current = self.proposal_id._qb_existing(
             self.env.company, self.partner_id, self.customer_po, self.week, self.product_id,
-            self.ship_to_id).sudo(False)
+            self.ship_to_id, *self._qb_slot()).sudo(False)
         target = max(self.qty_forecast, self.proposal_id._qb_floor(current))
         sols = current.filtered(
             lambda s: s.order_id.state in ('draft', 'sent') or (self.adjust_confirmed and s.order_id.state == 'sale'))

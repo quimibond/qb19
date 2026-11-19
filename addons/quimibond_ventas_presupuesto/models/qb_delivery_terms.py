@@ -7,6 +7,7 @@ y, por producto, la presentación del rollo (largo, redondeo, ancho, tubo, empal
 etiqueta). Al aplicar un release, las reglas salen de aquí (``release/reglas.py``); «Proponer pedidos»
 toma de aquí la fecha de entrega. Nada está escrito por cliente en el código.
 """
+import math
 from datetime import timedelta
 
 from markupsafe import Markup
@@ -16,6 +17,21 @@ from odoo import api, fields, models
 WEEKDAYS = [('0', "Lunes"), ('1', "Martes"), ('2', "Miércoles"), ('3', "Jueves"), ('4', "Viernes"),
             ('5', "Sábado"), ('6', "Domingo")]
 ROLL_UNITS = [('m', "m"), ('yd', "yd"), ('kg', "kg"), ('m2', "m²")]
+# Cómo se llama en Odoo la unidad del rollo (para repartir una semana entre días por rollos completos).
+ROLL_UOM_NAMES = {'m': {'m', 'mt', 'mts', 'metro', 'metros'}, 'yd': {'yd', 'yds', 'yarda', 'yardas'},
+                  'kg': {'kg', 'kgs', 'kilo', 'kilos', 'kilogramo', 'kilogramos'}, 'm2': {'m2', 'm²'}}
+
+
+class QbWeekday(models.Model):
+    """Día de la semana (3.25.0): un cliente puede recoger varios días (Lear: martes y viernes)."""
+    _name = 'qb.weekday'
+    _description = "Día de la semana"
+    _order = 'code'
+
+    name = fields.Char(string="Día", required=True)
+    code = fields.Integer(string="Número", required=True, help="0 = lunes … 6 = domingo.")
+
+    _code_uniq = models.Constraint('unique (code)', "Ese día ya existe.")
 
 
 class QbDeliveryTerms(models.Model):
@@ -36,10 +52,11 @@ class QbDeliveryTerms(models.Model):
     active = fields.Boolean(default=True)
 
     # Cuándo se embarca
-    pickup_weekday = fields.Selection(
-        WEEKDAYS, string="Día de recolección", tracking=True,
-        help="Día de la semana en que se embarca o el cliente recoge. Es la fecha de entrega del pedido "
-             "dentro de la semana de embarque.")
+    pickup_day_ids = fields.Many2many(
+        'qb.weekday', string="Días de recolección", tracking=True,
+        help="Días de la semana en que se embarca o el cliente recoge: la fecha de entrega del pedido dentro "
+             "de la semana de embarque. Con varios (Lear: martes y viernes), la semana se reparte por partes "
+             "iguales y sale un pedido por día.")
     lead_days = fields.Integer(
         string="Días hábiles de adelanto", tracking=True,
         help="Días hábiles (sin sábados ni domingos) antes de la fecha en que el cliente necesita el "
@@ -141,13 +158,32 @@ class QbDeliveryTerms(models.Model):
             return line.roll_qty, line.roll_uom or 'yd'
         return (self.roll_qty, self.roll_uom or 'yd') if self.roll_qty > 0 else (0.0, False)
 
+    def _qb_pickup_days(self):
+        """Días de recolección como números (0 = lunes), en orden."""
+        return sorted(self.pickup_day_ids.mapped('code')) if self else []
+
+    def _qb_split(self, product, qty, parts):
+        """3.25.0: reparte ``qty`` entre ``parts`` días por partes iguales; cada parte baja a rollos
+        completos si el rollo está en la unidad del producto, si no a unidades enteras. Lo que sobra va
+        al primer día."""
+        if parts < 2:
+            return [qty]
+        roll, unit = self._qb_roll_for(product)
+        uom = (product.uom_id.name or '').strip().lower()
+        step = roll if roll and uom in ROLL_UOM_NAMES.get(unit, ()) else 1.0
+        each = math.floor(qty / parts / step + 1e-9) * step
+        split = [each] * parts
+        split[0] = round(qty - each * (parts - 1), 2)
+        return split
+
     def _qb_delivery_date(self, customer_date, week):
-        """Fecha de entrega del pedido: el día de recolección de la semana de embarque o, sin él, la fecha
-        del cliente menos el colchón. Sin condiciones, la del cliente (o el lunes)."""
+        """Fecha de entrega del pedido: el (primer) día de recolección de la semana de embarque o, sin él,
+        la fecha del cliente menos el colchón. Sin condiciones, la del cliente (o el lunes)."""
         if not self:
             return customer_date or week
-        if self.pickup_weekday and week:
-            return week + timedelta(days=int(self.pickup_weekday))
+        days = self._qb_pickup_days()
+        if days and week:
+            return week + timedelta(days=days[0])
         if customer_date:
             return customer_date - timedelta(days=max(self.buffer_days or 0, 0))
         return week

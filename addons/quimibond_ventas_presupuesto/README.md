@@ -21,6 +21,20 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Varios días de recolección (19.0.3.25.0, 2026-11-19)
+
+Jose (19-nov): «qué sucede si un cliente tiene más de una fecha de recolección, como Lear, que recolecta
+martes y viernes». Desde septiembre Ventas captura a mano dos pedidos por semana de Lear, martes y viernes,
+por partes iguales; la ficha solo aceptaba un día.
+
+- **Días de recolección** (etiquetas, `qb.weekday`) en lugar de «Día de recolección». Un solo día funciona
+  como antes; el día que tenía cada ficha se copia al actualizar.
+- Con varios días, «Proponer pedidos» reparte la semana **por partes iguales** (por rollos completos si el
+  rollo está en la unidad del producto; si no, por unidades enteras; lo que sobra va al primer día) y sale
+  un renglón y un pedido por OC, semana y día (`sale.order.qb_pickup_weekday`).
+- Al volver a proponer, cada día se compara con su pedido: el que se creó para ese día o, si se capturó a
+  mano, el de la fecha compromiso más cercana a ese día.
+
 ## Una OC abierta por producto (19.0.3.24.0, 2026-11-19)
 
 Jose (19-nov): «qué pasa si un mismo cliente tiene más de una orden abierta, eso sucede con Zwisstex… para

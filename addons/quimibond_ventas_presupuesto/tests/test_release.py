@@ -487,6 +487,6 @@ class TestReleaseWoodbridge(TransactionCase):
         monday = date(2040, 12, 17)
         self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 19),
                          "Sin día de recolección: la del cliente menos el colchón")
-        terms.pickup_weekday = '4'
+        terms.pickup_day_ids = self.env.ref('quimibond_ventas_presupuesto.qb_weekday_4')
         self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 21),
                          "Con día de recolección: ese día de la semana de embarque")
