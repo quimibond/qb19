@@ -1,6 +1,7 @@
 # Aplica el árbol de categorías aprobado por Dirección (2026-11-18).
 # Correr en la consola de Odoo.sh (odoo-bin shell) PRIMERO en la rama main (pruebas).
 #   exec(open('/home/odoo/src/user/tools/categorias/aplicar_categorias.py').read())
+# El crudo de tejido no se toca (Dirección, 2026-11-18).
 # Solo simula. Para escribir: APLICAR = True y luego el exec de arriba.
 import json
 APLICAR = globals().get('APLICAR', False)
@@ -60,11 +61,34 @@ def asegurar(path):
     return c
 
 Product = env['product.product'].with_context(active_test=False).with_company(company)
+
+# Dirección (2026-11-18): el crudo de tejido se queda en «Producto en Proceso / Tejido Circular» tal como está
+# (pesaje y revisado lo reconocen por ese nombre). No se crea «/ KG», no se mueve ni se archiva crudo.
+CRUDO = 'Producto en Proceso / Tejido Circular'
+def es_crudo(categ):
+    n = categ.complete_name or ''
+    return n == CRUDO or n.startswith(CRUDO + ' / ')
+regresados = 0
+for sub in Categ.search([('complete_name', '=like', CRUDO + ' / %')]):
+    prods = env['product.template'].with_context(active_test=False).search([('categ_id', '=', sub.id)])
+    regresados += len(prods)
+    if APLICAR:
+        prods.write({'categ_id': by_name(CRUDO).id})
+        if not Categ.search_count([('parent_id', '=', sub.id)]):
+            try:
+                with env.cr.savepoint():
+                    sub.unlink()
+            except Exception as e:
+                print('No se pudo borrar', sub.complete_name, '(queda vacía):', e)
+print('Crudo regresado a', CRUDO + ':', regresados)
+
 movidos, saltados = 0, []
 for pid, path in DATA['mover'].items():
     p = Product.browse(int(pid)).exists()
     if not p:
         saltados.append((pid, 'no existe')); continue
+    if path == CRUDO or path.startswith(CRUDO + ' / ') or es_crudo(p.categ_id):
+        continue
     dest = asegurar(path)
     o, d = p.categ_id, dest
     cambia = (o.property_stock_valuation_account_id != d.property_stock_valuation_account_id
@@ -79,7 +103,7 @@ for pid, path in DATA['mover'].items():
 archivados, no_arch = 0, []
 for pid in DATA['archivar']:
     p = Product.browse(pid).exists()
-    if not p or not p.active:
+    if not p or not p.active or es_crudo(p.categ_id):
         continue
     if p.qty_available or env['stock.quant'].sudo().search_count([('product_id', '=', p.id), ('quantity', '!=', 0)]):
         no_arch.append(p.default_code); continue
