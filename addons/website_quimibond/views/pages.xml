@@ -68,8 +68,8 @@
                         <div class="qb-sec__cab qb-sec__cab--fila">
                             <div>
                                 <span class="qb-eyebrow qb-reveal">Lo que fabricamos</span>
-                                <h2 class="qb-reveal">Cuatro construcciones, una sola planta.</h2>
-                                <p class="qb-lead qb-reveal">Tejido circular de una y doble fontura, no tejido y tejido tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables.</p>
+                                <h2 class="qb-reveal">Tejido y no tejido, en una sola planta.</h2>
+                                <p class="qb-lead qb-reveal">Tejido de punto circular, de una y doble fontura. No tejido, sencillo o tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables.</p>
                             </div>
                             <a href="/planta#maquinaria" class="qb-btn qb-btn--contorno qb-reveal">Ver la maquinaria <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
@@ -326,8 +326,8 @@
                     <div class="qb-container">
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Tipos de tela</span>
-                            <h2 class="qb-reveal">Punto, no tejido y tramado.</h2>
-                            <p class="qb-lead qb-reveal">Cada construcción sale de su propia línea de máquinas y todas comparten tintorería, acabado e inspección.</p>
+                            <h2 class="qb-reveal">Dos familias: tejido y no tejido.</h2>
+                            <p class="qb-lead qb-reveal">El tejido sale de las máquinas circulares y el no tejido, de su propia línea, donde también se hace el tramado. Las dos familias comparten acabado e inspección.</p>
                         </div>
                         <t t-call="website_quimibond.tipos_tejido"/>
                     </div>
@@ -542,16 +542,23 @@
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
                                     <legend><span class="qb-mono qb-dis__num"/> Construcción</legend>
-                                    <div class="qb-dis__tarjetas">
-                                        <t t-foreach="qb_tejidos" t-as="t">
-                                            <label class="qb-dis__tarjeta">
-                                                <input type="radio" name="qb_construccion" t-att-value="t['clave']" t-att-data-nombre="t['nombre']" t-att-checked="'checked' if t_first else None"/>
-                                                <t t-call="website_quimibond.dibujo_tejido">
-                                                    <t t-set="clave" t-value="t['clave']"/>
-                                                </t>
-                                                <strong t-out="t['nombre']"/>
-                                                <span t-out="t['etiqueta']"/>
-                                            </label>
+                                    <div class="qb-dis__familias">
+                                        <t t-foreach="qb_familias" t-as="fam">
+                                            <div class="qb-dis__familia">
+                                                <span class="qb-dis__sub" t-out="fam['nombre']"/>
+                                                <div class="qb-dis__tarjetas">
+                                                    <t t-foreach="fam['tejidos']" t-as="t">
+                                                        <label class="qb-dis__tarjeta">
+                                                            <input type="radio" name="qb_construccion" t-att-value="t['clave']" t-att-data-nombre="t['nombre']" t-att-checked="'checked' if fam_first and t_first else None"/>
+                                                            <t t-call="website_quimibond.dibujo_tejido">
+                                                                <t t-set="clave" t-value="t['clave']"/>
+                                                            </t>
+                                                            <strong t-out="t['nombre']"/>
+                                                            <span t-out="t['etiqueta']"/>
+                                                        </label>
+                                                    </t>
+                                                </div>
+                                            </div>
                                         </t>
                                     </div>
                                 </fieldset>
@@ -563,7 +570,7 @@
                                         </t>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura tramado">
+                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
                                     <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['hilos']" t-as="hi">
@@ -580,7 +587,7 @@
                                         <label class="qb-dis__chip"><input type="checkbox" name="qb_elastano"/><span>Con elastano, para más elasticidad</span></label>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo" data-qb-solo="no_tejido">
+                                <fieldset class="qb-dis__grupo" data-qb-solo="no_tejido tramado">
                                     <legend><span class="qb-mono qb-dis__num"/> Fibra</legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['fibras']" t-as="f">

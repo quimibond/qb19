@@ -47,7 +47,7 @@ class TestSitioB2B(HttpCase):
         self.assertEqual(self.url_open('/mercados/no-existe').status_code, 404)
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
-        for texto in ('Punto de una fontura', 'No tejido', 'Tejido tramado', 'jets de teñido', 'ramas',
+        for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'jets de teñido', 'ramas',
                       'Espolvoreo en línea', 'id="maquinaria"'):
             self.assertIn(texto, planta, texto)
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):

@@ -60,8 +60,9 @@ en los sitios que no tengan una.
 
 ## Maquinaria y tipos de tela
 
-`/planta` (y la portada) muestran los tipos de tela (una fontura, doble
-fontura, no tejido, tejido tramado) y la maquinaria por área. Los textos están
+`/planta` (y la portada) muestran los tipos de tela en dos familias, tejido
+(una y doble fontura) y no tejido (sencillo y tramado: el tramado es un no
+tejido, Dirección 2026-11-19), y la maquinaria por área. Los textos están
 en `controllers/contenido.py` (`TEJIDOS`, `PRESENTACIONES`, `MAQUINARIA`) y
 salieron de los centros de trabajo de Odoo el 2026-11-19.
 

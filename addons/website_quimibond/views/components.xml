@@ -163,12 +163,6 @@
                 <g class="qb-tipo__capa"><rect x="-10" y="-5" width="180" height="110" t-attf-fill="url(#qb-malla-#{clave})"/></g>
                 <rect width="160" height="100" t-attf-fill="url(#qb-malla-#{clave})"/>
             </t>
-            <t t-elif="clave == 'tramado'">
-                <rect width="160" height="100" t-attf-fill="url(#qb-malla-#{clave})" opacity=".55"/>
-                <g class="qb-tipo__trama" stroke-width="1.6" stroke-linecap="round">
-                    <path t-foreach="[9, 31, 53, 75, 97]" t-as="y" t-attf-d="M-5,#{y} H165"/>
-                </g>
-            </t>
             <t t-else="">
                 <g fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".8">
                     <path d="M-5,18 C30,4 52,40 96,22 S150,30 166,12"/>
@@ -185,24 +179,37 @@
                     <path d="M-5,6 C48,30 110,-6 166,28"/>
                     <path d="M-5,96 C44,82 120,104 166,92"/>
                 </g>
+                <g t-if="clave == 'tramado'" class="qb-tipo__trama" stroke-width="1.8" stroke-linecap="round">
+                    <path t-foreach="[12, 31, 50, 69, 88]" t-as="y" t-attf-d="M-5,#{y} H165"/>
+                </g>
             </t>
         </svg>
     </template>
 
     <!-- Tipos de tela que fabrica la planta -->
     <template id="tipos_tejido" name="Quimibond: tipos de tela">
-        <div class="qb-grid qb-grid--4">
-            <t t-foreach="qb_tejidos" t-as="t">
-                <article class="qb-card qb-tipo qb-spot qb-reveal">
-                    <t t-call="website_quimibond.dibujo_tejido">
-                        <t t-set="clave" t-value="t['clave']"/>
-                    </t>
-                    <div class="qb-tipo__cuerpo">
-                        <span class="qb-mono" t-out="t['etiqueta']"/>
-                        <h3 t-out="t['nombre']"/>
-                        <p t-out="t['texto']"/>
+        <div class="qb-familias">
+            <t t-foreach="qb_familias" t-as="fam">
+                <section t-attf-class="qb-familia qb-familia--#{fam['clave']}">
+                    <header class="qb-familia__cab qb-reveal">
+                        <h3 t-out="fam['nombre']"/>
+                        <p t-out="fam['texto']"/>
+                    </header>
+                    <div class="qb-grid qb-grid--2">
+                        <t t-foreach="fam['tejidos']" t-as="t">
+                            <article class="qb-card qb-tipo qb-spot qb-reveal">
+                                <t t-call="website_quimibond.dibujo_tejido">
+                                    <t t-set="clave" t-value="t['clave']"/>
+                                </t>
+                                <div class="qb-tipo__cuerpo">
+                                    <span class="qb-mono" t-out="t['etiqueta']"/>
+                                    <h4 t-out="t['nombre']"/>
+                                    <p t-out="t['texto']"/>
+                                </div>
+                            </article>
+                        </t>
                     </div>
-                </article>
+                </section>
             </t>
         </div>
         <ul class="qb-presentaciones qb-reveal" aria-label="Presentaciones y acabados">

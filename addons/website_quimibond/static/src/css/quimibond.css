@@ -593,6 +593,12 @@ a:hover .qb-muestra__puntos { opacity: .9; }
 }
 
 /* ---- Tipos de tela ------------------------------------------------------ */
+.qb-familias { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+.qb-familia__cab { padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--qb-borde); }
+.qb-familia__cab h3 { font-size: 1.35rem; }
+.qb-familia__cab p { margin-top: 4px; color: var(--qb-muted-fg); font-size: .95rem; }
+.qb-familia .qb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 575.98px) { .qb-familia .qb-grid { grid-template-columns: minmax(0, 1fr); } }
 .qb-tipo { padding: 12px; }
 .qb-tipo__dib { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: var(--qb-radio-sm); border: 1px solid var(--qb-borde); background: #f7f7f5; color: rgba(9, 9, 11, .42); overflow: hidden; }
 .qb-tipo__dib > rect, .qb-tipo__dib > g { transition: transform 1.2s cubic-bezier(.2, .7, .2, 1); transform-box: fill-box; transform-origin: center; }
@@ -601,7 +607,7 @@ a:hover .qb-muestra__puntos { opacity: .9; }
 .qb-tipo:hover .qb-tipo__dib > g.qb-tipo__capa { transform: translate(10px, 5.5px) scale(1.08); }
 .qb-tipo__trama { stroke: var(--qb-acento, #2f54c8); opacity: .75; }
 .qb-tipo__cuerpo { padding: 16px 12px 10px; }
-.qb-tipo__cuerpo h3 { margin-top: 6px; font-size: 1.05rem; }
+.qb .qb-tipo__cuerpo h4 { margin: 6px 0 0; font-family: var(--qb-fuente); font-size: 1.05rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.3; color: inherit; }
 .qb .qb-presentaciones { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
 .qb-presentaciones li { font-size: .82rem; padding: 5px 12px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); color: #3f3f46; }
 
@@ -669,7 +675,9 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 
 .qb-dis__grupo legend small { font-size: .8rem; font-weight: 400; color: var(--qb-muted-fg); }
 .qb-dis__valor { margin-left: auto; font-family: var(--qb-mono); font-size: .8rem; font-weight: 500; color: var(--qb-fg); padding: 2px 8px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); }
-.qb-dis__tarjetas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.qb-dis__familias { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.qb-dis__familia > .qb-dis__sub { display: block; margin-bottom: 8px; }
+.qb-dis__tarjetas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .qb-dis__tarjeta { position: relative; display: block; padding: 8px 8px 12px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); cursor: pointer; transition: border-color .15s, box-shadow .2s, transform .2s; }
 .qb-dis__tarjeta:hover { border-color: var(--qb-borde-fuerte); transform: translateY(-1px); }
 .qb-dis__tarjeta input, .qb-dis__chip input, .qb-dis__color input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
@@ -709,13 +717,14 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 .qb .qb-nota { font-size: .85rem; color: var(--qb-muted-fg); margin-top: 20px; padding-left: 14px; border-left: 2px solid var(--qb-borde-fuerte); }
 @media (max-width: 991.98px) {
     .qb-dis__cuerpo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .qb-familias { grid-template-columns: minmax(0, 1fr); }
     .qb-dis__vista { display: contents; }
-    /* Fija arriba como una franja delgada: se ve la tela sin tapar las opciones. */
-    .qb-tela-caja--grande { order: -1; position: sticky; top: 72px; z-index: 5; aspect-ratio: auto; height: clamp(96px, 20vh, 168px); box-shadow: 0 8px 24px rgba(9, 9, 11, .14); }
+    /* En pantalla angosta la tela va arriba y se va con la página: nada queda fijo. */
+    .qb-tela-caja--grande { order: -1; }
     .qb-dis__lupa { display: none; }
 }
 @media (max-width: 575.98px) {
-    .qb-dis__tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .qb-dis__familias { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---- Diseñador: la ficha impresa (o guardada en PDF) ---------------------- */

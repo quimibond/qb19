@@ -20,41 +20,63 @@ ARMADORAS = [
     'Volkswagen', 'Stellantis', 'Tesla', 'Mitsubishi', 'Mercedes-Benz', 'BMW',
 ]
 
-# Tipos de tela que salen de la planta. Corresponden a la maquinaria de
-# MAQUINARIA; no se toman del catálogo publicado.
-TEJIDOS = [
+# Tipos de tela que salen de la planta, en dos familias: tejido (de punto, en
+# máquina circular) y no tejido (de fibra, sin pasar por el telar). El tramado
+# es un no tejido: un velo reforzado con hilos de trama (Dirección, 2026-11-19).
+# Corresponden a la maquinaria de MAQUINARIA; no se toman del catálogo publicado.
+FAMILIAS = [
     {
-        'clave': 'una_fontura',
-        'nombre': 'Punto de una fontura',
-        'etiqueta': 'Tejido circular',
-        'texto': 'Un juego de agujas en el cilindro. Tela ligera, con cara y revés distintos y '
-                 'elasticidad natural a lo ancho.',
-        'construccion': 'punto',
-    },
-    {
-        'clave': 'doble_fontura',
-        'nombre': 'Punto de doble fontura',
-        'etiqueta': 'Tejido circular',
-        'texto': 'Dos juegos de agujas, cilindro y plato. Tela con más cuerpo y estabilidad '
-                 'dimensional.',
-        'construccion': 'punto',
+        'clave': 'tejido',
+        'nombre': 'Tejido',
+        'texto': 'Tela de punto hecha con hilo en máquinas circulares.',
     },
     {
         'clave': 'no_tejido',
         'nombre': 'No tejido',
-        'etiqueta': 'Línea de no tejidos',
+        'texto': 'Tela hecha directamente de la fibra, sin tejer.',
+    },
+]
+
+TEJIDOS = [
+    {
+        'clave': 'una_fontura',
+        'familia': 'tejido',
+        'nombre': 'Punto de una fontura',
+        'etiqueta': 'Tejido circular',
+        'texto': 'Un juego de agujas en el cilindro. Tela ligera, con cara y revés distintos y '
+                 'elasticidad natural a lo ancho.',
+    },
+    {
+        'clave': 'doble_fontura',
+        'familia': 'tejido',
+        'nombre': 'Punto de doble fontura',
+        'etiqueta': 'Tejido circular',
+        'texto': 'Dos juegos de agujas, cilindro y plato. Tela con más cuerpo y estabilidad '
+                 'dimensional.',
+    },
+    {
+        'clave': 'no_tejido',
+        'familia': 'no_tejido',
+        'nombre': 'No tejido',
+        'etiqueta': 'Velo de fibra',
         'texto': 'Fibra abierta en carda y consolidada en velo, sin pasar por hilo. Es la base de '
                  'nuestras entretelas.',
-        'construccion': 'notejido',
     },
     {
         'clave': 'tramado',
-        'nombre': 'Tejido tramado',
-        'etiqueta': 'Entretelas',
-        'texto': 'Base con hilos de trama para entretelas que piden estabilidad y recuperación.',
-        'construccion': 'tejido',
+        'familia': 'no_tejido',
+        'nombre': 'No tejido tramado',
+        'etiqueta': 'Velo con trama',
+        'texto': 'El mismo velo de fibra, reforzado con hilos de trama para entretelas que piden '
+                 'más estabilidad y recuperación.',
     },
 ]
+
+
+def familias():
+    """Las familias con sus tipos de tela, en el orden en que se muestran."""
+    return [dict(f, tejidos=[t for t in TEJIDOS if t['familia'] == f['clave']]) for f in FAMILIAS]
+
 
 PRESENTACIONES = [
     'Tela tubular', 'Tela abierta', 'Teñida en jet', 'Termofijada en rama', 'Fusionable por espolvoreo',
@@ -123,7 +145,7 @@ MAQUINARIA = [
             ('Formación', 'Preparación de fibra y carda'),
             ('Adhesivo', 'Espolvoreo en línea'),
             ('Acabado', 'Estiramiento, termofijado y fusionadora'),
-            ('Además', 'Tejido tramado, corte y perforado'),
+            ('Además', 'No tejido tramado, corte y perforado'),
         ],
     },
     {
@@ -204,7 +226,7 @@ DISENADOR = {
          'tela': {'construccion': 'no_tejido', 'fibra': 'Poliéster', 'peso': 50, 'color': '#f5f5f2',
                   'tacto': 'Rígido', 'fusionable': True}},
         {'nombre': 'Frente de saco', 'mercado': 'Confección', 'icono': 'fa-scissors',
-         'tela': {'construccion': 'tramado', 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado', 'peso': 90,
+         'tela': {'construccion': 'tramado', 'fibra': 'Poliéster', 'peso': 90,
                   'color': '#1b1b1f', 'tacto': 'Semirrígido', 'fusionable': True}},
         {'nombre': 'Uniforme y ropa deportiva', 'mercado': 'Confección', 'icono': 'fa-scissors',
          'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Microfibra',

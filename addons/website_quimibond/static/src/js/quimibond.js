@@ -355,14 +355,14 @@
 
     /* ---------------------------------------------------------------------
        Tela diseñada: dibuja la construcción elegida (malla de una o doble
-       fontura, no tejido, tramado) con su color, peso y punto de adhesivo, y
+       fontura, no tejido sencillo o tramado) con su color, peso y punto de adhesivo, y
        la mueve como un lienzo según el tacto.
        --------------------------------------------------------------------- */
     var TELA_DEMO = [
         { construccion: "una_fontura", galga: 24, peso: 150, color: "#f5f5f2", tacto: "Suave", fusionable: false },
         { construccion: "doble_fontura", galga: 18, peso: 260, color: "#1f2a4a", tacto: "Semirrígido", fusionable: false },
         { construccion: "no_tejido", galga: 24, peso: 60, color: "#e9e2d0", tacto: "Rígido", fusionable: true },
-        { construccion: "tramado", galga: 28, peso: 110, color: "#9a9aa2", tacto: "Suave", fusionable: true }
+        { construccion: "tramado", galga: 24, peso: 90, color: "#9a9aa2", tacto: "Semirrígido", fusionable: true }
     ];
     var TELA_ONDA = { "Suave": 9, "Semirrígido": 4.5, "Rígido": 1.5 };
 
@@ -421,8 +421,7 @@
 
         var paso = Math.max(9, Math.min(26, 416 / (d.galga || 24)));
         var grosor = (1 + carga * 2.4) * (paso / 17);
-        var fila;
-        if (d.construccion === "no_tejido") {
+        if (d.construccion === "no_tejido" || d.construccion === "tramado") {
             var r = azar(7 + Math.round(peso));
             var n = Math.round(90 + carga * 520);
             ctx.strokeStyle = hilo;
@@ -436,22 +435,22 @@
                 ctx.quadraticCurveTo((x0 + x1) / 2 + (r() - 0.5) * 70, (y0 + y1) / 2 + (r() - 0.5) * 70, x1, y1);
             }
             ctx.stroke();
+            if (d.construccion === "tramado") {
+                // No tejido tramado: el velo de fibra con hilos de trama encima.
+                ctx.strokeStyle = hilo2;
+                ctx.lineWidth = 1.6 + carga * 1.6;
+                ctx.globalAlpha = 0.85;
+                ctx.beginPath();
+                for (var yt = 11; yt < h + 22; yt += 22) {
+                    ctx.moveTo(-4, yt);
+                    ctx.lineTo(w + 4, yt);
+                }
+                ctx.stroke();
+            }
             ctx.globalAlpha = 1;
         } else if (d.construccion === "doble_fontura") {
-            fila = mallas(paso, paso / 2, 11 * paso / 40, hilo2, 0.5, grosor);
+            mallas(paso, paso / 2, 11 * paso / 40, hilo2, 0.5, grosor);
             mallas(paso, 0, 0, hilo, 0.95, grosor);
-        } else if (d.construccion === "tramado") {
-            fila = mallas(paso, 0, 0, hilo, 0.5, grosor * 0.8);
-            ctx.strokeStyle = hilo2;
-            ctx.lineWidth = grosor * 1.5;
-            ctx.globalAlpha = 0.85;
-            ctx.beginPath();
-            for (var yt = fila * 0.85; yt < h + fila; yt += fila * 2) {
-                ctx.moveTo(-4, yt);
-                ctx.lineTo(w + 4, yt);
-            }
-            ctx.stroke();
-            ctx.globalAlpha = 1;
         } else {
             mallas(paso, 0, 0, hilo, 0.95, grosor);
         }
@@ -604,7 +603,7 @@
             if (punto) {
                 f.push(["Galga", String(d.galga)]);
             }
-            if (d.construccion === "no_tejido") {
+            if (!punto) {
                 f.push(["Fibra", d.fibra]);
             } else {
                 var hilo = d.hilo;
