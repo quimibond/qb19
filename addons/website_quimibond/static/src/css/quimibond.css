@@ -81,7 +81,7 @@ html[data-qb] #wrapwrap main h3 { font-family: var(--qb-fuente); letter-spacing:
 .qb ul, .qb ol { list-style: none; margin: 0; padding: 0; }
 .qb address { font-style: normal; margin: 0; }
 .qb :focus-visible { outline: 2px solid var(--qb-acento); outline-offset: 2px; border-radius: 4px; }
-.qb [hidden] { display: none !important; }
+.qb [hidden], .qb[hidden] { display: none !important; }
 
 .qb-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .qb-mono { font-family: var(--qb-mono); font-size: .75rem; letter-spacing: .04em; color: var(--qb-muted-fg); text-transform: uppercase; }
