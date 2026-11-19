@@ -8,6 +8,18 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.31.0 — 2026-11-19
+
+**«Usar los datos de la ficha» y el filtro «Tiempo distinto de la ficha» ya no leen fichas de tejido archivadas**
+(Jose, 19-nov-2026: «corrige el error de los datos de la ficha»). Los dos corren con `active_test=False` para alcanzar
+las listas archivadas (las listas en kg nacen archivadas), y ese contexto llegaba a `_ft_de_producto`, que entonces
+también tomaba las fichas de tejido archivadas del crudo. En main, para WN048Q66HNT098 ganaba la rev. 1 de la CIRCULAR 8
+(archivada, sin salida de tela: 20.4 m/kg) sobre las activas (tubular: 10.2 m/kg), y el botón escribía devanado y
+abridora al doble en IWN055Q66JNT162; el filtro, por lo mismo, no marcaba lo que sí estaba mal. Ahora la ficha de
+referencia del crudo sale siempre de las activas; si no hay ninguna activa no hay rendimiento (no se usa la archivada
+de respaldo). Lo mismo en «Es crudo» / «Tiene ficha» del producto y en la ficha de tejido que muestra su plantilla. Sin migración: los
+tiempos que el botón escribió mal se corrigen volviendo a usarlo. Prueba: `test_tiempo_ficha.test_08`.
+
 ## 19.0.2.30.0 — 2026-11-18
 
 **Tolerancias como rango de mínimo a máximo** (Jose, 18-nov-2026: «no me deja meter intervalos de tolerancias» en

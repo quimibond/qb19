@@ -21,7 +21,8 @@ class ProductTemplate(models.Model):
         FichaTejido = self.env['ficha.tecnica.tejido']
         for tmpl in self:
             product_ids = tmpl.product_variant_ids.ids
-            ficha = FichaTejido.search([('product_proceso_id', 'in', product_ids)], limit=1)
+            ficha = FichaTejido.with_context(active_test=True).search(
+                [('product_proceso_id', 'in', product_ids)], limit=1).with_env(self.env)
             tmpl.ficha_tecnica_tejido_id = ficha
             tmpl.ficha_tecnica_tejido_count = 1 if ficha else 0
 
