@@ -37,3 +37,12 @@ class TestSalesBudgetViews(TransactionCase):
         for xmlid in ('sgi_sales_budget_refresh_actuals_server', 'sgi_sales_budget_reconcile_server',
                       'sgi_sales_budget_import_action'):
             self.assertIn(self.env.ref('quimibond_ventas_presupuesto.' + xmlid).id, actions, xmlid)
+
+    def test_03_ficha_con_tablero_y_sin_renglones(self):
+        """3.22.0: la ficha trae el tablero y las tablas; los 854 renglones se abren con un botón."""
+        arch = _arch(self.env, 'sgi.sales.budget', 'form',
+                     'quimibond_ventas_presupuesto.sgi_sales_budget_view_form')
+        self.assertFalse(arch.xpath("//field[@name='line_ids']"))
+        self.assertTrue(arch.xpath("//div[@name='button_box']/button[@name='action_qb_open_lines']"))
+        for name in ('qb_kpi_html', 'qb_mercado_html', 'qb_month_html', 'qb_partner_html'):
+            self.assertTrue(arch.xpath("//field[@name='%s']" % name), name)
