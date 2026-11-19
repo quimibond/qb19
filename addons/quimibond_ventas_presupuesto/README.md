@@ -21,9 +21,31 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ficha del presupuesto anual con vistas nativas (19.0.3.23.0, 2026-11-19)
+
+Jose no quiso el tablero de la 3.22.0 (tablas en HTML hechas a mano): «lo necesito lo más nativo de Odoo
+posible; asegura que las vistas y la navegación funcionen perfecto». Se quitaron los campos HTML. La ficha
+queda con elementos estándar:
+
+- **Campos** «Al corte» (presupuesto, venta, diferencia, cumplimiento con barra de avance) y «Año»
+  (presupuesto del año, lo que pone el presupuesto del mes, cierre estimado y su % con barra), y
+  **cumplimiento por mercado** (Industrial, Confección, Especiales y a tipo de cambio presupuestal) con barra.
+- **Botones inteligentes:** Renglones (lista agrupada por mercado y cliente, matriz, pivote), **Por mercado**,
+  **Por mes** (gráfica de presupuesto contra venta por mes) y **Por cliente** (cliente y artículo), que abren
+  el comparativo `qb.sales.compare` filtrado a este presupuesto y la venta del año, en pivote, gráfica y
+  lista; Variaciones (volumen, precio, tipo de cambio por renglón) y Cierre de ventas.
+- **Pestañas:** Renglones (de nuevo en la ficha, como antes), Diferencia, Objetivo, Tipo de cambio y
+  Justificación.
+- El comparativo gana la fuente **«Presupuesto del mes»** (los renglones del presupuesto del mes en los
+  meses y mercados sin renglones del anual, ligados al presupuesto vigente o en captura), la medida
+  **Importe** (presupuesto o venta, para graficarlos juntos por fuente), una **lista** y la bajada al detalle
+  desde el pivote (antes estaba apagada).
+- **Cierre estimado por mercado:** en un mes con presupuesto del mes, cada mercado que ese documento no trae
+  (Confección y Especiales mientras los vendedores no capturan) usa el anual.
+
 ## Ficha del presupuesto anual con tablero (19.0.3.22.0, 2026-11-19)
 
-Jose (19-nov) pidió mejorar la vista del presupuesto anual y eligió todas las propuestas. La ficha era una
+Reemplazada por la 3.23.0 (arriba). Jose (19-nov) pidió mejorar la vista del presupuesto anual y eligió todas las propuestas. La ficha era una
 pared de textos («Industrial 115,318,254 · …») con 854 renglones abajo; ahora (`models/sgi_sales_budget_tablero.py`):
 
 - **Tablero arriba:** presupuesto del año, al corte, vendido al corte, cumplimiento con semáforo (verde desde

@@ -549,11 +549,19 @@ class TestPresupuestoAnual(TransactionCase):
             msg="Las partes suman la diferencia")
         self.assertIn('Industrial 96.4 %', budget.fulfillment_by_mercado_text)  # 1350 / 1400
         self.assertAlmostEqual(budget.amount_close_estimate, 1650.0, places=2, msg="Año cerrado: lo vendido")
-        self.assertIn('Cumplimiento', budget.qb_kpi_html)
-        self.assertIn('Industrial', budget.qb_mercado_html)
-        self.assertIn('Noviembre', budget.qb_month_html)
-        self.assertIn('Cliente anual', budget.qb_partner_html)
-        self.assertIn('Confección (sin cliente)', budget.qb_partner_html)
+        self.assertAlmostEqual(budget.fulfillment_industrial_pct, 96.4, places=1)
+        self.assertAlmostEqual(budget.fulfillment_confeccion_pct, 60.0, places=1)  # 300 / 500
+
+        # El comparativo trae el presupuesto del mes ligado a este presupuesto y la venta del año.
+        compare = budget.action_qb_compare_mercado()
+        self.assertEqual(compare['res_model'], 'qb.sales.compare')
+        self.assertEqual(compare['context']['pivot_row_groupby'], ['mercado'])
+        rows = self.env['qb.sales.compare'].search(compare['domain'])
+        self.assertAlmostEqual(sum(rows.mapped('amount_budget')), 1900.0, places=2)
+        self.assertAlmostEqual(sum(rows.filtered(lambda r: r.fuente == 'presupuesto_mes').mapped('amount_budget')),
+                               400.0, places=2)
+        for action in (budget.action_qb_compare_mes(), budget.action_qb_compare_cliente()):
+            self.assertEqual(action['domain'], compare['domain'])
 
         lines = budget.action_qb_open_lines()
         self.assertEqual(lines['domain'], [('budget_id', '=', budget.id)])
@@ -573,5 +581,12 @@ class TestPresupuestoAnual(TransactionCase):
             'mercado': 'industrial', 'qty': 700.0, 'price_input': 1.0})
         budget.invalidate_recordset()
         self.assertFalse(budget._qb_month_plan_fill(), "Marzo ya trae Industrial en el anual")
+        # Marzo: el presupuesto del mes trae Industrial y manda; febrero no tiene, va el anual.
         self.assertAlmostEqual(budget.amount_close_estimate, 1000.0 + 700.0, places=2)
-        self.assertIn('Presupuesto del mes (borrador)', budget.qb_month_html)
+        # Un mercado que el presupuesto del mes no trae usa el anual.
+        conf = self.env['product.product'].create({'name': 'Entretela estimado', 'type': 'consu',
+                                                   'uom_id': self.uom_m.id})
+        self._line(budget, date=date(today.year + 1, 3, 1), product_id=conf.id, partner_id=False,
+                   mercado='confeccion', qty_budget=300.0, price_input=1.0)
+        budget.invalidate_recordset()
+        self.assertAlmostEqual(budget.amount_close_estimate, 1000.0 + 700.0 + 300.0, places=2)
