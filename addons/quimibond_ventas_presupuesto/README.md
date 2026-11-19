@@ -21,6 +21,33 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Releases en PDF con tabla (19.0.3.27.0, 2026-11-19)
+
+Jose (19-nov): «COPO manda un PDF y eso no hay cómo meterlo en los perfiles de release». Lector nuevo **«PDF
+genérico con tabla (parte × fecha: COPO)»** (`release/pdf_table.py`): lee el PDF con el acomodo del texto (pypdf,
+`extraction_mode='layout'`), arma la tabla por la posición de las columnas (las semanas vacías no recorren las
+cantidades) y la pasa por el lector genérico, con los mismos campos del perfil (unidad, encabezados de parte, OC y
+descripción, orden de las fechas). Junta encabezados y descripciones de dos renglones y corta en las notas al pie.
+De cada parte toma su OC, la última factura considerada (en «Último packing slip») y lo recibido («Llegadas», en
+«CUM recibido»); del encabezado, «Release No.» y la fecha. Fechas con el mes en letra (16-Nov-26, 7-dic-2026).
+COPO: sus fechas son de material listo para recolección en nuestra planta (EXW) → «Fecha de embarque».
+
+## La presentación sale de la ficha técnica (19.0.3.26.0, 2026-11-19)
+
+Jose (19-nov): «muchos de los datos de la preparación del producto deberían de salir del módulo de ficha técnica…
+y ya en ventas lo hacemos por cliente». Tres niveles:
+
+1. **Especificación** (ancho de venta, peso, espesor y sus tolerancias): la de la ficha de acabado. Condiciones de
+   entrega la muestra en «Especificación (ficha)», de solo lectura; se quitó el «Ancho» que se capturaba ahí
+   (estaba vacío en todas las fichas).
+2. **Presentación estándar**: pestaña **Presentación** nueva en la ficha de acabado (largo de rollo, tubo, empalmes,
+   tramo mínimo, peso máximo, rollos por tarima, empaque), agregada desde este módulo
+   (`models/qb_ficha_presentacion.py`) para no tocar el de la ficha. Condiciones de entrega la muestra en
+   «Presentación de la ficha».
+3. **Por cliente**: lo que pide distinto. Vacío (0 o −1) = el del cliente en el encabezado y, si tampoco, el de la
+   ficha. Para el redondeo a rollos: renglón → cliente → ficha. «Tolerancia del cliente» abre ancho y peso mínimo y
+   máximo cuando el cliente exige otra tolerancia.
+
 ## Varios días de recolección (19.0.3.25.0, 2026-11-19)
 
 Jose (19-nov): «qué sucede si un cliente tiene más de una fecha de recolección, como Lear, que recolecta

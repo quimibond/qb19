@@ -70,16 +70,22 @@
                                     <field name="customer_part" optional="show"/>
                                     <field name="open_po" optional="show"/>
                                     <field name="open_po_valid_to" optional="show"/>
+                                    <field name="spec_text" optional="show"/>
+                                    <field name="ficha_pres_text" optional="show"/>
                                     <field name="roll_qty"/>
                                     <field name="roll_uom"/>
                                     <field name="round_up"/>
-                                    <field name="width_m" optional="show"/>
                                     <field name="core" optional="show"/>
                                     <field name="max_splices"/>
                                     <field name="min_piece" optional="show"/>
                                     <field name="max_weight_kg" optional="show"/>
                                     <field name="rolls_per_pallet" optional="show"/>
                                     <field name="packaging" optional="show"/>
+                                    <field name="own_tolerance" optional="hide"/>
+                                    <field name="width_min_cm" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="width_max_cm" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="weight_min" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="weight_max" optional="hide" invisible="not own_tolerance"/>
                                     <field name="label" optional="hide"/>
                                     <field name="notes" optional="hide"/>
                                 </list>
