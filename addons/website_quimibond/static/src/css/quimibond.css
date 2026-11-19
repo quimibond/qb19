@@ -309,6 +309,21 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 .qb-cinta__grupo i::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--qb-acento); opacity: .6; }
 @keyframes qb-cinta { to { transform: translateX(-50%); } }
 
+/* Armadoras (OEM): nombres en texto que pasan como una banda de tela */
+.qb-oem { padding: 56px 0; border-block: 1px solid var(--qb-borde); background: var(--qb-bg); overflow: hidden; }
+.qb-sec + .qb-oem, .qb-oem + .qb-sec--suave { border-top: 0; }
+.qb-oem__titulo { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; margin-bottom: 28px !important; }
+.qb-oem__titulo .qb-eyebrow { margin-bottom: 10px; }
+.qb-oem__cinta { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+.qb-oem__pista { display: flex; width: max-content; animation: qb-oem 40s linear infinite; }
+.qb-oem__cinta:hover .qb-oem__pista { animation-play-state: paused; }
+.qb .qb-oem__grupo { display: flex; align-items: center; gap: 12px; padding-right: 12px; }
+.qb-oem__grupo li { display: flex; align-items: center; justify-content: center; min-width: 190px; height: 76px; padding: 0 28px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); transition: background .2s, border-color .2s, color .2s; color: #52525b; }
+.qb-oem__grupo li:hover { background: var(--qb-bg); border-color: var(--qb-borde-fuerte); color: var(--qb-fg); }
+.qb-oem__grupo span { font-size: 1.35rem; font-weight: 600; letter-spacing: -.03em; white-space: nowrap; }
+.qb-oem__nota { text-align: center; font-size: .78rem; color: var(--qb-muted-fg); margin-top: 20px !important; }
+@keyframes qb-oem { to { transform: translateX(-25%); } }
+
 /* Mercados */
 .qb-mercado { padding: 28px; min-height: 300px; display: flex; flex-direction: column; }
 .qb-mercado p { flex: 1; }

@@ -84,6 +84,8 @@
                     </div>
                 </section>
 
+                <t t-call="website_quimibond.armadoras"/>
+
                 <!-- Líneas de producto, leídas de las categorías del sitio en Odoo -->
                 <section t-if="categorias" class="qb-sec qb-sec--suave">
                     <div class="qb-container">
@@ -243,6 +245,7 @@
                         </div>
                     </div>
                 </section>
+                <t t-if="mercado['clave'] == 'automotriz'" t-call="website_quimibond.armadoras"/>
                 <section t-if="categorias" class="qb-sec qb-sec--suave">
                     <div class="qb-container">
                         <div class="qb-sec__cab">

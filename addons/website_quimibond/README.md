@@ -44,6 +44,13 @@ con el selector de sitio web del editor.
 - **Buscador ⌘K**: `/catalogo/buscar.json` (productos, mercados y páginas).
 - **Reclutamiento, portal y Helpdesk**: se enlazan tal cual.
 
+## Armadoras (OEM)
+
+Sitio web → Configuración → Sitios web → **Armadoras (OEM) que se muestran**,
+una marca por línea. Salen como texto, sin logotipos, en la portada y en
+`/mercados/automotriz`. Son las armadoras finales, nunca los clientes directos.
+Vacío = la sección no aparece.
+
 ## Textos
 
 Los mercados, los pasos del proceso, la historia y las cifras están en

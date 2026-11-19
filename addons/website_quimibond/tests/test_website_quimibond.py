@@ -65,3 +65,15 @@ class TestSitioB2B(HttpCase):
     def test_formulario_crea_oportunidad(self):
         self.website.qb_diseno_b2b = True
         self.assertIn('data-model_name="crm.lead"', self.url_open('/cotizar').text)
+
+    def test_armadoras_solo_si_hay_lista(self):
+        self.website.qb_diseno_b2b = True
+        self.website.qb_armadoras = False
+        self.assertNotIn('qb-oem', self.url_open('/').text)
+        self.website.qb_armadoras = 'Marca Uno\n\n marca uno \nMarca Dos'
+        self.assertEqual(self.website._qb_lista_armadoras(), ['Marca Uno', 'Marca Dos'])
+        portada = self.url_open('/').text
+        self.assertIn('qb-oem', portada)
+        self.assertIn('Marca Dos', portada)
+        self.assertIn('Marca Uno', self.url_open('/mercados/automotriz').text)
+        self.assertNotIn('qb-oem', self.url_open('/mercados/blancos').text)
