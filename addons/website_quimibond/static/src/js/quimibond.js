@@ -574,6 +574,7 @@
                 hilo: (elegido("qb_hilo") || {}).value || "",
                 hiloTipo: (elegido("qb_hilo_tipo") || {}).value || "",
                 elastano: !!(campo("qb_elastano") && campo("qb_elastano").checked),
+                mercado: (elegido("qb_mercado") || {}).value || "",
                 aplicacion: (elegido("qb_aplicacion") || {}).value || "",
                 requisitos: todos('input[name="qb_requisito"]:checked', raizDis).map(function (r) {
                     return r.value;
@@ -596,6 +597,9 @@
         function filas(d) {
             var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
             var f = [];
+            if (d.mercado) {
+                f.push(["Mercado", d.mercado]);
+            }
             if (d.aplicacion) {
                 f.push(["Aplicación", d.aplicacion]);
             }
@@ -634,6 +638,16 @@
 
         function aplicar() {
             var d = leer();
+            // De lo general a lo particular: las aplicaciones salen al elegir el mercado.
+            var grupoAp = raizDis.querySelector("[data-qb-aplicaciones]");
+            if (grupoAp) {
+                var hay = false;
+                todos("[data-qb-mercado]", grupoAp).forEach(function (g) {
+                    g.hidden = g.getAttribute("data-qb-mercado") !== d.mercado;
+                    hay = hay || !g.hidden;
+                });
+                grupoAp.hidden = !hay;
+            }
             todos("[data-qb-solo]", raizDis).forEach(function (g) {
                 g.hidden = g.getAttribute("data-qb-solo").split(" ").indexOf(d.construccion) < 0;
             });
@@ -690,7 +704,7 @@
 
         // Nombres de los controles en el enlace del diseño (cortos, sin datos personales).
         var CLAVES = {
-            ap: "qb_aplicacion", c: "qb_construccion", g: "qb_galga", h: "qb_hilo", ht: "qb_hilo_tipo",
+            m: "qb_mercado", ap: "qb_aplicacion", c: "qb_construccion", g: "qb_galga", h: "qb_hilo", ht: "qb_hilo_tipo",
             f: "qb_fibra", t: "qb_tacto", pr: "qb_presentacion"
         };
         var CASILLAS = { e: "qb_elastano", fu: "qb_fusionable", te: "qb_termofijado" };
@@ -775,6 +789,13 @@
                 // Sin historial (vista previa incrustada): el diseño sigue funcionando.
             }
         }
+        function ponerMercadoForm() {
+            var mercadoForm = document.getElementById("qb_f_mercado");
+            var m = elegido("qb_mercado");
+            if (mercadoForm && m) {
+                mercadoForm.value = m.value;
+            }
+        }
         function leerEnlace() {
             if (!window.URLSearchParams || !location.search) {
                 return;
@@ -785,6 +806,16 @@
                     marcar(CLAVES[k], q.get(k));
                 }
             });
+            // Enlace desde un mercado: solo trae la aplicación y arranca con su tela propuesta.
+            var apli = elegido("qb_aplicacion");
+            if (apli && apli.getAttribute("data-mercado")) {
+                marcar("qb_mercado", apli.getAttribute("data-mercado"));
+            }
+            ponerMercadoForm();
+            if (q.has("ap") && !q.has("c") && apli && apli.getAttribute("data-qb-tela")) {
+                ponerTela(JSON.parse(apli.getAttribute("data-qb-tela")));
+                return;
+            }
             Object.keys(CASILLAS).forEach(function (k) {
                 if (campo(CASILLAS[k])) {
                     campo(CASILLAS[k]).checked = q.get(k) === "1";
@@ -810,14 +841,18 @@
         }
 
         raizDis.addEventListener("input", function (e) {
+            if (e.target.name === "qb_mercado") {
+                // Cambió el mercado: la aplicación de otro mercado ya no aplica.
+                var previa = elegido("qb_aplicacion");
+                if (previa && previa.getAttribute("data-mercado") !== e.target.value) {
+                    previa.checked = false;
+                }
+                ponerMercadoForm();
+            }
             if (e.target.name === "qb_aplicacion") {
                 var tela = e.target.getAttribute("data-qb-tela");
                 if (tela) {
                     ponerTela(JSON.parse(tela));
-                }
-                var mercadoForm = document.getElementById("qb_f_mercado");
-                if (mercadoForm) {
-                    mercadoForm.value = e.target.getAttribute("data-mercado") || "Otro";
                 }
             }
             if (e.target.name === "qb_color_libre") {

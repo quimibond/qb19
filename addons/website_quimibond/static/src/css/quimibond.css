@@ -328,7 +328,12 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 
 /* Mercados */
 .qb-mercado { padding: 28px; min-height: 300px; display: flex; flex-direction: column; }
-.qb-mercado p { flex: 1; }
+.qb .qb-mercado__apps { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; }
+.qb-mercado__apps li { font-size: .8rem; padding: 4px 10px; border: 1px solid var(--qb-borde); border-radius: 999px; background: var(--qb-bg); color: #3f3f46; }
+a.qb-app { display: block; color: inherit; text-decoration: none; }
+.qb .qb-app__tela { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--qb-borde); }
+.qb .qb-app__tela dt { font-family: var(--qb-mono); font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--qb-muted-fg); font-weight: 400; }
+.qb .qb-app__tela dd { margin: 0; font-size: .9rem; font-weight: 500; }
 .qb-mercado__arte { position: absolute !important; top: -40px; right: -40px; width: 200px; height: 200px; z-index: 0 !important; opacity: .55; transition: opacity .3s, transform .6s; }
 .qb-mercado:hover .qb-mercado__arte { opacity: 1; transform: rotate(18deg) scale(1.05); }
 .qb-mercado__arte span { position: absolute; inset: 0; border-radius: 50%; border: 1.5px dashed var(--qb-borde-fuerte); animation: qb-gira 40s linear infinite; }

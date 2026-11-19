@@ -62,8 +62,35 @@
                     </div>
                 </section>
 
+                <!-- Mercados -->
+                <section class="qb-sec" id="mercados">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Mercados</span>
+                            <h2 class="qb-reveal">Tres industrias, y la tela para cada aplicación.</h2>
+                            <p class="qb-lead qb-reveal">Empiece por su industria: dentro están las aplicaciones y la tela que proponemos para cada una.</p>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_mercados" t-as="m">
+                                <a t-attf-href="/mercados/#{m['clave']}" t-attf-class="qb-card qb-mercado qb-mercado--#{m['clave']} qb-spot qb-reveal">
+                                    <div class="qb-mercado__arte" aria-hidden="true"><span/><span/><span/></div>
+                                    <span class="qb-icono"><i t-attf-class="fa #{m['icono']}" aria-hidden="true"/></span>
+                                    <h3 t-out="m['nombre']"/>
+                                    <p t-out="m['frase']"/>
+                                    <ul class="qb-mercado__apps">
+                                        <li t-foreach="m['aplicaciones']" t-as="ap" t-out="ap['nombre']"/>
+                                    </ul>
+                                    <span class="qb-enlace">Ver aplicaciones y telas <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+
+                <t t-call="website_quimibond.armadoras"/>
+
                 <!-- Lo que fabricamos: tipos de tela según la maquinaria de la planta -->
-                <section class="qb-sec" id="telas">
+                <section class="qb-sec qb-sec--suave" id="telas">
                     <div class="qb-container">
                         <div class="qb-sec__cab qb-sec__cab--fila">
                             <div>
@@ -76,30 +103,6 @@
                         <t t-call="website_quimibond.tipos_tejido"/>
                     </div>
                 </section>
-
-                <!-- Mercados -->
-                <section class="qb-sec qb-sec--suave" id="mercados">
-                    <div class="qb-container">
-                        <div class="qb-sec__cab">
-                            <span class="qb-eyebrow qb-reveal">Mercados</span>
-                            <h2 class="qb-reveal">Una planta, tres industrias.</h2>
-                            <p class="qb-lead qb-reveal">Cada mercado tiene sus normas. Conocemos las tres.</p>
-                        </div>
-                        <div class="qb-grid qb-grid--3">
-                            <t t-foreach="qb_mercados" t-as="m">
-                                <a t-attf-href="/mercados/#{m['clave']}" t-attf-class="qb-card qb-mercado qb-mercado--#{m['clave']} qb-spot qb-reveal">
-                                    <div class="qb-mercado__arte" aria-hidden="true"><span/><span/><span/></div>
-                                    <span class="qb-icono"><i t-attf-class="fa #{m['icono']}" aria-hidden="true"/></span>
-                                    <h3 t-out="m['nombre']"/>
-                                    <p t-out="m['resumen']"/>
-                                    <span class="qb-enlace">Ver soluciones <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
-                                </a>
-                            </t>
-                        </div>
-                    </div>
-                </section>
-
-                <t t-call="website_quimibond.armadoras"/>
 
                 <!-- Proceso -->
                 <section class="qb-sec">
@@ -228,11 +231,42 @@
                     <t t-set="resumen" t-value="mercado['resumen']"/>
                     <div class="qb-hero__cta qb-reveal">
                         <a t-attf-href="/cotizar?mercado=#{mercado['clave']}" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
-                        <a href="/catalogo" class="qb-btn qb-btn--contorno qb-btn--lg">Ver catálogo</a>
+                        <a href="#aplicaciones" class="qb-btn qb-btn--contorno qb-btn--lg">Ver aplicaciones</a>
                     </div>
                 </t>
-                <section class="qb-sec">
+                <section t-if="mercado['aplicaciones']" class="qb-sec" id="aplicaciones">
                     <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Aplicaciones</span>
+                            <h2 class="qb-reveal">Dónde va la tela y cuál proponemos.</h2>
+                            <p class="qb-lead qb-reveal">Cada aplicación parte de una tela propuesta. Ábrala en el diseñador y ajústela a su especificación.</p>
+                        </div>
+                        <div t-attf-class="qb-grid qb-grid--#{4 if len(mercado['aplicaciones']) == 4 else 3}">
+                            <t t-foreach="mercado['aplicaciones']" t-as="ap">
+                                <a t-att-href="ap['enlace']" class="qb-card qb-tipo qb-app qb-spot qb-reveal">
+                                    <t t-call="website_quimibond.dibujo_tejido">
+                                        <t t-set="clave" t-value="ap['construccion']"/>
+                                    </t>
+                                    <div class="qb-tipo__cuerpo">
+                                        <h3 t-out="ap['nombre']"/>
+                                        <p t-out="ap['texto']"/>
+                                        <dl class="qb-app__tela">
+                                            <dt t-out="ap['familia']"/>
+                                            <dd t-out="ap['tela']"/>
+                                        </dl>
+                                        <span class="qb-enlace">Diseñar esta tela <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                    </div>
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Cómo lo atendemos</span>
+                            <h2 class="qb-reveal">Lo que este mercado nos pide.</h2>
+                        </div>
                         <div class="qb-grid qb-grid--4">
                             <t t-foreach="mercado['puntos']" t-as="punto">
                                 <div class="qb-card qb-spot qb-reveal">
@@ -244,32 +278,6 @@
                     </div>
                 </section>
                 <t t-if="mercado['clave'] == 'automotriz'" t-call="website_quimibond.armadoras"/>
-                <section t-if="categorias" class="qb-sec qb-sec--suave">
-                    <div class="qb-container">
-                        <div class="qb-sec__cab">
-                            <span class="qb-eyebrow qb-reveal">Catálogo</span>
-                            <h2 class="qb-reveal">Líneas para <t t-out="mercado['nombre'].lower()"/></h2>
-                        </div>
-                        <div class="qb-grid qb-grid--3">
-                            <t t-foreach="categorias" t-as="item">
-                                <a t-attf-href="/catalogo/#{slug(item['categoria'])}" class="qb-card qb-linea qb-spot qb-reveal">
-                                    <t t-call="website_quimibond.muestra">
-                                        <t t-set="construccion" t-value="item['construccion']"/>
-                                        <t t-set="color" t-value="'blanco'"/>
-                                        <t t-set="fusionable" t-value="item['fusionable']"/>
-                                    </t>
-                                    <div class="qb-linea__cuerpo">
-                                        <h3 t-out="item['categoria'].name"/>
-                                        <p class="qb-mono"><span t-out="item['total']"/> productos</p>
-                                        <ul t-if="item['hijos']">
-                                            <li t-foreach="item['hijos'][:5]" t-as="h" t-out="h['categoria'].name"/>
-                                        </ul>
-                                    </div>
-                                </a>
-                            </t>
-                        </div>
-                    </div>
-                </section>
                 <section class="qb-sec">
                     <div class="qb-container qb-dos">
                         <div>
@@ -532,13 +540,24 @@
                         <div class="qb-dis__cuerpo">
                             <div class="qb-dis__opciones">
                                 <fieldset class="qb-dis__grupo">
-                                    <legend><span class="qb-mono qb-dis__num"/> ¿Para qué es la tela? <small>le proponemos una tela de partida y usted la ajusta</small></legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Mercado <small>¿para qué industria es la tela?</small></legend>
                                     <div class="qb-dis__chips">
-                                        <t t-foreach="qb_disenador['aplicaciones']" t-as="ap">
-                                            <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-att-value="ap['nombre']" t-att-data-mercado="ap['mercado']" t-att-data-qb-tela="json.dumps(ap['tela'])"/><span><i t-attf-class="fa #{ap['icono']}" aria-hidden="true"/> <t t-out="ap['nombre']"/></span></label>
+                                        <t t-foreach="qb_mercados" t-as="m">
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_mercado" t-att-value="m['nombre']"/><span><i t-attf-class="fa #{m['icono']}" aria-hidden="true"/> <t t-out="m['nombre']"/></span></label>
                                         </t>
-                                        <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" value="Otra aplicación"/><span>Otra</span></label>
+                                        <label class="qb-dis__chip"><input type="radio" name="qb_mercado" value="Otro"/><span>Otro</span></label>
                                     </div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo" data-qb-aplicaciones="1" hidden="hidden">
+                                    <legend><span class="qb-mono qb-dis__num"/> Aplicación <small>le proponemos una tela de partida y usted la ajusta</small></legend>
+                                    <t t-foreach="qb_mercados" t-as="m">
+                                        <div class="qb-dis__chips" t-att-data-qb-mercado="m['nombre']" hidden="hidden">
+                                            <t t-foreach="qb_disenador['aplicaciones']" t-as="ap">
+                                                <label t-if="ap['mercado'] == m['nombre']" class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-att-value="ap['nombre']" t-att-data-mercado="ap['mercado']" t-att-data-qb-tela="json.dumps(ap['tela'])"/><span t-out="ap['nombre']"/></label>
+                                            </t>
+                                            <label class="qb-dis__chip"><input type="radio" name="qb_aplicacion" t-attf-value="Otra en #{m['nombre'].lower()}" t-att-data-mercado="m['nombre']"/><span>Otra</span></label>
+                                        </div>
+                                    </t>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
                                     <legend><span class="qb-mono qb-dis__num"/> Construcción</legend>

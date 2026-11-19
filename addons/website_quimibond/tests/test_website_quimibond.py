@@ -53,7 +53,7 @@ class TestSitioB2B(HttpCase):
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
-        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_aplicacion"', 'data-qb-tela=', 'Asiento de automóvil', 'name="qb_requisito"',
+        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_aplicacion"', 'data-qb-tela=', 'name="qb_mercado"', 'data-qb-mercado="Automotriz"', 'Asientos', 'Playera', 'name="qb_requisito"',
                       'name="qb_volumen"', 'data-qb-copiar', 'name="qb_hilo"', 'Poliéster reciclado', 'name="qb_fibra"', 'Polipropileno', 'data-qb-anim="tela"',
                       'name="description"'):
             self.assertIn(texto, disenar, texto)
@@ -87,7 +87,13 @@ class TestSitioB2B(HttpCase):
         portada = self.url_open('/').text
         self.assertIn('qb-oem', portada)
         self.assertIn('Marca Dos', portada)
-        self.assertIn('Marca Uno', self.url_open('/mercados/automotriz').text)
+        automotriz = self.url_open('/mercados/automotriz').text
+        self.assertIn('Marca Uno', automotriz)
+        for texto in ('id="aplicaciones"', 'Asientos', 'Paneles de puerta', 'Punto de doble fontura', '/disenar?ap='):
+            self.assertIn(texto, automotriz, texto)
+        confeccion = self.url_open('/mercados/confeccion').text
+        for texto in ('Playera', 'Entretela para frente de saco', 'No tejido tramado'):
+            self.assertIn(texto, confeccion, texto)
         self.assertNotIn('qb-oem', self.url_open('/mercados/blancos').text)
         self.website.qb_armadoras = 'Toyota\nMarca Dos'
         self.assertEqual(self.website._qb_armadoras_con_logo(), [

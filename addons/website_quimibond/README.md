@@ -58,6 +58,14 @@ Vacío = la sección no aparece.
 Al instalar se carga la lista que confirmó Dirección el 2026-11-19 (12 marcas)
 en los sitios que no tengan una.
 
+## Mercados
+
+De lo general a lo particular (Dirección, 2026-11-19): la portada presenta
+primero los mercados, cada uno con sus aplicaciones; `/mercados/<clave>` va del
+mercado a las aplicaciones y de cada aplicación a la tela propuesta, con enlace
+al diseñador (`/disenar?ap=<aplicación>`). Las aplicaciones y su tela de partida
+salen de `DISENADOR['aplicaciones']` (`contenido.aplicaciones`).
+
 ## Maquinaria y tipos de tela
 
 `/planta` (y la portada) muestran los tipos de tela en dos familias, tejido

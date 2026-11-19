@@ -5,6 +5,8 @@ lee en el controlador. Aquí van los mercados, los pasos de la planta y las
 cifras de la empresa, para tenerlos en un solo lugar.
 """
 
+from urllib.parse import quote
+
 CIFRAS = [
     {'valor': 1992, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Año de fundación', 'sin_miles': True},
     {'valor': 150, 'prefijo': '+', 'sufijo': '', 'etiqueta': 'Colaboradores'},
@@ -207,30 +209,58 @@ DISENADOR = {
         ('Verde', '#1f5c48'), ('Naranja', '#e8590c'),
     ],
     'tactos': ['Suave', 'Semirrígido', 'Rígido'],
-    # Aplicaciones: cada una propone una tela de partida que la persona ajusta.
-    # No son productos del catálogo ni promesas: son un punto de arranque.
+    # Aplicaciones por mercado: de lo general (el mercado) a lo particular (la
+    # parte del vehículo, la prenda, el blanco). Cada una propone una tela de
+    # partida que la persona ajusta. No son productos del catálogo ni promesas.
     'aplicaciones': [
-        {'nombre': 'Asiento de automóvil', 'mercado': 'Automotriz', 'icono': 'fa-car',
+        {'nombre': 'Asientos', 'mercado': 'Automotriz',
+         'texto': 'Tela de vestidura con cuerpo, hecha para el uso diario del asiento.',
          'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
                   'peso': 280, 'color': '#9a9aa2', 'tacto': 'Semirrígido'}},
-        {'nombre': 'Toldo y pilares', 'mercado': 'Automotriz', 'icono': 'fa-car',
+        {'nombre': 'Toldo', 'mercado': 'Automotriz',
+         'texto': 'Tela ligera y suave para el techo interior.',
          'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
                   'peso': 160, 'color': '#d6c4a4', 'tacto': 'Suave'}},
-        {'nombre': 'Colchón', 'mercado': 'Blancos', 'icono': 'fa-bed',
+        {'nombre': 'Pilares', 'mercado': 'Automotriz',
+         'texto': 'La tela del toldo, continuada en los pilares.',
+         'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 180, 'color': '#d6c4a4', 'tacto': 'Suave'}},
+        {'nombre': 'Paneles de puerta', 'mercado': 'Automotriz',
+         'texto': 'Tela con cuerpo para el inserto del panel de la puerta.',
+         'tela': {'construccion': 'doble_fontura', 'galga': 24, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 240, 'color': '#1b1b1f', 'tacto': 'Semirrígido'}},
+        {'nombre': 'Colchón', 'mercado': 'Blancos',
+         'texto': 'Tela de punto con cuerpo para la funda del colchón.',
          'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
                   'peso': 220, 'color': '#f5f5f2', 'tacto': 'Suave'}},
-        {'nombre': 'Almohada y protector', 'mercado': 'Blancos', 'icono': 'fa-bed',
+        {'nombre': 'Almohada', 'mercado': 'Blancos',
+         'texto': 'Tela ligera y suave para la funda de la almohada.',
          'tela': {'construccion': 'una_fontura', 'galga': 24, 'hilo': 'Mezcla poliéster y algodón',
                   'peso': 130, 'color': '#f5f5f2', 'tacto': 'Suave'}},
-        {'nombre': 'Cuello y puño de camisa', 'mercado': 'Confección', 'icono': 'fa-scissors',
-         'tela': {'construccion': 'no_tejido', 'fibra': 'Poliéster', 'peso': 50, 'color': '#f5f5f2',
-                  'tacto': 'Rígido', 'fusionable': True}},
-        {'nombre': 'Frente de saco', 'mercado': 'Confección', 'icono': 'fa-scissors',
-         'tela': {'construccion': 'tramado', 'fibra': 'Poliéster', 'peso': 90,
-                  'color': '#1b1b1f', 'tacto': 'Semirrígido', 'fusionable': True}},
-        {'nombre': 'Uniforme y ropa deportiva', 'mercado': 'Confección', 'icono': 'fa-scissors',
+        {'nombre': 'Protector de colchón', 'mercado': 'Blancos',
+         'texto': 'Tela de punto ligera que cubre y protege el colchón.',
+         'tela': {'construccion': 'una_fontura', 'galga': 24, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 140, 'color': '#f5f5f2', 'tacto': 'Suave'}},
+        {'nombre': 'Playera', 'mercado': 'Confección',
+         'texto': 'Tela de punto ligera para playeras y prendas casuales.',
+         'tela': {'construccion': 'una_fontura', 'galga': 24, 'hilo': 'Mezcla poliéster y algodón',
+                  'peso': 160, 'color': '#f5f5f2', 'tacto': 'Suave'}},
+        {'nombre': 'Ropa deportiva', 'mercado': 'Confección',
+         'texto': 'Tela de punto fina y ligera para prendas deportivas.',
          'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Microfibra',
                   'peso': 150, 'color': '#1f2a4a', 'tacto': 'Suave'}},
+        {'nombre': 'Uniforme', 'mercado': 'Confección',
+         'texto': 'Tela de punto con cuerpo para prendas de uso continuo.',
+         'tela': {'construccion': 'doble_fontura', 'galga': 24, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 200, 'color': '#1f2a4a', 'tacto': 'Suave'}},
+        {'nombre': 'Entretela para cuello y puño', 'mercado': 'Confección',
+         'texto': 'Entretela fusionable que da firmeza al cuello y al puño de la camisa.',
+         'tela': {'construccion': 'no_tejido', 'fibra': 'Poliéster', 'peso': 50, 'color': '#f5f5f2',
+                  'tacto': 'Rígido', 'fusionable': True}},
+        {'nombre': 'Entretela para frente de saco', 'mercado': 'Confección',
+         'texto': 'Entretela tramada que da forma y recuperación al frente.',
+         'tela': {'construccion': 'tramado', 'fibra': 'Poliéster', 'peso': 90,
+                  'color': '#1b1b1f', 'tacto': 'Semirrígido', 'fusionable': True}},
     ],
     # Requisitos que el cliente puede pedir; Ventas e Ingeniería los evalúan.
     'requisitos': [
@@ -244,6 +274,7 @@ DISENADOR = {
 MERCADOS = [
     {
         'clave': 'automotriz',
+        'frase': 'Telas para el interior del vehículo.',
         'nombre': 'Automotriz',
         'titulo': 'Textiles técnicos para la industria automotriz',
         'resumen': 'Desde 2014 abastecemos al mercado automotriz de México, Estados Unidos y Canadá '
@@ -259,6 +290,7 @@ MERCADOS = [
     },
     {
         'clave': 'blancos',
+        'frase': 'Telas para colchones, almohadas y blancos para el hogar.',
         'nombre': 'Blancos',
         'titulo': 'Soportes textiles para colchonería y blancos',
         'resumen': 'Telas y no tejidos para colchones, almohadas y blancos para el hogar, '
@@ -274,6 +306,7 @@ MERCADOS = [
     },
     {
         'clave': 'confeccion',
+        'frase': 'Entretelas y telas de punto para prendas.',
         'nombre': 'Confección',
         'titulo': 'Entretelas para la confección',
         'resumen': 'Entretelas fusionables tejidas y no tejidas para camisería, uniformes, '
@@ -345,8 +378,34 @@ SUSTENTABILIDAD = [
 ]
 
 
+def aplicaciones(nombre_mercado):
+    """Aplicaciones de un mercado, cada una con la tela de partida que propone
+    el diseñador: de lo general (el mercado) a lo particular (la tela)."""
+    tejidos = {t['clave']: t for t in TEJIDOS}
+    nombres_familia = {f['clave']: f['nombre'] for f in FAMILIAS}
+    lista = []
+    for ap in DISENADOR['aplicaciones']:
+        if ap['mercado'] != nombre_mercado:
+            continue
+        tejido = tejidos[ap['tela']['construccion']]
+        lista.append({
+            'nombre': ap['nombre'],
+            'texto': ap['texto'],
+            'construccion': tejido['clave'],
+            'tela': tejido['nombre'],
+            'familia': nombres_familia[tejido['familia']],
+            'enlace': '/disenar?ap=%s' % quote(ap['nombre']),
+        })
+    return lista
+
+
+def mercados():
+    """Los mercados con sus aplicaciones."""
+    return [dict(m, aplicaciones=aplicaciones(m['nombre'])) for m in MERCADOS]
+
+
 def mercado(clave):
-    for m in MERCADOS:
+    for m in mercados():
         if m['clave'] == clave:
             return m
     return None

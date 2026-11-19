@@ -139,7 +139,7 @@ class QuimibondSitio(http.Controller):
     def _valores_comunes(self, **extra):
         maquinaria = planta.maquinaria(request.env, request.website.company_id)
         valores = {
-            'qb_mercados': contenido.MERCADOS,
+            'qb_mercados': contenido.mercados(),
             'qb_cifras': planta.cifras(maquinaria),
             'qb_proceso': contenido.PROCESO,
             'qb_historia': contenido.HISTORIA,
