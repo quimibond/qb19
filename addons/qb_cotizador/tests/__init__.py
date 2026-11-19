@@ -2,3 +2,4 @@
 from . import test_flujo
 from . import test_costo
 from . import test_receta  # 1.7.0
+from . import test_negociacion  # 1.8.0

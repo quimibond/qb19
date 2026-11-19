@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.8.0: Acuerdos de volumen (escalera incremental) y su liquidación por periodo. -->
+    <record id="view_qb_cotizador_acuerdo_liquidacion_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.acuerdo.liquidacion.form</field>
+        <field name="model">qb.cotizador.acuerdo.liquidacion</field>
+        <field name="arch" type="xml">
+            <form string="Liquidación del periodo" create="0">
+                <header>
+                    <button name="action_recalcular" type="object" string="Recalcular" icon="fa-refresh"
+                            invisible="nota_estado not in (False, 'draft')"
+                            groups="sales_team.group_sale_manager,account.group_account_invoice"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Periodo">
+                            <field name="acuerdo_id" readonly="1"/>
+                            <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="periodo_inicio" readonly="1"/>
+                            <field name="periodo_fin" readonly="1"/>
+                            <field name="meses" readonly="1"/>
+                            <field name="calculado_el"/>
+                            <field name="calculado_por_id"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="unidades" readonly="1"/>
+                            <field name="unidades_excluidas" readonly="1"/>
+                            <field name="marcadas" readonly="1"/>
+                            <field name="descuento" readonly="1"/>
+                            <field name="nota_id"/>
+                            <field name="nota_estado"/>
+                        </group>
+                    </group>
+                    <group string="Descuento por tramo">
+                        <field name="detalle_tramos" nolabel="1" colspan="2" readonly="1"/>
+                    </group>
+                    <group string="Facturas no pagadas en plazo" invisible="not detalle_pagos">
+                        <field name="detalle_pagos" nolabel="1" colspan="2" readonly="1"/>
+                    </group>
+                    <field name="factura_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="move_type"/>
+                            <field name="invoice_date"/>
+                            <field name="invoice_date_due"/>
+                            <field name="payment_state"/>
+                            <field name="amount_untaxed_signed" sum="Total"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_acuerdo_liquidacion_list" model="ir.ui.view">
+        <field name="name">qb.cotizador.acuerdo.liquidacion.list</field>
+        <field name="model">qb.cotizador.acuerdo.liquidacion</field>
+        <field name="arch" type="xml">
+            <list create="0">
+                <field name="acuerdo_id"/>
+                <field name="periodo_inicio"/>
+                <field name="periodo_fin"/>
+                <field name="unidades" sum="Total"/>
+                <field name="unidades_excluidas" optional="show"/>
+                <field name="descuento" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="nota_id"/>
+                <field name="nota_estado" widget="badge" decoration-info="nota_estado == 'draft'" decoration-success="nota_estado == 'posted'"/>
+                <field name="calculado_el" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_acuerdo_volumen_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.acuerdo.volumen.form</field>
+        <field name="model">qb.cotizador.acuerdo.volumen</field>
+        <field name="arch" type="xml">
+            <form string="Acuerdo de volumen" create="0">
+                <header>
+                    <button name="action_calcular_periodo" type="object" string="Calcular periodo" class="btn-primary"
+                            groups="sales_team.group_sale_manager,account.group_account_invoice"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Acuerdo">
+                            <field name="active" invisible="1"/>
+                            <field name="negociacion_id"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                            <field name="fecha_inicio" readonly="1"/>
+                            <field name="fecha_fin" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group string="Cómo se liquida">
+                            <field name="precio_base" readonly="1"/>
+                            <field name="periodo" readonly="1"/>
+                            <field name="solo_pagadas_en_plazo"/>
+                            <field name="tratamiento_no_pagadas" invisible="not solo_pagadas_en_plazo"/>
+                            <field name="dias_espera"/>
+                            <field name="unidades_total"/>
+                            <field name="descuento_total"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Liquidaciones" name="liquidaciones">
+                            <div class="text-muted">«Calcular periodo» calcula cada periodo ya cerrado y crea su nota de crédito en borrador para Contabilidad; correrlo otra vez actualiza la nota mientras siga en borrador. El cron lo hace solo los días de espera después del cierre.</div>
+                            <field name="liquidacion_ids" readonly="1">
+                                <list>
+                                    <field name="periodo_inicio"/>
+                                    <field name="periodo_fin"/>
+                                    <field name="unidades" sum="Total"/>
+                                    <field name="unidades_excluidas" optional="show"/>
+                                    <field name="marcadas" optional="hide"/>
+                                    <field name="descuento" sum="Total"/>
+                                    <field name="nota_id"/>
+                                    <field name="nota_estado" widget="badge" decoration-info="nota_estado == 'draft'" decoration-success="nota_estado == 'posted'"/>
+                                    <field name="calculado_el" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Tramos" name="tramos">
+                            <div class="text-muted">En unidades por mes; los umbrales se multiplican por los meses del periodo.</div>
+                            <field name="tramo_ids" readonly="1">
+                                <list>
+                                    <field name="desde"/>
+                                    <field name="hasta"/>
+                                    <field name="descuento_pct"/>
+                                    <field name="precio"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_acuerdo_volumen_list" model="ir.ui.view">
+        <field name="name">qb.cotizador.acuerdo.volumen.list</field>
+        <field name="model">qb.cotizador.acuerdo.volumen</field>
+        <field name="arch" type="xml">
+            <list create="0">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+                <field name="periodo"/>
+                <field name="precio_base"/>
+                <field name="currency_id"/>
+                <field name="unidades_total"/>
+                <field name="descuento_total"/>
+                <field name="company_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_acuerdo_volumen_search" model="ir.ui.view">
+        <field name="name">qb.cotizador.acuerdo.volumen.search</field>
+        <field name="model">qb.cotizador.acuerdo.volumen</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <filter name="vigentes" string="Vigentes" domain="[('fecha_fin', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="archivados" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_periodo" string="Periodo" context="{'group_by': 'periodo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_cotizador_acuerdo_volumen" model="ir.actions.act_window">
+        <field name="name">Acuerdos de volumen</field>
+        <field name="res_model">qb.cotizador.acuerdo.volumen</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_qb_cotizador_acuerdo_volumen_search"/>
+        <field name="context">{'search_default_vigentes': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay acuerdos de volumen</p>
+            <p>Se crean solos al ganar una negociación con escalera incremental. Cada periodo se liquida con una nota de crédito en borrador.</p>
+        </field>
+    </record>
+
+    <record id="action_qb_cotizador_acuerdo_liquidacion" model="ir.actions.act_window">
+        <field name="name">Liquidaciones de acuerdos</field>
+        <field name="res_model">qb.cotizador.acuerdo.liquidacion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

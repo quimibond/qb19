@@ -7,4 +7,12 @@
         <field name="padding">4</field>
         <field name="company_id" eval="False"/>
     </record>
+    <!-- 1.8.0 -->
+    <record id="seq_qb_cotizador_negociacion" model="ir.sequence">
+        <field name="name">Negociación de precio</field>
+        <field name="code">qb.cotizador.negociacion</field>
+        <field name="prefix">NEG-%(year)s-</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
 </odoo>
