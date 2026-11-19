@@ -22,5 +22,5 @@ def migrate(cr, version):
         day = days.get(int(weekday))
         terms = env['qb.delivery.terms'].browse(terms_id)
         if day and not terms.pickup_day_ids:
-            terms.pickup_day_ids = day
+            terms.write({'pickup_mode': 'uno', 'pickup_day_ids': [(6, 0, day.ids)]})
             _logger.info("3.25.0: %s recoge el %s", terms.display_name, day.name)

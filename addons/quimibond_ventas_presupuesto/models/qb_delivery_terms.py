@@ -13,6 +13,7 @@ from datetime import timedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 WEEKDAYS = [('0', "Lunes"), ('1', "Martes"), ('2', "Miércoles"), ('3', "Jueves"), ('4', "Viernes"),
             ('5', "Sábado"), ('6', "Domingo")]
@@ -52,11 +53,15 @@ class QbDeliveryTerms(models.Model):
     active = fields.Boolean(default=True)
 
     # Cuándo se embarca
+    pickup_mode = fields.Selection(
+        [('libre', "Sin día fijo"), ('uno', "Un día a la semana"), ('varios', "Varios días a la semana")],
+        string="Recolección", required=True, default='libre', tracking=True,
+        help="Sin día fijo: la fecha de entrega del pedido es la que pide el cliente menos el colchón. Un día: "
+             "ese día de la semana de embarque. Varios (Lear: martes y viernes): la semana se reparte por "
+             "partes iguales y sale un pedido por día.")
     pickup_day_ids = fields.Many2many(
         'qb.weekday', string="Días de recolección", tracking=True,
-        help="Días de la semana en que se embarca o el cliente recoge: la fecha de entrega del pedido dentro "
-             "de la semana de embarque. Con varios (Lear: martes y viernes), la semana se reparte por partes "
-             "iguales y sale un pedido por día.")
+        help="Días de la semana en que se embarca o el cliente recoge.")
     lead_days = fields.Integer(
         string="Días hábiles de adelanto", tracking=True,
         help="Días hábiles (sin sábados ni domingos) antes de la fecha en que el cliente necesita el "
@@ -103,6 +108,20 @@ class QbDeliveryTerms(models.Model):
     _terms_uniq = models.Constraint(
         'unique nulls not distinct (company_id, partner_id, ship_to_id, plant)',
         "Ya hay condiciones de entrega para ese cliente y planta.")
+
+    @api.constrains('pickup_mode', 'pickup_day_ids')
+    def _check_pickup_days(self):
+        for terms in self:
+            n = len(terms.pickup_day_ids)
+            if terms.pickup_mode == 'uno' and n != 1:
+                raise ValidationError("«Un día a la semana» lleva exactamente un día de recolección.")
+            if terms.pickup_mode == 'varios' and n < 2:
+                raise ValidationError("«Varios días a la semana» lleva al menos dos días de recolección.")
+
+    @api.onchange('pickup_mode')
+    def _onchange_pickup_mode(self):
+        if self.pickup_mode == 'libre':
+            self.pickup_day_ids = False
 
     @api.depends('partner_id', 'ship_to_id', 'plant')
     def _compute_name(self):
@@ -160,7 +179,9 @@ class QbDeliveryTerms(models.Model):
 
     def _qb_pickup_days(self):
         """Días de recolección como números (0 = lunes), en orden."""
-        return sorted(self.pickup_day_ids.mapped('code')) if self else []
+        if not self or self.pickup_mode == 'libre':
+            return []
+        return sorted(self.pickup_day_ids.mapped('code'))
 
     def _qb_split(self, product, qty, parts):
         """3.25.0: reparte ``qty`` entre ``parts`` días por partes iguales; cada parte baja a rollos

@@ -27,8 +27,10 @@ Jose (19-nov): «qué sucede si un cliente tiene más de una fecha de recolecci�
 martes y viernes». Desde septiembre Ventas captura a mano dos pedidos por semana de Lear, martes y viernes,
 por partes iguales; la ficha solo aceptaba un día.
 
-- **Días de recolección** (etiquetas, `qb.weekday`) en lugar de «Día de recolección». Un solo día funciona
-  como antes; el día que tenía cada ficha se copia al actualizar.
+- **Recolección** (Jose, 19-nov: «¿no es mejor preguntar si el cliente tiene recolección fija?»): *Sin día
+  fijo* (la fecha del pedido es la del cliente menos el colchón, un pedido por semana), *Un día a la semana*
+  o *Varios días a la semana*; con día fijo aparecen los **Días de recolección** (etiquetas, `qb.weekday`).
+  Las fichas que tenían día quedan en «Un día a la semana» con ese día.
 - Con varios días, «Proponer pedidos» reparte la semana **por partes iguales** (por rollos completos si el
   rollo está en la unidad del producto; si no, por unidades enteras; lo que sobra va al primer día) y sale
   un renglón y un pedido por OC, semana y día (`sale.order.qb_pickup_weekday`).

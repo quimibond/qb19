@@ -4,7 +4,7 @@ OC según la regla del cliente. Semanas de 2072 para aislar."""
 from datetime import date, timedelta
 
 from odoo import fields
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -124,7 +124,10 @@ class TestOrderProposal(TransactionCase):
                           'so_weeks': 1})
         tuesday = self.env.ref('quimibond_ventas_presupuesto.qb_weekday_1')
         friday = self.env.ref('quimibond_ventas_presupuesto.qb_weekday_4')
-        self.env['qb.delivery.terms'].create({'partner_id': self.client.id,
+        with self.assertRaises(ValidationError):
+            self.env['qb.delivery.terms'].create({'partner_id': self.client.id, 'pickup_mode': 'varios',
+                                                  'pickup_day_ids': [(6, 0, tuesday.ids)]})
+        self.env['qb.delivery.terms'].create({'partner_id': self.client.id, 'pickup_mode': 'varios',
                                               'pickup_day_ids': [(6, 0, (tuesday | friday).ids)]})
         fl = self._fl(self.week, 325.0)
         proposal = self._propose()
