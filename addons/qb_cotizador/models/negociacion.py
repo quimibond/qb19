@@ -184,6 +184,13 @@ class QbCotizadorNegociacion(models.Model):
                 vals['folio'] = self.env['ir.sequence'].next_by_code('qb.cotizador.negociacion')
             if vals.get('partner_id'):
                 vals['partner_id'] = self.env['res.partner'].browse(vals['partner_id']).commercial_partner_id.id
+            # El TC va antes de crear: las líneas que vienen en el mismo create convierten su costo con él.
+            if vals.get('currency_id') and (vals.get('fx_rate') or 0.0) <= 1.0:
+                company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
+                moneda = self.env['res.currency'].browse(vals['currency_id'])
+                if moneda != company.currency_id:
+                    vals['fx_rate'] = moneda._convert(1.0, company.currency_id, company,
+                                                      fields.Date.context_today(self), round=False)
         recs = super().create(vals_list)
         for rec in recs:
             if rec.es_divisa and (rec.fx_rate or 0.0) <= 1.0:

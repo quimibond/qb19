@@ -4,6 +4,10 @@ Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
 
+## 19.0.1.8.1 — 2026-11-19
+
+- Negociaciones en divisa: el tipo de cambio se fija antes de crear las líneas que vienen en el mismo alta (importación, API); antes esas líneas tomaban el costo en pesos como si fuera de la divisa y el semáforo salía en rojo. «Actualizar datos» lo corregía. Prueba `test_08`.
+
 ## 19.0.1.8.0 — 2026-11-19
 
 **Negociaciones de precio** para clientes existentes (renovaciones anuales y peticiones de rebaja como el

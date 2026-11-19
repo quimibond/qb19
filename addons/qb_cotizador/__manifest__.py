@@ -23,7 +23,7 @@ de volumen liquidado por periodo con nota de crédito en borrador.
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.8.0',
+    'version': '19.0.1.8.1',
     'license': 'LGPL-3',
     'application': False,
     'depends': ['qb_costeo', 'sale_management', 'account', 'hr', 'mail'],
