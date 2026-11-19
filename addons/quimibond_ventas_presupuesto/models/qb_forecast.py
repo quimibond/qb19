@@ -180,9 +180,14 @@ class QbForecastLine(models.Model):
         string="El cliente cambió", readonly=True, index=True,
         help="Un release posterior al ajuste pide otra cantidad (o ya no trae la semana). Revise el "
              "ajuste: corríjalo, consérvelo o vuelva al release.")
+    regla_nota = fields.Char(
+        string="Reglas del release", readonly=True,
+        help="Lo que hicieron las reglas del perfil al aplicar el release: semana congelada, recibe lo "
+             "de las congeladas, junta semanas en un embarque, redondeo a rollos.")
     qty_diferencia = fields.Float(
-        string="Ajuste contra el release", digits='Product Unit', compute='_compute_qty_diferencia',
-        help="Cantidad del pronóstico − lo que pide el cliente, en la unidad de venta.")
+        string="Contra lo que pide el cliente", digits='Product Unit', compute='_compute_qty_diferencia',
+        help="Cantidad del pronóstico − lo que pide el cliente, en la unidad de venta (por un ajuste de "
+             "Ventas o por las reglas del release).")
     active = fields.Boolean(default=True)
     dev_state = fields.Selection(
         DEV_PRODUCT_STATES, string="Estado del artículo", compute='_compute_dev_state', store=True,
@@ -200,10 +205,10 @@ class QbForecastLine(models.Model):
         for line in self:
             line.dev_state = dev_state_of(line.product_id)
 
-    @api.depends('qty_venta', 'qty_release', 'ajustado')
+    @api.depends('qty_venta', 'qty_release', 'release_id')
     def _compute_qty_diferencia(self):
         for line in self:
-            line.qty_diferencia = line.qty_venta - line.qty_release if line.ajustado else 0.0
+            line.qty_diferencia = line.qty_venta - line.qty_release if line.release_id else 0.0
 
     @api.depends('week')
     def _compute_month(self):

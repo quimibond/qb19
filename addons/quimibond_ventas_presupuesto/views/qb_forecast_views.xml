@@ -32,6 +32,7 @@
                 <field name="qty_release" optional="show"/>
                 <field name="ajustado" widget="boolean_toggle" readonly="1" optional="show"/>
                 <field name="release_cambio" optional="show" widget="boolean" readonly="1"/>
+                <field name="regla_nota" optional="show"/>
                 <field name="qty_m" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_kg" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_pedido" optional="show"/>
@@ -102,7 +103,8 @@
                             <field name="qty_venta"/>
                             <field name="uom_venta"/>
                             <field name="qty_release" invisible="not release_id"/>
-                            <field name="qty_diferencia" invisible="not ajustado"/>
+                            <field name="qty_diferencia" invisible="not release_id"/>
+                            <field name="regla_nota" invisible="not regla_nota"/>
                             <field name="ajustado" invisible="not release_id"/>
                             <field name="release_cambio" invisible="1"/>
                             <field name="qty_m"/>
@@ -295,6 +297,54 @@
             <p class="o_view_nocontent_smiling_face">Todavía no hay pronóstico cargado</p>
             <p>Cada renglón es una semana de un cliente y un producto, en la unidad del cliente, en la de
                venta y en metros y kilos. Cárguelo desde los releases o con «Pegar semanas desde Excel».</p>
+        </field>
+    </record>
+
+    <!-- 3.18.0: capacidad de venta semanal (Jose, 19-nov). -->
+    <record id="qb_forecast_week_view_list" model="ir.ui.view">
+        <field name="name">qb.forecast.week.capacidad.list</field>
+        <field name="model">qb.forecast.week</field>
+        <field name="arch" type="xml">
+            <list string="Capacidad semanal" editable="bottom" create="0" delete="0"
+                  decoration-danger="excedida" decoration-warning="not excedida and uso_pct &gt;= 90">
+                <field name="name" readonly="1"/>
+                <field name="monday" readonly="1" optional="hide"/>
+                <field name="qty_m"/>
+                <field name="capacidad_m" placeholder="250,000"/>
+                <field name="capacidad_efectiva"/>
+                <field name="disponible_m"/>
+                <field name="uso_pct"/>
+                <field name="excedida"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_forecast_week_view_search" model="ir.ui.view">
+        <field name="name">qb.forecast.week.capacidad.search</field>
+        <field name="model">qb.forecast.week</field>
+        <field name="arch" type="xml">
+            <search string="Semanas">
+                <field name="name"/>
+                <filter name="proximas" string="Desde esta semana"
+                        domain="[('monday', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter name="proximas_13" string="Próximas 13 semanas"
+                        domain="[('monday', '&gt;', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')), ('monday', '&lt;', (context_today() + relativedelta(weeks=13)).strftime('%Y-%m-%d'))]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_forecast_week_capacity_action" model="ir.actions.act_window">
+        <field name="name">Capacidad semanal</field>
+        <field name="res_model">qb.forecast.week</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="qb_forecast_week_view_list"/>
+        <field name="search_view_id" ref="qb_forecast_week_view_search"/>
+        <field name="context">{'search_default_proximas_13': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin semanas en el periodo</p>
+            <p>Metros del pronóstico vigente de cada semana (todos los clientes) contra la capacidad de venta
+               que da Producción. Escriba la capacidad de una semana si cambia; vacía, toma la de Ajustes
+               (250,000 m). En rojo, la semana se pasa.</p>
         </field>
     </record>
 
