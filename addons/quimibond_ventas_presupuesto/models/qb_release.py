@@ -18,7 +18,7 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from ..release import fxi_sum, generic_table, lear_aiag, reglas, units, woodbridge_pdf
+from ..release import fxi_sum, generic_table, lear_aiag, pdf_table, reglas, units, woodbridge_pdf
 
 
 def _qb_fmt(qty):
@@ -30,6 +30,7 @@ _READERS = [
     ('fxi_sum', "FXI — Excel SUM (reporte SAP)"),
     ('generic_table', "Excel / CSV genérico (parte × fecha)"),
     ('woodbridge_pdf', "Woodbridge — PDF «Supplier Release Planning Schedule» (Saltillo, León)"),
+    ('pdf_table', "PDF genérico con tabla (parte × fecha: COPO)"),
 ]
 
 
@@ -251,6 +252,8 @@ class QbRelease(models.Model):
             } for p in data['parts']]
         if reader == 'woodbridge_pdf':
             return self._qb_parse_woodbridge(content)
+        if reader == 'pdf_table':
+            return self._qb_parse_pdf_table(content)
         raise ValueError("El perfil no tiene un lector conocido.")
 
     @staticmethod
@@ -262,6 +265,36 @@ class QbRelease(models.Model):
         except ImportError:  # pragma: no cover - versiones con PyPDF2
             from odoo.tools.pdf import PdfFileReader
             return PdfFileReader
+
+    def _qb_parse_pdf_table(self, content):
+        """3.27.0: PDF con una tabla parte × fecha (COPO). Usa los encabezados del lector genérico del perfil;
+        de cada parte toma su OC, la última factura considerada (como el packing slip) y lo recibido."""
+        profile = self.profile_id
+        if not units.customer_unit(profile.generic_uom):
+            raise ValueError("El perfil no dice en qué unidad manda el cliente (MT, LY, KG, M2…).")
+        try:
+            text = pdf_table.pdf_layout_text(content, self._qb_pdf_reader_cls())
+        except pdf_table.PdfTableError:
+            raise
+        except Exception as exc:  # pypdf lanza muchos tipos distintos con PDF dañados
+            raise ValueError("No se pudo leer el PDF: %s" % exc) from exc
+        data = pdf_table.parse_text(
+            text, order=profile.generic_date_order or 'dmy',
+            part_header=profile.generic_part_header or None, po_header=profile.generic_po_header or None,
+            desc_header=profile.generic_desc_header or None,
+            part_col=profile.generic_part_col - 1 if profile.generic_part_col > 0 else None,
+            desc_col=profile.generic_desc_col - 1 if profile.generic_desc_col > 0 else None)
+        if data['warnings']:
+            self.message_post(body="Avisos del archivo:\n- " + "\n- ".join(data['warnings'][:30]))
+        ref = data.get('release_ref') or (self.filename or '').rsplit('.', 1)[0] or False
+        when = data.get('release_date') or fields.Date.context_today(self)
+        return [{
+            'release_ref': ref, 'release_date': when, 'customer_part': p['customer_part'],
+            'description': p.get('description'), 'customer_po': p.get('customer_po'),
+            'uom': profile.generic_uom.strip().upper(),
+            'cum_received': p.get('cum_received', 0.0), 'packing_slip': p.get('last_invoice'),
+            'lines': [{'date': ln['date'], 'qty': ln['qty'], 'line_type': 'P'} for ln in p['lines']],
+        } for p in data['parts']]
 
     def _qb_parse_woodbridge(self, content):
         """3.16.0: release de Woodbridge (Saltillo Lamination) en PDF o en su texto. El número de

@@ -33,6 +33,11 @@ LONG_DATE = ('date', 'fecha', 'delivery date', 'due date', 'ship date', 'fecha d
 LONG_QTY = ('qty', 'quantity', 'cantidad', 'cant', 'requerido', 'required', 'gross need', 'demand')
 
 
+# 3.27.0: fechas con el mes en letra (16-Nov-26, 7-dic-2026), inglés o español.
+MONTHS = {'jan': 1, 'ene': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'abr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
+          'ago': 8, 'sep': 9, 'set': 9, 'oct': 10, 'nov': 11, 'dec': 12, 'dic': 12}
+
+
 class GenericReleaseError(ValueError):
     """El archivo no tiene una tabla parte × fecha legible."""
 
@@ -58,6 +63,11 @@ def to_date(value, order='dmy'):
     m = re.fullmatch(r'(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T].*)?', text)
     if m:
         return _safe(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    m = re.fullmatch(r'(\d{1,2})[\s/.-]+([A-Za-zé]{3,})\.?[\s/.-]+(\d{2,4})', text)
+    if m and m.group(2)[:3].lower() in MONTHS:
+        year = int(m.group(3))
+        year += 2000 if year < 100 else 0
+        return _safe(year, MONTHS[m.group(2)[:3].lower()], int(m.group(1)))
     m = re.fullmatch(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})', text)
     if m:
         a, b, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
