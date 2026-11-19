@@ -50,10 +50,15 @@ class TestCierreInventario(TransactionCase):
         self.assertIn(self.hilo, productos)
         self.assertFalse(self.company._qb_cuentas_excluidas())
 
-    def test_marcada_excluye_subcategorias(self):
+    def test_subcategoria_no_hereda(self):
         self.refacciones.qb_excluir_cierre = True
+        self.assertIn(self.broca, self._productos_del_cierre(),
+                      'La subcategoría sin marcar se sigue valuando (Empaque / Bolsas cuelga de Refacciones)')
+
+    def test_marcada_no_se_valua(self):
+        self.refacciones_sub.qb_excluir_cierre = True
         productos = self._productos_del_cierre()
-        self.assertNotIn(self.broca, productos, 'La subcategoría de una categoría marcada no se valúa')
+        self.assertNotIn(self.broca, productos)
         self.assertIn(self.hilo, productos)
         valor = self.company.stock_value()
         self.assertNotIn(self.cta_refacciones, valor)
@@ -61,6 +66,7 @@ class TestCierreInventario(TransactionCase):
 
     def test_cuentas_excluidas(self):
         self.refacciones.qb_excluir_cierre = True
+        self.refacciones_sub.qb_excluir_cierre = True
         self.maquila.qb_excluir_cierre = True
         cuentas = self.company._qb_cuentas_excluidas()
         self.assertIn(self.cta_refacciones, cuentas)

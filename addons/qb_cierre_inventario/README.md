@@ -18,7 +18,7 @@ nativa de excluir una categoría. En Quimibond eso:
 
 ## Qué hace
 
-Para una categoría marcada y todas sus subcategorías:
+Para cada categoría marcada (la casilla **no** se hereda: Refacciones y Consumibles tiene debajo Empaque / Bolsas y Tubos, que sí son inventario en 115.02.01; cada subcategoría se marca aparte):
 
 - `_get_valuation_product_domain`: sus productos no entran al cierre ni al reporte;
 - `_get_location_valuation_vals`: sus movimientos no entran a la reclasificación
