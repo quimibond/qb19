@@ -53,6 +53,11 @@
                             <field name="product_id"/>
                             <field name="conversion"/>
                             <field name="factor" invisible="conversion != 'fija'"/>
+                            <label for="roll_qty"/>
+                            <div class="o_row">
+                                <field name="roll_qty"/>
+                                <field name="roll_uom" invisible="not roll_qty"/>
+                            </div>
                             <field name="confirmed_by_id" invisible="state != 'confirmado'"/>
                             <field name="confirmed_date" invisible="state != 'confirmado'"/>
                             <field name="company_id" groups="base.group_multi_company"/>
