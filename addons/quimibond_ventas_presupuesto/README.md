@@ -32,8 +32,8 @@ y el pronóstico los mandaba al 7-dic). Decisión de Jose: **en las semanas cong
   pedido»). Sin pedido, se queda el pronóstico anterior. Los pedidos se atribuyen al perfil por su dirección de
   entrega; un cliente con varios perfiles sin dirección (Saltillo y León) sigue con el pronóstico anterior.
 - La semana de un pedido es la de embarque con que nació de «Proponer pedidos» (`qb_forecast_week`) o la de su
-  fecha compromiso. Si esa semana no tiene pronóstico, el pedido se liga a la semana con pronóstico más cercana
-  (hasta 3 semanas; `LINK_WEEKS`). Lejos de todo pronóstico entra como semana «Pedido del cliente» (3.21.0).
+  fecha compromiso. Ligar un pedido a la semana con pronóstico más cercana se probó y Jose lo rechazó: el pedido
+  se va a generar desde el pronóstico y, al moverlo, se mueve la semana (siguiente versión).
 
 ## El PDF de COPO se lee con el pypdf de Odoo.sh (19.0.3.27.1, 2026-11-19)
 

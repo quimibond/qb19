@@ -476,20 +476,6 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertIn("Congelada con pedido", by_week[weeks[1]].regla_nota)
         self.assertIn("Descuenta 150", by_week[weeks[3]].regla_nota)
 
-    def test_11c_pedido_sin_pronostico_en_su_semana(self):
-        """3.28.0: el pedido se liga a la semana con pronóstico más cercana."""
-        from odoo import fields as odoo_fields
-        today = odoo_fields.Date.context_today(self.env.user)
-        w0 = today - timedelta(days=today.weekday())
-        line = self.env['qb.forecast.line'].create({
-            'partner_id': self.customer.id, 'product_id': self.product.id, 'week': w0 + timedelta(weeks=3),
-            'qty_origen': 500, 'origen': 'excel'})
-        self._order(w0 + timedelta(weeks=2), 300)
-        line.action_qb_refresh()
-        self.assertEqual((line.qty_pedido, line.qty_neta), (300, 200))
-        self.assertFalse(self._forecast().filtered(lambda l: l.origen == 'pedido'),
-                         "Con pronóstico cerca, el pedido no crea otra semana")
-
     def test_12_embarques_cada_n_semanas(self):
         from odoo import fields as odoo_fields
         today = odoo_fields.Date.context_today(self.env.user)
