@@ -258,3 +258,16 @@ class TestNegociacion(AccountTestInvoicingCommon):
         wiz.action_confirmar()
         self.assertEqual(neg.state, 'borrador')
         self.assertEqual(neg.regreso_count, 1)
+
+    def test_08_divisa_con_lineas_en_el_mismo_create(self):
+        """1.8.1: el TC se fija antes de crear las líneas que vienen en el mismo create; el costo (en pesos)
+        llega convertido a la moneda de la negociación."""
+        eur = self.env.ref('base.EUR')
+        eur.active = True
+        self.env['res.currency.rate'].create({'currency_id': eur.id, 'company_id': self.company.id,
+                                              'name': date(2026, 1, 1), 'rate': 0.05})
+        neg = self._negociacion(currency_id=eur.id, linea_ids=[Command.create({
+            'product_id': self.crep.id, 'tipo': 'rebaja_pct', 'rebaja_pct': 1.0})])
+        self.assertAlmostEqual(neg.fx_rate, 20.0, places=4)
+        self.assertAlmostEqual(neg.linea_ids.costo_completo, 0.95 / 20.0, places=4)
+        self.assertAlmostEqual(neg.linea_ids.costo_variable, 0.70 / 20.0, places=4)
