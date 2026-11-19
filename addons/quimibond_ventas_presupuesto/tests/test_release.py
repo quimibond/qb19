@@ -343,3 +343,62 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertEqual(len(release.activity_ids), 1)
         Release.cron_qb_release_reminders()
         self.assertEqual(len(release.activity_ids), 1, "La segunda corrida no duplica")
+
+    # --- 3.17.0: ajustes de Ventas sobre el release (Jose, 18-nov) -----------------
+    def _apply(self, text=LEAR_TEXT):
+        release = self._release(text)
+        release.action_read()
+        if not self.env['qb.customer.part'].search([
+                ('partner_id', '=', self.customer.id), ('customer_part', '=', 'LX00000001AA'),
+                ('state', '=', 'confirmado')]):
+            self._confirm_part()
+        release.action_mark_reviewed()
+        release.action_apply()
+        return release
+
+    def _week(self, day):
+        return self._forecast().filtered(lambda l: l.week == day)
+
+    def test_09_el_siguiente_release_conserva_el_ajuste_de_ventas(self):
+        self._apply()
+        week = self._week(date(2040, 12, 24))
+        self.assertEqual((week.qty_release, week.ajustado), (200, False))
+        week.write({'qty_origen': 180.0})
+        self.assertTrue(week.ajustado)
+        self.assertEqual(week.qty_diferencia, -20)
+        change = self.env['qb.forecast.change'].search([('line_id', '=', week.id)], limit=1)
+        self.assertIn("Ajuste de Ventas", change.note)
+
+        # Mismo número del cliente: el ajuste se queda y no hay aviso.
+        self._apply(LEAR_TEXT.replace("Release ID: 000901", "Release ID: 000902"))
+        self.assertEqual((week.qty_venta, week.qty_release, week.release_cambio), (180, 200, False))
+
+        # El cliente cambia: el ajuste se queda, «Pide el cliente» se actualiza y la semana se marca.
+        third = self._apply(LEAR_TEXT.replace("Release ID: 000901", "Release ID: 000903")
+                            .replace("12/24/40 P 200 1,300 200", "12/24/40 P 260 1,360 260"))
+        self.assertEqual((week.qty_venta, week.qty_release, week.release_cambio), (180, 260, True))
+        self.assertEqual(week.release_id, third)
+        self.assertEqual(self._week(date(2040, 12, 17)).qty_venta, 100, "Lo no ajustado sigue al release")
+
+        week.action_qb_conservar_ajuste()
+        self.assertFalse(week.release_cambio)
+        week.action_qb_volver_release()
+        self.assertEqual((week.qty_venta, week.ajustado), (260, False))
+
+    def test_10_ajuste_en_cero_y_semana_que_el_release_ya_no_trae(self):
+        self._apply()
+        Line = self.env['qb.forecast.line']
+        week = self._week(date(2040, 12, 31))
+        cell = [('partner_id', '=', self.customer.id), ('plant', '=', False),
+                ('product_id', '=', self.product.id), ('uom_origen', '=', False),
+                ('week_id', '=', week.week_id.id)]
+        Line.grid_update_cell(cell, 'qty_origen', -300.0)
+        self.assertTrue(week.exists(), "En la matriz, una semana del release en cero no se quita")
+        self.assertEqual((week.qty_venta, week.ajustado), (0, True))
+
+        self._apply(LEAR_TEXT.replace("Release ID: 000901", "Release ID: 000902")
+                    .replace("12/31/40 P 300 1,600 300", ""))
+        self.assertTrue(week.exists(), "La semana ajustada que el release ya no trae se queda")
+        self.assertEqual((week.qty_release, week.release_cambio), (0, True))
+        week.action_qb_volver_release()
+        self.assertFalse(week.exists(), "Volver al release quita lo que el cliente ya no pide")
