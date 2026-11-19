@@ -653,6 +653,11 @@ class QbForecastLine(models.Model):
                 weeks_of[(partner_id, articulo_id)].add(week)
             pedidos = defaultdict(list)
             for sol in self._qb_open_sale_lines(company, partners):
+                fl = sol.qb_forecast_line_id
+                if fl and fl in company_lines:
+                    # 3.29.0: un renglón ligado cuenta en su semana del pronóstico.
+                    pedidos[(fl.partner_id.id, (fl.articulo_id or fl.product_id).id, fl.week)].append(sol)
+                    continue
                 pa = (sol.order_id.partner_id.commercial_partner_id.id,
                       (sol.product_id.qb_articulo_id or sol.product_id).id)
                 # 3.28.0: semana de embarque del pedido (la de «Proponer pedidos» o la de su compromiso).

@@ -10,6 +10,9 @@
                   decoration-danger="not conv_ok"
                   decoration-warning="dev_state in ('desarrollo', 'pilotaje', 'archivado') or release_cambio">
                 <header>
+                    <!-- 3.29.0: el pedido sale del pronóstico y queda ligado a su semana. -->
+                    <button name="action_qb_create_order" type="object" string="Crear pedido"
+                            class="btn-primary" groups="sales_team.group_sale_salesman"/>
                     <button name="action_qb_volver_release" type="object" string="Volver al release"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_qb_conservar_ajuste" type="object" string="Conservar el ajuste"
@@ -40,6 +43,8 @@
                 <field name="qty_m" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_kg" readonly="1" sum="Total" optional="show"/>
                 <field name="qty_pedido" optional="show"/>
+                <field name="qty_ligada" optional="show"/>
+                <field name="qty_por_pedir" optional="show"/>
                 <field name="qty_neta" optional="hide"/>
                 <field name="zona" optional="show"/>
                 <field name="origen" optional="show"/>
@@ -58,6 +63,9 @@
         <field name="arch" type="xml">
             <form string="Semana del pronóstico">
                 <header>
+                    <button name="action_qb_create_order" type="object" string="Crear pedido"
+                            class="btn-primary" invisible="qty_por_pedir &lt;= 0 or not partner_id"
+                            groups="sales_team.group_sale_salesman"/>
                     <button name="action_qb_volver_release" type="object" string="Volver al release"
                             invisible="not ajustado"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
@@ -66,6 +74,12 @@
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_qb_view_orders" type="object" class="oe_stat_button"
+                                icon="fa-dollar" invisible="order_count == 0">
+                            <field name="order_count" widget="statinfo" string="Pedidos"/>
+                        </button>
+                    </div>
                     <div class="alert alert-warning" role="alert" invisible="not release_cambio">
                         El cliente cambió lo que pide en un release posterior a su ajuste (o ya no trae la
                         semana). Corrija la cantidad, conserve el ajuste o vuelva al release.
@@ -119,6 +133,8 @@
                         <group string="Pedidos">
                             <field name="zona"/>
                             <field name="qty_pedido"/>
+                            <field name="qty_ligada"/>
+                            <field name="qty_por_pedir"/>
                             <field name="qty_neta"/>
                         </group>
                         <group string="De dónde salió">

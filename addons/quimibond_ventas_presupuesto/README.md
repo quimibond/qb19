@@ -21,6 +21,29 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pedido y pronóstico ligados (19.0.3.29.0, 2026-11-19)
+
+Jose (19-nov): «quisiera poder generar el pedido desde ahí […] si hago un cambio de fecha que me mueva la captura
+semanal a la fecha que moví el pedido […] que no haya doble captura en pedido y en el forecast y viceversa».
+Aprobó este diseño (`models/qb_forecast_orders.py`):
+
+- **Crear pedido** (Pronóstico vigente, lista y ficha): una cotización por cliente, dirección, OC y semana con
+  lo que falta por pedir («Por pedir» = cantidad − «Pedido ligado»). La OC sale de la regla del cliente,
+  Condiciones de entrega o el release; la fecha, del día de recolección. Se abre la cotización nativa para
+  revisarla y confirmarla. Cada renglón queda ligado a su semana (`sale.order.line.qb_forecast_line_id`); la
+  ficha de la semana tiene el botón «Pedidos».
+- **El pedido manda sobre su semana**: si cambia la fecha de entrega, lo ligado se mueve a la semana nueva (la
+  vieja se quita si se queda sin cantidad ni pedidos; si vino de un release queda en cero y ajustada para que el
+  siguiente release no la vuelva a llenar). Si cambia la cantidad y el pedido cubría la semana, la semana sigue
+  al pedido; si la cubría en parte, solo crece cuando el pedido se pasa. Todo queda en la bitácora.
+- **Pedido capturado a mano**: al confirmarse se liga a la semana del cliente con ese artículo en la semana del
+  pedido; si no hay, a la más cercana (hasta 4 semanas) con cantidad sin pedir, y la mueve a la semana del pedido.
+  Sin pronóstico cerca entra como «Pedido del cliente» (3.21.0).
+- **Releases**: una semana con pedido confirmado (también después de las congeladas) se queda con lo pedido; lo
+  que el cliente pida de más pasa a la siguiente semana sin pedido y lo de menos se descuenta de las siguientes.
+- «Proponer pedidos» también deja la liga, y lo que cambia en los pedidos no se devuelve al pronóstico (ya sale
+  de él; contexto `qb_no_forecast_sync`).
+
 ## En las congeladas manda el pedido (19.0.3.28.0, 2026-11-19)
 
 Jose (19-nov, Zwisstex CW47): «lo que está congelado de las 3 semanas no lo mueve, eso está mal». La congelada

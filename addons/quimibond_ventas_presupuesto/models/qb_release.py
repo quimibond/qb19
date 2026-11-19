@@ -655,10 +655,15 @@ class QbRelease(models.Model):
         result, notes = {}, {}
         for product, asks in by_product.items():
             roll, roll_uom = terms._qb_roll_for(product)
-            if not (frozen or group or roll):
+            articulo = product.qb_articulo_id or product
+            # 3.28.0/3.29.0 (Jose, 19-nov): una semana con pedido confirmado se queda con lo pedido; en las
+            # congeladas es su programado y después de ellas es «fija».
+            ordered = self._qb_week_orders(articulo, current, product)
+            frozen_weeks = {current + timedelta(weeks=i) for i in range(frozen)}
+            fijas = {w: q for w, q in ordered.items() if w not in frozen_weeks}
+            if not (frozen or group or roll or fijas):
                 result.update({(product, week): qty for week, qty in asks.items()})
                 continue
-            articulo = product.qb_articulo_id or product
             programado = defaultdict(float)
             for ln in existing:
                 if (ln.product_id.qb_articulo_id or ln.product_id) != articulo or \
@@ -667,9 +672,8 @@ class QbRelease(models.Model):
                 qty = ln.qty_venta if ln.product_id == product else ln.product_id.qb_convertir(
                     ln.qty_venta, 'venta', product._qb_sale_unit())
                 programado[ln.week] += qty or 0.0
-            # 3.28.0 (Jose, 19-nov): en las congeladas manda lo ya pedido (pedidos confirmados de esa semana).
-            ordered = self._qb_frozen_orders(articulo, current, frozen, product) if frozen else {}
-            programado.update(ordered)
+            frozen_ordered = {w: q for w, q in ordered.items() if w in frozen_weeks}
+            programado.update(frozen_ordered)
 
             def round_up(qty, product=product, roll=roll, roll_uom=roll_uom):
                 in_roll = product.qb_convertir(qty, 'venta', roll_uom)
@@ -680,7 +684,7 @@ class QbRelease(models.Model):
             weeks, week_notes = reglas.aplicar_reglas(
                 asks, dict(programado), current, congeladas=frozen, agrupar=group,
                 inicio_bloques=_monday(terms.group_start) if terms.group_start else None,
-                redondear=round_up if roll else None, con_pedido=set(ordered))
+                redondear=round_up if roll else None, con_pedido=set(frozen_ordered), fijas=fijas)
             sample = next(iter(info[(product, w)] for w in asks))
             for week, qty in weeks.items():
                 result[(product, week)] = qty
@@ -689,9 +693,9 @@ class QbRelease(models.Model):
                     notes[(product, week)] = week_notes[week]
         return result, notes
 
-    def _qb_frozen_orders(self, articulo, current, frozen, product):
-        """{lunes: cantidad pedida} de las semanas congeladas que tienen pedido confirmado, en la unidad de
-        venta de ``product``. Solo cuando los pedidos se pueden atribuir a este perfil: con dirección de
+    def _qb_week_orders(self, articulo, current, product):
+        """{lunes: cantidad pedida} de las semanas desde la actual que tienen pedido confirmado, en la unidad
+        de venta de ``product``. Solo cuando los pedidos se pueden atribuir a este perfil: con dirección de
         entrega, los de esa dirección; sin ella, si el cliente no tiene otro perfil (Saltillo y León
         comparten cliente y no se distinguen)."""
         self.ensure_one()
@@ -700,12 +704,11 @@ class QbRelease(models.Model):
                 ('partner_id', '=', profile.partner_id.id), ('company_id', '=', self.company_id.id),
                 ('id', '!=', profile.id)]):
             return {}
-        weeks = {current + timedelta(weeks=i) for i in range(frozen)}
         ordered = self.env['qb.forecast.line']._qb_ordered_by_week(
-            self.company_id, profile.partner_id, articulo, profile.ship_to_id or None, weeks)
+            self.company_id, profile.partner_id, articulo, profile.ship_to_id or None)
         out = {}
         for week, qty in ordered.items():
-            if qty and qty > 1e-6:
+            if week >= current and qty and qty > 1e-6:
                 if product != articulo:
                     qty = articulo.qb_convertir(qty, 'venta', product._qb_sale_unit())
                 if qty:
