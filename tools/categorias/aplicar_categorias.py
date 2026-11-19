@@ -108,6 +108,8 @@ for pid, path in DATA['mover'].items():
     path = CORREGIR.get(int(pid), path)
     if es_crudo(p.categ_id):
         continue  # lo que ya está en crudo no se toca
+    if (p.categ_id.complete_name or '').startswith('Maquila'):
+        continue  # maquila se queda: su ingreso va a 401.01.04 y se valúa periódico
     if path.startswith(CRUDO + ' / '):
         path = CRUDO  # crudo (H) fuera de su categoría: va a la de siempre, sin «/ KG»
     dest = asegurar(path)
@@ -126,7 +128,8 @@ for pid in DATA['archivar']:
     p = Product.browse(pid).exists()
     if not p or not p.active or es_crudo(p.categ_id):
         continue
-    if p.qty_available or env['stock.quant'].sudo().search_count([('product_id', '=', p.id), ('quantity', '!=', 0)]):
+    if p.qty_available or env['stock.quant'].sudo().search_count([
+            ('product_id', '=', p.id), ('quantity', '!=', 0), ('location_id.usage', '=', 'internal')]):
         no_arch.append(p.default_code); continue
     if APLICAR:
         tmpl = p.product_tmpl_id
