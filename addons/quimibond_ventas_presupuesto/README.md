@@ -21,6 +21,50 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pedido y pronóstico ligados (19.0.3.29.0, 2026-11-19)
+
+Jose (19-nov): «quisiera poder generar el pedido desde ahí […] si hago un cambio de fecha que me mueva la captura
+semanal a la fecha que moví el pedido […] que no haya doble captura en pedido y en el forecast y viceversa».
+Aprobó este diseño (`models/qb_forecast_orders.py`):
+
+- **Crear pedido** (Pronóstico vigente, lista y ficha): una cotización por cliente, dirección, OC y semana con
+  lo que falta por pedir («Por pedir» = cantidad − «Pedido ligado»). La OC sale de la regla del cliente,
+  Condiciones de entrega o el release; la fecha, del día de recolección. Se abre la cotización nativa para
+  revisarla y confirmarla. Cada renglón queda ligado a su semana (`sale.order.line.qb_forecast_line_id`); la
+  ficha de la semana tiene el botón «Pedidos».
+- **El pedido manda sobre su semana**: si cambia la fecha de entrega, lo ligado se mueve a la semana nueva (la
+  vieja se quita si se queda sin cantidad ni pedidos; si vino de un release queda en cero y ajustada para que el
+  siguiente release no la vuelva a llenar). Si cambia la cantidad y el pedido cubría la semana, la semana sigue
+  al pedido; si la cubría en parte, solo crece cuando el pedido se pasa. Todo queda en la bitácora.
+- **Pedido capturado a mano**: al confirmarse se liga a la semana del cliente con ese artículo en la semana del
+  pedido; si no hay, a la más cercana (hasta 4 semanas) con cantidad sin pedir, y la mueve a la semana del pedido.
+  Sin pronóstico cerca entra como «Pedido del cliente» (3.21.0).
+- **Releases**: una semana con pedido confirmado (también después de las congeladas) se queda con lo pedido; lo
+  que el cliente pida de más pasa a la siguiente semana sin pedido y lo de menos se descuenta de las siguientes.
+- «Proponer pedidos» también deja la liga, y lo que cambia en los pedidos no se devuelve al pronóstico (ya sale
+  de él; contexto `qb_no_forecast_sync`).
+
+## En las congeladas manda el pedido (19.0.3.28.0, 2026-11-19)
+
+Jose (19-nov, Zwisstex CW47): «lo que está congelado de las 3 semanas no lo mueve, eso está mal». La congelada
+se quedaba con el pronóstico anterior aunque ya hubiera pedido confirmado (JNT160: 5,500 m pedidos para el 23-nov
+y el pronóstico los mandaba al 7-dic). Decisión de Jose: **en las semanas congeladas manda el pedido confirmado**.
+
+- Al aplicar un release, una semana congelada con pedido confirmado (completo, lo entregado también cuenta) se
+  queda con lo pedido; la diferencia con lo que pide el cliente pasa a la semana 4 como antes («Congelada con
+  pedido»). Sin pedido, se queda el pronóstico anterior. Los pedidos se atribuyen al perfil por su dirección de
+  entrega; un cliente con varios perfiles sin dirección (Saltillo y León) sigue con el pronóstico anterior.
+- La semana de un pedido es la de embarque con que nació de «Proponer pedidos» (`qb_forecast_week`) o la de su
+  fecha compromiso. Ligar un pedido a la semana con pronóstico más cercana se probó y Jose lo rechazó: el pedido
+  se va a generar desde el pronóstico y, al moverlo, se mueve la semana (siguiente versión).
+
+## El PDF de COPO se lee con el pypdf de Odoo.sh (19.0.3.27.1, 2026-11-19)
+
+En producción el primer release de COPO quedó «por revisar»: el pypdf de Odoo.sh no tiene el modo `layout`. Sin
+ese modo el lector arma el acomodo con las posiciones del content stream (`stream_layout_text`: cada texto en su
+x, un renglón por fila de la hoja juntando lo que Excel centra en la vertical, y el segundo renglón de una celda
+en su propio renglón). Con el PDF real de COPO da lo mismo que el modo `layout` de pypdf 6.
+
 ## Releases en PDF con tabla (19.0.3.27.0, 2026-11-19)
 
 Jose (19-nov): «COPO manda un PDF y eso no hay cómo meterlo en los perfiles de release». Lector nuevo **«PDF

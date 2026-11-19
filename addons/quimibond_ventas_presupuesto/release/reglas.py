@@ -25,11 +25,16 @@ def _week(monday, n):
 
 
 def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, inicio_bloques=None,
-                   redondear=None):
+                   redondear=None, con_pedido=(), fijas=None):
     """Devuelve ``(semanas, notas)``.
 
     ``pide``: {lunes: cantidad} del release. ``programado``: {lunes: cantidad} que ya tenía el
     pronóstico (para las congeladas). ``redondear``: función cantidad → cantidad redondeada (o None).
+    ``con_pedido``: semanas congeladas cuyo ``programado`` es lo ya pedido (3.28.0, Jose 19-nov: en las
+    congeladas manda el pedido confirmado).
+    ``fijas``: {lunes: cantidad pedida} de las semanas después de las congeladas que ya tienen pedido
+    (3.29.0): se quedan con lo pedido y la diferencia con lo que pide el cliente pasa a la siguiente semana
+    sin pedido (si es baja, se descuenta de las siguientes).
     ``semanas``: {lunes: cantidad} a escribir; ``notas``: {lunes: texto} de lo que hizo cada regla.
     Las semanas anteriores a la semana en curso quedan como las manda el cliente.
     """
@@ -51,7 +56,8 @@ def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, ini
             if week in pide or week in programado:
                 result[week] = kept
                 if abs(asked - kept) > EPS:
-                    note(week, "Congelada: el cliente pide %s, se queda %s" % (_fmt(asked), _fmt(kept)))
+                    note(week, "Congelada%s: el cliente pide %s, se queda %s" % (
+                        " con pedido" if week in con_pedido else "", _fmt(asked), _fmt(kept)))
         if delta > EPS:
             result[target] = result.get(target, 0.0) + delta
             note(target, "Recibe +%s de las semanas congeladas" % _fmt(delta))
@@ -70,12 +76,42 @@ def aplicar_reglas(pide, programado, semana_actual, congeladas=0, agrupar=0, ini
     else:
         target = semana_actual
 
+    # 1b. Semanas con pedido después de las congeladas (3.29.0).
+    fijas = {w: q for w, q in (fijas or {}).items() if w >= target}
+    if fijas:
+        carry = 0.0
+        weeks = sorted(w for w in set(result) | set(fijas) if w >= target)
+        last = weeks[-1] if weeks else target
+        for week in weeks:
+            if week in fijas:
+                asked = result.get(week, 0.0)
+                carry += asked - fijas[week]
+                result[week] = fijas[week]
+                if abs(asked - fijas[week]) > EPS:
+                    note(week, "Con pedido: el cliente pide %s, se queda %s" % (_fmt(asked), _fmt(fijas[week])))
+            elif carry > EPS:
+                result[week] = result.get(week, 0.0) + carry
+                note(week, "Recibe +%s de semanas con pedido" % _fmt(carry))
+                carry = 0.0
+            elif carry < -EPS:
+                take = min(result.get(week, 0.0), -carry)
+                if take > EPS:
+                    result[week] -= take
+                    carry += take
+                    note(week, "Descuenta %s que bajó en semanas con pedido" % _fmt(take))
+        if carry > EPS:
+            nxt = last + timedelta(weeks=1)
+            result[nxt] = result.get(nxt, 0.0) + carry
+            note(nxt, "Recibe +%s de semanas con pedido" % _fmt(carry))
+        elif carry < -EPS:
+            note(last, "Quedan %s de baja sin semana de donde descontar" % _fmt(-carry))
+
     # 2. Embarques cada N semanas.
     if agrupar and agrupar > 1:
         anchor = inicio_bloques or target
         grouped = {}
         for week in sorted(result):
-            if week < target:
+            if week < target or week in fijas:
                 grouped[week] = grouped.get(week, 0.0) + result[week]
                 continue
             offset = ((week - anchor).days // 7) % agrupar

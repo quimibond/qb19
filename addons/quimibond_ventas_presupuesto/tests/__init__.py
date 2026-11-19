@@ -13,3 +13,4 @@ from . import test_sales_project
 from . import test_sales_actual
 from . import test_sales_month_plan
 from . import test_order_proposal
+from . import test_forecast_orders

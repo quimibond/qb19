@@ -454,6 +454,8 @@ class QbOrderProposal(models.TransientModel):
         se cambia directo; un pedido confirmado lo ajusta el administrador de ventas (se desbloquea,
         se cambia y se vuelve a bloquear, con nota en el chatter)."""
         self.ensure_one()
+        # 3.29.0: lo que hace la propuesta ya sale del pronóstico: no se devuelve a él.
+        self = self.with_context(qb_no_forecast_sync=True)  # noqa: PLW0642
         lines = self.line_ids.filtered(
             lambda l: l.apply and not l.applied and l.action in ('nuevo', 'aumenta', 'baja', 'sin_cambio'))
         if not lines:
@@ -622,6 +624,15 @@ class QbOrderProposalLine(models.TransientModel):
             order.message_post(body=Markup("Cantidad de %s: %s → %s (%s).") % (
                 sol.product_id.display_name, '{:,.2f}'.format(before), '{:,.2f}'.format(qty), note))
 
+    def _qb_forecast_line(self):
+        """3.29.0: la semana del pronóstico de este renglón (para ligar el renglón de pedido)."""
+        self.ensure_one()
+        domain = [('company_id', '=', self.env.company.id),
+                  ('partner_id', '=', self.partner_id.commercial_partner_id.id),
+                  ('product_id', '=', self.product_id.id), ('week', '=', self.week),
+                  ('ship_to_id', '=', self.ship_to_id.id or False)]
+        return self.env['qb.forecast.line'].sudo().search(domain, limit=1)
+
     def _qb_apply(self):
         """Deja en los pedidos de la OC y semana la cantidad del pronóstico del producto, nunca menos de
         lo entregado. Devuelve los pedidos que tocó."""
@@ -662,7 +673,8 @@ class QbOrderProposalLine(models.TransientModel):
             self.env['sale.order.line'].create({
                 'order_id': order.id, 'product_id': self.product_id.id, 'product_uom_qty': need,
                 'qb_forecast_week': self.week, 'qb_release_id': self.release_id.id or False,
-                'qb_customer_part': self.customer_part or False})
+                'qb_customer_part': self.customer_part or False,
+                'qb_forecast_line_id': self._qb_forecast_line().id or False})
             if was_locked:
                 order.action_lock()
             touched |= order
