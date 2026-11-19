@@ -424,6 +424,13 @@ class MrpProduction(models.Model):
                     'La orden %(orden)s tiene %(n)s rollo(s) sin inspeccionar: %(rollos)s.',
                     orden=orden.name, n=len(pendientes),
                     rollos=', '.join(pendientes.sorted('secuencia').mapped('name'))))
+            # 3.22.0: los tramos quitados a los rollos se juntan en un rollo de FE o Segunda antes de cerrar el baño.
+            sin_juntar = orden.tramo_ids.filtered(lambda t: not t.rollo_final_id)
+            if sin_juntar:
+                raise UserError(_(
+                    'La orden %(orden)s tiene %(n)s tramo(s) sin juntar (%(kg).2f kg). Júntalos en un rollo de FE o '
+                    'Segunda con «JUNTAR TRAMOS» antes de cerrar el baño.', orden=orden.name, n=len(sin_juntar),
+                    kg=sum(sin_juntar.mapped('kg_neto'))))
 
     def _moves_crudo(self):
         """3.3.2: consumo de la tela cruda de la orden en kg: el componente en peso con más kg planeados (el crudo va a

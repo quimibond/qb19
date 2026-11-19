@@ -118,6 +118,7 @@
                                    decoration-warning="clasificacion == 'SEGUNDA'"
                                    decoration-danger="clasificacion == 'DESP'"/>
                             <field name="bitacora_ids" widget="many2many_tags" string="De los rollos de Rama"/>
+                            <field name="es_tramos" string="De tramos" optional="show"/>
                             <field name="kg_bruto" string="Bruto (kg)"/>
                             <field name="tara" string="Tara (kg)"/>
                             <field name="kg_neto" string="Neto (kg)" sum="Total kg"/>
@@ -134,6 +135,20 @@
                                     title="Etiqueta preliminar (68 x 38 mm)"/>
                             <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
                                     title="Etiqueta final (76 x 102 mm)"/>
+                        </list>
+                    </field>
+                    <separator string="Tramos quitados a los rollos" invisible="not tramo_ids"/>
+                    <field name="tramos_pendientes_count" invisible="1"/>
+                    <field name="tramo_ids" readonly="1" invisible="not tramo_ids">
+                        <list decoration-warning="not rollo_final_id">
+                            <field name="bitacora_id" string="Rollo de Rama"/>
+                            <field name="kg_bruto" string="Bruto (kg)" optional="hide"/>
+                            <field name="kg_neto" string="Neto (kg)" sum="Total kg"/>
+                            <field name="metros" sum="Total m"/>
+                            <field name="siglas_defectos" string="Defectos"/>
+                            <field name="operador" string="Operador"/>
+                            <field name="fecha" string="Fecha"/>
+                            <field name="rollo_final_id" string="Rollo de tramos"/>
                         </list>
                     </field>
                 </page>

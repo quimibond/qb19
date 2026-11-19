@@ -18,3 +18,6 @@ def modo_por_defecto(wizard):
 
 def motivo_por_defecto(wizard):
     return MOTIVO_SIN_BASCULA if sin_bascula(wizard.env) else False
+
+
+TOLERANCIA_KG = 0.005  # redondeo de la báscula al comparar pesos contra el rollo de Rama

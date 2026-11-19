@@ -11,6 +11,8 @@
                     <field name="tara_faltante" invisible="1"/>
                     <field name="codigos_error" invisible="1"/>
                     <field name="bitacora_ids" invisible="1"/>
+                    <field name="sin_tramo_alerta" invisible="1"/>
+                    <field name="tramo_kg_bruto" invisible="1"/>
                     <group>
                         <field name="empleado_numero" password="True" default_focus="1"
                                readonly="empleado_numero != False" force_save="1"/>
@@ -83,6 +85,7 @@
                                        required="clasificacion in ('SEGUNDA', 'FE')"/>
                                 <field name="kg_rama"/>
                                 <field name="kg_ya_cortados"/>
+                                <field name="kg_tramos" invisible="not kg_tramos"/>
                                 <field name="merma_kg"/>
                                 <field name="merma_pct"/>
                             </group>
@@ -90,12 +93,24 @@
                         <div class="alert alert-warning" role="alert" invisible="not alertas">
                             <field name="alertas" readonly="1"/>
                         </div>
+                        <div class="alert alert-info" role="status" invisible="not tramo_kg_bruto">
+                            Tramo por registrar con este rollo: <field name="tramo_kg_neto" readonly="1" class="oe_inline"/> kg,
+                            <field name="tramo_metros" readonly="1" class="oe_inline"/> m
+                            (<field name="tramo_defecto_ids" widget="many2many_tags" readonly="1" class="oe_inline"/>).
+                            Se guarda al pulsar REGISTRAR E IMPRIMIR ETIQUETA.
+                        </div>
+                        <group invisible="not sin_tramo_alerta">
+                            <field name="confirma_sin_tramo" widget="boolean_toggle"/>
+                        </group>
                     </div>
                 </sheet>
                 <footer>
                     <button name="action_confirmar" type="object" string="REGISTRAR E IMPRIMIR ETIQUETA"
                             class="btn-primary btn-lg"
                             invisible="not empleado_numero or tara_faltante or not bitacora_ids"/>
+                    <button name="action_quitar_tramo" type="object" string="QUITAR TRAMO"
+                            class="btn-secondary btn-lg" icon="fa-scissors"
+                            invisible="not empleado_numero or tara_faltante or not bitacora_ids or not kg_neto"/>
                     <button string="CANCELAR" class="btn-secondary btn-lg" special="cancel"/>
                 </footer>
             </form>

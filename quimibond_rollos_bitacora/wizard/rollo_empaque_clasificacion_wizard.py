@@ -14,7 +14,7 @@ from odoo.exceptions import UserError
 
 from .pesaje_manual import modo_por_defecto, motivo_por_defecto
 
-from ..models.mrp_rollo_bitacora import CLASIFICACIONES, PARAM_ALERTA_DIFERENCIA_PCT
+from ..models.mrp_rollo_bitacora import CLASIFICACIONES, CLASIFICACIONES_CAPTURA, PARAM_ALERTA_DIFERENCIA_PCT
 
 
 class RolloEmpaqueClasificacionWizard(models.TransientModel):
@@ -49,7 +49,7 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
     weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))
 
     metros = fields.Float('Metros definitivos', digits=(12, 2), compute='_compute_valores', store=True, readonly=False)
-    clasificacion = fields.Selection(CLASIFICACIONES, 'Calidad definitiva', compute='_compute_valores', store=True,
+    clasificacion = fields.Selection(CLASIFICACIONES_CAPTURA, 'Calidad definitiva', compute='_compute_valores', store=True,
                                      readonly=False)
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_empaque_clasif_defecto_rel', 'wizard_id', 'defecto_id',
                                    'Defectos', compute='_compute_valores', store=True, readonly=False,
@@ -96,7 +96,9 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
             clasificado = bool(rollo.clasificacion_final)
             lab = rollo.clasificacion_lab
             wiz.metros = rollo.metros_final if clasificado else rollo.metros
-            wiz.clasificacion = rollo.clasificacion_final or lab or rollo.clasificacion
+            # 3.22.0: un rollo ya registrado como Desperdicio (historial) no propone calidad: se elige PQ, FE o Segunda.
+            propuesta = rollo.clasificacion_final or lab or rollo.clasificacion
+            wiz.clasificacion = propuesta if propuesta != 'DESP' else False
             if clasificado:
                 wiz.defecto_ids = rollo.defecto_final_ids
                 wiz.motivo_ajuste = False
@@ -167,7 +169,7 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
                 raise UserError(_('Captura el motivo de la captura manual del peso.'))
         if not self.clasificacion:
             raise UserError(_('Elige la calidad definitiva del rollo.'))
-        if self.metros < 0 or (self.metros == 0 and self.clasificacion != 'DESP'):
+        if self.metros <= 0:
             raise UserError(_('Captura los metros del rollo.'))
         if self.clasificacion in ('SEGUNDA', 'FE') and not self.defecto_ids:
             raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',
