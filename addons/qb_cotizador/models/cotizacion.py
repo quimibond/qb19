@@ -31,25 +31,14 @@ from types import SimpleNamespace
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .aprobacion import APROBADAS, CLIENTE_MEDIOS, SEMAFOROS, STATES, VIVAS  # noqa: F401 (las reexporta)
 from .settings import (
     APROBADOR_JOB_NAME, PARAM_APROBADOR, PARAM_ARCHIVAR_DIAS, PARAM_ESCALERA_PCT,
-    PARAM_MARGEN_MINIMO, PARAM_SEGUIMIENTO_DIAS, PARAM_SUPLENTE, PARAM_VALIDEZ_DIAS,
-    PARAM_VENTAS, VENTAS_JOB_NAME,
+    PARAM_MARGEN_MINIMO, PARAM_VALIDEZ_DIAS, PARAM_VENTAS, VENTAS_JOB_NAME,
 )
 
 _logger = logging.getLogger(__name__)
 
-STATES = [
-    ('borrador', 'Borrador'),
-    ('por_aprobar', 'Por aprobar'),
-    ('presentada', 'Presentada'),
-    ('ganada', 'Ganada'),
-    ('perdida', 'Perdida'),
-    ('vencida', 'Vencida'),
-    ('reemplazada', 'Reemplazada'),
-]
-VIVAS = ('borrador', 'por_aprobar', 'presentada', 'vencida')
-APROBADAS = ('presentada', 'ganada', 'perdida', 'vencida')
 FX_FUENTES = [('odoo', 'Tipo de cambio de Odoo'), ('manual', 'Capturado a mano')]
 COSTO_FUENTES = [
     ('periodo', 'Costo del producto en el período cerrado'),
@@ -58,16 +47,6 @@ COSTO_FUENTES = [
     ('receta', 'Receta del desarrollo'),
     ('manual', 'Capturado a mano (desarrollo sin receta)'),
     ('legado', 'Importado del cotizador anterior'),
-]
-SEMAFOROS = [
-    ('rojo', 'Debajo del costo variable'),
-    ('ambar', 'Entre pisos: aporta a fijos'),
-    ('verde', 'Cubre todo y deja margen'),
-]
-CLIENTE_MEDIOS = [
-    ('correo', 'Correo'), ('oc', 'Orden de compra'), ('whatsapp', 'WhatsApp'),
-    ('cotizacion_firmada', 'Cotización firmada'),
-    ('direccion', 'Dirección (desarrollo interno)'),  # 1.2.0: mismo catálogo que la aprobación del SGI
 ]
 VOLUMEN_UOMS = [('m', 'm / mes'), ('kg', 'kg / mes')]
 # 1.6.0: unidad en que está expresada la foto del costo (la del volumen al calcular).
@@ -105,8 +84,10 @@ def _num(valor):
 class QbCotizadorCotizacion(models.Model):
     _name = 'qb.cotizador.cotizacion'
     _description = 'Cotización de costo'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    # 1.8.0: el ciclo y la aprobación por puesto viven en qb.cotizador.aprobacion (los comparte la negociación).
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'qb.cotizador.aprobacion']
     _order = 'id desc'
+    _ciclo_nombre = 'cotización'
 
     # ------------------------------------------------------------------
     # Identidad
@@ -255,36 +236,14 @@ class QbCotizadorCotizacion(models.Model):
     # ------------------------------------------------------------------
     # Ciclo
     # ------------------------------------------------------------------
-    state = fields.Selection(STATES, default='borrador', tracking=True, copy=False, index=True)
-    aprobador_job_id = fields.Many2one('hr.job', compute='_compute_aprobacion')
-    puede_aprobar = fields.Boolean(compute='_compute_aprobacion')
-    solicitada_por_id = fields.Many2one('res.users', readonly=True, copy=False)
-    solicitada_el = fields.Datetime(readonly=True, copy=False)
-    approved_by_id = fields.Many2one('res.users', string='Aprobó', readonly=True, copy=False)
-    approved_date = fields.Datetime(string='Aprobada el', readonly=True, copy=False)
-    regreso_motivo_id = fields.Many2one('qb.cotizador.motivo', string='Último motivo de regreso',
-                                        readonly=True, copy=False)
-    regreso_count = fields.Integer(string='Veces regresada', readonly=True, copy=False)
-    presented_by_id = fields.Many2one('res.users', string='Presentó', readonly=True, copy=False)
-    presented_date = fields.Datetime(string='Presentada el', readonly=True, copy=False)
-    validez_hasta = fields.Date(string='Válida hasta', tracking=True, copy=False)
-    seguimiento_fecha = fields.Date(string='Seguimiento el', readonly=True, copy=False)
-    seguimiento_hecho = fields.Boolean(readonly=True, copy=False)
-    cliente_aprobo = fields.Boolean(string='El cliente aprobó la muestra', tracking=True, copy=False)
-    cliente_medio = fields.Selection(CLIENTE_MEDIOS, string='Medio de aprobación', copy=False)
-    cliente_fecha = fields.Date(string='Fecha de aprobación del cliente', copy=False)
-    cliente_evidencia = fields.Binary(string='Evidencia', attachment=True, copy=False)
-    cliente_evidencia_nombre = fields.Char(copy=False)
-    ganada_date = fields.Datetime(string='Ganada el', readonly=True, copy=False)
+    # state, solicitada/aprobada/presentada, validez, seguimiento, aprobación del cliente, ganada y perdida:
+    # campos de qb.cotizador.aprobacion (1.8.0).
     sale_order_id = fields.Many2one('sale.order', string='Pedido', readonly=True, copy=False)
     pricelist_item_id = fields.Many2one('product.pricelist.item', string='Precio en tarifa',
                                         readonly=True, copy=False)
     # 1.2.0 (Jose 2026-10-08, 5.6): cuándo y quién puso el precio en la tarifa; con esto se mide C1.17.
     tarifa_fecha = fields.Datetime(string='Precio en tarifa el', readonly=True, copy=False)
     tarifa_user_id = fields.Many2one('res.users', string='Puso el precio en tarifa', readonly=True, copy=False)
-    perdida_motivo_id = fields.Many2one('qb.cotizador.motivo', string='Motivo de pérdida',
-                                        readonly=True, copy=False)
-    perdida_nota = fields.Char(readonly=True, copy=False)
     revision = fields.Integer(default=1, readonly=True, copy=False)
     revision_anterior_id = fields.Many2one('qb.cotizador.cotizacion', string='Sustituye a',
                                            readonly=True, copy=False)
@@ -608,46 +567,9 @@ class QbCotizadorCotizacion(models.Model):
             rec.piso_lleno_divisa = rec.piso_lleno / fx
             rec.precio_mercado_divisa = rec.precio_mercado / fx
 
-    @api.depends_context('uid')
-    @api.depends('state', 'semaforo')
-    def _compute_aprobacion(self):
-        job = self._job_from_param(PARAM_APROBADOR)
-        for rec in self:
-            rec.aprobador_job_id = job
-            rec.puede_aprobar = rec._puede_aprobar(self.env.user)
-
     # ==================================================================
     # Parámetros y puestos
     # ==================================================================
-    @api.model
-    def _param_float(self, key, default=0.0):
-        val = self.env['ir.config_parameter'].sudo().get_param(key)
-        try:
-            return float(val) if val not in (None, False, '') else default
-        except ValueError:
-            return default
-
-    @api.model
-    def _param_int(self, key, default=0):
-        return int(self._param_float(key, default))
-
-    @api.model
-    def _job_from_param(self, key):
-        val = self.env['ir.config_parameter'].sudo().get_param(key)
-        try:
-            job = self.env['hr.job'].sudo().browse(int(val)) if val else self.env['hr.job']
-        except ValueError:
-            return self.env['hr.job']
-        return job if job.exists() else self.env['hr.job']
-
-    @api.model
-    def _users_of_job(self, job):
-        """Usuarios de las personas con ese puesto (todas las compañías)."""
-        if not job:
-            return self.env['res.users']
-        employees = self.env['hr.employee'].sudo().search([('job_id', '=', job.id)])
-        return employees.mapped('user_id').filtered('active')
-
     @api.model
     def _buscar_puesto(self, nombre):
         """`hr.job` por nombre en cualquier idioma instalado (el nombre es
@@ -674,37 +596,6 @@ class QbCotizadorCotizacion(models.Model):
         # 1.1.0 (Jose 2026-10-08, punto 2): los días de seguimiento y de
         # archivo de borradores no están definidos: se quedan vacíos y sin
         # valor no hay seguimiento automático ni se archivan borradores.
-
-    def _pidio_la_aprobacion(self, user):
-        """1.5.0 (Dirección General 2026-10-09): nadie aprueba lo que él mismo
-        pidió. Quien mandó la cotización a aprobar no la aprueba, tenga el
-        puesto titular, el suplente o el grupo bajo piso."""
-        self.ensure_one()
-        return bool(self.solicitada_por_id) and user == self.solicitada_por_id
-
-    def _puede_aprobar(self, user):
-        self.ensure_one()
-        if self._pidio_la_aprobacion(user):
-            return False
-        if user.has_group('qb_cotizador.group_autoriza_bajo_piso'):
-            return True
-        if self.semaforo == 'rojo':
-            return False
-        titulares = self._users_of_job(self._job_from_param(PARAM_APROBADOR))
-        suplentes = self._users_of_job(self._job_from_param(PARAM_SUPLENTE))
-        return user in (titulares | suplentes)
-
-    def _aprobadores_salvo(self, user):
-        """Titular y suplente que no son ``user`` (a quién le toca cuando quien
-        pide es aprobador)."""
-        self.ensure_one()
-        users = self._users_of_job(self._job_from_param(PARAM_APROBADOR)) \
-            | self._users_of_job(self._job_from_param(PARAM_SUPLENTE))
-        return users - user
-
-    def _usuarios_ventas(self):
-        users = self._users_of_job(self._job_from_param(PARAM_VENTAS))
-        return users or self.user_id or self.create_uid
 
     # ==================================================================
     # Alta
@@ -1217,156 +1108,26 @@ class QbCotizadorCotizacion(models.Model):
         if faltan:
             raise UserError('Antes de pedir aprobación falta: %s.' % ', '.join(faltan))
 
-    def action_enviar_aprobacion(self):
-        for rec in self:
-            if rec.state != 'borrador':
-                raise UserError('Solo un borrador se manda a aprobar.')
-            rec._validar_para_aprobacion()
-            rec.write({'state': 'por_aprobar', 'solicitada_por_id': self.env.uid,
-                       'solicitada_el': fields.Datetime.now()})
-            aviso = ''
-            if rec.bajo_margen_minimo:
-                aviso = ' Aviso: margen neto %.1f %% debajo del mínimo %.1f %%.' % (
-                    rec.margen_neto_pct, rec.margen_minimo_pct)
-            if rec.semaforo == 'rojo':
-                aviso += ' Precio debajo del costo variable: solo la autoriza «Autoriza precio bajo piso».'
-            rec.message_post(body='Enviada a aprobación.%s' % aviso)
-            # 1.5.0: el aviso de aprobar no le llega a quien la pidió (no la aprueba).
-            users = rec._aprobadores_salvo(self.env.user)
-            if not users and rec._pidio_la_aprobacion(self.env.user) and rec.semaforo != 'rojo':
-                rec.message_post(body='Usted pidió la aprobación y es quien aprueba: nadie más puede '
-                                      'aprobarla hasta que Dirección nombre el suplente en Ajustes → '
-                                      'Ventas → Cotizador, o que la mande otra persona.')
-            for user in users:
-                rec.activity_schedule(
-                    'mail.mail_activity_data_todo', user_id=user.id,
-                    summary='Aprobar cotización %s' % rec.folio,
-                    note='Piso lleno $%.4f MXN, precio $%.4f MXN (%s). Costo de la muestra $%.2f.'
-                         % (rec.piso_lleno, rec.precio_mxn,
-                            dict(SEMAFOROS).get(rec.semaforo, 'sin precio'), rec.costo_muestra))
-        return True
+    def _aviso_aprobacion(self):
+        if self.bajo_margen_minimo:
+            return ' Aviso: margen neto %.1f %% debajo del mínimo %.1f %%.' % (
+                self.margen_neto_pct, self.margen_minimo_pct)
+        return ''
 
-    def _quien_aprueba_texto(self):
-        job = self._job_from_param(PARAM_APROBADOR)
-        sup = self._job_from_param(PARAM_SUPLENTE)
-        partes = [job.name if job else 'el puesto configurado en Ajustes → Ventas → Cotizador']
-        if sup:
-            partes.append('su suplente (%s)' % sup.name)
-        return ' o '.join(partes)
+    def _nota_aprobacion(self):
+        return 'Piso lleno $%.4f MXN, precio $%.4f MXN (%s). Costo de la muestra $%.2f.' % (
+            self.piso_lleno, self.precio_mxn, dict(SEMAFOROS).get(self.semaforo, 'sin precio'), self.costo_muestra)
 
-    def action_aprobar(self):
-        for rec in self:
-            if rec.state != 'por_aprobar':
-                raise UserError('Solo una cotización «Por aprobar» se aprueba.')
-            if not rec._puede_aprobar(self.env.user):
-                if rec._pidio_la_aprobacion(self.env.user):
-                    otros = rec._aprobadores_salvo(self.env.user)
-                    raise UserError('Usted mandó esta cotización a aprobar: quien pide no la aprueba. %s' % (
-                        ('Le toca a %s.' % ', '.join(otros.mapped('name'))) if otros else
-                        'No hay suplente nombrado (Ajustes → Ventas → Cotizador): nadie más puede aprobarla.'))
-                if rec.semaforo == 'rojo':
-                    raise UserError('El precio está debajo del costo variable: solo el grupo '
-                                    '«Autoriza precio bajo piso» la puede aprobar.')
-                raise UserError('Esta cotización la aprueba %s; tu usuario no tiene ese puesto.'
-                                % rec._quien_aprueba_texto())
-            rec.write({'approved_by_id': self.env.uid, 'approved_date': fields.Datetime.now()})
-            rec.activity_unlink(['mail.mail_activity_data_todo'])
-            rec._presentar()
-        return True
-
-    def action_regresar(self):
-        self.ensure_one()
-        if self.state != 'por_aprobar':
-            raise UserError('Solo una cotización «Por aprobar» se regresa.')
-        if not self._puede_aprobar(self.env.user) and self.semaforo != 'rojo':
-            raise UserError('Esta cotización la regresa %s.' % self._quien_aprueba_texto())
-        return {
-            'type': 'ir.actions.act_window', 'name': 'Regresar a recotizar',
-            'res_model': 'qb.cotizador.decision.wizard', 'view_mode': 'form', 'target': 'new',
-            'context': {'default_cotizacion_id': self.id, 'default_tipo': 'regreso'},
-        }
-
-    def _regresar(self, motivo, nota=None):
-        for rec in self:
-            rec.write({'state': 'borrador', 'regreso_motivo_id': motivo.id,
-                       'regreso_count': rec.regreso_count + 1})
-            rec.activity_unlink(['mail.mail_activity_data_todo'])
-            rec.message_post(body='Regresada a recotizar. Motivo: %s.%s'
-                             % (motivo.name, (' ' + nota) if nota else ''))
-            destino = rec.solicitada_por_id or rec.user_id
-            if destino:
-                rec.activity_schedule('mail.mail_activity_data_todo', user_id=destino.id,
-                                      summary='Recotizar %s: %s' % (rec.folio, motivo.name),
-                                      note=nota or '')
-        return True
-
-    # ==================================================================
-    # Ciclo: presentada, seguimiento, vencimiento
-    # ==================================================================
-    def _fecha_habil(self, dias, desde=None):
-        """`dias` hábiles después de `desde` según el calendario de la
-        compañía; sin calendario, días naturales."""
-        self.ensure_one()
-        desde = desde or fields.Datetime.now()
-        cal = self.company_id.resource_calendar_id
-        if cal and dias:
-            try:
-                return cal.plan_days(dias, desde, compute_leaves=True).date()
-            except Exception:  # noqa: BLE001 - calendario sin horarios: días naturales
-                pass
-        return (desde + timedelta(days=dias)).date()
-
-    def _presentar(self):
-        hoy = fields.Date.context_today(self)
-        for rec in self:
-            if rec.unidad_alerta:
-                # 1.6.0: tampoco se presenta (aprobación aquí o en Aprobaciones) con unidades cruzadas.
-                raise UserError('%s no se puede presentar: %s' % (rec.folio or rec.display_name, rec.unidad_alerta))
-            if rec.peso_alerta and not rec.peso_confirmado:
-                raise UserError('%s no se puede presentar: %s' % (rec.folio or rec.display_name, rec.peso_alerta))
-            validez = self._param_int(PARAM_VALIDEZ_DIAS, 15)
-            # 1.1.0: sin días de seguimiento en el parámetro no hay seguimiento automático.
-            dias_seg = self._param_int(PARAM_SEGUIMIENTO_DIAS, 0)
-            vals = {'state': 'presentada', 'presented_by_id': self.env.uid,
-                    'presented_date': fields.Datetime.now(), 'seguimiento_hecho': dias_seg <= 0,
-                    'seguimiento_fecha': rec._fecha_habil(dias_seg) if dias_seg > 0 else False}
-            if not rec.validez_hasta or rec.validez_hasta < hoy:
-                vals['validez_hasta'] = hoy + timedelta(days=validez)
-            rec.write(vals)
-            rec.message_post(body='Aprobada por %s y presentada. Válida hasta %s%s.' % (
-                self.env.user.name, vals.get('validez_hasta') or rec.validez_hasta,
-                ('; seguimiento el %s' % vals['seguimiento_fecha']) if vals['seguimiento_fecha']
-                else '; sin seguimiento automático (días no definidos)'))
-        return True
-
-    def _vencer(self):
-        for rec in self:
-            rec.write({'state': 'vencida'})
-            rec.message_post(body='Venció el %s sin pedido: decidir renovar, ganada o perdida.'
-                             % rec.validez_hasta)
-            for user in rec._usuarios_ventas():
-                rec.activity_schedule('mail.mail_activity_data_todo', user_id=user.id,
-                                      summary='Cotización %s vencida: renovar, ganada o perdida'
-                                              % rec.folio)
-        return True
-
-    def _seguimiento(self):
-        for rec in self:
-            rec.write({'seguimiento_hecho': True})
-            for user in rec._usuarios_ventas():
-                rec.activity_schedule('mail.mail_activity_data_todo', user_id=user.id,
-                                      summary='Seguimiento a %s (%s)' % (rec.folio,
-                                                                        rec.partner_id.name),
-                                      note='Presentada el %s sin respuesta del cliente.'
-                                           % (rec.presented_date and rec.presented_date.date()))
-        return True
+    def _validar_para_presentar(self):
+        if self.unidad_alerta:
+            # 1.6.0: tampoco se presenta (aprobación aquí o en Aprobaciones) con unidades cruzadas.
+            raise UserError('%s no se puede presentar: %s' % (self.folio or self.display_name, self.unidad_alerta))
+        if self.peso_alerta and not self.peso_confirmado:
+            raise UserError('%s no se puede presentar: %s' % (self.folio or self.display_name, self.peso_alerta))
 
     @api.model
     def _cron_diario(self):
-        hoy = fields.Date.context_today(self)
-        self.search([('state', '=', 'presentada'), ('validez_hasta', '<', hoy)])._vencer()
-        self.search([('state', '=', 'presentada'), ('seguimiento_hecho', '=', False),
-                     ('seguimiento_fecha', '<=', hoy)])._seguimiento()
+        self._cron_ciclo()
         dias = self._param_int(PARAM_ARCHIVAR_DIAS, 0)  # 1.1.0: vacío = no se archivan borradores
         if dias > 0:
             limite = fields.Datetime.now() - timedelta(days=dias)
@@ -1374,48 +1135,25 @@ class QbCotizadorCotizacion(models.Model):
             for rec in viejas:
                 rec.message_post(body='Archivada: borrador sin movimiento %d días.' % dias)
             viejas.write({'active': False})
+        # 1.8.0: el mismo cron vence las negociaciones y liquida los acuerdos de volumen.
+        self.env['qb.cotizador.negociacion']._cron_ciclo()
+        self.env['qb.cotizador.acuerdo.volumen']._cron_liquidar()
         return True
 
     # ==================================================================
-    # Ciclo: ganada, perdida, renovar
+    # Ciclo: ganada, renovar
     # ==================================================================
-    def action_ganar(self):
-        for rec in self:
-            if rec.state not in ('presentada', 'vencida'):
-                raise UserError('Solo una cotización presentada o vencida se marca ganada.')
-            rec._marcar_ganada()
-        return True
+    def _vals_ganada(self, sale_order=None, **kwargs):
+        vals = super()._vals_ganada(**kwargs)
+        if sale_order:
+            vals['sale_order_id'] = sale_order.id
+        return vals
 
-    def _marcar_ganada(self, sale_order=None, automatico=False):
-        for rec in self:
-            vals = {'state': 'ganada', 'ganada_date': fields.Datetime.now()}
-            if sale_order:
-                vals['sale_order_id'] = sale_order.id
-            rec.write(vals)
-            rec.activity_unlink(['mail.mail_activity_data_todo'])
-            rec.message_post(body='Ganada%s%s.' % (
-                ' automáticamente' if automatico else '',
-                (' con el pedido %s' % sale_order.name) if sale_order else ''))
-            rec._sincronizar_tarifa()
-        return True
+    def _texto_ganada(self, sale_order=None, **kwargs):
+        return (' con el pedido %s' % sale_order.name) if sale_order else ''
 
-    def action_perder(self):
-        self.ensure_one()
-        if self.state not in ('presentada', 'vencida', 'por_aprobar'):
-            raise UserError('Solo una cotización presentada, vencida o por aprobar se da por perdida.')
-        return {
-            'type': 'ir.actions.act_window', 'name': 'Dar por perdida',
-            'res_model': 'qb.cotizador.decision.wizard', 'view_mode': 'form', 'target': 'new',
-            'context': {'default_cotizacion_id': self.id, 'default_tipo': 'perdida'},
-        }
-
-    def _marcar_perdida(self, motivo, nota=None):
-        for rec in self:
-            rec.write({'state': 'perdida', 'perdida_motivo_id': motivo.id, 'perdida_nota': nota})
-            rec.activity_unlink(['mail.mail_activity_data_todo'])
-            rec.message_post(body='Perdida. Motivo: %s.%s' % (motivo.name,
-                                                               (' ' + nota) if nota else ''))
-        return True
+    def _al_ganar(self):
+        return self._sincronizar_tarifa()
 
     def action_renovar(self):
         """Revisión nueva en borrador a partir de esta (vencida o presentada);
@@ -1437,14 +1175,6 @@ class QbCotizadorCotizacion(models.Model):
         nueva.message_post(body='Revisión %d de %s.' % (nueva.revision, self.folio))
         return nueva
 
-    def action_volver_a_borrador(self):
-        for rec in self:
-            if rec.state != 'por_aprobar' or rec.solicitada_por_id != self.env.user:
-                raise UserError('Solo quien la mandó a aprobar puede retirarla antes de la aprobación.')
-            rec.write({'state': 'borrador'})
-            rec.activity_unlink(['mail.mail_activity_data_todo'])
-        return True
-
     # ==================================================================
     # Aprobación del cliente y tarifa
     # ==================================================================
@@ -1456,33 +1186,7 @@ class QbCotizadorCotizacion(models.Model):
                 return (self - cambian).write(vals) and cambian.write(vals)
             if cambian:
                 vals = dict(self._vals_foto_en_blanco(), **vals)
-        res = super().write(vals)
-        if vals.get('cliente_aprobo'):
-            for rec in self:
-                if not (rec.cliente_medio and rec.cliente_fecha):
-                    raise UserError('La aprobación del cliente lleva medio y fecha.')
-                if rec.state == 'ganada':
-                    rec._sincronizar_tarifa()
-        return res
-
-    def _tarifa_del_cliente(self):
-        """Tarifa propia del cliente; si usa una compartida, se le crea una."""
-        self.ensure_one()
-        partner = self.partner_id.commercial_partner_id
-        Pricelist = self.env['product.pricelist'].sudo().with_company(self.company_id)
-        actual = partner.with_company(self.company_id).property_product_pricelist
-        # Convención de la base: la tarifa propia de un cliente se llama
-        # «TARIFA <cliente>»; cualquier otra (pública, predeterminada) es
-        # compartida y no se le mete un precio de un solo cliente.
-        propia = bool(actual) and actual.name.upper().startswith('TARIFA ')
-        if propia and actual.currency_id == self.currency_id:
-            return actual
-        tarifa = Pricelist.create({'name': 'TARIFA %s' % partner.name,
-                                   'currency_id': self.currency_id.id,
-                                   'company_id': self.company_id.id})
-        partner.sudo().with_company(self.company_id).write({'property_product_pricelist': tarifa.id})
-        self.message_post(body='Tarifa %s creada y asignada al cliente.' % tarifa.name)
-        return tarifa
+        return super().write(vals)
 
     def _producto_para_tarifa(self):
         """Artículo cuyo precio va a la tarifa. Gancho: el puente con el SGI
