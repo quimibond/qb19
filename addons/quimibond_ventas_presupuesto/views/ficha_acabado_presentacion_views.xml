@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 3.26.0 (Jose, 19-nov): la presentación estándar del producto vive en su ficha de acabado; Condiciones de
+         entrega solo captura lo que el cliente pide distinto. -->
+    <record id="ficha_tecnica_acabado_view_form_presentacion" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.form.presentacion</field>
+        <field name="model">ficha.tecnica.acabado</field>
+        <field name="inherit_id" ref="quimibond_ficha_tecnica_tela.view_ficha_tecnica_acabado_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='tela_acabada']" position="after">
+                <page string="Presentación" name="qb_presentacion">
+                    <group>
+                        <group string="Rollo">
+                            <label for="qb_pres_roll_qty"/>
+                            <div class="o_row">
+                                <field name="qb_pres_roll_qty"/>
+                                <field name="qb_pres_roll_uom" invisible="not qb_pres_roll_qty"/>
+                            </div>
+                            <field name="qb_pres_core"/>
+                            <field name="qb_pres_max_splices"/>
+                            <field name="qb_pres_min_piece"/>
+                            <field name="qb_pres_max_weight_kg"/>
+                        </group>
+                        <group string="Empaque">
+                            <field name="qb_pres_rolls_per_pallet"/>
+                            <field name="qb_pres_packaging"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">
+                        Lo que se entrega de este producto si el cliente no pide otra cosa. Lo que un cliente pide
+                        distinto se captura en Ventas → Presupuesto y pronóstico → Configuración → Condiciones de
+                        entrega.
+                    </p>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

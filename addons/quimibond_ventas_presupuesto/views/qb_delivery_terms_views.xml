@@ -9,7 +9,8 @@
                 <field name="partner_id"/>
                 <field name="ship_to_id" optional="show"/>
                 <field name="plant" optional="show"/>
-                <field name="pickup_weekday"/>
+                <field name="pickup_mode"/>
+                <field name="pickup_day_ids" widget="many2many_tags"/>
                 <field name="lead_days"/>
                 <field name="frozen_weeks"/>
                 <field name="group_weeks"/>
@@ -39,9 +40,11 @@
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Cuándo se embarca">
-                            <field name="pickup_weekday"/>
+                            <field name="pickup_mode"/>
+                            <field name="pickup_day_ids" widget="many2many_tags" options="{'no_create': True}"
+                                   invisible="pickup_mode == 'libre'" required="pickup_mode != 'libre'"/>
                             <field name="lead_days"/>
-                            <field name="buffer_days" invisible="pickup_weekday"/>
+                            <field name="buffer_days" invisible="pickup_mode != 'libre'"/>
                             <field name="capacity_m"/>
                         </group>
                         <group string="Al aplicar el release">
@@ -65,16 +68,24 @@
                                 <list editable="bottom">
                                     <field name="product_id"/>
                                     <field name="customer_part" optional="show"/>
+                                    <field name="open_po" optional="show"/>
+                                    <field name="open_po_valid_to" optional="show"/>
+                                    <field name="spec_text" optional="show"/>
+                                    <field name="ficha_pres_text" optional="show"/>
                                     <field name="roll_qty"/>
                                     <field name="roll_uom"/>
                                     <field name="round_up"/>
-                                    <field name="width_m" optional="show"/>
                                     <field name="core" optional="show"/>
                                     <field name="max_splices"/>
                                     <field name="min_piece" optional="show"/>
                                     <field name="max_weight_kg" optional="show"/>
                                     <field name="rolls_per_pallet" optional="show"/>
                                     <field name="packaging" optional="show"/>
+                                    <field name="own_tolerance" optional="hide"/>
+                                    <field name="width_min_cm" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="width_max_cm" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="weight_min" optional="hide" invisible="not own_tolerance"/>
+                                    <field name="weight_max" optional="hide" invisible="not own_tolerance"/>
                                     <field name="label" optional="hide"/>
                                     <field name="notes" optional="hide"/>
                                 </list>

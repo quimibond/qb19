@@ -487,6 +487,29 @@ class TestReleaseWoodbridge(TransactionCase):
         monday = date(2040, 12, 17)
         self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 19),
                          "Sin día de recolección: la del cliente menos el colchón")
-        terms.pickup_weekday = '4'
+        terms.write({'pickup_mode': 'uno',
+                     'pickup_day_ids': [(6, 0, self.env.ref('quimibond_ventas_presupuesto.qb_weekday_4').ids)]})
         self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 21),
                          "Con día de recolección: ese día de la semana de embarque")
+
+    def test_14b_presentacion_de_la_ficha(self):
+        """3.26.0: la presentación estándar sale de la ficha de acabado; el cliente solo captura lo distinto."""
+        tela = self.env['product.product'].create({'name': 'Tela ficha pres', 'default_code': 'WPRES160',
+                                                   'type': 'consu', 'uom_id': self.uom_m.id})
+        tejido = self.env['ficha.tecnica.tejido'].create({'articulo': 'CPRES160', 'product_proceso_id': self.env[
+            'product.product'].create({'name': 'Crudo pres', 'type': 'consu'}).id})
+        self.env['ficha.tecnica.acabado'].create({
+            'articulo': 'WPRES160', 'tejido_id': tejido.id, 'product_acabado_id': tela.id,
+            'ancho_acabado': 160, 'ancho_acabado_tol': 2, 'ancho_acabado_tol_minus': 2,
+            'qb_pres_roll_qty': 800, 'qb_pres_roll_uom': 'm', 'qb_pres_core': '3" cartón',
+            'qb_pres_max_splices': 3})
+        terms = self._terms({'line_ids': [(0, 0, {'product_id': tela.id})]})
+        self.assertEqual(terms._qb_roll_for(tela), (800, 'm'), "Sin rollo del cliente, el de la ficha")
+        line = terms.line_ids
+        self.assertIn("Ancho 160 ±2", line.spec_text)
+        self.assertIn("Rollo 800 m", line.ficha_pres_text)
+        self.assertIn("3 empalmes", line.ficha_pres_text)
+        terms.roll_qty, terms.roll_uom = 500, 'yd'
+        self.assertEqual(terms._qb_roll_for(tela), (500, 'yd'), "El rollo del cliente gana sobre la ficha")
+        line.write({'roll_qty': 1000, 'roll_uom': 'yd'})
+        self.assertEqual(terms._qb_roll_for(tela), (1000, 'yd'), "El renglón del producto gana sobre todo")
