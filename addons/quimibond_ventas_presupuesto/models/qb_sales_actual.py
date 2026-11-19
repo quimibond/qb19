@@ -32,6 +32,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models, tools
+from odoo.tools.sql import table_exists
 
 from .qb_forecast import MARKETS
 from .sgi_sales_budget import team_mercado
@@ -205,8 +206,11 @@ class QbSalesCompare(models.Model):
     _order = 'month, mercado'
     _rec_name = 'articulo_id'
 
-    fuente = fields.Selection([('presupuesto', "Presupuesto"), ('pronostico', "Pronóstico"),
-                               ('real', "Venta real")], string="Fuente", readonly=True)
+    # 3.23.0: «Presupuesto del mes» son los renglones del presupuesto del mes en los meses y mercados que
+    # el presupuesto anual no trae (``sgi.sales.budget._qb_month_plan_fill``), ligados a ese presupuesto.
+    fuente = fields.Selection([('presupuesto', "Presupuesto"), ('presupuesto_mes', "Presupuesto del mes"),
+                               ('pronostico', "Pronóstico"), ('real', "Venta real")], string="Fuente",
+                              readonly=True)
     company_id = fields.Many2one('res.company', string="Compañía", readonly=True)
     month = fields.Date(string="Mes", readonly=True)
     year = fields.Integer(string="Año", readonly=True, aggregator=None)
@@ -223,6 +227,9 @@ class QbSalesCompare(models.Model):
     amount_real = fields.Float(string="Venta (MXN)", digits=(16, 2), readonly=True, aggregator='sum')
     amount_diff = fields.Float(string="Venta − presupuesto (MXN)", digits=(16, 2), readonly=True,
                                aggregator='sum')
+    amount = fields.Float(string="Importe (MXN)", digits=(16, 2), readonly=True, aggregator='sum',
+                          help="El presupuesto en los renglones de presupuesto y la venta en los de venta: para "
+                               "graficar los dos por fuente.")
     qty_m_budget = fields.Float(string="Metros presupuestados", digits=(16, 2), readonly=True, aggregator='sum')
     qty_kg_budget = fields.Float(string="Kilos presupuestados", digits=(16, 2), readonly=True, aggregator='sum')
     qty_m_forecast = fields.Float(string="Metros pronosticados", digits=(16, 2), readonly=True, aggregator='sum')
@@ -232,6 +239,30 @@ class QbSalesCompare(models.Model):
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
+        # En una instalación desde cero esta vista se crea antes que la tabla del presupuesto del mes; sin
+        # ella, la vista va sin esos renglones hasta el siguiente update.
+        month_plan = ""
+        if table_exists(self.env.cr, 'qb_sales_month_plan_line'):
+            month_plan = """
+                    UNION ALL
+                    SELECT 'presupuesto_mes', pl.company_id, pl.month, EXTRACT(YEAR FROM pl.month)::int,
+                           COALESCE(p.commercial_partner_id, pl.partner_id),
+                           COALESCE(pl.articulo_id, pl.product_id), pl.product_id, NULL,
+                           pl.mercado, b.id, b.state,
+                           COALESCE(pl.amount, 0), 0.0, -COALESCE(pl.amount, 0),
+                           COALESCE(pl.qty_m, 0), COALESCE(pl.qty_kg, 0), 0.0, 0.0, 0.0, 0.0,
+                           COALESCE(pl.amount, 0)
+                      FROM qb_sales_month_plan_line pl
+                      JOIN sgi_sales_budget b ON b.company_id = pl.company_id AND b.kind = 'presupuesto'
+                           AND b.state NOT IN ('obsoleto', 'reemplazado')
+                           AND b.year = EXTRACT(YEAR FROM pl.month)::int
+                      LEFT JOIN res_partner p ON p.id = pl.partner_id
+                     WHERE pl.mercado IN ('industrial', 'proyectos_industrial', 'confeccion',
+                                          'proyectos_confeccion', 'especiales')
+                       AND NOT EXISTS (
+                           SELECT 1 FROM sgi_sales_budget_line l
+                            WHERE l.budget_id = b.id AND l.mercado = pl.mercado
+                              AND date_trunc('month', l.date)::date = pl.month)"""
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
                 SELECT row_number() OVER () AS id, u.* FROM (
@@ -246,7 +277,8 @@ class QbSalesCompare(models.Model):
                            -COALESCE(l.amount_budget, 0) AS amount_diff,
                            COALESCE(l.qty_m, 0) AS qty_m_budget, COALESCE(l.qty_kg, 0) AS qty_kg_budget,
                            0.0 AS qty_m_forecast, 0.0 AS qty_kg_forecast,
-                           0.0 AS qty_m_real, 0.0 AS qty_kg_real
+                           0.0 AS qty_m_real, 0.0 AS qty_kg_real,
+                           COALESCE(l.amount_budget, 0) AS amount
                       FROM sgi_sales_budget_line l
                       JOIN sgi_sales_budget b ON b.id = l.budget_id
                       LEFT JOIN res_partner p ON p.id = l.partner_id
@@ -257,7 +289,7 @@ class QbSalesCompare(models.Model):
                            COALESCE(f.articulo_id, f.product_id), f.product_id, NULL,
                            f.mercado, NULL, NULL,
                            0.0, 0.0, 0.0, 0.0, 0.0,
-                           COALESCE(f.qty_m, 0), COALESCE(f.qty_kg, 0), 0.0, 0.0
+                           COALESCE(f.qty_m, 0), COALESCE(f.qty_kg, 0), 0.0, 0.0, 0.0
                       FROM qb_forecast_line f
                       LEFT JOIN res_partner p ON p.id = f.partner_id
                      WHERE f.active
@@ -265,11 +297,11 @@ class QbSalesCompare(models.Model):
                     SELECT 'real', a.company_id, a.month, a.year, a.partner_id,
                            a.articulo_id, a.product_id, NULL, a.mercado, NULL, NULL,
                            0.0, a.amount, a.amount, 0.0, 0.0, 0.0, 0.0,
-                           a.qty_m, a.qty_kg
+                           a.qty_m, a.qty_kg, a.amount
                       FROM qb_sales_actual a
-                     WHERE NOT a.es_saldo
+                     WHERE NOT a.es_saldo%s
                 ) u
-            )""" % self._table)
+            )""" % (self._table, month_plan))
 
 
 MISSING_KINDS = [

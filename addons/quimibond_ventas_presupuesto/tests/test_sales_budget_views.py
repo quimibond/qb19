@@ -38,11 +38,20 @@ class TestSalesBudgetViews(TransactionCase):
                       'sgi_sales_budget_import_action'):
             self.assertIn(self.env.ref('quimibond_ventas_presupuesto.' + xmlid).id, actions, xmlid)
 
-    def test_03_ficha_con_tablero_y_sin_renglones(self):
-        """3.22.0: la ficha trae el tablero y las tablas; los 854 renglones se abren con un botón."""
+    def test_03_ficha_nativa(self):
+        """3.23.0: campos y botones inteligentes nativos; nada de HTML hecho a mano."""
         arch = _arch(self.env, 'sgi.sales.budget', 'form',
                      'quimibond_ventas_presupuesto.sgi_sales_budget_view_form')
-        self.assertFalse(arch.xpath("//field[@name='line_ids']"))
-        self.assertTrue(arch.xpath("//div[@name='button_box']/button[@name='action_qb_open_lines']"))
-        for name in ('qb_kpi_html', 'qb_mercado_html', 'qb_month_html', 'qb_partner_html'):
-            self.assertTrue(arch.xpath("//field[@name='%s']" % name), name)
+        for name in ('action_qb_open_lines', 'action_qb_compare_mercado', 'action_qb_compare_mes',
+                     'action_qb_compare_cliente', 'action_open_analysis'):
+            self.assertTrue(arch.xpath("//div[@name='button_box']/button[@name='%s']" % name), name)
+        self.assertTrue(arch.xpath("//field[@name='fulfillment_pct'][@widget='progressbar']"))
+        self.assertTrue(arch.xpath("//field[@name='line_ids']"))
+        self.assertFalse(arch.xpath("//field[contains(@name, '_html')]"))
+        budget = self.env['sgi.sales.budget'].create({'year': 2049})
+        for method in ('action_qb_open_lines', 'action_qb_compare_mercado', 'action_qb_compare_mes',
+                       'action_qb_compare_cliente', 'action_open_analysis'):
+            action = getattr(budget, method)()
+            for view_id, view_type in action.get('views', []):
+                if view_id:
+                    self.env[action['res_model']].get_views([(view_id, view_type)])
