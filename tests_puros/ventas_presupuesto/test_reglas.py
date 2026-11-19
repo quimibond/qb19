@@ -102,3 +102,29 @@ def test_dias_habiles_sin_fines_de_semana():
     assert reglas.restar_dias_habiles(date(2026, 11, 25), 2) == date(2026, 11, 23)
     assert reglas.restar_dias_habiles(date(2026, 11, 25), 3) == date(2026, 11, 20)
     assert reglas.restar_dias_habiles(date(2026, 11, 21), 0) == date(2026, 11, 20)
+
+
+def test_congelada_con_pedido_se_marca():
+    """3.28.0: el programado de una congelada con pedido es lo pedido (lo pone el modelo); la nota lo dice."""
+    pide = {w(0): 100.0, w(1): 250.0, w(2): 300.0, w(3): 400.0}
+    prog = {w(0): 100.0, w(1): 400.0, w(2): 300.0}
+    result, notes = reglas.aplicar_reglas(pide, prog, HOY, congeladas=3, con_pedido={w(1)})
+    assert [result[w(i)] for i in range(4)] == [100.0, 400.0, 300.0, 250.0]
+    assert notes[w(1)].startswith("Congelada con pedido")
+
+
+def test_semana_con_pedido_despues_de_las_congeladas():
+    """3.29.0: una semana con pedido se queda con lo pedido y la diferencia pasa a la siguiente sin pedido."""
+    pide = {w(0): 100.0, w(1): 100.0, w(2): 100.0, w(3): 300.0, w(4): 50.0, w(5): 80.0}
+    prog = {w(0): 100.0, w(1): 100.0, w(2): 100.0}
+    result, notes = reglas.aplicar_reglas(pide, prog, HOY, congeladas=3, fijas={w(3): 200.0, w(4): 50.0})
+    assert [result[w(i)] for i in range(6)] == [100.0, 100.0, 100.0, 200.0, 50.0, 180.0]
+    assert "Con pedido" in notes[w(3)]
+    assert "Recibe +100" in notes[w(5)]
+
+
+def test_baja_en_semana_con_pedido_se_descuenta_de_las_siguientes():
+    pide = {w(0): 300.0, w(1): 100.0}
+    result, notes = reglas.aplicar_reglas(pide, {}, HOY, fijas={w(0): 400.0})
+    assert [result[w(0)], result[w(1)]] == [400.0, 0.0]
+    assert "Descuenta 100" in notes[w(1)]

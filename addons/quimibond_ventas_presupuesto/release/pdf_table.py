@@ -38,15 +38,229 @@ class PdfTableError(ValueError):
 
 
 def pdf_layout_text(content, reader_cls):
-    """Texto del PDF con su acomodo (columnas alineadas con espacios)."""
+    """Texto del PDF con su acomodo (columnas alineadas con espacios). Con pypdf ≥ 3.17 se usa su modo
+    «layout»; con versiones anteriores (o PyPDF2, como en Odoo.sh) se arma con las posiciones del texto
+    (``stream_layout_text``)."""
     reader = reader_cls(io.BytesIO(content))
     pages = []
     for page in reader.pages:
         try:
             pages.append(page.extract_text(extraction_mode='layout') or '')
-        except TypeError as exc:  # pypdf < 3.17 no tiene el modo layout
-            raise PdfTableError("La versión de pypdf del servidor no lee el acomodo del PDF.") from exc
+        except TypeError:  # pypdf < 3.17 o PyPDF2: sin modo layout
+            pages.append(stream_layout_text(_page_stream(page)))
     return "\n".join(pages)
+
+
+def _page_stream(page):
+    """Bytes del contenido de una página con pypdf o con PyPDF2."""
+    getter = getattr(page, 'get_contents', None) or getattr(page, 'getContents')
+    contents = getter()
+    if contents is None:
+        return b''
+    data = getattr(contents, 'get_data', None) or getattr(contents, 'getData')
+    return data()
+
+
+_DELIMS = b'()<>[]{}/%'
+_WS = b' \t\r\n\x0c\x00'
+_ESCAPES = {b'n': b'\n', b'r': b'\r', b't': b'\t', b'b': b'\b', b'f': b'\f'}
+
+
+def _pdf_tokens(data):
+    """Tokens de un content stream: ('s', bytes) cadenas, ('n', float) números, ('o', str) operadores y
+    nombres, '[' y ']'. Suficiente para el texto de un PDF de Excel (fuentes WinAnsi, celdas con Tm)."""
+    i, n = 0, len(data)
+    while i < n:
+        c = data[i:i + 1]
+        if c in _WS:
+            i += 1
+        elif c == b'%':
+            while i < n and data[i:i + 1] not in b'\r\n':
+                i += 1
+        elif c == b'(':
+            depth, i, buf = 1, i + 1, bytearray()
+            while i < n and depth:
+                ch = data[i:i + 1]
+                if ch == b'\\':
+                    nxt = data[i + 1:i + 2]
+                    if nxt in _ESCAPES:
+                        buf += _ESCAPES[nxt]
+                        i += 2
+                    elif nxt.isdigit():
+                        j = i + 1
+                        while j < min(i + 4, n) and data[j:j + 1].isdigit():
+                            j += 1
+                        buf.append(int(data[i + 1:j], 8) & 0xFF)
+                        i = j
+                    elif nxt in b'\r\n':
+                        i += 2
+                    else:
+                        buf += nxt
+                        i += 2
+                    continue
+                if ch == b'(':
+                    depth += 1
+                elif ch == b')':
+                    depth -= 1
+                    if not depth:
+                        i += 1
+                        break
+                buf += ch
+                i += 1
+            yield ('s', bytes(buf))
+        elif c == b'<' and data[i + 1:i + 2] != b'<':
+            j = data.find(b'>', i)
+            j = n if j < 0 else j
+            hexs = re.sub(rb'\s', b'', data[i + 1:j])
+            if len(hexs) % 2:
+                hexs += b'0'
+            try:
+                yield ('s', bytes.fromhex(hexs.decode('ascii')))
+            except ValueError:
+                pass
+            i = j + 1
+        elif c in (b'[', b']'):
+            yield (c.decode(), None)
+            i += 1
+        elif c in (b'<', b'>'):  # << >> de diccionarios en línea (BDC): se ignoran
+            i += 2 if data[i + 1:i + 2] == c else 1
+        else:
+            j = i + 1 if c in (b'/', b'{', b'}') else i
+            while j < n and data[j:j + 1] not in _WS and data[j:j + 1] not in _DELIMS:
+                j += 1
+            word = data[i:j].decode('latin-1')
+            i = max(j, i + 1)
+            try:
+                yield ('n', float(word))
+            except ValueError:
+                yield ('o', word)
+
+
+def _mul(a, b):
+    """Producto de matrices PDF [a b c d e f]."""
+    return [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3],
+            a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3],
+            a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5]]
+
+
+def _text_runs(data):
+    """(x, y, tamaño, texto) de cada texto que se muestra en el content stream."""
+    ident = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+    ctm, stack = list(ident), []
+    tm = lm = list(ident)
+    size, leading = 1.0, 0.0
+    operands, array, runs = [], None, []
+
+    def show(chunks):
+        text = ''.join(chunks).strip()
+        if text:
+            m = _mul(tm, ctm)
+            runs.append((m[4], m[5], abs(size * m[3]) or abs(size), text))
+
+    def dec(raw):
+        return raw.decode('cp1252', errors='replace')
+
+    for kind, value in _pdf_tokens(data):
+        if kind == '[':
+            array = []
+            continue
+        if kind == ']':
+            operands.append(('a', array or []))
+            array = None
+            continue
+        if array is not None:
+            array.append((kind, value))
+            continue
+        if kind != 'o' or value.startswith('/'):
+            operands.append((kind, value))
+            continue
+        nums = [v for k, v in operands if k == 'n']
+        op = value
+        if op == 'q':
+            stack.append(list(ctm))
+        elif op == 'Q':
+            ctm = stack.pop() if stack else list(ident)
+        elif op == 'cm' and len(nums) >= 6:
+            ctm = _mul(nums[-6:], ctm)
+        elif op == 'BT':
+            tm = lm = list(ident)
+        elif op == 'Tf' and nums:
+            size = nums[-1]
+        elif op == 'TL' and nums:
+            leading = nums[-1]
+        elif op == 'Tm' and len(nums) >= 6:
+            tm = lm = nums[-6:]
+        elif op in ('Td', 'TD') and len(nums) >= 2:
+            if op == 'TD':
+                leading = -nums[-1]
+            tm = lm = _mul([1, 0, 0, 1, nums[-2], nums[-1]], lm)
+        elif op == 'T*':
+            tm = lm = _mul([1, 0, 0, 1, 0, -leading], lm)
+        elif op in ('Tj', "'", '"'):
+            if op != 'Tj':
+                tm = lm = _mul([1, 0, 0, 1, 0, -leading], lm)
+            show([dec(v) for k, v in operands if k == 's'][-1:])
+        elif op == 'TJ':
+            chunks = []
+            for k, v in next((v for k, v in reversed(operands) if k == 'a'), []):
+                if k == 's':
+                    chunks.append(dec(v))
+                elif k == 'n' and v < -250:  # un hueco grande dentro del arreglo es un espacio
+                    chunks.append(' ')
+            show(chunks)
+        operands = []
+    return runs
+
+
+def stream_layout_text(data):
+    """Texto con acomodo armado con las posiciones del content stream: un renglón por fila de la hoja, cada
+    texto en la columna de su x. La escala es medio tamaño de letra por carácter (ancho medio de Arial), así
+    que las celdas quedan donde están en la hoja y separadas por espacios.
+
+    Excel centra en la vertical las celdas de una fila, así que sus textos no comparten la misma y: se juntan
+    los que están a menos de dos tercios de letra uno del otro. Si dos textos de una fila caen en la misma columna
+    (descripción en dos renglones), el que está más lejos de la fila sale en su propio renglón, arriba o
+    abajo, como lo hace pypdf."""
+    runs = _text_runs(data)
+    if not runs:
+        return ''
+    sizes = sorted(r[2] for r in runs)
+    unit = max(sizes[len(sizes) // 2] * 0.5, 0.5)  # la letra más común (la de las celdas), no la más chica
+    groups = []
+    for run in sorted(runs, key=lambda r: (-r[1], r[0])):
+        if groups and groups[-1][-1][1] - run[1] <= max(run[2], groups[-1][-1][2]) * 0.65:
+            groups[-1].append(run)
+        else:
+            groups.append([run])
+
+    def span(run):
+        start = run[0] / unit
+        return start, start + len(run[3]) * run[2] * 0.5 / unit
+
+    out = []
+    for group in groups:
+        ys = [round(r[1], 1) for r in group]
+        mode = max(set(ys), key=lambda y: (ys.count(y), -abs(y - group[0][1])))
+        anchor = next(r[1] for r in group if round(r[1], 1) == mode)
+        main, above, below = [], [], []
+        # A igual distancia gana el de arriba: el primer renglón de una celda de dos va con la fila.
+        for run in sorted(group, key=lambda r: (round(abs(r[1] - anchor), 2), -r[1])):
+            s0, e0 = span(run)
+            if any(s0 < e1 and e0 > s1 for s1, e1 in (span(m) for m in main)):
+                (above if run[1] > anchor else below).append(run)
+            else:
+                main.append(run)
+        for cells in (above, main, below):
+            if not cells:
+                continue
+            line = ''
+            for run in sorted(cells):
+                col = int(round(run[0] / unit))
+                if line and col < len(line) + 2:
+                    col = len(line) + 2
+                line = line.ljust(col) + run[3]
+            out.append(line)
+    return "\n".join(out)
 
 
 def _tokens(line):
