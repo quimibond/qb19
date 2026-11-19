@@ -21,6 +21,13 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## El PDF de COPO se lee con el pypdf de Odoo.sh (19.0.3.27.1, 2026-11-19)
+
+En producción el primer release de COPO quedó «por revisar»: el pypdf de Odoo.sh no tiene el modo `layout`. Sin
+ese modo el lector arma el acomodo con las posiciones del content stream (`stream_layout_text`: cada texto en su
+x, un renglón por fila de la hoja juntando lo que Excel centra en la vertical, y el segundo renglón de una celda
+en su propio renglón). Con el PDF real de COPO da lo mismo que el modo `layout` de pypdf 6.
+
 ## Releases en PDF con tabla (19.0.3.27.0, 2026-11-19)
 
 Jose (19-nov): «COPO manda un PDF y eso no hay cómo meterlo en los perfiles de release». Lector nuevo **«PDF
