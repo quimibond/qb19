@@ -525,6 +525,23 @@ class TestReleaseWoodbridge(TransactionCase):
         self.assertEqual(terms._qb_delivery_date(date(2040, 12, 20), monday), date(2040, 12, 21),
                          "Con día de recolección: ese día de la semana de embarque")
 
+    def test_14c_condiciones_de_la_planta_escrita_distinto(self):
+        """3.30.0 (Jose, 19-nov): Shawmut Silao, FXI Juárez y Lear tenían condiciones con dirección de entrega
+        y el perfil solo con planta; el release no las tomaba."""
+        Terms = self.env['qb.delivery.terms']
+        ship = self.env['res.partner'].create({'name': 'NAPS-GUANAJUATO', 'parent_id': self.customer.id,
+                                               'type': 'delivery'})
+        silao = self._terms({'ship_to_id': ship.id, 'plant': 'Silao', 'frozen_weeks': 2})
+        self.assertEqual(Terms._qb_for(self.customer, plant='SILAO'), silao)
+        self.assertEqual(Terms._qb_for(self.customer), silao, "Una sola condición: esa, aunque no diga planta")
+        otra = self._terms({'plant': 'CIUDAD JUAREZ'})
+        self.assertEqual(Terms._qb_for(self.customer, plant='CLIENTE CD JUAREZ'), otra)
+        self.assertFalse(Terms._qb_for(self.customer), "Dos plantas y el perfil sin planta: ninguna")
+        rule = self.env['qb.order.rule'].create({'partner_id': self.customer.id, 'plant': 'LEÓN',
+                                                 'company_id': self.env.company.id, 'po_mode': 'manual'})
+        self.assertEqual(self.env['qb.order.rule']._qb_rule_for(self.env.company, self.customer, 'Planta Leon'),
+                         rule)
+
     def test_14b_presentacion_de_la_ficha(self):
         """3.26.0: la presentación estándar sale de la ficha de acabado; el cliente solo captura lo distinto."""
         tela = self.env['product.product'].create({'name': 'Tela ficha pres', 'default_code': 'WPRES160',
