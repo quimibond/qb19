@@ -710,7 +710,8 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 @media (max-width: 991.98px) {
     .qb-dis__cuerpo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
     .qb-dis__vista { display: contents; }
-    .qb-tela-caja--grande { order: -1; position: sticky; top: 72px; z-index: 5; aspect-ratio: 16 / 8; }
+    /* Fija arriba como una franja delgada: se ve la tela sin tapar las opciones. */
+    .qb-tela-caja--grande { order: -1; position: sticky; top: 72px; z-index: 5; aspect-ratio: auto; height: clamp(96px, 20vh, 168px); box-shadow: 0 8px 24px rgba(9, 9, 11, .14); }
     .qb-dis__lupa { display: none; }
 }
 @media (max-width: 575.98px) {
