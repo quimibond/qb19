@@ -40,9 +40,10 @@ RUIDO = re.compile(r'^(image\d*|outlook-|logo|~)|\.(eml|ics|vcf|htm|html)$', re.
 IMAGEN = re.compile(r'\.(png|jpe?g|gif|bmp)$', re.I)
 
 
-# Expedientes por corrida del cron: cada uno son cuatro consultas y varias
-# descargas, y la corrida tiene tiempo límite.
-LOTE_CRON = 10
+# Expedientes por corrida del cron (Dirección, 2026-11-19: llenar los 132 de
+# una vez). Cada uno son cuatro consultas y varias descargas; se confirma uno
+# por uno, así que si la corrida llega a su tiempo límite no se pierde lo hecho.
+LOTE_CRON = 50
 # Un expediente abierto se vuelve a buscar cada semana (llegan papeles tarde).
 DIAS_REVISAR = 7
 
@@ -193,3 +194,5 @@ class QbPedimentoMemoria(models.Model):
             except UserError as exc:
                 _logger.warning('qb_pedimento: memoria de %s: %s', rec.name, exc)
                 rec.memoria_fecha = fields.Datetime.now()
+            if not self.env.registry.in_test_mode():
+                self.env.cr.commit()  # pylint: disable=invalid-commit

@@ -16,7 +16,7 @@
             <field name="nextcall" eval="(DateTime.now().replace(hour=13, minute=20, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
-        <!-- Archivos del expediente desde la memoria de correo: 10 expedientes por hora,
+        <!-- Archivos del expediente desde la memoria de correo: 50 expedientes por hora,
              primero los que nunca se buscaron, luego los abiertos cada semana. -->
         <record id="cron_qb_pedimento_memoria" model="ir.cron">
             <field name="name">Pedimentos - Traer archivos de la memoria</field>
