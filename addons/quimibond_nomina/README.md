@@ -552,7 +552,7 @@ turno salían como 2 de extra diarias). Ahora:
 - Cada semana, `inferir_turno` reconoce de las checadas cuál de los 6 turnos
   trabajó la persona (horas dentro de sus jornadas, menos lo que faltó de
   cubrir, menos la mitad de lo trabajado fuera). El de RH gana si queda a menos
-  de 2 horas del mejor (así se separan el 1 y el 2). Si el checador ve otro,
+  de 12 horas del mejor (2 hasta 1.20.0) (así se separan el 1 y el 2). Si el checador ve otro,
   se usa el del checador y queda en Observaciones («Turno 4 según checador;
   RH lo tiene en el 3»). Sin checadas, el de RH; sin nada, el horario como antes.
 - Con el turno: **faltas** solo en sus días (los del horario que no son del
@@ -565,6 +565,24 @@ turno salían como 2 de extra diarias). Ahora:
 
 Supuesto por confirmar con RH: el viernes de los turnos 1 y 2 es de 8 horas
 (07:00–15:00 y 08:00–16:00), como el horario de la planta.
+
+**Ajustes de 1.21.0** (semana 47 en producción contra lo capturado por RH,
+19-nov-2026: con 1.20.0 salían 25 días de falta contra 12, 195 horas dobles
+contra 385 y 296 horas de prima dominical contra 180):
+
+- **Turno 3** son cuatro días de 12 horas entre lunes y viernes: quien no vino
+  un día y repuso otro (casi siempre el viernes) no tiene falta. Falta solo si
+  trabajó menos de cuatro; el quinto día trabajado es todo extra.
+- **Tiempo extra de los turnos 3 y 4**: lo que pasa de las horas del horario
+  ese día (10 de lunes a jueves, 8 el viernes), como lo paga RH. Los turnos 5
+  y 6 no llevan extra dentro de su turno.
+- **Prima dominical**: 12 horas por semana como máximo (el turno 6 que entra
+  sábado y domingo en la noche cobraba 24).
+- **El turno de RH pesa más**: el del checador gana solo con más de 12 horas
+  de diferencia (antes 2), así un día faltante no cambia el turno 3 por el 1.
+
+Pendiente de confirmar con RH (correo del 19-nov-2026): la regla exacta del
+tiempo extra de los turnos 3 y 4 y los días del turno 3.
 
 «Marcar revisada» y «Pasar a recibos» (elegir la corrida) escriben `FALTAS`,
 `HE_DOBLE`, `H_SENCILLA`, `DOM` y `HE_DIAS` en los recibos en borrador o por

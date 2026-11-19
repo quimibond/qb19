@@ -247,7 +247,7 @@ class QbNominaIncidencias(models.Model):
             r = calc.calcular_semana(
                 self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
-                hoy, entradas, turno=calc.TURNOS.get(turno))
+                hoy, entradas, turno=turno if turno in calc.TURNOS else None)
             if nota_turno:
                 r['notas'].insert(0, nota_turno)
             vals = {
