@@ -292,7 +292,14 @@ class QbCustomerPart(models.Model):
         dim, factor = self._qb_product_dimension()
         if not dim:
             return None
+        # 3.30.1: primero el rendimiento de la ficha (``qb_m_por_kg`` del producto o su artículo, el mismo
+        # que usan el pronóstico y los rollos); el del código (1000 ÷ g/m² ÷ ancho) solo si no hay ficha.
+        # Antes un producto en kilos tomaba siempre el del código (Shawmut: 14.88 m/kg contra 13.09 real).
+        product = self.product_id
+        source = product.qb_articulo_id or product
         grammage, width_m, yield_m_kg = self._qb_ficha_by_product(
-            self.product_id).get(self.product_id.id, (0.0, 0.0, 0.0))
+            product).get(product.id, (0.0, 0.0, 0.0))
+        yield_m_kg = product.qb_m_por_kg or source.qb_m_por_kg or yield_m_kg
+        width_m = product.qb_ancho_m or source.qb_ancho_m or width_m
         return units.convert(qty, self.customer_uom, dim, product_factor=factor,
                              yield_m_kg=yield_m_kg or None, width_m=width_m or None)

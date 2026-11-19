@@ -21,6 +21,15 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Yardas y metros del release a kilos con el rendimiento de la ficha (19.0.3.30.1, 2026-11-19)
+
+El release pasaba de yardas a metros bien (× 0.9144), pero de metros a kilos usaba el rendimiento del
+código (1000 ÷ gramaje ÷ ancho) en lugar del de la ficha cuando el producto se vende en kilos. Shawmut
+CW47, IWJ042Q22JNT160: 10 486 LY = 9 588 m ÷ 14.88 = 644 kg; con la ficha (13.09 m/kg) son 732 kg. Ahora
+la conversión del catálogo de partes usa primero el «Rendimiento m/kg» del producto o de su artículo (el
+mismo que el pronóstico, los rollos y las congeladas) y el del código solo si no hay ficha. Los releases ya
+aplicados se corrigen con «Leer» otra vez.
+
 ## Release por correo con aprobación de Ventas (19.0.3.30.0, 2026-11-19)
 
 Jose (19-nov): «necesito que Jessica apruebe cada release nuevo en algún lugar, no que se integre automático,
