@@ -177,3 +177,10 @@ Desde 1.10.0 `/calidad` muestra los paneles solares y la planta tratadora de
 agua (Dirección, 2026-11-19), con las cifras de la presentación de empresa de
 octubre de 2026: 2,081 paneles, 3.7 GWh desde 2021 y tratadora desde 2025.
 También entran a la historia de `/nosotros`, junto con la ISO 45001.
+
+Desde 1.11.0 el encabezado y el pie llevan el logotipo nuevo (monograma QB,
+vector trazado sobre el original de mayo de 2026, en `views/components.xml`;
+ya no se usa el logotipo cargado en el sitio web) y la portada abre con una
+entrada de dos segundos en la que el logotipo se dibuja con un solo trazo.
+Es solo CSS, no bloquea clics ni desplazamiento, sale una vez por visita
+(`sessionStorage`) y no aparece con «reducir movimiento».
