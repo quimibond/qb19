@@ -43,6 +43,8 @@ class TestSitioB2B(HttpCase):
         self.assertIn('href="/web/login"', portada.text)
         self.assertIn('Iniciar sesión', portada.text)
         self.assertIn('data-qb-anim="circular"', portada.text)
+        self.assertNotIn('ricot', portada.text)
+        self.assertNotIn('ricot', self.url_open('/mercados/confeccion').text)
         for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
             self.assertEqual(self.url_open(ruta).status_code, 200, ruta)
@@ -59,10 +61,11 @@ class TestSitioB2B(HttpCase):
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
-        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_galga"', 'name="qb_aplicacion"', 'data-qb-tela=', 'name="qb_mercado"', 'data-qb-mercado="Automotriz"', 'Asientos', 'Playera', 'name="qb_requisito"',
+        for texto in ('data-qb-disenador', 'name="qb_construccion"', 'name="qb_ancho"', 'name="qb_aplicacion"', 'data-qb-tela=', 'name="qb_mercado"', 'data-qb-mercado="Automotriz"', 'Asientos', 'Playera', 'name="qb_requisito"',
                       'name="qb_volumen"', 'data-qb-copiar', 'name="qb_hilo"', 'Poliéster reciclado', 'name="qb_fibra"', 'Polipropileno', 'data-qb-anim="tela"',
                       'name="description"'):
             self.assertIn(texto, disenar, texto)
+        self.assertNotIn('Galga', disenar)
         catalogo = self.url_open('/catalogo')
         self.assertIn('ZQ9032BL152', catalogo.text)
         slug = self.env['ir.http']._slug

@@ -94,9 +94,9 @@ la portada: los productos publicados se corrigen en un segundo paso.
 
 ## Diseñador de tela
 
-`/disenar`: la persona elige construcción, galga, fibra, peso, color, tacto,
+`/disenar`: la persona elige mercado, aplicación, construcción, fibra, peso, ancho, color, tacto,
 acabado y presentación, y ve la tela en un lienzo que cambia al momento (la
-malla se hace más fina con la galga, el hilo engorda con el peso, el punto de
+malla se hace más fina con la galga, que desde 1.7.1 no se pregunta: la pone la aplicación, el hilo engorda con el peso, el punto de
 adhesivo aparece con «fusionable» y la tela ondea más o menos según el tacto).
 El diseño se escribe solo en la «Especificación» del formulario de la misma
 página, que crea la oportunidad en CRM como en `/cotizar`. Los hilos salen de

@@ -53,10 +53,9 @@
                     <div class="qb-cinta__pista">
                         <t t-foreach="[0, 1]" t-as="vuelta">
                             <div class="qb-cinta__grupo" t-att-aria-hidden="'true' if vuelta else None">
-                                <span>Camisería</span><i/><span>Uniformes</span><i/><span>Prendas ligeras</span><i/>
-                                <span>Frentes y refuerzos</span><i/><span>Blusas</span><i/><span>Tricots</span><i/>
-                                <span>Colchonería</span><i/><span>Automotriz</span><i/><span>No tejidos</span><i/>
-                                <span>Tejido circular</span><i/>
+                                <t t-foreach="qb_mercados" t-as="m">
+                                    <t t-foreach="m['aplicaciones']" t-as="ap"><span t-out="ap['nombre']"/><i/></t>
+                                </t>
                             </div>
                         </t>
                     </div>
@@ -592,7 +591,7 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h1 class="qb-reveal">Diseñe su tela</h1>
-                            <p class="qb-lead qb-reveal">Elija cada característica y vea la tela al momento. Al terminar, envíe el diseño a Ventas para recibir cotización y muestra.</p>
+                            <p class="qb-lead qb-reveal">Díganos para qué es, el peso, el ancho y el color, y vea la tela al momento. Al terminar, envíe el diseño a Ventas para recibir cotización y muestra.</p>
                         </div>
                         <div class="qb-dis__cuerpo">
                             <div class="qb-dis__opciones">
@@ -638,14 +637,13 @@
                                         </t>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
-                                    <legend><span class="qb-mono qb-dis__num"/> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
-                                    <div class="qb-dis__chips">
-                                        <t t-foreach="qb_disenador['galgas']" t-as="g">
-                                            <label class="qb-dis__chip"><input type="radio" name="qb_galga" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/><span t-out="g"/></label>
-                                        </t>
-                                    </div>
-                                </fieldset>
+                                <!-- La galga no se le pregunta al visitante (Dirección, 2026-11-19): la pone
+                                     la aplicación elegida y solo afina el dibujo de la tela. -->
+                                <div hidden="hidden" aria-hidden="true">
+                                    <t t-foreach="qb_disenador['galgas']" t-as="g">
+                                        <input type="radio" name="qb_galga" tabindex="-1" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/>
+                                    </t>
+                                </div>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
                                     <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
                                     <div class="qb-dis__chips">
@@ -675,6 +673,12 @@
                                     <legend><span class="qb-mono qb-dis__num"/> Peso <output class="qb-dis__valor" data-qb-salida="peso">150 g/m²</output></legend>
                                     <input type="range" class="qb-dis__rango" name="qb_peso" min="20" max="400" step="5" value="150" aria-label="Peso en gramos por metro cuadrado"/>
                                     <div class="qb-dis__escala"><span>Ligera</span><span>Media</span><span>Pesada</span></div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Ancho <small>el ancho útil que necesita, en centímetros</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <label class="qb-dis__ancho"><input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric" aria-label="Ancho en centímetros"/> cm</label>
+                                    </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
                                     <legend><span class="qb-mono qb-dis__num"/> Color <output class="qb-dis__valor" data-qb-salida="color">Blanco</output></legend>
@@ -709,7 +713,6 @@
                                         <t t-foreach="qb_disenador['presentaciones']" t-as="pr">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_presentacion" t-att-value="pr" t-att-checked="'checked' if pr_first else None"/><span t-out="pr"/></label>
                                         </t>
-                                        <label class="qb-dis__ancho">Ancho <input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric"/> cm</label>
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">

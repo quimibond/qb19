@@ -345,7 +345,7 @@ class QuimibondSitio(http.Controller):
             asunto='',
             mercado_sel='',
             title='Diseñe su tela | Quimibond',
-            website_meta_description='Diseñe su tela en línea: construcción, galga, fibra, peso, color, tacto y '
+            website_meta_description='Diseñe su tela en línea: aplicación, peso, ancho, color, tacto y '
                                      'acabado. Vea la tela al momento y envíe el diseño a Ventas.',
         ))
 

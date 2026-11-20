@@ -604,9 +604,6 @@
                 f.push(["Aplicación", d.aplicacion]);
             }
             f.push(["Construcción", d.construccionNombre]);
-            if (punto) {
-                f.push(["Galga", String(d.galga)]);
-            }
             if (!punto) {
                 f.push(["Fibra", d.fibra]);
             } else {
@@ -616,11 +613,15 @@
                 }
                 f.push(["Hilo", hilo + (d.elastano ? " con elastano" : "")]);
             }
-            f.push(["Peso", d.peso + " g/m²"], ["Color", d.colorNombre], ["Tacto", d.tacto]);
+            f.push(["Peso", d.peso + " g/m²"]);
+            if (d.ancho) {
+                f.push(["Ancho", d.ancho + " cm"]);
+            }
+            f.push(["Color", d.colorNombre], ["Tacto", d.tacto]);
             if (d.acabados.length) {
                 f.push(["Acabado", d.acabados.join(", ")]);
             }
-            f.push(["Presentación", d.presentacion + (d.ancho ? ", " + d.ancho + " cm de ancho" : "")]);
+            f.push(["Presentación", d.presentacion]);
             if (d.requisitos.length) {
                 f.push(["Requisitos", d.requisitos.join(", ")]);
             }

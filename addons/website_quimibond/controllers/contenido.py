@@ -312,7 +312,7 @@ MERCADOS = [
         'nombre': 'Confección',
         'titulo': 'Entretelas para la confección',
         'resumen': 'Entretelas fusionables tejidas y no tejidas para camisería, uniformes, '
-                   'prendas ligeras, frentes y refuerzos, blusas y tricots.',
+                   'playeras, ropa deportiva, cuellos, puños y frentes de saco.',
         'puntos': [
             'Fusionables para lavado en agua y en seco',
             'Tejido circular fusionable para prendas con elasticidad',
