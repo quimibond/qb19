@@ -215,6 +215,13 @@ DISENADOR = {
     # parte del vehículo, la prenda, el blanco). Cada una propone una tela de
     # partida que la persona ajusta. No son productos del catálogo ni promesas.
     'aplicaciones': [
+        # Scrim: de los productos de Odoo (SCRIM 55, SCRIM BLACK 70 g/m², SCRIM NYLON;
+        # categoría «Tejido Circular / Industrial», la de mayor venta). Dirección
+        # (2026-11-19): es el producto automotriz y va al frente.
+        {'nombre': 'Scrim', 'mercado': 'Automotriz',
+         'texto': 'Tela ligera de tejido circular, de 55 a 70 g/m², en natural o negro.',
+         'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 70, 'color': '#1b1b1f', 'tacto': 'Suave'}},
         {'nombre': 'Asientos', 'mercado': 'Automotriz',
          'texto': 'Tela de vestidura con cuerpo, hecha para el uso diario del asiento.',
          'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
@@ -276,12 +283,13 @@ DISENADOR = {
 MERCADOS = [
     {
         'clave': 'automotriz',
-        'frase': 'Telas para el interior del vehículo.',
+        'frase': 'Scrims y telas para el interior del vehículo.',
         'nombre': 'Automotriz',
-        'titulo': 'Textiles técnicos para la industria automotriz',
+        'titulo': 'Scrims y textiles técnicos para la industria automotriz',
         'resumen': 'Desde 2014 abastecemos al mercado automotriz de México, Estados Unidos y Canadá '
-                   'con líneas de producto desarrolladas para sus especificaciones.',
+                   'con scrims y telas de tejido circular desarrollados para sus especificaciones.',
         'puntos': [
+            'Scrims de tejido circular en poliéster y nailon, en natural y negro',
             'Desarrollo de producto contra la especificación de su cliente',
             'Lotes trazables de la materia prima al rollo terminado',
             'Calidad liberada por laboratorio antes de embarcar',

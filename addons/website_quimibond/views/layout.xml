@@ -37,7 +37,7 @@
                             </a>
                             <a href="/catalogo" class="qb-mega__card">
                                 <strong>Catálogo técnico</strong>
-                                <span>Entretelas fusionables, no tejidos y tejido circular con sus datos técnicos.</span>
+                                <span>Scrims, tejido circular, no tejidos y entretelas con sus datos técnicos.</span>
                             </a>
                             <a href="/cotizar" class="qb-mega__card">
                                 <strong>Muestras y desarrollos</strong>
@@ -116,7 +116,7 @@
                 <div class="qb-footer__cols">
                     <div class="qb-footer__marca">
                         <a href="/" class="qb-logo"><t t-call="website_quimibond.logo"/><span>Quimibond</span></a>
-                        <p>Entretelas y textiles técnicos fabricados en México desde 1992.</p>
+                        <p>Scrims automotrices, entretelas y textiles técnicos fabricados en México desde 1992.</p>
                         <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span></p>
                     </div>
                     <div>

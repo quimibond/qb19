@@ -44,6 +44,7 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Iniciar sesión', portada.text)
         self.assertIn('data-qb-anim="circular"', portada.text)
         self.assertNotIn('ricot', portada.text)
+        self.assertIn('Scrims', portada.text)
         self.assertNotIn('ricot', self.url_open('/mercados/confeccion').text)
         for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
@@ -52,7 +53,7 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
         for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'Jets de teñido', 'Ramas',
-                      'Espolvoreo en línea', 'id="maquinaria"'):
+                      'Espolvoreo en línea', 'id="maquinaria"', 'data-qb-anim="jet"', 'data-qb-anim="rama"'):
             self.assertIn(texto, planta, texto)
         nosotros = self.url_open('/nosotros').text
         for texto in ('Misión', 'Visión 2030', 'Enfoque al cliente', 'Experiencia y especialización'):

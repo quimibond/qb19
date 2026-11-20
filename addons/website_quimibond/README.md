@@ -92,6 +92,12 @@ cuántas de doble. El catálogo
 (`/catalogo`) sigue leyendo los productos publicados, pero ya no se anuncia en
 la portada: los productos publicados se corrigen en un segundo paso.
 
+Desde 1.8.0 `/planta` trae dos esquemas animados más, en canvas y sin
+librerías: el jet de teñido (`jet`) y la rama (`rama`), junto a la máquina
+circular. Y los textos generales (portada, pie, títulos para buscadores,
+mercado automotriz, diseñador) nombran los **scrims**, el producto automotriz:
+Dirección pidió no dejar de lado lo automotriz (2026-11-19).
+
 ## Diseñador de tela
 
 `/disenar`: la persona elige mercado, aplicación, construcción, fibra, peso, ancho, color, tacto,

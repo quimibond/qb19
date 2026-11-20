@@ -319,7 +319,7 @@ class QuimibondSitio(http.Controller):
             qb_valores=contenido.VALORES,
             qb_razones=contenido.RAZONES,
             title='Nosotros | Quimibond',
-            website_meta_description='Productora de No Tejidos Quimibond: fabricantes de entretelas y textiles '
+            website_meta_description='Productora de No Tejidos Quimibond: fabricantes de scrims automotrices, entretelas y textiles '
                                      'técnicos en Toluca, México, desde 1992.',
         ))
 
@@ -334,7 +334,7 @@ class QuimibondSitio(http.Controller):
             asunto=asunto,
             mercado_sel=m and m['nombre'] or '',
             title='Solicitar cotización o muestra | Quimibond',
-            website_meta_description='Solicite cotización o muestra de entretelas y textiles técnicos. '
+            website_meta_description='Solicite cotización o muestra de scrims, entretelas y textiles técnicos. '
                                      'Le responde un asesor de Ventas en un día hábil.',
         ))
 
@@ -365,8 +365,8 @@ class QuimibondPortada(Website):
                 categorias=sitio._resumen_categorias(),
                 vacantes=sitio._vacantes(),
                 total_productos=len(sitio._productos()),
-                title='Quimibond | Entretelas y textiles técnicos fabricados en México',
-                website_meta_description='Fabricantes de entretelas fusionables, no tejidos y tejido circular para '
+                title='Quimibond | Scrims automotrices, entretelas y textiles técnicos',
+                website_meta_description='Fabricantes de scrims automotrices, tejido circular, no tejidos y entretelas para '
                                          'la industria automotriz, blancos y confección. ISO 9001 e ISO 14001. '
                                          'Solicite cotización o muestra.',
             ))
