@@ -81,8 +81,8 @@ se sirve el texto fijo. Desde 1.7.0 no se publica cuántas máquinas hay, ni en
 las cifras ni en las tarjetas de maquinaria (Dirección, 2026-11-19); el
 encabezado y el pie traen «Iniciar sesión» (nombre o «Mi cuenta» con sesión), y
 `/nosotros` muestra misión, visión, valores y razones tomados de la propuesta de
-Calidad («PROPUESTA PAGINA WEB», 2026-11-19). La ISO 45001 se anuncia solo como
-«en proceso de certificación».
+Calidad («PROPUESTA PAGINA WEB», 2026-11-19). La ISO 45001 se anunció como «en proceso» hasta 1.9.0, cuando Dirección confirmó
+que ya está certificada.
 
 Va en términos generales (Dirección, 2026-11-19): sin marcas de máquinas ni
 nombres internos de línea, y las páginas van de lo general a lo particular.
@@ -159,3 +159,16 @@ sitio no cambia; encendida, todas las páginas responden, el catálogo muestra
 solo lo publicado y el formulario apunta a `crm.lead`.
 
 La tipografía Geist (SIL Open Font License) va en `static/fonts/`.
+
+Desde 1.9.0 (Dirección, 2026-11-19: «esto es nuestra receta») `/planta` no
+publica galgas, diámetros, salida de la tela, cargas ni pasos de proceso. Cada
+tarjeta dice qué se puede hacer (tejidos, fibras que se tiñen y se acaban,
+productos de no tejido) y, en tintorería y ramas, cuántas máquinas hay: el
+número se lee de los centros de trabajo de Odoo y, si no se puede, vale el de
+`contenido.MAQUINARIA` (5 jets y 3 ramas). Las fibras salen de la presentación
+de empresa de octubre de 2026. El teléfono publicado es `contenido.TELEFONO`
+(el de las firmas de Ventas), no el de la ficha de la compañía, que trae otro
+número. En el mercado automotriz se explica para qué sirve el scrim (soporte
+que se lamina con espuma y tela, vinil o piel de las vestiduras). ISO 45001:
+certificada (lo confirmó Dirección el 2026-11-19), se muestra igual que las otras dos. El
+diseñador pregunta «Composición» y ya no el tipo de filamento.
