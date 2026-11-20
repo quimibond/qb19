@@ -40,11 +40,11 @@
 
     <!-- Pasos del pedido: Confirmado · En proceso · Embarcado · Facturado -->
     <template id="cuenta_pasos" name="Quimibond: pasos del pedido">
-        <ol class="qb-pasos" t-att-aria-label="'Etapa: %s' % etapa['texto']">
+        <ol class="qb-etapas" t-att-aria-label="'Etapa: %s' % etapa['texto']">
             <t t-foreach="etapa['pasos']" t-as="paso">
                 <li t-attf-class="#{'es-hecho' if paso_index &lt;= etapa['paso'] else ''} #{'es-actual' if paso_index == etapa['paso'] else ''}">
-                    <span class="qb-pasos__punto" aria-hidden="true"/>
-                    <span class="qb-pasos__texto" t-out="paso"/>
+                    <span class="qb-etapas__punto" aria-hidden="true"/>
+                    <span class="qb-etapas__texto" t-out="paso"/>
                 </li>
             </t>
         </ol>

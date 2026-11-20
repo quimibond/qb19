@@ -812,18 +812,17 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 .qb-estado--vencida::before { background: #d92d20; }
 
 /* Pasos del pedido */
-.qb .qb-pasos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0 4px; }
-.qb-pasos li { position: relative; padding-top: 18px; font-size: .75rem; color: var(--qb-muted-fg); }
-.qb-pasos li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: var(--qb-borde); }
-.qb-pasos li:first-child::before { left: 5px; }
-.qb-pasos__punto { position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--qb-bg); border: 2px solid var(--qb-borde-fuerte); }
-.qb-pasos li.es-hecho::before { background: var(--qb-fg); }
-.qb-pasos li.es-hecho .qb-pasos__punto { background: var(--qb-fg); border-color: var(--qb-fg); }
-.qb-pasos li.es-actual { color: var(--qb-fg); font-weight: 500; }
-.qb-pasos__texto { display: block; white-space: nowrap; }
-.qb-pasos li.es-actual::before { background: linear-gradient(90deg, var(--qb-fg) 0, var(--qb-fg) 10px, var(--qb-borde) 10px); }
-.qb-pasos li.es-actual:last-child::before { background: var(--qb-fg); }
-.qb-pasos li.es-actual .qb-pasos__punto { box-shadow: 0 0 0 4px rgba(9, 9, 11, .08); }
+.qb .qb-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0 4px; }
+.qb-etapas li { position: relative; padding-top: 18px; font-size: .75rem; color: var(--qb-muted-fg); }
+.qb-etapas li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: var(--qb-borde); }
+.qb-etapas li:first-child::before { left: 5px; }
+.qb-etapas__punto { position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--qb-bg); border: 2px solid var(--qb-borde-fuerte); }
+.qb-etapas li.es-hecho::before { background: var(--qb-fg); }
+.qb-etapas li.es-hecho .qb-etapas__punto { background: var(--qb-fg); border-color: var(--qb-fg); }
+.qb-etapas li.es-actual { color: var(--qb-fg); font-weight: 500; }
+.qb-etapas li.es-actual::before { background: linear-gradient(90deg, var(--qb-fg) 0, var(--qb-fg) 10px, var(--qb-borde) 10px); }
+.qb-etapas li.es-actual:last-child::before { background: var(--qb-fg); }
+.qb-etapas li.es-actual .qb-etapas__punto { box-shadow: 0 0 0 4px rgba(9, 9, 11, .08); }
 
 /* Tarjetas de pedido */
 .qb-pedidos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -884,5 +883,5 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
     .qb-tabla__fila > span:first-child::before { content: none; }
     .qb-tabla__fila > span:first-child strong { font-size: 1rem; }
     .qb-tabla__fila small { display: inline; margin-left: 6px; }
-    .qb-pasos__texto { font-size: .7rem; }
+    .qb-etapas__texto { font-size: .7rem; }
 }
