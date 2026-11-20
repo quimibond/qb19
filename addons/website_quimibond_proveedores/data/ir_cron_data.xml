@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Liga las facturas subidas en el portal con la factura de proveedor
+         que Cuentas por pagar registró por su cuenta (mismo folio fiscal). -->
+    <record id="cron_ligar_facturas" model="ir.cron">
+        <field name="name">Portal de proveedores: ligar facturas registradas</field>
+        <field name="model_id" ref="model_qb_proveedor_factura"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_ligar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+    </record>
+</odoo>

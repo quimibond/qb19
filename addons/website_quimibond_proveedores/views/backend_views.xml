@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Facturas recibidas en el portal -->
+    <record id="qb_proveedor_factura_view_list" model="ir.ui.view">
+        <field name="name">qb.proveedor.factura.list</field>
+        <field name="model">qb.proveedor.factura</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-muted="state == 'rechazada'" decoration-warning="state == 'recibida' and not cuadra">
+                <field name="create_date" string="Recibida el"/>
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="purchase_id"/>
+                <field name="fecha"/>
+                <field name="total"/>
+                <field name="moneda"/>
+                <field name="cuadra"/>
+                <field name="sat_estado"/>
+                <field name="move_id" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'recibida'" decoration-success="state == 'aceptada'" decoration-danger="state == 'rechazada'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_factura_view_form" model="ir.ui.view">
+        <field name="name">qb.proveedor.factura.form</field>
+        <field name="model">qb.proveedor.factura</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <button name="action_crear_factura" type="object" string="Crear factura de proveedor" class="oe_highlight" invisible="state != 'recibida'"/>
+                    <button name="action_crear_factura" type="object" string="Abrir factura de proveedor" invisible="not move_id"/>
+                    <button name="action_ligar" type="object" string="Buscar factura ya registrada" invisible="state != 'recibida'"/>
+                    <button name="action_rechazar" type="object" string="Rechazar" invisible="state != 'recibida'"/>
+                    <button name="action_reabrir" type="object" string="Volver a revisar" invisible="state != 'rechazada'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="recibida,aceptada"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not notas">
+                        <field name="notas" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Factura">
+                            <field name="partner_id"/>
+                            <field name="purchase_id"/>
+                            <field name="fecha"/>
+                            <field name="uuid"/>
+                            <field name="sat_estado"/>
+                            <field name="metodo_pago"/>
+                        </group>
+                        <group string="Importes">
+                            <field name="moneda"/>
+                            <field name="subtotal"/>
+                            <field name="total"/>
+                            <field name="por_facturar"/>
+                            <field name="cuadra"/>
+                        </group>
+                        <group string="Archivos">
+                            <field name="xml_nombre" invisible="1"/>
+                            <field name="pdf_nombre" invisible="1"/>
+                            <field name="pdf_file" filename="pdf_nombre"/>
+                            <field name="xml_file" filename="xml_nombre"/>
+                            <field name="usuario_id"/>
+                        </group>
+                        <group string="Emisor y receptor">
+                            <field name="emisor_nombre"/>
+                            <field name="emisor_rfc"/>
+                            <field name="receptor_rfc"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="move_id"/>
+                            <field name="motivo_rechazo" readonly="state != 'recibida'" placeholder="El proveedor lo ve en el portal"/>
+                        </group>
+                        <group string="Lo que se le dijo al proveedor" invisible="not avisos">
+                            <field name="avisos" nolabel="1" colspan="2"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_factura_view_search" model="ir.ui.view">
+        <field name="name">qb.proveedor.factura.search</field>
+        <field name="model">qb.proveedor.factura</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('uuid', 'ilike', self)]"/>
+                <field name="partner_id"/>
+                <field name="purchase_id"/>
+                <filter name="por_revisar" string="Por revisar" domain="[('state', '=', 'recibida')]"/>
+                <filter name="no_cuadra" string="No coincide con lo recibido" domain="[('cuadra', '=', False), ('state', '=', 'recibida')]"/>
+                <filter name="rechazadas" string="Rechazadas" domain="[('state', '=', 'rechazada')]"/>
+                <group>
+                    <filter name="por_proveedor" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="por_estado" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_factura_action" model="ir.actions.act_window">
+        <field name="name">Facturas recibidas en el portal</field>
+        <field name="res_model">qb.proveedor.factura</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_por_revisar': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay facturas subidas por proveedores</p>
+            <p>Aquí llega el PDF y el XML que cada proveedor sube contra su orden de compra en el portal.</p>
+        </field>
+    </record>
+
+    <!-- Solicitudes de alta -->
+    <record id="qb_proveedor_alta_view_list" model="ir.ui.view">
+        <field name="name">qb.proveedor.alta.list</field>
+        <field name="model">qb.proveedor.alta</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'rechazada'">
+                <field name="create_date" string="Recibida el"/>
+                <field name="name"/>
+                <field name="rfc"/>
+                <field name="giro"/>
+                <field name="contacto"/>
+                <field name="email"/>
+                <field name="partner_existente_id" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state in ('nueva', 'revision')" decoration-success="state == 'aprobada'" decoration-danger="state == 'rechazada'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_alta_view_form" model="ir.ui.view">
+        <field name="name">qb.proveedor.alta.form</field>
+        <field name="model">qb.proveedor.alta</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_revisar" type="object" string="Tomar para revisión" invisible="state != 'nueva'"/>
+                    <button name="action_aprobar" type="object" string="Aprobar y crear proveedor" class="oe_highlight" invisible="state not in ('nueva', 'revision')"/>
+                    <button name="action_rechazar" type="object" string="Rechazar" invisible="state not in ('nueva', 'revision')"/>
+                    <button name="action_ver_contacto" type="object" string="Abrir contacto" invisible="not partner_id and not partner_existente_id"/>
+                    <field name="state" widget="statusbar" statusbar_visible="nueva,revision,aprobada"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="status" invisible="not partner_existente_id or partner_id">
+                        Ya existe un contacto con este RFC: <field name="partner_existente_id" readonly="1" nolabel="1" class="oe_inline"/>. Al aprobar se liga a ese contacto en lugar de crear otro.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Razón social"/></h1>
+                    </div>
+                    <group>
+                        <group string="Empresa">
+                            <field name="rfc"/>
+                            <field name="giro"/>
+                            <field name="descripcion"/>
+                            <field name="ciudad"/>
+                            <field name="sitio_web" widget="url"/>
+                        </group>
+                        <group string="Contacto">
+                            <field name="contacto"/>
+                            <field name="puesto"/>
+                            <field name="email" widget="email"/>
+                            <field name="telefono" widget="phone"/>
+                        </group>
+                        <group string="Documentos">
+                            <field name="constancia_nombre" invisible="1"/>
+                            <field name="opinion_nombre" invisible="1"/>
+                            <field name="caratula_nombre" invisible="1"/>
+                            <field name="certificados_nombre" invisible="1"/>
+                            <field name="constancia" filename="constancia_nombre"/>
+                            <field name="opinion" filename="opinion_nombre"/>
+                            <field name="caratula" filename="caratula_nombre"/>
+                            <field name="certificados" filename="certificados_nombre"/>
+                        </group>
+                        <group string="Cuenta bancaria (como la declaró el proveedor)">
+                            <field name="banco"/>
+                            <field name="clabe"/>
+                            <field name="titular"/>
+                            <field name="moneda_cuenta"/>
+                        </group>
+                        <group string="Compromisos del proveedor">
+                            <field name="acepta_codigo"/>
+                            <field name="acepta_fecha"/>
+                            <field name="acepta_ip"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="partner_id"/>
+                            <field name="motivo_rechazo"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_alta_view_search" model="ir.ui.view">
+        <field name="name">qb.proveedor.alta.search</field>
+        <field name="model">qb.proveedor.alta</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('rfc', 'ilike', self)]"/>
+                <field name="email"/>
+                <filter name="abiertas" string="Por revisar" domain="[('state', 'in', ('nueva', 'revision'))]"/>
+                <filter name="aprobadas" string="Aprobadas" domain="[('state', '=', 'aprobada')]"/>
+                <group>
+                    <filter name="por_giro" string="Qué ofrece" context="{'group_by': 'giro'}"/>
+                    <filter name="por_estado" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_proveedor_alta_action" model="ir.actions.act_window">
+        <field name="name">Altas de proveedores</field>
+        <field name="res_model">qb.proveedor.alta</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_abiertas': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay solicitudes de alta</p>
+            <p>Aquí llegan las solicitudes que los proveedores envían desde el sitio web, con sus documentos.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_portal_proveedores" name="Portal de proveedores" parent="purchase.menu_purchase_root" sequence="50"/>
+    <menuitem id="menu_proveedor_facturas" name="Facturas recibidas" parent="menu_portal_proveedores" action="qb_proveedor_factura_action" sequence="10"/>
+    <menuitem id="menu_proveedor_altas" name="Altas de proveedores" parent="menu_portal_proveedores" action="qb_proveedor_alta_action" sequence="20"/>
+</odoo>

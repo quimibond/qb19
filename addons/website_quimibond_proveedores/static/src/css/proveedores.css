@@ -1,0 +1,65 @@
+/* -------------------------------------------------------------------------
+   Portal de proveedores. Usa los componentes de «Mi cuenta» (quimibond.css):
+   aquí solo va lo que el proveedor tiene de distinto.
+   ---------------------------------------------------------------------- */
+
+/* Estados de órdenes y facturas */
+.qb-estado--recibida::before, .qb-estado--programada::before { background: var(--qb-ok); }
+.qb-estado--programada { color: #06694f; background: #e7f8f2; border-color: #bfe9db; }
+.qb-estado--revision::before, .qb-estado--proceso::before { background: var(--qb-hilo-2); }
+.qb-estado--rechazada { color: #9a1c1c; background: #fdecec; border-color: #f5c6c6; }
+.qb-estado--rechazada::before { background: #d92d20; }
+
+/* Columnas de las tablas (en celular se apilan con la regla de Mi cuenta) */
+@media (min-width: 861px) {
+    .qb-lista__fila--orden { grid-template-columns: 1.1fr 1.1fr 1fr 1.3fr .9fr; }
+    .qb-lista__fila--pago { grid-template-columns: 1.4fr 1fr 1.1fr 1.1fr .9fr .9fr; }
+    .qb-lista__fila--partida { grid-template-columns: 3fr 1fr 1fr 1fr 1fr; }
+    .qb-prov__nota { grid-column: 1 / -1; }
+}
+.qb-lista__fila > span.qb-prov__nota { text-align: left; font-size: .8rem; color: var(--qb-muted-fg); padding: 8px 12px; background: var(--qb-suave); border-radius: var(--qb-radio-sm); }
+.qb-lista__fila > span.qb-prov__nota::before { content: none; }
+.qb-lista__fila small.qb-prov__falta { color: #b45309; font-weight: 500; margin-top: 4px; }
+.qb-lista__fila .qb-estado + small { margin-top: 4px; }
+
+.qb-prov__primero { margin-top: 0; }
+.qb-prov .qb-saldos + .qb-nota { margin-top: 0; }
+.qb-prov__programado { display: block; height: 100%; background: var(--qb-ok); border-radius: 999px; }
+.qb-prov__accion { display: inline-flex; align-items: center; gap: 6px; color: var(--qb-fg); font-weight: 500; }
+.qb-prov .qb-pedido--detalle .qb-mono { display: block; margin-bottom: 4px; }
+
+/* Avisos de resultado */
+.qb-prov__aviso { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); font-size: .9rem; }
+.qb-prov__aviso i { font-size: 1.1rem; margin-top: 2px; }
+.qb-prov__aviso strong { display: block; font-weight: 600; }
+.qb-prov__aviso p { margin: 2px 0 0; white-space: pre-line; }
+.qb-prov__aviso--ok { color: #06694f; background: #e7f8f2; border-color: #bfe9db; }
+.qb-prov__aviso--error { color: #9a1c1c; background: #fdecec; border-color: #f5c6c6; }
+
+/* Subir factura */
+.qb-prov__subir { padding: 24px; }
+.qb-prov__subir > p { margin: 0 0 18px; color: var(--qb-muted-fg); font-size: .925rem; }
+.qb-prov__subir > p strong { color: var(--qb-fg); font-weight: 600; }
+.qb .qb-form button.qb-btn { border: 0; cursor: pointer; }
+
+/* Páginas públicas y alta */
+.qb .qb-prov__lista { display: grid; gap: 0; margin: 28px 0 0; padding: 0; list-style: none; }
+.qb-prov__lista li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid var(--qb-borde); }
+.qb-prov__lista i { color: var(--qb-acento); padding-top: 3px; }
+.qb-prov__lista strong { display: block; font-weight: 500; }
+.qb-prov__lista span { color: var(--qb-muted-fg); font-size: .92rem; }
+.qb .qb-prov__lista--compacta { margin-top: 0; }
+.qb-prov__lista--compacta li { padding: 9px 0; }
+.qb-prov__lista--compacta li:first-child { border-top: 0; }
+.qb-prov__alta { max-width: 820px; }
+.qb-prov__alta-cab { margin-bottom: 32px; }
+.qb-prov__alta-cab h1 { margin-top: 12px; }
+.qb-prov__alta-cab .qb-lead { margin-top: 16px; }
+.qb .qb-prov__paso { display: flex; align-items: baseline; gap: 12px; font-size: 1.1rem; letter-spacing: -.01em; margin: 36px 0 16px; padding-top: 28px; border-top: 1px solid var(--qb-borde); }
+.qb .qb-form > .qb-prov__paso:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.qb-prov__ayuda { color: var(--qb-muted-fg); font-size: .85rem; margin: -8px 0 16px; }
+.qb-prov__error { color: #b42318; font-size: .8rem; }
+.qb-prov__acepta { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: .9rem; cursor: pointer; }
+.qb-prov__acepta input { margin-top: 4px; width: 16px; height: 16px; accent-color: var(--qb-fg); }
+.qb-prov__enviar { margin-top: 28px; }
+.qb-prov__trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
