@@ -75,11 +75,14 @@ en `controllers/contenido.py` (`TEJIDOS`, `PRESENTACIONES`, `MAQUINARIA`) y
 salieron de los centros de trabajo de Odoo el 2026-11-19.
 
 Con `quimibond_ficha_tecnica_tela` instalado, `controllers/planta.py` vuelve a
-leer de Odoo, cada vez que se sirve la página, la cantidad de máquinas por tipo
-(`mrp.workcenter.ft_tipo_id`: circulares, jets, ramas, inspección) y, de las
-circulares, galgas, diámetros y salida de la tela de la ficha vigente.
-Dar de alta una circular en Odoo cambia la cifra del sitio. Sin ese módulo, o
-si la lectura falla, se sirve el texto fijo.
+leer de Odoo, cada vez que se sirve la página, galgas, diámetros y salida de la
+tela de las circulares (ficha vigente). Sin ese módulo, o si la lectura falla,
+se sirve el texto fijo. Desde 1.7.0 no se publica cuántas máquinas hay, ni en
+las cifras ni en las tarjetas de maquinaria (Dirección, 2026-11-19); el
+encabezado y el pie traen «Iniciar sesión» (nombre o «Mi cuenta» con sesión), y
+`/nosotros` muestra misión, visión, valores y razones tomados de la propuesta de
+Calidad («PROPUESTA PAGINA WEB», 2026-11-19). La ISO 45001 se anuncia solo como
+«en proceso de certificación».
 
 Va en términos generales (Dirección, 2026-11-19): sin marcas de máquinas ni
 nombres internos de línea, y las páginas van de lo general a lo particular.

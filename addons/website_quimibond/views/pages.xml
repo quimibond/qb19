@@ -402,6 +402,7 @@
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
                     </div>
+                    <p class="qb-nota qb-reveal">ISO 45001 de seguridad y salud en el trabajo: en proceso de certificación.</p>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
@@ -476,6 +477,62 @@
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Quiénes somos</span>
+                            <h2 class="qb-reveal">Más que un proveedor, su aliado en la industria textil.</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--2">
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">Misión</span>
+                                <p class="qb-mision" t-out="qb_mision"/>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">Visión 2030</span>
+                                <p class="qb-mision" t-out="qb_vision"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Por qué Quimibond</span>
+                            <h2 class="qb-reveal">Tres razones para trabajar con nosotros</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_razones" t-as="r">
+                                <div class="qb-card qb-spot qb-reveal">
+                                    <span class="qb-mono qb-num" t-out="r['num']"/>
+                                    <h3 t-out="r['titulo']"/>
+                                    <p t-out="r['texto']"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Valores</span>
+                            <h2 class="qb-reveal">Juntos tejemos un mejor futuro.</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_valores" t-as="v">
+                                <div class="qb-card qb-spot qb-reveal">
+                                    <span class="qb-icono"><i t-attf-class="fa #{v['icono']}" aria-hidden="true"/></span>
+                                    <h3 t-out="v['titulo']"/>
+                                    <p t-out="v['texto']"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Historia</span>
+                            <h2 class="qb-reveal">De las entretelas al textil técnico</h2>
+                        </div>
                         <ol class="qb-historia">
                             <t t-foreach="qb_historia" t-as="h">
                                 <li class="qb-reveal">
@@ -489,7 +546,7 @@
                         </ol>
                     </div>
                 </section>
-                <section class="qb-sec qb-sec--suave">
+                <section class="qb-sec">
                     <div class="qb-container">
                         <dl class="qb-cifras qb-reveal">
                             <t t-foreach="qb_cifras" t-as="c">
@@ -501,7 +558,7 @@
                         </dl>
                     </div>
                 </section>
-                <section class="qb-sec">
+                <section class="qb-sec qb-sec--suave">
                     <div class="qb-container qb-dos qb-dos--centro">
                         <div>
                             <span class="qb-eyebrow qb-reveal">Ubicación</span>
