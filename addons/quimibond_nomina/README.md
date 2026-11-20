@@ -972,6 +972,8 @@ centavos de más; Odoo da 20,798.31 + 20,798.07. El cálculo vive en
 `models/reporte_calculo.py` (sin Odoo) y se prueba con pytest puro en
 `tests_puros/nomina/` con esos recibos.
 
+1.23.1: la periodicidad del contrato (`schedule_pay`) tiene la selección como función en Odoo 19; leerla con `.selection` tumbaba los dos reportes («'function' object is not iterable», primera prueba en producción el 20-nov).
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es

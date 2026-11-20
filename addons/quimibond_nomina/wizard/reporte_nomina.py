@@ -106,8 +106,9 @@ class NominaReporte(models.TransientModel):
             'fecha_alta': (version.contract_date_start or version.date_start) if version else False,
             'puesto': slip.job_id.name or emp.job_title or '',
             'departamento': slip.department_id.name or '',
-            'periodicidad': dict(version._fields['schedule_pay'].selection).get(version.schedule_pay, '')
-            if version else '',
+            # La selección de schedule_pay es una función en Odoo 19: se lee ya resuelta.
+            'periodicidad': dict(version._fields['schedule_pay']._description_selection(self.env)).get(
+                version.schedule_pay, '') if version else '',
             'sueldo': version.wage if version else 0.0,
             'salario_diario': sd,
             'horas_dia': horas_dia,
@@ -188,7 +189,7 @@ class NominaReporte(models.TransientModel):
 
     def _nombre_reporte(self):
         self.ensure_one()
-        etiqueta = dict(self._fields['reporte'].selection)[self.reporte]
+        etiqueta = dict(self._fields['reporte']._description_selection(self.env))[self.reporte]
         if self.modo == 'lote' and len(self.payslip_run_ids) == 1:
             return '%s - %s' % (etiqueta, self.payslip_run_ids.name)
         return etiqueta
