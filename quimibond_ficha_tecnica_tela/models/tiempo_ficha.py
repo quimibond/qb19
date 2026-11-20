@@ -268,7 +268,9 @@ class MrpRoutingWorkcenterTiempoFicha(models.Model):
             want = any(values)
         else:
             return NotImplemented
-        ops = self.with_context(active_test=False).search([('workcenter_id.ft_tipo_id', '!=', False)])
+        # 2.31.1: archivadas incluidas al buscar, pero el tiempo de la ficha se calcula con el contexto normal.
+        ops = self.with_context(active_test=False).search(
+            [('workcenter_id.ft_tipo_id', '!=', False)]).with_context(active_test=True)
         return [('id', 'in' if want else 'not in', ops.filtered('ft_tiempo_difiere').ids)]
 
     def action_ft_usar_tiempo_ficha(self):
