@@ -153,6 +153,9 @@ a:hover > .qb-enlace i, a.qb-enlace:hover i { transform: translateX(4px); }
 
 /* Rejillas y secciones */
 .qb-grid { display: grid; gap: 16px; }
+.qb-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qb-mision { font-size: 1.02rem; line-height: 1.65; color: var(--qb-fg); margin-top: 12px; }
+.qb-nota { font-size: .85rem; color: var(--qb-fg-suave, inherit); opacity: .8; margin-top: 14px; }
 .qb-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .qb-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .qb-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: start; }
@@ -574,7 +577,7 @@ a:hover .qb-muestra__puntos { opacity: .9; }
 }
 @media (max-width: 640px) {
     .qb-container { padding: 0 18px; }
-    .qb-grid--3, .qb-grid--4, .qb-form__rejilla { grid-template-columns: minmax(0, 1fr); }
+    .qb-grid--2, .qb-grid--3, .qb-grid--4, .qb-form__rejilla { grid-template-columns: minmax(0, 1fr); }
     .qb-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .qb-cifras > div { padding: 18px 20px; }
     .qb-cifras > div:nth-child(odd) { border-left: 0; }
@@ -743,4 +746,11 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
     .qb-dis .qb-reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
     .qb-tela-caja { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .qb-dis h1::after { content: " · Quimibond"; color: #71717a; font-weight: 400; }
+}
+
+/* ---- Acceso (inicio de sesión): con texto en escritorio, solo el icono en pantalla angosta ---- */
+.qb-acceso { gap: 8px; }
+@media (max-width: 991.98px) {
+    .qb .qb-acceso { width: 36px; height: 36px; min-height: 0; padding: 0; justify-content: center; border: 1px solid var(--qb-borde); }
+    .qb-acceso span { display: none; }
 }

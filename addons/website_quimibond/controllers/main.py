@@ -140,7 +140,7 @@ class QuimibondSitio(http.Controller):
         maquinaria = planta.maquinaria(request.env, request.website.company_id)
         valores = {
             'qb_mercados': contenido.mercados(),
-            'qb_cifras': planta.cifras(maquinaria),
+            'qb_cifras': contenido.CIFRAS,
             'qb_proceso': contenido.PROCESO,
             'qb_historia': contenido.HISTORIA,
             'qb_sustentabilidad': contenido.SUSTENTABILIDAD,
@@ -314,6 +314,10 @@ class QuimibondSitio(http.Controller):
     def nosotros(self, **kw):
         _exigir_activo()
         return request.render('website_quimibond.nosotros', self._valores_comunes(
+            qb_mision=contenido.MISION,
+            qb_vision=contenido.VISION,
+            qb_valores=contenido.VALORES,
+            qb_razones=contenido.RAZONES,
             title='Nosotros | Quimibond',
             website_meta_description='Productora de No Tejidos Quimibond: fabricantes de entretelas y textiles '
                                      'técnicos en Toluca, México, desde 1992.',
