@@ -45,6 +45,7 @@ class TestSitioB2B(HttpCase):
         self.assertIn('data-qb-anim="circular"', portada.text)
         self.assertNotIn('ricot', portada.text)
         self.assertIn('Scrims', portada.text)
+        self.assertNotIn('href="/catalogo"', portada.text)
         self.assertNotIn('ricot', self.url_open('/mercados/confeccion').text)
         for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):

@@ -20,7 +20,7 @@
                             <p class="qb-lead qb-reveal">Tejemos, teñimos, acabamos e inspeccionamos en nuestra planta de Toluca. Fabricamos contra su especificación para la industria automotriz, blancos y confección.</p>
                             <div class="qb-hero__cta qb-reveal">
                                 <a href="/cotizar" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
-                                <a href="/catalogo" class="qb-btn qb-btn--contorno qb-btn--lg">Ver catálogo técnico</a>
+                                <a href="/disenar" class="qb-btn qb-btn--contorno qb-btn--lg">Diseñe su tela</a>
                             </div>
                             <p class="qb-hero__nota qb-reveal"><i class="fa fa-clock-o" aria-hidden="true"/> Respuesta de Ventas en un día hábil</p>
                         </div>
@@ -833,7 +833,7 @@
                         <h1>Recibimos su solicitud</h1>
                         <p class="qb-lead">Ya está con el equipo de Ventas. Le contactamos en un día hábil.</p>
                         <div class="qb-hero__cta qb-hero__cta--centro">
-                            <a href="/catalogo" class="qb-btn qb-btn--primario">Ver catálogo</a>
+                            <a href="/disenar" class="qb-btn qb-btn--primario">Diseñe su tela</a>
                             <a href="/" class="qb-btn qb-btn--contorno">Volver al inicio</a>
                         </div>
                     </div>

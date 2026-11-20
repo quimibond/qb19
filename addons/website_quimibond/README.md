@@ -98,6 +98,10 @@ circular. Y los textos generales (portada, pie, títulos para buscadores,
 mercado automotriz, diseñador) nombran los **scrims**, el producto automotriz:
 Dirección pidió no dejar de lado lo automotriz (2026-11-19).
 
+Desde 1.8.0 ningún menú, botón ni pie enlaza a `/catalogo`: solo mostraba telas
+de confección porque los productos publicados están mal (Dirección,
+2026-11-19). La ruta sigue viva y se vuelve a enlazar cuando se corrijan.
+
 ## Diseñador de tela
 
 `/disenar`: la persona elige mercado, aplicación, construcción, fibra, peso, ancho, color, tacto,
