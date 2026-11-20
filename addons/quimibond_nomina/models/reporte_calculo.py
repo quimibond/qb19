@@ -15,6 +15,8 @@ Convención de signos (la de las líneas del recibo de Odoo):
 * un código con ``-`` al frente entra con el signo contrario. ``IMSS`` usa
   ``-IMSS_EMPLOYEE_TOTAL`` porque esa línea de Odoo es positiva.
 
+Un concepto de tipo ``ignorar`` sólo saca sus reglas de ese reporte automático.
+
 Lo que tiene concepto de CFDI (``l10n_mx_concept``), sale en el recibo, no
 está en el catálogo y no es cero se reporta solo, con el nombre de la regla y
 sin clave NOI: así nada del recibo se pierde aunque falte darlo de alta.
@@ -22,7 +24,7 @@ sin clave NOI: así nada del recibo se pierde aunque falte darlo de alta.
 Este archivo no importa Odoo para poder probarlo con pytest puro
 (``tests_puros/nomina``)."""
 
-TIPOS = ('percepcion', 'deduccion', 'informativo')
+TIPOS = ('percepcion', 'deduccion', 'informativo', 'ignorar')
 _ORDEN_TIPO = {t: i for i, t in enumerate(TIPOS)}
 CFDI_A_TIPO = {'perception': 'percepcion', 'deduction': 'deduccion', 'other': 'informativo'}
 
@@ -84,6 +86,11 @@ def conceptos_de_recibo(lineas, conceptos):
         codigos = parsear_codigos(c.get('codigos'))
         exentos = {cod for cod, _s in parsear_codigos(c.get('codigos_exento'))}
         if not codigos:
+            continue
+        if c['tipo'] == 'ignorar':
+            # Reglas con concepto de CFDI que no son un renglón propio (GROSS_WITHOUT_HOLIDAY repite el
+            # sueldo): sólo se sacan del reporte automático.
+            usados.update(cod for cod, _s in codigos)
             continue
         signo_tipo = 1 if c['tipo'] == 'percepcion' else -1
         importe = exento = 0.0

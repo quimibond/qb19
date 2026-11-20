@@ -19,9 +19,11 @@ class NominaConceptoNoi(models.Model):
     name = fields.Char(string="Descripción", required=True)
     clave = fields.Char(string="Clave NOI", help="Como en NOI: P001, D001…")
     tipo = fields.Selection([('percepcion', "Percepción"), ('deduccion', "Deducción"),
-                             ('informativo', "Informativo")], string="Tipo", required=True, default='percepcion',
+                             ('informativo', "Informativo"), ('ignorar', "No reportar")],
+                            string="Tipo", required=True, default='percepcion',
                             help="Informativo: sale en el reporte de percepción/deducción y en el resumen, "
-                                 "pero no suma ni resta al neto (subsidio para el empleo aplicado).")
+                                 "pero no suma ni resta al neto (subsidio para el empleo aplicado). No reportar: reglas con concepto "
+                                 "de CFDI que no son un renglón propio (Bruto sin vacaciones repite el sueldo).")
     tipo_orden = fields.Integer(compute='_compute_tipo_orden', store=True)
     clave_sat = fields.Char(string="Clave SAT", size=3)
     codigos = fields.Char(
