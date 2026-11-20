@@ -411,8 +411,8 @@ RAZONES = [
     {'num': '01', 'titulo': 'Experiencia y especialización',
      'texto': 'Fabricamos telas desde 1992. Nuestro equipo técnico desarrolla cada tela a la medida de su aplicación.'},
     {'num': '02', 'titulo': 'Calidad y confianza',
-     'texto': 'Sistema de gestión certificado en ISO 9001 e ISO 14001, en proceso de certificación en '
-              'ISO 45001, y trazabilidad de cada lote.'},
+     'texto': 'Sistema de gestión certificado en ISO 9001, ISO 14001 e ISO 45001, '
+              'y trazabilidad de cada lote.'},
     {'num': '03', 'titulo': 'Compromiso con el futuro',
      'texto': 'Innovación, sustentabilidad y seguridad de nuestra gente en cada etapa del proceso.'},
 ]

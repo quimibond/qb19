@@ -59,7 +59,7 @@ class TestSitioB2B(HttpCase):
         nosotros = self.url_open('/nosotros').text
         for texto in ('Misión', 'Visión 2030', 'Enfoque al cliente', 'Experiencia y especialización'):
             self.assertIn(texto, nosotros, texto)
-        self.assertIn('certificado en emisión', self.url_open('/calidad').text)
+        self.assertIn('ISO 45001 desde 2026', self.url_open('/calidad').text)
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text

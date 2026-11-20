@@ -13,7 +13,7 @@
                     <div class="qb-container qb-hero__in">
                         <div class="qb-hero__texto">
                             <a href="/calidad" class="qb-pill qb-reveal">
-                                <span class="qb-pill__punto"/> ISO 9001 · 14001 <span class="qb-pill__sep"/> ISO 45001 en proceso
+                                <span class="qb-pill__punto"/> ISO 9001 · 14001 · 45001
                                 <i class="fa fa-angle-right" aria-hidden="true"/>
                             </a>
                             <h1 class="qb-reveal">Scrims, entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
@@ -167,11 +167,11 @@
                             <a href="/calidad" class="qb-card qb-bento__a qb-spot qb-reveal">
                                 <span class="qb-eyebrow">Calidad</span>
                                 <h3>Sistema de gestión integral certificado</h3>
-                                <p>Calidad y medio ambiente auditados cada año. Cada lote se libera en laboratorio antes de embarcar.</p>
+                                <p>Calidad, medio ambiente y seguridad auditados cada año. Cada lote se libera en laboratorio antes de embarcar.</p>
                                 <div class="qb-sellos">
                                     <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                                     <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
-                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
+                                    <span class="qb-sello"><strong>ISO</strong>45001:2018</span>
                                 </div>
                             </a>
                             <t t-foreach="qb_sustentabilidad" t-as="s">
@@ -427,13 +427,13 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
                     <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
-                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015. La auditoría de certificación de ISO 45001 se realizó en septiembre de 2026.'"/>
+                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018: calidad, medio ambiente y seguridad y salud en el trabajo.'"/>
                     <div class="qb-sellos qb-reveal">
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
-                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
+                                    <span class="qb-sello"><strong>ISO</strong>45001:2018</span>
                     </div>
-                    <p class="qb-nota qb-reveal">ISO 45001:2018 de seguridad y salud en el trabajo: auditoría de certificación realizada en septiembre de 2026, certificado en emisión. ISO 9001 desde 2015 e ISO 14001 desde 2023.</p>
+                    <p class="qb-nota qb-reveal">ISO 9001 desde 2015, ISO 14001 desde 2023 e ISO 45001 desde 2026.</p>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
