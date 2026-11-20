@@ -28,6 +28,19 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.10.2 (Planeación, 2026-11-20): la validación de la Rama es aviso y el tiempo sale de la tela en esa Rama
+
+- **Aviso, no bloqueo:** si la Rama no opera, el artículo no tiene proceso en ella o le falta la velocidad, la columna
+  «Validación» muestra «⚠ Aviso (se puede programar)» y la programación se hace igual; el aviso queda en el chatter de la
+  orden. Es para programar en la RAMA 3 telas en prueba, que no tienen velocidad dada de alta. Lo único que bloquea es
+  elegir una máquina que no es Rama.
+- **Tiempo de la Rama (sin tabla aparte):** la velocidad por tela y por Rama que ya está en la ficha técnica (proceso del
+  artículo en la máquina). Al fijar la Rama, la operación toma el tiempo de la velocidad de esa tela en esa Rama
+  (`_ft_tiempo_rama`: rendimiento de la ficha ÷ velocidad, por la capacidad del ciclo de esa Rama). Si esa Rama no tiene la
+  velocidad de la tela, avisa y **deja el tiempo de la lista**. Antes el tiempo de la operación era el de la lista aunque
+  se cambiara la máquina.
+- Pruebas: `test_rama_sin_proceso_o_sin_velocidad_es_aviso_no_bloqueo`, `test_rama_toma_la_velocidad_de_la_tela_en_esa_rama`.
+
 ## Cambios 19.0.1.10.1 (2026-11-19): solo cuentan las máquinas que son Rama
 
 El tipo «Acabado» lo comparten otras máquinas. Una Rama es una máquina de tipo «Acabado» **cuyo nombre dice RAMA**
@@ -43,15 +56,14 @@ con el HTJ, y no se mueve al planificar.
 - **Tabla «Rama por baño (opcional)»** en la ventana: un renglón por baño (orden parcial) que sale de la programación
   (HTJ elegido); cada baño puede llevar **una Rama distinta**. Se ofrecen todas las ramas (máquinas del tipo «Acabado»,
   hoy las 3) y la columna «Validación» dice si el artículo se puede programar en ella con lo que hay cargado: la Rama
-  opera y el artículo tiene proceso en esa máquina (`_ft_aviso_alternativa` de las fichas). Si no se puede, **no se
-  programa** y el error nombra baño y Rama (antes de tocar ninguna orden). Al cambiar el HTJ cambia el número de baños;
+  opera y el artículo tiene proceso en esa máquina (`_ft_aviso_alternativa` de las fichas). Desde 1.10.2 el resultado es un aviso, no un bloqueo. Al cambiar el HTJ cambia el número de baños;
   las ramas elegidas se conservan por número de baño.
 - **Opcional:** con la Rama vacía la elige el planificador de Odoo como hoy. Si se eligió Rama y la lista de materiales
   no tiene operación de Rama (máquina de tipo «Acabado»), error.
 - **Rama fijada a mano:** la operación de Rama queda con `rama_fija` (campo nuevo en `mrp.workorder`) y
   `_ft_maquina_fija` la reconoce como el jet: el planificador de las fichas la deja en su máquina aunque haya otra
   alternativa. Queda nota en el chatter de cada baño.
-- **Tiempo:** lo sigue calculando el sistema con la tabla de tiempos de Rama de las fichas (no se fija aquí).
+- **Tiempo:** ver 1.10.2: sale de la velocidad de la tela en esa Rama.
 - Pruebas: `test_rama_elegida_por_bano_queda_fijada`, `test_rama_opcional_vacia_la_elige_el_planificador`,
   `test_rama_sin_proceso_del_articulo_no_se_programa`, `test_ramas_distintas_en_numero_a_los_banos`,
   `test_ventana_programar_con_rama_por_bano`.

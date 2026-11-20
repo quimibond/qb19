@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
@@ -276,15 +278,38 @@ class TestProgramacionTintoreria(TransactionCase):
         orden = mo2._programar_tintoreria(self.htj1).production_ids
         self.assertFalse(orden._workorder_rama().rama_fija, "Sin ramas no se fija nada")
 
-    def test_rama_sin_proceso_del_articulo_no_se_programa(self):
+    def test_rama_sin_proceso_o_sin_velocidad_es_aviso_no_bloqueo(self):
+        """1.10.2 (Planeación): la validación del artículo en la Rama avisa, no bloquea (la RAMA 3 solo tiene velocidad
+        de unas telas y ahí se programan las que están en prueba). Sin velocidad, se deja el tiempo de la lista."""
         rama1, rama2, rama3 = self._ramas()
         mo = self._crear_mo(500.0)
-        with self.assertRaisesRegex(UserError, 'no se puede programar en la Rama'):
-            mo._programar_tintoreria(self.htj1, [rama3])
-        self.assertFalse(mo.tintoreria_programada, "Nada se programa si la Rama no es válida")
+        self.assertIn('no tiene proceso', mo._rama_validar(rama3))
+        orden = mo._programar_tintoreria(self.htj1, [rama3]).production_ids
+        self.assertTrue(mo.tintoreria_programada or orden.tintoreria_programada, "Se programa con aviso")
+        wo = orden._workorder_rama()
+        self.assertEqual(wo.workcenter_id, rama3)
+        self.assertTrue(wo.rama_fija)
+        mensajes = ' '.join(orden.message_ids.mapped('body'))
+        self.assertIn('Aviso', mensajes)
+        self.assertIn('tiempo de la lista', mensajes)
+        # una Rama que no está operando tampoco bloquea
         rama1.ft_estado = 'montaje'
-        with self.assertRaisesRegex(UserError, 'montaje'):
-            mo._programar_tintoreria(self.htj1, [rama1])
+        otra = self._crear_mo(500.0)._programar_tintoreria(self.htj1, [rama1]).production_ids
+        self.assertEqual(otra._workorder_rama().workcenter_id, rama1)
+
+    def test_rama_toma_la_velocidad_de_la_tela_en_esa_rama(self):
+        """1.10.2: al fijar la Rama, el tiempo sale de la velocidad del artículo en esa Rama (fichas), no de la lista."""
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(500.0)
+        proceso = self.env['ficha.tecnica.proceso']._ft_buscar(mo.product_id, rama1)
+        self.assertTrue(proceso)
+        with patch.object(type(self.env['mrp.routing.workcenter']), '_ft_tiempo_rama',
+                          lambda op: (0.5, 'prueba') if op.workcenter_id == rama1 else (0.0, False)):
+            orden = mo._programar_tintoreria(self.htj1, [rama1]).production_ids
+        wo = orden._workorder_rama()
+        self.assertTrue(wo.rama_fija)
+        self.assertTrue(wo.duration_expected > 0)
+        self.assertIn('velocidad de esta tela', ' '.join(orden.message_ids.mapped('body')))
 
     def test_otra_maquina_de_tipo_acabado_no_es_rama(self):
         """1.10.1: el tipo «Acabado» lo comparten otras máquinas; solo son Rama las que dicen RAMA en el nombre."""
@@ -295,7 +320,7 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertFalse(calandra._es_rama())
         mo = self._crear_mo(500.0)
         with self.assertRaisesRegex(UserError, 'no es una Rama'):
-            mo._programar_tintoreria(self.htj1, [calandra])
+            mo._programar_tintoreria(self.htj1, [calandra])  # esto sí bloquea: no es una Rama
         # la operación de Rama de la lista se busca entre las ramas, no entre todas las del tipo
         self.bom.write({'operation_ids': [Command.create({'name': 'Calandra', 'workcenter_id': calandra.id,
                                                           'sequence': 10})]})
@@ -317,12 +342,9 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertEqual(len(wizard.bano_ids), 2, "Un renglón por baño")
         wizard.bano_ids.sorted('secuencia')[0].rama_id = rama1
         wizard.bano_ids.sorted('secuencia')[1].rama_id = rama2
-        self.assertIn('Se puede programar', wizard.bano_ids[0].validacion)
         wizard.bano_ids.sorted('secuencia')[1].rama_id = rama3
-        self.assertTrue(wizard.bano_ids.sorted('secuencia')[1].rama_invalida)
-        with self.assertRaisesRegex(UserError, 'no se puede programar en la Rama'):
-            wizard.action_confirmar()
-        self.assertFalse(mo.tintoreria_programada)
+        self.assertTrue(wizard.bano_ids.sorted('secuencia')[1].rama_aviso, "Rama 3 sin proceso: aviso")
+        self.assertIn('Aviso', wizard.bano_ids.sorted('secuencia')[1].validacion)
         wizard.bano_ids.sorted('secuencia')[1].rama_id = rama2
         wizard.action_confirmar()
         ordenes = self.env['mrp.production'].search([('tintoreria_programada', '=', True)]).sorted('id')[-2:]

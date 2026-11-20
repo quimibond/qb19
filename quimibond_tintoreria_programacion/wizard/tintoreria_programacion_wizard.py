@@ -116,11 +116,9 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
                               o=self.production_id.name, n=plan['n_banos']))
         if not self.production_id._workorder_rama():
             raise UserError(_("La lista de materiales de %s no tiene operación de Rama.", self.production_id.name))
-        for numero, rama in enumerate(ramas, 1):
-            problema = self.production_id._rama_validar(rama)
-            if problema:
-                raise UserError(_("Baño %(i)s de %(o)s: no se puede programar en la Rama %(r)s. %(p)s",
-                                  i=numero, o=self.production_id.name, r=rama.display_name, p=problema))
+        for rama in ramas:
+            if rama and not rama._es_rama():
+                raise UserError(_("%s no es una Rama.", rama.display_name))
 
     @api.depends('production_id', 'workcenter_id')
     def _compute_plan(self):
@@ -179,13 +177,13 @@ class TintoreriaProgramacionWizardBano(models.TransientModel):
         help='Opcional. Si se elige, la operación de Rama de este baño queda fijada y el planificador no la mueve; '
              'vacía, la elige el planificador como siempre.')
     validacion = fields.Char('Validación', compute='_compute_validacion')
-    rama_invalida = fields.Boolean(compute='_compute_validacion')
+    rama_aviso = fields.Boolean(compute='_compute_validacion')
 
     @api.depends('rama_id', 'production_id')
     def _compute_validacion(self):
         for bano in self:
             orden = bano.production_id
             problema = orden._rama_validar(bano.rama_id) if (orden and bano.rama_id) else False
-            bano.rama_invalida = bool(problema)
+            bano.rama_aviso = bool(problema)
             bano.validacion = False if not bano.rama_id else (
-                ('✗ %s' % problema) if problema else _('✓ Se puede programar'))
+                (_('⚠ Aviso (se puede programar): %s', problema)) if problema else _('✓ Completo'))

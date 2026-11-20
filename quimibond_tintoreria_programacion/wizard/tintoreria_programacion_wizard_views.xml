@@ -13,10 +13,10 @@
                     ellos se recalcula la dosificación.
                 </p>
                 <p class="text-muted">
-                    Rama (opcional): en la tabla «Rama por baño» se elige la Rama de cada baño. Se pueden ver las tres
-                    y se valida que el artículo se pueda programar en ella (opera y tiene proceso del artículo). La Rama
-                    elegida queda fijada y el planificador no la cambia; vacía, la elige el planificador. El tiempo de
-                    la Rama lo calcula el sistema con la tabla de tiempos de Rama.
+                    Rama (opcional): en la tabla «Rama por baño» se elige la Rama de cada baño. Se pueden ver las tres.
+                    La validación del artículo en la Rama es un aviso, no bloquea. La Rama elegida queda fijada y el
+                    planificador no la cambia; vacía, la elige el planificador. El tiempo sale de la velocidad de la
+                    tela en esa Rama (fichas técnicas); si no la tiene, avisa y deja el tiempo de la lista.
                 </p>
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom" create="false" delete="false">
@@ -46,9 +46,9 @@
                         <field name="secuencia"/>
                         <field name="kg"/>
                         <field name="rama_id" options="{'no_create': True, 'no_open': True}"/>
-                        <field name="rama_invalida" column_invisible="1"/>
-                        <field name="validacion" decoration-danger="rama_invalida"
-                               decoration-success="rama_id and not rama_invalida"/>
+                        <field name="rama_aviso" column_invisible="1"/>
+                        <field name="validacion" decoration-warning="rama_aviso"
+                               decoration-success="rama_id and not rama_aviso"/>
                     </list>
                 </field>
                 <footer>

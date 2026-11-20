@@ -168,14 +168,54 @@ class MrpProduction(models.Model):
         return ramas.sorted(lambda wo: (wo.operation_id.sequence, wo.id))[:1]
 
     def _rama_validar(self, rama):
-        """1.10.0: texto del problema si el artículo no se puede programar en esa Rama (con lo que hay cargado: operando
-        y proceso del artículo en la máquina). False si se puede."""
+        """1.10.2 (Planeación): AVISO, no bloqueo. Texto del problema si el artículo no tiene todo para correr en esa
+        Rama (no opera, sin proceso del artículo o sin velocidad); False si está completo. La Rama 3 solo tiene la
+        velocidad de unas telas y Planeación programa ahí las que están en prueba."""
         self.ensure_one()
         if not rama:
             return False
-        if not rama._es_rama():
-            return _("%s no es una Rama.", rama.display_name)
-        return rama._ft_aviso_alternativa(self.product_id) or False
+        aviso = rama._ft_aviso_alternativa(self.product_id)
+        if aviso:
+            return aviso
+        _minutos, texto = self._rama_tiempo_ficha(rama)
+        return texto or False
+
+    def _rama_tiempo_ficha(self, rama):
+        """1.10.2: (minutos por ciclo, texto del dato que falta) del artículo en esa Rama, con la tabla de velocidades de
+        las fichas (el proceso del artículo en la máquina), no una tabla aparte. (0, texto) si falta algo."""
+        self.ensure_one()
+        operacion = self._workorder_rama().operation_id
+        if not operacion:
+            return 0.0, False
+        virtual = operacion.new(origin=operacion)
+        virtual.workcenter_id = rama
+        minutos, texto = virtual._ft_tiempo_rama()
+        if not virtual.ft_proceso_id:
+            return 0.0, _("%s no tiene velocidad dada de alta para %s.", rama.display_name,
+                          self.product_id.default_code or self.product_id.display_name)
+        return minutos, (texto if not minutos else False)
+
+    def _rama_fijar(self, rama):
+        """1.10.2: fija la Rama en la operación de esta orden (máquina fijada a mano) y toma el tiempo de la velocidad
+        de la tela en esa Rama; si no la tiene, avisa y deja el tiempo de la lista."""
+        self.ensure_one()
+        wo = self._workorder_rama()
+        wo.workcenter_id = rama
+        wo.rama_fija = True
+        minutos_ciclo, falta = self._rama_tiempo_ficha(rama)
+        aviso = self._rama_validar(rama)
+        if minutos_ciclo and wo.operation_id:
+            wo.duration_expected = self._minutos_operacion_bom(wo.operation_id, rama, self.product_qty,
+                                                               time_cycle=minutos_ciclo)
+            cuerpo = _("Rama fijada en la programación: %(r)s. Tiempo de la velocidad de esta tela en esa Rama: "
+                       "%(m)s min.", r=rama.display_name, m=round(wo.duration_expected, 1))
+        else:
+            cuerpo = _("Rama fijada en la programación: %(r)s. Se deja el tiempo de la lista (%(m)s min).",
+                       r=rama.display_name, m=round(wo.duration_expected, 1))
+        if aviso:
+            cuerpo += ' ' + _("⚠ Aviso: %s", aviso)
+        self.message_post(body=cuerpo)
+        return aviso
 
     def _rendimiento_tejido(self):
         """Rendimiento de tejido (m/kg) del producto en kg: el que fija la banda y la carga del jet."""
@@ -327,7 +367,7 @@ class MrpProduction(models.Model):
             "en el jet (ficha técnica) o el tiempo de su fórmula en ese HTJ.",
             prod=self.product_id.display_name, wc=workcenter.display_name))
 
-    def _minutos_operacion_bom(self, operacion, workcenter, kg):
+    def _minutos_operacion_bom(self, operacion, workcenter, kg, time_cycle=None):
         """1.5.0: minutos de la operación de la BoM para ``kg`` en el HTJ, con la misma cuenta que Odoo
         (``mrp.workorder._get_duration_expected``): preparación + limpieza + ciclos × tiempo del ciclo,
         entre la eficiencia de la máquina; un ciclo es la cantidad de la BoM (o la capacidad del HTJ
@@ -338,7 +378,8 @@ class MrpProduction(models.Model):
             self.product_id, bom.product_uom_id, bom.product_qty or 1)
         cantidad = self.product_uom_id._compute_quantity(kg, bom.product_uom_id)
         ciclos = float_round(cantidad / (capacidad or 1), precision_digits=0, rounding_method='UP')
-        return preparacion + limpieza + ciclos * operacion.time_cycle * 100.0 / (
+        # 1.10.2: ``time_cycle`` explícito = el de la velocidad de la tela en esa máquina (Rama); sin él, el de la lista.
+        return preparacion + limpieza + ciclos * (time_cycle or operacion.time_cycle) * 100.0 / (
             workcenter.time_efficiency or 100.0)
 
     @api.model
@@ -587,11 +628,9 @@ class MrpProduction(models.Model):
                     o=self.name, n=plan['n_banos'], r=len(ramas)))
             if not self._workorder_rama():
                 raise UserError(_("La lista de materiales de %s no tiene operación de Rama.", self.name))
-            for numero, rama in enumerate(ramas, 1):
-                problema = self._rama_validar(rama)
-                if problema:
-                    raise UserError(_("Baño %(i)s de %(o)s: no se puede programar en la Rama %(r)s. %(p)s",
-                                      i=numero, o=self.name, r=rama.display_name, p=problema))
+            for rama in ramas:
+                if rama and not rama._es_rama():
+                    raise UserError(_("%s no es una Rama.", rama.display_name))
         nombre_origen = self.name
         kg_pedido = self.product_qty
         kg_total = plan['kg_total']
@@ -643,12 +682,7 @@ class MrpProduction(models.Model):
             })
             rama = ramas[list(ordenes).index(orden)] if ramas else False
             if rama:
-                # 1.10.0: la Rama elegida queda fijada a mano; el tiempo lo calcula el sistema con la tabla de tiempos
-                # de Rama de las fichas (al cambiar la máquina, no se escribe aquí).
-                wo_rama = orden._workorder_rama()
-                wo_rama.workcenter_id = rama
-                wo_rama.rama_fija = True
-                orden.message_post(body=_("Rama fijada en la programación: %s.", rama.display_name))
+                orden._rama_fijar(rama)
             orden.message_post(body=_(
                 "Tintorería programada en %(wc)s: %(n)s baño(s) de %(kg)s kg de tela, %(crudo)s kg de crudo por baño "
                 "(capacidad %(cap)s kg; orden de origen %(o)s).",
