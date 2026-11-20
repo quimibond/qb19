@@ -8,7 +8,7 @@ from odoo.tools import html2plaintext
 
 from odoo.addons.website.controllers.main import Website
 
-from . import contenido, planta
+from . import contenido, familias, idioma, planta
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +152,28 @@ class QuimibondSitio(http.Controller):
             'qb_disenador': planta.disenador(request.env),
         }
         valores.update(extra)
+        # Versión en inglés: los textos de contenido.py y los que pasa cada ruta
+        # (título, descripción) se traducen aquí; las plantillas las traduce Odoo.
+        lang = self._idioma()
+        valores = idioma.traducir(valores, lang)
+        valores['qb_t'] = lambda texto: idioma.traducir(texto, lang)
         return valores
+
+    @staticmethod
+    def _idioma():
+        return request.env.context.get('lang') or request.env.lang
+
+    def _articulos(self):
+        """{clave de familia: [(producto, ficha)]} con los productos publicados de las
+        familias de entretelas, clasificados por su nombre."""
+        productos = request.env['product.template'].sudo().search(
+            self._dominio_productos(), order='default_code, name')
+        por_familia = {}
+        for producto in productos:
+            fam = familias.familia_de(producto.name)
+            if fam:
+                por_familia.setdefault(fam['clave'], []).append((producto, ficha_producto(producto)))
+        return por_familia
 
     # -- sitemap -------------------------------------------------------------
 
@@ -181,10 +202,8 @@ class QuimibondSitio(http.Controller):
         if not _activo(website):
             return
         yield {'loc': '/catalogo'}
-        slug = env['ir.http']._slug
-        cats = env['product.public.category'].sudo().search(website.website_domain())
-        for cat in cats:
-            yield {'loc': '/catalogo/%s' % slug(cat)}
+        for fam in familias.FAMILIAS:
+            yield {'loc': '/catalogo/familia/%s' % fam['clave']}
 
     def sitemap_productos(env, rule, qs):
         website = env['website'].get_current_website()
@@ -192,39 +211,49 @@ class QuimibondSitio(http.Controller):
             return
         slug = env['ir.http']._slug
         productos = env['product.template'].sudo().search([
-            ('is_published', '=', True), ('public_categ_ids', '!=', False),
+            ('is_published', '=', True), ('sale_ok', '=', True),
         ] + website.website_domain())
         for p in productos:
-            yield {'loc': '/catalogo/producto/%s' % slug(p)}
+            if familias.familia_de(p.name):
+                yield {'loc': '/catalogo/producto/%s' % slug(p)}
 
     # -- páginas -------------------------------------------------------------
 
     @http.route('/catalogo', type='http', auth='public', website=True, sitemap=sitemap_catalogo)
     def catalogo(self, **kw):
         _exigir_activo()
-        productos = self._productos()
+        articulos = self._articulos()
         return request.render('website_quimibond.catalogo', self._valores_comunes(
-            categorias=self._resumen_categorias(),
-            productos=[(p, ficha_producto(p)) for p in productos],
-            categoria=None,
-            busqueda=kw.get('q', ''),
+            grupos=familias.grupos(),
+            totales={clave: len(lista) for clave, lista in articulos.items()},
+            title='Catálogo por familias | Quimibond',
+            website_meta_description='Scrims automotrices, entretelas fusionables, no tejidos y telas de punto. '
+                                     'Rangos de peso, ancho y color por familia. Solicite la ficha técnica.',
+        ))
+
+    @http.route('/catalogo/familia/<string:clave>', type='http', auth='public', website=True, sitemap=False)
+    def catalogo_familia(self, clave, **kw):
+        _exigir_activo()
+        fam = familias.familia(clave)
+        if not fam:
+            raise NotFound()
+        fam_t = idioma.traducir(fam, self._idioma())
+        return request.render('website_quimibond.familia', self._valores_comunes(
+            fam=fam,
+            fam_grupo=next(g for g in familias.GRUPOS if g['clave'] == fam['grupo']),
+            articulos=self._articulos().get(clave, []),
+            otras=[f for f in familias.FAMILIAS if f['grupo'] == fam['grupo'] and f['clave'] != clave],
+            asunto_ficha='Ficha técnica: %s' % fam_t['nombre'],
+            title='%s | Quimibond' % fam_t['nombre'],
+            website_meta_description=fam['frase'],
         ))
 
     @http.route('/catalogo/<model("product.public.category"):categoria>', type='http', auth='public',
                 website=True, sitemap=False)
     def catalogo_categoria(self, categoria, **kw):
+        # Las categorías del sitio ya no organizan el catálogo: va por familias.
         _exigir_activo()
-        categoria = categoria.sudo()
-        if not categoria.exists() or not categoria.filtered_domain(request.website.website_domain()):
-            raise NotFound()
-        productos = self._productos(categoria)
-        return request.render('website_quimibond.catalogo', self._valores_comunes(
-            categorias=self._resumen_categorias(),
-            productos=[(p, ficha_producto(p)) for p in productos],
-            categoria=categoria,
-            busqueda=kw.get('q', ''),
-            main_object=categoria,
-        ))
+        return request.redirect('/catalogo', code=301)
 
     @http.route('/catalogo/producto/<model("product.template"):producto>', type='http', auth='public',
                 website=True, sitemap=sitemap_productos)
@@ -233,12 +262,16 @@ class QuimibondSitio(http.Controller):
         producto = producto.sudo()
         if not producto.exists() or not producto.filtered_domain(self._dominio_productos()):
             raise NotFound()
+        fam = familias.familia_de(producto.name)
+        if not fam:
+            raise NotFound()
         ficha = ficha_producto(producto)
-        relacionados = self._productos(producto.public_categ_ids[:1], limit=7) - producto
+        relacionados = [par for par in self._articulos().get(fam['clave'], []) if par[0] != producto][:6]
         return request.render('website_quimibond.producto', self._valores_comunes(
             producto=producto,
             ficha=ficha,
-            relacionados=[(p, ficha_producto(p)) for p in relacionados[:6]],
+            fam=fam,
+            relacionados=relacionados,
             main_object=producto,
         ))
 
@@ -246,16 +279,18 @@ class QuimibondSitio(http.Controller):
     def catalogo_buscar(self, **kw):
         _exigir_activo()
         slug = request.env['ir.http']._slug
+        lang = self._idioma()
         datos = []
-        for p in self._productos(limit=500):
-            f = ficha_producto(p)
-            datos.append({
-                'codigo': f['codigo'],
-                'titulo': f['titulo'],
-                'detalle': ' · '.join(x for x in [f['gramaje'], f['composicion'], f['color'], f['tacto']] if x),
-                'categoria': p.public_categ_ids[:1].name or '',
-                'url': '/catalogo/producto/%s' % slug(p),
-            })
+        for clave, lista in self._articulos().items():
+            fam = idioma.traducir(familias.familia(clave), lang)
+            for p, f in lista:
+                datos.append({
+                    'codigo': f['codigo'],
+                    'titulo': f['titulo'],
+                    'detalle': ' · '.join(x for x in [f['gramaje'], f['composicion'], f['color'], f['tacto']] if x),
+                    'categoria': fam['nombre'],
+                    'url': '/catalogo/producto/%s' % slug(p),
+                })
         paginas = [
             {'codigo': '', 'titulo': 'Solicitar cotización o muestra', 'detalle': 'Ventas', 'categoria': 'Páginas', 'url': '/cotizar'},
             {'codigo': '', 'titulo': 'Diseñe su tela', 'detalle': 'Diseñador interactivo', 'categoria': 'Páginas', 'url': '/disenar'},
@@ -264,12 +299,18 @@ class QuimibondSitio(http.Controller):
             {'codigo': '', 'titulo': 'Nosotros', 'detalle': 'Desde 1992', 'categoria': 'Páginas', 'url': '/nosotros'},
             {'codigo': '', 'titulo': 'Empleos', 'detalle': 'Trabaje con nosotros', 'categoria': 'Páginas', 'url': '/jobs'},
             {'codigo': '', 'titulo': 'Portal de clientes', 'detalle': 'Pedidos, facturas y entregas', 'categoria': 'Páginas', 'url': '/my'},
+            {'codigo': '', 'titulo': 'Compradores automotrices', 'detalle': 'Certificados, laboratorio y desarrollo', 'categoria': 'Páginas', 'url': '/compradores-automotrices'},
+            {'codigo': '', 'titulo': 'Agendar una llamada', 'detalle': 'Ventas', 'categoria': 'Páginas', 'url': '/agendar'},
+        ]
+        paginas += [
+            {'codigo': '', 'titulo': f['nombre'], 'detalle': f['frase'], 'categoria': 'Catálogo', 'url': '/catalogo/familia/%s' % f['clave']}
+            for f in familias.FAMILIAS
         ]
         paginas += [
             {'codigo': '', 'titulo': m['nombre'], 'detalle': m['titulo'], 'categoria': 'Mercados', 'url': '/mercados/%s' % m['clave']}
             for m in contenido.MERCADOS
         ]
-        return request.make_json_response(paginas + datos, headers={'Cache-Control': 'public, max-age=600'})
+        return request.make_json_response(idioma.traducir(paginas, lang) + datos, headers={'Cache-Control': 'public, max-age=600'})
 
     @http.route('/mercados/<string:clave>', type='http', auth='public', website=True, sitemap=sitemap_mercados)
     def mercado(self, clave, **kw):
@@ -277,6 +318,7 @@ class QuimibondSitio(http.Controller):
         m = contenido.mercado(clave)
         if not m:
             raise NotFound()
+        titulo = idioma.traducir(m['titulo'], self._idioma())
         categorias = []
         if m['palabras_categoria']:
             for item in self._resumen_categorias():
@@ -289,7 +331,7 @@ class QuimibondSitio(http.Controller):
         return request.render('website_quimibond.mercado', self._valores_comunes(
             mercado=m,
             categorias=categorias,
-            title='%s | Quimibond' % m['titulo'],
+            title='%s | Quimibond' % titulo,
             website_meta_description=m['resumen'],
         ))
 
@@ -329,7 +371,7 @@ class QuimibondSitio(http.Controller):
         _exigir_activo()
         asunto = ''
         if producto:
-            asunto = 'Cotización: %s' % producto[:80]
+            asunto = '%s: %s' % (idioma.traducir('Cotización', self._idioma()), producto[:80])
         m = contenido.mercado(mercado) if mercado else None
         return request.render('website_quimibond.cotizar', self._valores_comunes(
             asunto=asunto,
@@ -351,9 +393,13 @@ class QuimibondSitio(http.Controller):
         ))
 
     @http.route('/cotizar/gracias', type='http', auth='public', website=True, sitemap=False)
-    def cotizar_gracias(self, **kw):
+    def cotizar_gracias(self, o=None, **kw):
         _exigir_activo()
-        return request.render('website_quimibond.gracias', self._valores_comunes(title='Gracias | Quimibond'))
+        from .formulario import ORIGENES
+        return request.render('website_quimibond.gracias', self._valores_comunes(
+            qb_origen=o if o in ORIGENES else 'cotizar',
+            title='Gracias | Quimibond',
+        ))
 
 
 class QuimibondPortada(Website):

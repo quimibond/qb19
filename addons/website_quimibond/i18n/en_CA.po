@@ -1,0 +1,4806 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: en_CA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid ", C.P."
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "9001, 14001 y 45001 certificadas"
+msgstr "9001, 14001 and 45001 certified"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> Agendar llamada"
+msgstr "<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> Schedule a call"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid ""
+"<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> ¿Prefiere platicarlo? "
+"Agende una llamada"
+msgstr ""
+"<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> Prefer to talk it over? "
+"Schedule a call"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<i class=\"fa fa-clock-o\" aria-hidden=\"true\"/> Respuesta de Ventas en un "
+"día hábil"
+msgstr ""
+"<i class=\"fa fa-clock-o\" aria-hidden=\"true\"/> Sales replies within one "
+"business day"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"<i class=\"fa fa-file-pdf-o\" aria-hidden=\"true\"/> Solicitar los "
+"certificados en PDF"
+msgstr ""
+"<i class=\"fa fa-file-pdf-o\" aria-hidden=\"true\"/> Request the "
+"certificates in PDF"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> Se fabrica contra su "
+"especificación: los rangos son una guía de lo que hacemos hoy."
+msgstr ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> Made to your "
+"specification: the ranges are a guide to what we produce today."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> ¿Necesita otro "
+"gramaje, ancho o color? Lo desarrollamos."
+msgstr ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> Need a different "
+"weight, width or color? We will develop it."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> ¿Necesita otro peso, "
+"ancho o color? Lo desarrollamos."
+msgstr ""
+"<i class=\"fa fa-info-circle\" aria-hidden=\"true\"/> Need a different "
+"weight, width or color? We will develop it."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<i class=\"fa fa-link\" aria-hidden=\"true\"/> <span>Copiar enlace del "
+"diseño</span>"
+msgstr "<i class=\"fa fa-link\" aria-hidden=\"true\"/> <span>Copy design link</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<i class=\"fa fa-print\" aria-hidden=\"true\"/> Imprimir o guardar en PDF"
+msgstr "<i class=\"fa fa-print\" aria-hidden=\"true\"/> Print or save as PDF"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<i class=\"fa fa-random\" aria-hidden=\"true\"/> Sorpréndame"
+msgstr "<i class=\"fa fa-random\" aria-hidden=\"true\"/> Surprise me"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<i class=\"fa fa-search\" aria-hidden=\"true\"/>\n"
+"                        <span>Buscar…</span>\n"
+"                        <kbd>⌘K</kbd>"
+msgstr ""
+"<i class=\"fa fa-search\" aria-hidden=\"true\"/>\n"
+"                        <span>Search…</span>\n"
+"                        <kbd>⌘K</kbd>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<i class=\"fa fa-user\" aria-hidden=\"true\"/> Mi cuenta"
+msgstr "<i class=\"fa fa-user\" aria-hidden=\"true\"/> My account"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<i class=\"fa fa-user-o\" aria-hidden=\"true\"/> Iniciar sesión"
+msgstr "<i class=\"fa fa-user-o\" aria-hidden=\"true\"/> Sign in"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<i class=\"fa fa-user-o\" aria-hidden=\"true\"/><span>Iniciar sesión</span>"
+msgstr "<i class=\"fa fa-user-o\" aria-hidden=\"true\"/><span>Sign in</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<kbd>Esc</kbd>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<option value=\"\">Seleccione…</option>"
+msgstr "<option value=\"\">Select…</option>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<option value=\"Otro\">Otro</option>"
+msgstr "<option value=\"Otro\">Other</option>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<select id=\"qb_f_solicitud\" class=\"form-select s_website_form_input\" name=\"Solicitud\">\n"
+"                            <option value=\"Cotización\">Cotización</option>\n"
+"                            <option value=\"Muestra\">Muestra</option>\n"
+"                            <option value=\"Desarrollo de producto\">Desarrollo de producto</option>\n"
+"                            <option value=\"Ficha técnica\">Ficha técnica</option>\n"
+"                        </select>"
+msgstr ""
+"<select id=\"qb_f_solicitud\" class=\"form-select s_website_form_input\" name=\"Solicitud\">\n"
+"                            <option value=\"Cotización\">Quote</option>\n"
+"                            <option value=\"Muestra\">Sample</option>\n"
+"                            <option value=\"Desarrollo de producto\">Product development</option>\n"
+"                            <option value=\"Ficha técnica\">Data sheet</option>\n"
+"                        </select>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<small>Su solicitud llega directo a Ventas. Respondemos en un día "
+"hábil.</small>"
+msgstr ""
+"<small>Your request goes straight to Sales. We reply within one business "
+"day.</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid ""
+"<span class=\"qb-badge qb-badge--oscuro\">ISO 9001:2015</span> <span "
+"class=\"qb-badge qb-badge--oscuro\">ISO 14001:2015</span> <span class=\"qb-"
+"badge qb-badge--oscuro\">ISO 45001:2018</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-dis__sub\">Filamento</span>"
+msgstr "<span class=\"qb-dis__sub\">Filament</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-enlace\">Postularse <i class=\"fa fa-long-arrow-right\" "
+"aria-hidden=\"true\"/></span>"
+msgstr ""
+"<span class=\"qb-enlace\">Apply <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/></span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-enlace\">Ver aplicaciones y telas <i class=\"fa fa-long-"
+"arrow-right\" aria-hidden=\"true\"/></span>"
+msgstr ""
+"<span class=\"qb-enlace\">See applications and fabrics <i class=\"fa fa-"
+"long-arrow-right\" aria-hidden=\"true\"/></span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid ""
+"<span class=\"qb-enlace\">Ver familia <i class=\"fa fa-long-arrow-right\" "
+"aria-hidden=\"true\"/></span>"
+msgstr ""
+"<span class=\"qb-enlace\">View family <i class=\"fa fa-long-arrow-right\" "
+"aria-hidden=\"true\"/></span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"<span class=\"qb-enlace\">Ver rangos <i class=\"fa fa-long-arrow-right\" "
+"aria-hidden=\"true\"/></span>"
+msgstr ""
+"<span class=\"qb-enlace\">View ranges <i class=\"fa fa-long-arrow-right\" "
+"aria-hidden=\"true\"/></span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "<span class=\"qb-eyebrow qb-reveal\">Aplicaciones</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Applications</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "<span class=\"qb-eyebrow qb-reveal\">Artículos de línea</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Stock items</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Certificaciones</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Certifications</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Certificados</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Certificates</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "<span class=\"qb-eyebrow qb-reveal\">Clientes</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Customers</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"<span class=\"qb-eyebrow qb-reveal\">Compras y calidad de proveedores</span>"
+msgstr ""
+"<span class=\"qb-eyebrow qb-reveal\">Purchasing and supplier quality</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "<span class=\"qb-eyebrow qb-reveal\">Cómo lo atendemos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">How we serve it</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Desarrollo de producto</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Product development</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Diseñador de tela</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Fabric designer</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Empleos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Careers</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Entretelas fusionables</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Fusible interlinings</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "<span class=\"qb-eyebrow qb-reveal\">Ficha técnica</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Data sheet</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-eyebrow qb-reveal\">Historia</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">History</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Laboratorio en planta</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">In-house laboratory</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Lo que fabricamos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">What we make</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Maquinaria</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Machinery</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Mercados</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Markets</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "<span class=\"qb-eyebrow qb-reveal\">Objetivos integrales</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Integrated objectives</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow qb-reveal\">Planta integrada</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Integrated plant</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-eyebrow qb-reveal\">Por qué Quimibond</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Why Quimibond</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Proceso</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Process</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-eyebrow qb-reveal\">Quiénes somos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Who we are</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Qué suministramos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">What we supply</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "<span class=\"qb-eyebrow qb-reveal\">Siguiente paso</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Next step</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid "<span class=\"qb-eyebrow qb-reveal\">Sobre especificación</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Made to specification</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Sustentabilidad</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Sustainability</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Tejido circular</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Circular knitting</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Teñido y acabado</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Dyeing and finishing</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-eyebrow qb-reveal\">Tipos de tela</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Fabric types</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-eyebrow qb-reveal\">Ubicación</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Location</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-eyebrow qb-reveal\">Valores</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Values</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-eyebrow qb-reveal\">Ventas</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Sales</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.armadoras
+msgid ""
+"<span class=\"qb-eyebrow\">Automotriz</span>Nuestros materiales viajan en "
+"vehículos de"
+msgstr ""
+"<span class=\"qb-eyebrow\">Automotive</span>Our materials travel in vehicles"
+" from"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow\">Calidad</span>"
+msgstr "<span class=\"qb-eyebrow\">Quality</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<span class=\"qb-eyebrow\">Portal de clientes</span>"
+msgstr "<span class=\"qb-eyebrow\">Customer portal</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Ancho <small>el ancho útil que "
+"necesita, en centímetros</small>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Width <small>the usable width you "
+"need, in centimeters</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Aplicación <small>le proponemos una "
+"tela de partida y usted la ajusta</small>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Application <small>we suggest a "
+"starting fabric and you adjust it</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Color <output class=\"qb-dis__valor\" "
+"data-qb-salida=\"color\">Blanco</output>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Color <output class=\"qb-dis__valor\" "
+"data-qb-salida=\"color\">White</output>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Composición <small>si no la conoce, "
+"deje la que proponemos</small>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Composition <small>if you are not "
+"sure, keep the one we suggest</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-mono qb-dis__num\"/> Construcción"
+msgstr "<span class=\"qb-mono qb-dis__num\"/> Construction"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-mono qb-dis__num\"/> Fibra"
+msgstr "<span class=\"qb-mono qb-dis__num\"/> Fiber"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Mercado <small>¿para qué industria es "
+"la tela?</small>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Market <small>which industry is the "
+"fabric for?</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Peso <output class=\"qb-dis__valor\" "
+"data-qb-salida=\"peso\">150 g/m²</output>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Weight <output class=\"qb-dis__valor\""
+" data-qb-salida=\"peso\">150 g/m²</output>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-mono qb-dis__num\"/> Presentación"
+msgstr "<span class=\"qb-mono qb-dis__num\"/> Format"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"<span class=\"qb-mono qb-dis__num\"/> Requisitos <small>lo que su cliente o "
+"su norma le pide</small>"
+msgstr ""
+"<span class=\"qb-mono qb-dis__num\"/> Requirements <small>what your customer"
+" or your standard requires</small>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-mono qb-dis__num\"/> Tacto y acabado"
+msgstr "<span class=\"qb-mono qb-dis__num\"/> Hand feel and finish"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span class=\"qb-mono qb-dis__num\"/> Volumen y fecha"
+msgstr "<span class=\"qb-mono qb-dis__num\"/> Volume and date"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "<span class=\"qb-mono qb-num\">01</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "<span class=\"qb-mono qb-num\">02</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "<span class=\"qb-mono qb-num\">03</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-mono qb-num\">Acabados</span>"
+msgstr "<span class=\"qb-mono qb-num\">Finishes</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-mono qb-num\">Aplicaciones</span>"
+msgstr "<span class=\"qb-mono qb-num\">Applications</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-mono qb-num\">Jet de teñido</span>"
+msgstr "<span class=\"qb-mono qb-num\">Jet dyeing machine</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-mono qb-num\">Misión</span>"
+msgstr "<span class=\"qb-mono qb-num\">Mission</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "<span class=\"qb-mono qb-num\">Rama</span>"
+msgstr "<span class=\"qb-mono qb-num\">Stenter</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<span class=\"qb-mono qb-num\">Trazabilidad</span>"
+msgstr "<span class=\"qb-mono qb-num\">Traceability</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "<span class=\"qb-mono qb-num\">Visión 2030</span>"
+msgstr "<span class=\"qb-mono qb-num\">Vision 2030</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid "<span class=\"qb-mono\">01</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid "<span class=\"qb-mono\">02</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid "<span class=\"qb-mono\">03</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-mono\">Entrega</span><span class=\"qb-"
+"badge\">Programada</span>"
+msgstr ""
+"<span class=\"qb-mono\">Delivery</span><span class=\"qb-"
+"badge\">Scheduled</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-mono\">Factura</span><span class=\"qb-badge\">PDF · "
+"XML</span>"
+msgstr ""
+"<span class=\"qb-mono\">Invoice</span><span class=\"qb-badge\">PDF · "
+"XML</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-mono\">MALLAS TEJIDAS</span>\n"
+"                                <strong data-qb-mallas=\"1\">0</strong>"
+msgstr ""
+"<span class=\"qb-mono\">STITCHES KNITTED</span>\n"
+"                                <strong data-qb-mallas=\"1\">0</strong>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-mono\">Pedido</span><span class=\"qb-badge qb-badge--"
+"ok\">En producción</span>"
+msgstr ""
+"<span class=\"qb-mono\">Order</span><span class=\"qb-badge qb-badge--ok\">In"
+" production</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-mono\">TEJIDO CIRCULAR</span>\n"
+"                                <strong><span data-qb-rpm=\"1\">0</span> rpm</strong>"
+msgstr ""
+"<span class=\"qb-mono\">CIRCULAR KNITTING</span>\n"
+"                                <strong><span data-qb-rpm=\"1\">0</span> rpm</strong>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-pill__punto\"/> ISO 9001 · 14001 · 45001\n"
+"                                <i class=\"fa fa-angle-right\" aria-hidden=\"true\"/>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<span class=\"qb-sello\"><strong>ISO</strong>9001:2015</span>\n"
+"                                    <span class=\"qb-sello\"><strong>ISO</strong>14001:2015</span>\n"
+"                                    <span class=\"qb-sello\"><strong>ISO</strong>45001:2018</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"<span class=\"qb-sello\"><strong>ISO</strong>9001:2015</span>\n"
+"                        <span class=\"qb-sello\"><strong>ISO</strong>14001:2015</span>\n"
+"                                    <span class=\"qb-sello\"><strong>ISO</strong>45001:2018</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Asunto</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Subject</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Correo de trabajo</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Work email</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+msgid "<span class=\"s_website_form_label_content\">Día que prefiere</span>"
+msgstr "<span class=\"s_website_form_label_content\">Preferred day</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Empresa</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Company</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Especificación</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Specification</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Foto, ficha técnica o "
+"especificación (opcional)</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Photo, data sheet or "
+"specification (optional)</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+msgid ""
+"<span class=\"s_website_form_label_content\">Horario (centro de "
+"México)</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Time (Central Mexico "
+"time)</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<span class=\"s_website_form_label_content\">Mercado</span>"
+msgstr "<span class=\"s_website_form_label_content\">Market</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"<span class=\"s_website_form_label_content\">Nombre</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Name</span><span "
+"class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<span class=\"s_website_form_label_content\">Teléfono</span>"
+msgstr "<span class=\"s_website_form_label_content\">Phone</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<span class=\"s_website_form_label_content\">Volumen aproximado</span>"
+msgstr "<span class=\"s_website_form_label_content\">Approximate volume</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "<span class=\"s_website_form_label_content\">¿Qué solicita?</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">What are you requesting?</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>↵</kbd> abrir</span>"
+msgstr ""
+"<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Con elastano, para más elasticidad</span>"
+msgstr "<span>With elastane, for more stretch</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Fusionable, con punto de adhesivo</span>"
+msgstr "<span>Fusible, with adhesive dot coating</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Ligera</span><span>Media</span><span>Pesada</span>"
+msgstr "<span>Light</span><span>Medium</span><span>Heavy</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Otra</span>"
+msgstr "<span>Other</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Otro</span>"
+msgstr "<span>Other</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<span>Quimibond</span>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "<span>Termofijada</span>"
+msgstr "<span>Heat-set</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<strong>Adhesivo</strong><span>Para lavado en agua o lavado en seco.</span>"
+msgstr "<strong>Adhesive</strong><span>For washing or dry cleaning.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<strong>Asesoría</strong><span>Le acompañamos con las condiciones de "
+"fusionado en su planta.</span>"
+msgstr ""
+"<strong>Technical support</strong><span>We help you set the fusing "
+"conditions at your plant.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Automotriz</strong><span>México, Estados Unidos y Canadá.</span>"
+msgstr ""
+"<strong>Automotive</strong><span>Mexico, the United States and "
+"Canada.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"<strong>Base</strong><span>No tejido o tejido circular, según la caída y la "
+"elasticidad que pide la prenda.</span>"
+msgstr ""
+"<strong>Base</strong><span>Nonwoven or circular knit, depending on the drape"
+" and stretch the garment calls for.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "<strong>Blancos</strong><span>Colchonería y hogar.</span>"
+msgstr "<strong>Home textiles</strong><span>Mattresses and home.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Catálogo por familias</strong>\n"
+"                                <span>Scrims, entretelas, no tejidos y telas de punto.</span>"
+msgstr ""
+"<strong>Catalog by family</strong>\n"
+"                                <span>Scrims, interlinings, nonwovens and knitted fabrics.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Compradores automotrices</strong><span>Certificados, laboratorio y "
+"desarrollo.</span>"
+msgstr ""
+"<strong>Automotive buyers</strong><span>Certificates, laboratory and "
+"development.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Confección</strong><span>Camisería, uniformes y prendas.</span>"
+msgstr "<strong>Apparel</strong><span>Shirts, uniforms and garments.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Diseñe su tela</strong>\n"
+"                                <span>Elija aplicación, peso, ancho y color, y véala al momento.</span>"
+msgstr ""
+"<strong>Design your fabric</strong>\n"
+"                                <span>Choose application, weight, width and color, and see it right away.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid ""
+"<strong>Elige día y horario</strong><span>De lunes a viernes, de 9:00 a "
+"18:00, hora del centro de México.</span>"
+msgstr ""
+"<strong>You pick a day and time</strong><span>Monday to Friday, 9:00 to "
+"18:00, Central Mexico time.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid ""
+"<strong>Envía su especificación</strong><span>Aplicación, gramaje, ancho, "
+"color y volumen.</span>"
+msgstr ""
+"<strong>You send your specification</strong><span>Application, weight, "
+"width, color and volume.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<strong>ISO</strong>"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid ""
+"<strong>Le confirmamos la cita</strong><span>Por correo o por teléfono, en "
+"un día hábil.</span>"
+msgstr ""
+"<strong>We confirm the appointment</strong><span>By email or phone, within "
+"one business day.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Muestras y desarrollos</strong>\n"
+"                                <span>Pida una muestra o un desarrollo contra su especificación.</span>"
+msgstr ""
+"<strong>Samples and developments</strong>\n"
+"                                <span>Request a sample or a development to your specification.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid ""
+"<strong>Platicamos su proyecto</strong><span>En español o en inglés.</span>"
+msgstr ""
+"<strong>We discuss your project</strong><span>In Spanish or English.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid ""
+"<strong>Recibe cotización y muestra</strong><span>Con ficha técnica para "
+"validar en su planta.</span>"
+msgstr ""
+"<strong>You receive a quote and a sample</strong><span>With a data sheet to "
+"validate at your plant.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"<strong>Recibe cotización y muestra</strong><span>Con resultados de "
+"laboratorio para validar en su planta.</span>"
+msgstr ""
+"<strong>You receive a quote and a sample</strong><span>With laboratory "
+"results to validate at your plant.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"<strong>Revisamos su especificación</strong><span>Ventas e Ingeniería "
+"confirman la factibilidad.</span>"
+msgstr ""
+"<strong>We review your specification</strong><span>Sales and Engineering "
+"confirm feasibility.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "<strong>Tacto</strong><span>Rígido, semirrígido o suave.</span>"
+msgstr "<strong>Hand feel</strong><span>Firm, semi-firm or soft.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid ""
+"<strong>Tipos de tela</strong>\n"
+"                                <span>Tejido circular de una y doble fontura, no tejido y no tejido tramado.</span>"
+msgstr ""
+"<strong>Fabric types</strong>\n"
+"                                <span>Single and double circular knits, nonwovens and weft-inserted nonwovens.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid ""
+"<strong>Un asesor le contacta</strong><span>En un día hábil, de lunes a "
+"viernes de 9:00 a 18:00.</span>"
+msgstr ""
+"<strong>A sales representative contacts you</strong><span>Within one "
+"business day, Monday to Friday, 9:00 to 18:00.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"<strong>Visite la planta</strong><span>En Toluca, Estado de México. Lo "
+"coordinamos con gusto.</span>"
+msgstr ""
+"<strong>Visit the plant</strong><span>In Toluca, State of Mexico. We will be"
+" glad to arrange it.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "A qué nos comprometemos"
+msgstr "Our commitments"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.armadoras
+msgid ""
+"A través de proveedores de la cadena automotriz. Las marcas y los logotipos "
+"pertenecen a sus dueños y se muestran solo como referencia."
+msgstr ""
+"Through suppliers in the automotive chain. Brands and logos belong to their "
+"owners and are shown for reference only."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Abastecemos al mercado automotriz desde este año"
+msgstr "We have supplied the automotive market since this year"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Abrir el diseñador <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "Open the designer <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Abrir el diseñador de tela"
+msgstr "Open the fabric designer"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Abrir menú"
+msgstr "Open menu"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"Adaptamos nuestras capacidades a sus necesidades y medimos su satisfacción "
+"cada año, con una meta de 90 % o más."
+msgstr ""
+"We adapt our capabilities to your needs and measure your satisfaction every "
+"year, with a target of 90% or higher."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Además, cada rollo pasa por inspección al 100 % antes de empacarse."
+msgstr "In addition, every roll is 100% inspected before packing."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Adjunte el dibujo, la norma o la ficha del material que quiere igualar. Un "
+"asesor de Ventas le responde en un día hábil."
+msgstr ""
+"Attach the drawing, the standard or the data sheet of the material you want "
+"to match. A sales representative replies within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Agendar llamada"
+msgstr "Schedule a call"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid "Agende una llamada con Ventas"
+msgstr "Schedule a call with Sales"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Al ancho, seca y termofijada."
+msgstr "To width, dry and heat-set."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Ancho en centímetros"
+msgstr "Width in centimeters"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Aplicaciones"
+msgstr "Applications"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid ""
+"Aplicación, gramaje, ancho, color, tacto, norma o especificación de su "
+"cliente…"
+msgstr ""
+"Application, weight, width, color, hand feel, standard or your customer's "
+"specification…"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.armadoras
+msgid "Armadoras"
+msgstr "Automakers"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Automotriz"
+msgstr "Automotive"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Blancos"
+msgstr "Home textiles"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Buscar"
+msgstr "Search"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Buscar en el sitio"
+msgstr "Search the site"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Busque un código, gramaje, color o página…"
+msgstr "Search for a code, weight, color or page…"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Cada lote se prueba antes de liberarse."
+msgstr "Every lot is tested before release."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Cada rollo lleva su lote, de la materia prima al rollo terminado."
+msgstr ""
+"Every roll carries its lot number, from raw material to finished roll."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Cada vuelta del cilindro es una pasada de tela."
+msgstr "Every turn of the cylinder is one course of fabric."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Calidad"
+msgstr "Quality"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Calidad con eficiencia"
+msgstr "Quality with efficiency"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Calidad que se audita, no que se promete."
+msgstr "Quality that is audited, not just promised."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Calidad y sustentabilidad"
+msgstr "Quality and sustainability"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Calidad y sustentabilidad <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Quality and sustainability <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Calidad, medio ambiente y seguridad auditados cada año. Cada lote se libera "
+"en laboratorio antes de embarcar."
+msgstr ""
+"Quality, environment and safety audited every year. Every lot is released by"
+" the laboratory before shipping."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Catálogo"
+msgstr "Catalog"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Certificados ISO"
+msgstr "ISO certificates"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Certificados emitidos por SIDE Certificaciones, organismo acreditado por la "
+"ema y miembro del IAF. El alcance cubre la producción y venta de entretelas "
+"y scrims tejidos y no tejidos, y la aplicación de resinas, laminados y "
+"acabados industriales."
+msgstr ""
+"Certificates issued by SIDE Certificaciones, a certification body accredited"
+" by ema and a member of the IAF. The scope covers the production and sale of"
+" knitted and nonwoven interlinings and scrims, and the application of "
+"resins, laminates and industrial finishes."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Cinco etapas, un solo responsable."
+msgstr "Five stages, one party accountable."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "Clientes"
+msgstr "Customers"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Clientes satisfechos"
+msgstr "Satisfied customers"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Color"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Comentarios (opcional)"
+msgstr "Comments (optional)"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Composición"
+msgstr "Composition"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Compradores automotrices"
+msgstr "Automotive buyers"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Confección"
+msgstr "Apparel"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Conozca la planta <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "Tour the plant <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Consulte el estado de sus pedidos y descargue sus documentos a cualquier "
+"hora."
+msgstr ""
+"Check the status of your orders and download your documents at any time."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Controlamos cada etapa, por eso respondemos por cada rollo."
+msgstr "We control every stage, so we stand behind every roll."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Cotizar"
+msgstr "Get a quote"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid ""
+"Cotizar este producto <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr "Quote this product <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Cotizar o pedir muestra"
+msgstr "Request a quote or a sample"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Cuidado del medio ambiente"
+msgstr "Care for the environment"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Cuéntenos su especificación"
+msgstr "Tell us your specification"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Código"
+msgstr "Code"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Cómo desarrollamos una tela nueva."
+msgstr "How we develop a new fabric."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Datos para su cadena de suministro."
+msgstr "Facts for your supply chain."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "De la misma familia"
+msgstr "From the same family"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "De las entretelas al textil técnico"
+msgstr "From interlinings to technical textiles"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Del hilo al rollo terminado, en Toluca."
+msgstr "From yarn to finished roll, in Toluca."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Del hilo al rollo, bajo un mismo techo."
+msgstr "From yarn to roll, under one roof."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Del tubo crudo a la tela lista para cortar."
+msgstr "From greige tube to fabric ready to cut."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Después de tejer, la tela toma su color en el jet y su ancho, su tacto y su "
+"estabilidad en la rama."
+msgstr ""
+"After knitting, the fabric gets its color in the jet and its width, hand "
+"feel and stability on the stenter."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseñe su tela"
+msgstr "Design your fabric"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Diseñe su tela y véala al momento."
+msgstr "Design your fabric and see it right away."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Dos familias: tejido y no tejido."
+msgstr "Two families: knits and nonwovens."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid ""
+"Déjenos sus datos y Ventas le envía la ficha técnica de esta familia, con "
+"los valores del artículo que le interesa."
+msgstr ""
+"Leave us your details and Sales will send you the data sheet for this "
+"family, with the values of the item you are interested in."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"Díganos para qué es, el peso, el ancho y el color, y vea la tela al momento."
+" Al terminar, envíe el diseño a Ventas para recibir cotización y muestra."
+msgstr ""
+"Tell us what it is for, the weight, the width and the color, and see the "
+"fabric right away. When you finish, send the design to Sales to receive a "
+"quote and a sample."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid ""
+"Díganos qué día y en qué horario le queda mejor. Un asesor le confirma la "
+"cita y le llama."
+msgstr ""
+"Tell us which day and time suit you best. A sales representative will "
+"confirm the appointment and call you."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Dónde va la tela y cuál proponemos."
+msgstr "Where the fabric goes and which one we suggest."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"El chorro del baño mueve la tela en cuerda, vuelta tras vuelta, mientras "
+"sube la temperatura. Así el colorante entra igual en todo el lote."
+msgstr ""
+"The jet of dye liquor moves the fabric in rope form, lap after lap, while "
+"the temperature rises. That way the dye penetrates evenly across the whole "
+"lot."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"El diseñador es una guía para platicar su proyecto. Ventas e Ingeniería "
+"confirman la factibilidad, el gramaje final y el tiempo de entrega."
+msgstr ""
+"The designer is a guide for discussing your project. Sales and Engineering "
+"confirm feasibility, final weight and lead time."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"El scrim es el soporte textil que se lamina con la espuma y con la tela, el "
+"vinil o la piel de la vestidura. Lo fabricamos en dos construcciones, contra"
+" la especificación de su cliente."
+msgstr ""
+"The scrim is the textile backing laminated to the foam and to the fabric, "
+"vinyl or leather of the seat cover. We make it in two constructions, to your"
+" customer's specification."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"El tejido sale de las máquinas circulares y el no tejido, de su propia "
+"línea, donde también se hace el tramado. Las dos familias comparten acabado "
+"e inspección."
+msgstr ""
+"Knits come off the circular machines and nonwovens off their own line, where"
+" weft insertion is also done. Both families share finishing and inspection."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Elija la aplicación, el peso, el ancho, el color y el tacto. La tela cambia "
+"en pantalla y el diseño llega a Ventas con un clic."
+msgstr ""
+"Choose the application, weight, width, color and hand feel. The fabric "
+"changes on screen and the design reaches Sales in one click."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Empiece por su industria: dentro están las aplicaciones y la tela que "
+"proponemos para cada una."
+msgstr ""
+"Start with your industry: inside you will find the applications and the "
+"fabric we suggest for each one."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Empleos"
+msgstr "Careers"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "Empresa"
+msgstr "Company"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"En poliéster, poliéster reciclado o poliamida. Natural, blanco o negro, "
+"termofijados al ancho pedido."
+msgstr ""
+"In polyester, recycled polyester or polyamide. Natural, white or black, "
+"heat-set to the ordered width."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid ""
+"Entre más detalle nos dé, más rápido le respondemos con precio, tiempo de "
+"entrega y ficha técnica."
+msgstr ""
+"The more detail you give us, the faster we can reply with price, lead time "
+"and data sheet."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Entretelas para confección <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Interlinings for apparel <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"Enviar diseño a Ventas <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Send design to Sales <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "Enviar solicitud <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "Send request <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Enviar su especificación <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Send your specification <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Envíe su RFQ o su especificación"
+msgstr "Send your RFQ or your specification"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Envíe su diseño"
+msgstr "Send your design"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid ""
+"Envíenos gramaje, ancho, color y aplicación. Un asesor de Ventas le responde"
+" en un día hábil."
+msgstr ""
+"Send us weight, width, color and application. A sales representative replies"
+" within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Esquema de un jet de teñido: la tela circula en cuerda por el baño"
+msgstr ""
+"Diagram of a jet dyeing machine: the fabric circulates in rope form through "
+"the dye bath"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Esquema de una rama: la tela se abre al ancho y cruza las cámaras de aire "
+"caliente"
+msgstr ""
+"Diagram of a stenter: the fabric is opened to width and passes through the "
+"hot-air chambers"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"Estas son las aplicaciones que atendemos y la tela que fabricamos para cada "
+"una."
+msgstr ""
+"These are the applications we serve and the fabric we make for each one."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Fabricantes textiles mexicanos desde 1992."
+msgstr "Mexican textile manufacturers since 1992."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Familia"
+msgstr "Family"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Fibra, punto de adhesivo y la prenda queda en su lugar."
+msgstr "Fiber, adhesive dots, and the garment stays in place."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"Garantizamos la calidad del producto con indicadores mensuales de eficiencia"
+" y productividad en cada proceso."
+msgstr ""
+"We guarantee product quality with monthly efficiency and productivity "
+"indicators in every process."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Gramaje"
+msgstr "Weight"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "ISO"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "ISO 9001 desde 2015, ISO 14001 desde 2023 e ISO 45001 desde 2026."
+msgstr "ISO 9001 since 2015, ISO 14001 since 2023 and ISO 45001 since 2026."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"Identificamos nuestros aspectos ambientales significativos y aprovechamos "
+"los recursos: energía solar, planta tratadora de agua, agua pluvial y "
+"reciclaje."
+msgstr ""
+"We identify our significant environmental aspects and make the most of "
+"resources: solar energy, a water treatment plant, rainwater and recycling."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Idioma"
+msgstr "Language"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"Información para compradores <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Information for buyers <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Iniciar sesión"
+msgstr "Sign in"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Inspección rollo por rollo"
+msgstr "Roll-by-roll inspection"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Juntos tejemos un mejor futuro."
+msgstr "Together we knit a better future."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid ""
+"La mayor parte de lo que fabricamos se hace contra la especificación del "
+"cliente. Envíenos la suya o arme su tela en el diseñador."
+msgstr ""
+"Most of what we make is produced to the customer's specification. Send us "
+"yours or build your fabric in the designer."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "La tela circula hasta que el color queda parejo."
+msgstr "The fabric circulates until the color is even."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Las agujas suben y bajan alrededor del cilindro, toman el hilo de los "
+"alimentadores y forman la malla. De ahí sale el tubo de tela que después se "
+"tiñe y se acaba."
+msgstr ""
+"The needles rise and fall around the cylinder, take the yarn from the "
+"feeders and form the stitch. The result is the fabric tube that is later "
+"dyed and finished."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Las cadenas toman la tela por las orillas y la abren al ancho pedido. El "
+"aire caliente la seca y fija sus medidas antes de enrollarla."
+msgstr ""
+"The chains grip the fabric by its edges and open it to the ordered width. "
+"Hot air dries it and sets its dimensions before it is rolled."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Las muestras de producción se prueban contra su especificación y contra la "
+"nuestra. Si su norma pide una prueba especial, la revisamos al cotizar."
+msgstr ""
+"Production samples are tested against your specification and ours. If your "
+"standard calls for a special test, we review it when quoting."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Le enviamos a su correo los certificados ISO 9001, ISO 14001 e ISO 45001 "
+"vigentes."
+msgstr ""
+"We will email you the current ISO 9001, ISO 14001 and ISO 45001 "
+"certificates."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Le enviamos los certificados vigentes a su correo en un día hábil."
+msgstr "We will email you the current certificates within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Levantar reporte de calidad"
+msgstr "File a quality report"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"Levante su reporte en línea. Lo recibe Atención a Clientes con el número de "
+"lote y le damos seguimiento hasta cerrarlo."
+msgstr ""
+"File your report online. Customer Service receives it with the lot number "
+"and we follow up until it is closed."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "LinkedIn"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid "Llamada con Ventas"
+msgstr "Call with Sales"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Lo necesita para"
+msgstr "Needed by"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Lo que este mercado nos pide."
+msgstr "What this market asks of us."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid "Lo que fabricamos, por familia."
+msgstr "What we make, by family."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "Lo que hacemos en planta"
+msgstr "What we do in-house"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid "Lo que hay en el piso de la planta."
+msgstr "What is on the plant floor."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Lo que su equipo de compras y de calidad necesita para evaluarnos: qué "
+"fabricamos, certificados, laboratorio y cómo desarrollamos una tela nueva."
+msgstr ""
+"What your purchasing and quality teams need to evaluate us: what we make, "
+"certificates, laboratory and how we develop a new fabric."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mercados"
+msgstr "Markets"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Mercados <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
+msgstr "Markets <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Mercados ·"
+msgstr "Markets ·"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Mi cuenta"
+msgstr "My account"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Más que un proveedor, su aliado en la industria textil."
+msgstr "More than a supplier, your partner in the textile industry."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Norma o especificación"
+msgstr "Standard or specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Nosotros"
+msgstr "About us"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid ""
+"Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO "
+"14001:2015 e ISO 45001:2018: calidad, medio ambiente y seguridad y salud en "
+"el trabajo."
+msgstr ""
+"Our integrated management system is certified to ISO 9001:2015, ISO "
+"14001:2015 and ISO 45001:2018: quality, environment, and occupational health"
+" and safety."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Otras familias"
+msgstr "Other families"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Otro color"
+msgstr "Other color"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Parque Industrial Toluca 2000"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Partimos de su muestra o de su especificación. El tiempo de desarrollo y el "
+"de entrega se confirman con la cotización, según la tela y el volumen."
+msgstr ""
+"We start from your sample or your specification. Development and lead times "
+"are confirmed with the quote, depending on the fabric and the volume."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Países: México, Estados Unidos y Canadá"
+msgstr "Countries: Mexico, United States and Canada"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Pedir muestra"
+msgstr "Request a sample"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Peso"
+msgstr "Weight"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Peso en gramos por metro cuadrado"
+msgstr "Weight in grams per square meter"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Planta"
+msgstr "Plant"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Planta y proceso"
+msgstr "Plant and process"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "Por ejemplo, 5,000 metros al mes"
+msgstr "For example, 5,000 meters per month"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Por ejemplo, la norma de su cliente"
+msgstr "For example, your customer's standard"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Portal de clientes"
+msgstr "Customer portal"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.tipos_tejido
+msgid "Presentaciones y acabados"
+msgstr "Formats and finishes"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Principal"
+msgstr "Main"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
+msgid "Producto o aplicación"
+msgstr "Product or application"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "Productora de No Tejidos Quimibond S.A. de C.V."
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid ""
+"Productora de No Tejidos Quimibond nació para fabricar entretelas de alta "
+"calidad. Hoy abastecemos a la industria automotriz con scrims y telas de "
+"tejido circular, además de blancos y confección."
+msgstr ""
+"Productora de No Tejidos Quimibond was founded to make high-quality "
+"interlinings. Today we supply the automotive industry with scrims and "
+"circular knit fabrics, as well as home textiles and apparel."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Productos <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
+msgstr "Products <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+msgid "Quimibond, inicio"
+msgstr "Quimibond, home"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Reciba la ficha técnica en su correo"
+msgstr "Get the data sheet by email"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Reciba los certificados en PDF"
+msgstr "Get the certificates in PDF"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Recibimos su solicitud"
+msgstr "We received your request"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Recibimos su solicitud de ficha técnica"
+msgstr "We received your data sheet request"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Recibimos su solicitud de llamada"
+msgstr "We received your call request"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "Reporte de calidad"
+msgstr "Quality report"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"Reunimos lo que su equipo pide para dar de alta a un proveedor: "
+"certificados, pruebas de laboratorio y cómo desarrollamos una tela nueva."
+msgstr ""
+"We have gathered what your team needs to approve a supplier: certificates, "
+"laboratory tests and how we develop a new fabric."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Ruta"
+msgstr "Breadcrumb"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid ""
+"Scrims automotrices, entretelas y textiles técnicos fabricados en México "
+"desde 1992."
+msgstr ""
+"Automotive scrims, interlinings and technical textiles made in Mexico since "
+"1992."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid ""
+"Scrims automotrices, entretelas, no tejidos y telas de punto. Cada familia "
+"trae sus rangos de peso, ancho y color, y la ficha técnica se la envía "
+"Ventas."
+msgstr ""
+"Automotive scrims, interlinings, nonwovens and knitted fabrics. Each family "
+"lists its weight, width and color ranges, and Sales will send you the data "
+"sheet."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrims de tejido circular"
+msgstr "Circular knit scrims"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Scrims de tejido circular y no tejidos."
+msgstr "Circular knit and nonwoven scrims."
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrims no tejidos"
+msgstr "Nonwoven scrims"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Scrims para interiores automotrices, de una planta que responde por cada "
+"rollo."
+msgstr ""
+"Scrims for automotive interiors, from a plant that stands behind every roll."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Scrims, entretelas y textiles técnicos, <span class=\"qb-hilado\">del hilo "
+"al rollo terminado.</span>"
+msgstr ""
+"Scrims, interlinings and technical textiles, <span class=\"qb-hilado\">from "
+"yarn to finished roll.</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"Si ya tiene una norma o una muestra de referencia, adjúntela. Si no, le "
+"ayudamos a definirla."
+msgstr ""
+"If you already have a standard or a reference sample, attach it. If not, we "
+"will help you define it."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Sistema de gestión integral certificado"
+msgstr "Certified integrated management system"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Sistema de gestión integral certificado."
+msgstr "Certified integrated management system."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid "Sobre especificación"
+msgstr "Made to specification"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "Solicitar certificados"
+msgstr "Request certificates"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.header
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Solicitar cotización"
+msgstr "Request a quote"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Solicitar cotización <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr "Request a quote <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid ""
+"Solicitar cotización o muestra <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr ""
+"Request a quote or a sample <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Solicitar ficha técnica"
+msgstr "Request data sheet"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid ""
+"Solicitar ficha técnica <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+msgstr "Request data sheet <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid "Solicitar llamada"
+msgstr "Request a call"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cotizar
+msgid "Solicite una cotización o una muestra"
+msgstr "Request a quote or a sample"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid ""
+"Su diseño ya está escrito en la especificación. Si tiene una muestra, una "
+"foto o la ficha técnica de la tela que quiere igualar, adjúntela aquí mismo."
+" Un asesor le responde en un día hábil."
+msgstr ""
+"Your design is already written into the specification. If you have a sample,"
+" a photo or the data sheet of the fabric you want to match, attach it right "
+"here. A sales representative replies within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Sus pedidos, facturas y entregas en línea"
+msgstr "Your orders, invoices and deliveries online"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tacto"
+msgstr "Hand feel"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Tejemos, teñimos, acabamos e inspeccionamos en nuestra planta de Toluca. "
+"Fabricamos contra su especificación para la industria automotriz, blancos y "
+"confección."
+msgstr ""
+"We knit, dye, finish and inspect at our plant in Toluca. We manufacture to "
+"your specification for the automotive, home textile and apparel industries."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Tejido circular de una y doble fontura, línea de no tejidos, jets, ramas e "
+"inspección en una sola planta. Cada rollo sale pesado, medido, clasificado y"
+" con su lote."
+msgstr ""
+"Single and double circular knitting, a nonwovens line, jets, stenters and "
+"inspection in a single plant. Every roll leaves weighed, measured, graded "
+"and with its lot number."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Tejido de punto circular, de una y doble fontura. No tejido, sencillo o "
+"tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables."
+msgstr ""
+"Circular knits, single and double. Nonwovens, plain or weft-inserted. Dyed, "
+"finished and, if your application requires it, fusible."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Tejido y no tejido, en una sola planta."
+msgstr "Knits and nonwovens, in a single plant."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.planta
+msgid ""
+"Tejido, tintorería, acabado, no tejidos e inspección bajo el mismo techo."
+msgstr "Knitting, dyeing, finishing, nonwovens and inspection under one roof."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Termofijado de acuerdo a su especificación y acabados especiales, como "
+"retardante a la flama."
+msgstr ""
+"Heat-set to your specification, plus special finishes such as flame "
+"retardant."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Tipo"
+msgstr "Type"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Trabaje con nosotros"
+msgstr "Work with us"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Tres industrias, y la tela para cada aplicación."
+msgstr "Three industries, and the fabric for each application."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
+msgid "Tres razones para trabajar con nosotros"
+msgstr "Three reasons to work with us"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid ""
+"Un asesor de Ventas le confirma el día y la hora por correo o por teléfono."
+msgstr ""
+"A sales representative will confirm the day and time by email or phone."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid ""
+"Una entretela es la parte que no se ve y que sostiene el cuello, el puño o "
+"el frente. La base define el tacto y el punto de adhesivo define cómo se "
+"fusiona y cómo resiste el lavado."
+msgstr ""
+"An interlining is the part you do not see that supports the collar, the cuff"
+" or the front. The base defines the hand feel, and the adhesive dot coating "
+"defines how it fuses and how it withstands washing."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.producto
+msgid "Unidad de venta"
+msgstr "Sales unit"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Unidad del volumen"
+msgstr "Volume unit"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Velo de fibra consolidado al peso, el espesor y la resistencia de su "
+"especificación."
+msgstr ""
+"Fiber web bonded to the weight, thickness and strength of your "
+"specification."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Ventas le envía la ficha técnica a su correo en un día hábil."
+msgstr "Sales will email you the data sheet within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "Ver <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "View <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "Ver aplicaciones"
+msgstr "See applications"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Ver el catálogo"
+msgstr "View the catalog"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Ver el catálogo <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "View the catalog <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.portada
+msgid "Ver vacantes <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "View openings <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid ""
+"Vestiduras de asientos, descansabrazos de puerta y otros componentes del "
+"interior."
+msgstr "Seat covers, door armrests and other interior components."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Vista ampliada, ilustrativa"
+msgstr "Enlarged view, illustrative"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "Vista de la tela diseñada"
+msgstr "View of the designed fabric"
+
+#. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Volumen"
+msgstr "Volume"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Volver al inicio"
+msgstr "Back to home"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
+msgid "Ya está con el equipo de Ventas. Le contactamos en un día hábil."
+msgstr ""
+"It is now with the Sales team. We will contact you within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "artículos de esta familia"
+msgstr "items in this family"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid "artículos de línea"
+msgstr "stock items"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
+msgid "cm"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
+msgid "¿De qué quiere platicar?"
+msgstr "What would you like to discuss?"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "¿Evalúa un proveedor nuevo de scrims?"
+msgstr "Evaluating a new scrim supplier?"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
+msgid "¿Necesita algo distinto? Diseñe su tela"
+msgstr "Need something different? Design your fabric"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.catalogo
+msgid "¿No ve lo que busca? Lo desarrollamos."
+msgstr "Don't see what you are looking for? We will develop it."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.familia
+msgid "¿Qué artículo o aplicación le interesa?"
+msgstr "Which item or application are you interested in?"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.footer
+msgid "¿Tiene una especificación? La fabricamos."
+msgstr "Have a specification? We will make it."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
+msgid "¿Tiene una observación de calidad?"
+msgstr "Have a quality concern?"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "152 cm"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "152 y 160 cm"
+msgstr "152 and 160 cm"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "2,081"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"2,081 paneles solares en el techo de la planta, que generan parte de la "
+"energía con la que producimos."
+msgstr ""
+"2,081 solar panels on the plant roof, generating part of the energy we "
+"produce with."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "3.7 GWh"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "A la medida, hasta 210 cm"
+msgstr "Made to measure, up to 210 cm"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ANCHO PEDIDO"
+msgstr "ORDERED WIDTH"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Acabado"
+msgstr "Finish"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Acabados especiales"
+msgstr "Special finishes"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Actuamos con honestidad y transparencia."
+msgstr "We act with honesty and transparency."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Agendar una llamada"
+msgstr "Schedule a call"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Agendar una llamada | Quimibond"
+msgstr "Schedule a call | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Al 100 %, rollo por rollo"
+msgstr "100%, roll by roll"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Algodón"
+msgstr "Cotton"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Almohada"
+msgstr "Pillow"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ancho"
+msgstr "Width"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Anchos y presentaciones para su línea de corte"
+msgstr "Widths and formats for your cutting line"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Análisis de su muestra"
+msgstr "Analysis of your sample"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Aplicación"
+msgstr "Application"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Asesoría técnica de fusionado: temperatura, presión y tiempo"
+msgstr "Technical fusing support: temperature, pressure and time"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Asientos"
+msgstr "Seats"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Azul"
+msgstr "Blue"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Azul marino"
+msgstr "Navy blue"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Año de fundación"
+msgstr "Year founded"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "BAÑO"
+msgstr "BATH"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "BOMBA"
+msgstr "PUMP"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Bamboo"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Bambú"
+msgstr "Bamboo"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Beige"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Blanco"
+msgstr "White"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Blanco y gris"
+msgstr "White and gray"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Blanco, off white, hueso, gris, negro y rojo"
+msgstr "White, off-white, bone, gray, black and red"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Blancos y confección"
+msgstr "Home textiles and apparel"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Buscamos siempre mejores soluciones."
+msgstr "We always look for better solutions."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "CADENA DE AGUJAS"
+msgstr "PIN CHAIN"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "CALOR"
+msgstr "HEAT"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "COLOR PAREJO"
+msgstr "EVEN COLOR"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "CRUDO"
+msgstr "GREIGE"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Calidad liberada por laboratorio antes de embarcar"
+msgstr "Quality released by the laboratory before shipping"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Calidad y confianza"
+msgstr "Quality and trust"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Calidad y excelencia"
+msgstr "Quality and excellence"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Calidad y sustentabilidad | Quimibond"
+msgstr "Quality and sustainability | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Camisería"
+msgstr "Shirts"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Camisería y blusas"
+msgstr "Shirts and blouses"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Capacidades"
+msgstr "Capabilities"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cargando catálogo…"
+msgstr "Loading catalog…"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Catálogo por familias | Quimibond"
+msgstr "Catalog by family | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificación ISO 14001 del sistema de gestión ambiental."
+msgstr "ISO 14001 certification of the environmental management system."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificación ISO 45001 de seguridad y salud en el trabajo."
+msgstr "ISO 45001 certification for occupational health and safety."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificación ISO 9001 del sistema de gestión de calidad."
+msgstr "ISO 9001 certification of the quality management system."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificado 24070237A, vigente hasta el 22 de agosto de 2027"
+msgstr "Certificate 24070237A, valid until August 22, 2027"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificado 26220295B, vigente hasta el 31 de marzo de 2029"
+msgstr "Certificate 26220295B, valid until March 31, 2029"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificado desde 2015"
+msgstr "Certified since 2015"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificado desde 2023"
+msgstr "Certified since 2023"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificado desde 2026"
+msgstr "Certified since 2026"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Certificados, laboratorio y desarrollo"
+msgstr "Certificates, laboratory and development"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Clientes atendidos en el último año"
+msgstr "Customers served in the past year"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Colaboradores"
+msgstr "Employees"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Colchonería y blancos"
+msgstr "Mattresses and home textiles"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Colchón"
+msgstr "Mattress"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Compradores automotrices | Quimibond"
+msgstr "Automotive buyers | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Compromiso con el futuro"
+msgstr "Commitment to the future"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Consistencia de lote a lote"
+msgstr "Lot-to-lot consistency"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Construcción"
+msgstr "Construction"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Contenido de aceite"
+msgstr "Oil content"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Copie el enlace de su diseño:"
+msgstr "Copy your design link:"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cortada y perforada"
+msgstr "Cut and perforated"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cotización"
+msgstr "Quote"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Crudo"
+msgstr "Greige"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Crudo, blanco o teñido de acuerdo a su especificación"
+msgstr "Greige, white or dyed to your specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cuellos y puños"
+msgstr "Collars and cuffs"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Cuidamos el presente y el futuro."
+msgstr "We care for the present and the future."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 11:00 a 13:00"
+msgstr "11:00 to 13:00"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 13:00 a 15:00"
+msgstr "13:00 to 15:00"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 16:00 a 18:00"
+msgstr "16:00 to 18:00"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 27 a 77 g/m²"
+msgstr "27 to 77 g/m²"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 28 a 60 g/m²"
+msgstr "28 to 60 g/m²"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 32 a 75 g/m², según su especificación"
+msgstr "32 to 75 g/m², according to your specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 34 a 56 g/m²"
+msgstr "34 to 56 g/m²"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 40 a 145 g/m²"
+msgstr "40 to 145 g/m²"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 46 a 150 g/m²"
+msgstr "46 to 150 g/m²"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De 9:00 a 11:00"
+msgstr "9:00 to 11:00"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "De acuerdo a su especificación"
+msgstr "To your specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Definimos la construcción y elegimos los hilos o las fibras para su "
+"aplicación."
+msgstr ""
+"We define the construction and select the yarns or fibers for your "
+"application."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Del lote de teñido al rollo terminado"
+msgstr "From dye lot to finished roll"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Desarrollo de producto contra la especificación de su cliente"
+msgstr "Product development to your customer's specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Desarrollo del proceso"
+msgstr "Process development"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Descansabrazos de puerta"
+msgstr "Door armrests"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Desde 1992"
+msgstr "Since 1992"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Desde 2014 abastecemos al mercado automotriz de México, Estados Unidos y "
+"Canadá con scrims desarrollados para sus especificaciones. El scrim es el "
+"soporte textil que se lamina con la espuma y con la tela, el vinil o la piel"
+" de las vestiduras."
+msgstr ""
+"Since 2014 we have supplied the automotive market in Mexico, the United "
+"States and Canada with scrims developed to its specifications. The scrim is "
+"the textile backing laminated to the foam and to the fabric, vinyl or "
+"leather of seat covers."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseñador interactivo"
+msgstr "Interactive designer"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Diseñar, producir y suministrar textiles técnicos de alto desempeño que "
+"excedan las expectativas de nuestros clientes industriales, automotrices y "
+"de otros sectores, integrando la innovación, la sostenibilidad y la "
+"seguridad y salud en el trabajo en cada etapa de nuestros procesos."
+msgstr ""
+"To design, produce and supply high-performance technical textiles that "
+"exceed the expectations of our industrial, automotive and other customers, "
+"integrating innovation, sustainability, and occupational health and safety "
+"into every stage of our processes."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Diseñe su tela en línea: aplicación, peso, ancho, color, tacto y acabado. "
+"Vea la tela al momento y envíe el diseño a Ventas."
+msgstr ""
+"Design your fabric online: application, weight, width, color, hand feel and "
+"finish. See the fabric right away and send the design to Sales."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseñe su tela | Quimibond"
+msgstr "Design your fabric | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseño de la tela"
+msgstr "Fabric design"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseño de tela"
+msgstr "Fabric design"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Diseño de tela (diseñador en línea)"
+msgstr "Fabric design (online designer)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Dos juegos de agujas, cilindro y plato. Tela con más cuerpo y estabilidad "
+"dimensional."
+msgstr ""
+"Two sets of needles, cylinder and dial. A fabric with more body and "
+"dimensional stability."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ENSANCHE"
+msgstr "WIDENING"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ENTRADA"
+msgstr "ENTRY"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"El mismo velo de fibra, reforzado con hilos de trama para entretelas que "
+"piden más estabilidad y recuperación."
+msgstr ""
+"The same fiber web, reinforced with weft yarns for interlinings that need "
+"more stability and recovery."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"El velo de fibra lleva hilos de trama que le dan estabilidad y recuperación."
+" Se usa donde la prenda debe conservar su forma."
+msgstr ""
+"The fiber web carries weft yarns that give it stability and recovery. It is "
+"used where the garment must keep its shape."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Elastano"
+msgstr "Elastane"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Elija el día y el horario que prefiere y un asesor de Ventas de Quimibond le"
+" llama."
+msgstr ""
+"Choose the day and time you prefer and a Quimibond sales representative will"
+" call you."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Elongación a la rotura"
+msgstr "Elongation at break"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "En cada proceso y en cada detalle."
+msgstr "In every process and every detail."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "En rollo, cortado o perforado"
+msgstr "In rolls, cut or perforated"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Energía limpia generada desde 2021"
+msgstr "Clean energy generated since 2021"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Energía solar"
+msgstr "Solar energy"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Enfoque al cliente"
+msgstr "Customer focus"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Enlace copiado"
+msgstr "Link copied"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entra en operación la planta tratadora de agua."
+msgstr "The water treatment plant begins operating."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Entretela de fibra con punto de adhesivo para cuellos, puños, carteras y "
+"refuerzos."
+msgstr ""
+"Fiber interlining with adhesive dot coating for collars, cuffs, pocket flaps"
+" and reinforcements."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Entretela de tejido circular con punto de adhesivo, para prendas que piden "
+"elasticidad y caída."
+msgstr ""
+"Circular knit interlining with adhesive dot coating, for garments that need "
+"stretch and drape."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretela fusionable que da firmeza al cuello y al puño de la camisa."
+msgstr "Fusible interlining that gives firmness to the shirt collar and cuff."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretela para cuello y puño"
+msgstr "Collar and cuff interlining"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretela para frente de saco"
+msgstr "Jacket front interlining"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretela tramada que da forma y recuperación al frente."
+msgstr "Weft-inserted interlining that gives shape and recovery to the front."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas fusionables de línea, con existencia para surtir."
+msgstr "Stock fusible interlinings, with inventory ready to ship."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Entretelas fusionables tejidas y no tejidas para camisería, uniformes, "
+"playeras, ropa deportiva, cuellos, puños y frentes de saco."
+msgstr ""
+"Knitted and nonwoven fusible interlinings for shirts, uniforms, T-shirts, "
+"sportswear, collars, cuffs and jacket fronts."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas fusionables, no tejido tramado y scrims no tejidos"
+msgstr "Fusible interlinings, weft-inserted nonwovens and nonwoven scrims"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas no tejidas fusionables"
+msgstr "Fusible nonwoven interlinings"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas no tejidas tramadas"
+msgstr "Weft-inserted nonwoven interlinings"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas para la confección"
+msgstr "Interlinings for apparel manufacturing"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas tejidas fusionables"
+msgstr "Fusible knitted interlinings"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Entretelas y telas de punto para prendas."
+msgstr "Interlinings and knitted fabrics for garments."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Espesor"
+msgstr "Thickness"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Estabilidad dimensional"
+msgstr "Dimensional stability"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Estabilidad dimensional al calor"
+msgstr "Dimensional stability to heat"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Estabilidad dimensional al lavado"
+msgstr "Dimensional stability to washing"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Evaluación de olor"
+msgstr "Odor evaluation"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Experiencia y especialización"
+msgstr "Experience and specialization"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Fabricamos telas desde 1992. Nuestro equipo técnico desarrolla cada tela a "
+"la medida de su aplicación."
+msgstr ""
+"We have made fabrics since 1992. Our technical team develops each fabric to "
+"fit your application."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Fabricantes de scrims automotrices, tejido circular, no tejidos y entretelas"
+" para la industria automotriz, blancos y confección. ISO 9001 e ISO 14001. "
+"Solicite cotización o muestra."
+msgstr ""
+"Manufacturers of automotive scrims, circular knits, nonwovens and "
+"interlinings for the automotive, home textile and apparel industries. ISO "
+"9001 and ISO 14001. Request a quote or a sample."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fibra"
+msgstr "Fiber"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Fibra abierta en carda y consolidada en velo, sin pasar por hilo. Es la base"
+" de nuestras entretelas."
+msgstr ""
+"Fiber opened on the card and bonded into a web, without becoming yarn. It is"
+" the base of our interlinings."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fibras"
+msgstr "Fibers"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fibras que teñimos"
+msgstr "Fibers we dye"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ficha técnica"
+msgstr "Data sheet"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Flamabilidad"
+msgstr "Flammability"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Frentes de saco"
+msgstr "Jacket fronts"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fundas y protectores de colchón"
+msgstr "Mattress covers and protectors"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fusionable"
+msgstr "Fusible"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fusionable por espolvoreo"
+msgstr "Fusible by scatter coating"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Fusionables para lavado en agua y en seco"
+msgstr "Fusibles for washing and dry cleaning"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Gracias | Quimibond"
+msgstr "Thank you | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Gris"
+msgstr "Gray"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Hilo"
+msgstr "Yarn"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Hilos que tejemos"
+msgstr "Yarns we knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Hueso"
+msgstr "Bone"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 14001"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 14001:2015"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 45001"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 45001:2018"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 9001"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 9001 · ISO 14001 · ISO 45001"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ISO 9001:2015"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Igualación de color"
+msgstr "Color matching"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Inicios"
+msgstr "Beginnings"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Innovación"
+msgstr "Innovation"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Innovación, sustentabilidad y seguridad de nuestra gente en cada etapa del "
+"proceso."
+msgstr ""
+"Innovation, sustainability and the safety of our people at every stage of "
+"the process."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Inspección"
+msgstr "Inspection"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Inspección al 100 %, rollo por rollo, con pruebas de laboratorio de acuerdo "
+"a su especificación."
+msgstr ""
+"100% inspection, roll by roll, with laboratory tests to your specification."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Inspección al 100 %, rollo por rollo, y laboratorio en planta."
+msgstr "100% inspection, roll by roll, and an in-house laboratory."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Inspección y laboratorio"
+msgstr "Inspection and laboratory"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Integridad"
+msgstr "Integrity"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Jersey, piqué, crepé y felpa de tejido circular, crudas o teñidas a su "
+"color."
+msgstr ""
+"Circular knit jersey, piqué, crepe and terry, greige or dyed to your color."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Jets de teñido"
+msgstr "Jet dyeing machines"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"La base de tejido de punto acompaña el movimiento de la prenda y el punto de"
+" adhesivo la fija a la tela. Es nuestra línea de entretelas con más "
+"clientes."
+msgstr ""
+"The knitted base follows the movement of the garment and the adhesive dots "
+"bond it to the fabric. It is our interlining line with the most customers."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "La tela del toldo, continuada en los pilares."
+msgstr "The headliner fabric, continued on the pillars."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Laboratorio"
+msgstr "Laboratory"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Laboratorio y embarque"
+msgstr "Laboratory and shipping"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Lavado en agua"
+msgstr "Washable"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Lavado en seco"
+msgstr "Dry cleaning"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Lotes trazables de la materia prima al rollo terminado"
+msgstr "Traceable lots from raw material to finished roll"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Línea completa"
+msgstr "Complete line"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Línea completa de no tejidos, de la fibra al rollo terminado."
+msgstr "A complete nonwovens line, from fiber to finished roll."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Marfil"
+msgstr "Ivory"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Masa por unidad de área (g/m²)"
+msgstr "Mass per unit area (g/m²)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mercado"
+msgstr "Market"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mercado automotriz"
+msgstr "Automotive market"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mercados: automotriz, blancos y confección"
+msgstr "Markets: automotive, home textiles and apparel"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mezcla (PES/CO)"
+msgstr "Blend (PES/CO)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Mezcla poliéster y algodón"
+msgstr "Polyester-cotton blend"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Microfibra"
+msgstr "Microfiber"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Modernización"
+msgstr "Modernization"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Muestra y validación"
+msgstr "Sample and validation"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Muestras para validar en su planta"
+msgstr "Samples to validate at your plant"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Máquinas"
+msgstr "Machines"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Máquinas circulares"
+msgstr "Circular machines"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Máquinas circulares de una fontura y de doble fontura."
+msgstr "Single and double circular knitting machines."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Máquinas de inspección"
+msgstr "Inspection machines"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Nace Productora de No Tejidos Quimibond para fabricar entretelas de alta "
+"calidad."
+msgstr ""
+"Productora de No Tejidos Quimibond is founded to make high-quality "
+"interlinings."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Naranja"
+msgstr "Orange"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Natural"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Natural, blanco o negro"
+msgstr "Natural, white or black"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Negro"
+msgstr "Black"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No fusionable"
+msgstr "Non-fusible"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejido"
+msgstr "Nonwoven"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"No tejido de poliéster sin punto de adhesivo. Se surte en rollo y también "
+"cortado o perforado a la medida de su línea."
+msgstr ""
+"Polyester nonwoven without adhesive coating. Supplied in rolls and also cut "
+"or perforated to fit your line."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejido fusionable"
+msgstr "Fusible nonwoven"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"No tejido reforzado con hilos de trama, para frentes de saco y refuerzos."
+msgstr ""
+"Nonwoven reinforced with weft yarns, for jacket fronts and reinforcements."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejido tramado"
+msgstr "Weft-inserted nonwoven"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejido tramado, fusionable"
+msgstr "Weft-inserted nonwoven, fusible"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejidos no fusionables"
+msgstr "Non-fusible nonwovens"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejidos no fusionables en distintos gramajes"
+msgstr "Non-fusible nonwovens in a range of weights"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejidos y entretelas"
+msgstr "Nonwovens and interlinings"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "No tejidos y telas de punto para colchonería, blancos y prendas."
+msgstr ""
+"Nonwovens and knitted fabrics for mattresses, home textiles and garments."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Norma"
+msgstr "Standard"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Nosotros | Quimibond"
+msgstr "About us | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Nuevas líneas de producto para el mercado automotriz de México, Estados "
+"Unidos y Canadá."
+msgstr ""
+"New product lines for the automotive market in Mexico, the United States and"
+" Canada."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Nylon"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Otros componentes del interior"
+msgstr "Other interior components"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Paneles de puerta"
+msgstr "Door panels"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Paneles solares en la planta"
+msgstr "Solar panels at the plant"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Para el año 2030, Quimibond será reconocida como la empresa líder en "
+"soluciones textiles técnicas innovadoras y sostenibles, especialmente en la "
+"industria automotriz. Destacará por su agilidad para personalizar productos "
+"de alta calidad, su compromiso con la sostenibilidad y una cultura "
+"organizacional sólida que promueve la seguridad y la salud en el trabajo "
+"como un valor fundamental."
+msgstr ""
+"By 2030, Quimibond will be recognized as the leading company in innovative "
+"and sustainable technical textile solutions, especially in the automotive "
+"industry. It will stand out for its agility in customizing high-quality "
+"products, its commitment to sustainability, and a strong organizational "
+"culture that promotes occupational health and safety as a core value."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Pedidos, facturas y entregas"
+msgstr "Orders, invoices and deliveries"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Personalizado"
+msgstr "Custom"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Peso, espesor, resistencia, elongación, estabilidad dimensional, "
+"flamabilidad y olor, entre otras"
+msgstr ""
+"Weight, thickness, strength, elongation, dimensional stability, flammability"
+" and odor, among others"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Pilares"
+msgstr "Pillars"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Planta tratadora de agua"
+msgstr "Water treatment plant"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Planta tratadora de agua en operación"
+msgstr "Water treatment plant in operation"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Planta tratadora de agua propia, en operación desde 2025, y captación de "
+"agua de lluvia."
+msgstr ""
+"Our own water treatment plant, operating since 2025, and rainwater "
+"harvesting."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Planta y proceso | Quimibond"
+msgstr "Plant and process | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Playera"
+msgstr "T-shirt"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Playeras y ropa deportiva"
+msgstr "T-shirts and sportswear"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliamida"
+msgstr "Polyamide"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Polipropileno"
+msgstr "Polypropylene"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster"
+msgstr "Polyester"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster con poliamida"
+msgstr "Polyester with polyamide"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster reciclado"
+msgstr "Recycled polyester"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster, poliamida (nailon) o poliéster con algodón"
+msgstr "Polyester, polyamide (nylon) or polyester with cotton"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster, poliéster reciclado o poliamida (nailon)"
+msgstr "Polyester, recycled polyester or polyamide (nylon)"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Poliéster, poliéster reciclado o polipropileno"
+msgstr "Polyester, recycled polyester or polypropylene"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Poliéster, poliéster reciclado, poliamida (nailon) y algodón con poliéster"
+msgstr ""
+"Polyester, recycled polyester, polyamide (nylon) and cotton with polyester"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Poliéster, poliéster reciclado, poliamida (nailon) y mezclas de poliéster "
+"con algodón"
+msgstr ""
+"Polyester, recycled polyester, polyamide (nylon) and polyester-cotton blends"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Poliéster, poliéster reciclado, polipropileno y poliéster con poliamida"
+msgstr ""
+"Polyester, recycled polyester, polypropylene and polyester with polyamide"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Prendas con elasticidad"
+msgstr "Stretch garments"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Prendas ligeras"
+msgstr "Lightweight garments"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Presentación"
+msgstr "Format"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Primeros 1,315 paneles solares en la planta; en 2024 se sumaron 766 más."
+msgstr "First 1,315 solar panels at the plant; 766 more were added in 2024."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Proceso"
+msgstr "Process"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Producción programada"
+msgstr "Scheduled production"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Productora de No Tejidos Quimibond: fabricantes de scrims automotrices, "
+"entretelas y textiles técnicos en Toluca, México, desde 1992."
+msgstr ""
+"Productora de No Tejidos Quimibond: manufacturers of automotive scrims, "
+"interlinings and technical textiles in Toluca, Mexico, since 1992."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Productos"
+msgstr "Products"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Programación de producción para entregas recurrentes"
+msgstr "Production scheduling for recurring deliveries"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Programamos la producción para sus entregas recurrentes, con el lote "
+"trazable en cada rollo."
+msgstr ""
+"We schedule production for your recurring deliveries, with a traceable lot "
+"on every roll."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Protector de colchón"
+msgstr "Mattress protector"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Pruebas de acuerdo a su especificación y pruebas especiales"
+msgstr "Tests to your specification and special tests"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Pruebas de laboratorio especiales cuando su especificación las pide, "
+"liberación y embarque con la trazabilidad del lote."
+msgstr ""
+"Special laboratory tests when your specification calls for them, release and"
+" shipping with lot traceability."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Pruebas en planta"
+msgstr "In-house tests"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Punto de doble fontura"
+msgstr "Double knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Punto de una fontura"
+msgstr "Single knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Páginas"
+msgstr "Pages"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Quimibond | Scrims automotrices, entretelas y textiles técnicos"
+msgstr "Quimibond | Automotive scrims, interlinings and technical textiles"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ROLLO"
+msgstr "ROLL"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Rama y acabado"
+msgstr "Stenter and finishing"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ramas"
+msgstr "Stenters"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ramas y acabado"
+msgstr "Stenters and finishing"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Recibe la muestra con sus resultados de laboratorio para validarla en su "
+"planta."
+msgstr ""
+"You receive the sample with its laboratory results to validate at your "
+"plant."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Reciclaje"
+msgstr "Recycling"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Refuerzos"
+msgstr "Reinforcements"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Requisitos"
+msgstr "Requirements"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Resistencia a la abrasión"
+msgstr "Abrasion resistance"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Resistencia a la rotura"
+msgstr "Breaking strength"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Resistencia al pilling"
+msgstr "Pilling resistance"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Respeto"
+msgstr "Respect"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Retardante a la flama y repelentes, entre otros"
+msgstr "Flame retardant and repellents, among others"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Revisamos su muestra y su especificación: construcción, fibra, peso y "
+"desempeño que debe cumplir."
+msgstr ""
+"We review your sample and your specification: construction, fiber, weight "
+"and the performance it must meet."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ropa deportiva"
+msgstr "Sportswear"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Rígido"
+msgstr "Firm"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "SECADO Y TERMOFIJADO"
+msgstr "DRYING AND HEAT-SETTING"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrim"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Scrims automotrices, entretelas fusionables, no tejidos y telas de punto. "
+"Rangos de peso, ancho y color por familia. Solicite la ficha técnica."
+msgstr ""
+"Automotive scrims, fusible interlinings, nonwovens and knitted fabrics. "
+"Weight, width and color ranges by family. Request the data sheet."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Scrims de tejido circular y no tejidos para interiores automotrices. "
+"Certificados ISO 9001, 14001 y 45001, laboratorio en planta y desarrollo "
+"contra su especificación."
+msgstr ""
+"Circular knit and nonwoven scrims for automotive interiors. ISO 9001, 14001 "
+"and 45001 certificates, in-house laboratory and development to your "
+"specification."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Scrims de tejido circular y no tejidos, en poliéster y nailon, en natural y "
+"negro"
+msgstr ""
+"Circular knit and nonwoven scrims, in polyester and nylon, in natural and "
+"black"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrims desarrollados contra la especificación de su cliente."
+msgstr "Scrims developed to your customer's specification."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Scrims para vestiduras de asientos, descansabrazos y otros componentes del "
+"interior"
+msgstr "Scrims for seat covers, armrests and other interior components"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrims y telas para el interior del vehículo."
+msgstr "Scrims and fabrics for the vehicle interior."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Scrims y textiles técnicos para la industria automotriz"
+msgstr "Scrims and technical textiles for the automotive industry"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Secado y termofijado"
+msgstr "Drying and heat-setting"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Seguridad y salud en el trabajo"
+msgstr "Occupational health and safety"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Según su especificación"
+msgstr "According to your specification"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Semirrígido"
+msgstr "Semi-firm"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Separación de residuos y reciclaje en todas las áreas."
+msgstr "Waste separation and recycling in every area."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Sin resultados. Fabricamos sobre especificación: pida una cotización."
+msgstr "No results. We manufacture to specification: request a quote."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Sistema de gestión ambiental"
+msgstr "Environmental management system"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Sistema de gestión certificado en ISO 9001, ISO 14001 e ISO 45001, y "
+"trazabilidad de cada lote."
+msgstr ""
+"Management system certified to ISO 9001, ISO 14001 and ISO 45001, and "
+"traceability for every lot."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Sistema de gestión de calidad"
+msgstr "Quality management system"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Sistema de gestión integral certificado en ISO 9001:2015, ISO 14001:2015 e "
+"ISO 45001:2018. Paneles solares, planta tratadora de agua, agua pluvial y "
+"reciclaje."
+msgstr ""
+"Integrated management system certified to ISO 9001:2015, ISO 14001:2015 and "
+"ISO 45001:2018. Solar panels, water treatment plant, rainwater and "
+"recycling."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Solicitar cotización o muestra"
+msgstr "Request a quote or a sample"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Solicitar cotización o muestra | Quimibond"
+msgstr "Request a quote or a sample | Quimibond"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Solicite cotización o muestra de scrims, entretelas y textiles técnicos. Le "
+"responde un asesor de Ventas en un día hábil."
+msgstr ""
+"Request a quote or a sample of scrims, interlinings and technical textiles. "
+"A sales representative replies within one business day."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Solidez del color"
+msgstr "Color fastness"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Soporte de fibra consolidada, sin tejer, para laminados del interior del "
+"vehículo."
+msgstr ""
+"Bonded fiber backing, not knitted or woven, for vehicle interior laminates."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Soporte de tejido de punto para laminar con espuma y con la tela, el vinil o"
+" la piel de la vestidura."
+msgstr ""
+"Knitted backing to laminate with foam and with the fabric, vinyl or leather "
+"of the seat cover."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Soportes textiles para colchonería y blancos"
+msgstr "Textile backings for mattresses and home textiles"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Sostenibilidad"
+msgstr "Sustainability"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Stretch"
+msgstr ""
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Su éxito es nuestro propósito."
+msgstr "Your success is our purpose."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Suave"
+msgstr "Soft"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Suave, semirrígido o rígido"
+msgstr "Soft, semi-firm or firm"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "TELA EN CUERDA"
+msgstr "FABRIC IN ROPE FORM"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "TOBERA"
+msgstr "NOZZLE"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "TORNIQUETE"
+msgstr "WINCH"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tactos rígido, semirrígido y suave"
+msgstr "Firm, semi-firm and soft hand feel"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tecnología nueva en producción para mejorar eficiencia y calidad."
+msgstr "New production technology to improve efficiency and quality."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido"
+msgstr "Knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido circular"
+msgstr "Circular knitting"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Tejido circular de una y doble fontura, jets de teñido, ramas, línea de no "
+"tejidos e inspección rollo por rollo en nuestra planta de Toluca."
+msgstr ""
+"Single and double circular knitting, jet dyeing machines, stenters, a "
+"nonwovens line and roll-by-roll inspection at our plant in Toluca."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido circular fusionable para prendas con elasticidad"
+msgstr "Fusible circular knits for stretch garments"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Tejido circular y formación de no tejidos a partir de fibra e hilo, con la "
+"construcción que define el tacto y la estabilidad de la tela."
+msgstr ""
+"Circular knitting and nonwoven formation from fiber and yarn, with the "
+"construction that defines the hand feel and stability of the fabric."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido de punto circular"
+msgstr "Circular knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido de punto circular, de una y doble fontura"
+msgstr "Circular knit, single and double"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejido de punto circular, fusionable"
+msgstr "Circular knit, fusible"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tejidos"
+msgstr "Knits"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela abierta"
+msgstr "Open-width fabric"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela abierta o tubular"
+msgstr "Open-width or tubular fabric"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela abierta, en rollo"
+msgstr "Open-width fabric, in rolls"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela con cuerpo para el inserto del panel de la puerta."
+msgstr "Fabric with body for the door panel insert."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto con cuerpo para la funda del colchón."
+msgstr "Knitted fabric with body for the mattress cover."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto con cuerpo para prendas de uso continuo."
+msgstr "Knitted fabric with body for garments in continuous use."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto fina y ligera para prendas deportivas."
+msgstr "Fine, light knitted fabric for sportswear."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto hecha con hilo en máquinas circulares."
+msgstr "Knitted fabric made from yarn on circular machines."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto ligera para playeras y prendas casuales."
+msgstr "Light knitted fabric for T-shirts and casual wear."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de punto ligera que cubre y protege el colchón."
+msgstr "Light knitted fabric that covers and protects the mattress."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela de vestidura con cuerpo, hecha para el uso diario del asiento."
+msgstr "Seat cover fabric with body, made for everyday seat use."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela hecha directamente de la fibra, sin tejer."
+msgstr "Fabric made directly from fiber, without knitting or weaving."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Tela ligera de tejido circular que da soporte y estabilidad al laminado. La "
+"desarrollamos contra la especificación de su cliente y la entregamos "
+"termofijada, al ancho pedido."
+msgstr ""
+"Light circular knit fabric that gives the laminate support and stability. We"
+" develop it to your customer's specification and deliver it heat-set, at the"
+" ordered width."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela ligera de tejido circular, de 55 a 70 g/m², en natural o negro."
+msgstr "Light circular knit fabric, 55 to 70 g/m², in natural or black."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela ligera y suave para el techo interior."
+msgstr "Light, soft fabric for the interior roof."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela ligera y suave para la funda de la almohada."
+msgstr "Light, soft fabric for the pillow cover."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tela tubular"
+msgstr "Tubular fabric"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Telas de punto"
+msgstr "Knitted fabrics"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Telas de punto de una y doble fontura para prendas y para blancos, teñidas y"
+" acabadas en la misma planta."
+msgstr ""
+"Single and double knit fabrics for garments and home textiles, dyed and "
+"finished in the same plant."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Telas para colchones, almohadas y blancos para el hogar."
+msgstr "Fabrics for mattresses, pillows and home textiles."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Telas que acabamos"
+msgstr "Fabrics we finish"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Telas y no tejidos para colchones, almohadas y blancos para el hogar, con el"
+" gramaje, el ancho y el tacto que pide su proceso."
+msgstr ""
+"Fabrics and nonwovens for mattresses, pillows and home textiles, with the "
+"weight, width and hand feel your process requires."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Termofijada"
+msgstr "Heat-set"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Termofijada en rama"
+msgstr "Heat-set on the stenter"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Termofijado del producto de acuerdo a su especificación y acabados "
+"especiales, como retardante a la flama y repelentes."
+msgstr ""
+"Product heat-set to your specification, plus special finishes such as flame "
+"retardant and repellents."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Termofijado del producto de acuerdo a su especificación, al ancho pedido."
+msgstr "Product heat-set to your specification, at the ordered width."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Termofijado; retardante a la flama si su especificación lo pide"
+msgstr "Heat-set; flame retardant if your specification requires it"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Texturizado"
+msgstr "Textured"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Teñida en jet"
+msgstr "Jet dyed"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Teñido en jets, donde la tela circula por el baño hasta que el color queda "
+"parejo."
+msgstr ""
+"Jet dyeing, where the fabric circulates through the bath until the color is "
+"even."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Teñido en jets: la tela circula por el baño hasta que el color queda parejo "
+"en todo el lote."
+msgstr ""
+"Jet dyeing: the fabric circulates through the bath until the color is even "
+"across the whole lot."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tintorería"
+msgstr "Dyehouse"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Toldo"
+msgstr "Headliner"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Tratamiento de agua"
+msgstr "Water treatment"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Trazabilidad"
+msgstr "Traceability"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Un juego de agujas en el cilindro. Tela ligera, con cara y revés distintos y"
+" elasticidad natural a lo ancho."
+msgstr ""
+"One set of needles on the cylinder. A light fabric with a distinct face and "
+"back and natural widthwise stretch."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Una fontura y doble fontura"
+msgstr "Single knit and double knit"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Uniforme"
+msgstr "Uniform"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Uniformes"
+msgstr "Uniforms"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Validamos el proceso de tejido, teñido y acabado antes de producir."
+msgstr ""
+"We validate the knitting, dyeing and finishing process before production."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Valoramos a las personas y al entorno."
+msgstr "We value people and our surroundings."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Velo con trama"
+msgstr "Web with weft yarns"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Velo de fibra"
+msgstr "Fiber web"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Velo de fibra con punto de adhesivo, en tactos del suave al rígido. Hay "
+"versiones para lavado en agua y para lavado en seco."
+msgstr ""
+"Fiber web with adhesive dot coating, in hand feels from soft to firm. There "
+"are versions for washing and for dry cleaning."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Velo de fibra consolidado al peso, el espesor y la resistencia que pide la "
+"especificación. Se fabrica en nuestra línea de no tejidos y se inspecciona "
+"rollo por rollo."
+msgstr ""
+"Fiber web bonded to the weight, thickness and strength the specification "
+"requires. It is made on our nonwovens line and inspected roll by roll."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid ""
+"Velo de fibra sin adhesivo, del suave al rígido, para colchonería, blancos y"
+" confección."
+msgstr ""
+"Fiber web without adhesive, from soft to firm, for mattresses, home textiles"
+" and apparel."
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Ventas"
+msgstr "Sales"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Verde"
+msgstr "Green"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Vestiduras de asientos"
+msgstr "Seat covers"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Vino"
+msgstr "Burgundy"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Viscosa"
+msgstr "Viscose"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "con elastano"
+msgstr "with elastane"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "jet de teñido"
+msgstr "jet dyeing machine"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "jets de teñido"
+msgstr "jet dyeing machines"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "kilos al mes"
+msgstr "kilograms per month"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "metros al mes"
+msgstr "meters per month"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "no fusionable"
+msgstr "non-fusible"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "rama"
+msgstr "stenter"
+
+#. module: website_quimibond
+#. odoo-python
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "ramas"
+msgstr "stenters"

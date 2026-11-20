@@ -204,7 +204,7 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 .qb-logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.02em; font-size: 1.05rem; flex: none; }
 .qb-logo__marca { height: 28px; width: auto; display: block; flex: none; }
 .qb-nav { display: flex; align-items: center; gap: 2px; margin-right: auto; }
-.qb-nav__link { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: var(--qb-radio-sm); font-size: .9rem; color: #52525b; transition: color .15s, background .15s; }
+.qb-nav__link { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: var(--qb-radio-sm); font-size: .9rem; color: #52525b; white-space: nowrap; transition: color .15s, background .15s; }
 .qb-nav__link:hover { color: var(--qb-fg); background: var(--qb-muted); }
 .qb-nav__link i { font-size: .8rem; opacity: .6; transition: transform .2s; }
 .qb-nav__item { position: relative; }
@@ -777,3 +777,42 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 @keyframes qb-intro-asienta { from { transform: scale(1.04); } to { transform: scale(1); } }
 @keyframes qb-intro-fuera { to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .qb-intro { display: none; } }
+
+/* -------------------------------------------------------------------------
+   Prospectos: idiomas en el encabezado, catálogo por familias,
+   compradores automotrices
+   ---------------------------------------------------------------------- */
+.qb-idiomas { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); }
+.qb-idiomas a { padding: 4px 8px; border-radius: 4px; font-family: var(--qb-mono); font-size: .72rem; line-height: 1.4; color: var(--qb-muted-fg); }
+.qb-idiomas a.activo { background: var(--qb-fg); color: var(--qb-bg); }
+@media (max-width: 1100px) { .qb-idiomas { display: none; } }
+
+.qb .qb-fam__datos { display: grid; gap: 6px; margin: 14px 0; padding-top: 12px; border-top: 1px solid var(--qb-borde); }
+.qb .qb-fam__datos div { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: baseline; }
+.qb .qb-fam__datos dt { font-family: var(--qb-mono); font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; color: var(--qb-muted-fg); font-weight: 400; }
+.qb .qb-fam__datos dd { margin: 0; font-size: .88rem; font-weight: 500; }
+.qb-fam__dib { border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); overflow: hidden; background: var(--qb-suave); color: var(--qb-acento); }
+.qb-fam__dib .qb-tipo__dib { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.qb-tabla-caja { overflow-x: auto; border-radius: var(--qb-radio); box-shadow: 0 0 0 1px var(--qb-borde); background: var(--qb-bg); }
+.qb-tabla--lista { box-shadow: none; min-width: 620px; }
+.qb-tabla--lista th { width: auto; font-family: var(--qb-mono); font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; }
+.qb-tabla--lista td { font-weight: 400; }
+.qb-tabla--lista td:first-child a { color: var(--qb-acento); font-weight: 500; }
+
+.qb-compra__puntos { margin-top: 20px; }
+.qb-compra__descargas { margin-top: 28px; flex-wrap: wrap; }
+.qb-cert .qb-sello { margin-bottom: 16px; }
+.qb-cert h3 { margin-bottom: 6px; }
+.qb .qb-cert__num { margin-top: 10px; font-size: .74rem; color: var(--qb-muted-fg); }
+.qb .qb-pruebas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; align-content: start; }
+.qb .qb-pruebas li { padding: 12px 0; border-top: 1px solid var(--qb-borde); font-weight: 500; font-size: .95rem; }
+.qb .qb-pruebas li i { color: var(--qb-acento); margin-right: 8px; font-size: .8rem; }
+.qb-proceso__nodo .qb-mono { font-size: .78rem; }
+@media (max-width: 640px) { .qb .qb-pruebas { grid-template-columns: 1fr; } }
+/* Encabezado en teléfono: sin esto las acciones se salían 2 px del ancho. */
+@media (max-width: 640px) {
+    .qb-header__in { gap: 10px; }
+    .qb-header__acciones { gap: 6px; }
+    .qb-header .qb-btn--primario { padding: 0 10px; font-size: .82rem; white-space: nowrap; }
+    .qb-header .qb-logo { gap: 6px; }
+}
