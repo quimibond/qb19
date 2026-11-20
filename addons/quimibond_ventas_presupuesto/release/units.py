@@ -25,6 +25,20 @@ CUSTOMER_UNITS = {
 }
 
 
+# 3.31.0: unidad del cliente → unidad del pronóstico vigente (``uom_origen``). Las que el pronóstico no
+# tiene (yardas cuadradas) quedan en la unidad de venta.
+FORECAST_UNITS = {'length': {1.0: 'm', YARD_M: 'yd'}, 'weight': {1.0: 'kg'}, 'area': {1.0: 'm2'}}
+
+
+def forecast_unit(code):
+    """'m', 'yd', 'kg' o 'm2' para el código del cliente (MT, LY, KG, M2…), o None."""
+    unit = customer_unit(code)
+    if not unit:
+        return None
+    dim, factor = unit
+    return FORECAST_UNITS.get(dim, {}).get(factor)
+
+
 def customer_unit(code):
     """(dimensión, factor) de una unidad del cliente, o None si no se conoce."""
     return CUSTOMER_UNITS.get((code or '').strip().upper().replace('.', ''))

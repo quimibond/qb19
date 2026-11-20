@@ -215,6 +215,47 @@ class TestRelease(TransactionCase):
         self.assertEqual(line.date_ship, date(2040, 12, 14))
         self.assertEqual(line.week, date(2040, 12, 10))
 
+    def test_15_queda_en_la_unidad_del_cliente(self):
+        """3.31.0: el release en metros (Lear, UM: MT) de una tela que se vende en kilos queda en metros;
+        los kilos van en su columna. Cambiar solo la unidad convierte el número, no lo reinterpreta
+        (producción, Lear, 20-nov: 37 semanas en kilos pasaron a «metros» con el mismo número)."""
+        en_kilos = self.env['product.product'].create({
+            'name': 'Tela release en kilos', 'default_code': 'IZZR045Q22JNT160', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id, 'sale_ok': True})
+        en_kilos.action_qb_actualizar_articulo()
+        m_por_kg = en_kilos.qb_m_por_kg
+        self.assertTrue(m_por_kg, "El rendimiento sale del código (45 g/m², 160 cm)")
+        release = self._release()
+        release.action_read()
+        part = self.env['qb.customer.part'].search([
+            ('partner_id', '=', self.customer.id), ('customer_part', '=', 'LX00000001AA')])
+        part.write({'product_id': en_kilos.id})
+        part.action_confirm()
+        release.action_mark_reviewed()
+        release.action_apply()
+        week = self._forecast().filtered(lambda l: l.week == date(2040, 12, 17))
+        self.assertEqual(week.uom_origen, 'm')
+        self.assertAlmostEqual(week.qty_origen, 100.0, places=3)
+        self.assertAlmostEqual(week.qty_m, 100.0, places=2)
+        self.assertAlmostEqual(week.qty_kg, 100.0 / m_por_kg, places=2)
+        self.assertAlmostEqual(week.qty_release, week.qty_venta, places=2)
+        self.assertFalse(week.ajustado)
+
+        kilos = week.qty_venta
+        week.write({'uom_origen': 'yd'})
+        self.assertAlmostEqual(week.qty_origen, 100.0 / 0.9144, places=2)
+        self.assertAlmostEqual(week.qty_venta, kilos, places=2, msg="La cantidad no cambia, solo cómo se ve")
+        self.assertFalse(week.ajustado)
+        week.write({'uom_origen': False})
+        self.assertAlmostEqual(week.qty_origen, kilos, places=2)
+
+        week.write({'qty_origen': 200.0, 'uom_origen': 'm'})
+        self.assertTrue(week.ajustado, "Cantidad y unidad juntas sí es un ajuste")
+        week.action_qb_volver_release()
+        self.assertEqual(week.uom_origen, 'm')
+        self.assertAlmostEqual(week.qty_origen, 100.0, places=2)
+        self.assertFalse(week.ajustado)
+
 
 @tagged('post_install', '-at_install')
 class TestReleaseGeneric(TransactionCase):
@@ -390,7 +431,7 @@ class TestReleaseWoodbridge(TransactionCase):
         Line = self.env['qb.forecast.line']
         week = self._week(date(2040, 12, 31))
         cell = [('partner_id', '=', self.customer.id), ('plant', '=', False),
-                ('product_id', '=', self.product.id), ('uom_origen', '=', False),
+                ('product_id', '=', self.product.id), ('uom_origen', '=', 'm'),
                 ('week_id', '=', week.week_id.id)]
         Line.grid_update_cell(cell, 'qty_origen', -300.0)
         self.assertTrue(week.exists(), "En la matriz, una semana del release en cero no se quita")
