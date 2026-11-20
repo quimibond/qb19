@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Catálogo de conceptos de NOI (1.23.0), tomado de los reportes de NOI de la semana 48 de 2026
+         («Reporte de la nómina» y «Percepción/deducción» que mandó RH el 20-nov). noupdate: RH lo edita en
+         Nómina → Reportes NOI → Conceptos NOI y una actualización no lo pisa. Premio de asistencia (PA),
+         retroactivo y vales no salieron en esa semana: hasta darlos de alta se reportan con el nombre de la regla. -->
+    <record id="concepto_noi_p001" model="qb.nomina.concepto.noi">
+        <field name="clave">P001</field>
+        <field name="name">SUELDO</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">001</field>
+        <field name="codigos">BASIC, DESC_FALTAS</field>
+    </record>
+    <record id="concepto_noi_p003" model="qb.nomina.concepto.noi">
+        <field name="clave">P003</field>
+        <field name="name">HORAS EXTRAS DOBLES</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">019</field>
+        <field name="codigos">HE_TAX, HE_EXEMPT</field>
+        <field name="codigos_exento">HE_EXEMPT</field>
+    </record>
+    <record id="concepto_noi_p006" model="qb.nomina.concepto.noi">
+        <field name="clave">P006</field>
+        <field name="name">FONDO DE AHORRO PATRON</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">005</field>
+        <field name="codigos">FAP</field>
+        <field name="codigos_exento">FAP</field>
+    </record>
+    <record id="concepto_noi_p010" model="qb.nomina.concepto.noi">
+        <field name="clave">P010</field>
+        <field name="name">PRIMA VACACIONAL</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">021</field>
+        <field name="codigos">PVAC_TAX, PVAC_EXEMPT</field>
+        <field name="codigos_exento">PVAC_EXEMPT</field>
+    </record>
+    <record id="concepto_noi_p015" model="qb.nomina.concepto.noi">
+        <field name="clave">P015</field>
+        <field name="name">LOGRO DE OBJETIVOS</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">038</field>
+        <field name="codigos">LOGRO_OBJ</field>
+    </record>
+    <record id="concepto_noi_p016" model="qb.nomina.concepto.noi">
+        <field name="clave">P016</field>
+        <field name="name">PREMIOS DE PUNTUALIDAD</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">010</field>
+        <field name="codigos">PP</field>
+    </record>
+    <record id="concepto_noi_p017" model="qb.nomina.concepto.noi">
+        <field name="clave">P017</field>
+        <field name="name">OTRAS PERCEPCIONES</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">038</field>
+        <field name="codigos">H_SENC</field>
+    </record>
+    <record id="concepto_noi_p019" model="qb.nomina.concepto.noi">
+        <field name="clave">P019</field>
+        <field name="name">PRIMA DOMINICAL</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">020</field>
+        <field name="codigos">PDOM_TAX, PDOM_EXEMPT</field>
+        <field name="codigos_exento">PDOM_EXEMPT</field>
+    </record>
+    <record id="concepto_noi_d001" model="qb.nomina.concepto.noi">
+        <field name="clave">D001</field>
+        <field name="name">ISR</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">002</field>
+        <field name="codigos">ISR, SUBSIDY</field>
+    </record>
+    <record id="concepto_noi_d002" model="qb.nomina.concepto.noi">
+        <field name="clave">D002</field>
+        <field name="name">IMSS</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">001</field>
+        <field name="codigos">-IMSS_EMPLOYEE_TOTAL</field>
+    </record>
+    <record id="concepto_noi_d004" model="qb.nomina.concepto.noi">
+        <field name="clave">D004</field>
+        <field name="name">PRESTAMO PERSONAL</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">004</field>
+        <field name="codigos">PRESTAMO</field>
+    </record>
+    <record id="concepto_noi_d005" model="qb.nomina.concepto.noi">
+        <field name="clave">D005</field>
+        <field name="name">FONDO DE AHORRO EMPRESA</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">004</field>
+        <field name="codigos">FA_EMPRESA</field>
+    </record>
+    <record id="concepto_noi_d006" model="qb.nomina.concepto.noi">
+        <field name="clave">D006</field>
+        <field name="name">FONDO DE AHORRO TRABAJADOR</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">004</field>
+        <field name="codigos">FAE</field>
+    </record>
+    <record id="concepto_noi_d007" model="qb.nomina.concepto.noi">
+        <field name="clave">D007</field>
+        <field name="name">CUOTAS SINDICALES</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">019</field>
+        <field name="codigos">CUOTA_SIND</field>
+    </record>
+    <record id="concepto_noi_d010" model="qb.nomina.concepto.noi">
+        <field name="clave">D010</field>
+        <field name="name">PENSION ALIMENTICIA</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">007</field>
+        <field name="codigos">CHILD_SUPPORT</field>
+    </record>
+    <record id="concepto_noi_d093" model="qb.nomina.concepto.noi">
+        <field name="clave">D093</field>
+        <field name="name">CREDITO FONACOT</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">011</field>
+        <field name="codigos">FONACOT</field>
+    </record>
+    <record id="concepto_noi_d094" model="qb.nomina.concepto.noi">
+        <field name="clave">D094</field>
+        <field name="name">CREDITO INFONAVIT</field>
+        <field name="tipo">deduccion</field>
+        <field name="clave_sat">010</field>
+        <field name="codigos">INFONAVIT</field>
+    </record>
+    <record id="concepto_noi_d111" model="qb.nomina.concepto.noi">
+        <field name="clave">D111</field>
+        <field name="name">SUBS. PARA EL EMPLEO APLICADO</field>
+        <field name="tipo">informativo</field>
+        <field name="codigos">-SUBSIDY</field>
+    </record>
+</odoo>
