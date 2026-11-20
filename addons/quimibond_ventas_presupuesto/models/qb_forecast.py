@@ -268,7 +268,40 @@ class QbForecastLine(models.Model):
             [line._qb_change_vals(0.0, line.qty_venta) for line in lines])
         return lines
 
+    @api.model
+    def _qb_en_unidad(self, product, qty_venta, unit):
+        """(qty_origen, uom_origen) para escribir ``qty_venta`` (unidad de venta) en ``unit``. Si no hay
+        unidad, falta el rendimiento o la vuelta a la unidad de venta no da lo mismo, se queda en la unidad
+        de venta (3.31.0)."""
+        if not unit or not product:
+            return qty_venta, False
+        qty = product.qb_convertir(qty_venta, 'venta', unit)
+        back = product.qb_convertir(qty, unit, 'venta') if qty is not None else None
+        if back is None or abs(back - qty_venta) > 1e-6 * max(1.0, abs(qty_venta)):
+            return qty_venta, False
+        return qty, unit
+
     def write(self, vals):
+        # 3.31.0: cambiar solo la unidad del cliente cambia cómo se ve la cantidad, no la cantidad. Antes
+        # el número se quedaba y se leía en la unidad nueva: el 20-nov, 37 semanas de Lear en kilos pasaron
+        # a «metros» con el mismo número y bajaron 12 veces.
+        if ('uom_origen' in vals and 'qty_origen' not in vals
+                and not self.env.context.get('qb_release_apply')):
+            for line in self:
+                new_unit = vals['uom_origen'] or False
+                if (line.uom_origen or False) == new_unit:
+                    super(QbForecastLine, line).write(vals)
+                    continue
+                qty = line.product_id.qb_convertir(line.qty_origen, line.uom_origen or 'venta',
+                                                   new_unit or 'venta')
+                if qty is None:
+                    raise UserError(
+                        "No se puede pasar %s de %s a %s: falta el rendimiento m/kg o el ancho en la ficha. "
+                        "Capture la cantidad junto con la unidad." % (
+                            line.product_id.display_name, line.uom_origen or line.uom_venta,
+                            new_unit or line.uom_venta))
+                line.with_context(qb_release_apply=True).write(dict(vals, qty_origen=qty))
+            return True
         if vals.get('week'):
             vals['week'] = monday_of(fields.Date.to_date(vals['week']))
             vals['week_id'] = self.env['qb.forecast.week']._qb_get([vals['week']])[vals['week']].id
@@ -314,7 +347,8 @@ class QbForecastLine(models.Model):
         gone = lines.filtered(lambda l: l.qty_release <= 1e-9)
         keep = lines - gone
         for line in keep:
-            line.with_context(qb_release_apply=True).write({'qty_origen': line.qty_release, 'uom_origen': False})
+            qty, unit = self._qb_en_unidad(line.product_id, line.qty_release, line.uom_origen)
+            line.with_context(qb_release_apply=True).write({'qty_origen': qty, 'uom_origen': unit})
         keep.write({'ajustado': False, 'release_cambio': False})
         gone.unlink()
         keep.action_qb_refresh()
