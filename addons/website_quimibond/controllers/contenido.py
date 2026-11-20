@@ -105,8 +105,6 @@ MAQUINARIA = [
         'texto': 'Circulares de una fontura y de doble fontura, con salida de tela tubular o abierta.',
         'datos': [
             ('Fonturas', 'Una fontura y doble fontura'),
-            ('Galgas', '16, 18, 24, 28 y 32'),
-            ('Diámetros', '30, 32 y 38 pulgadas'),
             ('Salida de la tela', 'Tubular y abierta'),
         ],
     },
@@ -117,11 +115,10 @@ MAQUINARIA = [
         'tipo': 'tintoreria',
         'cantidad': 0,
         'unidad': 'Jets de teñido',
-        'texto': 'Jets de teñido con cocina de colores propia. Cada baño lleva su número y su fórmula.',
+        'texto': 'Teñido en jets, donde la tela circula por el baño hasta que el color queda parejo.',
         'datos': [
-            ('Carga por jet', 'De 300 a 1,200 kg'),
-            ('Relación de baño', 'Desde 1:6'),
-            ('Apoyo', 'Cocina de colores'),
+            ('Proceso', 'Teñido por lote'),
+            ('Color', 'De acuerdo a su especificación'),
         ],
     },
     {
@@ -131,11 +128,10 @@ MAQUINARIA = [
         'tipo': 'acabado',
         'cantidad': 0,
         'unidad': 'Ramas',
-        'texto': 'Secado, termofijado y acabado al ancho. Cada rollo se pesa y se mide al salir de la rama.',
+        'texto': 'Termofijado del producto de acuerdo a su especificación, al ancho pedido.',
         'datos': [
-            ('Proceso', 'Secado, termofijado y acabado'),
-            ('Preparación', 'Abridoras y devanadoras'),
-            ('Apoyo', 'Cocina de resinas'),
+            ('Proceso', 'Secado y termofijado'),
+            ('Acabados especiales', 'Retardante a la flama y repelentes, entre otros'),
         ],
     },
     {
@@ -159,11 +155,11 @@ MAQUINARIA = [
         'tipo': 'inspeccion',
         'cantidad': 0,
         'unidad': 'Máquinas de inspección',
-        'texto': 'Inspección rollo por rollo con peso, metros, defectos y clasificación. Laboratorio '
-                 'en planta y empaque.',
+        'texto': 'Inspección al 100 %, rollo por rollo, y laboratorio en planta.',
         'datos': [
-            ('Registro', 'Etiqueta con código de barras por rollo'),
-            ('Trazabilidad', 'Del baño de teñido al rollo terminado'),
+            ('Inspección', 'Al 100 %, rollo por rollo'),
+            ('Laboratorio', 'Pruebas de acuerdo a su especificación y pruebas especiales'),
+            ('Trazabilidad', 'Del lote de teñido al rollo terminado'),
         ],
     },
 ]
@@ -343,27 +339,29 @@ PROCESO = [
     {
         'paso': '02',
         'nombre': 'Tintorería',
-        'texto': 'Teñido en jets con fórmulas controladas por lote, relación de baño y '
-                 'dosificación calculadas en Odoo.',
+        'texto': 'Teñido en jets: la tela circula por el baño hasta que el color queda parejo '
+                 'en todo el lote.',
         'icono': 'fa-tint',
     },
     {
         'paso': '03',
         'nombre': 'Rama y acabado',
-        'texto': 'Secado, termofijado y acabado en rama. Cada rollo se pesa y se mide al salir.',
+        'texto': 'Termofijado del producto de acuerdo a su especificación y acabados especiales, '
+                 'como retardante a la flama y repelentes.',
         'icono': 'fa-fire',
     },
     {
         'paso': '04',
         'nombre': 'Inspección',
-        'texto': 'Inspección rollo por rollo: defectos, metros, peso y clasificación con etiqueta y '
-                 'código de barras.',
+        'texto': 'Inspección al 100 %, rollo por rollo, con pruebas de laboratorio de acuerdo a '
+                 'su especificación.',
         'icono': 'fa-search',
     },
     {
         'paso': '05',
         'nombre': 'Laboratorio y embarque',
-        'texto': 'Pruebas de calidad, liberación y embarque con trazabilidad completa del lote.',
+        'texto': 'Pruebas de laboratorio especiales cuando su especificación las pide, liberación '
+                 'y embarque con la trazabilidad del lote.',
         'icono': 'fa-flask',
     },
 ]

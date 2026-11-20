@@ -98,6 +98,11 @@ circular. Y los textos generales (portada, pie, títulos para buscadores,
 mercado automotriz, diseñador) nombran los **scrims**, el producto automotriz:
 Dirección pidió no dejar de lado lo automotriz (2026-11-19).
 
+Desde 1.8.0 los textos de proceso y maquinaria cuentan lo que recibe el cliente
+(termofijado según especificación, acabados especiales, inspección al 100 % con
+laboratorio) y no cómo se opera por dentro: sin galgas, diámetros, cargas,
+relación de baño ni menciones a Odoo (Dirección, 2026-11-19).
+
 Desde 1.8.0 ningún menú, botón ni pie enlaza a `/catalogo`: solo mostraba telas
 de confección porque los productos publicados están mal (Dirección,
 2026-11-19). La ruta sigue viva y se vuelve a enlazar cuando se corrijan.
