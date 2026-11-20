@@ -304,6 +304,7 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 @keyframes qb-flota { 50% { transform: translateY(-8px); } }
 
 .qb-cifras { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 64px 0 0; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); box-shadow: var(--qb-sombra); overflow: hidden; }
+.qb-cifras--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 24px; }
 .qb-cifras > div { padding: 24px 28px; border-left: 1px solid var(--qb-borde); }
 .qb-cifras > div:first-child { border-left: 0; }
 .qb-cifras dd { margin: 0; font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 600; letter-spacing: -.04em; line-height: 1.1; font-variant-numeric: tabular-nums; }

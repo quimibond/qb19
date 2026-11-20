@@ -144,6 +144,7 @@ class QuimibondSitio(http.Controller):
             'qb_proceso': contenido.PROCESO,
             'qb_historia': contenido.HISTORIA,
             'qb_sustentabilidad': contenido.SUSTENTABILIDAD,
+            'qb_sustentabilidad_cifras': contenido.SUSTENTABILIDAD_CIFRAS,
             'qb_tejidos': contenido.TEJIDOS,
             'qb_familias': contenido.familias(),
             'qb_presentaciones': contenido.PRESENTACIONES,
@@ -307,7 +308,7 @@ class QuimibondSitio(http.Controller):
         return request.render('website_quimibond.calidad', self._valores_comunes(
             title='Calidad y sustentabilidad | Quimibond',
             website_meta_description='Sistema de gestión integral certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018. '
-                                     'Energía solar, agua pluvial y reciclaje en planta.',
+                                     'Paneles solares, planta tratadora de agua, agua pluvial y reciclaje.',
         ))
 
     @http.route('/nosotros', type='http', auth='public', website=True, sitemap=_sitemap_fijo(['/nosotros']))
