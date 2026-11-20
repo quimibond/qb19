@@ -21,6 +21,22 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## El release queda en la unidad del cliente (19.0.3.31.0, 2026-11-20)
+
+Jessica (20-nov): «el release de LEAR me transforma las cantidades directamente a kilos, no me deja ver los
+metros como con Shawmut». Al aplicar, el release escribía la semana en la unidad de venta (kilos para las
+telas con «I») con la unidad del cliente vacía. Para ver metros se le cambió la unidad a «m», pero el número
+de kilos se quedaba y se leía como metros: 37 semanas de Lear bajaron 12 veces (de 22,377 kg a 1,858 kg).
+
+- La semana del release queda en la **unidad en que pide el cliente** (Lear en metros, Shawmut y FXI en
+  yardas, KG en kilos, M2 en m²), y los metros y kilos siguen en sus columnas. Solo si todas las partes del
+  producto piden en la misma unidad, se convierten por unidad (no con factor fijo) y la vuelta a la unidad de
+  venta da lo mismo; si no, se queda en la unidad de venta, como antes. «Pide el cliente» y la diferencia
+  siguen en la unidad de venta. «Volver al release» respeta la unidad de la semana.
+- **Cambiar solo la unidad convierte el número** (ya no lo reinterpreta) y no cuenta como ajuste de Ventas. Si
+  falta el rendimiento o el ancho para convertir, avisa. Para corregir una unidad mal capturada se cambian
+  cantidad y unidad juntas.
+
 ## Yardas y metros del release a kilos con el rendimiento de la ficha (19.0.3.30.1, 2026-11-19)
 
 El release pasaba de yardas a metros bien (× 0.9144), pero de metros a kilos usaba el rendimiento del
