@@ -13,7 +13,7 @@
                     <div class="qb-container qb-hero__in">
                         <div class="qb-hero__texto">
                             <a href="/calidad" class="qb-pill qb-reveal">
-                                <span class="qb-pill__punto"/> ISO 9001 · 14001 <span class="qb-pill__sep"/> ISO 45001 en proceso
+                                <span class="qb-pill__punto"/> ISO 9001 · 14001 · 45001
                                 <i class="fa fa-angle-right" aria-hidden="true"/>
                             </a>
                             <h1 class="qb-reveal">Scrims, entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
@@ -167,11 +167,11 @@
                             <a href="/calidad" class="qb-card qb-bento__a qb-spot qb-reveal">
                                 <span class="qb-eyebrow">Calidad</span>
                                 <h3>Sistema de gestión integral certificado</h3>
-                                <p>Calidad y medio ambiente auditados cada año. Cada lote se libera en laboratorio antes de embarcar.</p>
+                                <p>Calidad, medio ambiente y seguridad auditados cada año. Cada lote se libera en laboratorio antes de embarcar.</p>
                                 <div class="qb-sellos">
                                     <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                                     <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
-                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
+                                    <span class="qb-sello"><strong>ISO</strong>45001:2018</span>
                                 </div>
                             </a>
                             <t t-foreach="qb_sustentabilidad" t-as="s">
@@ -427,13 +427,13 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
                     <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
-                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015, y en proceso de certificación en ISO 45001.'"/>
+                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018: calidad, medio ambiente y seguridad y salud en el trabajo.'"/>
                     <div class="qb-sellos qb-reveal">
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
-                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
+                                    <span class="qb-sello"><strong>ISO</strong>45001:2018</span>
                     </div>
-                    <p class="qb-nota qb-reveal">ISO 45001 de seguridad y salud en el trabajo: en proceso de certificación.</p>
+                    <p class="qb-nota qb-reveal">ISO 9001 desde 2015, ISO 14001 desde 2023 e ISO 45001 desde 2026.</p>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
@@ -598,7 +598,7 @@
                                 <span t-out="res_company.street"/><br/>
                                 <span t-out="res_company.city"/><t t-if="res_company.zip">, C.P. <span t-out="res_company.zip"/></t>, <span t-out="res_company.country_id.name"/>
                             </address>
-                            <p class="qb-reveal" t-if="res_company.phone"><a class="qb-enlace" t-attf-href="tel:#{res_company.phone}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="res_company.phone"/></a></p>
+                            <p class="qb-reveal"><a class="qb-enlace" t-attf-href="tel:+52#{website._qb_telefono().replace(' ', '')}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="website._qb_telefono()"/></a></p>
                         </div>
                         <div class="qb-hero__cta qb-reveal">
                             <a href="/cotizar" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización</a>
@@ -677,13 +677,13 @@
                                     </t>
                                 </div>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
-                                    <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
+                                    <legend><span class="qb-mono qb-dis__num"/> Composición <small>si no la conoce, deje la que proponemos</small></legend>
                                     <div class="qb-dis__chips">
                                         <t t-foreach="qb_disenador['hilos']" t-as="hi">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_hilo" t-att-value="hi" t-att-checked="'checked' if hi_first else None"/><span t-out="hi"/></label>
                                         </t>
                                     </div>
-                                    <div class="qb-dis__chips" data-qb-solo-hilo="Poliéster">
+                                    <div class="qb-dis__chips" hidden="hidden">
                                         <span class="qb-dis__sub">Filamento</span>
                                         <t t-foreach="qb_disenador['hilo_tipos']" t-as="ht">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_hilo_tipo" t-att-value="ht" t-att-checked="'checked' if ht_first else None"/><span t-out="ht"/></label>
@@ -818,7 +818,7 @@
                                 <li class="qb-reveal"><span class="qb-mono">02</span><div><strong>Un asesor le contacta</strong><span>En un día hábil, de lunes a viernes de 9:00 a 18:00.</span></div></li>
                                 <li class="qb-reveal"><span class="qb-mono">03</span><div><strong>Recibe cotización y muestra</strong><span>Con ficha técnica para validar en su planta.</span></div></li>
                             </ul>
-                            <p class="qb-reveal" t-if="res_company.phone"><a class="qb-enlace" t-attf-href="tel:#{res_company.phone}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="res_company.phone"/></a></p>
+                            <p class="qb-reveal"><a class="qb-enlace" t-attf-href="tel:+52#{website._qb_telefono().replace(' ', '')}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="website._qb_telefono()"/></a></p>
                         </div>
                         <div class="qb-card qb-card--form qb-reveal">
                             <t t-call="website_quimibond.formulario_cotizacion"/>

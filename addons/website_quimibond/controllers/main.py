@@ -259,7 +259,7 @@ class QuimibondSitio(http.Controller):
             {'codigo': '', 'titulo': 'Solicitar cotización o muestra', 'detalle': 'Ventas', 'categoria': 'Páginas', 'url': '/cotizar'},
             {'codigo': '', 'titulo': 'Diseñe su tela', 'detalle': 'Diseñador interactivo', 'categoria': 'Páginas', 'url': '/disenar'},
             {'codigo': '', 'titulo': 'Planta y proceso', 'detalle': 'Capacidades', 'categoria': 'Páginas', 'url': '/planta'},
-            {'codigo': '', 'titulo': 'Calidad y sustentabilidad', 'detalle': 'ISO 9001 · ISO 14001 · ISO 45001 en proceso', 'categoria': 'Páginas', 'url': '/calidad'},
+            {'codigo': '', 'titulo': 'Calidad y sustentabilidad', 'detalle': 'ISO 9001 · ISO 14001 · ISO 45001', 'categoria': 'Páginas', 'url': '/calidad'},
             {'codigo': '', 'titulo': 'Nosotros', 'detalle': 'Desde 1992', 'categoria': 'Páginas', 'url': '/nosotros'},
             {'codigo': '', 'titulo': 'Empleos', 'detalle': 'Trabaje con nosotros', 'categoria': 'Páginas', 'url': '/jobs'},
             {'codigo': '', 'titulo': 'Portal de clientes', 'detalle': 'Pedidos, facturas y entregas', 'categoria': 'Páginas', 'url': '/my'},
@@ -306,7 +306,7 @@ class QuimibondSitio(http.Controller):
         _exigir_activo()
         return request.render('website_quimibond.calidad', self._valores_comunes(
             title='Calidad y sustentabilidad | Quimibond',
-            website_meta_description='Sistema de gestión integral certificado en ISO 9001:2015 e ISO 14001:2015; ISO 45001 en proceso. '
+            website_meta_description='Sistema de gestión integral certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018. '
                                      'Energía solar, agua pluvial y reciclaje en planta.',
         ))
 
