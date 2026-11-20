@@ -8,8 +8,6 @@ Odoo solo desde la visita; el medio «Website» también.
 """
 import re
 
-from odoo.http import request
-
 from odoo.addons.website_crm.controllers.website_form import WebsiteForm
 
 # clave que manda el formulario → etiqueta en CRM
