@@ -29,15 +29,15 @@
                 </a>
                 <nav class="qb-nav" aria-label="Principal">
                     <div class="qb-nav__item qb-nav__item--menu">
-                        <a href="/catalogo" class="qb-nav__link">Productos <i class="fa fa-angle-down" aria-hidden="true"/></a>
+                        <a href="/disenar" class="qb-nav__link">Productos <i class="fa fa-angle-down" aria-hidden="true"/></a>
                         <div class="qb-mega">
                             <a href="/disenar" class="qb-mega__card">
                                 <strong>Diseñe su tela</strong>
-                                <span>Elija construcción, galga, color y tacto, y véala al momento.</span>
+                                <span>Elija aplicación, peso, ancho y color, y véala al momento.</span>
                             </a>
-                            <a href="/catalogo" class="qb-mega__card">
-                                <strong>Catálogo técnico</strong>
-                                <span>Entretelas fusionables, no tejidos y tejido circular con sus datos técnicos.</span>
+                            <a href="/planta#telas" class="qb-mega__card">
+                                <strong>Tipos de tela</strong>
+                                <span>Tejido circular de una y doble fontura, no tejido y no tejido tramado.</span>
                             </a>
                             <a href="/cotizar" class="qb-mega__card">
                                 <strong>Muestras y desarrollos</strong>
@@ -75,7 +75,6 @@
                 </div>
             </div>
             <div class="qb-movil" data-qb-movil="1">
-                <a href="/catalogo">Productos</a>
                 <a href="/disenar">Diseñe su tela</a>
                 <a href="/mercados/automotriz">Automotriz</a>
                 <a href="/mercados/blancos">Blancos</a>
@@ -116,16 +115,15 @@
                 <div class="qb-footer__cols">
                     <div class="qb-footer__marca">
                         <a href="/" class="qb-logo"><t t-call="website_quimibond.logo"/><span>Quimibond</span></a>
-                        <p>Entretelas y textiles técnicos fabricados en México desde 1992.</p>
-                        <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span></p>
+                        <p>Scrims automotrices, entretelas y textiles técnicos fabricados en México desde 1992.</p>
+                        <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 45001 en proceso</span></p>
                     </div>
                     <div>
-                        <h3>Productos</h3>
-                        <a href="/disenar">Diseñe su tela</a>
-                        <a href="/catalogo">Catálogo técnico</a>
+                        <h3>Mercados</h3>
                         <a href="/mercados/automotriz">Automotriz</a>
                         <a href="/mercados/blancos">Blancos</a>
                         <a href="/mercados/confeccion">Confección</a>
+                        <a href="/disenar">Diseñe su tela</a>
                     </div>
                     <div>
                         <h3>Empresa</h3>

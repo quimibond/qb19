@@ -259,7 +259,7 @@ class QuimibondSitio(http.Controller):
             {'codigo': '', 'titulo': 'Solicitar cotización o muestra', 'detalle': 'Ventas', 'categoria': 'Páginas', 'url': '/cotizar'},
             {'codigo': '', 'titulo': 'Diseñe su tela', 'detalle': 'Diseñador interactivo', 'categoria': 'Páginas', 'url': '/disenar'},
             {'codigo': '', 'titulo': 'Planta y proceso', 'detalle': 'Capacidades', 'categoria': 'Páginas', 'url': '/planta'},
-            {'codigo': '', 'titulo': 'Calidad y sustentabilidad', 'detalle': 'ISO 9001 · ISO 14001', 'categoria': 'Páginas', 'url': '/calidad'},
+            {'codigo': '', 'titulo': 'Calidad y sustentabilidad', 'detalle': 'ISO 9001 · ISO 14001 · ISO 45001 en proceso', 'categoria': 'Páginas', 'url': '/calidad'},
             {'codigo': '', 'titulo': 'Nosotros', 'detalle': 'Desde 1992', 'categoria': 'Páginas', 'url': '/nosotros'},
             {'codigo': '', 'titulo': 'Empleos', 'detalle': 'Trabaje con nosotros', 'categoria': 'Páginas', 'url': '/jobs'},
             {'codigo': '', 'titulo': 'Portal de clientes', 'detalle': 'Pedidos, facturas y entregas', 'categoria': 'Páginas', 'url': '/my'},
@@ -306,7 +306,7 @@ class QuimibondSitio(http.Controller):
         _exigir_activo()
         return request.render('website_quimibond.calidad', self._valores_comunes(
             title='Calidad y sustentabilidad | Quimibond',
-            website_meta_description='Sistema de gestión integral certificado en ISO 9001:2015 e ISO 14001:2015. '
+            website_meta_description='Sistema de gestión integral certificado en ISO 9001:2015 e ISO 14001:2015; ISO 45001 en proceso. '
                                      'Energía solar, agua pluvial y reciclaje en planta.',
         ))
 
@@ -319,7 +319,7 @@ class QuimibondSitio(http.Controller):
             qb_valores=contenido.VALORES,
             qb_razones=contenido.RAZONES,
             title='Nosotros | Quimibond',
-            website_meta_description='Productora de No Tejidos Quimibond: fabricantes de entretelas y textiles '
+            website_meta_description='Productora de No Tejidos Quimibond: fabricantes de scrims automotrices, entretelas y textiles '
                                      'técnicos en Toluca, México, desde 1992.',
         ))
 
@@ -334,7 +334,7 @@ class QuimibondSitio(http.Controller):
             asunto=asunto,
             mercado_sel=m and m['nombre'] or '',
             title='Solicitar cotización o muestra | Quimibond',
-            website_meta_description='Solicite cotización o muestra de entretelas y textiles técnicos. '
+            website_meta_description='Solicite cotización o muestra de scrims, entretelas y textiles técnicos. '
                                      'Le responde un asesor de Ventas en un día hábil.',
         ))
 
@@ -345,7 +345,7 @@ class QuimibondSitio(http.Controller):
             asunto='',
             mercado_sel='',
             title='Diseñe su tela | Quimibond',
-            website_meta_description='Diseñe su tela en línea: construcción, galga, fibra, peso, color, tacto y '
+            website_meta_description='Diseñe su tela en línea: aplicación, peso, ancho, color, tacto y '
                                      'acabado. Vea la tela al momento y envíe el diseño a Ventas.',
         ))
 
@@ -365,8 +365,8 @@ class QuimibondPortada(Website):
                 categorias=sitio._resumen_categorias(),
                 vacantes=sitio._vacantes(),
                 total_productos=len(sitio._productos()),
-                title='Quimibond | Entretelas y textiles técnicos fabricados en México',
-                website_meta_description='Fabricantes de entretelas fusionables, no tejidos y tejido circular para '
+                title='Quimibond | Scrims automotrices, entretelas y textiles técnicos',
+                website_meta_description='Fabricantes de scrims automotrices, tejido circular, no tejidos y entretelas para '
                                          'la industria automotriz, blancos y confección. ISO 9001 e ISO 14001. '
                                          'Solicite cotización o muestra.',
             ))

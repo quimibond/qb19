@@ -92,11 +92,26 @@ cuántas de doble. El catálogo
 (`/catalogo`) sigue leyendo los productos publicados, pero ya no se anuncia en
 la portada: los productos publicados se corrigen en un segundo paso.
 
+Desde 1.8.0 `/planta` trae dos esquemas animados más, en canvas y sin
+librerías: el jet de teñido (`jet`) y la rama (`rama`), junto a la máquina
+circular. Y los textos generales (portada, pie, títulos para buscadores,
+mercado automotriz, diseñador) nombran los **scrims**, el producto automotriz:
+Dirección pidió no dejar de lado lo automotriz (2026-11-19).
+
+Desde 1.8.0 los textos de proceso y maquinaria cuentan lo que recibe el cliente
+(termofijado según especificación, acabados especiales, inspección al 100 % con
+laboratorio) y no cómo se opera por dentro: sin galgas, diámetros, cargas,
+relación de baño ni menciones a Odoo (Dirección, 2026-11-19).
+
+Desde 1.8.0 ningún menú, botón ni pie enlaza a `/catalogo`: solo mostraba telas
+de confección porque los productos publicados están mal (Dirección,
+2026-11-19). La ruta sigue viva y se vuelve a enlazar cuando se corrijan.
+
 ## Diseñador de tela
 
-`/disenar`: la persona elige construcción, galga, fibra, peso, color, tacto,
+`/disenar`: la persona elige mercado, aplicación, construcción, fibra, peso, ancho, color, tacto,
 acabado y presentación, y ve la tela en un lienzo que cambia al momento (la
-malla se hace más fina con la galga, el hilo engorda con el peso, el punto de
+malla se hace más fina con la galga, que desde 1.7.1 no se pregunta: la pone la aplicación, el hilo engorda con el peso, el punto de
 adhesivo aparece con «fusionable» y la tela ondea más o menos según el tacto).
 El diseño se escribe solo en la «Especificación» del formulario de la misma
 página, que crea la oportunidad en CRM como en `/cotizar`. Los hilos salen de

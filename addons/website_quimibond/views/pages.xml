@@ -13,14 +13,14 @@
                     <div class="qb-container qb-hero__in">
                         <div class="qb-hero__texto">
                             <a href="/calidad" class="qb-pill qb-reveal">
-                                <span class="qb-pill__punto"/> ISO 9001 · ISO 14001 <span class="qb-pill__sep"/> Hecho en México
+                                <span class="qb-pill__punto"/> ISO 9001 · 14001 <span class="qb-pill__sep"/> ISO 45001 en proceso
                                 <i class="fa fa-angle-right" aria-hidden="true"/>
                             </a>
-                            <h1 class="qb-reveal">Entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
+                            <h1 class="qb-reveal">Scrims, entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
                             <p class="qb-lead qb-reveal">Tejemos, teñimos, acabamos e inspeccionamos en nuestra planta de Toluca. Fabricamos contra su especificación para la industria automotriz, blancos y confección.</p>
                             <div class="qb-hero__cta qb-reveal">
                                 <a href="/cotizar" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
-                                <a href="/catalogo" class="qb-btn qb-btn--contorno qb-btn--lg">Ver catálogo técnico</a>
+                                <a href="/disenar" class="qb-btn qb-btn--contorno qb-btn--lg">Diseñe su tela</a>
                             </div>
                             <p class="qb-hero__nota qb-reveal"><i class="fa fa-clock-o" aria-hidden="true"/> Respuesta de Ventas en un día hábil</p>
                         </div>
@@ -53,10 +53,9 @@
                     <div class="qb-cinta__pista">
                         <t t-foreach="[0, 1]" t-as="vuelta">
                             <div class="qb-cinta__grupo" t-att-aria-hidden="'true' if vuelta else None">
-                                <span>Camisería</span><i/><span>Uniformes</span><i/><span>Prendas ligeras</span><i/>
-                                <span>Frentes y refuerzos</span><i/><span>Blusas</span><i/><span>Tricots</span><i/>
-                                <span>Colchonería</span><i/><span>Automotriz</span><i/><span>No tejidos</span><i/>
-                                <span>Tejido circular</span><i/>
+                                <t t-foreach="qb_mercados" t-as="m">
+                                    <t t-foreach="m['aplicaciones']" t-as="ap"><span t-out="ap['nombre']"/><i/></t>
+                                </t>
                             </div>
                         </t>
                     </div>
@@ -133,7 +132,7 @@
                         <div>
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
-                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <p class="qb-lead qb-reveal">Elija la aplicación, el peso, el ancho, el color y el tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
                             <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
                         <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
@@ -172,6 +171,7 @@
                                 <div class="qb-sellos">
                                     <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                                     <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
                                 </div>
                             </a>
                             <t t-foreach="qb_sustentabilidad" t-as="s">
@@ -239,11 +239,11 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Aplicaciones</span>
                             <h2 class="qb-reveal">Dónde va la tela y cuál proponemos.</h2>
-                            <p class="qb-lead qb-reveal">Cada aplicación parte de una tela propuesta. Ábrala en el diseñador y ajústela a su especificación.</p>
+                            <p class="qb-lead qb-reveal">Estas son las aplicaciones que atendemos y la tela que fabricamos para cada una.</p>
                         </div>
                         <div t-attf-class="qb-grid qb-grid--#{4 if len(mercado['aplicaciones']) == 4 else 3}">
                             <t t-foreach="mercado['aplicaciones']" t-as="ap">
-                                <a t-att-href="ap['enlace']" class="qb-card qb-tipo qb-app qb-spot qb-reveal">
+                                <div class="qb-card qb-tipo qb-app qb-spot qb-reveal">
                                     <t t-call="website_quimibond.dibujo_tejido">
                                         <t t-set="clave" t-value="ap['construccion']"/>
                                     </t>
@@ -254,10 +254,13 @@
                                             <dt t-out="ap['familia']"/>
                                             <dd t-out="ap['tela']"/>
                                         </dl>
-                                        <span class="qb-enlace">Diseñar esta tela <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
                                     </div>
-                                </a>
+                                </div>
                             </t>
+                        </div>
+                        <div class="qb-hero__cta qb-mercado__cta qb-reveal">
+                            <a t-attf-href="/cotizar?mercado=#{mercado['clave']}" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización o muestra <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                            <a href="/disenar" class="qb-btn qb-btn--ghost qb-btn--lg">¿Necesita algo distinto? Diseñe su tela</a>
                         </div>
                     </div>
                 </section>
@@ -318,6 +321,33 @@
                         </div>
                     </div>
                 </section>
+                <section class="qb-sec qb-sec--suave" id="tenido-acabado">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Teñido y acabado</span>
+                            <h2 class="qb-reveal">Del tubo crudo a la tela lista para cortar.</h2>
+                            <p class="qb-lead qb-reveal">Después de tejer, la tela toma su color en el jet y su ancho, su tacto y su estabilidad en la rama.</p>
+                        </div>
+                        <div class="qb-grid qb-grid--2">
+                            <figure class="qb-card qb-etapa qb-reveal">
+                                <div class="qb-etapa__caja"><canvas data-qb-anim="jet" role="img" aria-label="Esquema de un jet de teñido: la tela circula en cuerda por el baño"/></div>
+                                <figcaption>
+                                    <span class="qb-mono qb-num">Jet de teñido</span>
+                                    <h3>La tela circula hasta que el color queda parejo.</h3>
+                                    <p>El chorro del baño mueve la tela en cuerda, vuelta tras vuelta, mientras sube la temperatura. Así el colorante entra igual en todo el lote.</p>
+                                </figcaption>
+                            </figure>
+                            <figure class="qb-card qb-etapa qb-reveal">
+                                <div class="qb-etapa__caja"><canvas data-qb-anim="rama" role="img" aria-label="Esquema de una rama: la tela se abre al ancho y cruza las cámaras de aire caliente"/></div>
+                                <figcaption>
+                                    <span class="qb-mono qb-num">Rama</span>
+                                    <h3>Al ancho, seca y termofijada.</h3>
+                                    <p>Las cadenas toman la tela por las orillas y la abren al ancho pedido. El aire caliente la seca y fija sus medidas antes de enrollarla.</p>
+                                </figcaption>
+                            </figure>
+                        </div>
+                    </div>
+                </section>
                 <section class="qb-sec qb-sec--cifras">
                     <div class="qb-container">
                         <dl class="qb-cifras qb-reveal">
@@ -364,7 +394,7 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Maquinaria</span>
                             <h2 class="qb-reveal">Lo que hay en el piso de la planta.</h2>
-                            <p class="qb-lead qb-reveal">Las cantidades salen de nuestro sistema de producción, no de un folleto.</p>
+                            <p class="qb-lead qb-reveal">Tejido, tintorería, acabado, no tejidos e inspección bajo el mismo techo.</p>
                         </div>
                         <t t-call="website_quimibond.maquinaria"/>
                     </div>
@@ -375,7 +405,7 @@
                         <div>
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
-                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <p class="qb-lead qb-reveal">Elija la aplicación, el peso, el ancho, el color y el tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
                             <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
                         <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
@@ -397,10 +427,11 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
                     <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
-                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015.'"/>
+                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015, y en proceso de certificación en ISO 45001.'"/>
                     <div class="qb-sellos qb-reveal">
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
                     </div>
                     <p class="qb-nota qb-reveal">ISO 45001 de seguridad y salud en el trabajo: en proceso de certificación.</p>
                 </t>
@@ -473,7 +504,7 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Nosotros'"/>
                     <t t-set="titulo" t-value="'Fabricantes textiles mexicanos desde 1992.'"/>
-                    <t t-set="resumen" t-value="'Productora de No Tejidos Quimibond nació para fabricar entretelas de alta calidad. Hoy abastecemos a la confección, a blancos y a la industria automotriz.'"/>
+                    <t t-set="resumen" t-value="'Productora de No Tejidos Quimibond nació para fabricar entretelas de alta calidad. Hoy abastecemos a la industria automotriz con scrims y telas de tejido circular, además de blancos y confección.'"/>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
@@ -592,7 +623,7 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h1 class="qb-reveal">Diseñe su tela</h1>
-                            <p class="qb-lead qb-reveal">Elija cada característica y vea la tela al momento. Al terminar, envíe el diseño a Ventas para recibir cotización y muestra.</p>
+                            <p class="qb-lead qb-reveal">Díganos para qué es, el peso, el ancho y el color, y vea la tela al momento. Al terminar, envíe el diseño a Ventas para recibir cotización y muestra.</p>
                         </div>
                         <div class="qb-dis__cuerpo">
                             <div class="qb-dis__opciones">
@@ -638,14 +669,13 @@
                                         </t>
                                     </div>
                                 </fieldset>
-                                <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
-                                    <legend><span class="qb-mono qb-dis__num"/> Galga <small>agujas por pulgada: a mayor galga, malla más fina</small></legend>
-                                    <div class="qb-dis__chips">
-                                        <t t-foreach="qb_disenador['galgas']" t-as="g">
-                                            <label class="qb-dis__chip"><input type="radio" name="qb_galga" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/><span t-out="g"/></label>
-                                        </t>
-                                    </div>
-                                </fieldset>
+                                <!-- La galga no se le pregunta al visitante (Dirección, 2026-11-19): la pone
+                                     la aplicación elegida y solo afina el dibujo de la tela. -->
+                                <div hidden="hidden" aria-hidden="true">
+                                    <t t-foreach="qb_disenador['galgas']" t-as="g">
+                                        <input type="radio" name="qb_galga" tabindex="-1" t-att-value="g" t-att-checked="'checked' if g == 24 else None"/>
+                                    </t>
+                                </div>
                                 <fieldset class="qb-dis__grupo" data-qb-solo="una_fontura doble_fontura">
                                     <legend><span class="qb-mono qb-dis__num"/> Hilo</legend>
                                     <div class="qb-dis__chips">
@@ -675,6 +705,12 @@
                                     <legend><span class="qb-mono qb-dis__num"/> Peso <output class="qb-dis__valor" data-qb-salida="peso">150 g/m²</output></legend>
                                     <input type="range" class="qb-dis__rango" name="qb_peso" min="20" max="400" step="5" value="150" aria-label="Peso en gramos por metro cuadrado"/>
                                     <div class="qb-dis__escala"><span>Ligera</span><span>Media</span><span>Pesada</span></div>
+                                </fieldset>
+                                <fieldset class="qb-dis__grupo">
+                                    <legend><span class="qb-mono qb-dis__num"/> Ancho <small>el ancho útil que necesita, en centímetros</small></legend>
+                                    <div class="qb-dis__chips">
+                                        <label class="qb-dis__ancho"><input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric" aria-label="Ancho en centímetros"/> cm</label>
+                                    </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
                                     <legend><span class="qb-mono qb-dis__num"/> Color <output class="qb-dis__valor" data-qb-salida="color">Blanco</output></legend>
@@ -709,7 +745,6 @@
                                         <t t-foreach="qb_disenador['presentaciones']" t-as="pr">
                                             <label class="qb-dis__chip"><input type="radio" name="qb_presentacion" t-att-value="pr" t-att-checked="'checked' if pr_first else None"/><span t-out="pr"/></label>
                                         </t>
-                                        <label class="qb-dis__ancho">Ancho <input type="number" name="qb_ancho" min="10" max="400" step="1" placeholder="150" inputmode="numeric"/> cm</label>
                                     </div>
                                 </fieldset>
                                 <fieldset class="qb-dis__grupo">
@@ -803,7 +838,7 @@
                         <h1>Recibimos su solicitud</h1>
                         <p class="qb-lead">Ya está con el equipo de Ventas. Le contactamos en un día hábil.</p>
                         <div class="qb-hero__cta qb-hero__cta--centro">
-                            <a href="/catalogo" class="qb-btn qb-btn--primario">Ver catálogo</a>
+                            <a href="/disenar" class="qb-btn qb-btn--primario">Diseñe su tela</a>
                             <a href="/" class="qb-btn qb-btn--contorno">Volver al inicio</a>
                         </div>
                     </div>
