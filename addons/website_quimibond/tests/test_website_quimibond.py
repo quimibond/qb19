@@ -40,6 +40,8 @@ class TestSitioB2B(HttpCase):
         self.assertEqual(portada.status_code, 200)
         self.assertIn('data-qb="1"', portada.text)
         self.assertIn('qb-header', portada.text)
+        self.assertIn('href="/web/login"', portada.text)
+        self.assertIn('Iniciar sesión', portada.text)
         self.assertIn('data-qb-anim="circular"', portada.text)
         for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
@@ -47,9 +49,13 @@ class TestSitioB2B(HttpCase):
         self.assertEqual(self.url_open('/mercados/no-existe').status_code, 404)
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
-        for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'jets de teñido', 'ramas',
+        for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'Jets de teñido', 'Ramas',
                       'Espolvoreo en línea', 'id="maquinaria"'):
             self.assertIn(texto, planta, texto)
+        nosotros = self.url_open('/nosotros').text
+        for texto in ('Misión', 'Visión 2030', 'Enfoque al cliente', 'Experiencia y especialización'):
+            self.assertIn(texto, nosotros, texto)
+        self.assertIn('en proceso de certificación', self.url_open('/calidad').text)
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
@@ -108,9 +114,8 @@ class TestSitioB2B(HttpCase):
         self.assertEqual([g['clave'] for g in grupos], [g['clave'] for g in contenido.MAQUINARIA])
         if 'mrp.workcenter' not in self.env or 'ft_tipo_id' not in self.env['mrp.workcenter']._fields:
             self.assertEqual(grupos, contenido.MAQUINARIA)
-        cifras = {c['etiqueta']: c['valor'] for c in planta.cifras(grupos)}
-        self.assertEqual(cifras['Año de fundación'], 1992)
-        self.assertTrue(cifras['Máquinas circulares'])
+        self.assertFalse(any(g['cantidad'] for g in grupos), 'no se publican conteos de máquinas')
+        self.assertNotIn('Máquinas circulares', [c['etiqueta'] for c in contenido.CIFRAS])
         self.assertEqual(planta._lista(['Tubular', 'abierta', 'invertida']), 'Tubular, abierta e invertida')
         self.assertEqual(planta._lista(['16', '18']), '16 y 18')
 

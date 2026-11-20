@@ -1,7 +1,7 @@
 """Maquinaria de la planta para el sitio: Odoo primero, texto fijo de respaldo.
 
-Las cantidades y los datos de las circulares (galgas, diámetros y salida de la
-tela; nunca marcas) se leen de los centros de trabajo y de la ficha de la máquina
+Los datos de las circulares (galgas, diámetros y salida de la tela; nunca
+marcas ni cuántas máquinas hay) se leen de los centros de trabajo y de la ficha de la máquina
 (`quimibond_ficha_tecnica_tela`) cuando ese módulo está instalado. Si no lo
 está, o si la lectura falla, se sirve lo escrito en `contenido.MAQUINARIA`.
 """
@@ -67,7 +67,6 @@ def maquinaria(env, empresa):
             centros = por_tipo.get(grupo.get('tipo'))
             if not centros:
                 continue
-            grupo['cantidad'] = len(centros)
             if grupo['tipo'] == 'tejido_circular':
                 grupo['datos'] = _datos_circulares(centros, grupo['datos'])
     except Exception:  # pylint: disable=broad-except
@@ -75,12 +74,6 @@ def maquinaria(env, empresa):
         _logger.exception('website_quimibond: no se pudo leer la maquinaria de Odoo')
         return copy.deepcopy(contenido.MAQUINARIA)
     return grupos
-
-
-def cifras(grupos):
-    """Las cifras de la empresa, con las que salen de la maquinaria ya leída de Odoo."""
-    cantidades = {g['tipo']: g['cantidad'] for g in grupos if g.get('tipo')}
-    return [dict(c, valor=cantidades.get(c.get('tipo')) or c['valor']) for c in contenido.CIFRAS]
 
 
 CATEGORIA_HILO = 'Materia Prima / Hilo'
