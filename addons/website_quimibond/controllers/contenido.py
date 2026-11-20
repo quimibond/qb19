@@ -94,6 +94,11 @@ PRESENTACIONES = [
 # Va en términos generales (Dirección, 2026-11-19): sin marcas de máquinas ni
 # nombres internos de línea.
 # lo de aquí es el respaldo. No se publican capacidades que Odoo no tenga.
+# Teléfono de la oficina de ventas (firmas de correo de Ventas, noviembre 2026).
+# La ficha de la compañía en Odoo trae 5555708874, que no aparece en ningún
+# correo de Quimibond; mientras no se corrija ahí, el sitio usa este.
+TELEFONO = '55 5570 5874'
+
 MAQUINARIA = [
     {
         'clave': 'tejido',
@@ -102,10 +107,10 @@ MAQUINARIA = [
         'tipo': 'tejido_circular',
         'cantidad': 0,
         'unidad': 'Máquinas circulares',
-        'texto': 'Circulares de una fontura y de doble fontura, con salida de tela tubular o abierta.',
+        'texto': 'Máquinas circulares de una fontura y de doble fontura.',
         'datos': [
-            ('Fonturas', 'Una fontura y doble fontura'),
-            ('Salida de la tela', 'Tubular y abierta'),
+            ('Tejidos', 'Una fontura y doble fontura'),
+            ('Hilos que tejemos', 'Poliéster, poliéster reciclado, poliamida (nailon) y algodón con poliéster'),
         ],
     },
     {
@@ -116,8 +121,9 @@ MAQUINARIA = [
         'cantidad': 0,
         'unidad': 'Jets de teñido',
         'texto': 'Teñido en jets, donde la tela circula por el baño hasta que el color queda parejo.',
+        'maquinas': (5, 'jet de teñido', 'jets de teñido'),
         'datos': [
-            ('Proceso', 'Teñido por lote'),
+            ('Fibras que teñimos', 'Poliéster, poliéster reciclado, poliamida (nailon) y mezclas de poliéster con algodón'),
             ('Color', 'De acuerdo a su especificación'),
         ],
     },
@@ -129,7 +135,9 @@ MAQUINARIA = [
         'cantidad': 0,
         'unidad': 'Ramas',
         'texto': 'Termofijado del producto de acuerdo a su especificación, al ancho pedido.',
+        'maquinas': (3, 'rama', 'ramas'),
         'datos': [
+            ('Telas que acabamos', 'Poliéster, poliéster reciclado, poliamida (nailon) y mezclas de poliéster con algodón'),
             ('Proceso', 'Secado y termofijado'),
             ('Acabados especiales', 'Retardante a la flama y repelentes, entre otros'),
         ],
@@ -140,12 +148,11 @@ MAQUINARIA = [
         'icono': 'fa-th',
         'cantidad': 0,
         'unidad': 'Línea completa',
-        'texto': 'De la fibra a la entretela fusionable: carda, espolvoreo de adhesivo y fusionado.',
+        'texto': 'Línea completa de no tejidos, de la fibra al rollo terminado.',
         'datos': [
-            ('Formación', 'Preparación de fibra y carda'),
-            ('Adhesivo', 'Espolvoreo en línea'),
-            ('Acabado', 'Estiramiento, termofijado y fusionadora'),
-            ('Además', 'No tejido tramado, corte y perforado'),
+            ('Productos', 'Entretelas fusionables, no tejido tramado y scrims no tejidos'),
+            ('Fibras', 'Poliéster, poliéster reciclado, polipropileno y poliéster con poliamida'),
+            ('Presentación', 'En rollo, cortado o perforado'),
         ],
     },
     {
@@ -159,6 +166,8 @@ MAQUINARIA = [
         'datos': [
             ('Inspección', 'Al 100 %, rollo por rollo'),
             ('Laboratorio', 'Pruebas de acuerdo a su especificación y pruebas especiales'),
+            ('Pruebas en planta', 'Peso, espesor, resistencia, elongación, estabilidad dimensional, '
+                                  'flamabilidad y olor, entre otras'),
             ('Trazabilidad', 'Del lote de teñido al rollo terminado'),
         ],
     },
@@ -283,9 +292,11 @@ MERCADOS = [
         'nombre': 'Automotriz',
         'titulo': 'Scrims y textiles técnicos para la industria automotriz',
         'resumen': 'Desde 2014 abastecemos al mercado automotriz de México, Estados Unidos y Canadá '
-                   'con scrims y telas de tejido circular desarrollados para sus especificaciones.',
+                   'con scrims desarrollados para sus especificaciones. El scrim es el soporte textil que se '
+                   'lamina con la espuma y con la tela, el vinil o la piel de las vestiduras.',
         'puntos': [
-            'Scrims de tejido circular en poliéster y nailon, en natural y negro',
+            'Scrims para vestiduras de asientos, descansabrazos y otros componentes del interior',
+            'Scrims de tejido circular y no tejidos, en poliéster y nailon, en natural y negro',
             'Desarrollo de producto contra la especificación de su cliente',
             'Lotes trazables de la materia prima al rollo terminado',
             'Calidad liberada por laboratorio antes de embarcar',

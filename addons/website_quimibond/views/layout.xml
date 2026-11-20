@@ -147,7 +147,7 @@
                             <span t-out="res_company.city"/><t t-if="res_company.zip">, C.P. <span t-out="res_company.zip"/></t><br/>
                             <span t-out="res_company.country_id.name"/>
                         </address>
-                        <a t-if="res_company.phone" t-attf-href="tel:#{res_company.phone}" t-out="res_company.phone"/>
+                        <a t-attf-href="tel:+52#{website._qb_telefono().replace(' ', '')}" t-out="website._qb_telefono()"/>
                     </div>
                 </div>
                 <div class="qb-footer__legal">

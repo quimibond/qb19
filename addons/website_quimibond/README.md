@@ -159,3 +159,16 @@ sitio no cambia; encendida, todas las páginas responden, el catálogo muestra
 solo lo publicado y el formulario apunta a `crm.lead`.
 
 La tipografía Geist (SIL Open Font License) va en `static/fonts/`.
+
+Desde 1.9.0 (Dirección, 2026-11-19: «esto es nuestra receta») `/planta` no
+publica galgas, diámetros, salida de la tela, cargas ni pasos de proceso. Cada
+tarjeta dice qué se puede hacer (tejidos, fibras que se tiñen y se acaban,
+productos de no tejido) y, en tintorería y ramas, cuántas máquinas hay: el
+número se lee de los centros de trabajo de Odoo y, si no se puede, vale el de
+`contenido.MAQUINARIA` (5 jets y 3 ramas). Las fibras salen de la presentación
+de empresa de octubre de 2026. El teléfono publicado es `contenido.TELEFONO`
+(el de las firmas de Ventas), no el de la ficha de la compañía, que trae otro
+número. En el mercado automotriz se explica para qué sirve el scrim (soporte
+que se lamina con espuma y tela, vinil o piel de las vestiduras). ISO 45001:
+auditoría de certificación en septiembre de 2026, certificado en emisión. El
+diseñador pregunta «Composición» y ya no el tipo de filamento.

@@ -20,6 +20,11 @@ class Website(models.Model):
              'los clientes directos. Déjelo vacío para ocultar la sección.',
     )
 
+    def _qb_telefono(self):
+        """Teléfono de la oficina de ventas que publica el sitio."""
+        from ..controllers import contenido
+        return contenido.TELEFONO
+
     def _qb_lista_armadoras(self):
         self.ensure_one()
         vistas = []

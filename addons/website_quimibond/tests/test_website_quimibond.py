@@ -54,12 +54,12 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Punto de doble fontura', portada.text)
         planta = self.url_open('/planta').text
         for texto in ('Punto de una fontura', 'qb-familia--tejido', 'qb-familia--no_tejido', 'No tejido tramado', 'Jets de teñido', 'Ramas',
-                      'Espolvoreo en línea', 'id="maquinaria"', 'data-qb-anim="jet"', 'data-qb-anim="rama"'):
+                      'Entretelas fusionables, no tejido tramado', 'id="maquinaria"', 'data-qb-anim="jet"', 'data-qb-anim="rama"'):
             self.assertIn(texto, planta, texto)
         nosotros = self.url_open('/nosotros').text
         for texto in ('Misión', 'Visión 2030', 'Enfoque al cliente', 'Experiencia y especialización'):
             self.assertIn(texto, nosotros, texto)
-        self.assertIn('en proceso de certificación', self.url_open('/calidad').text)
+        self.assertIn('certificado en emisión', self.url_open('/calidad').text)
         for marca in ('Vanguard', 'Pai Lung', 'Wellrich', 'Brückner', 'Unitech', 'Icomatex', 'V18'):
             self.assertNotIn(marca, planta, marca)
         disenar = self.url_open('/disenar').text
@@ -117,10 +117,18 @@ class TestSitioB2B(HttpCase):
         from odoo.addons.website_quimibond.controllers import contenido, planta
         grupos = planta.maquinaria(self.env, self.env.company)
         self.assertEqual([g['clave'] for g in grupos], [g['clave'] for g in contenido.MAQUINARIA])
-        if 'mrp.workcenter' not in self.env or 'ft_tipo_id' not in self.env['mrp.workcenter']._fields:
-            self.assertEqual(grupos, contenido.MAQUINARIA)
-        self.assertFalse(any(g['cantidad'] for g in grupos), 'no se publican conteos de máquinas')
+        self.assertFalse(any(g['cantidad'] for g in grupos), 'no se publican conteos como cifra destacada')
         self.assertNotIn('Máquinas circulares', [c['etiqueta'] for c in contenido.CIFRAS])
+        datos = {g['clave']: dict(g['datos']) for g in grupos}
+        if 'mrp.workcenter' not in self.env or 'ft_tipo_id' not in self.env['mrp.workcenter']._fields:
+            self.assertEqual(datos['tintoreria']['Máquinas'], '5 jets de teñido')
+            self.assertEqual(datos['acabado']['Máquinas'], '3 ramas')
+        self.assertIn('Fibras que teñimos', datos['tintoreria'])
+        # La receta no se publica (Dirección, 2026-11-19).
+        pagina = self.url_open('/planta').text
+        for receta in ('Galgas', 'Diámetros', 'Salida de la tela', 'Relación de baño', 'Carga por jet'):
+            self.assertNotIn(receta, pagina)
+        self.assertIn('55 5570 5874', pagina)
         self.assertEqual(planta._lista(['Tubular', 'abierta', 'invertida']), 'Tubular, abierta e invertida')
         self.assertEqual(planta._lista(['16', '18']), '16 y 18')
 

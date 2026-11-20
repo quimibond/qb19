@@ -1,9 +1,10 @@
 """Maquinaria de la planta para el sitio: Odoo primero, texto fijo de respaldo.
 
-Los datos de las circulares (galgas, diámetros y salida de la tela; nunca
-marcas ni cuántas máquinas hay) se leen de los centros de trabajo y de la ficha de la máquina
-(`quimibond_ficha_tecnica_tela`) cuando ese módulo está instalado. Si no lo
-está, o si la lectura falla, se sirve lo escrito en `contenido.MAQUINARIA`.
+Solo se lee de Odoo cuántos jets y cuántas ramas hay (centros de trabajo con
+tipo de máquina de `quimibond_ficha_tecnica_tela`); si ese módulo no está o la
+lectura falla, se usa la cantidad escrita en `contenido.MAQUINARIA`. Galgas,
+diámetros, cargas y demás parámetros de proceso no se publican: son la receta
+(Dirección, 2026-11-19).
 """
 import copy
 import logging
@@ -11,13 +12,6 @@ import logging
 from . import contenido
 
 _logger = logging.getLogger(__name__)
-
-SALIDAS = {'tubular': 'tubular', 'abierta': 'abierta'}
-
-
-def _numero(valor):
-    return ('%g' % valor) if valor else ''
-
 
 def _lista(textos):
     """«a, b y c» (con «e» antes de i- o hi-)."""
@@ -40,39 +34,25 @@ def _centros_por_tipo(env, empresa):
     return por_tipo
 
 
-def _datos_circulares(centros, datos):
-    """Sustituye galgas, diámetros y salida con lo que dicen las fichas vigentes."""
-    configs = [c.ft_config_id for c in centros if c.ft_config_id]
-    galgas = sorted({c.galga for c in configs if c.galga})
-    diametros = sorted({c.diametro for c in configs if c.diametro})
-    salidas = set()
-    for config in configs:
-        for valor in config.valor_ids:
-            if valor.parametro_id.code == 'salida_tela' and valor.valor_texto:
-                salidas.add(valor.valor_texto.strip().lower())
-    nuevos = {
-        'Galgas': _lista([_numero(g) for g in galgas]),
-        'Diámetros': (_lista([_numero(d) for d in diametros]) + ' pulgadas') if diametros else '',
-        'Salida de la tela': _lista([SALIDAS[s] for s in ('tubular', 'abierta') if s in salidas]).capitalize(),
-    }
-    return [(nombre, nuevos.get(nombre) or valor) for nombre, valor in datos]
+def _con_maquinas(grupo, cantidad):
+    """Agrega el renglón «Máquinas» (jets y ramas; Dirección, 2026-11-19)."""
+    _base, singular, plural = grupo['maquinas']
+    cantidad = cantidad or _base
+    grupo['datos'] = list(grupo['datos']) + [('Máquinas', '%d %s' % (cantidad, singular if cantidad == 1 else plural))]
 
 
 def maquinaria(env, empresa):
     """Grupos de maquinaria para la página de planta."""
     grupos = copy.deepcopy(contenido.MAQUINARIA)
+    por_tipo = {}
     try:
         por_tipo = _centros_por_tipo(env, empresa)
-        for grupo in grupos:
-            centros = por_tipo.get(grupo.get('tipo'))
-            if not centros:
-                continue
-            if grupo['tipo'] == 'tejido_circular':
-                grupo['datos'] = _datos_circulares(centros, grupo['datos'])
     except Exception:  # pylint: disable=broad-except
         # La página pública no se cae por un dato de planta: se sirve el texto fijo.
         _logger.exception('website_quimibond: no se pudo leer la maquinaria de Odoo')
-        return copy.deepcopy(contenido.MAQUINARIA)
+    for grupo in grupos:
+        if grupo.get('maquinas'):
+            _con_maquinas(grupo, len(por_tipo.get(grupo.get('tipo')) or []))
     return grupos
 
 
