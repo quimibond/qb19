@@ -132,7 +132,7 @@
                         <div>
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
-                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <p class="qb-lead qb-reveal">Elija la aplicación, el peso, el ancho, el color y el tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
                             <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
                         <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
@@ -363,7 +363,7 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Maquinaria</span>
                             <h2 class="qb-reveal">Lo que hay en el piso de la planta.</h2>
-                            <p class="qb-lead qb-reveal">Las cantidades salen de nuestro sistema de producción, no de un folleto.</p>
+                            <p class="qb-lead qb-reveal">Tejido, tintorería, acabado, no tejidos e inspección bajo el mismo techo.</p>
                         </div>
                         <t t-call="website_quimibond.maquinaria"/>
                     </div>
@@ -374,7 +374,7 @@
                         <div>
                             <span class="qb-eyebrow qb-reveal">Diseñador de tela</span>
                             <h2 class="qb-reveal">Diseñe su tela y véala al momento.</h2>
-                            <p class="qb-lead qb-reveal">Elija construcción, galga, fibra, peso, color y tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
+                            <p class="qb-lead qb-reveal">Elija la aplicación, el peso, el ancho, el color y el tacto. La tela cambia en pantalla y el diseño llega a Ventas con un clic.</p>
                             <a href="/disenar" class="qb-btn qb-btn--primario qb-btn--lg qb-reveal">Abrir el diseñador <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
                         <a href="/disenar" class="qb-tela-caja qb-reveal" aria-label="Abrir el diseñador de tela">
