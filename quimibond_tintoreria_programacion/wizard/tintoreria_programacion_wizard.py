@@ -175,7 +175,7 @@ class TintoreriaProgramacionWizardBano(models.TransientModel):
     secuencia = fields.Integer('Baño', readonly=True)
     kg = fields.Float('kg', readonly=True, digits=(16, 3))
     rama_id = fields.Many2one(
-        'mrp.workcenter', 'Rama', domain="[('ft_tipo_id.code', '=', 'acabado')]",
+        'mrp.workcenter', 'Rama', domain="[('ft_tipo_id.code', '=', 'acabado'), ('name', 'ilike', 'rama')]",
         help='Opcional. Si se elige, la operación de Rama de este baño queda fijada y el planificador no la mueve; '
              'vacía, la elige el planificador como siempre.')
     validacion = fields.Char('Validación', compute='_compute_validacion')

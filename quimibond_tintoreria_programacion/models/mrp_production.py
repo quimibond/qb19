@@ -161,10 +161,10 @@ class MrpProduction(models.Model):
         return self.workorder_ids.filtered(lambda wo: wo.operation_id == operacion)[:1]
 
     def _workorder_rama(self):
-        """1.10.0: operación de Rama de la orden: la primera (por secuencia) cuya máquina es del tipo «Acabado» (las
-        ramas; el mismo criterio del tiempo de las fichas)."""
+        """1.10.0: operación de Rama de la orden: la primera (por secuencia) cuya máquina es una Rama (tipo «Acabado» y nombre
+        RAMA; otras máquinas del mismo tipo no cuentan)."""
         self.ensure_one()
-        ramas = self.workorder_ids.filtered(lambda wo: wo.workcenter_id.ft_tipo_id.code == 'acabado')
+        ramas = self.workorder_ids.filtered(lambda wo: wo.workcenter_id._es_rama())
         return ramas.sorted(lambda wo: (wo.operation_id.sequence, wo.id))[:1]
 
     def _rama_validar(self, rama):
@@ -173,6 +173,8 @@ class MrpProduction(models.Model):
         self.ensure_one()
         if not rama:
             return False
+        if not rama._es_rama():
+            return _("%s no es una Rama.", rama.display_name)
         return rama._ft_aviso_alternativa(self.product_id) or False
 
     def _rendimiento_tejido(self):

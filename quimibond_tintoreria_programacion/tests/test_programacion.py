@@ -286,6 +286,22 @@ class TestProgramacionTintoreria(TransactionCase):
         with self.assertRaisesRegex(UserError, 'montaje'):
             mo._programar_tintoreria(self.htj1, [rama1])
 
+    def test_otra_maquina_de_tipo_acabado_no_es_rama(self):
+        """1.10.1: el tipo «Acabado» lo comparten otras máquinas; solo son Rama las que dicen RAMA en el nombre."""
+        rama1, rama2, rama3 = self._ramas()
+        calandra = self.env['mrp.workcenter'].create({
+            'name': 'Calandra TEST', 'code': 'CALT1', 'ft_tipo_id': rama1.ft_tipo_id.id})
+        self.assertTrue(rama1._es_rama())
+        self.assertFalse(calandra._es_rama())
+        mo = self._crear_mo(500.0)
+        with self.assertRaisesRegex(UserError, 'no es una Rama'):
+            mo._programar_tintoreria(self.htj1, [calandra])
+        # la operación de Rama de la lista se busca entre las ramas, no entre todas las del tipo
+        self.bom.write({'operation_ids': [Command.create({'name': 'Calandra', 'workcenter_id': calandra.id,
+                                                          'sequence': 10})]})
+        orden = self._crear_mo(500.0)._programar_tintoreria(self.htj1, [rama1]).production_ids
+        self.assertEqual(orden._workorder_rama().workcenter_id, rama1)
+
     def test_ramas_distintas_en_numero_a_los_banos(self):
         rama1, rama2, rama3 = self._ramas()
         mo = self._crear_mo(1000.0)  # 2 baños

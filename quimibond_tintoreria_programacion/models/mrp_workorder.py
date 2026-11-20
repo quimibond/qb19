@@ -33,3 +33,13 @@ class MrpWorkorder(models.Model):
         # 1.10.0: lo mismo con la Rama que Planeación eligió en la misma ventana (``rama_fija``).
         return fija or self.rama_fija or bool(
             produccion.tintoreria_programada and self == produccion._workorder_tintoreria())
+
+
+class MrpWorkcenter(models.Model):
+    _inherit = 'mrp.workcenter'
+
+    def _es_rama(self):
+        """1.10.1: una Rama es una máquina del tipo «Acabado» cuyo nombre dice RAMA (RAMA 1, RAMA 2, RAMA 3). El tipo
+        «Acabado» lo comparten otras máquinas que no son ramas."""
+        self.ensure_one()
+        return self.ft_tipo_id.code == 'acabado' and 'RAMA' in (self.name or '').upper()

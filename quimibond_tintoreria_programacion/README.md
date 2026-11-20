@@ -28,6 +28,13 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.10.1 (2026-11-19): solo cuentan las máquinas que son Rama
+
+El tipo «Acabado» lo comparten otras máquinas. Una Rama es una máquina de tipo «Acabado» **cuyo nombre dice RAMA**
+(RAMA 1, RAMA 2, RAMA 3; `mrp.workcenter._es_rama`). La tabla «Rama por baño» solo ofrece esas, programar en otra
+máquina del tipo da error («no es una Rama») y la operación de Rama de la lista que se fija es la primera cuya máquina
+es una Rama (no cualquier operación de tipo «Acabado»). Prueba: `test_otra_maquina_de_tipo_acabado_no_es_rama`.
+
 ## Cambios 19.0.1.10.0 (Planeación, 2026-11-19): la Rama se programa junto con el jet
 
 Respuestas de Planeación (programacion_Rama.md): la Rama se elige **en la misma ventana «Programar Tintorería»**, junto
