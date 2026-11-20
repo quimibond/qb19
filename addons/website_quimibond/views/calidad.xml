@@ -40,15 +40,15 @@
                     <span class="qb-mono">Últimos <t t-out="meses"/> meses</span>
                 </div>
                 <t t-if="entregas">
-                    <div class="qb-tabla" role="table">
-                        <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--calidad" role="row">
+                    <div class="qb-lista" role="table">
+                        <div class="qb-lista__cab qb-lista__fila qb-lista__fila--calidad" role="row">
                             <span role="columnheader">Entrega</span>
                             <span role="columnheader">Pedido</span>
                             <span role="columnheader">Producto y lote</span>
                             <span role="columnheader">Certificado</span>
-                            <span role="columnheader" class="qb-tabla__num">¿Algún problema?</span>
+                            <span role="columnheader" class="qb-lista__num">¿Algún problema?</span>
                         </div>
-                        <div t-foreach="entregas" t-as="e" class="qb-tabla__fila qb-tabla__fila--calidad" role="row">
+                        <div t-foreach="entregas" t-as="e" class="qb-lista__fila qb-lista__fila--calidad" role="row">
                             <span role="cell" data-etq="Entrega">
                                 <strong t-out="e['nombre']"/>
                                 <small t-if="e['fecha']" t-out="e['fecha']" t-options='{"widget": "date"}'/>
@@ -57,14 +57,14 @@
                                 <a t-att-href="e['pedido_url']"><u t-out="e['pedido']"/></a>
                                 <small t-if="e['referencia']" t-out="e['referencia']"/>
                             </span>
-                            <span role="cell" data-etq="Producto y lote" class="qb-tabla__lotes">
+                            <span role="cell" data-etq="Producto y lote" class="qb-lista__lotes">
                                 <t t-if="e['lotes']" t-call="website_quimibond.cuenta_lotes"><t t-set="lotes" t-value="e['lotes']"/></t>
                                 <t t-else="">—</t>
                             </span>
                             <span role="cell" data-etq="Certificado" class="qb-certificados">
                                 <t t-call="website_quimibond.cuenta_certificado"><t t-set="cert" t-value="e['certificado']"/></t>
                             </span>
-                            <span role="cell" data-etq="¿Algún problema?" class="qb-tabla__num">
+                            <span role="cell" data-etq="¿Algún problema?" class="qb-lista__num">
                                 <a t-if="reclamos_activo and not qb_vista_previa" t-att-href="e['reclamar']" class="qb-enlace-fino"
                                    t-att-aria-label="'Levantar un reporte sobre la entrega %s' % e['nombre']">Reportar</a>
                                 <t t-else="">—</t>
@@ -76,7 +76,7 @@
                         Si lo necesita, pídalo a su contacto de Ventas.
                     </p>
                 </t>
-                <div t-else="" class="qb-vacio">
+                <div t-else="" class="qb-sin">
                     <p>No hay entregas en los últimos <t t-out="meses"/> meses.</p>
                 </div>
             </div>
@@ -87,13 +87,13 @@
                     <a t-if="not qb_vista_previa" t-att-href="nueva_url" class="qb-btn qb-btn--primario">Levantar un reporte</a>
                 </div>
                 <t t-if="reclamos">
-                    <div class="qb-tabla" role="table">
-                        <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--reclamo" role="row">
+                    <div class="qb-lista" role="table">
+                        <div class="qb-lista__cab qb-lista__fila qb-lista__fila--reclamo" role="row">
                             <span role="columnheader">Reporte</span>
                             <span role="columnheader">Asunto</span>
                             <span role="columnheader">Etapa</span>
                         </div>
-                        <a t-foreach="reclamos" t-as="r" t-att-href="r['url']" class="qb-tabla__fila qb-tabla__fila--reclamo" role="row">
+                        <a t-foreach="reclamos" t-as="r" t-att-href="r['url']" class="qb-lista__fila qb-lista__fila--reclamo" role="row">
                             <span role="cell" data-etq="Reporte">
                                 <strong>#<t t-out="r['folio']"/></strong>
                                 <small t-out="r['fecha']" t-options='{"widget": "date"}'/>
@@ -105,7 +105,7 @@
                         </a>
                     </div>
                 </t>
-                <div t-else="" class="qb-vacio">
+                <div t-else="" class="qb-sin">
                     <p>No tiene reportes de calidad. Si algo llegó distinto a lo acordado, levante un reporte con el lote y fotos, y le respondemos por escrito.</p>
                 </div>
             </div>
@@ -122,8 +122,8 @@
                 <div class="qb-cuenta__titulo">
                     <h2>¿Sobre qué entrega es el reporte?</h2>
                 </div>
-                <div class="qb-tabla" role="table">
-                    <a t-foreach="elegir" t-as="e" t-att-href="e['reclamar']" class="qb-tabla__fila qb-tabla__fila--elegir" role="row">
+                <div class="qb-lista" role="table">
+                    <a t-foreach="elegir" t-as="e" t-att-href="e['reclamar']" class="qb-lista__fila qb-lista__fila--elegir" role="row">
                         <span role="cell" data-etq="Entrega">
                             <strong t-out="e['nombre']"/>
                             <small t-if="e['fecha']" t-out="e['fecha']" t-options='{"widget": "date"}'/>
@@ -132,7 +132,7 @@
                             <t t-out="e['pedido']"/>
                             <small t-if="e['referencia']" t-out="e['referencia']"/>
                         </span>
-                        <span role="cell" data-etq="Producto y lote" class="qb-tabla__lotes">
+                        <span role="cell" data-etq="Producto y lote" class="qb-lista__lotes">
                             <t t-if="e['lotes']" t-call="website_quimibond.cuenta_lotes"><t t-set="lotes" t-value="e['lotes']"/></t>
                             <t t-else="">—</t>
                         </span>
@@ -260,7 +260,7 @@
                         <t t-call="website_quimibond.cuenta_adjuntos"><t t-set="adjuntos" t-value="m['adjuntos']"/></t>
                     </div>
                 </div>
-                <div t-elif="not respuesta" class="qb-vacio"><p>Todavía no hay mensajes. Cuando Calidad le escriba, lo verá aquí.</p></div>
+                <div t-elif="not respuesta" class="qb-sin"><p>Todavía no hay mensajes. Cuando Calidad le escriba, lo verá aquí.</p></div>
 
                 <div t-if="error" class="qb-aviso qb-aviso--error" role="alert" t-out="error"/>
                 <form t-if="puede_escribir" t-attf-action="/mi-cuenta/calidad/reclamacion/#{reclamo['id']}/mensaje" method="post"

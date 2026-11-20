@@ -812,18 +812,17 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 .qb-estado--vencida::before { background: #d92d20; }
 
 /* Pasos del pedido */
-.qb .qb-pasos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0 4px; }
-.qb-pasos li { position: relative; padding-top: 18px; font-size: .75rem; color: var(--qb-muted-fg); }
-.qb-pasos li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: var(--qb-borde); }
-.qb-pasos li:first-child::before { left: 5px; }
-.qb-pasos__punto { position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--qb-bg); border: 2px solid var(--qb-borde-fuerte); }
-.qb-pasos li.es-hecho::before { background: var(--qb-fg); }
-.qb-pasos li.es-hecho .qb-pasos__punto { background: var(--qb-fg); border-color: var(--qb-fg); }
-.qb-pasos li.es-actual { color: var(--qb-fg); font-weight: 500; }
-.qb-pasos__texto { display: block; white-space: nowrap; }
-.qb-pasos li.es-actual::before { background: linear-gradient(90deg, var(--qb-fg) 0, var(--qb-fg) 10px, var(--qb-borde) 10px); }
-.qb-pasos li.es-actual:last-child::before { background: var(--qb-fg); }
-.qb-pasos li.es-actual .qb-pasos__punto { box-shadow: 0 0 0 4px rgba(9, 9, 11, .08); }
+.qb .qb-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0 4px; }
+.qb-etapas li { position: relative; padding-top: 18px; font-size: .75rem; color: var(--qb-muted-fg); }
+.qb-etapas li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: var(--qb-borde); }
+.qb-etapas li:first-child::before { left: 5px; }
+.qb-etapas__punto { position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--qb-bg); border: 2px solid var(--qb-borde-fuerte); }
+.qb-etapas li.es-hecho::before { background: var(--qb-fg); }
+.qb-etapas li.es-hecho .qb-etapas__punto { background: var(--qb-fg); border-color: var(--qb-fg); }
+.qb-etapas li.es-actual { color: var(--qb-fg); font-weight: 500; }
+.qb-etapas li.es-actual::before { background: linear-gradient(90deg, var(--qb-fg) 0, var(--qb-fg) 10px, var(--qb-borde) 10px); }
+.qb-etapas li.es-actual:last-child::before { background: var(--qb-fg); }
+.qb-etapas li.es-actual .qb-etapas__punto { box-shadow: 0 0 0 4px rgba(9, 9, 11, .08); }
 
 /* Tarjetas de pedido */
 .qb-pedidos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -849,23 +848,23 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 .qb-saldo .es-vencido dd { color: #b42318; }
 
 /* Tablas: rejilla en escritorio, fichas apiladas en celular */
-.qb-tabla { border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); box-shadow: var(--qb-sombra); overflow: hidden; }
-.qb-tabla__fila { display: grid; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--qb-borde); font-size: .875rem; font-variant-numeric: tabular-nums; }
-.qb-tabla__fila:first-child { border-top: 0; }
-.qb-tabla__fila--pedido { grid-template-columns: 1.1fr 1.2fr 1fr 1.2fr .9fr; }
-.qb-tabla__fila--factura { grid-template-columns: 1.5fr 1fr 1fr 1fr .9fr .9fr 1fr; }
-.qb-tabla__fila--entrega { grid-template-columns: 1.2fr 1.2fr 1fr 1fr .8fr; }
-.qb-tabla__fila--linea { grid-template-columns: 3fr 1fr 1fr 1fr; }
-.qb-tabla__cab { background: var(--qb-suave); font-size: .75rem; font-weight: 500; color: var(--qb-muted-fg); padding-block: 10px; }
-.qb a.qb-tabla__fila:hover { background: var(--qb-suave); }
-.qb-tabla__fila > span { min-width: 0; overflow-wrap: anywhere; }
-.qb-tabla__fila strong { font-weight: 500; display: block; }
-.qb-tabla__fila small { display: block; font-size: .75rem; color: var(--qb-muted-fg); }
-.qb-tabla__num { text-align: right; }
+.qb-lista { border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); box-shadow: var(--qb-sombra); overflow: hidden; }
+.qb-lista__fila { display: grid; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--qb-borde); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.qb-lista__fila:first-child { border-top: 0; }
+.qb-lista__fila--pedido { grid-template-columns: 1.1fr 1.2fr 1fr 1.2fr .9fr; }
+.qb-lista__fila--factura { grid-template-columns: 1.5fr 1fr 1fr 1fr .9fr .9fr 1fr; }
+.qb-lista__fila--entrega { grid-template-columns: 1.2fr 1.2fr 1fr 1fr .8fr; }
+.qb-lista__fila--linea { grid-template-columns: 3fr 1fr 1fr 1fr; }
+.qb-lista__cab { background: var(--qb-suave); font-size: .75rem; font-weight: 500; color: var(--qb-muted-fg); padding-block: 10px; }
+.qb a.qb-lista__fila:hover { background: var(--qb-suave); }
+.qb-lista__fila > span { min-width: 0; overflow-wrap: anywhere; }
+.qb-lista__fila strong { font-weight: 500; display: block; }
+.qb-lista__fila small { display: block; font-size: .75rem; color: var(--qb-muted-fg); }
+.qb-lista__num { text-align: right; }
 .qb .qb-descarga { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 500; color: var(--qb-fg); padding: 4px 8px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); background: var(--qb-bg); white-space: nowrap; }
 .qb .qb-descarga:hover { background: var(--qb-muted); }
-.qb-vacio { border: 1px dashed var(--qb-borde-fuerte); border-radius: var(--qb-radio); padding: 32px 24px; text-align: center; color: var(--qb-muted-fg); }
-.qb-vacio .qb-btn { margin-top: 14px; }
+.qb-sin { border: 1px dashed var(--qb-borde-fuerte); border-radius: var(--qb-radio); padding: 32px 24px; text-align: center; color: var(--qb-muted-fg); }
+.qb-sin .qb-btn { margin-top: 14px; }
 .qb-cuenta__ayuda { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; margin-top: 56px; padding: 24px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); }
 .qb-cuenta__ayuda p { color: var(--qb-muted-fg); font-size: .9rem; margin-top: 4px; }
 .qb-cuenta__ayuda .qb-hero__cta { margin-top: 0; }
@@ -876,13 +875,13 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
     .qb-cifras--cuenta > div { border-left: 0; border-top: 1px solid var(--qb-borde); padding: 16px 20px; display: flex; flex-direction: row-reverse; align-items: baseline; justify-content: space-between; gap: 12px; }
     .qb-cifras--cuenta > div:first-child { border-top: 0; }
     .qb-cifras--cuenta dt { margin-top: 0; }
-    .qb-tabla__cab { display: none; }
-    .qb-tabla__fila, .qb-tabla__fila--pedido, .qb-tabla__fila--factura, .qb-tabla__fila--entrega, .qb-tabla__fila--linea { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
-    .qb-tabla__fila > span { display: block; text-align: right; overflow: hidden; }
-    .qb-tabla__fila > span::before { content: attr(data-etq); float: left; margin-right: 16px; font-size: .75rem; line-height: 1.6; color: var(--qb-muted-fg); }
-    .qb-tabla__fila > span:first-child { display: block; text-align: left; }
-    .qb-tabla__fila > span:first-child::before { content: none; }
-    .qb-tabla__fila > span:first-child strong { font-size: 1rem; }
-    .qb-tabla__fila small { display: inline; margin-left: 6px; }
-    .qb-pasos__texto { font-size: .7rem; }
+    .qb-lista__cab { display: none; }
+    .qb-lista__fila, .qb-lista__fila--pedido, .qb-lista__fila--factura, .qb-lista__fila--entrega, .qb-lista__fila--linea { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+    .qb-lista__fila > span { display: block; text-align: right; overflow: hidden; }
+    .qb-lista__fila > span::before { content: attr(data-etq); float: left; margin-right: 16px; font-size: .75rem; line-height: 1.6; color: var(--qb-muted-fg); }
+    .qb-lista__fila > span:first-child { display: block; text-align: left; }
+    .qb-lista__fila > span:first-child::before { content: none; }
+    .qb-lista__fila > span:first-child strong { font-size: 1rem; }
+    .qb-lista__fila small { display: inline; margin-left: 6px; }
+    .qb-etapas__texto { font-size: .7rem; }
 }

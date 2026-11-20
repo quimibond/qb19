@@ -3,12 +3,12 @@
    Usa las variables y los componentes de quimibond.css (tabla, estado, pasos).
    ---------------------------------------------------------------------- */
 .qb-cuenta__bloque--primero { margin-top: 0; }
-.qb-tabla__fila--calidad { grid-template-columns: 1fr 1fr 2.2fr 1.1fr .9fr; align-items: start; }
-.qb-tabla__fila--reclamo { grid-template-columns: .8fr 3fr 1fr; }
-.qb-tabla__fila--elegir { grid-template-columns: 1fr 1fr 2.4fr; align-items: start; }
-.qb-tabla__cab.qb-tabla__fila--calidad { align-items: center; }
+.qb-lista__fila--calidad { grid-template-columns: 1fr 1fr 2.2fr 1.1fr .9fr; align-items: start; }
+.qb-lista__fila--reclamo { grid-template-columns: .8fr 3fr 1fr; }
+.qb-lista__fila--elegir { grid-template-columns: 1fr 1fr 2.4fr; align-items: start; }
+.qb-lista__cab.qb-lista__fila--calidad { align-items: center; }
 @media (min-width: 861px) {
-    .qb-tabla__fila--entrega { grid-template-columns: 1.2fr 1.2fr .9fr .9fr 1.1fr .7fr; }
+    .qb-lista__fila--entrega { grid-template-columns: 1.2fr 1.2fr .9fr .9fr 1.1fr .7fr; }
 }
 
 /* Lotes de una entrega */
@@ -63,12 +63,12 @@
 .qb-adjuntos__foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 @media (max-width: 860px) {
-    .qb-tabla__fila--calidad, .qb-tabla__fila--reclamo, .qb-tabla__fila--elegir { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
-    .qb-tabla__fila > span.qb-tabla__lotes { text-align: left; }
-    .qb-tabla__fila > span.qb-tabla__lotes::before { float: none; display: block; margin: 0 0 4px; }
+    .qb-lista__fila--calidad, .qb-lista__fila--reclamo, .qb-lista__fila--elegir { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+    .qb-lista__fila > span.qb-lista__lotes { text-align: left; }
+    .qb-lista__fila > span.qb-lista__lotes::before { float: none; display: block; margin: 0 0 4px; }
     .qb-certificados { justify-content: flex-end; }
-    .qb-tabla__fila > span.qb-certificados { display: flex; align-items: center; justify-content: space-between; }
-    .qb-tabla__fila > span.qb-certificados::before { float: none; }
+    .qb-lista__fila > span.qb-certificados { display: flex; align-items: center; justify-content: space-between; }
+    .qb-lista__fila > span.qb-certificados::before { float: none; }
     .qb-reporte, .qb-reporte.qb-form { padding: 16px !important; }
     .qb-form__rejilla { grid-template-columns: 1fr; }
     .qb-cuenta__titulo { flex-wrap: wrap; }
