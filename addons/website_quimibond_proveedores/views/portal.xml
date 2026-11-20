@@ -47,15 +47,15 @@
 
     <!-- Tabla de órdenes de compra -->
     <template id="proveedor_tabla_ordenes" name="Quimibond: tabla de órdenes de compra">
-        <div class="qb-tabla" role="table">
-            <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--orden" role="row">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--orden" role="row">
                 <span role="columnheader">Orden</span>
                 <span role="columnheader">Su referencia</span>
                 <span role="columnheader">Entrega esperada</span>
                 <span role="columnheader">Estado</span>
-                <span role="columnheader" class="qb-tabla__num">Total</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
             </div>
-            <a t-foreach="ordenes" t-as="o" t-att-href="o['url']" class="qb-tabla__fila qb-tabla__fila--orden" role="row">
+            <a t-foreach="ordenes" t-as="o" t-att-href="o['url']" class="qb-lista__fila qb-lista__fila--orden" role="row">
                 <span role="cell" data-etq="Orden"><strong t-out="o['nombre']"/><small t-out="o['fecha']" t-options='{"widget": "date"}'/></span>
                 <span role="cell" data-etq="Su referencia" t-out="o['referencia'] or '—'"/>
                 <span role="cell" data-etq="Entrega esperada">
@@ -67,23 +67,23 @@
                     <small t-if="o['por_facturar']" class="qb-prov__falta">Falta su factura</small>
                     <small t-elif="o['en_revision']">Factura en revisión</small>
                 </span>
-                <span role="cell" data-etq="Total" class="qb-tabla__num" t-out="o['total']" t-options='{"widget": "monetary", "display_currency": o["moneda"]}'/>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="o['total']" t-options='{"widget": "monetary", "display_currency": o["moneda"]}'/>
             </a>
         </div>
     </template>
 
     <!-- Tabla de facturas y pagos -->
     <template id="proveedor_tabla_facturas" name="Quimibond: tabla de facturas del proveedor">
-        <div class="qb-tabla" role="table">
-            <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--pago" role="row">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--pago" role="row">
                 <span role="columnheader">Factura</span>
                 <span role="columnheader">Orden</span>
                 <span role="columnheader">Estado</span>
                 <span role="columnheader">Fecha de pago</span>
-                <span role="columnheader" class="qb-tabla__num">Total</span>
-                <span role="columnheader" class="qb-tabla__num">Por cobrar</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
+                <span role="columnheader" class="qb-lista__num">Por cobrar</span>
             </div>
-            <div t-foreach="facturas" t-as="f" class="qb-tabla__fila qb-tabla__fila--pago" role="row">
+            <div t-foreach="facturas" t-as="f" class="qb-lista__fila qb-lista__fila--pago" role="row">
                 <span role="cell" data-etq="Factura">
                     <strong><t t-if="f['nota_credito']">Nota de crédito </t><t t-out="f['nombre']"/></strong>
                     <small t-if="f['fecha']" t-out="f['fecha']" t-options='{"widget": "date"}'/>
@@ -98,8 +98,8 @@
                     <t t-elif="f['clave'] == 'proceso'">En los próximos días</t>
                     <t t-else="">—</t>
                 </span>
-                <span role="cell" data-etq="Total" class="qb-tabla__num" t-out="f['total']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
-                <span role="cell" data-etq="Por cobrar" class="qb-tabla__num" t-out="f['saldo']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="f['total']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span role="cell" data-etq="Por cobrar" class="qb-lista__num" t-out="f['saldo']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
                 <span t-if="f['nota']" role="cell" class="qb-prov__nota" t-out="f['nota']"/>
             </div>
         </div>
@@ -186,7 +186,7 @@
                 <t t-if="por_entregar" t-call="website_quimibond_proveedores.proveedor_tabla_ordenes">
                     <t t-set="ordenes" t-value="por_entregar[:8]"/>
                 </t>
-                <div t-else="" class="qb-vacio">
+                <div t-else="" class="qb-sin">
                     <p>No tiene órdenes de compra por entregar.</p>
                 </div>
             </div>
@@ -212,7 +212,7 @@
                     <span class="qb-mono">Últimos <t t-out="meses"/> meses y las que faltan por facturar</span>
                 </div>
                 <t t-if="ordenes" t-call="website_quimibond_proveedores.proveedor_tabla_ordenes"/>
-                <div t-else="" class="qb-vacio">
+                <div t-else="" class="qb-sin">
                     <p>No hay órdenes de compra en los últimos <t t-out="meses"/> meses.</p>
                 </div>
             </div>
@@ -263,20 +263,20 @@
 
             <div class="qb-cuenta__bloque">
                 <div class="qb-cuenta__titulo"><h2>Lo pedido y lo recibido</h2></div>
-                <div class="qb-tabla" role="table">
-                    <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--partida" role="row">
+                <div class="qb-lista" role="table">
+                    <div class="qb-lista__cab qb-lista__fila qb-lista__fila--partida" role="row">
                         <span role="columnheader">Producto</span>
-                        <span role="columnheader" class="qb-tabla__num">Pedido</span>
-                        <span role="columnheader" class="qb-tabla__num">Recibido</span>
-                        <span role="columnheader" class="qb-tabla__num">Facturado</span>
-                        <span role="columnheader" class="qb-tabla__num">Importe</span>
+                        <span role="columnheader" class="qb-lista__num">Pedido</span>
+                        <span role="columnheader" class="qb-lista__num">Recibido</span>
+                        <span role="columnheader" class="qb-lista__num">Facturado</span>
+                        <span role="columnheader" class="qb-lista__num">Importe</span>
                     </div>
-                    <div t-foreach="lineas" t-as="l" class="qb-tabla__fila qb-tabla__fila--partida" role="row">
+                    <div t-foreach="lineas" t-as="l" class="qb-lista__fila qb-lista__fila--partida" role="row">
                         <span role="cell" data-etq="Producto"><strong t-out="l['producto']"/></span>
-                        <span role="cell" data-etq="Pedido" class="qb-tabla__num"><t t-out="l['pedido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
-                        <span role="cell" data-etq="Recibido" class="qb-tabla__num"><t t-out="l['recibido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
-                        <span role="cell" data-etq="Facturado" class="qb-tabla__num"><t t-out="l['facturado']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
-                        <span role="cell" data-etq="Importe" class="qb-tabla__num" t-out="l['importe']" t-options='{"widget": "monetary", "display_currency": orden["moneda"]}'/>
+                        <span role="cell" data-etq="Pedido" class="qb-lista__num"><t t-out="l['pedido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Recibido" class="qb-lista__num"><t t-out="l['recibido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Facturado" class="qb-lista__num"><t t-out="l['facturado']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Importe" class="qb-lista__num" t-out="l['importe']" t-options='{"widget": "monetary", "display_currency": orden["moneda"]}'/>
                     </div>
                 </div>
             </div>
@@ -327,7 +327,7 @@
                 <t t-if="abiertas" t-call="website_quimibond_proveedores.proveedor_tabla_facturas">
                     <t t-set="facturas" t-value="abiertas"/>
                 </t>
-                <div t-else="" class="qb-vacio"><p>No tiene facturas pendientes de pago.</p></div>
+                <div t-else="" class="qb-sin"><p>No tiene facturas pendientes de pago.</p></div>
             </div>
 
             <div t-if="rechazadas" class="qb-cuenta__bloque">
@@ -342,7 +342,7 @@
                 <t t-if="pagadas" t-call="website_quimibond_proveedores.proveedor_tabla_facturas">
                     <t t-set="facturas" t-value="pagadas"/>
                 </t>
-                <div t-else="" class="qb-vacio"><p>No hay facturas pagadas en los últimos <t t-out="meses"/> meses.</p></div>
+                <div t-else="" class="qb-sin"><p>No hay facturas pagadas en los últimos <t t-out="meses"/> meses.</p></div>
             </div>
         </t>
     </template>

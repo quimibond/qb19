@@ -12,15 +12,15 @@
 
 /* Columnas de las tablas (en celular se apilan con la regla de Mi cuenta) */
 @media (min-width: 861px) {
-    .qb-tabla__fila--orden { grid-template-columns: 1.1fr 1.1fr 1fr 1.3fr .9fr; }
-    .qb-tabla__fila--pago { grid-template-columns: 1.4fr 1fr 1.1fr 1.1fr .9fr .9fr; }
-    .qb-tabla__fila--partida { grid-template-columns: 3fr 1fr 1fr 1fr 1fr; }
+    .qb-lista__fila--orden { grid-template-columns: 1.1fr 1.1fr 1fr 1.3fr .9fr; }
+    .qb-lista__fila--pago { grid-template-columns: 1.4fr 1fr 1.1fr 1.1fr .9fr .9fr; }
+    .qb-lista__fila--partida { grid-template-columns: 3fr 1fr 1fr 1fr 1fr; }
     .qb-prov__nota { grid-column: 1 / -1; }
 }
-.qb-tabla__fila > span.qb-prov__nota { text-align: left; font-size: .8rem; color: var(--qb-muted-fg); padding: 8px 12px; background: var(--qb-suave); border-radius: var(--qb-radio-sm); }
-.qb-tabla__fila > span.qb-prov__nota::before { content: none; }
-.qb-tabla__fila small.qb-prov__falta { color: #b45309; font-weight: 500; margin-top: 4px; }
-.qb-tabla__fila .qb-estado + small { margin-top: 4px; }
+.qb-lista__fila > span.qb-prov__nota { text-align: left; font-size: .8rem; color: var(--qb-muted-fg); padding: 8px 12px; background: var(--qb-suave); border-radius: var(--qb-radio-sm); }
+.qb-lista__fila > span.qb-prov__nota::before { content: none; }
+.qb-lista__fila small.qb-prov__falta { color: #b45309; font-weight: 500; margin-top: 4px; }
+.qb-lista__fila .qb-estado + small { margin-top: 4px; }
 
 .qb-prov__primero { margin-top: 0; }
 .qb-prov .qb-saldos + .qb-nota { margin-top: 0; }
