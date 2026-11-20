@@ -974,6 +974,8 @@ centavos de más; Odoo da 20,798.31 + 20,798.07. El cálculo vive en
 
 1.23.1: la periodicidad del contrato (`schedule_pay`) tiene la selección como función en Odoo 19; leerla con `.selection` tumbaba los dos reportes («'function' object is not iterable», primera prueba en producción el 20-nov).
 
+1.23.2: la regla «Bruto sin vacaciones» (`GROSS_WITHOUT_HOLIDAY`) lleva el concepto P01 del CFDI y salía como renglón propio, duplicando el sueldo (la diferencia en rojo lo marcó). El catálogo trae ahora el tipo «No reportar» y un concepto con esa regla. Generado en producción, la semana 48 cuadra con NOI en los 95 recibos salvo los 3 centavos ya conocidos (S-15 Infonavit, S-87 y S-96 ISR).
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es

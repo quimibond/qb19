@@ -133,4 +133,10 @@
         <field name="tipo">informativo</field>
         <field name="codigos">-SUBSIDY</field>
     </record>
+    <!-- 1.23.2: «Bruto sin vacaciones» lleva el concepto P01 del CFDI y repite el sueldo; no es renglón propio. -->
+    <record id="concepto_noi_ignorar_bruto" model="qb.nomina.concepto.noi">
+        <field name="name">Bruto sin vacaciones (no reportar)</field>
+        <field name="tipo">ignorar</field>
+        <field name="codigos">GROSS_WITHOUT_HOLIDAY</field>
+    </record>
 </odoo>
