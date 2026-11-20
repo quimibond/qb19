@@ -160,6 +160,21 @@ class MrpProduction(models.Model):
         operacion = self.bom_id._operacion_tintoreria()
         return self.workorder_ids.filtered(lambda wo: wo.operation_id == operacion)[:1]
 
+    def _workorder_rama(self):
+        """1.10.0: operación de Rama de la orden: la primera (por secuencia) cuya máquina es del tipo «Acabado» (las
+        ramas; el mismo criterio del tiempo de las fichas)."""
+        self.ensure_one()
+        ramas = self.workorder_ids.filtered(lambda wo: wo.workcenter_id.ft_tipo_id.code == 'acabado')
+        return ramas.sorted(lambda wo: (wo.operation_id.sequence, wo.id))[:1]
+
+    def _rama_validar(self, rama):
+        """1.10.0: texto del problema si el artículo no se puede programar en esa Rama (con lo que hay cargado: operando
+        y proceso del artículo en la máquina). False si se puede."""
+        self.ensure_one()
+        if not rama:
+            return False
+        return rama._ft_aviso_alternativa(self.product_id) or False
+
     def _rendimiento_tejido(self):
         """Rendimiento de tejido (m/kg) del producto en kg: el que fija la banda y la carga del jet."""
         self.ensure_one()
@@ -554,13 +569,27 @@ class MrpProduction(models.Model):
                         'location_dest_id': move.location_dest_id.id})
                 move._recompute_state()
 
-    def _programar_tintoreria(self, workcenter):
+    def _programar_tintoreria(self, workcenter, ramas=None):
         """Asigna el HTJ, reparte los rollos de crudo surtidos en baños de rollos completos (una orden por baño) y marca
-        las órdenes como programadas. Devuelve el registro tintoreria.programacion. Sin componente de tejido, divide la
+        las órdenes como programadas. ``ramas`` (1.10.0, opcional): una Rama por baño, en el orden de los baños (False = la
+        elige el planificador como siempre); la elegida queda fijada a mano. Devuelve el registro tintoreria.programacion. Sin componente de tejido, divide la
         MO en baños simétricos de kg, como antes (1.8.x)."""
         self.ensure_one()
         self._check_programable()
         plan = self._calcular_plan_tintoreria(workcenter)
+        ramas = list(ramas or [])
+        if any(ramas):
+            if len(ramas) != plan['n_banos']:
+                raise UserError(_(
+                    "La orden %(o)s tendrá %(n)s baño(s) y se eligieron %(r)s Rama(s): revisa la columna Rama.",
+                    o=self.name, n=plan['n_banos'], r=len(ramas)))
+            if not self._workorder_rama():
+                raise UserError(_("La lista de materiales de %s no tiene operación de Rama.", self.name))
+            for numero, rama in enumerate(ramas, 1):
+                problema = self._rama_validar(rama)
+                if problema:
+                    raise UserError(_("Baño %(i)s de %(o)s: no se puede programar en la Rama %(r)s. %(p)s",
+                                      i=numero, o=self.name, r=rama.display_name, p=problema))
         nombre_origen = self.name
         kg_pedido = self.product_qty
         kg_total = plan['kg_total']
@@ -610,6 +639,14 @@ class MrpProduction(models.Model):
                 'tintoreria_programada': True,
                 'tintoreria_programacion_id': programacion.id,
             })
+            rama = ramas[list(ordenes).index(orden)] if ramas else False
+            if rama:
+                # 1.10.0: la Rama elegida queda fijada a mano; el tiempo lo calcula el sistema con la tabla de tiempos
+                # de Rama de las fichas (al cambiar la máquina, no se escribe aquí).
+                wo_rama = orden._workorder_rama()
+                wo_rama.workcenter_id = rama
+                wo_rama.rama_fija = True
+                orden.message_post(body=_("Rama fijada en la programación: %s.", rama.display_name))
             orden.message_post(body=_(
                 "Tintorería programada en %(wc)s: %(n)s baño(s) de %(kg)s kg de tela, %(crudo)s kg de crudo por baño "
                 "(capacidad %(cap)s kg; orden de origen %(o)s).",

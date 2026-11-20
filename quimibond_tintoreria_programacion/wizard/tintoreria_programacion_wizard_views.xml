@@ -12,6 +12,12 @@
                     consecutivos (no se cortan). La cantidad de cada orden son los kg de crudo de sus rollos y con
                     ellos se recalcula la dosificación.
                 </p>
+                <p class="text-muted">
+                    Rama (opcional): en la tabla «Rama por baño» se elige la Rama de cada baño. Se pueden ver las tres
+                    y se valida que el artículo se pueda programar en ella (opera y tiene proceso del artículo). La Rama
+                    elegida queda fijada y el planificador no la cambia; vacía, la elige el planificador. El tiempo de
+                    la Rama lo calcula el sistema con la tabla de tiempos de Rama.
+                </p>
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom" create="false" delete="false">
                         <field name="production_id" force_save="1"/>
@@ -31,6 +37,18 @@
                         <field name="minutos_bano"/>
                         <field name="origen_tiempo" optional="show"/>
                         <field name="advertencia" decoration-danger="advertencia"/>
+                    </list>
+                </field>
+                <separator string="Rama por baño (opcional)"/>
+                <field name="bano_ids" nolabel="1">
+                    <list editable="bottom" create="false" delete="false">
+                        <field name="production_id"/>
+                        <field name="secuencia"/>
+                        <field name="kg"/>
+                        <field name="rama_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="rama_invalida" column_invisible="1"/>
+                        <field name="validacion" decoration-danger="rama_invalida"
+                               decoration-success="rama_id and not rama_invalida"/>
                     </list>
                 </field>
                 <footer>

@@ -226,6 +226,92 @@ class TestProgramacionTintoreria(TransactionCase):
         self.assertEqual(workorder.workcenter_id, self.htj1, "Sin 1.6.0 se iría al HTJ3, el único con proceso")
         self.assertIn('en montaje', workorder.ft_aviso_maquina)
 
+    # ------------------------------------------------------------------
+    # 1.10.0: Rama fija por baño
+    # ------------------------------------------------------------------
+    def _ramas(self):
+        """Tres ramas de prueba (tipo «Acabado»), con proceso del artículo en las dos primeras, y la operación de Rama en
+        la lista de materiales."""
+        Tipo = self.env['ficha.tecnica.maquina.tipo']
+        tipo = Tipo.search([('code', '=', 'acabado')], limit=1) or Tipo.create({
+            'name': 'Acabado (ramas)', 'code': 'acabado', 'alternativas_por_tipo': True})
+        if not tipo.parametro_ids.filtered(lambda p: p.ambito == 'articulo'):
+            tipo.write({'parametro_ids': [Command.create({
+                'code': 'ancho_rama', 'name': 'Ancho bajando de rama', 'unit': 'm', 'kind': 'num',
+                'ambito': 'articulo'})]})
+        ramas = self.env['mrp.workcenter']
+        for numero in (1, 2, 3):
+            ramas |= self.env['mrp.workcenter'].create({
+                'name': 'Rama TEST %s' % numero, 'code': 'RMT%s' % numero, 'ft_tipo_id': tipo.id})
+        for rama in ramas[:2]:
+            self.env['ficha.tecnica.proceso'].create({'articulo': self.producto_kg.default_code,
+                                                      'workcenter_id': rama.id})
+        self.bom.write({'operation_ids': [Command.create({
+            'name': 'Rama', 'workcenter_id': ramas[2].id, 'sequence': 90})]})
+        return ramas
+
+    def test_rama_elegida_por_bano_queda_fijada(self):
+        """1.10.0: una Rama distinta por orden parcial; queda fijada a mano y el planificador no la cambia."""
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(1000.0)  # 2 baños de 500 kg en el HTJ1
+        programacion = mo._programar_tintoreria(self.htj1, [rama1, rama2])
+        primera, segunda = programacion.production_ids.sorted('id')
+        for orden, rama in ((primera, rama1), (segunda, rama2)):
+            wo = orden._workorder_rama()
+            self.assertEqual(wo.workcenter_id, rama)
+            self.assertTrue(wo.rama_fija)
+            self.assertTrue(wo._ft_maquina_fija())
+            orden.button_plan()
+            self.assertEqual(wo.workcenter_id, rama, "El planificador no mueve la Rama fijada")
+
+    def test_rama_opcional_vacia_la_elige_el_planificador(self):
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(1000.0)
+        programacion = mo._programar_tintoreria(self.htj1, [rama1, False])
+        primera, segunda = programacion.production_ids.sorted('id')
+        self.assertTrue(primera._workorder_rama().rama_fija)
+        self.assertFalse(segunda._workorder_rama().rama_fija)
+        self.assertEqual(segunda._workorder_rama().workcenter_id, rama3, "Sin Rama elegida queda la de la lista")
+        mo2 = self._crear_mo(500.0)
+        orden = mo2._programar_tintoreria(self.htj1).production_ids
+        self.assertFalse(orden._workorder_rama().rama_fija, "Sin ramas no se fija nada")
+
+    def test_rama_sin_proceso_del_articulo_no_se_programa(self):
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(500.0)
+        with self.assertRaisesRegex(UserError, 'no se puede programar en la Rama'):
+            mo._programar_tintoreria(self.htj1, [rama3])
+        self.assertFalse(mo.tintoreria_programada, "Nada se programa si la Rama no es válida")
+        rama1.ft_estado = 'montaje'
+        with self.assertRaisesRegex(UserError, 'montaje'):
+            mo._programar_tintoreria(self.htj1, [rama1])
+
+    def test_ramas_distintas_en_numero_a_los_banos(self):
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(1000.0)  # 2 baños
+        with self.assertRaisesRegex(UserError, 'Rama'):
+            mo._programar_tintoreria(self.htj1, [rama1])
+
+    def test_ventana_programar_con_rama_por_bano(self):
+        rama1, rama2, rama3 = self._ramas()
+        mo = self._crear_mo(1000.0)
+        wizard = self.env['tintoreria.programacion.wizard'].create({
+            'line_ids': [Command.create({'production_id': mo.id, 'workcenter_id': self.htj1.id})]})
+        wizard._onchange_line_ids_banos()
+        self.assertEqual(len(wizard.bano_ids), 2, "Un renglón por baño")
+        wizard.bano_ids.sorted('secuencia')[0].rama_id = rama1
+        wizard.bano_ids.sorted('secuencia')[1].rama_id = rama2
+        self.assertIn('Se puede programar', wizard.bano_ids[0].validacion)
+        wizard.bano_ids.sorted('secuencia')[1].rama_id = rama3
+        self.assertTrue(wizard.bano_ids.sorted('secuencia')[1].rama_invalida)
+        with self.assertRaisesRegex(UserError, 'no se puede programar en la Rama'):
+            wizard.action_confirmar()
+        self.assertFalse(mo.tintoreria_programada)
+        wizard.bano_ids.sorted('secuencia')[1].rama_id = rama2
+        wizard.action_confirmar()
+        ordenes = self.env['mrp.production'].search([('tintoreria_programada', '=', True)]).sorted('id')[-2:]
+        self.assertEqual(ordenes.mapped(lambda o: o._workorder_rama().workcenter_id), rama1 | rama2)
+
     def test_cancelar_ordenes_cancela_la_programacion(self):
         """1.6.2: al cancelar un baño la programación lo anota; con todos cancelados pasa a «Cancelada»."""
         mo = self._crear_mo(1000.0)

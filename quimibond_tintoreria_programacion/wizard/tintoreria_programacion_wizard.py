@@ -13,6 +13,31 @@ class TintoreriaProgramacionWizard(models.TransientModel):
     _description = 'Programar Tintorería'
 
     line_ids = fields.One2many('tintoreria.programacion.wizard.line', 'wizard_id', 'Órdenes')
+    bano_ids = fields.One2many('tintoreria.programacion.wizard.bano', 'wizard_id', 'Rama por baño')
+
+    @api.onchange('line_ids')
+    def _onchange_line_ids_banos(self):
+        """1.10.0: un renglón por baño (orden parcial) para elegir su Rama. Al cambiar el HTJ cambia el número de baños:
+        las Ramas ya elegidas se conservan por orden y número de baño."""
+        anteriores = {(b.production_id.id, b.secuencia): b.rama_id.id for b in self.bano_ids}
+        nuevos = []
+        for linea in self.line_ids:
+            if not (linea.production_id and linea.workcenter_id):
+                continue
+            try:
+                plan = linea.production_id._calcular_plan_tintoreria(linea.workcenter_id)
+            except UserError:
+                continue
+            detalle = plan['banos'] or []
+            for numero in range(1, plan['n_banos'] + 1):
+                bano = detalle[numero - 1] if numero <= len(detalle) else {}
+                nuevos.append(Command.create({
+                    'production_id': linea.production_id.id,
+                    'secuencia': numero,
+                    'kg': bano.get('kg') or plan['kg_bano'],
+                    'rama_id': anteriores.get((linea.production_id.id, numero)) or False,
+                }))
+        self.bano_ids = [Command.clear()] + nuevos
 
     @api.model
     def default_get(self, fields_list):
@@ -33,9 +58,12 @@ class TintoreriaProgramacionWizard(models.TransientModel):
         con_error = self.line_ids.filtered('advertencia')
         if con_error:
             raise UserError('\n'.join('%s: %s' % (ln.production_id.name, ln.advertencia) for ln in con_error))
+        # 1.10.0: Rama opcional por baño; se valida todo antes de programar la primera orden.
+        for linea in self.line_ids:
+            linea._validar_ramas()
         programaciones = self.env['tintoreria.programacion']
         for linea in self.line_ids:
-            programaciones |= linea.production_id._programar_tintoreria(linea.workcenter_id)
+            programaciones |= linea.production_id._programar_tintoreria(linea.workcenter_id, linea._ramas_por_bano())
         return {
             'type': 'ir.actions.act_window',
             'name': _('Programaciones de Tintorería'),
@@ -67,6 +95,32 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
     minutos_bano = fields.Float('Min por baño', compute='_compute_plan', digits=(12, 2))
     origen_tiempo = fields.Selection(ORIGENES_TIEMPO, 'Origen del tiempo', compute='_compute_plan')
     advertencia = fields.Char('Advertencia', compute='_compute_plan')
+
+    # ------------------------------------------------------------------
+    # 1.10.0: Rama por baño (opcional)
+    # ------------------------------------------------------------------
+    def _ramas_por_bano(self):
+        """Rama elegida por baño, en orden (vacío si no se eligió ninguna: el planificador la elige como hoy)."""
+        self.ensure_one()
+        banos = self.wizard_id.bano_ids.filtered(lambda b: b.production_id == self.production_id).sorted('secuencia')
+        return [b.rama_id for b in banos] if any(banos.mapped('rama_id')) else []
+
+    def _validar_ramas(self):
+        self.ensure_one()
+        ramas = self._ramas_por_bano()
+        if not ramas:
+            return
+        plan = self.production_id._calcular_plan_tintoreria(self.workcenter_id)
+        if len(ramas) != plan['n_banos']:
+            raise UserError(_("%(o)s: cambió el HTJ y ahora son %(n)s baño(s). Revisa la columna Rama.",
+                              o=self.production_id.name, n=plan['n_banos']))
+        if not self.production_id._workorder_rama():
+            raise UserError(_("La lista de materiales de %s no tiene operación de Rama.", self.production_id.name))
+        for numero, rama in enumerate(ramas, 1):
+            problema = self.production_id._rama_validar(rama)
+            if problema:
+                raise UserError(_("Baño %(i)s de %(o)s: no se puede programar en la Rama %(r)s. %(p)s",
+                                  i=numero, o=self.production_id.name, r=rama.display_name, p=problema))
 
     @api.depends('production_id', 'workcenter_id')
     def _compute_plan(self):
@@ -109,3 +163,29 @@ class TintoreriaProgramacionWizardLine(models.TransientModel):
                     linea.rendimiento = linea.production_id._rendimiento_tejido()
             except UserError as error:
                 linea.advertencia = error.args[0]
+
+
+class TintoreriaProgramacionWizardBano(models.TransientModel):
+    _name = 'tintoreria.programacion.wizard.bano'
+    _description = 'Rama de un baño (orden parcial) a programar'
+    _order = 'secuencia'
+
+    wizard_id = fields.Many2one('tintoreria.programacion.wizard', required=True, ondelete='cascade')
+    production_id = fields.Many2one('mrp.production', 'Orden', readonly=True)
+    secuencia = fields.Integer('Baño', readonly=True)
+    kg = fields.Float('kg', readonly=True, digits=(16, 3))
+    rama_id = fields.Many2one(
+        'mrp.workcenter', 'Rama', domain="[('ft_tipo_id.code', '=', 'acabado')]",
+        help='Opcional. Si se elige, la operación de Rama de este baño queda fijada y el planificador no la mueve; '
+             'vacía, la elige el planificador como siempre.')
+    validacion = fields.Char('Validación', compute='_compute_validacion')
+    rama_invalida = fields.Boolean(compute='_compute_validacion')
+
+    @api.depends('rama_id', 'production_id')
+    def _compute_validacion(self):
+        for bano in self:
+            orden = bano.production_id
+            problema = orden._rama_validar(bano.rama_id) if (orden and bano.rama_id) else False
+            bano.rama_invalida = bool(problema)
+            bano.validacion = False if not bano.rama_id else (
+                ('✗ %s' % problema) if problema else _('✓ Se puede programar'))
