@@ -10,8 +10,10 @@ from urllib.parse import quote
 CIFRAS = [
     {'valor': 1992, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Año de fundación', 'sin_miles': True},
     {'valor': 150, 'prefijo': '+', 'sufijo': '', 'etiqueta': 'Colaboradores'},
-    {'valor': 37, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Máquinas circulares', 'tipo': 'tejido_circular'},
-    {'valor': 5, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Jets de tintorería', 'tipo': 'tintoreria'},
+    # Sin conteos de máquinas (Dirección, 2026-11-19): lo que le importa a quien compra.
+    # Clientes: 293 con factura publicada en los últimos 12 meses (Odoo, 2026-11-20).
+    {'valor': 250, 'prefijo': '+', 'sufijo': '', 'etiqueta': 'Clientes atendidos en el último año'},
+    {'valor': 3, 'prefijo': '', 'sufijo': '', 'etiqueta': 'Mercados: automotriz, blancos y confección'},
 ]
 
 # Armadoras confirmadas por Jose el 2026-11-19 («mete todas»). Se cargan al
@@ -98,8 +100,8 @@ MAQUINARIA = [
         'nombre': 'Tejido circular',
         'icono': 'fa-circle-o-notch',
         'tipo': 'tejido_circular',
-        'cantidad': 37,
-        'unidad': 'máquinas circulares',
+        'cantidad': 0,
+        'unidad': 'Máquinas circulares',
         'texto': 'Circulares de una fontura y de doble fontura, con salida de tela tubular o abierta.',
         'datos': [
             ('Fonturas', 'Una fontura y doble fontura'),
@@ -113,8 +115,8 @@ MAQUINARIA = [
         'nombre': 'Tintorería',
         'icono': 'fa-tint',
         'tipo': 'tintoreria',
-        'cantidad': 5,
-        'unidad': 'jets de teñido',
+        'cantidad': 0,
+        'unidad': 'Jets de teñido',
         'texto': 'Jets de teñido con cocina de colores propia. Cada baño lleva su número y su fórmula.',
         'datos': [
             ('Carga por jet', 'De 300 a 1,200 kg'),
@@ -127,8 +129,8 @@ MAQUINARIA = [
         'nombre': 'Ramas y acabado',
         'icono': 'fa-fire',
         'tipo': 'acabado',
-        'cantidad': 3,
-        'unidad': 'ramas',
+        'cantidad': 0,
+        'unidad': 'Ramas',
         'texto': 'Secado, termofijado y acabado al ancho. Cada rollo se pesa y se mide al salir de la rama.',
         'datos': [
             ('Proceso', 'Secado, termofijado y acabado'),
@@ -155,8 +157,8 @@ MAQUINARIA = [
         'nombre': 'Inspección y laboratorio',
         'icono': 'fa-search',
         'tipo': 'inspeccion',
-        'cantidad': 6,
-        'unidad': 'máquinas de inspección',
+        'cantidad': 0,
+        'unidad': 'Máquinas de inspección',
         'texto': 'Inspección rollo por rollo con peso, metros, defectos y clasificación. Laboratorio '
                  'en planta y empaque.',
         'datos': [
@@ -369,6 +371,32 @@ HISTORIA = [
      'texto': 'Tecnología nueva en producción para mejorar eficiencia y calidad.'},
     {'anio': '2023', 'titulo': 'ISO 14001',
      'texto': 'Certificación ISO 14001 del sistema de gestión ambiental.'},
+]
+
+# Misión, visión, valores y razones: de la propuesta de Calidad para la página
+# («PROPUESTA PAGINA WEB», 2026-11-19). Misión y visión van textuales.
+MISION = ('Diseñar, producir y suministrar textiles técnicos de alto desempeño que excedan las expectativas '
+          'de nuestros clientes industriales, automotrices y de otros sectores, integrando la innovación, la '
+          'sostenibilidad y la seguridad y salud en el trabajo en cada etapa de nuestros procesos.')
+VISION = ('Para el año 2030, Quimibond será reconocida como la empresa líder en soluciones textiles técnicas '
+          'innovadoras y sostenibles, especialmente en la industria automotriz. Destacará por su agilidad para '
+          'personalizar productos de alta calidad, su compromiso con la sostenibilidad y una cultura '
+          'organizacional sólida que promueve la seguridad y la salud en el trabajo como un valor fundamental.')
+VALORES = [
+    {'icono': 'fa-check-circle-o', 'titulo': 'Calidad y excelencia', 'texto': 'En cada proceso y en cada detalle.'},
+    {'icono': 'fa-lightbulb-o', 'titulo': 'Innovación', 'texto': 'Buscamos siempre mejores soluciones.'},
+    {'icono': 'fa-leaf', 'titulo': 'Sostenibilidad', 'texto': 'Cuidamos el presente y el futuro.'},
+    {'icono': 'fa-balance-scale', 'titulo': 'Integridad', 'texto': 'Actuamos con honestidad y transparencia.'},
+    {'icono': 'fa-users', 'titulo': 'Respeto', 'texto': 'Valoramos a las personas y al entorno.'},
+    {'icono': 'fa-handshake-o', 'titulo': 'Enfoque al cliente', 'texto': 'Su éxito es nuestro propósito.'},
+]
+RAZONES = [
+    {'num': '01', 'titulo': 'Experiencia y especialización',
+     'texto': 'Fabricamos telas desde 1992. Nuestro equipo técnico desarrolla cada tela a la medida de su aplicación.'},
+    {'num': '02', 'titulo': 'Calidad y confianza',
+     'texto': 'Sistema de gestión certificado en ISO 9001 e ISO 14001, con trazabilidad de cada lote.'},
+    {'num': '03', 'titulo': 'Compromiso con el futuro',
+     'texto': 'Innovación, sustentabilidad y seguridad de nuestra gente en cada etapa del proceso.'},
 ]
 
 SUSTENTABILIDAD = [
