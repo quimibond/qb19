@@ -198,3 +198,13 @@ def test_xlsx_col():
 def test_clave_empleado_orden():
     claves = ['S-10', 'Q-7', 'S-2', '', 'C-26', 'S-1']
     assert sorted(claves, key=rc.clave_empleado_orden) == ['C-26', 'Q-7', 'S-1', 'S-2', 'S-10', '']
+
+
+def test_bruto_sin_vacaciones_no_se_reporta():
+    """Producción, 20-nov: GROSS_WITHOUT_HOLIDAY lleva el concepto P01 del CFDI y salía como renglón aparte."""
+    lineas = dict(GENARO)
+    lineas.update(_lineas(GROSS_WITHOUT_HOLIDAY=3619.91))
+    lineas['GROSS_WITHOUT_HOLIDAY']['cfdi_tipo'] = 'perception'
+    r = rc.conceptos_de_recibo(lineas, _catalogo())
+    assert not [x for x in r if x['llave'] == 'regla:GROSS_WITHOUT_HOLIDAY']
+    assert rc.totales_de_recibo(r, GENARO['NET']['total'])['diferencia'] == 0
