@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.23.0: Reportes de nómina con el formato de NOI y su catálogo de conceptos. -->
+    <record id="view_qb_nomina_reporte_form" model="ir.ui.view">
+        <field name="name">qb.nomina.reporte.form</field>
+        <field name="model">qb.nomina.reporte</field>
+        <field name="arch" type="xml">
+            <form>
+                <p>Los reportes de NOI armados con los recibos de Odoo: el <strong>Reporte de la nómina</strong>
+                   (cada trabajador con sus percepciones y deducciones y el resumen por concepto) y el
+                   <strong>Percepción/deducción</strong> (por concepto, quién lo tiene y cuánto). Sólo lee los
+                   recibos: no recalcula ni valida nada.</p>
+                <group>
+                    <group>
+                        <field name="reporte" widget="radio"/>
+                        <field name="formato" widget="radio" options="{'horizontal': true}"/>
+                        <field name="incluir_borrador"/>
+                    </group>
+                    <group>
+                        <field name="modo" widget="radio" options="{'horizontal': true}"/>
+                        <field name="payslip_run_ids" widget="many2many_tags" invisible="modo != 'lote'"
+                               required="modo == 'lote'" options="{'no_create': true}"/>
+                        <field name="date_from" invisible="modo != 'periodo'" required="modo == 'periodo'"/>
+                        <field name="date_to" invisible="modo != 'periodo'" required="modo == 'periodo'"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                </group>
+                <group invisible="reporte != 'percepcion_deduccion'">
+                    <field name="concepto_ids" widget="many2many_tags" placeholder="Todos"
+                           options="{'no_create': true}"/>
+                </group>
+                <field name="archivo" invisible="1"/>
+                <field name="archivo_nombre" invisible="1"/>
+                <footer>
+                    <button name="action_generar" type="object" string="Generar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_reporte" model="ir.actions.act_window">
+        <field name="name">Reportes de nómina (NOI)</field>
+        <field name="res_model">qb.nomina.reporte</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Desde el lote: menú Acción → Reportes de nómina (NOI), con el lote ya elegido. -->
+    <record id="action_qb_nomina_reporte_lote" model="ir.actions.act_window">
+        <field name="name">Reportes de nómina (NOI)</field>
+        <field name="res_model">qb.nomina.reporte</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr_payroll.model_hr_payslip_run"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
+    <record id="view_qb_nomina_concepto_noi_list" model="ir.ui.view">
+        <field name="name">qb.nomina.concepto.noi.list</field>
+        <field name="model">qb.nomina.concepto.noi</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="tipo"/>
+                <field name="clave"/>
+                <field name="name"/>
+                <field name="clave_sat"/>
+                <field name="codigos"/>
+                <field name="codigos_exento"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_concepto_noi_search" model="ir.ui.view">
+        <field name="name">qb.nomina.concepto.noi.search</field>
+        <field name="model">qb.nomina.concepto.noi</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="clave"/>
+                <field name="name"/>
+                <field name="codigos"/>
+                <filter name="percepciones" string="Percepciones" domain="[('tipo', '=', 'percepcion')]"/>
+                <filter name="deducciones" string="Deducciones" domain="[('tipo', '=', 'deduccion')]"/>
+                <separator/>
+                <filter name="archivados" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_concepto_noi" model="ir.actions.act_window">
+        <field name="name">Conceptos NOI</field>
+        <field name="res_model">qb.nomina.concepto.noi</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Dé de alta un concepto de NOI</p>
+            <p>Cada concepto (P001 SUELDO, D001 ISR…) dice qué reglas salariales lo forman. Lo que el recibo
+               trae y no está aquí sale en los reportes con el nombre de la regla y sin clave NOI.</p>
+        </field>
+    </record>
+
+    <!-- Menú sin padre e inactivo, como IMSS e Incidencias: qb_nomina_colgar_menu_reportes() lo cuelga
+         de la raíz de la app de Nómina en cada instalación/actualización. -->
+    <record id="menu_qb_nomina_reportes" model="ir.ui.menu">
+        <field name="name">Reportes NOI</field>
+        <field name="sequence">58</field>
+        <field name="active" eval="False"/>
+        <field name="group_ids" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+    </record>
+    <menuitem id="menu_qb_nomina_reporte" name="Reporte de la nómina" parent="menu_qb_nomina_reportes"
+              action="action_qb_nomina_reporte" sequence="10"/>
+    <menuitem id="menu_qb_nomina_concepto_noi" name="Conceptos NOI" parent="menu_qb_nomina_reportes"
+              action="action_qb_nomina_concepto_noi" sequence="20"/>
+
+    <function model="qb.nomina.concepto.noi" name="qb_nomina_colgar_menu_reportes"/>
+</odoo>

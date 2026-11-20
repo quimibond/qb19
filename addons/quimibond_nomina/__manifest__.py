@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.22.0',
+    'version': '19.0.1.23.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -51,6 +51,11 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
   se reconoce de las checadas, con el turno de RH de la ficha como
   confirmación. El supervisor autoriza las horas extra y «Pasar a recibos»
   las escribe en los recibos en borrador de la corrida.
+* **Reportes de nómina con el formato de NOI.** «Reporte de la nómina» (cada
+  trabajador con percepciones y deducciones con clave NOI y SAT, y el resumen
+  por concepto con gravado y exento) y «Percepción/deducción» (por concepto,
+  los trabajadores y el total), por lote o por periodo, en PDF o Excel. Un
+  catálogo editable dice qué reglas forman cada concepto de NOI.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
@@ -73,6 +78,9 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
         'views/hr_payslip_run_views.xml',
         'views/imss_views.xml',
         'views/incidencias_views.xml',
+        'data/conceptos_noi.xml',
+        'report/reporte_nomina.xml',
+        'views/reporte_nomina_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,
