@@ -22,6 +22,7 @@
                             <a t-attf-href="/mi-cuenta#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'resumen' else ''}">Resumen</a>
                             <a t-attf-href="/mi-cuenta/pedidos#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'pedidos' else ''}">Pedidos</a>
                             <a t-attf-href="/mi-cuenta/estado-de-cuenta#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'estado' else ''}">Estado de cuenta</a>
+                            <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'calidad' else ''}">Calidad</a>
                             <t t-if="not qb_vista_previa">
                                 <a href="/my?todo=1" class="qb-tabs__a">Más documentos</a>
                                 <a href="/my/account" class="qb-tabs__a">Mis datos</a>
@@ -201,7 +202,7 @@
                     <p>Levante un reporte de calidad o de entrega y le damos seguimiento por escrito.</p>
                 </div>
                 <div class="qb-hero__cta">
-                    <a href="/helpdesk" class="qb-btn qb-btn--contorno">Levantar un reporte</a>
+                    <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" class="qb-btn qb-btn--contorno">Levantar un reporte</a>
                     <a href="/cotizar" class="qb-btn qb-btn--primario">Nueva cotización</a>
                 </div>
             </div>
@@ -216,6 +217,7 @@
                 <span role="columnheader">Pedido</span>
                 <span role="columnheader">Fecha</span>
                 <span role="columnheader">Estado</span>
+                <span role="columnheader">Certificado</span>
                 <span role="columnheader" class="qb-tabla__num">Remisión</span>
             </div>
             <div t-foreach="entregas" t-as="e" class="qb-tabla__fila qb-tabla__fila--entrega" role="row">
@@ -225,6 +227,9 @@
                 <span role="cell" data-etq="Estado">
                     <span t-if="e['hecha']" class="qb-estado qb-estado--entregado">Embarcada</span>
                     <span t-else="" class="qb-estado qb-estado--preparacion">Programada</span>
+                </span>
+                <span role="cell" data-etq="Certificado" class="qb-certificados">
+                    <t t-call="website_quimibond.cuenta_certificado"><t t-set="cert" t-value="e['certificado']"/></t>
                 </span>
                 <span role="cell" data-etq="Remisión" class="qb-tabla__num">
                     <a t-if="e['descarga']" t-att-href="e['descarga']" class="qb-descarga" t-att-aria-label="'Descargar la remisión %s' % e['nombre']"><i class="fa fa-download" aria-hidden="true"/> PDF</a>

@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Calidad en línea dentro de «Mi cuenta»: certificado por lote junto a
+         cada entrega y reportes de calidad con seguimiento. Los datos los arma
+         controllers/calidad.py, ya filtrados por la empresa del usuario. -->
+
+    <!-- Certificado de una entrega: descarga, «En preparación» o nada -->
+    <template id="cuenta_certificado" name="Quimibond: certificado de la entrega">
+        <t t-if="cert['estado'] == 'disponible'">
+            <a t-foreach="cert['archivos']" t-as="archivo" t-att-href="archivo['url']" class="qb-descarga"
+               t-att-title="archivo['nombre']" t-att-aria-label="'Descargar el certificado %s' % archivo['nombre']">
+                <i class="fa fa-file-pdf-o" aria-hidden="true"/>
+                <t t-if="len(cert['archivos']) &gt; 1" t-out="archivo['nombre'].rsplit('.', 1)[0]"/>
+                <t t-else="">Certificado</t>
+            </a>
+        </t>
+        <span t-elif="cert['estado'] == 'pendiente'" class="qb-estado qb-estado--preparacion">En preparación</span>
+        <t t-else="">—</t>
+    </template>
+
+    <!-- Lotes de una entrega -->
+    <template id="cuenta_lotes" name="Quimibond: lotes de la entrega">
+        <ul class="qb-lotes">
+            <li t-foreach="lotes" t-as="lote">
+                <span class="qb-lotes__producto" t-out="lote['producto']"/>
+                <span class="qb-lotes__lote">
+                    <t t-if="lote['lote']">Lote <strong t-out="lote['lote']"/> · </t>
+                    <t t-out="lote['cantidad']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="lote['unidad']"/>
+                </span>
+            </li>
+        </ul>
+    </template>
+
+    <!-- /mi-cuenta/calidad -->
+    <template id="cuenta_calidad" name="Quimibond: Calidad">
+        <t t-call="website_quimibond.cuenta_marco">
+            <div class="qb-cuenta__bloque qb-cuenta__bloque--primero">
+                <div class="qb-cuenta__titulo">
+                    <h2>Certificados por entrega</h2>
+                    <span class="qb-mono">Últimos <t t-out="meses"/> meses</span>
+                </div>
+                <t t-if="entregas">
+                    <div class="qb-tabla" role="table">
+                        <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--calidad" role="row">
+                            <span role="columnheader">Entrega</span>
+                            <span role="columnheader">Pedido</span>
+                            <span role="columnheader">Producto y lote</span>
+                            <span role="columnheader">Certificado</span>
+                            <span role="columnheader" class="qb-tabla__num">¿Algún problema?</span>
+                        </div>
+                        <div t-foreach="entregas" t-as="e" class="qb-tabla__fila qb-tabla__fila--calidad" role="row">
+                            <span role="cell" data-etq="Entrega">
+                                <strong t-out="e['nombre']"/>
+                                <small t-if="e['fecha']" t-out="e['fecha']" t-options='{"widget": "date"}'/>
+                            </span>
+                            <span role="cell" data-etq="Pedido">
+                                <a t-att-href="e['pedido_url']"><u t-out="e['pedido']"/></a>
+                                <small t-if="e['referencia']" t-out="e['referencia']"/>
+                            </span>
+                            <span role="cell" data-etq="Producto y lote" class="qb-tabla__lotes">
+                                <t t-if="e['lotes']" t-call="website_quimibond.cuenta_lotes"><t t-set="lotes" t-value="e['lotes']"/></t>
+                                <t t-else="">—</t>
+                            </span>
+                            <span role="cell" data-etq="Certificado" class="qb-certificados">
+                                <t t-call="website_quimibond.cuenta_certificado"><t t-set="cert" t-value="e['certificado']"/></t>
+                            </span>
+                            <span role="cell" data-etq="¿Algún problema?" class="qb-tabla__num">
+                                <a t-if="reclamos_activo and not qb_vista_previa" t-att-href="e['reclamar']" class="qb-enlace-fino"
+                                   t-att-aria-label="'Levantar un reporte sobre la entrega %s' % e['nombre']">Reportar</a>
+                                <t t-else="">—</t>
+                            </span>
+                        </div>
+                    </div>
+                    <p t-if="not con_certificado" class="qb-nota">
+                        El certificado de calidad aparece aquí, junto a su entrega, cuando su empresa lo tiene acordado en cada embarque.
+                        Si lo necesita, pídalo a su contacto de Ventas.
+                    </p>
+                </t>
+                <div t-else="" class="qb-vacio">
+                    <p>No hay entregas en los últimos <t t-out="meses"/> meses.</p>
+                </div>
+            </div>
+
+            <div t-if="reclamos_activo" class="qb-cuenta__bloque" id="reportes">
+                <div class="qb-cuenta__titulo">
+                    <h2>Reportes de calidad</h2>
+                    <a t-if="not qb_vista_previa" t-att-href="nueva_url" class="qb-btn qb-btn--primario">Levantar un reporte</a>
+                </div>
+                <t t-if="reclamos">
+                    <div class="qb-tabla" role="table">
+                        <div class="qb-tabla__cab qb-tabla__fila qb-tabla__fila--reclamo" role="row">
+                            <span role="columnheader">Reporte</span>
+                            <span role="columnheader">Asunto</span>
+                            <span role="columnheader">Etapa</span>
+                        </div>
+                        <a t-foreach="reclamos" t-as="r" t-att-href="r['url']" class="qb-tabla__fila qb-tabla__fila--reclamo" role="row">
+                            <span role="cell" data-etq="Reporte">
+                                <strong>#<t t-out="r['folio']"/></strong>
+                                <small t-out="r['fecha']" t-options='{"widget": "date"}'/>
+                            </span>
+                            <span role="cell" data-etq="Asunto" t-out="r['asunto']"/>
+                            <span role="cell" data-etq="Etapa">
+                                <span t-attf-class="qb-estado qb-estado--#{r['etapa']['clave']}" t-out="r['etapa']['texto']"/>
+                            </span>
+                        </a>
+                    </div>
+                </t>
+                <div t-else="" class="qb-vacio">
+                    <p>No tiene reportes de calidad. Si algo llegó distinto a lo acordado, levante un reporte con el lote y fotos, y le respondemos por escrito.</p>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/calidad/nueva -->
+    <template id="cuenta_reclamo_nuevo" name="Quimibond: Levantar un reporte">
+        <t t-call="website_quimibond.cuenta_marco">
+            <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" class="qb-volver"><i class="fa fa-long-arrow-left" aria-hidden="true"/> Calidad</a>
+
+            <!-- Paso 1: sobre qué entrega -->
+            <t t-if="elegir and not general">
+                <div class="qb-cuenta__titulo">
+                    <h2>¿Sobre qué entrega es el reporte?</h2>
+                </div>
+                <div class="qb-tabla" role="table">
+                    <a t-foreach="elegir" t-as="e" t-att-href="e['reclamar']" class="qb-tabla__fila qb-tabla__fila--elegir" role="row">
+                        <span role="cell" data-etq="Entrega">
+                            <strong t-out="e['nombre']"/>
+                            <small t-if="e['fecha']" t-out="e['fecha']" t-options='{"widget": "date"}'/>
+                        </span>
+                        <span role="cell" data-etq="Pedido">
+                            <t t-out="e['pedido']"/>
+                            <small t-if="e['referencia']" t-out="e['referencia']"/>
+                        </span>
+                        <span role="cell" data-etq="Producto y lote" class="qb-tabla__lotes">
+                            <t t-if="e['lotes']" t-call="website_quimibond.cuenta_lotes"><t t-set="lotes" t-value="e['lotes']"/></t>
+                            <t t-else="">—</t>
+                        </span>
+                    </a>
+                </div>
+                <p class="qb-nota"><a t-att-href="general_url"><u>Mi reporte no es sobre una entrega en particular</u></a></p>
+            </t>
+
+            <!-- Paso 2: el reporte -->
+            <t t-else="">
+                <div class="qb-cuenta__titulo">
+                    <h2>Levantar un reporte</h2>
+                </div>
+                <div t-if="qb_vista_previa" class="qb-aviso" role="status">En la vista previa no se pueden levantar reportes.</div>
+                <div t-if="error" class="qb-aviso qb-aviso--error" role="alert" t-out="error"/>
+                <form t-attf-action="/mi-cuenta/calidad/nueva" method="post" enctype="multipart/form-data" class="qb-card qb-reporte qb-form">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="entrega" t-att-value="entrega['id'] if entrega else 0"/>
+
+                    <div t-if="entrega" class="qb-reporte__entrega">
+                        <span class="qb-mono">Entrega</span>
+                        <strong t-out="entrega['nombre']"/>
+                        <span>
+                            Pedido <t t-out="entrega['pedido']"/>
+                            <t t-if="entrega['referencia']"> · Su orden <t t-out="entrega['referencia']"/></t>
+                            <t t-if="entrega['fecha']"> · <t t-out="entrega['fecha']" t-options='{"widget": "date"}'/></t>
+                        </span>
+                    </div>
+
+                    <fieldset t-if="entrega and entrega['lotes']" class="qb-campo qb-campo--ancho">
+                        <legend class="s_website_form_label">¿Qué lotes tienen el problema?</legend>
+                        <label t-foreach="entrega['lotes']" t-as="lote" class="qb-opcion">
+                            <input type="checkbox" name="lote" t-att-value="lote['clave']"
+                                   t-att-checked="'checked' if lote['clave'] in valores.get('lotes', ()) or len(entrega['lotes']) == 1 else None"/>
+                            <span>
+                                <strong t-out="lote['producto']"/>
+                                <small>
+                                    <t t-if="lote['lote']">Lote <t t-out="lote['lote']"/> · </t>
+                                    <t t-out="lote['cantidad']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="lote['unidad']"/>
+                                </small>
+                            </span>
+                        </label>
+                    </fieldset>
+
+                    <div class="qb-form__rejilla">
+                        <div class="qb-campo">
+                            <label class="s_website_form_label" for="qb_motivo">Motivo</label>
+                            <select id="qb_motivo" name="motivo" class="form-select" required="required">
+                                <option value="">Elija uno</option>
+                                <option t-foreach="motivos.items()" t-as="m" t-att-value="m[0]" t-out="m[1]"
+                                        t-att-selected="'selected' if valores.get('motivo') == m[0] else None"/>
+                            </select>
+                        </div>
+                        <div class="qb-campo">
+                            <label class="s_website_form_label" for="qb_cantidad">Cantidad afectada <span class="s_website_form_mark">(si la sabe)</span></label>
+                            <input id="qb_cantidad" type="text" name="cantidad" class="form-control" maxlength="60"
+                                   placeholder="Por ejemplo, 350 m o 2 rollos" t-att-value="valores.get('cantidad')"/>
+                        </div>
+                        <div class="qb-campo qb-campo--ancho">
+                            <label class="s_website_form_label" for="qb_descripcion">¿Qué encontró?</label>
+                            <textarea id="qb_descripcion" name="descripcion" class="form-control" rows="6" required="required" minlength="10" maxlength="5000"
+                                      placeholder="Describa el problema, dónde lo detectó y cuánto material tiene detenido."><t t-out="valores.get('descripcion')"/></textarea>
+                        </div>
+                        <div class="qb-campo qb-campo--ancho">
+                            <label class="s_website_form_label" for="qb_fotos">Fotos <span class="s_website_form_mark">(opcional, hasta <t t-out="max_archivos"/>)</span></label>
+                            <input id="qb_fotos" type="file" name="fotos" class="form-control" multiple="multiple"
+                                   accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"/>
+                            <small class="qb-ayuda">La etiqueta del rollo y el defecto de cerca ayudan a resolverlo más rápido. Fotos o PDF de hasta 10 MB cada uno.</small>
+                        </div>
+                    </div>
+                    <div class="qb-form__enviar">
+                        <button type="submit" class="qb-btn qb-btn--primario" t-att-disabled="'disabled' if qb_vista_previa else None">Enviar reporte</button>
+                        <small>Calidad lo revisa y le responde por escrito en esta misma página.</small>
+                    </div>
+                </form>
+            </t>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/calidad/reclamacion/<id> -->
+    <template id="cuenta_reclamo" name="Quimibond: Mi reporte de calidad">
+        <t t-call="website_quimibond.cuenta_marco">
+            <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" class="qb-volver"><i class="fa fa-long-arrow-left" aria-hidden="true"/> Calidad</a>
+            <div t-if="enviada" class="qb-aviso qb-aviso--ok" role="status">
+                Recibimos su reporte. Calidad lo revisa y la respuesta aparecerá en esta página.
+            </div>
+            <div class="qb-card qb-pedido qb-pedido--detalle">
+                <div class="qb-pedido__cab">
+                    <div>
+                        <h2 t-out="reclamo['asunto']"/>
+                        <span>Reporte #<t t-out="reclamo['folio']"/> · levantado el <t t-out="reclamo['fecha']" t-options='{"widget": "date"}'/></span>
+                    </div>
+                    <span t-attf-class="qb-estado qb-estado--#{reclamo['etapa']['clave']}" t-out="reclamo['etapa']['texto']"/>
+                </div>
+                <t t-call="website_quimibond.cuenta_pasos"><t t-set="etapa" t-value="reclamo['etapa']"/></t>
+            </div>
+
+            <div t-if="respuesta" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Respuesta de Quimibond</h2>
+                    <span class="qb-mono" t-out="respuesta['fecha']" t-options='{"widget": "date"}'/>
+                </div>
+                <div class="qb-card qb-respuesta">
+                    <div class="qb-texto" t-out="respuesta['cuerpo']"/>
+                    <t t-call="website_quimibond.cuenta_adjuntos"><t t-set="adjuntos" t-value="respuesta['adjuntos']"/></t>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Su reporte</h2></div>
+                <div class="qb-card qb-reporte">
+                    <div class="qb-texto" t-out="descripcion"/>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__bloque" id="mensajes">
+                <div class="qb-cuenta__titulo"><h2>Seguimiento</h2></div>
+                <div t-if="mensajes" class="qb-mensajes">
+                    <div t-foreach="mensajes" t-as="m" t-attf-class="qb-mensaje #{'qb-mensaje--cliente' if m['del_cliente'] else ''}">
+                        <div class="qb-mensaje__cab">
+                            <strong t-out="m['autor']"/>
+                            <span t-out="m['fecha']" t-options='{"widget": "datetime", "date_only": False, "hide_seconds": True}'/>
+                        </div>
+                        <div t-if="m['cuerpo']" class="qb-texto" t-out="m['cuerpo']"/>
+                        <t t-call="website_quimibond.cuenta_adjuntos"><t t-set="adjuntos" t-value="m['adjuntos']"/></t>
+                    </div>
+                </div>
+                <div t-elif="not respuesta" class="qb-vacio"><p>Todavía no hay mensajes. Cuando Calidad le escriba, lo verá aquí.</p></div>
+
+                <div t-if="error" class="qb-aviso qb-aviso--error" role="alert" t-out="error"/>
+                <form t-if="puede_escribir" t-attf-action="/mi-cuenta/calidad/reclamacion/#{reclamo['id']}/mensaje" method="post"
+                      enctype="multipart/form-data" class="qb-card qb-reporte qb-form qb-reporte--mensaje">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div class="qb-campo">
+                        <label class="s_website_form_label" for="qb_mensaje">Agregar información</label>
+                        <textarea id="qb_mensaje" name="mensaje" class="form-control" rows="3" maxlength="5000"
+                                  placeholder="Escriba aquí si tiene más datos o una pregunta."/>
+                    </div>
+                    <div class="qb-campo">
+                        <label class="s_website_form_label" for="qb_mas_fotos">Fotos o PDF <span class="s_website_form_mark">(opcional)</span></label>
+                        <input id="qb_mas_fotos" type="file" name="fotos" class="form-control" multiple="multiple"
+                               accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"/>
+                    </div>
+                    <div class="qb-form__enviar">
+                        <button type="submit" class="qb-btn qb-btn--contorno">Enviar</button>
+                    </div>
+                </form>
+                <p t-elif="reclamo['etapa']['clave'] == 'cerrada'" class="qb-nota">Este reporte está cerrado. Si el problema continúa, levante uno nuevo desde Calidad.</p>
+            </div>
+        </t>
+    </template>
+
+    <!-- Archivos de un mensaje: las fotos se ven, lo demás se descarga -->
+    <template id="cuenta_adjuntos" name="Quimibond: archivos de un mensaje">
+        <div t-if="adjuntos" class="qb-adjuntos">
+            <t t-foreach="adjuntos" t-as="adjunto">
+                <a t-if="adjunto['imagen']" t-att-href="adjunto['url']" target="_blank" rel="noopener" class="qb-adjuntos__foto">
+                    <img t-att-src="adjunto['url']" t-att-alt="adjunto['nombre']" loading="lazy"/>
+                </a>
+                <a t-else="" t-att-href="adjunto['url']" class="qb-descarga"><i class="fa fa-paperclip" aria-hidden="true"/> <t t-out="adjunto['nombre']"/></a>
+            </t>
+        </div>
+    </template>
+</odoo>

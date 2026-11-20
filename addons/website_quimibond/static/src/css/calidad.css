@@ -1,0 +1,75 @@
+/* -------------------------------------------------------------------------
+   Mi cuenta · Calidad: certificados por entrega y reportes con seguimiento.
+   Usa las variables y los componentes de quimibond.css (tabla, estado, pasos).
+   ---------------------------------------------------------------------- */
+.qb-cuenta__bloque--primero { margin-top: 0; }
+.qb-tabla__fila--calidad { grid-template-columns: 1fr 1fr 2.2fr 1.1fr .9fr; align-items: start; }
+.qb-tabla__fila--reclamo { grid-template-columns: .8fr 3fr 1fr; }
+.qb-tabla__fila--elegir { grid-template-columns: 1fr 1fr 2.4fr; align-items: start; }
+.qb-tabla__cab.qb-tabla__fila--calidad { align-items: center; }
+@media (min-width: 861px) {
+    .qb-tabla__fila--entrega { grid-template-columns: 1.2fr 1.2fr .9fr .9fr 1.1fr .7fr; }
+}
+
+/* Lotes de una entrega */
+.qb .qb-lotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.qb-lotes__producto { display: block; font-weight: 500; }
+.qb-lotes__lote { display: block; font-size: .8rem; color: var(--qb-muted-fg); }
+.qb-lotes__lote strong { display: inline; font-family: var(--qb-mono); font-weight: 500; color: var(--qb-fg); }
+.qb-certificados { display: flex; flex-wrap: wrap; gap: 6px; }
+.qb .qb-certificados .qb-descarga { max-width: 100%; white-space: normal; text-align: left; }
+.qb .qb-enlace-fino { font-size: .8rem; font-weight: 500; color: var(--qb-muted-fg); text-decoration: underline; text-underline-offset: 3px; }
+.qb .qb-enlace-fino:hover { color: var(--qb-fg); }
+.qb-cuenta__titulo .qb-btn { flex: none; }
+
+/* Etapas del reporte */
+.qb-estado--recibida::before, .qb-estado--analisis::before { background: var(--qb-acento); }
+.qb-estado--respuesta { color: #06694f; background: #e7f8f2; border-color: #bfe9db; }
+.qb-estado--respuesta::before { background: var(--qb-ok); }
+
+/* Avisos */
+.qb-aviso { margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); font-size: .9rem; }
+.qb-aviso--ok { color: #06694f; background: #e7f8f2; border-color: #bfe9db; }
+.qb-aviso--error { color: #9a1c1c; background: #fdecec; border-color: #f5c6c6; }
+
+/* Formulario del reporte */
+.qb-reporte { padding: 24px; display: grid; gap: 20px; }
+.qb-reporte.qb-form { padding: 24px !important; }
+.qb-reporte__entrega { display: grid; gap: 2px; padding-bottom: 16px; border-bottom: 1px solid var(--qb-borde); }
+.qb-reporte__entrega strong { font-size: 1.05rem; font-weight: 600; }
+.qb-reporte__entrega span:last-child { font-size: .85rem; color: var(--qb-muted-fg); }
+.qb-reporte fieldset { border: 0; min-width: 0; }
+.qb-reporte legend { float: none; margin-bottom: 4px !important; }
+.qb-opcion { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); cursor: pointer; margin: 0; }
+.qb-opcion:has(input:checked) { border-color: var(--qb-fg); background: var(--qb-suave); }
+.qb-opcion input { margin-top: 4px; width: 16px; height: 16px; accent-color: var(--qb-fg); flex: none; }
+.qb-opcion strong { display: block; font-size: .9rem; font-weight: 500; }
+.qb-opcion small { display: block; font-size: .8rem; color: var(--qb-muted-fg); }
+.qb-ayuda { font-size: .8rem; color: var(--qb-muted-fg); }
+.qb-reporte--mensaje { margin-top: 16px; }
+
+/* Seguimiento */
+.qb-texto { font-size: .925rem; line-height: 1.6; overflow-wrap: anywhere; }
+.qb-texto p { margin: 0 0 .5em; }
+.qb-texto p:last-child { margin-bottom: 0; }
+.qb-respuesta { padding: 24px; border-color: #bfe9db; background: #f6fdfa; }
+.qb-mensajes { display: grid; gap: 12px; }
+.qb-mensaje { max-width: 720px; padding: 14px 16px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); }
+.qb-mensaje--cliente { margin-left: auto; background: var(--qb-suave); width: 100%; }
+.qb-mensaje__cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: .8rem; color: var(--qb-muted-fg); }
+.qb-mensaje__cab strong { font-size: .875rem; font-weight: 600; color: var(--qb-fg); }
+.qb-adjuntos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.qb-adjuntos__foto { display: block; width: 96px; height: 96px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); overflow: hidden; background: var(--qb-muted); }
+.qb-adjuntos__foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+@media (max-width: 860px) {
+    .qb-tabla__fila--calidad, .qb-tabla__fila--reclamo, .qb-tabla__fila--elegir { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+    .qb-tabla__fila > span.qb-tabla__lotes { text-align: left; }
+    .qb-tabla__fila > span.qb-tabla__lotes::before { float: none; display: block; margin: 0 0 4px; }
+    .qb-certificados { justify-content: flex-end; }
+    .qb-tabla__fila > span.qb-certificados { display: flex; align-items: center; justify-content: space-between; }
+    .qb-tabla__fila > span.qb-certificados::before { float: none; }
+    .qb-reporte, .qb-reporte.qb-form { padding: 16px !important; }
+    .qb-form__rejilla { grid-template-columns: 1fr; }
+    .qb-cuenta__titulo { flex-wrap: wrap; }
+}
