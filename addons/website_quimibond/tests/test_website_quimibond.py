@@ -100,7 +100,7 @@ class TestSitioB2B(HttpCase):
         self.assertIn('Marca Dos', portada)
         automotriz = self.url_open('/mercados/automotriz').text
         self.assertIn('Marca Uno', automotriz)
-        for texto in ('id="aplicaciones"', 'Asientos', 'Paneles de puerta', 'Punto de doble fontura', '/disenar?ap='):
+        for texto in ('id="aplicaciones"', 'Asientos', 'Paneles de puerta', 'Punto de doble fontura', '/cotizar?mercado=automotriz', 'Scrim'):
             self.assertIn(texto, automotriz, texto)
         confeccion = self.url_open('/mercados/confeccion').text
         for texto in ('Playera', 'Entretela para frente de saco', 'No tejido tramado'):

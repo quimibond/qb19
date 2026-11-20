@@ -116,7 +116,7 @@
                     <div class="qb-footer__marca">
                         <a href="/" class="qb-logo"><t t-call="website_quimibond.logo"/><span>Quimibond</span></a>
                         <p>Scrims automotrices, entretelas y textiles técnicos fabricados en México desde 1992.</p>
-                        <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span></p>
+                        <p class="qb-footer__sellos"><span class="qb-badge qb-badge--oscuro">ISO 9001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 14001:2015</span> <span class="qb-badge qb-badge--oscuro">ISO 45001 en proceso</span></p>
                     </div>
                     <div>
                         <h3>Mercados</h3>

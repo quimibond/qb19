@@ -13,7 +13,7 @@
                     <div class="qb-container qb-hero__in">
                         <div class="qb-hero__texto">
                             <a href="/calidad" class="qb-pill qb-reveal">
-                                <span class="qb-pill__punto"/> ISO 9001 · ISO 14001 <span class="qb-pill__sep"/> Hecho en México
+                                <span class="qb-pill__punto"/> ISO 9001 · 14001 <span class="qb-pill__sep"/> ISO 45001 en proceso
                                 <i class="fa fa-angle-right" aria-hidden="true"/>
                             </a>
                             <h1 class="qb-reveal">Scrims, entretelas y textiles técnicos, <span class="qb-hilado">del hilo al rollo terminado.</span></h1>
@@ -171,6 +171,7 @@
                                 <div class="qb-sellos">
                                     <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                                     <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
                                 </div>
                             </a>
                             <t t-foreach="qb_sustentabilidad" t-as="s">
@@ -238,11 +239,11 @@
                         <div class="qb-sec__cab">
                             <span class="qb-eyebrow qb-reveal">Aplicaciones</span>
                             <h2 class="qb-reveal">Dónde va la tela y cuál proponemos.</h2>
-                            <p class="qb-lead qb-reveal">Cada aplicación parte de una tela propuesta. Ábrala en el diseñador y ajústela a su especificación.</p>
+                            <p class="qb-lead qb-reveal">Estas son las aplicaciones que atendemos y la tela que fabricamos para cada una.</p>
                         </div>
                         <div t-attf-class="qb-grid qb-grid--#{4 if len(mercado['aplicaciones']) == 4 else 3}">
                             <t t-foreach="mercado['aplicaciones']" t-as="ap">
-                                <a t-att-href="ap['enlace']" class="qb-card qb-tipo qb-app qb-spot qb-reveal">
+                                <div class="qb-card qb-tipo qb-app qb-spot qb-reveal">
                                     <t t-call="website_quimibond.dibujo_tejido">
                                         <t t-set="clave" t-value="ap['construccion']"/>
                                     </t>
@@ -253,10 +254,13 @@
                                             <dt t-out="ap['familia']"/>
                                             <dd t-out="ap['tela']"/>
                                         </dl>
-                                        <span class="qb-enlace">Diseñar esta tela <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
                                     </div>
-                                </a>
+                                </div>
                             </t>
+                        </div>
+                        <div class="qb-hero__cta qb-mercado__cta qb-reveal">
+                            <a t-attf-href="/cotizar?mercado=#{mercado['clave']}" class="qb-btn qb-btn--primario qb-btn--lg">Solicitar cotización o muestra <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                            <a href="/disenar" class="qb-btn qb-btn--ghost qb-btn--lg">¿Necesita algo distinto? Diseñe su tela</a>
                         </div>
                     </div>
                 </section>
@@ -423,10 +427,11 @@
                 <t t-call="website_quimibond.encabezado_pagina">
                     <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
                     <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
-                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015.'"/>
+                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015 e ISO 14001:2015, y en proceso de certificación en ISO 45001.'"/>
                     <div class="qb-sellos qb-reveal">
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
+                                    <span class="qb-sello qb-sello--proceso"><strong>ISO</strong>45001<em>en proceso</em></span>
                     </div>
                     <p class="qb-nota qb-reveal">ISO 45001 de seguridad y salud en el trabajo: en proceso de certificación.</p>
                 </t>

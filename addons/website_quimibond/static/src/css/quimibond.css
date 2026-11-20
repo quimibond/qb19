@@ -284,6 +284,7 @@ html.qb-js a.qb-card.qb-reveal.qb-in { transition: border-color .2s, box-shadow 
 .qb-hero__nota { margin-top: 18px !important; font-size: .85rem; color: var(--qb-muted-fg); display: flex; align-items: center; gap: 8px; }
 .qb-hero__maquina { position: relative; aspect-ratio: 1 / 1; width: 100%; max-width: 540px; margin-left: auto; }
 .qb-hero__maquina canvas, .qb-maquina-caja canvas { width: 100%; height: 100%; display: block; }
+.qb-mercado__cta { margin-top: 40px; }
 .qb-etapa { margin: 0; padding: 0; overflow: hidden; }
 .qb-etapa__caja { aspect-ratio: 16 / 9; background: var(--qb-bg); border-bottom: 1px solid var(--qb-borde); }
 .qb-etapa__caja canvas { display: block; width: 100%; height: 100%; }
@@ -429,6 +430,8 @@ a:hover .qb-muestra__puntos { opacity: .9; }
 .qb-sellos { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
 .qb-sello { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 96px; height: 96px; border-radius: 50%; border: 1px solid var(--qb-borde-fuerte); font-family: var(--qb-mono); font-size: .7rem; color: #3f3f46; background: var(--qb-bg); position: relative; }
 .qb-sello::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 1px dashed var(--qb-borde-fuerte); animation: qb-gira 30s linear infinite; }
+.qb-sello--proceso { border-style: dashed; color: var(--qb-muted-fg); }
+.qb-sello--proceso em { font-style: normal; font-size: .58rem; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 .qb-sello strong { font-family: var(--qb-fuente); font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em; color: var(--qb-fg); line-height: 1; }
 .qb-mini { margin-top: 24px; border: 1px solid var(--qb-borde); border-radius: 8px; background: var(--qb-suave); }
 .qb-mini > div { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--qb-borde); }
