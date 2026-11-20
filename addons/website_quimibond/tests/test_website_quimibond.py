@@ -43,6 +43,10 @@ class TestSitioB2B(HttpCase):
         self.assertIn('href="/web/login"', portada.text)
         self.assertIn('Iniciar sesión', portada.text)
         self.assertIn('data-qb-anim="circular"', portada.text)
+        # Logotipo nuevo en el encabezado y entrada animada solo en la portada.
+        self.assertIn('qb-logo__marca', portada.text)
+        self.assertIn('id="qb_intro"', portada.text)
+        self.assertNotIn('id="qb_intro"', self.url_open('/planta').text)
         self.assertNotIn('ricot', portada.text)
         self.assertIn('Scrims', portada.text)
         self.assertNotIn('href="/catalogo"', portada.text)

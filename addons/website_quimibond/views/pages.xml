@@ -7,6 +7,7 @@
         <t t-call="website.layout">
             <t t-set="pageName" t-value="'homepage'"/>
             <div id="wrap" class="qb">
+                <t t-call="website_quimibond.intro"/>
                 <!-- Hero con la máquina de tejido circular -->
                 <section class="qb-hero">
                     <div class="qb-trama" aria-hidden="true"/>
