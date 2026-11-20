@@ -172,3 +172,8 @@ número. En el mercado automotriz se explica para qué sirve el scrim (soporte
 que se lamina con espuma y tela, vinil o piel de las vestiduras). ISO 45001:
 certificada (lo confirmó Dirección el 2026-11-19), se muestra igual que las otras dos. El
 diseñador pregunta «Composición» y ya no el tipo de filamento.
+
+Desde 1.10.0 `/calidad` muestra los paneles solares y la planta tratadora de
+agua (Dirección, 2026-11-19), con las cifras de la presentación de empresa de
+octubre de 2026: 2,081 paneles, 3.7 GWh desde 2021 y tratadora desde 2025.
+También entran a la historia de `/nosotros`, junto con la ISO 45001.

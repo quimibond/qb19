@@ -386,8 +386,14 @@ HISTORIA = [
      'texto': 'Certificación ISO 9001 del sistema de gestión de calidad.'},
     {'anio': '2018', 'titulo': 'Modernización',
      'texto': 'Tecnología nueva en producción para mejorar eficiencia y calidad.'},
+    {'anio': '2020', 'titulo': 'Energía solar',
+     'texto': 'Primeros 1,315 paneles solares en la planta; en 2024 se sumaron 766 más.'},
     {'anio': '2023', 'titulo': 'ISO 14001',
      'texto': 'Certificación ISO 14001 del sistema de gestión ambiental.'},
+    {'anio': '2025', 'titulo': 'Planta tratadora de agua',
+     'texto': 'Entra en operación la planta tratadora de agua.'},
+    {'anio': '2026', 'titulo': 'ISO 45001',
+     'texto': 'Certificación ISO 45001 de seguridad y salud en el trabajo.'},
 ]
 
 # Misión, visión, valores y razones: de la propuesta de Calidad para la página
@@ -417,9 +423,20 @@ RAZONES = [
      'texto': 'Innovación, sustentabilidad y seguridad de nuestra gente en cada etapa del proceso.'},
 ]
 
+# Cifras de la presentación de empresa de octubre de 2026 (Ventas): 1,315
+# paneles en 2020 más 766 en 2024; 3.7 GWh generados de 2021 a octubre de 2026;
+# planta tratadora de agua en operación desde 2025.
+SUSTENTABILIDAD_CIFRAS = [
+    {'valor': '2,081', 'etiqueta': 'Paneles solares en la planta'},
+    {'valor': '3.7 GWh', 'etiqueta': 'Energía limpia generada desde 2021'},
+    {'valor': '2025', 'etiqueta': 'Planta tratadora de agua en operación'},
+]
+
 SUSTENTABILIDAD = [
-    {'icono': 'fa-sun-o', 'titulo': 'Energía solar', 'texto': 'Generación de energía con paneles solares en planta.'},
-    {'icono': 'fa-tint', 'titulo': 'Agua pluvial', 'texto': 'Captación y aprovechamiento de agua de lluvia.'},
+    {'icono': 'fa-sun-o', 'titulo': 'Energía solar',
+     'texto': '2,081 paneles solares en el techo de la planta, que generan parte de la energía con la que producimos.'},
+    {'icono': 'fa-tint', 'titulo': 'Tratamiento de agua',
+     'texto': 'Planta tratadora de agua propia, en operación desde 2025, y captación de agua de lluvia.'},
     {'icono': 'fa-recycle', 'titulo': 'Reciclaje', 'texto': 'Separación de residuos y reciclaje en todas las áreas.'},
 ]
 

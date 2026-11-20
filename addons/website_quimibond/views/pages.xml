@@ -450,7 +450,7 @@
                             <div class="qb-card qb-spot qb-reveal">
                                 <span class="qb-mono qb-num">02</span>
                                 <h3>Cuidado del medio ambiente</h3>
-                                <p>Identificamos nuestros aspectos ambientales significativos y aprovechamos los recursos: reciclaje, agua pluvial y energía solar.</p>
+                                <p>Identificamos nuestros aspectos ambientales significativos y aprovechamos los recursos: energía solar, planta tratadora de agua, agua pluvial y reciclaje.</p>
                             </div>
                             <div class="qb-card qb-spot qb-reveal">
                                 <span class="qb-mono qb-num">03</span>
@@ -466,6 +466,14 @@
                             <span class="qb-eyebrow qb-reveal">Sustentabilidad</span>
                             <h2 class="qb-reveal">Lo que hacemos en planta</h2>
                         </div>
+                        <dl class="qb-cifras qb-cifras--3 qb-reveal">
+                            <t t-foreach="qb_sustentabilidad_cifras" t-as="c">
+                                <div>
+                                    <dd t-out="c['valor']"/>
+                                    <dt t-out="c['etiqueta']"/>
+                                </div>
+                            </t>
+                        </dl>
                         <div class="qb-grid qb-grid--3">
                             <t t-foreach="qb_sustentabilidad" t-as="s">
                                 <div class="qb-card qb-spot qb-reveal">
