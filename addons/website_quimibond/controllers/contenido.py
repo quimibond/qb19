@@ -105,8 +105,6 @@ MAQUINARIA = [
         'texto': 'Circulares de una fontura y de doble fontura, con salida de tela tubular o abierta.',
         'datos': [
             ('Fonturas', 'Una fontura y doble fontura'),
-            ('Galgas', '16, 18, 24, 28 y 32'),
-            ('Diámetros', '30, 32 y 38 pulgadas'),
             ('Salida de la tela', 'Tubular y abierta'),
         ],
     },
@@ -117,11 +115,10 @@ MAQUINARIA = [
         'tipo': 'tintoreria',
         'cantidad': 0,
         'unidad': 'Jets de teñido',
-        'texto': 'Jets de teñido con cocina de colores propia. Cada baño lleva su número y su fórmula.',
+        'texto': 'Teñido en jets, donde la tela circula por el baño hasta que el color queda parejo.',
         'datos': [
-            ('Carga por jet', 'De 300 a 1,200 kg'),
-            ('Relación de baño', 'Desde 1:6'),
-            ('Apoyo', 'Cocina de colores'),
+            ('Proceso', 'Teñido por lote'),
+            ('Color', 'De acuerdo a su especificación'),
         ],
     },
     {
@@ -131,11 +128,10 @@ MAQUINARIA = [
         'tipo': 'acabado',
         'cantidad': 0,
         'unidad': 'Ramas',
-        'texto': 'Secado, termofijado y acabado al ancho. Cada rollo se pesa y se mide al salir de la rama.',
+        'texto': 'Termofijado del producto de acuerdo a su especificación, al ancho pedido.',
         'datos': [
-            ('Proceso', 'Secado, termofijado y acabado'),
-            ('Preparación', 'Abridoras y devanadoras'),
-            ('Apoyo', 'Cocina de resinas'),
+            ('Proceso', 'Secado y termofijado'),
+            ('Acabados especiales', 'Retardante a la flama y repelentes, entre otros'),
         ],
     },
     {
@@ -159,11 +155,11 @@ MAQUINARIA = [
         'tipo': 'inspeccion',
         'cantidad': 0,
         'unidad': 'Máquinas de inspección',
-        'texto': 'Inspección rollo por rollo con peso, metros, defectos y clasificación. Laboratorio '
-                 'en planta y empaque.',
+        'texto': 'Inspección al 100 %, rollo por rollo, y laboratorio en planta.',
         'datos': [
-            ('Registro', 'Etiqueta con código de barras por rollo'),
-            ('Trazabilidad', 'Del baño de teñido al rollo terminado'),
+            ('Inspección', 'Al 100 %, rollo por rollo'),
+            ('Laboratorio', 'Pruebas de acuerdo a su especificación y pruebas especiales'),
+            ('Trazabilidad', 'Del lote de teñido al rollo terminado'),
         ],
     },
 ]
@@ -215,6 +211,13 @@ DISENADOR = {
     # parte del vehículo, la prenda, el blanco). Cada una propone una tela de
     # partida que la persona ajusta. No son productos del catálogo ni promesas.
     'aplicaciones': [
+        # Scrim: de los productos de Odoo (SCRIM 55, SCRIM BLACK 70 g/m², SCRIM NYLON;
+        # categoría «Tejido Circular / Industrial», la de mayor venta). Dirección
+        # (2026-11-19): es el producto automotriz y va al frente.
+        {'nombre': 'Scrim', 'mercado': 'Automotriz',
+         'texto': 'Tela ligera de tejido circular, de 55 a 70 g/m², en natural o negro.',
+         'tela': {'construccion': 'una_fontura', 'galga': 28, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
+                  'peso': 70, 'color': '#1b1b1f', 'tacto': 'Suave'}},
         {'nombre': 'Asientos', 'mercado': 'Automotriz',
          'texto': 'Tela de vestidura con cuerpo, hecha para el uso diario del asiento.',
          'tela': {'construccion': 'doble_fontura', 'galga': 18, 'hilo': 'Poliéster', 'hiloTipo': 'Texturizado',
@@ -276,12 +279,13 @@ DISENADOR = {
 MERCADOS = [
     {
         'clave': 'automotriz',
-        'frase': 'Telas para el interior del vehículo.',
+        'frase': 'Scrims y telas para el interior del vehículo.',
         'nombre': 'Automotriz',
-        'titulo': 'Textiles técnicos para la industria automotriz',
+        'titulo': 'Scrims y textiles técnicos para la industria automotriz',
         'resumen': 'Desde 2014 abastecemos al mercado automotriz de México, Estados Unidos y Canadá '
-                   'con líneas de producto desarrolladas para sus especificaciones.',
+                   'con scrims y telas de tejido circular desarrollados para sus especificaciones.',
         'puntos': [
+            'Scrims de tejido circular en poliéster y nailon, en natural y negro',
             'Desarrollo de producto contra la especificación de su cliente',
             'Lotes trazables de la materia prima al rollo terminado',
             'Calidad liberada por laboratorio antes de embarcar',
@@ -312,7 +316,7 @@ MERCADOS = [
         'nombre': 'Confección',
         'titulo': 'Entretelas para la confección',
         'resumen': 'Entretelas fusionables tejidas y no tejidas para camisería, uniformes, '
-                   'prendas ligeras, frentes y refuerzos, blusas y tricots.',
+                   'playeras, ropa deportiva, cuellos, puños y frentes de saco.',
         'puntos': [
             'Fusionables para lavado en agua y en seco',
             'Tejido circular fusionable para prendas con elasticidad',
@@ -335,27 +339,29 @@ PROCESO = [
     {
         'paso': '02',
         'nombre': 'Tintorería',
-        'texto': 'Teñido en jets con fórmulas controladas por lote, relación de baño y '
-                 'dosificación calculadas en Odoo.',
+        'texto': 'Teñido en jets: la tela circula por el baño hasta que el color queda parejo '
+                 'en todo el lote.',
         'icono': 'fa-tint',
     },
     {
         'paso': '03',
         'nombre': 'Rama y acabado',
-        'texto': 'Secado, termofijado y acabado en rama. Cada rollo se pesa y se mide al salir.',
+        'texto': 'Termofijado del producto de acuerdo a su especificación y acabados especiales, '
+                 'como retardante a la flama y repelentes.',
         'icono': 'fa-fire',
     },
     {
         'paso': '04',
         'nombre': 'Inspección',
-        'texto': 'Inspección rollo por rollo: defectos, metros, peso y clasificación con etiqueta y '
-                 'código de barras.',
+        'texto': 'Inspección al 100 %, rollo por rollo, con pruebas de laboratorio de acuerdo a '
+                 'su especificación.',
         'icono': 'fa-search',
     },
     {
         'paso': '05',
         'nombre': 'Laboratorio y embarque',
-        'texto': 'Pruebas de calidad, liberación y embarque con trazabilidad completa del lote.',
+        'texto': 'Pruebas de laboratorio especiales cuando su especificación las pide, liberación '
+                 'y embarque con la trazabilidad del lote.',
         'icono': 'fa-flask',
     },
 ]
@@ -394,7 +400,8 @@ RAZONES = [
     {'num': '01', 'titulo': 'Experiencia y especialización',
      'texto': 'Fabricamos telas desde 1992. Nuestro equipo técnico desarrolla cada tela a la medida de su aplicación.'},
     {'num': '02', 'titulo': 'Calidad y confianza',
-     'texto': 'Sistema de gestión certificado en ISO 9001 e ISO 14001, con trazabilidad de cada lote.'},
+     'texto': 'Sistema de gestión certificado en ISO 9001 e ISO 14001, en proceso de certificación en '
+              'ISO 45001, y trazabilidad de cada lote.'},
     {'num': '03', 'titulo': 'Compromiso con el futuro',
      'texto': 'Innovación, sustentabilidad y seguridad de nuestra gente en cada etapa del proceso.'},
 ]
