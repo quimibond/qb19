@@ -28,6 +28,13 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.10.3 (2026-11-20): la Rama elegida sí se fija
+
+- **Corrección:** en la ventana, la orden y el número de baño de cada renglón de «Rama por baño» son de solo lectura y no
+  se enviaban al guardar; el renglón quedaba sin orden y, al confirmar, no se encontraba la Rama elegida (las órdenes
+  quedaban con la Rama de la lista). Ahora esos campos llevan `force_save`. Detectado en la prueba local de 1.10.2.
+- Prueba: `test_renglones_de_rama_se_guardan_desde_la_pantalla`.
+
 ## Cambios 19.0.1.10.2 (Planeación, 2026-11-20): la validación de la Rama es aviso y el tiempo sale de la tela en esa Rama
 
 - **Aviso, no bloqueo:** si la Rama no opera, el artículo no tiene proceso en ella o le falta la velocidad, la columna

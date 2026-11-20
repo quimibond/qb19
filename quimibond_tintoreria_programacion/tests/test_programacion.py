@@ -350,6 +350,14 @@ class TestProgramacionTintoreria(TransactionCase):
         ordenes = self.env['mrp.production'].search([('tintoreria_programada', '=', True)]).sorted('id')[-2:]
         self.assertEqual(ordenes.mapped(lambda o: o._workorder_rama().workcenter_id), rama1 | rama2)
 
+    def test_renglones_de_rama_se_guardan_desde_la_pantalla(self):
+        """1.10.3: la orden y el número de baño son de solo lectura; sin force_save el cliente web no los manda al guardar
+        y el renglón queda sin orden (la Rama elegida no se encontraba al confirmar)."""
+        vista = self.env.ref('quimibond_tintoreria_programacion.tintoreria_programacion_wizard_form_view')
+        arch = self.env['tintoreria.programacion.wizard'].get_view(vista.id)['arch']
+        for campo in ('production_id', 'secuencia', 'kg'):
+            self.assertRegex(arch, r'<field name="%s"[^>]*force_save' % campo)
+
     def test_cancelar_ordenes_cancela_la_programacion(self):
         """1.6.2: al cancelar un baño la programación lo anota; con todos cancelados pasa a «Cancelada»."""
         mo = self._crear_mo(1000.0)

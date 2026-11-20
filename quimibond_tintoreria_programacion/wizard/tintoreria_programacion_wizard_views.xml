@@ -42,9 +42,11 @@
                 <separator string="Rama por baño (opcional)"/>
                 <field name="bano_ids" nolabel="1">
                     <list editable="bottom" create="false" delete="false">
-                        <field name="production_id"/>
-                        <field name="secuencia"/>
-                        <field name="kg"/>
+                        <!-- 1.10.3: force_save, porque los campos de solo lectura no se envían al guardar y sin
+                             la orden y el número de baño la Rama elegida no se encuentra al confirmar. -->
+                        <field name="production_id" force_save="1"/>
+                        <field name="secuencia" force_save="1"/>
+                        <field name="kg" force_save="1"/>
                         <field name="rama_id" options="{'no_create': True, 'no_open': True}"/>
                         <field name="rama_aviso" column_invisible="1"/>
                         <field name="validacion" decoration-warning="rama_aviso"
