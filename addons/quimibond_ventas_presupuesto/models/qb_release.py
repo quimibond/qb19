@@ -564,9 +564,14 @@ class QbRelease(models.Model):
             to_create = []
             notes = []
             Apply = Line.with_context(qb_release_apply=True)
+            # 3.31.0: la semana queda en la unidad en que pide el cliente (Lear en metros, Shawmut y FXI en
+            # yardas); los kilos y los metros siguen en sus columnas. Antes quedaba en la unidad de venta y,
+            # al cambiarle la unidad para ver los metros, el número de kilos se leía como metros (Lear, 20-nov).
+            unit_of = release._qb_forecast_units()
             for (product, week), qty in demand.items():
                 ask = asked.get((product, week), 0.0)
-                vals = dict(info[(product, week)], qty_origen=qty, uom_origen=False,
+                qty_origen, uom_origen = Line._qb_en_unidad(product, qty, unit_of.get(product))
+                vals = dict(info[(product, week)], qty_origen=qty_origen, uom_origen=uom_origen,
                             origen='release', release_id=release.id, qty_release=ask,
                             ajustado=False, release_cambio=False,
                             regla_nota=rule_notes.get((product, week), False))
@@ -644,6 +649,16 @@ class QbRelease(models.Model):
         self.env['qb.demand.line'].action_qb_rebuild()
         return True
 
+
+    def _qb_forecast_units(self):
+        """{producto: 'm' | 'yd' | 'kg' | 'm2'}: la unidad en que el cliente pide cada producto del release,
+        si todas sus partes la piden en la misma y se convierten por unidad (no con factor fijo)."""
+        self.ensure_one()
+        found = defaultdict(set)
+        for part in self.part_ids.filtered('product_id'):
+            auto = part.catalog_part_id.conversion != 'fija'
+            found[part.product_id].add(units.forecast_unit(part.customer_uom) if auto else None)
+        return {product: next(iter(unit)) for product, unit in found.items() if len(unit) == 1 and None not in unit}
 
     def _qb_apply_rules(self, demand, info, existing, current, terms):
         """3.18.0: semanas congeladas, embarques cada N semanas y redondeo a rollos (release/reglas.py),
