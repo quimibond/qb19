@@ -125,6 +125,7 @@ class TestSitioB2B(HttpCase):
             self.assertEqual(datos['acabado']['Máquinas'], '3 ramas')
         self.assertIn('Fibras que teñimos', datos['tintoreria'])
         # La receta no se publica (Dirección, 2026-11-19).
+        self.website.qb_diseno_b2b = True
         pagina = self.url_open('/planta').text
         for receta in ('Galgas', 'Diámetros', 'Salida de la tela', 'Relación de baño', 'Carga por jet'):
             self.assertNotIn(receta, pagina)
