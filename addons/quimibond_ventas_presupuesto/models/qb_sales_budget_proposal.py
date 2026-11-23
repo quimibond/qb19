@@ -27,7 +27,8 @@ líneas de costo):
 
 - 3.32.0: **pronóstico vigente**. En Industrial y Especiales, los meses del año que el pronóstico
   de un cliente (releases y captura de Ventas) cubre completos salen del pronóstico, sin
-  crecimiento: es lo que el cliente ya dijo. Los demás meses de ese cliente, de la venta base.
+  crecimiento: es lo que el cliente ya dijo, para los productos que su pronóstico trae. Los
+  demás meses, y los productos que no vienen en su pronóstico, de la venta base.
   Cada renglón dice su origen. **Supuestos por cliente**: un crecimiento propio (−100 % = deja
   de comprar) desde un mes, en lugar del del mercado, solo en los meses que salen de la venta
   base.
@@ -289,9 +290,16 @@ class QbSalesBudgetProposal(models.TransientModel):
         if self.use_forecast:
             forecast_rows, covered = self._qb_forecast_rows(budget)
             covered_ids = {partner.id: span for partner, span in covered.items()}
+            # Solo los productos que el pronóstico del cliente trae: uno que no viene en su release
+            # (se vende por pedido) sigue con la venta base, no desaparece en silencio.
+            forecast_products = defaultdict(set)
+            for product_id, partner_id, _month in forecast_rows:
+                forecast_products[partner_id].add(product_id)
             for key in list(rows):
                 row = rows[key]
-                first, last = covered_ids.get(row['partner'].id, (13, 0)) if row['partner'] else (13, 0)
+                if not row['partner'] or row['product'].id not in forecast_products[row['partner'].id]:
+                    continue
+                first, last = covered_ids.get(row['partner'].id, (13, 0))
                 if first <= row['month'] <= last:
                     replaced += row['amount']
                     del rows[key]

@@ -28,7 +28,8 @@ Jose (23-nov) preguntó cómo se arma el presupuesto 2027 y eligió tres mejoras
 - **Pronóstico vigente en la propuesta** (casilla «Usar el pronóstico vigente», encendida): en Industrial y
   Especiales, los meses que el pronóstico de un cliente cubre completos (del primer mes con pronóstico al
   último que su última semana alcanza hasta el último día) salen del pronóstico, sin crecimiento, con origen
-  «Pronóstico vigente (releases)». Los demás meses del cliente salen de la venta base. Sin regla en la lista,
+  «Pronóstico vigente (releases)», para los productos que su pronóstico trae. Los demás meses, y los
+  productos del cliente que no vienen en su pronóstico (se venden por pedido), salen de la venta base. Sin regla en la lista,
   el precio es el real del periodo base del cliente y producto. Confección sigue de la venta base. El
   chatter dice qué clientes y meses vinieron del pronóstico y cuánta venta base reemplazaron.
 - **Supuestos por cliente** (tabla en el asistente): crecimiento propio desde un mes, en lugar del del
