@@ -41,6 +41,13 @@ con el selector de sitio web del editor.
 Lo que ve un cliente al iniciar sesión. `/my` lo manda a `/mi-cuenta`; el
 portal nativo sigue en `/my?todo=1` (enlace «Más documentos»).
 
+**Por invitación (desde 1.15.0).** «Mi cuenta» y Calidad en línea solo se abren
+a las empresas con la casilla **Acceso a Mi cuenta** (ficha de la empresa →
+Ventas y compras; la ve y la marca un gerente de Ventas). Los usuarios de portal
+de una empresa sin la casilla, y quien se registra solo en el sitio, se quedan en
+el portal de siempre (`/my`). Para invitar: marcar la casilla en la empresa y
+dar acceso al portal al contacto (Acción → Otorgar acceso al portal).
+
 - **Resumen**: pedidos en curso con su etapa (Confirmado · En proceso ·
   Embarcado · Facturado), próxima fecha compromiso, saldo por moneda (por
   vencer y vencido), facturas por pagar y últimas entregas.
