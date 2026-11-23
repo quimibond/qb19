@@ -59,6 +59,48 @@ Reglas (`controllers/cuenta.py`):
   un aviso arriba. Cualquier otro usuario interno va a `/odoo`.
 - Dar acceso a un cliente: en su contacto, Acción → Otorgar acceso al portal.
 
+## Calidad en línea (dentro de Mi cuenta, desde 1.13.0)
+
+Pestaña **Calidad** (`/mi-cuenta/calidad`, `controllers/calidad.py`):
+
+- **Certificado por lote junto a cada entrega.** Cada entrega embarcada muestra
+  sus lotes (los de la remisión) y su certificado. El certificado es el PDF que
+  Laboratorio adjunta a la salida con «Adjuntar CoA» del SGI
+  (`stock.picking.sgi_coa_attachment_ids`); aquí no se genera nada. Con el PDF,
+  se descarga; si el cliente lo tiene acordado (`sgi_requires_coa`) y falta,
+  dice «En preparación»; si no lo tiene acordado, una raya. La misma columna
+  sale en las tablas de entregas del resumen y del pedido.
+- **Reportes de calidad con seguimiento.** El cliente elige la entrega, marca
+  los lotes, escribe qué encontró y sube fotos. Queda como ticket del equipo
+  de reclamaciones de la mesa de ayuda (el del SGI,
+  `quimibond_sgi.sgi_helpdesk_team_complaints`, u otro con el parámetro
+  `website_quimibond.equipo_reclamaciones` = id del equipo), con pedido,
+  producto y lote en los campos del SGI. El cliente ve cuatro pasos (Recibida ·
+  En análisis · Respuesta · Cerrada), los mensajes públicos y contesta ahí.
+
+Reglas:
+
+- **Sin la mesa de ayuda o sin el SGI la página sigue abriendo** (el CI es
+  Community): muestra los lotes, y el certificado y los reportes no aparecen.
+  Todo se pregunta al momento (`'helpdesk.ticket' in env`, `'… ' in _fields`).
+- **Cada cliente ve solo lo suyo**: un certificado se entrega solo si está
+  ligado como CoA a una entrega de su empresa; un reporte, solo si es de su
+  empresa y del equipo de reclamaciones. Lo ajeno responde 404.
+- **Del reporte solo salen los mensajes públicos**: ni notas internas ni sus
+  archivos, ni la no conformidad que Calidad abra, ni el nombre de quien
+  contesta (firma «Quimibond»). La etapa interna se resume con
+  `etapa_reclamo()`.
+- En la vista previa de Ventas (`?cliente=`) no se levantan reportes ni se
+  contestan.
+- Las pruebas de reportes (`tests/test_calidad.py`) se saltan sin la mesa de
+  ayuda; corren en Odoo.sh. Las de lotes y certificado corren en el CI.
+
+Quién lo opera (Dirección, 2026-11-23): los reportes los atiende el Jefe de
+Calidad con el Ingeniero de Calidad de apoyo, como miembros del equipo
+«Reclamaciones de clientes»; el certificado lo adjunta en la entrega la
+Coordinación de Laboratorio y Materia Prima. Los miembros se dan de alta en la
+base, no en código.
+
 ## Conexión con Odoo
 
 - **CRM**: el formulario usa `/website/form/crm.lead`. La oportunidad toma el
