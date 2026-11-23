@@ -213,21 +213,80 @@ class TestRendimiento(TransactionCase):
         fila = self.R.search([('product_id', '=', tela.id)])
         self.assertEqual(fila.plan_fuente, 'producto')
         self.assertEqual(fila.plan_lotes, 10)
+        # 1.17.0: el lote de 50 % es accidentado (< 0.75 × 0.98) y no
+        # cuenta; uno de diez no pasa del 10 %: no hay que revisar.
+        self.assertEqual(fila.plan_accidentes, 1)
+        self.assertAlmostEqual(fila.plan_mediana, 0.98, 4)
+        self.assertFalse(fila.plan_revisar)
         self.assertAlmostEqual(fila.rendimiento_plan, 0.9, 4)
         self.assertEqual(self.R.plan_para(tela), (fila.rendimiento_plan, 'producto'))
         # El costeo sigue con el total de metros, no con la primera para planear.
         self.assertAlmostEqual(fila.rendimiento_calculado, 9240 / 10100, 4)
         f_nueva = self.R.search([('product_id', '=', nueva.id)])
         self.assertEqual(f_nueva.plan_fuente, 'planta')
-        todos = sorted(lotes[tela.id] + lotes[nueva.id])
-        self.assertAlmostEqual(f_nueva.rendimiento_plan, todos[1], 4)
-        # Manual vigente manda también para planear.
+        # Planta: la misma cobertura sobre los lotes normales de todas las
+        # telas (el de 50 % fuera): 11 lotes, el segundo más bajo es 0.9.
+        self.assertAlmostEqual(f_nueva.rendimiento_plan, 0.9, 4)
+        # 1.17.0: el rendimiento capturado es del costeo; para planear hay
+        # su propia captura.
         fila.write({'rendimiento_manual': 0.95, 'manual_motivo': 'prueba',
                     'manual_vigente_hasta': date(2099, 1, 1)})
         self.R.recalcular()
-        self.assertEqual(self.R.plan_para(tela), (0.95, 'manual'))
+        self.assertEqual(self.R.para(tela), (0.95, 'manual'))
+        self.assertEqual(self.R.plan_para(tela), (fila.rendimiento_plan, 'producto'))
+        fila.write({'plan_manual': 0.8, 'plan_manual_motivo': 'prueba'})
+        self.R.recalcular()
+        self.assertEqual(self.R.plan_para(tela), (0.8, 'manual'))
+        self.assertEqual(self.R.para(tela), (0.95, 'manual'))
+        fila.write({'plan_manual_hasta': date(2000, 1, 1)})
+        self.R.recalcular()
+        self.assertEqual(self.R.plan_para(tela)[1], 'producto')
         sin_fila = self.env['product.product'].create({'name': 'SIN', 'type': 'consu'})
         self.assertEqual(self.R.plan_para(sin_fila), (1.0, 'ninguna'))
+
+
+    def test_accidentes_revisar_y_plan_en_cero(self):
+        """1.17.0: los lotes caídos no inflan la primera para planear; con
+        muchos, la tela queda por revisar; un cálculo en 0 usa planta, no 1."""
+        R = self.R
+        normales, acc, med = R._separar_accidentes([0.95] * 8 + [0.4, 0.0], 0.75)
+        self.assertEqual((len(normales), len(acc)), (8, 2))
+        self.assertAlmostEqual(med, 0.95, 6)
+        self.assertEqual(R._separar_accidentes([], 0.75), ([], [], 0.0))
+        m = self.env.ref('uom.product_uom_meter')
+        caida = self.env['product.product'].create({
+            'name': 'CAIDA', 'default_code': 'WC090Q11JNN168', 'type': 'consu',
+            'is_storable': True, 'tracking': 'lot', 'uom_id': m.id})
+        cero = self.env['product.product'].create({
+            'name': 'CERO', 'default_code': 'NN040Q66JNN163', 'type': 'consu',
+            'is_storable': True, 'tracking': 'lot', 'uom_id': m.id})
+        fecha = datetime.now() - timedelta(days=10)
+        # 7 lotes de 95 % y 2 todo FE: P10 de todos sería 0; sin ellos, 0.95.
+        # 1.17.1: son 9 lotes medidos (≥ 8) aunque solo 7 sean normales.
+        for i in range(7):
+            self._mov_lote(caida, 'C%02d' % i, 950, self.pq, fecha)
+            self._mov_lote(caida, 'C%02d' % i, 50, self.fe, fecha)
+        for i in range(2):
+            self._mov_lote(caida, 'CF%d' % i, 1000, self.fe, fecha)
+        # 5 lotes todo FE y 3 de 90 %: la mediana es 0 y el percentil también.
+        for i in range(5):
+            self._mov_lote(cero, 'Z%d' % i, 1000, self.fe, fecha)
+        for i in range(3):
+            self._mov_lote(cero, 'Z9%d' % i, 900, self.pq, fecha)
+            self._mov_lote(cero, 'Z9%d' % i, 100, self.fe, fecha)
+        R.recalcular()
+        f = R.search([('product_id', '=', caida.id)])
+        self.assertAlmostEqual(f.rendimiento_plan, 0.95, 4)
+        self.assertEqual(f.plan_fuente, 'producto')
+        self.assertEqual(f.plan_accidentes, 2)
+        self.assertEqual(f.plan_lotes, 9)
+        self.assertTrue(f.plan_revisar)
+        # El costeo sí carga los lotes caídos: 6650 de 9000.
+        self.assertAlmostEqual(f.rendimiento_calculado, 6650 / 9000, 4)
+        z = R.search([('product_id', '=', cero.id)])
+        self.assertEqual(z.plan_fuente, 'planta')
+        self.assertLess(z.rendimiento_plan, 1.0)
+        self.assertGreater(z.rendimiento_plan, 0.0)
 
 
 @tagged('post_install', '-at_install')
