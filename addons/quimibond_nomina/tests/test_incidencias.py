@@ -168,7 +168,7 @@ class TestIncidenciasCalculo(TransactionCase):
         self.assertEqual(r['faltas'], 0, 'el viernes no es de su turno: se paga')
         self.assertEqual(r['dias'][:5], ['10', '10', '10', '10', '8'])
         self.assertEqual(r['horas_base'], 48.0)
-        self.assertEqual(r['he_propuestas'], 8, 'turno 4: el extra es lo que pasa de las 10 del horario')
+        self.assertEqual(r['he_propuestas'], 6, 'turno 4: 6 HE fijas por completar el jueves (RH, 23-nov)')
         self.assertEqual(r['retardos'], 0)
         # Sin turno (como antes): falta el viernes y 2 horas de extra cada noche.
         antes = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY)
@@ -213,7 +213,7 @@ class TestIncidenciasCalculo(TransactionCase):
         r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno=turno)
         self.assertEqual(r['retardos'], 0, 'el viernes no es de su turno: llegar 09:44 no es retardo')
         self.assertEqual(r['faltas'], 0)
-        self.assertEqual(r['he_propuestas'], 13, '2 por día de lunes a jueves y todo el quinto día')
+        self.assertEqual(r['he_propuestas'], 5, 'turno 3 sin extra en sus cuatro días; el quinto día es extra')
 
     def test_turno_dos_entra_a_las_ocho(self):
         marcas = []
@@ -257,7 +257,7 @@ class TestIncidenciasCalculo(TransactionCase):
         r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='3')
         self.assertEqual(r['faltas'], 0, 'no vino el martes pero repuso el viernes')
         self.assertEqual(r['horas_base'], 48.0)
-        self.assertEqual(r['he_propuestas'], 10, '2 de lunes a jueves y 4 el viernes, sobre el horario')
+        self.assertEqual(r['he_propuestas'], 0, 'turno 3: cuatro días de 12 horas sin tiempo extra')
         # Tres días: falta uno, el que no repuso.
         tres = [m for m in marcas if m.day != 14]
         r3 = calc.calcular_semana(LUNES, HORARIO, tres, hoy=HOY, turno='3')
@@ -292,6 +292,72 @@ class TestIncidenciasCalculo(TransactionCase):
         dobles = _dia(15, (7, 0), (17, 0)) + [dt(2026, 10, 15, 13, 1)]
         self.assertEqual(calc.comida(dobles, dt(2026, 10, 15, 7), dt(2026, 10, 15, 17)),
                          (dt(2026, 10, 15, 13, 1), dt(2026, 10, 15, 13, 30)))
+
+    # ------------------------------------------------------------------
+    # Reglas de RH del 23-nov-2026 (1.24.0)
+    # ------------------------------------------------------------------
+    def test_turno_cuatro_sin_jueves_completo_no_lleva_las_seis(self):
+        marcas = _noches((12, 13, 14))
+        marcas += [dt(2026, 10, 15, 18, 55), dt(2026, 10, 16, 5, 30)]        # sale 05:30 el viernes
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='4')
+        self.assertEqual(r['he_propuestas'], 0)
+        self.assertEqual(r['salidas_antes'], 1)
+        self.assertIn('Ju sin turno completo: sin las 6 HE del turno', r['notas'])
+        # Falta el lunes pero completa el jueves: las 6 van (regla literal de RH; la falta se descuenta aparte).
+        r2 = calc.calcular_semana(LUNES, HORARIO, _noches((13, 14, 15)), hoy=HOY, turno='4')
+        self.assertEqual((r2['faltas'], r2['he_propuestas'], r2['dias_con_extra']), (1, 6, 1))
+
+    def test_prima_dominical_pide_el_turno_completo(self):
+        # Turno 6 sin la noche del sábado: no lleva prima.
+        r = calc.calcular_semana(LUNES, HORARIO, _noches((12, 18)), hoy=HOY, turno='6')
+        self.assertEqual(r['dom_horas'], 0.0)
+        self.assertIn('Do sin turno completo: sin prima dominical del turno', r['notas'])
+        # Turno 5 que sale del domingo a las 15:00: tampoco.
+        marcas = _noches((13, 14, 15)) + _dia(18, (6, 55), (15, 0))
+        r5 = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='5')
+        self.assertEqual(r5['dom_horas'], 0.0)
+        # Domingo todavía por venir (la lista se saca el martes): sin prima y sin nota.
+        r6 = calc.calcular_semana(LUNES, HORARIO, _noches((12,)), hoy=date(2026, 10, 13), turno='6')
+        self.assertEqual(r6['dom_horas'], 0.0)
+        self.assertNotIn('Do sin turno completo: sin prima dominical del turno', r6['notas'])
+
+    def test_comida_de_sindicalizados_y_empleados(self):
+        self.assertEqual(calc.comida_permitida(10, True), 30)
+        self.assertEqual(calc.comida_permitida(8, True), 30)
+        self.assertEqual(calc.comida_permitida(12, True), 45)
+        self.assertEqual(calc.comida_permitida(12, False), 60)
+        # 40 minutos: larga para un sindicalizado de 10 horas, no para uno de 12 ni para un empleado.
+        diez = [dt(2026, 10, 12, 6, 55), dt(2026, 10, 12, 13, 0), dt(2026, 10, 12, 13, 40), dt(2026, 10, 12, 17, 0)]
+        self.assertEqual(calc.calcular_semana(LUNES, HORARIO, diez, hoy=HOY, turno='1',
+                                              sindicalizado=True)['comidas_largas'], 1)
+        self.assertEqual(calc.calcular_semana(LUNES, HORARIO, diez, hoy=HOY, turno='1')['comidas_largas'], 0)
+        doce = [dt(2026, 10, 12, 6, 55), dt(2026, 10, 12, 13, 0), dt(2026, 10, 12, 13, 40), dt(2026, 10, 12, 19, 0)]
+        self.assertEqual(calc.calcular_semana(LUNES, HORARIO, doce, hoy=HOY, turno='3',
+                                              sindicalizado=True)['comidas_largas'], 0)
+
+    def test_festivo_se_paga_y_trabajado_se_anota(self):
+        marcas = _semana_normal()
+        jueves = date(2026, 10, 15)
+        sin_jueves = [m for m in marcas if m.date() != jueves]
+        r = calc.calcular_semana(LUNES, HORARIO, sin_jueves, hoy=HOY, turno='1', festivos={jueves})
+        self.assertEqual(r['faltas'], 0, 'el festivo no es falta')
+        self.assertEqual(r['dias'][3], 'F')
+        self.assertEqual(r['horas_base'], 48.0)
+        self.assertEqual(r['festivos_trabajados'], 0)
+        r2 = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='1', festivos={jueves})
+        self.assertEqual(r2['festivos_trabajados'], 1)
+        self.assertIn('Ju festivo trabajado', r2['notas'])
+        self.assertEqual(r2['horas_base'], 48.0)
+
+    def test_turno_siete_solo_si_rh_lo_tiene(self):
+        marcas = []
+        for d in (12, 13, 14, 15):
+            marcas += _dia(d, (8, 58), (16, 2))
+        marcas += _dia(16, (8, 58), (14, 1), comida=False)
+        self.assertNotEqual(calc.inferir_turno(LUNES, marcas, hoy=HOY)[0], '7')
+        self.assertEqual(calc.inferir_turno(LUNES, marcas, hoy=HOY, preferido='7')[0], '7')
+        r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='7')
+        self.assertEqual((r['retardos'], r['salidas_antes'], r['faltas']), (0, 0, 0))
 
     def test_entradas_del_parametro(self):
         self.assertEqual(calc.leer_entradas('06:00, 18:00'), (dt(1, 1, 1, 6).time(), dt(1, 1, 1, 18).time()))
@@ -364,8 +430,30 @@ class TestIncidenciasGenerar(TransactionCase):
         self.assertEqual(linea.turno, '4', 'el checador lo vio de noche')
         self.assertEqual(linea.turno_rh, '3')
         self.assertEqual(linea.faltas, 0)
-        self.assertEqual(linea.he_propuestas, 8, 'turno 4: 2 por noche sobre las 10 del horario')
+        self.assertEqual(linea.he_propuestas, 6, 'turno 4: 6 HE fijas por completar el jueves')
         self.assertIn('Turno 4 según checador', linea.observaciones)
+
+    def test_cuadrilla_escribe_el_turno_y_rota(self):
+        liberar_referencias(self.env, 'S-904', 'S-905')
+        uno = self.env['hr.employee'].create({'name': 'Prueba Cuadrilla Uno', 'registration_number': 'S-904'})
+        fijo = self.env['hr.employee'].create({'name': 'Prueba Cuadrilla Fijo', 'registration_number': 'S-905',
+                                               'qb_turno': '1', 'qb_turno_fijo': True})
+        cuadrilla = self.env['qb.nomina.cuadrilla'].create({'name': 'Prueba A', 'turno': '3', 'rotacion': '3,4'})
+        (uno | fijo).write({'qb_cuadrilla_id': cuadrilla.id})
+        self.assertEqual(uno.qb_turno, '3')
+        self.assertEqual(fijo.qb_turno, '1', 'el turno fijo no rota')
+        cuadrilla.action_rotar()
+        self.assertEqual((cuadrilla.turno, uno.qb_turno), ('4', '4'))
+        cuadrilla.action_rotar()
+        self.assertEqual(uno.qb_turno, '3')
+
+    def test_generar_con_festivo(self):
+        self.env['qb.nomina.festivo'].create({'fecha': date(2026, 10, 15), 'name': 'Festivo de prueba'})
+        self._checar([m for m in _semana_normal() if m.day != 15])
+        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES})
+        lista.action_generar()
+        linea = lista.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
+        self.assertEqual((linea.dia_3, linea.faltas, linea.festivos_trabajados), ('F', 0, 0))
 
     def test_semanas_que_paga_el_mes(self):
         Incidencias = self.env['qb.nomina.incidencias']

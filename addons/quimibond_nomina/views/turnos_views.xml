@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================= Cuadrillas de turno (1.24.0) ================= -->
+    <record id="view_qb_nomina_cuadrilla_list" model="ir.ui.view">
+        <field name="name">qb.nomina.cuadrilla.list</field>
+        <field name="model">qb.nomina.cuadrilla</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="department_id"/>
+                <field name="name"/>
+                <field name="turno"/>
+                <field name="rotacion"/>
+                <field name="vigente_desde" optional="show"/>
+                <field name="n_personas"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_cuadrilla_form" model="ir.ui.view">
+        <field name="name">qb.nomina.cuadrilla.form</field>
+        <field name="model">qb.nomina.cuadrilla</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_rotar" type="object" string="Rotar al siguiente turno" class="btn-primary"
+                            invisible="not rotacion"
+                            confirm="Se cambia el turno de la cuadrilla y el de sus integrantes sin turno fijo. ¿Continuar?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Acabado A"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="department_id"/>
+                            <field name="turno"/>
+                            <field name="vigente_desde"/>
+                        </group>
+                        <group>
+                            <field name="rotacion" placeholder="3,4"/>
+                            <field name="n_personas"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info mb-3" role="status">
+                        Cambiar el turno, o «Rotar al siguiente turno», escribe el turno en la ficha de cada
+                        integrante que no tiene turno fijo; la lista de incidencias lo usa para medir la semana.
+                    </div>
+                    <field name="employee_ids">
+                        <list>
+                            <field name="registration_number"/>
+                            <field name="name"/>
+                            <field name="department_id"/>
+                            <field name="qb_turno"/>
+                            <field name="qb_turno_fijo"/>
+                        </list>
+                    </field>
+                    <field name="notas" placeholder="Notas de RH"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_cuadrilla_search" model="ir.ui.view">
+        <field name="name">qb.nomina.cuadrilla.search</field>
+        <field name="model">qb.nomina.cuadrilla</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="employee_ids"/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_department" string="Área" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_turno" string="Turno" context="{'group_by': 'turno'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_cuadrilla" model="ir.actions.act_window">
+        <field name="name">Cuadrillas de turno</field>
+        <field name="res_model">qb.nomina.cuadrilla</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin cuadrillas</p>
+            <p>Agrupe por área a la gente que trabaja el mismo turno y rota junta. El turno de la cuadrilla
+               pasa a la ficha de cada integrante y la lista de incidencias mide la semana contra él.</p>
+        </field>
+    </record>
+
+    <!-- ================= Festivos (1.24.0) ================= -->
+    <record id="view_qb_nomina_festivo_list" model="ir.ui.view">
+        <field name="name">qb.nomina.festivo.list</field>
+        <field name="model">qb.nomina.festivo</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="fecha"/>
+                <field name="name"/>
+                <field name="tipo"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_nomina_festivo_search" model="ir.ui.view">
+        <field name="name">qb.nomina.festivo.search</field>
+        <field name="model">qb.nomina.festivo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="fecha"/>
+                <filter name="ley" string="De ley" domain="[('tipo', '=', 'ley')]"/>
+                <filter name="contrato" string="Del contrato colectivo" domain="[('tipo', '=', 'contrato')]"/>
+                <group>
+                    <filter name="group_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_nomina_festivo" model="ir.actions.act_window">
+        <field name="name">Festivos</field>
+        <field name="res_model">qb.nomina.festivo</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin festivos</p>
+            <p>Los días de descanso obligatorio del calendario de RH. La lista de incidencias no los cuenta
+               como falta y anota a quien los trabaja (art. 75 LFT: salario doble además del día).</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_qb_nomina_cuadrillas" name="Cuadrillas de turno" parent="menu_qb_nomina_incidencias"
+              action="action_qb_nomina_cuadrilla" sequence="30"/>
+    <menuitem id="menu_qb_nomina_festivos" name="Festivos" parent="menu_qb_nomina_incidencias"
+              action="action_qb_nomina_festivo" sequence="40"/>
+
+</odoo>
