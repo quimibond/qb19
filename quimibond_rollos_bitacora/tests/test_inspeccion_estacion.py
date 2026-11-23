@@ -863,7 +863,7 @@ class TestInspeccionEstacion(TransactionCase):
             self.env['rollo.desperdicio.rama.wizard'].create({
                 'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
                 'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_desperdicio': 1.2}).action_confirmar()
-        log_desp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO RAMA')])
+        log_desp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO TEJIDO')])
         self.assertEqual((log_desp.weight_bruto, log_desp.tara, log_desp.weight_neto), (1.2, 0.0, 1.2))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
@@ -2180,3 +2180,108 @@ class TestInspeccionEstacion(TransactionCase):
         tramos.action_anular()
         self.assertEqual(orden_kg.tramos_pendientes_count, 1, "Anular el rollo de tramos deja el tramo pendiente")
         self.assertFalse(orden_kg.rollo_final_kg_ids.filtered('es_tramos'))
+
+    # ------------------------------------------------------------------ 3.23.0: dos desperdicios de Rama y rollos finales en la orden en metros
+    def _subproducto_rama(self, orden_kg, producto):
+        """Como en la planta: la lista trae el subproducto con cantidad 0 y destino el de la orden."""
+        self.env['stock.move'].create({
+            'product_id': producto.id, 'product_uom': producto.uom_id.id, 'product_uom_qty': 0.0,
+            'location_id': orden_kg.move_finished_ids[:1].location_id.id,
+            'location_dest_id': orden_kg.location_dest_id.id,
+            'production_id': orden_kg.id, 'company_id': orden_kg.company_id.id, 'origin': orden_kg.name,
+            'cost_share': 0.0})._action_confirm()
+
+    def _desperdicios_de_rama(self):
+        Producto = self.env['product.product']
+        tejido = Producto.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1) \
+            or self._producto('DESPERDICIO TEJIDO', self.kg)
+        orillas = Producto.search([('default_code', '=', 'DESPERDICIO ORILLAS')], limit=1) \
+            or self._producto('DESPERDICIO ORILLAS', self.kg)
+        return tejido, orillas
+
+    def test_89_rama_pesa_desperdicio_tejido_y_desperdicio_orillas(self):
+        """3.23.0: Rama pesa dos subproductos, cada uno una vez por orden y con su lote, su etiqueta y su peso; al cerrar la
+        orden en kg los dos pasan a la 17."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        self._subproducto_rama(orden_kg, orillas)
+        orden_kg._rama_registrar_desperdicio(wo_rama, 1.5, 'Operador', False, tipo='orillas')
+        self.assertEqual((orden_kg.desperdicio_orillas_kg, orden_kg.desperdicio_kg), (1.5, 0.0))
+        self.assertEqual(orden_kg.desperdicio_orillas_lote_id.product_id, orillas)
+        orden_kg._rama_registrar_desperdicio(wo_rama, 2.25, 'Operador', True, tipo='tejido')
+        self.assertEqual(orden_kg.desperdicio_kg, 2.25)
+        self.assertEqual(orden_kg.desperdicio_lote_id.product_id, tejido)
+        self.assertTrue(orden_kg.desperdicio_manual)
+        self.assertAlmostEqual(orden_kg.desperdicio_rama_total_kg, 3.75)
+        for tipo in ('tejido', 'orillas'):
+            with self.assertRaises(UserError, msg='Cada uno se pesa una vez por orden'):
+                orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo=tipo)
+        zpl_orillas = orden_kg._zpl_etiqueta_desperdicio_rama('orillas')
+        self.assertIn('PRODUCTO: DESPERDICIO ORILLAS', zpl_orillas)
+        self.assertIn('CANTIDAD: 1.50', zpl_orillas)
+        self.assertIn('PRODUCTO: DESPERDICIO TEJIDO', orden_kg._zpl_etiqueta_desperdicio_rama('tejido'))
+        self.assertIn('report_etiqueta_desperdicio_orillas', str(orden_kg.action_imprimir_etiqueta_desperdicio_orillas()))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self._cerrar_bano(orden_kg)
+        traspasos = self.env['stock.picking'].search([
+            ('origin', 'ilike', orden_kg.name), ('location_dest_id', '=', self.ubic['DESP'].id)])
+        self.assertTrue(traspasos, 'Los dos desperdicios van a la 17 en una transferencia')
+        traspasos.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        for producto, kg in ((tejido, 2.25), (orillas, 1.5)):
+            self.assertAlmostEqual(self._cantidad(producto, self.ubic['DESP']), kg, msg=producto.default_code)
+
+    def test_90_la_ventana_de_desperdicio_de_rama_elige_cual_pesar(self):
+        """3.23.0: la ventana pregunta cuál desperdicio se pesa; el aviso de «ya pesado» es por desperdicio, y las
+        orillas quedan en su historial de pesaje con su propia referencia."""
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        self._subproducto_rama(orden_kg, orillas)
+        valores = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                   'weighing_mode': 'manual', 'motivo_manual': 'Prueba'}
+        Wizard = self.env['rollo.desperdicio.rama.wizard']
+        self.assertEqual(Wizard.create(valores).tipo, 'tejido', 'Por defecto, el desperdicio tejido')
+        accion = Wizard.create(dict(valores, tipo='orillas', kg_desperdicio=0.8)).action_confirmar()
+        self.assertIn('report_etiqueta_desperdicio_orillas', str(accion))
+        self.assertEqual(orden_kg.desperdicio_orillas_kg, 0.8)
+        self.assertEqual(orden_kg.desperdicio_orillas_motivo, 'Prueba')
+        self.assertFalse(orden_kg.desperdicio_kg)
+        self.assertTrue(Wizard.create(dict(valores, tipo='orillas')).ya_pesado)
+        self.assertFalse(Wizard.create(dict(valores, tipo='tejido')).ya_pesado, 'El otro todavía se puede pesar')
+        if 'mrp.weighing.log' in self.env:
+            self.assertTrue(self.env['mrp.weighing.log'].search([
+                ('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO ORILLAS')]))
+
+    def test_91_sin_el_subproducto_avisa_cual_falta(self):
+        """3.23.0: si la lista no trae el subproducto elegido, el error dice cuál agregar (cantidad 0, operación Rama)."""
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        with self.assertRaisesRegex(UserError, 'DESPERDICIO ORILLAS'):
+            orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo='orillas')
+        orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo='tejido')
+        self.assertEqual(orden_kg.desperdicio_kg, 1.0)
+
+    def test_92_los_rollos_finales_se_ven_en_la_orden_en_metros(self):
+        """3.23.0: la orden en metros muestra sus rollos finales (kg y metros, calidad de Inspección y definitiva de Empaque);
+        antes la pestaña Rollos solo traía la lista de la orden en kg y en la orden en metros quedaba vacía."""
+        vista = self.env['mrp.production'].get_view(
+            self.env.ref('mrp.mrp_production_form_view').id, 'form')['arch']
+        self.assertRegex(vista, r'<field name="rollo_final_m_ids"[^>]*readonly="1"')
+        for campo in ('clasificacion_final', 'kg_registro', 'metros_registro'):
+            self.assertIn(campo, vista)
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        orden_kg.button_mark_done()
+        finales = orden_m.rollo_final_m_ids
+        self.assertEqual(finales, orden_kg.rollo_final_kg_ids)
+        self.assertEqual(finales.estado, 'inspeccionado')
+        self._empaque_confirma_todos(orden_m)
+        self.assertEqual(finales.clasificacion_final, 'PQ')
+        self.assertAlmostEqual(finales.kg_registro, finales.kg_neto)
+        self.assertAlmostEqual(finales.metros_registro, 585.0)

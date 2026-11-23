@@ -30,6 +30,7 @@ from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
 from .mrp_rollo_bitacora import CALIDADES_EN_METROS, CLASIFICACIONES, PARAM_PRELIM_ALTO, PARAM_PRELIM_ANCHO
+from .mrp_production import DESPERDICIO_RAMA
 
 PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 # 3.11.0 (A3.2): con el parámetro en «1», el cierre de la orden en kg ya no registra ni cierra la orden en metros: los rollos
@@ -148,7 +149,7 @@ class MrpProductionInspeccion(models.Model):
                     'los rollos; el crudo se consume completo al cerrar.',
                     o=self.name, p=pesado, pl=planeado, pct=pct, m=minimo))
         return _('Baño cerrado con %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%); desperdicio de '
-                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_kg or 0.0)
+                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_rama_total_kg or 0.0)
 
     def _insp_modo(self):
         """Cómo se registra el baño al cerrarlo (3.2.0):
@@ -278,18 +279,28 @@ class MrpProductionInspeccion(models.Model):
         return self._zpl_etiqueta_desperdicio(
             producto, self._lote_desperdicio(producto), self.desperdicio_empaque_kg, self.desperdicio_empaque_fecha)
 
-    def _zpl_etiqueta_desperdicio_rama(self):
-        """3.17.0 (Dirección, 2026-11-10): etiqueta con código de barras del desperdicio de Rama (DESPERDICIO TEJIDO), con
-        el lote con que se registró al pesar."""
+    def _zpl_etiqueta_desperdicio_rama(self, tipo='tejido'):
+        """3.17.0 (Dirección, 2026-11-10): etiqueta con código de barras del desperdicio de Rama, con el lote con que se
+        registró al pesar. 3.23.0: una por subproducto (``tejido`` = DESPERDICIO TEJIDO, ``orillas`` = DESPERDICIO
+        ORILLAS)."""
         self.ensure_one()
-        lote = self.desperdicio_lote_id
-        if not self.desperdicio_kg or not lote:
-            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Rama.', self.name))
-        return self._zpl_etiqueta_desperdicio(lote.product_id, lote, self.desperdicio_kg, self.desperdicio_fecha)
+        campos = DESPERDICIO_RAMA[tipo]
+        lote = self[campos['lote']]
+        if not self[campos['kg']] or not lote:
+            raise UserError(_('La orden %(o)s todavía no tiene pesado el %(d)s en Rama.',
+                              o=self.name, d=campos['nombre']))
+        return self._zpl_etiqueta_desperdicio(lote.product_id, lote, self[campos['kg']], self[campos['fecha']])
 
     def action_imprimir_etiqueta_desperdicio_rama(self):
         self.ensure_one()
         accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_rama').report_action(self)
+        accion.update({'close_on_report_download': True})
+        return accion
+
+    def action_imprimir_etiqueta_desperdicio_orillas(self):
+        """3.23.0: reimprime la etiqueta del Desperdicio Orillas de Rama."""
+        self.ensure_one()
+        accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_orillas').report_action(self)
         accion.update({'close_on_report_download': True})
         return accion
 

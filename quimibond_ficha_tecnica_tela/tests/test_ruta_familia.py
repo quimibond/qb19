@@ -295,30 +295,37 @@ class TestRutaFamilia(TiempoFichaCase):
 
     def test_10_desperdicio_de_rama_en_la_lista_en_kg(self):
         """2.25.0: la lista en kg generada lleva el subproducto «Desperdicio Tejido» en la Rama, con cantidad 0 (lo pesa
-        Rama con quimibond_rollos_bitacora); al volver a generar no se duplica y sigue en la Rama."""
+        Rama con quimibond_rollos_bitacora); al volver a generar no se duplica y sigue en la Rama.
+        2.29.1 (Dirección, 2026-11-22): Rama pesa dos, «Desperdicio Tejido» y «Desperdicio Orillas»; los dos van en la
+        lista, y cada uno avisa si su artículo no existe."""
         ruta = self._armar()
         self.bom.action_archive()
         Product = self.env['product.product']
-        desperdicio = Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1)
-        if not desperdicio:
+        tejido = Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1)
+        orillas = Product.search([('default_code', '=', 'DESPERDICIO ORILLAS')], limit=1)
+        if not tejido or not orillas:
             accion = self.acabado.action_ft_generar_listas()
-            self.assertIn('DESPERDICIO TEJIDO', accion['params']['message'], "Sin el artículo, avisa y no inventa")
-            self.assertFalse(self.bom.byproduct_ids)
-            desperdicio = Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
-                                          'uom_id': self.kg.id, 'is_storable': True})
+            if not tejido:
+                self.assertIn('DESPERDICIO TEJIDO', accion['params']['message'], "Sin el artículo, avisa y no inventa")
+            if not orillas:
+                self.assertIn('DESPERDICIO ORILLAS', accion['params']['message'], "Sin el artículo, avisa y no inventa")
+        tejido = tejido or Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
+                                           'uom_id': self.kg.id, 'is_storable': True})
+        orillas = orillas or Product.create({'name': 'Desperdicio orillas prueba', 'default_code': 'DESPERDICIO ORILLAS',
+                                             'uom_id': self.kg.id, 'is_storable': True})
         tipo_rama = self.env.ref('quimibond_ficha_tecnica_tela.ft_maquina_tipo_acabado')
         rama = self.env['mrp.workcenter'].create({'name': 'RAMA 931 prueba', 'code': 'R931', 'ft_tipo_id': tipo_rama.id})
         ruta.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
         self.acabado.action_ft_generar_listas()
         sub = self.bom.byproduct_ids
-        self.assertEqual(sub.product_id, desperdicio)
-        self.assertEqual(sub.product_qty, 0.0, "La cantidad no es estándar: se pesa en cada orden")
+        self.assertEqual(sub.product_id, tejido | orillas, "Los dos desperdicios de Rama")
+        self.assertEqual(set(sub.mapped('product_qty')), {0.0}, "La cantidad no es estándar: se pesa en cada orden")
         self.assertEqual(sub.operation_id.workcenter_id, rama)
         ruta.paso_ids.filtered(lambda p: p.paso == 'abridora').unlink()
         self.acabado.action_ft_generar_listas()
-        self.assertEqual(len(self.bom.byproduct_ids), 1, "No se duplica")
+        self.assertEqual(len(self.bom.byproduct_ids), 2, "No se duplican")
         self.assertEqual(self.bom.byproduct_ids.operation_id.workcenter_id, rama,
-                         "Al rehacer las operaciones vuelve a la Rama nueva")
+                         "Al rehacer las operaciones vuelven a la Rama nueva")
 
     def test_11_tipo_de_operacion_del_flujo(self):
         """2.25.0: las listas que crea «Generar listas» llevan su tipo de operación (sin él la orden nacía como
@@ -357,9 +364,10 @@ class TestRutaFamilia(TiempoFichaCase):
         rama = self.env['mrp.workcenter'].create({'name': 'RAMA 937 prueba', 'code': 'R937', 'ft_tipo_id': tipo_rama.id})
         ruta_fam.paso_ids.filtered(lambda p: p.paso == 'rama').workcenter_id = rama
         Product = self.env['product.product']
-        if not Product.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1):
-            Product.create({'name': 'Desperdicio tejido prueba', 'default_code': 'DESPERDICIO TEJIDO',
-                            'uom_id': self.kg.id, 'is_storable': True})
+        for codigo in ('DESPERDICIO TEJIDO', 'DESPERDICIO ORILLAS'):
+            if not Product.search([('default_code', '=', codigo)], limit=1):
+                Product.create({'name': '%s prueba' % codigo, 'default_code': codigo,
+                                'uom_id': self.kg.id, 'is_storable': True})
         almacen = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
         Bom = self.env['mrp.bom']
         ruta_mto = Bom._ft_ruta_mto_kg()

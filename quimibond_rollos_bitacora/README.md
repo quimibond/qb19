@@ -11,7 +11,7 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - Botones en la lista de operaciones (como PESAR en tejido), solo en operaciones listas o en proceso:
   - **PESAR ROLLO** (Rama): bruto − tara = neto, lote `<último segmento de la MO>-<NNNN>`, etiqueta ZPL
     solo con el código de barras. La ventana se cierra al imprimir la etiqueta.
-  - **PESAR DESPERDICIO** (Rama): un solo pesaje por orden del subproducto Desperdicio Tejido (peso real,
+  - **PESAR DESPERDICIO** (Rama): un pesaje por orden de cada subproducto, Desperdicio Tejido y Desperdicio Orillas (3.23.0; peso real,
     báscula IoT o captura manual). Requiere el subproducto en la lista de materiales del «I…». Si el
     subproducto lleva seguimiento por lote, usa el lote mensual de la planta («MM-AAAA») y lo crea si no existe.
   - **INSPECCIONAR** (Inspección): se escanea la etiqueta de Rama; clasificación inicial (PQ/FE/2das/DESP),
@@ -26,6 +26,26 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - `es_desarrollo` en la MO (pestaña Rollos); la MO en kg lo hereda de la de metros por MTO.
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
+
+## Dos desperdicios en Rama y rollos finales en la orden en metros (3.23.0, Dirección, 2026-11-22)
+
+- **PESAR DESPERDICIO (Rama) pesa dos subproductos**, cada uno una vez por orden, con su lote, su peso y su etiqueta:
+  - **DESPERDICIO TEJIDO**: los lienzos o tela que se elimina durante el proceso (campos `desperdicio_*`, como hasta ahora).
+  - **DESPERDICIO ORILLAS**: la orilla de la tela que se retira en la Rama (campos nuevos `desperdicio_orillas_*`).
+  La ventana pregunta cuál se pesa (por defecto, Tejido) y avisa si ese ya se pesó; el otro sigue disponible. Los dos
+  deben estar en la lista de materiales del «I…» como subproductos de la operación Rama, con **cantidad 0** (fichas
+  2.29.1 los agrega al generar listas; en las 31 listas cargadas se agregaron a mano). Si falta uno, el error dice cuál.
+  Cada uno entra a la Ubic. 10 y, al cerrar la orden en kg, pasa a la 17 (3.18.0); el historial de pesaje guarda cada
+  uno con su referencia. Etiquetas: la de Tejido sale como siempre y la de Orillas con su reporte propio
+  (`action_imprimir_etiqueta_desperdicio_orillas`); la pestaña Rollos muestra los dos y permite reimprimir.
+  `desperdicio_rama_total_kg` suma los dos (cancelación, mensaje de cierre).
+- Los pesos de órdenes anteriores quedan en Desperdicio Tejido: no hay migración.
+- **Rollos finales en la orden en metros.** Los rollos finales siempre se registraron en `mrp.rollo.final` (campo
+  `production_m_id`, la orden en metros), pero la pestaña Rollos solo mostraba la lista de la orden en kg (sección 2) y en la
+  orden en metros quedaba vacía. Ahora la orden en metros muestra «Rollos finales: Clasificación final en Empaque» con
+  lote, baño, calidad de Inspección, de laboratorio y definitiva de Empaque, kg y metros (de Inspección, de Empaque y los
+  registrados), defectos, operador, fecha, estado y la etiqueta final.
+- Pruebas: 89 a 92 de `test_inspeccion_estacion.py`.
 
 ## Tramos y calidades PQ, FE y Segunda (3.22.0, Junta con el cliente, 2026-11-13)
 - **Quitar tramo** (3.22.1, ajuste del 2026-11-16: vive **dentro de INSPECCIONAR**, ya no hay botón aparte). La ventana tiene
