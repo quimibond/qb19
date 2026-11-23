@@ -815,6 +815,9 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
     .qb-header__acciones { gap: 6px; }
     .qb-header .qb-btn--primario { padding: 0 10px; font-size: .82rem; white-space: nowrap; }
     .qb-header .qb-logo { gap: 6px; }
+}
+
+/* -------------------------------------------------------------------------
    Mi cuenta (portal del cliente)
    ---------------------------------------------------------------------- */
 .qb-cuenta__previa { background: #fff8e6; border-bottom: 1px solid #f1dfa9; color: #6b4e00; font-size: .875rem; padding: 10px 0; }
