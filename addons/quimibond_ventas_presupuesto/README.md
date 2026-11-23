@@ -21,6 +21,29 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Propuesta del año con pronóstico y supuestos por cliente; meses vacíos (19.0.3.32.0, 2026-11-23)
+
+Jose (23-nov) preguntó cómo se arma el presupuesto 2027 y eligió tres mejoras antes de armarlo:
+
+- **Pronóstico vigente en la propuesta** (casilla «Usar el pronóstico vigente», encendida): en Industrial y
+  Especiales, los meses que el pronóstico de un cliente cubre completos (del primer mes con pronóstico al
+  último que su última semana alcanza hasta el último día) salen del pronóstico, sin crecimiento, con origen
+  «Pronóstico vigente (releases)», para los productos que su pronóstico trae. Los demás meses, y los
+  productos del cliente que no vienen en su pronóstico (se venden por pedido), salen de la venta base. Sin regla en la lista,
+  el precio es el real del periodo base del cliente y producto. Confección sigue de la venta base. El
+  chatter dice qué clientes y meses vinieron del pronóstico y cuánta venta base reemplazaron.
+- **Supuestos por cliente** (tabla en el asistente): crecimiento propio desde un mes, en lugar del del
+  mercado (−100 % = deja de comprar), con motivo. Solo en los meses de venta base. Por MCP,
+  `action_qb_build_proposal(..., partner_growth=[{'partner_id', 'growth_pct', 'month_from', 'note'}],
+  use_forecast=True)`.
+- **Meses sin renglones**: aviso en la ficha (borrador o revisado) con cada mes de Industrial, Confección o
+  Especiales (los proyectos cuentan para su mercado) sin ningún renglón, y **no se aprueba así**. Si de verdad
+  no se vende nada ese mes, Dirección usa «Aprobar con meses vacíos» y queda la lista en el chatter. A la
+  REV2 de 2026 le faltaron Industrial y Proyectos en noviembre y diciembre (unos 25 M).
+
+La precarga vieja (`action_preload_from_orders`, el mayor entre pronóstico y venta por celda) no tiene
+botón; sigue solo por código.
+
 ## Manda la unidad del catálogo (19.0.3.31.1, 2026-11-23)
 
 Jose (23-nov): «del release de Saltillo el PDF lo marca con metros del WJ060 pero todas sus cantidades son
