@@ -21,7 +21,7 @@
                 <div class="text-muted small">
                     En los jets, «Capacidad de la ficha» es dato de: la configuración del jet (Máquinas) y los kg por
                     carga de la tela en el jet (Procesos por artículo). Solo se escribe aquí con la calculadora, con
-                    «Usar las capacidades de la ficha» o con «Corregir las listas con la ficha» en la tela; nada la cambia solo.
+                    «Usar las capacidades de la ficha» o con «Corregir con la ficha» en la tela; nada la cambia solo.
                 </div>
             </xpath>
         </field>

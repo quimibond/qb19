@@ -128,24 +128,25 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertEqual(tmpl.ft_estado, 'activa', "Activar la lista cuenta sin esperar a la revisión de la noche")
         self.assertIn(tmpl, Tmpl.search([('ft_estado', '=', 'activa')]))
 
-    def test_10b_franja_de_estado_y_boton_corregir(self):
-        """2.32.0: la pestaña abre con el estado en palabras (y de qué áreas son los pendientes); «Corregir las listas
-        con la ficha» solo sale si hay pendientes que ese botón arregla."""
+    def test_10b_boton_corregir_y_botones_inteligentes(self):
+        """2.32.0: «Corregir con la ficha» solo si hay pendientes que ese botón arregla; el botón «Pendientes» abre
+        los de la tela y el crudo cuenta sus fichas de tejido y sus telas."""
         tmpl = self.tela_m.product_tmpl_id
-        self.assertEqual(tmpl.ft_estado_titulo, 'Sin revisar todavía')
         self.assertFalse(tmpl.ft_puede_corregir)
         tmpl.action_ft_revisar()
         self.env.invalidate_all()
         self.assertTrue(tmpl.ft_revision_fecha)
-        self.assertTrue(tmpl.ft_estado_titulo.startswith('Activa con %s pendiente' % tmpl.ft_revision_n),
-                        tmpl.ft_estado_titulo)
-        self.assertIn('Tintorería', tmpl.ft_estado_titulo)
         self.assertTrue(tmpl.ft_puede_corregir, tmpl.ft_pendiente_ids.mapped('tipo'))
+        accion = tmpl.action_ft_pendientes()
+        self.assertEqual(self.env[accion['res_model']].search(accion['domain']), tmpl.ft_pendiente_ids)
         self.bom.action_archive()
         tmpl.action_ft_datos_ficha()
         self.env.invalidate_all()
         self.assertFalse(tmpl.ft_puede_corregir)
-        self.assertTrue(tmpl.ft_estado_titulo.startswith('Lista para activar'), tmpl.ft_estado_titulo)
+        crudo = self.crudo.product_tmpl_id
+        self.assertEqual((crudo.ft_tejido_n, crudo.ft_tela_n), (1, 1))
+        accion = crudo.action_ft_telas_del_crudo()
+        self.assertEqual(self.env[accion['res_model']].search(accion['domain']), self.acabado)
 
     def test_10c_de_la_ficha_al_producto(self):
         """2.32.0: el botón «Producto» de la ficha de acabado regresa a la tela."""
