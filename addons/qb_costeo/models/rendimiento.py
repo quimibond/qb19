@@ -422,8 +422,8 @@ class QbProductoRendimiento(models.Model):
                 # Pocos lotes, o una tela cuyos lotes salen todos en 0: el
                 # valor de planta, nunca 1.0 por un cálculo en cero.
                 plan, plan_fuente = planta_plan, 'planta'
-            revisar = bool(len(fs) >= min_lotes and
-                           len(accidentes) > acc_max * len(fs))
+            revisar = bool(len(fs) >= min_lotes
+                           and len(accidentes) > acc_max * len(fs))
             vals = {
                 'rendimiento_calculado': calc,
                 'rendimiento': rec.rendimiento_manual if manual else calc,
