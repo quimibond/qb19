@@ -129,6 +129,16 @@ costo no cambia. El sobrante de primera entra a existencia y la siguiente
 orden de la tela lo descuenta. Parámetros: `rendimiento_plan_cobertura`
 (0.90), `rendimiento_plan_min_lotes` (8), `rendimiento_plan_min_lote` (500).
 
+**Lotes accidentados (1.17.0).** Un lote con menos de
+`rendimiento_plan_accidente` (0.75) × la mediana de su tela es accidentado
+(casi todo a FE, Segunda o Desperdicio): no entra al percentil, porque
+inflaría todas las órdenes por unos cuantos lotes caídos, y se cubre con la
+primera en existencia o con un baño complementario. Si más de
+`rendimiento_plan_accidentes_max` (10 %) de los lotes de la tela son
+accidentados, la fila queda en «Revisar primera para planear» para
+Ingeniería. La primera para planear tiene su propia captura (motivo y
+vigencia); el «Rendimiento capturado» es solo del costeo.
+
 **Horas reales del período.** Por orden de fabricación: sus órdenes de
 trabajo en el centro; una orden sin ellas aporta el estándar de su receta ×
 producido (o, si su receta no pasa por el centro, las horas del producto ×

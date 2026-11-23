@@ -168,6 +168,20 @@
         <field name="value_float">500</field>
         <field name="help">Lotes con menos unidades clasificadas (retazos, reprocesos) no entran al cálculo de la primera para planear.</field>
     </record>
+    <record id="param_rendimiento_plan_accidente" model="qb.parametro">
+        <field name="key">rendimiento_plan_accidente</field>
+        <field name="name">Umbral de lote accidentado (fracción de la mediana)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">0.75</field>
+        <field name="help">Un lote con menos primera que esta fracción de la mediana de su tela (0.75 × 0.93 = 0.70) es accidentado: casi todo se fue a FE, Segunda o Desperdicio. No entra a la primera para planear (inflaría todas las órdenes por unos cuantos lotes caídos); se cuenta y se cubre con existencia o con un baño complementario.</field>
+    </record>
+    <record id="param_rendimiento_plan_accidentes_max" model="qb.parametro">
+        <field name="key">rendimiento_plan_accidentes_max</field>
+        <field name="name">Máximo de lotes accidentados antes de revisar</field>
+        <field name="tipo">float</field>
+        <field name="value_float">0.10</field>
+        <field name="help">Si más de esta fracción de los lotes de una tela son accidentados, la tela queda en «Revisar primera para planear»: es un problema de proceso que el número no arregla. Ingeniería corrige el proceso o captura la primera para planear.</field>
+    </record>
     <record id="param_saldos_clasificacion" model="qb.parametro">
         <field name="key">saldos_clasificacion</field>
         <field name="name">Saldos que salen de la clasificación final (referencias)</field>

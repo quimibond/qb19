@@ -76,7 +76,7 @@
         <field name="name">qb.producto.rendimiento.list</field>
         <field name="model">qb.producto.rendimiento</field>
         <field name="arch" type="xml">
-            <list create="false" editable="bottom" decoration-info="fuente == 'manual'" decoration-muted="fuente == 'planta'">
+            <list create="false" editable="bottom" decoration-info="fuente == 'manual'" decoration-muted="fuente == 'planta'" decoration-warning="plan_revisar">
                 <field name="default_code" readonly="1"/>
                 <field name="product_id" readonly="1"/>
                 <field name="rendimiento" readonly="1"/>
@@ -86,6 +86,12 @@
                 <field name="rendimiento_plan" readonly="1"/>
                 <field name="plan_fuente" readonly="1" optional="show"/>
                 <field name="plan_lotes" readonly="1" optional="show"/>
+                <field name="plan_accidentes" readonly="1" optional="show"/>
+                <field name="plan_mediana" readonly="1" optional="hide"/>
+                <field name="plan_revisar" readonly="1" optional="show"/>
+                <field name="plan_manual" optional="show"/>
+                <field name="plan_manual_motivo" optional="show"/>
+                <field name="plan_manual_hasta" optional="show"/>
                 <field name="rendimiento_manual"/>
                 <field name="manual_motivo"/>
                 <field name="manual_vigente_hasta"/>
@@ -103,6 +109,8 @@
                 <field name="default_code"/>
                 <filter name="manuales" string="Capturados" domain="[('fuente', '=', 'manual')]"/>
                 <filter name="planta" string="Con tasa de planta" domain="[('fuente', '=', 'planta')]"/>
+                <filter name="plan_revisar" string="Primera para planear por revisar" domain="[('plan_revisar', '=', True)]"/>
+                <filter name="plan_capturada" string="Primera para planear capturada" domain="[('plan_fuente', '=', 'manual')]"/>
                 <filter name="por_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
             </search>
         </field>
