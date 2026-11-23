@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Manda la unidad del catálogo (19.0.3.31.1, 2026-11-23)
+
+Jose (23-nov): «del release de Saltillo el PDF lo marca con metros del WJ060 pero todas sus cantidades son
+en yardas». El lector toma la unidad impresa en el release («Requirements Unit: MTR») y la ficha del catálogo
+nace con ella; la cantidad se convierte con la unidad del catálogo. Ventas la corrigió a yardas en 290524 y
+290524L, pero la semana del pronóstico tomaba su unidad del release (metros) y no del catálogo.
+
+- La unidad de la semana del release sale de la **parte del catálogo** (la misma con que se convierte), y
+  solo si el catálogo no tiene, de lo que imprime el release. Si un cliente imprime una unidad equivocada,
+  se corrige una vez en el catálogo y vale para todos sus releases.
+
 ## El release queda en la unidad del cliente (19.0.3.31.0, 2026-11-20)
 
 Jessica (20-nov): «el release de LEAR me transforma las cantidades directamente a kilos, no me deja ver los
