@@ -24,8 +24,8 @@ class TestCalidad(HttpCase):
             'name': 'Scrim de prueba', 'is_storable': True, 'tracking': 'lot', 'list_price': 10.0,
         })
         Socio = cls.env['res.partner']
-        cls.empresa_a = Socio.create({'name': 'Cliente Alfa SA', 'is_company': True})
-        cls.empresa_b = Socio.create({'name': 'Cliente Beta SA', 'is_company': True})
+        cls.empresa_a = Socio.create({'name': 'Cliente Alfa SA', 'is_company': True, 'qb_mi_cuenta': True})
+        cls.empresa_b = Socio.create({'name': 'Cliente Beta SA', 'is_company': True, 'qb_mi_cuenta': True})
         cls.contacto_a = Socio.create({'name': 'Calidad Alfa', 'parent_id': cls.empresa_a.id, 'email': 'calidad@alfa.test'})
         cls.contacto_b = Socio.create({'name': 'Calidad Beta', 'parent_id': cls.empresa_b.id, 'email': 'calidad@beta.test'})
         cls.usuario_a = cls.env['res.users'].with_context(no_reset_password=True).create({
