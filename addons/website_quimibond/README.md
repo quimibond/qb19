@@ -24,11 +24,15 @@ con el selector de sitio web del editor.
 | Ruta | Qué muestra | De dónde salen los datos |
 |---|---|---|
 | `/` | Portada | Categorías y productos publicados, vacantes |
-| `/catalogo`, `/catalogo/<categoría>` | Catálogo técnico sin precios | `product.template` publicado + `product.public.category` |
-| `/catalogo/producto/<producto>` | Ficha del producto | Nombre, código, unidad y categoría del producto |
+| `/catalogo` | Catálogo por familias, sin precios | `controllers/familias.py` |
+| `/catalogo/familia/<clave>` | Rangos de la familia, artículos de línea y formulario de ficha técnica | `familias.py` + productos publicados (solo en las familias de entretelas) |
+| `/catalogo/producto/<producto>` | Ficha del producto (solo si su nombre cae en una familia) | Nombre, código y unidad del producto |
+| `/compradores-automotrices` (`/automotive-buyers`) | Lo que compras y calidad piden para evaluar: scrims, certificados, laboratorio, desarrollo | `controllers/prospectos.py` |
+| `/agendar` | Solicitud de llamada con Ventas, o la liga de citas del sitio | `prospectos.py`, `website.qb_url_agendar` |
 | `/mercados/automotriz`, `/blancos`, `/confeccion` | Página por mercado | `controllers/contenido.py` |
 | `/planta`, `/calidad`, `/nosotros` | Empresa | `controllers/contenido.py` + datos de la compañía |
 | `/cotizar` | Solicitud de cotización o muestra | Crea `crm.lead` (formulario web de Odoo) |
+| `/en/…` | Las mismas páginas en inglés | `i18n/en_CA.po` |
 | `/mi-cuenta`, `/mi-cuenta/pedidos`, `/mi-cuenta/pedido/<id>`, `/mi-cuenta/estado-de-cuenta` | Portal del cliente: pedidos con etapa y fecha compromiso, entregas, facturas y saldo | `sale.order`, `stock.picking`, `account.move` de la empresa del usuario |
 | `/jobs`, `/my?todo=1`, `/helpdesk` | Empleos, portal nativo, reportes de calidad | Apps nativas, con el encabezado nuevo |
 
@@ -106,13 +110,81 @@ base, no en código.
 - **CRM**: el formulario usa `/website/form/crm.lead`. La oportunidad toma el
   equipo de ventas configurado en el sitio web (`crm_default_team_id`).
   Mercado, tipo de solicitud y volumen llegan en la descripción.
-- **Productos**: el catálogo muestra los productos con «Publicado» y con
-  categoría del sitio web. Gramaje, composición, color y tacto se leen del
+- **Productos**: las familias de entretelas listan los productos con
+  «Publicado». Gramaje, composición, color y tacto se leen del
   nombre del producto (`ficha_producto` en `controllers/main.py`); lo que no
   se encuentra no se muestra. La foto es la del producto; si no tiene, se
   dibuja una muestra de tela.
-- **Buscador ⌘K**: `/catalogo/buscar.json` (productos, mercados y páginas).
+- **Buscador ⌘K**: `/catalogo/buscar.json` (artículos, familias, mercados y páginas).
 - **Reclutamiento, portal y Helpdesk**: se enlazan tal cual.
+
+## Catálogo por familias
+
+Los productos publicados son solo entretelas y lo automotriz (la mayor parte
+de la venta) son telas hechas para un cliente, que no se publican una por
+una. Por eso el catálogo va por **familias** escritas en
+`controllers/familias.py`: scrims de tejido circular, scrims no tejidos,
+entretelas tejidas, no tejidas y tramadas, no tejidos no fusionables y telas
+de punto. Cada una trae rangos de peso, ancho y color (de lo vendido en los
+últimos 12 meses; sin precios ni parámetros de proceso) y un formulario para
+pedir la ficha técnica.
+
+Las familias de entretelas listan además los artículos publicados en Odoo,
+clasificados **por su nombre** (`familia_de`), no por la categoría del sitio.
+Un producto publicado cuyo nombre no cae en ninguna familia no se muestra.
+`/catalogo/<categoría>` (dirección vieja) redirige a `/catalogo`.
+
+## Origen de las oportunidades y medición
+
+- Cada formulario manda un campo oculto `qb_origen`; la oportunidad queda con
+  la etiqueta de CRM de su origen (`controllers/formulario.py`): «Web ·
+  Cotización», «Web · Diseñador», «Web · Mercado», «Web · Compradores
+  automotrices», «Web · Ficha técnica», «Web · Llamada», «Web · Certificados».
+  Fuente y campaña (`utm_source`…) las pone Odoo desde la visita.
+- Las páginas del módulo llevan `track="1"`: quedan en el historial del
+  visitante (Sitio web → Reportes → Visitantes).
+- Si el sitio tiene Google Analytics, el script manda `generate_lead` al
+  llegar a la página de gracias (con el origen) y los clics en teléfono,
+  correo y «Agendar llamada».
+- **Resumen mensual** (`models/resumen.py`, cron el día 1): oportunidades por
+  origen, visitantes nuevos y páginas más vistas del mes anterior contra el
+  previo, por correo a «Correos del resumen mensual» del sitio. Sin correos,
+  no se manda.
+- Search Console: se pega el código de verificación en Sitio web →
+  Configuración (campo nativo de Odoo); el módulo no hace nada ahí.
+
+## Certificados y citas
+
+En la ficha del sitio web: **Certificados (PDF)** (los adjuntos se descargan
+desde `/compradores-automotrices` por `/calidad/certificado/<id>`; sin
+adjuntos, la página ofrece pedirlos por formulario) y **Liga para agendar**
+(por ejemplo la de la app Citas; vacía, `/agendar` muestra su propio
+formulario, que crea una oportunidad «Web · Llamada»). Las llamadas se asignan
+al vendedor de **Atiende las llamadas**; las del mercado de confección, al de
+**Atiende las llamadas de confección**.
+
+## Versión en inglés
+
+El módulo está escrito en español. `en_US` es el idioma de origen de Odoo y
+no admite traducción, así que el inglés del sitio es **`en_CA` con la
+dirección `/en`**; los textos van en `i18n/en_CA.po`.
+
+Se enciende una vez por sitio, desde el shell:
+`env['website'].browse(<id>)._qb_activar_ingles()` (activa `en_CA`, le da la
+dirección `/en`, carga las traducciones y lo pone en el sitio en lugar de
+`en_US`). El selector ES / EN aparece solo cuando el sitio tiene más de un
+idioma.
+
+- Plantillas: Odoo las traduce solo.
+- Textos de `contenido.py`, `familias.py`, `prospectos.py` y de los
+  controladores: pasan por `idioma.traducir` (`controllers/idioma.py`).
+- Textos del script: `TEXTOS_JS` en `idioma.py`; el script los busca con
+  `T("…")`.
+- Un texto nuevo va en español en el código y con su inglés en el `.po`
+  (los de Python, con el comentario `#. odoo-python`). La prueba
+  `test_traducciones_completas` avisa si falta alguno. Lo que no tiene
+  traducción sale en español; nunca falla la página.
+- Los nombres de los productos se traducen en Odoo, en el producto.
 
 ## Armadoras (OEM)
 

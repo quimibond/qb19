@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Día 1 de cada mes, 8:00 de México: resumen del sitio por correo. -->
+    <record id="cron_resumen_mensual" model="ir.cron">
+        <field name="name">Sitio web Quimibond: resumen mensual</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="state">code</field>
+        <field name="code">model._qb_cron_resumen_mensual()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(months=1)).strftime('%Y-%m-01 14:00:00')"/>
+    </record>
+</odoo>

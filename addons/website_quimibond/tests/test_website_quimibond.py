@@ -49,7 +49,7 @@ class TestSitioB2B(HttpCase):
         self.assertNotIn('id="qb_intro"', self.url_open('/planta').text)
         self.assertNotIn('ricot', portada.text)
         self.assertIn('Scrims', portada.text)
-        self.assertNotIn('href="/catalogo"', portada.text)
+        self.assertIn('href="/catalogo"', portada.text)
         self.assertNotIn('ricot', self.url_open('/mercados/confeccion').text)
         for ruta in ('/catalogo', '/planta', '/calidad', '/nosotros', '/cotizar', '/cotizar/gracias', '/disenar',
                      '/mercados/automotriz', '/mercados/blancos', '/mercados/confeccion'):
@@ -75,22 +75,33 @@ class TestSitioB2B(HttpCase):
                       'name="description"'):
             self.assertIn(texto, disenar, texto)
         self.assertNotIn('Galga', disenar)
-        catalogo = self.url_open('/catalogo')
-        self.assertIn('ZQ9032BL152', catalogo.text)
+        catalogo = self.url_open('/catalogo').text
+        for texto in ('Scrims de tejido circular', 'Scrims no tejidos', 'Entretelas no tejidas fusionables', 'Telas de punto',
+                      '/catalogo/familia/scrim-tejido'):
+            self.assertIn(texto, catalogo, texto)
+        self.assertNotIn('ricot', catalogo)
+        familia = self.url_open('/catalogo/familia/entretela-no-tejida').text
+        for texto in ('ZQ9032BL152', 'De 27 a 77 g/m²', 'name="qb_origen" value="ficha"'):
+            self.assertIn(texto, familia, texto)
+        self.assertNotIn('ZQ9032BL152', self.url_open('/catalogo/familia/entretela-tejida').text)
+        self.assertEqual(self.url_open('/catalogo/familia/no-existe').status_code, 404)
         slug = self.env['ir.http']._slug
         ficha = self.url_open('/catalogo/producto/%s' % slug(self.producto))
         self.assertEqual(ficha.status_code, 200)
         self.assertIn('50 g/m²', ficha.text)
-        self.assertEqual(self.url_open('/catalogo/%s' % slug(self.categoria)).status_code, 200)
+        # La dirección vieja por categoría del sitio lleva al catálogo por familias.
+        vieja = self.url_open('/catalogo/%s' % slug(self.categoria), allow_redirects=False)
+        self.assertEqual(vieja.status_code, 301)
         datos = self.url_open('/catalogo/buscar.json').json()
         self.assertTrue(any(d['codigo'] == 'ZQ9032BL152' for d in datos))
+        self.assertTrue(any(d['url'] == '/catalogo/familia/scrim-tejido' for d in datos))
 
     def test_producto_sin_publicar_no_se_ve(self):
         self.website.qb_diseno_b2b = True
         self.producto.is_published = False
         slug = self.env['ir.http']._slug
         self.assertEqual(self.url_open('/catalogo/producto/%s' % slug(self.producto)).status_code, 404)
-        self.assertNotIn('ZQ9032BL152', self.url_open('/catalogo').text)
+        self.assertNotIn('ZQ9032BL152', self.url_open('/catalogo/familia/entretela-no-tejida').text)
 
     def test_formulario_crea_oportunidad(self):
         self.website.qb_diseno_b2b = True
@@ -157,3 +168,144 @@ class TestSitioB2B(HttpCase):
         self.assertNotIn('Otra cosa', opciones['hilos'])
         self.assertNotIn('Algodón', opciones['hilos'])
         self.assertTrue(opciones['elastano'])
+
+    def test_familia_por_nombre(self):
+        from odoo.addons.website_quimibond.controllers.familias import familia_de
+        casos = {
+            'ENTRETELA TEJIDA 54 g/m2 FUSIONABLE BLANCA': 'entretela-tejida',
+            'ENTRETELA NO TEJIDA 50 g/m2 FUSIONABLE BLANCA': 'entretela-no-tejida',
+            'ENTRETELA NO TEJIDA 56 g/m2 FUSIONABLE TRAMADA BLANCA': 'entretela-tramada',
+            'A40BL152: Entretela no tejida "No Fusionable" 40  gr  PES 100% Blanco': 'no-fusionable',
+        }
+        for nombre, clave in casos.items():
+            self.assertEqual(familia_de(nombre)['clave'], clave, nombre)
+        self.assertIsNone(familia_de('Hilo poliéster 150/48'))
+
+    def test_paginas_de_prospectos(self):
+        self.website.qb_diseno_b2b = True
+        compradores = self.url_open('/compradores-automotrices').text
+        for texto in ('24070237A', '26220295B', 'Elongación a la rotura', 'name="qb_origen" value="automotriz"',
+                      'name="qb_origen" value="certificados"', 'Scrims no tejidos', 'SIDE Certificaciones'):
+            self.assertIn(texto, compradores, texto)
+        self.assertEqual(self.url_open('/automotive-buyers').status_code, 200)
+        agendar = self.url_open('/agendar').text
+        for texto in ('name="qb_origen" value="llamada"', 'De 9:00 a 11:00'):
+            self.assertIn(texto, agendar, texto)
+        # Con una liga de citas en el sitio, /agendar manda a ella.
+        self.website.qb_url_agendar = '/appointment/1'
+        respuesta = self.url_open('/agendar', allow_redirects=False)
+        self.assertIn(respuesta.status_code, (302, 303))
+        self.assertTrue(respuesta.headers['Location'].endswith('/appointment/1'))
+        self.website.qb_url_agendar = False
+        # Un certificado cargado en el sitio se descarga; otro adjunto, no.
+        cert = self.env['ir.attachment'].create({'name': 'ISO 9001.pdf', 'raw': b'%PDF-1.4 prueba', 'mimetype': 'application/pdf'})
+        otro = self.env['ir.attachment'].create({'name': 'otro.pdf', 'raw': b'%PDF-1.4 otro', 'mimetype': 'application/pdf'})
+        self.website.qb_certificado_ids = [(6, 0, cert.ids)]
+        self.assertIn('/calidad/certificado/%s' % cert.id, self.url_open('/compradores-automotrices').text)
+        self.assertEqual(self.url_open('/calidad/certificado/%s' % cert.id).content, b'%PDF-1.4 prueba')
+        self.assertEqual(self.url_open('/calidad/certificado/%s' % otro.id).status_code, 404)
+        self.website.qb_diseno_b2b = False
+        self.assertEqual(self.url_open('/compradores-automotrices').status_code, 404)
+        self.assertEqual(self.url_open('/agendar').status_code, 404)
+
+    def test_origen_de_la_oportunidad(self):
+        from odoo.addons.website_quimibond.controllers.formulario import ORIGENES, etiqueta_origen
+        from odoo.http import Request
+        self.assertFalse(etiqueta_origen(self.env, 'inventado'))
+        etiqueta = etiqueta_origen(self.env, 'ficha')
+        self.assertEqual(etiqueta.name, 'Web · Ficha técnica')
+        self.assertEqual(etiqueta_origen(self.env, 'ficha'), etiqueta, 'no se duplica')
+        self.website.qb_diseno_b2b = True
+        self.authenticate(None, None)
+        respuesta = self.url_open('/website/form/crm.lead', data={
+            'csrf_token': Request.csrf_token(self),
+            'name': 'Prueba de origen',
+            'contact_name': 'Comprador de prueba',
+            'email_from': 'comprador@example.com',
+            'description': 'Scrim de 60 g/m²',
+            'qb_origen': 'automotriz',
+        })
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn('id', respuesta.json(), respuesta.text)
+        lead = self.env['crm.lead'].browse(respuesta.json()['id'])
+        self.assertEqual(lead.tag_ids.mapped('name'), [ORIGENES['automotriz']])
+        self.assertNotIn('qb_origen', lead.description or '')
+        # Las llamadas se asignan: confección a su vendedor, lo demás al general.
+        general = self.env['res.users'].create({'name': 'Ventas general', 'login': 'qb_ventas_general'})
+        confeccion = self.env['res.users'].create({'name': 'Ventas confección', 'login': 'qb_ventas_confeccion'})
+        self.website.write({'qb_llamadas_user_id': general.id, 'qb_llamadas_confeccion_user_id': confeccion.id})
+        for mercado, vendedor in (('Confección', confeccion), ('Automotriz', general)):
+            respuesta = self.url_open('/website/form/crm.lead', data={
+                'csrf_token': Request.csrf_token(self), 'name': 'Llamada con Ventas', 'contact_name': 'Prueba',
+                'email_from': 'llamada@example.com', 'phone': '5555555555', 'Mercado': mercado, 'qb_origen': 'llamada',
+            })
+            lead = self.env['crm.lead'].browse(respuesta.json()['id'])
+            self.assertEqual(lead.user_id, vendedor, mercado)
+            self.assertEqual(lead.tag_ids.mapped('name'), [ORIGENES['llamada']])
+
+    def test_ingles(self):
+        from odoo.addons.website_quimibond.controllers import idioma
+        self.website.qb_diseno_b2b = True
+        self.website._qb_activar_ingles()
+        self.website._qb_activar_ingles()
+        ingles = self.env['res.lang'].search([('code', '=', idioma.IDIOMA_INGLES)])
+        self.assertEqual(ingles.url_code, 'en')
+        self.assertIn(ingles, self.website.language_ids)
+        self.assertEqual(idioma.traducir('Automotriz', 'es_MX'), 'Automotriz')
+        self.assertEqual(idioma.traducir('Automotriz', 'en_CA'), 'Automotive')
+        valor = idioma.traducir({'clave': 'automotriz', 'nombre': 'Automotriz', 'datos': [('Máquinas', '5 jets de teñido')]}, 'en_CA')
+        self.assertEqual(valor, {'clave': 'automotriz', 'nombre': 'Automotive', 'datos': [('Machines', '5 jet dyeing machines')]})
+        self.assertEqual(idioma.textos_js('es_MX'), '')
+        self.assertIn('"Suave": "Soft"', idioma.textos_js('en_CA'))
+        if self.website.default_lang_id.code == idioma.IDIOMA_INGLES:
+            return
+        for ruta, texto in (('/en/catalogo', 'What we make, by family.'), ('/en/compradores-automotrices', 'In-house laboratory'),
+                            ('/en/planta', 'Jet dyeing machines'), ('/en/agendar', 'Schedule a call with Sales'),
+                            ('/en/disenar', 'id="qb_t"')):
+            pagina = self.url_open(ruta)
+            self.assertEqual(pagina.status_code, 200, ruta)
+            self.assertIn(texto, pagina.text, ruta)
+
+    def test_traducciones_completas(self):
+        """Cada texto de contenido y del script tiene su inglés en el .po."""
+        from odoo.addons.website_quimibond.controllers import contenido, familias, idioma, prospectos
+        tabla = idioma.tabla('en_CA')
+        mismos = {'Color', 'Scrim', 'Beige', 'Natural', 'Nylon', 'Stretch', 'Bamboo', 'ISO 9001', 'ISO 14001', 'ISO 45001',
+                  'ISO 9001:2015', 'ISO 14001:2015', 'ISO 45001:2018', '3.7 GWh', '2,081', '152 cm'}
+        faltan = []
+
+        def revisar(valor):
+            if isinstance(valor, str):
+                if any(c in valor for c in 'áéíóúñ¿') and valor not in tabla and valor not in mismos:
+                    faltan.append(valor)
+            elif isinstance(valor, dict):
+                for llave, v in valor.items():
+                    if llave not in idioma.NO_TRADUCIR:
+                        revisar(v)
+            elif isinstance(valor, (list, tuple)):
+                for v in valor:
+                    revisar(v)
+
+        for modulo in (contenido, familias, prospectos):
+            for nombre in dir(modulo):
+                if nombre.isupper() and nombre not in ('ARMADORAS', 'LOGOS_ARMADORAS', 'CATEGORIA_HILO'):
+                    revisar(getattr(modulo, nombre))
+        revisar(idioma.TEXTOS_JS)
+        self.assertFalse(faltan, 'sin traducción al inglés: %s' % faltan[:10])
+
+    def test_resumen_mensual(self):
+        from datetime import date
+        from odoo.addons.website_quimibond.controllers.formulario import etiqueta_origen
+        self.website.qb_diseno_b2b = True
+        lead = self.env['crm.lead'].create({'name': 'Del sitio', 'tag_ids': [(6, 0, etiqueta_origen(self.env, 'cotizar').ids)]})
+        self.env.cr.execute("UPDATE crm_lead SET create_date = '2026-10-15 12:00:00' WHERE id = %s", [lead.id])
+        asunto, cuerpo = self.website._qb_cuerpo_resumen(date(2026, 11, 1))
+        self.assertEqual(asunto, 'Sitio web: resumen de octubre de 2026')
+        self.assertIn('Web · Cotización', cuerpo)
+        correos = self.env['mail.mail'].search_count([])
+        self.website.qb_resumen_correos = False
+        self.website._qb_cron_resumen_mensual()
+        self.assertEqual(self.env['mail.mail'].search_count([]), correos)
+        self.website.qb_resumen_correos = 'direccion@example.com'
+        self.website._qb_cron_resumen_mensual()
+        self.assertEqual(self.env['mail.mail'].search_count([]), correos + 1)
