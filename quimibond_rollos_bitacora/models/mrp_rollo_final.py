@@ -51,6 +51,10 @@ class MrpRolloFinal(models.Model):
     bitacora_ids = fields.Many2many('mrp.rollo.bitacora', 'mrp_rollo_final_bitacora_rel', 'final_id', 'bitacora_id',
                                     'Rollos de Rama', readonly=True)
     company_id = fields.Many2one(related='production_id.company_id', store=True)
+    # 3.22.0: rollo de FE o Segunda que junta los tramos quitados a otros rollos (sin rollos de Rama propios).
+    tramo_ids = fields.One2many('mrp.rollo.tramo', 'rollo_final_id', 'Tramos juntados', readonly=True)
+    es_tramos = fields.Boolean('Rollo de tramos', readonly=True, copy=False, index=True,
+                               help='Se formó juntando los tramos quitados a varios rollos con defectos.')
 
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4), readonly=True)
     tara = fields.Float('Tara de Inspección (kg)', digits=(12, 4), readonly=True)
@@ -246,7 +250,8 @@ class MrpRolloFinal(models.Model):
             rollo.production_id.message_post(body=_(
                 'Rollo final %(r)s anulado por %(u)s (%(c)s, %(kg).2f kg, %(m).2f m); sus rollos de Rama %(rama)s quedan '
                 'pendientes de inspección.', r=rollo.name, u=self.env.user.name, c=rollo.clasificacion,
-                kg=rollo.kg_neto, m=rollo.metros, rama=', '.join(rollo.bitacora_ids.mapped('name'))))
+                kg=rollo.kg_neto, m=rollo.metros,
+                rama=', '.join(rollo.bitacora_ids.mapped('name')) or ', '.join(rollo.tramo_ids.bitacora_id.mapped('name'))))
         # Al anular un rollo de una división, el rollo de Rama queda abierto y sus otros rollos siguen capturados.
         self.unlink()
         return {'type': 'ir.actions.act_window_close'}
@@ -256,6 +261,9 @@ class MrpRolloFinal(models.Model):
         if self.filtered(lambda r: r.estado == 'registrado'):
             raise UserError(_('Un rollo final registrado en inventario no se borra.'))
         self._revertir_rama()
+        # 3.22.0: los tramos de un rollo de tramos anulado vuelven a quedar pendientes de juntar (con write, para que
+        # se recalcule el contador de la orden; el ondelete del campo solo actúa en la base).
+        self.tramo_ids.write({'rollo_final_id': False})
         for orden in self.production_id:
             orden._historial_pesaje_borrar(self.filtered(lambda r: r.production_id == orden).mapped('name'))
         return super().unlink()
@@ -347,3 +355,4 @@ class MrpRolloBitacoraFinal(models.Model):
 
     rollo_final_insp_ids = fields.Many2many('mrp.rollo.final', 'mrp_rollo_final_bitacora_rel', 'bitacora_id',
                                             'final_id', 'Rollos finales', readonly=True)
+    tramo_ids = fields.One2many('mrp.rollo.tramo', 'bitacora_id', 'Tramos quitados', readonly=True)

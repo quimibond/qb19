@@ -25,9 +25,10 @@
                         <group>
                             <field name="production_id"/>
                             <field name="workorder_id"/>
+                            <field name="tipo" widget="radio"/>
                         </group>
                         <div class="alert alert-danger" role="alert" invisible="not ya_pesado">
-                            Esta orden ya tiene el desperdicio pesado.
+                            Esta orden ya tiene pesado ese desperdicio. Elige el otro, si falta.
                         </div>
                         <div class="text-center mt-3 mb-3 p-4 border rounded bg-light" invisible="ya_pesado">
                             <label for="kg_desperdicio" string="PESO DEL DESPERDICIO"/><br/>

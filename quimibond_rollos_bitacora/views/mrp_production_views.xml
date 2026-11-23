@@ -27,11 +27,12 @@
                 <!-- 3.3.8 (Dirección, 2026-11-05): la pestaña cuenta el proceso en orden: resumen, Rama, Inspección.
                      Solo en órdenes que pesan en Rama; las de Tejido no la ven. -->
                 <page string="Rollos" name="rollos_bitacora"
-                      invisible="not es_pesaje_rollos and not rollo_bitacora_ids and not rollo_final_kg_ids">
+                      invisible="not es_pesaje_rollos and not rollo_bitacora_ids and not rollo_final_kg_ids and not rollo_final_m_ids">
                     <div class="text-muted mb-2">
                         Rama pesa y etiqueta cada rollo. Inspección lo convierte en uno o varios rollos finales con su
                         calidad. Nada entra a inventario hasta cerrar la orden.
                     </div>
+                    <field name="rollo_final_m_ids" invisible="1"/>
                     <group string="Resumen del baño">
                         <group>
                             <label for="numero_bano"/>
@@ -44,7 +45,8 @@
                             <field name="rollos_rama_kg"/>
                             <field name="rollos_rama_metros"/>
                             <field name="rollos_rama_pct"/>
-                            <field name="desperdicio_kg" string="Desperdicio de Rama (kg)"/>
+                            <field name="desperdicio_kg" string="Desperdicio Tejido (kg)"/>
+                            <field name="desperdicio_orillas_kg" string="Desperdicio Orillas (kg)"/>
                             <field name="rollos_pendientes_count"
                                    decoration-warning="rollos_pendientes_count &gt; 0"/>
                         </group>
@@ -58,8 +60,10 @@
                             <field name="es_desarrollo" readonly="state in ('done', 'cancel')"/>
                         </group>
                     </group>
-                    <separator string="1. Rama: rollos pesados"/>
-                    <field name="rollo_bitacora_ids" readonly="1">
+                    <separator string="1. Rama: rollos pesados"
+                               invisible="not rollo_bitacora_ids and not rollo_final_kg_ids and rollo_final_m_ids"/>
+                    <field name="rollo_bitacora_ids" readonly="1"
+                           invisible="not rollo_bitacora_ids and not rollo_final_kg_ids and rollo_final_m_ids">
                         <list decoration-muted="estado_inspeccion == 'inspeccionado'">
                             <field name="secuencia" string="No."/>
                             <field name="lot_id" string="Lote"/>
@@ -80,7 +84,8 @@
                                     title="Etiqueta de Rama (68 x 38 mm)"/>
                         </list>
                     </field>
-                    <group string="Desperdicio de Rama" invisible="not desperdicio_kg">
+                    <group string="Desperdicio Tejido de Rama (lienzos o tela eliminada en el proceso)"
+                           invisible="not desperdicio_kg">
                         <group>
                             <field name="desperdicio_kg" string="Kg"/>
                             <field name="desperdicio_fecha" string="Fecha"/>
@@ -93,6 +98,22 @@
                         <field name="desperdicio_lote_id" invisible="1"/>
                         <button name="action_imprimir_etiqueta_desperdicio_rama" type="object" icon="fa-tag"
                                 string="Imprimir etiqueta" class="btn-link" invisible="not desperdicio_lote_id"/>
+                    </group>
+                    <group string="Desperdicio Orillas de Rama (orilla de la tela que se retira)"
+                           invisible="not desperdicio_orillas_kg">
+                        <group>
+                            <field name="desperdicio_orillas_kg" string="Kg"/>
+                            <field name="desperdicio_orillas_fecha" string="Fecha"/>
+                        </group>
+                        <group>
+                            <field name="desperdicio_orillas_operador" string="Operador"/>
+                            <field name="desperdicio_orillas_manual" string="Captura manual"/>
+                            <field name="desperdicio_orillas_motivo" string="Motivo"
+                                   invisible="not desperdicio_orillas_manual"/>
+                        </group>
+                        <field name="desperdicio_orillas_lote_id" invisible="1"/>
+                        <button name="action_imprimir_etiqueta_desperdicio_orillas" type="object" icon="fa-tag"
+                                string="Imprimir etiqueta" class="btn-link" invisible="not desperdicio_orillas_lote_id"/>
                     </group>
                     <group string="Desperdicio de Empaque" invisible="not desperdicio_empaque_kg">
                         <group>
@@ -108,8 +129,8 @@
                         <button name="action_imprimir_etiqueta_desperdicio_empaque" type="object" icon="fa-tag"
                                 string="Imprimir etiqueta" class="btn-link"/>
                     </group>
-                    <separator string="2. Inspección: rollos finales"/>
-                    <field name="rollo_final_kg_ids" readonly="1">
+                    <separator string="2. Inspección: rollos finales" invisible="not rollo_final_kg_ids"/>
+                    <field name="rollo_final_kg_ids" readonly="1" invisible="not rollo_final_kg_ids">
                         <list>
                             <field name="name" string="Lote"/>
                             <field name="clasificacion" widget="badge"
@@ -118,6 +139,7 @@
                                    decoration-warning="clasificacion == 'SEGUNDA'"
                                    decoration-danger="clasificacion == 'DESP'"/>
                             <field name="bitacora_ids" widget="many2many_tags" string="De los rollos de Rama"/>
+                            <field name="es_tramos" string="De tramos" optional="show"/>
                             <field name="kg_bruto" string="Bruto (kg)"/>
                             <field name="tara" string="Tara (kg)"/>
                             <field name="kg_neto" string="Neto (kg)" sum="Total kg"/>
@@ -134,6 +156,56 @@
                                     title="Etiqueta preliminar (68 x 38 mm)"/>
                             <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
                                     title="Etiqueta final (76 x 102 mm)"/>
+                        </list>
+                    </field>
+                    <!-- 3.23.0 (Dirección, 2026-11-22): los rollos finales también se ven en la orden en metros, con su
+                         calidad de Inspección, la de laboratorio y la definitiva de Empaque, en kg y en metros.
+                         Antes solo se veían en la orden en kg (sección 2) y en la orden en metros no había dónde. -->
+                    <separator string="Rollos finales: Clasificación final en Empaque" invisible="not rollo_final_m_ids"/>
+                    <field name="rollo_final_m_ids" readonly="1" invisible="not rollo_final_m_ids">
+                        <list decoration-muted="estado == 'inspeccionado'">
+                            <field name="name" string="Lote"/>
+                            <field name="production_id" string="Baño (orden en kg)"/>
+                            <field name="clasificacion" string="Calidad Inspección" widget="badge"
+                                   decoration-success="clasificacion == 'PQ'"
+                                   decoration-info="clasificacion == 'FE'"
+                                   decoration-warning="clasificacion == 'SEGUNDA'"
+                                   decoration-danger="clasificacion == 'DESP'"/>
+                            <field name="clasificacion_lab" string="Calidad laboratorio" widget="badge" optional="show"/>
+                            <field name="clasificacion_final" string="Calidad final (Empaque)" widget="badge"
+                                   decoration-success="clasificacion_final == 'PQ'"
+                                   decoration-info="clasificacion_final == 'FE'"
+                                   decoration-warning="clasificacion_final == 'SEGUNDA'"
+                                   decoration-danger="clasificacion_final == 'DESP'"/>
+                            <field name="kg_neto" string="Kg Inspección" optional="show"/>
+                            <field name="kg_neto_final" string="Kg Empaque" optional="hide"/>
+                            <field name="kg_registro" string="Kg registrados" sum="Total kg"/>
+                            <field name="metros" string="Metros Inspección" optional="show"/>
+                            <field name="metros_final" string="Metros Empaque" optional="hide"/>
+                            <field name="metros_registro" string="Metros registrados" sum="Total m"/>
+                            <field name="siglas_defectos_final" string="Defectos" optional="show"/>
+                            <field name="reetiquetado" string="Reetiquetado" optional="hide"/>
+                            <field name="operador_final" string="Operador Empaque" optional="hide"/>
+                            <field name="fecha_final" string="Clasificado el" optional="show"/>
+                            <field name="estado" widget="badge"
+                                   decoration-success="estado == 'registrado'"
+                                   decoration-info="estado == 'inspeccionado'"/>
+                            <button name="action_imprimir_etiqueta" type="object" icon="fa-print"
+                                    title="Etiqueta final (76 x 102 mm)"/>
+                        </list>
+                    </field>
+                    <separator string="Tramos quitados a los rollos" invisible="not tramo_ids"/>
+                    <field name="tramos_pendientes_count" invisible="1"/>
+                    <field name="tramo_ids" readonly="1" invisible="not tramo_ids">
+                        <list decoration-warning="not rollo_final_id">
+                            <field name="bitacora_id" string="Rollo de Rama"/>
+                            <field name="kg_bruto" string="Bruto (kg)" optional="hide"/>
+                            <field name="kg_neto" string="Neto (kg)" sum="Total kg"/>
+                            <field name="metros" sum="Total m"/>
+                            <field name="siglas_defectos" string="Defectos"/>
+                            <field name="operador" string="Operador"/>
+                            <field name="fecha" string="Fecha"/>
+                            <field name="rollo_final_id" string="Rollo de tramos"/>
                         </list>
                     </field>
                 </page>
