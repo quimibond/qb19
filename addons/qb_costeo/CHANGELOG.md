@@ -3,6 +3,36 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.17.0 — 2026-11-23
+
+**Cambiado**
+- **Primera para planear sin lotes accidentados.** Los lotes de una tela
+  salen casi todos entre 85 y 98 % de primera y unos cuantos se caen a
+  0–50 % (casi todo a FE). El percentil 10 caía en esos lotes y cada orden
+  se inflaba como si fuera a salir mal: WC090Q11JNT168 daba 0.40 con mediana
+  0.93 (13 de 54 lotes abajo de 70 %) y 600 m pedían 225 kg. Ahora un lote
+  con menos de `rendimiento_plan_accidente` (0.75) × la mediana de su tela es
+  accidentado: no entra al percentil 10 y se cuenta en «Lotes accidentados».
+  Con los lotes del último año en main, por cada 1,000 m vendidos se fabrican
+  1,196 m de WC090 (antes 2,499), 1,057 de XJ140Q21JGO165 (1,264), 1,130 de
+  WN055Q66JNT162 (1,267), 1,129 de XJ140Q21JNT165 (1,188) y 1,258 de
+  WD038Q46JNT163 (1,293). El costeo no cambia.
+- **Captura aparte para planear.** «Primera para planear capturada» con su
+  motivo y vigencia; el «Rendimiento capturado» queda solo para el costeo
+  (antes fijar 0.80 en WC090 para planear también cambió su costo). La
+  migración copia lo capturado a las dos capturas: nada cambia el día uno.
+
+**Agregado**
+- **«Revisar primera para planear»**: la tela con más de
+  `rendimiento_plan_accidentes_max` (10 %) de lotes accidentados queda
+  marcada (fila en amarillo y filtro) para que Ingeniería corrija el proceso
+  o capture el valor. Hoy: WC090 (24 %) y NN040Q66JNT163 (25 %).
+
+**Corregido**
+- Una tela cuya primera para planear calculada daba 0 (NN040Q66JNT163: 3 de
+  12 lotes 100 % FE) planeaba con 1.0, sin merma. Ahora usa el valor de
+  planta.
+
 ## 19.0.1.16.0 — 2026-11-18
 
 **Agregado**

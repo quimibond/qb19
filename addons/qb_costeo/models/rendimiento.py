@@ -24,6 +24,16 @@ Reglas (heredadas del módulo anterior, memo del 31-ago-2026):
   semielaborado. La merma de proceso (crudo → tela en kg) ya está en el
   factor del crudo de la lista A; aquí solo va lo que la clasificación
   manda a segunda, FE o desperdicio.
+- 1.17.0, primera para planear sin lotes accidentados: los lotes de una tela
+  salen casi todos entre 85 y 98 % de primera y unos cuantos se caen a 0-50 %
+  (casi todo a FE). El percentil 10 caía en esos lotes y cada orden se
+  inflaba como si fuera a salir mal (WC090Q11JNT168: 0.40 con mediana 0.93;
+  NN040Q66JNT163: 0, que se volvía 1.0). Ahora un lote con menos de
+  `rendimiento_plan_accidente` (0.75) × la mediana de su tela es accidentado:
+  no entra al percentil, se cuenta y, si pasan de
+  `rendimiento_plan_accidentes_max` (10 %) de los lotes, la tela queda en
+  «Revisar» para Ingeniería. Lo capturado para planear va aparte de lo
+  capturado para costear.
 """
 from datetime import date
 
@@ -70,25 +80,53 @@ class QbProductoRendimiento(models.Model):
     # los kg con el rendimiento que cubre la mayoría de los lotes de la tela.
     rendimiento_plan = fields.Float(
         digits=(6, 4), string='Primera para planear',
-        help='Fracción de primera que alcanzan o superan los lotes de la tela '
-             'según la cobertura (parámetro rendimiento_plan_cobertura, 0.90 = '
-             '9 de cada 10 lotes). La lista de clasificación final pide los kg '
+        help='Fracción de primera que alcanzan o superan los lotes normales de '
+             'la tela según la cobertura (parámetro rendimiento_plan_cobertura, '
+             '0.90 = 9 de cada 10; los accidentados no cuentan). La lista de '
+             'clasificación final pide los kg '
              'con este valor para que la venta llegue completa. Lotes = '
              'lotes de teñido (o la orden de cada rollo en el flujo en kg).')
     plan_fuente = fields.Selection(FUENTES, default='ninguna', required=True,
                                    string='Fuente para planear')
     plan_lotes = fields.Integer(string='Lotes medidos',
-                                help='Lotes que entraron al cálculo para planear.')
+                                help='Lotes de la ventana con al menos el mínimo '
+                                     'de unidades, accidentados incluidos.')
+    # 1.17.0
+    plan_mediana = fields.Float(
+        digits=(6, 4), string='Mediana de los lotes',
+        help='Fracción de primera del lote de en medio. Los lotes por debajo '
+             'de esta mediana × rendimiento_plan_accidente son accidentados.')
+    plan_accidentes = fields.Integer(
+        string='Lotes accidentados',
+        help='Lotes que salieron muy abajo de la mediana de la tela (casi todo '
+             'a FE, Segunda o Desperdicio). No entran a la primera para '
+             'planear: se cubren con existencia o con un baño complementario.')
+    plan_revisar = fields.Boolean(
+        string='Revisar primera para planear',
+        help='Más lotes accidentados que rendimiento_plan_accidentes_max: la '
+             'tela tiene un problema de proceso que el número no arregla. '
+             'Ingeniería corrige el proceso o captura la primera para planear.')
     calculado_el = fields.Datetime(readonly=True)
     # Captura manual
     rendimiento_manual = fields.Float(
         digits=(6, 4), string='Rendimiento capturado',
-        help='Manda sobre el calculado mientras esté vigente.')
+        help='Manda sobre el calculado del costeo mientras esté vigente. Desde '
+             '1.17.0 no cambia la primera para planear: esa tiene su captura.')
     manual_motivo = fields.Char(string='Motivo')
     manual_vigente_hasta = fields.Date(
         string='Vigente hasta',
         help='Vacío = sin caducidad. Al vencer, el recálculo vuelve al '
              'calculado.')
+    # 1.17.0: captura para planear, aparte de la del costeo.
+    plan_manual = fields.Float(
+        digits=(6, 4), string='Primera para planear capturada',
+        help='Manda sobre la primera para planear calculada mientras esté '
+             'vigente. No cambia el costeo.')
+    plan_manual_motivo = fields.Char(string='Motivo para planear')
+    plan_manual_hasta = fields.Date(
+        string='Planear vigente hasta',
+        help='Vacío = sin caducidad. Al vencer, el recálculo vuelve a la '
+             'primera para planear calculada.')
 
     _product_uniq = models.Constraint(
         'unique(product_id, company_id)',
@@ -96,12 +134,19 @@ class QbProductoRendimiento(models.Model):
     _rango = models.Constraint(
         'CHECK(rendimiento_manual >= 0 AND rendimiento_manual <= 1)',
         'El rendimiento capturado es una fracción entre 0 y 1.')
+    _rango_plan = models.Constraint(
+        'CHECK(plan_manual >= 0 AND plan_manual <= 1)',
+        'La primera para planear capturada es una fracción entre 0 y 1.')
 
-    @api.constrains('rendimiento_manual', 'manual_motivo')
+    @api.constrains('rendimiento_manual', 'manual_motivo',
+                    'plan_manual', 'plan_manual_motivo')
     def _check_manual(self):
         for rec in self:
             if rec.rendimiento_manual and not (rec.manual_motivo or '').strip():
                 raise UserError('Escriba el motivo del rendimiento capturado.')
+            if rec.plan_manual and not (rec.plan_manual_motivo or '').strip():
+                raise UserError('Escriba el motivo de la primera para planear '
+                                'capturada.')
 
     # ------------------------------------------------------------------
     @api.model
@@ -311,6 +356,22 @@ class QbProductoRendimiento(models.Model):
         return orden[min(max(idx, 0), len(orden) - 1)]
 
     @api.model
+    def _separar_accidentes(self, fracciones, umbral):
+        """1.17.0: (normales, accidentados, mediana). Accidentado = lote con
+        menos de `umbral` × la mediana de la tela."""
+        if not fracciones:
+            return [], [], 0.0
+        orden = sorted(fracciones)
+        n = len(orden)
+        mediana = (orden[n // 2] if n % 2 else
+                   (orden[n // 2 - 1] + orden[n // 2]) / 2.0)
+        # 1e-9: 0.75 × 0.8 da 0.6000…01 en punto flotante.
+        limite = umbral * mediana - 1e-9
+        normales = [f for f in fracciones if f >= limite]
+        accidentes = [f for f in fracciones if f < limite]
+        return normales, accidentes, mediana
+
+    @api.model
     def recalcular(self, products=None, hasta=None):
         """Recalcula el rendimiento de `products` (default: los que tienen
         historia o captura manual). Devuelve las filas."""
@@ -321,7 +382,13 @@ class QbProductoRendimiento(models.Model):
         lotes = self.medir_lotes(hasta)
         cobertura = min(max(P.get_float('rendimiento_plan_cobertura', 0.90), 0.5), 1.0)
         min_lotes = int(P.get_float('rendimiento_plan_min_lotes', 8)) or 1
-        planta_plan = self._cubre([f for fs in lotes.values() for f in fs], cobertura) or planta
+        umbral = min(max(P.get_float('rendimiento_plan_accidente', 0.75), 0.0), 1.0)
+        acc_max = P.get_float('rendimiento_plan_accidentes_max', 0.10)
+        separados = {pid: self._separar_accidentes(fs, umbral)
+                     for pid, fs in lotes.items()}
+        planta_plan = self._cubre(
+            [f for norm, _a, _m in separados.values() for f in norm],
+            cobertura) or planta
         hoy = fields.Date.today()
         existentes = {r.product_id.id: r for r in self.search(
             [('company_id', '=', company.id)])}
@@ -343,18 +410,28 @@ class QbProductoRendimiento(models.Model):
             manual = rec and rec.rendimiento_manual and (
                 not rec.manual_vigente_hasta or rec.manual_vigente_hasta >= hoy)
             fs = lotes.get(pid, [])
-            if manual:
-                plan, plan_fuente = rec.rendimiento_manual, 'manual'
-            elif len(fs) >= min_lotes:
-                plan, plan_fuente = self._cubre(fs, cobertura), 'producto'
+            normales, accidentes, mediana = separados.get(pid, ([], [], 0.0))
+            plan_manual = rec and rec.plan_manual and (
+                not rec.plan_manual_hasta or rec.plan_manual_hasta >= hoy)
+            propio = self._cubre(normales, cobertura) if len(normales) >= min_lotes else 0.0
+            if plan_manual:
+                plan, plan_fuente = rec.plan_manual, 'manual'
+            elif propio:
+                plan, plan_fuente = propio, 'producto'
             else:
+                # Pocos lotes, o una tela cuyos lotes salen todos en 0: el
+                # valor de planta, nunca 1.0 por un cálculo en cero.
                 plan, plan_fuente = planta_plan, 'planta'
+            revisar = bool(len(fs) >= min_lotes
+                           and len(accidentes) > acc_max * len(fs))
             vals = {
                 'rendimiento_calculado': calc,
                 'rendimiento': rec.rendimiento_manual if manual else calc,
                 'fuente': 'manual' if manual else fuente,
                 'rendimiento_plan': plan or 1.0, 'plan_fuente': plan_fuente,
                 'plan_lotes': len(fs),
+                'plan_mediana': mediana, 'plan_accidentes': len(accidentes),
+                'plan_revisar': revisar,
                 'unidades_clasificadas': t, 'unidades_vendibles': v,
                 'calculado_el': ahora,
             }
