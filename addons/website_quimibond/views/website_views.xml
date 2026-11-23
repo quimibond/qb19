@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='domain']" position="after">
                 <field name="qb_diseno_b2b"/>
+                <field name="qb_ingles" invisible="not qb_diseno_b2b"/>
                 <field name="qb_armadoras" invisible="not qb_diseno_b2b" placeholder="Una marca por línea"/>
                 <field name="qb_url_agendar" invisible="not qb_diseno_b2b" placeholder="/appointment/1"/>
                 <field name="qb_llamadas_user_id" invisible="not qb_diseno_b2b"/>

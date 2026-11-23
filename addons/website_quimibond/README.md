@@ -169,11 +169,13 @@ El módulo está escrito en español. `en_US` es el idioma de origen de Odoo y
 no admite traducción, así que el inglés del sitio es **`en_CA` con la
 dirección `/en`**; los textos van en `i18n/en_CA.po`.
 
-Se enciende una vez por sitio, desde el shell:
-`env['website'].browse(<id>)._qb_activar_ingles()` (activa `en_CA`, le da la
+Se enciende por sitio con la casilla **Versión en inglés** de la ficha del
+sitio web (`website.qb_ingles`, desde 1.14.2), que llama a
+`_qb_activar_ingles()` (activa `en_CA`, le da la
 dirección `/en`, carga las traducciones y lo pone en el sitio en lugar de
 `en_US`). El selector ES / EN aparece solo cuando el sitio tiene más de un
-idioma.
+idioma y pasa por `/website/lang/<código>` para que el regreso al español no
+rebote a `/en`.
 
 - Plantillas: Odoo las traduce solo.
 - Textos de `contenido.py`, `familias.py`, `prospectos.py` y de los

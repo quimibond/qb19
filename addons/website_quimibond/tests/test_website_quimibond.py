@@ -246,7 +246,12 @@ class TestSitioB2B(HttpCase):
     def test_ingles(self):
         from odoo.addons.website_quimibond.controllers import idioma
         self.website.qb_diseno_b2b = True
-        self.website._qb_activar_ingles()
+        # Como en producción: el sitio nace en español y el inglés se enciende después.
+        Lang = self.env['res.lang'].with_context(active_test=False)
+        espanol = Lang._activate_lang('es_MX') or Lang._create_lang('es_MX')
+        self.website.language_ids = [(4, espanol.id)]
+        self.website.default_lang_id = espanol
+        self.website.qb_ingles = True
         self.website._qb_activar_ingles()
         ingles = self.env['res.lang'].search([('code', '=', idioma.IDIOMA_INGLES)])
         self.assertEqual(ingles.url_code, 'en')
@@ -259,6 +264,12 @@ class TestSitioB2B(HttpCase):
         self.assertIn('"Suave": "Soft"', idioma.textos_js('en_CA'))
         if self.website.default_lang_id.code == idioma.IDIOMA_INGLES:
             return
+        # El cambio de idioma pasa por /website/lang para que el regreso al español no rebote a /en.
+        pagina = self.url_open('/en/catalogo').text
+        self.assertIn('/website/lang/%s?r=' % self.website.default_lang_id.url_code, pagina)
+        regreso = self.url_open('/website/lang/%s?r=%%2Fcatalogo' % self.website.default_lang_id.url_code)
+        self.assertNotIn('/en/', regreso.url.split('//', 1)[-1])
+        self.assertNotIn('What we make, by family.', regreso.text)
         for ruta, texto in (('/en/catalogo', 'What we make, by family.'), ('/en/compradores-automotrices', 'In-house laboratory'),
                             ('/en/planta', 'Jet dyeing machines'), ('/en/agendar', 'Schedule a call with Sales'),
                             ('/en/disenar', 'id="qb_t"')):

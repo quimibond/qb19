@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class Website(models.Model):
@@ -53,6 +53,28 @@ class Website(models.Model):
              'vistas. Vacío, no se envía.',
     )
 
+    qb_ingles = fields.Boolean(
+        string='Versión en inglés',
+        help='Enciende la versión en inglés del sitio en la dirección /en, con el '
+             'cambio de idioma en el encabezado y el pie. Desmárquela para dejar '
+             'el sitio solo en español.',
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        sitios = super().create(vals_list)
+        sitios.filtered('qb_ingles')._qb_activar_ingles()
+        return sitios
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'qb_ingles' in vals:
+            if vals['qb_ingles']:
+                self._qb_activar_ingles()
+            else:
+                self._qb_apagar_ingles()
+        return res
+
     def _qb_telefono(self):
         """Teléfono de la oficina de ventas que publica el sitio."""
         from ..controllers import contenido
@@ -100,4 +122,13 @@ class Website(models.Model):
         self.env['ir.module.module'].sudo().search([('state', '=', 'installed')])._update_translations([IDIOMA_INGLES])
         for sitio in self:
             sitio.sudo().language_ids = [(3, en_us.id), (4, ingles.id)]
+        return True
+
+    def _qb_apagar_ingles(self):
+        """Quita el inglés de estos sitios; el idioma queda instalado."""
+        from ..controllers.idioma import IDIOMA_INGLES
+        ingles = self.env['res.lang'].sudo().with_context(active_test=False).search([('code', '=', IDIOMA_INGLES)])
+        for sitio in self:
+            if ingles and sitio.default_lang_id != ingles:
+                sitio.sudo().language_ids = [(3, ingles.id)]
         return True
