@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Portal de proveedores con el diseño del sitio B2B.
+         Los datos los arma controllers/proveedor.py, ya filtrados por la
+         empresa del usuario. Aquí no se consulta nada. -->
+
+    <!-- «Mi cuenta» del cliente: pestaña para quien además es proveedor -->
+    <template id="cuenta_marco_proveedor" inherit_id="website_quimibond.cuenta_marco" name="Quimibond: Mi cuenta (pestaña de proveedor)">
+        <xpath expr="//nav[hasclass('qb-tabs')]" position="inside">
+            <a t-if="qb_es_proveedor and not qb_vista_previa" href="/mi-cuenta/proveedor" class="qb-tabs__a">Portal de proveedores</a>
+        </xpath>
+    </template>
+
+    <!-- Marco común del proveedor -->
+    <template id="proveedor_marco" name="Quimibond: portal de proveedores (marco)">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb qb-cuenta qb-prov">
+                <div t-if="qb_vista_previa" class="qb-cuenta__previa" role="status">
+                    <div class="qb-container">
+                        <i class="fa fa-eye" aria-hidden="true"/>
+                        Vista previa: así ve su portal <strong t-out="qb_empresa.name"/>. Solo usted la está viendo.
+                    </div>
+                </div>
+                <section class="qb-cuenta__cab">
+                    <div class="qb-container">
+                        <span class="qb-eyebrow">Portal de proveedores</span>
+                        <h1 t-out="qb_empresa.name"/>
+                        <nav class="qb-tabs" aria-label="Portal de proveedores">
+                            <a t-attf-href="/mi-cuenta/proveedor#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'resumen' else ''}">Resumen</a>
+                            <a t-attf-href="/mi-cuenta/proveedor/ordenes#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'ordenes' else ''}">Órdenes de compra</a>
+                            <a t-attf-href="/mi-cuenta/proveedor/pagos#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'pagos' else ''}">Facturas y pagos</a>
+                            <t t-if="not qb_vista_previa">
+                                <a t-if="qb_es_cliente" href="/mi-cuenta" class="qb-tabs__a">Mi cuenta de cliente</a>
+                                <a href="/my/account" class="qb-tabs__a">Mis datos</a>
+                            </t>
+                        </nav>
+                    </div>
+                </section>
+                <section class="qb-cuenta__cuerpo">
+                    <div class="qb-container">
+                        <t t-out="0"/>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- Tabla de órdenes de compra -->
+    <template id="proveedor_tabla_ordenes" name="Quimibond: tabla de órdenes de compra">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--orden" role="row">
+                <span role="columnheader">Orden</span>
+                <span role="columnheader">Su referencia</span>
+                <span role="columnheader">Entrega esperada</span>
+                <span role="columnheader">Estado</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
+            </div>
+            <a t-foreach="ordenes" t-as="o" t-att-href="o['url']" class="qb-lista__fila qb-lista__fila--orden" role="row">
+                <span role="cell" data-etq="Orden"><strong t-out="o['nombre']"/><small t-out="o['fecha']" t-options='{"widget": "date"}'/></span>
+                <span role="cell" data-etq="Su referencia" t-out="o['referencia'] or '—'"/>
+                <span role="cell" data-etq="Entrega esperada">
+                    <t t-if="o['entrega']" t-out="o['entrega']" t-options='{"widget": "date"}'/>
+                    <t t-else="">Por confirmar</t>
+                </span>
+                <span role="cell" data-etq="Estado">
+                    <span t-attf-class="qb-estado qb-estado--#{o['etapa']['clave']}" t-out="o['etapa']['texto']"/>
+                    <small t-if="o['por_facturar']" class="qb-prov__falta">Falta su factura</small>
+                    <small t-elif="o['en_revision']">Factura en revisión</small>
+                </span>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="o['total']" t-options='{"widget": "monetary", "display_currency": o["moneda"]}'/>
+            </a>
+        </div>
+    </template>
+
+    <!-- Tabla de facturas y pagos -->
+    <template id="proveedor_tabla_facturas" name="Quimibond: tabla de facturas del proveedor">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--pago" role="row">
+                <span role="columnheader">Factura</span>
+                <span role="columnheader">Orden</span>
+                <span role="columnheader">Estado</span>
+                <span role="columnheader">Fecha de pago</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
+                <span role="columnheader" class="qb-lista__num">Por cobrar</span>
+            </div>
+            <div t-foreach="facturas" t-as="f" class="qb-lista__fila qb-lista__fila--pago" role="row">
+                <span role="cell" data-etq="Factura">
+                    <strong><t t-if="f['nota_credito']">Nota de crédito </t><t t-out="f['nombre']"/></strong>
+                    <small t-if="f['fecha']" t-out="f['fecha']" t-options='{"widget": "date"}'/>
+                </span>
+                <span role="cell" data-etq="Orden" t-out="f['orden'] or '—'"/>
+                <span role="cell" data-etq="Estado">
+                    <span t-attf-class="qb-estado qb-estado--#{f['clave']}" t-out="f['estado']"/>
+                </span>
+                <span role="cell" data-etq="Fecha de pago">
+                    <t t-if="f['fecha_pago']" t-out="f['fecha_pago']" t-options='{"widget": "date"}'/>
+                    <t t-elif="f['clave'] == 'revision'">Al aprobarse</t>
+                    <t t-elif="f['clave'] == 'proceso'">En los próximos días</t>
+                    <t t-else="">—</t>
+                </span>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="f['total']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span role="cell" data-etq="Por cobrar" class="qb-lista__num" t-out="f['saldo']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span t-if="f['nota']" role="cell" class="qb-prov__nota" t-out="f['nota']"/>
+            </div>
+        </div>
+    </template>
+
+    <!-- Por cobrar, por moneda -->
+    <template id="proveedor_saldos" name="Quimibond: por cobrar del proveedor">
+        <div class="qb-saldos">
+            <div t-foreach="saldos" t-as="s" class="qb-saldo">
+                <span class="qb-mono">Por cobrar en <t t-out="s['moneda'].name"/></span>
+                <strong t-out="s['saldo']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/>
+                <div class="qb-saldo__barra" aria-hidden="true">
+                    <span t-if="s['saldo'] &gt; 0 and s['programado'] &gt; 0" class="qb-prov__programado" t-attf-style="width: #{min(100, round(100 * s['programado'] / s['saldo']))}%"/>
+                </div>
+                <dl>
+                    <div><dt>Aprobado para pago</dt><dd t-out="s['programado']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/></div>
+                    <div><dt>En revisión</dt><dd t-out="s['revision']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/></div>
+                </dl>
+            </div>
+            <div t-if="not saldos" class="qb-saldo qb-saldo--cero">
+                <span class="qb-mono">Por cobrar</span>
+                <strong>Al corriente</strong>
+                <p>No tiene facturas pendientes de pago.</p>
+            </div>
+        </div>
+    </template>
+
+    <!-- /mi-cuenta/proveedor -->
+    <template id="proveedor" name="Quimibond: portal de proveedores">
+        <t t-call="website_quimibond_proveedores.proveedor_marco">
+            <dl class="qb-cifras qb-cifras--cuenta">
+                <div>
+                    <dd t-out="len(por_entregar)"/>
+                    <dt>Órdenes por entregar</dt>
+                </div>
+                <div>
+                    <dd t-out="len(por_facturar)"/>
+                    <dt>Órdenes que esperan su factura</dt>
+                </div>
+                <div>
+                    <dd><t t-if="proximo_pago" t-out="proximo_pago" t-options='{"widget": "date"}'/><t t-else="">—</t></dd>
+                    <dt>Próximo pago programado</dt>
+                </div>
+            </dl>
+
+            <div t-if="por_facturar" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Suba su factura</h2>
+                    <span class="qb-mono">Ya recibimos estas órdenes</span>
+                </div>
+                <div class="qb-pedidos">
+                    <a t-foreach="por_facturar[:6]" t-as="o" t-att-href="o['url']" class="qb-card qb-pedido">
+                        <div class="qb-pedido__cab">
+                            <div>
+                                <strong t-out="o['nombre']"/>
+                                <span t-if="o['referencia']">Su referencia <t t-out="o['referencia']"/></span>
+                            </div>
+                            <span t-attf-class="qb-estado qb-estado--#{o['etapa']['clave']}" t-out="o['etapa']['texto']"/>
+                        </div>
+                        <div class="qb-pedido__pie">
+                            <span t-out="o['total']" t-options='{"widget": "monetary", "display_currency": o["moneda"]}'/>
+                            <span class="qb-prov__accion"><i class="fa fa-upload" aria-hidden="true"/> Subir factura</span>
+                        </div>
+                    </a>
+                </div>
+                <p t-if="len(por_facturar) &gt; 6" class="qb-nota">Y <t t-out="len(por_facturar) - 6"/> más en <a t-attf-href="/mi-cuenta/proveedor/ordenes#{qb_sufijo}"><u>Órdenes de compra</u></a>.</p>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Facturas y pagos</h2>
+                    <a t-attf-href="/mi-cuenta/proveedor/pagos#{qb_sufijo}" class="qb-enlace">Ver todo <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                </div>
+                <t t-call="website_quimibond_proveedores.proveedor_saldos"/>
+                <t t-if="facturas" t-call="website_quimibond_proveedores.proveedor_tabla_facturas"/>
+                <p t-if="total_abiertas &gt; len(facturas)" class="qb-nota">Se muestran las <t t-out="len(facturas)"/> de pago más próximo, de <t t-out="total_abiertas"/>.</p>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Órdenes por entregar</h2>
+                    <a t-attf-href="/mi-cuenta/proveedor/ordenes#{qb_sufijo}" class="qb-enlace">Todas las órdenes <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                </div>
+                <t t-if="por_entregar" t-call="website_quimibond_proveedores.proveedor_tabla_ordenes">
+                    <t t-set="ordenes" t-value="por_entregar[:8]"/>
+                </t>
+                <div t-else="" class="qb-sin">
+                    <p>No tiene órdenes de compra por entregar.</p>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__ayuda">
+                <div>
+                    <h3>¿Cómo cobro más rápido?</h3>
+                    <p>Suba el PDF y el XML de su factura en cuanto entregue. La revisamos contra la orden de compra y aquí mismo ve su fecha de pago.</p>
+                </div>
+                <div class="qb-hero__cta">
+                    <a t-attf-href="/mi-cuenta/proveedor/ordenes#{qb_sufijo}" class="qb-btn qb-btn--primario">Ver mis órdenes</a>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/proveedor/ordenes -->
+    <template id="proveedor_ordenes" name="Quimibond: órdenes de compra del proveedor">
+        <t t-call="website_quimibond_proveedores.proveedor_marco">
+            <div class="qb-cuenta__bloque qb-prov__primero">
+                <div class="qb-cuenta__titulo">
+                    <h2>Órdenes de compra</h2>
+                    <span class="qb-mono">Últimos <t t-out="meses"/> meses y las que faltan por facturar</span>
+                </div>
+                <t t-if="ordenes" t-call="website_quimibond_proveedores.proveedor_tabla_ordenes"/>
+                <div t-else="" class="qb-sin">
+                    <p>No hay órdenes de compra en los últimos <t t-out="meses"/> meses.</p>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/proveedor/orden/<id> -->
+    <template id="proveedor_orden" name="Quimibond: orden de compra del proveedor">
+        <t t-call="website_quimibond_proveedores.proveedor_marco">
+            <a t-attf-href="/mi-cuenta/proveedor/ordenes#{qb_sufijo}" class="qb-volver"><i class="fa fa-long-arrow-left" aria-hidden="true"/> Órdenes de compra</a>
+
+            <div t-if="subida" class="qb-prov__aviso qb-prov__aviso--ok" role="status">
+                <i class="fa fa-check-circle" aria-hidden="true"/>
+                <div>
+                    <strong>Recibimos su factura <t t-out="subida.name"/>.</strong>
+                    <p t-if="subida.avisos" t-out="subida.avisos"/>
+                    <p t-elif="subida.state == 'aceptada'">Ya la teníamos registrada. Su fecha de pago aparece abajo.</p>
+                    <p t-else="">Coincide con lo recibido. En cuanto se apruebe verá aquí su fecha de pago.</p>
+                </div>
+            </div>
+            <div t-if="error" class="qb-prov__aviso qb-prov__aviso--error" role="alert">
+                <i class="fa fa-exclamation-circle" aria-hidden="true"/>
+                <div>
+                    <strong>No pudimos recibir la factura.</strong>
+                    <p t-out="error"/>
+                </div>
+            </div>
+
+            <div class="qb-card qb-pedido qb-pedido--detalle">
+                <div class="qb-pedido__cab">
+                    <div>
+                        <span class="qb-mono">Orden de compra</span>
+                        <h2 t-out="orden['nombre']"/>
+                        <span t-if="orden['referencia']">Su referencia <t t-out="orden['referencia']"/></span>
+                    </div>
+                    <span t-attf-class="qb-estado qb-estado--#{orden['etapa']['clave']}" t-out="orden['etapa']['texto']"/>
+                </div>
+                <div class="qb-pedido__pie">
+                    <span>Fecha <strong t-out="orden['fecha']" t-options='{"widget": "date"}'/></span>
+                    <span>Entrega esperada
+                        <strong t-if="orden['entrega']" t-out="orden['entrega']" t-options='{"widget": "date"}'/>
+                        <strong t-else="">por confirmar</strong>
+                    </span>
+                    <span>Total <strong t-out="orden['total']" t-options='{"widget": "monetary", "display_currency": orden["moneda"]}'/></span>
+                    <a t-if="not qb_vista_previa" t-att-href="descarga" class="qb-descarga"><i class="fa fa-download" aria-hidden="true"/> Orden en PDF</a>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Lo pedido y lo recibido</h2></div>
+                <div class="qb-lista" role="table">
+                    <div class="qb-lista__cab qb-lista__fila qb-lista__fila--partida" role="row">
+                        <span role="columnheader">Producto</span>
+                        <span role="columnheader" class="qb-lista__num">Pedido</span>
+                        <span role="columnheader" class="qb-lista__num">Recibido</span>
+                        <span role="columnheader" class="qb-lista__num">Facturado</span>
+                        <span role="columnheader" class="qb-lista__num">Importe</span>
+                    </div>
+                    <div t-foreach="lineas" t-as="l" class="qb-lista__fila qb-lista__fila--partida" role="row">
+                        <span role="cell" data-etq="Producto"><strong t-out="l['producto']"/></span>
+                        <span role="cell" data-etq="Pedido" class="qb-lista__num"><t t-out="l['pedido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Recibido" class="qb-lista__num"><t t-out="l['recibido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Facturado" class="qb-lista__num"><t t-out="l['facturado']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Importe" class="qb-lista__num" t-out="l['importe']" t-options='{"widget": "monetary", "display_currency": orden["moneda"]}'/>
+                    </div>
+                </div>
+            </div>
+
+            <div t-if="not qb_vista_previa and orden['puede_subir']" class="qb-cuenta__bloque" id="subir">
+                <div class="qb-cuenta__titulo"><h2>Subir factura</h2></div>
+                <div class="qb-card qb-prov__subir">
+                    <p t-if="por_facturar">Recibido pendiente de facturar, antes de impuestos:
+                        <strong t-out="por_facturar" t-options='{"widget": "monetary", "display_currency": orden["moneda"]}'/>.
+                        Facture esa cantidad para que su pago no se detenga.</p>
+                    <p t-else="">Todavía no registramos la recepción de esta orden. Puede subir su factura; queda en espera hasta que se reciba.</p>
+                    <form t-attf-action="/mi-cuenta/proveedor/orden/#{orden['registro'].id}/factura" method="post" enctype="multipart/form-data" class="qb-form">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <div class="qb-form__rejilla">
+                            <div class="qb-campo">
+                                <label class="s_website_form_label" for="qb_p_xml">XML de la factura</label>
+                                <input id="qb_p_xml" type="file" name="xml" class="form-control" accept=".xml,text/xml,application/xml" required="1"/>
+                            </div>
+                            <div class="qb-campo">
+                                <label class="s_website_form_label" for="qb_p_pdf">PDF de la factura</label>
+                                <input id="qb_p_pdf" type="file" name="pdf" class="form-control" accept=".pdf,application/pdf" required="1"/>
+                            </div>
+                            <div class="qb-campo--ancho qb-form__enviar">
+                                <button type="submit" class="qb-btn qb-btn--primario qb-btn--lg"><i class="fa fa-upload" aria-hidden="true"/> Subir factura</button>
+                                <small>Revisamos al momento que esté a nombre de Quimibond, que sea de su empresa y que no esté repetida.</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <p t-elif="orden['en_revision']" class="qb-nota">Ya tenemos una factura de esta orden en revisión. Podrá subir otra cuando se resuelva.</p>
+
+            <div t-if="facturas" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Facturas de esta orden</h2></div>
+                <t t-call="website_quimibond_proveedores.proveedor_tabla_facturas"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/proveedor/pagos -->
+    <template id="proveedor_pagos" name="Quimibond: facturas y pagos del proveedor">
+        <t t-call="website_quimibond_proveedores.proveedor_marco">
+            <t t-call="website_quimibond_proveedores.proveedor_saldos"/>
+            <p t-if="dia_pago" class="qb-nota">Pagamos los <t t-out="dia_pago.lower()"/>. La fecha de pago es el primer <t t-out="dia_pago.lower()"/> en o después del vencimiento de su factura.</p>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Por cobrar</h2></div>
+                <t t-if="abiertas" t-call="website_quimibond_proveedores.proveedor_tabla_facturas">
+                    <t t-set="facturas" t-value="abiertas"/>
+                </t>
+                <div t-else="" class="qb-sin"><p>No tiene facturas pendientes de pago.</p></div>
+            </div>
+
+            <div t-if="rechazadas" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Rechazadas</h2><span class="qb-mono">Súbalas de nuevo, corregidas, desde la orden</span></div>
+                <t t-call="website_quimibond_proveedores.proveedor_tabla_facturas">
+                    <t t-set="facturas" t-value="rechazadas"/>
+                </t>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Pagadas</h2><span class="qb-mono">Últimos <t t-out="meses"/> meses</span></div>
+                <t t-if="pagadas" t-call="website_quimibond_proveedores.proveedor_tabla_facturas">
+                    <t t-set="facturas" t-value="pagadas"/>
+                </t>
+                <div t-else="" class="qb-sin"><p>No hay facturas pagadas en los últimos <t t-out="meses"/> meses.</p></div>
+            </div>
+        </t>
+    </template>
+</odoo>
