@@ -777,3 +777,111 @@ a.qb-tela-caja:hover { transform: translateY(-3px); }
 @keyframes qb-intro-asienta { from { transform: scale(1.04); } to { transform: scale(1); } }
 @keyframes qb-intro-fuera { to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .qb-intro { display: none; } }
+
+/* -------------------------------------------------------------------------
+   Mi cuenta (portal del cliente)
+   ---------------------------------------------------------------------- */
+.qb-cuenta__previa { background: #fff8e6; border-bottom: 1px solid #f1dfa9; color: #6b4e00; font-size: .875rem; padding: 10px 0; }
+.qb-cuenta__previa i { margin-right: 6px; }
+.qb-cuenta__cab { padding: 48px 0 0; border-bottom: 1px solid var(--qb-borde); background: var(--qb-suave); }
+.qb .qb-cuenta__cab h1 { font-size: clamp(1.6rem, 3.2vw, 2.4rem); letter-spacing: -.03em; }
+.qb-cuenta__cab .qb-eyebrow { margin-bottom: 10px; }
+.qb-tabs { display: flex; gap: 4px; margin-top: 28px; overflow-x: auto; scrollbar-width: none; margin-inline: -24px; padding-inline: 24px; }
+.qb-tabs::-webkit-scrollbar { display: none; }
+.qb-tabs__a { flex: none; padding: 10px 12px 12px; font-size: .9rem; font-weight: 500; color: var(--qb-muted-fg); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color .15s, border-color .15s; }
+.qb .qb-tabs__a:hover { color: var(--qb-fg); }
+.qb .qb-tabs__a.es-actual { color: var(--qb-fg); border-bottom-color: var(--qb-fg); }
+.qb-cuenta__cuerpo { padding: 32px 0 96px; }
+.qb-cifras--cuenta { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.qb-cifras--cuenta dd { font-size: clamp(1.4rem, 2.4vw, 2rem); }
+.qb-cuenta__bloque { margin-top: 48px; }
+.qb-cuenta__titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.qb .qb-cuenta__titulo h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+.qb-cuenta__titulo .qb-enlace { margin-top: 0; white-space: nowrap; }
+.qb-volver { display: inline-flex; align-items: center; gap: 8px; font-size: .875rem; color: var(--qb-muted-fg); margin-bottom: 16px; }
+.qb .qb-volver:hover { color: var(--qb-fg); }
+
+/* Estado (insignia con punto) */
+.qb-estado { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--qb-borde); background: var(--qb-bg); font-size: .75rem; font-weight: 500; color: #3f3f46; white-space: nowrap; }
+.qb-estado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #a1a1aa; }
+.qb-estado--produccion::before, .qb-estado--preparacion::before, .qb-estado--parcial::before, .qb-estado--abierta::before { background: var(--qb-acento); }
+.qb-estado--listo::before { background: var(--qb-hilo-2); }
+.qb-estado--entregado, .qb-estado--facturado, .qb-estado--pagada { color: #06694f; background: #e7f8f2; border-color: #bfe9db; }
+.qb-estado--entregado::before, .qb-estado--facturado::before, .qb-estado--pagada::before { background: var(--qb-ok); }
+.qb-estado--vencida { color: #9a1c1c; background: #fdecec; border-color: #f5c6c6; }
+.qb-estado--vencida::before { background: #d92d20; }
+
+/* Pasos del pedido */
+.qb .qb-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0 4px; }
+.qb-etapas li { position: relative; padding-top: 18px; font-size: .75rem; color: var(--qb-muted-fg); }
+.qb-etapas li::before { content: ""; position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: var(--qb-borde); }
+.qb-etapas li:first-child::before { left: 5px; }
+.qb-etapas__punto { position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--qb-bg); border: 2px solid var(--qb-borde-fuerte); }
+.qb-etapas li.es-hecho::before { background: var(--qb-fg); }
+.qb-etapas li.es-hecho .qb-etapas__punto { background: var(--qb-fg); border-color: var(--qb-fg); }
+.qb-etapas li.es-actual { color: var(--qb-fg); font-weight: 500; }
+.qb-etapas li.es-actual::before { background: linear-gradient(90deg, var(--qb-fg) 0, var(--qb-fg) 10px, var(--qb-borde) 10px); }
+.qb-etapas li.es-actual:last-child::before { background: var(--qb-fg); }
+.qb-etapas li.es-actual .qb-etapas__punto { box-shadow: 0 0 0 4px rgba(9, 9, 11, .08); }
+
+/* Tarjetas de pedido */
+.qb-pedidos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.qb-pedido { padding: 20px; }
+.qb-pedido__cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.qb-pedido__cab strong { display: block; font-size: 1rem; font-weight: 600; letter-spacing: -.01em; }
+.qb-pedido__cab span:not(.qb-estado) { display: block; font-size: .8rem; color: var(--qb-muted-fg); margin-top: 2px; }
+.qb-pedido__pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--qb-borde); font-size: .85rem; color: var(--qb-muted-fg); font-variant-numeric: tabular-nums; }
+.qb-pedido__pie strong { color: var(--qb-fg); font-weight: 500; margin-left: 4px; }
+.qb-pedido--detalle { padding: 24px; }
+.qb .qb-pedido--detalle h2 { font-size: 1.5rem; letter-spacing: -.02em; }
+
+/* Saldos */
+.qb-saldos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.qb-saldo { border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); padding: 20px; background: var(--qb-bg); box-shadow: var(--qb-sombra); }
+.qb-saldo > strong { display: block; font-size: 1.75rem; font-weight: 600; letter-spacing: -.03em; line-height: 1.2; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.qb-saldo p { color: var(--qb-muted-fg); font-size: .9rem; margin-top: 6px; }
+.qb-saldo__barra { height: 6px; border-radius: 999px; background: var(--qb-muted); margin: 14px 0; overflow: hidden; }
+.qb-saldo__vencido { display: block; height: 100%; background: #d92d20; border-radius: 999px; }
+.qb-saldo dl { display: flex; gap: 24px; margin: 0; }
+.qb-saldo dt { font-size: .75rem; font-weight: 400; color: var(--qb-muted-fg); }
+.qb-saldo dd { margin: 2px 0 0; font-size: .95rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.qb-saldo .es-vencido dd { color: #b42318; }
+
+/* Tablas: rejilla en escritorio, fichas apiladas en celular */
+.qb-lista { border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-bg); box-shadow: var(--qb-sombra); overflow: hidden; }
+.qb-lista__fila { display: grid; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--qb-borde); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.qb-lista__fila:first-child { border-top: 0; }
+.qb-lista__fila--pedido { grid-template-columns: 1.1fr 1.2fr 1fr 1.2fr .9fr; }
+.qb-lista__fila--factura { grid-template-columns: 1.5fr 1fr 1fr 1fr .9fr .9fr 1fr; }
+.qb-lista__fila--entrega { grid-template-columns: 1.2fr 1.2fr 1fr 1fr .8fr; }
+.qb-lista__fila--linea { grid-template-columns: 3fr 1fr 1fr 1fr; }
+.qb-lista__cab { background: var(--qb-suave); font-size: .75rem; font-weight: 500; color: var(--qb-muted-fg); padding-block: 10px; }
+.qb a.qb-lista__fila:hover { background: var(--qb-suave); }
+.qb-lista__fila > span { min-width: 0; overflow-wrap: anywhere; }
+.qb-lista__fila strong { font-weight: 500; display: block; }
+.qb-lista__fila small { display: block; font-size: .75rem; color: var(--qb-muted-fg); }
+.qb-lista__num { text-align: right; }
+.qb .qb-descarga { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 500; color: var(--qb-fg); padding: 4px 8px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio-sm); background: var(--qb-bg); white-space: nowrap; }
+.qb .qb-descarga:hover { background: var(--qb-muted); }
+.qb-sin { border: 1px dashed var(--qb-borde-fuerte); border-radius: var(--qb-radio); padding: 32px 24px; text-align: center; color: var(--qb-muted-fg); }
+.qb-sin .qb-btn { margin-top: 14px; }
+.qb-cuenta__ayuda { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; margin-top: 56px; padding: 24px; border: 1px solid var(--qb-borde); border-radius: var(--qb-radio); background: var(--qb-suave); }
+.qb-cuenta__ayuda p { color: var(--qb-muted-fg); font-size: .9rem; margin-top: 4px; }
+.qb-cuenta__ayuda .qb-hero__cta { margin-top: 0; }
+
+@media (max-width: 860px) {
+    .qb-pedidos { grid-template-columns: 1fr; }
+    .qb-cifras--cuenta { grid-template-columns: 1fr; }
+    .qb-cifras--cuenta > div { border-left: 0; border-top: 1px solid var(--qb-borde); padding: 16px 20px; display: flex; flex-direction: row-reverse; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .qb-cifras--cuenta > div:first-child { border-top: 0; }
+    .qb-cifras--cuenta dt { margin-top: 0; }
+    .qb-lista__cab { display: none; }
+    .qb-lista__fila, .qb-lista__fila--pedido, .qb-lista__fila--factura, .qb-lista__fila--entrega, .qb-lista__fila--linea { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+    .qb-lista__fila > span { display: block; text-align: right; overflow: hidden; }
+    .qb-lista__fila > span::before { content: attr(data-etq); float: left; margin-right: 16px; font-size: .75rem; line-height: 1.6; color: var(--qb-muted-fg); }
+    .qb-lista__fila > span:first-child { display: block; text-align: left; }
+    .qb-lista__fila > span:first-child::before { content: none; }
+    .qb-lista__fila > span:first-child strong { font-size: 1rem; }
+    .qb-lista__fila small { display: inline; margin-left: 6px; }
+    .qb-etapas__texto { font-size: .7rem; }
+}
