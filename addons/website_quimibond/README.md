@@ -95,6 +95,12 @@ Reglas:
 - Las pruebas de reportes (`tests/test_calidad.py`) se saltan sin la mesa de
   ayuda; corren en Odoo.sh. Las de lotes y certificado corren en el CI.
 
+Quién lo opera (Dirección, 2026-11-23): los reportes los atiende el Jefe de
+Calidad con el Ingeniero de Calidad de apoyo, como miembros del equipo
+«Reclamaciones de clientes»; el certificado lo adjunta en la entrega la
+Coordinación de Laboratorio y Materia Prima. Los miembros se dan de alta en la
+base, no en código.
+
 ## Conexión con Odoo
 
 - **CRM**: el formulario usa `/website/form/crm.lead`. La oportunidad toma el
