@@ -15,3 +15,7 @@ access_qb_nomina_incidencias_linea_manager,qb.nomina.incidencias.linea manager,m
 access_qb_nomina_concepto_noi_user,qb.nomina.concepto.noi user,model_qb_nomina_concepto_noi,hr_payroll.group_hr_payroll_user,1,1,1,0
 access_qb_nomina_concepto_noi_manager,qb.nomina.concepto.noi manager,model_qb_nomina_concepto_noi,hr_payroll.group_hr_payroll_manager,1,1,1,1
 access_qb_nomina_reporte_user,qb.nomina.reporte user,model_qb_nomina_reporte,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_qb_nomina_cuadrilla_user,qb.nomina.cuadrilla user,model_qb_nomina_cuadrilla,hr_payroll.group_hr_payroll_user,1,1,1,0
+access_qb_nomina_cuadrilla_manager,qb.nomina.cuadrilla manager,model_qb_nomina_cuadrilla,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_nomina_festivo_user,qb.nomina.festivo user,model_qb_nomina_festivo,hr_payroll.group_hr_payroll_user,1,1,1,0
+access_qb_nomina_festivo_manager,qb.nomina.festivo manager,model_qb_nomina_festivo,hr_payroll.group_hr_payroll_manager,1,1,1,1

@@ -8,5 +8,6 @@ from . import infonavit
 from . import retenciones
 from . import aguinaldo
 from . import imss
+from . import turnos
 from . import incidencias
 from . import reporte_nomina
