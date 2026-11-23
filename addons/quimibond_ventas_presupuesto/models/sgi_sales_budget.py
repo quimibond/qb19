@@ -45,6 +45,9 @@ MERCADO_BASE = {
     'especiales': 'especiales',
 }
 PROYECTO_MERCADOS = ('proyectos_industrial', 'proyectos_confeccion')
+MERCADO_BASE_LABELS = {'industrial': "Industrial", 'confeccion': "Confección", 'especiales': "Especiales"}
+MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',
+         'octubre', 'noviembre', 'diciembre']
 # Mercados donde el renglón lleva cliente (confección se presupuesta sin cliente).
 MERCADOS_CON_CLIENTE = ('industrial', 'especiales')
 TEAM_PARAM = 'quimibond_ventas_presupuesto.team_%s'
@@ -275,6 +278,15 @@ class SgiSalesBudget(models.Model):
     no_client_count = fields.Integer(
         string="Renglones sin cliente", compute='_compute_problem_counts',
         help="Renglones de Industrial o Especiales sin cliente: no se puede aprobar así.")
+    # 3.32.0: a la REV2 de 2026 le faltaron Industrial y Proyectos en noviembre y diciembre
+    # (unos 25 M) y nadie lo vio al aprobar. Cada mercado (con sus proyectos) debe traer
+    # renglones en los doce meses.
+    empty_month_count = fields.Integer(
+        string="Meses sin renglones", compute='_compute_empty_months',
+        help="Meses de Industrial, Confección o Especiales (cada uno con sus proyectos) sin ningún "
+             "renglón. No se aprueba así, salvo que Dirección apruebe con la excepción.")
+    empty_months_text = fields.Char(
+        string="Meses y mercados sin renglones", compute='_compute_empty_months')
     price_deviation_count = fields.Integer(
         string="Desviaciones de precio", compute='_compute_price_deviation_count',
         help="Líneas con desviación de precio leve o grave (facturado vs lista).")
@@ -622,6 +634,31 @@ class SgiSalesBudget(models.Model):
             budget.no_client_count = len(budget.line_ids.filtered(
                 lambda l: l.mercado in MERCADOS_CON_CLIENTE and not l.partner_id))
 
+    @api.depends('line_ids.date', 'line_ids.mercado', 'kind', 'year')
+    def _compute_empty_months(self):
+        for budget in self:
+            empty = budget._qb_empty_months() if budget.kind == 'presupuesto' else {}
+            budget.empty_month_count = sum(len(months) for months in empty.values())
+            budget.empty_months_text = "; ".join(
+                "%s: %s" % (MERCADO_BASE_LABELS[base], ", ".join(MESES[m - 1] for m in months))
+                for base, months in empty.items())
+
+    def _qb_empty_months(self):
+        """{mercado base: [meses 1-12 sin ningún renglón]} (los proyectos cuentan para su mercado)."""
+        self.ensure_one()
+        covered = {(line.date.month, MERCADO_BASE.get(line.mercado))
+                   for line in self.line_ids if line.date}
+        out = {}
+        for base in MERCADO_BASE_LABELS:
+            months = [m for m in range(1, 13) if (m, base) not in covered]
+            if months:
+                out[base] = months
+        return out
+
+    def action_qb_approve_empty_months(self):
+        """Aprobar aunque haya meses sin renglones; queda la lista en el chatter."""
+        return self.with_context(qb_allow_empty_months=True).action_approve()
+
     def action_view_no_price(self):
         self.ensure_one()
         return {
@@ -963,7 +1000,9 @@ class SgiSalesBudget(models.Model):
         Exige haber pasado por 'revisado'. Bloquea si hay renglones de Industrial o
         Especiales sin cliente, y si hay renglones que cuentan 0 (sin precio, sin tipo de
         cambio o sin conversión), salvo contexto sgi_bypass_price_check, que deja
-        constancia en el chatter. Congela el tipo de cambio de cada mes y deja
+        constancia en el chatter. 3.32.0: bloquea también si un mercado no trae renglones
+        en algún mes, salvo contexto qb_allow_empty_months («Aprobar con meses vacíos»), que
+        deja la lista en el chatter. Congela el tipo de cambio de cada mes y deja
         «reemplazada» la aprobada anterior del año."""
         can_approve = self.env.user.has_group('quimibond_sgi.group_sgi_director') \
             or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
@@ -990,6 +1029,16 @@ class SgiSalesBudget(models.Model):
                     "No se puede aprobar %s: %d renglón(es) de Industrial o Especiales sin "
                     "cliente. Póngales cliente o páselos al mercado que les toca." % (
                         budget.name, budget.no_client_count))
+            if budget.empty_month_count:
+                if not self.env.context.get('qb_allow_empty_months'):
+                    raise UserError(
+                        "No se puede aprobar %s: hay meses sin ningún renglón (%s).\n\n"
+                        "Agregue los renglones que faltan o, si de verdad no se venderá nada ese "
+                        "mes, use «Aprobar con meses vacíos» (queda constancia en el chatter)." % (
+                            budget.name, budget.empty_months_text))
+                budget.sudo().message_post(
+                    body="Aprobado con meses sin renglones: %s." % budget.empty_months_text,
+                    author_id=self.env.user.partner_id.id)
             pairs, total = budget._sgi_no_price_pairs()
             if total:
                 if not bypass_price:
