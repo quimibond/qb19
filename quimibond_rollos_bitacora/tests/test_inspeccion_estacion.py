@@ -121,11 +121,21 @@ class TestInspeccionEstacion(TransactionCase):
         return orden_m, orden_kg, wo_insp, rollos
 
     def _inspeccionar(self, orden_kg, wo_insp, rollos, kg_bruto, metros, calidad='PQ', termina=True, **vals):
+        if calidad == 'DESP':
+            # 3.22.0: la estación ya no deja elegir Desperdicio (solo PQ, FE y Segunda). Estas pruebas cubren el cierre con
+            # rollos que ya traen esa calidad (historial): se capturan como Segunda y se dejan como Desperdicio.
+            wiz = self._inspeccionar(orden_kg, wo_insp, rollos, kg_bruto, max(metros, 1.0), 'SEGUNDA', termina, **vals)
+            final = orden_kg.rollo_final_kg_ids.sorted('id')[-1:]
+            final.write({'clasificacion': 'DESP', 'metros': metros, 'defecto_ids': [Command.clear()]})
+            if termina:
+                rollos.write({'clasificacion_inicial': 'DESP'})
+            return wiz
         valores = {
             'production_id': orden_kg.id, 'workorder_id': wo_insp.id, 'workcenter_id': self.revisadora.id,
             'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
             'rollo_codigos': ' '.join(rollos.mapped('name')), 'kg_bruto': kg_bruto, 'metros': metros,
-            'clasificacion': calidad, 'termina_rollo': termina}
+            'clasificacion': calidad, 'termina_rollo': termina,
+            'confirma_sin_tramo': True}  # 3.22.1: estas pruebas no quitan tramos; la alerta se prueba en la 87
         if calidad in ('SEGUNDA', 'FE'):
             valores['defecto_ids'] = [Command.set(self.defecto.ids)]  # 3.3.1: obligatorio en Segunda y FE
         valores.update(vals)
@@ -225,7 +235,7 @@ class TestInspeccionEstacion(TransactionCase):
             'production_id': orden_kg.id, 'workorder_id': wo.id, 'rollo_codigos': rollos.name, 'kg_bruto': 46.5,
             'metros': 520.0, 'clasificacion': 'PQ', 'termina_rollo': True})
         self.assertAlmostEqual(wiz.merma_kg, 5.0)
-        self.assertIn('arriba del límite', wiz.alertas)
+        self.assertIn('no se ha quitado ningún tramo', wiz.alertas)  # 3.22.1: sin tramo, la alerta pide confirmar
         with self.assertRaisesRegex(UserError, 'motivo'):
             self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0, motivo_manual=False)
 
@@ -694,7 +704,7 @@ class TestInspeccionEstacion(TransactionCase):
         orden_m, ((kg_a, wo_a, rollos_a), (kg_b, wo_b, rollos_b)) = self._dos_banos()
         Wizard = self.env['rollo.inspeccion.estacion.wizard'].with_user(operador)
         base = {'workcenter_id': self.revisadora.id, 'empleado_numero': '1', 'weighing_mode': 'manual',
-                'motivo_manual': 'Prueba sin báscula'}
+                'motivo_manual': 'Prueba sin báscula', 'confirma_sin_tramo': True}
         Wizard.create(dict(base, production_id=kg_a.id, workorder_id=wo_a.id, rollo_codigos=rollos_a.name,
                            kg_bruto=30.6, metros=345.0, clasificacion='PQ', termina_rollo=False)).action_confirmar()
         Wizard.create(dict(base, production_id=kg_a.id, workorder_id=wo_a.id, rollo_codigos=rollos_a.name,
@@ -712,8 +722,7 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertFalse(orden_m.production_group_id.production_ids.filtered(lambda p: p.state not in ('done', 'cancel')))
         # Baño de solo saldos (orden de saldos) también con el operador.
         orden_m2, orden_kg2, wo2, rollos2 = self._bano((40.0,))
-        Wizard.create(dict(base, production_id=orden_kg2.id, workorder_id=wo2.id, rollo_codigos=rollos2.name,
-                           kg_bruto=40.5, metros=400.0, clasificacion='DESP', termina_rollo=True)).action_confirmar()
+        self._inspeccionar(orden_kg2, wo2, rollos2, 40.5, 400.0, 'DESP')
         self._cerrar_bano(orden_kg2, operador)
         self.assertEqual(orden_kg2.rollo_final_kg_ids.production_saldo_id.state, 'done')
 
@@ -854,7 +863,7 @@ class TestInspeccionEstacion(TransactionCase):
             self.env['rollo.desperdicio.rama.wizard'].create({
                 'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
                 'weighing_mode': 'manual', 'motivo_manual': 'Prueba', 'kg_desperdicio': 1.2}).action_confirmar()
-        log_desp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO RAMA')])
+        log_desp = Log.search([('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO TEJIDO')])
         self.assertEqual((log_desp.weight_bruto, log_desp.tara, log_desp.weight_neto), (1.2, 0.0, 1.2))
         self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
         final = orden_kg.rollo_final_kg_ids
@@ -1134,22 +1143,14 @@ class TestInspeccionEstacion(TransactionCase):
         nuevas = self.env['mrp.production'].search([('product_id', '=', self.prod_kg.id)]) - antes
         self.assertFalse(nuevas, "Cerrar el último baño no debe crear órdenes en kg: %s" % nuevas.mapped('name'))
 
-    def test_48_desperdicio_sin_metros(self):
-        """3.6.2 (ronda 11 en main): el Desperdicio sale en kg y puede ir sin metros; Primera, FE y Segunda los piden."""
+    def test_48_los_metros_son_obligatorios(self):
+        """3.22.0 (antes 3.6.2, el Desperdicio sin metros): PQ, FE y Segunda piden siempre los metros del rollo final."""
         orden_m, orden_kg, wo, rollos = self._bano((40.0,))
         with self.assertRaisesRegex(UserError, 'Captura los metros del rollo final'):
             self._inspeccionar(orden_kg, wo, rollos, 30.5, 0.0, termina=False)
-        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0, termina=False)
-        Wizard = type(self.env['rollo.inspeccion.estacion.wizard'])
-        with patch.object(Wizard, '_rendimiento_acabado', return_value=11.8):
-            self._inspeccionar(orden_kg, wo, rollos, 9.0, 0.0, 'DESP')
-        desp = orden_kg.rollo_final_kg_ids.filtered(lambda r: r.clasificacion == 'DESP')
-        self.assertEqual(desp.metros, 0.0)
-        self.assertTrue(desp.metros_teoricos, "La ficha da metros teóricos")
-        self.assertFalse(desp.alerta_metros, "3.16.1: sin metros capturados no hay alerta de metros (prueba del 9-nov)")
+        self._inspeccionar(orden_kg, wo, rollos, 30.5, 320.0)
         self._cerrar_bano(orden_kg)
         self.assertEqual(orden_kg.state, 'done')
-        self.assertAlmostEqual(self._cantidad(self.saldo_d, self.ubic['DESP']), 7.5)
 
     def test_49_cancelar_un_bano_cancela_su_orden_en_metros(self):
         """Programación 1.8.0 (revisión 2026-11-06): un baño cancelado antes de Rama se lleva su orden en metros; la del
@@ -1309,6 +1310,12 @@ class TestInspeccionEstacion(TransactionCase):
                                kg_bruto=0.0, defectos=True):
         """Estación de Empaque (3.12.0): el rollo se escanea por su lote y se confirma o se cambia."""
         self._liberar_lab(orden_m)
+        if rollo.clasificacion == 'DESP' and not calidad:
+            # 3.22.0: Empaque ya no ofrece Desperdicio; un rollo que lo trae del historial se deja como está.
+            rollo.write({'clasificacion_final': 'DESP', 'metros_final': rollo.metros, 'estado': 'clasificado',
+                         'operador_final': '1', 'siglas_operador_final': 'T', 'fecha_final': fields.Datetime.now()})
+            rollo.zpl_etiqueta = rollo._zpl_etiqueta()
+            return None
         wiz = self.env['rollo.empaque.clasificacion.wizard'].create({
             'production_id': orden_m.id, 'empleado_numero': '1', 'codigo': rollo.name,
             'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula', 'pesar': pesar, 'kg_bruto': kg_bruto})
@@ -1981,3 +1988,300 @@ class TestInspeccionEstacion(TransactionCase):
         self.assertEqual(set(traspasos.mapped('state')), {'done'})
         self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 460.0)
         self.assertFalse(self._cantidad(self.prod_m, salida))
+
+    # ------------------------------------------------------------------ 3.22.0: tramos y calidades (Junta 2026-11-13)
+    def _estacion(self, orden_kg, wo_insp, rollo, kg_bruto_rollo, **vals):
+        valores = {
+            'production_id': orden_kg.id, 'workorder_id': wo_insp.id, 'workcenter_id': self.revisadora.id,
+            'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
+            'rollo_codigos': rollo.name, 'kg_bruto': kg_bruto_rollo}
+        valores.update(vals)
+        return self.env['rollo.inspeccion.estacion.wizard'].create(valores)
+
+    def _tramo(self, estacion, kg_bruto_tramo, metros, **vals):
+        """Ajuste de tramos (3.22.1/3.22.2): en INSPECCIONAR (rollo ya pesado) se pulsa «QUITAR TRAMO», se pesa el tramo con
+        sus metros y defectos y se acepta: regresa a INSPECCIONAR y el tramo NO se guarda hasta registrar el rollo."""
+        accion = estacion.action_quitar_tramo()
+        wiz = self.env[accion['res_model']].browse(accion['res_id'])
+        valores = {'kg_bruto': kg_bruto_tramo, 'metros': metros, 'defecto_ids': [Command.set(self.defecto.ids)]}
+        valores.update(vals)
+        wiz.write(valores)
+        vuelta = wiz.action_confirmar()
+        self.assertEqual((vuelta['res_model'], vuelta['res_id']), (estacion._name, estacion.id))
+        self.assertFalse(self.env['mrp.rollo.tramo'].search([('bitacora_id', '=', estacion.bitacora_ids.id)]),
+                         "El tramo no se guarda sin registrar el rollo")
+        return wiz
+
+    def _registrar_con_tramo(self, orden_kg, wo_insp, rollo, kg_bruto_rollo, metros, kg_bruto_tramo, metros_tramo,
+                             calidad='PQ', **vals):
+        estacion = self._estacion(orden_kg, wo_insp, rollo, kg_bruto_rollo, metros=metros, clasificacion=calidad,
+                                  **vals)
+        if calidad in ('SEGUNDA', 'FE'):
+            estacion.defecto_ids = [Command.set(self.defecto.ids)]
+        self._tramo(estacion, kg_bruto_tramo, metros_tramo)
+        estacion.action_confirmar()
+        return estacion
+
+    def _juntar_tramos(self, orden_kg, wo_insp, kg_bruto, calidad='SEGUNDA', **vals):
+        valores = {
+            'workcenter_id': self.revisadora.id, 'empleado_numero': '1', 'weighing_mode': 'manual',
+            'motivo_manual': 'Prueba sin báscula', 'kg_bruto': kg_bruto, 'clasificacion': calidad}
+        valores.update(vals)
+        wiz = self.env['rollo.tramos.juntar.wizard'].with_context(
+            default_production_id=orden_kg.id, default_workorder_id=wo_insp.id).create(valores)
+        wiz.action_confirmar()
+        return wiz
+
+    def test_83_tramos_se_acumulan_y_se_juntan_en_un_rollo_de_segunda(self):
+        """3.22.0/3.22.1: a cada rollo con defectos se le quita un tramo desde INSPECCIONAR; los tramos se acumulan por
+        baño y se juntan en un rollo nuevo de Segunda (lote, unión de defectos, parte de la orden). El baño no cierra sin
+        juntarlos."""
+        orden_m, orden_kg, wo, rollos = self._bano((50.0, 40.0))
+        est = self._estacion(orden_kg, wo, rollos[0], 47.0 + 1.5)
+        t1 = self.env[est.action_quitar_tramo()['res_model']].search([], order='id desc', limit=1)
+        self.assertAlmostEqual(t1.kg_neto, 3.0, msg="Peso inicial del tramo: Rama − neto de este rollo")
+        self.assertAlmostEqual(t1.kg_bruto, 4.5)
+        self.assertEqual(orden_kg.tramos_pendientes_count, 0, "Sin registrar el rollo no hay tramo")
+        self._registrar_con_tramo(orden_kg, wo, rollos[0], 47.0 + 1.5, 560.0, 4.5, 20.0)  # tramo neto 3.0 kg
+        self.assertEqual(orden_kg.tramos_pendientes_count, 1)
+        self.assertEqual(len(orden_kg.rollo_final_kg_ids), 1, "Solo el rollo sin el tramo; el tramo no tiene etiqueta")
+        with self.assertRaisesRegex(UserError, 'Faltan rollos'):
+            self._juntar_tramos(orden_kg, wo, 5.0 + 1.5)
+        self._registrar_con_tramo(orden_kg, wo, rollos[1], 38.0 + 1.5, 450.0, 3.5, 15.0)  # tramo neto 2.0 kg
+        self.assertEqual(orden_kg.tramos_pendientes_count, 2)
+        self.assertAlmostEqual(orden_kg.rollos_merma_kg, 0.0, msg="El tramo quitado no es merma")
+        self.assertFalse(orden_kg.inspeccion_completa_sin_cerrar, "Con tramos sin juntar el baño no se puede cerrar")
+        with self.assertRaisesRegex(UserError, 'sin juntar'):
+            orden_kg._validar_rollos_inspeccionados()
+        self._juntar_tramos(orden_kg, wo, 5.0 + 1.5)
+        tramos = orden_kg.rollo_final_kg_ids.filtered('es_tramos')
+        self.assertEqual(len(tramos), 1)
+        self.assertEqual(tramos.name, '%s-F003' % orden_kg.numero_bano)
+        self.assertEqual(tramos.clasificacion, 'SEGUNDA')
+        self.assertAlmostEqual(tramos.kg_neto, 5.0)
+        self.assertAlmostEqual(tramos.metros, 35.0, msg="Propone la suma de los tramos")
+        self.assertEqual(tramos.defecto_ids, self.defecto)
+        self.assertEqual(len(tramos.tramo_ids), 2)
+        self.assertFalse(tramos.bitacora_ids, "No es de un rollo de Rama: salió de los tramos")
+        self.assertTrue(tramos.zpl_etiqueta)
+        self.assertEqual(orden_kg.tramos_pendientes_count, 0)
+        orden_kg._validar_rollos_inspeccionados()
+        self._cerrar_bano(orden_kg)
+        self.assertEqual(orden_kg.state, 'done')
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['SEGUNDA'], tramos.name), 35.0)
+        self.assertAlmostEqual(self._cantidad(self.prod_m, self.ubic['PQ']), 1010.0)
+
+    def test_84_tramo_validaciones(self):
+        orden_m, orden_kg, wo, rollos = self._bano((10.0, 20.0))
+        sin_pesar = self._estacion(orden_kg, wo, rollos[0], 0.0)
+        with self.assertRaisesRegex(UserError, 'Primero pesa'):
+            sin_pesar.action_quitar_tramo()
+        completo = self._estacion(orden_kg, wo, rollos[0], 11.5)  # neto 10 = Rama: no hay diferencia
+        with self.assertRaisesRegex(UserError, 'no hay diferencia'):
+            completo.action_quitar_tramo()
+        varios = self._estacion(orden_kg, wo, rollos[0], 8.0, rollo_codigos=' '.join(rollos.mapped('name')))
+        with self.assertRaisesRegex(UserError, 'un solo rollo'):
+            varios.action_quitar_tramo()
+        estacion = self._estacion(orden_kg, wo, rollos[0], 5.5)  # rollo 4 kg
+        with self.assertRaisesRegex(UserError, 'pasan de'):
+            self._tramo(estacion, 12.0, 10.0)  # rollo 4 + tramo 10.5 > 10 kg de Rama
+        with self.assertRaisesRegex(UserError, 'defecto'):
+            self._tramo(estacion, 4.0, 10.0, defecto_ids=[Command.clear()])
+        with self.assertRaisesRegex(UserError, 'metros'):
+            self._tramo(estacion, 4.0, 0.0)
+        self._inspeccionar(orden_kg, wo, rollos[1], 20.5, 230.0)
+        ya = self._estacion(orden_kg, wo, rollos[1], 8.0)
+        with self.assertRaisesRegex(UserError, 'ya fue inspeccionado'):
+            ya.action_quitar_tramo()
+        # el rollo cambia de peso después de capturar el tramo: se valida al registrar
+        est = self._estacion(orden_kg, wo, rollos[0], 8.0, metros=60.0, clasificacion='PQ')  # rollo 6.5
+        self._tramo(est, 5.0, 10.0)  # tramo 3.5
+        est.kg_bruto = 9.0  # rollo 7.5 + 3.5 > 10
+        with self.assertRaisesRegex(UserError, 'no puede ser mayor'):
+            est.action_confirmar()
+        est.kg_bruto = 8.0
+        est.action_confirmar()
+        self.assertEqual(orden_kg.tramos_pendientes_count, 1)
+        with self.assertRaisesRegex(UserError, 'defecto'):
+            self._juntar_tramos(orden_kg, wo, 5.0, defecto_ids=[Command.clear()])
+        with self.assertRaisesRegex(UserError, 'Elige la calidad'):
+            self._juntar_tramos(orden_kg, wo, 5.0, calidad=False)
+        self.assertEqual(orden_kg.tramos_pendientes_count, 1)
+
+    def test_84b_sin_tramos_no_hay_que_juntar(self):
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 40.5, 400.0)
+        with self.assertRaisesRegex(UserError, 'No hay tramos'):
+            self._juntar_tramos(orden_kg, wo, 5.0)
+
+    def test_87_alerta_sin_tramo_confirmacion_y_variables_iniciales(self):
+        """3.22.1: rollo menor a Rama sin tramo → alerta y confirmación (por defecto NO); suma mayor a Rama → error; al
+        abrir el rollo sin pesarlo la merma y las alertas están en cero."""
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        base = {
+            'production_id': orden_kg.id, 'workorder_id': wo.id, 'workcenter_id': self.revisadora.id,
+            'empleado_numero': '1', 'weighing_mode': 'manual', 'motivo_manual': 'Prueba sin báscula',
+            'rollo_codigos': rollos.name}
+        sin_pesar = self.env['rollo.inspeccion.estacion.wizard'].create(base)
+        self.assertEqual((sin_pesar.merma_kg, sin_pesar.merma_pct, sin_pesar.metros_teoricos), (0.0, 0.0, 0.0))
+        self.assertFalse(sin_pesar.alertas)
+        self.assertFalse(sin_pesar.sin_tramo_alerta)
+        # 40 kg netos de 50 de Rama, sin tramo
+        wiz = self.env['rollo.inspeccion.estacion.wizard'].create(dict(base, kg_bruto=41.5, metros=400.0,
+                                                                       clasificacion='PQ'))
+        self.assertTrue(wiz.sin_tramo_alerta)
+        self.assertFalse(wiz.confirma_sin_tramo, "Por defecto NO")
+        with self.assertRaisesRegex(UserError, 'no se ha quitado ningún tramo'):
+            wiz.action_confirmar()
+        self.assertFalse(orden_kg.rollo_final_kg_ids)
+        # más que Rama
+        sobra = self.env['rollo.inspeccion.estacion.wizard'].create(dict(base, kg_bruto=53.0, metros=400.0,
+                                                                         clasificacion='PQ'))
+        with self.assertRaisesRegex(UserError, 'no puede ser mayor'):
+            sobra.action_confirmar()
+        # confirmando, se registra
+        wiz.confirma_sin_tramo = True
+        wiz.action_confirmar()
+        self.assertEqual(len(orden_kg.rollo_final_kg_ids), 1)
+
+    def test_88_con_tramo_no_hay_alerta_y_la_merma_lo_cuenta(self):
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        wiz = self._estacion(orden_kg, wo, rollos, 41.5, metros=400.0, clasificacion='PQ')  # rollo 40 kg
+        self.assertTrue(wiz.sin_tramo_alerta)
+        self._tramo(wiz, 11.5, 30.0)  # tramo 10 kg: 40 + 10 = 50
+        self.assertAlmostEqual(wiz.tramo_kg_neto, 10.0)
+        self.assertAlmostEqual(wiz.merma_kg, 0.0)
+        self.assertFalse(wiz.sin_tramo_alerta)
+        wiz.action_confirmar()
+        self.assertEqual(rollos.estado_inspeccion, 'inspeccionado')
+        self.assertEqual(len(orden_kg.rollo_final_kg_ids), 1, "Solo el rollo sin el tramo; el tramo no tiene etiqueta")
+        self.assertAlmostEqual(orden_kg.tramo_ids.kg_neto, 10.0, msg="El tramo se guardó junto con el rollo")
+
+    def test_85_solo_pq_fe_y_segunda_al_capturar(self):
+        """3.22.0: el Desperdicio ya no es una calidad que se elija; los metros son obligatorios en las tres."""
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        with self.assertRaises(ValueError):
+            self._inspeccionar(orden_kg, wo, rollos, 40.5, 400.0, 'SEGUNDA', clasificacion='DESP')
+        with self.assertRaisesRegex(UserError, 'metros'):
+            self._inspeccionar(orden_kg, wo, rollos, 40.5, 0.0, 'PQ')
+        with self.assertRaises(ValueError):
+            self._juntar_tramos(orden_kg, wo, 5.0, calidad='DESP')
+        self.assertNotIn('DESP', [c for c, _n in self.env['rollo.inspeccion.estacion.wizard']._fields['clasificacion'].selection])
+
+    def test_86_anular_el_rollo_de_tramos_libera_los_tramos(self):
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        self._registrar_con_tramo(orden_kg, wo, rollos, 36.0 + 1.5, 400.0, 4.5, 20.0)
+        self._juntar_tramos(orden_kg, wo, 3.0 + 1.5, calidad='FE')
+        tramos = orden_kg.rollo_final_kg_ids.filtered('es_tramos')
+        self.assertEqual(tramos.clasificacion, 'FE')
+        self.assertFalse(orden_kg.tramos_pendientes_count)
+        with self.assertRaisesRegex(UserError, 'ya se juntó'):
+            tramos.tramo_ids.unlink()
+        tramos.action_anular()
+        self.assertEqual(orden_kg.tramos_pendientes_count, 1, "Anular el rollo de tramos deja el tramo pendiente")
+        self.assertFalse(orden_kg.rollo_final_kg_ids.filtered('es_tramos'))
+
+    # ------------------------------------------------------------------ 3.23.0: dos desperdicios de Rama y rollos finales en la orden en metros
+    def _subproducto_rama(self, orden_kg, producto):
+        """Como en la planta: la lista trae el subproducto con cantidad 0 y destino el de la orden."""
+        self.env['stock.move'].create({
+            'product_id': producto.id, 'product_uom': producto.uom_id.id, 'product_uom_qty': 0.0,
+            'location_id': orden_kg.move_finished_ids[:1].location_id.id,
+            'location_dest_id': orden_kg.location_dest_id.id,
+            'production_id': orden_kg.id, 'company_id': orden_kg.company_id.id, 'origin': orden_kg.name,
+            'cost_share': 0.0})._action_confirm()
+
+    def _desperdicios_de_rama(self):
+        Producto = self.env['product.product']
+        tejido = Producto.search([('default_code', '=', 'DESPERDICIO TEJIDO')], limit=1) \
+            or self._producto('DESPERDICIO TEJIDO', self.kg)
+        orillas = Producto.search([('default_code', '=', 'DESPERDICIO ORILLAS')], limit=1) \
+            or self._producto('DESPERDICIO ORILLAS', self.kg)
+        return tejido, orillas
+
+    def test_89_rama_pesa_desperdicio_tejido_y_desperdicio_orillas(self):
+        """3.23.0: Rama pesa dos subproductos, cada uno una vez por orden y con su lote, su etiqueta y su peso; al cerrar la
+        orden en kg los dos pasan a la 17."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_rollos_bitacora.validar_traspasos_calidad', False)
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        self._subproducto_rama(orden_kg, orillas)
+        orden_kg._rama_registrar_desperdicio(wo_rama, 1.5, 'Operador', False, tipo='orillas')
+        self.assertEqual((orden_kg.desperdicio_orillas_kg, orden_kg.desperdicio_kg), (1.5, 0.0))
+        self.assertEqual(orden_kg.desperdicio_orillas_lote_id.product_id, orillas)
+        orden_kg._rama_registrar_desperdicio(wo_rama, 2.25, 'Operador', True, tipo='tejido')
+        self.assertEqual(orden_kg.desperdicio_kg, 2.25)
+        self.assertEqual(orden_kg.desperdicio_lote_id.product_id, tejido)
+        self.assertTrue(orden_kg.desperdicio_manual)
+        self.assertAlmostEqual(orden_kg.desperdicio_rama_total_kg, 3.75)
+        for tipo in ('tejido', 'orillas'):
+            with self.assertRaises(UserError, msg='Cada uno se pesa una vez por orden'):
+                orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo=tipo)
+        zpl_orillas = orden_kg._zpl_etiqueta_desperdicio_rama('orillas')
+        self.assertIn('PRODUCTO: DESPERDICIO ORILLAS', zpl_orillas)
+        self.assertIn('CANTIDAD: 1.50', zpl_orillas)
+        self.assertIn('PRODUCTO: DESPERDICIO TEJIDO', orden_kg._zpl_etiqueta_desperdicio_rama('tejido'))
+        self.assertIn('report_etiqueta_desperdicio_orillas', str(orden_kg.action_imprimir_etiqueta_desperdicio_orillas()))
+        self._inspeccionar(orden_kg, wo, rollos, 40.6, 460.0)
+        self._cerrar_bano(orden_kg)
+        traspasos = self.env['stock.picking'].search([
+            ('origin', 'ilike', orden_kg.name), ('location_dest_id', '=', self.ubic['DESP'].id)])
+        self.assertTrue(traspasos, 'Los dos desperdicios van a la 17 en una transferencia')
+        traspasos.with_context(skip_backorder=True, skip_sanity_check=True, skip_immediate=True).button_validate()
+        for producto, kg in ((tejido, 2.25), (orillas, 1.5)):
+            self.assertAlmostEqual(self._cantidad(producto, self.ubic['DESP']), kg, msg=producto.default_code)
+
+    def test_90_la_ventana_de_desperdicio_de_rama_elige_cual_pesar(self):
+        """3.23.0: la ventana pregunta cuál desperdicio se pesa; el aviso de «ya pesado» es por desperdicio, y las
+        orillas quedan en su historial de pesaje con su propia referencia."""
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        self._subproducto_rama(orden_kg, orillas)
+        valores = {'production_id': orden_kg.id, 'workorder_id': wo_rama.id, 'empleado_numero': '1',
+                   'weighing_mode': 'manual', 'motivo_manual': 'Prueba'}
+        Wizard = self.env['rollo.desperdicio.rama.wizard']
+        self.assertEqual(Wizard.create(valores).tipo, 'tejido', 'Por defecto, el desperdicio tejido')
+        accion = Wizard.create(dict(valores, tipo='orillas', kg_desperdicio=0.8)).action_confirmar()
+        self.assertIn('report_etiqueta_desperdicio_orillas', str(accion))
+        self.assertEqual(orden_kg.desperdicio_orillas_kg, 0.8)
+        self.assertEqual(orden_kg.desperdicio_orillas_motivo, 'Prueba')
+        self.assertFalse(orden_kg.desperdicio_kg)
+        self.assertTrue(Wizard.create(dict(valores, tipo='orillas')).ya_pesado)
+        self.assertFalse(Wizard.create(dict(valores, tipo='tejido')).ya_pesado, 'El otro todavía se puede pesar')
+        if 'mrp.weighing.log' in self.env:
+            self.assertTrue(self.env['mrp.weighing.log'].search([
+                ('production_id', '=', orden_kg.id), ('roll_number', '=', 'DESPERDICIO ORILLAS')]))
+
+    def test_91_sin_el_subproducto_avisa_cual_falta(self):
+        """3.23.0: si la lista no trae el subproducto elegido, el error dice cuál agregar (cantidad 0, operación Rama)."""
+        tejido, orillas = self._desperdicios_de_rama()
+        orden_m, orden_kg, wo, rollos = self._bano((40.0,))
+        wo_rama = orden_kg.workorder_ids.filtered(lambda w: w.name == 'RAMA')
+        self._subproducto_rama(orden_kg, tejido)
+        with self.assertRaisesRegex(UserError, 'DESPERDICIO ORILLAS'):
+            orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo='orillas')
+        orden_kg._rama_registrar_desperdicio(wo_rama, 1.0, 'Operador', False, tipo='tejido')
+        self.assertEqual(orden_kg.desperdicio_kg, 1.0)
+
+    def test_92_los_rollos_finales_se_ven_en_la_orden_en_metros(self):
+        """3.23.0: la orden en metros muestra sus rollos finales (kg y metros, calidad de Inspección y definitiva de Empaque);
+        antes la pestaña Rollos solo traía la lista de la orden en kg y en la orden en metros quedaba vacía."""
+        vista = self.env['mrp.production'].get_view(
+            self.env.ref('mrp.mrp_production_form_view').id, 'form')['arch']
+        self.assertRegex(vista, r'<field name="rollo_final_m_ids"[^>]*readonly="1"')
+        for campo in ('clasificacion_final', 'kg_registro', 'metros_registro'):
+            self.assertIn(campo, vista)
+        orden_m, orden_kg, wo, rollos = self._bano((50.0,))
+        self._inspeccionar(orden_kg, wo, rollos, 50.6, 585.0)
+        orden_kg.button_mark_done()
+        finales = orden_m.rollo_final_m_ids
+        self.assertEqual(finales, orden_kg.rollo_final_kg_ids)
+        self.assertEqual(finales.estado, 'inspeccionado')
+        self._empaque_confirma_todos(orden_m)
+        self.assertEqual(finales.clasificacion_final, 'PQ')
+        self.assertAlmostEqual(finales.kg_registro, finales.kg_neto)
+        self.assertAlmostEqual(finales.metros_registro, 585.0)

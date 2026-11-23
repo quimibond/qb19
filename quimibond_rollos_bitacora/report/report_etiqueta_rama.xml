@@ -70,6 +70,19 @@
         <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_desperdicio_rama</field>
     </record>
 
+    <record id="action_report_etiqueta_desperdicio_orillas" model="ir.actions.report">
+        <field name="name">Etiqueta del desperdicio de orillas de Rama</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-text</field>
+        <field name="report_name">quimibond_rollos_bitacora.report_etiqueta_desperdicio_orillas</field>
+    </record>
+
+    <template id="report_etiqueta_desperdicio_orillas">
+        <t t-foreach="docs" t-as="o">
+            <t t-out="o._zpl_etiqueta_desperdicio_rama('orillas')"/>
+        </t>
+    </template>
+
     <template id="report_etiqueta_desperdicio_rama">
         <t t-foreach="docs" t-as="o">
             <t t-out="o._zpl_etiqueta_desperdicio_rama()"/>
