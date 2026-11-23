@@ -320,6 +320,19 @@
                         <button name="action_qb_open_set_partner" type="object"
                                 string="Poner cliente" class="btn-link"/>
                     </div>
+                    <!-- 3.32.0: la REV2 de 2026 se aprobó sin Industrial ni Proyectos en noviembre y
+                         diciembre. -->
+                    <div class="alert alert-danger" role="alert"
+                         invisible="kind != 'presupuesto' or state not in ('borrador', 'revisado') or empty_month_count == 0">
+                        Meses sin ningún renglón: <field name="empty_months_text" class="oe_inline"/>.
+                        No se puede aprobar así: agregue los renglones que faltan o, si de verdad no
+                        se venderá nada ese mes, Dirección puede aprobar con la excepción.
+                        <button name="action_qb_approve_empty_months" type="object"
+                                string="Aprobar con meses vacíos" class="btn-link"
+                                invisible="state != 'revisado'"
+                                groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
+                    </div>
+                    <field name="empty_month_count" invisible="1"/>
                     <field name="needs_justification" invisible="1"/>
                     <div class="alert alert-danger" role="alert"
                          invisible="not needs_justification">
@@ -621,7 +634,10 @@
                         Industrial y Especiales un renglón por producto, cliente y mes; en
                         Confección por producto y mes, sin cliente. La cantidad es la vendida ese
                         mes por el crecimiento del mercado; el precio, el de la lista o, si la
-                        lista no tiene el producto, el real del periodo base. No entran saldos,
+                        lista no tiene el producto, el real del periodo base. Con «Usar el
+                        pronóstico vigente», los meses que el pronóstico de un cliente cubre
+                        completos salen de ahí, sin crecimiento. Los supuestos por cliente
+                        sustituyen el crecimiento del mercado desde el mes que se indique. No entran saldos,
                         desperdicio, notas de crédito genéricas ni servicios. Con «Traer
                         desarrollos», cada desarrollo abierto (de Cotización a Pilotaje) con
                         consumo estimado suma renglones de Proyectos desde su fecha requerida, con
@@ -649,7 +665,20 @@
                             <field name="include_dev"/>
                             <field name="dev_pct" invisible="not include_dev"/>
                         </group>
+                        <group string="Pronóstico">
+                            <field name="use_forecast"/>
+                        </group>
                     </group>
+                    <!-- 3.32.0: lo que Ventas ya sabe de un cliente (programa nuevo, fin de un modelo). -->
+                    <separator string="Supuestos por cliente"/>
+                    <field name="partner_ids">
+                        <list editable="bottom">
+                            <field name="partner_id"/>
+                            <field name="growth_pct"/>
+                            <field name="month_from"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
                 </sheet>
                 <footer>
                     <button name="action_build" type="object" string="Armar propuesta"
