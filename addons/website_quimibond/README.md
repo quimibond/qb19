@@ -33,7 +33,35 @@ con el selector de sitio web del editor.
 | `/planta`, `/calidad`, `/nosotros` | Empresa | `controllers/contenido.py` + datos de la compañía |
 | `/cotizar` | Solicitud de cotización o muestra | Crea `crm.lead` (formulario web de Odoo) |
 | `/en/…` | Las mismas páginas en inglés | `i18n/en_CA.po` |
-| `/jobs`, `/my`, `/helpdesk` | Empleos, portal, reportes de calidad | Apps nativas, con el encabezado nuevo |
+| `/mi-cuenta`, `/mi-cuenta/pedidos`, `/mi-cuenta/pedido/<id>`, `/mi-cuenta/estado-de-cuenta` | Portal del cliente: pedidos con etapa y fecha compromiso, entregas, facturas y saldo | `sale.order`, `stock.picking`, `account.move` de la empresa del usuario |
+| `/jobs`, `/my?todo=1`, `/helpdesk` | Empleos, portal nativo, reportes de calidad | Apps nativas, con el encabezado nuevo |
+
+## Mi cuenta (portal del cliente, desde 1.12.0)
+
+Lo que ve un cliente al iniciar sesión. `/my` lo manda a `/mi-cuenta`; el
+portal nativo sigue en `/my?todo=1` (enlace «Más documentos»).
+
+- **Resumen**: pedidos en curso con su etapa (Confirmado · En proceso ·
+  Embarcado · Facturado), próxima fecha compromiso, saldo por moneda (por
+  vencer y vencido), facturas por pagar y últimas entregas.
+- **Pedidos** (12 meses) y **detalle del pedido**: productos con lo pedido,
+  entregado y pendiente; entregas con su remisión en PDF; facturas.
+- **Estado de cuenta**: facturas por pagar y pagadas (12 meses). «PDF y XML»
+  baja los documentos fiscales de la factura con la ruta nativa del portal.
+
+Reglas (`controllers/cuenta.py`):
+
+- **Cada cliente ve solo lo de su empresa**: todo se filtra por
+  `partner_id child_of commercial_partner_id` del usuario. Un contacto ve los
+  pedidos y facturas de toda su empresa (no solo los que sigue, como en el
+  portal nativo). El pedido de otra empresa responde 404.
+- **Nada de operación interna**: de producción solo sale la etapa «En
+  producción» cuando el pedido tiene una orden de fabricación abierta. La etapa
+  la calcula `etapa_pedido()`.
+- **Vista previa**: un gerente de Ventas (`sales_team.group_sale_manager`) abre
+  `/mi-cuenta?cliente=<id del contacto>` y ve la cuenta como ese cliente, con
+  un aviso arriba. Cualquier otro usuario interno va a `/odoo`.
+- Dar acceso a un cliente: en su contacto, Acción → Otorgar acceso al portal.
 
 ## Conexión con Odoo
 

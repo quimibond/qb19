@@ -78,7 +78,7 @@
                         <kbd>⌘K</kbd>
                     </button>
                     <t t-set="qb_publico" t-value="request.env.user._is_public()"/>
-                    <t t-set="qb_cuenta" t-value="'/odoo' if request.env.user._is_internal() else '/my'"/>
+                    <t t-set="qb_cuenta" t-value="'/odoo' if request.env.user._is_internal() else '/mi-cuenta'"/>
                     <a t-if="qb_publico" href="/web/login" class="qb-btn qb-btn--ghost qb-acceso" aria-label="Iniciar sesión"><i class="fa fa-user-o" aria-hidden="true"/><span>Iniciar sesión</span></a>
                     <a t-else="" t-att-href="qb_cuenta" class="qb-btn qb-btn--ghost qb-acceso" aria-label="Mi cuenta"><i class="fa fa-user" aria-hidden="true"/><span t-out="request.env.user.name.split(' ')[0]"/></a>
                     <a href="/cotizar" class="qb-btn qb-btn--primario">Cotizar</a>
@@ -98,7 +98,7 @@
                 <a href="/nosotros">Nosotros</a>
                 <a href="/jobs">Empleos</a>
                 <a t-if="request.env.user._is_public()" href="/web/login"><i class="fa fa-user-o" aria-hidden="true"/> Iniciar sesión</a>
-                <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/my'}"><i class="fa fa-user" aria-hidden="true"/> Mi cuenta</a>
+                <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/mi-cuenta'}"><i class="fa fa-user" aria-hidden="true"/> Mi cuenta</a>
                 <a href="/compradores-automotrices">Compradores automotrices</a>
                 <a href="/agendar"><i class="fa fa-calendar" aria-hidden="true"/> Agendar llamada</a>
                 <t t-if="frontend_languages and len(frontend_languages) > 1" t-foreach="frontend_languages.values()" t-as="lg">
@@ -157,7 +157,7 @@
                         <a href="/cotizar">Solicitar cotización</a>
                         <a href="/agendar">Agendar llamada</a>
                         <a t-if="request.env.user._is_public()" href="/web/login">Iniciar sesión</a>
-                        <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/my'}">Mi cuenta</a>
+                        <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/mi-cuenta'}">Mi cuenta</a>
                         <a href="/helpdesk">Reporte de calidad</a>
                         <a t-if="website.social_linkedin" t-att-href="website.social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
                     </div>
