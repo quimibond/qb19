@@ -237,15 +237,18 @@ class FichaTecnicaRevision(models.Model):
                                            cual, 'Fabricación Tela en kg' if cual == 'kg' else 'Fabricación Tela en m')))
         # 2.25.0 (piloto 2026-11-04): en la lista «Flujo en kg», el desperdicio que pesa Rama y, ya activa, la ruta MTO
         # del «I…» (sin ella la orden en metros no pide la orden en kg).
-        from .ruta_familia import CODIGO_KG, DESPERDICIO_CODIGO  # local: ruta_familia se carga después
+        from .ruta_familia import CODIGO_KG, DESPERDICIOS_RAMA  # local: ruta_familia se carga después
         if bom_kg and bom_kg.code == CODIGO_KG:
             Ruta = self.env['ficha.tecnica.ruta']
             con_rama = bom_kg.with_context(active_test=False).operation_ids.filtered(
                 lambda o: Ruta._ft_paso_de_operacion(o) == 'rama')
-            if con_rama and not bom_kg.byproduct_ids.filtered(lambda b: b.product_id.default_code == DESPERDICIO_CODIGO):
-                pendientes.append(dict(ing, tipo='desperdicio', bom_id=bom_kg.id, detalle='La lista en kg no tiene el '
-                                       'subproducto «%s» en la Rama: Rama no puede pesar el desperdicio.' % (
-                                           DESPERDICIO_CODIGO)))
+            # 2.29.1: Rama pesa dos subproductos (Desperdicio Tejido y Desperdicio Orillas).
+            faltan = [codigo for codigo in DESPERDICIOS_RAMA
+                      if not bom_kg.byproduct_ids.filtered(lambda b, codigo=codigo: b.product_id.default_code == codigo)]
+            if con_rama and faltan:
+                pendientes.append(dict(ing, tipo='desperdicio', bom_id=bom_kg.id, detalle='La lista en kg no tiene '
+                                       'el subproducto %s en la Rama: Rama no puede pesar el desperdicio.' % (
+                                           ', '.join('«%s»' % codigo for codigo in faltan))))
             ruta = self.env['mrp.bom']._ft_ruta_mto_kg(bom_kg.company_id or None)
             if bom_kg.active and ruta and ruta not in bom_kg.product_tmpl_id.route_ids:
                 pendientes.append(dict(ing, tipo='ruta_mto', bom_id=bom_kg.id, detalle='%s no tiene la ruta «%s»: la '

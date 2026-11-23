@@ -6,3 +6,4 @@ from . import rollo_inspeccion_estacion_wizard
 from . import rollo_empaque_clasificacion_wizard
 from . import rollo_empaque_desperdicio_wizard
 from . import rollo_liberacion_lab_wizard
+from . import rollo_tramo_wizard
