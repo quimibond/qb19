@@ -16,8 +16,8 @@ class TestMiCuenta(HttpCase):
             'name': 'Scrim de prueba', 'is_storable': True, 'list_price': 10.0,
         })
         Socio = cls.env['res.partner']
-        cls.empresa_a = Socio.create({'name': 'Cliente Alfa SA', 'is_company': True})
-        cls.empresa_b = Socio.create({'name': 'Cliente Beta SA', 'is_company': True})
+        cls.empresa_a = Socio.create({'name': 'Cliente Alfa SA', 'is_company': True, 'qb_mi_cuenta': True})
+        cls.empresa_b = Socio.create({'name': 'Cliente Beta SA', 'is_company': True, 'qb_mi_cuenta': True})
         cls.contacto_a = Socio.create({'name': 'Compras Alfa', 'parent_id': cls.empresa_a.id, 'email': 'compras@alfa.test'})
         cls.usuario_a = cls.env['res.users'].with_context(no_reset_password=True).create({
             'name': 'Compras Alfa', 'login': 'compras@alfa.test', 'password': 'compras@alfa.test',
@@ -102,6 +102,32 @@ class TestMiCuenta(HttpCase):
         # Sin cliente, el usuario interno va a su Odoo.
         sin = self.url_open('/mi-cuenta', allow_redirects=False)
         self.assertIn(sin.status_code, (302, 303))
+
+    def test_solo_por_invitacion(self):
+        # Sin la casilla en la empresa, ni «Mi cuenta» ni Calidad se abren:
+        # el usuario se queda en el portal de siempre.
+        self.empresa_a.qb_mi_cuenta = False
+        self.authenticate('compras@alfa.test', 'compras@alfa.test')
+        for ruta in ('/mi-cuenta', '/mi-cuenta/pedidos', '/mi-cuenta/pedido/%s' % self.pedido_a.id,
+                     '/mi-cuenta/estado-de-cuenta', '/mi-cuenta/calidad'):
+            respuesta = self.url_open(ruta, allow_redirects=False)
+            self.assertIn(respuesta.status_code, (302, 303), ruta)
+            self.assertTrue(respuesta.headers['Location'].endswith('/my'), ruta)
+        inicio = self.url_open('/my', allow_redirects=False)
+        self.assertEqual(inicio.status_code, 200)
+        self.assertNotIn('OC-ALFA-1', self.url_open('/mi-cuenta').text)
+
+    def test_registro_libre_no_entra(self):
+        # Quien se registra solo en el sitio queda sin empresa y sin invitación.
+        usuario = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Desconocido', 'login': 'nadie@ejemplo.test', 'password': 'nadie@ejemplo.test',
+            'group_ids': [Command.set([self.env.ref('base.group_portal').id])],
+        })
+        self.assertFalse(usuario.partner_id.commercial_partner_id.qb_mi_cuenta)
+        self.authenticate('nadie@ejemplo.test', 'nadie@ejemplo.test')
+        respuesta = self.url_open('/mi-cuenta', allow_redirects=False)
+        self.assertIn(respuesta.status_code, (302, 303))
+        self.assertTrue(respuesta.headers['Location'].endswith('/my'))
 
     def test_apagado(self):
         self.website.qb_diseno_b2b = False
