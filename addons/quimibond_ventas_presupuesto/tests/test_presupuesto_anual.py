@@ -637,17 +637,21 @@ class TestPresupuestoAnual(TransactionCase):
         self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
         otro = self.env['res.partner'].create({'name': 'Cliente que se va', 'is_company': True})
 
-        def invoice(partner, when, qty):
+        por_pedido = self.env['product.product'].create({
+            'name': 'Tela por pedido', 'type': 'consu', 'uom_id': self.uom_m.id})
+
+        def invoice(partner, when, qty, product=None):
             move = self.env['account.move'].create({
                 'move_type': 'out_invoice', 'partner_id': partner.id, 'invoice_date': when,
                 'team_id': self.team_ind.id,
                 'invoice_line_ids': [(0, 0, {
-                    'product_id': self.product.id, 'quantity': qty, 'price_unit': 2.0,
+                    'product_id': (product or self.product).id, 'quantity': qty, 'price_unit': 2.0,
                     'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
             move.action_post()
 
         for month in (1, 2, 3):
             invoice(self.client, date(2017, month, 10), 100.0)
+        invoice(self.client, date(2017, 1, 10), 40.0, por_pedido)
         invoice(otro, date(2017, 3, 10), 100.0)
         invoice(otro, date(2017, 7, 10), 100.0)
         Forecast = self.env['qb.forecast.line']
@@ -660,7 +664,11 @@ class TestPresupuestoAnual(TransactionCase):
             2018, growth={'industrial': 10.0}, base='anio', include_dev=False,
             partner_growth=[{'partner_id': otro.id, 'growth_pct': -100.0, 'month_from': 7,
                              'note': 'Termina su programa'}]))
-        mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client).sorted('date')
+        pedido = budget.line_ids.filtered(lambda l: l.product_id == por_pedido)
+        self.assertEqual((pedido.date, pedido.qty_origen, pedido.qty_budget), (date(2018, 1, 1), 'venta', 44.0),
+                         "Un producto que no viene en el pronóstico sigue con la venta base")
+        mine = budget.line_ids.filtered(
+            lambda l: l.partner_id == self.client and l.product_id == self.product).sorted('date')
         self.assertEqual(mine.mapped('date'), [date(2018, 1, 1), date(2018, 2, 1), date(2018, 3, 1)])
         self.assertEqual(mine.mapped('qty_origen'), ['pronostico', 'pronostico', 'venta'])
         self.assertEqual(mine.mapped('qty_budget'), [300.0, 50.0, 110.0])
@@ -676,6 +684,6 @@ class TestPresupuestoAnual(TransactionCase):
         budget.line_ids.unlink()
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
             2018, growth={'industrial': 10.0}, base='anio', include_dev=False, use_forecast=False))
-        mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client)
+        mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client and l.product_id == self.product)
         self.assertEqual(set(mine.mapped('qty_origen')), {'venta'})
         self.assertEqual(mine.mapped('qty_budget'), [110.0, 110.0, 110.0])
