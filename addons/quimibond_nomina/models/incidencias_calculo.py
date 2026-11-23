@@ -74,6 +74,28 @@ cuánto duró (el hueco más largo entre checadas intermedias, con cuatro o más
 checadas en el turno) y, si pasa de ``comida_max`` minutos (parámetro
 ``quimibond_nomina.incidencias_comida_max``, 60 si no está), lo deja en
 Observaciones. **Solo se anota, no se descuenta** (Dirección, 19-nov-2026).
+
+**Reglas de RH del 23-nov-2026** (correo de Miguel Medina, 1.24.0; aplican desde
+la nómina 49):
+
+* **Turno 3** (cuatro días de 12 horas): no genera tiempo extra. Se mide contra
+  las 12 horas del turno; solo un quinto día trabajado sale como extra.
+* **Turno 4** (noche de lunes a jueves): la jornada nocturna legal es de 42
+  horas y cubren 48, así que lleva **6 horas extra fijas** si trabaja completo
+  el turno del jueves (``HE_FIJAS``): checó entrada y salida y no salió antes de
+  la hora. Dentro del turno no hay más extra.
+* **Turnos 5 y 6** (Tejido): sin tiempo extra; **prima dominical de 12 horas**
+  si trabaja completos los turnos que tocan el domingo (``DOM_COMPLETO``; turno
+  5: el domingo de día; turno 6: las noches del sábado y del domingo). Si no
+  los completa no lleva prima y queda la nota.
+* **Comida** permitida (solo se anota): empleados 60 minutos; sindicalizados
+  30 en jornadas de 10 horas o menos y 45 en las de 12 (``comida_permitida``).
+* **Turno 7** (Ciruelos, CDMX): 09:00 a 16:00 de lunes a jueves y 09:00 a 14:00
+  el viernes. El checador no lo propone; solo cuenta si RH lo tiene en la ficha.
+* **Festivos** (calendario de RH, ``qb.nomina.festivo``): un festivo sin
+  trabajar se paga («F», no es falta); trabajado se anota en «Festivos
+  trabajados» para pagarlo como el art. 75 de la LFT (salario doble además del
+  día). La prima dominical de un festivo en domingo sale como siempre.
 """
 from datetime import datetime, time, timedelta
 from math import floor
@@ -104,11 +126,27 @@ TURNOS = {
     '4': {d: (time(19, 0), 12.0) for d in range(4)},
     '5': {1: (time(19, 0), 12.0), 2: (time(19, 0), 12.0), 3: (time(19, 0), 12.0), 6: (time(7, 0), 12.0)},
     '6': {5: (time(19, 0), 12.0), 6: (time(19, 0), 12.0), 0: (time(19, 0), 12.0)},
+    '7': {0: (time(9, 0), 7.0), 1: (time(9, 0), 7.0), 2: (time(9, 0), 7.0), 3: (time(9, 0), 7.0),
+          4: (time(9, 0), 5.0)},
 }
+# Turnos que el checador no propone: solo cuentan si RH los tiene en la ficha (el 7 es de Ciruelos).
+SOLO_RH = ('7',)
 # Turnos que no trabajan todos sus días: cuántos de 12 horas les tocan a la semana.
 TURNOS_DIAS = {'3': 4}
-# Turnos cuyo tiempo extra se mide contra el horario del día y no contra las horas del turno.
-EXTRA_SOBRE_HORARIO = ('3', '4')
+# Turnos cuyo tiempo extra se mide contra el horario del día y no contra las horas del turno. Desde el
+# 23-nov-2026 ninguno: los turnos 3 a 6 no generan extra dentro de su turno (RH, correo de Miguel).
+EXTRA_SOBRE_HORARIO = ()
+# Extra fijo por turno: {turno: (día de la semana, horas)} si trabaja completo ese día. Turno 4: 48 horas
+# de noche contra las 42 de la jornada nocturna legal; se pagan 6 si completa el jueves.
+HE_FIJAS = {'4': (3, 6)}
+# Turnos cuya prima dominical (12 horas) pide completar los turnos que tocan el domingo.
+DOM_COMPLETO = ('5', '6')
+# Comida permitida (minutos; solo se anota). Sindicalizados: 30 en jornadas de 10 horas o menos, 45 en las
+# de 12; empleados: el parámetro (60).
+COMIDA_SINDICALIZADO_CORTA = 30
+COMIDA_SINDICALIZADO_LARGA = 45
+JORNADA_LARGA = 11.0                    # horas: a partir de aquí la jornada es «de 12»
+CODIGO_FESTIVO = 'F'
 TURNOS_NOMBRE = [
     ('1', "1 · 07:00 a 17:00, lunes a viernes"),
     ('2', "2 · 08:00 a 18:00, lunes a viernes"),
@@ -116,6 +154,7 @@ TURNOS_NOMBRE = [
     ('4', "4 · 19:00 a 07:00, lunes a jueves"),
     ('5', "5 · 19:00 a 07:00, martes a jueves, y domingo 07:00 a 19:00"),
     ('6', "6 · 19:00 a 07:00, sábado a lunes"),
+    ('7', "7 · 09:00 a 16:00, lunes a viernes (Ciruelos)"),
 ]
 ENTRADAS_TURNOS = (time(7, 0), time(8, 0), time(19, 0))
 VENTANA_TURNO = timedelta(hours=4)      # la checada de entrada más lejos que esto no es de ese turno
@@ -222,6 +261,8 @@ def inferir_turno(lunes, marcas, ausencias=None, contrato_desde=None, contrato_h
 
     puntajes = {}
     for codigo, turno in TURNOS.items():
+        if codigo in SOLO_RH and codigo != preferido:
+            continue
         dentro = 0.0
         faltantes = []
         for dia, j0, j1, horas in _jornadas_turno(lunes, turno, semanas=(0,)):
@@ -239,13 +280,28 @@ def inferir_turno(lunes, marcas, ausencias=None, contrato_desde=None, contrato_h
     return mejor, puntajes
 
 
+def comida_permitida(horas_jornada, sindicalizado, comida_empleados=COMIDA_MAX_DEFAULT):
+    """Minutos de comida permitidos en una jornada (RH, 23-nov-2026): empleados ``comida_empleados``
+    (60); sindicalizados 30 en jornadas de 10 horas o menos y 45 en las de 12."""
+    if not sindicalizado:
+        return comida_empleados
+    return COMIDA_SINDICALIZADO_LARGA if horas_jornada >= JORNADA_LARGA else COMIDA_SINDICALIZADO_CORTA
+
+
+def _toca_domingo(dow, entrada, horas):
+    """La jornada que entra ese día de la semana a esa hora pisa el domingo."""
+    inicio = datetime.combine(datetime(2026, 11, 23).date() + timedelta(days=dow), entrada)  # un lunes
+    fin = inicio + timedelta(hours=horas)
+    return inicio.weekday() == 6 or (fin - timedelta(minutes=1)).weekday() == 6
+
+
 def _fmt(horas):
     return ('%.1f' % horas).rstrip('0').rstrip('.')
 
 
 def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=None,
                     contrato_hasta=None, hoy=None, entradas=ENTRADAS_DEFAULT, turno=None,
-                    comida_max=COMIDA_MAX_DEFAULT):
+                    comida_max=COMIDA_MAX_DEFAULT, sindicalizado=False, festivos=None):
     """Una persona, una semana de nómina (lunes a domingo).
 
     ``programado``: ``{0..6: horas}`` del horario (la base de pago). ``marcas``:
@@ -254,8 +310,11 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
     proyectan con el horario (como hace RH al reportar el martes). ``turno``: el
     código de la semana (``'1'`` a ``'6'``) o sus jornadas (``TURNOS[código]``);
     sin él, se mide contra el horario y las entradas de la planta, como antes.
-    ``comida_max``: minutos de comida a partir de los cuales se anota."""
+    ``comida_max``: minutos de comida a partir de los cuales se anota (empleados; a un ``sindicalizado``
+    le tocan 30 o 45 según la jornada, ``comida_permitida``). ``festivos``: fechas de descanso obligatorio
+    de la semana."""
     ausencias = ausencias or {}
+    festivos = set(festivos or ())
     codigo_turno = turno if isinstance(turno, str) else None
     if codigo_turno:
         turno = TURNOS.get(codigo_turno)
@@ -265,7 +324,8 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
         'dias': [''] * 7, 'horas_base': 0.0, 'faltas': 0, 'falta_horas': 0.0, 'incap_dias': 0,
         'horas_sin_goce': 0.0, 'retardos': 0, 'retardo_min': 0, 'salidas_antes': 0,
         'salida_min': 0, 'extra_horas': 0.0, 'he_propuestas': 0, 'dias_con_extra': 0,
-        'dom_horas': 0.0, 'comida_min': 0, 'comidas_largas': 0, 'sin_checadas': False, 'proyectado': False, 'notas': [],
+        'dom_horas': 0.0, 'comida_min': 0, 'comidas_largas': 0, 'sin_checadas': False, 'proyectado': False,
+        'festivos_trabajados': 0, 'notas': [],
     }
 
     def en_contrato(dia):
@@ -323,6 +383,16 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             r['dias'][i] = 'I'
             r['incap_dias'] += 1
             continue
+        if dia in festivos:
+            if turnos_dia.get(dia):
+                # Trabajó el festivo: el día se paga como siempre y además el doble (art. 75 LFT).
+                r['festivos_trabajados'] += 1
+                r['notas'].append('%s festivo trabajado' % NOMBRES_DIA[i])
+            elif prog or del_turno:
+                # Descanso obligatorio: se paga, no es falta.
+                r['dias'][i] = CODIGO_FESTIVO
+                r['horas_base'] += prog
+                continue
         if turno and del_turno and not prog:
             # Sábado o domingo del turno: no está en la base, pero faltar sí cuenta.
             if (turnos_dia.get(dia) or codigo in CODIGOS_PAGADOS or codigo == CODIGO_SIN_GOCE
@@ -370,6 +440,9 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             r['notas'].append('%s falta' % NOMBRES_DIA[i])
 
     # Turnos: retardos, salidas antes, tiempo extra y prima dominical.
+    completos = set()           # días del turno trabajados completos (entrada, salida, sin salir antes)
+    con_extra = set()
+    dom_turno = 0.0
     for dia in sorted(turnos_dia):
         i = dia.weekday()
         incapacitado = ausencias.get(dia, (None,))[0] in CODIGOS_INCAPACIDAD
@@ -378,7 +451,7 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             prog = prog_dia if horas_turno is None else horas_turno
             if incapacitado or not en_contrato(dia):
                 prog = 0.0
-            # Turnos 3 y 4: el extra es lo que pasa del horario del día (RH paga sus 12 horas con extra).
+            # EXTRA_SOBRE_HORARIO: el extra es lo que pasa del horario del día (hoy ningún turno).
             prog_extra = prog_dia if horas_turno and extra_sobre_horario else prog
             tarde = inicio - ref
             if prog and tarde >= UN_MINUTO:
@@ -394,7 +467,8 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             if hueco:
                 minutos = int((hueco[1] - hueco[0]).total_seconds() // 60)
                 r['comida_min'] += minutos
-                if comida_max and minutos > comida_max:
+                permitida = comida_permitida(prog or horas, sindicalizado, comida_max) if comida_max else 0
+                if permitida and minutos > permitida:
                     r['comidas_largas'] += 1
                     r['notas'].append('%s comida %d min (%s a %s)' % (
                         NOMBRES_DIA[i], minutos, hueco[0].strftime('%H:%M'), hueco[1].strftime('%H:%M')))
@@ -403,16 +477,46 @@ def calcular_semana(lunes, programado, marcas, ausencias=None, contrato_desde=No
             if floor(extra) >= 1:
                 r['he_propuestas'] += floor(extra)
                 r['dias_con_extra'] += 1
+                con_extra.add(dia)
             antes = ref + timedelta(hours=prog) - fin
             if prog and antes >= UN_MINUTO:
                 minutos = int(antes.total_seconds() // 60)
                 r['salidas_antes'] += 1
                 r['salida_min'] += minutos
                 r['notas'].append('%s salida antes %d min (%s)' % (NOMBRES_DIA[i], minutos, fin.strftime('%H:%M')))
+            elif horas_turno:
+                completos.add(dia)
             if inicio.weekday() == 6 or fin.weekday() == 6 or (fin - inicio).days >= 1:
                 r['dom_horas'] += round(horas)
+                if horas_turno:
+                    dom_turno += round(horas)
             if i >= 5:
                 r['dias'][i] = _fmt(round(horas))
+
+    # Turno 4: 6 horas extra fijas si completa el turno del jueves (RH, 23-nov-2026).
+    fija = HE_FIJAS.get(codigo_turno)
+    if fija:
+        dia_fijo = lunes + timedelta(days=fija[0])
+        if dia_fijo in completos:
+            r['extra_horas'] += fija[1]
+            r['he_propuestas'] += fija[1]
+            if dia_fijo not in con_extra:
+                r['dias_con_extra'] += 1
+            r['notas'].append('%s turno completo: %d HE (jornada nocturna de 42 h)' % (NOMBRES_DIA[fija[0]], fija[1]))
+        elif en_contrato(dia_fijo) and not (hoy and dia_fijo > hoy) and hay_checadas:
+            r['notas'].append('%s sin turno completo: sin las %d HE del turno' % (NOMBRES_DIA[fija[0]], fija[1]))
+
+    # Turnos 5 y 6: la prima dominical (12 horas) pide completar los turnos que tocan el domingo.
+    if codigo_turno in DOM_COMPLETO and turno:
+        requeridos = [lunes + timedelta(days=d) for d, (entrada, horas_j) in turno.items()
+                      if _toca_domingo(d, entrada, horas_j)]
+        futuros = [d for d in requeridos if hoy and d > hoy]
+        if requeridos and not futuros and all(d in completos for d in requeridos):
+            r['dom_horas'] = DOM_TOPE
+        elif dom_turno or any(turnos_dia.get(d) for d in requeridos):
+            r['dom_horas'] = max(0.0, r['dom_horas'] - dom_turno)
+            if not futuros:
+                r['notas'].append('Do sin turno completo: sin prima dominical del turno')
     r['horas_base'] = max(r['horas_base'], 0.0)
     r['dom_horas'] = min(r['dom_horas'], DOM_TOPE)
 

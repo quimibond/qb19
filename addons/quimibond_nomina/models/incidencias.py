@@ -127,6 +127,11 @@ class QbNominaIncidencias(models.Model):
         except (TypeError, ValueError):
             return calc.COMIDA_MAX_DEFAULT
 
+    @staticmethod
+    def _sindicalizado(empleado):
+        """Nómina semanal de planta: referencia ``S-`` (los empleados son ``Q-`` y ``C-``)."""
+        return (empleado.sudo().registration_number or '').upper().startswith('S-')
+
     def _contratos(self):
         """Un contrato vigente por persona de la nómina semanal en la semana."""
         self.ensure_one()
@@ -245,6 +250,7 @@ class QbNominaIncidencias(models.Model):
         ausencias = self._ausencias(empleados, programado)
         entradas = self._entradas()
         comida_max = self._comida_max()
+        festivos = self.env['qb.nomina.festivo'].qb_festivos(self.fecha_inicio, self.fecha_fin, self.company_id)
         hoy = fields.Date.context_today(self)
         previas = {l.employee_id.id: l for l in self.linea_ids}
         vistos = set()
@@ -257,7 +263,7 @@ class QbNominaIncidencias(models.Model):
                 self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
                 hoy, entradas, turno=turno if turno in calc.TURNOS else None,
-                comida_max=comida_max)
+                comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos)
             if nota_turno:
                 r['notas'].insert(0, nota_turno)
             vals = {
@@ -272,6 +278,7 @@ class QbNominaIncidencias(models.Model):
                 'dias_con_extra': r['dias_con_extra'], 'dom_horas': r['dom_horas'],
                 'comida_min': r['comida_min'], 'comidas_largas': r['comidas_largas'],
                 'sin_checadas': r['sin_checadas'], 'proyectado': r['proyectado'],
+                'festivos_trabajados': r['festivos_trabajados'],
                 'observaciones': '\n'.join(r['notas']) or False,
             }
             linea = previas.get(emp.id)
@@ -460,8 +467,13 @@ class QbNominaIncidenciasLinea(models.Model):
                                 help="Minutos de comida de la semana según el checador (salida y regreso de comer). "
                                      "Solo se anota: no se descuenta.")
     comidas_largas = fields.Integer(string="Comidas largas",
-                                    help="Días en que la comida pasó del límite (parámetro "
-                                         "quimibond_nomina.incidencias_comida_max, 60 minutos si no está).")
+                                    help="Días en que la comida pasó de lo permitido: sindicalizados 30 minutos en jornadas de 10 "
+                                         "horas y 45 en las de 12; empleados el parámetro "
+                                         "quimibond_nomina.incidencias_comida_max (60 si no está).")
+    festivos_trabajados = fields.Integer(
+        string="Festivos trabajados",
+        help="Días de descanso obligatorio (calendario de festivos) que la persona trabajó: se pagan con "
+             "salario doble además del día (art. 75 LFT). Todavía no pasan solos al recibo.")
     sin_checadas = fields.Boolean(string="Sin checadas")
     proyectado = fields.Boolean(string="Con días proyectados")
     observaciones = fields.Text(string="Observaciones")
