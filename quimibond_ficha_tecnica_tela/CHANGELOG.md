@@ -8,6 +8,15 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.32.0 — 2026-11-22 (José Sacramento; en qbtesting como 2.29.1)
+
+**Rama pesa dos desperdicios: Tejido y Orillas (Dirección, 2026-11-22).** Las listas en kg que genera la ficha traen
+los dos subproductos en la operación de Rama, con cantidad 0: «DESPERDICIO TEJIDO» (los lienzos o tela que se elimina
+durante el proceso) y «DESPERDICIO ORILLAS» (la orilla de la tela que se retira en la Rama). Antes solo traían el
+primero. Si falta alguno de los dos artículos, «Generar listas» avisa cuál; la revisión de listas marca la lista en
+kg que no trae alguno de los dos («Lista en kg sin desperdicio de Rama»). Pruebas `test_10` y `test_12`
+actualizadas. Las listas ya cargadas se completan con «Generar listas» o a mano en la pestaña Subproductos.
+
 ## 19.0.2.31.1 — 2026-11-19
 
 **Lo mismo para fichas de acabado y procesos archivados.** Al aplicar 2.31.0 en producción (19-nov-2026) el filtro

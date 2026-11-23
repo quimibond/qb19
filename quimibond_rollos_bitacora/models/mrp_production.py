@@ -19,6 +19,21 @@ PARAM_VALIDAR_TRASPASOS = 'quimibond_rollos_bitacora.validar_traspasos_calidad'
 # (hooks.configurar_secuencias_j). Antes era una secuencia aparte (3.5.0).
 # 3.6.1: código de secuencia del tipo «Fabricación Tela en kg» (fichas, ruta_familia.TIPO_OPERACION['kg']).
 TIPO_FLUJO_KG = 'OP-KG'
+# 3.23.0: los dos subproductos de desperdicio que pesa Rama (referencia del artículo y campos de la orden donde queda
+# el peso). Tejido = lienzos o tela que se elimina durante el proceso; Orillas = la orilla que se retira en la Rama.
+DESPERDICIO_RAMA = {
+    'tejido': {
+        'codigo': 'DESPERDICIO TEJIDO', 'nombre': 'Desperdicio Tejido', 'kg': 'desperdicio_kg',
+        'operador': 'desperdicio_operador', 'fecha': 'desperdicio_fecha', 'manual': 'desperdicio_manual',
+        'motivo': 'desperdicio_motivo', 'lote': 'desperdicio_lote_id',
+    },
+    'orillas': {
+        'codigo': 'DESPERDICIO ORILLAS', 'nombre': 'Desperdicio Orillas', 'kg': 'desperdicio_orillas_kg',
+        'operador': 'desperdicio_orillas_operador', 'fecha': 'desperdicio_orillas_fecha',
+        'manual': 'desperdicio_orillas_manual', 'motivo': 'desperdicio_orillas_motivo',
+        'lote': 'desperdicio_orillas_lote_id',
+    },
+}
 # 3.8.0: id de la ubicación «Químicos-Colorantes Piso» (de donde la orden en kg consume engomado, químicos y colorantes).
 PARAM_UBICACION_PISO = 'quimibond_rollos_bitacora.ubicacion_piso'
 
@@ -46,6 +61,22 @@ class MrpProduction(models.Model):
     desperdicio_manual = fields.Boolean('Desperdicio capturado manualmente', readonly=True, copy=False)
     desperdicio_motivo = fields.Char('Motivo de la captura manual del desperdicio', readonly=True, copy=False)
     desperdicio_lote_id = fields.Many2one('stock.lot', 'Lote del desperdicio de Rama', readonly=True, copy=False)
+    # 3.23.0 (Dirección, 2026-11-22): Rama pesa dos subproductos. DESPERDICIO TEJIDO (los lienzos o tela que se elimina
+    # durante el proceso; los campos de arriba) y DESPERDICIO ORILLAS (la orilla de la tela que se retira en la Rama).
+    desperdicio_orillas_kg = fields.Float('Desperdicio Orillas pesado (kg)', digits=(12, 3), readonly=True, copy=False)
+    desperdicio_orillas_operador = fields.Char('Operador de las orillas', readonly=True, copy=False)
+    desperdicio_orillas_fecha = fields.Datetime('Orillas pesadas el', readonly=True, copy=False)
+    desperdicio_orillas_manual = fields.Boolean('Orillas capturadas manualmente', readonly=True, copy=False)
+    desperdicio_orillas_motivo = fields.Char('Motivo de la captura manual de las orillas', readonly=True, copy=False)
+    desperdicio_orillas_lote_id = fields.Many2one('stock.lot', 'Lote de las orillas de Rama', readonly=True, copy=False)
+    desperdicio_rama_total_kg = fields.Float(
+        'Desperdicio de Rama (kg)', digits=(12, 3), compute='_compute_desperdicio_rama_total',
+        help='Suma de lo pesado como Desperdicio Tejido y como Desperdicio Orillas.')
+
+    @api.depends('desperdicio_kg', 'desperdicio_orillas_kg')
+    def _compute_desperdicio_rama_total(self):
+        for orden in self:
+            orden.desperdicio_rama_total_kg = (orden.desperdicio_kg or 0.0) + (orden.desperdicio_orillas_kg or 0.0)
     numero_bano = fields.Char(
         'No. de baño', readonly=True, copy=False, index=True, tracking=True,
         help='Nombre de la orden en kg sin el prefijo del tipo de operación («J00001», o «J00001-001» si la programación '
@@ -248,7 +279,7 @@ class MrpProduction(models.Model):
         terminado) pasa a la 17 con una transferencia interna. Si ya entró a la 17 (orden pesada antes de 3.18.0) no hace
         nada."""
         Final = self.env['mrp.rollo.final']
-        for orden in self.filtered(lambda o: o.state == 'done' and o.desperdicio_kg):
+        for orden in self.filtered(lambda o: o.state == 'done' and o.desperdicio_rama_total_kg):
             hecho = orden.move_finished_ids.filtered(
                 lambda m: m.state == 'done' and m.product_id != orden.product_id and m.quantity > 0)
             if not hecho:
@@ -282,7 +313,7 @@ class MrpProduction(models.Model):
         Solo un administrador de Fabricación la cancela (rollos pesados en la orden equivocada), y queda la nota. Al
         cancelarse un baño que abastecía una orden en metros, esa orden recibe la nota de que se quedó sin abasto."""
         abiertas = self.filtered(lambda o: o.state not in ('done', 'cancel'))
-        con_rama = abiertas.filtered(lambda o: o.rollo_bitacora_ids or o.desperdicio_kg)
+        con_rama = abiertas.filtered(lambda o: o.rollo_bitacora_ids or o.desperdicio_rama_total_kg)
         if con_rama and not self.env.user.has_group('mrp.group_mrp_manager'):
             orden = con_rama[:1]
             raise UserError(_(
@@ -298,7 +329,7 @@ class MrpProduction(models.Model):
                 'Cancelada por %(u)s con %(n)s rollos pesados en Rama (%(kg).2f kg; lotes %(l)s) y %(d).2f kg de '
                 'desperdicio: esos lotes no entraron al inventario.',
                 u=self.env.user.name, n=len(rollos), kg=sum(rollos.mapped('kg_rama')),
-                l=', '.join(rollos.lot_id.mapped('name')) or '-', d=orden.desperdicio_kg))
+                l=', '.join(rollos.lot_id.mapped('name')) or '-', d=orden.desperdicio_rama_total_kg))
         for orden, (orden_m, kg) in abasto.items():
             if orden.state == 'cancel' and orden_m and orden_m.state not in ('done', 'cancel'):
                 orden_m.message_post(body=_(
@@ -424,6 +455,13 @@ class MrpProduction(models.Model):
                     'La orden %(orden)s tiene %(n)s rollo(s) sin inspeccionar: %(rollos)s.',
                     orden=orden.name, n=len(pendientes),
                     rollos=', '.join(pendientes.sorted('secuencia').mapped('name'))))
+            # 3.22.0: los tramos quitados a los rollos se juntan en un rollo de FE o Segunda antes de cerrar el baño.
+            sin_juntar = orden.tramo_ids.filtered(lambda t: not t.rollo_final_id)
+            if sin_juntar:
+                raise UserError(_(
+                    'La orden %(orden)s tiene %(n)s tramo(s) sin juntar (%(kg).2f kg). Júntalos en un rollo de FE o '
+                    'Segunda con «JUNTAR TRAMOS» antes de cerrar el baño.', orden=orden.name, n=len(sin_juntar),
+                    kg=sum(sin_juntar.mapped('kg_neto'))))
 
     def _moves_crudo(self):
         """3.3.2: consumo de la tela cruda de la orden en kg: el componente en peso con más kg planeados (el crudo va a
@@ -568,25 +606,40 @@ class MrpProduction(models.Model):
         self.env['mrp.weighing.log'].sudo().search([
             ('production_id', 'in', self.ids), ('roll_number', 'in', list(roll_numbers))]).unlink()
 
-    def _rama_registrar_desperdicio(self, workorder, kg, operador, manual):
-        """Registra el peso real del subproducto Desperdicio Tejido (orilla) en su movimiento de la MO.
+    def _desperdicio_rama_producto(self, tipo):
+        """3.23.0: el artículo de cada desperdicio de Rama por su referencia (DESPERDICIO_RAMA)."""
+        codigo = DESPERDICIO_RAMA[tipo]['codigo']
+        return self.env['product.product'].search([('default_code', '=', codigo)], limit=1)
 
-        Un solo pesaje por orden. El movimiento del subproducto nace con demanda 0 (la cantidad no es
-        estándar, §16): se iguala demanda y cantidad al peso y se marca como picked para que el cierre
-        de la MO lo haga y no lo cancele.
+    def _rama_registrar_desperdicio(self, workorder, kg, operador, manual, tipo='tejido'):
+        """Registra el peso real de un subproducto de desperdicio de Rama en su movimiento de la MO.
+
+        3.23.0 (Dirección, 2026-11-22): Rama pesa dos subproductos, cada uno una vez por orden: ``tejido``
+        (DESPERDICIO TEJIDO: los lienzos o tela que se elimina durante el proceso) y ``orillas`` (DESPERDICIO ORILLAS: la
+        orilla de la tela que se retira en la Rama). El movimiento del subproducto nace con demanda 0 (la cantidad no es
+        estándar, §16): se iguala demanda y cantidad al peso y se marca como picked para que el cierre de la MO lo haga y
+        no lo cancele.
         """
         self.ensure_one()
-        if self.desperdicio_kg:
-            raise UserError(_('La orden %s ya tiene el desperdicio pesado (%.3f kg).', self.name, self.desperdicio_kg))
+        campos = DESPERDICIO_RAMA[tipo]
+        if self[campos['kg']]:
+            raise UserError(_('La orden %(o)s ya tiene pesado el %(d)s (%(kg).3f kg).',
+                              o=self.name, d=campos['nombre'], kg=self[campos['kg']]))
+        producto = self._desperdicio_rama_producto(tipo)
         candidatos = self.move_finished_ids.filtered(
             lambda m: m.product_id != self.product_id and m.state not in ('done', 'cancel'))
-        movimiento = candidatos.filtered(
-            lambda m: m.byproduct_id.operation_id and m.byproduct_id.operation_id == workorder.operation_id)[:1] \
-            or candidatos[:1]
+        movimiento = candidatos.filtered(lambda m: m.product_id == producto)[:1] if producto else candidatos.browse()
+        if not movimiento and tipo == 'tejido':
+            # Órdenes con un solo subproducto de otra referencia (listas anteriores a 3.23.0): como antes, salvo las orillas.
+            otros = candidatos.filtered(lambda m: m.product_id.default_code != DESPERDICIO_RAMA['orillas']['codigo'])
+            movimiento = otros.filtered(
+                lambda m: m.byproduct_id.operation_id and m.byproduct_id.operation_id == workorder.operation_id)[:1] \
+                or otros[:1]
         if not movimiento:
             raise UserError(_(
-                'La orden %s no tiene subproducto de desperdicio. Agrégalo en la lista de materiales del '
-                'artículo (pestaña Subproductos, operación Rama).', self.name))
+                'La orden %(o)s no tiene el subproducto %(c)s. Agrégalo en la lista de materiales del '
+                'artículo (pestaña Subproductos, operación Rama, cantidad 0).',
+                o=self.name, c=campos['codigo']))
         producto = movimiento.product_id
         if producto.tracking == 'serial':
             raise UserError(_('El subproducto %s no puede tener seguimiento por número de serie.',
@@ -611,11 +664,11 @@ class MrpProduction(models.Model):
             ))
         movimiento.picked = True
         self.write({
-            'desperdicio_kg': kg,
-            'desperdicio_operador': operador,
-            'desperdicio_fecha': fields.Datetime.now(),
-            'desperdicio_manual': manual,
-            'desperdicio_lote_id': lote.id or False,
+            campos['kg']: kg,
+            campos['operador']: operador,
+            campos['fecha']: fields.Datetime.now(),
+            campos['manual']: manual,
+            campos['lote']: lote.id or False,
         })
 
     # ------------------------------------------------------------ planeación

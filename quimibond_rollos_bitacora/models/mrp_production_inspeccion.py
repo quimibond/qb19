@@ -30,6 +30,7 @@ from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
 from .mrp_rollo_bitacora import CALIDADES_EN_METROS, CLASIFICACIONES, PARAM_PRELIM_ALTO, PARAM_PRELIM_ANCHO
+from .mrp_production import DESPERDICIO_RAMA
 
 PARAM_CIERRE_MINIMO_PCT = 'quimibond_rollos_bitacora.cierre_minimo_pct'
 # 3.11.0 (A3.2): con el parámetro en «1», el cierre de la orden en kg ya no registra ni cierra la orden en metros: los rollos
@@ -59,17 +60,26 @@ class MrpProductionInspeccion(models.Model):
                                    help='Kg de Rama de los rollos ya inspeccionados menos los kg de sus rollos finales.')
     rollos_merma_pct = fields.Float('Merma de Inspección (%)', digits=(12, 1), compute='_compute_resumen_rollos')
     rollos_por_calidad = fields.Char('Kg por calidad', compute='_compute_resumen_rollos')
+    tramo_ids = fields.One2many('mrp.rollo.tramo', 'production_id', 'Tramos quitados', readonly=True)
+    tramos_pendientes_count = fields.Integer('Tramos sin juntar', compute='_compute_tramos_pendientes', store=True,
+                                             help='3.22.0: tramos quitados a los rollos que aún no se juntan en un rollo '
+                                                  'de FE o Segunda. El baño no cierra mientras haya alguno.')
     inspeccion_completa_sin_cerrar = fields.Boolean(
         'Rollos inspeccionados, sin cerrar', compute='_compute_inspeccion_completa_sin_cerrar', store=True,
         help='Orden en kg abierta con todos sus rollos de Rama inspeccionados: el baño ya se puede cerrar. Sus rollos '
              'finales no están en inventario hasta que se cierre.')
 
-    @api.depends('state', 'rollo_bitacora_ids.estado_inspeccion')
+    @api.depends('tramo_ids.rollo_final_id')
+    def _compute_tramos_pendientes(self):
+        for orden in self:
+            orden.tramos_pendientes_count = len(orden.tramo_ids.filtered(lambda t: not t.rollo_final_id))
+
+    @api.depends('state', 'rollo_bitacora_ids.estado_inspeccion', 'tramos_pendientes_count')
     def _compute_inspeccion_completa_sin_cerrar(self):
         for orden in self:
             rollos = orden.rollo_bitacora_ids
             orden.inspeccion_completa_sin_cerrar = bool(rollos) and orden.state not in ('done', 'cancel') \
-                and all(r.estado_inspeccion == 'inspeccionado' for r in rollos)
+                and all(r.estado_inspeccion == 'inspeccionado' for r in rollos) and not orden.tramos_pendientes_count
 
     def _insp_orden_metros(self):
         """La orden en metros abierta que consume el acabado en kg de esta orden (destino MTO de su terminado). 3.3.0:
@@ -82,7 +92,7 @@ class MrpProductionInspeccion(models.Model):
     @api.depends('product_qty', 'rollo_bitacora_ids.kg_rama', 'rollo_bitacora_ids.metros_rama',
                  'rollo_bitacora_ids.estado_inspeccion',
                  'rollo_final_kg_ids.kg_neto', 'rollo_final_kg_ids.metros', 'rollo_final_kg_ids.clasificacion',
-                 'rollo_final_kg_ids.bitacora_ids')
+                 'rollo_final_kg_ids.bitacora_ids', 'tramo_ids.kg_neto', 'tramo_ids.bitacora_id')
     def _compute_resumen_rollos(self):
         """3.3.8: lo que la pestaña Rollos resume arriba. La merma se mide sobre los rollos de Rama ya inspeccionados y
         los rollos finales que salen solo de ellos, para no contar un rollo cortado a la mitad."""
@@ -101,7 +111,9 @@ class MrpProductionInspeccion(models.Model):
             inspeccionados = rama.filtered(lambda r: r.estado_inspeccion == 'inspeccionado')
             cerrados = finales.filtered(lambda f: f.bitacora_ids and not (f.bitacora_ids - inspeccionados))
             base = sum(inspeccionados.mapped('kg_rama'))
-            orden.rollos_merma_kg = base - sum(cerrados.mapped('kg_neto')) if base else 0.0
+            # 3.22.0: lo quitado como tramo a estos rollos salió de ellos y está en un rollo de tramos: no es merma.
+            tramos = orden.tramo_ids.filtered(lambda t: t.bitacora_id in inspeccionados)
+            orden.rollos_merma_kg = base - sum(cerrados.mapped('kg_neto')) - sum(tramos.mapped('kg_neto')) if base else 0.0
             orden.rollos_merma_pct = orden.rollos_merma_kg / base * 100.0 if base else 0.0
             partes = []
             for clave, _etiqueta in CLASIFICACIONES:
@@ -137,7 +149,7 @@ class MrpProductionInspeccion(models.Model):
                     'los rollos; el crudo se consume completo al cerrar.',
                     o=self.name, p=pesado, pl=planeado, pct=pct, m=minimo))
         return _('Baño cerrado con %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%); desperdicio de '
-                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_kg or 0.0)
+                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_rama_total_kg or 0.0)
 
     def _insp_modo(self):
         """Cómo se registra el baño al cerrarlo (3.2.0):
@@ -267,18 +279,28 @@ class MrpProductionInspeccion(models.Model):
         return self._zpl_etiqueta_desperdicio(
             producto, self._lote_desperdicio(producto), self.desperdicio_empaque_kg, self.desperdicio_empaque_fecha)
 
-    def _zpl_etiqueta_desperdicio_rama(self):
-        """3.17.0 (Dirección, 2026-11-10): etiqueta con código de barras del desperdicio de Rama (DESPERDICIO TEJIDO), con
-        el lote con que se registró al pesar."""
+    def _zpl_etiqueta_desperdicio_rama(self, tipo='tejido'):
+        """3.17.0 (Dirección, 2026-11-10): etiqueta con código de barras del desperdicio de Rama, con el lote con que se
+        registró al pesar. 3.23.0: una por subproducto (``tejido`` = DESPERDICIO TEJIDO, ``orillas`` = DESPERDICIO
+        ORILLAS)."""
         self.ensure_one()
-        lote = self.desperdicio_lote_id
-        if not self.desperdicio_kg or not lote:
-            raise UserError(_('La orden %s todavía no tiene desperdicio pesado en Rama.', self.name))
-        return self._zpl_etiqueta_desperdicio(lote.product_id, lote, self.desperdicio_kg, self.desperdicio_fecha)
+        campos = DESPERDICIO_RAMA[tipo]
+        lote = self[campos['lote']]
+        if not self[campos['kg']] or not lote:
+            raise UserError(_('La orden %(o)s todavía no tiene pesado el %(d)s en Rama.',
+                              o=self.name, d=campos['nombre']))
+        return self._zpl_etiqueta_desperdicio(lote.product_id, lote, self[campos['kg']], self[campos['fecha']])
 
     def action_imprimir_etiqueta_desperdicio_rama(self):
         self.ensure_one()
         accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_rama').report_action(self)
+        accion.update({'close_on_report_download': True})
+        return accion
+
+    def action_imprimir_etiqueta_desperdicio_orillas(self):
+        """3.23.0: reimprime la etiqueta del Desperdicio Orillas de Rama."""
+        self.ensure_one()
+        accion = self.env.ref('quimibond_rollos_bitacora.action_report_etiqueta_desperdicio_orillas').report_action(self)
         accion.update({'close_on_report_download': True})
         return accion
 

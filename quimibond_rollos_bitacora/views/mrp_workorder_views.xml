@@ -19,6 +19,7 @@
                 <!-- 3.14.0 (A3.4b): CLASIFICAR y PESAR DESPERDICIO de Empaque en la operación CLASIFICACION de la orden
                      en metros, mientras la orden tiene rollos que le pasó un baño (Clasificación final en Empaque). -->
                 <field name="es_clasificacion" column_invisible="1"/>
+                <field name="tramos_pendientes" column_invisible="1"/>
                 <field name="empaque_pendiente" column_invisible="1"/>
                 <!-- 3.20.1: laboratorio libera desde Calidad → Liberar para Empaque; aquí solo se ve que falta. -->
                 <field name="liberacion_pendiente" string="Pend. liberación lab" optional="show"
@@ -33,6 +34,11 @@
                 <button name="action_inspeccionar_rollo" type="object" string="INSPECCIONAR"
                         class="btn-primary" icon="fa-search"
                         invisible="not es_inspeccion or state not in ('ready', 'progress')"/>
+                <!-- 3.22.0: «QUITAR TRAMO» vive dentro de INSPECCIONAR (3.22.1); aquí solo se juntan al final los tramos
+                     de todos los rollos en un rollo de FE o Segunda, sin rollo de Rama. -->
+                <button name="action_juntar_tramos" type="object" string="JUNTAR TRAMOS"
+                        class="btn-secondary" icon="fa-compress"
+                        invisible="not es_inspeccion or not tramos_pendientes or state not in ('ready', 'progress')"/>
             </xpath>
         </field>
     </record>
