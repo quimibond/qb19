@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Páginas públicas para proveedores. Los textos fijos (requisitos y
+         compromisos) viven en controllers/alta.py. -->
+
+    <!-- /proveedores -->
+    <template id="proveedores" name="Quimibond: proveedores">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta" t-value="'Proveedores'"/>
+                    <t t-set="titulo" t-value="'Sea proveedor de Quimibond.'"/>
+                    <t t-set="resumen" t-value="'Dese de alta en línea, reciba sus órdenes de compra, suba su factura y vea su fecha de pago, sin correos de ida y vuelta.'"/>
+                    <div class="qb-hero__cta qb-reveal">
+                        <a href="/proveedores/alta" class="qb-btn qb-btn--primario qb-btn--lg">Darme de alta <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        <a href="/web/login?redirect=/mi-cuenta/proveedor" class="qb-btn qb-btn--contorno qb-btn--lg">Ya soy proveedor</a>
+                    </div>
+                </t>
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Cómo funciona</span>
+                            <h2 class="qb-reveal">De la orden de compra al pago, en un solo lugar</h2>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">01</span>
+                                <h3>Se da de alta</h3>
+                                <p>Llena un formulario con sus datos y documentos fiscales. Compras lo revisa y le confirma por correo.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">02</span>
+                                <h3>Recibe su orden de compra</h3>
+                                <p>La consulta en su portal con lo pedido, la fecha de entrega esperada y lo que ya recibimos.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">03</span>
+                                <h3>Sube su factura y cobra</h3>
+                                <p>Sube el PDF y el XML contra la orden. Ve si está en revisión, aprobada o pagada, y su fecha de pago.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec qb-sec--suave">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Requisitos</span>
+                            <h2 class="qb-reveal">Lo que le pedimos para el alta</h2>
+                            <ul class="qb-prov__lista">
+                                <li t-foreach="requisitos" t-as="r" class="qb-reveal">
+                                    <i class="fa fa-file-text-o" aria-hidden="true"/>
+                                    <div><strong t-out="r['titulo']"/><span t-out="r['detalle']"/></div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Compromisos</span>
+                            <h2 class="qb-reveal">Lo que esperamos de un proveedor</h2>
+                            <ul class="qb-prov__lista">
+                                <li t-foreach="compromisos" t-as="c" class="qb-reveal">
+                                    <i class="fa fa-check" aria-hidden="true"/>
+                                    <div><span t-out="c"/></div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+                <section class="qb-sec">
+                    <div class="qb-container qb-centro">
+                        <h2 class="qb-reveal">¿Listo para empezar?</h2>
+                        <p class="qb-lead qb-reveal">El alta toma unos diez minutos si tiene sus documentos a la mano.</p>
+                        <div class="qb-hero__cta qb-hero__cta--centro qb-reveal">
+                            <a href="/proveedores/alta" class="qb-btn qb-btn--primario qb-btn--lg">Darme de alta</a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- Campo de texto del formulario de alta -->
+    <template id="alta_campo" name="Quimibond: campo del alta">
+        <div t-attf-class="qb-campo #{'qb-campo--ancho' if ancho else ''}">
+            <label class="s_website_form_label" t-attf-for="qb_a_#{campo}"><t t-out="etiqueta"/><span t-if="requerido" class="s_website_form_mark"> *</span></label>
+            <input t-attf-id="qb_a_#{campo}" t-att-type="tipo or 'text'" t-att-name="campo" t-att-value="datos.get(campo)"
+                   t-attf-class="form-control #{'is-invalid' if errores.get(campo) else ''}" t-att-required="'1' if requerido else None"
+                   t-att-placeholder="ejemplo or None" t-att-autocomplete="autocompletar or None" maxlength="200"/>
+            <small t-if="errores.get(campo)" class="qb-prov__error" t-out="errores[campo]"/>
+        </div>
+    </template>
+
+    <!-- /proveedores/alta -->
+    <template id="proveedores_alta" name="Quimibond: alta de proveedor">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-cotizar">
+                    <div class="qb-trama" aria-hidden="true"/>
+                    <div class="qb-container qb-prov__alta">
+                        <div class="qb-prov__alta-cab">
+                            <span class="qb-eyebrow">Proveedores</span>
+                            <h1>Alta de proveedor</h1>
+                            <p class="qb-lead">Llene sus datos y adjunte sus documentos. Compras revisa la solicitud y le responde por correo.</p>
+                        </div>
+                        <div class="qb-card qb-card--form">
+                            <div t-if="errores.get('general')" class="qb-prov__aviso qb-prov__aviso--error" role="alert">
+                                <i class="fa fa-exclamation-circle" aria-hidden="true"/>
+                                <div><strong t-out="errores['general']"/></div>
+                            </div>
+                            <form action="/proveedores/alta" method="post" enctype="multipart/form-data" class="qb-form">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <div class="qb-prov__trampa" aria-hidden="true">
+                                    <label for="qb_a_empresa_web">No llene este campo</label>
+                                    <input id="qb_a_empresa_web" type="text" name="empresa_web" tabindex="-1" autocomplete="off"/>
+                                </div>
+
+                                <h2 class="qb-prov__paso"><span class="qb-mono qb-num">01</span> Su empresa</h2>
+                                <div class="qb-form__rejilla">
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'name'"/><t t-set="etiqueta" t-value="'Razón social'"/><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'organization'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'rfc'"/><t t-set="etiqueta" t-value="'RFC'"/><t t-set="requerido" t-value="True"/><t t-set="ejemplo" t-value="'ABC010203XY1'"/></t>
+                                    <div class="qb-campo">
+                                        <label class="s_website_form_label" for="qb_a_giro">¿Qué ofrece?<span class="s_website_form_mark"> *</span></label>
+                                        <select id="qb_a_giro" name="giro" t-attf-class="form-select #{'is-invalid' if errores.get('giro') else ''}" required="1">
+                                            <option value="">Seleccione…</option>
+                                            <option t-foreach="giros" t-as="g" t-att-value="g[0]" t-att-selected="'selected' if datos.get('giro') == g[0] else None" t-out="g[1]"/>
+                                        </select>
+                                        <small t-if="errores.get('giro')" class="qb-prov__error" t-out="errores['giro']"/>
+                                    </div>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'ciudad'"/><t t-set="etiqueta" t-value="'Ciudad y estado'"/></t>
+                                    <div class="qb-campo qb-campo--ancho">
+                                        <label class="s_website_form_label" for="qb_a_descripcion">Productos o servicios</label>
+                                        <textarea id="qb_a_descripcion" name="descripcion" class="form-control" rows="3" maxlength="500" placeholder="Qué vende, marcas que representa, capacidad…"><t t-out="datos.get('descripcion') or ''"/></textarea>
+                                    </div>
+                                </div>
+
+                                <h2 class="qb-prov__paso"><span class="qb-mono qb-num">02</span> Contacto</h2>
+                                <div class="qb-form__rejilla">
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'contacto'"/><t t-set="etiqueta" t-value="'Nombre'"/><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'name'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'puesto'"/><t t-set="etiqueta" t-value="'Puesto'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'email'"/><t t-set="etiqueta" t-value="'Correo'"/><t t-set="requerido" t-value="True"/><t t-set="tipo" t-value="'email'"/><t t-set="autocompletar" t-value="'email'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'telefono'"/><t t-set="etiqueta" t-value="'Teléfono'"/><t t-set="tipo" t-value="'tel'"/><t t-set="autocompletar" t-value="'tel'"/></t>
+                                </div>
+
+                                <h2 class="qb-prov__paso"><span class="qb-mono qb-num">03</span> Cuenta para pagos</h2>
+                                <div class="qb-form__rejilla">
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'banco'"/><t t-set="etiqueta" t-value="'Banco'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'clabe'"/><t t-set="etiqueta" t-value="'CLABE (18 dígitos)'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'titular'"/><t t-set="etiqueta" t-value="'Titular de la cuenta'"/></t>
+                                    <div class="qb-campo">
+                                        <label class="s_website_form_label" for="qb_a_moneda">Moneda de la cuenta</label>
+                                        <select id="qb_a_moneda" name="moneda_cuenta" class="form-select">
+                                            <option value="MXN" t-att-selected="'selected' if datos.get('moneda_cuenta') != 'USD' else None">Pesos</option>
+                                            <option value="USD" t-att-selected="'selected' if datos.get('moneda_cuenta') == 'USD' else None">Dólares</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <h2 class="qb-prov__paso"><span class="qb-mono qb-num">04</span> Documentos</h2>
+                                <p class="qb-prov__ayuda">En PDF, JPG o PNG, de hasta 5 MB cada uno.</p>
+                                <div class="qb-form__rejilla">
+                                    <div t-foreach="documentos" t-as="d" class="qb-campo">
+                                        <label class="s_website_form_label" t-attf-for="qb_a_#{d[0]}"><t t-out="d[1]"/><span t-if="d[2]" class="s_website_form_mark"> *</span><span t-else="" class="s_website_form_mark"> (opcional)</span></label>
+                                        <input t-attf-id="qb_a_#{d[0]}" type="file" t-att-name="d[0]" accept=".pdf,.jpg,.jpeg,.png"
+                                               t-attf-class="form-control #{'is-invalid' if errores.get(d[0]) else ''}" t-att-required="'1' if d[2] else None"/>
+                                        <small t-if="errores.get(d[0])" class="qb-prov__error" t-out="errores[d[0]]"/>
+                                    </div>
+                                </div>
+
+                                <h2 class="qb-prov__paso"><span class="qb-mono qb-num">05</span> Compromisos del proveedor</h2>
+                                <ul class="qb-prov__lista qb-prov__lista--compacta">
+                                    <li t-foreach="compromisos" t-as="c"><i class="fa fa-check" aria-hidden="true"/><div><span t-out="c"/></div></li>
+                                </ul>
+                                <label class="qb-prov__acepta">
+                                    <input type="checkbox" name="acepta" value="1" required="1"/>
+                                    <span>Acepto estos compromisos y confirmo que la información y los documentos son verídicos.</span>
+                                </label>
+                                <small t-if="errores.get('acepta')" class="qb-prov__error" t-out="errores['acepta']"/>
+
+                                <div class="qb-form__enviar qb-prov__enviar">
+                                    <button type="submit" class="qb-btn qb-btn--primario qb-btn--lg">Enviar solicitud <i class="fa fa-long-arrow-right" aria-hidden="true"/></button>
+                                    <small>Sus datos y documentos solo los ve el equipo de Compras de Quimibond.</small>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- /proveedores/alta/gracias -->
+    <template id="proveedores_gracias" name="Quimibond: alta recibida">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-gracias">
+                    <div class="qb-container qb-centro">
+                        <span class="qb-icono qb-icono--ok"><i class="fa fa-check" aria-hidden="true"/></span>
+                        <h1>Recibimos su solicitud</h1>
+                        <p class="qb-lead">Compras revisará sus datos y documentos y le responderá por correo.</p>
+                        <div class="qb-hero__cta qb-hero__cta--centro">
+                            <a href="/proveedores" class="qb-btn qb-btn--contorno">Volver a Proveedores</a>
+                            <a href="/" class="qb-btn qb-btn--primario">Ir al inicio</a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+</odoo>
