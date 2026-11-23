@@ -32,10 +32,8 @@ FT_AREAS = [
     ('inspeccion', 'Inspección'),
     ('manufactura', 'Manufactura (devanado y abridora)'),
 ]
-# 2.32.0: lo que «Corregir las listas con la ficha» (action_ft_datos_ficha) iguala con la ficha.
+# 2.32.0: lo que «Corregir con la ficha» (action_ft_datos_ficha) iguala con la ficha.
 FT_CORREGIBLES = ('tiempo_cero', 'tiempo_distinto', 'capacidad_falta', 'capacidad_distinta', 'conversion')
-FT_AREAS_CORTO = {'ingenieria': 'Ingeniería', 'tintoreria': 'Tintorería', 'acabado': 'Acabado',
-                  'inspeccion': 'Inspección', 'manufactura': 'Manufactura'}
 
 
 def ft_tipo_codigo(code):
@@ -125,13 +123,12 @@ class ProductTemplateFichaNativa(models.Model):
     ft_revision_areas = fields.Char(string='Áreas con pendientes', compute='_compute_ft_ficha_nativa')
     ft_area_pendiente = fields.Selection(FT_AREAS, string='Área con pendientes', compute='_compute_ft_area_pendiente',
                                          search='_search_ft_area_pendiente')
-    # 2.32.0 (Jose, 2026-11-23: «muchos botones y no se entiende la navegación»): la pestaña abre con una franja que
-    # dice el estado y quién debe algo; el botón morado sale solo si hay pendientes que arregla.
-    ft_estado_titulo = fields.Char(string='Estado de la tela', compute='_compute_ft_ficha_nativa')
+    # 2.32.0 (Jose, 2026-11-23: «muchos botones y no se entiende la navegación»): como las pantallas de Odoo, el
+    # estado va en la barra de etapas, las acciones en la cabecera y los accesos en botones inteligentes.
     ft_revision_fecha = fields.Datetime(string='Revisada el', compute='_compute_ft_ficha_nativa')
     ft_puede_corregir = fields.Boolean(string='Hay pendientes que corrige la ficha', compute='_compute_ft_ficha_nativa',
                                        help='Tiempos, capacidad de los jets o conversión a metros distintos de la '
-                                            'ficha: «Corregir las listas con la ficha» los iguala.')
+                                            'ficha: «Corregir con la ficha» los iguala.')
     # 2.23.0: un producto con código de tela, de acabado en kg o de crudo y sin ficha: la pestaña ofrece crearla.
     ft_tipo_codigo = fields.Selection([('tela', 'Tela acabada'), ('kg', 'Acabado en kg'), ('crudo', 'Crudo')],
                                       string='Tipo por código', compute='_compute_ft_tipo_codigo')
@@ -142,6 +139,8 @@ class ProductTemplateFichaNativa(models.Model):
                                      compute='_compute_ft_ficha_nativa')
     ft_tela_ids = fields.Many2many('ficha.tecnica.acabado', string='Telas que usan este crudo',
                                    compute='_compute_ft_ficha_nativa')
+    ft_tejido_n = fields.Integer(string='Fichas de tejido', compute='_compute_ft_ficha_nativa')
+    ft_tela_n = fields.Integer(string='Telas con la ficha de este crudo', compute='_compute_ft_ficha_nativa')
 
     @api.depends('product_variant_ids')
     def _compute_ft_tela_datos(self):
@@ -194,10 +193,11 @@ class ProductTemplateFichaNativa(models.Model):
             tmpl.ft_revision_areas = revision.areas
             tmpl.ft_revision_fecha = revision.fecha
             tmpl.ft_puede_corregir = any(p.tipo in FT_CORREGIBLES for p in revision.pendiente_ids)
-            tmpl.ft_estado_titulo = tmpl._ft_estado_titulo(revision, tmpl.ft_estado) if acabado else False
             tmpl.ft_tejido_ids = tejidos
             tmpl.ft_tela_ids = Acabado.search([('tejido_id.product_proceso_id', 'in', variantes.ids)]) \
                 if tejidos else Acabado
+            tmpl.ft_tejido_n = len(tejidos)
+            tmpl.ft_tela_n = len(tmpl.ft_tela_ids)
 
     @api.model
     def _ft_estado_de(self, revision):
@@ -209,27 +209,6 @@ class ProductTemplateFichaNativa(models.Model):
         if revision.listo:
             return 'activa' if activa else 'para_activar'
         return 'activa_pendientes' if activa else 'pendientes'
-
-    @api.model
-    def _ft_estado_titulo(self, revision, estado):
-        """2.32.0: el renglón de la franja de estado: qué pasa y de quién son los pendientes."""
-        if estado == 'sin_revisar':
-            return 'Sin revisar todavía'
-        if estado == 'activa':
-            return 'Activa: las listas cuadran con la ficha'
-        if estado == 'para_activar':
-            return 'Lista para activar: las listas cuadran; Ingeniería activa la lista en kg'
-        por_area = {}
-        for pendiente in revision.pendiente_ids:
-            por_area[pendiente.area] = por_area.get(pendiente.area, 0) + 1
-        orden = [area for area, _label in FT_AREAS]
-        areas = ', '.join('%s %s' % (FT_AREAS_CORTO.get(area, area), por_area[area]) for area in
-                          sorted(por_area, key=lambda a: orden.index(a) if a in orden else len(orden)))
-        n = revision.n_pendientes or sum(por_area.values())
-        texto = '%s pendiente%s' % (n, '' if n == 1 else 's')
-        if estado == 'activa_pendientes':
-            return 'Activa con %s (%s): Odoo ya fabrica con datos que no cuadran' % (texto, areas)
-        return '%s: %s' % (texto[:1].upper() + texto[1:], areas)
 
     def _compute_ft_area_pendiente(self):
         # Solo para filtrar (una tela puede tener pendientes de varias áreas: ver «Áreas con pendientes»).
@@ -318,6 +297,20 @@ class ProductTemplateFichaNativa(models.Model):
         self.ensure_one()
         return self._ft_abrir(self.ft_crudo_id.product_tmpl_id, 'Crudo')
 
+    def action_ft_pendientes(self):
+        """2.32.0: botón inteligente «Pendientes»: los de esta tela, cada uno con «Resolver»."""
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': 'Pendientes — %s' % (self.default_code or self.name),
+                'res_model': 'ficha.tecnica.revision.pendiente', 'view_mode': 'list',
+                'domain': [('id', 'in', self.ft_pendiente_ids.ids)], 'context': {'create': False}}
+
+    def action_ft_telas_del_crudo(self):
+        """2.32.0: botón inteligente «Telas» del crudo: las fichas de acabado que salen de él."""
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': 'Telas con el crudo %s' % (self.default_code or self.name),
+                'res_model': 'ficha.tecnica.acabado', 'view_mode': 'list,form',
+                'domain': [('id', 'in', self.ft_tela_ids.ids)]}
+
     def action_ft_agregar_circular(self):
         """2.24.0: «Agregar circular» en el crudo: copia su ficha de tejido más reciente a una circular nueva."""
         self.ensure_one()
@@ -381,6 +374,12 @@ class ProductProductFichaNativa(models.Model):
 
     def action_ft_crudo(self):
         return self.product_tmpl_id.action_ft_crudo()
+
+    def action_ft_pendientes(self):
+        return self.product_tmpl_id.action_ft_pendientes()
+
+    def action_ft_telas_del_crudo(self):
+        return self.product_tmpl_id.action_ft_telas_del_crudo()
 
     def action_ft_agregar_circular(self):
         return self.product_tmpl_id.action_ft_agregar_circular()

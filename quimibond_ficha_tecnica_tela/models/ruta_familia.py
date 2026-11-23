@@ -352,7 +352,7 @@ class FichaTecnicaRutaPaso(models.Model):
     tiempo = fields.Float(string='Tiempo fijo (min por ciclo)', digits=(12, 4),
                           help='Solo para pasos cuyo tiempo no sale de la ficha (por ejemplo, la Clasificación final: '
                                '60 min por ciclo de 400 m, la capacidad del centro). Los demás tiempos los calcula '
-                               '«Corregir las listas con la ficha».')
+                               '«Corregir con la ficha».')
 
     @api.onchange('paso')
     def _onchange_paso(self):
