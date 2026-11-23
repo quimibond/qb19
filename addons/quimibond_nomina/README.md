@@ -976,6 +976,41 @@ centavos de más; Odoo da 20,798.31 + 20,798.07. El cálculo vive en
 
 1.23.2: la regla «Bruto sin vacaciones» (`GROSS_WITHOUT_HOLIDAY`) lleva el concepto P01 del CFDI y salía como renglón propio, duplicando el sueldo (la diferencia en rojo lo marcó). El catálogo trae ahora el tipo «No reportar» y un concepto con esa regla. Generado en producción, la semana 48 cuadra con NOI en los 95 recibos salvo los 3 centavos ya conocidos (S-15 Infonavit, S-87 y S-96 ISR).
 
+### 23. Reglas de turnos de RH, cuadrillas y festivos (1.24.0)
+
+Respuesta de RH (Miguel Medina) del 23-nov-2026, con el archivo «TURNOS 23nov
+al 06dic 2026» y el calendario de festivos 2026. Aplican desde la nómina 49,
+para sindicalizados y empleados. En `models/incidencias_calculo.py`:
+
+- **Turno 3** (cuatro días de 12 horas): no genera tiempo extra. Ya no se mide
+  contra las 10 horas del horario; solo un quinto día trabajado sale como
+  extra.
+- **Turno 4** (noche de lunes a jueves): **6 horas extra fijas** si trabaja
+  completo el turno del jueves (checó entrada y salida y no salió antes de la
+  hora): la jornada nocturna legal es de 42 horas y cubren 48 (`HE_FIJAS`). Si
+  no lo completa queda la nota «Ju sin turno completo».
+- **Turnos 5 y 6** (Tejido): sin tiempo extra; **prima dominical de 12 horas**
+  solo si completan los turnos que tocan el domingo (`DOM_COMPLETO`; turno 5
+  el domingo de día, turno 6 las noches del sábado y del domingo).
+- **Comida permitida** (sigue siendo solo anotación): empleados 60 minutos
+  (el parámetro `quimibond_nomina.incidencias_comida_max`); sindicalizados
+  (referencia `S-`) 30 en jornadas de 10 horas o menos y 45 en las de 12.
+- **Turno 7** (Ciruelos, 09:00 a 16:00 y viernes 09:00 a 14:00): el checador
+  no lo propone, solo cuenta si RH lo tiene en la ficha.
+
+**Cuadrillas de turno** (`qb.nomina.cuadrilla`, Nómina → Incidencias →
+Cuadrillas de turno): RH pidió agrupar los turnos por área. Cada cuadrilla
+tiene área, turno vigente, la rotación («3,4»; en Tejido «3,5,6») y sus
+integrantes. Cambiar el turno, o «Rotar al siguiente turno», lo escribe en el
+«Turno (RH)» de cada integrante sin turno fijo; la persona también tiene el
+campo «Cuadrilla» en su ficha.
+
+**Festivos** (`qb.nomina.festivo`, Nómina → Incidencias → Festivos): un
+festivo sin trabajar sale «F» en la lista y se paga (no es falta); trabajado se
+cuenta en «Festivos trabajados» con la nota. **Todavía no pasa al recibo**:
+falta la regla del pago doble (art. 75 LFT), que se agrega en la base cuando
+RH confirme con qué concepto lo paga NOI.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -999,6 +1034,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
 | Campo `qb_dias_aguinaldo` en `hr.payroll.structure.type` (1.18.0) | al instalar y al actualizar a 1.18.0 | columna nueva; se siembra 16 en «Mexico: Employee» y 25 en los tipos semanales de México solo donde está en cero; nunca pisa lo capturado |
 | Modelo `qb.nomina.concepto.noi` (tabla nueva, 18 conceptos de NOI con `noupdate`), asistente `qb.nomina.reporte`, dos reportes PDF, dos formatos de papel y menú «Reportes NOI» en la raíz de Nómina (1.23.0) | al instalar y en cada actualización (menú) | sólo lee recibos; el Excel queda en el asistente (transitorio) |
+| Modelos `qb.nomina.cuadrilla` y `qb.nomina.festivo` (tablas nuevas), campo `qb_cuadrilla_id` en `hr.employee` y menús «Cuadrillas de turno» y «Festivos» (1.24.0) | al instalar | nacen vacíos; la cuadrilla escribe `qb_turno` de sus integrantes sin turno fijo al cambiar su turno o sus integrantes |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y

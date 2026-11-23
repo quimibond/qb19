@@ -95,6 +95,7 @@
                             <field name="dom_horas" sum="Prima dominical"/>
                             <field name="comida_min" readonly="1" optional="hide"/>
                             <field name="comidas_largas" readonly="1" sum="Comidas largas" optional="show"/>
+                            <field name="festivos_trabajados" readonly="1" sum="Festivos trabajados" optional="show"/>
                             <field name="sin_checadas" readonly="1" optional="hide"/>
                             <field name="proyectado" readonly="1" optional="hide"/>
                             <field name="observaciones" optional="show"/>
