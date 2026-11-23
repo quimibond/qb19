@@ -652,12 +652,17 @@ class QbRelease(models.Model):
 
     def _qb_forecast_units(self):
         """{producto: 'm' | 'yd' | 'kg' | 'm2'}: la unidad en que el cliente pide cada producto del release,
-        si todas sus partes la piden en la misma y se convierten por unidad (no con factor fijo)."""
+        si todas sus partes la piden en la misma y se convierten por unidad (no con factor fijo).
+
+        3.31.1: manda la unidad del catálogo, la misma con que se convierte la cantidad, no la que trae
+        impresa el release (Saltillo imprime MTR en el WJ060 y pide en yardas; Ventas corrige el catálogo)."""
         self.ensure_one()
         found = defaultdict(set)
         for part in self.part_ids.filtered('product_id'):
-            auto = part.catalog_part_id.conversion != 'fija'
-            found[part.product_id].add(units.forecast_unit(part.customer_uom) if auto else None)
+            catalog = part.catalog_part_id
+            auto = catalog.conversion != 'fija'
+            uom = catalog.customer_uom or part.customer_uom
+            found[part.product_id].add(units.forecast_unit(uom) if auto else None)
         return {product: next(iter(unit)) for product, unit in found.items() if len(unit) == 1 and None not in unit}
 
     def _qb_apply_rules(self, demand, info, existing, current, terms):
