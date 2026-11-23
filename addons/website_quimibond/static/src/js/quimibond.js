@@ -19,6 +19,19 @@
     function todos(sel, ctx) {
         return Array.prototype.slice.call((ctx || document).querySelectorAll(sel));
     }
+    /* Textos en el idioma de la página: el servidor los deja en #qb_t (vacío en
+       español). T("texto en español") devuelve la traducción o el mismo texto. */
+    var QB_T = null;
+    function T(s) {
+        if (QB_T === null) {
+            QB_T = {};
+            try {
+                var caja = document.getElementById("qb_t");
+                if (caja) { QB_T = JSON.parse(caja.getAttribute("data-t")) || {}; }
+            } catch (e) { QB_T = {}; }
+        }
+        return QB_T[s] || s;
+    }
     function normal(s) {
         return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     }
@@ -365,6 +378,12 @@
         { construccion: "tramado", galga: 24, peso: 90, color: "#9a9aa2", tacto: "Semirrígido", fusionable: true }
     ];
     var TELA_ONDA = { "Suave": 9, "Semirrígido": 4.5, "Rígido": 1.5 };
+    function ondaDeTacto(tacto) {
+        var k;
+        if (TELA_ONDA[tacto] !== undefined) { return TELA_ONDA[tacto]; }
+        for (k in TELA_ONDA) { if (T(k) === tacto) { return TELA_ONDA[k]; } }
+        return undefined;
+    }
 
     function rgb(hex) {
         var m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
@@ -501,7 +520,7 @@
                 preparar(w, h);
             }
             ultimo = { ctx: ctx, w: w, h: h };
-            var amp = Math.min(margen - 2, TELA_ONDA[diseno.tacto] === undefined ? 6 : TELA_ONDA[diseno.tacto]);
+            var amp = Math.min(margen - 2, ondaDeTacto(diseno.tacto) === undefined ? 6 : ondaDeTacto(diseno.tacto));
             var tira = 3;
             var esc = fuera.width / w;
             ctx.clearRect(0, 0, w, h);
@@ -561,10 +580,10 @@
             var ancho = parseInt(campo("qb_ancho").value, 10);
             var acabados = [];
             if (campo("qb_fusionable").checked) {
-                acabados.push("Fusionable");
+                acabados.push(T("Fusionable"));
             }
             if (campo("qb_termofijado").checked) {
-                acabados.push("Termofijada");
+                acabados.push(T("Termofijada"));
             }
             return {
                 construccion: cons ? cons.value : "una_fontura",
@@ -585,8 +604,8 @@
                 fecha: campo("qb_fecha").value || "",
                 peso: parseInt(campo("qb_peso").value, 10) || 150,
                 color: colorLibre || !col ? libre.value : col.value,
-                colorNombre: colorLibre || !col ? "Personalizado " + libre.value.toUpperCase() : col.getAttribute("data-nombre"),
-                tacto: (elegido("qb_tacto") || {}).value || "Suave",
+                colorNombre: colorLibre || !col ? T("Personalizado") + " " + libre.value.toUpperCase() : col.getAttribute("data-nombre"),
+                tacto: (elegido("qb_tacto") || {}).value || T("Suave"),
                 fusionable: campo("qb_fusionable").checked,
                 acabados: acabados,
                 presentacion: (elegido("qb_presentacion") || {}).value || "",
@@ -598,41 +617,41 @@
             var punto = d.construccion === "una_fontura" || d.construccion === "doble_fontura";
             var f = [];
             if (d.mercado) {
-                f.push(["Mercado", d.mercado]);
+                f.push([T("Mercado"), d.mercado]);
             }
             if (d.aplicacion) {
-                f.push(["Aplicación", d.aplicacion]);
+                f.push([T("Aplicación"), d.aplicacion]);
             }
-            f.push(["Construcción", d.construccionNombre]);
+            f.push([T("Construcción"), d.construccionNombre]);
             if (!punto) {
-                f.push(["Fibra", d.fibra]);
+                f.push([T("Fibra"), d.fibra]);
             } else {
                 var hilo = d.hilo;
-                if (hilo.indexOf("Poliéster") === 0 && d.hiloTipo) {
+                if (hilo.indexOf(T("Poliéster")) === 0 && d.hiloTipo) {
                     hilo += " " + d.hiloTipo.toLowerCase();
                 }
-                f.push(["Hilo", hilo + (d.elastano ? " con elastano" : "")]);
+                f.push([T("Hilo"), hilo + (d.elastano ? " " + T("con elastano") : "")]);
             }
-            f.push(["Peso", d.peso + " g/m²"]);
+            f.push([T("Peso"), d.peso + " g/m²"]);
             if (d.ancho) {
-                f.push(["Ancho", d.ancho + " cm"]);
+                f.push([T("Ancho"), d.ancho + " cm"]);
             }
-            f.push(["Color", d.colorNombre], ["Tacto", d.tacto]);
+            f.push([T("Color"), d.colorNombre], [T("Tacto"), d.tacto]);
             if (d.acabados.length) {
-                f.push(["Acabado", d.acabados.join(", ")]);
+                f.push([T("Acabado"), d.acabados.join(", ")]);
             }
-            f.push(["Presentación", d.presentacion]);
+            f.push([T("Presentación"), d.presentacion]);
             if (d.requisitos.length) {
-                f.push(["Requisitos", d.requisitos.join(", ")]);
+                f.push([T("Requisitos"), d.requisitos.join(", ")]);
             }
             if (d.norma) {
-                f.push(["Norma", d.norma]);
+                f.push([T("Norma"), d.norma]);
             }
             if (d.volumen) {
-                f.push(["Volumen", d.volumen.toLocaleString("es-MX") + " " + d.unidad]);
+                f.push([T("Volumen"), d.volumen.toLocaleString("es-MX") + " " + d.unidad]);
             }
             if (d.fecha) {
-                f.push(["Lo necesita para", d.fecha.split("-").reverse().join("/")]);
+                f.push([T("Lo necesita para"), d.fecha.split("-").reverse().join("/")]);
             }
             return f;
         }
@@ -676,7 +695,7 @@
                 canvas.qbTela(d);
             }
             // El diseño viaja a Ventas dentro de la especificación del formulario.
-            var bloque = "Diseño de tela (diseñador en línea)\n" + lista.map(function (par) {
+            var bloque = T("Diseño de tela (diseñador en línea)") + "\n" + lista.map(function (par) {
                 return "- " + par[0] + ": " + par[1];
             }).join("\n");
             if (detalle) {
@@ -689,7 +708,7 @@
                 bloqueAnterior = bloque;
             }
             if (asunto) {
-                var nuevoAsunto = "Diseño de tela: " + d.construccionNombre + ", " + d.peso + " g/m²";
+                var nuevoAsunto = T("Diseño de tela") + ": " + d.construccionNombre + ", " + d.peso + " g/m²";
                 if (!asunto.value || asunto.value === asuntoAnterior) {
                     asunto.value = nuevoAsunto;
                     asunto.defaultValue = nuevoAsunto;
@@ -746,7 +765,7 @@
             if (tela.fibra) {
                 marcar("qb_fibra", tela.fibra);
             }
-            marcar("qb_tacto", tela.tacto || "Suave");
+            marcar("qb_tacto", tela.tacto || T("Suave"));
             campo("qb_peso").value = tela.peso || 150;
             campo("qb_fusionable").checked = !!tela.fusionable;
             campo("qb_termofijado").checked = !!tela.termofijado;
@@ -903,17 +922,17 @@
                 var texto = botonCopiar.querySelector("span");
                 var original = texto.textContent;
                 var listoCopia = function () {
-                    texto.textContent = "Enlace copiado";
+                    texto.textContent = T("Enlace copiado");
                     setTimeout(function () {
                         texto.textContent = original;
                     }, 2200);
                 };
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(location.href).then(listoCopia, function () {
-                        window.prompt("Copie el enlace de su diseño:", location.href);
+                        window.prompt(T("Copie el enlace de su diseño:"), location.href);
                     });
                 } else {
-                    window.prompt("Copie el enlace de su diseño:", location.href);
+                    window.prompt(T("Copie el enlace de su diseño:"), location.href);
                 }
             });
         }
@@ -1092,19 +1111,19 @@
             activo = 0;
             lista.textContent = "";
             if (!datos) {
-                lista.innerHTML = '<div class="qb-cmd__nada">Cargando catálogo…</div>';
+                lista.innerHTML = '<div class="qb-cmd__nada">' + T("Cargando catálogo…") + '</div>';
                 return;
             }
             if (!visibles.length) {
                 var nada = document.createElement("div");
                 nada.className = "qb-cmd__nada";
-                nada.textContent = "Sin resultados. Fabricamos sobre especificación: pida una cotización.";
+                nada.textContent = T("Sin resultados. Fabricamos sobre especificación: pida una cotización.");
                 lista.appendChild(nada);
                 return;
             }
             var grupo = null;
             visibles.forEach(function (d, i) {
-                var nombre = d.codigo ? "Productos" : d.categoria;
+                var nombre = d.codigo ? T("Productos") : d.categoria;
                 if (nombre !== grupo) {
                     grupo = nombre;
                     var g = document.createElement("div");
@@ -1146,7 +1165,7 @@
             pintar();
             entrada.focus();
             if (!datos) {
-                fetch("/catalogo/buscar.json", { credentials: "same-origin" })
+                fetch(((raiz.lang || "es").toLowerCase().indexOf("es") === 0 ? "" : "/en") + "/catalogo/buscar.json", { credentials: "same-origin" })
                     .then(function (r) { return r.ok ? r.json() : []; })
                     .catch(function () { return []; })
                     .then(function (json) {
@@ -1641,14 +1660,14 @@
             ctx.fill();
             ctx.stroke();
 
-            rotulo(ctx, s, "TORNIQUETE", 196, 46, 186, 70);
-            rotulo(ctx, s, "TOBERA", 262, 66, 246, 80);
-            rotulo(ctx, s, "TELA EN CUERDA", 356, 72, 380, 92);
-            rotulo(ctx, s, "CALOR", 88, 200);
-            rotulo(ctx, s, "BOMBA", 304, 332);
-            rotulo(ctx, s, "BAÑO", 570, 252, 552, 256);
-            rotulo(ctx, s, "CRUDO", 430, 312);
-            rotulo(ctx, s, "COLOR PAREJO", 596, 312, null, null, "right");
+            rotulo(ctx, s, T("TORNIQUETE"), 196, 46, 186, 70);
+            rotulo(ctx, s, T("TOBERA"), 262, 66, 246, 80);
+            rotulo(ctx, s, T("TELA EN CUERDA"), 356, 72, 380, 92);
+            rotulo(ctx, s, T("CALOR"), 88, 200);
+            rotulo(ctx, s, T("BOMBA"), 304, 332);
+            rotulo(ctx, s, T("BAÑO"), 570, 252, 552, 256);
+            rotulo(ctx, s, T("CRUDO"), 430, 312);
+            rotulo(ctx, s, T("COLOR PAREJO"), 596, 312, null, null, "right");
             ctx.restore();
         });
     }
@@ -1854,13 +1873,44 @@
             ctx.beginPath();
             ctx.arc(xq, 300, 2.6, 0, TAU);
             ctx.fill();
-            rotulo(ctx, s, "ENTRADA", 18, 320);
-            rotulo(ctx, s, "ENSANCHE", 106, 320);
-            rotulo(ctx, s, "SECADO Y TERMOFIJADO", 310, 320);
-            rotulo(ctx, s, "ROLLO", 602, 320, null, null, "right");
-            rotulo(ctx, s, "CADENA DE AGUJAS", 96, 34, 128, CY - medio(128) - 2);
-            rotulo(ctx, s, "ANCHO PEDIDO", 600, 44, 584, CY - M1 + 14, "right");
+            rotulo(ctx, s, T("ENTRADA"), 18, 320);
+            rotulo(ctx, s, T("ENSANCHE"), 106, 320);
+            rotulo(ctx, s, T("SECADO Y TERMOFIJADO"), 310, 320);
+            rotulo(ctx, s, T("ROLLO"), 602, 320, null, null, "right");
+            rotulo(ctx, s, T("CADENA DE AGUJAS"), 96, 34, 128, CY - medio(128) - 2);
+            rotulo(ctx, s, T("ANCHO PEDIDO"), 600, 44, 584, CY - M1 + 14, "right");
             ctx.restore();
+        });
+    }
+
+    /* Medición: avisa a Google Analytics, si el sitio lo tiene cargado, de las
+       acciones que importan (oportunidad enviada, llamada, descarga). Sin
+       Analytics no hace nada. */
+    function evento(nombre, datos) {
+        if (typeof window.gtag === "function") {
+            try { window.gtag("event", nombre, datos || {}); } catch (e) { /* sin medición */ }
+        }
+    }
+    function medicion() {
+        var conversion = document.querySelector("[data-qb-conversion]");
+        if (conversion) {
+            evento("generate_lead", { origen: conversion.getAttribute("data-qb-conversion"), idioma: raiz.lang || "" });
+        }
+        document.addEventListener("click", function (e) {
+            var el = e.target && e.target.closest ? e.target.closest("a, button") : null;
+            if (!el) {
+                return;
+            }
+            var href = el.getAttribute("href") || "";
+            if (el.hasAttribute("data-qb-evento")) {
+                evento(el.getAttribute("data-qb-evento"), { detalle: el.getAttribute("data-qb-detalle") || "" });
+            } else if (href.indexOf("tel:") === 0) {
+                evento("clic_telefono", {});
+            } else if (href.indexOf("mailto:") === 0) {
+                evento("clic_correo", {});
+            } else if (/\/agendar$/.test(href)) {
+                evento("clic_agendar", {});
+            }
         });
     }
 
@@ -1881,5 +1931,6 @@
         menuMovil();
         buscador();
         filtroCatalogo();
+        medicion();
     });
 })();

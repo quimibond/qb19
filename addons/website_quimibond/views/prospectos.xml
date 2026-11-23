@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Formulario corto: llamada, ficha técnica o certificados. Crea una
+         oportunidad en CRM con la etiqueta de su origen (qb_origen). -->
+    <template id="formulario_contacto" name="Quimibond: formulario corto">
+        <section class="s_website_form qb-form" data-vcss="001" data-snippet="s_website_form">
+            <form action="/website/form/" method="post" enctype="multipart/form-data" class="o_mark_required" data-mark="*"
+                  data-pre-fill="true" data-model_name="crm.lead" data-success-mode="redirect" t-attf-data-success-page="/cotizar/gracias?o=#{qb_origen}">
+                <div class="s_website_form_rows qb-form__rejilla">
+                    <div class="s_website_form_field s_website_form_custom s_website_form_field_hidden d-none" data-type="char" data-name="Field">
+                        <input type="hidden" class="s_website_form_input" name="qb_origen" t-att-value="qb_origen"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_model_required s_website_form_field_hidden d-none" data-type="char" data-name="Field">
+                        <input type="hidden" class="s_website_form_input" name="name" t-att-value="asunto_fijo"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_required qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" t-attf-for="qb_c_nombre_#{qb_origen}"><span class="s_website_form_label_content">Nombre</span><span class="s_website_form_mark"> *</span></label>
+                        <input t-attf-id="qb_c_nombre_#{qb_origen}" type="text" class="form-control s_website_form_input" name="contact_name" required="1" data-fill-with="name" autocomplete="name"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_required qb-campo" data-type="char" data-name="Field">
+                        <label class="s_website_form_label" t-attf-for="qb_c_empresa_#{qb_origen}"><span class="s_website_form_label_content">Empresa</span><span class="s_website_form_mark"> *</span></label>
+                        <input t-attf-id="qb_c_empresa_#{qb_origen}" type="text" class="form-control s_website_form_input" name="partner_name" required="1" data-fill-with="commercial_company_name" autocomplete="organization"/>
+                    </div>
+                    <div class="s_website_form_field s_website_form_model_required qb-campo" data-type="email" data-name="Field">
+                        <label class="s_website_form_label" t-attf-for="qb_c_correo_#{qb_origen}"><span class="s_website_form_label_content">Correo de trabajo</span><span class="s_website_form_mark"> *</span></label>
+                        <input t-attf-id="qb_c_correo_#{qb_origen}" type="email" class="form-control s_website_form_input" name="email_from" required="1" data-fill-with="email" autocomplete="email"/>
+                    </div>
+                    <div t-attf-class="s_website_form_field #{'s_website_form_required' if con_horario else ''} qb-campo" data-type="tel" data-name="Field">
+                        <label class="s_website_form_label" t-attf-for="qb_c_tel_#{qb_origen}"><span class="s_website_form_label_content">Teléfono</span><span t-if="con_horario" class="s_website_form_mark"> *</span></label>
+                        <input t-attf-id="qb_c_tel_#{qb_origen}" type="tel" class="form-control s_website_form_input" name="phone" t-att-required="'1' if con_horario else None" data-fill-with="phone" autocomplete="tel"/>
+                    </div>
+                    <t t-if="con_horario">
+                        <div class="s_website_form_field s_website_form_custom qb-campo qb-campo--ancho" data-type="char" data-name="Field">
+                            <label class="s_website_form_label" for="qb_c_mercado"><span class="s_website_form_label_content">Mercado</span></label>
+                            <select id="qb_c_mercado" class="form-select s_website_form_input" name="Mercado">
+                                <option value="Automotriz">Automotriz</option>
+                                <option value="Blancos">Blancos</option>
+                                <option value="Confección">Confección</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="s_website_form_field s_website_form_custom qb-campo" data-type="date" data-name="Field">
+                            <label class="s_website_form_label" for="qb_c_dia"><span class="s_website_form_label_content">Día que prefiere</span></label>
+                            <input id="qb_c_dia" type="date" class="form-control s_website_form_input" name="Día que prefiere"/>
+                        </div>
+                        <div class="s_website_form_field s_website_form_custom qb-campo" data-type="char" data-name="Field">
+                            <label class="s_website_form_label" for="qb_c_horario"><span class="s_website_form_label_content">Horario (centro de México)</span></label>
+                            <select id="qb_c_horario" class="form-select s_website_form_input" name="Horario">
+                                <option t-foreach="qb_horarios" t-as="h" t-att-value="h" t-out="h"/>
+                            </select>
+                        </div>
+                    </t>
+                    <div class="s_website_form_field qb-campo qb-campo--ancho" data-type="text" data-name="Field">
+                        <label class="s_website_form_label" t-attf-for="qb_c_detalle_#{qb_origen}"><span class="s_website_form_label_content" t-out="etiqueta_detalle"/></label>
+                        <textarea t-attf-id="qb_c_detalle_#{qb_origen}" class="form-control s_website_form_input" name="description" rows="3"/>
+                    </div>
+                    <div class="s_website_form_submit qb-campo--ancho qb-form__enviar" data-name="Submit Button">
+                        <span id="s_website_form_result"/>
+                        <a href="#" role="button" class="qb-btn qb-btn--primario qb-btn--lg s_website_form_send"><t t-out="etiqueta_boton"/> <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        <small>Su solicitud llega directo a Ventas. Respondemos en un día hábil.</small>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Compradores automotrices                                           -->
+    <!-- ================================================================= -->
+    <template id="compradores" track="1" name="Quimibond: compradores automotrices">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <t t-call="website_quimibond.encabezado_pagina">
+                    <t t-set="etiqueta">Compradores automotrices</t>
+                    <t t-set="titulo">Scrims para interiores automotrices, de una planta que responde por cada rollo.</t>
+                    <t t-set="resumen">Lo que su equipo de compras y de calidad necesita para evaluarnos: qué fabricamos, certificados, laboratorio y cómo desarrollamos una tela nueva.</t>
+                    <div class="qb-hero__cta qb-reveal">
+                        <a href="#rfq" class="qb-btn qb-btn--primario qb-btn--lg" data-qb-evento="rfq_automotriz">Enviar su especificación <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        <a href="/agendar" class="qb-btn qb-btn--contorno qb-btn--lg">Agendar llamada</a>
+                    </div>
+                </t>
+
+                <section class="qb-sec qb-sec--cifras">
+                    <div class="qb-container">
+                        <dl class="qb-cifras qb-reveal">
+                            <div><dd>2014</dd><dt>Abastecemos al mercado automotriz desde este año</dt></div>
+                            <div><dd>3</dd><dt>Países: México, Estados Unidos y Canadá</dt></div>
+                            <div><dd>ISO</dd><dt>9001, 14001 y 45001 certificadas</dt></div>
+                            <div><dd>100 %</dd><dt>Inspección rollo por rollo</dt></div>
+                        </dl>
+                    </div>
+                </section>
+
+                <!-- Qué suministramos -->
+                <section class="qb-sec" id="scrims">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Qué suministramos</span>
+                            <h2 class="qb-reveal">Scrims de tejido circular y no tejidos.</h2>
+                            <p class="qb-lead qb-reveal">El scrim es el soporte textil que se lamina con la espuma y con la tela, el vinil o la piel de la vestidura. Lo fabricamos en dos construcciones, contra la especificación de su cliente.</p>
+                        </div>
+                        <div class="qb-grid qb-grid--2">
+                            <a href="/catalogo/familia/scrim-tejido" class="qb-card qb-tipo qb-spot qb-reveal">
+                                <t t-call="website_quimibond.dibujo_tejido"><t t-set="clave" t-value="'una_fontura'"/></t>
+                                <div class="qb-tipo__cuerpo">
+                                    <h3>Scrims de tejido circular</h3>
+                                    <p>En poliéster, poliéster reciclado o poliamida. Natural, blanco o negro, termofijados al ancho pedido.</p>
+                                    <span class="qb-enlace">Ver rangos <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                </div>
+                            </a>
+                            <a href="/catalogo/familia/scrim-no-tejido" class="qb-card qb-tipo qb-spot qb-reveal">
+                                <t t-call="website_quimibond.dibujo_tejido"><t t-set="clave" t-value="'no_tejido'"/></t>
+                                <div class="qb-tipo__cuerpo">
+                                    <h3>Scrims no tejidos</h3>
+                                    <p>Velo de fibra consolidado al peso, el espesor y la resistencia de su especificación.</p>
+                                    <span class="qb-enlace">Ver rangos <i class="fa fa-long-arrow-right" aria-hidden="true"/></span>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="qb-grid qb-grid--3 qb-compra__puntos">
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">Aplicaciones</span>
+                                <p class="qb-card__fuerte">Vestiduras de asientos, descansabrazos de puerta y otros componentes del interior.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">Acabados</span>
+                                <p class="qb-card__fuerte">Termofijado de acuerdo a su especificación y acabados especiales, como retardante a la flama.</p>
+                            </div>
+                            <div class="qb-card qb-spot qb-reveal">
+                                <span class="qb-mono qb-num">Trazabilidad</span>
+                                <p class="qb-card__fuerte">Cada rollo lleva su lote, de la materia prima al rollo terminado.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <t t-call="website_quimibond.armadoras"/>
+
+                <!-- Certificaciones -->
+                <section class="qb-sec qb-sec--suave" id="certificados">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Certificaciones</span>
+                            <h2 class="qb-reveal">Sistema de gestión integral certificado.</h2>
+                            <p class="qb-lead qb-reveal">Certificados emitidos por SIDE Certificaciones, organismo acreditado por la ema y miembro del IAF. El alcance cubre la producción y venta de entretelas y scrims tejidos y no tejidos, y la aplicación de resinas, laminados y acabados industriales.</p>
+                        </div>
+                        <div class="qb-grid qb-grid--3">
+                            <t t-foreach="qb_certificaciones" t-as="c">
+                                <div class="qb-card qb-cert qb-spot qb-reveal">
+                                    <span class="qb-sello"><strong>ISO</strong><t t-out="c['norma'][4:]"/></span>
+                                    <h3 t-out="c['sistema']"/>
+                                    <p t-out="c['desde']"/>
+                                    <p t-if="c['detalle']" class="qb-mono qb-cert__num" t-out="c['detalle']"/>
+                                </div>
+                            </t>
+                        </div>
+                        <div class="qb-hero__cta qb-compra__descargas qb-reveal">
+                            <t t-if="certificados">
+                                <a t-foreach="certificados" t-as="cert" t-attf-href="/calidad/certificado/#{cert.id}" class="qb-btn qb-btn--contorno" data-qb-evento="descarga_certificado" t-att-data-qb-detalle="cert.name">
+                                    <i class="fa fa-download" aria-hidden="true"/> <t t-out="cert.name"/>
+                                </a>
+                            </t>
+                            <a t-else="" href="#pedir-certificados" class="qb-btn qb-btn--contorno"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Solicitar los certificados en PDF</a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Laboratorio -->
+                <section class="qb-sec" id="laboratorio">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Laboratorio en planta</span>
+                            <h2 class="qb-reveal">Cada lote se prueba antes de liberarse.</h2>
+                            <p class="qb-lead qb-reveal">Las muestras de producción se prueban contra su especificación y contra la nuestra. Si su norma pide una prueba especial, la revisamos al cotizar.</p>
+                            <p class="qb-nota qb-reveal">Además, cada rollo pasa por inspección al 100 % antes de empacarse.</p>
+                        </div>
+                        <ul class="qb-pruebas qb-reveal">
+                            <li t-foreach="qb_pruebas" t-as="prueba"><i class="fa fa-check" aria-hidden="true"/> <t t-out="prueba"/></li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Desarrollo -->
+                <section class="qb-sec qb-sec--suave" id="desarrollo">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab">
+                            <span class="qb-eyebrow qb-reveal">Desarrollo de producto</span>
+                            <h2 class="qb-reveal">Cómo desarrollamos una tela nueva.</h2>
+                            <p class="qb-lead qb-reveal">Partimos de su muestra o de su especificación. El tiempo de desarrollo y el de entrega se confirman con la cotización, según la tela y el volumen.</p>
+                        </div>
+                        <ol class="qb-proceso" data-qb-proceso="1">
+                            <li class="qb-proceso__hilo" aria-hidden="true"><span/></li>
+                            <t t-foreach="qb_desarrollo" t-as="p">
+                                <li class="qb-proceso__paso qb-reveal">
+                                    <span class="qb-proceso__nodo"><span class="qb-mono" t-out="p['paso']"/></span>
+                                    <h3 t-out="p['nombre']"/>
+                                    <p t-out="p['texto']"/>
+                                </li>
+                            </t>
+                        </ol>
+                    </div>
+                </section>
+
+                <!-- Sustentabilidad -->
+                <section class="qb-sec">
+                    <div class="qb-container">
+                        <div class="qb-sec__cab qb-sec__cab--fila">
+                            <div>
+                                <span class="qb-eyebrow qb-reveal">Sustentabilidad</span>
+                                <h2 class="qb-reveal">Datos para su cadena de suministro.</h2>
+                            </div>
+                            <a href="/calidad" class="qb-btn qb-btn--contorno qb-reveal">Calidad y sustentabilidad <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                        </div>
+                        <dl class="qb-cifras qb-cifras--3 qb-reveal">
+                            <t t-foreach="qb_sustentabilidad_cifras" t-as="c">
+                                <div>
+                                    <dd t-out="c['valor']"/>
+                                    <dt t-out="c['etiqueta']"/>
+                                </div>
+                            </t>
+                        </dl>
+                    </div>
+                </section>
+
+                <!-- RFQ -->
+                <section class="qb-sec qb-sec--suave" id="rfq">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Siguiente paso</span>
+                            <h2 class="qb-reveal">Envíe su RFQ o su especificación</h2>
+                            <p class="qb-lead qb-reveal">Adjunte el dibujo, la norma o la ficha del material que quiere igualar. Un asesor de Ventas le responde en un día hábil.</p>
+                            <ul class="qb-pasos">
+                                <li class="qb-reveal"><span class="qb-mono">01</span><div><strong>Revisamos su especificación</strong><span>Ventas e Ingeniería confirman la factibilidad.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">02</span><div><strong>Recibe cotización y muestra</strong><span>Con resultados de laboratorio para validar en su planta.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">03</span><div><strong>Visite la planta</strong><span>En Toluca, Estado de México. Lo coordinamos con gusto.</span></div></li>
+                            </ul>
+                            <p class="qb-reveal"><a class="qb-enlace" href="/agendar"><i class="fa fa-calendar" aria-hidden="true"/> ¿Prefiere platicarlo? Agende una llamada</a></p>
+                        </div>
+                        <div class="qb-card qb-card--form qb-reveal">
+                            <t t-set="qb_origen" t-value="'automotriz'"/>
+                            <t t-call="website_quimibond.formulario_cotizacion"/>
+                        </div>
+                    </div>
+                </section>
+
+                <section t-if="not certificados" class="qb-sec" id="pedir-certificados">
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Certificados</span>
+                            <h2 class="qb-reveal">Reciba los certificados en PDF</h2>
+                            <p class="qb-lead qb-reveal">Le enviamos a su correo los certificados ISO 9001, ISO 14001 e ISO 45001 vigentes.</p>
+                        </div>
+                        <div class="qb-card qb-card--form qb-reveal">
+                            <t t-set="qb_origen" t-value="'certificados'"/>
+                            <t t-set="con_horario" t-value="False"/>
+                            <t t-set="asunto_fijo">Certificados ISO</t>
+                            <t t-set="etiqueta_detalle">Comentarios (opcional)</t>
+                            <t t-set="etiqueta_boton">Solicitar certificados</t>
+                            <t t-call="website_quimibond.formulario_contacto"/>
+                        </div>
+                    </div>
+                </section>
+                <div class="oe_structure oe_empty"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================= -->
+    <!-- Agendar llamada (cuando el sitio no tiene liga de citas)           -->
+    <!-- ================================================================= -->
+    <template id="agendar" track="1" name="Quimibond: agendar llamada">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb">
+                <section class="qb-sec qb-cotizar">
+                    <div class="qb-trama" aria-hidden="true"/>
+                    <div class="qb-container qb-dos">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Ventas</span>
+                            <h1 class="qb-reveal">Agende una llamada con Ventas</h1>
+                            <p class="qb-lead qb-reveal">Díganos qué día y en qué horario le queda mejor. Un asesor le confirma la cita y le llama.</p>
+                            <ul class="qb-pasos">
+                                <li class="qb-reveal"><span class="qb-mono">01</span><div><strong>Elige día y horario</strong><span>De lunes a viernes, de 9:00 a 18:00, hora del centro de México.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">02</span><div><strong>Le confirmamos la cita</strong><span>Por correo o por teléfono, en un día hábil.</span></div></li>
+                                <li class="qb-reveal"><span class="qb-mono">03</span><div><strong>Platicamos su proyecto</strong><span>En español o en inglés.</span></div></li>
+                            </ul>
+                            <p class="qb-reveal"><a class="qb-enlace" t-attf-href="tel:+52#{website._qb_telefono().replace(' ', '')}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="website._qb_telefono()"/></a></p>
+                        </div>
+                        <div class="qb-card qb-card--form qb-reveal">
+                            <t t-set="qb_origen" t-value="'llamada'"/>
+                            <t t-set="con_horario" t-value="True"/>
+                            <t t-set="asunto_fijo">Llamada con Ventas</t>
+                            <t t-set="etiqueta_detalle">¿De qué quiere platicar?</t>
+                            <t t-set="etiqueta_boton">Solicitar llamada</t>
+                            <t t-call="website_quimibond.formulario_contacto"/>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+</odoo>

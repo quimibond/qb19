@@ -73,8 +73,8 @@
                 <div class="qb-prod__datos">
                     <span t-if="ficha['gramaje']" class="qb-badge" t-out="ficha['gramaje']"/>
                     <span t-if="ficha['composicion']" class="qb-badge" t-out="ficha['composicion']"/>
-                    <span t-if="ficha['color']" class="qb-badge" t-out="ficha['color']"/>
-                    <span t-if="ficha['tacto']" class="qb-badge" t-out="ficha['tacto']"/>
+                    <span t-if="ficha['color']" class="qb-badge" t-out="qb_t(ficha['color'])"/>
+                    <span t-if="ficha['tacto']" class="qb-badge" t-out="qb_t(ficha['tacto'])"/>
                 </div>
             </div>
         </a>
@@ -96,8 +96,12 @@
     <template id="formulario_cotizacion" name="Quimibond: formulario de cotización">
         <section class="s_website_form qb-form" data-vcss="001" data-snippet="s_website_form">
             <form action="/website/form/" method="post" enctype="multipart/form-data" class="o_mark_required" data-mark="*"
-                  data-pre-fill="true" data-model_name="crm.lead" data-success-mode="redirect" data-success-page="/cotizar/gracias">
+                  data-pre-fill="true" data-model_name="crm.lead" data-success-mode="redirect" t-attf-data-success-page="/cotizar/gracias?o=#{qb_origen or 'cotizar'}">
                 <div class="s_website_form_rows qb-form__rejilla">
+                    <!-- De qué formulario viene: queda como etiqueta de la oportunidad (controllers/formulario.py). -->
+                    <div class="s_website_form_field s_website_form_custom s_website_form_field_hidden d-none" data-type="char" data-name="Field">
+                        <input type="hidden" class="s_website_form_input" name="qb_origen" t-att-value="qb_origen or 'cotizar'"/>
+                    </div>
                     <div class="s_website_form_field s_website_form_required qb-campo" data-type="char" data-name="Field">
                         <label class="s_website_form_label" for="qb_f_nombre"><span class="s_website_form_label_content">Nombre</span><span class="s_website_form_mark"> *</span></label>
                         <input id="qb_f_nombre" type="text" class="form-control s_website_form_input" name="contact_name" required="1" data-fill-with="name" autocomplete="name"/>
