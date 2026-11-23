@@ -5,6 +5,9 @@ from odoo.exceptions import UserError
 # 3.15.0: calidades que salen como la tela en metros; el resto (Desperdicio) es saldo en kg.
 CALIDADES_EN_METROS = ('PQ', 'FE', 'SEGUNDA')
 CLASIFICACIONES = [('PQ', 'PQ'), ('FE', 'FE'), ('SEGUNDA', 'Segunda'), ('DESP', 'Desperdicio')]
+# 3.22.0 (Junta con el cliente, 2026-11-13): al capturar un rollo solo hay PQ, FE y Segunda. «Desperdicio» sigue en
+# `CLASIFICACIONES` porque los rollos ya registrados lo conservan (historial, etiquetas, filtros), pero ya no se elige.
+CLASIFICACIONES_CAPTURA = [c for c in CLASIFICACIONES if c[0] != 'DESP']
 
 # DAT P-D02-01 rev. 05, posiciones 10-11 del código (sin el prefijo «I»).
 COLORES = {

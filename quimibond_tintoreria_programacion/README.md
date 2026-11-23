@@ -28,6 +28,54 @@ Programación de Tintorería (Odoo SH 19) — diseño técnico v5.3, §17.
 - El jet debe tener configuración vigente en las fichas de máquina (capacidad general y/o por banda).
 - El asistente ofrece los jets (tipo de máquina «Tintorería») que están **operando**; uno en montaje, en pruebas o fuera de servicio no se ofrece y, si ya estaba escogido, no se confirma (1.7.1).
 
+## Cambios 19.0.1.10.3 (2026-11-20): la Rama elegida sí se fija
+
+- **Corrección:** en la ventana, la orden y el número de baño de cada renglón de «Rama por baño» son de solo lectura y no
+  se enviaban al guardar; el renglón quedaba sin orden y, al confirmar, no se encontraba la Rama elegida (las órdenes
+  quedaban con la Rama de la lista). Ahora esos campos llevan `force_save`. Detectado en la prueba local de 1.10.2.
+- Prueba: `test_renglones_de_rama_se_guardan_desde_la_pantalla`.
+
+## Cambios 19.0.1.10.2 (Planeación, 2026-11-20): la validación de la Rama es aviso y el tiempo sale de la tela en esa Rama
+
+- **Aviso, no bloqueo:** si la Rama no opera, el artículo no tiene proceso en ella o le falta la velocidad, la columna
+  «Validación» muestra «⚠ Aviso (se puede programar)» y la programación se hace igual; el aviso queda en el chatter de la
+  orden. Es para programar en la RAMA 3 telas en prueba, que no tienen velocidad dada de alta. Lo único que bloquea es
+  elegir una máquina que no es Rama.
+- **Tiempo de la Rama (sin tabla aparte):** la velocidad por tela y por Rama que ya está en la ficha técnica (proceso del
+  artículo en la máquina). Al fijar la Rama, la operación toma el tiempo de la velocidad de esa tela en esa Rama
+  (`_ft_tiempo_rama`: rendimiento de la ficha ÷ velocidad, por la capacidad del ciclo de esa Rama). Si esa Rama no tiene la
+  velocidad de la tela, avisa y **deja el tiempo de la lista**. Antes el tiempo de la operación era el de la lista aunque
+  se cambiara la máquina.
+- Pruebas: `test_rama_sin_proceso_o_sin_velocidad_es_aviso_no_bloqueo`, `test_rama_toma_la_velocidad_de_la_tela_en_esa_rama`.
+
+## Cambios 19.0.1.10.1 (2026-11-19): solo cuentan las máquinas que son Rama
+
+El tipo «Acabado» lo comparten otras máquinas. Una Rama es una máquina de tipo «Acabado» **cuyo nombre dice RAMA**
+(RAMA 1, RAMA 2, RAMA 3; `mrp.workcenter._es_rama`). La tabla «Rama por baño» solo ofrece esas, programar en otra
+máquina del tipo da error («no es una Rama») y la operación de Rama de la lista que se fija es la primera cuya máquina
+es una Rama (no cualquier operación de tipo «Acabado»). Prueba: `test_otra_maquina_de_tipo_acabado_no_es_rama`.
+
+## Cambios 19.0.1.10.0 (Planeación, 2026-11-19): la Rama se programa junto con el jet
+
+Respuestas de Planeación (programacion_Rama.md): la Rama se elige **en la misma ventana «Programar Tintorería»**, junto
+con el HTJ, y no se mueve al planificar.
+
+- **Tabla «Rama por baño (opcional)»** en la ventana: un renglón por baño (orden parcial) que sale de la programación
+  (HTJ elegido); cada baño puede llevar **una Rama distinta**. Se ofrecen todas las ramas (máquinas del tipo «Acabado»,
+  hoy las 3) y la columna «Validación» dice si el artículo se puede programar en ella con lo que hay cargado: la Rama
+  opera y el artículo tiene proceso en esa máquina (`_ft_aviso_alternativa` de las fichas). Desde 1.10.2 el resultado es un aviso, no un bloqueo. Al cambiar el HTJ cambia el número de baños;
+  las ramas elegidas se conservan por número de baño.
+- **Opcional:** con la Rama vacía la elige el planificador de Odoo como hoy. Si se eligió Rama y la lista de materiales
+  no tiene operación de Rama (máquina de tipo «Acabado»), error.
+- **Rama fijada a mano:** la operación de Rama queda con `rama_fija` (campo nuevo en `mrp.workorder`) y
+  `_ft_maquina_fija` la reconoce como el jet: el planificador de las fichas la deja en su máquina aunque haya otra
+  alternativa. Queda nota en el chatter de cada baño.
+- **Tiempo:** ver 1.10.2: sale de la velocidad de la tela en esa Rama.
+- Pruebas: `test_rama_elegida_por_bano_queda_fijada`, `test_rama_opcional_vacia_la_elige_el_planificador`,
+  `test_rama_sin_proceso_del_articulo_no_se_programa`, `test_ramas_distintas_en_numero_a_los_banos`,
+  `test_ventana_programar_con_rama_por_bano`.
+- Las órdenes ya programadas antes de esta versión no tienen Rama fijada.
+
 ## Cambios 19.0.1.9.2 (2026-11-11): metros enteros por baño
 
 - Al dividir la orden en metros entre los baños, cada baño (menos el último) lleva metros **enteros** (antes salían

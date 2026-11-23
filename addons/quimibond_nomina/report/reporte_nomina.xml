@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.23.0: los dos reportes de NOI que usa RH, sobre el asistente qb.nomina.reporte
+         (por lote o por periodo). Se imprimen desde Nómina → Reportes NOI o desde el botón del lote. -->
+    <record id="paperformat_qb_nomina_horizontal" model="report.paperformat">
+        <field name="name">Nómina Quimibond (carta horizontal)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="paperformat_qb_nomina_vertical" model="report.paperformat">
+        <field name="name">Nómina Quimibond (carta vertical)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_qb_nomina_noi" model="ir.actions.report">
+        <field name="name">Reporte de la nómina (NOI)</field>
+        <field name="model">qb.nomina.reporte</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_nomina.report_qb_nomina_noi</field>
+        <field name="report_file">quimibond_nomina.report_qb_nomina_noi</field>
+        <field name="print_report_name">object._nombre_reporte()</field>
+        <field name="paperformat_id" ref="paperformat_qb_nomina_horizontal"/>
+    </record>
+
+    <record id="action_report_qb_percepcion_deduccion" model="ir.actions.report">
+        <field name="name">Percepción/deducción (NOI)</field>
+        <field name="model">qb.nomina.reporte</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_nomina.report_qb_percepcion_deduccion</field>
+        <field name="report_file">quimibond_nomina.report_qb_percepcion_deduccion</field>
+        <field name="print_report_name">object._nombre_reporte()</field>
+        <field name="paperformat_id" ref="paperformat_qb_nomina_vertical"/>
+    </record>
+
+    <!-- Encabezado común: empresa, RFC, registro patronal, periodo y lotes. -->
+    <template id="report_qb_nomina_encabezado">
+        <div class="text-center">
+            <strong t-out="d['empresa']"/><br/>
+            <span t-out="d['rfc']"/><br/>
+            <strong t-out="titulo"/><br/>
+            <span t-out="fecha(d['desde'])"/> al <span t-out="fecha(d['hasta'])"/>
+        </div>
+        <table style="width:100%; font-size:8px; margin-bottom:4px;">
+            <tr>
+                <td>Registro patronal: <span t-out="d['registro_patronal']"/></td>
+                <td>Lote: <span t-out="d['lotes']"/></td>
+                <td class="text-end">Usuario: <span t-out="d['usuario']"/> · Impreso: <span t-out="d['impreso'].strftime('%d/%m/%Y %H:%M')"/></td>
+            </tr>
+        </table>
+    </template>
+
+    <template id="report_qb_nomina_noi">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="d" t-value="doc._qb_datos()"/>
+                <t t-set="dinero" t-value="doc.qb_dinero"/>
+                <t t-set="fecha" t-value="doc.qb_fecha"/>
+                <t t-call="web.basic_layout">
+                    <div class="page" style="font-size:8.5px;">
+                        <t t-call="quimibond_nomina.report_qb_nomina_encabezado">
+                            <t t-set="titulo" t-value="'Reporte de la nómina'"/>
+                        </t>
+                        <div t-if="d['con_diferencia']" class="alert alert-warning" role="alert" style="font-size:8px; padding:3px;">
+                            <t t-out="len(d['con_diferencia'])"/> recibo(s) cuyo neto no es percepciones menos deducciones:
+                            falta una regla en el catálogo de conceptos NOI
+                            (<t t-out="', '.join(r['empleado']['clave'] or r['empleado']['nombre'] for r in d['con_diferencia'])"/>).
+                        </div>
+                        <table style="width:100%; border-bottom:1px solid #000; font-weight:bold;">
+                            <tr><td style="width:9%">Clave</td><td style="width:33%">Nombre del trabajador</td><td style="width:22%"/><td style="width:12%">Periodicidad</td><td style="width:12%" class="text-end">Salario por hora</td><td style="width:12%" class="text-end">Sueldo</td></tr>
+                            <tr><td>RFC</td><td>CURP</td><td>Puesto</td><td>Periodo</td><td class="text-end">Horas por día</td><td class="text-end">Salario diario</td></tr>
+                            <tr><td>N.S.S.</td><td>Fecha de alta</td><td>Departamento</td><td>Reg. patronal</td><td class="text-end">Días trabajados</td><td class="text-end">SDI</td></tr>
+                        </table>
+                        <t t-foreach="d['recibos']" t-as="rec">
+                            <t t-set="e" t-value="rec['empleado']"/>
+                            <t t-set="t" t-value="rec['totales']"/>
+                            <div style="page-break-inside:avoid; margin-top:6px; border-bottom:1px dashed #999; padding-bottom:4px;">
+                                <table style="width:100%;">
+                                    <tr><td style="width:9%"><strong t-out="e['clave']"/></td><td style="width:33%"><strong t-out="e['nombre']"/></td><td style="width:22%"/><td style="width:12%" t-out="e['periodicidad']"/><td style="width:12%" class="text-end" t-out="dinero(e['salario_hora'])"/><td style="width:12%" class="text-end" t-out="dinero(e['sueldo'])"/></tr>
+                                    <tr><td t-out="e['rfc']"/><td t-out="e['curp']"/><td t-out="e['puesto']"/><td><span t-out="fecha(rec['periodo'][0])"/> al <span t-out="fecha(rec['periodo'][1])"/></td><td class="text-end" t-out="'%g' % e['horas_dia']"/><td class="text-end" t-out="dinero(e['salario_diario'])"/></tr>
+                                    <tr><td t-out="e['nss']"/><td t-out="fecha(e['fecha_alta'])"/><td t-out="e['departamento']"/><td t-out="e['registro_patronal']"/><td class="text-end" t-out="'%.2f' % e['dias']"/><td class="text-end" t-out="dinero(e['sdi'])"/></tr>
+                                </table>
+                                <table style="width:100%; margin-top:3px;">
+                                    <tr style="font-weight:bold;">
+                                        <td style="width:28%">Percepciones</td><td style="width:6%">C. NOI</td><td style="width:5%">C. SAT</td><td style="width:10%" class="text-end">Monto</td>
+                                        <td style="width:2%"/>
+                                        <td style="width:28%">Deducciones</td><td style="width:6%">C. NOI</td><td style="width:5%">C. SAT</td><td style="width:10%" class="text-end">Monto</td>
+                                    </tr>
+                                    <t t-set="n" t-value="max(len(rec['percepciones']), len(rec['deducciones']))"/>
+                                    <tr t-foreach="range(n)" t-as="i">
+                                        <t t-set="p" t-value="rec['percepciones'][i] if i &lt; len(rec['percepciones']) else None"/>
+                                        <t t-set="q" t-value="rec['deducciones'][i] if i &lt; len(rec['deducciones']) else None"/>
+                                        <t t-if="p"><td t-out="p['nombre']"/><td t-out="p['clave']"/><td t-out="p['sat']"/><td class="text-end" t-out="dinero(p['importe'])"/></t>
+                                        <t t-else=""><td/><td/><td/><td/></t>
+                                        <td/>
+                                        <t t-if="q"><td t-out="q['nombre']"/><td t-out="q['clave']"/><td t-out="q['sat']"/><td class="text-end" t-out="dinero(q['importe'])"/></t>
+                                        <t t-else=""><td/><td/><td/><td/></t>
+                                    </tr>
+                                    <tr style="font-weight:bold;">
+                                        <td colspan="3" class="text-end">Total percepciones</td><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['percepciones'])"/>
+                                        <td/>
+                                        <td colspan="3" class="text-end">Total deducciones</td><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['deducciones'])"/>
+                                    </tr>
+                                </table>
+                                <table style="width:45%; margin-top:2px;">
+                                    <tr><td>Total gravado</td><td class="text-end" t-out="dinero(t['gravado'])"/><td>Total exento</td><td class="text-end" t-out="dinero(t['exento'])"/><td><strong>Neto pagado</strong></td><td class="text-end"><strong t-out="dinero(t['neto'])"/></td></tr>
+                                    <tr t-if="t['diferencia']"><td colspan="6" style="color:#b00;">El neto del recibo difiere <span t-out="dinero(t['diferencia'])"/> de percepciones − deducciones: revisar el catálogo.</td></tr>
+                                </table>
+                            </div>
+                        </t>
+                        <p style="margin-top:4px;">Total de registros impresos: <strong t-out="len(d['recibos'])"/></p>
+
+                        <!-- Resumen por concepto, como la última hoja de NOI -->
+                        <t t-set="r" t-value="d['resumen']"/>
+                        <div style="page-break-before:always;">
+                            <t t-call="quimibond_nomina.report_qb_nomina_encabezado">
+                                <t t-set="titulo" t-value="'Reporte de la nómina: resumen'"/>
+                            </t>
+                            <h6 class="text-center mt-2">PERCEPCIONES</h6>
+                            <table class="table table-sm" style="font-size:9px;">
+                                <thead><tr><th>Clave NOI</th><th>Clave SAT</th><th>Descripción</th><th class="text-end">Importe</th><th class="text-end">Importe gravado</th><th class="text-end">Importe exento</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="r['percepciones']" t-as="f"><td t-out="f['clave']"/><td t-out="f['sat']"/><td t-out="f['nombre']"/><td class="text-end" t-out="dinero(f['importe'])"/><td class="text-end" t-out="dinero(f['gravado'])"/><td class="text-end" t-out="dinero(f['exento'])"/></tr>
+                                    <tr style="font-weight:bold;"><td colspan="3" class="text-end">Total de percepciones:</td><td class="text-end" t-out="dinero(r['total_percepciones'])"/><td class="text-end" t-out="dinero(r['total_gravado'])"/><td class="text-end" t-out="dinero(r['total_exento'])"/></tr>
+                                </tbody>
+                            </table>
+                            <h6 class="text-center">DEDUCCIONES</h6>
+                            <table class="table table-sm" style="font-size:9px;">
+                                <thead><tr><th>Clave NOI</th><th>Clave SAT</th><th>Descripción</th><th class="text-end">Importe</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="r['deducciones']" t-as="f"><td t-out="f['clave']"/><td t-out="f['sat']"/><td t-out="f['nombre']"/><td class="text-end" t-out="dinero(f['importe'])"/></tr>
+                                    <tr style="font-weight:bold;"><td colspan="3" class="text-end">Total de deducciones:</td><td class="text-end" t-out="dinero(r['total_deducciones'])"/></tr>
+                                </tbody>
+                            </table>
+                            <h6 class="text-center">TOTALES</h6>
+                            <table style="width:40%; margin-left:auto; margin-right:auto; font-size:9.5px;">
+                                <tr><td>Neto pagado</td><td class="text-end"><strong t-out="dinero(r['neto'])"/></td></tr>
+                                <tr><td>Total gravable</td><td class="text-end" t-out="dinero(r['total_gravado'])"/></tr>
+                                <tr><td>Subs. para el empleo aplicado</td><td class="text-end" t-out="dinero(r['total_informativo'])"/></tr>
+                                <tr><td>Recibos</td><td class="text-end" t-out="r['recibos']"/></tr>
+                                <tr t-if="r['diferencia']"><td style="color:#b00;">Diferencia contra el neto de los recibos</td><td class="text-end" style="color:#b00;" t-out="dinero(r['diferencia'])"/></tr>
+                            </table>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_qb_percepcion_deduccion">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="d" t-value="doc._qb_datos()"/>
+                <t t-set="dinero" t-value="doc.qb_dinero"/>
+                <t t-set="fecha" t-value="doc.qb_fecha"/>
+                <t t-call="web.basic_layout">
+                    <div class="page" style="font-size:9.5px;">
+                        <t t-foreach="d['por_concepto']" t-as="c">
+                            <div t-att-style="'page-break-before:always;' if not c_first else ''">
+                                <t t-call="quimibond_nomina.report_qb_nomina_encabezado">
+                                    <t t-set="titulo" t-value="'Percepción/deducción'"/>
+                                </t>
+                                <p style="margin:4px 0;">
+                                    <strong t-out="'Percepción:' if c['tipo'] == 'percepcion' else 'Deducción:'"/>
+                                    <strong t-out="c['clave']" style="margin-left:12px;"/>
+                                    <strong t-out="c['nombre']" style="margin-left:12px;"/>
+                                    <span t-if="c['sat']" style="margin-left:12px;">SAT <t t-out="c['sat']"/></span>
+                                </p>
+                                <table class="table table-sm" style="font-size:9.5px;">
+                                    <thead><tr><th style="width:12%">Clave</th><th>Nombre del trabajador</th><th class="text-end" style="width:18%">Percepciones</th><th class="text-end" style="width:18%">Deducciones</th></tr></thead>
+                                    <tbody>
+                                        <tr t-foreach="c['empleados']" t-as="e">
+                                            <td t-out="e['clave']"/><td t-out="e['nombre']"/>
+                                            <td class="text-end"><t t-if="c['tipo'] == 'percepcion'" t-out="dinero(e['importe'])"/></td>
+                                            <td class="text-end"><t t-if="c['tipo'] != 'percepcion'" t-out="dinero(e['importe'])"/></td>
+                                        </tr>
+                                        <tr style="font-weight:bold;">
+                                            <td/><td class="text-end"><t t-out="len(c['empleados'])"/> trabajadores</td>
+                                            <td class="text-end" t-out="dinero(c['total'] if c['tipo'] == 'percepcion' else 0)"/>
+                                            <td class="text-end" t-out="dinero(c['total'] if c['tipo'] != 'percepcion' else 0)"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

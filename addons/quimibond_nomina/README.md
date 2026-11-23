@@ -930,6 +930,52 @@ result = -(basico - float_round(basico - min(descuento, basico), precision_digit
 Fuera de los medios centavos da lo mismo que antes. Editada en `main` y en
 producción el 2026-11-06, bajo el centinela.
 
+### 22. Reportes de nómina con el formato de NOI (1.23.0)
+
+RH revisa la nómina con dos reportes de NOI (correo de RH del 20-nov-2026,
+semana 48): el **previo/final «Reporte de la nómina»** y el
+**«Percepción/deducción»**. Nómina → Reportes NOI → Reporte de la nómina (o,
+desde un lote, Acción → Reportes de nómina (NOI)) los arma con los recibos de
+Odoo, por lote o por periodo, en PDF o Excel:
+
+* **Reporte de la nómina**: un bloque por recibo con clave, nombre, RFC, CURP,
+  NSS, fecha de alta, puesto, departamento, periodicidad, sueldo, salario
+  diario y por hora, días trabajados (`DIAS_IMSS`) y SDI (`INT_DAY_WAGE`); sus
+  percepciones y deducciones con clave NOI, clave SAT y monto; total de
+  percepciones, de deducciones, gravado, exento y neto. Al final, el resumen
+  por concepto (importe, gravado, exento), total gravable, subsidio aplicado y
+  neto. En Excel, una fila por recibo con una columna por concepto y una hoja
+  «Resumen». El previo y el final son el mismo reporte: con o sin recibos en
+  borrador.
+* **Percepción/deducción**: por concepto (todos o los elegidos), los
+  trabajadores con su importe y el total. Un trabajador con varios recibos en
+  el periodo sale sumado.
+
+**Catálogo de conceptos NOI** (`qb.nomina.concepto.noi`, Nómina → Reportes
+NOI → Conceptos NOI, `data/conceptos_noi.xml` con `noupdate`): cada concepto
+dice qué reglas lo forman. P001 SUELDO = `BASIC` + `DESC_FALTAS`; P003 = `HE_TAX`
++ `HE_EXEMPT` (exenta); P017 OTRAS PERCEPCIONES = `H_SENC`; D001 ISR = `ISR` +
+`SUBSIDY` (NOI imprime el ISR menos el subsidio aplicado y no lo imprime si da
+cero); D002 IMSS = `-IMSS_EMPLOYEE_TOTAL` (el `-` invierte el signo: esa línea es
+positiva); D111 SUBS. PARA EL EMPLEO APLICADO es *informativo*: sale en
+Percepción/deducción y en el resumen, no resta al neto. Lo que el recibo trae
+con concepto de CFDI y no está en el catálogo (premio de asistencia,
+retroactivo, vales: no hubo en la semana 48) sale con el nombre de la regla y
+sin clave NOI; si el neto del recibo no es percepciones − deducciones, el PDF
+lo marca en rojo (falta una regla en el catálogo).
+
+Semana 48 (lote 137) contra NOI: todos los conceptos cuadran al centavo salvo
+las diferencias ya conocidas del paralelo (ISR 2 centavos por redondeo en S-87
+y S-96, Infonavit 1 centavo en S-15). NOI imprime horas extra 41,596.38 como
+20,798.31 gravado + 20,798.31 exento (suma 41,596.62): su exento trae 24
+centavos de más; Odoo da 20,798.31 + 20,798.07. El cálculo vive en
+`models/reporte_calculo.py` (sin Odoo) y se prueba con pytest puro en
+`tests_puros/nomina/` con esos recibos.
+
+1.23.1: la periodicidad del contrato (`schedule_pay`) tiene la selección como función en Odoo 19; leerla con `.selection` tumbaba los dos reportes («'function' object is not iterable», primera prueba en producción el 20-nov).
+
+1.23.2: la regla «Bruto sin vacaciones» (`GROSS_WITHOUT_HOLIDAY`) lleva el concepto P01 del CFDI y salía como renglón propio, duplicando el sueldo (la diferencia en rojo lo marcó). El catálogo trae ahora el tipo «No reportar» y un concepto con esa regla. Generado en producción, la semana 48 cuadra con NOI en los 95 recibos salvo los 3 centavos ya conocidos (S-15 Infonavit, S-87 y S-96 ISR).
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -952,6 +998,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Modelos `qb.nomina.incidencias` y `qb.nomina.incidencias.linea` (tablas nuevas) y menú «Incidencias» en la raíz de Nómina (1.13.0) | al instalar y en cada actualización (menú) | nacen vacías |
 | Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
 | Campo `qb_dias_aguinaldo` en `hr.payroll.structure.type` (1.18.0) | al instalar y al actualizar a 1.18.0 | columna nueva; se siembra 16 en «Mexico: Employee» y 25 en los tipos semanales de México solo donde está en cero; nunca pisa lo capturado |
+| Modelo `qb.nomina.concepto.noi` (tabla nueva, 18 conceptos de NOI con `noupdate`), asistente `qb.nomina.reporte`, dos reportes PDF, dos formatos de papel y menú «Reportes NOI» en la raíz de Nómina (1.23.0) | al instalar y en cada actualización (menú) | sólo lee recibos; el Excel queda en el asistente (transitorio) |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y
