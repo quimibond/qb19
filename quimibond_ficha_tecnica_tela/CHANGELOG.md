@@ -10,6 +10,20 @@ agregan a esa misma sección sin volver a subirla.
 
 ## 19.0.2.32.0 — 2026-11-22 (José Sacramento; en qbtesting como 2.29.1)
 
+**Pestaña «Ficha técnica» del producto más simple (Jose, 2026-11-23: «muchos botones y no se entiende la lógica de
+navegación»).** Antes eran siete botones iguales en una fila (cuatro solo abrían otra pantalla y tres cambiaban datos)
+y los pendientes quedaban al final. Ahora, en este orden: una **franja de estado** en palabras («2 pendientes:
+Ingeniería 1, Tintorería 1», «Lista para activar…», «Activa con…») con la fecha de la revisión y «Revisar ahora»; los
+**pendientes**, con «Resolver», y el del rendimiento con «Usar el medido» / «Dejar el de la ficha» ahí mismo; el único
+botón que cambia datos, **«Corregir las listas con la ficha»** (antes «Usar los datos de la ficha»), solo si hay
+pendientes de tiempos, capacidad de jets o conversión (`ft_puede_corregir`); «Generar listas desde la ruta» solo si a
+la tela le falta una lista; un renglón **«Ir a:»** (Ficha de acabado, Crudo, Lista en kg, Lista en metros, Procesos);
+los datos de la tela y del crudo, y la ruta y la especificación en **sub-pestañas**. Se quitó el aviso azul «Este
+crudo lo usan N telas». En la ficha de acabado: «Marcar revisado» pasa a «Dejar el de la ficha», se quita el botón
+«Lista de la ruta» (es una de las listas en metros) y se agrega **«Producto»** para regresar a la tela. Mismo nombre
+nuevo del botón en la revisión de listas y en la acción de la lista de materiales. Sin campos guardados nuevos ni
+datos que migrar. Pruebas: `test_ficha_producto.test_10b`, `test_10c` y `test_rendimiento_real.test_08b`.
+
 **Rama pesa dos desperdicios: Tejido y Orillas (Dirección, 2026-11-22).** Las listas en kg que genera la ficha traen
 los dos subproductos en la operación de Rama, con cantidad 0: «DESPERDICIO TEJIDO» (los lienzos o tela que se elimina
 durante el proceso) y «DESPERDICIO ORILLAS» (la orilla de la tela que se retira en la Rama). Antes solo traían el
