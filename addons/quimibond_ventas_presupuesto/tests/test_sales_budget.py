@@ -41,7 +41,7 @@ class TestSalesBudget(TransactionCase):
         super().setUpClass()
         # 3.32.0: estas pruebas aprueban presupuestos de uno o dos renglones; el aviso de meses sin
         # renglones tiene su propia prueba (test_25).
-        cls.env = cls.env(context=dict(cls.env.context, qb_allow_empty_months=True))
+        cls.env = cls.env(context=dict(cls.env.context, qb_approve_exception=True))
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.company = cls.env.company
@@ -1141,7 +1141,7 @@ class TestSalesBudgetPriceControl(TransactionCase):
         super().setUpClass()
         # 3.32.0: estas pruebas aprueban presupuestos de uno o dos renglones; el aviso de meses sin
         # renglones tiene su propia prueba (test_25).
-        cls.env = cls.env(context=dict(cls.env.context, qb_allow_empty_months=True))
+        cls.env = cls.env(context=dict(cls.env.context, qb_approve_exception=True))
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
@@ -1329,7 +1329,7 @@ class TestSalesBudgetLifecycle55(TransactionCase):
         super().setUpClass()
         # 3.32.0: estas pruebas aprueban presupuestos de uno o dos renglones; el aviso de meses sin
         # renglones tiene su propia prueba (test_25).
-        cls.env = cls.env(context=dict(cls.env.context, qb_allow_empty_months=True))
+        cls.env = cls.env(context=dict(cls.env.context, qb_approve_exception=True))
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Cron = cls.env['sgi.cron']
