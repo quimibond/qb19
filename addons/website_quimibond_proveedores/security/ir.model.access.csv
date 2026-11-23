@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_proveedor_factura_compras,qb.proveedor.factura compras,model_qb_proveedor_factura,purchase.group_purchase_user,1,1,0,0
+access_qb_proveedor_factura_cxp,qb.proveedor.factura cuentas por pagar,model_qb_proveedor_factura,account.group_account_invoice,1,1,0,0
+access_qb_proveedor_factura_gerente,qb.proveedor.factura gerente de compras,model_qb_proveedor_factura,purchase.group_purchase_manager,1,1,1,1
+access_qb_proveedor_alta_compras,qb.proveedor.alta compras,model_qb_proveedor_alta,purchase.group_purchase_user,1,1,1,0
+access_qb_proveedor_alta_gerente,qb.proveedor.alta gerente de compras,model_qb_proveedor_alta,purchase.group_purchase_manager,1,1,1,1
