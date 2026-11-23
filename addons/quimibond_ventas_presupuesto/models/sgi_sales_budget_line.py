@@ -31,7 +31,8 @@ PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel
                  ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base"),
                  ('desarrollo', "Cotización o precio objetivo del desarrollo")]
 QTY_ORIGINS = [('venta', "Venta del periodo base"), ('proyecto', "Presupuesto de proyectos"),
-               ('desarrollo', "Consumo estimado del desarrollo")]
+               ('desarrollo', "Consumo estimado del desarrollo"),
+               ('pronostico', "Pronóstico vigente (releases)")]
 PRICE_PROBLEMS = [('sin_precio', "Sin precio"), ('sin_tc', "Sin tipo de cambio"),
                   ('sin_conversion', "Sin conversión")]
 

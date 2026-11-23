@@ -25,6 +25,13 @@ líneas de costo):
   periodo base o si sus renglones ya vienen del presupuesto de proyectos. Cada
   renglón dice su origen y su etapa; Jessica decide cuánto entra.
 
+- 3.32.0: **pronóstico vigente**. En Industrial y Especiales, los meses del año que el pronóstico
+  de un cliente (releases y captura de Ventas) cubre completos salen del pronóstico, sin
+  crecimiento: es lo que el cliente ya dijo. Los demás meses de ese cliente, de la venta base.
+  Cada renglón dice su origen. **Supuestos por cliente**: un crecimiento propio (−100 % = deja
+  de comprar) desde un mes, en lugar del del mercado, solo en los meses que salen de la venta
+  base.
+
 No entran saldos ni desperdicio, notas de crédito genéricas ni servicios, ni lo
 de clientes o productos por debajo del mínimo anual que se elija. El resultado
 queda en el chatter del presupuesto nuevo; Jessica ajusta renglón por renglón.
@@ -38,7 +45,7 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_sales_budget import MERCADOS_CON_CLIENTE, _convert_qty, team_mercado
+from .sgi_sales_budget import MERCADOS_CON_CLIENTE, MESES, _convert_qty, default_mercado, team_mercado
 from .qb_sales_project import proyecto_mercado
 
 BASES = [('ultimos12', "Últimos 12 meses cerrados"), ('anio', "Año anterior completo")]
@@ -49,6 +56,9 @@ PROJECT_FIELDS = ('mercado', 'partner_id', 'product_id', 'proyecto_descripcion',
 # Etapas del desarrollo que entran a la propuesta (abiertas, antes de Liberado).
 DEV_PROPOSAL_STAGES = ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje')
 YARD_M = 0.9144
+# Mercados del pronóstico que entran a la propuesta (con cliente; Confección se presupuesta sin él).
+FORECAST_MERCADOS = ('industrial', 'especiales', 'proyectos_industrial')
+MONTHS = [(str(m), MESES[m - 1].capitalize()) for m in range(1, 13)]
 
 
 class QbSalesBudgetProposal(models.TransientModel):
@@ -82,6 +92,15 @@ class QbSalesBudgetProposal(models.TransientModel):
         string="Del consumo del desarrollo (%)", digits=(6, 1), default=100.0,
         help="Qué parte del consumo estimado por el cliente entra a la propuesta. Después se "
              "ajusta renglón por renglón.")
+    use_forecast = fields.Boolean(
+        string="Usar el pronóstico vigente", default=True,
+        help="En Industrial y Especiales, los meses que el pronóstico de cada cliente cubre completos "
+             "salen del pronóstico (releases y captura de Ventas), sin crecimiento. Los demás meses, "
+             "de la venta base.")
+    partner_ids = fields.One2many(
+        'qb.sales.budget.proposal.partner', 'proposal_id', string="Supuestos por cliente",
+        help="Crecimiento propio de un cliente desde un mes, en lugar del de su mercado. Solo en los "
+             "meses que salen de la venta base.")
     rate = fields.Float(
         string="Tipo de cambio presupuestal", digits=(12, 4),
         default=lambda self: float(self.env['ir.config_parameter'].sudo().get_param(
@@ -103,6 +122,66 @@ class QbSalesBudgetProposal(models.TransientModel):
     def _growth(self, mercado):
         return {'industrial': self.growth_industrial, 'confeccion': self.growth_confeccion,
                 'especiales': self.growth_especiales}.get(mercado, 0.0)
+
+    def _qb_row_assumption(self, row):
+        """Supuesto del cliente que aplica a un renglón de la venta base: el de mes más reciente que
+        ya empezó (un cliente puede crecer en enero y dejar de comprar en julio), o vacío."""
+        partner = row['partner']
+        ordered = self.partner_ids.sorted(lambda a: int(a.month_from or 1), reverse=True)
+        for assumption in ordered if partner else ():
+            if assumption.partner_id.commercial_partner_id == partner \
+                    and row['month'] >= int(assumption.month_from or 1):
+                return assumption
+        return self.partner_ids.browse()
+
+    # --- pronóstico -------------------------------------------------------------
+    def _qb_forecast_rows(self, budget):
+        """Renglones del pronóstico vigente en el año: ({(product id, partner id, mes): fila},
+        {partner: (primer mes, último mes cubierto completo)}). Los meses cubiertos van del primero
+        con pronóstico al último que la última semana pronosticada del cliente cubre hasta su último
+        día; sin pronóstico en el año, el cliente no entra."""
+        self.ensure_one()
+        Forecast = self.env['qb.forecast.line'].sudo()
+        start, end = date(self.year, 1, 1), date(self.year, 12, 31)
+        lines = Forecast.search([
+            ('company_id', '=', budget.company_id.id), ('qty_venta', '>', 0),
+            ('partner_id', '!=', False), ('week', '>=', start), ('week', '<=', end)])
+        partners = lines.mapped('partner_id.commercial_partner_id')
+        covered = {}
+        for partner in partners:
+            last = Forecast.search([
+                ('company_id', '=', budget.company_id.id), ('qty_venta', '>', 0),
+                ('partner_id', 'child_of', partner.id), ('week', '>=', start)],
+                order='week desc', limit=1).week
+            reach = last + relativedelta(days=6)
+            month = 0
+            for m in range(1, 13):
+                if date(self.year, m, 1) + relativedelta(months=1, days=-1) <= reach:
+                    month = m
+            first = min(lines.filtered(
+                lambda l, p=partner: l.partner_id.commercial_partner_id == p).mapped('week')).month
+            if month >= first:
+                covered[partner] = (first, month)
+        rows = {}
+        for line in lines:
+            partner = line.partner_id.commercial_partner_id
+            month = line.week.month
+            first, last = covered.get(partner, (13, 0))
+            if not first <= month <= last:
+                continue
+            mercado = line.mercado if line.mercado in FORECAST_MERCADOS else None
+            if not mercado:
+                if line.mercado != 'otro':
+                    continue  # Confección: sin cliente, sale de la venta base
+                mercado = default_mercado(self.env, partner)
+                if mercado not in FORECAST_MERCADOS:
+                    continue
+            key = (line.product_id.id, partner.id, month)
+            row = rows.setdefault(key, {'mercado': mercado, 'product': line.product_id,
+                                        'partner': partner, 'month': month, 'qty': 0.0,
+                                        'amount': 0.0, 'forecast': True})
+            row['qty'] += line.qty_venta
+        return rows, {p: m for p, m in covered.items() if any(k[1] == p.id for k in rows)}
 
     # --- base -----------------------------------------------------------------
     def _qb_base_cells(self, budget):
@@ -196,18 +275,48 @@ class QbSalesBudgetProposal(models.TransientModel):
                 continue
             rows[key] = dict(cell, mercado=mercado, product=product, partner=partner, month=month)
 
+        # Precio real del periodo base por producto y cliente (todos los meses), para los renglones
+        # del pronóstico sin regla en la lista.
+        history_ccy = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
+        for (_mercado, product, partner, _m), cell in cells.items():
+            for ccy, (amount, qty) in cell['currency'].items():
+                history_ccy[(product.id, partner.id if partner else False)][ccy][0] += amount
+                history_ccy[(product.id, partner.id if partner else False)][ccy][1] += qty
+
+        # 3.32.0: los meses que el pronóstico de un cliente cubre salen del pronóstico.
+        forecast_rows, covered = ({}, {})
+        replaced = 0.0
+        if self.use_forecast:
+            forecast_rows, covered = self._qb_forecast_rows(budget)
+            covered_ids = {partner.id: span for partner, span in covered.items()}
+            for key in list(rows):
+                row = rows[key]
+                first, last = covered_ids.get(row['partner'].id, (13, 0)) if row['partner'] else (13, 0)
+                if first <= row['month'] <= last:
+                    replaced += row['amount']
+                    del rows[key]
+            rows.update(forecast_rows)
+
         Line = self.env['sgi.sales.budget.line']
         vals_list = []
+        assumed = defaultdict(int)  # supuesto → renglones de venta base a los que aplicó
         for key in sorted(rows, key=lambda k: (rows[k]['mercado'], k[0], k[1] or 0, k[2])):
             row = rows[key]
-            qty = round(row['qty'] * (1.0 + self._growth(row['mercado']) / 100.0), 0)
+            if row.get('forecast'):
+                qty, origen = round(row['qty'], 0), 'pronostico'
+            else:
+                assumption = self._qb_row_assumption(row)
+                growth = assumption.growth_pct if assumption else self._growth(row['mercado'])
+                if assumption:
+                    assumed[assumption.id] += 1
+                qty, origen = round(row['qty'] * (1.0 + growth / 100.0), 0), 'venta'
             if qty <= 0:
                 continue
             vals_list.append({
                 'budget_id': budget.id, 'mercado': row['mercado'], 'product_id': row['product'].id,
                 'partner_id': row['partner'].id if row['partner'] else False,
                 'date': date(self.year, row['month'], 1), 'uom_id': row['product'].uom_id.id,
-                'qty_budget': qty, 'qty_sugerida': qty, 'qty_origen': 'venta',
+                'qty_budget': qty, 'qty_sugerida': qty, 'qty_origen': origen,
             })
         lines = Line.create(vals_list)
 
@@ -222,7 +331,10 @@ class QbSalesBudgetProposal(models.TransientModel):
             line = by_key.get(key)
             if not line or line.price_input > 0:
                 continue
-            ccy, (amount, qty) = max(row['currency'].items(), key=lambda kv: abs(kv[1][0]))
+            currencies = row.get('currency') or history_ccy.get((key[0], key[1]))
+            if not currencies:
+                continue
+            ccy, (amount, qty) = max(currencies.items(), key=lambda kv: abs(kv[1][0]))
             if qty > 0 and amount > 0:
                 line.write({'price_input': round(amount / qty, 4), 'price_currency_id': ccy.id,
                             'price_basis': 'venta', 'price_origen': 'historico'})
@@ -247,7 +359,7 @@ class QbSalesBudgetProposal(models.TransientModel):
 
         budget.action_qb_update_base()
         self._qb_post_summary(budget, lines, skipped, len(below), from_list, from_history, projects,
-                              dev_lines, dev_skipped)
+                              dev_lines, dev_skipped, covered=covered, replaced=replaced, assumed=assumed)
         return {'type': 'ir.actions.act_window', 'res_model': 'sgi.sales.budget', 'res_id': budget.id,
                 'view_mode': 'form', 'target': 'current'}
 
@@ -367,11 +479,11 @@ class QbSalesBudgetProposal(models.TransientModel):
         return Line.create(vals_list), skipped
 
     def _qb_post_summary(self, budget, lines, skipped, below, from_list, from_history, projects,
-                         dev_lines=None, dev_skipped=None):
+                         dev_lines=None, dev_skipped=None, covered=None, replaced=0.0, assumed=None):
         fmt = '{:,.0f}'.format
         per_market = []
         for base, label in LABELS.items():
-            mine = lines.filtered(lambda l, b=base: l.mercado == b)
+            mine = lines.filtered(lambda l, b=base: l.mercado == b and l.qty_origen == 'venta')
             if mine:
                 per_market.append("%s: %d renglones, %s (crecimiento %s %%)" % (
                     label, len(mine), fmt(sum(mine.mapped('amount_budget'))), self._growth(base)))
@@ -382,6 +494,22 @@ class QbSalesBudgetProposal(models.TransientModel):
             "Precio: %d de la lista, %d del precio real del periodo base, %d sin precio." % (
                 from_list, from_history, budget.no_price_count),
         ]
+        forecast = lines.filtered(lambda l: l.qty_origen == 'pronostico')
+        if covered:
+            notes.append("Pronóstico vigente: %d renglones por %s de %d cliente(s), en lugar de %s de "
+                         "venta base en esos meses (%s)." % (
+                             len(forecast), fmt(sum(forecast.mapped('amount_budget'))), len(covered),
+                             fmt(replaced), ", ".join(
+                                 "%s de %s a %s" % (p.name, MESES[span[0] - 1], MESES[span[1] - 1])
+                                 for p, span in sorted(covered.items(), key=lambda ps: ps[0].name or ''))))
+        elif self.use_forecast:
+            notes.append("Pronóstico vigente: ningún cliente cubre un mes completo de %s." % self.year)
+        for assumption in self.partner_ids:
+            notes.append("Supuesto de %s: %s %% desde %s%s (%d renglón(es) de venta base)." % (
+                assumption.partner_id.name, assumption.growth_pct,
+                MESES[int(assumption.month_from or 1) - 1],
+                (" — %s" % assumption.note) if assumption.note else "",
+                (assumed or {}).get(assumption.id, 0)))
         out = []
         if skipped.get('saldos'):
             out.append("saldos y desperdicio %s" % fmt(skipped['saldos']))
@@ -411,13 +539,31 @@ class QbSalesBudgetProposal(models.TransientModel):
         budget.message_post(body=Markup("<br/>").join(Markup("%s") % n for n in notes))
 
 
+class QbSalesBudgetProposalPartner(models.TransientModel):
+    _name = 'qb.sales.budget.proposal.partner'
+    _description = "Supuesto por cliente de la propuesta del presupuesto"
+
+    proposal_id = fields.Many2one('qb.sales.budget.proposal', required=True, ondelete='cascade')
+    partner_id = fields.Many2one('res.partner', string="Cliente", required=True,
+                                 domain="[('is_company', '=', True)]")
+    growth_pct = fields.Float(
+        string="Crecimiento (%)", digits=(6, 1),
+        help="Sobre lo vendido en el periodo base, en lugar del crecimiento del mercado. −100 = deja de "
+             "comprar.")
+    month_from = fields.Selection(MONTHS, string="Desde", required=True, default='1',
+                                  help="Mes desde el que aplica; antes, el crecimiento del mercado.")
+    note = fields.Char(string="Motivo", help="Programa nuevo, fin de un modelo, cliente que se va…")
+
+
 class SgiSalesBudgetProposal(models.Model):
     _inherit = 'sgi.sales.budget'
 
     @api.model
     def action_qb_build_proposal(self, year, growth=None, base='ultimos12', min_amount=0.0,
-                                 project_source_id=False, rate=0.0, include_dev=True, dev_pct=100.0):
-        """Para MCP: arma la propuesta del año ``year``; ``growth`` = {'industrial': 5, …}.
+                                 project_source_id=False, rate=0.0, include_dev=True, dev_pct=100.0,
+                                 use_forecast=True, partner_growth=None):
+        """Para MCP: arma la propuesta del año ``year``; ``growth`` = {'industrial': 5, …};
+        ``partner_growth`` = [{'partner_id': 7, 'growth_pct': -100, 'month_from': 7, 'note': '…'}].
         Devuelve el id del presupuesto."""
         growth = growth or {}
         vals = {'year': year, 'base': base, 'min_amount': min_amount,
@@ -425,7 +571,11 @@ class SgiSalesBudgetProposal(models.Model):
                 'growth_industrial': growth.get('industrial', 0.0),
                 'growth_confeccion': growth.get('confeccion', 0.0),
                 'growth_especiales': growth.get('especiales', 0.0),
-                'include_dev': include_dev, 'dev_pct': dev_pct}
+                'include_dev': include_dev, 'dev_pct': dev_pct, 'use_forecast': use_forecast,
+                'partner_ids': [(0, 0, {'partner_id': a['partner_id'], 'growth_pct': a.get('growth_pct', 0.0),
+                                        'month_from': str(a.get('month_from') or 1),
+                                        'note': a.get('note') or False})
+                                for a in (partner_growth or [])]}
         if rate:
             vals['rate'] = rate
         action = self.env['qb.sales.budget.proposal'].create(vals).action_build()

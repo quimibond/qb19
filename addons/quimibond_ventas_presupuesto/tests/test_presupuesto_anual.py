@@ -16,6 +16,9 @@ class TestPresupuestoAnual(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # 3.32.0: estas pruebas aprueban presupuestos de uno o dos renglones; el aviso de meses sin
+        # renglones tiene su propia prueba (test_25).
+        cls.env = cls.env(context=dict(cls.env.context, qb_allow_empty_months=True))
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
@@ -596,3 +599,83 @@ class TestPresupuestoAnual(TransactionCase):
                    mercado='confeccion', qty_budget=300.0, price_input=1.0)
         budget.invalidate_recordset()
         self.assertAlmostEqual(budget.amount_close_estimate, 1000.0 + 700.0 + 300.0, places=2)
+
+    def test_25_meses_sin_renglones_no_se_aprueban(self):
+        """3.32.0: la REV2 de 2026 se aprobó sin Industrial ni Proyectos en noviembre y diciembre.
+        Un mercado sin renglones en un mes bloquea la aprobación, salvo la excepción de Dirección."""
+        env = self.env(context=dict(self.env.context, qb_allow_empty_months=False))
+        budget = env['sgi.sales.budget'].create({'year': 2058})
+        conf = self.env['product.product'].create({'name': 'Entretela meses', 'type': 'consu',
+                                                   'uom_id': self.uom_m.id})
+        esp = self.env['product.product'].create({'name': 'Especial meses', 'type': 'consu',
+                                                  'uom_id': self.uom_m.id})
+        for month in range(1, 13):
+            if month < 11:  # Industrial sin noviembre ni diciembre
+                self._line(budget, date=date(2058, month, 1), price_input=1.0)
+            self._line(budget, date=date(2058, month, 1), product_id=conf.id, partner_id=False,
+                       mercado='confeccion', price_input=1.0)
+            self._line(budget, date=date(2058, month, 1), product_id=esp.id, mercado='especiales',
+                       price_input=1.0)
+        # Un proyecto industrial cuenta para Industrial.
+        self._line(budget, date=date(2058, 11, 1), product_id=False, mercado='proyectos_industrial',
+                   proyecto_descripcion='Proyecto meses', price_input=1.0)
+        budget.invalidate_recordset()
+        self.assertEqual(budget.empty_month_count, 1)
+        self.assertEqual(budget.empty_months_text, "Industrial: diciembre")
+        budget.with_user(self.manager).action_send_to_review()
+        with self.assertRaises(UserError):
+            budget.with_user(self.manager).action_approve()
+        budget.with_user(self.manager).action_qb_approve_empty_months()
+        self.assertEqual(budget.state, 'aprobado')
+        self.assertIn("Industrial: diciembre", "".join(budget.message_ids.mapped('body')))
+
+    def test_26_propuesta_con_pronostico_y_supuestos_por_cliente(self):
+        """3.32.0: los meses que el pronóstico de un cliente cubre completos salen del pronóstico, sin
+        crecimiento; los demás, de la venta base. Un supuesto por cliente sustituye el crecimiento del
+        mercado desde su mes (−100 % = deja de comprar)."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        otro = self.env['res.partner'].create({'name': 'Cliente que se va', 'is_company': True})
+
+        def invoice(partner, when, qty):
+            move = self.env['account.move'].create({
+                'move_type': 'out_invoice', 'partner_id': partner.id, 'invoice_date': when,
+                'team_id': self.team_ind.id,
+                'invoice_line_ids': [(0, 0, {
+                    'product_id': self.product.id, 'quantity': qty, 'price_unit': 2.0,
+                    'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+            move.action_post()
+
+        for month in (1, 2, 3):
+            invoice(self.client, date(2017, month, 10), 100.0)
+        invoice(otro, date(2017, 3, 10), 100.0)
+        invoice(otro, date(2017, 7, 10), 100.0)
+        Forecast = self.env['qb.forecast.line']
+        Forecast.create({'partner_id': self.client.id, 'product_id': self.product.id,
+                         'week': date(2018, 1, 8), 'qty_origen': 300.0})
+        # El lunes 26 de febrero cubre hasta el domingo 4 de marzo: enero y febrero completos.
+        Forecast.create({'partner_id': self.client.id, 'product_id': self.product.id,
+                         'week': date(2018, 2, 26), 'qty_origen': 50.0})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
+            2018, growth={'industrial': 10.0}, base='anio', include_dev=False,
+            partner_growth=[{'partner_id': otro.id, 'growth_pct': -100.0, 'month_from': 7,
+                             'note': 'Termina su programa'}]))
+        mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client).sorted('date')
+        self.assertEqual(mine.mapped('date'), [date(2018, 1, 1), date(2018, 2, 1), date(2018, 3, 1)])
+        self.assertEqual(mine.mapped('qty_origen'), ['pronostico', 'pronostico', 'venta'])
+        self.assertEqual(mine.mapped('qty_budget'), [300.0, 50.0, 110.0])
+        self.assertAlmostEqual(mine[0].price_input, 2.0, places=4,
+                               msg="Sin lista, el precio real del periodo base del cliente")
+        theirs = budget.line_ids.filtered(lambda l: l.partner_id == otro)
+        self.assertEqual(theirs.mapped('date'), [date(2018, 3, 1)], "Julio: deja de comprar")
+        self.assertEqual(theirs.qty_budget, 110.0)
+        summary = "".join(budget.message_ids.mapped('body'))
+        self.assertIn("Pronóstico vigente", summary)
+        self.assertIn("Termina su programa", summary)
+        # Sin el pronóstico, todo sale de la venta base.
+        budget.line_ids.unlink()
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
+            2018, growth={'industrial': 10.0}, base='anio', include_dev=False, use_forecast=False))
+        mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client)
+        self.assertEqual(set(mine.mapped('qty_origen')), {'venta'})
+        self.assertEqual(mine.mapped('qty_budget'), [110.0, 110.0, 110.0])
