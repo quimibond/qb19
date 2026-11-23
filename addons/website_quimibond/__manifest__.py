@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Sitio web B2B',
-    'version': '19.0.1.13.0',
+    'version': '19.0.1.14.0',
     'license': 'LGPL-3',
     'category': 'Website',
     'summary': 'Sitio web B2B de Quimibond: catálogo técnico desde los productos de Odoo, '
@@ -20,6 +20,8 @@ apps de Odoo:
   oportunidad en CRM con el equipo de ventas del sitio.
 * **Mi cuenta** (``/mi-cuenta``): el cliente ve sus pedidos con etapa y
   fecha compromiso, entregas, facturas con PDF y XML y su estado de cuenta.
+  En **Calidad**, el certificado por lote junto a cada entrega y los reportes
+  de calidad con seguimiento.
 * **Empleos** desde Reclutamiento y **Helpdesk** para reportes de calidad.
 
 Todo se activa por sitio web con la casilla «Diseño B2B de Quimibond»
@@ -44,10 +46,12 @@ como está.
         'views/prospectos.xml',
         'data/ir_cron.xml',
         'views/cuenta.xml',
+        'views/calidad.xml',
     ],
     'assets': {
         'web.assets_frontend': [
             'website_quimibond/static/src/css/quimibond.css',
+            'website_quimibond/static/src/css/calidad.css',
             'website_quimibond/static/src/js/quimibond.js',
         ],
     },
