@@ -375,6 +375,12 @@ class ProductProductFichaNativa(models.Model):
     def action_ft_crudo(self):
         return self.product_tmpl_id.action_ft_crudo()
 
+    def action_ft_pendientes(self):
+        return self.product_tmpl_id.action_ft_pendientes()
+
+    def action_ft_telas_del_crudo(self):
+        return self.product_tmpl_id.action_ft_telas_del_crudo()
+
     def action_ft_agregar_circular(self):
         return self.product_tmpl_id.action_ft_agregar_circular()
 
