@@ -30,6 +30,15 @@
                         <input t-attf-id="qb_c_tel_#{qb_origen}" type="tel" class="form-control s_website_form_input" name="phone" t-att-required="'1' if con_horario else None" data-fill-with="phone" autocomplete="tel"/>
                     </div>
                     <t t-if="con_horario">
+                        <div class="s_website_form_field s_website_form_custom qb-campo qb-campo--ancho" data-type="char" data-name="Field">
+                            <label class="s_website_form_label" for="qb_c_mercado"><span class="s_website_form_label_content">Mercado</span></label>
+                            <select id="qb_c_mercado" class="form-select s_website_form_input" name="Mercado">
+                                <option value="Automotriz">Automotriz</option>
+                                <option value="Blancos">Blancos</option>
+                                <option value="Confección">Confección</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
                         <div class="s_website_form_field s_website_form_custom qb-campo" data-type="date" data-name="Field">
                             <label class="s_website_form_label" for="qb_c_dia"><span class="s_website_form_label_content">Día que prefiere</span></label>
                             <input id="qb_c_dia" type="date" class="form-control s_website_form_input" name="Día que prefiere"/>

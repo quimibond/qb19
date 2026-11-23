@@ -230,6 +230,18 @@ class TestSitioB2B(HttpCase):
         lead = self.env['crm.lead'].browse(respuesta.json()['id'])
         self.assertEqual(lead.tag_ids.mapped('name'), [ORIGENES['automotriz']])
         self.assertNotIn('qb_origen', lead.description or '')
+        # Las llamadas se asignan: confección a su vendedor, lo demás al general.
+        general = self.env['res.users'].create({'name': 'Ventas general', 'login': 'qb_ventas_general'})
+        confeccion = self.env['res.users'].create({'name': 'Ventas confección', 'login': 'qb_ventas_confeccion'})
+        self.website.write({'qb_llamadas_user_id': general.id, 'qb_llamadas_confeccion_user_id': confeccion.id})
+        for mercado, vendedor in (('Confección', confeccion), ('Automotriz', general)):
+            respuesta = self.url_open('/website/form/crm.lead', data={
+                'csrf_token': Request.csrf_token(self), 'name': 'Llamada con Ventas', 'contact_name': 'Prueba',
+                'email_from': 'llamada@example.com', 'phone': '5555555555', 'Mercado': mercado, 'qb_origen': 'llamada',
+            })
+            lead = self.env['crm.lead'].browse(respuesta.json()['id'])
+            self.assertEqual(lead.user_id, vendedor, mercado)
+            self.assertEqual(lead.tag_ids.mapped('name'), [ORIGENES['llamada']])
 
     def test_ingles(self):
         from odoo.addons.website_quimibond.controllers import idioma

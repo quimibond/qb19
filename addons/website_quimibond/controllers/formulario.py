@@ -34,6 +34,14 @@ def etiqueta_origen(env, origen):
     return Tag.search([('name', '=', nombre)], limit=1) or Tag.create({'name': nombre})
 
 
+def vendedor_llamada(website, mercado):
+    """Quién atiende la llamada: confección tiene su vendedor; lo demás, el general."""
+    sitio = website.sudo()
+    if (mercado or '').strip().lower().startswith('confecc') and sitio.qb_llamadas_confeccion_user_id:
+        return sitio.qb_llamadas_confeccion_user_id
+    return sitio.qb_llamadas_user_id
+
+
 class QuimibondFormulario(WebsiteForm):
 
     def insert_record(self, request, model_sudo, values, custom, meta=None):
@@ -45,4 +53,8 @@ class QuimibondFormulario(WebsiteForm):
             etiqueta = etiqueta_origen(request.env, origen)
             if etiqueta:
                 values['tag_ids'] = [(4, etiqueta.id)]
+            if origen == 'llamada' and not values.get('user_id'):
+                vendedor = vendedor_llamada(request.website, request.params.get('Mercado'))
+                if vendedor:
+                    values['user_id'] = vendedor.id
         return super().insert_record(request, model_sudo, values, custom, meta=meta)

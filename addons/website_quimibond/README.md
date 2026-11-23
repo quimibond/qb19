@@ -117,7 +117,9 @@ En la ficha del sitio web: **Certificados (PDF)** (los adjuntos se descargan
 desde `/compradores-automotrices` por `/calidad/certificado/<id>`; sin
 adjuntos, la página ofrece pedirlos por formulario) y **Liga para agendar**
 (por ejemplo la de la app Citas; vacía, `/agendar` muestra su propio
-formulario, que crea una oportunidad «Web · Llamada»).
+formulario, que crea una oportunidad «Web · Llamada»). Las llamadas se asignan
+al vendedor de **Atiende las llamadas**; las del mercado de confección, al de
+**Atiende las llamadas de confección**.
 
 ## Versión en inglés
 

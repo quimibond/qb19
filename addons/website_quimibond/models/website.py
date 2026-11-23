@@ -27,6 +27,18 @@ class Website(models.Model):
              'persona elija día y hora. Vacía, el botón abre un formulario que crea '
              'una oportunidad en CRM con el día y el horario que la persona prefiere.',
     )
+    qb_llamadas_user_id = fields.Many2one(
+        'res.users', string='Atiende las llamadas',
+        domain="[('share', '=', False)]",
+        help='Vendedor al que se asignan las solicitudes de llamada del sitio '
+             '(automotriz, blancos y no tejidos). Vacío, las reparte el equipo de ventas.',
+    )
+    qb_llamadas_confeccion_user_id = fields.Many2one(
+        'res.users', string='Atiende las llamadas de confección',
+        domain="[('share', '=', False)]",
+        help='Vendedor al que se asignan las solicitudes de llamada del mercado de '
+             'confección. Vacío, van con quien atiende las demás.',
+    )
     qb_certificado_ids = fields.Many2many(
         'ir.attachment', 'website_qb_certificado_rel', 'website_id', 'attachment_id',
         string='Certificados para descargar',

@@ -15,6 +15,11 @@ msgid ", C.P."
 msgstr ""
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid ". Solo usted la está viendo."
+msgstr ". Only you can see it."
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
 msgid "9001, 14001 y 45001 certificadas"
 msgstr "9001, 14001 and 45001 certified"
@@ -42,6 +47,32 @@ msgid ""
 msgstr ""
 "<i class=\"fa fa-clock-o\" aria-hidden=\"true\"/> Sales replies within one "
 "business day"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid ""
+"<i class=\"fa fa-download\" aria-hidden=\"true\"/> Confirmación de pedido "
+"(PDF)"
+msgstr "<i class=\"fa fa-download\" aria-hidden=\"true\"/> Order confirmation (PDF)"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_entregas
+msgid "<i class=\"fa fa-download\" aria-hidden=\"true\"/> PDF"
+msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_facturas
+msgid "<i class=\"fa fa-download\" aria-hidden=\"true\"/> PDF y XML"
+msgstr "<i class=\"fa fa-download\" aria-hidden=\"true\"/> PDF and XML"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid ""
+"<i class=\"fa fa-eye\" aria-hidden=\"true\"/>\n"
+"                        Vista previa: así ve su cuenta"
+msgstr ""
+"<i class=\"fa fa-eye\" aria-hidden=\"true\"/>\n"
+"                        Preview: this is how the account looks for"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
@@ -85,6 +116,11 @@ msgid ""
 "<i class=\"fa fa-link\" aria-hidden=\"true\"/> <span>Copiar enlace del "
 "diseño</span>"
 msgstr "<i class=\"fa fa-link\" aria-hidden=\"true\"/> <span>Copy design link</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "<i class=\"fa fa-long-arrow-left\" aria-hidden=\"true\"/> Pedidos"
+msgstr "<i class=\"fa fa-long-arrow-left\" aria-hidden=\"true\"/> Orders"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
@@ -136,6 +172,23 @@ msgstr "<option value=\"\">Select…</option>"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
 msgid "<option value=\"Otro\">Otro</option>"
 msgstr "<option value=\"Otro\">Other</option>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
+msgid ""
+"<select id=\"qb_c_mercado\" class=\"form-select s_website_form_input\" name=\"Mercado\">\n"
+"                                <option value=\"Automotriz\">Automotriz</option>\n"
+"                                <option value=\"Blancos\">Blancos</option>\n"
+"                                <option value=\"Confección\">Confección</option>\n"
+"                                <option value=\"Otro\">Otro</option>\n"
+"                            </select>"
+msgstr ""
+"<select id=\"qb_c_mercado\" class=\"form-select s_website_form_input\" name=\"Mercado\">\n"
+"                                <option value=\"Automotriz\">Automotive</option>\n"
+"                                <option value=\"Blancos\">Home textiles</option>\n"
+"                                <option value=\"Confección\">Apparel</option>\n"
+"                                <option value=\"Otro\">Other</option>\n"
+"                            </select>"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
@@ -396,6 +449,11 @@ msgid "<span class=\"qb-eyebrow\">Calidad</span>"
 msgstr "<span class=\"qb-eyebrow\">Quality</span>"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid "<span class=\"qb-eyebrow\">Mi cuenta</span>"
+msgstr "<span class=\"qb-eyebrow\">My account</span>"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
 msgid "<span class=\"qb-eyebrow\">Portal de clientes</span>"
 msgstr "<span class=\"qb-eyebrow\">Customer portal</span>"
@@ -596,6 +654,15 @@ msgstr ""
 " production</span>"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_saldos
+msgid ""
+"<span class=\"qb-mono\">Saldo</span>\n"
+"                <strong>Sin adeudos</strong>"
+msgstr ""
+"<span class=\"qb-mono\">Balance</span>\n"
+"                <strong>Nothing due</strong>"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
 msgid ""
 "<span class=\"qb-mono\">TEJIDO CIRCULAR</span>\n"
@@ -689,6 +756,7 @@ msgstr ""
 "time)</span>"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_contacto
 #: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
 msgid "<span class=\"s_website_form_label_content\">Mercado</span>"
 msgstr "<span class=\"s_website_form_label_content\">Market</span>"
@@ -719,6 +787,68 @@ msgstr "<span class=\"s_website_form_label_content\">Approximate volume</span>"
 msgid "<span class=\"s_website_form_label_content\">¿Qué solicita?</span>"
 msgstr ""
 "<span class=\"s_website_form_label_content\">What are you requesting?</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_entregas
+msgid ""
+"<span role=\"columnheader\">Entrega</span>\n"
+"                <span role=\"columnheader\">Pedido</span>\n"
+"                <span role=\"columnheader\">Fecha</span>\n"
+"                <span role=\"columnheader\">Estado</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Remisión</span>"
+msgstr ""
+"<span role=\"columnheader\">Delivery</span>\n"
+"                <span role=\"columnheader\">Order</span>\n"
+"                <span role=\"columnheader\">Date</span>\n"
+"                <span role=\"columnheader\">Status</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Delivery slip</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_facturas
+msgid ""
+"<span role=\"columnheader\">Factura</span>\n"
+"                <span role=\"columnheader\">Pedido</span>\n"
+"                <span role=\"columnheader\">Vence</span>\n"
+"                <span role=\"columnheader\">Estado</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Total</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Saldo</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Documentos</span>"
+msgstr ""
+"<span role=\"columnheader\">Invoice</span>\n"
+"                <span role=\"columnheader\">Order</span>\n"
+"                <span role=\"columnheader\">Due</span>\n"
+"                <span role=\"columnheader\">Status</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Total</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Balance</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Documents</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_pedidos
+msgid ""
+"<span role=\"columnheader\">Pedido</span>\n"
+"                <span role=\"columnheader\">Su orden de compra</span>\n"
+"                <span role=\"columnheader\">Fecha compromiso</span>\n"
+"                <span role=\"columnheader\">Etapa</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Total</span>"
+msgstr ""
+"<span role=\"columnheader\">Order</span>\n"
+"                <span role=\"columnheader\">Your purchase order</span>\n"
+"                <span role=\"columnheader\">Promised date</span>\n"
+"                <span role=\"columnheader\">Stage</span>\n"
+"                <span role=\"columnheader\" class=\"qb-lista__num\">Total</span>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid ""
+"<span role=\"columnheader\">Producto</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Pedido</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Entregado</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Pendiente</span>"
+msgstr ""
+"<span role=\"columnheader\">Product</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Order</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Delivered</span>\n"
+"                        <span role=\"columnheader\" class=\"qb-lista__num\">Pending</span>"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
@@ -941,6 +1071,11 @@ msgstr ""
 " glad to arrange it.</span>"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "<u>Pedidos</u>"
+msgstr "<u>Orders</u>"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
 msgid "A qué nos comprometemos"
 msgstr "Our commitments"
@@ -1010,6 +1145,11 @@ msgstr "Schedule a call"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
 msgid "Agende una llamada con Ventas"
 msgstr "Schedule a call with Sales"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+msgid "Al"
+msgstr "As of"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.planta
@@ -1410,6 +1550,11 @@ msgstr ""
 "changes on screen and the design reaches Sales in one click."
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_entregas
+msgid "Embarcada"
+msgstr "Shipped"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
 msgid ""
 "Empiece por su industria: dentro están las aplicaciones y la tela que "
@@ -1449,6 +1594,11 @@ msgid ""
 msgstr ""
 "The more detail you give us, the faster we can reply with price, lead time "
 "and data sheet."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Entregas"
+msgstr "Deliveries"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
@@ -1518,6 +1668,13 @@ msgstr ""
 "hot-air chambers"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid "Estado de cuenta"
+msgstr "Account statement"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
 msgid ""
 "Estas son las aplicaciones que atendemos y la tela que fabricamos para cada "
@@ -1526,14 +1683,35 @@ msgstr ""
 "These are the applications we serve and the fabric we make for each one."
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Este pedido todavía no tiene facturas."
+msgstr "This order has no invoices yet."
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
 msgid "Fabricantes textiles mexicanos desde 1992."
 msgstr "Mexican textile manufacturers since 1992."
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Facturas"
+msgstr "Invoices"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Facturas por pagar"
+msgstr "Invoices due"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.producto
 msgid "Familia"
 msgstr "Family"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Fecha compromiso"
+msgstr "Promised date"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
@@ -1553,6 +1731,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:website_quimibond.producto
 msgid "Gramaje"
 msgstr "Weight"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_entregas
+msgid "Guía"
+msgstr "Tracking number"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
@@ -1667,6 +1850,11 @@ msgid "Levantar reporte de calidad"
 msgstr "File a quality report"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Levantar un reporte"
+msgstr "File a report"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
 msgid ""
 "Levante su reporte en línea. Lo recibe Atención a Clientes con el número de "
@@ -1674,6 +1862,13 @@ msgid ""
 msgstr ""
 "File your report online. Customer Service receives it with the lot number "
 "and we follow up until it is closed."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid ""
+"Levante un reporte de calidad o de entrega y le damos seguimiento por "
+"escrito."
+msgstr "File a quality or delivery report and we will follow up in writing."
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.footer
@@ -1739,15 +1934,46 @@ msgid "Mercados ·"
 msgstr "Markets ·"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
 #: model_terms:ir.ui.view,arch_db:website_quimibond.footer
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
 msgid "Mi cuenta"
 msgstr "My account"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid "Mis datos"
+msgstr "My details"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid "Más documentos"
+msgstr "More documents"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
 msgid "Más que un proveedor, su aliado en la industria textil."
 msgstr "More than a supplier, your partner in the textile industry."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+msgid "No hay facturas pagadas en los últimos"
+msgstr "No paid invoices in the last"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
+msgid "No hay pedidos en los últimos"
+msgstr "No orders in the last"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_saldos
+msgid "No tiene facturas por pagar."
+msgstr "You have no invoices due."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "No tiene pedidos en curso."
+msgstr "You have no open orders."
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
@@ -1764,6 +1990,11 @@ msgid "Nosotros"
 msgstr "About us"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_facturas
+msgid "Nota de crédito"
+msgstr "Credit note"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
 msgid ""
 "Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO "
@@ -1775,6 +2006,11 @@ msgstr ""
 " and safety."
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Nueva cotización"
+msgstr "New quote"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.familia
 msgid "Otras familias"
 msgstr "Other families"
@@ -1783,6 +2019,11 @@ msgstr "Other families"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
 msgid "Otro color"
 msgstr "Other color"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+msgid "Pagadas"
+msgstr "Paid"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
@@ -1802,6 +2043,22 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
 msgid "Países: México, Estados Unidos y Canadá"
 msgstr "Countries: Mexico, United States and Canada"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Pedido del"
+msgstr "Order dated"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
+msgid "Pedidos"
+msgstr "Orders"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Pedidos en curso"
+msgstr "Open orders"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.producto
@@ -1835,6 +2092,11 @@ msgid "Planta y proceso"
 msgstr "Plant and process"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_pedidos
+msgid "Por confirmar"
+msgstr "To be confirmed"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.formulario_cotizacion
 msgid "Por ejemplo, 5,000 metros al mes"
 msgstr "For example, 5,000 meters per month"
@@ -1843,6 +2105,16 @@ msgstr "For example, 5,000 meters per month"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
 msgid "Por ejemplo, la norma de su cliente"
 msgstr "For example, your customer's standard"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+msgid "Por pagar"
+msgstr "Due"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_saldos
+msgid "Por vencer"
+msgstr "Not yet due"
 
 #. module: website_quimibond
 #. odoo-python
@@ -1883,9 +2155,26 @@ msgstr ""
 "circular knit fabrics, as well as home textiles and apparel."
 
 #. module: website_quimibond
+#. odoo-python
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+#: code:addons/website_quimibond/controllers/contenido.py:0
+msgid "Productos"
+msgstr "Products"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
 msgid "Productos <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
 msgstr "Products <i class=\"fa fa-angle-down\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_entregas
+msgid "Programada"
+msgstr "Scheduled"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Próxima fecha compromiso"
+msgstr "Next promised date"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
@@ -1923,6 +2212,11 @@ msgid "Reporte de calidad"
 msgstr "Quality report"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_marco
+msgid "Resumen"
+msgstr "Summary"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
 msgid ""
 "Reunimos lo que su equipo pide para dar de alta a un proveedor: "
@@ -1936,6 +2230,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:website_quimibond.producto
 msgid "Ruta"
 msgstr "Breadcrumb"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_saldos
+msgid "Saldo en"
+msgstr "Balance in"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.footer
@@ -1994,6 +2293,11 @@ msgstr ""
 "yarn to finished roll.</span>"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Se muestran las"
+msgstr "Showing the"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
 msgid ""
 "Si ya tiene una norma o una muestra de referencia, adjúntela. Si no, le "
@@ -2023,6 +2327,8 @@ msgid "Solicitar certificados"
 msgstr "Request certificates"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
 #: model_terms:ir.ui.view,arch_db:website_quimibond.footer
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
 #: model_terms:ir.ui.view,arch_db:website_quimibond.nosotros
@@ -2080,6 +2386,11 @@ msgstr ""
 "Your design is already written into the specification. If you have a sample,"
 " a photo or the data sheet of the fabric you want to match, attach it right "
 "here. A sales representative replies within one business day."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Su orden"
+msgstr "Your PO"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
@@ -2150,6 +2461,21 @@ msgid "Tipo"
 msgstr "Type"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Todavía no hay entregas programadas para este pedido."
+msgstr "No deliveries are scheduled for this order yet."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Todos los pedidos <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "All orders <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "Total"
+msgstr ""
+
+#. module: website_quimibond
 #. odoo-python
 #: model_terms:ir.ui.view,arch_db:website_quimibond.portada
 #: code:addons/website_quimibond/controllers/contenido.py:0
@@ -2204,6 +2530,11 @@ msgstr ""
 "specification."
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_saldos
+msgid "Vencido"
+msgstr "Overdue"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
 msgid "Ventas le envía la ficha técnica a su correo en un día hábil."
 msgstr "Sales will email you the data sheet within one business day."
@@ -2217,6 +2548,11 @@ msgstr "View <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.mercado
 msgid "Ver aplicaciones"
 msgstr "See applications"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Ver completo <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "View all <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
@@ -2263,6 +2599,11 @@ msgid "Volver al inicio"
 msgstr "Back to home"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Y"
+msgstr "And"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.gracias
 msgid "Ya está con el equipo de Ventas. Le contactamos en un día hábil."
 msgstr ""
@@ -2282,6 +2623,54 @@ msgstr "stock items"
 #: model_terms:ir.ui.view,arch_db:website_quimibond.disenar
 msgid "cm"
 msgstr ""
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_facturas
+msgid "días"
+msgstr "days"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_tabla_facturas
+msgid "hace"
+msgstr "overdue"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
+msgid "meses"
+msgstr "months"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
+msgid "meses."
+msgstr "months."
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "más en"
+msgstr "more in"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "más recientes de"
+msgstr "most recent of"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "por confirmar"
+msgstr "to be confirmed"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedido
+msgid "· Su orden"
+msgstr "· Your PO"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "¿Algo no cuadra?"
+msgstr "Something not right?"
 
 #. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.agendar
@@ -2317,6 +2706,17 @@ msgstr "Have a specification? We will make it."
 #: model_terms:ir.ui.view,arch_db:website_quimibond.calidad
 msgid "¿Tiene una observación de calidad?"
 msgstr "Have a quality concern?"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta
+msgid "Últimas entregas"
+msgstr "Latest deliveries"
+
+#. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_estado
+#: model_terms:ir.ui.view,arch_db:website_quimibond.cuenta_pedidos
+msgid "Últimos"
+msgstr "Last"
 
 #. module: website_quimibond
 #. odoo-python
@@ -3912,12 +4312,6 @@ msgid ""
 msgstr ""
 "Productora de No Tejidos Quimibond: manufacturers of automotive scrims, "
 "interlinings and technical textiles in Toluca, Mexico, since 1992."
-
-#. module: website_quimibond
-#. odoo-python
-#: code:addons/website_quimibond/controllers/contenido.py:0
-msgid "Productos"
-msgstr "Products"
 
 #. module: website_quimibond
 #. odoo-python
