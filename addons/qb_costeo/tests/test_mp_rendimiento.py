@@ -261,8 +261,9 @@ class TestRendimiento(TransactionCase):
             'name': 'CERO', 'default_code': 'NN040Q66JNN163', 'type': 'consu',
             'is_storable': True, 'tracking': 'lot', 'uom_id': m.id})
         fecha = datetime.now() - timedelta(days=10)
-        # 8 lotes de 95 % y 2 todo FE: P10 de todos sería 0; sin ellos, 0.95.
-        for i in range(8):
+        # 7 lotes de 95 % y 2 todo FE: P10 de todos sería 0; sin ellos, 0.95.
+        # 1.17.1: son 9 lotes medidos (≥ 8) aunque solo 7 sean normales.
+        for i in range(7):
             self._mov_lote(caida, 'C%02d' % i, 950, self.pq, fecha)
             self._mov_lote(caida, 'C%02d' % i, 50, self.fe, fecha)
         for i in range(2):
@@ -278,9 +279,10 @@ class TestRendimiento(TransactionCase):
         self.assertAlmostEqual(f.rendimiento_plan, 0.95, 4)
         self.assertEqual(f.plan_fuente, 'producto')
         self.assertEqual(f.plan_accidentes, 2)
+        self.assertEqual(f.plan_lotes, 9)
         self.assertTrue(f.plan_revisar)
-        # El costeo sí carga los lotes caídos: 7600 de 10000.
-        self.assertAlmostEqual(f.rendimiento_calculado, 0.76, 4)
+        # El costeo sí carga los lotes caídos: 6650 de 9000.
+        self.assertAlmostEqual(f.rendimiento_calculado, 6650 / 9000, 4)
         z = R.search([('product_id', '=', cero.id)])
         self.assertEqual(z.plan_fuente, 'planta')
         self.assertLess(z.rendimiento_plan, 1.0)

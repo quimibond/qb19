@@ -413,7 +413,12 @@ class QbProductoRendimiento(models.Model):
             normales, accidentes, mediana = separados.get(pid, ([], [], 0.0))
             plan_manual = rec and rec.plan_manual and (
                 not rec.plan_manual_hasta or rec.plan_manual_hasta >= hoy)
-            propio = self._cubre(normales, cobertura) if len(normales) >= min_lotes else 0.0
+            # 1.17.1: el mínimo de lotes cuenta todos los lotes medidos. Con
+            # el mínimo sobre los normales, una tela con muchos accidentes
+            # (WD038Q46JNG163: 12 lotes, 5 caídos, mediana 0.58) caía al
+            # valor de planta (0.84) y planeaba menos merma que la real.
+            propio = (self._cubre(normales, cobertura)
+                      if len(fs) >= min_lotes and normales else 0.0)
             if plan_manual:
                 plan, plan_fuente = rec.plan_manual, 'manual'
             elif propio:

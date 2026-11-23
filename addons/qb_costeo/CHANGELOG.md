@@ -3,6 +3,17 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.17.1 — 2026-11-23
+
+**Corregido**
+- **El mínimo de 8 lotes cuenta todos los lotes, no solo los normales.**
+  Con 1.17.0 en main, cinco telas con 7–12 lotes y varios accidentados
+  quedaron con menos de 8 lotes normales y pasaron al valor de planta
+  (0.84): WD038Q46JNG163 (mediana 0.58, rendimiento 0.56) y
+  KP2032T11GO152TE (mediana 0.58) planeaban mucho menos merma que la real.
+  Ahora una tela con 8 lotes o más planea con el percentil de sus lotes
+  normales, y queda en «Revisar» si los accidentados pasan del 10 %.
+
 ## 19.0.1.17.0 — 2026-11-23
 
 **Cambiado**
