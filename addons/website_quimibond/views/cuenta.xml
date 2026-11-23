@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mi cuenta: portal del cliente con el diseño del sitio B2B.
+         Los datos los arma controllers/cuenta.py, ya filtrados por la empresa
+         del usuario. Aquí no se consulta nada. -->
+
+    <!-- Marco común: encabezado con la empresa y las pestañas -->
+    <template id="cuenta_marco" name="Quimibond: Mi cuenta (marco)">
+        <t t-call="website.layout">
+            <div id="wrap" class="qb qb-cuenta">
+                <div t-if="qb_vista_previa" class="qb-cuenta__previa" role="status">
+                    <div class="qb-container">
+                        <i class="fa fa-eye" aria-hidden="true"/>
+                        Vista previa: así ve su cuenta <strong t-out="qb_empresa.name"/>. Solo usted la está viendo.
+                    </div>
+                </div>
+                <section class="qb-cuenta__cab">
+                    <div class="qb-container">
+                        <span class="qb-eyebrow">Mi cuenta</span>
+                        <h1 t-out="qb_empresa.name"/>
+                        <nav class="qb-tabs" aria-label="Mi cuenta">
+                            <a t-attf-href="/mi-cuenta#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'resumen' else ''}">Resumen</a>
+                            <a t-attf-href="/mi-cuenta/pedidos#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'pedidos' else ''}">Pedidos</a>
+                            <a t-attf-href="/mi-cuenta/estado-de-cuenta#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'estado' else ''}">Estado de cuenta</a>
+                            <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" t-attf-class="qb-tabs__a #{'es-actual' if qb_seccion == 'calidad' else ''}">Calidad</a>
+                            <t t-if="not qb_vista_previa">
+                                <a href="/my?todo=1" class="qb-tabs__a">Más documentos</a>
+                                <a href="/my/account" class="qb-tabs__a">Mis datos</a>
+                            </t>
+                        </nav>
+                    </div>
+                </section>
+                <section class="qb-cuenta__cuerpo">
+                    <div class="qb-container">
+                        <t t-out="0"/>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- Pasos del pedido: Confirmado · En proceso · Embarcado · Facturado -->
+    <template id="cuenta_pasos" name="Quimibond: pasos del pedido">
+        <ol class="qb-etapas" t-att-aria-label="'Etapa: %s' % etapa['texto']">
+            <t t-foreach="etapa['pasos']" t-as="paso">
+                <li t-attf-class="#{'es-hecho' if paso_index &lt;= etapa['paso'] else ''} #{'es-actual' if paso_index == etapa['paso'] else ''}">
+                    <span class="qb-etapas__punto" aria-hidden="true"/>
+                    <span class="qb-etapas__texto" t-out="paso"/>
+                </li>
+            </t>
+        </ol>
+    </template>
+
+    <!-- Tabla de pedidos -->
+    <template id="cuenta_tabla_pedidos" name="Quimibond: tabla de pedidos">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--pedido" role="row">
+                <span role="columnheader">Pedido</span>
+                <span role="columnheader">Su orden de compra</span>
+                <span role="columnheader">Fecha compromiso</span>
+                <span role="columnheader">Etapa</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
+            </div>
+            <a t-foreach="pedidos" t-as="p" t-att-href="p['url']" class="qb-lista__fila qb-lista__fila--pedido" role="row">
+                <span role="cell" data-etq="Pedido"><strong t-out="p['nombre']"/><small t-out="p['fecha']" t-options='{"widget": "date"}'/></span>
+                <span role="cell" data-etq="Su orden de compra" t-out="p['referencia'] or '—'"/>
+                <span role="cell" data-etq="Fecha compromiso">
+                    <t t-if="p['compromiso']" t-out="p['compromiso']" t-options='{"widget": "date"}'/>
+                    <t t-else="">Por confirmar</t>
+                </span>
+                <span role="cell" data-etq="Etapa">
+                    <span t-attf-class="qb-estado qb-estado--#{p['etapa']['clave']}" t-out="p['etapa']['texto']"/>
+                </span>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="p['total']" t-options='{"widget": "monetary", "display_currency": p["moneda"]}'/>
+            </a>
+        </div>
+    </template>
+
+    <!-- Tabla de facturas -->
+    <template id="cuenta_tabla_facturas" name="Quimibond: tabla de facturas">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--factura" role="row">
+                <span role="columnheader">Factura</span>
+                <span role="columnheader">Pedido</span>
+                <span role="columnheader">Vence</span>
+                <span role="columnheader">Estado</span>
+                <span role="columnheader" class="qb-lista__num">Total</span>
+                <span role="columnheader" class="qb-lista__num">Saldo</span>
+                <span role="columnheader" class="qb-lista__num">Documentos</span>
+            </div>
+            <div t-foreach="facturas" t-as="f" class="qb-lista__fila qb-lista__fila--factura" role="row">
+                <span role="cell" data-etq="Factura">
+                    <strong><t t-if="f['nota_credito']">Nota de crédito </t><t t-out="f['nombre']"/></strong>
+                    <small t-out="f['fecha']" t-options='{"widget": "date"}'/>
+                </span>
+                <span role="cell" data-etq="Pedido"><t t-out="f['origen'] or '—'"/><small t-if="f['referencia'] and f['referencia'] != f['origen']" t-out="f['referencia']"/></span>
+                <span role="cell" data-etq="Vence">
+                    <t t-if="f['vence']" t-out="f['vence']" t-options='{"widget": "date"}'/>
+                    <small t-if="f['dias_vencida']">hace <t t-out="f['dias_vencida']"/> días</small>
+                </span>
+                <span role="cell" data-etq="Estado"><span t-attf-class="qb-estado qb-estado--#{f['clave']}" t-out="f['estado']"/></span>
+                <span role="cell" data-etq="Total" class="qb-lista__num" t-out="f['total']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span role="cell" data-etq="Saldo" class="qb-lista__num" t-out="f['saldo']" t-options='{"widget": "monetary", "display_currency": f["moneda"]}'/>
+                <span role="cell" data-etq="Documentos" class="qb-lista__num">
+                    <a t-att-href="f['descarga']" class="qb-descarga" t-att-aria-label="'Descargar PDF y XML de %s' % f['nombre']"><i class="fa fa-download" aria-hidden="true"/> PDF y XML</a>
+                </span>
+            </div>
+        </div>
+    </template>
+
+    <!-- Saldos por moneda -->
+    <template id="cuenta_saldos" name="Quimibond: saldos">
+        <div class="qb-saldos">
+            <div t-foreach="saldos" t-as="s" class="qb-saldo">
+                <span class="qb-mono">Saldo en <t t-out="s['moneda'].name"/></span>
+                <strong t-out="s['saldo']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/>
+                <div class="qb-saldo__barra" aria-hidden="true">
+                    <span t-if="s['saldo'] &gt; 0 and s['vencido'] &gt; 0" class="qb-saldo__vencido" t-attf-style="width: #{min(100, round(100 * s['vencido'] / s['saldo']))}%"/>
+                </div>
+                <dl>
+                    <div><dt>Por vencer</dt><dd t-out="s['por_vencer']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/></div>
+                    <div t-attf-class="#{'es-vencido' if s['vencido'] &gt; 0 else ''}"><dt>Vencido</dt><dd t-out="s['vencido']" t-options='{"widget": "monetary", "display_currency": s["moneda"]}'/></div>
+                </dl>
+            </div>
+            <div t-if="not saldos" class="qb-saldo qb-saldo--cero">
+                <span class="qb-mono">Saldo</span>
+                <strong>Sin adeudos</strong>
+                <p>No tiene facturas por pagar.</p>
+            </div>
+        </div>
+    </template>
+
+    <!-- /mi-cuenta -->
+    <template id="cuenta" name="Quimibond: Mi cuenta">
+        <t t-call="website_quimibond.cuenta_marco">
+            <dl class="qb-cifras qb-cifras--cuenta">
+                <div>
+                    <dd t-out="len(pedidos)"/>
+                    <dt>Pedidos en curso</dt>
+                </div>
+                <div>
+                    <dd><t t-if="proxima" t-out="proxima" t-options='{"widget": "date"}'/><t t-else="">—</t></dd>
+                    <dt>Próxima fecha compromiso</dt>
+                </div>
+                <div>
+                    <dd t-out="total_abiertas"/>
+                    <dt>Facturas por pagar</dt>
+                </div>
+            </dl>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Pedidos en curso</h2>
+                    <a t-attf-href="/mi-cuenta/pedidos#{qb_sufijo}" class="qb-enlace">Todos los pedidos <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                </div>
+                <t t-if="pedidos">
+                    <div class="qb-pedidos">
+                        <a t-foreach="pedidos[:6]" t-as="p" t-att-href="p['url']" class="qb-card qb-pedido">
+                            <div class="qb-pedido__cab">
+                                <div>
+                                    <strong t-out="p['nombre']"/>
+                                    <span t-if="p['referencia']">Su orden <t t-out="p['referencia']"/></span>
+                                </div>
+                                <span t-attf-class="qb-estado qb-estado--#{p['etapa']['clave']}" t-out="p['etapa']['texto']"/>
+                            </div>
+                            <t t-call="website_quimibond.cuenta_pasos"><t t-set="etapa" t-value="p['etapa']"/></t>
+                            <div class="qb-pedido__pie">
+                                <span>Fecha compromiso
+                                    <strong t-if="p['compromiso']" t-out="p['compromiso']" t-options='{"widget": "date"}'/>
+                                    <strong t-else="">por confirmar</strong>
+                                </span>
+                                <span t-out="p['total']" t-options='{"widget": "monetary", "display_currency": p["moneda"]}'/>
+                            </div>
+                        </a>
+                    </div>
+                    <p t-if="len(pedidos) &gt; 6" class="qb-nota">Y <t t-out="len(pedidos) - 6"/> más en <a t-attf-href="/mi-cuenta/pedidos#{qb_sufijo}"><u>Pedidos</u></a>.</p>
+                </t>
+                <div t-else="" class="qb-sin">
+                    <p>No tiene pedidos en curso.</p>
+                    <a href="/cotizar" class="qb-btn qb-btn--contorno">Solicitar cotización</a>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Estado de cuenta</h2>
+                    <a t-attf-href="/mi-cuenta/estado-de-cuenta#{qb_sufijo}" class="qb-enlace">Ver completo <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                </div>
+                <t t-call="website_quimibond.cuenta_saldos"/>
+                <t t-if="facturas" t-call="website_quimibond.cuenta_tabla_facturas"/>
+                <p t-if="total_abiertas &gt; len(facturas)" class="qb-nota">Se muestran las <t t-out="len(facturas)"/> más recientes de <t t-out="total_abiertas"/>.</p>
+            </div>
+
+            <div t-if="entregas" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Últimas entregas</h2></div>
+                <t t-call="website_quimibond.cuenta_tabla_entregas"/>
+            </div>
+
+            <div class="qb-cuenta__ayuda">
+                <div>
+                    <h3>¿Algo no cuadra?</h3>
+                    <p>Levante un reporte de calidad o de entrega y le damos seguimiento por escrito.</p>
+                </div>
+                <div class="qb-hero__cta">
+                    <a t-attf-href="/mi-cuenta/calidad#{qb_sufijo}" class="qb-btn qb-btn--contorno">Levantar un reporte</a>
+                    <a href="/cotizar" class="qb-btn qb-btn--primario">Nueva cotización</a>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Tabla de entregas -->
+    <template id="cuenta_tabla_entregas" name="Quimibond: tabla de entregas">
+        <div class="qb-lista" role="table">
+            <div class="qb-lista__cab qb-lista__fila qb-lista__fila--entrega" role="row">
+                <span role="columnheader">Entrega</span>
+                <span role="columnheader">Pedido</span>
+                <span role="columnheader">Fecha</span>
+                <span role="columnheader">Estado</span>
+                <span role="columnheader">Certificado</span>
+                <span role="columnheader" class="qb-lista__num">Remisión</span>
+            </div>
+            <div t-foreach="entregas" t-as="e" class="qb-lista__fila qb-lista__fila--entrega" role="row">
+                <span role="cell" data-etq="Entrega"><strong t-out="e['nombre']"/><small t-if="e['guia']">Guía <t t-out="e['guia']"/></small></span>
+                <span role="cell" data-etq="Pedido"><a t-att-href="e['pedido_url']"><u t-out="e['pedido']"/></a><small t-if="e['referencia']" t-out="e['referencia']"/></span>
+                <span role="cell" data-etq="Fecha"><t t-if="e['fecha']" t-out="e['fecha']" t-options='{"widget": "date"}'/></span>
+                <span role="cell" data-etq="Estado">
+                    <span t-if="e['hecha']" class="qb-estado qb-estado--entregado">Embarcada</span>
+                    <span t-else="" class="qb-estado qb-estado--preparacion">Programada</span>
+                </span>
+                <span role="cell" data-etq="Certificado" class="qb-certificados">
+                    <t t-call="website_quimibond.cuenta_certificado"><t t-set="cert" t-value="e['certificado']"/></t>
+                </span>
+                <span role="cell" data-etq="Remisión" class="qb-lista__num">
+                    <a t-if="e['descarga']" t-att-href="e['descarga']" class="qb-descarga" t-att-aria-label="'Descargar la remisión %s' % e['nombre']"><i class="fa fa-download" aria-hidden="true"/> PDF</a>
+                    <t t-else="">—</t>
+                </span>
+            </div>
+        </div>
+    </template>
+
+    <!-- /mi-cuenta/pedidos -->
+    <template id="cuenta_pedidos" name="Quimibond: Mis pedidos">
+        <t t-call="website_quimibond.cuenta_marco">
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Pedidos</h2>
+                    <span class="qb-mono">Últimos <t t-out="meses"/> meses</span>
+                </div>
+                <t t-if="pedidos" t-call="website_quimibond.cuenta_tabla_pedidos"/>
+                <div t-else="" class="qb-sin">
+                    <p>No hay pedidos en los últimos <t t-out="meses"/> meses.</p>
+                    <a href="/cotizar" class="qb-btn qb-btn--contorno">Solicitar cotización</a>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/pedido/<id> -->
+    <template id="cuenta_pedido" name="Quimibond: Mi pedido">
+        <t t-call="website_quimibond.cuenta_marco">
+            <a t-attf-href="/mi-cuenta/pedidos#{qb_sufijo}" class="qb-volver"><i class="fa fa-long-arrow-left" aria-hidden="true"/> Pedidos</a>
+            <div class="qb-card qb-pedido qb-pedido--detalle">
+                <div class="qb-pedido__cab">
+                    <div>
+                        <h2 t-out="pedido['nombre']"/>
+                        <span>
+                            Pedido del <t t-out="pedido['fecha']" t-options='{"widget": "date"}'/>
+                            <t t-if="pedido['referencia']"> · Su orden <t t-out="pedido['referencia']"/></t>
+                        </span>
+                    </div>
+                    <span t-attf-class="qb-estado qb-estado--#{pedido['etapa']['clave']}" t-out="pedido['etapa']['texto']"/>
+                </div>
+                <t t-call="website_quimibond.cuenta_pasos"><t t-set="etapa" t-value="pedido['etapa']"/></t>
+                <div class="qb-pedido__pie">
+                    <span>Fecha compromiso
+                        <strong t-if="pedido['compromiso']" t-out="pedido['compromiso']" t-options='{"widget": "date"}'/>
+                        <strong t-else="">por confirmar</strong>
+                    </span>
+                    <span>Total <strong t-out="pedido['total']" t-options='{"widget": "monetary", "display_currency": pedido["moneda"]}'/></span>
+                    <a t-att-href="descarga" class="qb-descarga"><i class="fa fa-download" aria-hidden="true"/> Confirmación de pedido (PDF)</a>
+                </div>
+            </div>
+
+            <div t-if="lineas" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Productos</h2></div>
+                <div class="qb-lista" role="table">
+                    <div class="qb-lista__cab qb-lista__fila qb-lista__fila--linea" role="row">
+                        <span role="columnheader">Producto</span>
+                        <span role="columnheader" class="qb-lista__num">Pedido</span>
+                        <span role="columnheader" class="qb-lista__num">Entregado</span>
+                        <span role="columnheader" class="qb-lista__num">Pendiente</span>
+                    </div>
+                    <div t-foreach="lineas" t-as="l" class="qb-lista__fila qb-lista__fila--linea" role="row">
+                        <span role="cell" data-etq="Producto"><strong t-out="l['producto']"/></span>
+                        <span role="cell" data-etq="Pedido" class="qb-lista__num"><t t-out="l['pedido']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Entregado" class="qb-lista__num"><t t-out="l['entregado']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                        <span role="cell" data-etq="Pendiente" class="qb-lista__num"><t t-out="l['pendiente']" t-options='{"widget": "float", "precision": 2}'/> <t t-out="l['unidad']"/></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Entregas</h2></div>
+                <t t-if="entregas" t-call="website_quimibond.cuenta_tabla_entregas"/>
+                <div t-else="" class="qb-sin"><p>Todavía no hay entregas programadas para este pedido.</p></div>
+            </div>
+
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Facturas</h2></div>
+                <t t-if="facturas" t-call="website_quimibond.cuenta_tabla_facturas"/>
+                <div t-else="" class="qb-sin"><p>Este pedido todavía no tiene facturas.</p></div>
+            </div>
+        </t>
+    </template>
+
+    <!-- /mi-cuenta/estado-de-cuenta -->
+    <template id="cuenta_estado" name="Quimibond: Estado de cuenta">
+        <t t-call="website_quimibond.cuenta_marco">
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Estado de cuenta</h2>
+                    <span class="qb-mono">Al <t t-out="hoy" t-options='{"widget": "date"}'/></span>
+                </div>
+                <t t-call="website_quimibond.cuenta_saldos"/>
+            </div>
+            <div t-if="abiertas" class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo"><h2>Por pagar</h2></div>
+                <t t-call="website_quimibond.cuenta_tabla_facturas"><t t-set="facturas" t-value="abiertas"/></t>
+            </div>
+            <div class="qb-cuenta__bloque">
+                <div class="qb-cuenta__titulo">
+                    <h2>Pagadas</h2>
+                    <span class="qb-mono">Últimos <t t-out="meses"/> meses</span>
+                </div>
+                <t t-if="pagadas" t-call="website_quimibond.cuenta_tabla_facturas"><t t-set="facturas" t-value="pagadas"/></t>
+                <div t-else="" class="qb-sin"><p>No hay facturas pagadas en los últimos <t t-out="meses"/> meses.</p></div>
+            </div>
+        </t>
+    </template>
+</odoo>

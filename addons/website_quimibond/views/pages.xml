@@ -3,7 +3,7 @@
     <!-- ================================================================= -->
     <!-- Portada                                                            -->
     <!-- ================================================================= -->
-    <template id="portada" name="Quimibond: portada">
+    <template id="portada" track="1" name="Quimibond: portada">
         <t t-call="website.layout">
             <t t-set="pageName" t-value="'homepage'"/>
             <div id="wrap" class="qb">
@@ -98,7 +98,7 @@
                                 <h2 class="qb-reveal">Tejido y no tejido, en una sola planta.</h2>
                                 <p class="qb-lead qb-reveal">Tejido de punto circular, de una y doble fontura. No tejido, sencillo o tramado. Teñidos, acabados y, si su aplicación lo pide, fusionables.</p>
                             </div>
-                            <a href="/planta#maquinaria" class="qb-btn qb-btn--contorno qb-reveal">Ver la maquinaria <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                            <a href="/catalogo" class="qb-btn qb-btn--contorno qb-reveal">Ver el catálogo <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         </div>
                         <t t-call="website_quimibond.tipos_tejido"/>
                     </div>
@@ -223,11 +223,11 @@
     <!-- ================================================================= -->
     <!-- Mercado                                                            -->
     <!-- ================================================================= -->
-    <template id="mercado" name="Quimibond: mercado">
+    <template id="mercado" track="1" name="Quimibond: mercado">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <t t-call="website_quimibond.encabezado_pagina">
-                    <t t-set="etiqueta" t-value="'Mercados · ' + mercado['nombre']"/>
+                    <t t-set="etiqueta">Mercados · <t t-out="mercado['nombre']"/></t>
                     <t t-set="titulo" t-value="mercado['titulo']"/>
                     <t t-set="resumen" t-value="mercado['resumen']"/>
                     <div class="qb-hero__cta qb-reveal">
@@ -282,6 +282,19 @@
                     </div>
                 </section>
                 <t t-if="mercado['clave'] == 'automotriz'" t-call="website_quimibond.armadoras"/>
+                <section t-if="mercado['clave'] == 'automotriz'" class="qb-sec qb-sec--suave">
+                    <div class="qb-container qb-dos qb-dos--centro">
+                        <div>
+                            <span class="qb-eyebrow qb-reveal">Compras y calidad de proveedores</span>
+                            <h2 class="qb-reveal">¿Evalúa un proveedor nuevo de scrims?</h2>
+                            <p class="qb-lead qb-reveal">Reunimos lo que su equipo pide para dar de alta a un proveedor: certificados, pruebas de laboratorio y cómo desarrollamos una tela nueva.</p>
+                        </div>
+                        <div class="qb-hero__cta qb-reveal">
+                            <a href="/compradores-automotrices" class="qb-btn qb-btn--primario qb-btn--lg">Información para compradores <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
+                            <a href="/agendar" class="qb-btn qb-btn--contorno qb-btn--lg">Agendar llamada</a>
+                        </div>
+                    </div>
+                </section>
                 <section class="qb-sec">
                     <div class="qb-container qb-dos">
                         <div>
@@ -292,6 +305,7 @@
                         <div class="qb-card qb-reveal">
                             <t t-set="mercado_sel" t-value="mercado['nombre']"/>
                             <t t-set="asunto" t-value="''"/>
+                            <t t-set="qb_origen" t-value="'mercado'"/>
                             <t t-call="website_quimibond.formulario_cotizacion"/>
                         </div>
                     </div>
@@ -304,13 +318,13 @@
     <!-- ================================================================= -->
     <!-- Planta                                                             -->
     <!-- ================================================================= -->
-    <template id="planta" name="Quimibond: planta">
+    <template id="planta" track="1" name="Quimibond: planta">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <t t-call="website_quimibond.encabezado_pagina">
-                    <t t-set="etiqueta" t-value="'Planta y proceso'"/>
-                    <t t-set="titulo" t-value="'Del hilo al rollo terminado, en Toluca.'"/>
-                    <t t-set="resumen" t-value="'Tejido circular de una y doble fontura, línea de no tejidos, jets, ramas e inspección en una sola planta. Cada rollo sale pesado, medido, clasificado y con su lote.'"/>
+                    <t t-set="etiqueta">Planta y proceso</t>
+                    <t t-set="titulo">Del hilo al rollo terminado, en Toluca.</t>
+                    <t t-set="resumen">Tejido circular de una y doble fontura, línea de no tejidos, jets, ramas e inspección en una sola planta. Cada rollo sale pesado, medido, clasificado y con su lote.</t>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container qb-dos qb-dos--centro">
@@ -422,13 +436,13 @@
     <!-- ================================================================= -->
     <!-- Calidad                                                            -->
     <!-- ================================================================= -->
-    <template id="calidad" name="Quimibond: calidad">
+    <template id="calidad" track="1" name="Quimibond: calidad">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <t t-call="website_quimibond.encabezado_pagina">
-                    <t t-set="etiqueta" t-value="'Calidad y sustentabilidad'"/>
-                    <t t-set="titulo" t-value="'Calidad que se audita, no que se promete.'"/>
-                    <t t-set="resumen" t-value="'Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018: calidad, medio ambiente y seguridad y salud en el trabajo.'"/>
+                    <t t-set="etiqueta">Calidad y sustentabilidad</t>
+                    <t t-set="titulo">Calidad que se audita, no que se promete.</t>
+                    <t t-set="resumen">Nuestro sistema de gestión integral está certificado en ISO 9001:2015, ISO 14001:2015 e ISO 45001:2018: calidad, medio ambiente y seguridad y salud en el trabajo.</t>
                     <div class="qb-sellos qb-reveal">
                         <span class="qb-sello"><strong>ISO</strong>9001:2015</span>
                         <span class="qb-sello"><strong>ISO</strong>14001:2015</span>
@@ -507,13 +521,13 @@
     <!-- ================================================================= -->
     <!-- Nosotros                                                           -->
     <!-- ================================================================= -->
-    <template id="nosotros" name="Quimibond: nosotros">
+    <template id="nosotros" track="1" name="Quimibond: nosotros">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <t t-call="website_quimibond.encabezado_pagina">
-                    <t t-set="etiqueta" t-value="'Nosotros'"/>
-                    <t t-set="titulo" t-value="'Fabricantes textiles mexicanos desde 1992.'"/>
-                    <t t-set="resumen" t-value="'Productora de No Tejidos Quimibond nació para fabricar entretelas de alta calidad. Hoy abastecemos a la industria automotriz con scrims y telas de tejido circular, además de blancos y confección.'"/>
+                    <t t-set="etiqueta">Nosotros</t>
+                    <t t-set="titulo">Fabricantes textiles mexicanos desde 1992.</t>
+                    <t t-set="resumen">Productora de No Tejidos Quimibond nació para fabricar entretelas de alta calidad. Hoy abastecemos a la industria automotriz con scrims y telas de tejido circular, además de blancos y confección.</t>
                 </t>
                 <section class="qb-sec">
                     <div class="qb-container">
@@ -623,7 +637,7 @@
     <!-- ================================================================= -->
     <!-- Diseñador de tela                                                  -->
     <!-- ================================================================= -->
-    <template id="disenar" name="Quimibond: diseñador de tela">
+    <template id="disenar" track="1" name="Quimibond: diseñador de tela">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <section class="qb-sec qb-dis" data-qb-disenador="1">
@@ -801,6 +815,7 @@
                             <p class="qb-nota qb-reveal">El diseñador es una guía para platicar su proyecto. Ventas e Ingeniería confirman la factibilidad, el gramaje final y el tiempo de entrega.</p>
                         </div>
                         <div class="qb-card qb-card--form qb-reveal">
+                            <t t-set="qb_origen" t-value="'disenador'"/>
                             <t t-call="website_quimibond.formulario_cotizacion"/>
                         </div>
                     </div>
@@ -812,7 +827,7 @@
     <!-- ================================================================= -->
     <!-- Cotizar                                                            -->
     <!-- ================================================================= -->
-    <template id="cotizar" name="Quimibond: cotizar">
+    <template id="cotizar" track="1" name="Quimibond: cotizar">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <section class="qb-sec qb-cotizar">
@@ -828,6 +843,7 @@
                                 <li class="qb-reveal"><span class="qb-mono">03</span><div><strong>Recibe cotización y muestra</strong><span>Con ficha técnica para validar en su planta.</span></div></li>
                             </ul>
                             <p class="qb-reveal"><a class="qb-enlace" t-attf-href="tel:+52#{website._qb_telefono().replace(' ', '')}"><i class="fa fa-phone" aria-hidden="true"/> <t t-out="website._qb_telefono()"/></a></p>
+                            <p class="qb-reveal"><a class="qb-enlace" href="/agendar"><i class="fa fa-calendar" aria-hidden="true"/> ¿Prefiere platicarlo? Agende una llamada</a></p>
                         </div>
                         <div class="qb-card qb-card--form qb-reveal">
                             <t t-call="website_quimibond.formulario_cotizacion"/>
@@ -841,13 +857,28 @@
     <template id="gracias" name="Quimibond: gracias">
         <t t-call="website.layout">
             <div id="wrap" class="qb">
-                <section class="qb-sec qb-gracias">
+                <!-- data-qb-conversion: el script avisa a Analytics de la oportunidad y su origen. -->
+                <section class="qb-sec qb-gracias" t-att-data-qb-conversion="qb_origen">
                     <div class="qb-container qb-centro">
                         <span class="qb-icono qb-icono--ok"><i class="fa fa-check" aria-hidden="true"/></span>
-                        <h1>Recibimos su solicitud</h1>
-                        <p class="qb-lead">Ya está con el equipo de Ventas. Le contactamos en un día hábil.</p>
+                        <t t-if="qb_origen == 'llamada'">
+                            <h1>Recibimos su solicitud de llamada</h1>
+                            <p class="qb-lead">Un asesor de Ventas le confirma el día y la hora por correo o por teléfono.</p>
+                        </t>
+                        <t t-elif="qb_origen == 'ficha'">
+                            <h1>Recibimos su solicitud de ficha técnica</h1>
+                            <p class="qb-lead">Ventas le envía la ficha técnica a su correo en un día hábil.</p>
+                        </t>
+                        <t t-elif="qb_origen == 'certificados'">
+                            <h1>Recibimos su solicitud</h1>
+                            <p class="qb-lead">Le enviamos los certificados vigentes a su correo en un día hábil.</p>
+                        </t>
+                        <t t-else="">
+                            <h1>Recibimos su solicitud</h1>
+                            <p class="qb-lead">Ya está con el equipo de Ventas. Le contactamos en un día hábil.</p>
+                        </t>
                         <div class="qb-hero__cta qb-hero__cta--centro">
-                            <a href="/disenar" class="qb-btn qb-btn--primario">Diseñe su tela</a>
+                            <a href="/catalogo" class="qb-btn qb-btn--primario">Ver el catálogo</a>
                             <a href="/" class="qb-btn qb-btn--contorno">Volver al inicio</a>
                         </div>
                     </div>

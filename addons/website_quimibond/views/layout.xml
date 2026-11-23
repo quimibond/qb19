@@ -20,6 +20,9 @@
     </template>
 
     <template id="header" name="Quimibond: encabezado">
+        <!-- Textos del script en el idioma de la página (vacío en español). -->
+        <t t-set="qb_js" t-value="website._qb_textos_js()"/>
+        <div t-if="qb_js" id="qb_t" hidden="hidden" t-att-data-t="qb_js"/>
         <div class="qb-hilo" aria-hidden="true"><span/></div>
         <header class="qb qb-header" id="qb_top">
             <div class="qb-container qb-header__in">
@@ -29,8 +32,12 @@
                 </a>
                 <nav class="qb-nav" aria-label="Principal">
                     <div class="qb-nav__item qb-nav__item--menu">
-                        <a href="/disenar" class="qb-nav__link">Productos <i class="fa fa-angle-down" aria-hidden="true"/></a>
+                        <a href="/catalogo" class="qb-nav__link">Productos <i class="fa fa-angle-down" aria-hidden="true"/></a>
                         <div class="qb-mega">
+                            <a href="/catalogo" class="qb-mega__card">
+                                <strong>Catálogo por familias</strong>
+                                <span>Scrims, entretelas, no tejidos y telas de punto.</span>
+                            </a>
                             <a href="/disenar" class="qb-mega__card">
                                 <strong>Diseñe su tela</strong>
                                 <span>Elija aplicación, peso, ancho y color, y véala al momento.</span>
@@ -51,6 +58,7 @@
                             <a href="/mercados/automotriz" class="qb-mega__card"><strong>Automotriz</strong><span>México, Estados Unidos y Canadá.</span></a>
                             <a href="/mercados/blancos" class="qb-mega__card"><strong>Blancos</strong><span>Colchonería y hogar.</span></a>
                             <a href="/mercados/confeccion" class="qb-mega__card"><strong>Confección</strong><span>Camisería, uniformes y prendas.</span></a>
+                            <a href="/compradores-automotrices" class="qb-mega__card"><strong>Compradores automotrices</strong><span>Certificados, laboratorio y desarrollo.</span></a>
                         </div>
                     </div>
                     <a href="/planta" class="qb-nav__link">Planta</a>
@@ -59,13 +67,18 @@
                     <a href="/jobs" class="qb-nav__link">Empleos</a>
                 </nav>
                 <div class="qb-header__acciones">
+                    <span t-if="frontend_languages and len(frontend_languages) > 1" class="qb-idiomas" aria-label="Idioma">
+                        <t t-foreach="frontend_languages.values()" t-as="lg">
+                            <a t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-class="'activo' if lg.code == lang else ''" t-att-hreflang="lg.hreflang" t-out="lg.code.split('_')[0].upper()"/>
+                        </t>
+                    </span>
                     <button type="button" class="qb-kbd-btn" data-qb-buscar="1" aria-label="Buscar en el sitio">
                         <i class="fa fa-search" aria-hidden="true"/>
                         <span>Buscar…</span>
                         <kbd>⌘K</kbd>
                     </button>
                     <t t-set="qb_publico" t-value="request.env.user._is_public()"/>
-                    <t t-set="qb_cuenta" t-value="'/odoo' if request.env.user._is_internal() else '/my'"/>
+                    <t t-set="qb_cuenta" t-value="'/odoo' if request.env.user._is_internal() else '/mi-cuenta'"/>
                     <a t-if="qb_publico" href="/web/login" class="qb-btn qb-btn--ghost qb-acceso" aria-label="Iniciar sesión"><i class="fa fa-user-o" aria-hidden="true"/><span>Iniciar sesión</span></a>
                     <a t-else="" t-att-href="qb_cuenta" class="qb-btn qb-btn--ghost qb-acceso" aria-label="Mi cuenta"><i class="fa fa-user" aria-hidden="true"/><span t-out="request.env.user.name.split(' ')[0]"/></a>
                     <a href="/cotizar" class="qb-btn qb-btn--primario">Cotizar</a>
@@ -75,6 +88,7 @@
                 </div>
             </div>
             <div class="qb-movil" data-qb-movil="1">
+                <a href="/catalogo">Catálogo</a>
                 <a href="/disenar">Diseñe su tela</a>
                 <a href="/mercados/automotriz">Automotriz</a>
                 <a href="/mercados/blancos">Blancos</a>
@@ -84,7 +98,12 @@
                 <a href="/nosotros">Nosotros</a>
                 <a href="/jobs">Empleos</a>
                 <a t-if="request.env.user._is_public()" href="/web/login"><i class="fa fa-user-o" aria-hidden="true"/> Iniciar sesión</a>
-                <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/my'}"><i class="fa fa-user" aria-hidden="true"/> Mi cuenta</a>
+                <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/mi-cuenta'}"><i class="fa fa-user" aria-hidden="true"/> Mi cuenta</a>
+                <a href="/compradores-automotrices">Compradores automotrices</a>
+                <a href="/agendar"><i class="fa fa-calendar" aria-hidden="true"/> Agendar llamada</a>
+                <t t-if="frontend_languages and len(frontend_languages) > 1" t-foreach="frontend_languages.values()" t-as="lg">
+                    <a t-if="lg.code != lang" t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-hreflang="lg.hreflang"><i class="fa fa-globe" aria-hidden="true"/> <t t-out="lg.name.split('/')[-1].strip()"/></a>
+                </t>
                 <a href="/cotizar" class="qb-btn qb-btn--primario">Solicitar cotización</a>
             </div>
         </header>
@@ -123,6 +142,7 @@
                         <a href="/mercados/automotriz">Automotriz</a>
                         <a href="/mercados/blancos">Blancos</a>
                         <a href="/mercados/confeccion">Confección</a>
+                        <a href="/catalogo">Catálogo</a>
                         <a href="/disenar">Diseñe su tela</a>
                     </div>
                     <div>
@@ -135,8 +155,9 @@
                     <div>
                         <h3>Clientes</h3>
                         <a href="/cotizar">Solicitar cotización</a>
+                        <a href="/agendar">Agendar llamada</a>
                         <a t-if="request.env.user._is_public()" href="/web/login">Iniciar sesión</a>
-                        <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/my'}">Mi cuenta</a>
+                        <a t-else="" t-attf-href="#{'/odoo' if request.env.user._is_internal() else '/mi-cuenta'}">Mi cuenta</a>
                         <a href="/helpdesk">Reporte de calidad</a>
                         <a t-if="website.social_linkedin" t-att-href="website.social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
                     </div>
@@ -154,7 +175,7 @@
                     <span>© <t t-out="datetime.date.today().year"/> Productora de No Tejidos Quimibond S.A. de C.V.</span>
                     <span class="qb-footer__idiomas">
                         <t t-foreach="frontend_languages.values() if frontend_languages else []" t-as="lg">
-                            <a t-att-href="url_localized(lang_code=lg.code)" t-att-class="'activo' if lg.code == lang else ''" t-out="lg.code.split('_')[0].upper()"/>
+                            <a t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-class="'activo' if lg.code == lang else ''" t-out="lg.code.split('_')[0].upper()"/>
                         </t>
                     </span>
                 </div>
