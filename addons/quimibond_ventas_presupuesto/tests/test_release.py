@@ -256,6 +256,20 @@ class TestRelease(TransactionCase):
         self.assertAlmostEqual(week.qty_origen, 100.0, places=2)
         self.assertFalse(week.ajustado)
 
+    def test_16_manda_la_unidad_del_catalogo(self):
+        """3.31.1: si Ventas corrige la unidad del catálogo (Saltillo imprime MTR en el WJ060 y pide en
+        yardas, 23-nov), el pronóstico queda en esa unidad, no en la que trae impresa el release."""
+        release = self._release()
+        release.action_read()
+        self._confirm_part()
+        release.part_ids.catalog_part_id.write({'customer_uom': 'yd'})
+        release.action_mark_reviewed()
+        release.action_apply()
+        week = self._forecast().filtered(lambda l: l.week == date(2040, 12, 17))
+        self.assertEqual(week.uom_origen, 'yd')
+        self.assertAlmostEqual(week.qty_origen, 100.0, places=2)
+        self.assertAlmostEqual(week.qty_m, 91.44, places=2)
+
 
 @tagged('post_install', '-at_install')
 class TestReleaseGeneric(TransactionCase):
