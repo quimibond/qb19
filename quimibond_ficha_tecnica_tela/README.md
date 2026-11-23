@@ -14,13 +14,13 @@ Programación de Tintorería.
 | # | Quién | Dónde | Qué hace |
 |---|---|---|---|
 | 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, pestaña «Ficha técnica» → «Crear la ficha de la tela» o «Crear la ficha de tejido». |
-| 2 | Todos | Fichas técnicas → Artículos → **Acabado** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica» (solo lectura, cada dato dice de qué ficha sale): peso, ancho y rendimiento, crudo, ruta, especificación y pendientes. |
+| 2 | Todos | Fichas técnicas → Artículos → **Acabado** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica»: arriba el estado y los pendientes, luego «Ir a:» y los datos (solo lectura, cada dato dice de qué ficha sale), con la ruta y la especificación en sub-pestañas. |
 | 3 | Cada área | Lista de materiales → operación (o máquina → «Telas que corren aquí») | Los datos de la tela en cada máquina: «Agregar los datos de la tela en esta máquina» (velocidad, merma, ancho de rama, tiempo de ciclo, kg por carga). |
 | 4 | Ingeniería (Innovación) | Artículos → Rutas por familia; ficha de acabado | La ruta de la familia (una vez por crudo) y, en la ficha, lo propio de la tela: rama o jet si no son los de la familia, lavado o teñido si no es el del código, consumo de crudo. «Generar listas desde la ruta» arma la lista en kg (`I…`) y la de metros (`J`) archivadas, con tiempos, capacidad y conversión desde la ficha. |
-| 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Volver a revisar» (o la revisión de la noche) deja la tela en «Lista para activar». |
+| 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Revisar ahora» (o la revisión de la noche) deja la tela en «Lista para activar». |
 | 6 | Ingeniería | Lista de materiales | Visto bueno: activa la lista en kg (y voltea la de metros). El estado pasa a «Activa». Hasta entonces Odoo fabrica con la lista anterior. Al activarla, la lista del flujo queda primera entre las de su producto; la anterior sigue activa, de respaldo. |
 | 7 | Planeación y planta | Fabricación | Orden en kg (`I…`); la Programación de Tintorería asigna el jet y divide en baños; cada rollo pasa por Inspección al salir de rama y entra a «10 INSPECCIÓN». Venta en kg: el mismo `I…`. Venta en metros: la Clasificación final produce la J medida con el mismo lote. |
-| 8 | Quien cambie la ficha | Producto o ficha | Si cambia un dato (peso, velocidad…), la revisión lo marca y se vuelve a «Usar los datos de la ficha». |
+| 8 | Quien cambie la ficha | Producto o ficha | Si cambia un dato (peso, velocidad…), la revisión lo marca y se vuelve a «Corregir las listas con la ficha». |
 
 **Estados de la tela** (columna del concentrado): *sin revisar*; *con pendientes*; *lista para activar* (las listas
 cuadran y la lista en kg sigue archivada); *activa con pendientes* (Odoo ya fabrica con ella y algo no cuadra: lo
@@ -53,7 +53,7 @@ en cada orden con `quimibond_rollos_bitacora`. Las dos listas llevan su tipo de 
 
 Cada dato tiene **un dueño**: se captura ahí y en las demás pantallas se ve con la leyenda «Dato de: …» (donde se
 puede editar, es el mismo registro, no una copia). **Nada se escribe solo en las listas de materiales ni en los
-centros de trabajo:** todo pasa por «Usar los datos de la ficha» (o su botón en la operación, el jet o la lista), y la
+centros de trabajo:** todo pasa por «Corregir las listas con la ficha» (o su botón en la operación, el jet o la lista), y la
 revisión de la noche avisa lo que no cuadra.
 
 | Dato | Se captura en | Se ve en | Llega a Odoo (listas, centros de trabajo) |
@@ -101,7 +101,7 @@ Un rollo o conversión a más de 15 % de la mediana de su tela no cuenta. Lo med
 | Estado | Qué pasa |
 |---|---|
 | Igual al de la ficha | Se aleja menos que la alerta (5 %, `alerta_rendimiento_pct`): nada que hacer |
-| Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Marcar revisado»** se queda con el de la ficha |
+| Por aprobar | Pendiente de Ingeniería: **«Usar el medido»** lo pasa a la ficha; **«Dejar el de la ficha»** se queda con el de la ficha (también desde el pendiente, en la pestaña del producto) |
 | Fuera del teórico | Se aleja más de 25 % (`tope_teorico_pct`) de 1000 ÷ (peso en g/m² × ancho bajando de rama en m; el de venta solo si falta): dato malo, no se propone |
 
 Escribir el rendimiento a mano en la ficha lo deja «Rendimiento forzado» y cuenta como revisado. La importación desde
@@ -113,9 +113,9 @@ Excel no lo fuerza (es el teórico).
 |---|---|
 | **Fichas técnicas → Artículos → Acabado** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
 | **Artículos → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
-| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho de venta y rendimiento), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Botones: «Usar los datos de la ficha», «Volver a revisar», listas, «Ficha de acabado», «Procesos de la tela». En un crudo: circulares, telas que lo usan y «Fichas de tejido». Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
+| **Producto → pestaña «Ficha técnica»** (la primera si tiene ficha) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho de venta y rendimiento), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Desde 2.32.0 (Jose, 2026-11-23), en este orden: **franja de estado** (activa, lista para activar, con pendientes por área, activa con pendientes, sin revisar; fecha de la revisión y «Revisar ahora»); **pendientes** con «Resolver» (o «Usar el medido» / «Dejar el de la ficha» en el del rendimiento); **«Corregir las listas con la ficha»**, el único botón que cambia datos, solo si hay pendientes de tiempos, capacidad de jets o conversión; «Generar listas desde la ruta» solo si falta una lista; **«Ir a:»** (Ficha de acabado, Crudo, Lista en kg, Lista en metros, Procesos); los datos de la tela y del crudo; sub-pestañas **Ruta** y **Especificación**. En un crudo: «Agregar circular», «Ir a: Fichas de tejido», circulares y telas que lo usan. Sin ficha (código de tela, de acabado en kg o de crudo): «Crear la ficha…». |
 | **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
-| **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Usar los datos de la ficha». |
+| **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Corregir las listas con la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
 | **Centro de trabajo** | Pestaña «Ficha de la máquina» (tipo, estado, configuración por fecha), «Capacidades» con la capacidad de la ficha en los jets, y «Telas que corren aquí». Acción «Usar las capacidades de la ficha (jets)». |
 | **Artículos → Rutas por familia** | Una ruta por crudo con sus pasos y máquinas; «Armar rutas desde las listas» y «Generar listas». |
@@ -249,7 +249,7 @@ merma y el peso real. Se recalcula cada noche, antes de la revisión de listas; 
 
 - Lo usan la conversión kg → m de la lista en metros (× la primera para planear) y los tiempos de rama (÷ velocidad) e
   inspección (× 60 ÷ velocidad). **Nunca cambia una lista solo**: la revisión marca las que ya no cuadran y se
-  corrigen con «Usar los datos de la ficha».
+  corrigen con «Corregir las listas con la ficha».
 - Ficha de acabado → «Tela acabada»: **Especificación** (peso, ancho de venta, espesor, encogimiento y elongación con
   sus tolerancias) y **Real** (el rendimiento, de cuántas órdenes, y el peso real = 1000 ÷ rendimiento × ancho de
   venta).

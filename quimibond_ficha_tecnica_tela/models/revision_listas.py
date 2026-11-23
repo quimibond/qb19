@@ -172,12 +172,12 @@ class FichaTecnicaRevision(models.Model):
                                        ' ni '.join(faltan))))
         if acabado.rendimiento_por_revisar and acabado.rendimiento_medido:
             # 2.28.0: lo medido se aleja de la ficha más que la alerta. La ficha no cambia sola: Ingeniería lo usa
-            # («Usar el medido») o se queda con el de la ficha («Marcar revisado»).
+            # («Usar el medido») o se queda con el de la ficha («Dejar el de la ficha»).
             fuentes = dict(acabado._fields['rendimiento_medido_fuente']._description_selection(acabado.env))
             ficha_r = acabado.rendimiento_tela_acabada
             pendientes.append(dict(ing, tipo='rendimiento_cambio', detalle='Lo fabricado da %.4f m/kg (%s, %s muestras) '
-                                   'contra %.4f de la ficha (%+.1f %%). En la ficha: «Usar el medido» o «Marcar '
-                                   'revisado».' % (
+                                   'contra %.4f de la ficha (%+.1f %%). Úselo («Usar el medido») o quédese '
+                                   'con el de la ficha («Dejar el de la ficha»).' % (
                                        acabado.rendimiento_medido,
                                        (fuentes.get(acabado.rendimiento_medido_fuente) or '').lower(),
                                        acabado.rendimiento_medido_ordenes, ficha_r,
@@ -352,3 +352,16 @@ class FichaTecnicaRevisionPendiente(models.Model):
             return self._ft_abrir(self.bom_id)
         # Sin acabado en kg, sin listas, ficha sin peso o rendimiento: la ficha de acabado («Generar listas» vive ahí).
         return self._ft_abrir(acabado, 'Ficha de acabado')
+
+    # 2.32.0: el pendiente del rendimiento se decide ahí mismo, en la pestaña del producto, sin ir a la ficha.
+    def action_ft_usar_medido(self):
+        acabados = self.filtered(lambda p: p.tipo == 'rendimiento_cambio').revision_id.acabado_id
+        acabados.action_ft_usar_rendimiento_medido()
+        self.env['ficha.tecnica.revision']._ft_actualizar(acabados)
+        return True
+
+    def action_ft_dejar_ficha(self):
+        acabados = self.filtered(lambda p: p.tipo == 'rendimiento_cambio').revision_id.acabado_id
+        acabados.action_ft_rendimiento_revisado()
+        self.env['ficha.tecnica.revision']._ft_actualizar(acabados)
+        return True
