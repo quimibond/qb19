@@ -69,7 +69,7 @@
                 <div class="qb-header__acciones">
                     <span t-if="frontend_languages and len(frontend_languages) > 1" class="qb-idiomas" aria-label="Idioma">
                         <t t-foreach="frontend_languages.values()" t-as="lg">
-                            <a t-att-href="url_localized(lang_code=lg.code)" t-att-class="'activo' if lg.code == lang else ''" t-att-hreflang="lg.hreflang" t-out="lg.code.split('_')[0].upper()"/>
+                            <a t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-class="'activo' if lg.code == lang else ''" t-att-hreflang="lg.hreflang" t-out="lg.code.split('_')[0].upper()"/>
                         </t>
                     </span>
                     <button type="button" class="qb-kbd-btn" data-qb-buscar="1" aria-label="Buscar en el sitio">
@@ -102,7 +102,7 @@
                 <a href="/compradores-automotrices">Compradores automotrices</a>
                 <a href="/agendar"><i class="fa fa-calendar" aria-hidden="true"/> Agendar llamada</a>
                 <t t-if="frontend_languages and len(frontend_languages) > 1" t-foreach="frontend_languages.values()" t-as="lg">
-                    <a t-if="lg.code != lang" t-att-href="url_localized(lang_code=lg.code)" t-att-hreflang="lg.hreflang"><i class="fa fa-globe" aria-hidden="true"/> <t t-out="lg.name.split('/')[-1].strip()"/></a>
+                    <a t-if="lg.code != lang" t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-hreflang="lg.hreflang"><i class="fa fa-globe" aria-hidden="true"/> <t t-out="lg.name.split('/')[-1].strip()"/></a>
                 </t>
                 <a href="/cotizar" class="qb-btn qb-btn--primario">Solicitar cotización</a>
             </div>
@@ -175,7 +175,7 @@
                     <span>© <t t-out="datetime.date.today().year"/> Productora de No Tejidos Quimibond S.A. de C.V.</span>
                     <span class="qb-footer__idiomas">
                         <t t-foreach="frontend_languages.values() if frontend_languages else []" t-as="lg">
-                            <a t-att-href="url_localized(lang_code=lg.code)" t-att-class="'activo' if lg.code == lang else ''" t-out="lg.code.split('_')[0].upper()"/>
+                            <a t-att-href="'/website/lang/%s?r=%s' % (lg.url_code, quote_plus(url_localized(lang_code=lg.code)))" t-att-class="'activo' if lg.code == lang else ''" t-out="lg.code.split('_')[0].upper()"/>
                         </t>
                     </span>
                 </div>
