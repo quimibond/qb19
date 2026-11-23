@@ -62,6 +62,11 @@ def etapa_pedido(order):
     return {'clave': clave, 'texto': texto, 'paso': paso, 'pasos': PASOS}
 
 
+def _invitada(empresa):
+    """«Mi cuenta» es por invitación: solo las empresas con la casilla «Acceso a Mi cuenta»."""
+    return bool(empresa.sudo().qb_mi_cuenta)
+
+
 class QuimibondCuenta(http.Controller):
 
     # -- quién mira ----------------------------------------------------------
@@ -180,6 +185,9 @@ class QuimibondCuenta(http.Controller):
         empresa, vista_previa = self._empresa(cliente)
         if not empresa:
             return None, False, request.redirect('/odoo')
+        if not vista_previa and not _invitada(empresa):
+            # Sin invitación no hay «Mi cuenta»: el usuario se queda en el portal de siempre.
+            return None, False, request.redirect('/my')
         return empresa, vista_previa, None
 
     def _facturas(self, empresa, dominio_extra, limite=LIMITE_LISTA):
@@ -300,6 +308,8 @@ class QuimibondPortalInicio(CustomerPortal):
     def home(self, **kw):
         # El inicio del portal es «Mi cuenta» para los usuarios de portal. Con
         # ?todo=1 se abre el inicio nativo (reportes, firmas, proyectos…).
-        if _activo() and not kw.get('todo') and not request.env.user._is_internal():
+        usuario = request.env.user
+        if (_activo() and not kw.get('todo') and not usuario._is_internal()
+                and _invitada(usuario.partner_id.commercial_partner_id)):
             return request.redirect('/mi-cuenta')
         return super().home(**kw)
