@@ -137,6 +137,28 @@ class SgiSalesBudget(models.Model):
     rate_default = fields.Float(
         string="Tipo de cambio para todos los meses", digits=(12, 4), copy=False,
         help="Escriba el tipo de cambio y use «Aplicar a los 12 meses».")
+    # 3.33.0 (Jose, 23-nov: «todo tiene que tener soporte»).
+    rate_source = fields.Char(
+        string="Fuente del tipo de cambio", tracking=True,
+        help="De dónde sale el tipo de cambio y de qué fecha (por ejemplo, FIX de Banxico del 30/11/2026, "
+             "o la cifra de Dirección con su documento). Sin fuente no se aprueba si hay precios en otra "
+             "moneda.")
+    base_date_from = fields.Date(string="Venta base desde", readonly=True, copy=False,
+                                 help="Periodo base con que se armó la propuesta («Ver soporte» del renglón).")
+    base_date_to = fields.Date(string="Venta base hasta", readonly=True, copy=False)
+    assumption_ids = fields.One2many('qb.sales.budget.assumption', 'budget_id', string="Supuestos por cliente")
+    unsupported_count = fields.Integer(
+        string="Renglones sin soporte", compute='_compute_support_counts',
+        help="Renglones cuya cantidad o precio no tienen respaldo: cambiados sin motivo, capturados sin "
+             "soporte escrito o con un supuesto sin evidencia. No se aprueba así, salvo excepción.")
+    potencial_count = fields.Integer(string="Renglones potenciales", compute='_compute_support_counts')
+    amount_potencial_total = fields.Monetary(
+        string="Potencial (no suma)", compute='_compute_support_counts',
+        help="Desarrollos todavía no liberados: lo que sumarían si se liberan. No entra al presupuesto.")
+    approval_exceptions_text = fields.Char(
+        string="Impide aprobar", compute='_compute_approval_exceptions',
+        help="Meses sin renglones, renglones sin soporte o tipo de cambio sin fuente. Dirección puede "
+             "aprobar con la excepción, que queda en el historial.")
     objetivo_pct = fields.Float(
         string="Objetivo de crecimiento (%)", tracking=True,
         default=lambda self: float(self.env['ir.config_parameter'].sudo().get_param(
@@ -486,7 +508,8 @@ class SgiSalesBudget(models.Model):
         if self.kind != 'presupuesto' or self.state == 'obsoleto' or not self.year \
                 or 'qb.sales.month.plan' not in self.env:
             return {}
-        covered = {(line.date.replace(day=1), line.mercado) for line in self.line_ids if line.date}
+        covered = {(line.date.replace(day=1), line.mercado) for line in self.line_ids
+                   if line.date and not line.potencial}
         out = defaultdict(float)
         plans = self.env['qb.sales.month.plan'].sudo().search([
             ('company_id', '=', self.company_id.id),
@@ -634,7 +657,7 @@ class SgiSalesBudget(models.Model):
             budget.no_client_count = len(budget.line_ids.filtered(
                 lambda l: l.mercado in MERCADOS_CON_CLIENTE and not l.partner_id))
 
-    @api.depends('line_ids.date', 'line_ids.mercado', 'kind', 'year')
+    @api.depends('line_ids.date', 'line_ids.mercado', 'line_ids.potencial', 'kind', 'year')
     def _compute_empty_months(self):
         for budget in self:
             empty = budget._qb_empty_months() if budget.kind == 'presupuesto' else {}
@@ -647,7 +670,7 @@ class SgiSalesBudget(models.Model):
         """{mercado base: [meses 1-12 sin ningún renglón]} (los proyectos cuentan para su mercado)."""
         self.ensure_one()
         covered = {(line.date.month, MERCADO_BASE.get(line.mercado))
-                   for line in self.line_ids if line.date}
+                   for line in self.line_ids if line.date and not line.potencial}
         out = {}
         for base in MERCADO_BASE_LABELS:
             months = [m for m in range(1, 13) if (m, base) not in covered]
@@ -655,9 +678,55 @@ class SgiSalesBudget(models.Model):
                 out[base] = months
         return out
 
+    @api.depends('line_ids.support_ok', 'line_ids.potencial', 'line_ids.amount_potencial')
+    def _compute_support_counts(self):
+        for budget in self:
+            potencial = budget.line_ids.filtered('potencial')
+            budget.potencial_count = len(potencial)
+            budget.amount_potencial_total = sum(potencial.mapped('amount_potencial'))
+            budget.unsupported_count = len(budget.line_ids.filtered(lambda l: not l.support_ok))
+
+    @api.depends('empty_month_count', 'unsupported_count', 'rate_source', 'line_ids.qty_budget',
+                 'line_ids.price_currency_id', 'currency_id')
+    def _compute_approval_exceptions(self):
+        for budget in self:
+            budget.approval_exceptions_text = "; ".join(budget._qb_approval_exceptions()) \
+                if budget.kind == 'presupuesto' else False
+
+    def _qb_approval_exceptions(self):
+        """Lo que impide aprobar sin excepción: meses vacíos, renglones sin soporte y tipo de cambio sin
+        fuente (con precios en otra moneda)."""
+        self.ensure_one()
+        out = []
+        if self.empty_month_count:
+            out.append("meses sin renglones (%s)" % self.empty_months_text)
+        if self.unsupported_count:
+            out.append("%d renglón(es) sin soporte" % self.unsupported_count)
+        company_ccy = self.currency_id
+        foreign = self.line_ids.filtered(
+            lambda l: l.qty_budget and l.price_currency_id and l.price_currency_id != company_ccy)
+        if foreign and not (self.rate_source or '').strip():
+            out.append("tipo de cambio sin fuente")
+        return out
+
+    def action_qb_view_unsupported(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': "Renglones sin soporte — %s" % self.name,
+                'res_model': 'sgi.sales.budget.line', 'view_mode': 'list,form',
+                'domain': [('budget_id', '=', self.id), ('support_ok', '=', False)],
+                'context': {'default_budget_id': self.id}}
+
+    def action_qb_view_potencial(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': "Potencial (no suma) — %s" % self.name,
+                'res_model': 'sgi.sales.budget.line', 'view_mode': 'list,form',
+                'domain': [('budget_id', '=', self.id), ('potencial', '=', True)],
+                'context': {'default_budget_id': self.id}}
+
     def action_qb_approve_empty_months(self):
-        """Aprobar aunque haya meses sin renglones; queda la lista en el chatter."""
-        return self.with_context(qb_allow_empty_months=True).action_approve()
+        """Aprobar con excepción (meses vacíos, renglones sin soporte, tipo de cambio sin fuente);
+        queda la lista en el chatter."""
+        return self.with_context(qb_approve_exception=True).action_approve()
 
     def action_view_no_price(self):
         self.ensure_one()
@@ -1000,9 +1069,9 @@ class SgiSalesBudget(models.Model):
         Exige haber pasado por 'revisado'. Bloquea si hay renglones de Industrial o
         Especiales sin cliente, y si hay renglones que cuentan 0 (sin precio, sin tipo de
         cambio o sin conversión), salvo contexto sgi_bypass_price_check, que deja
-        constancia en el chatter. 3.32.0: bloquea también si un mercado no trae renglones
-        en algún mes, salvo contexto qb_allow_empty_months («Aprobar con meses vacíos»), que
-        deja la lista en el chatter. Congela el tipo de cambio de cada mes y deja
+        constancia en el chatter. 3.32.0/3.33.0: bloquea también con meses sin renglones,
+        renglones sin soporte o tipo de cambio sin fuente, salvo contexto qb_approve_exception
+        («Aprobar con excepción»), que deja la lista en el chatter. Congela el tipo de cambio de cada mes y deja
         «reemplazada» la aprobada anterior del año."""
         can_approve = self.env.user.has_group('quimibond_sgi.group_sgi_director') \
             or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
@@ -1029,15 +1098,16 @@ class SgiSalesBudget(models.Model):
                     "No se puede aprobar %s: %d renglón(es) de Industrial o Especiales sin "
                     "cliente. Póngales cliente o páselos al mercado que les toca." % (
                         budget.name, budget.no_client_count))
-            if budget.empty_month_count:
-                if not self.env.context.get('qb_allow_empty_months'):
+            exceptions = budget._qb_approval_exceptions()
+            if exceptions:
+                if not self.env.context.get('qb_approve_exception'):
                     raise UserError(
-                        "No se puede aprobar %s: hay meses sin ningún renglón (%s).\n\n"
-                        "Agregue los renglones que faltan o, si de verdad no se venderá nada ese "
-                        "mes, use «Aprobar con meses vacíos» (queda constancia en el chatter)." % (
-                            budget.name, budget.empty_months_text))
+                        "No se puede aprobar %s: %s.\n\n"
+                        "Agregue los renglones que faltan, el motivo o soporte de cada renglón y la "
+                        "fuente del tipo de cambio. Si aun así se aprueba, use «Aprobar con excepción» "
+                        "(queda constancia en el chatter)." % (budget.name, "; ".join(exceptions)))
                 budget.sudo().message_post(
-                    body="Aprobado con meses sin renglones: %s." % budget.empty_months_text,
+                    body="Aprobado con excepción: %s." % "; ".join(exceptions),
                     author_id=self.env.user.partner_id.id)
             pairs, total = budget._sgi_no_price_pairs()
             if total:

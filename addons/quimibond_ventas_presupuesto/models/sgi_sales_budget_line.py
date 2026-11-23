@@ -18,8 +18,11 @@ referencia (columna aparte y control de desviaciones contra lo facturado).
 """
 from collections import defaultdict
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 from odoo.addons.quimibond_sgi.models.sgi_base import sgi_bypass_allowed
 from .product_articulo import CONV_ORIGINS, _UOM_REFS
@@ -30,6 +33,8 @@ PRICE_BASIS = [('venta', "Unidad del renglón"), ('m', "Por metro"), ('kg', "Por
 PRICE_ORIGINS = [('lista', "Lista del cliente"), ('captura', "Captura"), ('excel', "Excel"),
                  ('proyecto', "Proyecto"), ('historico', "Precio real del periodo base"),
                  ('desarrollo', "Cotización o precio objetivo del desarrollo")]
+# Orígenes de precio que traen su propio respaldo (lista, facturas, cotización o proyecto).
+SUPPORTED_PRICE_ORIGINS = ('lista', 'historico', 'desarrollo', 'proyecto')
 QTY_ORIGINS = [('venta', "Venta del periodo base"), ('proyecto', "Presupuesto de proyectos"),
                ('desarrollo', "Consumo estimado del desarrollo"),
                ('pronostico', "Pronóstico vigente (releases)")]
@@ -86,6 +91,41 @@ class SgiSalesBudgetLine(models.Model):
     qty_sugerida = fields.Float(string="Cantidad propuesta", digits='Product Unit', readonly=True,
                                 help="Lo que propuso el armado; la cantidad presupuestada es la que "
                                      "queda después de ajustar.")
+    # 3.33.0 (Jose, 23-nov: «todo tiene que tener soporte»): de dónde sale cada cifra, a la vista.
+    support_qty = fields.Char(
+        string="Soporte de la cantidad", readonly=True,
+        help="Lo que respalda la cantidad propuesta: facturas del periodo base, semanas y releases del "
+             "pronóstico, o el desarrollo y su consumo. Lo escribe «Armar propuesta del año».")
+    support_price = fields.Char(
+        string="Soporte del precio", readonly=True,
+        help="Lo que respalda el precio propuesto: regla de la lista, facturas promediadas o cotización.")
+    price_sugerido = fields.Float(string="Precio propuesto", digits=(16, 4), readonly=True,
+                                  help="El precio que puso el armado; si se cambia, pide motivo.")
+    ajuste_motivo = fields.Char(
+        string="Motivo del ajuste",
+        help="Por qué la cantidad o el precio son distintos de lo propuesto. Sin motivo, el renglón queda "
+             "sin soporte.")
+    support_note = fields.Text(
+        string="Soporte (renglón capturado)",
+        help="Para un renglón capturado o importado a mano: qué lo respalda (OC, correo, programa del "
+             "cliente). Sin esto queda sin soporte.")
+    assumption_id = fields.Many2one(
+        'qb.sales.budget.assumption', string="Supuesto del cliente", readonly=True, ondelete='set null',
+        help="Supuesto que cambió la cantidad de la venta base; su motivo y evidencia están en la "
+             "pestaña Supuestos.")
+    potencial = fields.Boolean(
+        string="Potencial (no suma)", readonly=True, index=True,
+        help="Desarrollo todavía no liberado: se muestra con su consumo e importe, pero no suma al "
+             "presupuesto (Jose, 23-nov).")
+    qty_potencial = fields.Float(string="Cantidad potencial", digits='Product Unit', readonly=True)
+    amount_potencial = fields.Monetary(
+        string="Importe potencial", currency_field='currency_id', compute='_compute_amount_potencial',
+        store=True, help="Lo que sumaría el desarrollo si se libera; no entra al presupuesto.")
+    support_ok = fields.Boolean(
+        string="Con soporte", compute='_compute_support_ok', store=True, index=True,
+        help="La cantidad y el precio tienen respaldo: salen del armado (facturas, pronóstico, "
+             "desarrollo liberado, lista) sin cambios o con motivo, o el renglón capturado trae su "
+             "soporte escrito. Un supuesto de cliente sin evidencia no cuenta.")
     dev_stage_id = fields.Many2one(related='dev_project_id.stage_id', string="Etapa del desarrollo")
     dev_project_id = fields.Many2one(
         'project.project', string="Desarrollo de producto", index=True, ondelete='set null',
@@ -285,14 +325,16 @@ class SgiSalesBudgetLine(models.Model):
         for line in self:
             line.qty_m, line.qty_kg, line.conv_origen = line._qb_conv_values()
 
-    def _qb_conv_values(self):
-        """(metros, kilos, origen) de la cantidad; 0 donde no se puede convertir."""
+    def _qb_conv_values(self, qty_venta=None):
+        """(metros, kilos, origen) de la cantidad (``qty_venta`` o la presupuestada); 0 donde no se
+        puede convertir."""
         self.ensure_one()
         code = _uom_code(self.env, self.uom_id)
-        if not self.qty_budget or not code:
+        qty_venta = self.qty_budget if qty_venta is None else qty_venta
+        if not qty_venta or not code:
             return 0.0, 0.0, 'sin_dato'
         ref = self.env.ref('uom.product_uom_meter' if code == 'm' else 'uom.product_uom_kgm')
-        qty = _convert_qty(self.qty_budget, self.uom_id, ref) or 0.0
+        qty = _convert_qty(qty_venta, self.uom_id, ref) or 0.0
         if self.product_id:
             product = self.product_id
             other = 'kg' if code == 'm' else 'm'
@@ -316,15 +358,20 @@ class SgiSalesBudgetLine(models.Model):
             line.amount_budget, line.amount_currency, line.rate, line.price_problem = \
                 line._qb_amount_values()
 
-    def _qb_amount_values(self):
+    def _qb_amount_values(self, qty=None):
         """(importe en moneda de la compañía, importe en la moneda del precio, tipo de cambio,
-        problema). Un renglón con problema cuenta 0: nunca se inventa un precio ni un factor."""
+        problema) de la cantidad presupuestada o de ``qty`` (la potencial). Un renglón con problema
+        cuenta 0: nunca se inventa un precio ni un factor."""
         self.ensure_one()
-        if not self.qty_budget:
+        if qty is None:
+            qty, qty_m, qty_kg = self.qty_budget, self.qty_m, self.qty_kg
+        else:
+            qty_m, qty_kg, _origen = self._qb_conv_values(qty)
+        if not qty:
             return 0.0, 0.0, 0.0, False
         if self.price_input <= 0:
             return 0.0, 0.0, 0.0, 'sin_precio'
-        base_qty = {'venta': self.qty_budget, 'm': self.qty_m, 'kg': self.qty_kg}[self.price_basis or 'venta']
+        base_qty = {'venta': qty, 'm': qty_m, 'kg': qty_kg}[self.price_basis or 'venta']
         if not base_qty:
             return 0.0, 0.0, 0.0, 'sin_conversion'
         amount_ccy = base_qty * self.price_input
@@ -337,6 +384,73 @@ class SgiSalesBudgetLine(models.Model):
         if not factor:
             return 0.0, amount_ccy, 0.0, 'sin_tc'
         return amount_ccy * factor, amount_ccy, month_rate, False
+
+    @api.depends('qty_potencial', 'potencial', 'uom_id', 'product_id', 'proyecto_gramaje', 'proyecto_ancho_cm',
+                 'price_input', 'price_currency_id', 'price_basis', 'date', 'budget_id.rate_ids.rate',
+                 'budget_id.rate_ids.month', 'currency_id')
+    def _compute_amount_potencial(self):
+        for line in self:
+            line.amount_potencial = line._qb_amount_values(line.qty_potencial)[0] \
+                if line.potencial and line.qty_potencial else 0.0
+
+    @api.depends('potencial', 'qty_origen', 'qty_budget', 'qty_sugerida', 'price_origen', 'price_input',
+                 'price_sugerido', 'ajuste_motivo', 'support_note', 'assumption_id.evidence_ok')
+    def _compute_support_ok(self):
+        for line in self:
+            line.support_ok = line._qb_support_ok()
+
+    def _qb_support_ok(self):
+        self.ensure_one()
+        if self.potencial:
+            return True
+        if (self.support_note or '').strip():
+            return True
+        motivo = bool((self.ajuste_motivo or '').strip())
+        if self.assumption_id and not self.assumption_id.evidence_ok:
+            return False
+        qty_ok = bool(self.qty_origen) and (
+            motivo or float_compare(self.qty_budget, self.qty_sugerida, precision_digits=4) == 0)
+        price_ok = motivo or (
+            self.price_origen in SUPPORTED_PRICE_ORIGINS and (
+                not self.price_sugerido
+                or float_compare(self.price_input, self.price_sugerido, precision_digits=4) == 0))
+        return qty_ok and price_ok
+
+    def action_qb_view_support(self):
+        """Lo que respalda el renglón: facturas del periodo base, semanas del pronóstico o el
+        desarrollo."""
+        self.ensure_one()
+        budget = self.budget_id
+        if self.qty_origen == 'pronostico':
+            first, nxt = self._sgi_month_bounds(self.date)
+            domain = [('company_id', '=', self.company_id.id), ('product_id', '=', self.product_id.id),
+                      ('week', '>=', first), ('week', '<', nxt)]
+            if self.partner_id:
+                domain.append(('partner_id', 'child_of', self.partner_id.commercial_partner_id.id))
+            return {'type': 'ir.actions.act_window', 'name': "Pronóstico — %s" % self.display_name,
+                    'res_model': 'qb.forecast.line', 'view_mode': 'list,form', 'domain': domain}
+        if self.dev_project_id:
+            return {'type': 'ir.actions.act_window', 'res_model': 'project.project',
+                    'res_id': self.dev_project_id.id, 'view_mode': 'form'}
+        if self.qty_origen == 'venta' and budget.base_date_from and self.product_id:
+            # El mismo mes del periodo base (los 12 meses cerrados van al mismo mes del año nuevo).
+            month_starts = [d for d in (budget.base_date_from.replace(day=1) + relativedelta(months=i)
+                                        for i in range(12)) if d.month == self.date.month]
+            if month_starts:
+                first = month_starts[0]
+                domain = [
+                    ('move_id.move_type', 'in', _REAL_MOVE_TYPES), ('parent_state', '=', 'posted'),
+                    ('company_id', '=', self.company_id.id), ('product_id', '=', self.product_id.id),
+                    ('display_type', '=', 'product'),
+                    ('move_id.invoice_date', '>=', first),
+                    ('move_id.invoice_date', '<', first + relativedelta(months=1))]
+                if self.partner_id:
+                    domain.append(('move_id.commercial_partner_id', '=',
+                                   self.partner_id.commercial_partner_id.id))
+                return {'type': 'ir.actions.act_window', 'name': "Venta base — %s" % self.display_name,
+                        'res_model': 'account.move.line', 'view_mode': 'list,form', 'domain': domain}
+        raise UserError("Este renglón no salió del armado: su soporte es el texto que trae («Soporte "
+                        "(renglón capturado)»).")
 
     def _qb_rate_factor(self, price_ccy, company_ccy, month_rate):
         """Factor de la moneda del precio a la de la compañía con el tipo de cambio del mes
