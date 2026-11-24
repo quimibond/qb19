@@ -14,6 +14,17 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.2 — 2026-11-24
+
+Cinco pruebas que detenían el build completo de Odoo.sh (rama del flujo de efectivo, 24-nov-2026).
+
+### Corregido
+- Mover de etapa un desarrollo como Usuario SGI ya no truena al cerrar el reloj de la etapa anterior (`sgi.dev.stage.log` se cierra con `sudo`, como se abre); solo el Jefe MAST y SGI podía escribirlo (`test_dev_folio_access` test_07).
+- `test_dev_measure` test_03: C1-RESPUESTA se mide por el envío respondido (`sgi.dev.shipment`) desde 57.129.0; la prueba seguía esperando el reloj por etapa.
+- `test_dev_process`: las actividades de prueba llevan método de medición, porque el procedimiento pasa a vigente y lo exige.
+- `test_dev_process_sheet` test_02: el reporte se pide con `discard_logo_check`; en la base nueva Odoo contestaba con el asistente de diseño de documentos.
+- `test_dev_product` test_02: registra la aprobación del cliente antes de pasar a pilotaje.
+
 ## 19.0.57.202.1 — 2026-11-24
 
 Tres pruebas que fallaban en el build completo de Odoo.sh (rama de fichas, 24-nov-2026). Solo pruebas: el módulo no cambia.

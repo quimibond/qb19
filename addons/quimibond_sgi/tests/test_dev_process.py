@@ -27,8 +27,10 @@ class TestDevProcess(TransactionCase):
             existing = cls.Activity.search([('number', '=', 'C1.%02d' % step), ('process_id', '=', cls.process.id)], limit=1)
             if existing:
                 return existing
+            # Con método de medición: el procedimiento pasa a vigente y lo exige (base nueva del build).
             return cls.Activity.create(dict({
                 'process_id': cls.process.id, 'name': name, 'step': step, 'sequence': step * 10,
+                'measure_method': 'no_aplica', 'measure_justification': "Actividad de prueba",
                 'role_ids': [(0, 0, r) for r in roles]}, **extra))
         cls.a02 = act(2, 'Analizar la muestra (prueba)',
                       [{'role': 'ejecuta', 'job_id': cls.job_product.id},
