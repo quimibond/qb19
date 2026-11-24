@@ -12,11 +12,14 @@ from datetime import timedelta
 from odoo import fields, http
 from odoo.http import request
 
+from odoo.addons.website_quimibond.controllers import idioma
 from odoo.addons.website_quimibond.controllers.main import _exigir_activo
+from odoo.tools.translate import code_translations
 
 from ..models.cfdi import RE_RFC, clabe_valida, limpiar_rfc
 from ..models.proveedor_alta import GIROS
 
+MODULO = 'website_quimibond_proveedores'
 MAX_ARCHIVO = 5 * 1024 * 1024
 MAX_SOLICITUD = 24 * 1024 * 1024
 MAX_POR_HORA = 30
@@ -48,16 +51,23 @@ CAMPOS = ['name', 'rfc', 'giro', 'descripcion', 'contacto', 'puesto', 'email', '
 
 class QuimibondProveedoresAlta(http.Controller):
 
-    def _valores(self, **extra):
+    def _valores(self, datos=None, **extra):
         valores = {
             'giros': GIROS,
             'documentos': DOCUMENTOS,
             'requisitos': REQUISITOS,
             'compromisos': COMPROMISOS,
-            'datos': {},
             'errores': {},
         }
         valores.update(extra)
+        # Versión en inglés: los textos de este archivo se traducen aquí con el
+        # .po del módulo; las plantillas las traduce Odoo. Lo que escribió la
+        # persona («datos») no se toca.
+        lang = request.env.context.get('lang') or request.env.lang
+        if lang and lang != 'en_US' and not lang.startswith('es'):
+            tabla = code_translations.get_python_translations(MODULO, lang)
+            valores = idioma.traducir(valores, lang, tabla)
+        valores['datos'] = datos or {}
         return valores
 
     @staticmethod
@@ -85,9 +95,9 @@ class QuimibondProveedoresAlta(http.Controller):
         """(valores, errores) de la solicitud."""
         datos = {campo: (post.get(campo) or '').strip()[:500] for campo in CAMPOS}
         errores = {}
-        for campo, etiqueta in (('name', 'la razón social'), ('contacto', 'el nombre del contacto')):
+        for campo, falta in (('name', 'Escriba la razón social.'), ('contacto', 'Escriba el nombre del contacto.')):
             if not datos[campo]:
-                errores[campo] = 'Escriba %s.' % etiqueta
+                errores[campo] = falta
         datos['rfc'] = limpiar_rfc(datos['rfc'])
         if not RE_RFC.match(datos['rfc']):
             errores['rfc'] = 'El RFC no tiene el formato correcto (12 o 13 caracteres).'

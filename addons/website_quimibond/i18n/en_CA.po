@@ -25,6 +25,11 @@ msgid "9001, 14001 y 45001 certificadas"
 msgstr "9001, 14001 and 45001 certified"
 
 #. module: website_quimibond
+#: model_terms:ir.ui.view,arch_db:website_quimibond.compradores
+msgid "<i class=\"fa fa-download\" aria-hidden=\"true\"/> Descargar certificado"
+msgstr "<i class=\"fa fa-download\" aria-hidden=\"true\"/> Download certificate"
+
+#. module: website_quimibond
 #: model_terms:ir.ui.view,arch_db:website_quimibond.header
 msgid "<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> Agendar llamada"
 msgstr "<i class=\"fa fa-calendar\" aria-hidden=\"true\"/> Schedule a call"

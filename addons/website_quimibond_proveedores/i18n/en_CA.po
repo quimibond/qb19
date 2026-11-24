@@ -1,0 +1,570 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Language: en_CA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "(opcional)"
+msgstr "(optional)"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<option value=\"\">Seleccione…</option>"
+msgstr "<option value=\"\">Select…</option>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid ""
+"<small>Sus datos y documentos solo los ve el equipo de Compras de "
+"Quimibond.</small>"
+msgstr ""
+"<small>Only Quimibond's Purchasing team sees your information and "
+"documents.</small>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Compromisos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Commitments</span>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Cómo funciona</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">How it works</span>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "<span class=\"qb-eyebrow qb-reveal\">Requisitos</span>"
+msgstr "<span class=\"qb-eyebrow qb-reveal\">Requirements</span>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-eyebrow\">Proveedores</span>"
+msgstr "<span class=\"qb-eyebrow\">Suppliers</span>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-mono qb-num\">01</span> Su empresa"
+msgstr "<span class=\"qb-mono qb-num\">01</span> Your company"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-mono qb-num\">02</span> Contacto"
+msgstr "<span class=\"qb-mono qb-num\">02</span> Contact"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-mono qb-num\">03</span> Cuenta para pagos"
+msgstr "<span class=\"qb-mono qb-num\">03</span> Bank account for payments"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-mono qb-num\">04</span> Documentos"
+msgstr "<span class=\"qb-mono qb-num\">04</span> Documents"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "<span class=\"qb-mono qb-num\">05</span> Compromisos del proveedor"
+msgstr "<span class=\"qb-mono qb-num\">05</span> Supplier commitments"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid ""
+"<span>Acepto estos compromisos y confirmo que la información y los "
+"documentos son verídicos.</span>"
+msgstr ""
+"<span>I accept these commitments and confirm that the information and "
+"documents are true.</span>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Alta de proveedor"
+msgstr "Supplier registration"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Banco"
+msgstr "Bank"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "CLABE (18 dígitos)"
+msgstr "CLABE (18 digits)"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Ciudad y estado"
+msgstr "City and state"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_gracias
+msgid "Compras revisará sus datos y documentos y le responderá por correo."
+msgstr ""
+"Purchasing will review your information and documents and reply by email."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Correo"
+msgstr "Email"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Darme de alta"
+msgstr "Register as a supplier"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Darme de alta <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr ""
+"Register as a supplier <i class=\"fa fa-long-arrow-right\" aria-"
+"hidden=\"true\"/>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "De la orden de compra al pago, en un solo lugar"
+msgstr "From purchase order to payment, in one place"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid ""
+"Dese de alta en línea, reciba sus órdenes de compra, suba su factura y vea "
+"su fecha de pago, sin correos de ida y vuelta."
+msgstr ""
+"Register online, receive your purchase orders, upload your invoice and see "
+"your payment date, without emails back and forth."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Dólares"
+msgstr "US dollars"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "El alta toma unos diez minutos si tiene sus documentos a la mano."
+msgstr ""
+"Registration takes about ten minutes if you have your documents at hand."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "En PDF, JPG o PNG, de hasta 5 MB cada uno."
+msgstr "In PDF, JPG or PNG, up to 5 MB each."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Enviar solicitud <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+msgstr "Send request <i class=\"fa fa-long-arrow-right\" aria-hidden=\"true\"/>"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_gracias
+msgid "Ir al inicio"
+msgstr "Go to home"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid ""
+"La consulta en su portal con lo pedido, la fecha de entrega esperada y lo "
+"que ya recibimos."
+msgstr ""
+"You see it in your portal with what was ordered, the expected delivery date "
+"and what we have already received."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid ""
+"Llena un formulario con sus datos y documentos fiscales. Compras lo revisa y"
+" le confirma por correo."
+msgstr ""
+"You fill in a form with your information and tax documents. Purchasing "
+"reviews it and confirms by email."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid ""
+"Llene sus datos y adjunte sus documentos. Compras revisa la solicitud y le "
+"responde por correo."
+msgstr ""
+"Fill in your information and attach your documents. Purchasing reviews the "
+"request and replies by email."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Lo que esperamos de un proveedor"
+msgstr "What we expect from a supplier"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Lo que le pedimos para el alta"
+msgstr "What we ask for to register"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Moneda de la cuenta"
+msgstr "Account currency"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "No llene este campo"
+msgstr "Do not fill in this field"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Nombre"
+msgstr "Name"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Pesos"
+msgstr "Mexican pesos"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Productos o servicios"
+msgstr "Products or services"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Proveedores"
+msgstr "Suppliers"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Puesto"
+msgstr "Job title"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Qué vende, marcas que representa, capacidad…"
+msgstr "What you sell, brands you represent, capacity…"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "RFC"
+msgstr "RFC (Mexican tax ID)"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Razón social"
+msgstr "Legal name"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Recibe su orden de compra"
+msgstr "You receive your purchase order"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_gracias
+msgid "Recibimos su solicitud"
+msgstr "We received your request"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Se da de alta"
+msgstr "You register"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Sea proveedor de Quimibond."
+msgstr "Become a Quimibond supplier."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid ""
+"Sube el PDF y el XML contra la orden. Ve si está en revisión, aprobada o "
+"pagada, y su fecha de pago."
+msgstr ""
+"You upload the PDF and XML against the order. You see whether it is under "
+"review, approved or paid, and your payment date."
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Sube su factura y cobra"
+msgstr "You upload your invoice and get paid"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Teléfono"
+msgstr "Phone"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "Titular de la cuenta"
+msgstr "Account holder"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_gracias
+msgid "Volver a Proveedores"
+msgstr "Back to Suppliers"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "Ya soy proveedor"
+msgstr "I am already a supplier"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores
+msgid "¿Listo para empezar?"
+msgstr "Ready to start?"
+
+#. module: website_quimibond_proveedores
+#: model_terms:ir.ui.view,arch_db:website_quimibond_proveedores.proveedores_alta
+msgid "¿Qué ofrece?<span class=\"s_website_form_mark\"> *</span>"
+msgstr "What do you offer?<span class=\"s_website_form_mark\"> *</span>"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Constancia de situación fiscal"
+msgstr "Tax status certificate (Constancia de situación fiscal)"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Opinión de cumplimiento del SAT (positiva)"
+msgstr "SAT compliance opinion (positive)"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Carátula del estado de cuenta bancario"
+msgstr "Bank statement cover page"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Certificados de calidad o de producto"
+msgstr "Quality or product certificates"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Con fecha de emisión de los últimos tres meses."
+msgstr "Issued within the last three months."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Opinión de cumplimiento"
+msgstr "Compliance opinion"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Positiva y vigente, emitida por el SAT."
+msgstr "Positive and current, issued by the SAT."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Carátula bancaria"
+msgstr "Bank statement cover page"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Del estado de cuenta, a nombre de la razón social, con la CLABE."
+msgstr ""
+"From the bank statement, in the legal name of the company, showing the "
+"CLABE."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Certificados"
+msgstr "Certificates"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "De calidad, ambientales o de producto, si los tiene."
+msgstr "Quality, environmental or product certificates, if you have them."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid ""
+"Cumplir con sus obligaciones fiscales, laborales y de seguridad social."
+msgstr "Comply with your tax, labor and social security obligations."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid ""
+"Entregar lo que se pide en la orden de compra, en la fecha y con la calidad "
+"acordadas."
+msgstr ""
+"Deliver what the purchase order asks for, on the agreed date and with the "
+"agreed quality."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Facturar solo contra una orden de compra y lo efectivamente recibido."
+msgstr "Invoice only against a purchase order and what was actually received."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid ""
+"Cuidar la seguridad de las personas y el medio ambiente dentro de nuestra "
+"planta."
+msgstr "Look after the safety of people and the environment inside our plant."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Tratar como confidencial la información que reciba de Quimibond."
+msgstr "Treat the information you receive from Quimibond as confidential."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "No ofrecer regalos ni pagos al personal de Quimibond."
+msgstr "Do not offer gifts or payments to Quimibond staff."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Hilos y fibras"
+msgstr "Yarns and fibers"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Químicos y colorantes"
+msgstr "Chemicals and dyes"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Refacciones y mantenimiento"
+msgstr "Spare parts and maintenance"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Empaque"
+msgstr "Packaging"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Transporte y logística"
+msgstr "Transport and logistics"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Servicios"
+msgstr "Services"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Otro"
+msgstr "Other"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Proveedores | Quimibond"
+msgstr "Suppliers | Quimibond"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid ""
+"Cómo ser proveedor de Quimibond: requisitos, alta en línea y portal para "
+"consultar órdenes de compra, subir facturas y ver fechas de pago."
+msgstr ""
+"How to become a Quimibond supplier: requirements, online registration and a "
+"portal to check purchase orders, upload invoices and see payment dates."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Alta de proveedor | Quimibond"
+msgstr "Supplier registration | Quimibond"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Solicitud recibida | Quimibond"
+msgstr "Request received | Quimibond"
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Escriba la razón social."
+msgstr "Enter the legal name."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Escriba el nombre del contacto."
+msgstr "Enter the contact name."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "El RFC no tiene el formato correcto (12 o 13 caracteres)."
+msgstr "The RFC does not have the right format (12 or 13 characters)."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Escriba un correo válido."
+msgstr "Enter a valid email."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Elija qué ofrece."
+msgstr "Choose what you offer."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "La CLABE debe tener 18 dígitos. Revise que esté bien escrita."
+msgstr "The CLABE must have 18 digits. Check that it is written correctly."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Marque la casilla para aceptar los compromisos del proveedor."
+msgstr "Check the box to accept the supplier commitments."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Falta este documento."
+msgstr "This document is missing."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "El archivo pesa más de 5 MB."
+msgstr "The file is larger than 5 MB."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Suba el documento en PDF, JPG o PNG."
+msgstr "Upload the document in PDF, JPG or PNG."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid ""
+"No pudimos recibir su solicitud en este momento. Intente de nuevo más tarde."
+msgstr "We could not receive your request right now. Please try again later."
+
+#. module: website_quimibond_proveedores
+#. odoo-python
+#: code:addons/website_quimibond_proveedores/controllers/alta.py:0
+msgid "Revise los campos marcados. Los documentos hay que elegirlos de nuevo."
+msgstr "Check the marked fields. The documents must be selected again."

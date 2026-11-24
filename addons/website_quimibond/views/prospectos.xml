@@ -151,6 +151,9 @@
                                     <h3 t-out="c['sistema']"/>
                                     <p t-out="c['desde']"/>
                                     <p t-if="c['detalle']" class="qb-mono qb-cert__num" t-out="c['detalle']"/>
+                                    <a t-if="c['pdf']" t-attf-href="/website_quimibond/static/src/doc/#{c['pdf']}" class="qb-btn qb-btn--contorno qb-cert__pdf" target="_blank" data-qb-evento="descarga_certificado" t-att-data-qb-detalle="c['norma']">
+                                        <i class="fa fa-download" aria-hidden="true"/> Descargar certificado
+                                    </a>
                                 </div>
                             </t>
                         </div>
