@@ -26,8 +26,9 @@ from collections import OrderedDict, defaultdict
 from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
-from odoo import api, fields, models
+from odoo import api, fields, models, tools
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.sql import table_exists
 
 from .qb_forecast import MARKETS
 from .qb_sales_close import MONTH_NAMES
@@ -66,6 +67,12 @@ class QbSalesMonthPlan(models.Model):
     amount_proyectos = fields.Monetary(string="Proyectos", compute='_compute_totals', store=True)
     amount_by_mercado_text = fields.Char(string="Por mercado", compute='_compute_totals', store=True)
     no_price_count = fields.Integer(string="Renglones que cuentan 0", compute='_compute_totals', store=True)
+    # 3.35.0 (Jose, 24-nov): el mes contra lo que el presupuesto anual decía para ese mes, por mercado.
+    compare_ids = fields.One2many('qb.sales.month.plan.compare', 'plan_id', string="Contra el anual",
+                                  readonly=True)
+    amount_annual = fields.Monetary(string="Presupuesto anual del mes", compute='_compute_annual',
+                                    help="Lo que el presupuesto anual aprobado del año trae para este mes.")
+    amount_annual_diff = fields.Monetary(string="Diferencia contra el anual", compute='_compute_annual')
 
     _company_month_uniq = models.Constraint(
         'unique (company_id, month)', "Ya hay un presupuesto de ese mes en la compañía.")
@@ -91,6 +98,17 @@ class QbSalesMonthPlan(models.Model):
                 for k, v in sorted(by_mercado.items(), key=lambda kv: [m for m, _l in MARKETS].index(kv[0])
                                    if kv[0] in labels else 99) if v)
             plan.no_price_count = len(plan.line_ids.filtered('price_problem'))
+
+    @api.depends('company_id', 'month', 'amount_total')
+    def _compute_annual(self):
+        """El presupuesto anual aprobado vigente del año (no el que había al armar: si después se
+        aprueba otra revisión, el mes se compara contra esa)."""
+        for plan in self:
+            budget = plan.month and plan._qb_annual_budget(plan.company_id, plan.month)
+            lines = budget.line_ids.filtered(lambda l, m=plan.month: l.date and l.date.replace(day=1) == m) \
+                if budget else self.env['sgi.sales.budget.line']
+            plan.amount_annual = sum(lines.mapped('amount_budget'))
+            plan.amount_annual_diff = plan.amount_total - plan.amount_annual
 
     @api.constrains('month')
     def _check_month(self):
@@ -346,10 +364,13 @@ class QbSalesMonthPlan(models.Model):
         attachment = self._qb_pdf_attachment()
         self.write({'state': 'enviado', 'sent_date': fields.Datetime.now(), 'sent_by_id': self.env.uid})
         fmt = '{:,.0f}'.format
-        body = Markup("<p>%s: total %s %s (productos de línea %s; proyectos %s).</p><p>%s</p>"
+        annual = ("Presupuesto anual del mes: %s (diferencia %s)." % (
+            fmt(self.amount_annual), fmt(self.amount_annual_diff))
+            if self.amount_annual else "Sin presupuesto anual aprobado para este mes.")
+        body = Markup("<p>%s: total %s %s (productos de línea %s; proyectos %s).</p><p>%s</p><p>%s</p>"
                       "<p>Detalle en el PDF adjunto (F-P-A28-14).</p>") % (
             self.name, fmt(self.amount_total), self.currency_id.name or '', fmt(self.amount_linea),
-            fmt(self.amount_proyectos), self.amount_by_mercado_text or '')
+            fmt(self.amount_proyectos), self.amount_by_mercado_text or '', annual)
         return {
             'type': 'ir.actions.act_window', 'res_model': 'mail.compose.message', 'view_mode': 'form',
             'target': 'new',
@@ -500,3 +521,57 @@ class QbSalesMonthPlanBuild(models.TransientModel):
         plan.action_qb_build()
         return {'type': 'ir.actions.act_window', 'res_model': Plan._name, 'res_id': plan.id,
                 'view_mode': 'form', 'target': 'current'}
+
+
+class QbSalesMonthPlanCompare(models.Model):
+    """3.35.0 (Jose, 24-nov: «del presupuesto anual sale el mensual?»): por mercado, lo que el
+    presupuesto del mes trae contra lo que el presupuesto anual aprobado decía para ese mes. Las
+    cantidades del mes salen del pronóstico; el anual solo pone precio y tipo de cambio, así que
+    aquí se ve cuánto se aleja el mes del año."""
+    _name = 'qb.sales.month.plan.compare'
+    _description = "Presupuesto del mes contra el anual, por mercado"
+    _auto = False
+    _order = 'plan_id, mercado'
+
+    plan_id = fields.Many2one('qb.sales.month.plan', string="Presupuesto del mes", readonly=True)
+    company_id = fields.Many2one('res.company', string="Compañía", readonly=True)
+    currency_id = fields.Many2one('res.currency', string="Moneda", readonly=True)
+    mercado = fields.Selection(MARKETS, string="Mercado", readonly=True)
+    amount_plan = fields.Monetary(string="Importe del mes", readonly=True)
+    amount_annual = fields.Monetary(string="Presupuesto anual del mes", readonly=True)
+    amount_diff = fields.Monetary(string="Diferencia", readonly=True,
+                                  help="Presupuesto del mes menos lo que el anual traía para el mes.")
+    diff_pct = fields.Float(string="Diferencia %", readonly=True, digits=(16, 1), aggregator=None)
+
+    def init(self):
+        tools.drop_view_if_exists(self.env.cr, self._table)
+        if not (table_exists(self.env.cr, 'qb_sales_month_plan_line')
+                and table_exists(self.env.cr, 'sgi_sales_budget_line')):
+            return
+        self.env.cr.execute("""
+            CREATE OR REPLACE VIEW %s AS (
+                SELECT row_number() OVER (ORDER BY x.plan_id, x.mercado) AS id,
+                       x.plan_id, p.company_id, c.currency_id, x.mercado,
+                       SUM(x.amount_plan) AS amount_plan,
+                       SUM(x.amount_annual) AS amount_annual,
+                       SUM(x.amount_plan) - SUM(x.amount_annual) AS amount_diff,
+                       CASE WHEN SUM(x.amount_annual) <> 0
+                            THEN (SUM(x.amount_plan) - SUM(x.amount_annual)) / SUM(x.amount_annual) * 100
+                       END AS diff_pct
+                  FROM (
+                        SELECT pl.plan_id, COALESCE(pl.mercado, 'otro') AS mercado,
+                               COALESCE(pl.amount, 0) AS amount_plan, 0.0 AS amount_annual
+                          FROM qb_sales_month_plan_line pl
+                        UNION ALL
+                        SELECT mp.id, COALESCE(bl.mercado, 'otro'), 0.0, COALESCE(bl.amount_budget, 0)
+                          FROM qb_sales_month_plan mp
+                          JOIN sgi_sales_budget b ON b.company_id = mp.company_id AND b.kind = 'presupuesto'
+                               AND b.state = 'aprobado' AND b.year = EXTRACT(YEAR FROM mp.month)::int
+                          JOIN sgi_sales_budget_line bl ON bl.budget_id = b.id
+                               AND date_trunc('month', bl.date)::date = mp.month
+                       ) x
+                  JOIN qb_sales_month_plan p ON p.id = x.plan_id
+                  JOIN res_company c ON c.id = p.company_id
+                 GROUP BY x.plan_id, p.company_id, c.currency_id, x.mercado
+                HAVING SUM(x.amount_plan) <> 0 OR SUM(x.amount_annual) <> 0
+            )""" % self._table)
