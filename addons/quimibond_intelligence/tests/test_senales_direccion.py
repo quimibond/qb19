@@ -23,7 +23,3 @@ class TestSenalesDireccion(SenalesCommon):
         self.assertEqual([d['id'] for d in zombie['documentos']], [z.id])
         self.assertEqual(zombie['payload']['fecha_base'], str(self.hace(200)))
         self.assertEqual(viva['payload']['grupo'], 'vivas')
-
-    def test_obligacion_legado_lote_vacio(self):
-        # qb_obligation se retiró: la señal manda un lote vacío para resolver lo que quedó en Supabase.
-        self.assertEqual(self.filas('obligacion_legado'), [])

@@ -17,7 +17,7 @@ class TestSenalesBase(TransactionCase):
             'sat_discrepancia', 'sat_complemento', 'sat_extraccion_detenida', 'nomina_borrador', 'cash_bajo_piso', 'indicador_financiero_rojo',
             'indicador_rojo', 'accion_correctiva_vencida', 'nc_abierta', 'calibracion_vencida', 'legal_incumplido', 'riesgo_sin_tratar', 'ppap_rechazado', 'auditoria_pendiente', 'fuente_sgi_apagada',
             'aprobacion_rh', 'evaluacion_vencida', 'ticket_abierto',
-            'carga_actividades', 'firma_pendiente', 'acuse_documento', 'acuerdo_direccion_vencido', 'obligacion_legado',
+            'carga_actividades', 'firma_pendiente', 'acuse_documento', 'acuerdo_direccion_vencido',
         }
         self.assertEqual(esperadas - set(base.REGISTRO), set(), 'señales del catálogo sin consulta')
 

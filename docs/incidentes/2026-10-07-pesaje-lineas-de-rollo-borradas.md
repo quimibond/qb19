@@ -37,7 +37,7 @@ terminado (`action_register_roll_with_weight` y `button_mark_done`) van con
 
 ## Recuperación
 
-`tools/pesaje_recuperar_lineas_rollos.py` en `odoo-shell` de producción:
+`docs/historico/tools/pesaje_recuperar_lineas_rollos.py` (antes en `tools/`; ya se corrió el 2026-10-07) en `odoo-shell` de producción:
 `detectar(env)` lista las OFs con rollos sin línea; `recuperar(env, [...])`
 recrea las líneas desde el Historial de Pesaje (en seco por defecto,
 `aplicar=True` confirma); `desarmar(env)` deja la demanda en 0 con el contexto
