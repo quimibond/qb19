@@ -172,12 +172,12 @@ class FichaTecnicaRevision(models.Model):
                                        ' ni '.join(faltan))))
         if acabado.rendimiento_por_revisar and acabado.rendimiento_medido:
             # 2.28.0: lo medido se aleja de la ficha más que la alerta. La ficha no cambia sola: Ingeniería lo usa
-            # («Usar el medido») o se queda con el de la ficha («Marcar revisado»).
+            # («Usar el medido») o se queda con el de la ficha («Dejar el de la ficha»).
             fuentes = dict(acabado._fields['rendimiento_medido_fuente']._description_selection(acabado.env))
             ficha_r = acabado.rendimiento_tela_acabada
             pendientes.append(dict(ing, tipo='rendimiento_cambio', detalle='Lo fabricado da %.4f m/kg (%s, %s muestras) '
-                                   'contra %.4f de la ficha (%+.1f %%). En la ficha: «Usar el medido» o «Marcar '
-                                   'revisado».' % (
+                                   'contra %.4f de la ficha (%+.1f %%). Úselo («Usar el medido») o quédese '
+                                   'con el de la ficha («Dejar el de la ficha»).' % (
                                        acabado.rendimiento_medido,
                                        (fuentes.get(acabado.rendimiento_medido_fuente) or '').lower(),
                                        acabado.rendimiento_medido_ordenes, ficha_r,
@@ -237,15 +237,18 @@ class FichaTecnicaRevision(models.Model):
                                            cual, 'Fabricación Tela en kg' if cual == 'kg' else 'Fabricación Tela en m')))
         # 2.25.0 (piloto 2026-11-04): en la lista «Flujo en kg», el desperdicio que pesa Rama y, ya activa, la ruta MTO
         # del «I…» (sin ella la orden en metros no pide la orden en kg).
-        from .ruta_familia import CODIGO_KG, DESPERDICIO_CODIGO  # local: ruta_familia se carga después
+        from .ruta_familia import CODIGO_KG, DESPERDICIOS_RAMA  # local: ruta_familia se carga después
         if bom_kg and bom_kg.code == CODIGO_KG:
             Ruta = self.env['ficha.tecnica.ruta']
             con_rama = bom_kg.with_context(active_test=False).operation_ids.filtered(
                 lambda o: Ruta._ft_paso_de_operacion(o) == 'rama')
-            if con_rama and not bom_kg.byproduct_ids.filtered(lambda b: b.product_id.default_code == DESPERDICIO_CODIGO):
-                pendientes.append(dict(ing, tipo='desperdicio', bom_id=bom_kg.id, detalle='La lista en kg no tiene el '
-                                       'subproducto «%s» en la Rama: Rama no puede pesar el desperdicio.' % (
-                                           DESPERDICIO_CODIGO)))
+            # 2.29.1: Rama pesa dos subproductos (Desperdicio Tejido y Desperdicio Orillas).
+            faltan = [codigo for codigo in DESPERDICIOS_RAMA
+                      if not bom_kg.byproduct_ids.filtered(lambda b, codigo=codigo: b.product_id.default_code == codigo)]
+            if con_rama and faltan:
+                pendientes.append(dict(ing, tipo='desperdicio', bom_id=bom_kg.id, detalle='La lista en kg no tiene '
+                                       'el subproducto %s en la Rama: Rama no puede pesar el desperdicio.' % (
+                                           ', '.join('«%s»' % codigo for codigo in faltan))))
             ruta = self.env['mrp.bom']._ft_ruta_mto_kg(bom_kg.company_id or None)
             if bom_kg.active and ruta and ruta not in bom_kg.product_tmpl_id.route_ids:
                 pendientes.append(dict(ing, tipo='ruta_mto', bom_id=bom_kg.id, detalle='%s no tiene la ruta «%s»: la '
@@ -349,3 +352,16 @@ class FichaTecnicaRevisionPendiente(models.Model):
             return self._ft_abrir(self.bom_id)
         # Sin acabado en kg, sin listas, ficha sin peso o rendimiento: la ficha de acabado («Generar listas» vive ahí).
         return self._ft_abrir(acabado, 'Ficha de acabado')
+
+    # 2.32.0: el pendiente del rendimiento se decide ahí mismo, en la pestaña del producto, sin ir a la ficha.
+    def action_ft_usar_medido(self):
+        acabados = self.filtered(lambda p: p.tipo == 'rendimiento_cambio').revision_id.acabado_id
+        acabados.action_ft_usar_rendimiento_medido()
+        self.env['ficha.tecnica.revision']._ft_actualizar(acabados)
+        return True
+
+    def action_ft_dejar_ficha(self):
+        acabados = self.filtered(lambda p: p.tipo == 'rendimiento_cambio').revision_id.acabado_id
+        acabados.action_ft_rendimiento_revisado()
+        self.env['ficha.tecnica.revision']._ft_actualizar(acabados)
+        return True

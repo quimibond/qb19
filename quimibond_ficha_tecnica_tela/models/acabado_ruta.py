@@ -213,6 +213,13 @@ class FichaTecnicaAcabadoRuta(models.Model):
         return {'type': 'ir.actions.act_window', 'name': 'Lista de materiales', 'res_model': 'mrp.bom',
                 'view_mode': 'form', 'res_id': self.bom_id.id}
 
+    def action_ft_ver_producto(self):
+        """2.32.0: botón «Producto» de la ficha: regresa a la tela (su pestaña «Ficha técnica»)."""
+        self.ensure_one()
+        tmpl = self.product_acabado_id.product_tmpl_id
+        return {'type': 'ir.actions.act_window', 'name': tmpl.display_name, 'res_model': 'product.template',
+                'view_mode': 'form', 'res_id': tmpl.id}
+
 
 class MrpRoutingWorkcenterFicha(models.Model):
     _inherit = 'mrp.routing.workcenter'

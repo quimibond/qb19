@@ -127,7 +127,7 @@ class TestRendimientoReal(TiempoFichaCase):
         pendiente = revision.pendiente_ids.filtered(lambda p: p.tipo == 'rendimiento_cambio')
         self.assertEqual(pendiente.area, 'ingenieria')
         self.assertIn('+12.5 %', pendiente.detalle)
-        # «Marcar revisado»: se queda el de la ficha.
+        # «Dejar el de la ficha» (antes «Marcar revisado»): se queda el de la ficha.
         self.acabado.action_ft_rendimiento_revisado()
         self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.0)
         revision = Revision._ft_actualizar(self.acabado)
@@ -137,6 +137,24 @@ class TestRendimientoReal(TiempoFichaCase):
         self.assertEqual((self.acabado.rendimiento_tela_acabada, self.acabado.rendimiento_fuente,
                           self.acabado.rendimiento_anterior, self.acabado.rendimiento_medido_estado),
                          (9.0, 'terminado', 8.0, 'igual'))
+
+    def test_08b_el_rendimiento_se_decide_desde_el_pendiente(self):
+        """2.32.0: en la pestaña del producto, el pendiente del rendimiento trae «Usar el medido» y «Dejar el de la
+        ficha»; cada uno decide y vuelve a revisar la tela."""
+        Revision = self.env['ficha.tecnica.revision']
+        with self._con_terminado({self.acabado: (9000.0, 1000.0, 3)}):
+            self.acabado._ft_actualizar_rendimiento_real()
+        pendiente = Revision._ft_actualizar(self.acabado).pendiente_ids.filtered(
+            lambda p: p.tipo == 'rendimiento_cambio')
+        pendiente.action_ft_dejar_ficha()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 8.0)
+        revision = Revision.search([('acabado_id', '=', self.acabado.id)])
+        self.assertFalse(revision.pendiente_ids.filtered(lambda p: p.tipo == 'rendimiento_cambio'))
+        self.acabado.rendimiento_por_revisar = True
+        pendiente = Revision._ft_actualizar(self.acabado).pendiente_ids.filtered(
+            lambda p: p.tipo == 'rendimiento_cambio')
+        pendiente.action_ft_usar_medido()
+        self.assertEqual(self.acabado.rendimiento_tela_acabada, 9.0)
 
     def test_09_cambio_chico_no_avisa(self):
         with self._con_terminado({self.acabado: (8200.0, 1000.0, 3)}):

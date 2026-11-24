@@ -128,6 +128,32 @@ class TestFichaProducto(TiempoFichaCase):
         self.assertEqual(tmpl.ft_estado, 'activa', "Activar la lista cuenta sin esperar a la revisión de la noche")
         self.assertIn(tmpl, Tmpl.search([('ft_estado', '=', 'activa')]))
 
+    def test_10b_boton_corregir_y_botones_inteligentes(self):
+        """2.32.0: «Corregir con la ficha» solo si hay pendientes que ese botón arregla; el botón «Pendientes» abre
+        los de la tela y el crudo cuenta sus fichas de tejido y sus telas."""
+        tmpl = self.tela_m.product_tmpl_id
+        self.assertFalse(tmpl.ft_puede_corregir)
+        tmpl.action_ft_revisar()
+        self.env.invalidate_all()
+        self.assertTrue(tmpl.ft_revision_fecha)
+        self.assertTrue(tmpl.ft_puede_corregir, tmpl.ft_pendiente_ids.mapped('tipo'))
+        accion = tmpl.action_ft_pendientes()
+        self.assertEqual(self.env[accion['res_model']].search(accion['domain']), tmpl.ft_pendiente_ids)
+        self.bom.action_archive()
+        tmpl.action_ft_datos_ficha()
+        self.env.invalidate_all()
+        self.assertFalse(tmpl.ft_puede_corregir)
+        crudo = self.crudo.product_tmpl_id
+        self.assertEqual((crudo.ft_tejido_n, crudo.ft_tela_n), (1, 1))
+        accion = crudo.action_ft_telas_del_crudo()
+        self.assertEqual(self.env[accion['res_model']].search(accion['domain']), self.acabado)
+
+    def test_10c_de_la_ficha_al_producto(self):
+        """2.32.0: el botón «Producto» de la ficha de acabado regresa a la tela."""
+        accion = self.acabado.action_ft_ver_producto()
+        self.assertEqual((accion['res_model'], accion['res_id']),
+                         ('product.template', self.tela_m.product_tmpl_id.id))
+
     def test_11_validaciones_de_la_ficha(self):
         """2.23.0: ficha de tejido sin rendimiento y ficha de acabado sin peso, avisadas a Ingeniería."""
         self.tejido.rendimiento_tela_tejida = 0

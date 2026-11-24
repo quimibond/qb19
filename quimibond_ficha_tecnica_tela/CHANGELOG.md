@@ -8,6 +8,48 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.32.1 — 2026-11-24
+
+- Solo sube la versión para que main vuelva a cargar el módulo. La 2.32.0 entró a main dos veces con la misma
+  versión; la segunda quitó `ft_estado_titulo` del código pero main no recargó la vista vieja, y la ficha del
+  producto reventaba al actualizar cualquier módulo que la hereda (build de main del 23-nov, 23:48 UTC, al cargar
+  `quimibond_ventas_presupuesto` 3.33.0). Sin cambios de código.
+
+## 19.0.2.32.0 — 2026-11-22 (José Sacramento; en qbtesting como 2.29.1)
+
+**Pestaña «Ficha técnica» del producto con la forma de las pantallas de Odoo (Jose, 2026-11-23: «muchos botones y no
+se entiende la lógica de navegación»; una primera versión con franja de estado y renglón «Ir a:» dentro de la pestaña
+no le gustó en main).** Antes eran siete botones iguales en una fila dentro de la pestaña. Ahora, como en una orden de
+fabricación: **cabecera** (el formulario de producto de Odoo 19 no trae; se agrega solo para telas y crudos) con
+«Corregir con la ficha» (antes «Usar los datos de la ficha»; solo si hay pendientes de tiempos, capacidad de jets o
+conversión, `ft_puede_corregir`), «Revisar» y, en un crudo, «Agregar circular»; **barra de etapas** con el estado
+(Sin revisar → Con pendientes → Lista para activar → Activa; «Activa con pendientes» aparece cuando lo está);
+**botones inteligentes** Pendientes (con número), Ficha de acabado, Crudo y Procesos, y en un crudo Fichas de tejido y
+Telas (con número); las listas, con el botón «Lista de materiales» de Odoo. **«Información general» vuelve a ser la
+primera pestaña**; «Ficha técnica» va después y trae solo datos: la tela y el crudo, y sub-pestañas Pendientes (con
+«Resolver», y «Usar el medido» / «Dejar el de la ficha» en el del rendimiento), Ruta y Especificación. Sin textos
+grises ni avisos de colores. «Generar listas desde la ruta» queda solo en la ficha de acabado. En la ficha de acabado:
+«Marcar revisado» pasa a «Dejar el de la ficha», se quita el botón «Lista de la ruta» (es una de las listas en
+metros) y se agrega **«Producto»** para regresar a la tela. Mismo nombre nuevo del botón en la revisión de listas y
+en la acción de la lista de materiales. Sin campos guardados nuevos ni datos que migrar. Pruebas:
+`test_ficha_producto.test_10b`, `test_10c` y `test_rendimiento_real.test_08b`.
+
+**Rama pesa dos desperdicios: Tejido y Orillas (Dirección, 2026-11-22).** Las listas en kg que genera la ficha traen
+los dos subproductos en la operación de Rama, con cantidad 0: «DESPERDICIO TEJIDO» (los lienzos o tela que se elimina
+durante el proceso) y «DESPERDICIO ORILLAS» (la orilla de la tela que se retira en la Rama). Antes solo traían el
+primero. Si falta alguno de los dos artículos, «Generar listas» avisa cuál; la revisión de listas marca la lista en
+kg que no trae alguno de los dos («Lista en kg sin desperdicio de Rama»). Pruebas `test_10` y `test_12`
+actualizadas. Las listas ya cargadas se completan con «Generar listas» o a mano en la pestaña Subproductos.
+
+## 19.0.2.31.1 — 2026-11-19
+
+**Lo mismo para fichas de acabado y procesos archivados.** Al aplicar 2.31.0 en producción (19-nov-2026) el filtro
+«Tiempo distinto de la ficha» marcó 10 operaciones de Rama con el rendimiento de una ficha de **acabado** archivada
+(con el contexto normal decían «Falta la ficha de acabado»); «Usar los datos de la ficha» lo habría escrito. Ahora
+los dos usan `active_test=False` solo para alcanzar las operaciones de listas archivadas y calculan con el contexto
+normal, y la ficha de acabado del proceso y el proceso de la operación salen siempre de los activos. Prueba:
+`test_tiempo_ficha.test_09`.
+
 ## 19.0.2.31.0 — 2026-11-19
 
 **«Usar los datos de la ficha» y el filtro «Tiempo distinto de la ficha» ya no leen fichas de tejido archivadas**
