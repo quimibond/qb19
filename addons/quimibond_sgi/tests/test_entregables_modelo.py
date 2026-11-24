@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 """57.65.0 — modelo de Odoo en los entregables evidentes (post-migrate): solo
 lo vacío, respeta lo capturado y lo que ya mide, idempotente."""
-import importlib.util
-import os
 
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_deliverable_models import SGI_DELIVERABLE_MODELS
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 @tagged('post_install', '-at_install')
 class TestEntregablesModelo(TransactionCase):
@@ -50,11 +45,3 @@ class TestEntregablesModelo(TransactionCase):
         self.assertEqual(len(codes), len(set(codes)), "Código repetido en la tabla.")
         for code, model_name in SGI_DELIVERABLE_MODELS:
             self.assertIn(model_name, self.env, "%s: modelo %s." % (code, model_name))
-
-    def test_03_post_migrate_corre(self):
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.65.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_65_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        module.migrate(self.env.cr, '19.0.57.64.0')
-        self.assertEqual(self.env['sgi.deliverable']._sgi_fill_evident_models(), {})

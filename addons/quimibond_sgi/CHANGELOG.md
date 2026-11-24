@@ -14,6 +14,13 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.2 — 2026-11-24
+
+Limpieza de pruebas para aligerar el build de Odoo.sh (pedido de Jose del 24-nov-2026). Solo pruebas: el módulo no cambia.
+
+### Retirado
+- 18 pruebas que corrían scripts `pre-migrate`/`post-migrate` de versiones por las que producción ya pasó (56.31.0 a 57.162.0; producción está en 57.201.0), en `test_clausulas_revision`, `test_entregables_modelo`, `test_format_map_operaciones`, `test_formatos_bloque3`, `test_indicadores_sin_dato`, `test_integridad_metas`, `test_legacy_routine`, `test_menus_capitulos`, `test_menus_entregables`, `test_miid`, `test_miid_pantalla`, `test_procesos_viejos`, `test_replaced_by_process`, `test_salud_sgi` y `test_sst_links`. Los scripts se quedan en `migrations/`; lo que siguen sembrando o corrigiendo lo prueban las demás pruebas de cada archivo.
+
 ## 19.0.57.202.1 — 2026-11-24
 
 Tres pruebas que fallaban en el build completo de Odoo.sh (rama de fichas, 24-nov-2026). Solo pruebas: el módulo no cambia.

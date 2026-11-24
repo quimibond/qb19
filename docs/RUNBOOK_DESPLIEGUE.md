@@ -251,7 +251,10 @@ llaves de 30 días, más una que entra como `admin`/`admin`. No es falla del
 código ni se corrige subiendo la duración de las llaves en producción (el
 límite de 1 día es el seguro, auditoría F-001). El módulo
 `qb_mcp_politica` (candado del MCP en código) se retiró del repo el
-2026-10-22: nunca se instaló en producción.
+2026-10-22: nunca se instaló en producción. Desde el 2026-11-24 la carpeta
+`mcp_server/tests/` (424 pruebas del proveedor, casi todas HTTP) ya no está en
+el repo, para aligerar los builds de Odoo.sh; si se actualiza el módulo desde
+el proveedor, no vuelvas a subir esa carpeta.
 
 Las pruebas propias deben pasar también sobre la copia de producción: no
 crear datos que choquen con los reales (referencias de empleado únicas como

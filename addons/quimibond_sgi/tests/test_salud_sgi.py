@@ -7,8 +7,6 @@ proceso; correo semanal a Dirección. Las mediciones de salud no piden
 validación, ni causa y plan, ni avisan «no calculó». La base del build es
 copia de producción: cada prueba mide la diferencia que causa lo que siembra,
 nunca un total."""
-import importlib.util
-import os
 import re
 import time
 from datetime import date, timedelta
@@ -22,9 +20,6 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 from .common_documents import sgi_hide_real_documents, sgi_new_company
 from .common_users import sgi_set_director, sgi_set_mast
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_PRE_MIGRATE = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.99.0', 'pre-migrate.py')
 
 USER = 'base.group_user,quimibond_sgi.group_sgi_user'
 MODULE = 'quimibond_sgi.'
@@ -44,15 +39,6 @@ CRON_XMLID = MODULE + 'sgi_cron_health_weekly'
 TEMPLATE_XMLID = MODULE + 'mail_template_sgi_health_weekly'
 EXCLUDED_PARAM = 'quimibond_sgi.health_excluded_user_ids'
 MAIL_PARAM = 'quimibond_sgi.health_mail_user_ids'
-
-
-def _load_pre_migrate():
-    """Se carga dentro de la prueba: un archivo que falta no debe romper la
-    carga de todo el paquete de pruebas."""
-    spec = importlib.util.spec_from_file_location('sgi_mig_57_99_0', _PRE_MIGRATE)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def _note_count(note, label):
@@ -463,22 +449,6 @@ class TestSaludSgi(TransactionCase):
         self.assertTrue(mine.health_indicator_ids.mapped('sgi_health_week_value'))
 
     # ---- 4. migración, correo y cron -------------------------------------------
-    def test_14_pre_migrate_solo_liga(self):
-        mig = _load_pre_migrate()
-        sg10 = self.ind['SG-10']
-        self.env.flush_all()
-        self.env.cr.execute(
-            "DELETE FROM ir_model_data WHERE module = 'quimibond_sgi' AND name = 'sgi_ind_salud_formatos'")
-        self.env.registry.clear_cache()
-        self.assertFalse(self.env.ref(XMLIDS['SG-10'], raise_if_not_found=False))
-        self.assertEqual(mig._bind_existing(self.env.cr), 1)
-        self.env.registry.clear_cache()
-        self.assertEqual(self.env.ref(XMLIDS['SG-10']), sg10)
-        self.assertEqual(self.Indicator.with_context(active_test=False).search_count(
-            [('code', '=', 'SG-10')]), 1, "No crea indicadores.")
-        self.assertEqual(mig._bind_existing(self.env.cr), 0, "Idempotente.")
-        mig.migrate(self.env.cr, None)  # instalación nueva: no hace nada
-
     def test_15_correo_semanal_a_direccion(self):
         director = sgi_set_director(self.env, login='zsa_direccion_15')
         director.write({'email': 'salud.direccion@example.com'})

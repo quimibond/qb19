@@ -8,8 +8,6 @@ reales se ocultan con ``sgi_hide_real_documents``) y les pasa sus propias
 tablas a los métodos, así que corren igual en una base nueva y en una copia
 de producción."""
 import ast
-import importlib.util
-import os
 
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
@@ -17,17 +15,6 @@ from odoo.tests.common import new_test_user
 from ..models.sgi_formatos_bloque3 import (
     SGI_B3_LINKS, SGI_B3_MERGES, SGI_B3_ODOO_FORMS, SGI_B3_RECODE, SGI_B3_UNCONTROL)
 from .common_documents import sgi_hide_real_documents, sgi_neutralize_dropbox_contradictions, sgi_new_company
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _run_migration(env, version):
-    path = os.path.join(_MODULE_DIR, 'migrations', version, 'post-migrate.py')
-    spec = importlib.util.spec_from_file_location('sgi_mig_%s' % version.replace('.', '_'), path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    module.migrate(env.cr, '19.0.57.81.0')
-
 
 class _Bloque3Common(TransactionCase):
 
@@ -231,17 +218,6 @@ class TestBloque3DatosMalos(_Bloque3Common):
         self.assertEqual(self.Doc._sgi_b3_register_odoo_forms((spec,), company=self.company), {},
                          "Idempotente: la clave ya existe.")
 
-    def test_04_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.82.0')
-        # Idempotente: la segunda corrida no cambia nada.
-        again = self.Doc._sgi_formatos_bloque3()
-        self.assertEqual(again['merges'], {})
-        self.assertEqual(again['links'], {})
-        self.assertEqual(again['uncontrol'], {})
-        self.assertEqual(again['recode'], {})
-        self.assertEqual(again['forms'], {})
-
-
 @tagged('post_install', '-at_install')
 class TestBloque3Responsable(_Bloque3Common):
 
@@ -295,12 +271,6 @@ class TestBloque3Responsable(_Bloque3Common):
             self.assertEqual(doc.sgi_owner_id, self.mast)
         again = self.Doc._sgi_owner_from_process(company=self.company, ids=self.mine.ids)
         self.assertEqual(again['changed'], {}, "Idempotente.")
-
-    def test_03_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.83.0')
-        self.assertEqual(self.f_ok.sgi_owner_id, self.owner_user)
-        self.assertEqual(self.f_nouser.sgi_owner_id, self.mast)
-
 
 @tagged('post_install', '-at_install')
 class TestBloque3ClaveD02(_Bloque3Common):
@@ -433,8 +403,3 @@ class TestBloque3ClaveD02(_Bloque3Common):
         self._apply()
         self.assertEqual(act.format_document_ids, self.f1 | self.fit)
         self.assertEqual(sorted(act.format_document_ids.mapped('sgi_code')), ['F-XB9-01', 'F-XB9-02'])
-
-    def test_05_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.84.0')
-        self.assertTrue(self.f1.sgi_code.startswith('F-XB9-'))
-        self.assertEqual(self.f1.sgi_previous_code, 'F-P-A88-01')

@@ -3,10 +3,6 @@
 verdad (decisión 3 de Jose; C-001, C-002, C-014, C-015, D-017, L-003, L-005).
 Pruebas P-T1…P-T7 de 03-modelo.md y P-L8/P-L9 de 12-transicion.md (P-T7 y
 P-L8 también en test_cleanup_45)."""
-import importlib.util
-import json
-import base64
-import os
 
 from odoo import Command
 from odoo.exceptions import AccessError, ValidationError
@@ -15,17 +11,6 @@ from odoo.tools import mute_logger
 
 from .common_documents import sgi_hide_real_documents
 from .common_users import sgi_test_user
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _load_migration(version, name):
-    path = os.path.join(_MODULE_DIR, 'migrations', version, name)
-    spec = importlib.util.spec_from_file_location('sgi_mig_%s' % version.replace('.', '_'), path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 @tagged('post_install', '-at_install')
 class TestReplacedByProcess(TransactionCase):
@@ -141,33 +126,6 @@ class TestReplacedByProcess(TransactionCase):
         self.assertEqual(doc.sgi_replaced_by_process_id, self.p1)
 
     # P-T6 (L-003)
-    def test_t6_premigracion_respalda_y_no_copia(self):
-        cr = self.env.cr
-        doc_both = self._doc('P-A92')
-        doc_only = self._doc('P-A93')
-        doc_both.sgi_replaced_by_process_id = self.p1
-        self.env.flush_all()
-        cr.execute("""CREATE TABLE IF NOT EXISTS sgi_process_replaced_doc_rel
-                      (process_id integer, document_id integer)""")
-        cr.execute("""INSERT INTO sgi_process_replaced_doc_rel VALUES
-                      (%s, %s), (%s, %s), (%s, %s)""",
-                   (self.p1.id, doc_both.id, self.p2.id, doc_both.id, self.p2.id, doc_only.id))
-        pre = _load_migration('19.0.56.31.0', 'pre-migrate.py')
-        with self.assertLogs('sgi_mig_19_0_56_31_0', level='WARNING') as logs:
-            pre.migrate(cr, '19.0.56.30.0')
-            pre.migrate(cr, '19.0.56.30.0')
-        self.assertTrue(any('conflictos' in line for line in logs.output))
-        self.env.invalidate_all()
-        self.assertEqual(doc_both.sgi_replaced_by_process_id, self.p1, "No se sobrescribe.")
-        self.assertFalse(doc_only.sgi_replaced_by_process_id, "No se copia del proceso (L-003).")
-        backup = self.env['ir.attachment'].search([
-            ('res_model', '=', 'sgi.process'), ('res_id', '=', self.p2.id),
-            ('name', '=', 'procedimientos_sustituidos_56.31.0_XRP2.json')])
-        self.assertEqual(len(backup), 1, "El respaldo no se duplica al correr dos veces.")
-        rows = json.loads(base64.b64decode(backup.datas))
-        self.assertEqual({r['document_id'] for r in rows}, {doc_both.id, doc_only.id})
-
-    # P-L9 (L-005 / C-003)
     def test_l9_estados_de_migracion_idempotente(self):
         replaced = self._doc('P-A94')
         replaced.sgi_replaced_by_process_id = self.p1

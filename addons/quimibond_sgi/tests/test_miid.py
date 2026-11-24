@@ -623,58 +623,6 @@ class TestMiidGenerado(_Case):
         self.assertIn("Cambiaron las actividades que cumplen ZMD 7.5", text)
         self.assertNotIn("plazos documentales", text, "57.148.0: los plazos documentales son del P-G01.")
 
-    def test_26_migracion_reacomoda_archiva_y_respeta_lo_editado(self):
-        import importlib.util
-        import os
-        Section = self.env['sgi.miid.section']
-        ref = Section.env.ref
-        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                            'migrations', '19.0.57.146.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_146_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        referencias = ref('quimibond_sgi.sgi_miid_section_08_referencias')
-        objeto = ref('quimibond_sgi.sgi_miid_section_04_objeto')
-        self.env.cr.execute("UPDATE sgi_miid_section SET sequence = 999, live_block = NULL WHERE id = %s",
-                            [referencias.id])
-        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s WHERE id = %s",
-                            ('<p>Texto ZM viejo del objeto</p>', objeto.id))
-        (referencias | objeto).invalidate_recordset()
-        # El objeto lo editó el Jefe MAST: la migración lo respeta.
-        objeto.sudo().message_post(body="Texto de la sección editado.")
-        self.env['mail.message'].sudo().search([
-            ('model', '=', 'sgi.miid.section'), ('res_id', '=', referencias.id)]).unlink()
-        # (xmlid que 57.146.0 ya no siembra: se arma por partes a propósito.)
-        emergencias = ref('quimibond_sgi.' + 'sgi_miid_section_32_emergencias', raise_if_not_found=False)
-        if not emergencias:
-            # Base nueva: la siembra ya no la trae; se simula la de 57.105.0.
-            emergencias = Section.create({'company_id': referencias.company_id.id, 'sequence': 320,
-                                          'name': 'Emergencias ZM', 'body': '<p>ZM</p>'})
-            self.env['ir.model.data'].sudo().create({
-                'module': 'quimibond_sgi', 'name': 'sgi_miid_section_32_emergencias',
-                'model': 'sgi.miid.section', 'res_id': emergencias.id, 'noupdate': True})
-        module.migrate(self.env.cr, '19.0.57.145.0')
-        module.migrate(self.env.cr, '19.0.57.145.0')
-        self.assertFalse(emergencias.active, "Las secciones narrativas se archivan.")
-        self.assertEqual((referencias.sequence, referencias.live_block), (80, 'normas'),
-                         "La estructura vuelve a la de la siembra.")
-        self.assertIn('Texto ZM viejo del objeto', objeto.body, "Lo editado a mano no se pisa.")
-        Message = self.env['mail.message'].sudo()
-        self.assertEqual(Message.search_count([('model', '=', 'sgi.miid.section'),
-                                               ('res_id', '=', referencias.id),
-                                               ('body', 'ilike', 'reacomodada')]), 1,
-                         "Idempotente: la segunda corrida no vuelve a reacomodar.")
-        self.assertEqual(Message.search_count([('model', '=', 'sgi.miid.section'),
-                                               ('res_id', '=', emergencias.id),
-                                               ('body', 'ilike', 'archivada')]), 1)
-        self.assertFalse(Message.search_count([('model', '=', 'sgi.miid.section'),
-                                               ('res_id', '=', referencias.id),
-                                               ('body', 'ilike', 'Texto de la sección editado')]),
-                         "Reacomodar no es editar.")
-        self.assertFalse(self.env['sgi.miid']._sgi_get(referencias.company_id)._sgi_print_data()['orphans'],
-                         "Después de la migración ningún bloque queda sin sección.")
-
-
 @tagged('post_install', '-at_install')
 class TestPg01Generado(_Case):
     """57.148.0: el P-G01 «Elaboración y control de información documentada»

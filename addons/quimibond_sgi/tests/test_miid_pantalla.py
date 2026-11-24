@@ -8,17 +8,12 @@ lista nativa. Las viñetas y tablas escritas son renglones (sgi.miid.item) y
 las rutas escritas son menús que se abren. Los renglones entran a la huella.
 
 Usa la empresa propia de test_miid (ZM Empresa MIID)."""
-import importlib.util
-import os
 
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import tagged
 from odoo.tools.misc import file_open
 
 from .test_miid import _Case
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 @tagged('post_install', '-at_install')
 class TestMiidPantalla(_Case):
@@ -139,86 +134,6 @@ class TestMiidSiembraRenglones(_Case):
         for written in ('SGI → Sistema', 'SGI → Planeación', 'SGI → Mejora', 'SGI → Inicio',
                         'SGI → Administración', '<table', '<ul'):
             self.assertNotIn(written, seed, "Las rutas son menús y las tablas, renglones: %s" % written)
-
-    def test_11_migracion_idempotente(self):
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.161.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_161_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
-        politica = self.env.ref('quimibond_sgi.sgi_miid_section_17_politica')
-        # Como estaba en 57.160.x: viñetas en el texto, sin menú.
-        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s, menu_id = NULL WHERE id = %s",
-                            ('<ul><li>Regla vieja ZM</li></ul>', reglas.id))
-        self.env.cr.execute("UPDATE sgi_miid_section SET menu_id = NULL WHERE id = %s", [politica.id])
-        (reglas | politica).invalidate_recordset()
-        self.env['mail.message'].sudo().search([
-            ('model', '=', 'sgi.miid.section'), ('res_id', 'in', (reglas | politica).ids)]).unlink()
-        module.migrate(self.env.cr, '19.0.57.160.1')
-        module.migrate(self.env.cr, '19.0.57.160.1')
-        self.assertNotIn('Regla vieja ZM', reglas.body)
-        self.assertIn('candados y avisos', reglas.body)
-        self.assertEqual(politica.menu_id, self.env.ref('quimibond_sgi.menu_sgi_policy'))
-        self.assertEqual(self.env['mail.message'].sudo().search_count([
-            ('model', '=', 'sgi.miid.section'), ('res_id', '=', reglas.id),
-            ('body', 'ilike', '57.161.0: texto actualizado')]), 1, "La segunda corrida no hace nada.")
-        self.assertFalse(self.env['mail.message'].sudo().search_count([
-            ('model', '=', 'sgi.miid.section'), ('res_id', 'in', (reglas | politica).ids),
-            ('body', 'ilike', 'Texto de la sección editado')]), "La migración no es una edición a mano.")
-
-    def _mig_162(self):
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.162.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_162_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_12_migracion_57_162_renglones_y_bloques(self):
-        module = self._mig_162()
-        Data = self.env['ir.model.data'].sudo()
-        terminos = self.env.ref('quimibond_sgi.sgi_miid_section_09_terminos')
-        reglas = self.env.ref('quimibond_sgi.sgi_miid_section_52_reglas')
-        roles = self.env.ref('quimibond_sgi.sgi_miid_section_18_roles')
-        first = self.env.ref('quimibond_sgi.sgi_miid_item_09_terminos_01')
-        # Como quedó en 57.161.0: renglón largo, un renglón que la siembra ya
-        # no trae y la sección de reglas sin su bloque.
-        first.sudo().write({'text': 'Texto largo ZM'})
-        old = self.env['sgi.miid.item'].sudo().create({'section_id': reglas.id, 'label': 'Viejo ZM'})
-        Data.create({'module': 'quimibond_sgi', 'name': 'sgi_miid_item_52_reglas_99', 'model': 'sgi.miid.item',
-                     'res_id': old.id, 'noupdate': True})
-        self.env.cr.execute("UPDATE sgi_miid_section SET live_block = NULL WHERE id = %s", [reglas.id])
-        reglas.invalidate_recordset()
-        # Una sección editada a mano no se toca.
-        roles.sudo().message_post(body="Texto de la sección editado.")
-        roles_item = roles.item_ids[:1]
-        roles_item.sudo().write({'text': 'Rol ZM del Jefe MAST'})
-        manual = self.env['sgi.miid.item'].sudo().create({'section_id': terminos.id, 'label': 'Sin siembra ZM'})
-        module.migrate(self.env.cr, '19.0.57.161.1')
-        module.migrate(self.env.cr, '19.0.57.161.1')
-        self.assertNotEqual(first.text, 'Texto largo ZM', "El renglón sembrado vuelve al de la siembra.")
-        self.assertFalse(old.exists(), "Lo que la siembra ya no trae se quita.")
-        self.assertTrue(manual.exists(), "Un renglón sin xmlid no lo toca la siembra.")
-        self.assertEqual(roles_item.text, 'Rol ZM del Jefe MAST')
-        self.assertEqual(reglas.live_block, 'reglas', "La sección lee las reglas del sistema.")
-
-    def test_13_migracion_57_162_llena_solo_lo_vacio(self):
-        module = self._mig_162()
-        iso9001 = self.env.ref('quimibond_sgi.sgi_norm_9001')
-        iso14001 = self.env.ref('quimibond_sgi.sgi_norm_14001')
-        clause = self.env.ref('quimibond_sgi.c_9001_84')
-        dtype = self.env.ref('quimibond_sgi.sgi_doc_type_instructivo')
-        iso9001.write({'scope': False})
-        iso14001.write({'scope': 'Alcance ZM de MAST'})
-        clause.write({'exclusion': False, 'exclusion_detail': False, 'exclusion_reason': False})
-        dtype.write({'approver_text': 'Aprobador ZM', 'author_text': False})
-        module.migrate(self.env.cr, '19.0.57.161.1')
-        self.assertIn('entretelas', iso9001.scope)
-        self.assertEqual(iso14001.scope, 'Alcance ZM de MAST', "Lo capturado no se pisa.")
-        self.assertTrue(clause.exclusion)
-        self.assertEqual(clause.exclusion_detail, '8.4.1 b)')
-        self.assertTrue(dtype.author_text)
-        self.assertEqual(dtype.approver_text, 'Aprobador ZM')
-
 
 @tagged('post_install', '-at_install')
 class TestMiidCampos(_Case):

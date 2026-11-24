@@ -2,17 +2,12 @@
 """57.61.0 — mapeos de formato por tipo de operación de C4 y C6
 (post-migrate): localiza formato por clave y tipos por nombre, no pisa lo que
 existe, salta lo que no encuentra y es idempotente."""
-import importlib.util
-import os
 
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_document import SGI_CODE_REGEX
 from ..models.sgi_format_map_seed import SGI_OPERATION_FORMAT_MAPS
 from .common_documents import sgi_hide_real_documents
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 def _doc_type(code):
     """Tipo de documento de la clave heredada: F-IT-… es formato de
@@ -99,14 +94,6 @@ class TestFormatMapOperaciones(TransactionCase):
             self.assertTrue(SGI_CODE_REGEX.match(code), code)
             self.assertTrue(types or domain, "%s: sin criterio sería otro general." % code)
             self.assertTrue(note)
-
-    def test_04_post_migrate_corre(self):
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.61.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_61_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        module.migrate(self.env.cr, '19.0.57.60.0')
-        self.assertEqual(self.Map._sgi_seed_operation_maps(), [])
 
     def test_05_nombre_en_espanol_y_archivados(self):
         """57.66.0: la migración corre sin idioma (en_US) y el nombre del tipo
