@@ -13,6 +13,9 @@ localización mexicana para el estado SAT de las facturas):
   más tiempo;
 * «Consultar estado en el SAT» lo hace a mano desde el CFDI o la comparación.
 
+Desde 1.30.0 también los complementos de pago (tipo P), primero los que Odoo
+ya canceló: su pago está cancelado o su documento CFDI dice cancelado.
+
 Una cancelación en el SAT no tiene vuelta: si el SAT dijo «cancelado», una
 descarga posterior de Syntage que todavía diga «vigente» no lo regresa.
 """
@@ -113,15 +116,39 @@ class SatCfdiEstado(models.Model):
         """Primero los vigentes que Odoo tiene cancelados (la factura o su
         documento CFDI), luego los nunca consultados y los consultados hace
         más tiempo, de los últimos VENTANA_DIAS días."""
-        base = [('tipo', 'in', ('I', 'E')), ('estado_sat', 'in', ('vigente', 'cancelacion_pendiente')),
+        # 1.30.0: también los complementos de pago (tipo P): su total es 0 y
+        # así se le pregunta al SAT.
+        base = [('tipo', 'in', ('I', 'E', 'P')), ('estado_sat', 'in', ('vigente', 'cancelacion_pendiente')),
                 ('uuid', '!=', False)]
         found = self.sudo().search(base + [('move_id.state', '=', 'cancel')], limit=limit)
+        # Lo que Odoo canceló y no se ha consultado en la última semana: el
+        # REP de un pago cancelado en Odoo, o un documento CFDI que Odoo da por
+        # cancelado aunque su estado SAT diga «válido» (Proyecciones de la
+        # Moda, jun-2026: tres REP cancelados en Odoo y vigentes en el SAT).
+        semana = fields.Datetime.now() - timedelta(days=7)
+        reciente = ['|', ('sat_verificado', '=', False), ('sat_verificado', '<', semana)]
+        if len(found) < limit:
+            reps = self.env['sat.cfdi.pago'].sudo().search([
+                ('account_payment_state', '=', 'canceled'), ('payment_cfdi_id', '!=', False)])
+            if reps:
+                found |= self.sudo().search(
+                    base + reciente + [('id', 'in', reps.payment_cfdi_id.ids), ('id', 'not in', found.ids)],
+                    limit=limit - len(found))
         if 'l10n_mx_edi.document' in self.env and len(found) < limit:
-            docs = self.env['l10n_mx_edi.document'].sudo().search([('sat_state', '=', 'cancelled')])
+            Doc = self.env['l10n_mx_edi.document'].sudo()
+            docs = Doc.search([('sat_state', '=', 'cancelled')])
             uuids = [u.lower() for u in docs.mapped('attachment_uuid') if u]
             if uuids:
                 found |= self.sudo().search(base + [('uuid', 'in', uuids), ('id', 'not in', found.ids)],
                                             limit=limit - len(found))
+            states = [s for s in ('invoice_cancel', 'payment_cancel')
+                      if s in dict(Doc._fields['state']._description_selection(self.env))]
+            if states and len(found) < limit:
+                uuids = [u.lower() for u in Doc.search([('state', 'in', states)]).mapped('attachment_uuid') if u]
+                if uuids:
+                    found |= self.sudo().search(
+                        base + reciente + [('uuid', 'in', uuids), ('id', 'not in', found.ids)],
+                        limit=limit - len(found))
         if len(found) < limit:
             since = fields.Datetime.now() - timedelta(days=VENTANA_DIAS)
             found |= self.sudo().search(base + [('fecha_emision', '>=', since), ('id', 'not in', found.ids)],

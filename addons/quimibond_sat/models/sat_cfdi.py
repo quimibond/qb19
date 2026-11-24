@@ -319,6 +319,13 @@ class SatCfdi(models.Model):
                 # Pagos que llegaron antes que la factura (webhook, 2024...).
                 self.env['sat.cfdi.pago'].sudo().search([
                     ('invoice_uuid', '=ilike', rec.uuid), ('invoice_cfdi_id', '=', False)])._relink()
+            elif rec.tipo == 'P' and rec.syntage_id:
+                # 1.30.0: renglones de este REP que llegaron antes que él.
+                pagos = self.env['sat.cfdi.pago'].sudo().search([
+                    ('payment_cfdi_syntage_id', '=', rec.syntage_id), ('payment_cfdi_id', '=', False)])
+                pagos._recompute_payment_cfdi()
+                pagos._link_account_payment()
+                pagos._mark_duplicates()
         rec._match_move()
         rec._update_partner_69b()
         return rec
@@ -976,6 +983,8 @@ class SatCfdi(models.Model):
         _logger.info('sat.cfdi: cruce %s de %s pendientes, %s ligados',
                      'completo' if full else 'reciente', len(cfdis), matched)
         self._cron_suggest_matches(extra_domain=recent)
+        # 1.30.0: complementos de pago contra pagos de Odoo y copias.
+        self.env['sat.cfdi.pago']._cron_link_payments(days=None if full else self.MATCH_RECENT_DAYS)
         return matched
 
     @api.model
