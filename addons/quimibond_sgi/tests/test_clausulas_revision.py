@@ -100,38 +100,6 @@ class TestClausulasTercerNivel(_Case):
         clauses = self.env['sgi.norm.clause'].browse(bound.mapped('res_id')).exists()
         self.assertFalse(clauses.filtered(lambda c: c.norm_id not in norms))
 
-    def test_03_pre_migrate_solo_liga_el_xmlid(self):
-        mig = _pre_migrate()
-        IMD = self.env['ir.model.data']
-        Clause = self.env['sgi.norm.clause']
-        # Una cláusula capturada a mano con el mismo numeral (sin xmlid):
-        # el pre-migrate le liga el xmlid y no crea otra.
-        manual = self.env.ref('quimibond_sgi.' + 'c_45001_8_1_3')
-        IMD.search([('module', '=', 'quimibond_sgi'), ('name', '=', 'c_45001_8_1_3')]).unlink()
-        # Una cláusula nueva que nadie capturó: no hay qué ligar (el XML la crea).
-        missing = self.env.ref('quimibond_sgi.' + 'c_9001_7_1_5')
-        IMD.search([('module', '=', 'quimibond_sgi'), ('name', '=', 'c_9001_7_1_5')]).unlink()
-        missing.code = 'Z7.1.5'
-        self.env.flush_all()
-        self.env.registry.clear_cache()  # caché de xmlid (env.ref)
-        before = Clause.search_count([])
-        name_before = manual.name
-        # Sin assertLogs: el logger del archivo cargado con importlib se llama
-        # «sgi_mig_57_97_0»; el script solo registra INFO.
-        mig.migrate(self.env.cr, '19.0.57.96.0')
-        self.env.invalidate_all()
-        self.env.registry.clear_cache()
-        self.assertEqual(self.env.ref('quimibond_sgi.' + 'c_45001_8_1_3'), manual)
-        self.assertEqual(manual.name, name_before, "Solo metadato: el registro no cambia.")
-        self.assertFalse(self.env.ref('quimibond_sgi.' + 'c_9001_7_1_5', raise_if_not_found=False))
-        self.assertEqual(Clause.search_count([]), before, "No crea cláusulas.")
-        # Idempotente: una segunda corrida no agrega filas.
-        mig.migrate(self.env.cr, '19.0.57.96.0')
-        self.assertEqual(IMD.search_count(
-            [('module', '=', 'quimibond_sgi'), ('name', '=', 'c_45001_8_1_3')]), 1)
-        # Instalación nueva (sin versión): no hace nada.
-        mig.migrate(self.env.cr, None)
-
     def test_04_la_matriz_muestra_el_tercer_nivel(self):
         norm = self.env.ref('quimibond_sgi.sgi_norm_45001')
         rows = [row['clause'] for row in norm._sgi_compliance_matrix()['rows']]

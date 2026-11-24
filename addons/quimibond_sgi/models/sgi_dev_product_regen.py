@@ -28,6 +28,9 @@ REGEN_STAGES = ('solicitud', 'analisis', 'cotizacion')
 # Modelos cuyas referencias al producto no cuentan como «uso»: los propios productos y el proyecto (sus campos
 # de artículo se limpian antes de revisar).
 REGEN_SKIP_MODELS = ('product.product', 'product.template', 'project.project')
+# Historial de costo de Odoo 19 (stock_account): Odoo escribe una fila al crear el producto o cambiar su
+# costo. Sin movimiento de inventario no es un uso del artículo: se borra con él (57.202.3).
+REGEN_COST_HISTORY = 'product.value'
 
 
 class ProjectProjectDevRegen(models.Model):
@@ -66,8 +69,11 @@ class ProjectProjectDevRegen(models.Model):
                 if (not ids or field.type != 'many2one' or not field.store or field.related
                         or field.ondelete == 'cascade'):
                     continue
+                domain = [(fname, 'in', ids)]
+                if model_name == REGEN_COST_HISTORY and 'move_id' in Model._fields:
+                    domain.append(('move_id', '!=', False))
                 try:
-                    count = Model.sudo().with_context(active_test=False).search_count([(fname, 'in', ids)])
+                    count = Model.sudo().with_context(active_test=False).search_count(domain)
                 except Exception:  # noqa: BLE001 - un modelo raro no detiene la revisión; borrar lo dirá
                     continue
                 if count:
@@ -96,6 +102,9 @@ class ProjectProjectDevRegen(models.Model):
                     "documentos y no se pueden borrar (%s).\n\n%s\n\nCorrija esos documentos o pida un cambio de "
                     "diseño." % (", ".join(mine.mapped('default_code')), "\n".join(usage)))
             codes = {p.id: p.default_code for p in mine}
+            if REGEN_COST_HISTORY in self.env and mine:
+                self.env[REGEN_COST_HISTORY].sudo().search(
+                    [('product_id', 'in', mine.ids), ('move_id', '=', False)]).unlink()
             mine.sudo().product_tmpl_id.unlink()
             log = []
             for role, product in linked:

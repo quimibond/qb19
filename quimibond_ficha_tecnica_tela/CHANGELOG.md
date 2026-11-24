@@ -47,6 +47,9 @@ La migración da a cada ficha el estado que ya tenía de hecho: Activa si su lis
 operaciones, En revisión si la ficha está activa, Borrador si está archivada (siguen archivadas: activarlas cambiaría
 la programación de Tintorería de sus productos). Pruebas: `test_ficha_estado`.
 
+Se retira `test_tolerancias.test_03_migracion_conserva_rango`, que corría la migración de 2.29.0 (producción
+ya pasó por ella: está en 2.32.1); limpieza de pruebas del build de Odoo.sh, 2026-11-24.
+
 ## 19.0.2.32.1 — 2026-11-24
 
 - Solo sube la versión para que main vuelva a cargar el módulo. La 2.32.0 entró a main dos veces con la misma

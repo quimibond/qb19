@@ -326,7 +326,10 @@ class SgiDevShipment(models.Model):
             when = fields.Datetime.now()
             for ship in self.filtered(lambda s: s.state != 'borrador' and not s.notified_date):
                 ship.with_context(sgi_dev_shipment_notify=False).write({'notified_date': when, 'notified_by_id': self.env.uid})
-            self.activity_feedback(['mail.mail_activity_data_todo'], feedback="Aviso enviado al cliente.")
+            # Sin la bandera: cerrar la actividad publica su propio mensaje en el envío, que volvía a entrar
+            # aquí y cerraba la misma actividad sin fin (RecursionError al mandar el aviso; 57.202.3).
+            self.with_context(sgi_dev_shipment_notify=False).activity_feedback(
+                ['mail.mail_activity_data_todo'], feedback="Aviso enviado al cliente.")
         return super().message_post(**kwargs)
 
     # ------------------------------------------------------------------------

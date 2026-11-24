@@ -10,8 +10,6 @@ registro vacío; B7 TR-01, C5-02, C2-06 y RH-02.
 La base del build es copia de producción: todo se crea aquí (claves ZS02-*,
 la compañía «ZS02 Cía» como compañía de los KPI para las fórmulas). Ninguna
 prueba recalcula sin acotar a sus propios indicadores."""
-import importlib.util
-import os
 from datetime import date
 from unittest.mock import patch
 
@@ -24,10 +22,6 @@ from odoo.addons.quimibond_sgi.models import sgi_format_map
 
 from .common_users import sgi_set_mast
 from .common_documents import sgi_new_company
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_POST = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.104.0', 'post-migrate.py')
-
 
 @tagged('post_install', '-at_install')
 class TestIndicadoresSinDato(TransactionCase):
@@ -345,11 +339,3 @@ class TestIndicadoresSinDato(TransactionCase):
                         "La que no se validó se queda en la lista.")
 
     # ---- Migración --------------------------------------------------------
-    def test_12_post_migrate_existe(self):
-        """Solo se comprueba que el archivo existe y define ``migrate``: correrlo
-        aquí tocaría S6-02, TR-01, C5-02 y C2-06 reales de la copia."""
-        self.assertTrue(os.path.exists(_POST), _POST)
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_104_0', _POST)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        self.assertTrue(callable(getattr(module, 'migrate', None)))

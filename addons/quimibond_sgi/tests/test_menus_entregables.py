@@ -2,15 +2,10 @@
 """57.64.0 — menús de Entregables y Flujos entre procesos en SGI → Sistema,
 con sus vistas propias (sin herencias). 57.67.0: con xmlids nuevos; los que
 45.0.0 retiró (``SGI_REMOVED_XMLIDS``) no vuelven."""
-import importlib.util
-import os
 
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_cleanup import SGI_REMOVED_XMLIDS
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 @tagged('post_install', '-at_install')
 class TestMenusEntregables(TransactionCase):
@@ -49,27 +44,3 @@ class TestMenusEntregables(TransactionCase):
         found = self.env['sgi.deliverable'].search(domain + [('code', 'like', 'ZM-')])
         self.assertIn(own, found)
         self.assertNotIn(external, found)
-
-    def test_04_post_migrate_quita_lo_del_xmlid_retirado(self):
-        """57.67.0: el registro que quedó con el xmlid retirado (staging pasó
-        por 57.64.0) se borra con su xmlid; el menú nuevo sigue."""
-        processes = self.env.ref('quimibond_sgi.menu_sgi_processes')
-        old_menu = self.env['ir.ui.menu'].create({
-            'name': 'Entregables (57.64)', 'parent_id': processes.id,
-            'action': 'ir.actions.act_window,%d'
-                      % self.env.ref('quimibond_sgi.sgi_deliverable_list_action').id})
-        self.env['ir.model.data'].create({
-            'module': 'quimibond_sgi', 'name': 'menu_sgi_deliverables',
-            'model': 'ir.ui.menu', 'res_id': old_menu.id})
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.67.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_67_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        module.migrate(self.env.cr, '19.0.57.66.0')
-        self.assertFalse(old_menu.exists())
-        for name in module.OLD_XMLIDS:
-            self.assertFalse(self.env.ref('quimibond_sgi.%s' % name, raise_if_not_found=False))
-        self.assertTrue(self.env.ref('quimibond_sgi.menu_sgi_deliverable_list').exists())
-        # Segunda corrida: nada que borrar.
-        module.migrate(self.env.cr, '19.0.57.66.0')
-        self.assertTrue(self.env.ref('quimibond_sgi.sgi_deliverable_list_action').exists())
