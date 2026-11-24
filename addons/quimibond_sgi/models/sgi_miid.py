@@ -25,7 +25,7 @@ from odoo.tools import file_open, mute_logger
 
 # Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
 from .sgi_calendar import sgi_add_business_days, sgi_local_date, sgi_today
-from .sgi_menu_paths import sgi_menu_path, sgi_open_menu_action
+from .sgi_menu_paths import sgi_lang, sgi_menu_path, sgi_open_menu_action
 from .sgi_report_print import DG_COLORS, DG_LEVEL_BG
 
 try:  # C-1: texto sin formato (html2plaintext convierte <b> en *…*).
@@ -41,7 +41,6 @@ MIID_HELD_KIND = 'miid_retenido'
 # Dropbox (MIID: Rev. 02 vigente, borrador Rev. 03; P-G01: Rev. 11 → 12).
 # Solo aplica mientras la vigente no tenga huella (cargada del Dropbox):
 # MIID_KINDS[kind]['first_revision'].
-MIID_LANG = 'es_MX'
 MIID_DATA_MARK = "[[datos]]"
 MIID_SEED_FILE = 'quimibond_sgi/data/sgi_miid_sections.xml'
 MIID_EDITED_MSG = "Texto de la sección editado."
@@ -1094,7 +1093,7 @@ class SgiMiid(models.Model):
     # Foto de los datos y huella (1.5)
     # ------------------------------------------------------------------
     def _sgi_env(self):
-        return self.sudo().with_context(lang=MIID_LANG, active_test=True).env
+        return self.sudo().with_context(lang=sgi_lang(self.env), active_test=True).env
 
     def _sgi_snapshot(self):
         """Foto de lo que imprime el MIID, con claves (nunca etiquetas
@@ -1275,7 +1274,7 @@ class SgiMiid(models.Model):
         old = {k: v for k, v in (old or {}).items() if k in keys}
         new = {k: v for k, v in (new or {}).items() if k in keys}
         out = []
-        Process = self.env['sgi.process'].with_context(lang=MIID_LANG)
+        Process = self.env['sgi.process'].with_context(lang=sgi_lang(self.env))
         state_labels = dict(Process._fields['state']._description_selection(Process.env))
         type_labels = dict(Process._fields['process_type']._description_selection(Process.env))
 

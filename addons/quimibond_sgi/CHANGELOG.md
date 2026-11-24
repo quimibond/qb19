@@ -14,6 +14,12 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.4 — 2026-11-24
+
+### Corregido
+
+- El MIID y las rutas de menú (`sgi_menu_paths`) pedían siempre `lang='es_MX'`. La base nueva del build de Odoo.sh no trae ese idioma activo y Odoo 19 lo rechaza («Invalid language code: es_MX»): unas 35 pruebas del SGI tronaban por eso. Nuevo `sgi_lang(env)`: es_MX si está activo (producción, sin cambio), si no el idioma del usuario.
+
 ## 19.0.57.202.3 — 2026-11-24
 
 Limpieza de pruebas para aligerar el build de Odoo.sh (pedido de Jose del 24-nov-2026). Solo pruebas: el módulo no cambia.
