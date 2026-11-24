@@ -160,26 +160,44 @@ class TestSalesProject(TransactionCase):
             self.Project.create({'partner_id': self.client.id})  # sin producto ni descripción
 
     def test_11_propuesta_trae_el_desarrollo_desde_la_fecha_requerida(self):
-        """3.9.0: un desarrollo en Cotización con consumo anual da un renglón de Proyectos por
-        mes desde su fecha requerida, con el precio objetivo y su origen."""
+        """3.9.0: un desarrollo con consumo anual da un renglón de Proyectos por mes desde su fecha
+        requerida, con el precio objetivo y su origen. 3.33.0 (Jose, 23-nov): solo el liberado suma; el
+        que sigue en Cotización es potencial (cantidad 0, el consumo declarado aparte)."""
         dev = self._dev(sgi_dev_product_id=self.product.id, sgi_dev_consumption_annual=12000.0,
                         sgi_dev_consumption_uom='m', sgi_dev_required_date=date(2065, 10, 15),
                         sgi_dev_target_price=40.0, sgi_dev_volume_uom='m')
         dev.write({'stage_id': self.stage('cotizacion').id})
         sin_consumo = self._dev(name='Sin consumo', sgi_dev_product_name='Sin consumo')
         sin_consumo.write({'stage_id': self.stage('cotizacion').id})
-        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2065, base='anio', dev_pct=50.0))
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2065, base='anio'))
         lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
         self.assertEqual(sorted(lines.mapped('date')), [date(2065, 10, 1), date(2065, 11, 1), date(2065, 12, 1)])
-        self.assertEqual(set(lines.mapped('qty_budget')), {500.0}, "12,000 m al año × 50 % / 12 meses")
+        self.assertEqual(set(lines.mapped('potencial')), {True})
+        self.assertEqual(set(lines.mapped('qty_budget')), {0.0}, "No liberado: no suma")
+        self.assertEqual(set(lines.mapped('qty_potencial')), {1000.0}, "12,000 m al año / 12 meses")
+        self.assertEqual(set(lines.mapped('amount_budget')), {0.0})
+        self.assertEqual(set(lines.mapped('amount_potencial')), {40000.0})
+        self.assertAlmostEqual(budget.amount_potencial_total, 120000.0, places=2)
+        self.assertTrue(all(lines.mapped('support_ok')), "El potencial lleva el consumo declarado")
+        self.assertIn("consumo anual 12,000 m", lines[0].support_qty)
         self.assertEqual(set(lines.mapped('qty_origen')), {'desarrollo'})
-        self.assertEqual(set(lines.mapped('qty_sugerida')), {500.0})
         self.assertEqual(set(lines.mapped('mercado')), {'proyectos_industrial'})
         self.assertEqual(lines.partner_id, self.client)
         self.assertEqual(set(lines.mapped('price_input')), {40.0})
         self.assertEqual(set(lines.mapped('price_origen')), {'desarrollo'})
+        self.assertIn("Precio objetivo", lines[0].support_price)
         self.assertEqual(lines.qb_project_id, self._sales_project(dev), "Ligados a su proyecto comercial.")
         self.assertFalse(budget.line_ids.filtered(lambda l: l.dev_project_id == sin_consumo))
+        self.assertIn(10, budget._qb_empty_months().get('industrial', []), "El potencial no llena meses")
+        # Liberado: suma con el consumo completo, sin porcentaje.
+        budget.line_ids.unlink()
+        dev.with_context(sgi_dev_migration=True).write({'stage_id': self.stage('liberado').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2065, base='anio'))
+        lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
+        self.assertEqual(set(lines.mapped('potencial')), {False})
+        self.assertEqual(set(lines.mapped('qty_budget')), {1000.0})
+        self.assertEqual(set(lines.mapped('qty_sugerida')), {1000.0})
+        self.assertEqual(set(lines.mapped('amount_budget')), {40000.0})
 
     def test_12_propuesta_desarrollo_sin_codigo_en_kilos(self):
         """Sin producto todavía: renglón de proyecto con la descripción del desarrollo, en kilos."""
@@ -190,8 +208,13 @@ class TestSalesProject(TransactionCase):
         self.assertEqual(len(lines), 12, "Sin fecha requerida: los 12 meses.")
         self.assertFalse(lines.product_id)
         self.assertEqual(lines.uom_id, self.env.ref('uom.product_uom_kgm'))
-        self.assertEqual(set(lines.mapped('qty_budget')), {300.0})
+        self.assertEqual(set(lines.mapped('qty_potencial')), {300.0})
+        self.assertEqual(set(lines.mapped('qty_budget')), {0.0})
         self.assertTrue(all(lines.mapped('proyecto_descripcion')))
+        self.assertEqual(set(lines.mapped('price_input')), {0.0})
+        self.assertIn("Sin precio", lines[0].support_price)
+        self.assertEqual(budget.potencial_no_price_count, len(budget.line_ids.filtered(
+            lambda l: l.potencial and not l.amount_potencial)))
         # Sin desarrollos: nada de él.
         other = self.Budget.browse(self.Budget.action_qb_build_proposal(2067, base='anio', include_dev=False))
         self.assertFalse(other.line_ids.filtered(lambda l: l.dev_project_id == dev))
@@ -275,3 +298,26 @@ class TestSalesProject(TransactionCase):
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2072, base='anio'))
         lines = budget.line_ids.filtered(lambda l: l.product_id == self.product)
         self.assertEqual(len(lines), 12, "Un renglón por mes, de uno solo de los dos desarrollos")
+
+    def test_18_potencial_sin_precio_toma_la_venta_del_producto(self):
+        """3.34.0: el desarrollo sin cotización ni precio objetivo toma el promedio facturado del producto a
+        cualquier cliente en el periodo base, con su soporte."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        otro = self.env['res.partner'].create({'name': 'Otro cliente proyecto', 'is_company': True})
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': otro.id, 'invoice_date': date(2072, 5, 10),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {'product_id': self.product.id, 'quantity': 100.0, 'price_unit': 5.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        dev = self._dev(sgi_dev_product_id=self.product.id, sgi_dev_consumption_annual=1200.0,
+                        sgi_dev_consumption_uom='m', sgi_dev_volume_uom='m')
+        dev.write({'stage_id': self.stage('cotizacion').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2073, base='anio'))
+        lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
+        self.assertEqual(len(lines), 12)
+        self.assertEqual(set(lines.mapped('price_input')), {5.0})
+        self.assertEqual(set(lines.mapped('price_origen')), {'historico'})
+        self.assertIn("todos los clientes", lines[0].support_price)
+        self.assertEqual(set(lines.mapped('amount_potencial')), {500.0})

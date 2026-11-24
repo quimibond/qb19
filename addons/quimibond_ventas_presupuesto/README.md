@@ -21,6 +21,63 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Potencial sin valuar y conteo de precios de lista (19.0.3.34.1, 2026-11-24)
+
+Prueba de 3.34.0 en main: 12 renglones potenciales con precio objetivo por kilo valían 0 porque el producto
+no tiene conversión de metros a kilos. El aviso de la ficha cuenta ahora los potenciales **sin valuar** (sin
+precio o sin conversión) y el chatter dice cuántos son por conversión. El resumen contaba 0 precios de lista
+(el renglón ya nace con el de la lista); ahora los cuenta por su origen.
+
+## Meses sin venta, precio del potencial y productos que el cliente dejó (19.0.3.34.0, 2026-11-24)
+
+Jose (24-nov, «dale con eso»), después de probar 3.33.0 en main y revisar el pronóstico con los datos de
+producción:
+
+- **Meses sin venta** (pestaña de la ficha, `qb.sales.budget.no.sale`): un mes en que un mercado no venderá
+  se declara con su motivo y ya no cuenta como mes vacío al aprobar. La propuesta declara sola los meses en
+  que el mercado no vendió en el mismo mes del periodo base («Sin venta de Especiales en 02/2026 del periodo
+  base»); si vendió y no quedaron renglones, el mes sigue vacío y lo decide Ventas. Se copian a la nueva
+  revisión.
+- **Precio del potencial**: el desarrollo sin cotización ni precio objetivo toma la regla de la lista del
+  cliente o la presupuestal y, si no hay, el promedio facturado del producto a todos los clientes en el
+  periodo base, cada uno con su soporte. Lo que queda sin precio lo dice en el renglón y en el aviso de la
+  ficha («Potenciales sin precio»): se captura el precio objetivo en el desarrollo.
+- **Productos que el cliente dejó de comprar**: para un cliente con pronóstico, un producto que no viene en
+  su pronóstico solo se propone si se le vendió en los últimos 3 meses del periodo base. En producción,
+  Contitech cambió el WC090Q11JNT165 por el JNT168 en junio de 2026; el pronóstico trae el nuevo y la
+  propuesta 3.32.0 seguía proponiendo el viejo de enero a julio (contado dos veces). El chatter lista lo que
+  no entró.
+
+## Soporte del precio histórico (19.0.3.33.1, 2026-11-24)
+
+Prueba en main: el soporte del precio de un renglón de venta base decía «Promedio facturado del 01/11/2025 al
+31/10/2026» con el importe y la cantidad de un solo mes. Ahora dice el mes de donde sale («en 01/2026»); el
+renglón del pronóstico sin lista sí usa el promedio del periodo y lo dice así.
+
+## Soporte por renglón; desarrollos solo liberados (19.0.3.33.0, 2026-11-23)
+
+Jose (23-nov), sobre la propuesta 2027 con 0 % de crecimiento, desarrollos al 100 % y el tipo de cambio del
+día: «así es muy ambiguo. Todo tiene que tener soporte». Cambios:
+
+- **Sin crecimiento por mercado**: la propuesta toma la venta base tal cual (o el pronóstico). Un cambio
+  sobre la venta base solo entra como **supuesto de un cliente**, con motivo obligatorio y evidencia (liga o
+  archivo). Los supuestos quedan en el presupuesto (pestaña **Supuestos**, `qb.sales.budget.assumption`) y
+  cada renglón que tocan lo lleva (`assumption_id`). Por MCP, `growth` distinto de cero da error;
+  `partner_growth` acepta `evidence_url`.
+- **Soporte de cada renglón** (columnas «Soporte de la cantidad» y «Soporte del precio», botón **Ver
+  soporte**): facturas del mismo mes del periodo base (`base_date_from`/`base_date_to` del presupuesto),
+  semanas y releases del pronóstico, el desarrollo con su consumo declarado, la regla de lista o el promedio
+  facturado. Se guardan la cantidad y el precio propuestos; si se cambian, se escribe el **motivo del
+  ajuste**. Un renglón capturado a mano lleva su **soporte** escrito.
+- **Desarrollos**: solo los **liberados** suman. Los de Cotización a Pilotaje quedan como **potencial**
+  (cantidad 0, con su cantidad e importe potenciales aparte, aviso y botón «Ver potencial» en la ficha); no
+  llenan meses ni el plan mensual. Ya no hay porcentaje de consumo.
+- **Fuente del tipo de cambio** (`rate_source`, en el asistente y en la pestaña Tipo de cambio).
+- **Bloquea con excepción** (Jose, 23-nov): no se aprueba con meses sin renglones, renglones sin soporte o,
+  si hay precios en otra moneda, tipo de cambio sin fuente. Dirección puede usar **Aprobar con excepción**,
+  que deja la lista en el chatter. Filtros «Sin soporte», «Potencial (no suma)» y «Ajustados a mano» en los
+  renglones.
+
 ## Propuesta del año con pronóstico y supuestos por cliente; meses vacíos (19.0.3.32.0, 2026-11-23)
 
 Jose (23-nov) preguntó cómo se arma el presupuesto 2027 y eligió tres mejoras antes de armarlo:
