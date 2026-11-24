@@ -151,6 +151,9 @@
                                     <h3 t-out="c['sistema']"/>
                                     <p t-out="c['desde']"/>
                                     <p t-if="c['detalle']" class="qb-mono qb-cert__num" t-out="c['detalle']"/>
+                                    <a t-if="c['pdf']" t-attf-href="/website_quimibond/static/src/doc/#{c['pdf']}" class="qb-btn qb-btn--contorno qb-cert__pdf" target="_blank" data-qb-evento="descarga_certificado" t-att-data-qb-detalle="c['norma']">
+                                        <i class="fa fa-download" aria-hidden="true"/> Descargar certificado
+                                    </a>
                                 </div>
                             </t>
                         </div>
@@ -160,7 +163,7 @@
                                     <i class="fa fa-download" aria-hidden="true"/> <t t-out="cert.name"/>
                                 </a>
                             </t>
-                            <a t-else="" href="#pedir-certificados" class="qb-btn qb-btn--contorno"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Solicitar los certificados en PDF</a>
+                            <a t-elif="pedir_certificados" href="#pedir-certificados" class="qb-btn qb-btn--contorno"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Solicitar los certificados en PDF</a>
                         </div>
                     </div>
                 </section>
@@ -243,7 +246,7 @@
                     </div>
                 </section>
 
-                <section t-if="not certificados" class="qb-sec" id="pedir-certificados">
+                <section t-if="pedir_certificados and not certificados" class="qb-sec" id="pedir-certificados">
                     <div class="qb-container qb-dos">
                         <div>
                             <span class="qb-eyebrow qb-reveal">Certificados</span>
