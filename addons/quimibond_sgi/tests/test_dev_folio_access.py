@@ -98,8 +98,10 @@ class TestDevFolioAccess(TransactionCase):
     def _sgi_user(self):
         if self.company.id != 1:
             self.skipTest("La regla es de la compañía 1 y esta base tiene otra principal.")
+        # En producción «Usar etapas en el proyecto» va implícito en Usuario interno (ajuste de Proyecto encendido);
+        # en una base nueva del build no, y sin él Odoo 19 no deja escribir ``stage_id``.
         user = new_test_user(self.env, login='sgi_desarrollo_etapas', company_id=self.company.id,
-                             groups='base.group_user,quimibond_sgi.group_sgi_user')
+                             groups='base.group_user,project.group_project_stages,quimibond_sgi.group_sgi_user')
         self.assertFalse(user.has_group('project.group_project_manager'))
         return user
 

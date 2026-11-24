@@ -121,7 +121,9 @@ class TestDevEscalation(TransactionCase):
         self.assertGreaterEqual(len(open_rows), 3)
         # El paso avanza: los avisos del paso anterior se cierran solos con su actividad.
         dev.write({'sgi_dev_analysis_result': 'nuevo'})
-        self.Esc.cron_sgi_dev_escalation(t0 + timedelta(days=7))
+        # C1.03 empieza con la fecha real del análisis (se sella al escribir el resultado): la corrida
+        # va justo después de ese sello, no a los 7 días simulados, o C1.03 ya llevaría una semana.
+        self.Esc.cron_sgi_dev_escalation(dev.sgi_dev_analysis_date + timedelta(minutes=5))
         closed = self.Esc.search([('project_id', '=', dev.id), ('step_code', '=', 'C1.02')])
         self.assertTrue(closed and all(r.state == 'cerrado' for r in closed))
         self.assertTrue(all(not r.mail_activity_id.exists() or not r.mail_activity_id.active for r in closed))

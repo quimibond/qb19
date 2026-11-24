@@ -14,6 +14,15 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.1 — 2026-11-24
+
+Tres pruebas que fallaban en el build completo de Odoo.sh (rama de fichas, 24-nov-2026). Solo pruebas: el módulo no cambia.
+
+### Corregido
+- `test_dev_escalation` test_02: C1.03 empieza con la fecha real del análisis; la corrida va justo después y no a los 7 días simulados.
+- `test_dev_fabric_sheet` test_05: la orden de teñido de prueba (`new()`) se arma otra vez tras validar, porque la validación limpia la caché y la orden perdía su proyecto.
+- `test_dev_folio_access` test_07: el usuario de prueba lleva «Usar etapas en el proyecto», como todos los usuarios internos en producción; en la base nueva del build Odoo 19 no deja escribir la etapa sin él.
+
 ## 19.0.57.202.0 — 2026-11-18
 
 Categorías nuevas por línea y unidad (pedido de Jose del 18-nov-2026).
