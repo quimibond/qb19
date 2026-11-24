@@ -323,7 +323,7 @@ class SatCfdi(models.Model):
                 # 1.30.0: renglones de este REP que llegaron antes que él.
                 pagos = self.env['sat.cfdi.pago'].sudo().search([
                     ('payment_cfdi_syntage_id', '=', rec.syntage_id), ('payment_cfdi_id', '=', False)])
-                pagos._recompute_payment_cfdi()
+                pagos._link_payment_cfdi()
                 pagos._link_account_payment()
                 pagos._mark_duplicates()
         rec._match_move()

@@ -77,8 +77,8 @@ class SatCfdiPago(models.Model):
     # 1.30.0: CFDI de pago, pago de Odoo y duplicados
     payment_cfdi_syntage_id = fields.Char(string='ID del CFDI de pago en Syntage', index=True,
                                           compute='_compute_payment_cfdi_syntage_id', store=True)
-    payment_cfdi_id = fields.Many2one('sat.cfdi', string='CFDI de pago (REP)', index=True,
-                                      compute='_compute_payment_cfdi', store=True)
+    payment_cfdi_id = fields.Many2one('sat.cfdi', string='CFDI de pago (REP)', index=True, readonly=True,
+                                      copy=False)
     payment_uuid = fields.Char(related='payment_cfdi_id.uuid', string='Folio fiscal del REP', store=True,
                                index=True)
     payment_cfdi_estado = fields.Selection(related='payment_cfdi_id.estado_sat', string='Estado del REP',
@@ -136,13 +136,16 @@ class SatCfdiPago(models.Model):
             rec.payment_cfdi_syntage_id = sid
             rec.batch_monto = abs(_num(bp.get('amount'))) or abs(_num(raw.get('amount')))
 
-    @api.depends('payment_cfdi_syntage_id')
-    def _compute_payment_cfdi(self):
+    def _link_payment_cfdi(self):
+        """Busca el CFDI de pago (tipo P) de cada renglón por su id de Syntage;
+        puede llegar antes o después que el renglón."""
         Cfdi = self.env['sat.cfdi'].sudo()
-        sids = [s for s in self.mapped('payment_cfdi_syntage_id') if s]
+        sids = list({s for s in self.mapped('payment_cfdi_syntage_id') if s})
         by_sid = {c.syntage_id: c for c in Cfdi.search([('syntage_id', 'in', sids)])} if sids else {}
         for rec in self:
-            rec.payment_cfdi_id = by_sid.get(rec.payment_cfdi_syntage_id, Cfdi)
+            cfdi = by_sid.get(rec.payment_cfdi_syntage_id, Cfdi)
+            if rec.payment_cfdi_id != cfdi:
+                rec.write({'payment_cfdi_id': cfdi.id})
 
     @api.depends('estado_sat', 'payment_cfdi_id.estado_sat', 'duplicado_de_id')
     def _compute_cuenta(self):
@@ -186,6 +189,7 @@ class SatCfdiPago(models.Model):
             rec.write(vals)
         else:
             rec = self.sudo().create(vals)
+        rec._link_payment_cfdi()
         rec._link_account_payment()
         rec._mark_duplicates()
         return rec
@@ -212,12 +216,6 @@ class SatCfdiPago(models.Model):
         self._compute_invoice_cfdi()
 
     # ── pago de Odoo y duplicados (1.30.0) ────────────────────────────
-
-    def _recompute_payment_cfdi(self):
-        """Vuelve a buscar el CFDI de pago (llegó después que el renglón)."""
-        if self:
-            self.env.add_to_compute(self._fields['payment_cfdi_id'], self)
-            self.flush_recordset(['payment_cfdi_id'])
 
     def _odoo_payments_by_uuid(self):
         """{folio fiscal en minúsculas: account.payment} de los REP de estos
@@ -324,7 +322,7 @@ class SatCfdiPago(models.Model):
         if days:
             domain = [('fecha_pago', '>=', fields.Datetime.now() - timedelta(days=days))]
         recs = self.sudo().search(domain)
-        recs.filtered(lambda r: r.payment_cfdi_syntage_id and not r.payment_cfdi_id)._recompute_payment_cfdi()
+        recs._link_payment_cfdi()
         recs._link_account_payment()
         recs._mark_duplicates()
         _logger.info('sat.cfdi.pago: %s renglones repasados, %s con pago en Odoo, %s copias',
