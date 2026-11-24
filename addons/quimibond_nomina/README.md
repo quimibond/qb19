@@ -1009,9 +1009,36 @@ campo «Cuadrilla» en su ficha.
 
 **Festivos** (`qb.nomina.festivo`, Nómina → Incidencias → Festivos): un
 festivo sin trabajar sale «F» en la lista y se paga (no es falta); trabajado se
-cuenta en «Festivos trabajados» con la nota. **Todavía no pasa al recibo**:
-falta la regla del pago doble (art. 75 LFT), que se agrega en la base cuando
-RH confirme con qué concepto lo paga NOI.
+cuenta en «Festivos trabajados» con la nota. Desde 1.26.0 pasa al recibo
+(sección 24).
+
+### 24. Respuestas de RH del 24-nov-2026: HE del turno 4 por área, tolerancia, prima proporcional y festivo trabajado (1.26.0)
+
+Correo de Miguel Medina del 24-nov-2026, en respuesta a las dudas de 1.24.0:
+
+- **Las 6 HE del turno 4 solo en Inspección, Acabado, Tintorería y
+  Mantenimiento**: casilla «Paga las 6 HE del turno 4» (`he_fijas`) en la
+  cuadrilla. Una persona sin cuadrilla o en una cuadrilla sin la casilla no las
+  lleva (José Israel Cruz y Sergio González «en ocasiones»: el supervisor las
+  autoriza a mano en «HE autorizadas»).
+- **Turno completo**: 10 minutos de tolerancia a la entrada
+  (`TOLERANCIA_COMPLETO`); salir antes ya no es completo. El retardo se anota
+  desde el minuto 1, como antes (premio de asistencia).
+- **Prima dominical de los turnos 5 y 6 proporcional**: sin los turnos del
+  domingo completos, las horas trabajadas dentro del domingo (00:00 a 24:00) de
+  esas jornadas, con tope de 12 (antes, cero). Con el turno completo da 12.
+- **Prima dominical a todo el que trabaje en domingo** (LFT art. 71): ya era
+  así para quien trabaja domingo fuera de su turno.
+- **Festivo trabajado al recibo**: «Pasar a recibos» escribe la entrada
+  `FESTIVO` (días, `data/payslip_input_types.xml`, se liga sola a
+  `MX_REGULAR`). Las reglas `FEST_TAX` y `FEST_EXEMPT` de «Paga regular» (en la
+  base, bajo el centinela) pagan **salario doble por día** además del día que
+  ya va en el sueldo (art. 75 LFT), con el mismo salario diario que las horas
+  extra (sueldo ÷ 7 en la semanal, ÷ 15.2083 en la quincenal). Exento como el
+  trabajo en día de descanso (LISR art. 93 fracc. I): 50 % con el tope de 5 UMA
+  por semana que comparte con las horas extra; percepción SAT 055 (conceptos
+  P55 y P55_2). En los reportes NOI sale como «FESTIVO TRABAJADO», sin clave
+  hasta que RH la confirme.
 
 ## Qué escribe el módulo en la base (inventario completo)
 
@@ -1033,10 +1060,11 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Menú «IMSS» en la raíz de la app de Nómina (`qb_nomina_colgar_menu_imss`, 1.9.0) | al instalar y en cada actualización | registro propio del módulo |
 | Parámetro `quimibond_nomina.idse_guia.<registro>` (1.9.0) | al generar un lote | la guía capturada, para proponerla la próxima vez |
 | Modelos `qb.nomina.incidencias` y `qb.nomina.incidencias.linea` (tablas nuevas) y menú «Incidencias» en la raíz de Nómina (1.13.0) | al instalar y en cada actualización (menú) | nacen vacías |
-| Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
+| Entradas `FALTAS`, `HE_DOBLE`, `H_SENCILLA`, `DOM`, `HE_DIAS`, `FESTIVO` (`hr.payslip.input`) de los recibos en borrador de una corrida, y su recálculo (1.13.0) | sólo al pulsar «Pasar a recibos» en una lista revisada | nunca valida, contabiliza ni timbra |
 | Campo `qb_dias_aguinaldo` en `hr.payroll.structure.type` (1.18.0) | al instalar y al actualizar a 1.18.0 | columna nueva; se siembra 16 en «Mexico: Employee» y 25 en los tipos semanales de México solo donde está en cero; nunca pisa lo capturado |
 | Modelo `qb.nomina.concepto.noi` (tabla nueva, 18 conceptos de NOI con `noupdate`), asistente `qb.nomina.reporte`, dos reportes PDF, dos formatos de papel y menú «Reportes NOI» en la raíz de Nómina (1.23.0) | al instalar y en cada actualización (menú) | sólo lee recibos; el Excel queda en el asistente (transitorio) |
 | Modelos `qb.nomina.cuadrilla` y `qb.nomina.festivo` (tablas nuevas), campo `qb_cuadrilla_id` en `hr.employee` y menús «Cuadrillas de turno» y «Festivos» (1.24.0) | al instalar | nacen vacíos; la cuadrilla escribe `qb_turno` de sus integrantes sin turno fijo al cambiar su turno o sus integrantes |
+| Tipo de entrada `FESTIVO`, campo `he_fijas` en `qb.nomina.cuadrilla` y concepto NOI «FESTIVO TRABAJADO» (1.26.0) | al instalar; la entrada se liga a `MX_REGULAR` en cada actualización | registros propios del módulo (`noupdate`) |
 | Fila de `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner`; `hr.payslip` fuera de «Pasar a recibos» | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29), `FONACOT` (2026-10-02 y

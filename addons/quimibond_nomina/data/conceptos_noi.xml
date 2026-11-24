@@ -144,6 +144,15 @@
         <field name="codigos_exento">NO_TAX_MEAL_VOUCHER</field>
         <field name="en_especie" eval="True"/>
     </record>
+    <!-- 1.26.0: festivo trabajado (art. 75 LFT, salario doble además del día; RH, 24-nov-2026: debe salir como
+         festivo en NOI por las inspecciones de la STPS). Percepción SAT 055; sin clave NOI hasta que RH la confirme. -->
+    <record id="concepto_noi_festivo" model="qb.nomina.concepto.noi">
+        <field name="name">FESTIVO TRABAJADO</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">055</field>
+        <field name="codigos">FEST_TAX, FEST_EXEMPT</field>
+        <field name="codigos_exento">FEST_EXEMPT</field>
+    </record>
     <!-- 1.23.2: «Bruto sin vacaciones» lleva el concepto P01 del CFDI y repite el sueldo; no es renglón propio. -->
     <record id="concepto_noi_ignorar_bruto" model="qb.nomina.concepto.noi">
         <field name="name">Bruto sin vacaciones (no reportar)</field>
