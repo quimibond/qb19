@@ -62,7 +62,8 @@ class TiempoFichaCase(TransactionCase):
         cls.tejido.rendimiento_tela_tejida = 10.0  # banda B (7 a 11 m/kg)
         cls.acabado = cls.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ931Q22JNT165', 'tejido_id': cls.tejido.id, 'product_acabado_id': cls.tela_m.id,
-            'product_proceso_id': cls.tela.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0})
+            'product_proceso_id': cls.tela.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0,
+            'estado': 'revision'})  # 2.33.0: las listas se generan con la ficha en revisión
 
         def op(name, seq, wc):
             return (0, 0, {'name': name, 'sequence': seq, 'workcenter_id': wc.id, 'time_mode': 'manual',

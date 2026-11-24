@@ -8,6 +8,45 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.33.0 — 2026-11-24
+
+**La ficha técnica manda y la lista de materiales sale de ella, en orden (Jose, 2026-11-24: «estoy confundido de qué
+se hace primero y qué después»).** Antes la ficha de acabado no tenía estado propio: la barra del producto («Lista para
+activar», «Activa con pendientes») era el estado de sus listas, «Generar listas» se podía apretar con la ficha a
+medias y la lista se activaba desde la lista. Ahora la ficha tiene su **estado** (`estado`, guardado), con barra de
+etapas y en la cabecera solo el paso que toca:
+
+1. **Borrador**: Ingeniería captura. Un aviso dice lo que falta para enviarla (tela, acabado en kg, crudo, peso,
+   ancho, rendimiento, ruta de la familia, consumo de crudo).
+2. **En revisión** («Enviar a revisión», solo con la ficha completa): genera la lista en kg y la de metros
+   archivadas y la revisa. «Generar listas» solo en este estado (también el de la familia, que salta las demás).
+3. **Activa** («Activar», solo sin pendientes): copia la ficha a las listas («Corregir con la ficha»), revisa y activa
+   las dos. **Una lista del flujo ya no se activa a mano desde la lista** si su ficha no está activa.
+4. **Obsoleta** («Marcar obsoleta»): archiva la ficha y sus listas. «Volver a borrador» la recupera.
+
+Para cambiar una ficha activa, «Modificar» la regresa a En revisión: la lista sigue fabricando y al volver a activar
+se pone al día con la ficha. En Activa y Obsoleta los datos que arman las listas (tejido, productos, peso, ancho,
+rendimiento, ruta propia, consumo de crudo) quedan de solo lectura.
+
+**Todo lo de la tela en la ficha** (Jose: «que en la ficha técnica puedas ver todo lo relacionado al producto
+incluyendo las listas de materiales»): pestaña **Listas de materiales** con las dos listas dentro de la ficha
+(componentes, operaciones con su tiempo contra el de la ficha y subproductos, y si están en uso o en borrador), pestaña
+**Pendientes** y botones inteligentes Pendientes, Crudo y Órdenes. Las listas se ven, no se editan ahí.
+
+**En el producto, la ficha técnica es un botón, no una pestaña** (Jose, 2026-11-24). Se quita la pestaña «Ficha
+técnica» del producto (y la cabecera de la tela con su barra de etapas): queda el botón inteligente **Ficha técnica**
+con el estado de la ficha, que abre la ficha de acabado, y Pendientes si los hay. En un crudo siguen «Agregar circular»,
+Fichas de tejido y Telas; un producto con código de tela, acabado en kg o crudo y sin ficha muestra «Crear ficha
+técnica». Los campos calculados del producto (`ft_*`) se quedan: los leen el concentrado, el SGI y las pruebas.
+
+**Fichas por estado**: Artículos → **Fichas de acabado** (primera del menú) abre un kanban agrupado por estado, con
+lista y filtros por estado. El concentrado Acabado trae el
+estado de la ficha y el de las listas («Listas»).
+
+La migración da a cada ficha el estado que ya tenía de hecho: Activa si su lista en kg del flujo está activa y con
+operaciones, En revisión si la ficha está activa, Borrador si está archivada (siguen archivadas: activarlas cambiaría
+la programación de Tintorería de sus productos). Pruebas: `test_ficha_estado`.
+
 ## 19.0.2.32.1 — 2026-11-24
 
 - Solo sube la versión para que main vuelva a cargar el módulo. La 2.32.0 entró a main dos veces con la misma

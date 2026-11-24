@@ -18,3 +18,4 @@ from . import ficha_producto  # 2.23.0: al final (usa la revisión, la ficha del
 from . import ruta_familia  # 2.23.0: después de la revisión y la ficha del producto (usa _ft_bom_de y action_ft_datos_ficha)
 from . import rendimiento_real  # 2.24.0: al final (extiende la ficha de acabado y la revisión)
 from . import rangos  # 2.30.0: rango mínimo – máximo de las medidas (extiende tejido y acabado)
+from . import ficha_estado  # 2.33.0: al final (estado de la ficha; usa la revisión, la ruta y las listas)

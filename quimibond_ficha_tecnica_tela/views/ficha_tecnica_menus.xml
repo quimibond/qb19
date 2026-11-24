@@ -83,8 +83,9 @@
               action="action_ficha_tecnica_ruta" sequence="20"/>
     <menuitem id="menu_ficha_tecnica_tejido_list" name="Fichas de tejido (por circular)" parent="menu_ft_tela"
               action="action_ficha_tecnica_tejido" sequence="90"/>
-    <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado (datos de origen)" parent="menu_ft_tela"
-              action="action_ficha_tecnica_acabado" sequence="95"/>
+    <!-- 2.33.0: las fichas de acabado por estado van primero (la ficha manda y la lista sale de ella). -->
+    <menuitem id="menu_ficha_tecnica_acabado_list" name="Fichas de acabado" parent="menu_ft_tela"
+              action="action_ficha_tecnica_acabado" sequence="1"/>
     <!-- 2.23.0: revisión de las listas en kg contra la ficha. 2.23.0: sin menú «Revisión de listas en kg»: el
          concentrado Telas trae el estado, las áreas, los filtros y «Actualizar la revisión». -->
     <menuitem id="menu_ficha_tecnica_revision_pendiente" name="Pendientes por área" parent="menu_ft_tela"
