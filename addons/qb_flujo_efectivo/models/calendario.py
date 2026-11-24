@@ -51,7 +51,34 @@ def _meses(desde, hasta):
             anio, mes = anio + 1, 1
 
 
-def fechas(periodicidad, desde, hasta, dia_semana=4, dia_mes=17, meses_pares=False, fecha_unica=None):
+def meses(desde, hasta):
+    """``(año, mes)`` de cada mes entre dos fechas, incluidos los extremos."""
+    return list(_meses(desde, hasta))
+
+
+def dias_restantes(anio, mes, desde):
+    """Días del mes a partir de ``desde`` (o el mes completo si empieza después)."""
+    ini = max(date(anio, mes, 1), desde)
+    fin = date(anio, mes, _ultimo_dia(anio, mes))
+    return [ini + timedelta(days=i) for i in range((fin - ini).days + 1)]
+
+
+def repartir(fecha_vence, hoy, atraso, sems, semanas_reparto):
+    """Fechas e importes relativos (suman 1) en que se espera una partida.
+
+    * Por vencer o vencida dentro del atraso normal del contacto: vencimiento
+      más el atraso (nunca antes de hoy).
+    * Vencida más allá de su atraso normal: en partes iguales en las primeras
+      ``semanas_reparto`` semanas (1 = todo en la semana en curso).
+    """
+    esperado = fecha_vence + timedelta(days=atraso or 0)
+    if esperado >= hoy or fecha_vence >= hoy:
+        return [(max(esperado, hoy), 1.0)]
+    n = max(1, min(semanas_reparto or 1, len(sems)))
+    return [(sems[i][0], 1.0 / n) for i in range(n)]
+
+
+def fechas(periodicidad, desde, hasta, dia_semana=4, dia_mes=17, meses_pares=False, fecha_unica=None, mes=12):
     """Fechas de pago de un compromiso entre ``desde`` y ``hasta`` (incluidas).
 
     * ``semanal``: cada semana en ``dia_semana`` (0 = lunes, 4 = viernes).
@@ -59,6 +86,7 @@ def fechas(periodicidad, desde, hasta, dia_semana=4, dia_mes=17, meses_pares=Fal
     * ``mensual``: el ``dia_mes`` de cada mes (o el último si el mes es corto).
     * ``bimestral``: el ``dia_mes`` de los meses nones (o pares con
       ``meses_pares``).
+    * ``anual``: el ``dia_mes`` del ``mes`` (aguinaldo, PTU).
     * ``unica``: ``fecha_unica``.
     """
     out = []
@@ -75,6 +103,8 @@ def fechas(periodicidad, desde, hasta, dia_semana=4, dia_mes=17, meses_pares=Fal
     elif periodicidad == 'bimestral':
         resto = 0 if meses_pares else 1
         out = [_dia_del_mes(a, m, dia_mes) for a, m in _meses(desde, hasta) if m % 2 == resto]
+    elif periodicidad == 'anual':
+        out = [_dia_del_mes(a, m, dia_mes) for a, m in _meses(desde, hasta) if m == (mes or 12)]
     elif periodicidad == 'unica' and fecha_unica:
         out = [fecha_unica]
     return [d for d in out if desde <= d <= hasta]
@@ -89,6 +119,8 @@ def clave_periodo(periodicidad, fecha):
         return (fecha.year, fecha.month, 1 if fecha.day <= 15 else 2)
     if periodicidad == 'bimestral':
         return (fecha.year, (fecha.month + 1) // 2)
+    if periodicidad == 'anual':
+        return (fecha.year,)
     return (fecha.year, fecha.month)
 
 
@@ -96,7 +128,7 @@ def inicio_historial(periodicidad, hoy, periodos):
     """Fecha desde la que se toman los pagos para estimar ``periodos`` periodos."""
     if periodicidad == 'semanal':
         return hoy - timedelta(days=7 * periodos)
-    dias = {'quincenal': 15, 'mensual': 30, 'bimestral': 61}.get(periodicidad, 30)
+    dias = {'quincenal': 15, 'mensual': 30, 'bimestral': 61, 'anual': 366}.get(periodicidad, 30)
     return hoy - timedelta(days=dias * periodos)
 
 
@@ -113,3 +145,11 @@ def estimar(periodicidad, pagos):
     if not por_periodo:
         return 0.0
     return sum(por_periodo.values()) / len(por_periodo)
+
+
+def promedio_ponderado(pares):
+    """``[(valor, peso)]`` → promedio ponderado (``None`` sin peso)."""
+    peso = sum(p for _v, p in pares if p > 0)
+    if not peso:
+        return None
+    return sum(v * p for v, p in pares if p > 0) / peso

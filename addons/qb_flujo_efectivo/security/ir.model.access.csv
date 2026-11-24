@@ -7,3 +7,7 @@ access_qb_flujo_compromiso_user,qb.flujo.compromiso user,model_qb_flujo_compromi
 access_qb_flujo_compromiso_readonly,qb.flujo.compromiso readonly,model_qb_flujo_compromiso,account.group_account_readonly,1,0,0,0
 access_qb_flujo_ajuste_user,qb.flujo.ajuste user,model_qb_flujo_ajuste,account.group_account_user,1,1,1,1
 access_qb_flujo_ajuste_readonly,qb.flujo.ajuste readonly,model_qb_flujo_ajuste,account.group_account_readonly,1,0,0,0
+access_qb_flujo_foto_user,qb.flujo.foto user,model_qb_flujo_foto,account.group_account_user,1,1,1,1
+access_qb_flujo_foto_readonly,qb.flujo.foto readonly,model_qb_flujo_foto,account.group_account_readonly,1,0,0,0
+access_qb_flujo_foto_linea_user,qb.flujo.foto.linea user,model_qb_flujo_foto_linea,account.group_account_user,1,1,1,1
+access_qb_flujo_foto_linea_readonly,qb.flujo.foto.linea readonly,model_qb_flujo_foto_linea,account.group_account_readonly,1,0,0,0
