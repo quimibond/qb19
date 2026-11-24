@@ -16,6 +16,7 @@ ENTRADAS_COMPROMETIDO = [
 ]
 ENTRADAS_ESTIMADO = [
     ('pedido_venta', 'Pedidos de venta por facturar'),
+    ('venta_estimada', 'Ventas sin pedido todavía'),
     ('ajuste_entrada', 'Otras entradas (ajustes manuales)'),
 ]
 SALIDAS_COMPROMETIDO = [
@@ -24,6 +25,7 @@ SALIDAS_COMPROMETIDO = [
 ]
 SALIDAS_ESTIMADO_FIJO = [
     ('orden_compra', 'Órdenes de compra por facturar'),
+    ('compra_estimada', 'Compras de las ventas sin pedido'),
     ('ajuste_salida', 'Otras salidas (ajustes manuales)'),
 ]
 INFO = [
@@ -90,8 +92,11 @@ class QbFlujoReportHandler(models.AbstractModel):
         compromisos = {}
         caja = []
         minimo = 0.0
+        meta = {}
         for config, res in resultados:
             minimo += config.saldo_minimo
+            for k, v in res.get('meta', {}).items():
+                meta.setdefault(k, v)
             caja += res['caja']
             for clave, fila in res['filas'].items():
                 destino = filas[clave]
@@ -164,8 +169,16 @@ class QbFlujoReportHandler(models.AbstractModel):
                 lines.append(self._linea(report, options, report._get_generic_line_id(None, None, markup=markup),
                                          titulo, valores, 2, clase='fst-italic'))
 
+        etiquetas = {}
+        if meta.get('ventas'):
+            etiquetas['venta_estimada'] = _('Ventas sin pedido todavía (%s)', meta['ventas'])
+        if meta.get('proporcion_compras'):
+            etiquetas['compra_estimada'] = _('Compras de las ventas sin pedido (%(p)s %% de la venta)',
+                                             p='{:,.0f}'.format(meta['proporcion_compras'] * 100))
+
         def renglones(defs):
             for clave, etiqueta in defs:
+                etiqueta = etiquetas.get(clave, etiqueta)
                 fila = filas.get(clave)
                 if not fila or all(self._cero(v) for v in fila['semanas']):
                     continue

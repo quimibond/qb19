@@ -19,7 +19,7 @@ class TestFlujo13Semanas(AccountTestInvoicingCommon):
         super().setUpClass()
         cls.config = cls.env['qb.flujo.config'].create({
             'company_id': cls.env.company.id, 'cartera_desde': date(2026, 1, 1), 'dias_incobrable': 90,
-            'incluir_pedidos': False,
+            'incluir_pedidos': False, 'fuente_ventas': 'ninguna', 'semanas_reparto_clientes': 1,
         })
         cls.bank = cls.company_data['default_journal_bank']
         cls.env['qb.flujo.caja'].create({'config_id': cls.config.id, 'journal_id': cls.bank.id,
@@ -104,3 +104,68 @@ class TestFlujo13Semanas(AccountTestInvoicingCommon):
         self.assertIn('Saldo final de caja', nombres)
         final = [line for line in lines if line['name'] == 'Saldo final de caja'][0]
         self.assertEqual(len(final['columns']), 14)
+
+    # 1.1.0 ---------------------------------------------------------------
+    def test_fecha_esperada_gana_al_vencimiento_y_al_incobrable(self):
+        normal = self._factura(self.cliente, 1000, date(2026, 11, 1), date(2026, 11, 26))
+        normal.qb_fecha_flujo = date(2026, 12, 16)                                     # semana 4
+        vieja = self._factura(self.cliente, 300, date(2026, 6, 1), date(2026, 7, 1))   # > 90 días
+        vieja.qb_fecha_flujo = date(2026, 12, 2)                                       # semana 2
+        res = self._calcular()
+        self.assertAlmostEqual(res['filas']['cobro']['semanas'][3], 1000)
+        self.assertAlmostEqual(res['filas']['cobro_vencido']['semanas'][1], 300)
+        self.assertFalse(res['info'].get('incobrable', {}).get('total'))
+
+    def test_vencido_se_reparte_en_semanas(self):
+        self.config.semanas_reparto_clientes = 4
+        self._factura(self.cliente, 400, date(2026, 10, 1), date(2026, 11, 1))
+        res = self._calcular()
+        self.assertEqual([round(v, 2) for v in res['filas']['cobro_vencido']['semanas'][:5]],
+                         [100.0, 100.0, 100.0, 100.0, 0.0])
+
+    def test_compromiso_con_facturas_resta_lo_facturado_del_mes(self):
+        self.env['qb.flujo.compromiso'].create({
+            'config_id': self.config.id, 'name': 'Renta', 'categoria': 'financiero', 'importe': 1000,
+            'periodicidad': 'mensual', 'dia_mes': 15, 'partner_id': self.proveedor.id,
+            'excluir_facturas': False,
+        })
+        self._factura(self.proveedor, 600, date(2026, 12, 1), date(2026, 12, 5), 'in_invoice')
+        res = self._calcular()
+        self.assertAlmostEqual(res['filas']['pago']['semanas'][1], -600)
+        fila = [f for k, f in res['filas'].items() if k.startswith('comp_')][0]
+        self.assertAlmostEqual(fila['semanas'][3], -400)   # 15-dic: 1000 - 600 ya facturado
+        self.assertAlmostEqual(fila['semanas'][7], -1000)  # 15-ene
+
+    def test_compromiso_anual(self):
+        self.env['qb.flujo.compromiso'].create({
+            'config_id': self.config.id, 'name': 'Aguinaldo', 'categoria': 'nomina', 'importe': 5000,
+            'periodicidad': 'anual', 'mes': 12, 'dia_mes': 18,
+        })
+        res = self._calcular()
+        fila = [f for k, f in res['filas'].items() if k.startswith('comp_')][0]
+        self.assertAlmostEqual(sum(fila['semanas']), -5000)
+        self.assertAlmostEqual(fila['semanas'][3], -5000)
+
+    def test_ventas_estimadas_con_el_promedio(self):
+        self.config.fuente_ventas = 'historial'
+        self.config.meses_ventas = 3
+        self.config.proporcion_compras = 50
+        for mes in (8, 9, 10):
+            self._factura(self.cliente, 3000, date(2026, mes, 5), date(2026, mes, 5))
+        res = self._calcular()
+        ventas = sum(res['filas']['venta_estimada']['semanas'])
+        compras = sum(res['filas']['compra_estimada']['semanas'])
+        # noviembre: 3000 en los 7 días que quedan; diciembre y enero completos; febrero hasta el 21
+        self.assertAlmostEqual(res['filas']['venta_estimada']['semanas'][0], 3000 * 6 / 7, delta=1)
+        self.assertGreater(ventas, 9000)
+        # las compras se pagan a 30 días (sin historial): parte cae después de la semana 13
+        self.assertLess(compras, 0)
+        self.assertLessEqual(-compras, ventas / 2 + 1)
+
+    def test_foto_y_real(self):
+        foto = self.env['qb.flujo.foto'].tomar(self.config, HOY)
+        self.assertEqual(len(foto.linea_ids), 13)
+        linea = foto.linea_ids.filtered(lambda line: line.semana == 1)
+        linea.llenar_real()
+        self.assertTrue(linea.real_listo)
+        self.assertAlmostEqual(linea.desviacion_neto, linea.neto_real - linea.neto_proy)
