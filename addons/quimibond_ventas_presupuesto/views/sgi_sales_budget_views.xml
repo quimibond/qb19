@@ -293,6 +293,10 @@
                          con los cinco mercados; al aprobar una revisión nueva, la anterior
                          queda reemplazada. 1.2.0 (V-M10): en el encabezado solo el flujo;
                          las cargas y la conciliación, en el engrane (Acción). -->
+                    <button name="action_qb_open_proposal" type="object" string="Armar propuesta"
+                            class="btn-primary"
+                            invisible="kind != 'presupuesto' or state != 'borrador' or line_ids"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_send_to_review" type="object"
                             string="Enviar a revisión" class="btn-primary"
                             invisible="kind != 'presupuesto' or state != 'borrador'"
@@ -607,6 +611,12 @@
             <list string="Presupuestos"
                   decoration-muted="state in ('obsoleto', 'reemplazado')"
                   decoration-success="state == 'aprobado'">
+                <header>
+                    <!-- 3.35.0: antes era el menú «Armar propuesta del año». -->
+                    <button name="action_qb_open_proposal" type="object" string="Armar propuesta del año"
+                            display="always" class="btn-primary"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
+                </header>
                 <field name="folio"/>
                 <field name="year" options="{'enable_formatting': false}"/>
                 <field name="revision_label" string="Revisión"/>

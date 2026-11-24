@@ -21,6 +21,14 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Asistentes como botón, no como menú (19.0.3.35.0, 2026-11-24)
+
+Jose: «¿por qué pones como menú lo de armar propuesta? Eso debería ser un botón». En Odoo un menú abre
+una lista de registros; un asistente se abre con un botón donde se usa. **Armar propuesta del año** pasa
+a botón arriba de la lista de presupuestos (y, con su año, en la ficha de un presupuesto en borrador sin
+renglones), y **Proponer pedidos** a botón arriba de la lista del pronóstico vigente. Los dos menús se
+quitan; las acciones y los permisos (gerente de Ventas o del SGI) no cambian.
+
 ## Potencial sin valuar y conteo de precios de lista (19.0.3.34.1, 2026-11-24)
 
 Prueba de 3.34.0 en main: 12 renglones potenciales con precio objetivo por kilo valían 0 porque el producto

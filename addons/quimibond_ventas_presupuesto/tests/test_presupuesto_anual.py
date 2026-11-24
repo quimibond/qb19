@@ -799,3 +799,17 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertNotIn('3', declared.mapped('month'))
         self.assertIn("Sin venta de Industrial en 01/2014 del periodo base", declared.mapped('note'))
         self.assertEqual(len(proposal.no_sale_ids), 35)
+
+    def test_29_asistentes_como_boton(self):
+        """3.35.0 (Jose: «eso debería ser un botón»): Armar propuesta y Proponer pedidos ya no son
+        menús; los abren botones de la lista (y de la ficha del presupuesto en borrador)."""
+        for xmlid in ('quimibond_ventas_presupuesto.menu_sale_qb_budget_proposal',
+                      'quimibond_ventas_presupuesto.menu_sale_qb_order_proposal'):
+            self.assertFalse(self.env.ref(xmlid, raise_if_not_found=False))
+        action = self.Budget.action_qb_open_proposal()
+        self.assertEqual(action['res_model'], 'qb.sales.budget.proposal')
+        self.assertEqual(action['target'], 'new')
+        budget = self.Budget.create({'year': 2058})
+        self.assertEqual(budget.action_qb_open_proposal()['context'], {'default_year': 2058})
+        action = self.env['qb.forecast.line'].action_qb_open_order_proposal()
+        self.assertEqual(action['res_model'], 'qb.order.proposal')
