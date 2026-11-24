@@ -395,6 +395,9 @@ class TestIncidenciasGenerar(TransactionCase):
         } for m in marcas])
 
     def test_generar_marca_falta_y_conserva_lo_autorizado(self):
+        # RH lo tiene en el turno 1. Sin turno de RH, cuatro días de 07:00 a 17:00 y el sábado los explica casi
+        # igual el turno 3 (cuatro de cinco días): el martes salía libre y no falta (24.86 contra 24.73 horas).
+        self.empleado.qb_turno = '1'
         marcas = [m for m in _semana_normal() if m.day != 13]
         marcas += [dt(2026, 10, 17, 7, 0), dt(2026, 10, 17, 13, 0)]     # sábado: 6 h de extra
         self._checar(marcas)
