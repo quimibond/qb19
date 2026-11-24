@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Señales de dirección (spec §4): actividades vencidas por persona, firmas, acuses, acuerdos, obligaciones de qb_obligation (puente que solo resuelve lo que quedó)."""
+"""Señales de dirección (spec §4): actividades vencidas por persona, firmas, acuses, acuerdos."""
 from .base import senal, hoy, hace, dias, umbral, tiene_modelo, doc, fila, agrupar
 
 
@@ -55,11 +55,3 @@ def acuerdo_direccion_vencido(env, cfg):
     return [fila(f'acuerdo_direccion_vencido:sgi.management.review.agreement:{x.id}', [doc(x, x.name, revision=x.review_id.display_name, limite=str(x.deadline))],
                  valor=dias(x.deadline), valor_texto=f'{x.name}: venció hace {dias(x.deadline)} días', vence=x.deadline, user=x.responsible_id,
                  payload={'fecha_base': str(x.deadline)}) for x in xs]
-
-
-@senal('obligacion_legado')
-def obligacion_legado(env, cfg):
-    """Puente de qb_obligation, retirado del repo el 2026-11-04 (desinstalado en producción desde el 2026-10-06).
-    Manda un lote vacío para que las señales y situaciones que quedaron vivas en Supabase se resuelvan.
-    Cuando ya no quede ninguna vigente, se borra esta función y la fila de senales_config."""
-    return []

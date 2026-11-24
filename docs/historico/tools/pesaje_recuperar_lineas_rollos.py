@@ -13,7 +13,7 @@ y `qty_produced` de la orden de trabajo ya traían el peso de esos rollos: lo
 
 Uso, en la shell de Odoo.sh de la rama de producción (`odoo-shell`):
 
-    >>> exec(open('/home/odoo/src/user/tools/pesaje_recuperar_lineas_rollos.py').read())
+    >>> exec(open('/home/odoo/src/user/docs/historico/tools/pesaje_recuperar_lineas_rollos.py').read())
     >>> detectar(env)                                   # qué órdenes tienen rollos sin línea
     >>> recuperar(env, ['TL/OP-TEJ/H13915'])             # en seco: solo imprime
     >>> recuperar(env, ['TL/OP-TEJ/H13915'], aplicar=True)   # crea las líneas y hace commit
