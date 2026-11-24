@@ -143,7 +143,7 @@ class QbFlujoReportHandler(models.AbstractModel):
         caja_id = report._get_generic_line_id(None, None, markup='qb_caja')
         lines.append(self._linea(report, options, caja_id, _('Saldo inicial de caja'), inicial, 1,
                                  total=apertura, unfoldable=bool(caja)))
-        if self._desplegado(options, caja_id):
+        if caja:
             for c in caja:
                 nombre = '%s · %s %s · %s' % (
                     c['nombre'], c['moneda'], '{:,.2f}'.format(c['importe_moneda']),
@@ -172,7 +172,7 @@ class QbFlujoReportHandler(models.AbstractModel):
                 line_id = report._get_generic_line_id(None, None, markup=clave)
                 lines.append(self._linea(report, options, line_id, etiqueta, fila['semanas'], 3,
                                          unfoldable=bool(fila['detalle'])))
-                if self._desplegado(options, line_id):
+                if fila['detalle']:
                     detalle = sorted(fila['detalle'].items(), key=lambda kv: -abs(sum(kv[1]['semanas'])))
                     for dk, det in detalle:
                         if all(self._cero(v) for v in det['semanas']):
@@ -217,7 +217,7 @@ class QbFlujoReportHandler(models.AbstractModel):
             line_id = report._get_generic_line_id(None, None, markup=clave)
             lines.append(self._linea(report, options, line_id, _('No suma · %s', etiqueta), [None] * n, 2,
                                      total=inf['total'], unfoldable=True, clase='text-muted'))
-            if self._desplegado(options, line_id):
+            if inf['detalle']:
                 for dk, det in sorted(inf['detalle'].items(), key=lambda kv: -abs(kv[1]['total'])):
                     sub_id = report._get_generic_line_id(det['model'], det['res_id'], markup='%s__%s' % (clave, dk[1]),
                                                          parent_line_id=line_id)
@@ -237,10 +237,10 @@ class QbFlujoReportHandler(models.AbstractModel):
         return bool(options.get('unfold_all') or line_id in (options.get('unfolded_lines') or []))
 
     def _celda(self, report, options, column, valor):
+        celda = report._build_column_dict(0.0 if valor is None else valor, column, options=options)
         if valor is None:
-            return {'name': '', 'no_format': None, 'figure_type': 'monetary', 'class': 'number',
-                    'column_group_key': column['column_group_key'], 'expression_label': column['expression_label']}
-        return report._build_column_dict(valor, column, options=options)
+            celda.update({'name': '', 'no_format': None, 'is_zero': True})
+        return celda
 
     def _linea(self, report, options, line_id, nombre, semanas, nivel, total=None, unfoldable=False,
                parent_id=None, caret=False, clase=''):

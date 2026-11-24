@@ -75,6 +75,34 @@ class QbFlujoConfig(models.Model):
             'target': 'current',
         }
 
+    def action_diagnostico(self, fecha=None):
+        """Calcula el flujo y arma el reporte; devuelve un resumen o el error
+        completo. Sirve para revisar el módulo sin abrir el log del servidor."""
+        import traceback
+        self.ensure_one()
+        hoy = fields.Date.to_date(fecha) if fecha else fields.Date.context_today(self)
+        out = {'fecha': fields.Date.to_string(hoy)}
+        try:
+            res = self.env['qb.flujo.motor'].with_company(self.company_id).calcular(self, hoy)
+            out['caja'] = [{k: (fields.Date.to_string(v) if isinstance(v, date) else v) for k, v in c.items()}
+                           for c in res['caja']]
+            out['caja_total'] = res['caja_total']
+            out['filas'] = {k: [round(v, 2) for v in f['semanas']] for k, f in res['filas'].items()}
+            out['info'] = {k: round(f['total'], 2) for k, f in res['info'].items()}
+        except Exception:  # noqa: BLE001 - es un diagnóstico: se devuelve el error
+            out['error_motor'] = traceback.format_exc()
+            return out
+        try:
+            report = self.env.ref('qb_flujo_efectivo.qb_flujo_report').with_company(self.company_id)
+            options = report.get_options({'date': {'date_to': fields.Date.to_string(hoy), 'mode': 'single',
+                                                   'filter': 'custom'}})
+            info = report.get_report_information(options)
+            out['reporte'] = [(line.get('name'), [c.get('no_format') for c in line.get('columns', [])][-1:])
+                              for line in info.get('lines', [])]
+        except Exception:  # noqa: BLE001
+            out['error_reporte'] = traceback.format_exc()
+        return out
+
     def action_estimar_compromisos(self):
         self.compromiso_ids.filtered(lambda c: c.partner_id).action_estimar()
         return True
@@ -161,7 +189,7 @@ class QbFlujoCompromiso(models.Model):
          ('financiero', 'Créditos y arrendamientos'), ('otro', 'Otro')],
         string='Categoría', required=True, default='otro')
     tipo = fields.Selection([('salida', 'Salida'), ('entrada', 'Entrada')], required=True, default='salida')
-    importe = fields.Monetary(string='Importe por pago', currency_field='currency_id', required=True,
+    importe = fields.Monetary(string='Importe por pago', currency_field='currency_id', required=True, default=0.0,
                               help='En pesos y en positivo; el tipo dice si entra o sale.')
     periodicidad = fields.Selection(PERIODICIDADES, required=True, default='mensual')
     dia_semana = fields.Selection(DIAS_SEMANA, string='Día de la semana', default='4')
@@ -229,5 +257,6 @@ class QbFlujoAjuste(models.Model):
     fecha = fields.Date(required=True)
     name = fields.Char(string='Concepto', required=True)
     tipo = fields.Selection([('entrada', 'Entrada'), ('salida', 'Salida')], required=True, default='entrada')
-    importe = fields.Monetary(currency_field='currency_id', required=True, help='En pesos y en positivo.')
+    importe = fields.Monetary(currency_field='currency_id', required=True, default=0.0,
+                              help='En pesos y en positivo.')
     nota = fields.Char()
