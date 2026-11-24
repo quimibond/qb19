@@ -61,6 +61,11 @@
         <field name="model_id" ref="model_qb_sales_month_plan_line"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="rule_qb_sales_month_plan_compare_company" model="ir.rule">
+        <field name="name">Presupuesto del mes contra el anual por empresa</field>
+        <field name="model_id" ref="model_qb_sales_month_plan_compare"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
     <!-- 3.14.0 (diseño v3, 2.5): los vendedores capturan solo su parte de Confección. Las reglas de
          grupos distintos se suman: el administrador de ventas y el del SGI tocan todo. -->
     <record id="rule_qb_month_plan_line_salesman_confeccion" model="ir.rule">

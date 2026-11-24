@@ -17,7 +17,10 @@
          - Venta real: líneas de factura en bruto; el comparativo trae lo real en $, m y kg.
          - Cierre de ventas (PDF): botón de la ficha del presupuesto.
          - Capacidad semanal y Demanda por cliente en Ventas: son de Planeación (Fabricación).
-         - Pegar semanas, Imprimir o descargar, Armar presupuesto del mes: botones arriba de su lista. -->
+         - Pegar semanas, Imprimir o descargar, Armar presupuesto del mes: botones arriba de su lista.
+         3.35.0 (Jose, 24-nov: «eso debería ser un botón»): Armar propuesta del año y Proponer pedidos
+         son asistentes, no listas: pasan a botón arriba de la lista de presupuestos y del pronóstico
+         vigente (y Armar propuesta también en la ficha de un presupuesto en borrador sin renglones). -->
     <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
               parent="sale.sale_menu_root" sequence="6"
               groups="quimibond_sgi.group_sgi_user"/>
@@ -32,9 +35,6 @@
               groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sale_qb_release" name="Releases"
               parent="menu_sale_qb_grupo_pronostico" action="qb_release_action" sequence="30"/>
-    <menuitem id="menu_sale_qb_order_proposal" name="Proponer pedidos"
-              parent="menu_sale_qb_grupo_pronostico" action="qb_order_proposal_action" sequence="40"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
 
     <!-- Presupuesto -->
     <menuitem id="menu_sale_qb_grupo_presupuesto" name="Presupuesto"
@@ -45,9 +45,6 @@
               parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_month_plan_action" sequence="20"/>
     <menuitem id="menu_sale_qb_sales_project" name="Proyectos comerciales"
               parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_project_action" sequence="30"/>
-    <menuitem id="menu_sale_qb_budget_proposal" name="Armar propuesta del año"
-              parent="menu_sale_qb_grupo_presupuesto" action="qb_sales_budget_proposal_action" sequence="40"
-              groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
 
     <!-- Reportes -->
     <menuitem id="menu_sale_qb_grupo_reportes" name="Reportes"

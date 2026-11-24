@@ -174,3 +174,31 @@ class TestSalesMonthPlan(TransactionCase):
         note = self._activity(plan).note
         self.assertIn('IWMES190', note)
         self.assertIn('por kg', note)
+
+    def test_08_contra_el_presupuesto_anual_por_mercado(self):
+        """3.35.0 (Jose, 24-nov): el mes junto a lo que el anual aprobado traía para el mes, por
+        mercado, con su diferencia (ficha, PDF y correo a Dirección)."""
+        plan = self._build()
+        self.assertAlmostEqual(plan.amount_annual, 3.0, places=2)
+        self.assertAlmostEqual(plan.amount_annual_diff, 747.0, places=2)
+        self.env.flush_all()
+        plan.invalidate_recordset(['compare_ids'])
+        row = plan.compare_ids
+        self.assertEqual(len(row), 1)
+        self.assertEqual(row.mercado, 'industrial')
+        self.assertAlmostEqual(row.amount_annual, 3.0, places=2)
+        self.assertAlmostEqual(row.amount_plan, 750.0, places=2)
+        self.assertAlmostEqual(row.amount_diff, 747.0, places=2)
+        self.assertAlmostEqual(row.diff_pct, 24900.0, places=1)
+        pdf, _fmt = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_ventas_presupuesto.action_report_sales_month_plan', plan.ids)
+        self.assertIn(b"Contra el presupuesto anual", pdf)
+        rows, total, has_annual = plan._qb_compare_report()
+        self.assertTrue(has_annual)
+        self.assertEqual([r['label'] for r in rows], ["Industrial"])
+        self.assertEqual((rows[0]['annual'], rows[0]['plan'], rows[0]['diff'], rows[0]['pct']),
+                         ("3", "750", "747", "24900.0 %"))
+        self.assertEqual(total['pct'], "24900.0 %")
+        self.assertIn(b"24900.0 %", pdf)
+        action = plan.action_qb_send()
+        self.assertIn("Presupuesto anual del mes: 3", str(action['context']['default_body']))

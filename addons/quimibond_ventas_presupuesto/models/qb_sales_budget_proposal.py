@@ -738,6 +738,15 @@ class QbSalesBudgetProposalPartner(models.TransientModel):
 class SgiSalesBudgetProposal(models.Model):
     _inherit = 'sgi.sales.budget'
 
+    def action_qb_open_proposal(self):
+        """Botón de la lista de presupuestos y de la ficha en borrador sin renglones (3.35.0; antes
+        menú «Armar propuesta del año»). Desde la ficha, el asistente abre con su año."""
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'quimibond_ventas_presupuesto.qb_sales_budget_proposal_action')
+        if len(self) == 1 and self.year:
+            action['context'] = {'default_year': self.year}
+        return action
+
     @api.model
     def action_qb_build_proposal(self, year, base='ultimos12', min_amount=0.0, project_source_id=False,
                                  rate=0.0, rate_source=False, include_dev=True, use_forecast=True,

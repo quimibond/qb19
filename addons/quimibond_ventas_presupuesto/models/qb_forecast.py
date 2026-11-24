@@ -340,6 +340,10 @@ class QbForecastLine(models.Model):
         """Botón de la lista (3.20.0; antes menú «Imprimir o descargar»)."""
         return self.env['ir.actions.act_window']._for_xml_id('quimibond_ventas_presupuesto.qb_forecast_print_action')
 
+    def action_qb_open_order_proposal(self):
+        """Botón de la lista del pronóstico vigente (3.35.0; antes menú «Proponer pedidos»)."""
+        return self.env['ir.actions.act_window']._for_xml_id('quimibond_ventas_presupuesto.qb_order_proposal_action')
+
     def action_qb_volver_release(self):
         """Deshace el ajuste: la semana vuelve a lo que pide el cliente. Si el release ya no la trae
         (pide 0), se quita."""

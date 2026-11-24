@@ -21,6 +21,10 @@
                     <button name="action_qb_open_paste" type="object" string="Pegar desde Excel" display="always"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_qb_open_print" type="object" string="Imprimir o descargar" display="always"/>
+                    <!-- 3.35.0: antes era el menú «Proponer pedidos». -->
+                    <button name="action_qb_open_order_proposal" type="object" string="Proponer pedidos"
+                            display="always"
+                            groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                 </header>
                 <field name="week"/>
                 <field name="partner_id"/>
