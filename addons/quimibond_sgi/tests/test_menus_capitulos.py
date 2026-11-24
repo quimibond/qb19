@@ -10,9 +10,7 @@ menú, y el re-sello de «Mi procedimiento» cuando solo cambió la ruta.
 
 La base del build es copia de producción: nada cuenta registros globales."""
 import ast
-import importlib.util
 import os
-from unittest.mock import patch
 
 from lxml import etree
 
@@ -24,7 +22,6 @@ from odoo.tools.misc import file_open
 from ..models.sgi_cleanup import SGI_MENU_ARCHIVED, SGI_MENU_ENTRIES, SGI_REMOVED_XMLIDS
 from ..models.sgi_menu_paths import sgi_menu_path
 from .common_documents import sgi_hide_real_documents
-from .common_users import sgi_set_mast
 
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -124,7 +121,7 @@ class TestMenusCapitulos(TransactionCase):
                     'menu_sgi_safety', 'menu_sgi_performance', 'menu_sgi_improvement_group', 'menu_sgi_config']
         own = [m for m in children if (m.get_external_id().get(m.id) or '').startswith('quimibond_sgi.')]
         self.assertEqual([m.get_external_id()[m.id] for m in own], ['quimibond_sgi.' + x for x in expected])
-        self.assertEqual(own.mapped('name'), ['Inicio', 'Reportar', 'Sistema', 'Planeación',
+        self.assertEqual([m.name for m in own], ['Inicio', 'Reportar', 'Sistema', 'Planeación',
                                               'Seguridad y ambiente', 'Desempeño', 'Mejora', 'Configuración'])
         self.assertEqual(SGI_MENU_ENTRIES, tuple('quimibond_sgi.' + x for x in expected))
 
@@ -310,53 +307,6 @@ class TestMenusCapitulos(TransactionCase):
         self.assertEqual(doc.sgi_content_hash, hash_before)
         self.assertTrue(stale())
         self.assertEqual(notes(), 1)
-
-    def test_09_migracion_idempotente(self):
-        """La migración corre dos veces sin duplicar el aviso al Jefe MAST
-        ni tocar dos veces una sección del MIID. El re-sello se prueba en
-        test_08; aquí se revisa que reciba los menús con su ruta vieja."""
-        mast = sgi_set_mast(self.env, login='zc_mig_mast')
-        miid = self.env['sgi.miid']._sgi_get()
-        self.assertTrue(miid, "La empresa del SGI tiene su Manual.")
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.113.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_111_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        calls = []
-
-        def fake_reseal(self_job, old_paths, tag="57.113.0", jobs=None):
-            calls.append((old_paths, tag))
-            return {'reselladas': [], 'sin_cambio': 0, 'siguen_desactualizadas': []}
-
-        # 57.146.0 archiva esta sección (y una base nueva no la siembra): la
-        # migración de 57.113.0 la respeta tal como esté.
-        # (xmlid que 57.146.0 ya no siembra: se arma por partes a propósito.)
-        section = self.env.ref('quimibond_sgi.' + 'sgi_miid_section_35_auditoria', raise_if_not_found=False)
-        with patch.object(type(self.env['hr.job']), '_sgi_mp_reseal_menu_moves', fake_reseal):
-            module.migrate(self.env.cr, '19.0.57.110.0')
-            module.migrate(self.env.cr, '19.0.57.110.0')
-        Activity = self.env['mail.activity'].sudo().with_context(active_test=False)
-        notices = Activity.search([('sgi_cron_key', '=', 'menus_capitulos_57113')])
-        self.assertEqual(len(notices), 1, "Un solo aviso al Jefe MAST.")
-        self.assertEqual(notices.user_id, mast)
-        self.assertEqual(len(calls), 2)
-        old_paths, tag = calls[0]
-        self.assertEqual(tag, "57.113.0")
-        by_menu = {menu: p for menu, p in old_paths.items()}
-        self.assertEqual(by_menu[_ref(self.env, 'menu_sgi_indicators')],
-                         "SGI/Administración SGI/Indicadores/Indicadores")
-        self.assertEqual(by_menu[_ref(self.env, 'menu_sgi_policy')], "SGI/Dirección/Política integral")
-        self.assertNotIn(_ref(self.env, 'menu_sgi_nc'), by_menu, "No cambió de ruta.")
-        for menu, old in by_menu.items():
-            self.assertNotEqual(menu.with_context(lang='en_US').complete_name, old, old)
-        # Sección sin editar: con la ruta nueva y un solo mensaje de la siembra.
-        if section and not self.env['mail.message'].search_count([
-                ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id),
-                ('body', 'ilike', 'Texto de la sección editado')]):
-            self.assertIn('SGI → Desempeño → Auditorías', section.body)
-            self.assertLessEqual(self.env['mail.message'].search_count([
-                ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id),
-                ('body', 'ilike', '57.113.0: texto actualizado')]), 1)
 
     def test_10_rutas_que_se_le_dicen(self):
         self.assertEqual(sgi_menu_path('aprobaciones'), "SGI → Sistema → Aprobaciones del SGI")

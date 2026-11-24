@@ -296,7 +296,7 @@ class QualityAlertAi(models.Model):
             "Origen: %s" % origin,
             "Proceso: %s %s" % (alert.sgi_process_id.code or '', alert.sgi_process_id.name or ''),
             "Producto: %s" % sgi_ai_scrub(alert.product_tmpl_id.name or ''),
-            "Lote: %s" % (alert.lot_id.name or ''),
+            "Lote: %s" % ', '.join(alert.lot_ids.mapped('name')),
             "Desviación: %s" % sgi_ai_scrub(alert.sgi_deviation or ''),
             "Descripción: %s" % sgi_ai_scrub(html2plaintext(alert.description or ''))[:3000],
         ]

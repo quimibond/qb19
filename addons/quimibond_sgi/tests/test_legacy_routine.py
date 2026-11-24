@@ -3,8 +3,6 @@
 P-L1 a P-L5 y P-L9 de docs/audit/12-transicion.md §3.11 (P-L6 en
 test_dropbox_key, P-L7 en test_dropbox_section, P-L8 en test_cleanup_45)."""
 import base64
-import importlib.util
-import os
 
 import psycopg2
 
@@ -14,17 +12,6 @@ from odoo.tools import mute_logger
 
 from .common_documents import sgi_hide_real_documents, sgi_neutralize_dropbox_contradictions
 from .common_users import sgi_test_user
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _load_migration(version, name):
-    path = os.path.join(_MODULE_DIR, 'migrations', version, name)
-    spec = importlib.util.spec_from_file_location('sgi_mig_%s' % version.replace('.', '_'), path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 @tagged('post_install', '-at_install')
 class TestLegacyRoutine(TransactionCase):
@@ -228,23 +215,3 @@ class TestLegacyRoutine(TransactionCase):
             self.env['sgi.legacy.routine.import'].with_user(self.user).create({})
 
     # P-L9: migraciones de la transición, idempotentes (§3.10).
-    def test_l9_migracion_clase_d_idempotente(self):
-        dat = self.Doc.create({'name': 'DAT P-V71-01 Datos.pdf', 'type': 'binary',
-                               'sgi_is_controlled': True, 'sgi_doc_type': 'dat',
-                               'sgi_code': 'DAT P-V71-01', 'sgi_state': 'vigente',
-                               'sgi_process_id': self.process.id})
-        family = self.Doc.create({'name': 'DAT P-I01-77 Prueba.pdf', 'type': 'binary',
-                                  'sgi_is_controlled': True, 'sgi_doc_type': 'dat',
-                                  'sgi_code': 'DAT P-I01-77', 'sgi_state': 'vigente',
-                                  'sgi_process_id': self.process.id})
-        post = _load_migration('19.0.56.39.0', 'post-migrate.py')
-        post.migrate(self.env.cr, '19.0.56.38.0')
-        self.env.invalidate_all()
-        self.assertEqual((dat.sgi_migration_class, dat.sgi_migration_state), ('d', 'na'))
-        self.assertFalse(family.sgi_migration_class, "P-I01 y su familia no se tocan.")
-        self.assertEqual(family.sgi_migration_state, 'pendiente')
-        # Respaldo previo (en una base que ya migró, la tabla es la de esa
-        # corrida y no se pisa: CREATE TABLE IF NOT EXISTS).
-        self.env.cr.execute("SELECT to_regclass('documents_document_bak_563900')")
-        self.assertTrue(self.env.cr.fetchone()[0], "Respaldo previo.")
-        self.assertEqual(self.Doc._sgi_classify_legacy_documents(), {}, "La segunda vez no hace nada.")

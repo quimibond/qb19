@@ -14,6 +14,43 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.5 — 2026-11-24
+
+Segunda tanda de las fallas viejas del suite del SGI en Odoo.sh (corrida completa del 24-nov: 38 fallas y 63 errores anteriores a 57.202.3).
+
+### Corregido
+
+- **IA de la NC**: el resumen que se manda leía `quality.alert.lot_id`, que en Odoo 19 es `lot_ids` (muchos lotes): toda sugerencia tronaba con `AttributeError`. Ahora lista los lotes.
+- **«El PDF sigue vigente»** también lo puede confirmar el sistema (`sudo`), no solo el Jefe MAST.
+- **Mis pendientes**: en una medición por validar se veían «Hecho» y «Validar» (los dos validan); queda solo «Validar» y el botón para abrir.
+- **Textos en «usted»**: «Sube con…» → «Se sube con…», «Pide cambios» → «Solicita cambios», la ayuda de «No aplica» y la columna «Lo que pide el cliente»; «Jefe MAST» en el ejemplo del MIID.
+- **Filtros «Míos»** (eran «Mías» en acciones, auditorías, solicitudes de cambio y de análisis y procedimientos) y **colores de la tabla del README**: borrador en gris (solicitudes de modificación, estado del MIID y sus revisiones) y cerrado en verde (avisos por tiempo del desarrollo).
+- El nombre del archivo del MIID en borrador sale del nombre del manual, no de la clave «P-G01» escrita a mano.
+
+### Pruebas
+
+- Al día con el código: `safe_eval` de Odoo 19 pide su `time` envuelto; `Field.depends` ya no existe (`get_depends`); `test_menus_capitulos` compara una lista; el rol «Escala» pide al menos 1 día hábil; claves de procedimiento que cumplen la nomenclatura (`P-V95`, `P-V96`) y responsable al volver controlado un documento; `sgi_stock_picking_view_form_links` volvió en 57.114.0 como herencia de `stock` (permitida) y sale de la lista de integradas.
+
+## 19.0.57.202.4 — 2026-11-24
+
+### Corregido
+
+- El MIID y las rutas de menú (`sgi_menu_paths`) pedían siempre `lang='es_MX'`. La base nueva del build de Odoo.sh no trae ese idioma activo y Odoo 19 lo rechaza («Invalid language code: es_MX»): unas 35 pruebas del SGI tronaban por eso. Nuevo `sgi_lang(env)`: es_MX si está activo (producción, sin cambio), si no el idioma del usuario.
+
+## 19.0.57.202.3 — 2026-11-24
+
+Limpieza de pruebas para aligerar el build de Odoo.sh (pedido de Jose del 24-nov-2026). Solo pruebas: el módulo no cambia.
+
+### Retirado
+- 18 pruebas que corrían scripts `pre-migrate`/`post-migrate` de versiones por las que producción ya pasó (56.31.0 a 57.162.0; producción está en 57.201.0), en `test_clausulas_revision`, `test_entregables_modelo`, `test_format_map_operaciones`, `test_formatos_bloque3`, `test_indicadores_sin_dato`, `test_integridad_metas`, `test_legacy_routine`, `test_menus_capitulos`, `test_menus_entregables`, `test_miid`, `test_miid_pantalla`, `test_procesos_viejos`, `test_replaced_by_process`, `test_salud_sgi` y `test_sst_links`. Los scripts se quedan en `migrations/`; lo que siguen sembrando o corrigiendo lo prueban las demás pruebas de cada archivo.
+
+### Corregido
+- «Regenerar artículos» ya no se detiene por el historial de costo de Odoo 19 (`product.value` sin movimiento de inventario, que Odoo escribe al crear el producto o cambiar su costo; producción tiene 26,769): no cuenta como uso del artículo y se borra con él (`test_dev_product` test_08 y test_10).
+- Mandar el aviso de un envío de muestra al cliente ya no se cicla: al cerrar la actividad, Odoo publica un mensaje en el envío que volvía a cerrar la misma actividad sin fin (`RecursionError`; `test_dev_shipment` test_02).
+- `test_dev_project` test_02: registra la aprobación del cliente antes de pasar a «Muestra» o «Pilotaje», como `test_dev_product` en 57.202.2.
+- `test_dev_project` test_06: la plantilla de prueba se crea en es_MX, como en producción; en la base nueva del build solo quedaba en_US.
+- `test_dev_project` test_08: revisa que el modelo quede expuesto al MCP y no lo que devuelve la corrida, que solo trae lo que abrió (desde 57.149.0 lo ya habilitado no se repite).
+
 ## 19.0.57.202.2 — 2026-11-24
 
 Cinco pruebas que detenían el build completo de Odoo.sh (rama del flujo de efectivo, 24-nov-2026).

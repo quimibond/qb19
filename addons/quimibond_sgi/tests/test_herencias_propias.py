@@ -46,7 +46,8 @@ INTEGRADAS = (
     'sgi_deliverable_view_form_pr6',
     # 57.29.0
     'sgi_quality_alert_view_form_links',
-    'sgi_stock_picking_view_form_links',
+    # sgi_stock_picking_view_form_links volvió en 57.114.0 como herencia de
+    # stock.view_picking_form (otro módulo: permitido), con el mismo xmlid.
     'sgi_product_template_view_form_links',
     # 57.30.0
     'sgi_hr_job_view_form_roles',

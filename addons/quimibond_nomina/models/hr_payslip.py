@@ -367,11 +367,13 @@ class HrPayslip(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def qb_nomina_ensure_he_dias_input(self):
-        """Deja la entrada ``HE_DIAS`` disponible en la estructura de nómina de
+        """Deja las entradas ``HE_DIAS`` y ``FESTIVO`` (1.26.0) disponibles en la estructura de nómina de
         Quimibond («Paga regular», código ``MX_REGULAR``). El registro nace en
         ``data/payslip_input_types.xml``; la estructura no tiene xmlid conocido,
         así que se liga aquí por código en cada instalación/actualización."""
-        itype = self.env.ref('quimibond_nomina.input_type_he_dias', raise_if_not_found=False)
+        itype = self.env['hr.payslip.input.type']
+        for xmlid in ('quimibond_nomina.input_type_he_dias', 'quimibond_nomina.input_type_festivo'):
+            itype |= self.env.ref(xmlid, raise_if_not_found=False) or itype.browse()
         if not itype:
             return False
         structs = self.env['hr.payroll.structure'].sudo().with_context(active_test=False).search(
@@ -380,9 +382,10 @@ class HrPayslip(models.Model):
             _logger.warning('quimibond_nomina: no hay estructura MX_REGULAR; la entrada HE_DIAS queda sin '
                             'estructura (agregarla a mano en Nómina → Configuración → Otras entradas)')
             return False
-        faltan = structs - itype.sudo().struct_ids
-        if faltan:
-            itype.sudo().write({'struct_ids': [(4, st.id) for st in faltan]})
+        for tipo in itype.sudo():
+            faltan = structs - tipo.struct_ids
+            if faltan:
+                tipo.write({'struct_ids': [(4, st.id) for st in faltan]})
         return True
 
     @api.model

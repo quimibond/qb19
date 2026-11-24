@@ -142,7 +142,7 @@ class TestMyPending(TransactionCase):
 
     def _activity_with_roles(self, name, **vals):
         """Una actividad atrasada (semáforo en rojo) que ejecuta el puesto de
-        la persona y escala al del jefe tras 0 días hábiles (como
+        la persona y escala al del jefe tras 1 día hábil (como
         test_bandeja)."""
         if not hasattr(self, '_mp_process'):
             boss_job = self.env['hr.job'].create({'name': 'JEFE PENDIENTES MP'})
@@ -153,7 +153,7 @@ class TestMyPending(TransactionCase):
         activity = self.env['sgi.process.activity'].create(dict({
             'process_id': self._mp_process.id, 'name': name,
             'role_ids': [(0, 0, {'job_id': self.job.id, 'role': 'ejecuta'}),
-                         (0, 0, {'job_id': self._mp_boss_job.id, 'role': 'escala', 'after_days': 0})],
+                         (0, 0, {'job_id': self._mp_boss_job.id, 'role': 'escala', 'after_days': 1})],
         }, **vals))
         activity.sudo().write({'measure_state': 'rojo'})
         activity.invalidate_recordset()

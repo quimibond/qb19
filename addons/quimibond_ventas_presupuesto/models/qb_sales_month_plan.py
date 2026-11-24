@@ -99,15 +99,43 @@ class QbSalesMonthPlan(models.Model):
                                    if kv[0] in labels else 99) if v)
             plan.no_price_count = len(plan.line_ids.filtered('price_problem'))
 
+    def _qb_annual_lines(self):
+        """Renglones del presupuesto anual aprobado del año que caen en el mes del documento."""
+        self.ensure_one()
+        lines = self.env['sgi.sales.budget.line']
+        budget = self.month and self.company_id and self._qb_annual_budget(self.company_id, self.month)
+        if not budget:
+            return lines
+        return lines.search([('budget_id', '=', budget.id), ('date', '>=', self.month),
+                             ('date', '<', self.month + relativedelta(months=1))])
+
+    def _qb_compare_report(self):
+        """3.35.1: el mes contra el anual por mercado para el PDF, con los textos ya formateados
+        (la plantilla solo imprime). Devuelve (renglones, total, hay anual); renglones y total son
+        dicts con label, annual, plan, diff y pct."""
+        self.ensure_one()
+        plan_by, annual_by = defaultdict(float), defaultdict(float)
+        for line in self.line_ids:
+            plan_by[line.mercado or 'otro'] += line.amount or 0.0
+        for line in self._qb_annual_lines():
+            annual_by[line.mercado or 'otro'] += line.amount_budget or 0.0
+
+        def row(label, plan_amt, annual_amt):
+            diff = plan_amt - annual_amt
+            return {'label': label, 'annual': '{:,.0f}'.format(annual_amt), 'plan': '{:,.0f}'.format(plan_amt),
+                    'diff': '{:,.0f}'.format(diff),
+                    'pct': '{:.1f} %'.format(diff / annual_amt * 100) if annual_amt else ''}
+        rows = [row(label, plan_by.get(key, 0.0), annual_by.get(key, 0.0))
+                for key, label in MARKETS if plan_by.get(key) or annual_by.get(key)]
+        total = row("Total", sum(plan_by.values()), sum(annual_by.values()))
+        return rows, total, bool(annual_by)
+
     @api.depends('company_id', 'month', 'amount_total')
     def _compute_annual(self):
         """El presupuesto anual aprobado vigente del año (no el que había al armar: si después se
         aprueba otra revisión, el mes se compara contra esa)."""
         for plan in self:
-            budget = plan.month and plan._qb_annual_budget(plan.company_id, plan.month)
-            lines = budget.line_ids.filtered(lambda l, m=plan.month: l.date and l.date.replace(day=1) == m) \
-                if budget else self.env['sgi.sales.budget.line']
-            plan.amount_annual = sum(lines.mapped('amount_budget'))
+            plan.amount_annual = sum(plan._qb_annual_lines().mapped('amount_budget'))
             plan.amount_annual_diff = plan.amount_total - plan.amount_annual
 
     @api.constrains('month')

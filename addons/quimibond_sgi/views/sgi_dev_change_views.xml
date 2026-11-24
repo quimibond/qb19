@@ -78,7 +78,7 @@
         <field name="name">sgi.dev.change.request.list</field>
         <field name="model">sgi.dev.change.request</field>
         <field name="arch" type="xml">
-            <list string="Solicitudes de modificación" decoration-muted="state == 'aplicada'" decoration-info="state == 'borrador'">
+            <list string="Solicitudes de modificación" decoration-muted="state in ('aplicada', 'borrador')">
                 <field name="date"/>
                 <field name="name"/>
                 <field name="project_id"/>
@@ -103,7 +103,7 @@
                 <filter name="draft" string="Por firmar" domain="[('state', '=', 'borrador')]"/>
                 <filter name="signed" string="Firmadas, por aplicar" domain="[('state', '=', 'firmada')]"/>
                 <separator/>
-                <filter name="mine" string="Mías" domain="[('requested_by_id', '=', uid)]"/>
+                <filter name="mine" string="Míos" domain="[('requested_by_id', '=', uid)]"/>
                 <separator/>
                 <filter name="filter_date" string="Fecha" date="date"/>
                 <group>

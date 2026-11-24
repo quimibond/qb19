@@ -268,7 +268,7 @@ class ProjectProjectDev(models.Model):
                                          help="Artículo generado para el desarrollo (lo crea el generador de código). "
                                               "Su referencia interna forma parte del nombre del proyecto.")
     sgi_dev_revision = fields.Integer(string="Revisión", default=0, tracking=True, copy=False,
-                                      help="Revisión del desarrollo. Sube con «Subir revisión» cuando el cliente "
+                                      help="Revisión del desarrollo. Se sube con «Subir revisión» cuando el cliente "
                                            "ajusta lo que pidió; cada cambio queda en la bitácora.")
     sgi_dev_revision_ids = fields.One2many('sgi.dev.revision', 'project_id', string="Bitácora de revisiones")
     # --- Origen ------------------------------------------------------------------

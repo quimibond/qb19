@@ -12,7 +12,13 @@
                   groups="account.group_account_readonly"/>
     </data>
 
-    <!-- Dos entradas de trabajo y un cajón técnico. -->
+    <!-- Entradas de trabajo y un cajón técnico. -->
+    <menuitem id="menu_sat_compras"
+              name="Compras por revisar"
+              parent="menu_sat_root"
+              action="action_sat_compras"
+              sequence="5"
+              groups="account.group_account_user"/>
     <menuitem id="menu_sat_compare"
               name="Conciliar"
               parent="menu_sat_root"
@@ -59,4 +65,9 @@
               parent="menu_sat_datos"
               action="action_sat_webhook_event"
               sequence="50"/>
+    <menuitem id="menu_sat_bill_rule"
+              name="Reglas de cuenta de proveedores"
+              parent="menu_sat_datos"
+              action="action_sat_bill_rule"
+              sequence="60"/>
 </odoo>

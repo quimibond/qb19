@@ -254,7 +254,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Información requerida al cliente</span>
                                 <button name="action_sgi_dev_load_required_docs" type="object" string="Cargar el catálogo de la línea" class="btn-secondary" icon="fa-list"
-                                        help="Agrega en «No aplica» los documentos del catálogo de la línea que todavía no están en la lista."/>
+                                        help="Los documentos del catálogo de la línea que todavía no están en la lista se agregan en «No aplica»."/>
                             </div>
                             <field name="sgi_dev_required_doc_ids" context="{'default_project_id': id}">
                                 <list editable="bottom">
@@ -316,7 +316,7 @@
                                         <field name="direction" readonly="1"/>
                                         <field name="position" optional="hide" readonly="1"/>
                                         <field name="unit"/>
-                                        <field name="spec_label" string="Pide el cliente"/>
+                                        <field name="spec_label" string="Lo que pide el cliente"/>
                                         <field name="lab_requested"/>
                                         <field name="sample_value" readonly="kind != 'num'"/>
                                         <field name="sample_text" readonly="kind == 'num'"/>
@@ -511,7 +511,7 @@
                                     <field name="name" readonly="1"/>
                                     <field name="direction" readonly="1"/>
                                     <field name="unit"/>
-                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="spec_label" string="Lo que pide el cliente"/>
                                     <field name="ctrl_tol_minus" readonly="kind != 'num'"/>
                                     <field name="ctrl_tol_plus" readonly="kind != 'num'"/>
                                     <field name="ctrl_label" optional="show"/>
@@ -587,7 +587,7 @@
                                     <field name="name" readonly="1"/>
                                     <field name="direction" readonly="1"/>
                                     <field name="unit"/>
-                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="spec_label" string="Lo que pide el cliente"/>
                                     <field name="ctrl_label" optional="hide"/>
                                     <field name="run_1" readonly="kind != 'num'"/>
                                     <field name="run_2" readonly="kind != 'num'"/>
@@ -656,7 +656,7 @@
                                     <field name="name" readonly="1"/>
                                     <field name="direction" readonly="1"/>
                                     <field name="unit"/>
-                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="spec_label" string="Lo que pide el cliente"/>
                                     <field name="run_avg"/>
                                     <field name="run_text" readonly="1"/>
                                     <field name="customer_approved"/>
@@ -681,7 +681,7 @@
                             <p class="text-muted">Al firmar una solicitud, Dirección de Operaciones abre la revisión siguiente y el proyecto vuelve a la muestra.</p>
                             <separator string="Solicitudes de modificación"/>
                             <field name="sgi_dev_change_request_ids" readonly="1">
-                                <list create="0" delete="0" decoration-info="state == 'borrador'" decoration-muted="state == 'aplicada'">
+                                <list create="0" delete="0" decoration-muted="state in ('aplicada', 'borrador')">
                                     <field name="date"/>
                                     <field name="name"/>
                                     <field name="origin"/>
@@ -794,7 +794,7 @@
                                 </field>
                             <separator string="Avisos y escalamientos por tiempo"/>
                             <field name="sgi_dev_escalation_ids" readonly="1">
-                                    <list create="0" delete="0" decoration-muted="state == 'cerrado'">
+                                    <list create="0" delete="0" decoration-success="state == 'cerrado'">
                                         <field name="sent_at"/>
                                         <field name="step_code"/>
                                         <field name="step_name"/>

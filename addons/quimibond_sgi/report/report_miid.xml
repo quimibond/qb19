@@ -13,7 +13,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_miid_document</field>
         <field name="report_file">quimibond_sgi.report_miid_document</field>
-        <field name="print_report_name">'%s - borrador (vista del sistema)' % (object.kind == 'pg01' and 'P-G01' or 'MIID')</field>
+        <field name="print_report_name">'%s - borrador (vista del sistema)' % object.name</field>
         <field name="paperformat_id" ref="paperformat_sgi_carta"/>
     </record>
 

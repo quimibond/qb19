@@ -78,7 +78,7 @@
                                 <field name="name"/>
                                 <field name="owner_id" widget="many2one_avatar_employee"/>
                                 <field name="state" widget="badge" decoration-warning="state == 'piloto'"
-                                       decoration-info="state == 'borrador'"/>
+                                       decoration-muted="state == 'borrador'"/>
                                 <field name="spec_error_count" string="Le faltan"/>
                                 <button name="action_view_spec_gaps" type="object" string="Qué falta"
                                         icon="fa-list" invisible="not spec_error_count"/>
@@ -164,7 +164,7 @@
                                     <field name="owner_id" widget="many2one_avatar_employee"/>
                                     <field name="activity_count"/>
                                     <field name="state" widget="badge" decoration-success="state == 'vigente'"
-                                           decoration-warning="state == 'piloto'" decoration-info="state == 'borrador'"/>
+                                           decoration-warning="state == 'piloto'" decoration-muted="state == 'borrador'"/>
                                 </list>
                             </field>
                             <field name="scr_sistema_politica_html" nolabel="1" readonly="1"/>

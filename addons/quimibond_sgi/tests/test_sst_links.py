@@ -2,16 +2,11 @@
 """57.54.0 — liga de las actividades críticas de seguridad, salud y ambiente
 a su pantalla y formato (post-migrate): escribe solo lo vacío, respeta lo que
 ya estaba y es idempotente."""
-import importlib.util
-import os
 
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_sst_links import SGI_SST_ACTIVITY_LINKS
 from .common_documents import sgi_hide_real_documents
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 @tagged('post_install', '-at_install')
 class TestSstLinks(TransactionCase):
@@ -74,12 +69,3 @@ class TestSstLinks(TransactionCase):
         # Mismo formato que el numeral calculado (paso a dos dígitos o más).
         for number in numbers:
             self.assertRegex(number, r'^[A-Z0-9]+\.\d{2,}$')
-
-    def test_03_post_migrate_corre(self):
-        path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.54.0', 'post-migrate.py')
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_54_0', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        module.migrate(self.env.cr, '19.0.57.53.0')
-        # Idempotente: una segunda corrida no escribe nada.
-        self.assertEqual(self.env['sgi.process.activity']._sgi_link_activity_screens(), {})

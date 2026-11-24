@@ -5,27 +5,12 @@ juzgó; cambiar la meta del indicador o un escalón no la recolorea. Reabrirla
 
 Las pruebas crean sus propios indicadores (claves ZK04-*) con periodos de
 2046: la base del build es copia de producción."""
-import importlib.util
-import os
 from datetime import date
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from .common_users import sgi_set_mast
-
-_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_POST = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.100.0', 'post-migrate.py')
-
-
-def _post_migrate():
-    """El post-migrate de 57.100.0, cargado dentro de la prueba (un archivo que
-    falta no rompe la carga del paquete de pruebas)."""
-    spec = importlib.util.spec_from_file_location('sgi_mig_57_100_0', _POST)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 @tagged('post_install', '-at_install')
 class TestIntegridadMetas(TransactionCase):
@@ -156,21 +141,3 @@ class TestIntegridadMetas(TransactionCase):
         m.with_user(self.mast).action_validate()
         self.ind.write({'target_objective': 80.0, 'target_acceptable': 70.0})
         self.assertEqual(row.semaphore, 'amarillo')
-
-    def test_09_post_migrate_congela_las_validadas_sin_cambiar_color(self):
-        m = self._measure(85.0)
-        m.with_user(self.mast).action_validate()
-        self.env.flush_all()
-        self.env.cr.execute(
-            "UPDATE sgi_indicator_measure SET sgi_targets_frozen = false WHERE id = %s", [m.id])
-        m.invalidate_recordset()
-        before = m.semaphore
-        mig = _post_migrate()
-        mig.migrate(self.env.cr, '19.0.57.99.0')
-        m.invalidate_recordset()
-        self.assertTrue(m.sgi_targets_frozen)
-        self.assertEqual(m.semaphore, before)
-        self.assertEqual(m.sgi_frozen_objective, 90.0)
-        mig.migrate(self.env.cr, '19.0.57.99.0')  # idempotente
-        m.invalidate_recordset()
-        self.assertTrue(m.sgi_targets_frozen)

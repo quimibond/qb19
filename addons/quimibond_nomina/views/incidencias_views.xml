@@ -33,7 +33,7 @@
                             invisible="state != 'borrador' or not linea_ids"/>
                     <button name="action_pasar_a_recibos" type="object" string="Pasar a recibos" class="btn-primary"
                             invisible="state != 'revisada'"
-                            confirm="Se escriben FALTAS, HE_DOBLE, H_SENCILLA, DOM y HE_DIAS en los recibos en borrador de la corrida y se recalculan. No se valida nada. ¿Continuar?"/>
+                            confirm="Se escriben FALTAS, HE_DOBLE, H_SENCILLA, DOM, HE_DIAS y FESTIVO en los recibos en borrador de la corrida y se recalculan. No se valida nada. ¿Continuar?"/>
                     <button name="action_borrador" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"/>
                     <field name="state" widget="statusbar"/>
