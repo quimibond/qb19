@@ -65,6 +65,11 @@ SALDOS = (('quimibond_ficha_tecnica_tela.saldo_segunda', 'SALDO DE TELA TEJIDO')
 # 2.25.0: subproducto que pesa Rama en la orden en kg (quimibond_rollos_bitacora, «PESAR DESPERDICIO»). Nace con
 # cantidad 0: no es estándar, se registra el peso real de cada orden.
 DESPERDICIO_CODIGO = 'DESPERDICIO TEJIDO'
+# 2.29.1 (Dirección, 2026-11-22): Rama pesa dos subproductos: DESPERDICIO TEJIDO (lienzos o tela que se elimina durante el
+# proceso) y DESPERDICIO ORILLAS (la orilla de la tela que se retira en la Rama). Los dos van en la lista en kg, en la
+# operación Rama, con cantidad 0.
+DESPERDICIO_ORILLAS_CODIGO = 'DESPERDICIO ORILLAS'
+DESPERDICIOS_RAMA = (DESPERDICIO_CODIGO, DESPERDICIO_ORILLAS_CODIGO)
 # 2.25.0: tipo de operación de cada lista del flujo, por su código de secuencia (en producción 410 «Fabricación Tela en
 # kg», de 2 PRODUCCIÓN a 10 INSPECCIÓN, y 411 «Fabricación Tela en m», de 10 INSPECCIÓN a 14 PT PQ). Sin él, la orden
 # toma el tipo de fabricación predeterminado del almacén («Re-proceso Tintorería»).
@@ -347,7 +352,7 @@ class FichaTecnicaRutaPaso(models.Model):
     tiempo = fields.Float(string='Tiempo fijo (min por ciclo)', digits=(12, 4),
                           help='Solo para pasos cuyo tiempo no sale de la ficha (por ejemplo, la Clasificación final: '
                                '60 min por ciclo de 400 m, la capacidad del centro). Los demás tiempos los calcula '
-                               '«Usar los datos de la ficha».')
+                               '«Corregir con la ficha».')
 
     @api.onchange('paso')
     def _onchange_paso(self):
@@ -607,31 +612,34 @@ class MrpBomDesperdicioRama(models.Model):
             'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
 
     def _ft_poner_desperdicio(self):
-        """2.25.0: deja en la lista en kg el subproducto «Desperdicio Tejido» en la operación de Rama, con cantidad 0.
+        """2.25.0: deja en la lista en kg los subproductos de desperdicio de Rama en la operación de Rama, con cantidad 0.
+        2.29.1: son dos, «Desperdicio Tejido» y «Desperdicio Orillas».
 
-        Lo pide el pesaje de desperdicio de Rama de José Sacramento (quimibond_rollos_bitacora): sin él, «PESAR
-        DESPERDICIO» se bloquea. Si ya está, solo lo vuelve a ligar a la Rama (las operaciones se rehacen al generar).
+        Lo pide el pesaje de desperdicio de Rama de José Sacramento (quimibond_rollos_bitacora): sin ellos, «PESAR
+        DESPERDICIO» se bloquea. Si ya están, solo los vuelve a ligar a la Rama (las operaciones se rehacen al generar).
         Devuelve los avisos."""
         avisos = []
         Ruta = self.env['ficha.tecnica.ruta']
-        producto = self.env['product.product'].search([('default_code', '=', DESPERDICIO_CODIGO)], limit=1)
+        Producto = self.env['product.product']
+        productos = {codigo: Producto.search([('default_code', '=', codigo)], limit=1) for codigo in DESPERDICIOS_RAMA}
         for bom in self:
             nombre = bom.product_tmpl_id.default_code or bom.product_tmpl_id.name
-            if not producto:
-                avisos.append('%s: no existe el artículo «%s» para el subproducto de Rama.' % (nombre, DESPERDICIO_CODIGO))
-                continue
             rama = bom.with_context(active_test=False).operation_ids.filtered(
                 lambda o: Ruta._ft_paso_de_operacion(o) == 'rama').sorted(lambda o: (o.sequence, o.id))[:1]
             if not rama:
                 avisos.append('%s: la lista en kg no tiene Rama; el desperdicio queda sin operación.' % nombre)
-            actual = bom.byproduct_ids.filtered(lambda b: b.product_id == producto)[:1]
-            if actual:
-                if actual.operation_id != rama:
-                    actual.operation_id = rama
-                continue
-            bom.byproduct_ids = [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
-                                         'product_uom_id': producto.uom_id.id, 'operation_id': rama.id or False,
-                                         'cost_share': 0.0})]
+            for codigo, producto in productos.items():
+                if not producto:
+                    avisos.append('%s: no existe el artículo «%s» para el subproducto de Rama.' % (nombre, codigo))
+                    continue
+                actual = bom.byproduct_ids.filtered(lambda b, producto=producto: b.product_id == producto)[:1]
+                if actual:
+                    if actual.operation_id != rama:
+                        actual.operation_id = rama
+                    continue
+                bom.byproduct_ids = [(0, 0, {'product_id': producto.id, 'product_qty': 0.0,
+                                             'product_uom_id': producto.uom_id.id, 'operation_id': rama.id or False,
+                                             'cost_share': 0.0})]
         return avisos
 
     @api.model

@@ -11,7 +11,7 @@
                 <header>
                     <button name="action_ft_actualizar" type="object" string="Actualizar" display="always"
                             help="Vuelve a revisar todas las telas contra sus fichas."/>
-                    <button name="action_ft_datos_ficha" type="object" string="Usar los datos de la ficha"
+                    <button name="action_ft_datos_ficha" type="object" string="Corregir con la ficha"
                             help="En las telas seleccionadas: capacidad de los jets, tiempos y conversión a metros desde la ficha; luego las vuelve a revisar."/>
                 </header>
                 <field name="articulo"/>
@@ -33,9 +33,9 @@
         <field name="arch" type="xml">
             <form string="Revisión de listas" create="0" delete="0">
                 <header>
-                    <button name="action_ft_datos_ficha" type="object" string="Usar los datos de la ficha"
+                    <button name="action_ft_datos_ficha" type="object" string="Corregir con la ficha"
                             class="btn-primary" invisible="listo"/>
-                    <button name="action_ft_revisar" type="object" string="Volver a revisar"/>
+                    <button name="action_ft_revisar" type="object" string="Revisar ahora"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Lista" bg_color="text-bg-success" invisible="not listo"/>

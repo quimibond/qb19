@@ -35,9 +35,11 @@
                     <!-- 2.19.0: la ficha sigue la ruta en kg hasta la Clasificación final: tejido → acabado en
                          proceso (kg) → tela acabada (m). Botones a las listas de materiales de los dos productos. -->
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_ft_ver_bom" type="object" class="oe_stat_button" icon="fa-flask"
-                                string="Lista de la ruta" invisible="not bom_id"
-                                help="La lista en metros del flujo en kg (con operaciones, aunque siga archivada mientras Ingeniería la revisa). De ella salen el crudo, las operaciones y la tintorería de esta ficha."/>
+                        <!-- 2.32.0: «Producto» regresa a la tela; «Lista de la ruta» se quitó (es una de las listas en
+                             metros y se abre desde «Listas en metros»). -->
+                        <button name="action_ft_ver_producto" type="object" class="oe_stat_button" icon="fa-cube"
+                                string="Producto" invisible="not product_acabado_id"
+                                help="La tela acabada, con su pestaña «Ficha técnica»: estado, pendientes y a dónde ir."/>
                         <button name="action_ft_boms_proceso" type="object" class="oe_stat_button" icon="fa-balance-scale"
                                 invisible="not product_proceso_id">
                             <field name="bom_proceso_count" widget="statinfo" string="Listas en kg"/>
@@ -249,7 +251,7 @@
                                         no cambia sola: úselo o quédese con el de la ficha.
                                         <button name="action_ft_usar_rendimiento_medido" type="object" string="Usar el medido"
                                                 class="btn btn-sm btn-primary ms-2"/>
-                                        <button name="action_ft_rendimiento_revisado" type="object" string="Marcar revisado"
+                                        <button name="action_ft_rendimiento_revisado" type="object" string="Dejar el de la ficha"
                                                 class="btn btn-sm btn-secondary ms-2"/>
                                     </div>
                                     <div colspan="2" class="alert alert-danger" role="alert" invisible="rendimiento_medido_estado != 'fuera'">
