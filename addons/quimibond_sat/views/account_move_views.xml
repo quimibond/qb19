@@ -10,6 +10,19 @@
                 <div class="alert alert-danger mb-0" role="alert" invisible="not sat_alerta">
                     <field name="sat_alerta" readonly="1" nolabel="1"/>
                 </div>
+                <field name="sat_auto_bill" invisible="1"/>
+                <field name="sat_semaforo" invisible="1"/>
+                <div class="alert alert-success mb-0" role="status" invisible="sat_semaforo != 'verde' or state != 'draft'">
+                    Semáforo verde: cuadra con el SAT y con su orden de compra o regla confirmada. Lista para publicar.
+                </div>
+                <div class="alert alert-warning mb-0" role="status" invisible="sat_semaforo != 'amarillo' or state != 'draft'">
+                    <strong>Semáforo amarillo, qué completar:</strong>
+                    <field name="sat_semaforo_motivo" readonly="1" nolabel="1"/>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert" invisible="sat_semaforo != 'rojo' or state != 'draft'">
+                    <strong>Semáforo rojo, no publicar así:</strong>
+                    <field name="sat_semaforo_motivo" readonly="1" nolabel="1"/>
+                </div>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_open_sat_cfdi" type="object" class="oe_stat_button" icon="fa-file-text-o"
@@ -20,10 +33,17 @@
             <xpath expr="//field[@name='ref']" position="after">
                 <field name="sat_estado" invisible="move_type == 'entry'"/>
                 <field name="sat_uuid" invisible="not sat_uuid"/>
+                <field name="sat_origen" invisible="not sat_origen"/>
             </xpath>
             <xpath expr="//header" position="inside">
                 <button name="action_sat_reconcile" type="object" string="Conciliar con el SAT"
                         invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund') or state == 'cancel' or sat_estado != 'sin_cfdi'"/>
+                <button name="action_sat_semaforo" type="object" string="Revisar de nuevo"
+                        invisible="not sat_auto_bill or state != 'draft'"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='account_id']" position="after">
+                <field name="sat_bill_rule_id" optional="hide" column_invisible="parent.move_type not in ('in_invoice', 'in_refund')"/>
+                <field name="sat_clave" optional="hide" column_invisible="parent.move_type not in ('in_invoice', 'in_refund')"/>
             </xpath>
         </field>
     </record>

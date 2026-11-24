@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.29.2',
+    'version': '19.0.1.31.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -37,6 +37,9 @@ Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema)::
   quimibond_sat.auto_bill_min_days / auto_bill_max_days / auto_bill_limit
                                 Ventana (3 a 45 días) y tope por corrida (50) de
                                 las facturas de proveedor creadas desde el SAT
+  quimibond_sat.cuentas_anticipo_proveedor
+                                Cuentas (códigos, coma) de anticipos a proveedores
+                                que ponen la factura en amarillo (120.01.01,120.01.02)
 
 Endpoint del webhook: POST /quimibond_sat/webhook
     """,
@@ -62,6 +65,7 @@ Endpoint del webhook: POST /quimibond_sat/webhook
         'views/sat_pago_views.xml',
         'views/sat_iva_views.xml',
         'views/account_move_views.xml',
+        'views/sat_compras_views.xml',
         'views/menus.xml',
     ],
     'post_init_hook': 'post_init_hook',
