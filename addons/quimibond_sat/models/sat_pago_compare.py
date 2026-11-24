@@ -8,7 +8,12 @@ sin_complemento (Odoo tiene pagos que el SAT no ve: falta emitir/recibir el
 REP), complemento_sin_pago (el SAT tiene pago que Odoo no registró),
 complemento_duplicado (los complementos vigentes suman más que la factura:
 se timbró el mismo pago más de una vez y sobran REP por cancelar),
-sin_factura (CFDI sin factura publicada en Odoo), cancelado.
+sin_factura (CFDI sin factura publicada en Odoo), cancelado y, desde 1.30.0,
+rep_pago_cancelado (un REP vigente cuyo pago está cancelado en Odoo: hay que
+cancelarlo en el SAT o consultarlo).
+
+Desde 1.30.0 solo cuentan los renglones con ``cuenta`` (vigentes, con su REP
+no cancelado y sin ser copia de otro renglón).
 
 Lo pagado según Odoo se expresa en términos del CFDI: la fracción pagada de
 la factura (1 − residual / total) por el total del CFDI. Así no estorban los
@@ -44,6 +49,7 @@ class SatPagoCompare(models.Model):
     state_odoo = fields.Char(string='Estado Odoo', readonly=True)
     payment_state = fields.Char(string='Pago en Odoo', readonly=True)
     n_pagos = fields.Integer(string='Complementos', readonly=True)
+    n_rep_pago_cancelado = fields.Integer(string='REP con pago cancelado en Odoo', readonly=True)
     ultimo_pago = fields.Datetime(string='Último complemento', readonly=True)
     fecha_pago_odoo = fields.Date(string='Último pago en Odoo', readonly=True)
     pagado_sat = fields.Float(string='Pagado según SAT', readonly=True, digits=(16, 2))
@@ -62,6 +68,7 @@ class SatPagoCompare(models.Model):
         ('rep_en_plazo', 'Pagado en Odoo, complemento aún en plazo'),
         ('revertida', 'Revertida en Odoo con nota de crédito'),
         ('complemento_sin_pago', 'Complemento en el SAT sin pago en Odoo'),
+        ('rep_pago_cancelado', 'Complemento vigente con el pago cancelado en Odoo'),
         ('complemento_duplicado', 'Complementos exceden el total (REP duplicado)'),
         ('sin_factura', 'Sin factura publicada en Odoo'),
         ('cancelado', 'CFDI cancelado'),
@@ -73,12 +80,13 @@ class SatPagoCompare(models.Model):
             CREATE OR REPLACE VIEW %s AS
             WITH pagos AS (
                 SELECT p.invoice_cfdi_id AS cfdi_id, count(*) AS n_pagos, max(p.fecha_pago) AS ultimo_pago,
+                       count(*) FILTER (WHERE p.account_payment_state = 'canceled') AS n_rep_pago_cancelado,
                        sum(p.monto * CASE WHEN coalesce(p.moneda, 'MXN') = coalesce(c.moneda, 'MXN') THEN 1
                                           ELSE coalesce(nullif(p.tipo_cambio, 0), 1)
                                                / coalesce(nullif(c.tipo_cambio, 0), 1) END) AS pagado_sat
                   FROM sat_cfdi_pago p
                   JOIN sat_cfdi c ON c.id = p.invoice_cfdi_id
-                 WHERE p.estado_sat = 'vigente'
+                 WHERE p.cuenta
                  GROUP BY p.invoice_cfdi_id
             ),
             -- Fecha del último pago aplicado a la factura en Odoo (conciliación
@@ -121,6 +129,7 @@ class SatPagoCompare(models.Model):
                        coalesce(nullif(c.tipo_cambio, 0), 1) AS tc,
                        m.id AS m_id, m.name AS move_name, m.state AS state_odoo, m.payment_state,
                        coalesce(pg.n_pagos, 0) AS n_pagos, pg.ultimo_pago,
+                       coalesce(pg.n_rep_pago_cancelado, 0) AS n_rep_pago_cancelado,
                        coalesce(pg.pagado_sat, 0) AS pagado_sat,
                        CASE WHEN m.state = 'posted' AND m.amount_total <> 0
                             THEN greatest(abs(m.amount_total) - abs(m.amount_residual) - abs(coalesce(nc.nc, 0)), 0)
@@ -139,7 +148,7 @@ class SatPagoCompare(models.Model):
             SELECT b.cfdi_id AS id, b.cfdi_id, b.move_id, b.company_id, b.direction, b.partner_id,
                    b.counterparty_rfc, b.counterparty_name, b.fecha, b.mes, b.moneda, b.metodo_pago,
                    b.total, b.estado_sat, b.move_name, b.state_odoo, b.payment_state,
-                   b.n_pagos, b.ultimo_pago, b.fecha_pago_odoo, b.pagado_sat, b.pagado_odoo,
+                   b.n_pagos, b.n_rep_pago_cancelado, b.ultimo_pago, b.fecha_pago_odoo, b.pagado_sat, b.pagado_odoo,
                    b.total - b.pagado_sat AS saldo_sat, b.saldo_odoo,
                    b.pagado_sat - b.pagado_odoo AS delta,
                    b.pagado_sat * b.tc AS pagado_sat_mxn,
@@ -147,6 +156,7 @@ class SatPagoCompare(models.Model):
                    (b.pagado_sat - b.pagado_odoo) * b.tc AS delta_mxn,
                    CASE WHEN b.estado_sat <> 'vigente' THEN 'cancelado'
                         WHEN b.m_id IS NULL OR b.state_odoo <> 'posted' THEN 'sin_factura'
+                        WHEN b.n_rep_pago_cancelado > 0 THEN 'rep_pago_cancelado'
                         WHEN b.payment_state = 'reversed' THEN 'revertida'
                         WHEN b.pagado_sat > abs(b.total) + 1 THEN 'complemento_duplicado'
                         WHEN abs(b.pagado_sat - b.pagado_odoo) < 1.005 THEN 'ok'

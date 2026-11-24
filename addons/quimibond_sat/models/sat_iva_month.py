@@ -115,7 +115,7 @@ class SatIvaMonth(models.Model):
                               ELSE cf.tc END
                   FROM sat_cfdi_pago p
                   JOIN cf ON cf.id = p.invoice_cfdi_id
-                 WHERE p.estado_sat = 'vigente' AND cf.tipo = 'I' AND cf.metodo = 'PPD'
+                 WHERE p.cuenta AND cf.tipo = 'I' AND cf.metodo = 'PPD'
             )
             SELECT direction,
                    date_trunc('month', (fecha AT TIME ZONE 'UTC') AT TIME ZONE 'America/Mexico_City')::date AS mes,

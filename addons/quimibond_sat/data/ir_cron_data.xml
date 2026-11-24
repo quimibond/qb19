@@ -80,6 +80,19 @@
             <field name="nextcall" eval="(DateTime.now().replace(hour=11, minute=37, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- 1.31.0: propone reglas de cuenta con lo publicado (no toca las que
+             ya existen; Contabilidad las confirma). -->
+        <record id="cron_sat_seed_bill_rules" model="ir.cron">
+            <field name="name">SAT (Syntage) - Proponer reglas de cuenta de proveedores</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_seed_bill_rules()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=10, minute=23, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
         <!-- 1.27.0: estado de los CFDI consultado directo al SAT. Syntage no
              vuelve a traer un CFDI que se cancela días después de emitido.
              Primero los que Odoo ya tiene cancelados; hasta
