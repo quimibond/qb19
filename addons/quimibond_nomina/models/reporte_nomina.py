@@ -35,6 +35,10 @@ class NominaConceptoNoi(models.Model):
         string="Reglas exentas",
         help="De las reglas anteriores, las que son la parte exenta (HE_EXEMPT, PDOM_EXEMPT…). "
              "El resto del concepto es gravado. Sólo percepciones.")
+    en_especie = fields.Boolean(
+        string="Se paga en especie",
+        help="Vales de despensa y otras percepciones que no se pagan en dinero: suman al neto del recibo, pero "
+             "se restan del «Total en efectivo» del reporte.")
     active = fields.Boolean(default=True)
 
     @api.depends('tipo')
@@ -62,6 +66,7 @@ class NominaConceptoNoi(models.Model):
         return [{
             'id': c.id, 'clave': c.clave or '', 'nombre': c.name, 'tipo': c.tipo, 'sat': c.clave_sat or '',
             'codigos': c.codigos, 'codigos_exento': c.codigos_exento or '', 'secuencia': c.tipo_orden,
+            'en_especie': c.en_especie,
         } for c in self]
 
     @api.model

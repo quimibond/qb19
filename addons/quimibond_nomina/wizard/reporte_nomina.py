@@ -2,7 +2,8 @@
 """Asistente «Reportes de nómina (NOI)» (1.23.0).
 
 Saca, por lote (corrida de nómina) o por periodo, los dos reportes de NOI que
-RH usa para revisar y cerrar la nómina:
+RH usa para revisar y cerrar la nómina (1.25.0: gravado y exento por trabajador,
+total en especie y en efectivo):
 
 * **Reporte de la nómina**: un bloque por recibo con los datos del trabajador
   (RFC, CURP, NSS, puesto, días, salario diario, SDI) y sus percepciones y
@@ -231,7 +232,7 @@ class NominaReporte(models.TransientModel):
         fijos = ['Clave', 'Nombre del trabajador', 'RFC', 'CURP', 'N.S.S.', 'Fecha de alta', 'Puesto',
                  'Departamento', 'Periodo', 'Sueldo', 'Salario diario', 'SDI', 'Días trabajados']
         enc = (fijos + ['%s %s' % (c['clave'], c['nombre']) for c in cols_p] + ['Total percepciones']
-               + ['%s %s' % (c['clave'], c['nombre']) for c in cols_d] + ['Total deducciones', 'Neto pagado']
+               + ['%s %s' % (c['clave'], c['nombre']) for c in cols_d] + ['Total deducciones', 'Neto pagado', 'Total en especie', 'Total en efectivo']
                + ['%s %s' % (c['clave'], c['nombre']) for c in cols_i] + ['Total gravado', 'Total exento'])
         for j, texto in enumerate(enc):
             hoja.write(fila, j, texto.strip(), fmt['enc'])
@@ -246,7 +247,8 @@ class NominaReporte(models.TransientModel):
                                                         self.qb_fecha(rec['periodo'][1])),
                        e['sueldo'], e['salario_diario'], e['sdi'], e['dias']]
             valores += [por_llave.get(c['llave'], 0.0) for c in cols_p] + [t['percepciones']]
-            valores += [por_llave.get(c['llave'], 0.0) for c in cols_d] + [t['deducciones'], t['neto']]
+            valores += [por_llave.get(c['llave'], 0.0) for c in cols_d] + [t['deducciones'], t['neto'], t['especie'],
+                                                                            t['efectivo']]
             valores += [por_llave.get(c['llave'], 0.0) for c in cols_i] + [t['gravado'], t['exento']]
             for j, v in enumerate(valores):
                 if j == 5:
@@ -268,9 +270,40 @@ class NominaReporte(models.TransientModel):
         hoja.set_column(2, 8, 16)
         hoja.set_column(9, len(enc), 13)
 
+        self._xlsx_detalle(libro, fmt, datos)
         self._xlsx_resumen(libro, fmt, datos)
         libro.close()
         return salida.getvalue()
+
+    def _xlsx_detalle(self, libro, fmt, datos):
+        """Un renglón por trabajador y concepto, con gravado y exento (1.25.0): para filtrar en Excel."""
+        hoja = libro.add_worksheet('Detalle')
+        fila = self._xlsx_encabezado(hoja, fmt, datos, 'Reporte de la nómina: detalle por concepto')
+        enc = ['Clave', 'Nombre del trabajador', 'Periodo', 'Tipo', 'Clave NOI', 'Clave SAT', 'Concepto',
+               'Importe', 'Gravado', 'Exento', 'En especie']
+        for j, texto in enumerate(enc):
+            hoja.write(fila, j, texto, fmt['enc'])
+        hoja.autofilter(fila, 0, fila, len(enc) - 1)
+        hoja.freeze_panes(fila + 1, 2)
+        etiquetas = {'percepcion': 'Percepción', 'deduccion': 'Deducción', 'informativo': 'Informativo'}
+        for rec in datos['recibos']:
+            e = rec['empleado']
+            periodo = '%s al %s' % (self.qb_fecha(rec['periodo'][0]), self.qb_fecha(rec['periodo'][1]))
+            for r in rec['renglones']:
+                fila += 1
+                hoja.write_row(fila, 0, [e['clave'], e['nombre'], periodo, etiquetas[r['tipo']], r['clave'], r['sat'],
+                                         r['nombre']])
+                hoja.write_number(fila, 7, r['importe'], fmt['dinero'])
+                if r['tipo'] == 'percepcion':
+                    hoja.write_number(fila, 8, r['gravado'], fmt['dinero'])
+                    hoja.write_number(fila, 9, r['exento'], fmt['dinero'])
+                    hoja.write(fila, 10, 'Sí' if r.get('especie') else '')
+        hoja.set_column(0, 0, 8)
+        hoja.set_column(1, 1, 36)
+        hoja.set_column(2, 2, 22)
+        hoja.set_column(3, 5, 11)
+        hoja.set_column(6, 6, 30)
+        hoja.set_column(7, 10, 13)
 
     def _xlsx_resumen(self, libro, fmt, datos):
         res = datos['resumen']
@@ -292,6 +325,7 @@ class NominaReporte(models.TransientModel):
         for texto, valor in [('Total de percepciones', res['total_percepciones']),
                              ('Total gravable', res['total_gravado']), ('Total exento', res['total_exento']),
                              ('Total de deducciones', res['total_deducciones']), ('Neto pagado', res['neto']),
+                             ('Total en especie', res['total_especie']), ('Total en efectivo', res['total_efectivo']),
                              ('Subsidio para el empleo aplicado', res['total_informativo'])]:
             hoja.write(fila, 3, texto, fmt['tot'])
             hoja.write_number(fila, 4, valor, fmt['dinero_tot'])
@@ -311,9 +345,9 @@ class NominaReporte(models.TransientModel):
         hoja = libro.add_worksheet('Percepcion deduccion')
         fila = self._xlsx_encabezado(hoja, fmt, datos, 'Percepción/deducción')
         for j, texto in enumerate(['Tipo', 'Clave NOI', 'Clave SAT', 'Concepto', 'Clave', 'Nombre del trabajador',
-                                   'Percepciones', 'Deducciones']):
+                                   'Percepciones', 'Deducciones', 'Gravado', 'Exento']):
             hoja.write(fila, j, texto, fmt['enc'])
-        hoja.autofilter(fila, 0, fila, 7)
+        hoja.autofilter(fila, 0, fila, 9)
         hoja.freeze_panes(fila + 1, 0)
         etiquetas = {'percepcion': 'Percepción', 'deduccion': 'Deducción', 'informativo': 'Deducción'}
         for c in datos['por_concepto']:
@@ -323,24 +357,30 @@ class NominaReporte(models.TransientModel):
                 hoja.write_row(fila, 0, [etiquetas[c['tipo']], c['clave'], c['sat'], c['nombre'], e['clave'],
                                          e['nombre']])
                 hoja.write_number(fila, col, e['importe'], fmt['dinero'])
+                if c['tipo'] == 'percepcion':
+                    hoja.write_number(fila, 8, e['gravado'], fmt['dinero'])
+                    hoja.write_number(fila, 9, e['exento'], fmt['dinero'])
         hoja.set_column(0, 2, 11)
         hoja.set_column(3, 3, 30)
         hoja.set_column(4, 4, 8)
         hoja.set_column(5, 5, 36)
-        hoja.set_column(6, 7, 14)
+        hoja.set_column(6, 9, 14)
 
         tot = libro.add_worksheet('Totales por concepto')
         fila = self._xlsx_encabezado(tot, fmt, datos, 'Percepción/deducción: totales')
         for j, texto in enumerate(['Tipo', 'Clave NOI', 'Clave SAT', 'Concepto', 'Trabajadores', 'Percepciones',
-                                   'Deducciones']):
+                                   'Deducciones', 'Gravado', 'Exento']):
             tot.write(fila, j, texto, fmt['enc'])
         for c in datos['por_concepto']:
             fila += 1
             tot.write_row(fila, 0, [etiquetas[c['tipo']], c['clave'], c['sat'], c['nombre'], len(c['empleados'])])
             tot.write_number(fila, 5 if c['tipo'] == 'percepcion' else 6, c['total'], fmt['dinero'])
+            if c['tipo'] == 'percepcion':
+                tot.write_number(fila, 7, c['gravado'], fmt['dinero'])
+                tot.write_number(fila, 8, c['exento'], fmt['dinero'])
         tot.set_column(0, 2, 11)
         tot.set_column(3, 3, 30)
-        tot.set_column(4, 6, 14)
+        tot.set_column(4, 8, 14)
         libro.close()
         return salida.getvalue()
 
