@@ -97,29 +97,29 @@
                                 </table>
                                 <table style="width:100%; margin-top:3px;">
                                     <tr style="font-weight:bold;">
-                                        <td style="width:28%">Percepciones</td><td style="width:6%">C. NOI</td><td style="width:5%">C. SAT</td><td style="width:10%" class="text-end">Monto</td>
+                                        <td style="width:20%">Percepciones</td><td style="width:5%">C. NOI</td><td style="width:4%">C. SAT</td><td style="width:8%" class="text-end">Gravado</td><td style="width:8%" class="text-end">Exento</td><td style="width:9%" class="text-end">Monto</td>
                                         <td style="width:2%"/>
-                                        <td style="width:28%">Deducciones</td><td style="width:6%">C. NOI</td><td style="width:5%">C. SAT</td><td style="width:10%" class="text-end">Monto</td>
+                                        <td style="width:26%">Deducciones</td><td style="width:5%">C. NOI</td><td style="width:4%">C. SAT</td><td style="width:9%" class="text-end">Monto</td>
                                     </tr>
                                     <t t-set="n" t-value="max(len(rec['percepciones']), len(rec['deducciones']))"/>
                                     <tr t-foreach="range(n)" t-as="i">
                                         <t t-set="p" t-value="rec['percepciones'][i] if i &lt; len(rec['percepciones']) else None"/>
                                         <t t-set="q" t-value="rec['deducciones'][i] if i &lt; len(rec['deducciones']) else None"/>
-                                        <t t-if="p"><td t-out="p['nombre']"/><td t-out="p['clave']"/><td t-out="p['sat']"/><td class="text-end" t-out="dinero(p['importe'])"/></t>
-                                        <t t-else=""><td/><td/><td/><td/></t>
+                                        <t t-if="p"><td><t t-out="p['nombre']"/><t t-if="p['especie']"> (especie)</t></td><td t-out="p['clave']"/><td t-out="p['sat']"/><td class="text-end" t-out="dinero(p['gravado'])"/><td class="text-end" t-out="dinero(p['exento'])"/><td class="text-end" t-out="dinero(p['importe'])"/></t>
+                                        <t t-else=""><td/><td/><td/><td/><td/><td/></t>
                                         <td/>
                                         <t t-if="q"><td t-out="q['nombre']"/><td t-out="q['clave']"/><td t-out="q['sat']"/><td class="text-end" t-out="dinero(q['importe'])"/></t>
                                         <t t-else=""><td/><td/><td/><td/></t>
                                     </tr>
                                     <tr style="font-weight:bold;">
-                                        <td colspan="3" class="text-end">Total percepciones</td><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['percepciones'])"/>
+                                        <td colspan="3" class="text-end">Total percepciones</td><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['gravado'])"/><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['exento'])"/><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['percepciones'])"/>
                                         <td/>
                                         <td colspan="3" class="text-end">Total deducciones</td><td class="text-end" style="border-top:1px solid #000;" t-out="dinero(t['deducciones'])"/>
                                     </tr>
                                 </table>
-                                <table style="width:45%; margin-top:2px;">
-                                    <tr><td>Total gravado</td><td class="text-end" t-out="dinero(t['gravado'])"/><td>Total exento</td><td class="text-end" t-out="dinero(t['exento'])"/><td><strong>Neto pagado</strong></td><td class="text-end"><strong t-out="dinero(t['neto'])"/></td></tr>
-                                    <tr t-if="t['diferencia']"><td colspan="6" style="color:#b00;">El neto del recibo difiere <span t-out="dinero(t['diferencia'])"/> de percepciones − deducciones: revisar el catálogo.</td></tr>
+                                <table style="width:70%; margin-top:2px;">
+                                    <tr><td>Total gravado</td><td class="text-end" t-out="dinero(t['gravado'])"/><td>Total exento</td><td class="text-end" t-out="dinero(t['exento'])"/><td>Total en especie</td><td class="text-end" t-out="dinero(t['especie'])"/><td>Total en efectivo</td><td class="text-end" t-out="dinero(t['efectivo'])"/><td><strong>Neto pagado</strong></td><td class="text-end"><strong t-out="dinero(t['neto'])"/></td></tr>
+                                    <tr t-if="t['diferencia']"><td colspan="10" style="color:#b00;">El neto del recibo difiere <span t-out="dinero(t['diferencia'])"/> de percepciones − deducciones: revisar el catálogo.</td></tr>
                                 </table>
                             </div>
                         </t>
@@ -150,6 +150,8 @@
                             <h6 class="text-center">TOTALES</h6>
                             <table style="width:40%; margin-left:auto; margin-right:auto; font-size:9.5px;">
                                 <tr><td>Neto pagado</td><td class="text-end"><strong t-out="dinero(r['neto'])"/></td></tr>
+                                <tr><td>Total en especie</td><td class="text-end" t-out="dinero(r['total_especie'])"/></tr>
+                                <tr><td>Total en efectivo</td><td class="text-end" t-out="dinero(r['total_efectivo'])"/></tr>
                                 <tr><td>Total gravable</td><td class="text-end" t-out="dinero(r['total_gravado'])"/></tr>
                                 <tr><td>Subs. para el empleo aplicado</td><td class="text-end" t-out="dinero(r['total_informativo'])"/></tr>
                                 <tr><td>Recibos</td><td class="text-end" t-out="r['recibos']"/></tr>
@@ -182,15 +184,17 @@
                                     <span t-if="c['sat']" style="margin-left:12px;">SAT <t t-out="c['sat']"/></span>
                                 </p>
                                 <table class="table table-sm" style="font-size:9.5px;">
-                                    <thead><tr><th style="width:12%">Clave</th><th>Nombre del trabajador</th><th class="text-end" style="width:18%">Percepciones</th><th class="text-end" style="width:18%">Deducciones</th></tr></thead>
+                                    <thead><tr><th style="width:10%">Clave</th><th>Nombre del trabajador</th><t t-if="c['tipo'] == 'percepcion'"><th class="text-end" style="width:14%">Gravado</th><th class="text-end" style="width:14%">Exento</th></t><th class="text-end" style="width:14%">Percepciones</th><th class="text-end" style="width:14%">Deducciones</th></tr></thead>
                                     <tbody>
                                         <tr t-foreach="c['empleados']" t-as="e">
                                             <td t-out="e['clave']"/><td t-out="e['nombre']"/>
+                                            <t t-if="c['tipo'] == 'percepcion'"><td class="text-end" t-out="dinero(e['gravado'])"/><td class="text-end" t-out="dinero(e['exento'])"/></t>
                                             <td class="text-end"><t t-if="c['tipo'] == 'percepcion'" t-out="dinero(e['importe'])"/></td>
                                             <td class="text-end"><t t-if="c['tipo'] != 'percepcion'" t-out="dinero(e['importe'])"/></td>
                                         </tr>
                                         <tr style="font-weight:bold;">
                                             <td/><td class="text-end"><t t-out="len(c['empleados'])"/> trabajadores</td>
+                                            <t t-if="c['tipo'] == 'percepcion'"><td class="text-end" t-out="dinero(c['gravado'])"/><td class="text-end" t-out="dinero(c['exento'])"/></t>
                                             <td class="text-end" t-out="dinero(c['total'] if c['tipo'] == 'percepcion' else 0)"/>
                                             <td class="text-end" t-out="dinero(c['total'] if c['tipo'] != 'percepcion' else 0)"/>
                                         </tr>
