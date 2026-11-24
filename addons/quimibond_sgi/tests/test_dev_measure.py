@@ -76,8 +76,9 @@ class TestDevMeasure(TransactionCase):
                          ('sgi_dev_analysis_date', 'sgi_dev_analysis_by_id'))
         self.assertEqual(act02.measure_model_id.model, 'project.project', "La actividad volvió a copiar el entregable.")
         self.assertEqual(act02.measure_date_field, 'sgi_dev_analysis_date')
-        self.assertEqual(reply.odoo_model_name, 'sgi.dev.stage.log')
-        self.assertIn("('stage_key', '=', 'respuesta_cliente')", reply.measure_domain)
+        # 57.129.0: C1.13 se mide por el registro del envío respondido, no por la etapa.
+        self.assertEqual(reply.odoo_model_name, 'sgi.dev.shipment')
+        self.assertIn("('state', '=', 'respondida')", reply.measure_domain)
         wait = Deliverable.search([('code', '=', 'C1-MP-ESPERA')], limit=1)
         self.assertEqual(wait.odoo_model_name, 'sgi.dev.mp.wait')
         self.assertIn(wait, act08.output_deliverable_ids)
@@ -85,10 +86,6 @@ class TestDevMeasure(TransactionCase):
         self.assertEqual(act08.measure_model_id.model, 'sgi.dev.mp.wait')
         again = self.Project._sgi_dev_apply_c1_measures()
         self.assertFalse(again['updated'] + again['created'], "Idempotente: nada que cambiar la segunda vez.")
-        # Lo medido existe de verdad: un proyecto con resultado cuenta para C1.02 y un paso por
-        # «Respuesta del cliente» cuenta para C1.13.
+        # Lo medido existe de verdad: un proyecto con resultado cuenta para C1.02.
         dev = self._dev(sgi_dev_analysis_result='nuevo')
         self.assertIn(dev, self.Project.search(eval(analysis.measure_domain)))  # noqa: S307 - dominio propio
-        self.env['sgi.dev.stage.log'].create({'project_id': dev.id, 'stage_id': self._stage('respuesta_cliente').id,
-                                              'date_start': fields.Datetime.now()})
-        self.assertTrue(self.env['sgi.dev.stage.log'].search_count(eval(reply.measure_domain)))  # noqa: S307

@@ -47,7 +47,10 @@ class TestDevProcessSheet(TransactionCase):
                                                   'sgi_dev_product_crudo_id': crudo.id})
         ops = dev._sgi_dev_route_operations()
         self.assertEqual([(p, o.name) for p, o in ops], [(crudo, 'Tejer')])
-        self.assertEqual(dev.action_sgi_dev_print_flow()['type'], 'ir.actions.report')
+        # discard_logo_check: en una base nueva la compañía no tiene diseño de documentos y Odoo
+        # contesta con el asistente para configurarlo en lugar del reporte.
+        self.assertEqual(dev.with_context(discard_logo_check=True).action_sgi_dev_print_flow()['type'],
+                         'ir.actions.report')
         sin = self.env['project.project'].create({'name': 'sin ruta', 'sgi_is_ft': True, 'sgi_dev_product_name': 'y'})
         with self.assertRaises(UserError):
             sin.action_sgi_dev_print_flow()

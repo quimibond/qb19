@@ -69,6 +69,8 @@ class TestCfdiValues(TransactionCase):
         self.assertEqual(vals['salario_base_cot_apor'], '889.43')
         self.assertEqual((vals['sdi'], vals['sbc']), (889.43, 889.43))
 
+    # Recibo sin líneas de SDI: el aviso «sin línea INT_DAY_WAGE…» es esperado.
+    @mute_logger(LOG)
     def test_registro_patronal_del_contrato_o_de_la_compania(self):
         slip = self._recibo()
         self.company.l10n_mx_imss_id = 'C-675994510-1'
@@ -76,10 +78,14 @@ class TestCfdiValues(TransactionCase):
         slip.version_id.l10n_mx_employer_registration = 'Y6087828106'
         self.assertEqual(slip._qb_nomina_cfdi_values()['registro_patronal'], 'Y6087828106')
 
+    # Recibo sin líneas de SDI: el aviso «sin línea INT_DAY_WAGE…» es esperado.
+    @mute_logger(LOG)
     def test_clave_ent_fed_de_la_direccion_laboral(self):
         slip = self._recibo()
         self.assertEqual(slip._qb_nomina_cfdi_values()['clave_ent_fed'], 'MEX')
 
+    # Recibo sin líneas de SDI: el aviso «sin línea INT_DAY_WAGE…» es esperado.
+    @mute_logger(LOG)
     def test_clave_ent_fed_cae_a_la_compania_y_al_parametro(self):
         sin_direccion = self.env['hr.employee'].create({'name': 'Sin dirección', 'address_id': False,
                                                         'registration_number': 'S-2',
