@@ -30,6 +30,10 @@ class TestDevProject(TransactionCase):
         dev.write({'sgi_dev_analysis_result': 'nuevo'})
         dev.action_sgi_dev_review_approve()
 
+    def _customer_approved(self, dev):
+        """Desde la aprobación del cliente (sgi_dev_customer) no se pasa de «Muestra» sin ella."""
+        dev.write({'sgi_dev_customer_approved_at': fields.Datetime.now()})
+
     def test_01_flag_is_not_the_name(self):
         plain = self.Project.create({'name': 'FT-900-2026 algo'})
         self.assertFalse(plain.sgi_is_ft, "El nombre ya no marca el desarrollo.")
@@ -47,12 +51,14 @@ class TestDevProject(TransactionCase):
         with self.assertRaises(UserError, msg="Sin la revisión de Ventas no se cotiza (57.120.0)."):
             dev.write({'stage_id': self._stage('cotizacion').id})
         self._approve(dev)
+        self._customer_approved(dev)
         dev.write({'stage_id': self._stage('muestra').id})
         year = fields.Date.context_today(dev).year
         self.assertRegex(dev.sgi_ft_folio, r'^FT-\d{3}-%d$' % year)
         self.assertTrue(dev.name.startswith(dev.sgi_ft_folio))
         other = self._dev()
         self._approve(other)
+        self._customer_approved(other)
         other.write({'stage_id': self._stage('pilotaje').id})
         self.assertEqual(int(other.sgi_ft_folio[3:6]), int(dev.sgi_ft_folio[3:6]) + 1, "Consecutivo del año.")
         dev.write({'sgi_dev_product_id': self.product.id})
@@ -63,6 +69,7 @@ class TestDevProject(TransactionCase):
         # Folio histórico a mano: se respeta.
         legacy = self._dev(sgi_ft_folio='FT-012-2019')
         self._approve(legacy)
+        self._customer_approved(legacy)
         legacy.write({'stage_id': self._stage('muestra').id})
         self.assertEqual(legacy.sgi_ft_folio, 'FT-012-2019')
 
@@ -138,7 +145,10 @@ class TestDevProject(TransactionCase):
                          "Sin idioma en el contexto la búsqueda mira en_US: así fallaron 57.118.0 y 57.120.2.")
         self.assertIn(legacy, self.Project._sgi_dev_legacy_ft_projects())
         self.assertEqual(self.Project._sgi_dev_legacy_ft_name(legacy), 'FT-050/2025 WK300B46JNG165 REV2')
-        tpl = self.Project.create({'name': 'PLANTILLA - Diseño y Desarrollo Prueba', 'is_template': True})
+        # Creada en es_MX, como en producción: en la base nueva del build sin el idioma en el contexto solo
+        # queda en_US y renombrar en_US cambiaba también lo que se lee en es_MX.
+        tpl = self.Project.with_context(lang='es_MX').create(
+            {'name': 'PLANTILLA - Diseño y Desarrollo Prueba', 'is_template': True})
         # Como quedó producción tras 57.118.0: la plantilla renombrada «Análisis» solo en en_US.
         tpl.with_context(lang='en_US').name = 'Análisis'
         self.assertEqual(tpl.with_context(lang='es_MX').name, 'PLANTILLA - Diseño y Desarrollo Prueba')
@@ -255,8 +265,11 @@ class TestDevProject(TransactionCase):
         plain.write({'name': 'Mi análisis'})
         self.assertEqual(plain.name, 'Mi análisis', "Sin folio ni producto el nombre lo pone la persona.")
         if 'mcp.enabled.model' in self.env:
-            models = self.Project._sgi_dev_enable_mcp_models()
-            self.assertIn('sgi.dev.characteristic', models.mapped('model'))
+            # Devuelve solo lo que abrió en esta corrida; la instalación ya los habilitó, así que se revisa
+            # la fila y no lo devuelto.
+            self.Project._sgi_dev_enable_mcp_models()
+            self.assertTrue(self.env['mcp.enabled.model'].search(
+                [('model_name', '=', 'sgi.dev.characteristic'), ('allow_read', '=', True)]))
             row = self.env['mcp.enabled.model'].search([('model_name', '=', 'sgi.dev.stage.log')])
             self.assertTrue(row.allow_read)
             self.assertFalse(row.allow_write)

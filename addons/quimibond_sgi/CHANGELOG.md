@@ -21,6 +21,12 @@ Limpieza de pruebas para aligerar el build de Odoo.sh (pedido de Jose del 24-nov
 ### Retirado
 - 18 pruebas que corrían scripts `pre-migrate`/`post-migrate` de versiones por las que producción ya pasó (56.31.0 a 57.162.0; producción está en 57.201.0), en `test_clausulas_revision`, `test_entregables_modelo`, `test_format_map_operaciones`, `test_formatos_bloque3`, `test_indicadores_sin_dato`, `test_integridad_metas`, `test_legacy_routine`, `test_menus_capitulos`, `test_menus_entregables`, `test_miid`, `test_miid_pantalla`, `test_procesos_viejos`, `test_replaced_by_process`, `test_salud_sgi` y `test_sst_links`. Los scripts se quedan en `migrations/`; lo que siguen sembrando o corrigiendo lo prueban las demás pruebas de cada archivo.
 
+### Corregido
+- «Regenerar artículos» ya no se detiene por el historial de costo de Odoo 19 (`product.value` sin movimiento de inventario, que Odoo escribe al crear el producto o cambiar su costo; producción tiene 26,769): no cuenta como uso del artículo y se borra con él (`test_dev_product` test_08 y test_10).
+- `test_dev_project` test_02: registra la aprobación del cliente antes de pasar a «Muestra» o «Pilotaje», como `test_dev_product` en 57.202.2.
+- `test_dev_project` test_06: la plantilla de prueba se crea en es_MX, como en producción; en la base nueva del build solo quedaba en_US.
+- `test_dev_project` test_08: revisa que el modelo quede expuesto al MCP y no lo que devuelve la corrida, que solo trae lo que abrió (desde 57.149.0 lo ya habilitado no se repite).
+
 ## 19.0.57.202.2 — 2026-11-24
 
 Cinco pruebas que detenían el build completo de Odoo.sh (rama del flujo de efectivo, 24-nov-2026).
