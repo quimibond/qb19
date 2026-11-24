@@ -162,11 +162,12 @@ Un producto publicado cuyo nombre no cae en ninguna familia no se muestra.
 
 ## Certificados y citas
 
-Desde 1.15.1 los certificados ISO 9001 y 14001 van en el módulo
-(`static/src/doc`) y cada tarjeta de `/compradores-automotrices` trae su
-botón de descarga (`pdf` en `CERTIFICACIONES` de `controllers/prospectos.py`).
-Al renovarse un certificado se cambia el archivo y su número y vigencia ahí.
-El de ISO 45001 se pide con el formulario mientras no esté el PDF.
+Desde 1.15.1 los certificados ISO 9001 y 14001, y desde 1.15.2 el de ISO
+45001, van en el módulo (`static/src/doc`) y cada tarjeta de
+`/compradores-automotrices` trae su botón de descarga (`pdf` en
+`CERTIFICACIONES` de `controllers/prospectos.py`). Al renovarse un certificado
+se cambia el archivo y su número y vigencia ahí. El formulario para pedirlos
+aparece solo si a alguno le falta el PDF.
 
 En la ficha del sitio web: **Certificados (PDF)** (los adjuntos se descargan
 desde `/compradores-automotrices` por `/calidad/certificado/<id>`; sin

@@ -163,7 +163,7 @@
                                     <i class="fa fa-download" aria-hidden="true"/> <t t-out="cert.name"/>
                                 </a>
                             </t>
-                            <a t-else="" href="#pedir-certificados" class="qb-btn qb-btn--contorno"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Solicitar los certificados en PDF</a>
+                            <a t-elif="pedir_certificados" href="#pedir-certificados" class="qb-btn qb-btn--contorno"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Solicitar los certificados en PDF</a>
                         </div>
                     </div>
                 </section>
@@ -246,7 +246,7 @@
                     </div>
                 </section>
 
-                <section t-if="not certificados" class="qb-sec" id="pedir-certificados">
+                <section t-if="pedir_certificados and not certificados" class="qb-sec" id="pedir-certificados">
                     <div class="qb-container qb-dos">
                         <div>
                             <span class="qb-eyebrow qb-reveal">Certificados</span>

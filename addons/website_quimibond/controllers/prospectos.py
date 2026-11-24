@@ -19,7 +19,8 @@ CERTIFICACIONES = [
      'detalle': 'Certificado 26220295B, vigente hasta el 31 de marzo de 2029',
      'pdf': 'quimibond-iso-14001-2015.pdf'},
     {'norma': 'ISO 45001:2018', 'sistema': 'Seguridad y salud en el trabajo', 'desde': 'Certificado desde 2026',
-     'detalle': '', 'pdf': ''},
+     'detalle': 'Certificado 26030175C, vigente hasta el 13 de octubre de 2029',
+     'pdf': 'quimibond-iso-45001-2018.pdf'},
 ]
 
 PRUEBAS_LABORATORIO = [
@@ -58,6 +59,8 @@ class QuimibondProspectos(QuimibondSitio):
             qb_pruebas=PRUEBAS_LABORATORIO,
             qb_desarrollo=DESARROLLO,
             certificados=request.website.sudo().qb_certificado_ids,
+            # El formulario para pedirlos solo hace falta si alguno no se puede descargar.
+            pedir_certificados=not all(c['pdf'] for c in CERTIFICACIONES),
             title='Compradores automotrices | Quimibond',
             website_meta_description='Scrims de tejido circular y no tejidos para interiores automotrices. '
                                      'Certificados ISO 9001, 14001 y 45001, laboratorio en planta y desarrollo '
