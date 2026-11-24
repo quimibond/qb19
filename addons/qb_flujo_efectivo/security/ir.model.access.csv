@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_flujo_config_user,qb.flujo.config user,model_qb_flujo_config,account.group_account_user,1,1,1,1
+access_qb_flujo_config_readonly,qb.flujo.config readonly,model_qb_flujo_config,account.group_account_readonly,1,0,0,0
+access_qb_flujo_caja_user,qb.flujo.caja user,model_qb_flujo_caja,account.group_account_user,1,1,1,1
+access_qb_flujo_caja_readonly,qb.flujo.caja readonly,model_qb_flujo_caja,account.group_account_readonly,1,0,0,0
+access_qb_flujo_compromiso_user,qb.flujo.compromiso user,model_qb_flujo_compromiso,account.group_account_user,1,1,1,1
+access_qb_flujo_compromiso_readonly,qb.flujo.compromiso readonly,model_qb_flujo_compromiso,account.group_account_readonly,1,0,0,0
+access_qb_flujo_ajuste_user,qb.flujo.ajuste user,model_qb_flujo_ajuste,account.group_account_user,1,1,1,1
+access_qb_flujo_ajuste_readonly,qb.flujo.ajuste readonly,model_qb_flujo_ajuste,account.group_account_readonly,1,0,0,0

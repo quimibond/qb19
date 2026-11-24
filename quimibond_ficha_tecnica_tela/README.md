@@ -13,8 +13,8 @@ Programación de Tintorería.
 
 | # | Quién | Dónde | Qué hace |
 |---|---|---|---|
-| 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, pestaña «Ficha técnica» → «Crear la ficha de la tela» o «Crear la ficha de tejido». |
-| 2 | Todos | Fichas técnicas → Artículos → **Acabado** | La tela aparece con su estado. Se abre el producto, pestaña «Ficha técnica» (estado en la barra de etapas, accesos en los botones de arriba; datos de solo lectura, cada dato dice de qué ficha sale). |
+| 1 | Diseño y Desarrollo | SGI, proyecto de desarrollo (C1) | Da de alta el crudo (`WJ044…H…`), el acabado en kg (`IWJ045…J…`) y la tela en metros (`WJ045…J…`); «Fichas de proceso» crea la ficha de tejido y la de acabado; Procesos propone, se corre la muestra y Producto valida. Fuera de un desarrollo: en el producto sin ficha, botón «Crear ficha técnica». |
+| 2 | Todos | Fichas técnicas → Artículos → **Fichas de acabado** (2.33.0) | Kanban por estado (Borrador, En revisión, Activa, Obsoleta). La ficha trae el paso que toca en la cabecera, sus dos listas de materiales y sus pendientes. En el producto, el botón «Ficha técnica» con el estado la abre. |
 | 3 | Cada área | Lista de materiales → operación (o máquina → «Telas que corren aquí») | Los datos de la tela en cada máquina: «Agregar los datos de la tela en esta máquina» (velocidad, merma, ancho de rama, tiempo de ciclo, kg por carga). |
 | 4 | Ingeniería (Innovación) | Artículos → Rutas por familia; ficha de acabado | La ruta de la familia (una vez por crudo) y, en la ficha, lo propio de la tela: rama o jet si no son los de la familia, lavado o teñido si no es el del código, consumo de crudo. «Generar listas desde la ruta» arma la lista en kg (`I…`) y la de metros (`J`) archivadas, con tiempos, capacidad y conversión desde la ficha. |
 | 5 | Cada área | Telas (filtro por área) o Pendientes por área | Corrige lo suyo; «Revisar ahora» (o la revisión de la noche) deja la tela en «Lista para activar». |
@@ -113,7 +113,7 @@ Excel no lo fuerza (es el teórico).
 |---|---|
 | **Fichas técnicas → Artículos → Acabado** | Una fila por tela acabada con ficha: peso, ancho, rendimiento, crudo, estado, pendientes y áreas, en verde o rojo; filtros por estado y por área, búsqueda por crudo y «Actualizar la revisión». Abre el producto. |
 | **Artículos → Crudos** | Los crudos con ficha de tejido. Abre el producto. |
-| **Producto → pestaña «Ficha técnica»** (después de «Información general») | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho de venta y rendimiento), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Desde 2.32.0 (Jose, 2026-11-23), con la forma de las pantallas de Odoo: **cabecera** con «Corregir con la ficha» (solo si hay pendientes de tiempos, capacidad de jets o conversión) y «Revisar»; **barra de etapas** con el estado; **botones inteligentes** Pendientes, Ficha de acabado, Crudo y Procesos; la pestaña va después de «Información general» y trae la tela, el crudo y sub-pestañas Pendientes («Resolver»; «Usar el medido» / «Dejar el de la ficha»), Ruta y Especificación. En un crudo: «Agregar circular» en la cabecera, botones Fichas de tejido y Telas, sub-pestañas Circulares y Telas. |
+| **Producto → botón «Ficha técnica»** (2.33.0: la pestaña se quitó; abre la ficha de acabado. Lo de abajo es la historia de la pestaña hasta 2.32.0) | **Solo lectura** (2.24.0): la ficha de acabado y la de tejido de donde sale cada bloque, con liga; la ayuda de cada campo dice la pestaña y el campo de origen. La tela (peso, ancho de venta y rendimiento), su crudo y cuántas telas lo comparten, la ruta (operaciones de sus listas en kg y en metros, duración de la lista contra la de sus parámetros), la especificación y los pendientes. Desde 2.32.0 (Jose, 2026-11-23), con la forma de las pantallas de Odoo: **cabecera** con «Corregir con la ficha» (solo si hay pendientes de tiempos, capacidad de jets o conversión) y «Revisar»; **barra de etapas** con el estado; **botones inteligentes** Pendientes, Ficha de acabado, Crudo y Procesos; la pestaña va después de «Información general» y trae la tela, el crudo y sub-pestañas Pendientes («Resolver»; «Usar el medido» / «Dejar el de la ficha»), Ruta y Especificación. En un crudo: «Agregar circular» en la cabecera, botones Fichas de tejido y Telas, sub-pestañas Circulares y Telas. |
 | **Lista de materiales → operación** | Tiempo de la ficha, su cálculo y «Usar el tiempo de la ficha»; los parámetros de la tela en esa máquina y sus alternativas (lápiz para editar) o «Agregar los datos de la tela en esta máquina». |
 | **Lista de materiales** | Aviso si la conversión kg → m no es la de la ficha, con botón; filtro «Conversión kg → m distinta de la ficha». Acción «Corregir con la ficha». |
 | **Operaciones** | Filtro «Tiempo distinto de la ficha». |
@@ -161,6 +161,21 @@ Programación de Tintorería tiene su copia de la misma regla (propuesta a José
 **Qué lista se toma** (revisión, pestaña del producto, ruta de la ficha de acabado): la que tiene operaciones aunque
 esté archivada (las listas del flujo en kg esperan el visto bueno de Ingeniería); entre iguales, la activa; las que
 dicen «no usar» van al final. Odoo fabrica con la activa.
+
+## Estados de la ficha: de la ficha sale la lista (2.33.0)
+
+La ficha de acabado es la fuente y la lista de materiales sale de ella, en este orden (Artículos → Fichas de acabado,
+un kanban por estado):
+
+| Estado | Quién | Qué pasa | Para pasar al siguiente |
+|---|---|---|---|
+| Borrador | Ingeniería | Captura la ficha; sin listas | «Enviar a revisión», con tela, acabado en kg, crudo, peso, ancho, rendimiento, ruta de la familia y consumo de crudo |
+| En revisión | Cada área | Las listas se generan archivadas; la revisión deja pendientes por área | «Activar», sin pendientes («Corregir con la ficha» iguala tiempos, jets y conversión) |
+| Activa | Producción | Odoo fabrica con las dos listas | «Modificar» la regresa a revisión (la lista sigue fabricando) |
+| Obsoleta | Ingeniería | Ficha y listas archivadas | «Volver a borrador» |
+
+Una lista del flujo no se activa a mano desde la lista: se activa desde la ficha. La ficha muestra sus dos listas
+(componentes, operaciones y subproductos) en la pestaña «Listas de materiales», solo para ver.
 
 ## Modelo de producción vigente
 

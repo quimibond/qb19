@@ -13,35 +13,32 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
-            <!-- El formulario de producto de Odoo 19 no trae cabecera: se agrega aquí, vacía si no es tela ni crudo. -->
+            <!-- 2.33.0 (Jose, 2026-11-24): la ficha técnica es un botón del producto, no una pestaña. Todo lo de la
+                 tela (estado, datos, listas, pendientes) se ve en la ficha. La cabecera queda solo para el crudo. -->
             <xpath expr="//form/sheet" position="before">
-                <header invisible="not ft_tiene_ficha">
-                    <button name="action_ft_datos_ficha" type="object" string="Corregir con la ficha"
-                            class="btn-primary" invisible="not ft_puede_corregir"
-                            help="Copia de la ficha a la lista en kg y a la de metros los tiempos de las operaciones, la capacidad de los jets y la conversión a metros; luego vuelve a revisar la tela."/>
-                    <button name="action_ft_revisar" type="object" string="Revisar" invisible="not ft_es_tela"
-                            help="Compara otra vez las listas de esta tela contra la ficha (cada noche se hace sola)."/>
+                <header invisible="not ft_es_crudo">
                     <button name="action_ft_agregar_circular" type="object" string="Agregar circular"
-                            class="btn-primary" invisible="not ft_es_crudo"
+                            class="btn-primary"
                             help="Crea la ficha de tejido de este crudo en otra circular, con los hilos, ajustes y características de la más reciente. No toca centros de trabajo ni listas de materiales."/>
-                    <field name="ft_estado" widget="statusbar" invisible="not ft_es_tela"
-                           statusbar_visible="sin_revisar,pendientes,para_activar,activa"/>
                 </header>
             </xpath>
             <div name="button_box" position="inside">
+                <field name="ft_tiene_ficha" invisible="1"/>
+                <field name="ft_es_tela" invisible="1"/>
+                <field name="ft_es_crudo" invisible="1"/>
+                <field name="ft_tipo_codigo" invisible="1"/>
+                <button name="action_view_ficha_tecnica_acabado" type="object" class="oe_stat_button"
+                        icon="fa-file-text" invisible="not ft_es_tela"
+                        help="La ficha técnica de la tela: su estado, sus datos, sus listas de materiales y sus pendientes.">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value"><field name="ft_ficha_estado" readonly="1"/></span>
+                        <span class="o_stat_text">Ficha técnica</span>
+                    </div>
+                </button>
                 <button name="action_ft_pendientes" type="object" class="oe_stat_button text-danger"
                         icon="fa-exclamation-triangle" invisible="not ft_es_tela or not ft_revision_n">
                     <field name="ft_revision_n" widget="statinfo" string="Pendientes"/>
                 </button>
-                <button name="action_view_ficha_tecnica_acabado" type="object" class="oe_stat_button"
-                        icon="fa-file-text" string="Ficha de acabado" invisible="not ft_es_tela"
-                        help="Donde se cambian los datos de la tela: medidas, rendimiento, ruta, tintorería y características."/>
-                <button name="action_ft_crudo" type="object" class="oe_stat_button" icon="fa-circle-o"
-                        string="Crudo" invisible="not ft_es_tela or not ft_crudo_id"
-                        help="El producto crudo: circulares donde se teje y telas que lo usan."/>
-                <button name="action_ft_procesos" type="object" class="oe_stat_button" icon="fa-tachometer"
-                        string="Procesos" invisible="not ft_es_tela"
-                        help="Los datos de la tela en cada máquina."/>
                 <button name="action_view_ficha_tecnica_tejido" type="object" class="oe_stat_button"
                         icon="fa-file-text-o" invisible="not ft_es_crudo">
                     <field name="ft_tejido_n" widget="statinfo" string="Fichas de tejido"/>
@@ -50,132 +47,11 @@
                         invisible="not ft_es_crudo">
                     <field name="ft_tela_n" widget="statinfo" string="Telas"/>
                 </button>
+                <!-- Producto con código de tela, acabado en kg o crudo y sin ficha: la ruta empieza aquí. -->
+                <button name="action_ft_crear_ficha" type="object" class="oe_stat_button" icon="fa-plus"
+                        string="Crear ficha técnica" invisible="ft_tiene_ficha or not ft_tipo_codigo"
+                        help="Tela: crea su ficha de acabado. Crudo: su ficha de tejido. Acabado en kg: abre la tela en metros, donde va la ficha."/>
             </div>
-            <xpath expr="//page[@name='general_information']" position="after">
-                <page string="Ficha técnica" name="ft_ficha_tecnica" invisible="not ft_tiene_ficha">
-                    <field name="ft_tiene_ficha" invisible="1"/>
-                    <field name="ft_es_tela" invisible="1"/>
-                    <field name="ft_es_crudo" invisible="1"/>
-                    <field name="ft_revision_listo" invisible="1"/>
-                    <field name="ft_puede_corregir" invisible="1"/>
-
-                    <!-- La tela: solo lectura; la ayuda de cada campo dice de qué ficha y pestaña sale -->
-                    <group invisible="not ft_es_tela">
-                        <group string="La tela">
-                            <field name="ft_acabado_ficha_id" string="Ficha de acabado"/>
-                            <field name="ft_peso"/>
-                            <field name="ft_ancho"/>
-                            <field name="ft_rendimiento"/>
-                            <field name="ft_producto_kg_id"/>
-                            <field name="ft_revision_fecha"/>
-                        </group>
-                        <group string="El crudo">
-                            <field name="ft_tejido_ficha_id" string="Ficha de tejido"/>
-                            <field name="ft_crudo_id"/>
-                            <field name="ft_crudo_peso"/>
-                            <field name="ft_crudo_ancho"/>
-                            <field name="ft_crudo_rendimiento"/>
-                            <field name="ft_crudo_telas_count"/>
-                        </group>
-                    </group>
-                    <notebook invisible="not ft_es_tela">
-                        <page string="Pendientes" name="ft_pendientes" invisible="ft_revision_listo">
-                            <field name="ft_pendiente_ids" readonly="1" nolabel="1">
-                                <list>
-                                    <field name="area"/>
-                                    <field name="tipo" column_invisible="True"/>
-                                    <field name="detalle"/>
-                                    <button name="action_ft_usar_medido" type="object" string="Usar el medido"
-                                            class="btn-link" invisible="tipo != 'rendimiento_cambio'"/>
-                                    <button name="action_ft_dejar_ficha" type="object" string="Dejar el de la ficha"
-                                            class="btn-link" invisible="tipo != 'rendimiento_cambio'"/>
-                                    <button name="action_ft_resolver" type="object" string="Resolver" icon="fa-wrench"
-                                            class="btn-link" invisible="tipo == 'rendimiento_cambio'"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Ruta" name="ft_ruta">
-                            <field name="ft_operacion_ids" readonly="1" nolabel="1">
-                                <list decoration-warning="ft_tiempo_difiere">
-                                    <field name="bom_id" string="Lista" optional="show"/>
-                                    <field name="name"/>
-                                    <field name="workcenter_id"/>
-                                    <field name="time_cycle_manual" string="Duración (min)"/>
-                                    <field name="ft_tiempo_ficha"/>
-                                    <field name="ft_tiempo_difiere" column_invisible="True"/>
-                                    <field name="ft_tiempo_calculo" string="Cálculo" optional="hide"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Especificación" name="ft_especificacion">
-                            <field name="ft_spec_ids" readonly="1" nolabel="1">
-                                <list>
-                                    <field name="name"/>
-                                    <field name="unit"/>
-                                    <field name="spec_nominal"/>
-                                    <field name="spec_tol_minus"/>
-                                    <field name="spec_tol_plus"/>
-                                    <field name="method" optional="show"/>
-                                </list>
-                            </field>
-                        </page>
-                    </notebook>
-
-                    <!-- El crudo, visto desde su propio producto -->
-                    <notebook invisible="not ft_es_crudo">
-                        <page string="Circulares" name="ft_circulares">
-                            <field name="ft_tejido_ids" readonly="1" nolabel="1">
-                                <list>
-                                    <field name="maquina_tejido"/>
-                                    <field name="maquina_config_id" optional="show"/>
-                                    <field name="galga"/>
-                                    <field name="diametro"/>
-                                    <field name="peso_acondicionado"/>
-                                    <field name="ancho_acondicionado"/>
-                                    <field name="rendimiento_tela_tejida"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Telas" name="ft_telas_crudo">
-                            <field name="ft_tela_ids" readonly="1" nolabel="1">
-                                <list>
-                                    <field name="product_acabado_id"/>
-                                    <field name="peso_acabado"/>
-                                    <field name="ancho_acabado"/>
-                                    <field name="rendimiento_tela_acabada"/>
-                                </list>
-                            </field>
-                        </page>
-                    </notebook>
-                </page>
-                <!-- 2.23.0: producto con código de tela, acabado en kg o crudo y sin ficha: la ruta empieza aquí -->
-                <page string="Ficha técnica" name="ft_ficha_tecnica_nueva"
-                      invisible="ft_tiene_ficha or not ft_tipo_codigo">
-                    <field name="ft_tipo_codigo" invisible="1"/>
-                    <field name="ft_tela_m_de_kg_id" invisible="1"/>
-                    <div invisible="ft_tipo_codigo != 'tela'">
-                        <p>Esta tela todavía no tiene ficha técnica. La ficha de la tela guarda su peso, ancho y
-                            rendimiento, la ficha de tejido en que se basa (su crudo), la especificación y la tintorería;
-                            con ella se revisan sus listas de materiales.</p>
-                        <button name="action_ft_crear_ficha" type="object" string="Crear la ficha de la tela"
-                                class="btn-primary"/>
-                    </div>
-                    <div invisible="ft_tipo_codigo != 'crudo'">
-                        <p>Este crudo todavía no tiene ficha de tejido (una por circular: máquina, hilos, ajustes, tela
-                            acondicionada y rendimiento de tejido).</p>
-                        <button name="action_ft_crear_ficha" type="object" string="Crear la ficha de tejido"
-                                class="btn-primary"/>
-                    </div>
-                    <div invisible="ft_tipo_codigo != 'kg'">
-                        <p>Este es el acabado en kg de una tela. Su ficha va en la tela en metros (el mismo código sin
-                            la «I»).</p>
-                        <button name="action_ft_crear_ficha" type="object" string="Abrir la tela en metros"
-                                class="btn-primary" invisible="not ft_tela_m_de_kg_id"/>
-                        <div invisible="ft_tela_m_de_kg_id" class="text-muted">La tela en metros no existe todavía:
-                            la da de alta Innovación (C1 del SGI).</div>
-                    </div>
-                </page>
-            </xpath>
         </field>
     </record>
 
@@ -224,7 +100,10 @@
                 <field name="ft_ancho"/>
                 <field name="ft_rendimiento"/>
                 <field name="ft_crudo_id"/>
-                <field name="ft_estado" widget="badge" decoration-muted="ft_estado == 'sin_revisar'"
+                <field name="ft_ficha_estado" widget="badge" decoration-muted="ft_ficha_estado == 'borrador'"
+                       decoration-info="ft_ficha_estado == 'revision'" decoration-success="ft_ficha_estado == 'activa'"
+                       decoration-danger="ft_ficha_estado == 'obsoleta'"/>
+                <field name="ft_estado" string="Listas" optional="show" widget="badge" decoration-muted="ft_estado == 'sin_revisar'"
                        decoration-danger="ft_estado in ('pendientes', 'activa_pendientes')"
                        decoration-info="ft_estado == 'para_activar'" decoration-success="ft_estado == 'activa'"/>
                 <field name="ft_revision_n"/>

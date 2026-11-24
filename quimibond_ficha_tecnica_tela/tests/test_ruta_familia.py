@@ -97,7 +97,7 @@ class TestRutaFamilia(TiempoFichaCase):
                                  'uom_id': self.meter.id, 'is_storable': True})
         ficha = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ935Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
-            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0})
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'estado': 'revision'})
         accion = ficha.action_ft_generar_listas()
         self.assertIn('consumo de crudo', accion['params']['message'], "Sin consumo no se inventa la lista en kg")
         ficha.consumo_crudo = 1.12
@@ -195,7 +195,7 @@ class TestRutaFamilia(TiempoFichaCase):
         bom_m = self._borrador_m()
         bom_m.with_context(active_test=False).operation_ids.unlink()
         self.assertFalse(bom_m.with_context(active_test=False).operation_ids)
-        bom_m.active = True
+        bom_m.with_context(ft_activar_lista=True).active = True
         ops = bom_m.operation_ids
         self.assertEqual(ops.workcenter_id, self._empaque())
         self.assertEqual(ops.time_cycle_manual, 60.0)
@@ -219,7 +219,7 @@ class TestRutaFamilia(TiempoFichaCase):
         # una lista en metros activa no se toca
         bom_m.with_context(active_test=False).operation_ids.unlink()
         bom_m.active = False
-        bom_m.write({'active': True})
+        bom_m.with_context(ft_activar_lista=True).write({'active': True})
         bom_m.operation_ids.unlink()
         self.env['ficha.tecnica.ruta']._ft_poner_clasificacion_rutas()
         self.assertFalse(bom_m.operation_ids, "La lista activa queda como estaba")
@@ -338,7 +338,7 @@ class TestRutaFamilia(TiempoFichaCase):
                                  'uom_id': self.meter.id, 'is_storable': True})
         ficha = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ936Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
-            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1, 'estado': 'revision'})
         ficha.action_ft_generar_listas()
         Revision = self.env['ficha.tecnica.revision']
         bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
@@ -383,7 +383,7 @@ class TestRutaFamilia(TiempoFichaCase):
                                  'uom_id': self.meter.id, 'is_storable': True})
         ficha = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ937Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
-            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1, 'estado': 'revision'})
         ficha.action_ft_generar_listas()
         Revision = self.env['ficha.tecnica.revision']
         bom_kg, bom_m = Revision._ft_bom_de(kg), Revision._ft_bom_de(tela_m)
@@ -395,7 +395,7 @@ class TestRutaFamilia(TiempoFichaCase):
         self.assertIn('desperdicio', tipos)
         self.assertNotIn('ruta_mto', tipos, "Archivada, la ruta todavía no hace falta")
         self.assertNotIn(ruta_mto, kg.product_tmpl_id.route_ids)
-        bom_kg.action_unarchive()
+        bom_kg.with_context(ft_activar_lista=True).action_unarchive()
         self.assertIn(ruta_mto, kg.product_tmpl_id.route_ids, "Al activar, el «I…» recibe la ruta MTO")
         self.assertEqual(bom_kg.consumption, 'flexible')
         self.assertTrue(bom_kg.byproduct_ids, "Al activar se completa el desperdicio")
@@ -426,12 +426,12 @@ class TestRutaFamilia(TiempoFichaCase):
                                  'uom_id': self.meter.id, 'is_storable': True})
         ficha = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ938Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
-            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1, 'estado': 'revision'})
         ficha.action_ft_generar_listas()
         Revision = self.env['ficha.tecnica.revision']
         bom_m = Revision._ft_bom_de(tela_m)
         self.assertNotIn(ruta_m, tela_m.product_tmpl_id.route_ids)
-        bom_m.action_unarchive()
+        bom_m.with_context(ft_activar_lista=True).action_unarchive()
         self.assertIn(ruta_m, tela_m.product_tmpl_id.route_ids, "Al activar, la tela recibe la ruta del flujo")
         tela_m.product_tmpl_id.route_ids = [(3, ruta_m.id)]
         pendiente = Revision._ft_actualizar(ficha).pendiente_ids.filtered(
@@ -453,20 +453,20 @@ class TestRutaFamilia(TiempoFichaCase):
                                    (0, 0, {'product_id': self.crudo.id, 'product_qty': 0.1})]})
         ficha = self.env['ficha.tecnica.acabado'].create({
             'articulo': 'ZZ939Q22JNG165', 'tejido_id': self.tejido.id, 'product_acabado_id': tela_m.id,
-            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1})
+            'product_proceso_id': kg.id, 'peso_acabado': 53, 'rendimiento_tela_acabada': 8.0, 'consumo_crudo': 1.1, 'estado': 'revision'})
         ficha.action_ft_generar_listas()
         bom_m = Bom.with_context(active_test=False).search([
             ('product_tmpl_id', '=', tela_m.product_tmpl_id.id), ('code', '=', 'Clasificación final (borrador)')])
         self.assertEqual(len(bom_m), 1)
         self.assertFalse(bom_m.active, "Lo generado nace archivado")
         self.assertEqual(Bom._bom_find(tela_m, bom_type='normal')[tela_m], anterior)
-        bom_m.action_unarchive()
+        bom_m.with_context(ft_activar_lista=True).action_unarchive()
         self.assertTrue(anterior.active, "La lista anterior sigue activa, de respaldo")
         self.assertLess(bom_m.sequence, anterior.sequence)
         self.assertEqual(Bom._bom_find(tela_m, bom_type='normal')[tela_m], bom_m,
                          "Una orden nueva toma la lista del flujo")
         secuencia = bom_m.sequence
         bom_m.action_archive()
-        bom_m.action_unarchive()
+        bom_m.with_context(ft_activar_lista=True).action_unarchive()
         self.assertEqual(bom_m.sequence, secuencia, "Si ya va primero no se mueve")
 

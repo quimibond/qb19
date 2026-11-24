@@ -123,7 +123,7 @@ class TestFichaProducto(TiempoFichaCase):
         self.env.invalidate_all()
         self.assertEqual(tmpl.ft_estado, 'para_activar', tmpl.ft_pendiente_ids.mapped('detalle'))
         self.assertIn(tmpl, Tmpl.search([('ft_estado', '=', 'para_activar')]))
-        self.bom.action_unarchive()
+        self.bom.with_context(ft_activar_lista=True).action_unarchive()
         self.env.invalidate_all()
         self.assertEqual(tmpl.ft_estado, 'activa', "Activar la lista cuenta sin esperar a la revisión de la noche")
         self.assertIn(tmpl, Tmpl.search([('ft_estado', '=', 'activa')]))
