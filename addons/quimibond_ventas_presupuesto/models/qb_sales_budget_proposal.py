@@ -644,8 +644,9 @@ class QbSalesBudgetProposal(models.TransientModel):
             "Propuesta armada con la venta del %s al %s." % (
                 self.date_from.strftime('%d/%m/%Y'), self.date_to.strftime('%d/%m/%Y')),
             Markup("<br/>").join(per_market) if per_market else "Sin venta en el periodo base.",
+            # 3.34.1: el renglón nace con el precio de la lista (al crearse); se cuentan por su origen.
             "Precio: %d de la lista, %d del precio real del periodo base, %d sin precio." % (
-                from_list, from_history, budget.no_price_count),
+                len(lines.filtered(lambda l: l.price_origen == 'lista')), from_history, budget.no_price_count),
         ]
         forecast = lines.filtered(lambda l: l.qty_origen == 'pronostico')
         if covered:
@@ -697,6 +698,10 @@ class QbSalesBudgetProposal(models.TransientModel):
             if no_price_dev:
                 notes.append("%d renglón(es) de desarrollos quedaron sin precio: su desarrollo no tiene "
                              "cotización ni precio objetivo y su producto no tiene lista ni venta." % no_price_dev)
+            unvalued = potencial.filtered(lambda l: l.price_input > 0 and not l.amount_potencial)
+            if unvalued:
+                notes.append("%d renglón(es) potenciales con precio valen 0: precio por kilo sin conversión de "
+                             "metros a kilos (o al revés) en el producto." % len(unvalued))
         if not (self.rate_source or budget.rate_source):
             notes.append("Falta la fuente del tipo de cambio (pestaña Tipo de cambio): sin ella no se aprueba.")
         dev_labels = {'ya_se_vende': "su producto ya se vende a ese cliente",

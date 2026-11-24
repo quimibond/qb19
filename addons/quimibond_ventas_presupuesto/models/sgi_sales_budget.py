@@ -156,9 +156,9 @@ class SgiSalesBudget(models.Model):
              "soporte escrito o con un supuesto sin evidencia. No se aprueba así, salvo excepción.")
     potencial_count = fields.Integer(string="Renglones potenciales", compute='_compute_support_counts')
     potencial_no_price_count = fields.Integer(
-        string="Potenciales sin precio", compute='_compute_support_counts',
-        help="Desarrollos no liberados sin cotización, precio objetivo, regla de lista ni venta del producto: "
-             "su potencial no se puede valuar.")
+        string="Potenciales sin valuar", compute='_compute_support_counts',
+        help="Desarrollos no liberados cuyo potencial vale 0: sin cotización, precio objetivo, regla de lista "
+             "ni venta del producto, o con el precio por kilo y sin conversión de metros a kilos.")
     amount_potencial_total = fields.Monetary(
         string="Potencial (no suma)", compute='_compute_support_counts',
         help="Desarrollos todavía no liberados: lo que sumarían si se liberan. No entra al presupuesto.")
@@ -693,7 +693,7 @@ class SgiSalesBudget(models.Model):
         for budget in self:
             potencial = budget.line_ids.filtered('potencial')
             budget.potencial_count = len(potencial)
-            budget.potencial_no_price_count = len(potencial.filtered(lambda l: l.price_input <= 0))
+            budget.potencial_no_price_count = len(potencial.filtered(lambda l: not l.amount_potencial))
             budget.amount_potencial_total = sum(potencial.mapped('amount_potencial'))
             budget.unsupported_count = len(budget.line_ids.filtered(lambda l: not l.support_ok))
 
