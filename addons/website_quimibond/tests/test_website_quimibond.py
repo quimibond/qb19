@@ -188,6 +188,11 @@ class TestSitioB2B(HttpCase):
                       'name="qb_origen" value="certificados"', 'Scrims no tejidos', 'SIDE Certificaciones'):
             self.assertIn(texto, compradores, texto)
         self.assertEqual(self.url_open('/automotive-buyers').status_code, 200)
+        # Los certificados ISO 9001 y 14001 van en el módulo y se descargan de la tarjeta.
+        for pdf in ('quimibond-iso-9001-2015.pdf', 'quimibond-iso-14001-2015.pdf'):
+            ruta = '/website_quimibond/static/src/doc/%s' % pdf
+            self.assertIn(ruta, compradores, pdf)
+            self.assertTrue(self.url_open(ruta).content.startswith(b'%PDF-'), pdf)
         agendar = self.url_open('/agendar').text
         for texto in ('name="qb_origen" value="llamada"', 'De 9:00 a 11:00'):
             self.assertIn(texto, agendar, texto)

@@ -9,14 +9,17 @@ from . import contenido
 from .main import QuimibondSitio, _exigir_activo
 
 # Fuente: presentación de empresa de octubre de 2026 (la que Ventas manda a
-# prospectos automotrices) y lo ya publicado en /calidad.
+# prospectos automotrices) y lo ya publicado en /calidad. «pdf» es el certificado
+# en static/src/doc; al renovarse se cambia el archivo y el número de aquí.
 CERTIFICACIONES = [
     {'norma': 'ISO 9001:2015', 'sistema': 'Sistema de gestión de calidad', 'desde': 'Certificado desde 2015',
-     'detalle': 'Certificado 24070237A, vigente hasta el 22 de agosto de 2027'},
+     'detalle': 'Certificado 24070237A, vigente hasta el 22 de agosto de 2027',
+     'pdf': 'quimibond-iso-9001-2015.pdf'},
     {'norma': 'ISO 14001:2015', 'sistema': 'Sistema de gestión ambiental', 'desde': 'Certificado desde 2023',
-     'detalle': 'Certificado 26220295B, vigente hasta el 31 de marzo de 2029'},
+     'detalle': 'Certificado 26220295B, vigente hasta el 31 de marzo de 2029',
+     'pdf': 'quimibond-iso-14001-2015.pdf'},
     {'norma': 'ISO 45001:2018', 'sistema': 'Seguridad y salud en el trabajo', 'desde': 'Certificado desde 2026',
-     'detalle': ''},
+     'detalle': '', 'pdf': ''},
 ]
 
 PRUEBAS_LABORATORIO = [

@@ -8,9 +8,9 @@
         <t t-call="website.layout">
             <div id="wrap" class="qb">
                 <t t-call="website_quimibond.encabezado_pagina">
-                    <t t-set="etiqueta" t-value="'Proveedores'"/>
-                    <t t-set="titulo" t-value="'Sea proveedor de Quimibond.'"/>
-                    <t t-set="resumen" t-value="'Dese de alta en línea, reciba sus órdenes de compra, suba su factura y vea su fecha de pago, sin correos de ida y vuelta.'"/>
+                    <t t-set="etiqueta">Proveedores</t>
+                    <t t-set="titulo">Sea proveedor de Quimibond.</t>
+                    <t t-set="resumen">Dese de alta en línea, reciba sus órdenes de compra, suba su factura y vea su fecha de pago, sin correos de ida y vuelta.</t>
                     <div class="qb-hero__cta qb-reveal">
                         <a href="/proveedores/alta" class="qb-btn qb-btn--primario qb-btn--lg">Darme de alta <i class="fa fa-long-arrow-right" aria-hidden="true"/></a>
                         <a href="/web/login?redirect=/mi-cuenta/proveedor" class="qb-btn qb-btn--contorno qb-btn--lg">Ya soy proveedor</a>
@@ -115,8 +115,8 @@
 
                                 <h2 class="qb-prov__paso"><span class="qb-mono qb-num">01</span> Su empresa</h2>
                                 <div class="qb-form__rejilla">
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'name'"/><t t-set="etiqueta" t-value="'Razón social'"/><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'organization'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'rfc'"/><t t-set="etiqueta" t-value="'RFC'"/><t t-set="requerido" t-value="True"/><t t-set="ejemplo" t-value="'ABC010203XY1'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'name'"/><t t-set="etiqueta">Razón social</t><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'organization'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'rfc'"/><t t-set="etiqueta">RFC</t><t t-set="requerido" t-value="True"/><t t-set="ejemplo" t-value="'ABC010203XY1'"/></t>
                                     <div class="qb-campo">
                                         <label class="s_website_form_label" for="qb_a_giro">¿Qué ofrece?<span class="s_website_form_mark"> *</span></label>
                                         <select id="qb_a_giro" name="giro" t-attf-class="form-select #{'is-invalid' if errores.get('giro') else ''}" required="1">
@@ -125,7 +125,7 @@
                                         </select>
                                         <small t-if="errores.get('giro')" class="qb-prov__error" t-out="errores['giro']"/>
                                     </div>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'ciudad'"/><t t-set="etiqueta" t-value="'Ciudad y estado'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'ciudad'"/><t t-set="etiqueta">Ciudad y estado</t></t>
                                     <div class="qb-campo qb-campo--ancho">
                                         <label class="s_website_form_label" for="qb_a_descripcion">Productos o servicios</label>
                                         <textarea id="qb_a_descripcion" name="descripcion" class="form-control" rows="3" maxlength="500" placeholder="Qué vende, marcas que representa, capacidad…"><t t-out="datos.get('descripcion') or ''"/></textarea>
@@ -134,17 +134,17 @@
 
                                 <h2 class="qb-prov__paso"><span class="qb-mono qb-num">02</span> Contacto</h2>
                                 <div class="qb-form__rejilla">
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'contacto'"/><t t-set="etiqueta" t-value="'Nombre'"/><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'name'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'puesto'"/><t t-set="etiqueta" t-value="'Puesto'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'email'"/><t t-set="etiqueta" t-value="'Correo'"/><t t-set="requerido" t-value="True"/><t t-set="tipo" t-value="'email'"/><t t-set="autocompletar" t-value="'email'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'telefono'"/><t t-set="etiqueta" t-value="'Teléfono'"/><t t-set="tipo" t-value="'tel'"/><t t-set="autocompletar" t-value="'tel'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'contacto'"/><t t-set="etiqueta">Nombre</t><t t-set="requerido" t-value="True"/><t t-set="autocompletar" t-value="'name'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'puesto'"/><t t-set="etiqueta">Puesto</t></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'email'"/><t t-set="etiqueta">Correo</t><t t-set="requerido" t-value="True"/><t t-set="tipo" t-value="'email'"/><t t-set="autocompletar" t-value="'email'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'telefono'"/><t t-set="etiqueta">Teléfono</t><t t-set="tipo" t-value="'tel'"/><t t-set="autocompletar" t-value="'tel'"/></t>
                                 </div>
 
                                 <h2 class="qb-prov__paso"><span class="qb-mono qb-num">03</span> Cuenta para pagos</h2>
                                 <div class="qb-form__rejilla">
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'banco'"/><t t-set="etiqueta" t-value="'Banco'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'clabe'"/><t t-set="etiqueta" t-value="'CLABE (18 dígitos)'"/></t>
-                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'titular'"/><t t-set="etiqueta" t-value="'Titular de la cuenta'"/></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'banco'"/><t t-set="etiqueta">Banco</t></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'clabe'"/><t t-set="etiqueta">CLABE (18 dígitos)</t></t>
+                                    <t t-call="website_quimibond_proveedores.alta_campo"><t t-set="campo" t-value="'titular'"/><t t-set="etiqueta">Titular de la cuenta</t></t>
                                     <div class="qb-campo">
                                         <label class="s_website_form_label" for="qb_a_moneda">Moneda de la cuenta</label>
                                         <select id="qb_a_moneda" name="moneda_cuenta" class="form-select">

@@ -32,6 +32,33 @@ class TestAltaProveedor(HttpCase):
             archivos.pop('caratula')
         return self.url_open('/proveedores/alta', data=datos, files=archivos)
 
+    def test_ingles(self):
+        """Con la versión en inglés del sitio, las páginas públicas salen en inglés."""
+        Lang = self.env['res.lang'].with_context(active_test=False)
+        espanol = Lang._activate_lang('es_MX') or Lang._create_lang('es_MX')
+        self.website.language_ids = [(4, espanol.id)]
+        self.website.default_lang_id = espanol
+        self.website.qb_ingles = True
+        for ruta, textos in (
+                ('/en/proveedores', ('Become a Quimibond supplier.', 'Issued within the last three months.',
+                                     'Do not offer gifts or payments to Quimibond staff.', 'Suppliers | Quimibond')),
+                ('/en/proveedores/alta', ('Legal name', 'Yarns and fibers', 'SAT compliance opinion (positive)',
+                                          'Supplier registration')),
+                ('/en/proveedores/alta/gracias', ('We received your request',))):
+            pagina = self.url_open(ruta)
+            self.assertEqual(pagina.status_code, 200, ruta)
+            for texto in textos:
+                self.assertIn(texto, pagina.text, '%s: %s' % (ruta, texto))
+        # Los avisos del formulario también, y lo que la persona escribió se queda como está.
+        if not self.session:
+            self.authenticate(None, None)
+        respuesta = self.url_open('/en/proveedores/alta', data={
+            'csrf_token': http.Request.csrf_token(self), 'name': 'Otro', 'rfc': 'X', 'giro': 'hilo',
+            'contacto': 'Laura', 'email': 'laura@hilosnuevos.test', 'acepta': '1'}, files={})
+        self.assertIn('The RFC does not have the right format', respuesta.text)
+        self.assertIn('This document is missing.', respuesta.text)
+        self.assertIn('value="Otro"', respuesta.text)
+
     def test_paginas(self):
         for ruta in ('/proveedores', '/proveedores/alta', '/proveedores/alta/gracias'):
             pagina = self.url_open(ruta)

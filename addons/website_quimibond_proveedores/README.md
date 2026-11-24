@@ -79,6 +79,13 @@ desde el contacto, con la acción nativa.
 Los requisitos y los compromisos del proveedor son texto fijo en
 `controllers/alta.py`.
 
+**Inglés (desde 1.1.0).** Con la casilla «Versión en inglés» del sitio,
+`/en/proveedores` y el alta salen en inglés: los textos de las plantillas y
+los de `controllers/alta.py` (requisitos, compromisos, avisos del formulario)
+llevan su traducción en `i18n/en_CA.po`. Un texto nuevo va en español en el
+código y con su inglés en el `.po`. El portal con sesión
+(`/mi-cuenta/proveedor`) sigue solo en español.
+
 ## Configuración
 
 En Sitio web → Configuración → Sitios web:
