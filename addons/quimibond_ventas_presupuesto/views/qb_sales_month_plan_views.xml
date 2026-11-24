@@ -71,6 +71,9 @@
                             <field name="amount_proyectos"/>
                             <field name="amount_total"/>
                             <field name="amount_by_mercado_text"/>
+                            <field name="amount_annual"/>
+                            <field name="amount_annual_diff"
+                                   decoration-danger="amount_annual_diff &lt; 0" decoration-success="amount_annual_diff &gt; 0"/>
                             <field name="sent_date" invisible="state != 'enviado'"/>
                             <field name="sent_by_id" invisible="state != 'enviado'"/>
                         </group>
@@ -96,6 +99,24 @@
                                     <field name="amount" sum="Total"/>
                                     <field name="price_problem" optional="show"/>
                                     <field name="from_forecast" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 3.35.0 (Jose, 24-nov): el mes contra lo que el anual aprobado traía para el mes. -->
+                        <page string="Contra el anual" name="contra_anual">
+                            <p class="text-muted">
+                                Las cantidades del mes salen del pronóstico vigente; del presupuesto anual aprobado salen
+                                el precio y el tipo de cambio. Aquí se ve, por mercado, cuánto se aleja el mes de lo
+                                que el anual traía para este mes.
+                            </p>
+                            <field name="compare_ids">
+                                <list decoration-danger="amount_diff &lt; 0" decoration-success="amount_diff &gt; 0">
+                                    <field name="mercado"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount_annual" sum="Total"/>
+                                    <field name="amount_plan" sum="Total"/>
+                                    <field name="amount_diff" sum="Total"/>
+                                    <field name="diff_pct"/>
                                 </list>
                             </field>
                         </page>
