@@ -17,6 +17,10 @@ Convención de signos (la de las líneas del recibo de Odoo):
 
 Un concepto de tipo ``ignorar`` sólo saca sus reglas de ese reporte automático.
 
+Una percepción marcada ``en_especie`` (vales de despensa) suma al neto del
+recibo pero no se paga en efectivo: el «Total en efectivo» es el neto menos lo
+que va en especie (1.25.0).
+
 Lo que tiene concepto de CFDI (``l10n_mx_concept``), sale en el recibo, no
 está en el catálogo y no es cero se reporta solo, con el nombre de la regla y
 sin clave NOI: así nada del recibo se pierde aunque falte darlo de alta.
@@ -74,11 +78,11 @@ def conceptos_de_recibo(lineas, conceptos):
         'cfdi_tipo': 'perception'|'deduction'|'other'|None, 'sat': str,
         'gravable': bool}}``
     :param conceptos: lista de ``{'id', 'clave', 'nombre', 'tipo', 'sat',
-        'codigos', 'codigos_exento', 'secuencia'}`` (``codigos`` y
+        'codigos', 'codigos_exento', 'secuencia', 'en_especie'}`` (``codigos`` y
         ``codigos_exento`` en texto, como en el catálogo).
     :return: lista de renglones ``{'llave', 'clave', 'nombre', 'tipo', 'sat',
-        'importe', 'gravado', 'exento'}`` con importe distinto de cero, en el
-        orden de NOI.
+        'importe', 'gravado', 'exento', 'especie'}`` con importe distinto de
+        cero, en el orden de NOI.
     """
     usados = set()
     renglones = []
@@ -117,6 +121,7 @@ def conceptos_de_recibo(lineas, conceptos):
             'importe': importe,
             'gravado': gravado,
             'exento': exento,
+            'especie': bool(c.get('en_especie')) and c['tipo'] == 'percepcion',
             'secuencia': c.get('secuencia', 0),
         })
     # Lo que el catálogo no cubre y sí va en el CFDI: se reporta con el nombre de la regla.
@@ -140,6 +145,7 @@ def conceptos_de_recibo(lineas, conceptos):
             'importe': importe,
             'gravado': importe if tipo == 'percepcion' and gravable else 0.0,
             'exento': importe if tipo == 'percepcion' and not gravable else 0.0,
+            'especie': False,
             'secuencia': 9999,
         })
     renglones.sort(key=lambda r: (_ORDEN_TIPO[r['tipo']],) + clave_orden(r['clave'], r['nombre']))
@@ -158,7 +164,10 @@ def totales_de_recibo(renglones, neto=None):
         'exento': r2(sum(r['exento'] for r in renglones if r['tipo'] == 'percepcion')),
         'informativo': r2(sum(r['importe'] for r in renglones if r['tipo'] == 'informativo')),
         'neto': calculado if neto is None else r2(neto),
+        'especie': r2(sum(r['importe'] for r in renglones if r['tipo'] == 'percepcion' and r.get('especie'))),
     }
+    # Lo que el trabajador recibe en dinero: el neto menos los vales (como el «Total en efectivo» de NOI).
+    res['efectivo'] = r2(res['neto'] - res['especie'])
     # Si el neto del recibo no es percepciones − deducciones, falta (o sobra) un concepto en el catálogo.
     res['diferencia'] = r2(res['neto'] - calculado)
     return res
@@ -193,6 +202,8 @@ def resumen(recibos):
         'total_deducciones': r2(sum(t['deducciones'] for t in tot)),
         'total_informativo': r2(sum(t['informativo'] for t in tot)),
         'neto': r2(sum(t['neto'] for t in tot)),
+        'total_especie': r2(sum(t.get('especie', 0.0) for t in tot)),
+        'total_efectivo': r2(sum(t.get('efectivo', t['neto']) for t in tot)),
         'diferencia': r2(sum(t['diferencia'] for t in tot)),
         'recibos': len(recibos),
     }
@@ -200,8 +211,8 @@ def resumen(recibos):
 
 def por_concepto(recibos, llaves=None):
     """Reporte «Percepción/deducción» de NOI: por concepto, los trabajadores con
-    su importe y el total. Un trabajador con varios recibos (varias semanas) se
-    suma en un renglón.
+    su importe (y, en percepciones, gravado y exento) y el total. Un trabajador
+    con varios recibos (varias semanas) se suma en un renglón.
 
     :param recibos: lista de ``{'empleado': {'id', 'clave', 'nombre'}, 'renglones': [...]}``.
     :param llaves: conjunto de llaves de concepto a incluir; ``None`` = todos.
@@ -214,17 +225,23 @@ def por_concepto(recibos, llaves=None):
                 continue
             c = conceptos.setdefault(r['llave'], {
                 'llave': r['llave'], 'clave': r['clave'], 'nombre': r['nombre'], 'tipo': r['tipo'],
-                'sat': r['sat'], 'empleados': {}, 'total': 0.0})
-            e = c['empleados'].setdefault(emp['id'], {'clave': emp['clave'], 'nombre': emp['nombre'], 'importe': 0.0})
-            e['importe'] += r['importe']
+                'sat': r['sat'], 'empleados': {}, 'total': 0.0, 'gravado': 0.0, 'exento': 0.0})
+            e = c['empleados'].setdefault(emp['id'], {'clave': emp['clave'], 'nombre': emp['nombre'], 'importe': 0.0,
+                                                      'gravado': 0.0, 'exento': 0.0})
+            for campo in ('importe', 'gravado', 'exento'):
+                e[campo] += r[campo]
             c['total'] += r['importe']
+            c['gravado'] += r['gravado']
+            c['exento'] += r['exento']
     res = []
     for c in conceptos.values():
-        empleados = [dict(e, importe=r2(e['importe'])) for e in c['empleados'].values()]
+        empleados = [dict(e, importe=r2(e['importe']), gravado=r2(e['gravado']), exento=r2(e['exento']))
+                     for e in c['empleados'].values()]
         empleados = [e for e in empleados if abs(e['importe']) >= 0.005]
         if not empleados:
             continue
         empleados.sort(key=lambda e: clave_empleado_orden(e['clave']))
-        res.append(dict(c, empleados=empleados, total=r2(c['total'])))
+        res.append(dict(c, empleados=empleados, total=r2(c['total']), gravado=r2(c['gravado']),
+                        exento=r2(c['exento'])))
     res.sort(key=lambda c: (_ORDEN_TIPO[c['tipo']],) + clave_orden(c['clave'], c['nombre']))
     return res

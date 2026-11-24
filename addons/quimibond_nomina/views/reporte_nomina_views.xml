@@ -67,6 +67,7 @@
                 <field name="clave_sat"/>
                 <field name="codigos"/>
                 <field name="codigos_exento"/>
+                <field name="en_especie"/>
                 <field name="active" widget="boolean_toggle" optional="hide"/>
             </list>
         </field>

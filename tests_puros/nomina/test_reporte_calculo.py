@@ -28,7 +28,8 @@ def _catalogo():
         campos = dict(re.findall(r'<field name="(\w+)">([^<]*)</field>', bloque))
         res.append({'id': len(res) + 1, 'clave': campos.get('clave', ''), 'nombre': campos['name'],
                     'tipo': campos['tipo'], 'sat': campos.get('clave_sat', ''), 'codigos': campos['codigos'],
-                    'codigos_exento': campos.get('codigos_exento', '')})
+                    'codigos_exento': campos.get('codigos_exento', ''),
+                    'en_especie': '<field name="en_especie" eval="True"/>' in bloque})
     return res
 
 
@@ -44,6 +45,7 @@ CFDI = {  # código → (tipo CFDI, clave SAT, gravable), como l10n_mx_concept e
     'FONACOT': ('deduction', '011', False), 'PRESTAMO': ('deduction', '004', False),
     'CHILD_SUPPORT': ('deduction', '007', False), 'IMSS_EMPLOYEE_TOTAL': ('deduction', '001', False),
     'RETRO_SUELDO': ('perception', '001', True),
+    'NO_TAX_MEAL_VOUCHER': ('perception', '029', False), 'TAX_MEAL_VOUCH': ('perception', '029', True),
 }
 
 
@@ -208,3 +210,39 @@ def test_bruto_sin_vacaciones_no_se_reporta():
     r = rc.conceptos_de_recibo(lineas, _catalogo())
     assert not [x for x in r if x['llave'] == 'regla:GROSS_WITHOUT_HOLIDAY']
     assert rc.totales_de_recibo(r, GENARO['NET']['total'])['diferencia'] == 0
+
+
+def test_vales_semana47_en_especie():
+    """Semana 47 (lote 136), GENARO S-1, recibo 5540: 850 de vales exentos en NO_TAX_MEAL_VOUCHER, regla que
+    no sale en el recibo de Odoo pero sí suma al neto (6,116.46). Sin el concepto de vales el reporte la
+    perdía y el neto quedaba 850 arriba de percepciones − deducciones."""
+    lineas = _lineas(
+        BASIC=3619.91, FAE=-235.29, FAP=235.29, FA_EMPRESA=-235.29, HE_EXEMPT=581.77, HE_TAX=581.77,
+        H_SENC=2133.16, CUOTA_SIND=-56.33, ISR=-918.31, PRESTAMO=-300, IMSS_EMPLOYEE_TOTAL=140.22,
+        NO_TAX_MEAL_VOUCHER=850.0, TAX_MEAL_VOUCH=0.0, NET=6116.46)
+    lineas['NO_TAX_MEAL_VOUCHER']['en_recibo'] = False
+    r = rc.conceptos_de_recibo(lineas, _catalogo())
+    vales = [x for x in r if x['nombre'] == 'VALES DE DESPENSA'][0]
+    assert (vales['importe'], vales['gravado'], vales['exento'], vales['especie']) == (850.0, 0.0, 850.0, True)
+    assert vales['sat'] == '029'
+    t = rc.totales_de_recibo(r, 6116.46)
+    assert t['diferencia'] == 0
+    assert (t['especie'], t['efectivo'], t['neto']) == (850.0, 5266.46, 6116.46)
+    res = rc.resumen([{'empleado': {'id': 1, 'clave': 'S-1', 'nombre': 'GENARO'}, 'renglones': r, 'totales': t}])
+    assert (res['total_especie'], res['total_efectivo']) == (850.0, 5266.46)
+
+
+def test_sin_vales_efectivo_igual_al_neto():
+    t = rc.totales_de_recibo(rc.conceptos_de_recibo(GENARO, _catalogo()), GENARO['NET']['total'])
+    assert (t['especie'], t['efectivo']) == (0.0, 6114.23)
+
+
+def test_por_concepto_gravado_y_exento_por_trabajador():
+    recibos = []
+    for i, (clave, lineas) in enumerate([('S-1', GENARO), ('S-141', SANDRA)]):
+        ren = rc.conceptos_de_recibo(lineas, _catalogo())
+        recibos.append({'empleado': {'id': i, 'clave': clave, 'nombre': clave}, 'renglones': ren})
+    he = rc.por_concepto(recibos, {'P003'})[0]
+    assert (he['empleados'][0]['gravado'], he['empleados'][0]['exento']) == (581.77, 581.77)
+    pdom = rc.por_concepto(recibos, {'P019'})[0]
+    assert (pdom['gravado'], pdom['exento']) == (9.97, 117.31)
