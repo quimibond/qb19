@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Flujo de efectivo a 13 semanas',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'license': 'LGPL-3',
     'category': 'Accounting/Accounting',
     'summary': 'Proyección semanal de caja (método directo) en Contabilidad → Reportes: caja, cobranza y '
