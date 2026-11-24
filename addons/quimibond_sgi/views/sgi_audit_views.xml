@@ -276,7 +276,7 @@
                         domain="[('state','not in',('cerrada',))]"/>
                 <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
                 <separator/>
-                <filter name="mine" string="Mías"
+                <filter name="mine" string="Míos"
                         domain="['|', '|', ('lead_auditor_id', '=', uid), ('auditor_ids', 'in', uid), ('auditee_ids', 'in', uid)]"/>
                 <filter name="filter_date_planned" string="Fecha planificada" date="date_planned"/>
                 <group>

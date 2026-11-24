@@ -5,7 +5,7 @@
         <field name="name">sgi.dev.escalation.list</field>
         <field name="model">sgi.dev.escalation</field>
         <field name="arch" type="xml">
-            <list string="Avisos por tiempo" create="0" edit="0" decoration-muted="state == 'cerrado'"
+            <list string="Avisos por tiempo" create="0" edit="0" decoration-success="state == 'cerrado'"
                   decoration-danger="level == 'direccion' and state == 'abierto'"
                   decoration-warning="level == 'dueno' and state == 'abierto'">
                 <field name="sent_at"/>

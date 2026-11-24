@@ -501,11 +501,11 @@ class TestEntregasFacturadas(TransactionCase):
 
     def test_14_dependencias_completas(self):
         Move = self.env['account.move']
-        picking_deps = Move._fields['sgi_picking_ids'].depends
+        picking_deps = Move._fields['sgi_picking_ids'].get_depends(Move)[0]
         self.assertIn('invoice_line_ids.sale_line_ids.move_ids.picking_id.state', picking_deps)
         self.assertIn('invoice_line_ids.purchase_line_id.move_ids.picking_id.state', picking_deps)
         self.assertIn('sgi_picking_manual', picking_deps)
-        self.assertIn('invoice_date', Move._fields['sgi_payment_date'].depends)
+        self.assertIn('invoice_date', Move._fields['sgi_payment_date'].get_depends(Move)[0])
 
 
 @tagged('post_install', '-at_install')
@@ -531,7 +531,7 @@ class TestEmpresaDelSgi(_RendimientoCase):
                             "WHERE sgi_is_controlled IS TRUE AND company_id IS NULL",
                             (self.company.id,))
         self.env.invalidate_all()
-        procedure = self._loose('P-Z95', doc_type='procedimiento')
+        procedure = self._loose('P-V95', doc_type='procedimiento')  # clave heredada válida (Z no es letra de proceso)
         loose = procedure | self._loose('IT-Z95-03', sgi_process_id=self.process.id)
         routine = self.env['sgi.legacy.routine'].create({
             'procedure_id': procedure.id, 'n': 1, 'name': 'Rutina RR', 'state': 'eliminada',
@@ -568,7 +568,7 @@ class TestEmpresaDelSgi(_RendimientoCase):
         self.env.flush_all()
         self.env.cr.execute("UPDATE documents_document SET company_id = NULL WHERE id = %s", (free.id,))
         free.invalidate_recordset(['company_id'])
-        free.write({'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo',
+        free.write({'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo', 'sgi_owner_id': self.env.user.id,
                     'sgi_code': 'IT-Z95-05', 'sgi_process_id': self.process.id})
         self.assertEqual(free.company_id, self.company, "Al volverse controlado toma la empresa.")
         # Una revisión nueva de una familia que vive sin empresa (D-06 aún
@@ -587,7 +587,7 @@ class TestEmpresaDelSgi(_RendimientoCase):
         other = sgi_new_company(self.env, 'Otra empresa RR')
         procedure = self.env['documents.document'].create({
             'name': 'Procedimiento otra RR', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-Z96', 'sgi_state': 'vigente',
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-V96', 'sgi_state': 'vigente',
             'company_id': other.id})
         routine = self.env['sgi.legacy.routine'].create({
             'procedure_id': procedure.id, 'n': 1, 'name': 'Rutina otra RR', 'state': 'eliminada',

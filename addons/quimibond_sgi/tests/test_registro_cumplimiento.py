@@ -177,7 +177,7 @@ class TestRegistroCumplimiento(TransactionCase):
         de nadie ni Jefe MAST)."""
         job = self.env['hr.job'].create({'name': 'ESCALA REGISTRO CUMPLIMIENTO'})
         self.env['sgi.activity.role'].create({'activity_id': self.manual.id, 'role': 'escala',
-                                              'job_id': job.id, 'after_days': 0})
+                                              'job_id': job.id, 'after_days': 1})
         user = new_test_user(self.env, login='rc_escala',
                              groups='base.group_user,quimibond_sgi.group_sgi_user')
         self.env['hr.employee'].create({'name': 'Escala Registro', 'job_id': job.id, 'user_id': user.id})

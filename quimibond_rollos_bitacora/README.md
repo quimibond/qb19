@@ -27,6 +27,10 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## «Siglas» en el perfil público del empleado (3.23.1, 2026-11-24)
+- `hr.employee.public` también trae `siglas`. Sin eso, Odoo 19 negaba leer cualquier empleado a quien no es de RH
+  («siglas … not available for employee public profiles»), porque el campo se precarga con el resto.
+
 ## Dos desperdicios en Rama y rollos finales en la orden en metros (3.23.0, Dirección, 2026-11-22)
 
 - **PESAR DESPERDICIO (Rama) pesa dos subproductos**, cada uno una vez por orden, con su lote, su peso y su etiqueta:

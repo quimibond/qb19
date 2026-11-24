@@ -46,7 +46,7 @@
             <search>
                 <field name="name"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mías"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <!-- 57.170.0: «Mías» aparte; en el mismo bloque se unía con «o». -->
                 <separator/>

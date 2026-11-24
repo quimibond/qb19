@@ -121,7 +121,7 @@
             <search string="Pruebas de laboratorio">
                 <field name="name"/>
                 <field name="project_id"/>
-                <filter name="mine" string="Mías" domain="[('requested_by_id', '=', uid)]"/>
+                <filter name="mine" string="Míos" domain="[('requested_by_id', '=', uid)]"/>
                 <separator/>
                 <filter name="open" string="En curso" domain="[('state', 'in', ('solicitada', 'autorizada'))]"/>
                 <filter name="to_authorize" string="Por autorizar" domain="[('state', '=', 'solicitada')]"/>

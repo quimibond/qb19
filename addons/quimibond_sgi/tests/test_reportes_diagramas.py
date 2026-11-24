@@ -10,7 +10,6 @@ auditorías contra lo realizado y mapa de calor por instrumento.
 
 La base del build es copia de producción: todo se crea aquí (claves ZR01-*,
 periodos 2046, procesos ZR1/ZR2) y se renderiza HTML, nunca PDF."""
-import time
 from datetime import date
 
 from lxml import etree
@@ -18,7 +17,7 @@ from markupsafe import Markup
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
-from odoo.tools.safe_eval import safe_eval
+from odoo.tools.safe_eval import safe_eval, time
 
 from .common_documents import sgi_hide_real_documents
 from .common_users import sgi_set_mast

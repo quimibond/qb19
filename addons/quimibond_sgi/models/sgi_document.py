@@ -1317,7 +1317,7 @@ class DocumentsDocument(models.Model):
         """57.170.0: «El PDF sigue vigente»: el Jefe MAST revisó el cambio del
         procedimiento vivo y no amerita revisión nueva. Quita la marca y lo deja
         en el historial. Antes el aviso pedía «confírmelo» sin botón."""
-        if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
             raise UserError("Solo el Jefe MAST confirma que el PDF sigue vigente.")
         for doc in self.filtered('sgi_procedure_dirty'):
             since = doc.sgi_procedure_dirty_since

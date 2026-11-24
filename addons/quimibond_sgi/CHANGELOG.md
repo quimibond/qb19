@@ -14,6 +14,23 @@ Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
 
+## 19.0.57.202.5 — 2026-11-24
+
+Segunda tanda de las fallas viejas del suite del SGI en Odoo.sh (corrida completa del 24-nov: 38 fallas y 63 errores anteriores a 57.202.3).
+
+### Corregido
+
+- **IA de la NC**: el resumen que se manda leía `quality.alert.lot_id`, que en Odoo 19 es `lot_ids` (muchos lotes): toda sugerencia tronaba con `AttributeError`. Ahora lista los lotes.
+- **«El PDF sigue vigente»** también lo puede confirmar el sistema (`sudo`), no solo el Jefe MAST.
+- **Mis pendientes**: en una medición por validar se veían «Hecho» y «Validar» (los dos validan); queda solo «Validar» y el botón para abrir.
+- **Textos en «usted»**: «Sube con…» → «Se sube con…», «Pide cambios» → «Solicita cambios», la ayuda de «No aplica» y la columna «Lo que pide el cliente»; «Jefe MAST» en el ejemplo del MIID.
+- **Filtros «Míos»** (eran «Mías» en acciones, auditorías, solicitudes de cambio y de análisis y procedimientos) y **colores de la tabla del README**: borrador en gris (solicitudes de modificación, estado del MIID y sus revisiones) y cerrado en verde (avisos por tiempo del desarrollo).
+- El nombre del archivo del MIID en borrador sale del nombre del manual, no de la clave «P-G01» escrita a mano.
+
+### Pruebas
+
+- Al día con el código: `safe_eval` de Odoo 19 pide su `time` envuelto; `Field.depends` ya no existe (`get_depends`); `test_menus_capitulos` compara una lista; el rol «Escala» pide al menos 1 día hábil; claves de procedimiento que cumplen la nomenclatura (`P-V95`, `P-V96`) y responsable al volver controlado un documento; `sgi_stock_picking_view_form_links` volvió en 57.114.0 como herencia de `stock` (permitida) y sale de la lista de integradas.
+
 ## 19.0.57.202.4 — 2026-11-24
 
 ### Corregido

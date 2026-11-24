@@ -704,7 +704,7 @@ class SgiMiidItem(models.Model):
     kind = fields.Selection(related='section_id.kind')
     sequence = fields.Integer(string="Orden", default=10)
     label = fields.Char(string="Concepto", required=True,
-                        help="Lo que se define o se regula (p. ej. «Riesgos y oportunidades», «Jefe de MAST "
+                        help="Lo que se define o se regula (p. ej. «Riesgos y oportunidades», «Jefe MAST "
                              "y SGI»).")
     clause = fields.Char(string="Numeral", help="Cláusulas de la norma que cubre (p. ej. 6.1, 7.5).")
     text = fields.Text(string="Descripción")

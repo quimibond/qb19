@@ -45,7 +45,7 @@
                      «En proceso» y «Posponer» viven en la ficha del pendiente. -->
                 <field name="next_step" string="Qué sigue" optional="show"/>
                 <button name="action_done" type="object" string="Hecho" icon="fa-check"
-                        class="btn-link text-success" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision')"/>
+                        class="btn-link text-success" invisible="not can_done or kind in ('nc', 'legal', 'documento', 'solicitud', 'aprobacion', 'revision', 'validacion')"/>
                 <button name="action_nc_step" type="object" string="Registrar paso" icon="fa-check"
                         class="btn-link text-success" invisible="kind != 'nc' or not can_done"/>
                 <button name="action_legal_evaluate" type="object" string="Evaluar" icon="fa-check"
