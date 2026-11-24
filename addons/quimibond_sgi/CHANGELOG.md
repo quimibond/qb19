@@ -23,6 +23,7 @@ Limpieza de pruebas para aligerar el build de Odoo.sh (pedido de Jose del 24-nov
 
 ### Corregido
 - «Regenerar artículos» ya no se detiene por el historial de costo de Odoo 19 (`product.value` sin movimiento de inventario, que Odoo escribe al crear el producto o cambiar su costo; producción tiene 26,769): no cuenta como uso del artículo y se borra con él (`test_dev_product` test_08 y test_10).
+- Mandar el aviso de un envío de muestra al cliente ya no se cicla: al cerrar la actividad, Odoo publica un mensaje en el envío que volvía a cerrar la misma actividad sin fin (`RecursionError`; `test_dev_shipment` test_02).
 - `test_dev_project` test_02: registra la aprobación del cliente antes de pasar a «Muestra» o «Pilotaje», como `test_dev_product` en 57.202.2.
 - `test_dev_project` test_06: la plantilla de prueba se crea en es_MX, como en producción; en la base nueva del build solo quedaba en_US.
 - `test_dev_project` test_08: revisa que el modelo quede expuesto al MCP y no lo que devuelve la corrida, que solo trae lo que abrió (desde 57.149.0 lo ya habilitado no se repite).
