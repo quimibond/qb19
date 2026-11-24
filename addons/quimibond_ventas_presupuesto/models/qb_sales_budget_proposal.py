@@ -53,7 +53,7 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_sales_budget import MERCADOS_CON_CLIENTE, MESES, _convert_qty, default_mercado, team_mercado
+from .sgi_sales_budget import MERCADO_BASE, MERCADOS_CON_CLIENTE, MESES, _convert_qty, default_mercado, team_mercado
 from .qb_sales_project import proyecto_mercado
 
 BASES = [('ultimos12', "Últimos 12 meses cerrados"), ('anio', "Año anterior completo")]
@@ -291,6 +291,7 @@ class QbSalesBudgetProposal(models.TransientModel):
         # 3.32.0: los meses que el pronóstico de un cliente cubre salen del pronóstico.
         forecast_rows, covered = ({}, {})
         replaced = 0.0
+        stopped = defaultdict(float)  # (cliente, producto) que dejó de comprar → venta base que no entra
         if self.use_forecast:
             forecast_rows, covered = self._qb_forecast_rows(budget)
             covered_ids = {partner.id: span for partner, span in covered.items()}
@@ -299,13 +300,25 @@ class QbSalesBudgetProposal(models.TransientModel):
             forecast_products = defaultdict(set)
             for product_id, partner_id, _month in forecast_rows:
                 forecast_products[partner_id].add(product_id)
+            # 3.34.0 (revisión con producción, 24-nov): Contitech cambió el WC090Q11JNT165 por el
+            # JNT168 en junio de 2026; su pronóstico trae el nuevo y la venta base seguía proponiendo el
+            # viejo, contado dos veces. Para un cliente con pronóstico, un producto que no viene en su
+            # pronóstico solo sigue si se le vendió en los últimos 3 meses del periodo base.
+            recent_from = self.date_to.replace(day=1) - relativedelta(months=2)
+            recent = {(product.id, partner.id) for (_mk, product, partner, m), cell in cells.items()
+                      if partner and cell['qty'] > 0 and self._qb_base_month(m) >= recent_from}
             for key in list(rows):
                 row = rows[key]
-                if not row['partner'] or row['product'].id not in forecast_products[row['partner'].id]:
+                if not row['partner'] or row['partner'].id not in covered_ids:
                     continue
-                first, last = covered_ids.get(row['partner'].id, (13, 0))
-                if first <= row['month'] <= last:
-                    replaced += row['amount']
+                pid, partner_id = row['product'].id, row['partner'].id
+                if pid in forecast_products[partner_id]:
+                    first, last = covered_ids[partner_id]
+                    if first <= row['month'] <= last:
+                        replaced += row['amount']
+                        del rows[key]
+                elif (pid, partner_id) not in recent:
+                    stopped[(row['partner'], row['product'])] += row['amount']
                     del rows[key]
             rows.update(forecast_rows)
 
@@ -393,6 +406,9 @@ class QbSalesBudgetProposal(models.TransientModel):
             sold = {(key[0], key[1]) for key in rows}
             dev_lines, dev_skipped = self._qb_dev_lines(budget, sold)
 
+        no_price_dev = self._qb_price_potencial(dev_lines, cells) if dev_lines else 0
+        no_sale = self._qb_declare_no_sale(budget, cells)
+
         # Lo propuesto queda como referencia: cambiarlo pide motivo. El precio de lista dice su regla.
         for line in budget.line_ids:
             vals = {'price_sugerido': line.price_input}
@@ -401,11 +417,62 @@ class QbSalesBudgetProposal(models.TransientModel):
             line.write(vals)
         budget.action_qb_update_base()
         self._qb_post_summary(budget, lines, skipped, len(below), from_list, from_history, projects,
-                              dev_lines, dev_skipped, covered=covered, replaced=replaced, assumed=assumed)
+                              dev_lines, dev_skipped, covered=covered, replaced=replaced, assumed=assumed,
+                              stopped=stopped, no_sale=no_sale, no_price_dev=no_price_dev)
         return {'type': 'ir.actions.act_window', 'res_model': 'sgi.sales.budget', 'res_id': budget.id,
                 'view_mode': 'form', 'target': 'current'}
 
     # --- soporte ----------------------------------------------------------------
+    def _qb_price_potencial(self, dev_lines, cells):
+        """3.34.0: el desarrollo sin cotización ni precio objetivo toma, con su soporte, la regla de la
+        lista del cliente o la presupuestal y, si no hay, el promedio facturado del producto a cualquier
+        cliente en el periodo base. Devuelve cuántos renglones quedaron sin precio (se marcan)."""
+        missing = dev_lines.filtered(lambda l: l.price_input <= 0)
+        missing.filtered('product_id')._qb_suggest_price()
+        for line in missing.filtered(lambda l: l.price_origen == 'lista'):
+            line.support_price = "%s (regla de la lista del producto)" % (line.price_source or "Lista")
+        by_product = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
+        for (_mk, product, _partner, _m), cell in cells.items():
+            for ccy, (amount, qty) in cell['currency'].items():
+                by_product[product.id][ccy][0] += amount
+                by_product[product.id][ccy][1] += qty
+        left = 0
+        for line in missing.filtered(lambda l: l.price_input <= 0):
+            currencies = by_product.get(line.product_id.id) if line.product_id else None
+            if currencies:
+                ccy, (amount, qty) = max(currencies.items(), key=lambda kv: abs(kv[1][0]))
+                if qty > 0 and amount > 0:
+                    line.write({'price_input': round(amount / qty, 4), 'price_currency_id': ccy.id,
+                                'price_basis': 'venta', 'price_origen': 'historico',
+                                'support_price': "Promedio facturado del producto a todos los clientes del %s "
+                                                 "al %s: %s %s ÷ %s" % (
+                                                     self.date_from.strftime('%d/%m/%Y'),
+                                                     self.date_to.strftime('%d/%m/%Y'),
+                                                     '{:,.2f}'.format(amount), ccy.name, '{:,.2f}'.format(qty))})
+                    continue
+            line.support_price = ("Sin precio: el desarrollo no tiene cotización ni precio objetivo, y su producto "
+                                  "no tiene regla de lista ni venta en el periodo base. Capture el precio "
+                                  "objetivo en el desarrollo.")
+            left += 1
+        return left
+
+    def _qb_declare_no_sale(self, budget, cells):
+        """3.34.0: el mes en que un mercado no tiene renglones y tampoco vendió en el mismo mes del periodo
+        base queda declarado «sin venta», con ese motivo. Si vendió y no hay renglones (debajo del mínimo,
+        por ejemplo), se queda vacío: eso lo decide Ventas."""
+        sold = {(MERCADO_BASE.get(mk, mk), m) for (mk, _p, _pa, m), cell in cells.items()
+                if cell['qty'] > 0 or cell['amount'] > 0}
+        vals_list = []
+        for base, months in budget._qb_empty_months().items():
+            for month in months:
+                if (base, month) in sold:
+                    continue
+                vals_list.append({
+                    'budget_id': budget.id, 'mercado': base, 'month': str(month),
+                    'note': "Sin venta de %s en %s del periodo base" % (
+                        LABELS[base], self._qb_base_month(month).strftime('%m/%Y'))})
+        return self.env['qb.sales.budget.no.sale'].create(vals_list)
+
     def _qb_base_month(self, month):
         """Primer día del mes del periodo base que va al mes ``month`` del año nuevo."""
         start = self.date_from.replace(day=1)
@@ -564,7 +631,8 @@ class QbSalesBudgetProposal(models.TransientModel):
         return Line.create(vals_list), skipped
 
     def _qb_post_summary(self, budget, lines, skipped, below, from_list, from_history, projects,
-                         dev_lines=None, dev_skipped=None, covered=None, replaced=0.0, assumed=None):
+                         dev_lines=None, dev_skipped=None, covered=None, replaced=0.0, assumed=None,
+                         stopped=None, no_sale=None, no_price_dev=0):
         fmt = '{:,.0f}'.format
         per_market = []
         for base, label in LABELS.items():
@@ -589,6 +657,16 @@ class QbSalesBudgetProposal(models.TransientModel):
                                  for p, span in sorted(covered.items(), key=lambda ps: ps[0].name or ''))))
         elif self.use_forecast:
             notes.append("Pronóstico vigente: ningún cliente cubre un mes completo de %s." % self.year)
+        if stopped:
+            notes.append("No entraron %d producto(s) de clientes con pronóstico que no vienen en su pronóstico "
+                         "ni se les vendieron en los últimos 3 meses del periodo base, por %s de venta base: %s." % (
+                             len(stopped), fmt(sum(stopped.values())), ", ".join(
+                                 "%s a %s (%s)" % (product.display_name, partner.name, fmt(amount))
+                                 for (partner, product), amount in sorted(
+                                     stopped.items(), key=lambda kv: -kv[1])[:10])))
+        if no_sale:
+            notes.append("Meses sin venta declarados (no vendieron en el periodo base): %s." % ", ".join(
+                "%s %s" % (LABELS[d.mercado], MESES[int(d.month) - 1]) for d in no_sale))
         for assumption in self.partner_ids:
             notes.append("Supuesto de %s: %s %% desde %s%s (%d renglón(es) de venta base)." % (
                 assumption.partner_id.name, assumption.growth_pct,
@@ -616,6 +694,9 @@ class QbSalesBudgetProposal(models.TransientModel):
                              len(released.dev_project_id), len(released), fmt(sum(released.mapped('amount_budget'))),
                              len(potencial.dev_project_id), len(potencial),
                              fmt(sum(potencial.mapped('amount_potencial')))))
+            if no_price_dev:
+                notes.append("%d renglón(es) de desarrollos quedaron sin precio: su desarrollo no tiene "
+                             "cotización ni precio objetivo y su producto no tiene lista ni venta." % no_price_dev)
         if not (self.rate_source or budget.rate_source):
             notes.append("Falta la fuente del tipo de cambio (pestaña Tipo de cambio): sin ella no se aprueba.")
         dev_labels = {'ya_se_vende': "su producto ya se vende a ese cliente",

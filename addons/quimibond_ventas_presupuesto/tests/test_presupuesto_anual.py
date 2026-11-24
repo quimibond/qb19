@@ -663,6 +663,12 @@ class TestPresupuestoAnual(TransactionCase):
         for month in (1, 2, 3):
             invoice(self.client, date(2017, month, 10), 100.0)
         invoice(self.client, date(2017, 1, 10), 40.0, por_pedido)
+        invoice(self.client, date(2017, 11, 10), 30.0, por_pedido)  # 3.34.0: se le sigue vendiendo
+        # 3.34.0: un producto que el cliente dejó de comprar (no viene en su pronóstico ni se le vendió en
+        # los últimos 3 meses del periodo base) no se propone.
+        viejo = self.env['product.product'].create({
+            'name': 'Tela que cambió de código', 'type': 'consu', 'uom_id': self.uom_m.id})
+        invoice(self.client, date(2017, 2, 10), 80.0, viejo)
         invoice(otro, date(2017, 3, 10), 100.0)
         invoice(otro, date(2017, 7, 10), 100.0)
         Forecast = self.env['qb.forecast.line']
@@ -677,7 +683,9 @@ class TestPresupuestoAnual(TransactionCase):
                              'note': 'Termina su programa'},
                             {'partner_id': self.client.id, 'growth_pct': 10.0, 'month_from': 1,
                              'note': 'Programa nuevo', 'evidence_url': 'https://correo/123'}]))
-        pedido = budget.line_ids.filtered(lambda l: l.product_id == por_pedido)
+        pedido = budget.line_ids.filtered(lambda l: l.product_id == por_pedido and l.date.month == 1)
+        self.assertFalse(budget.line_ids.filtered(lambda l: l.product_id == viejo),
+                         "Dejó de comprarlo: ni pronóstico ni venta en los últimos 3 meses")
         self.assertEqual((pedido.date, pedido.qty_origen, pedido.qty_budget), (date(2018, 1, 1), 'venta', 44.0),
                          "Un producto que no viene en el pronóstico sigue con la venta base (+10 % del supuesto)")
         mine = budget.line_ids.filtered(
@@ -700,6 +708,7 @@ class TestPresupuestoAnual(TransactionCase):
         summary = "".join(budget.message_ids.mapped('body'))
         self.assertIn("Pronóstico vigente", summary)
         self.assertIn("Termina su programa", summary)
+        self.assertIn("Tela que cambió de código", summary)
         # Sin el pronóstico, todo sale de la venta base.
         budget.line_ids.unlink()
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
@@ -759,3 +768,34 @@ class TestPresupuestoAnual(TransactionCase):
         ind.price_currency_id = budget.currency_id  # sin tipo de cambio del mes contaría 0
         budget.with_user(self.manager).action_approve()
         self.assertEqual(budget.state, 'aprobado')
+
+    def test_28_meses_sin_venta_declarados(self):
+        """3.34.0: un mes en que un mercado no venderá se declara con motivo y no cuenta como vacío. La
+        propuesta declara sola los meses en que el mercado no vendió en el periodo base."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        budget = self.Budget.create({'year': 2057})
+        self._line(budget, date=date(2057, 3, 1), price_input=1.0)
+        self.assertIn("Industrial", budget.empty_months_text)
+        before = budget.empty_month_count
+        self.env['qb.sales.budget.no.sale'].create({
+            'budget_id': budget.id, 'mercado': 'industrial', 'month': '4', 'note': 'Paro de planta del cliente'})
+        budget.invalidate_recordset()
+        self.assertEqual(budget.empty_month_count, before - 1)
+        self.assertNotIn("abril", budget.empty_months_text.split(";")[0])
+        # La propuesta: Industrial vendió solo en marzo del periodo base; los otros 11 meses quedan
+        # declarados con su motivo, y Confección y Especiales (sin venta) también.
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2014, 3, 10),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {'product_id': self.product.id, 'quantity': 10.0, 'price_unit': 2.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        proposal = self.Budget.browse(self.Budget.action_qb_build_proposal(
+            2015, base='anio', include_dev=False, use_forecast=False))
+        self.assertEqual(proposal.empty_month_count, 0)
+        declared = proposal.no_sale_ids.filtered(lambda d: d.mercado == 'industrial')
+        self.assertEqual(len(declared), 11)
+        self.assertNotIn('3', declared.mapped('month'))
+        self.assertIn("Sin venta de Industrial en 01/2014 del periodo base", declared.mapped('note'))
+        self.assertEqual(len(proposal.no_sale_ids), 35)

@@ -21,6 +21,26 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Meses sin venta, precio del potencial y productos que el cliente dejó (19.0.3.34.0, 2026-11-24)
+
+Jose (24-nov, «dale con eso»), después de probar 3.33.0 en main y revisar el pronóstico con los datos de
+producción:
+
+- **Meses sin venta** (pestaña de la ficha, `qb.sales.budget.no.sale`): un mes en que un mercado no venderá
+  se declara con su motivo y ya no cuenta como mes vacío al aprobar. La propuesta declara sola los meses en
+  que el mercado no vendió en el mismo mes del periodo base («Sin venta de Especiales en 02/2026 del periodo
+  base»); si vendió y no quedaron renglones, el mes sigue vacío y lo decide Ventas. Se copian a la nueva
+  revisión.
+- **Precio del potencial**: el desarrollo sin cotización ni precio objetivo toma la regla de la lista del
+  cliente o la presupuestal y, si no hay, el promedio facturado del producto a todos los clientes en el
+  periodo base, cada uno con su soporte. Lo que queda sin precio lo dice en el renglón y en el aviso de la
+  ficha («Potenciales sin precio»): se captura el precio objetivo en el desarrollo.
+- **Productos que el cliente dejó de comprar**: para un cliente con pronóstico, un producto que no viene en
+  su pronóstico solo se propone si se le vendió en los últimos 3 meses del periodo base. En producción,
+  Contitech cambió el WC090Q11JNT165 por el JNT168 en junio de 2026; el pronóstico trae el nuevo y la
+  propuesta 3.32.0 seguía proponiendo el viejo de enero a julio (contado dos veces). El chatter lista lo que
+  no entró.
+
 ## Soporte del precio histórico (19.0.3.33.1, 2026-11-24)
 
 Prueba en main: el soporte del precio de un renglón de venta base decía «Promedio facturado del 01/11/2025 al
