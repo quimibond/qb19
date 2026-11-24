@@ -21,6 +21,12 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Soporte del precio histórico (19.0.3.33.1, 2026-11-24)
+
+Prueba en main: el soporte del precio de un renglón de venta base decía «Promedio facturado del 01/11/2025 al
+31/10/2026» con el importe y la cantidad de un solo mes. Ahora dice el mes de donde sale («en 01/2026»); el
+renglón del pronóstico sin lista sí usa el promedio del periodo y lo dice así.
+
 ## Soporte por renglón; desarrollos solo liberados (19.0.3.33.0, 2026-11-23)
 
 Jose (23-nov), sobre la propuesta 2027 con 0 % de crecimiento, desarrollos al 100 % y el tipo de cambio del

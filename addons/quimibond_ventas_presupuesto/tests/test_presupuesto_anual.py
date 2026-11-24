@@ -515,7 +515,7 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertEqual(ind.price_origen, 'historico')
         self.assertIn("marzo 2016", ind.support_qty)
         self.assertIn(self.client.name, ind.support_qty)
-        self.assertIn("Promedio facturado", ind.support_price)
+        self.assertIn("Promedio facturado en 03/2016", ind.support_price)
         self.assertTrue(ind.support_ok)
         self.assertEqual((budget.base_date_from, budget.base_date_to), (date(2016, 1, 1), date(2016, 12, 31)))
         self.assertEqual(ind.action_qb_view_support()['res_model'], 'account.move.line')
