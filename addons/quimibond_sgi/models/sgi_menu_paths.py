@@ -75,6 +75,16 @@ SGI_MENU_PATHS = {
 }
 
 
+def sgi_lang(env):
+    """es_MX si está activo (producción); si no, el idioma del usuario. La base
+    nueva del build de Odoo.sh no trae es_MX y Odoo 19 rechaza un idioma
+    inactivo («Invalid language code: es_MX»; 57.202.4)."""
+    installed = {code for code, _name in env['res.lang'].get_installed()}
+    if 'es_MX' in installed:
+        return 'es_MX'
+    return env.lang if env.lang in installed else 'en_US'
+
+
 def sgi_menu_path(key, suffix=None):
     """«SGI → Planeación → Política integral» (con «, suffix» si se da)."""
     text = " → ".join(SGI_MENU_PATHS[key][1])
@@ -86,7 +96,7 @@ def sgi_menu_from_text(env, text, _cache=None):
     Indicadores, columna Responsable» → el menú «Indicadores»), o un menú
     vacío. Se queda con la ruta más larga que coincide. ``_cache`` es un dict
     para resolver muchos textos con una sola lectura de menús."""
-    Menu = env['ir.ui.menu'].sudo().with_context(lang='es_MX')
+    Menu = env['ir.ui.menu'].sudo().with_context(lang=sgi_lang(env))
     if not text:
         return Menu
     if _cache is None:
@@ -153,7 +163,7 @@ def sgi_open_menu_action(env, menu):
     # El superusuario (crons, pruebas) ve todo.
     if env.uid != SUPERUSER_ID and not sgi_menu_allowed(env, menu):
         raise SgiNoAccess("Su usuario no tiene acceso a «%s». Pida el acceso al Jefe MAST." % " → ".join(
-            p.strip() for p in (menu.with_context(lang='es_MX').complete_name or '').split('/')))
+            p.strip() for p in (menu.with_context(lang=sgi_lang(env)).complete_name or '').split('/')))
     if menu.action:
         return sgi_action_dict(env, menu.action)
     return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
@@ -203,7 +213,7 @@ def sgi_route_error(env, message, key):
     menu, action = _sgi_menu_window(env, key)
     if not action or not sgi_menu_allowed(env, menu):
         return UserError(message)
-    return SgiRedirectWarning(message, action.id, "Abrir «%s»" % menu.with_context(lang='es_MX').name)
+    return SgiRedirectWarning(message, action.id, "Abrir «%s»" % menu.with_context(lang=sgi_lang(env)).name)
 
 
 class SgiRedirectWarning(RedirectWarning, UserError):

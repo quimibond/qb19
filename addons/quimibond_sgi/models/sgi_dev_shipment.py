@@ -47,7 +47,7 @@ SHIPMENT_MEDIA = [
     ('paqueteria', "Paquetería"), ('recoge_cliente', "Recoge el cliente"),
     ('entrega_directa', "Entrega directa de Quimibond"),
 ]
-RESPONSES = [('aprueba', "Aprueba la muestra"), ('cambios', "Pide cambios"), ('rechaza', "Rechaza")]
+RESPONSES = [('aprueba', "Aprueba la muestra"), ('cambios', "Solicita cambios"), ('rechaza', "Rechaza")]
 STAGE_AFTER_SHIP = 'respuesta_cliente'
 STAGE_APPROVED = 'pilotaje'
 STAGE_CHANGES = 'muestra'

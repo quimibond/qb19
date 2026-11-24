@@ -28,7 +28,7 @@ TUTEO = re.compile(
 # («Programa de auditorías», el modo de indicador «Captura manual», la clase de
 # valor «Agrega valor»). Se quitan del texto antes de buscar; no relajan TUTEO.
 SUSTANTIVOS = re.compile(
-    r"\bPrograma (?:de|anual|semanal|sugerido|por)\b|\bCaptura manual\b|^Agrega valor$")
+    r"\bPrograma (?:de|anual|semanal|sugerido|por|o|y)\b|\bCaptura manual\b|^Agrega valor$")
 GLOSARIO = re.compile(r"Jefe de MAST|\bNCs\b|\bCOA\b|No Conformidad(?:es)?\b")
 # Excepciones explícitas del glosario (texto exacto):
 # - «SGI > No Conformidades»: ruta de menú de Odoo que se interpreta para hallar

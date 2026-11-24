@@ -121,7 +121,7 @@ class TestMenusCapitulos(TransactionCase):
                     'menu_sgi_safety', 'menu_sgi_performance', 'menu_sgi_improvement_group', 'menu_sgi_config']
         own = [m for m in children if (m.get_external_id().get(m.id) or '').startswith('quimibond_sgi.')]
         self.assertEqual([m.get_external_id()[m.id] for m in own], ['quimibond_sgi.' + x for x in expected])
-        self.assertEqual(own.mapped('name'), ['Inicio', 'Reportar', 'Sistema', 'Planeación',
+        self.assertEqual([m.name for m in own], ['Inicio', 'Reportar', 'Sistema', 'Planeación',
                                               'Seguridad y ambiente', 'Desempeño', 'Mejora', 'Configuración'])
         self.assertEqual(SGI_MENU_ENTRIES, tuple('quimibond_sgi.' + x for x in expected))
 

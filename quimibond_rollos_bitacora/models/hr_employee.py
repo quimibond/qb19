@@ -117,3 +117,13 @@ class HrEmployee(models.Model):
             'params': {'title': _('Siglas de operadores'), 'message': mensaje, 'type': 'success', 'sticky': True,
                        'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
         }
+
+
+class HrEmployeePublic(models.Model):
+    """3.23.1: «Siglas» también en el perfil público. Odoo 19 lee hr.employee desde hr.employee.public para quien no
+    es de RH y rechaza cualquier campo que no esté ahí; como «Siglas» se precarga con el resto, un usuario sin RH
+    no podía ni leer a los ejecutantes de un permiso de trabajo del SGI («siglas … not available for employee
+    public profiles»)."""
+    _inherit = 'hr.employee.public'
+
+    siglas = fields.Char('Siglas', readonly=True)
