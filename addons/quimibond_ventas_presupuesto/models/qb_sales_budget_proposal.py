@@ -357,16 +357,21 @@ class QbSalesBudgetProposal(models.TransientModel):
             line = by_key.get(key)
             if not line or line.price_input > 0:
                 continue
-            currencies = row.get('currency') or history_ccy.get((key[0], key[1]))
+            # 3.33.1: el renglón de venta base toma el precio de su mes; el del pronóstico, el del periodo.
+            currencies = row.get('currency')
+            if currencies:
+                when = "en %s" % self._qb_base_month(key[2]).strftime('%m/%Y')
+            else:
+                currencies = history_ccy.get((key[0], key[1]))
+                when = "del %s al %s" % (self.date_from.strftime('%d/%m/%Y'), self.date_to.strftime('%d/%m/%Y'))
             if not currencies:
                 continue
             ccy, (amount, qty) = max(currencies.items(), key=lambda kv: abs(kv[1][0]))
             if qty > 0 and amount > 0:
                 line.write({'price_input': round(amount / qty, 4), 'price_currency_id': ccy.id,
                             'price_basis': 'venta', 'price_origen': 'historico',
-                            'support_price': "Promedio facturado del %s al %s: %s %s ÷ %s" % (
-                                self.date_from.strftime('%d/%m/%Y'), self.date_to.strftime('%d/%m/%Y'),
-                                '{:,.2f}'.format(amount), ccy.name, '{:,.2f}'.format(qty))})
+                            'support_price': "Promedio facturado %s: %s %s ÷ %s" % (
+                                when, '{:,.2f}'.format(amount), ccy.name, '{:,.2f}'.format(qty))})
                 from_history += 1
 
         projects = 0
