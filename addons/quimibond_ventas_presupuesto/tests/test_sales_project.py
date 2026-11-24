@@ -214,7 +214,7 @@ class TestSalesProject(TransactionCase):
         self.assertEqual(set(lines.mapped('price_input')), {0.0})
         self.assertIn("Sin precio", lines[0].support_price)
         self.assertEqual(budget.potencial_no_price_count, len(budget.line_ids.filtered(
-            lambda l: l.potencial and l.price_input <= 0)))
+            lambda l: l.potencial and not l.amount_potencial)))
         # Sin desarrollos: nada de él.
         other = self.Budget.browse(self.Budget.action_qb_build_proposal(2067, base='anio', include_dev=False))
         self.assertFalse(other.line_ids.filtered(lambda l: l.dev_project_id == dev))

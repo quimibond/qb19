@@ -388,8 +388,8 @@
                         liberados por <field name="amount_potencial_total" class="oe_inline"/>: potencial,
                         no suma al presupuesto.
                         <span invisible="potencial_no_price_count == 0">
-                            <field name="potencial_no_price_count" class="oe_inline"/> sin precio (sin cotización,
-                            precio objetivo, lista ni venta del producto): capture el precio objetivo en el desarrollo.
+                            <field name="potencial_no_price_count" class="oe_inline"/> sin valuar (sin precio, o con
+                            precio por kilo y sin conversión a kilos): capture el precio objetivo o el rendimiento.
                         </span>
                         <button name="action_qb_view_potencial" type="object"
                                 string="Ver potencial" class="btn-link"/>

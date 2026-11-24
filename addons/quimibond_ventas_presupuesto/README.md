@@ -21,6 +21,13 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico vigente y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Potencial sin valuar y conteo de precios de lista (19.0.3.34.1, 2026-11-24)
+
+Prueba de 3.34.0 en main: 12 renglones potenciales con precio objetivo por kilo valían 0 porque el producto
+no tiene conversión de metros a kilos. El aviso de la ficha cuenta ahora los potenciales **sin valuar** (sin
+precio o sin conversión) y el chatter dice cuántos son por conversión. El resumen contaba 0 precios de lista
+(el renglón ya nace con el de la lista); ahora los cuenta por su origen.
+
 ## Meses sin venta, precio del potencial y productos que el cliente dejó (19.0.3.34.0, 2026-11-24)
 
 Jose (24-nov, «dale con eso»), después de probar 3.33.0 en main y revisar el pronóstico con los datos de
