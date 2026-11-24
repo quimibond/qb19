@@ -184,12 +184,14 @@ class TestSitioB2B(HttpCase):
     def test_paginas_de_prospectos(self):
         self.website.qb_diseno_b2b = True
         compradores = self.url_open('/compradores-automotrices').text
-        for texto in ('24070237A', '26220295B', 'Elongación a la rotura', 'name="qb_origen" value="automotriz"',
-                      'name="qb_origen" value="certificados"', 'Scrims no tejidos', 'SIDE Certificaciones'):
+        for texto in ('24070237A', '26220295B', '26030175C', 'Elongación a la rotura',
+                      'name="qb_origen" value="automotriz"', 'Scrims no tejidos', 'SIDE Certificaciones'):
             self.assertIn(texto, compradores, texto)
+        # Los tres se descargan: ya no hace falta el formulario para pedirlos.
+        self.assertNotIn('name="qb_origen" value="certificados"', compradores)
         self.assertEqual(self.url_open('/automotive-buyers').status_code, 200)
-        # Los certificados ISO 9001 y 14001 van en el módulo y se descargan de la tarjeta.
-        for pdf in ('quimibond-iso-9001-2015.pdf', 'quimibond-iso-14001-2015.pdf'):
+        # Los certificados ISO van en el módulo y se descargan de la tarjeta.
+        for pdf in ('quimibond-iso-9001-2015.pdf', 'quimibond-iso-14001-2015.pdf', 'quimibond-iso-45001-2018.pdf'):
             ruta = '/website_quimibond/static/src/doc/%s' % pdf
             self.assertIn(ruta, compradores, pdf)
             self.assertTrue(self.url_open(ruta).content.startswith(b'%PDF-'), pdf)

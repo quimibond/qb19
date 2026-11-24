@@ -3029,6 +3029,12 @@ msgstr "ISO 9001 certification of the quality management system."
 
 #. module: website_quimibond
 #. odoo-python
+#: code:addons/website_quimibond/controllers/prospectos.py:0
+msgid "Certificado 26030175C, vigente hasta el 13 de octubre de 2029"
+msgstr "Certificate 26030175C, valid until October 13, 2029"
+
+#. module: website_quimibond
+#. odoo-python
 #: code:addons/website_quimibond/controllers/contenido.py:0
 msgid "Certificado 24070237A, vigente hasta el 22 de agosto de 2027"
 msgstr "Certificate 24070237A, valid until August 22, 2027"

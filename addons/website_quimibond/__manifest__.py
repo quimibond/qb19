@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Sitio web B2B',
-    'version': '19.0.1.15.1',
+    'version': '19.0.1.15.2',
     'license': 'LGPL-3',
     'category': 'Website',
     'summary': 'Sitio web B2B de Quimibond: catálogo técnico desde los productos de Odoo, '
