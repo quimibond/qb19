@@ -36,12 +36,12 @@
                             <tr class="fw-bold"><td>Total</td>
                                 <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_total)"/></tr>
                         </table>
-                        <!-- 3.35.0 (Jose, 24-nov): el mes contra lo que el anual aprobado traía para el mes. -->
+                        <!-- 3.35.0 (Jose, 24-nov): el mes contra lo que el anual aprobado traía para el mes.
+                             3.35.1: los textos salen ya formateados de _qb_compare_report. -->
+                        <t t-set="cmp" t-value="doc._qb_compare_report()"/>
                         <h5>Contra el presupuesto anual</h5>
-                        <t t-if="not doc.compare_ids.filtered('amount_annual')">
-                            <p class="text-muted">No hay presupuesto anual aprobado con este mes.</p>
-                        </t>
-                        <table t-if="doc.compare_ids" class="table table-sm table-bordered" style="width:70%;">
+                        <p t-if="not cmp[2]" class="text-muted">No hay presupuesto anual aprobado con este mes.</p>
+                        <table t-if="cmp[0]" class="table table-sm table-bordered" style="width:70%;">
                             <thead>
                                 <tr class="table-active">
                                     <th>Mercado</th>
@@ -52,21 +52,21 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="doc.compare_ids" t-as="row">
-                                    <td><span t-field="row.mercado"/></td>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(row.amount_annual)"/>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(row.amount_plan)"/>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(row.amount_diff)"/>
-                                    <td class="text-end" t-out="'%.1f %%' % row.diff_pct if row.amount_annual else ''"/>
+                                <tr t-foreach="cmp[0]" t-as="row">
+                                    <td t-out="row['label']"/>
+                                    <td class="text-end" t-out="row['annual']"/>
+                                    <td class="text-end" t-out="row['plan']"/>
+                                    <td class="text-end" t-out="row['diff']"/>
+                                    <td class="text-end" t-out="row['pct']"/>
                                 </tr>
                             </tbody>
                             <tfoot>
                                 <tr class="table-active fw-bold">
-                                    <td>Total</td>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_annual)"/>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_total)"/>
-                                    <td class="text-end" t-out="'{:,.0f}'.format(doc.amount_annual_diff)"/>
-                                    <td class="text-end" t-out="'%.1f %%' % (doc.amount_annual_diff / doc.amount_annual * 100) if doc.amount_annual else ''"/>
+                                    <td t-out="cmp[1]['label']"/>
+                                    <td class="text-end" t-out="cmp[1]['annual']"/>
+                                    <td class="text-end" t-out="cmp[1]['plan']"/>
+                                    <td class="text-end" t-out="cmp[1]['diff']"/>
+                                    <td class="text-end" t-out="cmp[1]['pct']"/>
                                 </tr>
                             </tfoot>
                         </table>
