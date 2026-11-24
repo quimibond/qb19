@@ -8,6 +8,13 @@ primer PR después de un despliegue sube la versión y abre su sección; los sig
 agregan a esa misma sección sin volver a subirla.
 
 
+## 19.0.2.32.1 — 2026-11-24
+
+- Solo sube la versión para que main vuelva a cargar el módulo. La 2.32.0 entró a main dos veces con la misma
+  versión; la segunda quitó `ft_estado_titulo` del código pero main no recargó la vista vieja, y la ficha del
+  producto reventaba al actualizar cualquier módulo que la hereda (build de main del 23-nov, 23:48 UTC, al cargar
+  `quimibond_ventas_presupuesto` 3.33.0). Sin cambios de código.
+
 ## 19.0.2.32.0 — 2026-11-22 (José Sacramento; en qbtesting como 2.29.1)
 
 **Pestaña «Ficha técnica» del producto con la forma de las pantallas de Odoo (Jose, 2026-11-23: «muchos botones y no
