@@ -341,7 +341,9 @@ class Checada(models.Model):
                 continue
             if ultima and not ultima.check_out:
                 # Entrada sin salida: se cierra en cero horas y se marca; nunca se inventan horas.
-                ultima.write({'check_out': ultima.check_in + timedelta(minutes=1), 'out_mode': 'technical'})
+                # En dos escrituras: hr.attendance.write cambia «technical» a «manual» si en los mismos valores va check_out.
+                ultima.write({'check_out': ultima.check_in + timedelta(minutes=1)})
+                ultima.write({'out_mode': 'technical'})
                 if ultima.qb_checada_in_id:
                     ultima.qb_checada_in_id.write({
                         'state': 'huerfana',
