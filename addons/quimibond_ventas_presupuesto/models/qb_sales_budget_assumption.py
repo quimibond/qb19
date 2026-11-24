@@ -45,3 +45,25 @@ class QbSalesBudgetAssumption(models.Model):
         Line = self.env['sgi.sales.budget.line']
         for assumption in self:
             assumption.line_count = Line.search_count([('assumption_id', '=', assumption.id)])
+
+
+class QbSalesBudgetNoSale(models.Model):
+    """3.34.0: un mes en que un mercado no venderá, declarado con su motivo. Especiales vende meses
+    salteados (2026: 6 de 12); sin esto, cada año pedía «Aprobar con excepción»."""
+    _name = 'qb.sales.budget.no.sale'
+    _description = "Mes sin venta declarado del presupuesto de ventas"
+    _order = 'budget_id, mercado, month'
+
+    budget_id = fields.Many2one('sgi.sales.budget', string="Presupuesto", required=True, index=True,
+                                ondelete='cascade')
+    company_id = fields.Many2one(related='budget_id.company_id', store=True)
+    mercado = fields.Selection(
+        [('industrial', "Industrial"), ('confeccion', "Confección"), ('especiales', "Especiales")],
+        string="Mercado", required=True)
+    month = fields.Selection(MONTHS, string="Mes", required=True)
+    note = fields.Char(string="Motivo", required=True,
+                       help="Por qué no habrá venta ese mes (por ejemplo, sin venta ese mes en el periodo base).")
+    evidence_url = fields.Char(string="Liga de la evidencia")
+
+    _qb_no_sale_unique = models.Constraint(
+        'UNIQUE(budget_id, mercado, month)', "Ese mes ya está declarado sin venta para ese mercado.")

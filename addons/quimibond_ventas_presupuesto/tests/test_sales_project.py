@@ -211,6 +211,10 @@ class TestSalesProject(TransactionCase):
         self.assertEqual(set(lines.mapped('qty_potencial')), {300.0})
         self.assertEqual(set(lines.mapped('qty_budget')), {0.0})
         self.assertTrue(all(lines.mapped('proyecto_descripcion')))
+        self.assertEqual(set(lines.mapped('price_input')), {0.0})
+        self.assertIn("Sin precio", lines[0].support_price)
+        self.assertEqual(budget.potencial_no_price_count, len(budget.line_ids.filtered(
+            lambda l: l.potencial and l.price_input <= 0)))
         # Sin desarrollos: nada de él.
         other = self.Budget.browse(self.Budget.action_qb_build_proposal(2067, base='anio', include_dev=False))
         self.assertFalse(other.line_ids.filtered(lambda l: l.dev_project_id == dev))
@@ -294,3 +298,26 @@ class TestSalesProject(TransactionCase):
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2072, base='anio'))
         lines = budget.line_ids.filtered(lambda l: l.product_id == self.product)
         self.assertEqual(len(lines), 12, "Un renglón por mes, de uno solo de los dos desarrollos")
+
+    def test_18_potencial_sin_precio_toma_la_venta_del_producto(self):
+        """3.34.0: el desarrollo sin cotización ni precio objetivo toma el promedio facturado del producto a
+        cualquier cliente en el periodo base, con su soporte."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        otro = self.env['res.partner'].create({'name': 'Otro cliente proyecto', 'is_company': True})
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': otro.id, 'invoice_date': date(2072, 5, 10),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {'product_id': self.product.id, 'quantity': 100.0, 'price_unit': 5.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        dev = self._dev(sgi_dev_product_id=self.product.id, sgi_dev_consumption_annual=1200.0,
+                        sgi_dev_consumption_uom='m', sgi_dev_volume_uom='m')
+        dev.write({'stage_id': self.stage('cotizacion').id})
+        budget = self.Budget.browse(self.Budget.action_qb_build_proposal(2073, base='anio'))
+        lines = budget.line_ids.filtered(lambda l: l.dev_project_id == dev)
+        self.assertEqual(len(lines), 12)
+        self.assertEqual(set(lines.mapped('price_input')), {5.0})
+        self.assertEqual(set(lines.mapped('price_origen')), {'historico'})
+        self.assertIn("todos los clientes", lines[0].support_price)
+        self.assertEqual(set(lines.mapped('amount_potencial')), {500.0})

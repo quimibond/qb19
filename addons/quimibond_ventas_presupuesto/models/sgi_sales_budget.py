@@ -147,11 +147,18 @@ class SgiSalesBudget(models.Model):
                                  help="Periodo base con que se armó la propuesta («Ver soporte» del renglón).")
     base_date_to = fields.Date(string="Venta base hasta", readonly=True, copy=False)
     assumption_ids = fields.One2many('qb.sales.budget.assumption', 'budget_id', string="Supuestos por cliente")
+    # 3.34.0: meses en que un mercado no venderá, con motivo (no cuentan como meses vacíos).
+    no_sale_ids = fields.One2many('qb.sales.budget.no.sale', 'budget_id', string="Meses sin venta",
+                                  copy=True)
     unsupported_count = fields.Integer(
         string="Renglones sin soporte", compute='_compute_support_counts',
         help="Renglones cuya cantidad o precio no tienen respaldo: cambiados sin motivo, capturados sin "
              "soporte escrito o con un supuesto sin evidencia. No se aprueba así, salvo excepción.")
     potencial_count = fields.Integer(string="Renglones potenciales", compute='_compute_support_counts')
+    potencial_no_price_count = fields.Integer(
+        string="Potenciales sin precio", compute='_compute_support_counts',
+        help="Desarrollos no liberados sin cotización, precio objetivo, regla de lista ni venta del producto: "
+             "su potencial no se puede valuar.")
     amount_potencial_total = fields.Monetary(
         string="Potencial (no suma)", compute='_compute_support_counts',
         help="Desarrollos todavía no liberados: lo que sumarían si se liberan. No entra al presupuesto.")
@@ -657,7 +664,8 @@ class SgiSalesBudget(models.Model):
             budget.no_client_count = len(budget.line_ids.filtered(
                 lambda l: l.mercado in MERCADOS_CON_CLIENTE and not l.partner_id))
 
-    @api.depends('line_ids.date', 'line_ids.mercado', 'line_ids.potencial', 'kind', 'year')
+    @api.depends('line_ids.date', 'line_ids.mercado', 'line_ids.potencial', 'kind', 'year',
+                 'no_sale_ids.mercado', 'no_sale_ids.month')
     def _compute_empty_months(self):
         for budget in self:
             empty = budget._qb_empty_months() if budget.kind == 'presupuesto' else {}
@@ -671,6 +679,7 @@ class SgiSalesBudget(models.Model):
         self.ensure_one()
         covered = {(line.date.month, MERCADO_BASE.get(line.mercado))
                    for line in self.line_ids if line.date and not line.potencial}
+        covered |= {(int(d.month), d.mercado) for d in self.no_sale_ids}
         out = {}
         for base in MERCADO_BASE_LABELS:
             months = [m for m in range(1, 13) if (m, base) not in covered]
@@ -678,11 +687,13 @@ class SgiSalesBudget(models.Model):
                 out[base] = months
         return out
 
-    @api.depends('line_ids.support_ok', 'line_ids.potencial', 'line_ids.amount_potencial')
+    @api.depends('line_ids.support_ok', 'line_ids.potencial', 'line_ids.amount_potencial',
+                 'line_ids.price_input')
     def _compute_support_counts(self):
         for budget in self:
             potencial = budget.line_ids.filtered('potencial')
             budget.potencial_count = len(potencial)
+            budget.potencial_no_price_count = len(potencial.filtered(lambda l: l.price_input <= 0))
             budget.amount_potencial_total = sum(potencial.mapped('amount_potencial'))
             budget.unsupported_count = len(budget.line_ids.filtered(lambda l: not l.support_ok))
 

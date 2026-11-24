@@ -110,3 +110,7 @@ access_qb_delivery_terms_line_sale_mgr,qb.delivery.terms.line.sale.mgr,model_qb_
 access_qb_delivery_terms_line_manager,qb.delivery.terms.line.manager,model_qb_delivery_terms_line,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_qb_weekday_user,qb.weekday.user,model_qb_weekday,base.group_user,1,0,0,0
 access_qb_weekday_manager,qb.weekday.manager,model_qb_weekday,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_budget_no_sale_user,qb.sales.budget.no.sale.user,model_qb_sales_budget_no_sale,quimibond_sgi.group_sgi_user,1,0,0,0
+access_qb_sales_budget_no_sale_sale_mgr,qb.sales.budget.no.sale.sale.mgr,model_qb_sales_budget_no_sale,sales_team.group_sale_manager,1,1,1,1
+access_qb_sales_budget_no_sale_manager,qb.sales.budget.no.sale.manager,model_qb_sales_budget_no_sale,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_qb_sales_budget_no_sale_auditor,qb.sales.budget.no.sale.auditor,model_qb_sales_budget_no_sale,quimibond_sgi.group_sgi_auditor,1,0,0,0

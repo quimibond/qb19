@@ -370,7 +370,8 @@
                     <div class="alert alert-danger" role="alert"
                          invisible="kind != 'presupuesto' or state not in ('borrador', 'revisado') or not approval_exceptions_text">
                         No se puede aprobar así: <field name="approval_exceptions_text" class="oe_inline"/>.
-                        Agregue los renglones o el soporte que faltan; si de verdad así debe quedar,
+                        Agregue los renglones o el soporte que faltan (un mes en que un mercado no
+                        venderá se declara en la pestaña «Meses sin venta»); si de verdad así debe quedar,
                         Dirección puede aprobar con la excepción, que queda en el historial.
                         <button name="action_qb_view_unsupported" type="object"
                                 string="Ver renglones sin soporte" class="btn-link"
@@ -386,6 +387,10 @@
                         <field name="potencial_count" class="oe_inline"/> renglón(es) de desarrollos no
                         liberados por <field name="amount_potencial_total" class="oe_inline"/>: potencial,
                         no suma al presupuesto.
+                        <span invisible="potencial_no_price_count == 0">
+                            <field name="potencial_no_price_count" class="oe_inline"/> sin precio (sin cotización,
+                            precio objetivo, lista ni venta del producto): capture el precio objetivo en el desarrollo.
+                        </span>
                         <button name="action_qb_view_potencial" type="object"
                                 string="Ver potencial" class="btn-link"/>
                     </div>
@@ -564,6 +569,22 @@
                                     <field name="attachment_ids" widget="many2many_binary"/>
                                     <field name="evidence_ok"/>
                                     <field name="line_count"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 3.34.0: Especiales vende meses salteados; el mes sin venta se declara con motivo. -->
+                        <page string="Meses sin venta" name="meses_sin_venta">
+                            <p class="text-muted">
+                                Meses en que un mercado no venderá. No cuentan como meses vacíos al aprobar. La
+                                propuesta declara sola los meses en que el mercado no vendió en el periodo base;
+                                cualquier otro lleva su motivo.
+                            </p>
+                            <field name="no_sale_ids" context="{'default_budget_id': id}">
+                                <list string="Meses sin venta" editable="bottom">
+                                    <field name="mercado"/>
+                                    <field name="month"/>
+                                    <field name="note"/>
+                                    <field name="evidence_url" widget="url"/>
                                 </list>
                             </field>
                         </page>
