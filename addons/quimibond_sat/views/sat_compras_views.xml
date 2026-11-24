@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Reglas de cuenta por proveedor (facturas sin orden de compra). -->
+    <record id="view_sat_bill_rule_list" model="ir.ui.view">
+        <field name="name">sat.bill.rule.list</field>
+        <field name="model">sat.bill.rule</field>
+        <field name="arch" type="xml">
+            <list string="Reglas de cuenta" editable="bottom" decoration-muted="state == 'propuesta'">
+                <header>
+                    <button name="action_seed_from_history" type="object" string="Proponer reglas del historial"
+                            display="always"/>
+                    <button name="action_confirm" type="object" string="Confirmar"/>
+                    <button name="action_propose" type="object" string="Regresar a propuesta"/>
+                </header>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="partner_id"/>
+                <field name="clave_sat" optional="show"/>
+                <field name="concepto" optional="show"/>
+                <field name="account_id"/>
+                <field name="analytic_distribution" widget="analytic_distribution" optional="show"/>
+                <field name="journal_id" optional="show"/>
+                <field name="monto_min" optional="hide"/>
+                <field name="monto_max" optional="hide"/>
+                <field name="facturas" optional="show"/>
+                <field name="origen" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'confirmada'"
+                       decoration-warning="state == 'propuesta'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_bill_rule_search" model="ir.ui.view">
+        <field name="name">sat.bill.rule.search</field>
+        <field name="model">sat.bill.rule</field>
+        <field name="arch" type="xml">
+            <search string="Reglas de cuenta">
+                <field name="partner_id"/>
+                <field name="clave_sat"/>
+                <field name="account_id"/>
+                <filter name="propuestas" string="Por confirmar" domain="[('state', '=', 'propuesta')]"/>
+                <filter name="confirmadas" string="Confirmadas" domain="[('state', '=', 'confirmada')]"/>
+                <separator/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_partner" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_account" string="Cuenta" context="{'group_by': 'account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sat_bill_rule" model="ir.actions.act_window">
+        <field name="name">Reglas de cuenta de proveedores</field>
+        <field name="res_model">sat.bill.rule</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_sat_bill_rule_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin reglas todavía</p>
+            <p>Con «Proponer reglas del historial» se proponen las cuentas que cada proveedor usó siempre en
+               los últimos seis meses. Revíselas y confírmelas: solo una regla confirmada deja la factura en
+               verde.</p>
+        </field>
+    </record>
+
+    <!-- Compras por revisar: facturas de proveedor que nacieron del SAT, en borrador. -->
+    <record id="view_sat_compras_list" model="ir.ui.view">
+        <field name="name">account.move.list.sat.compras</field>
+        <field name="model">account.move</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <list string="Compras por revisar" create="false"
+                  decoration-success="sat_semaforo == 'verde'"
+                  decoration-warning="sat_semaforo == 'amarillo'"
+                  decoration-danger="sat_semaforo == 'rojo'">
+                <header>
+                    <button name="action_sat_post_green" type="object" string="Publicar las verdes"
+                            groups="account.group_account_invoice"/>
+                    <button name="action_sat_semaforo" type="object" string="Revisar de nuevo"/>
+                </header>
+                <field name="sat_semaforo" widget="badge"
+                       decoration-success="sat_semaforo == 'verde'"
+                       decoration-warning="sat_semaforo == 'amarillo'"
+                       decoration-danger="sat_semaforo == 'rojo'"/>
+                <field name="partner_id" string="Proveedor"/>
+                <field name="ref"/>
+                <field name="invoice_date" string="Fecha de la factura"/>
+                <field name="journal_id" optional="show"/>
+                <field name="invoice_origin" optional="show" string="Orden de compra"/>
+                <field name="sat_origen" optional="show"/>
+                <field name="sat_semaforo_motivo" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="amount_untaxed" string="Subtotal" sum="Total" optional="show"/>
+                <field name="amount_total" string="Total" sum="Total"/>
+                <field name="state" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sat_compras_search" model="ir.ui.view">
+        <field name="name">account.move.search.sat.compras</field>
+        <field name="model">account.move</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <search string="Compras por revisar">
+                <field name="partner_id" string="Proveedor"/>
+                <field name="ref"/>
+                <field name="invoice_origin" string="Orden de compra"/>
+                <filter name="verde" string="Verdes" domain="[('sat_semaforo', '=', 'verde')]"/>
+                <filter name="amarillo" string="Amarillas" domain="[('sat_semaforo', '=', 'amarillo')]"/>
+                <filter name="rojo" string="Rojas" domain="[('sat_semaforo', '=', 'rojo')]"/>
+                <separator/>
+                <filter name="con_orden" string="Con orden de compra" domain="[('invoice_origin', '!=', False)]"/>
+                <filter name="sin_orden" string="Sin orden de compra" domain="[('invoice_origin', '=', False)]"/>
+                <group>
+                    <filter name="group_semaforo" string="Semáforo" context="{'group_by': 'sat_semaforo'}"/>
+                    <filter name="group_partner" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_journal" string="Diario" context="{'group_by': 'journal_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sat_compras" model="ir.actions.act_window">
+        <field name="name">Compras por revisar</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('view_sat_compras_list')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('account.view_move_form')})]"/>
+        <field name="search_view_id" ref="view_sat_compras_search"/>
+        <field name="domain">[('sat_auto_bill', '=', True), ('state', '=', 'draft'), ('move_type', 'in', ('in_invoice', 'in_refund'))]</field>
+        <field name="context">{'default_move_type': 'in_invoice', 'search_default_group_semaforo': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay facturas del SAT por revisar</p>
+            <p>Las facturas de proveedor que nacen de los CFDI del SAT llegan aquí en borrador. Las verdes
+               cuadran al centavo con el SAT y con su orden de compra o regla confirmada: selecciónelas y use
+               «Publicar las verdes». Las amarillas dicen qué completar; las rojas no se publican en lote.</p>
+        </field>
+    </record>
+
+</odoo>
