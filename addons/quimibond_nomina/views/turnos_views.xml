@@ -12,6 +12,7 @@
                 <field name="turno"/>
                 <field name="rotacion"/>
                 <field name="vigente_desde" optional="show"/>
+                <field name="he_fijas" optional="show"/>
                 <field name="n_personas"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
@@ -37,6 +38,7 @@
                             <field name="department_id"/>
                             <field name="turno"/>
                             <field name="vigente_desde"/>
+                            <field name="he_fijas"/>
                         </group>
                         <group>
                             <field name="rotacion" placeholder="3,4"/>

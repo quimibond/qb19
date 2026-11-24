@@ -11,7 +11,8 @@ El supervisor o RH revisan y capturan lo que no sale del reloj: las horas extra
 **autorizadas** (Odoo propone las del checador) y las sencillas a mano (bono
 rama, pendientes de la nómina anterior). «Pasar a recibos» escribe las
 incidencias en los recibos en borrador de la corrida elegida: ``FALTAS``,
-``HE_DOBLE``, ``H_SENCILLA``, ``DOM`` y ``HE_DIAS``. Nunca valida ni timbra.
+``HE_DOBLE``, ``H_SENCILLA``, ``DOM``, ``HE_DIAS`` y ``FESTIVO`` (días festivos trabajados, 1.26.0).
+Nunca valida ni timbra.
 
 Las ausencias aprobadas en Odoo (incapacidad, permiso sin goce) se ven en la
 lista pero **no** van al recibo como incidencia: el recibo ya las descuenta por
@@ -52,6 +53,7 @@ ENTRADAS_RECIBO = (
     ('H_SENCILLA', 'he_sencillas'),
     ('DOM', 'dom_horas'),
     ('HE_DIAS', 'he_dias'),
+    ('FESTIVO', 'festivos_trabajados'),
 )
 
 
@@ -263,7 +265,8 @@ class QbNominaIncidencias(models.Model):
                 self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
                 ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
                 hoy, entradas, turno=turno if turno in calc.TURNOS else None,
-                comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos)
+                comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos,
+                he_fijas=bool(emp.sudo().qb_cuadrilla_id.he_fijas))
             if nota_turno:
                 r['notas'].insert(0, nota_turno)
             vals = {
@@ -473,7 +476,7 @@ class QbNominaIncidenciasLinea(models.Model):
     festivos_trabajados = fields.Integer(
         string="Festivos trabajados",
         help="Días de descanso obligatorio (calendario de festivos) que la persona trabajó: se pagan con "
-             "salario doble además del día (art. 75 LFT). Todavía no pasan solos al recibo.")
+             "salario doble además del día (art. 75 LFT). Pasan al recibo como la entrada FESTIVO (días).")
     sin_checadas = fields.Boolean(string="Sin checadas")
     proyectado = fields.Boolean(string="Con días proyectados")
     observaciones = fields.Text(string="Observaciones")
