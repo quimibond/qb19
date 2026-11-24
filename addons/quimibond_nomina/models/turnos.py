@@ -32,6 +32,11 @@ class QbNominaCuadrilla(models.Model):
         help="Turnos por los que rota la cuadrilla, en orden y separados por coma (por ejemplo 3,4 o 3,5,6). "
              "«Rotar» pasa al siguiente. Vacío: no rota.")
     vigente_desde = fields.Date(string="Turno vigente desde", tracking=True)
+    he_fijas = fields.Boolean(
+        string="Paga las 6 HE del turno 4", tracking=True,
+        help="Cuando la cuadrilla trabaja el turno 4 y completa la noche del jueves, la lista de incidencias "
+             "propone 6 horas extra (48 horas de noche contra las 42 de la jornada nocturna legal). RH, 24-nov-2026: "
+             "solo en Inspección, Acabado, Tintorería y Mantenimiento.")
     employee_ids = fields.One2many('hr.employee', 'qb_cuadrilla_id', string="Integrantes")
     n_personas = fields.Integer(string="Personas", compute='_compute_n_personas')
     company_id = fields.Many2one('res.company', string="Empresa", required=True,
