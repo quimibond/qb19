@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="qb_flujo_config_form" model="ir.ui.view">
+        <field name="name">qb.flujo.config.form</field>
+        <field name="model">qb.flujo.config</field>
+        <field name="arch" type="xml">
+            <form string="Supuestos del flujo a 13 semanas">
+                <header>
+                    <button name="action_estimar_compromisos" type="object" string="Estimar compromisos con lo pagado"
+                            class="btn-primary"
+                            help="Recalcula el importe de cada compromiso con contacto: promedio de lo pagado por periodo con pago."/>
+                    <button name="action_cargar_quimibond" type="object" string="Cargar valores de Quimibond"
+                            help="Agrega las cuentas de caja y los compromisos del reporte diario de pagos y cobros. No borra nada."/>
+                    <button name="action_guardar_foto" type="object" string="Guardar foto ahora"
+                            help="Guarda la proyección de hoy para compararla después contra lo real. El sistema guarda una cada lunes."/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="company_id" readonly="id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Cobranza">
+                            <field name="cartera_desde"/>
+                            <field name="dias_incobrable"/>
+                        </group>
+                        <group string="Caja">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="saldo_minimo"/>
+                            <field name="incluir_pedidos"/>
+                            <field name="dias_pedido_vigente" invisible="not incluir_pedidos"/>
+                        </group>
+                        <group string="Fechas esperadas de las facturas">
+                            <field name="meses_historial"/>
+                            <field name="atraso_clientes"/>
+                            <field name="semanas_reparto_clientes"/>
+                            <field name="atraso_proveedores"/>
+                            <field name="semanas_reparto_proveedores"/>
+                        </group>
+                        <group string="Ventas y compras sin documento">
+                            <field name="fuente_ventas"/>
+                            <field name="meses_ventas" invisible="fuente_ventas != 'historial'"/>
+                            <field name="proporcion_compras" invisible="fuente_ventas == 'ninguna'"/>
+                            <field name="meses_proporcion" invisible="fuente_ventas == 'ninguna' or proporcion_compras"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cuentas de caja" name="caja">
+                            <field name="caja_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="journal_id"/>
+                                    <field name="fuente"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Compromisos recurrentes" name="compromisos">
+                            <field name="compromiso_ids" context="{'active_test': False}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                    <field name="name"/>
+                                    <field name="categoria"/>
+                                    <field name="tipo"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="importe"/>
+                                    <field name="periodicidad"/>
+                                    <field name="dia_semana" invisible="periodicidad != 'semanal'"/>
+                                    <field name="dia_mes" invisible="periodicidad not in ('mensual', 'bimestral', 'anual')"/>
+                                    <field name="meses_pares" invisible="periodicidad != 'bimestral'"/>
+                                    <field name="mes" invisible="periodicidad != 'anual'"/>
+                                    <field name="fecha" invisible="periodicidad != 'unica'"/>
+                                    <field name="fecha_fin" optional="hide"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="excluir_facturas" optional="show"/>
+                                    <field name="fuente_historial" optional="hide"/>
+                                    <field name="texto_memo" optional="hide"/>
+                                    <field name="texto_excluir" optional="hide"/>
+                                    <field name="periodos_historial" optional="hide"/>
+                                    <field name="importe_estimado" optional="show"/>
+                                    <field name="fecha_estimacion" optional="hide"/>
+                                    <button name="action_estimar" type="object" icon="fa-refresh" title="Estimar con lo pagado"
+                                            invisible="not partner_id and not texto_memo"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Ajustes manuales" name="ajustes">
+                            <field name="ajuste_ids">
+                                <list editable="bottom">
+                                    <field name="fecha"/>
+                                    <field name="name"/>
+                                    <field name="tipo"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="importe"/>
+                                    <field name="nota"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Proveedores por revisar" name="revisar">
+                            <field name="partner_revisar_ids">
+                                <list>
+                                    <field name="display_name"/>
+                                    <field name="vat"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Contactos que no son flujo" name="traspaso">
+                            <field name="partner_traspaso_ids">
+                                <list>
+                                    <field name="display_name"/>
+                                    <field name="vat"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_flujo_config" model="ir.actions.server">
+        <field name="name">Flujo a 13 semanas</field>
+        <field name="model_id" ref="model_qb_flujo_config"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir()</field>
+    </record>
+
+    <!-- Fecha esperada en la factura -->
+    <record id="view_move_form_qb_flujo" model="ir.ui.view">
+        <field name="name">account.move.form.qb_flujo</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='due_date']" position="after">
+                <field name="qb_fecha_flujo"
+                       invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Foto semanal: proyectado contra real -->
+    <record id="qb_flujo_foto_linea_list" model="ir.ui.view">
+        <field name="name">qb.flujo.foto.linea.list</field>
+        <field name="model">qb.flujo.foto.linea</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" decoration-muted="not real_listo">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="fecha_foto"/>
+                <field name="semana"/>
+                <field name="inicio"/>
+                <field name="fin"/>
+                <field name="neto_proy" sum="Total"/>
+                <field name="neto_real" sum="Total"/>
+                <field name="desviacion_neto" sum="Total" decoration-danger="desviacion_neto &lt; 0"/>
+                <field name="saldo_proy"/>
+                <field name="saldo_real"/>
+                <field name="desviacion_saldo" decoration-danger="desviacion_saldo &lt; 0"/>
+                <field name="entradas_proy" optional="hide"/>
+                <field name="entradas_real" optional="hide"/>
+                <field name="salidas_proy" optional="hide"/>
+                <field name="salidas_real" optional="hide"/>
+                <field name="real_listo" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_flujo_foto_linea_search" model="ir.ui.view">
+        <field name="name">qb.flujo.foto.linea.search</field>
+        <field name="model">qb.flujo.foto.linea</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="fecha_foto"/>
+                <filter name="cerradas" string="Semanas cerradas" domain="[('real_listo', '=', True)]"/>
+                <filter name="primera" string="Semana 1 de cada foto" domain="[('semana', '=', 1)]"/>
+                <filter name="cuatro" string="Primeras 4 semanas" domain="[('semana', '&lt;=', 4)]"/>
+                <group>
+                    <filter name="por_foto" string="Foto" context="{'group_by': 'fecha_foto'}"/>
+                    <filter name="por_semana" string="Semana de la foto" context="{'group_by': 'semana'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_flujo_foto_linea" model="ir.actions.act_window">
+        <field name="name">Flujo: proyectado contra real</field>
+        <field name="res_model">qb.flujo.foto.linea</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_cerradas': 1, 'search_default_primera': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay semanas cerradas</p>
+            <p>Cada lunes se guarda la proyección de las 13 semanas. Cuando una semana termina, aquí se compara
+               lo proyectado contra la caja real. También puede guardar una foto en Contabilidad → Configuración →
+               Flujo a 13 semanas.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_qb_flujo_report"
+              name="Flujo de efectivo a 13 semanas"
+              parent="account.menu_finance_reports"
+              action="action_qb_flujo_report"
+              sequence="36"
+              groups="account.group_account_readonly"/>
+    <menuitem id="menu_qb_flujo_foto"
+              name="Flujo: proyectado contra real"
+              parent="account.menu_finance_reports"
+              action="action_qb_flujo_foto_linea"
+              sequence="37"
+              groups="account.group_account_readonly"/>
+    <menuitem id="menu_qb_flujo_config"
+              name="Flujo a 13 semanas"
+              parent="account.menu_finance_configuration"
+              action="action_qb_flujo_config"
+              sequence="92"
+              groups="account.group_account_user"/>
+</odoo>
