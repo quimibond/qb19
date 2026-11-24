@@ -3,7 +3,7 @@
     <!-- Catálogo de conceptos de NOI (1.23.0), tomado de los reportes de NOI de la semana 48 de 2026
          («Reporte de la nómina» y «Percepción/deducción» que mandó RH el 20-nov). noupdate: RH lo edita en
          Nómina → Reportes NOI → Conceptos NOI y una actualización no lo pisa. Premio de asistencia (PA),
-         retroactivo y vales no salieron en esa semana: hasta darlos de alta se reportan con el nombre de la regla. -->
+         retroactivo y vales (1.25.0, abajo) no salieron en esa semana: hasta darlos de alta se reportan con el nombre de la regla. -->
     <record id="concepto_noi_p001" model="qb.nomina.concepto.noi">
         <field name="clave">P001</field>
         <field name="name">SUELDO</field>
@@ -132,6 +132,17 @@
         <field name="name">SUBS. PARA EL EMPLEO APLICADO</field>
         <field name="tipo">informativo</field>
         <field name="codigos">-SUBSIDY</field>
+    </record>
+    <!-- 1.25.0: los vales de despensa (semana 47). La regla exenta NO_TAX_MEAL_VOUCHER no sale en el recibo
+         de Odoo (appears_on_payslip apagado), así que el respaldo «nombre de la regla» no la veía y el neto
+         (que sí la incluye) quedaba con diferencia. Sin clave NOI hasta que RH la confirme: se pone aquí. -->
+    <record id="concepto_noi_vales" model="qb.nomina.concepto.noi">
+        <field name="name">VALES DE DESPENSA</field>
+        <field name="tipo">percepcion</field>
+        <field name="clave_sat">029</field>
+        <field name="codigos">TAX_MEAL_VOUCH, NO_TAX_MEAL_VOUCHER</field>
+        <field name="codigos_exento">NO_TAX_MEAL_VOUCHER</field>
+        <field name="en_especie" eval="True"/>
     </record>
     <!-- 1.23.2: «Bruto sin vacaciones» lleva el concepto P01 del CFDI y repite el sueldo; no es renglón propio. -->
     <record id="concepto_noi_ignorar_bruto" model="qb.nomina.concepto.noi">
