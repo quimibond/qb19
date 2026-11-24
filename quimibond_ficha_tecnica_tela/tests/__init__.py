@@ -23,3 +23,4 @@ from . import test_rendimiento_real  # 2.24.0
 from . import test_captura  # 2.24.0
 from . import test_tolerancias  # 2.29.0
 from . import test_rangos  # 2.30.0
+from . import test_ficha_estado  # 2.33.0

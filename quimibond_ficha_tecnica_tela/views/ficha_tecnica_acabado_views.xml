@@ -12,6 +12,11 @@
                   decoration-muted="not active">
                 <field name="articulo"/>
                 <field name="revision"/>
+                <!-- 2.33.0: el estado de la ficha (Borrador, En revisión, Activa, Obsoleta). -->
+                <field name="estado" widget="badge" decoration-muted="estado == 'borrador'"
+                       decoration-info="estado == 'revision'" decoration-success="estado == 'activa'"
+                       decoration-danger="estado == 'obsoleta'"/>
+                <field name="ft_pendientes_n" string="Pendientes" optional="show"/>
                 <field name="tejido_id" string="Ficha de tejido"/>
                 <field name="product_proceso_id" string="Acabado en proceso (kg)" optional="show"/>
                 <field name="product_acabado_id" string="Tela acabada (m)"/>
@@ -31,6 +36,38 @@
         <field name="model">ficha.tecnica.acabado</field>
         <field name="arch" type="xml">
             <form string="Ficha Técnica de Acabado">
+                <!-- 2.33.0 (Jose, 2026-11-24): la ficha manda y la lista sale de ella, en orden. Barra de etapas con el
+                     estado de la ficha y en la cabecera solo el paso que toca. -->
+                <header>
+                    <button name="action_ft_enviar_revision" type="object" string="Enviar a revisión"
+                            class="btn-primary" invisible="estado != 'borrador'"
+                            help="Con la ficha completa, genera la lista en kg y la de metros (archivadas) y la revisa contra la ficha."/>
+                    <button name="action_ft_corregir" type="object" string="Corregir con la ficha"
+                            class="btn-primary" invisible="estado not in ('revision', 'activa') or not ft_corregible"
+                            help="Copia de la ficha a las dos listas los tiempos, la capacidad de los jets y la conversión a metros; luego vuelve a revisar."/>
+                    <button name="action_ft_activar" type="object" string="Activar"
+                            class="btn-primary" invisible="estado != 'revision' or ft_pendientes_n"
+                            confirm="Se copian los datos de la ficha a las listas y se activan las dos: Odoo fabrica con ellas. ¿Continuar?"
+                            help="Sin pendientes: pone las listas al día con la ficha y las activa."/>
+                    <button name="action_ft_activar" type="object" string="Activar"
+                            invisible="estado != 'revision' or not ft_pendientes_n"
+                            help="Primero se corrigen los pendientes; si queda alguno, dice cuál."/>
+                    <button name="action_ft_generar_listas" type="object" string="Generar listas"
+                            invisible="estado != 'revision'"
+                            help="Arma o pone al día las listas archivadas con la ruta de la familia. Las activas no se tocan."/>
+                    <button name="action_ft_revisar_listas" type="object" string="Revisar"
+                            invisible="estado not in ('revision', 'activa')"
+                            help="Compara otra vez las listas contra la ficha (cada noche se hace sola)."/>
+                    <button name="action_ft_modificar" type="object" string="Modificar"
+                            invisible="estado != 'activa'"
+                            help="Regresa la ficha a revisión para cambiarla. Sus listas siguen activas y fabricando."/>
+                    <button name="action_ft_volver_borrador" type="object" string="Volver a borrador"
+                            invisible="estado != 'obsoleta' and (estado != 'revision' or ft_lista_kg_activa or ft_lista_m_activa)"/>
+                    <button name="action_ft_obsoleta" type="object" string="Marcar obsoleta"
+                            invisible="estado == 'obsoleta'"
+                            confirm="La tela ya no se fabrica: se archivan la ficha y sus dos listas. ¿Continuar?"/>
+                    <field name="estado" widget="statusbar" statusbar_visible="borrador,revision,activa"/>
+                </header>
                 <sheet>
                     <!-- 2.19.0: la ficha sigue la ruta en kg hasta la Clasificación final: tejido → acabado en
                          proceso (kg) → tela acabada (m). Botones a las listas de materiales de los dos productos. -->
@@ -40,6 +77,16 @@
                         <button name="action_ft_ver_producto" type="object" class="oe_stat_button" icon="fa-cube"
                                 string="Producto" invisible="not product_acabado_id"
                                 help="La tela acabada, con su pestaña «Ficha técnica»: estado, pendientes y a dónde ir."/>
+                        <button name="action_ft_ver_pendientes" type="object" class="oe_stat_button text-danger"
+                                icon="fa-exclamation-triangle" invisible="not ft_pendientes_n">
+                            <field name="ft_pendientes_n" widget="statinfo" string="Pendientes"/>
+                        </button>
+                        <button name="action_ft_ver_crudo" type="object" class="oe_stat_button" icon="fa-circle-o"
+                                string="Crudo" invisible="not crudo_id"/>
+                        <button name="action_ft_ver_ordenes" type="object" class="oe_stat_button" icon="fa-wrench"
+                                invisible="not product_acabado_id">
+                            <field name="ft_ordenes_n" widget="statinfo" string="Órdenes"/>
+                        </button>
                         <button name="action_ft_boms_proceso" type="object" class="oe_stat_button" icon="fa-balance-scale"
                                 invisible="not product_proceso_id">
                             <field name="bom_proceso_count" widget="statinfo" string="Listas en kg"/>
@@ -49,7 +96,11 @@
                             <field name="bom_acabado_count" widget="statinfo" string="Listas en metros"/>
                         </button>
                     </div>
-                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Obsoleta" bg_color="text-bg-danger" invisible="estado != 'obsoleta'"/>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active or estado == 'obsoleta'"/>
+                    <div class="alert alert-info mb-2" role="status" invisible="estado != 'borrador' or not ft_faltantes">
+                        Para enviarla a revisión falta: <field name="ft_faltantes" readonly="1" nolabel="1" class="d-inline"/>
+                    </div>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not unidades_aviso">
                         <field name="unidades_aviso" readonly="1" nolabel="1"/>
                     </div>
@@ -76,10 +127,10 @@
                             <field name="bom_id" invisible="1"/>
                         </group>
                         <group string="Ruta del artículo">
-                            <field name="tejido_id" string="1. Ficha de tejido"/>
+                            <field name="tejido_id" string="1. Ficha de tejido" readonly="estado in ('activa', 'obsoleta')"/>
                             <field name="crudo_id" string="2. Crudo"/>
-                            <field name="product_proceso_id" string="3. Acabado en proceso (kg)"/>
-                            <field name="product_acabado_id" string="4. Tela acabada (m)"/>
+                            <field name="product_proceso_id" string="3. Acabado en proceso (kg)" readonly="estado in ('activa', 'obsoleta')"/>
+                            <field name="product_acabado_id" string="4. Tela acabada (m)" readonly="estado in ('activa', 'obsoleta')"/>
                             <div colspan="2" class="text-muted small">
                                 Todo va en kg hasta la Clasificación final, que entrega la tela acabada en metros medidos.
                             </div>
@@ -95,7 +146,7 @@
                                 <group string="Medidas">
                                     <label for="peso_acabado" string="Peso"/>
                                     <div class="o_row">
-                                        <field name="peso_acabado"/>
+                                        <field name="peso_acabado" readonly="estado in ('activa', 'obsoleta')"/>
                                         <span class="text-muted">+</span>
                                         <field name="peso_acabado_tol"/>
                                         <span class="text-muted">/ −</span>
@@ -111,7 +162,7 @@
                                     </div>
                                     <label for="ancho_acabado" string="Ancho de venta (especificación)"/>
                                     <div class="o_row">
-                                        <field name="ancho_acabado"/>
+                                        <field name="ancho_acabado" readonly="estado in ('activa', 'obsoleta')"/>
                                         <span class="text-muted">+</span>
                                         <field name="ancho_acabado_tol"/>
                                         <span class="text-muted">/ −</span>
@@ -214,7 +265,7 @@
                             <separator string="Real"/>
                             <group>
                                 <group>
-                                    <field name="rendimiento_tela_acabada" string="Rendimiento (m/kg)"/>
+                                    <field name="rendimiento_tela_acabada" string="Rendimiento (m/kg)" readonly="estado in ('activa', 'obsoleta')"/>
                                     <field name="rendimiento_manual" widget="boolean_toggle"/>
                                     <field name="rendimiento_fuente"/>
                                     <div colspan="2" class="text-muted small" invisible="not rendimiento_manual">
@@ -274,17 +325,17 @@
                                     <field name="ruta_familia_id" readonly="1"/>
                                     <field name="ruta_resumen" readonly="1" invisible="not ruta_familia_id"/>
                                     <field name="ruta_tintoreria" readonly="1"/>
-                                    <field name="ruta_tintoreria_manual"/>
+                                    <field name="ruta_tintoreria_manual" readonly="estado in ('activa', 'obsoleta')"/>
                                 </group>
                                 <group>
-                                    <field name="ruta_rama_id" options="{'no_create': True}"/>
-                                    <field name="ruta_jet_id" options="{'no_create': True}"/>
-                                    <field name="consumo_crudo"/>
+                                    <field name="ruta_rama_id" options="{'no_create': True}" readonly="estado in ('activa', 'obsoleta')"/>
+                                    <field name="ruta_jet_id" options="{'no_create': True}" readonly="estado in ('activa', 'obsoleta')"/>
+                                    <field name="consumo_crudo" readonly="estado in ('activa', 'obsoleta')"/>
                                 </group>
                             </group>
                             <div class="mb-3">
                                 <button name="action_ft_generar_listas" type="object" string="Generar listas desde la ruta"
-                                        class="btn-secondary" invisible="not ruta_familia_id"
+                                        class="btn-secondary" invisible="not ruta_familia_id or estado != 'revision'"
                                         help="Arma o pone al día la lista en kg y la de metros de esta tela con la ruta de su familia. Solo si están archivadas: las activas las cambia Ingeniería."/>
                                 <span class="text-muted" invisible="ruta_familia_id">El crudo de esta tela no tiene ruta de
                                     familia: se arma en Artículos → Rutas por familia.</span>
@@ -319,6 +370,113 @@
                                     <field name="resumen"/>
                                     <field name="metros_hora" optional="show"/>
                                     <field name="fecha" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 2.33.0 (Jose, 2026-11-24): las dos listas de materiales de la tela dentro de la ficha, solo para
+                             ver; se cambian en la ficha y se pasan con «Corregir con la ficha». -->
+                        <page string="Listas de materiales" name="ft_listas">
+                            <field name="ft_lista_kg_activa" invisible="1"/>
+                            <field name="ft_lista_m_activa" invisible="1"/>
+                            <field name="ft_corregible" invisible="1"/>
+                            <div invisible="ft_lista_kg_id or ft_lista_m_id" class="text-muted">
+                                Las listas se generan al enviar la ficha a revisión.
+                            </div>
+                            <group invisible="not ft_lista_kg_id and not ft_lista_m_id">
+                                <group>
+                                    <field name="ft_lista_kg_id" readonly="1"/>
+                                    <field name="ft_lista_m_id" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="ft_revisada_el" readonly="1"/>
+                                </group>
+                            </group>
+                            <div invisible="not ft_lista_kg_id">
+                                <h3 class="mt-3">
+                                    Lista en kg (acabado en proceso)
+                                    <span class="badge text-bg-success ms-2" invisible="not ft_lista_kg_activa">En uso</span>
+                                    <span class="badge text-bg-secondary ms-2" invisible="ft_lista_kg_activa">Borrador (archivada)</span>
+                                    <button name="action_ft_abrir_lista_kg" type="object" string="Abrir la lista"
+                                            class="btn btn-link btn-sm ms-2"/>
+                                </h3>
+                                <separator string="Componentes"/>
+                                <field name="ft_lista_kg_line_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="product_id"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_uom_id"/>
+                                        <field name="operation_id" optional="show"/>
+                                    </list>
+                                </field>
+                                <separator string="Operaciones"/>
+                                <field name="ft_lista_kg_op_ids" readonly="1" nolabel="1">
+                                    <list decoration-warning="ft_tiempo_difiere">
+                                        <field name="sequence" optional="hide"/>
+                                        <field name="name"/>
+                                        <field name="workcenter_id"/>
+                                        <field name="time_cycle_manual" string="Duración (min)"/>
+                                        <field name="ft_tiempo_ficha"/>
+                                        <field name="ft_tiempo_difiere" column_invisible="True"/>
+                                    </list>
+                                </field>
+                                <separator string="Subproductos (desperdicios)"/>
+                                <field name="ft_lista_kg_sub_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="product_id"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_uom_id"/>
+                                        <field name="operation_id" optional="show"/>
+                                    </list>
+                                </field>
+                            </div>
+                            <div invisible="not ft_lista_m_id">
+                                <h3 class="mt-4">
+                                    Lista en metros (Clasificación final)
+                                    <span class="badge text-bg-success ms-2" invisible="not ft_lista_m_activa">En uso</span>
+                                    <span class="badge text-bg-secondary ms-2" invisible="ft_lista_m_activa">Borrador (archivada)</span>
+                                    <button name="action_ft_abrir_lista_m" type="object" string="Abrir la lista"
+                                            class="btn btn-link btn-sm ms-2"/>
+                                </h3>
+                                <separator string="Componentes (kg por metro)"/>
+                                <field name="ft_lista_m_line_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="product_id"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_uom_id"/>
+                                    </list>
+                                </field>
+                                <separator string="Operaciones"/>
+                                <field name="ft_lista_m_op_ids" readonly="1" nolabel="1">
+                                    <list decoration-warning="ft_tiempo_difiere">
+                                        <field name="name"/>
+                                        <field name="workcenter_id"/>
+                                        <field name="time_cycle_manual" string="Duración (min)"/>
+                                        <field name="ft_tiempo_ficha"/>
+                                        <field name="ft_tiempo_difiere" column_invisible="True"/>
+                                    </list>
+                                </field>
+                                <separator string="Subproductos (saldos)"/>
+                                <field name="ft_lista_m_sub_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="product_id"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_uom_id"/>
+                                    </list>
+                                </field>
+                            </div>
+                        </page>
+                        <page string="Pendientes" name="ft_pendientes" invisible="not ft_pendientes_n">
+                            <field name="ft_pendientes_ids" readonly="1" nolabel="1">
+                                <list>
+                                    <field name="area"/>
+                                    <field name="tipo" column_invisible="True"/>
+                                    <field name="detalle"/>
+                                    <button name="action_ft_usar_medido" type="object" string="Usar el medido"
+                                            class="btn-link" invisible="tipo != 'rendimiento_cambio'"/>
+                                    <button name="action_ft_dejar_ficha" type="object" string="Dejar el de la ficha"
+                                            class="btn-link" invisible="tipo != 'rendimiento_cambio'"/>
+                                    <button name="action_ft_resolver" type="object" string="Resolver" icon="fa-wrench"
+                                            class="btn-link" invisible="tipo == 'rendimiento_cambio'"/>
                                 </list>
                             </field>
                         </page>
@@ -413,18 +571,56 @@
                 <filter string="Encogimiento fuera de norma" name="fuera_norma"
                         domain="['|', ('encogimiento_largo_dentro_norma','=',False),
                                       ('encogimiento_ancho_dentro_norma','=',False)]"/>
+                <!-- 2.33.0: por estado de la ficha. -->
+                <filter string="Borrador" name="borrador" domain="[('estado', '=', 'borrador')]"/>
+                <filter string="En revisión" name="en_revision" domain="[('estado', '=', 'revision')]"/>
+                <filter string="Activa" name="activa" domain="[('estado', '=', 'activa')]"/>
+                <filter string="Obsoleta" name="obsoleta" domain="[('estado', '=', 'obsoleta')]"/>
+                <separator/>
                 <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
                 <group>
+                    <filter string="Estado" name="group_estado" context="{'group_by': 'estado'}"/>
                     <filter string="Ficha de Tejido (base)" name="group_tejido" context="{'group_by':'tejido_id'}"/>
                 </group>
             </search>
         </field>
     </record>
 
+    <!-- 2.33.0: cada ficha en la columna de su estado, como las etapas de Odoo. -->
+    <record id="view_ficha_tecnica_acabado_kanban" model="ir.ui.view">
+        <field name="name">ficha.tecnica.acabado.kanban</field>
+        <field name="model">ficha.tecnica.acabado</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="estado" group_create="false" group_delete="false" group_edit="false"
+                    records_draggable="false">
+                <field name="estado"/>
+                <field name="ft_pendientes_n"/>
+                <field name="ft_lista_kg_activa"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="articulo" class="fw-bold"/>
+                        <field name="product_acabado_id" class="text-muted small"/>
+                        <div class="small">
+                            <field name="peso_acabado"/> g/m² · <field name="ancho_acabado"/> cm ·
+                            <field name="rendimiento_tela_acabada"/> m/kg
+                        </div>
+                        <footer>
+                            <span class="badge text-bg-danger" t-if="record.ft_pendientes_n.raw_value">
+                                <t t-esc="record.ft_pendientes_n.value"/> pendiente(s)
+                            </span>
+                            <span class="badge text-bg-success" t-if="record.ft_lista_kg_activa.raw_value">Lista en uso</span>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="action_ficha_tecnica_acabado" model="ir.actions.act_window">
         <field name="name">Fichas de acabado</field>
         <field name="res_model">ficha.tecnica.acabado</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_group_estado': 1}</field>
         <field name="search_view_id" ref="view_ficha_tecnica_acabado_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
