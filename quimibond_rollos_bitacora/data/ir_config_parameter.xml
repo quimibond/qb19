@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 3.24.0 (piloto, 2026-11-24): tolerancia de peso de Inspección contra Rama, 1 %. Dentro de ella solo avisa; arriba
+         pide «Sí, registrar así» con motivo. Se carga una vez y no se pisa si alguien la cambia. -->
+    <record id="param_tolerancia_peso_pct" model="ir.config_parameter">
+        <field name="key">quimibond_rollos_bitacora.tolerancia_peso_pct</field>
+        <field name="value">1</field>
+    </record>
+</odoo>

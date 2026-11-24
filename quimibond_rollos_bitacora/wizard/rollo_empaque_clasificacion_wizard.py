@@ -56,6 +56,9 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
                                    domain="[('tipo_tela', '=', 'tejido_acabado')]")
     motivo_ajuste = fields.Char('Motivo del cambio', compute='_compute_valores', store=True, readonly=False)
     cambia = fields.Boolean('Cambia la calidad o los metros', compute='_compute_alertas')
+    cambia_lab = fields.Boolean('Cambia lo que dejó el laboratorio', compute='_compute_alertas',
+                                help='3.24.0 (piloto, 2026-11-23): si el laboratorio ya dio la calidad final, Empaque la '
+                                     'compara contra esa y no contra la de Inspección.')
     alertas = fields.Text('Alertas', compute='_compute_alertas')
     pendientes = fields.Integer('Rollos por clasificar', compute='_compute_pendientes')
 
@@ -110,6 +113,16 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
                 wiz.defecto_ids = rollo.defecto_ids
                 wiz.motivo_ajuste = False
 
+    @api.onchange('clasificacion')
+    def _onchange_clasificacion_lab(self):
+        """3.24.0: la causa propuesta es la del laboratorio; si Empaque cambia la calidad del lab, esa causa ya no aplica y
+        se escribe la del cambio."""
+        for wiz in self:
+            rollo = wiz.rollo_id
+            if rollo and rollo.clasificacion_lab and wiz.clasificacion != rollo.clasificacion_lab \
+                    and wiz.motivo_ajuste and wiz.motivo_ajuste == rollo.motivo_lab:
+                wiz.motivo_ajuste = False
+
     @api.depends('product_id', 'kg_bruto', 'pesar')
     def _compute_pesos(self):
         Tara = self.env['mrp.tara.producto']
@@ -128,6 +141,15 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
             avisos = []
             wiz.cambia = bool(rollo) and (
                 wiz.clasificacion != rollo.clasificacion or abs(wiz.metros - rollo.metros) > 0.005)
+            # 3.24.0: el laboratorio manda sobre Inspección; si Empaque lo deshace (p. ej. FE del lab → PQ, que coincide con
+            # Inspección y antes pasaba sin motivo ni nota), también pide motivo y deja nota.
+            wiz.cambia_lab = bool(rollo and rollo.clasificacion_lab and wiz.clasificacion
+                                  and wiz.clasificacion != rollo.clasificacion_lab)
+            if wiz.cambia_lab:
+                avisos.append(_('El laboratorio dejó este rollo en %(l)s y Empaque lo cambia a %(n)s: escribe el motivo '
+                                'del cambio (queda en la nota de la orden).',
+                                l=dict(CLASIFICACIONES).get(rollo.clasificacion_lab),
+                                n=dict(CLASIFICACIONES).get(wiz.clasificacion)))
             if rollo and wiz.metros and rollo.metros and abs(wiz.metros - rollo.metros) > rollo.metros * limite / 100.0:
                 avisos.append(_('%(n).2f m contra %(i).2f m de Inspección: más de %(l).1f %% de diferencia.',
                                 n=wiz.metros, i=rollo.metros, l=limite))
@@ -174,6 +196,14 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
         if self.clasificacion in ('SEGUNDA', 'FE') and not self.defecto_ids:
             raise UserError(_('Captura al menos un defecto: un rollo de %s necesita la causa.',
                               dict(CLASIFICACIONES).get(self.clasificacion)))
+        if self.cambia_lab:
+            motivo = (self.motivo_ajuste or '').strip()
+            if not motivo or motivo == (rollo.motivo_lab or '').strip():
+                raise UserError(_(
+                    'El laboratorio dejó el rollo %(r)s en %(l)s y lo cambias a %(n)s: escribe el motivo por el que '
+                    'Empaque cambia lo que decidió el laboratorio (no sirve la causa del laboratorio).',
+                    r=rollo.name, l=dict(CLASIFICACIONES).get(rollo.clasificacion_lab),
+                    n=dict(CLASIFICACIONES).get(self.clasificacion)))
         if self.cambia and not (self.motivo_ajuste or '').strip():
             raise UserError(_('Captura el motivo del cambio: la calidad o los metros no son los de Inspección '
                               '(%(c)s, %(m).2f m).', c=dict(CLASIFICACIONES).get(rollo.clasificacion), m=rollo.metros))
@@ -194,7 +224,7 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
             'clasificacion_final': self.clasificacion,
             'metros_final': self.metros,
             'defecto_final_ids': [(6, 0, self.defecto_ids.ids if self.clasificacion in ('SEGUNDA', 'FE') else [])],
-            'motivo_ajuste_final': (self.motivo_ajuste or False) if self.cambia else False,
+            'motivo_ajuste_final': (self.motivo_ajuste or False) if (self.cambia or self.cambia_lab) else False,
             'workcenter_final_id': self.workcenter_id.id or False,
             'operador_final': operador,
             'siglas_operador_final': emp.siglas or False,
@@ -209,7 +239,13 @@ class RolloEmpaqueClasificacionWizard(models.TransientModel):
         if self.pesar:
             self.production_id._historial_pesaje(self.workcenter_id, rollo.name, self.kg_bruto, self.tara_kg,
                                                  self.kg_neto, operador, fecha=ahora)
-        if rollo.reetiquetado:
+        if self.cambia_lab:
+            self.production_id.message_post(body=_(
+                'Empaque cambió lo que dejó el laboratorio en el rollo %(r)s: %(a)s → %(d)s, %(m).2f m. Motivo: %(mo)s.',
+                r=rollo.name, a=dict(CLASIFICACIONES).get(rollo.clasificacion_lab),
+                d=dict(CLASIFICACIONES).get(rollo.clasificacion_final), m=rollo.metros_final,
+                mo=self.motivo_ajuste or '—'))
+        elif rollo.reetiquetado:
             self.production_id.message_post(body=_(
                 'Empaque cambió el rollo %(r)s: %(a)s → %(d)s, %(m).2f m. Motivo: %(mo)s.', r=rollo.name,
                 a=dict(CLASIFICACIONES).get(rollo.clasificacion), d=dict(CLASIFICACIONES).get(rollo.clasificacion_final),

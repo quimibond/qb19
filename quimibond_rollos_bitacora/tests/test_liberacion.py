@@ -216,6 +216,11 @@ class TestLiberacionLab(TransactionCase):
         self.assertEqual(e_fe.defecto_ids, self.defecto)
         self.assertEqual(e_fe.motivo_ajuste, 'Barras')
         self.assertTrue(e_fe.cambia)
+        # 3.24.0: si Empaque deja la del laboratorio (FE), el rollo se reetiqueta: la etiqueta impresa es la de Inspección (PQ)
+        self.assertFalse(e_fe.cambia_lab)
+        r_fe.write({'clasificacion_final': 'FE'})
+        self.assertTrue(r_fe.reetiquetado, 'Se compara contra Inspección, no contra el laboratorio')
+        r_fe.write({'clasificacion_final': False})
         # Empaque puede cambiarla antes de confirmar
         e_fe.clasificacion = 'SEGUNDA'
         self.assertEqual(e_fe.clasificacion, 'SEGUNDA')

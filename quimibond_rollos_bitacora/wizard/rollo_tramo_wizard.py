@@ -10,7 +10,7 @@ peso ya sin el tramo y el rollo de tramos entra a su calidad al cerrar el baño,
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from .pesaje_manual import TOLERANCIA_KG, modo_por_defecto, motivo_por_defecto
+from .pesaje_manual import TOLERANCIA_KG, modo_por_defecto, motivo_por_defecto  # el de juntar sí pesa
 from ..models.mrp_rollo_bitacora import CLASIFICACIONES_CAPTURA, PARAM_ALERTA_DIFERENCIA_PCT
 from ..models.mrp_rollo_final import PARAM_ALERTA_MERMA_PCT
 
@@ -18,11 +18,13 @@ CALIDADES_TRAMOS = [c for c in CLASIFICACIONES_CAPTURA if c[0] in ('FE', 'SEGUND
 
 
 class RolloTramoWizard(models.TransientModel):
-    """Quitar tramo, desde la ventana INSPECCIONAR (ajuste de tramos, 2026-11-16): el rollo ya está pesado en la
-    estación; lo que le falta para llegar al peso de Rama es el peso inicial del tramo, que el operador pesa de nuevo,
-    con sus metros y defectos. El tramo queda capturado en INSPECCIONAR y se guarda sin etiqueta junto con el registro del rollo."""
+    """Quitar tramo, desde la ventana INSPECCIONAR. 3.24.0 (piloto, 2026-11-24): el operador retira el tramo del rollo y
+    NO lo pesa ni lo etiqueta ahí: lo va enrollando junto con lo que salga de los demás rollos y al final ese rollo se
+    pesa, se clasifica y se etiqueta con «JUNTAR TRAMOS». Por eso el tramo no lleva báscula, peso bruto ni tara: se
+    registra con kg y metros TEÓRICOS (kg = peso de Rama − neto del rollo que se está registrando, descontando lo ya
+    registrado de ese rollo de Rama; metros = kg × rendimiento de la tela acabada de la ficha) y los defectos.
+    Se guarda sin etiqueta junto con el registro del rollo."""
     _name = 'rollo.tramo.wizard'
-    _inherit = ['scale.wizard.mixin']
     _description = 'Inspección: quitar un tramo a un rollo'
 
     estacion_id = fields.Many2one('rollo.inspeccion.estacion.wizard', 'Ventana de Inspección', required=True,
@@ -40,15 +42,13 @@ class RolloTramoWizard(models.TransientModel):
     kg_ya_cortados = fields.Float('Kg de rollos ya registrados', readonly=True, digits=(12, 4))
     kg_tramos = fields.Float('Kg de tramos ya quitados', readonly=True, digits=(12, 4))
     kg_disponibles = fields.Float('Kg que le faltan al rollo', compute='_compute_disponibles', digits=(12, 4),
-                                  help='Rama − rollo pesado − registrados − tramos ya guardados: lo máximo que cabe como tramo.')
+                                  help='Rama − rollo pesado − registrados − tramos ya guardados: lo que se le quitó al rollo.')
 
-    kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4))
-    tara_kg = fields.Float('Tara de Inspección (kg)', compute='_compute_pesos', digits=(12, 4))
-    tara_faltante = fields.Boolean(compute='_compute_pesos')
-    kg_neto = fields.Float('Peso neto (kg)', compute='_compute_pesos', digits=(12, 4))
-    motivo_manual = fields.Char('Motivo de la captura manual', default=lambda self: motivo_por_defecto(self))
-    weighing_mode = fields.Selection(default=lambda self: modo_por_defecto(self))
-    metros = fields.Float('Metros del tramo', digits=(12, 2))
+    kg_neto = fields.Float('Kg teóricos del tramo', compute='_compute_disponibles', digits=(12, 4))
+    rendimiento = fields.Float('Rendimiento de la tela acabada (m/kg)', readonly=True, digits=(12, 4),
+                               help='De la ficha del acabado en kg. Sin rendimiento en la ficha, los metros se capturan.')
+    metros = fields.Float('Metros teóricos del tramo', compute='_compute_metros', store=True, readonly=False,
+                          digits=(12, 2), help='Kg teóricos × rendimiento de la ficha.')
     defecto_ids = fields.Many2many('calidad.defecto.tela', 'rollo_tramo_wizard_defecto_rel', 'wizard_id', 'defecto_id',
                                    'Defectos', domain="[('tipo_tela', '=', 'tejido_acabado')]")
     alertas = fields.Text('Alertas', compute='_compute_disponibles')
@@ -59,23 +59,21 @@ class RolloTramoWizard(models.TransientModel):
             emp = self.env['hr.employee']._qb_operador(wiz.empleado_numero)
             wiz.empleado_nombre = emp.name if emp else (_('EMPLEADO NO ENCONTRADO') if wiz.empleado_numero else False)
 
-    @api.depends('kg_rama', 'kg_rollo', 'kg_ya_cortados', 'kg_tramos', 'kg_neto')
+    @api.depends('kg_rama', 'kg_rollo', 'kg_ya_cortados', 'kg_tramos')
     def _compute_disponibles(self):
         for wiz in self:
-            wiz.kg_disponibles = max(wiz.kg_rama - wiz.kg_rollo - wiz.kg_ya_cortados - wiz.kg_tramos, 0.0)
-            wiz.alertas = _('El tramo pesa %(t).2f kg y solo quedan %(d).2f kg por asignar del rollo de Rama.',
-                            t=wiz.kg_neto, d=wiz.kg_disponibles) \
-                if wiz.kg_neto and wiz.kg_neto > wiz.kg_disponibles + TOLERANCIA_KG else False
+            falta = wiz.kg_rama - wiz.kg_rollo - wiz.kg_ya_cortados - wiz.kg_tramos
+            wiz.kg_disponibles = max(falta, 0.0)
+            wiz.kg_neto = wiz.kg_disponibles
+            wiz.alertas = _('El rollo (%(n).2f kg) con lo ya registrado y los tramos ya llega al peso de Rama '
+                            '(%(r).2f kg): no hay diferencia que quitar como tramo.',
+                            n=wiz.kg_rollo, r=wiz.kg_rama) if falta <= TOLERANCIA_KG else False
 
-    @api.depends('product_id', 'kg_bruto')
-    def _compute_pesos(self):
-        Tara = self.env['mrp.tara.producto']
+    @api.depends('kg_neto', 'rendimiento')
+    def _compute_metros(self):
         for wiz in self:
-            # Misma tara que el resto de Inspección («Clasificación final» en la tabla de taras).
-            tara = Tara._buscar_tara(wiz.product_id, 'clasificacion_final') if wiz.product_id else Tara
-            wiz.tara_faltante = bool(wiz.product_id) and not tara
-            wiz.tara_kg = tara.tara_kg
-            wiz.kg_neto = wiz.kg_bruto - tara.tara_kg if tara else 0.0
+            if wiz.rendimiento:
+                wiz.metros = round(wiz.kg_neto * wiz.rendimiento, 2)
 
     def _validar(self):
         self.ensure_one()
@@ -85,27 +83,15 @@ class RolloTramoWizard(models.TransientModel):
         if rollo.estado_inspeccion == 'inspeccionado':
             raise UserError(_('El rollo %s ya fue inspeccionado: el tramo se quita antes de registrar su último rollo.',
                               rollo.name))
-        if self.tara_faltante:
+        if self.kg_neto <= TOLERANCIA_KG:
             raise UserError(_(
-                'No hay tara de Inspección para %s. Captúrala en Manufactura → Configuración → Taras por producto '
-                '(operación «Clasificación final»); el pesaje no asume tara 0.', self.product_id.display_name))
-        if self.kg_bruto <= 0:
-            raise UserError(_('Captura el peso bruto del tramo.'))
-        if self.kg_neto <= 0:
-            raise UserError(_('El peso bruto (%(b).4f kg) no supera la tara (%(t).4f kg).', b=self.kg_bruto,
-                              t=self.tara_kg))
-        if self.weighing_mode == 'manual' and not (self.motivo_manual or '').strip():
-            raise UserError(_('Captura el motivo de la captura manual del peso.'))
+                'El rollo pesa %(p).2f kg y el rollo de Rama %(k).2f kg (ya registrados %(f).2f kg y tramos anteriores '
+                '%(tr).2f kg): no hay diferencia que quitar como tramo.',
+                p=self.kg_rollo, k=self.kg_rama, f=self.kg_ya_cortados, tr=self.kg_tramos))
         if self.metros <= 0:
-            raise UserError(_('Captura los metros del tramo.'))
+            raise UserError(_('La ficha del acabado no tiene rendimiento: captura los metros del tramo.'))
         if not self.defecto_ids:
             raise UserError(_('Captura al menos un defecto: el tramo se quitó por una causa.'))
-        if self.kg_neto > self.kg_disponibles + TOLERANCIA_KG:
-            raise UserError(_(
-                'El rollo pesa %(p).2f kg y el tramo %(t).2f kg: juntos pasan de los %(k).2f kg del rollo de Rama %(r)s '
-                '(ya registrados %(f).2f kg y tramos anteriores %(tr).2f kg). Solo caben %(d).2f kg.',
-                p=self.kg_rollo, t=self.kg_neto, k=self.kg_rama, r=rollo.name, f=self.kg_ya_cortados,
-                tr=self.kg_tramos, d=self.kg_disponibles))
         emp = self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
         self.env['mrp.inspeccion.restriccion']._validar_centro(self.workcenter_id, self.product_id)
         return emp
@@ -119,17 +105,15 @@ class RolloTramoWizard(models.TransientModel):
         return self._volver()
 
     def action_confirmar(self):
-        """Pasa el tramo a la ventana INSPECCIONAR; NO lo guarda: se guarda junto con el rollo, al registrarlo."""
+        """Pasa el tramo a la ventana INSPECCIONAR; NO lo guarda: se guarda junto con el rollo, al registrarlo. Los kg y
+        los metros se recalculan allá con el peso del rollo, así que no se copian."""
         self.ensure_one()
         self.env.invalidate_all()
         self._validar()
         self.estacion_id.write({
             'tramo_bitacora_id': self.bitacora_id.id,
-            'tramo_kg_bruto': self.kg_bruto,
-            'tramo_metros': self.metros,
+            'tramo_metros_captura': 0.0 if self.rendimiento else self.metros,
             'tramo_defecto_ids': [(6, 0, self.defecto_ids.ids)],
-            'tramo_captura_manual': self.weighing_mode == 'manual',
-            'tramo_motivo_manual': self.motivo_manual if self.weighing_mode == 'manual' else False,
         })
         return self._volver()
 

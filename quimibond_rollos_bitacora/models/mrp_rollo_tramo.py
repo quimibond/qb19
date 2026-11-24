@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Tramo que Inspección le quita a un rollo con defectos (Junta con el cliente, 2026-11-13).
 
-La revisadora corta lo defectuoso de un rollo y lo aparta: se pesa con la tara de Inspección, se miden sus metros y se
-anotan sus defectos. Al final del baño todos los tramos se juntan en un rollo nuevo de FE o Segunda (``mrp.rollo.final``
+La revisadora corta lo defectuoso de un rollo y lo aparta. Hasta 3.23.0 se pesaba con la tara de Inspección; desde 3.24.0
+(piloto, 2026-11-24) no se pesa al retirarlo: sus kg y metros son teóricos y se anotan sus defectos. Al final del baño todos los tramos se juntan en un rollo nuevo de FE o Segunda (``mrp.rollo.final``
 con ``es_tramos``), que lleva su lote, su etiqueta y la unión de los defectos, como parte de la orden en kg. El tramo no
 mueve inventario: lo que se le quita al rollo de Rama sale de su rollo final (que se pesa ya sin el tramo) y entra al
 rollo de tramos.
@@ -24,6 +24,9 @@ class MrpRolloTramo(models.Model):
     kg_bruto = fields.Float('Peso bruto (kg)', digits=(12, 4), readonly=True)
     tara = fields.Float('Tara de Inspección (kg)', digits=(12, 4), readonly=True)
     kg_neto = fields.Float('Kg netos', digits=(12, 4), readonly=True)
+    teorico = fields.Boolean('Kg y metros teóricos', readonly=True, default=False,
+                             help='3.24.0: el tramo no se pesa al retirarlo; sus kg son el peso de Rama menos el neto del '
+                                  'rollo registrado y sus metros, esos kg por el rendimiento de la ficha.')
     captura_manual = fields.Boolean('Captura manual', readonly=True)
     motivo_manual = fields.Char('Motivo de captura manual', readonly=True)
     metros = fields.Float('Metros', digits=(12, 2), readonly=True)

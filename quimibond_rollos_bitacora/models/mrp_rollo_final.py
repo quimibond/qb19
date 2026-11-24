@@ -127,6 +127,13 @@ class MrpRolloFinal(models.Model):
     motivo_lab = fields.Char('Causa del cambio (laboratorio)', readonly=True, copy=False)
     operador_lab = fields.Char('Liberó (laboratorio)', readonly=True, copy=False)
     fecha_lab = fields.Datetime('Liberado por laboratorio el', readonly=True, copy=False)
+    exceso_rama_kg = fields.Float(
+        'Exceso contra Rama (kg)', digits=(12, 4), readonly=True, copy=False,
+        help='3.24.0: kg que Inspección suma de más contra el rollo de Rama al registrar este rollo (este rollo, lo ya '
+             'registrado del mismo rollo de Rama y los tramos, menos lo que pesó Rama). Cero si no sobró. Se guarda aunque '
+             'quede dentro de la tolerancia, para medir la diferencia entre básculas en reporte.')
+    exceso_rama_pct = fields.Float('Exceso contra Rama (%)', digits=(12, 3), readonly=True, copy=False)
+    exceso_rama_motivo = fields.Char('Motivo del exceso contra Rama', readonly=True, copy=False)
     reetiquetado = fields.Boolean(
         'Reetiquetado', compute='_compute_valores_registro', store=True,
         help='Empaque cambió la calidad que Inspección había puesto: hay que reimprimir la etiqueta final.')

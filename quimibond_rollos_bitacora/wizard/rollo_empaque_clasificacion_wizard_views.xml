@@ -12,6 +12,7 @@
                     <field name="codigo_error" invisible="1"/>
                     <field name="rollo_id" invisible="1"/>
                     <field name="cambia" invisible="1"/>
+                    <field name="cambia_lab" invisible="1"/>
                     <group>
                         <field name="empleado_numero" password="True" default_focus="1"
                                readonly="empleado_numero != False" force_save="1"/>
@@ -58,7 +59,7 @@
                                 <field name="defecto_ids" widget="many2many_tags" options="{'no_create': True}"
                                        required="clasificacion in ('SEGUNDA', 'FE')"
                                        invisible="clasificacion not in ('SEGUNDA', 'FE')"/>
-                                <field name="motivo_ajuste" invisible="not cambia" required="cambia"
+                                <field name="motivo_ajuste" invisible="not cambia and not cambia_lab" required="cambia or cambia_lab"
                                        placeholder="Por qué cambia (indicación de Calidad)"/>
                             </group>
                         </group>

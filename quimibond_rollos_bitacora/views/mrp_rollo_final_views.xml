@@ -12,6 +12,8 @@
                 <field name="clasificacion"/>
                 <field name="clasificacion_final" optional="show"/>
                 <field name="reetiquetado" optional="hide"/>
+                <field name="exceso_rama_kg" optional="hide"/>
+                <field name="exceso_rama_pct" optional="hide"/>
                 <field name="kg_neto" sum="Total kg"/>
                 <field name="metros" sum="Total m" decoration-warning="alerta_metros"/>
                 <field name="alerta_metros" column_invisible="True"/>
@@ -55,6 +57,9 @@
                             <field name="metros"/>
                             <field name="metros_teoricos"/>
                             <field name="alerta_metros"/>
+                            <field name="exceso_rama_kg"/>
+                            <field name="exceso_rama_pct"/>
+                            <field name="exceso_rama_motivo" invisible="not exceso_rama_motivo"/>
                             <field name="no_empalmes"/>
                             <field name="captura_manual"/>
                             <field name="motivo_manual" invisible="not captura_manual"/>
@@ -107,6 +112,7 @@
                 <filter name="clasificado" string="Clasificados en Empaque" domain="[('estado', '=', 'clasificado')]"/>
                 <filter name="registrado" string="Registrados" domain="[('estado', '=', 'registrado')]"/>
                 <filter name="reetiquetado" string="Reetiquetados" domain="[('reetiquetado', '=', True)]"/>
+                <filter name="con_exceso" string="Con exceso contra Rama" domain="[('exceso_rama_kg', '>', 0)]"/>
                 <separator/>
                 <filter name="pq" string="PQ" domain="[('clasificacion', '=', 'PQ')]"/>
                 <filter name="fe" string="FE" domain="[('clasificacion', '=', 'FE')]"/>

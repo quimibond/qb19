@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from markupsafe import Markup
 from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -110,7 +111,7 @@ class RolloLiberacionLabWizard(models.TransientModel):
         cuerpo = _('Orden liberada para Empaque por laboratorio (%(p)s). Rollos PQ revisados: %(r)s.',
                    p=operador, r=self.rollos_pq)
         if cambios:
-            cuerpo += '<br/>' + _('Cambios de calidad:') + '<br/>' + '<br/>'.join(cambios)
+            cuerpo = Markup('%s<br/>%s<br/>%s') % (cuerpo, _('Cambios de calidad:'), Markup('<br/>').join(cambios))
         orden.message_post(body=cuerpo)
         return {'type': 'ir.actions.act_window_close'}
 

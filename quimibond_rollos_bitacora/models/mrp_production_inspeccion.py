@@ -132,10 +132,18 @@ class MrpProductionInspeccion(models.Model):
         ``cierre_minimo_pct`` capturado no deja cerrar abajo de ese porcentaje (José cerró una prueba con 2 de ~7 rollos y
         el 73 % del crudo quedó como merma sin aviso). Devuelve el texto para el chatter."""
         self.ensure_one()
-        pesado = sum(self.rollo_bitacora_ids.mapped('kg_rama'))
-        if not planeado:
+        # 3.24.0 (piloto, J00033): lo que entró al baño es el crudo surtido, no los kg planeados de la orden; y lo que sale
+        # es lo pesado en rollos de Rama más el desperdicio de Rama (tejido y orillas), que también es crudo que se usó.
+        en_rollos = sum(self.rollo_bitacora_ids.mapped('kg_rama'))
+        desperdicio = self.desperdicio_rama_total_kg or 0.0
+        pesado = en_rollos + desperdicio
+        kg = self.env.ref('uom.product_uom_kgm')
+        surtido = sum(m.product_uom._compute_quantity(m.quantity, kg, round=False)
+                      for m in self._moves_crudo() if m.product_uom._has_common_reference(kg))
+        base = surtido or planeado
+        if not base:
             return False
-        pct = pesado / planeado * 100.0
+        pct = pesado / base * 100.0
         minimo = (self.env['ir.config_parameter'].sudo().get_param(PARAM_CIERRE_MINIMO_PCT) or '').strip()
         if minimo:
             try:
@@ -144,12 +152,13 @@ class MrpProductionInspeccion(models.Model):
                 minimo = 0.0
             if minimo and pct < minimo:
                 raise UserError(_(
-                    'El baño %(o)s tiene %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%), abajo del '
-                    'mínimo de %(m).1f %% para cerrar. Si el baño de verdad terminó, revisa que se hayan pesado todos '
-                    'los rollos; el crudo se consume completo al cerrar.',
-                    o=self.name, p=pesado, pl=planeado, pct=pct, m=minimo))
-        return _('Baño cerrado con %(p).2f kg pesados en Rama de %(pl).2f kg planeados (%(pct).1f %%); desperdicio de '
-                 'Rama %(d).2f kg.', p=pesado, pl=planeado, pct=pct, d=self.desperdicio_rama_total_kg or 0.0)
+                    'El baño %(o)s tiene %(p).2f kg pesados en Rama (rollos y desperdicio) de %(pl).2f kg de crudo '
+                    'surtido (%(pct).1f %%), abajo del mínimo de %(m).1f %% para cerrar. Si el baño de verdad terminó, '
+                    'revisa que se hayan pesado todos los rollos; el crudo se consume completo al cerrar.',
+                    o=self.name, p=pesado, pl=base, pct=pct, m=minimo))
+        return _('Baño cerrado: %(r).2f kg en rollos de Rama + %(d).2f kg de desperdicio de Rama = %(p).2f kg de '
+                 '%(pl).2f kg de crudo surtido (%(pct).1f %%); merma %(m).2f kg.',
+                 r=en_rollos, d=desperdicio, p=pesado, pl=base, pct=pct, m=max(base - pesado, 0.0))
 
     def _insp_modo(self):
         """Cómo se registra el baño al cerrarlo (3.2.0):
