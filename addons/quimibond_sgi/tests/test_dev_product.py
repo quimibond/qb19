@@ -87,6 +87,8 @@ class TestDevProduct(TransactionCase):
             order.action_confirm()
         self.dev.write({'sgi_dev_analysis_result': 'nuevo'})
         self.dev.action_sgi_dev_review_approve()
+        # Desde la aprobación del cliente (sgi_dev_customer) no se pasa de «Muestra» sin ella.
+        self.dev.write({'sgi_dev_customer_approved_at': fields.Datetime.now()})
         self.dev.write({'stage_id': self._stage('pilotaje').id})
         self.assertEqual(acabado.sgi_dev_state, 'pilotaje')
         self.assertTrue(acabado.sale_ok)

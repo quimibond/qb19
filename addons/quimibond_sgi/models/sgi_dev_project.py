@@ -655,7 +655,8 @@ class ProjectProjectDev(models.Model):
             open_logs = project.sgi_dev_stage_log_ids.filtered(lambda l: not l.date_end)
             if open_logs and open_logs[:1].stage_id == project.stage_id and len(open_logs) == 1:
                 continue
-            open_logs.write({'date_end': when})
+            # 57.202.2: con sudo, como el create; el Usuario SGI mueve la etapa pero solo lee el reloj.
+            open_logs.sudo().write({'date_end': when})
             Log.create({'project_id': project.id, 'stage_id': project.stage_id.id, 'date_start': when,
                         'user_id': self.env.uid})
 
