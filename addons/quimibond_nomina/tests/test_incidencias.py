@@ -307,19 +307,41 @@ class TestIncidenciasCalculo(TransactionCase):
         r2 = calc.calcular_semana(LUNES, HORARIO, _noches((13, 14, 15)), hoy=HOY, turno='4')
         self.assertEqual((r2['faltas'], r2['he_propuestas'], r2['dias_con_extra']), (1, 6, 1))
 
-    def test_prima_dominical_pide_el_turno_completo(self):
-        # Turno 6 sin la noche del sábado: no lleva prima.
+    def test_prima_dominical_proporcional_sin_el_turno_completo(self):
+        # Turno 6 sin la noche del sábado: solo las 5 horas del domingo de la noche del domingo (RH, 24-nov).
         r = calc.calcular_semana(LUNES, HORARIO, _noches((12, 18)), hoy=HOY, turno='6')
-        self.assertEqual(r['dom_horas'], 0.0)
-        self.assertIn('Do sin turno completo: sin prima dominical del turno', r['notas'])
-        # Turno 5 que sale del domingo a las 15:00: tampoco.
+        self.assertEqual(r['dom_horas'], 5.0)
+        self.assertIn('Do sin turno completo: prima dominical de 5 h trabajadas en domingo', r['notas'])
+        # Turno 5 que sale del domingo a las 15:00: 8 horas (desde la entrada de las 07:00).
         marcas = _noches((13, 14, 15)) + _dia(18, (6, 55), (15, 0))
         r5 = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='5')
-        self.assertEqual(r5['dom_horas'], 0.0)
+        self.assertEqual(r5['dom_horas'], 8.0)
+        # Completo: 12.
+        completo = calc.calcular_semana(LUNES, HORARIO, _noches((12, 17, 18)), hoy=HOY, turno='6')
+        self.assertEqual(completo['dom_horas'], 12.0)
         # Domingo todavía por venir (la lista se saca el martes): sin prima y sin nota.
         r6 = calc.calcular_semana(LUNES, HORARIO, _noches((12,)), hoy=date(2026, 10, 13), turno='6')
         self.assertEqual(r6['dom_horas'], 0.0)
-        self.assertNotIn('Do sin turno completo: sin prima dominical del turno', r6['notas'])
+        self.assertFalse([n for n in r6['notas'] if n.startswith('Do sin turno completo')])
+
+    # ------------------------------------------------------------------
+    # Respuestas de RH del 24-nov-2026 (1.26.0)
+    # ------------------------------------------------------------------
+    def test_seis_horas_del_turno_cuatro_solo_si_la_cuadrilla_las_paga(self):
+        r = calc.calcular_semana(LUNES, HORARIO, _noches((12, 13, 14, 15)), hoy=HOY, turno='4', he_fijas=False)
+        self.assertEqual(r['he_propuestas'], 0)
+        self.assertFalse([n for n in r['notas'] if 'HE' in n])
+
+    def test_tolerancia_de_diez_minutos_para_el_turno_completo(self):
+        base = _noches((12, 13, 14))
+        jueves = lambda h, m: [dt(2026, 10, 15, h, m), dt(2026, 10, 16, 1, 0), dt(2026, 10, 16, 1, 30),
+                               dt(2026, 10, 16, 7, 5)]
+        a_tiempo = calc.calcular_semana(LUNES, HORARIO, base + jueves(19, 9), hoy=HOY, turno='4')
+        self.assertEqual(a_tiempo['he_propuestas'], 6)
+        self.assertEqual(a_tiempo['retardos'], 1, 'el retardo se anota desde el minuto 1')
+        tarde = calc.calcular_semana(LUNES, HORARIO, base + jueves(19, 15), hoy=HOY, turno='4')
+        self.assertEqual(tarde['he_propuestas'], 0)
+        self.assertIn('Ju sin turno completo: sin las 6 HE del turno', tarde['notas'])
 
     def test_comida_de_sindicalizados_y_empleados(self):
         self.assertEqual(calc.comida_permitida(10, True), 30)
