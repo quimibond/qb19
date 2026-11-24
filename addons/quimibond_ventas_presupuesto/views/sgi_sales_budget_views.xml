@@ -7,7 +7,8 @@
         <field name="arch" type="xml">
             <list string="Líneas de presupuesto" editable="bottom"
                   decoration-muted="not price_problem and qty_budget == 0"
-                  decoration-danger="price_problem">
+                  decoration-danger="price_problem"
+                  decoration-warning="not price_problem and not support_ok">
                 <field name="budget_id" column_invisible="context.get('default_budget_id')"/>
                 <field name="kind" column_invisible="1"/>
                 <field name="mercado"/>
@@ -48,7 +49,19 @@
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide" sum="Total"/>
                 <field name="unconverted_count" readonly="1" optional="hide"/>
+                <!-- 3.33.0: soporte por renglón. -->
+                <field name="support_qty" optional="show"/>
+                <field name="support_price" optional="hide"/>
+                <field name="price_sugerido" optional="hide"/>
+                <field name="ajuste_motivo" optional="show"/>
+                <field name="assumption_id" optional="hide"/>
+                <field name="potencial" optional="hide"/>
+                <field name="qty_potencial" optional="hide" sum="Total"/>
+                <field name="amount_potencial" optional="hide" sum="Total"/>
+                <field name="support_ok" optional="show"/>
                 <field name="currency_id" column_invisible="1"/>
+                <button name="action_qb_view_support" type="object" icon="fa-search"
+                        string="Ver soporte" title="Ver soporte"/>
                 <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
                         string="Ver facturas del mes" title="Ver facturas del mes"
                         invisible="not product_id"/>
@@ -63,6 +76,8 @@
             <form string="Línea de presupuesto">
                 <header>
                     <field name="kind" invisible="1"/>
+                    <button name="action_qb_view_support" type="object"
+                            string="Ver soporte" icon="fa-search"/>
                     <button name="action_view_month_invoices" type="object"
                             string="Ver facturas del mes" icon="fa-file-text-o"
                             invisible="not product_id"/>
@@ -70,6 +85,15 @@
                 <sheet>
                     <div class="alert alert-danger" role="alert" invisible="not price_problem">
                         Este renglón cuenta 0 en el importe: <field name="price_problem" readonly="1" class="oe_inline"/>.
+                    </div>
+                    <field name="support_ok" invisible="1"/>
+                    <field name="potencial" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="support_ok">
+                        Renglón sin soporte: la cantidad o el precio cambiaron sin motivo, o el supuesto
+                        del cliente no tiene evidencia. Escriba el motivo del ajuste o el soporte.
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="not potencial">
+                        Desarrollo todavía no liberado: es potencial y no suma al presupuesto.
                     </div>
                     <group>
                         <group string="Qué se presupuesta">
@@ -103,6 +127,20 @@
                             <field name="currency_id" invisible="1"/>
                             <field name="amount_currency" readonly="1"/>
                             <field name="amount_budget" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Soporte">
+                        <group>
+                            <field name="support_qty"/>
+                            <field name="support_price"/>
+                            <field name="price_sugerido"/>
+                            <field name="assumption_id" readonly="1" invisible="not assumption_id"/>
+                        </group>
+                        <group>
+                            <field name="ajuste_motivo"/>
+                            <field name="support_note"/>
+                            <field name="qty_potencial" invisible="not potencial"/>
+                            <field name="amount_potencial" invisible="not potencial"/>
                         </group>
                     </group>
                     <group string="Precio de lista (referencia)">
@@ -223,6 +261,11 @@
                         domain="[('qb_project_id.state', '=', 'perdido')]"/>
                 <filter name="de_desarrollo" string="Propuestos desde un desarrollo"
                         domain="[('qty_origen', '=', 'desarrollo')]"/>
+                <separator/>
+                <filter name="sin_soporte" string="Sin soporte" domain="[('support_ok', '=', False)]"/>
+                <filter name="potencial" string="Potencial (no suma)" domain="[('potencial', '=', True)]"/>
+                <filter name="con_ajuste" string="Ajustados a mano" domain="[('ajuste_motivo', '!=', False)]"/>
+                <separator/>
                 <filter name="proyecto_sin_desarrollo" string="Proyecto sin desarrollo"
                         domain="[('mercado', 'in', ('proyectos_industrial', 'proyectos_confeccion')), ('dev_project_id', '=', False)]"/>
                 <group>
@@ -322,17 +365,35 @@
                     </div>
                     <!-- 3.32.0: la REV2 de 2026 se aprobó sin Industrial ni Proyectos en noviembre y
                          diciembre. -->
+                    <!-- 3.33.0: también renglones sin soporte y tipo de cambio sin fuente (Jose, 23-nov:
+                         bloquea, con excepción de Dirección). -->
                     <div class="alert alert-danger" role="alert"
-                         invisible="kind != 'presupuesto' or state not in ('borrador', 'revisado') or empty_month_count == 0">
-                        Meses sin ningún renglón: <field name="empty_months_text" class="oe_inline"/>.
-                        No se puede aprobar así: agregue los renglones que faltan o, si de verdad no
-                        se venderá nada ese mes, Dirección puede aprobar con la excepción.
+                         invisible="kind != 'presupuesto' or state not in ('borrador', 'revisado') or not approval_exceptions_text">
+                        No se puede aprobar así: <field name="approval_exceptions_text" class="oe_inline"/>.
+                        Agregue los renglones o el soporte que faltan (un mes en que un mercado no
+                        venderá se declara en la pestaña «Meses sin venta»); si de verdad así debe quedar,
+                        Dirección puede aprobar con la excepción, que queda en el historial.
+                        <button name="action_qb_view_unsupported" type="object"
+                                string="Ver renglones sin soporte" class="btn-link"
+                                invisible="unsupported_count == 0"/>
                         <button name="action_qb_approve_empty_months" type="object"
-                                string="Aprobar con meses vacíos" class="btn-link"
+                                string="Aprobar con excepción" class="btn-link"
                                 invisible="state != 'revisado'"
                                 groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
                     </div>
                     <field name="empty_month_count" invisible="1"/>
+                    <field name="unsupported_count" invisible="1"/>
+                    <div class="alert alert-info" role="status" invisible="potencial_count == 0">
+                        <field name="potencial_count" class="oe_inline"/> renglón(es) de desarrollos no
+                        liberados por <field name="amount_potencial_total" class="oe_inline"/>: potencial,
+                        no suma al presupuesto.
+                        <span invisible="potencial_no_price_count == 0">
+                            <field name="potencial_no_price_count" class="oe_inline"/> sin valuar (sin precio, o con
+                            precio por kilo y sin conversión a kilos): capture el precio objetivo o el rendimiento.
+                        </span>
+                        <button name="action_qb_view_potencial" type="object"
+                                string="Ver potencial" class="btn-link"/>
+                    </div>
                     <field name="needs_justification" invisible="1"/>
                     <div class="alert alert-danger" role="alert"
                          invisible="not needs_justification">
@@ -361,6 +422,8 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id"/>
                             <field name="cutoff_date" invisible="not cutoff_date"/>
+                            <field name="base_date_from" invisible="not base_date_from"/>
+                            <field name="base_date_to" invisible="not base_date_to"/>
                         </group>
                     </group>
                     <!-- 3.23.0: las cifras como campos, con barra de avance. -->
@@ -392,7 +455,8 @@
                         <page string="Renglones" name="lineas">
                             <field name="line_ids" context="{'default_budget_id': id}">
                                 <list string="Renglones" editable="bottom"
-                                      decoration-danger="price_problem">
+                                      decoration-danger="price_problem"
+                                      decoration-warning="not price_problem and not support_ok">
                                     <field name="mercado"/>
                                     <field name="partner_id" optional="show"/>
                                     <field name="product_id"/>
@@ -413,7 +477,13 @@
                                     <field name="amount_budget" readonly="1" sum="Total"/>
                                     <field name="qty_real" readonly="1" sum="Total" optional="show"/>
                                     <field name="amount_real" readonly="1" sum="Total"/>
+                                    <field name="support_qty" optional="hide"/>
+                                    <field name="ajuste_motivo" optional="show"/>
+                                    <field name="potencial" optional="hide"/>
+                                    <field name="support_ok" optional="show"/>
                                     <field name="currency_id" column_invisible="1"/>
+                                    <button name="action_qb_view_support" type="object" icon="fa-search"
+                                            string="Ver soporte" title="Ver soporte"/>
                                 </list>
                             </field>
                         </page>
@@ -463,6 +533,9 @@
                                 Pesos por dólar de cada mes. Un mes sin tipo de cambio usa el
                                 presupuestal de Ajustes, que se guarda aquí al aprobar.
                             </p>
+                            <group>
+                                <field name="rate_source" placeholder="Ej.: FIX de Banxico del 30/11/2026"/>
+                            </group>
                             <div class="o_row" invisible="state not in ('borrador', 'revisado')">
                                 <field name="rate_default"/>
                                 <button name="action_qb_apply_rate_all" type="object"
@@ -476,6 +549,42 @@
                                     <field name="month"/>
                                     <field name="month_name" readonly="1"/>
                                     <field name="rate"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Supuestos" name="supuestos">
+                            <p class="text-muted">
+                                Lo que Ventas sabe de un cliente y cambia su venta base (programa nuevo, fin de
+                                un modelo): cada supuesto lleva su motivo y evidencia (liga o archivo). Sin
+                                evidencia, sus renglones quedan sin soporte.
+                            </p>
+                            <field name="assumption_ids" context="{'default_budget_id': id}">
+                                <list string="Supuestos por cliente" editable="bottom"
+                                      decoration-warning="not evidence_ok">
+                                    <field name="partner_id"/>
+                                    <field name="growth_pct"/>
+                                    <field name="month_from"/>
+                                    <field name="note"/>
+                                    <field name="evidence_url" widget="url"/>
+                                    <field name="attachment_ids" widget="many2many_binary"/>
+                                    <field name="evidence_ok"/>
+                                    <field name="line_count"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 3.34.0: Especiales vende meses salteados; el mes sin venta se declara con motivo. -->
+                        <page string="Meses sin venta" name="meses_sin_venta">
+                            <p class="text-muted">
+                                Meses en que un mercado no venderá. No cuentan como meses vacíos al aprobar. La
+                                propuesta declara sola los meses en que el mercado no vendió en el periodo base;
+                                cualquier otro lleva su motivo.
+                            </p>
+                            <field name="no_sale_ids" context="{'default_budget_id': id}">
+                                <list string="Meses sin venta" editable="bottom">
+                                    <field name="mercado"/>
+                                    <field name="month"/>
+                                    <field name="note"/>
+                                    <field name="evidence_url" widget="url"/>
                                 </list>
                             </field>
                         </page>
@@ -633,16 +742,16 @@
                         Arma el borrador del presupuesto con lo vendido en el periodo base: en
                         Industrial y Especiales un renglón por producto, cliente y mes; en
                         Confección por producto y mes, sin cliente. La cantidad es la vendida ese
-                        mes por el crecimiento del mercado; el precio, el de la lista o, si la
-                        lista no tiene el producto, el real del periodo base. Con «Usar el
-                        pronóstico vigente», los meses que el pronóstico de un cliente cubre
-                        completos salen de ahí, sin crecimiento. Los supuestos por cliente
-                        sustituyen el crecimiento del mercado desde el mes que se indique. No entran saldos,
-                        desperdicio, notas de crédito genéricas ni servicios. Con «Traer
-                        desarrollos», cada desarrollo abierto (de Cotización a Pilotaje) con
-                        consumo estimado suma renglones de Proyectos desde su fecha requerida, con
-                        el precio de su cotización o el objetivo. Después se ajusta renglón por
-                        renglón.
+                        mes en el mismo mes del periodo base, sin crecimiento general; el precio, el
+                        de la lista o, si la lista no tiene el producto, el promedio facturado del
+                        periodo base. Con «Usar el pronóstico vigente», los meses que el pronóstico
+                        de un cliente cubre completos salen de sus releases. Un cambio sobre la
+                        venta base solo entra como supuesto de un cliente, con su motivo y
+                        evidencia. No entran saldos, desperdicio, notas de crédito genéricas ni
+                        servicios. Con «Traer desarrollos», los liberados suman renglones de
+                        Proyectos desde su fecha requerida; los que siguen en Cotización a Pilotaje
+                        quedan como potencial y no suman. Cada renglón guarda su soporte («Ver
+                        soporte»); si se cambia la cantidad o el precio, se escribe el motivo.
                     </div>
                     <group>
                         <group string="Periodo">
@@ -651,19 +760,16 @@
                             <field name="date_from"/>
                             <field name="date_to"/>
                         </group>
-                        <group string="Crecimiento sobre el periodo base">
-                            <field name="growth_industrial"/>
-                            <field name="growth_confeccion"/>
-                            <field name="growth_especiales"/>
+                        <group string="Tipo de cambio">
+                            <field name="rate"/>
+                            <field name="rate_source" placeholder="Ej.: FIX de Banxico del 30/11/2026"/>
                         </group>
                         <group string="Opciones">
                             <field name="min_amount"/>
-                            <field name="rate"/>
                             <field name="project_source_id"/>
                         </group>
                         <group string="Desarrollos de producto">
                             <field name="include_dev"/>
-                            <field name="dev_pct" invisible="not include_dev"/>
                         </group>
                         <group string="Pronóstico">
                             <field name="use_forecast"/>
@@ -677,6 +783,7 @@
                             <field name="growth_pct"/>
                             <field name="month_from"/>
                             <field name="note"/>
+                            <field name="evidence_url" widget="url"/>
                         </list>
                     </field>
                 </sheet>

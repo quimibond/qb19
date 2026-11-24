@@ -18,7 +18,7 @@ class TestPresupuestoAnual(TransactionCase):
         super().setUpClass()
         # 3.32.0: estas pruebas aprueban presupuestos de uno o dos renglones; el aviso de meses sin
         # renglones tiene su propia prueba (test_25).
-        cls.env = cls.env(context=dict(cls.env.context, qb_allow_empty_months=True))
+        cls.env = cls.env(context=dict(cls.env.context, qb_approve_exception=True))
         cls.Budget = cls.env['sgi.sales.budget']
         cls.Line = cls.env['sgi.sales.budget.line']
         cls.Param = cls.env['ir.config_parameter'].sudo()
@@ -480,8 +480,9 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertFalse(wizard.line_ids)  # ya no queda ninguno sin cliente
 
     def test_22_propuesta_del_anio_siguiente(self):
-        """3.7.0: la propuesta sale de lo vendido: Industrial por cliente con crecimiento,
-        Confección sin cliente; el precio, el real del periodo base si la lista no lo tiene."""
+        """3.7.0: la propuesta sale de lo vendido: Industrial por cliente, Confección sin cliente; el
+        precio, el real del periodo base si la lista no lo tiene. 3.33.0: sin crecimiento por mercado, y
+        cada renglón dice de dónde sale."""
         income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
         self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
         otro = self.env['res.partner'].create({'name': 'Maquila propuesta', 'is_company': True})
@@ -500,7 +501,7 @@ class TestPresupuestoAnual(TransactionCase):
         invoice(self.client, self.team_ind, date(2016, 3, 10), [(self.product, 100.0, 2.0)])
         invoice(otro, self.team_conf, date(2016, 5, 10), [(self.product, 50.0, 3.0), (saldo, 10.0, 1.0)])
         budget_id = self.Budget.action_qb_build_proposal(
-            2017, growth={'industrial': 10.0}, base='anio', include_dev=False)
+            2017, base='anio', include_dev=False)
         budget = self.Budget.browse(budget_id)
         self.assertEqual(budget.year, 2017)
         self.assertEqual(budget.state, 'borrador')
@@ -509,9 +510,18 @@ class TestPresupuestoAnual(TransactionCase):
         conf = budget.line_ids.filtered(lambda l: l.mercado == 'confeccion')
         self.assertEqual(ind.partner_id, self.client)
         self.assertEqual(ind.date, date(2017, 3, 1))
-        self.assertAlmostEqual(ind.qty_budget, 110.0, places=2)
+        self.assertAlmostEqual(ind.qty_budget, 100.0, places=2)
         self.assertAlmostEqual(ind.price_input, 2.0, places=4)
         self.assertEqual(ind.price_origen, 'historico')
+        self.assertIn("marzo 2016", ind.support_qty)
+        self.assertIn(self.client.name, ind.support_qty)
+        self.assertIn("Promedio facturado en 03/2016", ind.support_price)
+        self.assertTrue(ind.support_ok)
+        self.assertEqual((budget.base_date_from, budget.base_date_to), (date(2016, 1, 1), date(2016, 12, 31)))
+        self.assertEqual(ind.action_qb_view_support()['res_model'], 'account.move.line')
+        # Un crecimiento general ya no se acepta: solo supuestos por cliente con motivo.
+        with self.assertRaises(UserError):
+            self.Budget.action_qb_build_proposal(2019, growth={'industrial': 10.0}, base='anio')
         self.assertFalse(conf.partner_id)
         self.assertEqual(conf.date, date(2017, 5, 1))
         self.assertAlmostEqual(conf.qty_budget, 50.0, places=2)
@@ -603,7 +613,7 @@ class TestPresupuestoAnual(TransactionCase):
     def test_25_meses_sin_renglones_no_se_aprueban(self):
         """3.32.0: la REV2 de 2026 se aprobó sin Industrial ni Proyectos en noviembre y diciembre.
         Un mercado sin renglones en un mes bloquea la aprobación, salvo la excepción de Dirección."""
-        env = self.env(context=dict(self.env.context, qb_allow_empty_months=False))
+        env = self.env(context=dict(self.env.context, qb_approve_exception=False))
         budget = env['sgi.sales.budget'].create({'year': 2058})
         conf = self.env['product.product'].create({'name': 'Entretela meses', 'type': 'consu',
                                                    'uom_id': self.uom_m.id})
@@ -630,9 +640,10 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertIn("Industrial: diciembre", "".join(budget.message_ids.mapped('body')))
 
     def test_26_propuesta_con_pronostico_y_supuestos_por_cliente(self):
-        """3.32.0: los meses que el pronóstico de un cliente cubre completos salen del pronóstico, sin
-        crecimiento; los demás, de la venta base. Un supuesto por cliente sustituye el crecimiento del
-        mercado desde su mes (−100 % = deja de comprar)."""
+        """3.32.0: los meses que el pronóstico de un cliente cubre completos salen del pronóstico; los
+        demás, de la venta base. Un supuesto por cliente cambia la venta base desde su mes (−100 % = deja
+        de comprar); 3.33.0: queda guardado en el presupuesto y sin evidencia sus renglones no tienen
+        soporte."""
         income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
         self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
         otro = self.env['res.partner'].create({'name': 'Cliente que se va', 'is_company': True})
@@ -652,6 +663,12 @@ class TestPresupuestoAnual(TransactionCase):
         for month in (1, 2, 3):
             invoice(self.client, date(2017, month, 10), 100.0)
         invoice(self.client, date(2017, 1, 10), 40.0, por_pedido)
+        invoice(self.client, date(2017, 11, 10), 30.0, por_pedido)  # 3.34.0: se le sigue vendiendo
+        # 3.34.0: un producto que el cliente dejó de comprar (no viene en su pronóstico ni se le vendió en
+        # los últimos 3 meses del periodo base) no se propone.
+        viejo = self.env['product.product'].create({
+            'name': 'Tela que cambió de código', 'type': 'consu', 'uom_id': self.uom_m.id})
+        invoice(self.client, date(2017, 2, 10), 80.0, viejo)
         invoice(otro, date(2017, 3, 10), 100.0)
         invoice(otro, date(2017, 7, 10), 100.0)
         Forecast = self.env['qb.forecast.line']
@@ -661,12 +678,16 @@ class TestPresupuestoAnual(TransactionCase):
         Forecast.create({'partner_id': self.client.id, 'product_id': self.product.id,
                          'week': date(2018, 2, 26), 'qty_origen': 50.0})
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
-            2018, growth={'industrial': 10.0}, base='anio', include_dev=False,
+            2018, base='anio', include_dev=False,
             partner_growth=[{'partner_id': otro.id, 'growth_pct': -100.0, 'month_from': 7,
-                             'note': 'Termina su programa'}]))
-        pedido = budget.line_ids.filtered(lambda l: l.product_id == por_pedido)
+                             'note': 'Termina su programa'},
+                            {'partner_id': self.client.id, 'growth_pct': 10.0, 'month_from': 1,
+                             'note': 'Programa nuevo', 'evidence_url': 'https://correo/123'}]))
+        pedido = budget.line_ids.filtered(lambda l: l.product_id == por_pedido and l.date.month == 1)
+        self.assertFalse(budget.line_ids.filtered(lambda l: l.product_id == viejo),
+                         "Dejó de comprarlo: ni pronóstico ni venta en los últimos 3 meses")
         self.assertEqual((pedido.date, pedido.qty_origen, pedido.qty_budget), (date(2018, 1, 1), 'venta', 44.0),
-                         "Un producto que no viene en el pronóstico sigue con la venta base")
+                         "Un producto que no viene en el pronóstico sigue con la venta base (+10 % del supuesto)")
         mine = budget.line_ids.filtered(
             lambda l: l.partner_id == self.client and l.product_id == self.product).sorted('date')
         self.assertEqual(mine.mapped('date'), [date(2018, 1, 1), date(2018, 2, 1), date(2018, 3, 1)])
@@ -674,16 +695,107 @@ class TestPresupuestoAnual(TransactionCase):
         self.assertEqual(mine.mapped('qty_budget'), [300.0, 50.0, 110.0])
         self.assertAlmostEqual(mine[0].price_input, 2.0, places=4,
                                msg="Sin lista, el precio real del periodo base del cliente")
+        self.assertIn("semana", mine[0].support_qty)
+        self.assertEqual(mine[0].action_qb_view_support()['res_model'], 'qb.forecast.line')
+        self.assertTrue(mine[2].assumption_id, "El mes de venta base lleva el supuesto del cliente")
+        self.assertTrue(mine[2].support_ok, "Supuesto con evidencia")
         theirs = budget.line_ids.filtered(lambda l: l.partner_id == otro)
         self.assertEqual(theirs.mapped('date'), [date(2018, 3, 1)], "Julio: deja de comprar")
-        self.assertEqual(theirs.qty_budget, 110.0)
+        self.assertEqual(theirs.qty_budget, 100.0, "Su supuesto empieza en julio")
+        self.assertEqual(len(budget.assumption_ids), 2, "Los supuestos quedan en el presupuesto")
+        sin_evidencia = budget.assumption_ids.filtered(lambda a: a.partner_id == otro)
+        self.assertFalse(sin_evidencia.evidence_ok)
         summary = "".join(budget.message_ids.mapped('body'))
         self.assertIn("Pronóstico vigente", summary)
         self.assertIn("Termina su programa", summary)
+        self.assertIn("Tela que cambió de código", summary)
         # Sin el pronóstico, todo sale de la venta base.
         budget.line_ids.unlink()
         budget = self.Budget.browse(self.Budget.action_qb_build_proposal(
-            2018, growth={'industrial': 10.0}, base='anio', include_dev=False, use_forecast=False))
+            2018, base='anio', include_dev=False, use_forecast=False))
         mine = budget.line_ids.filtered(lambda l: l.partner_id == self.client and l.product_id == self.product)
         self.assertEqual(set(mine.mapped('qty_origen')), {'venta'})
-        self.assertEqual(mine.mapped('qty_budget'), [110.0, 110.0, 110.0])
+        self.assertEqual(mine.mapped('qty_budget'), [100.0, 100.0, 100.0])
+
+    def test_27_soporte_por_renglon_bloquea_la_aprobacion(self):
+        """3.33.0 (Jose, 23-nov: «todo tiene que tener soporte»; un renglón sin soporte bloquea, con
+        excepción de Dirección). Cambiar cantidad o precio pide motivo; un renglón a mano pide soporte;
+        con precios en dólares, el tipo de cambio pide su fuente."""
+        env = self.env(context=dict(self.env.context, qb_approve_exception=False))
+        budget = env['sgi.sales.budget'].create({'year': 2059})
+        conf = self.env['product.product'].create({'name': 'Entretela soporte', 'type': 'consu',
+                                                   'uom_id': self.uom_m.id})
+        esp = self.env['product.product'].create({'name': 'Especial soporte', 'type': 'consu',
+                                                  'uom_id': self.uom_m.id})
+        lines = env['sgi.sales.budget.line']
+        for month in range(1, 13):
+            lines |= self._line(budget, date=date(2059, month, 1), price_input=1.0, price_origen='historico',
+                                qty_origen='venta', qty_sugerida=1000.0, support_qty="Facturado")
+            lines |= self._line(budget, date=date(2059, month, 1), product_id=conf.id, partner_id=False,
+                                mercado='confeccion', price_input=1.0, support_note="Plan de Confección")
+            lines |= self._line(budget, date=date(2059, month, 1), product_id=esp.id, mercado='especiales',
+                                price_input=1.0, support_note="Plan de Especiales")
+        budget.invalidate_recordset()
+        self.assertEqual(budget.unsupported_count, 0, budget.line_ids.filtered(lambda l: not l.support_ok))
+        self.assertFalse(budget.approval_exceptions_text)
+        # A mano, sin soporte.
+        manual = self._line(budget, date=date(2059, 1, 1), product_id=self.env['product.product'].create({
+            'name': 'Tela a mano', 'type': 'consu', 'uom_id': self.uom_m.id}).id, price_input=1.0)
+        self.assertFalse(manual.support_ok)
+        # Cantidad cambiada sin motivo.
+        ind = lines.filtered(lambda l: l.mercado == 'industrial')[:1]
+        ind.qty_budget = 1200.0
+        self.assertFalse(ind.support_ok)
+        budget.invalidate_recordset()
+        self.assertEqual(budget.unsupported_count, 2)
+        self.assertIn("2 renglón(es) sin soporte", budget.approval_exceptions_text)
+        self.assertEqual(budget.action_qb_view_unsupported()['domain'][-1], ('support_ok', '=', False))
+        budget.with_user(self.manager).action_send_to_review()
+        with self.assertRaises(UserError):
+            budget.with_user(self.manager).action_approve()
+        ind.ajuste_motivo = "El cliente confirmó 1,200 m en su release"
+        manual.support_note = "Pedido abierto PO-77"
+        self.assertTrue(ind.support_ok and manual.support_ok)
+        # Dólares sin fuente del tipo de cambio.
+        usd = self.env.ref('base.USD')
+        usd.active = True
+        ind.write({'price_currency_id': usd.id})
+        budget.invalidate_recordset()
+        self.assertIn("tipo de cambio sin fuente", budget.approval_exceptions_text)
+        budget.rate_source = "FIX de Banxico del 30/11/2058"
+        budget.invalidate_recordset()
+        self.assertFalse(budget.approval_exceptions_text)
+        ind.price_currency_id = budget.currency_id  # sin tipo de cambio del mes contaría 0
+        budget.with_user(self.manager).action_approve()
+        self.assertEqual(budget.state, 'aprobado')
+
+    def test_28_meses_sin_venta_declarados(self):
+        """3.34.0: un mes en que un mercado no venderá se declara con motivo y no cuenta como vacío. La
+        propuesta declara sola los meses en que el mercado no vendió en el periodo base."""
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        self.Param.set_param('quimibond_sgi.sales_account_prefixes', income.code)
+        budget = self.Budget.create({'year': 2057})
+        self._line(budget, date=date(2057, 3, 1), price_input=1.0)
+        self.assertIn("Industrial", budget.empty_months_text)
+        before = budget.empty_month_count
+        self.env['qb.sales.budget.no.sale'].create({
+            'budget_id': budget.id, 'mercado': 'industrial', 'month': '4', 'note': 'Paro de planta del cliente'})
+        budget.invalidate_recordset()
+        self.assertEqual(budget.empty_month_count, before - 1)
+        self.assertNotIn("abril", budget.empty_months_text.split(";")[0])
+        # La propuesta: Industrial vendió solo en marzo del periodo base; los otros 11 meses quedan
+        # declarados con su motivo, y Confección y Especiales (sin venta) también.
+        move = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.client.id, 'invoice_date': date(2014, 3, 10),
+            'team_id': self.team_ind.id,
+            'invoice_line_ids': [(0, 0, {'product_id': self.product.id, 'quantity': 10.0, 'price_unit': 2.0,
+                                         'account_id': income.id, 'tax_ids': [(6, 0, [])]})]})
+        move.action_post()
+        proposal = self.Budget.browse(self.Budget.action_qb_build_proposal(
+            2015, base='anio', include_dev=False, use_forecast=False))
+        self.assertEqual(proposal.empty_month_count, 0)
+        declared = proposal.no_sale_ids.filtered(lambda d: d.mercado == 'industrial')
+        self.assertEqual(len(declared), 11)
+        self.assertNotIn('3', declared.mapped('month'))
+        self.assertIn("Sin venta de Industrial en 01/2014 del periodo base", declared.mapped('note'))
+        self.assertEqual(len(proposal.no_sale_ids), 35)
