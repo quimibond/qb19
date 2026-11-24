@@ -976,6 +976,8 @@ centavos de más; Odoo da 20,798.31 + 20,798.07. El cálculo vive en
 
 1.23.2: la regla «Bruto sin vacaciones» (`GROSS_WITHOUT_HOLIDAY`) lleva el concepto P01 del CFDI y salía como renglón propio, duplicando el sueldo (la diferencia en rojo lo marcó). El catálogo trae ahora el tipo «No reportar» y un concepto con esa regla. Generado en producción, la semana 48 cuadra con NOI en los 95 recibos salvo los 3 centavos ya conocidos (S-15 Infonavit, S-87 y S-96 ISR).
 
+1.25.0 (pedido de RH, 24-nov): el «Reporte de la nómina» muestra gravado y exento de cada percepción por trabajador (las deducciones no tienen gravado ni exento en el CFDI; sólo monto) y, al pie de cada recibo y en el resumen, **Total en especie** y **Total en efectivo** (neto menos lo que va en especie). El concepto marca «Se paga en especie» (`en_especie`). Nuevo concepto **VALES DE DESPENSA** (SAT 029, `TAX_MEAL_VOUCH` + `NO_TAX_MEAL_VOUCHER` exento), sin clave NOI hasta que RH la confirme: en la semana 47 la regla exenta no sale en el recibo de Odoo (`appears_on_payslip` apagado), así que el respaldo «nombre de la regla» no la veía, pero el neto sí la incluye (S-1: 6,116.46 = 5,266.46 en efectivo + 850 en vales). El Excel trae además la hoja «Detalle» (un renglón por trabajador y concepto con gravado y exento) y el «Percepción/deducción» gravado y exento por trabajador.
+
 ### 23. Reglas de turnos de RH, cuadrillas y festivos (1.24.0)
 
 Respuesta de RH (Miguel Medina) del 23-nov-2026, con el archivo «TURNOS 23nov

@@ -123,13 +123,23 @@ class TestSatPagos(SatCommon):
         bill2.invalidate_recordset()
         self._pay(bill2)
         self.assertEqual(self._row(cfdi2).issue, 'ok')
-        self._pago(syntage_payment('p2b', UUID_B, 500.0))
+        # Dos CFDI de pago distintos y vigentes en el SAT (1.30.0: sin su CFDI
+        # de pago, el segundo sería copia del primero y no contaría).
+        for n, sid in (('1', 'rep-p2'), ('2', 'rep-p2b')):
+            self._upsert(syntage_invoice('dddddddd-0000-4000-8000-0000000000e' + n, id=sid, type='P',
+                                         total=0, subtotal=0, paymentType=None))
+        for pid, sid in (('p2', 'rep-p2'), ('p2b', 'rep-p2b')):
+            obj = syntage_payment(pid, UUID_B, 500.0)
+            obj['batchPayment']['invoice'] = {'id': sid}
+            self._pago(obj)
         row = self._row(cfdi2)
         self.assertEqual(row.issue, 'complemento_duplicado')
         self.assertEqual(row.n_pagos, 2)
         self.assertAlmostEqual(row.saldo_sat, -500.0, places=2)
         # Un complemento cancelado deja de contar
-        self._pago(syntage_payment('p2b', UUID_B, 500.0), event_type='invoice_payment.deleted')
+        obj = syntage_payment('p2b', UUID_B, 500.0)
+        obj['batchPayment']['invoice'] = {'id': 'rep-p2b'}
+        self._pago(obj, event_type='invoice_payment.deleted')
         self.assertEqual(self._row(cfdi2).issue, 'ok')
 
     def test_import_batch_accepts_strings(self):
