@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="qb_flujo_config_form" model="ir.ui.view">
+        <field name="name">qb.flujo.config.form</field>
+        <field name="model">qb.flujo.config</field>
+        <field name="arch" type="xml">
+            <form string="Supuestos del flujo a 13 semanas">
+                <header>
+                    <button name="action_estimar_compromisos" type="object" string="Estimar compromisos con lo pagado"
+                            class="btn-primary"
+                            help="Recalcula el importe de cada compromiso con contacto: promedio de lo pagado por periodo con pago."/>
+                    <button name="action_cargar_quimibond" type="object" string="Cargar valores de Quimibond"
+                            help="Agrega las cuentas de caja y los compromisos del reporte diario de pagos y cobros. No borra nada."/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="company_id" readonly="id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Cobranza">
+                            <field name="cartera_desde"/>
+                            <field name="dias_incobrable"/>
+                        </group>
+                        <group string="Caja">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="saldo_minimo"/>
+                            <field name="incluir_pedidos"/>
+                            <field name="dias_pedido_vigente" invisible="not incluir_pedidos"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cuentas de caja" name="caja">
+                            <field name="caja_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="journal_id"/>
+                                    <field name="fuente"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Compromisos recurrentes" name="compromisos">
+                            <field name="compromiso_ids" context="{'active_test': False}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                    <field name="name"/>
+                                    <field name="categoria"/>
+                                    <field name="tipo"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="importe"/>
+                                    <field name="periodicidad"/>
+                                    <field name="dia_semana" invisible="periodicidad != 'semanal'"/>
+                                    <field name="dia_mes" invisible="periodicidad not in ('mensual', 'bimestral')"/>
+                                    <field name="meses_pares" invisible="periodicidad != 'bimestral'"/>
+                                    <field name="fecha" invisible="periodicidad != 'unica'"/>
+                                    <field name="fecha_fin" optional="hide"/>
+                                    <field name="partner_id" optional="show"/>
+                                    <field name="texto_memo" optional="hide"/>
+                                    <field name="texto_excluir" optional="hide"/>
+                                    <field name="periodos_historial" optional="hide"/>
+                                    <field name="importe_estimado" optional="show"/>
+                                    <field name="fecha_estimacion" optional="hide"/>
+                                    <button name="action_estimar" type="object" icon="fa-refresh" title="Estimar con lo pagado"
+                                            invisible="not partner_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Ajustes manuales" name="ajustes">
+                            <field name="ajuste_ids">
+                                <list editable="bottom">
+                                    <field name="fecha"/>
+                                    <field name="name"/>
+                                    <field name="tipo"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="importe"/>
+                                    <field name="nota"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Proveedores por revisar" name="revisar">
+                            <field name="partner_revisar_ids">
+                                <list>
+                                    <field name="display_name"/>
+                                    <field name="vat"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_flujo_config" model="ir.actions.server">
+        <field name="name">Flujo a 13 semanas</field>
+        <field name="model_id" ref="model_qb_flujo_config"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir()</field>
+    </record>
+
+    <menuitem id="menu_qb_flujo_report"
+              name="Flujo de efectivo a 13 semanas"
+              parent="account.menu_finance_reports"
+              action="action_qb_flujo_report"
+              sequence="36"
+              groups="account.group_account_readonly"/>
+    <menuitem id="menu_qb_flujo_config"
+              name="Flujo a 13 semanas"
+              parent="account.menu_finance_configuration"
+              action="action_qb_flujo_config"
+              sequence="92"
+              groups="account.group_account_user"/>
+</odoo>
