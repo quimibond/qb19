@@ -381,6 +381,15 @@ class TestIncidenciasCalculo(TransactionCase):
         r = calc.calcular_semana(LUNES, HORARIO, marcas, hoy=HOY, turno='7')
         self.assertEqual((r['retardos'], r['salidas_antes'], r['faltas']), (0, 0, 0))
 
+    def test_marcas_hasta_el_corte(self):
+        dia = _semana_normal()
+        cortadas = calc.marcas_hasta(dia, date(2026, 10, 14))
+        self.assertEqual({m.day for m in cortadas}, {12, 13, 14})
+        noches = _noches((14, 15))
+        self.assertEqual(calc.marcas_hasta(noches, date(2026, 10, 14)), noches[:4],
+                         'la noche que entra el miércoles cuenta completa aunque salga el jueves')
+        self.assertEqual(calc.marcas_hasta(dia, None), dia)
+
     def test_entradas_del_parametro(self):
         self.assertEqual(calc.leer_entradas('06:00, 18:00'), (dt(1, 1, 1, 6).time(), dt(1, 1, 1, 18).time()))
         self.assertEqual(calc.leer_entradas('basura'), calc.ENTRADAS_DEFAULT)
@@ -422,6 +431,8 @@ class TestIncidenciasGenerar(TransactionCase):
         self._checar(marcas)
         lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': date(2026, 10, 14)})
         self.assertEqual(lista.fecha_inicio, LUNES, "La semana empieza en lunes")
+        self.assertEqual(lista.corte, date(2026, 10, 14), "El corte por omisión es el miércoles, como NOI")
+        lista.corte = date(2026, 10, 18)     # semana completa: esta prueba es de las reglas, no del corte
         lista.action_generar()
         linea = lista.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
         self.assertEqual(len(linea), 1)
@@ -446,7 +457,7 @@ class TestIncidenciasGenerar(TransactionCase):
             'equipo_id': self.equipo.id, 'pin': '2903', 'employee_id': otro.id,
             'timestamp': m + timedelta(hours=6), 'state': 'emparejada',
         } for m in _noches((12, 13, 14, 15))])
-        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES})
+        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES, 'corte': date(2026, 10, 18)})
         lista.action_generar()
         linea = lista.linea_ids.filtered(lambda l: l.employee_id == otro)
         self.assertEqual(linea.turno, '4', 'el checador lo vio de noche')
@@ -472,10 +483,65 @@ class TestIncidenciasGenerar(TransactionCase):
     def test_generar_con_festivo(self):
         self.env['qb.nomina.festivo'].create({'fecha': date(2026, 10, 15), 'name': 'Festivo de prueba'})
         self._checar([m for m in _semana_normal() if m.day != 15])
-        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES})
+        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES, 'corte': date(2026, 10, 18)})
         lista.action_generar()
         linea = lista.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
         self.assertEqual((linea.dia_3, linea.faltas, linea.festivos_trabajados), ('F', 0, 0))
+
+    def test_corte_del_miercoles_pasa_jueves_a_domingo_a_la_semana_siguiente(self):
+        # Viernes 16 falta y sábado 17 seis horas de extra: la lista de la semana del 12 corta el miércoles
+        # y no los ve; la del 19 los paga como «semana anterior», sin volver a pagar lunes a miércoles.
+        self.empleado.qb_turno = '1'
+        marcas = [m for m in _semana_normal() if m.day != 16]
+        marcas += [dt(2026, 10, 14, 17, 0) + timedelta(hours=2)]          # miércoles: sale a las 19:00
+        marcas = [m for m in marcas if m != dt(2026, 10, 14, 17, 0)]
+        marcas += [dt(2026, 10, 17, 7, 0), dt(2026, 10, 17, 13, 0)]
+        self._checar(marcas)
+        Incidencias = self.env['qb.nomina.incidencias']
+        semana = Incidencias.create({'fecha_inicio': LUNES})
+        semana.action_generar()
+        linea = semana.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
+        self.assertEqual(semana.corte_aplicado, date(2026, 10, 14))
+        self.assertEqual((linea.faltas, linea.he_propuestas), (0, 1), 'solo la HE del miércoles')
+        self.assertEqual(linea.dia_4, '8', 'el viernes, después del corte, se proyecta')
+        self.assertTrue(linea.proyectado)
+        siguiente = Incidencias.create({'fecha_inicio': date(2026, 10, 19)})
+        siguiente.action_generar()
+        self.assertEqual(siguiente.pendientes_desde, date(2026, 10, 15))
+        linea2 = siguiente.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
+        self.assertEqual((linea2.ant_faltas, linea2.ant_he), (1, 6))
+        self.assertEqual(linea2.faltas, 1)
+        self.assertEqual(linea2.falta_horas, 8.0, 'el viernes no lleva las 2 horas de castigo')
+        self.assertEqual(linea2.he_propuestas, 6, 'el sábado; la del miércoles ya se pagó')
+        self.assertIn('Semana anterior (del 15/10 al domingo)', linea2.observaciones)
+        self.assertIn('Vi falta', linea2.observaciones)
+
+    def test_corte_en_domingo_no_deja_pendientes(self):
+        self.empleado.qb_turno = '1'
+        self._checar(_semana_normal() + [dt(2026, 10, 17, 7, 0), dt(2026, 10, 17, 13, 0)])
+        Incidencias = self.env['qb.nomina.incidencias']
+        semana = Incidencias.create({'fecha_inicio': LUNES, 'corte': date(2026, 10, 18)})
+        semana.action_generar()
+        self.assertEqual(semana.linea_ids.filtered(lambda l: l.employee_id == self.empleado).he_propuestas, 6)
+        siguiente = Incidencias.create({'fecha_inicio': date(2026, 10, 19)})
+        siguiente.action_generar()
+        self.assertFalse(siguiente.pendientes_desde)
+        linea = siguiente.linea_ids.filtered(lambda l: l.employee_id == self.empleado)
+        self.assertEqual((linea.ant_he, linea.he_propuestas), (0, 0))
+
+    def test_quien_paso_a_la_quincenal_no_sale_en_la_semanal(self):
+        liberar_referencias(self.env, 'Q-904')
+        otro = self.env['hr.employee'].create({'name': 'Prueba Pasó a Quincenal', 'registration_number': 'Q-904'})
+        otro.version_id.write({'schedule_pay': 'weekly', 'contract_date_start': date(2026, 1, 1),
+                               'resource_calendar_id': self.calendario.id})
+        lista = self.env['qb.nomina.incidencias'].create({'fecha_inicio': LUNES})
+        self.assertIn(otro.version_id, lista._contratos())
+        self.env['hr.version'].create({
+            'employee_id': otro.id, 'date_version': date(2026, 10, 1), 'schedule_pay': 'bi-weekly',
+            'contract_date_start': date(2026, 1, 1), 'resource_calendar_id': self.calendario.id,
+        })
+        self.assertNotIn(otro, [v.employee_id for v in lista._contratos()],
+                         'la versión quincenal más nueva manda aunque la semanal siga abierta')
 
     def test_semanas_que_paga_el_mes(self):
         Incidencias = self.env['qb.nomina.incidencias']
