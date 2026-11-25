@@ -139,7 +139,11 @@ class SatCfdiCompra(models.Model):
         pool = order_lines(orders).sorted(lambda l: (l.order_id.date_approve or l.order_id.create_date, l.id))
         quantities = {}
         for item in items:
-            match = next((l for l in pool if l.id not in quantities and same_price(l.price_unit, item['price'])
+            # Precio antes o después del descuento del concepto: hay proveedores
+            # que facturan el precio de lista con descuento y la orden trae el neto.
+            net = (item['amount'] - item['discount']) / item['qty'] if item['qty'] else item['price']
+            match = next((l for l in pool if l.id not in quantities
+                          and (same_price(l.price_unit, item['price']) or same_price(l.price_unit, net))
                           and item['qty'] <= l.qty_to_invoice + 0.001), None)
             if not match:
                 return empty
@@ -163,9 +167,7 @@ class SatCfdiCompra(models.Model):
     def _create_bill_from_purchase(self, match, journal):
         """Factura en borrador desde las líneas de orden de `match`."""
         self.ensure_one()
-        po_lines = match['lines']
-        quantities = match['quantities']
-        orders = po_lines.order_id
+        orders = match['lines'].order_id
         first = orders.sorted('id')[:1].with_company(self.company_id)
         vals = first.with_context(default_move_type='in_invoice')._prepare_invoice()
         vals.update({
@@ -173,26 +175,80 @@ class SatCfdiCompra(models.Model):
             'invoice_date': self._cfdi_local_date(),
             'invoice_origin': ', '.join(orders.mapped('name')),
             'ref': self._bill_ref(orders),
-            'invoice_line_ids': [],
+            'invoice_line_ids': self._purchase_line_commands(match),
         })
+        move = self.env['account.move'].with_company(self.company_id).with_context(
+            default_move_type='in_invoice').create(vals)
+        self._write_sat_claves(move)
+        return move
+
+    def _purchase_line_commands(self, match):
+        """Líneas de factura (Command.create) desde las líneas de orden de `match`."""
+        self.ensure_one()
+        quantities = match['quantities']
+        commands = []
         sequence = 10
-        for line in po_lines.sorted(lambda l: (l.order_id.id, l.sequence, l.id)):
+        for line in match['lines'].sorted(lambda l: (l.order_id.id, l.sequence, l.id)):
             line_vals = line.with_company(self.company_id)._prepare_account_move_line()
             if line.id in quantities:
                 line_vals['quantity'] = quantities[line.id]
             line_vals['sequence'] = sequence
             sequence += 1
-            vals['invoice_line_ids'].append(Command.create(line_vals))
-        move = self.env['account.move'].with_company(self.company_id).with_context(
-            default_move_type='in_invoice').create(vals)
-        # Clave del SAT de cada línea (para el semáforo y para aprender).
+            commands.append(Command.create(line_vals))
+        return commands
+
+    def _write_sat_claves(self, move):
+        """Clave del SAT de cada línea (para el semáforo y para aprender)."""
+        self.ensure_one()
         pairs = pair_lines_with_items(move.invoice_line_ids.filtered(lambda l: l.display_type == 'product'),
                                       cfdi_items(self))
         for line in move.invoice_line_ids:
             item = pairs.get(line.id)
             if item and item['clave']:
                 line.sat_clave = item['clave']
-        return move
+
+    def _rebuild_bill_from_purchase(self, move):
+        """Factura en borrador que nació sin orden: si ahora hay orden (Compras
+        la hizo después), cambia sus líneas por las de la orden. Devuelve cómo
+        se encontró la orden, o False."""
+        self.ensure_one()
+        if move.state != 'draft' or move.move_type != 'in_invoice' or 'purchase.order.line' not in self.env:
+            return False
+        lines = move.invoice_line_ids.filtered(lambda l: l.display_type == 'product')
+        if lines.purchase_line_id:
+            return False
+        match = self._match_purchase()
+        if not match['lines']:
+            return False
+        orders = match['lines'].order_id
+        move.write({
+            'invoice_line_ids': [Command.delete(l.id) for l in lines] + self._purchase_line_commands(match),
+            'invoice_origin': ', '.join(orders.mapped('name')),
+            'ref': self._bill_ref(orders),
+        })
+        self._write_sat_claves(move)
+        move.invoice_line_ids._sat_remember_account()
+        how = _('Orden de compra: %s') % match['how']
+        move.write({'sat_origen': how[:250]})
+        move.message_post(body=_('Rehecha desde la orden de compra (%s): Compras hizo la orden después de '
+                                 'que llegó el CFDI.') % match['how'],
+                          message_type='comment', subtype_xmlid='mail.mt_note')
+        return how
+
+    def _auto_bill_skip_reason(self):
+        """Etapa 1 (parámetro ``quimibond_sat.auto_bill_solo_con_orden``, «1»
+        si no existe): el cron solo crea las facturas que traen orden de compra.
+        Las demás se siguen creando con el botón del CFDI, y el cron las vuelve
+        a buscar al día siguiente por si Compras hizo la orden."""
+        reason = super()._auto_bill_skip_reason()
+        if reason:
+            return reason
+        flag = self.env['ir.config_parameter'].sudo().get_param('quimibond_sat.auto_bill_solo_con_orden', '1')
+        if str(flag).strip().lower() in ('0', 'false', 'no', ''):
+            return False
+        if self._match_purchase()['lines']:
+            return False
+        return _('sin orden de compra (o sin recibir): por ahora se crea con el botón «Crear factura desde el XML»')
 
     def _link_new_bill(self, move, how):
         """Liga este CFDI a la factura recién creada, con folio fiscal y XML."""
@@ -265,6 +321,7 @@ class SatCfdiCompra(models.Model):
                 how = _('Sin orden de compra: regla del proveedor')
             self._apply_bill_rules(move)
         move.write({'sat_auto_bill': True, 'sat_origen': how[:250]})
+        move.invoice_line_ids._sat_remember_account()
         move._sat_semaforo_update()
         return move
 

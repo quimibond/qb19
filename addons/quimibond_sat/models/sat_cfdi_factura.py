@@ -55,8 +55,17 @@ class SatCfdiFactura(models.Model):
         if self.suggested_move_id:
             return _('hay una factura sugerida en Odoo: acéptela o recházela')
         # Publicada o en borrador, mismo RFC y monto: probablemente ya se capturó.
-        if self._reconcile_candidates(days=self.AUTO_BILL_CANDIDATE_DAYS):
+        # Una factura ya ligada a otro CFDI vigente por todo su total no cuenta:
+        # es otra compra del mismo monto (8 rollos facturados uno por uno).
+        candidates = self._reconcile_candidates(days=self.AUTO_BILL_CANDIDATE_DAYS).filtered(
+            lambda m: abs(m.amount_total) - sum(m.sat_cfdi_ids.filtered(
+                lambda c: c != self and c.estado_sat != 'cancelado' and c.tipo in ('I', 'E')).mapped('total')) > 1.0)
+        if candidates:
             return _('hay una factura de Odoo del mismo proveedor y monto: concílielas')
+        return False
+
+    def _auto_bill_skip_reason(self):
+        """Por qué el cron (no el botón) deja este CFDI para después, o False."""
         return False
 
     def _has_cfdi_decoder(self, move_type, attachment):
@@ -154,12 +163,16 @@ class SatCfdiFactura(models.Model):
             ]
             if company.sat_data_since:
                 domain.append(('fecha_emision', '>=', fields.Datetime.to_datetime(company.sat_data_since)))
-            for cfdi in self.sudo().search(domain, order='fecha_emision, id', limit=limit):
-                blocker = cfdi._auto_bill_blocker()
+            done = 0
+            for cfdi in self.sudo().search(domain, order='fecha_emision, id'):
+                if done >= limit:
+                    break
+                blocker = cfdi._auto_bill_blocker() or cfdi._auto_bill_skip_reason()
                 if blocker:
                     if cfdi.auto_bill_note != blocker:
                         cfdi.write({'auto_bill_note': blocker})
                     continue
+                done += 1
                 try:
                     cfdi._create_bill_from_xml(company.sat_auto_bill_journal_id)
                     created += 1
