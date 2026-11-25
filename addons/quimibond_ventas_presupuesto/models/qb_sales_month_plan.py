@@ -72,7 +72,14 @@ class QbSalesMonthPlan(models.Model):
                                   readonly=True)
     amount_annual = fields.Monetary(string="Presupuesto anual del mes", compute='_compute_annual',
                                     help="Lo que el presupuesto anual aprobado del año trae para este mes.")
-    amount_annual_diff = fields.Monetary(string="Diferencia contra el anual", compute='_compute_annual')
+    amount_annual_diff = fields.Monetary(
+        string="Diferencia contra el anual", compute='_compute_annual',
+        help="Solo los mercados que el anual trae este mes: lo del mes en esos mercados menos el anual.")
+    # 3.36.0 (Jose, 25-nov): la REV2 de 2026 no trae Industrial ni Proyectos en noviembre y diciembre.
+    # Un mercado sin renglones en el anual del mes no se compara (misma regla que el cumplimiento, 3.22.0).
+    amount_no_annual = fields.Monetary(
+        string="Del mes en mercados sin anual", compute='_compute_annual',
+        help="Lo del mes en los mercados que el presupuesto anual no trae este mes; no entra a la diferencia.")
 
     _company_month_uniq = models.Constraint(
         'unique (company_id, month)', "Ya hay un presupuesto de ese mes en la compañía.")
@@ -120,14 +127,19 @@ class QbSalesMonthPlan(models.Model):
         for line in self._qb_annual_lines():
             annual_by[line.mercado or 'otro'] += line.amount_budget or 0.0
 
-        def row(label, plan_amt, annual_amt):
+        def row(label, plan_amt, annual_amt, covered=True):
+            if not covered:
+                # 3.36.0: el anual no trae este mercado en el mes; no hay contra qué comparar.
+                return {'label': label, 'annual': "El anual no trae este mes", 'plan': '{:,.0f}'.format(plan_amt),
+                        'diff': '', 'pct': ''}
             diff = plan_amt - annual_amt
             return {'label': label, 'annual': '{:,.0f}'.format(annual_amt), 'plan': '{:,.0f}'.format(plan_amt),
                     'diff': '{:,.0f}'.format(diff),
                     'pct': '{:.1f} %'.format(diff / annual_amt * 100) if annual_amt else ''}
-        rows = [row(label, plan_by.get(key, 0.0), annual_by.get(key, 0.0))
-                for key, label in MARKETS if plan_by.get(key) or annual_by.get(key)]
-        total = row("Total", sum(plan_by.values()), sum(annual_by.values()))
+        rows = [row(label, plan_by.get(key, 0.0), annual_by.get(key, 0.0), key in annual_by)
+                for key, label in MARKETS if plan_by.get(key) or key in annual_by]
+        covered_plan = sum(v for k, v in plan_by.items() if k in annual_by)
+        total = row("Total de los mercados con anual", covered_plan, sum(annual_by.values()))
         return rows, total, bool(annual_by)
 
     @api.depends('company_id', 'month', 'amount_total')
@@ -135,8 +147,12 @@ class QbSalesMonthPlan(models.Model):
         """El presupuesto anual aprobado vigente del año (no el que había al armar: si después se
         aprueba otra revisión, el mes se compara contra esa)."""
         for plan in self:
-            plan.amount_annual = sum(plan._qb_annual_lines().mapped('amount_budget'))
-            plan.amount_annual_diff = plan.amount_total - plan.amount_annual
+            annual_lines = plan._qb_annual_lines()
+            covered = set(annual_lines.mapped(lambda l: l.mercado or 'otro'))
+            in_covered = sum(line.amount for line in plan.line_ids if (line.mercado or 'otro') in covered)
+            plan.amount_annual = sum(annual_lines.mapped('amount_budget'))
+            plan.amount_annual_diff = in_covered - plan.amount_annual
+            plan.amount_no_annual = plan.amount_total - in_covered
 
     @api.constrains('month')
     def _check_month(self):
@@ -392,9 +408,11 @@ class QbSalesMonthPlan(models.Model):
         attachment = self._qb_pdf_attachment()
         self.write({'state': 'enviado', 'sent_date': fields.Datetime.now(), 'sent_by_id': self.env.uid})
         fmt = '{:,.0f}'.format
-        annual = ("Presupuesto anual del mes: %s (diferencia %s)." % (
+        annual = ("Presupuesto anual del mes: %s (diferencia %s en los mercados que trae)." % (
             fmt(self.amount_annual), fmt(self.amount_annual_diff))
             if self.amount_annual else "Sin presupuesto anual aprobado para este mes.")
+        if self.amount_annual and self.amount_no_annual:
+            annual += " El anual no trae este mes mercados por %s del mes." % fmt(self.amount_no_annual)
         body = Markup("<p>%s: total %s %s (productos de línea %s; proyectos %s).</p><p>%s</p><p>%s</p>"
                       "<p>Detalle en el PDF adjunto (F-P-A28-14).</p>") % (
             self.name, fmt(self.amount_total), self.currency_id.name or '', fmt(self.amount_linea),
@@ -568,7 +586,10 @@ class QbSalesMonthPlanCompare(models.Model):
     amount_plan = fields.Monetary(string="Importe del mes", readonly=True)
     amount_annual = fields.Monetary(string="Presupuesto anual del mes", readonly=True)
     amount_diff = fields.Monetary(string="Diferencia", readonly=True,
-                                  help="Presupuesto del mes menos lo que el anual traía para el mes.")
+                                  help="Presupuesto del mes menos lo que el anual traía para el mes. Vacía si el "
+                                       "anual no trae el mercado este mes.")
+    # 3.36.0: un mercado sin renglones en el anual del mes no se compara.
+    annual_note = fields.Char(string="Anual", readonly=True)
     diff_pct = fields.Float(string="Diferencia %", readonly=True, digits=(16, 1), aggregator=None)
 
     def init(self):
@@ -582,16 +603,19 @@ class QbSalesMonthPlanCompare(models.Model):
                        x.plan_id, p.company_id, c.currency_id, x.mercado,
                        SUM(x.amount_plan) AS amount_plan,
                        SUM(x.amount_annual) AS amount_annual,
-                       SUM(x.amount_plan) - SUM(x.amount_annual) AS amount_diff,
+                       CASE WHEN SUM(x.n_annual) > 0 THEN SUM(x.amount_plan) - SUM(x.amount_annual)
+                       END AS amount_diff,
+                       CASE WHEN SUM(x.n_annual) = 0 THEN 'El anual no trae este mes' END AS annual_note,
                        CASE WHEN SUM(x.amount_annual) <> 0
                             THEN (SUM(x.amount_plan) - SUM(x.amount_annual)) / SUM(x.amount_annual) * 100
                        END AS diff_pct
                   FROM (
                         SELECT pl.plan_id, COALESCE(pl.mercado, 'otro') AS mercado,
-                               COALESCE(pl.amount, 0) AS amount_plan, 0.0 AS amount_annual
+                               COALESCE(pl.amount, 0) AS amount_plan, 0.0 AS amount_annual,
+                               0 AS n_annual
                           FROM qb_sales_month_plan_line pl
                         UNION ALL
-                        SELECT mp.id, COALESCE(bl.mercado, 'otro'), 0.0, COALESCE(bl.amount_budget, 0)
+                        SELECT mp.id, COALESCE(bl.mercado, 'otro'), 0.0, COALESCE(bl.amount_budget, 0), 1
                           FROM qb_sales_month_plan mp
                           JOIN sgi_sales_budget b ON b.company_id = mp.company_id AND b.kind = 'presupuesto'
                                AND b.state = 'aprobado' AND b.year = EXTRACT(YEAR FROM mp.month)::int
@@ -601,5 +625,5 @@ class QbSalesMonthPlanCompare(models.Model):
                   JOIN qb_sales_month_plan p ON p.id = x.plan_id
                   JOIN res_company c ON c.id = p.company_id
                  GROUP BY x.plan_id, p.company_id, c.currency_id, x.mercado
-                HAVING SUM(x.amount_plan) <> 0 OR SUM(x.amount_annual) <> 0
+                HAVING SUM(x.amount_plan) <> 0 OR SUM(x.n_annual) > 0
             )""" % self._table)
