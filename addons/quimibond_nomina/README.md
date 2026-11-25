@@ -1040,6 +1040,37 @@ Correo de Miguel Medina del 24-nov-2026, en respuesta a las dudas de 1.24.0:
   P55 y P55_2). En los reportes NOI sale como «FESTIVO TRABAJADO», sin clave
   hasta que RH la confirme.
 
+### 25. Corte de los miércoles, como NOI, y quien pasó a la quincenal (1.27.0)
+
+Dudas de Miguel Medina al correr la semana 49 (25-nov-2026):
+
+- **Corte de la lista** (`corte`, «Corte»): último día que paga la lista,
+  por omisión el **miércoles** (parámetro `quimibond_nomina.incidencias_corte`,
+  0 lunes … 6 domingo; 2 si no está). RH reporta a NOI el miércoles y paga el
+  jueves, así que lo de jueves a domingo (faltas, tiempo extra, las 6 HE del
+  turno 4, prima dominical) se paga la semana siguiente. «Generar» mide la
+  semana solo con los turnos que empiezan a más tardar el corte
+  (`calc.marcas_hasta`; el de noche que entra el miércoles cuenta completo) y
+  proyecta el resto. Solo cuentan días terminados: generada el miércoles, la
+  lista cuenta hasta el martes (`corte_aplicado`, «Contado hasta») y el
+  miércoles pasa a la siguiente.
+- **Semana anterior**: cada lista vuelve a medir la semana anterior completa y
+  le resta lo que esa semana ya contó hasta su `corte_aplicado` (sin lista, o
+  lista de antes de 1.27.0: hasta su miércoles). La diferencia se suma a
+  faltas, horas de falta, retardos, HE propuestas, días con extra, prima
+  dominical y festivos, se ve en las columnas «sem. anterior» y en una nota
+  «Semana anterior (del … al domingo)». Así no se enciman dos listas ni se
+  pierden días: cada día se paga una vez. Las reglas semanales (turno 3,
+  turno 4, prima de los turnos 5 y 6) se aplican sobre la semana completa de
+  lunes a domingo, como antes; los nueve dobles se reparten sobre el total que
+  paga la lista, como NOI. Con corte en domingo la lista paga su semana entera y
+  la siguiente no trae pendientes.
+- **Quien pasó a la quincenal ya no sale en la semanal**: `_contratos` toma la
+  versión vigente al domingo de cada persona y solo después deja fuera a quien
+  no es semanal. Antes buscaba solo versiones semanales, y una semanal vieja sin
+  fecha de fin (Carlos Luna, Q-129, quincenal desde el 26-oct-2026) seguía
+  saliendo.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es

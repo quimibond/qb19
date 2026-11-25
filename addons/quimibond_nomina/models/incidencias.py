@@ -41,6 +41,11 @@ _logger = logging.getLogger(__name__)
 PARAM_ENTRADAS = 'quimibond_nomina.incidencias_entradas'
 PARAM_COMIDA_MAX = 'quimibond_nomina.incidencias_comida_max'
 PARAM_PREMIO_UN_RETARDO = 'quimibond_nomina.premio_asistencia_un_retardo'   # % con un solo retardo
+PARAM_CORTE = 'quimibond_nomina.incidencias_corte'     # último día que cuenta la lista: 0 lunes … 6 domingo
+CORTE_DEFAULT = 2                                        # miércoles, como NOI (1.27.0)
+# Lo que se calcula de nuevo de la semana anterior: de su corte al domingo.
+CAMPOS_PENDIENTES = ('faltas', 'falta_horas', 'retardos', 'retardo_min', 'extra_horas', 'he_propuestas',
+                     'dias_con_extra', 'dom_horas', 'festivos_trabajados')
 TZ_DEFAULT = 'America/Mexico_City'
 ESTADOS_CHECADA_FUERA = ('ignorada', 'sin_empleado', 'error')
 CODIGOS_INCAPACIDAD = ('LEAVE1000', 'LEAVE1100', 'LEAVE1200')
@@ -76,6 +81,21 @@ class QbNominaIncidencias(models.Model):
                              string="Estado", default='borrador', required=True, tracking=True)
     linea_ids = fields.One2many('qb.nomina.incidencias.linea', 'incidencias_id', string="Personas")
     generada_en = fields.Datetime(string="Generada el", readonly=True)
+    corte = fields.Date(
+        string="Corte", tracking=True,
+        default=lambda self: self._corte_default(self._lunes(fields.Date.context_today(self))),
+        help="Último día de la semana que paga esta lista, como el corte de NOI (miércoles). Lo que pasa del "
+             "día siguiente al domingo (faltas, tiempo extra, prima dominical) se paga en la lista de la "
+             "semana siguiente como «Semana anterior». Si se pone el domingo, la lista cubre la semana "
+             "completa. Se ajusta solo a los días ya terminados al generar.")
+    corte_aplicado = fields.Date(
+        string="Contado hasta", readonly=True,
+        help="Último día que de verdad contó la lista al generarla: el corte, o ayer si se generó antes de "
+             "que terminara el corte. La lista siguiente toma de nuevo lo que pasó después de este día.")
+    pendientes_desde = fields.Date(
+        string="Semana anterior desde", readonly=True,
+        help="Primer día de la semana anterior que esta lista pagó como pendiente (el día después del corte "
+             "de la lista anterior). Vacío: no hubo pendientes.")
     n_lineas = fields.Integer(string="Renglones", compute='_compute_resumen')
     n_faltas = fields.Integer(string="Faltas de la semana", compute='_compute_resumen')
     n_sin_checadas = fields.Integer(string="Personas sin checadas", compute='_compute_resumen')
@@ -83,6 +103,15 @@ class QbNominaIncidencias(models.Model):
     @staticmethod
     def _lunes(dia):
         return dia - timedelta(days=dia.weekday()) if dia else dia
+
+    @api.model
+    def _corte_default(self, lunes):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_CORTE)
+        try:
+            dia = int(valor) if valor not in (None, False, '') else CORTE_DEFAULT
+        except (TypeError, ValueError):
+            dia = CORTE_DEFAULT
+        return lunes and lunes + timedelta(days=min(max(dia, 0), 6))
 
     @api.depends('fecha_inicio')
     def _compute_fecha_fin(self):
@@ -107,13 +136,23 @@ class QbNominaIncidencias(models.Model):
     def _onchange_fecha_inicio(self):
         if self.fecha_inicio and self.fecha_inicio.weekday():
             self.fecha_inicio = self._lunes(self.fecha_inicio)
+        if self.fecha_inicio:
+            self.corte = self._corte_default(self.fecha_inicio)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('fecha_inicio'):
                 vals['fecha_inicio'] = self._lunes(fields.Date.to_date(vals['fecha_inicio']))
+                if 'corte' not in vals:
+                    vals['corte'] = self._corte_default(vals['fecha_inicio'])
         return super().create(vals_list)
+
+    @api.constrains('corte', 'fecha_inicio')
+    def _check_corte(self):
+        for rec in self:
+            if rec.corte and rec.fecha_inicio and not rec.fecha_inicio <= rec.corte <= rec.fecha_fin:
+                raise UserError(_("El corte tiene que caer entre el lunes y el domingo de la semana."))
 
     # ------------------------------------------------------------------
     # Generar
@@ -134,28 +173,33 @@ class QbNominaIncidencias(models.Model):
         """Nómina semanal de planta: referencia ``S-`` (los empleados son ``Q-`` y ``C-``)."""
         return (empleado.sudo().registration_number or '').upper().startswith('S-')
 
-    def _contratos(self):
-        """Un contrato vigente por persona de la nómina semanal en la semana."""
+    def _contratos(self, lunes=None):
+        """Un contrato vigente por persona de la nómina semanal en la semana.
+
+        Se toma la versión vigente al domingo de cada persona, sea cual sea su periodicidad, y solo después
+        se deja fuera a quien no es semanal: quien pasó de la semanal a la quincenal (una versión quincenal
+        más nueva) ya no sale en la lista aunque su versión semanal vieja siga abierta (Q-129, 25-nov-2026)."""
         self.ensure_one()
+        lunes = lunes or self.fecha_inicio
+        domingo = lunes + timedelta(days=6)
         Version = self.env['hr.version'].with_context(active_test=False)
         versiones = Version.search([
             ('company_id', '=', self.company_id.id),
             ('employee_id', '!=', False),
-            ('schedule_pay', '=', 'weekly'),
             ('contract_date_start', '!=', False),
-            ('contract_date_start', '<=', self.fecha_fin),
-            '|', ('contract_date_end', '=', False), ('contract_date_end', '>=', self.fecha_inicio),
+            ('contract_date_start', '<=', domingo),
+            '|', ('contract_date_end', '=', False), ('contract_date_end', '>=', lunes),
         ], order='employee_id, date_version desc, id desc')
         por_empleado = {}
         for v in versiones:
             if v.employee_id.id in por_empleado:
                 continue
-            if v.date_version and v.date_version > self.fecha_fin:
-                continue
-            if not v.employee_id.active and not (v.contract_date_end and v.contract_date_end >= self.fecha_inicio):
+            if v.date_version and v.date_version > domingo:
                 continue
             por_empleado[v.employee_id.id] = v
-        return list(por_empleado.values())
+        return [v for v in por_empleado.values()
+                if v.schedule_pay == 'weekly'
+                and (v.employee_id.active or (v.contract_date_end and v.contract_date_end >= lunes))]
 
     @staticmethod
     def _programado(version):
@@ -169,11 +213,12 @@ class QbNominaIncidencias(models.Model):
     def _zona(self, version):
         return ZoneInfo(version.resource_calendar_id.tz or self.env.user.tz or TZ_DEFAULT)
 
-    def _marcas(self, empleados, zona):
+    def _marcas(self, empleados, zona, lunes=None):
         """Checadas locales por empleado, con un día de margen a cada lado (el
         turno de noche del domingo termina el lunes)."""
-        desde = datetime.combine(self.fecha_inicio - timedelta(days=1), datetime.min.time())
-        hasta = datetime.combine(self.fecha_fin + timedelta(days=2), datetime.min.time())
+        lunes = lunes or self.fecha_inicio
+        desde = datetime.combine(lunes - timedelta(days=1), datetime.min.time())
+        hasta = datetime.combine(lunes + timedelta(days=8), datetime.min.time())
         checadas = self.env['qb.checada'].sudo().search([
             ('employee_id', 'in', empleados.ids),
             ('state', 'not in', ESTADOS_CHECADA_FUERA),
@@ -185,14 +230,16 @@ class QbNominaIncidencias(models.Model):
             marcas[ch.employee_id.id].append(local)
         return marcas
 
-    def _ausencias(self, empleados, programado_por_empleado):
+    def _ausencias(self, empleados, programado_por_empleado, lunes=None):
         """``{employee_id: {date: (código, horas_sin_goce)}}`` de las ausencias aprobadas."""
+        lunes = lunes or self.fecha_inicio
+        domingo = lunes + timedelta(days=6)
         ausencias = defaultdict(dict)
         leaves = self.env['hr.leave'].sudo().search([
             ('employee_id', 'in', empleados.ids),
             ('state', '=', 'validate'),
-            ('request_date_from', '<=', self.fecha_fin),
-            ('request_date_to', '>=', self.fecha_inicio),
+            ('request_date_from', '<=', domingo),
+            ('request_date_to', '>=', lunes),
         ])
         for leave in leaves:
             codigo_entrada = leave.holiday_status_id.work_entry_type_id.code or ''
@@ -204,8 +251,8 @@ class QbNominaIncidencias(models.Model):
                 codigo = 'V'
             else:
                 codigo = 'P'
-            dia = max(leave.request_date_from, self.fecha_inicio)
-            fin = min(leave.request_date_to or leave.request_date_from, self.fecha_fin)
+            dia = max(leave.request_date_from, lunes)
+            fin = min(leave.request_date_to or leave.request_date_from, domingo)
             while dia <= fin:
                 horas = 0.0
                 if codigo == calc.CODIGO_SIN_GOCE:
@@ -217,12 +264,12 @@ class QbNominaIncidencias(models.Model):
                 dia += timedelta(days=1)
         return ausencias
 
-    def _turno_semana(self, empleado, version, marcas, ausencias, hoy):
+    def _turno_semana(self, empleado, version, marcas, ausencias, hoy, lunes=None):
         """``(código, nota)``: el turno con que se mide la semana. El del checador, con el de RH como
         confirmación; si no coinciden gana el del checador y queda la nota. Sin checadas, el de RH."""
         rh = empleado.sudo().qb_turno or None
         codigo, _puntajes = calc.inferir_turno(
-            self.fecha_inicio, marcas, ausencias, version.contract_date_start, version.contract_date_end,
+            lunes or self.fecha_inicio, marcas, ausencias, version.contract_date_start, version.contract_date_end,
             hoy, preferido=rh)
         if not codigo:
             return rh, None
@@ -241,65 +288,149 @@ class QbNominaIncidencias(models.Model):
             rec._generar()
         return True
 
-    def _generar(self):
-        self.ensure_one()
-        contratos = self._contratos()
+    def _calcular(self, lunes, contratos, hoys):
+        """Corre las reglas de la semana del ``lunes`` para cada contrato, una vez por cada fecha de ``hoys``
+        (los días posteriores se proyectan). ``{employee_id: (version, turno, nota_turno, [r, …])}``; el
+        turno se infiere con la primera fecha."""
         empleados = self.env['hr.employee'].with_context(active_test=False).browse(
             [v.employee_id.id for v in contratos])
         programado = {v.employee_id.id: self._programado(v) for v in contratos}
         zona = self._zona(contratos[0]) if contratos else ZoneInfo(TZ_DEFAULT)
-        marcas = self._marcas(empleados, zona)
-        ausencias = self._ausencias(empleados, programado)
+        marcas = self._marcas(empleados, zona, lunes)
+        ausencias = self._ausencias(empleados, programado, lunes)
         entradas = self._entradas()
         comida_max = self._comida_max()
-        festivos = self.env['qb.nomina.festivo'].qb_festivos(self.fecha_inicio, self.fecha_fin, self.company_id)
+        festivos = self.env['qb.nomina.festivo'].qb_festivos(lunes, lunes + timedelta(days=6), self.company_id)
+        resultado = {}
+        for version in contratos:
+            emp = version.employee_id
+            turno, nota_turno = self._turno_semana(emp, version, marcas.get(emp.id, []),
+                                                   ausencias.get(emp.id, {}), hoys[0], lunes)
+            rs = [calc.calcular_semana(
+                lunes, programado[emp.id], calc.marcas_hasta(marcas.get(emp.id, []), hoy),
+                ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
+                hoy, entradas, turno=turno if turno in calc.TURNOS else None,
+                comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos,
+                he_fijas=bool(emp.sudo().qb_cuadrilla_id.he_fijas)) for hoy in hoys]
+            resultado[emp.id] = (version, turno, nota_turno, rs)
+        return resultado
+
+    def _corte_anterior(self):
+        """Último día de la semana anterior que ya pagó su lista: lo que contó de verdad la lista anterior
+        (``corte_aplicado``) o, si no hay lista o es de antes de 1.27.0, el corte por omisión (miércoles)."""
+        self.ensure_one()
+        lunes_ant = self.fecha_inicio - timedelta(days=7)
+        anteriores = self.search([('fecha_inicio', '=', lunes_ant), ('company_id', '=', self.company_id.id),
+                                  ('id', '!=', self.id), ('corte_aplicado', '!=', False)], order='id desc')
+        # Manda la que se pasó a recibos, luego la revisada, luego la más nueva.
+        orden = {'pasada': 0, 'revisada': 1, 'borrador': 2}
+        anterior = min(anteriores, key=lambda l: orden.get(l.state, 3), default=None)
+        return anterior.corte_aplicado if anterior else self._corte_default(lunes_ant)
+
+    def _pendientes(self, hoy):
+        """Lo de la semana anterior que su lista no alcanzó a contar (del día después de su corte al domingo):
+        las reglas de esa semana completa menos las de esa semana hasta su corte. ``(desde, {employee_id:
+        {campo: valor, 'notas': [...]}})``."""
+        lunes_ant = self.fecha_inicio - timedelta(days=7)
+        domingo_ant = lunes_ant + timedelta(days=6)
+        corte_ant = self._corte_anterior()
+        if not corte_ant or corte_ant >= domingo_ant:
+            return False, {}
+        contratos = self._contratos(lunes_ant)
+        completo = min(domingo_ant, hoy)
+        calculos = self._calcular(lunes_ant, contratos, [completo, corte_ant])
+        pendientes = {}
+        for emp_id, (_version, _turno, _nota, (r_total, r_corte)) in calculos.items():
+            p = {c: max(0, r_total[c] - r_corte[c]) for c in CAMPOS_PENDIENTES}
+            vistas = set(r_corte['notas'])
+            p['notas'] = [n for n in r_total['notas'] if n not in vistas and not n.startswith('Sin checadas')]
+            if any(p[c] for c in CAMPOS_PENDIENTES) or p['notas']:
+                pendientes[emp_id] = p
+        return corte_ant + timedelta(days=1), pendientes
+
+    def _generar(self):
+        self.ensure_one()
         hoy = fields.Date.context_today(self)
+        corte = self.corte or self._corte_default(self.fecha_inicio)
+        # Solo cuentan los días ya terminados: un día en curso se proyecta y lo toma la lista siguiente.
+        corte_aplicado = max(min(corte, hoy - timedelta(days=1)), self.fecha_inicio - timedelta(days=1))
+        contratos = self._contratos()
+        calculos = self._calcular(self.fecha_inicio, contratos, [corte_aplicado])
+        desde_ant, pendientes = self._pendientes(hoy)
         previas = {l.employee_id.id: l for l in self.linea_ids}
         vistos = set()
         Linea = self.env['qb.nomina.incidencias.linea']
         for version in contratos:
             emp = version.employee_id
-            turno, nota_turno = self._turno_semana(emp, version, marcas.get(emp.id, []),
-                                                   ausencias.get(emp.id, {}), hoy)
-            r = calc.calcular_semana(
-                self.fecha_inicio, programado[emp.id], marcas.get(emp.id, []),
-                ausencias.get(emp.id, {}), version.contract_date_start, version.contract_date_end,
-                hoy, entradas, turno=turno if turno in calc.TURNOS else None,
-                comida_max=comida_max, sindicalizado=self._sindicalizado(emp), festivos=festivos,
-                he_fijas=bool(emp.sudo().qb_cuadrilla_id.he_fijas))
+            _v, turno, nota_turno, (r,) = calculos[emp.id]
             if nota_turno:
                 r['notas'].insert(0, nota_turno)
+            ant = pendientes.get(emp.id, {})
+            if ant:
+                partes = []
+                if ant['faltas']:
+                    partes.append(_("%s falta(s)", ant['faltas']))
+                if ant['he_propuestas']:
+                    partes.append(_("%s HE", ant['he_propuestas']))
+                if ant['dom_horas']:
+                    partes.append(_("%s h de prima dominical", calc._fmt(ant['dom_horas'])))
+                if ant['festivos_trabajados']:
+                    partes.append(_("%s festivo(s) trabajado(s)", ant['festivos_trabajados']))
+                if ant['retardos']:
+                    partes.append(_("%s retardo(s)", ant['retardos']))
+                encabezado = _("Semana anterior (del %(d)s al domingo)%(p)s",
+                               d=desde_ant.strftime('%d/%m'), p=(': ' + ', '.join(partes)) if partes else '')
+                r['notas'] += [encabezado] + ['  ' + n for n in ant['notas']]
             vals = {
                 'version_id': version.id, 'turno': turno or False, 'turno_rh': emp.sudo().qb_turno or False,
                 'dia_0': r['dias'][0], 'dia_1': r['dias'][1], 'dia_2': r['dias'][2], 'dia_3': r['dias'][3],
                 'dia_4': r['dias'][4], 'dia_5': r['dias'][5], 'dia_6': r['dias'][6],
-                'horas_base': r['horas_base'], 'faltas': r['faltas'], 'falta_horas': r['falta_horas'],
+                'horas_base': r['horas_base'],
+                'faltas': r['faltas'] + ant.get('faltas', 0),
+                'falta_horas': r['falta_horas'] + ant.get('falta_horas', 0.0),
                 'incap_dias': r['incap_dias'], 'horas_sin_goce': r['horas_sin_goce'],
-                'retardos': r['retardos'], 'retardo_min': r['retardo_min'],
+                'retardos': r['retardos'] + ant.get('retardos', 0),
+                'retardo_min': r['retardo_min'] + ant.get('retardo_min', 0),
                 'salidas_antes': r['salidas_antes'], 'salida_min': r['salida_min'],
-                'extra_checador': round(r['extra_horas'], 2), 'he_propuestas': r['he_propuestas'],
-                'dias_con_extra': r['dias_con_extra'], 'dom_horas': r['dom_horas'],
+                'extra_checador': round(r['extra_horas'] + ant.get('extra_horas', 0.0), 2),
+                'he_propuestas': r['he_propuestas'] + ant.get('he_propuestas', 0),
+                'dias_con_extra': r['dias_con_extra'] + ant.get('dias_con_extra', 0),
+                'dom_horas': r['dom_horas'] + ant.get('dom_horas', 0.0),
                 'comida_min': r['comida_min'], 'comidas_largas': r['comidas_largas'],
                 'sin_checadas': r['sin_checadas'], 'proyectado': r['proyectado'],
-                'festivos_trabajados': r['festivos_trabajados'],
+                'festivos_trabajados': r['festivos_trabajados'] + ant.get('festivos_trabajados', 0),
+                'ant_faltas': ant.get('faltas', 0), 'ant_he': ant.get('he_propuestas', 0),
+                'ant_dom': ant.get('dom_horas', 0.0), 'ant_festivos': ant.get('festivos_trabajados', 0),
                 'observaciones': '\n'.join(r['notas']) or False,
             }
             linea = previas.get(emp.id)
             if linea:
                 # Lo que capturó el supervisor no se pisa; solo se propone si sigue igual a la propuesta anterior.
                 if linea.he_autorizadas == linea.he_propuestas:
-                    vals['he_autorizadas'] = r['he_propuestas']
+                    vals['he_autorizadas'] = vals['he_propuestas']
                 linea.write(vals)
             else:
                 vals.update({'incidencias_id': self.id, 'employee_id': emp.id,
-                             'he_autorizadas': r['he_propuestas']})
+                             'he_autorizadas': vals['he_propuestas']})
                 Linea.create(vals)
             vistos.add(emp.id)
         (self.linea_ids.filtered(lambda l: l.employee_id.id not in vistos)).unlink()
-        self.generada_en = fields.Datetime.now()
-        self.message_post(body=_("Generada desde el checador: %(n)s personas, %(f)s faltas, %(s)s sin checadas.",
-                                 n=len(contratos), f=sum(self.linea_ids.mapped('faltas')),
-                                 s=len(self.linea_ids.filtered('sin_checadas'))))
+        sin_renglon = [e for e in pendientes if e not in vistos]
+        self.write({'generada_en': fields.Datetime.now(), 'corte_aplicado': corte_aplicado,
+                    'pendientes_desde': desde_ant if pendientes else False})
+        cuerpo = _("Generada desde el checador: %(n)s personas, %(f)s faltas, %(s)s sin checadas. "
+                   "Cuenta del %(i)s al %(c)s.",
+                   n=len(contratos), f=sum(self.linea_ids.mapped('faltas')),
+                   s=len(self.linea_ids.filtered('sin_checadas')),
+                   i=self.fecha_inicio.strftime('%d/%m'), c=corte_aplicado.strftime('%d/%m'))
+        if pendientes:
+            cuerpo += ' ' + _("Más lo de la semana anterior del %(d)s al domingo (%(n)s personas).",
+                              d=desde_ant.strftime('%d/%m'), n=len(pendientes) - len(sin_renglon))
+        if sin_renglon:
+            nombres = self.env['hr.employee'].with_context(active_test=False).browse(sin_renglon).mapped('name')
+            cuerpo += ' ' + _("Con pendientes de la semana anterior pero ya sin contrato semanal: %s.",
+                              ', '.join(nombres))
+        self.message_post(body=cuerpo)
 
     # ------------------------------------------------------------------
     # Estados y recibos
@@ -473,6 +604,14 @@ class QbNominaIncidenciasLinea(models.Model):
                                     help="Días en que la comida pasó de lo permitido: sindicalizados 30 minutos en jornadas de 10 "
                                          "horas y 45 en las de 12; empleados el parámetro "
                                          "quimibond_nomina.incidencias_comida_max (60 si no está).")
+    ant_faltas = fields.Integer(string="Faltas sem. anterior",
+                                help="Ya incluidas en «Faltas»: las de la semana anterior después de su corte.")
+    ant_he = fields.Integer(string="HE sem. anterior",
+                            help="Ya incluidas en «HE propuestas»: las de la semana anterior después de su corte.")
+    ant_dom = fields.Float(string="Prima dominical sem. anterior (h)", digits=(6, 1),
+                           help="Ya incluida en «Prima dominical»: la de la semana anterior después de su corte.")
+    ant_festivos = fields.Integer(string="Festivos sem. anterior",
+                                  help="Ya incluidos en «Festivos trabajados».")
     festivos_trabajados = fields.Integer(
         string="Festivos trabajados",
         help="Días de descanso obligatorio (calendario de festivos) que la persona trabajó: se pagan con "

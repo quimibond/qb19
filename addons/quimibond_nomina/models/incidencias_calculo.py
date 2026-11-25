@@ -211,6 +211,16 @@ def agrupar_turnos(marcas, separacion=SEPARACION_TURNOS, turno_max=TURNO_MAX):
     return [tuple(t) for t in turnos]
 
 
+def marcas_hasta(marcas, dia):
+    """Las checadas de los turnos que empiezan a más tardar el ``dia`` (el de noche que entra ese día y sale
+    al siguiente se queda completo). Sin ``dia``, todas. Sirve para medir la semana solo hasta su corte."""
+    if not dia:
+        return list(marcas)
+    limite = datetime.combine(dia + timedelta(days=1), time(0, 0))
+    fuera = [(inicio, fin) for inicio, fin, _n in agrupar_turnos(marcas) if inicio >= limite]
+    return [m for m in marcas if not any(inicio <= m <= fin for inicio, fin in fuera)]
+
+
 def comida(marcas, inicio, fin):
     """``(salida, regreso)`` de la comida de un turno, o ``None``: el hueco más largo entre las checadas
     de en medio (sin la primera ni la última). Hacen falta cuatro checadas o más; las repetidas en menos
