@@ -19,3 +19,4 @@ from . import test_iva
 from . import test_estado_sat
 from . import test_rep
 from . import test_compras
+from . import test_rep_avisos
