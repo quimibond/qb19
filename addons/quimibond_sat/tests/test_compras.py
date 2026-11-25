@@ -238,3 +238,70 @@ class TestSatCompras(SatCommon):
         move = self._bill(self._cfdi())
         self.assertEqual(move.sat_semaforo, 'amarillo')
         self.assertIn('Anticipo abierto', move.sat_semaforo_motivo)
+
+    # ── implantación por etapas (1.31.2) ────────────────────────────
+
+    def test_cron_only_with_order_by_default(self):
+        self._rule(state='confirmada')
+        cfdi = self._cfdi()
+        with self._fake_decoder(), self._patch_xml():
+            self.assertEqual(self.env['sat.cfdi']._cron_auto_bills(), 0)
+        self.assertFalse(cfdi.move_id)
+        self.assertFalse(cfdi.auto_bill_state)            # se vuelve a buscar mañana
+        self.assertIn('sin orden de compra', cfdi.auto_bill_note)
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sat.auto_bill_solo_con_orden', '0')
+        with self._fake_decoder(), self._patch_xml():
+            self.assertEqual(self.env['sat.cfdi']._cron_auto_bills(), 1)
+        self.assertTrue(cfdi.move_id)
+
+    def test_cron_creates_with_order(self):
+        order = self._purchase(10)
+        cfdi = self._po_cfdi(10)
+        with self._patch_xml():
+            self.assertEqual(self.env['sat.cfdi']._cron_auto_bills(), 1)
+        self.assertEqual(cfdi.move_id.invoice_line_ids.purchase_line_id, order.order_line)
+
+    def test_supplier_with_orders_is_yellow_without_order(self):
+        self._rule(state='confirmada')
+        order = self._purchase(10)             # otra compra: no cuadra con este CFDI
+        move = self._bill(self._cfdi())
+        self.assertFalse(move.invoice_line_ids.purchase_line_id)
+        self.assertEqual(move.sat_semaforo, 'amarillo')
+        self.assertIn(order.name, move.sat_semaforo_motivo)
+
+    def test_storable_without_order_is_yellow(self):
+        if 'is_storable' not in self.env['product.product']._fields:
+            self.skipTest('stock no está instalado')
+        self._rule(state='confirmada')
+        product = self.env['product.product'].create({'name': 'Etiqueta de prueba', 'is_storable': True})
+        move = self._bill(self._cfdi())
+        move.invoice_line_ids.write({'product_id': product.id, 'price_unit': 3287.86,
+                                     'tax_ids': [Command.clear()], 'account_id': self.other_expense.id})
+        move.action_sat_semaforo()
+        self.assertEqual(move.sat_semaforo, 'amarillo')
+        self.assertIn('producto de inventario', move.sat_semaforo_motivo)
+
+    def test_check_again_rebuilds_from_late_order(self):
+        self._rule(state='confirmada')
+        move = self._bill(self._cfdi())
+        self.assertEqual(move.sat_semaforo, 'verde', move.sat_semaforo_motivo)
+        self.assertEqual(move.invoice_line_ids.sat_cuenta_propuesta_id, self.other_expense)
+        order = self._purchase(1, price=3287.86)   # Compras hizo la orden después
+        move.action_sat_semaforo()
+        self.assertEqual(move.invoice_line_ids.purchase_line_id, order.order_line)
+        self.assertEqual(len(move.invoice_line_ids), 1)
+        self.assertIn(order.name, move.sat_origen)
+        self.assertEqual(move.invoice_origin, order.name)
+        self.assertEqual(move.sat_semaforo, 'verde', move.sat_semaforo_motivo)
+
+    def test_order_matches_net_price_after_discount(self):
+        order = self._purchase(8, price=112.52)
+        cfdi = self._cfdi(subtotal=117.26, discount=4.74, total=112.52, transferredTaxes={'total': 0},
+                          items=[dict(item(1, 117.26, 'ETIQUETA'), discountAmount=4.74)])
+        self.assertEqual(cfdi._match_purchase()['lines'], order.order_line)
+
+    def test_same_amount_other_cfdi_is_not_a_duplicate(self):
+        self._rule(state='confirmada')
+        self._bill(self._cfdi())
+        other = self._cfdi(UUID_B, id='b')
+        self.assertFalse(other._auto_bill_blocker())

@@ -26,6 +26,8 @@ class TestSatAutoBill(SatCommon):
         super().setUpClass()
         cls.journal = cls.company_data['default_journal_purchase']
         cls.company.sat_auto_bill_journal_id = cls.journal
+        # Estas pruebas son del importador de XML: el cron crea también las que no traen orden.
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_sat.auto_bill_solo_con_orden', '0')
 
     def _upsert(self, obj):
         return self.env['sat.cfdi']._upsert_from_syntage(obj, self.company, event_type='pull')
