@@ -15,6 +15,8 @@
 El semáforo se calcula al crear la factura y con *Revisar de nuevo*; publicar
 en lote lo recalcula antes de publicar.
 """
+from datetime import timedelta
+
 from odoo import _, api, fields, models
 
 from .res_partner import RIESGO_69B
@@ -105,12 +107,21 @@ class AccountMoveSemaforo(models.Model):
                     amarillo.append(_('%(line)s: se factura más de lo recibido en %(po)s.') % {
                         'line': label, 'po': po_line.order_id.name})
                 continue
+            if 'is_storable' in line.product_id._fields and line.product_id.is_storable:
+                amarillo.append(_('%s: producto de inventario sin orden de compra. Pida la orden a Compras, '
+                                  'que Almacén la reciba y oprima «Revisar de nuevo».') % label)
             rule = line.sat_bill_rule_id
             if not rule:
                 amarillo.append(_('%s: sin regla de cuenta para este proveedor; elija la cuenta.') % label)
             elif rule.state != 'confirmada':
                 amarillo.append(_('%(line)s: la regla «%(rule)s» está por confirmar.') % {
                     'line': label, 'rule': rule.display_name})
+        if self.move_type == 'in_invoice' and partner and has_po and lines and not lines.purchase_line_id:
+            last_order = self._sat_recent_purchase_order()
+            if last_order:
+                amarillo.append(_('Este proveedor trabaja con orden de compra (última: %s) y esta factura no '
+                                  'trae orden. Pida la orden a Compras y oprima «Revisar de nuevo», o publíquela '
+                                  'así si es un gasto sin orden.') % last_order.name)
         rules = lines.sat_bill_rule_id
         for rule in rules.filtered(lambda r: not r.clave_sat and not r.concepto):
             if rule._monto_fuera_de_rango(self.amount_untaxed):
@@ -124,13 +135,31 @@ class AccountMoveSemaforo(models.Model):
             return 'amarillo', amarillo
         return 'verde', []
 
+    def _sat_recent_purchase_order(self, days=180):
+        """Última orden de compra confirmada del proveedor en `days` días."""
+        self.ensure_one()
+        if 'purchase.order' not in self.env:
+            return False
+        since = fields.Datetime.now() - timedelta(days=days)
+        return self.env['purchase.order'].sudo().search([
+            ('company_id', '=', self.company_id.id),
+            ('partner_id', 'child_of', self.commercial_partner_id.id),
+            ('state', 'in', ('purchase', 'done')),
+            ('date_approve', '>=', since),
+        ], order='date_approve desc', limit=1)
+
     def _sat_semaforo_update(self):
         for move in self.filtered(lambda m: m.sat_auto_bill and m.state == 'draft'):
             color, reasons = move._sat_semaforo_check()
             move.write({'sat_semaforo': color, 'sat_semaforo_motivo': '\n'.join(reasons) or False})
 
     def action_sat_semaforo(self):
-        """Botón «Revisar de nuevo»."""
+        """Botón «Revisar de nuevo»: si la factura nació sin orden y Compras
+        ya hizo la orden (recibida), la rehace desde la orden."""
+        for move in self.filtered(lambda m: m.sat_auto_bill and m.state == 'draft'):
+            cfdi = move.sat_cfdi_ids.filtered(lambda c: c.tipo == 'I' and c.estado_sat != 'cancelado')[:1]
+            if cfdi:
+                cfdi._rebuild_bill_from_purchase(move)
         self._sat_semaforo_update()
         return True
 
@@ -175,3 +204,11 @@ class AccountMoveLineSemaforo(models.Model):
                             help='ClaveProdServ del concepto del CFDI que dio origen a esta línea.')
     sat_bill_rule_id = fields.Many2one('sat.bill.rule', string='Regla de cuenta', copy=False,
                                        ondelete='set null', index='btree_not_null')
+    sat_cuenta_propuesta_id = fields.Many2one(
+        'account.account', string='Cuenta que propuso el SAT', copy=False, ondelete='set null',
+        help='Cuenta con la que nació la línea desde el CFDI (orden de compra o regla). Si al publicar '
+             'es otra, Contabilidad la corrigió: sirve para medir qué tan bien acierta.')
+
+    def _sat_remember_account(self):
+        for line in self.filtered(lambda l: l.display_type == 'product'):
+            line.sat_cuenta_propuesta_id = line.account_id

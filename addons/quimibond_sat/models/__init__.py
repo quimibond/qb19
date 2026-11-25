@@ -21,3 +21,5 @@ from . import sat_pago_compare
 from . import sat_iva_month
 from . import account_move
 from . import account_move_semaforo
+# Después de sat_pago_compare: lo extiende con los avisos de complementos.
+from . import sat_rep_avisos

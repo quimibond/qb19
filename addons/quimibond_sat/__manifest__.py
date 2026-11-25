@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - SAT (Syntage) en Odoo',
-    'version': '19.0.1.31.1',
+    'version': '19.0.1.32.0',
     'license': 'LGPL-3',
     'category': 'Accounting/Localizations',
     'summary': 'CFDI del SAT (vía Syntage) dentro de Odoo y comparación contra las facturas registradas.',
@@ -40,6 +40,11 @@ Parámetros del sistema (Ajustes > Técnico > Parámetros del sistema)::
   quimibond_sat.cuentas_anticipo_proveedor
                                 Cuentas (códigos, coma) de anticipos a proveedores
                                 que ponen la factura en amarillo (120.01.01,120.01.02)
+  quimibond_sat.rep_dia_proveedores / rep_dia_clientes
+                                Día del mes de los avisos de complementos de pago
+                                (10: actividad por proveedor; 1: correo de cobros)
+  quimibond_sat.rep_responsable Logins (coma) que reciben las actividades; si no,
+                                los usuarios cuyo correo está en alert_email
 
 Endpoint del webhook: POST /quimibond_sat/webhook
     """,
@@ -54,6 +59,7 @@ Endpoint del webhook: POST /quimibond_sat/webhook
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'data/sat_rep_avisos_data.xml',
         'views/sat_cfdi_views.xml',
         'views/sat_compare_views.xml',
         'views/sat_event_views.xml',

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Plantilla editable (noupdate): el correo al proveedor con la lista de
+         facturas pagadas sin complemento de pago. -->
+    <data noupdate="1">
+        <record id="mail_template_pedir_rep" model="mail.template">
+            <field name="name">SAT: pedir complementos de pago al proveedor</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="subject">Complementos de pago pendientes - {{ user.company_id.name }}</field>
+            <field name="partner_to">{{ object.id }}</field>
+            <field name="email_from">{{ (user.email_formatted or user.company_id.email_formatted) }}</field>
+            <field name="lang">{{ object.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+<div>
+    <p>Estimado proveedor <t t-out="object.name or ''"/>:</p>
+    <p>Le pedimos de favor que nos envíe los complementos de pago (CFDI de pago, REP) de las
+       facturas que le pagamos y que aún no aparecen en el SAT:</p>
+    <t t-out="object._sat_rep_tabla()"/>
+    <p>El complemento se emite a más tardar el día 5 del mes siguiente al pago. Sin él no
+       podemos acreditar el IVA de esos pagos.</p>
+    <p>Si alguno ya lo emitió, le agradeceremos que nos reenvíe el XML. Si alguna factura no
+       corresponde, avísenos para revisarla.</p>
+    <p>Gracias de antemano.</p>
+    <p><t t-out="user.name or ''"/><br/><t t-out="user.company_id.name or ''"/></p>
+</div>
+            </field>
+        </record>
+    </data>
+
+    <!-- Contactos → Acción → Pedir complementos de pago -->
+    <record id="action_partner_pedir_rep" model="ir.actions.server">
+        <field name="name">Pedir complementos de pago</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">form</field>
+        <field name="group_ids" eval="[(4, ref('account.group_account_user'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records._sat_action_pedir_rep()</field>
+    </record>
+</odoo>
