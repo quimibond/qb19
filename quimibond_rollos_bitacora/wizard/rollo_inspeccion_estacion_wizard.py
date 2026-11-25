@@ -278,7 +278,8 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             raise UserError(_('El rollo pesa %(n).2f kg y el rollo de Rama %(r).2f kg: no hay diferencia que quitar como '
                               'tramo.', n=self.kg_neto, r=self.kg_rama))
         self.env['hr.employee']._qb_operador_requerido(self.empleado_numero)
-        tramo = self.env['rollo.tramo.wizard'].create({
+        rendimiento = self._rendimiento_acabado()
+        valores = {
             'estacion_id': self.id,
             'production_id': self.production_id.id,
             'workorder_id': self.workorder_id.id,
@@ -288,10 +289,15 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
             'kg_rollo': self.kg_neto,
             'kg_ya_cortados': self.kg_ya_cortados,
             'kg_tramos': self.kg_tramos,
-            'rendimiento': self._rendimiento_acabado(),
-            'metros': self.tramo_metros_captura if self.tramo_bitacora_id == rollo else 0.0,
+            'rendimiento': rendimiento,
             'defecto_ids': [(6, 0, self.tramo_defecto_ids.ids if self.tramo_bitacora_id == rollo else [])],
-        })
+        }
+        # 3.24.1: con rendimiento en la ficha los metros los calcula el asistente (kg teóricos × rendimiento); pasarle
+        # «metros» al crear (aunque fuera 0) anula ese cálculo y el tramo salía con 0.00 m. Solo se pasan los capturados
+        # a mano cuando la ficha no tiene rendimiento.
+        if not rendimiento:
+            valores['metros'] = self.tramo_metros_captura if self.tramo_bitacora_id == rollo else 0.0
+        tramo = self.env['rollo.tramo.wizard'].create(valores)
         return {
             'type': 'ir.actions.act_window', 'name': _('Quitar tramo'), 'res_model': tramo._name, 'res_id': tramo.id,
             'view_mode': 'form', 'views': [(False, 'form')], 'target': 'new',

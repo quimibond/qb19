@@ -27,6 +27,10 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## 3.24.1 (2026-11-25)
+
+- «Quitar tramo» con rendimiento en la ficha propone los metros teóricos (kg teóricos × rendimiento); en 3.24.0 salían en 0.00.
+
 ## Ajustes del piloto de Contitech (3.24.0, 2026-11-24)
 
 - **Empaque vs. laboratorio**: si Empaque cambia la calidad que dejó el laboratorio pide un motivo distinto del del laboratorio, y queda en el chatter.

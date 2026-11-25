@@ -2140,6 +2140,21 @@ class TestInspeccionEstacion(TransactionCase):
         wiz.action_confirmar()
         self.assertEqual(len(orden_kg.rollo_final_kg_ids), 1)
 
+    def test_87a_tramo_con_rendimiento_calcula_los_metros(self):
+        """3.24.1: con rendimiento en la ficha, «Quitar tramo» propone los metros teóricos (kg teóricos × rendimiento);
+        antes salían en 0.00 porque el asistente se creaba con metros=0."""
+        orden_m, orden_kg, wo, rollos = self._bano((10.0,))
+        estacion = self._estacion(orden_kg, wo, rollos, 8.0, metros=80.0, clasificacion='PQ')  # neto 6.5 de 10 kg
+        Wizard = type(estacion)
+        with patch.object(Wizard, '_rendimiento_acabado', return_value=11.8):
+            accion = estacion.action_quitar_tramo()
+            wiz = self.env[accion['res_model']].browse(accion['res_id'])
+            self.assertAlmostEqual(wiz.kg_neto, 3.5)
+            self.assertAlmostEqual(wiz.metros, 41.3, msg="3.5 kg × 11.8 m/kg")
+            wiz.write({'defecto_ids': [Command.set(self.defecto.ids)]})
+            wiz.action_confirmar()
+            self.assertAlmostEqual(estacion.tramo_metros, 41.3)
+
     def test_87b_exceso_sobre_rama_pide_motivo_y_tolerancia(self):
         """3.24.0: más kg que Rama ya no bloquea: pide confirmar con motivo (chatter); con el parámetro de tolerancia,
         un exceso chico solo avisa."""
