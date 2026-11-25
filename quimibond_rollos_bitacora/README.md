@@ -27,6 +27,10 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 - En las órdenes con Rama se oculta el lote único de la orden (los lotes son los de cada rollo).
 - Ajustes de Manufactura: alertas de metros y tamaño de las etiquetas de Rama y preliminar.
 
+## 3.24.2 (2026-11-25)
+
+- La casilla del exceso de peso se llama «Sí, registrar con el exceso»: tenía la misma etiqueta que la de «sin tramo» y Odoo.sh marcaba el aviso de etiquetas duplicadas.
+
 ## 3.24.1 (2026-11-25)
 
 - «Quitar tramo» con rendimiento en la ficha propone los metros teóricos (kg teóricos × rendimiento); en 3.24.0 salían en 0.00.
@@ -34,7 +38,7 @@ Diseño técnico v5.4 (§3.2, §8, §9, §10, §12, §13, §16). Entregas: **Ram
 ## Ajustes del piloto de Contitech (3.24.0, 2026-11-24)
 
 - **Empaque vs. laboratorio**: si Empaque cambia la calidad que dejó el laboratorio pide un motivo distinto del del laboratorio, y queda en el chatter.
-- **Exceso de peso**: Inspección con más kg que Rama ya no bloquea; pide «Sí, registrar así» y motivo (chatter). Parámetro `quimibond_rollos_bitacora.tolerancia_peso_pct` (1 % de fábrica, se carga una vez): dentro de ese porcentaje solo avisa.
+- **Exceso de peso**: Inspección con más kg que Rama ya no bloquea; pide «Sí, registrar con el exceso» y motivo (chatter). Parámetro `quimibond_rollos_bitacora.tolerancia_peso_pct` (1 % de fábrica, se carga una vez): dentro de ese porcentaje solo avisa.
 - **Medición del exceso**: el rollo final guarda `exceso_rama_kg`, `exceso_rama_pct` y su motivo (también dentro de la tolerancia); filtro «Con exceso contra Rama» y columnas opcionales en la lista.
 - **Tramo teórico**: el operador no pesa el tramo; se registra con kg teóricos (peso de Rama − rollo − lo ya registrado) y metros teóricos (kg × rendimiento de la ficha; se capturan si la ficha no lo tiene). El rollo armado se pesa y etiqueta al final con JUNTAR TRAMOS.
 - **Aviso de cierre**: kg en rollos de Rama + desperdicio de Rama contra el crudo surtido (con la orden como respaldo); la misma base para `cierre_minimo_pct`.

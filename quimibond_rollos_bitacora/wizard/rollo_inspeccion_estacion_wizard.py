@@ -90,7 +90,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
              'Por defecto NO: márcalo solo si la diferencia es merma y quieres registrar el rollo así.')
     exceso_alerta = fields.Boolean('Sale más de lo que entró', compute='_compute_merma')
     confirma_exceso = fields.Boolean(
-        'Sí, registrar así', default=False,
+        'Sí, registrar con el exceso', default=False,
         help='3.24.0: Inspección pesó más que Rama (dos básculas con taras distintas). Ya no bloquea: se registra con '
              'motivo y queda en el chatter de la orden.')
     motivo_exceso = fields.Char('Motivo del exceso de peso')
@@ -218,7 +218,7 @@ class RolloInspeccionEstacionWizard(models.TransientModel):
                     wiz.exceso_alerta = True
                     avisos.append(_('El rollo (%(n).2f kg) con lo ya registrado y los tramos suma %(s).2f kg y el rollo '
                                     'de Rama pesó %(r).2f kg: sale %(e).3f kg más de lo que entró (%(p).2f %%). Revisa '
-                                    'el peso; si procede así, marca «Sí, registrar así» y escribe el motivo.',
+                                    'el peso; si procede así, marca «Sí, registrar con el exceso» y escribe el motivo.',
                                     n=wiz.kg_neto, s=salida, r=wiz.kg_rama, e=exceso, p=exceso / wiz.kg_rama * 100.0))
             elif wiz.termina_rollo and wiz.merma_pct > limite:
                 if not (wiz.kg_tramos or wiz.tramo_kg_neto):
